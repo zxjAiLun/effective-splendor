@@ -1,0 +1,12 @@
+[package]
+name = "splendor-catalog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Splendor card, noble, and ruleset catalog data"
+
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
