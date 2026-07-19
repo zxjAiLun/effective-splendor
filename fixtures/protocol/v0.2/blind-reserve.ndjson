@@ -1,0 +1,5 @@
+{"type":"hello","protocol_version":"0.2","game_id":"golden-blind","server_seq":0,"engine_version":"0.1.0","ruleset":"splendor-base-v1","catalog_version":"0.1.0","ruleset_fingerprint":"2793f9beaa7c94e088bf025a33fd76448c26103cb70c38d6effe1fd2edcb1f84"}
+{"type":"action_applied","player":0,"action":{"type":"reserve_deck","tier":"One"}}
+{"type":"chance_revealed","tier":"One","slot":null,"card":null,"visible_to":{"player":0}}
+{"type":"card_reserved","player":0,"card":null,"from":{"deck":{"tier":"One"}},"received_gold":true,"public_identity":false,"visible_to":{"player":0}}
+{"type":"turn_advanced","next_player":1}

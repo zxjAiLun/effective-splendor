@@ -16,9 +16,15 @@ mod state;
 
 pub use action::Action;
 pub use error::{EngineError, EngineResult};
-pub use events::{ChanceEvent, GameEvent, StepResult};
+pub use events::{
+    visible_events, Audience, ChanceEvent, GameEvent, RefereeEvent, StepResult, Visibility,
+    VisibleEvent,
+};
 pub use gems::Gems;
-pub use hash::{full_state_hash, observation_hash, public_state_hash, HashHex};
+pub use hash::{
+    full_state_hash, observation_hash, observer_hash, public_state_hash, FullStateHash, HashHex,
+    ObservationHash, PublicStateHash,
+};
 pub use observation::{
     Observation, PrivatePlayerView, PublicPlayerView, PublicState, ReservedView,
 };

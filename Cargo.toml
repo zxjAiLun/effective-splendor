@@ -17,7 +17,7 @@ default-members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/example/splendor"
+repository = "https://github.com/zxjAiLun/effective-splendor"
 rust-version = "1.75"
 
 [workspace.dependencies]
