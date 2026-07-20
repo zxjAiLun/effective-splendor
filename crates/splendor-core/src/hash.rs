@@ -147,6 +147,18 @@ fn write_nobles(h: &mut Sha256, nobles: &[splendor_catalog::NobleId]) {
     }
 }
 
+/// Purchased ownership is a set, not a sequence: canonicalize by `CardId` before
+/// hashing so purchase order can never change the semantic state identity, even
+/// if a caller hands us an out-of-order `Vec`.
+fn write_purchased(h: &mut Sha256, purchased: &[splendor_catalog::CardId]) {
+    let mut ids: Vec<u8> = purchased.iter().map(|card| card.0).collect();
+    ids.sort_unstable();
+    write_len(h, ids.len());
+    for id in ids {
+        h.update([id]);
+    }
+}
+
 fn write_result(h: &mut Sha256, result: Option<&GameResult>) {
     let Some(result) = result else {
         h.update([0]);
@@ -205,10 +217,7 @@ fn write_public_state(h: &mut Sha256, public: &PublicState) {
         for card in &player.public_reserved {
             h.update([card.0]);
         }
-        write_len(h, player.purchased.len());
-        for card in &player.purchased {
-            h.update([card.0]);
-        }
+        write_purchased(h, &player.purchased);
         write_nobles(h, &player.nobles);
     }
 
@@ -232,7 +241,7 @@ fn write_observation_private(h: &mut Sha256, observation: &Observation) {
 /// changes incompatibly.
 pub fn full_state_hash(state: &FullState) -> FullStateHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-full-v4\0");
+    h.update(b"splendor-full-v5\0");
     write_ruleset(&mut h, &state.ruleset);
     h.update(state.seed.to_le_bytes());
     h.update([
@@ -266,10 +275,7 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
         for reserved in &player.reserved {
             h.update([reserved.card.0, reserved.from_deck as u8]);
         }
-        write_len(&mut h, player.purchased.len());
-        for card in &player.purchased {
-            h.update([card.0]);
-        }
+        write_purchased(&mut h, &player.purchased);
         write_nobles(&mut h, &player.nobles);
     }
 
@@ -282,7 +288,7 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
 /// Hash of public information only.
 pub fn public_state_hash(state: &FullState) -> PublicStateHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-public-v4\0");
+    h.update(b"splendor-public-v5\0");
     write_ruleset(&mut h, &state.ruleset);
     write_public_state(&mut h, &state.observation(state.current_player).public);
     // A terminal reason/result is public once the game has ended and must not
@@ -304,7 +310,7 @@ pub fn ruleset_fingerprint(ruleset: &Ruleset) -> RulesetFingerprint {
 /// not depend on `Debug` or serde field formatting.
 pub fn observation_hash(observation: &Observation) -> ObservationHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-obs-v5\0");
+    h.update(b"splendor-obs-v6\0");
     write_str(&mut h, observation.ruleset_fingerprint.as_str());
     h.update([observation.viewer.0]);
     write_public_state(&mut h, &observation.public);

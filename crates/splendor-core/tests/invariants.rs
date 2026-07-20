@@ -429,6 +429,116 @@ fn public_observation_contains_purchased_cards() {
     );
 }
 
+fn two_market_cards_state() -> (FullState, CardId, CardId) {
+    // Card 0 costs black-3, card 8 costs white-3: disjoint payments, both
+    // affordable within a 2-player bank and the 10-token limit.
+    let low = CardId(0);
+    let high = CardId(8);
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_specific_card_in_market(&mut state, low, 0);
+    put_specific_card_in_market(&mut state, high, 1);
+    let tokens = Gems {
+        white: 3,
+        black: 3,
+        ..Gems::ZERO
+    };
+    state.bank = state.bank.checked_sub(tokens).expect("bank has payment");
+    state.players[0].tokens = tokens;
+    // Drain the tier-1 deck so buying a tier-1 card does not refill the vacated
+    // slot (refill order legitimately depends on buy order and would confound
+    // this purchased-identity test). Cards are preserved in the tier-3 deck so
+    // the 90-card conservation invariant still holds.
+    let drained: Vec<CardId> = state.decks[0].drain(..).collect();
+    state.decks[2].extend(drained);
+    state.assert_invariants().unwrap();
+    (state, low, high)
+}
+
+fn put_specific_card_in_market(state: &mut FullState, target: CardId, slot: usize) {
+    if let Some(existing) = state.market[0][slot] {
+        state.decks[0].push(existing);
+    }
+    if let Some(position) = state.decks[0].iter().position(|&c| c == target) {
+        state.decks[0].remove(position);
+    }
+    for tier_deck in state.decks.iter_mut() {
+        if let Some(position) = tier_deck.iter().position(|&c| c == target) {
+            tier_deck.remove(position);
+        }
+    }
+    state.market[0][slot] = Some(target);
+}
+
+fn buy_slot(state: &mut FullState, slot: u8) {
+    // Isolate purchase-order accounting from turn rotation: always act as the
+    // player under test regardless of whose turn the engine advanced to.
+    state.current_player = PlayerId(0);
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot,
+        })
+        .unwrap();
+}
+
+#[test]
+fn purchased_cards_are_stored_in_card_id_order() {
+    let (mut state, low, high) = two_market_cards_state();
+    buy_slot(&mut state, 1);
+    buy_slot(&mut state, 0);
+    assert_eq!(state.players[0].purchased, vec![low, high]);
+    assert!(state.players[0]
+        .purchased
+        .windows(2)
+        .all(|w| w[0].0 < w[1].0));
+    state.assert_invariants().unwrap();
+}
+
+#[test]
+fn purchased_order_does_not_change_public_hash() {
+    let (mut forward, _, _) = two_market_cards_state();
+    let (mut reverse, _, _) = two_market_cards_state();
+
+    buy_slot(&mut forward, 0);
+    buy_slot(&mut forward, 1);
+
+    buy_slot(&mut reverse, 1);
+    buy_slot(&mut reverse, 0);
+
+    assert_ne!(forward.players[0].purchased, Vec::<CardId>::new());
+    assert_eq!(forward.players[0].purchased, reverse.players[0].purchased);
+    assert_eq!(full_state_hash(&forward), full_state_hash(&reverse));
+    assert_eq!(public_state_hash(&forward), public_state_hash(&reverse));
+}
+
+#[test]
+fn purchased_order_does_not_change_observation_hash() {
+    let (mut forward, _, _) = two_market_cards_state();
+    let (mut reverse, _, _) = two_market_cards_state();
+
+    buy_slot(&mut forward, 0);
+    buy_slot(&mut forward, 1);
+
+    buy_slot(&mut reverse, 1);
+    buy_slot(&mut reverse, 0);
+
+    assert_eq!(
+        observation_hash(&forward.observation(PlayerId(1))),
+        observation_hash(&reverse.observation(PlayerId(1)))
+    );
+}
+
+#[test]
+fn unsorted_purchased_fails_invariants() {
+    let (mut state, low, high) = two_market_cards_state();
+    buy_slot(&mut state, 0);
+    buy_slot(&mut state, 1);
+    state.assert_invariants().unwrap();
+
+    state.players[0].purchased = vec![high, low];
+    assert!(state.assert_invariants().is_err());
+}
+
 #[test]
 fn reserve_at_ten_tokens_enumerates_all_returns() {
     let state = state_with_player_tokens(Gems {

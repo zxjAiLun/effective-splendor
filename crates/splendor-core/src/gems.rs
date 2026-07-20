@@ -3,6 +3,7 @@ use splendor_catalog::GemColor;
 
 /// Token counts: five colors + gold.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Gems {
     pub white: u8,
     pub blue: u8,

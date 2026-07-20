@@ -40,4 +40,4 @@ pub use splendor_catalog::{
 };
 
 /// Engine semantic version for replays / protocol compatibility.
-pub const ENGINE_VERSION: &str = "0.3.0";
+pub const ENGINE_VERSION: &str = "0.4.0";

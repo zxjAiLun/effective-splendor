@@ -90,7 +90,11 @@ impl FullState {
                         .filter(|r| !r.from_deck)
                         .map(|r| r.card)
                         .collect(),
-                    purchased: p.purchased.clone(),
+                    purchased: {
+                        let mut purchased = p.purchased.clone();
+                        purchased.sort_unstable();
+                        purchased
+                    },
                     nobles: p.nobles.clone(),
                 })
                 .collect(),

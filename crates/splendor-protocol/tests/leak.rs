@@ -271,8 +271,8 @@ fn protocol_never_serializes_full_state_hash() {
         !line.contains(&full),
         "server message must not embed the full state hash"
     );
-    // And the protocol version is 0.3.
-    assert!(line.contains("\"protocol_version\":\"0.3\""));
+    // And the current protocol version is embedded.
+    assert!(line.contains(&format!("\"protocol_version\":\"{PROTOCOL_VERSION}\"")));
 }
 
 /// `ActionApplied` has exactly one actor field and no ambiguous `player_id`.
@@ -346,13 +346,13 @@ fn protocol_golden_transcript_matches_generated_wire() {
     let normal = normal_golden_transcript();
     assert_eq!(
         normal,
-        include_str!("../../../fixtures/protocol/v0.3/normal-game.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.4/normal-game.ndjson"),
         "normal protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
     let blind = blind_reserve_transcript(Audience::Player(PlayerId(1)));
     assert_eq!(
         blind,
-        include_str!("../../../fixtures/protocol/v0.3/blind-reserve.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.4/blind-reserve.ndjson"),
         "blind protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
 

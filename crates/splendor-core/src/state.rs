@@ -45,7 +45,9 @@ pub struct FullPlayerState {
     pub bonuses: [u8; 5],
     pub prestige: u8,
     pub reserved: Vec<ReservedCard>,
-    /// Canonical ownership of purchased development cards.
+    /// Canonical ownership of purchased development cards, kept sorted by
+    /// `CardId`. This is set identity for state hashing; chronological purchase
+    /// order lives only in the event log.
     pub purchased: Vec<CardId>,
     pub nobles: Vec<NobleId>,
 }
@@ -628,7 +630,12 @@ impl FullState {
 
         p.bonuses[def.bonus.index()] = p.bonuses[def.bonus.index()].saturating_add(1);
         p.prestige = p.prestige.saturating_add(def.prestige);
-        p.purchased.push(cid);
+        // Purchased ownership is canonical state identity: store it sorted by
+        // `CardId` so a player's set of cards has one representation regardless
+        // of purchase order. The chronological order lives only in the event
+        // log, not in the current state hash.
+        let position = p.purchased.binary_search(&cid).unwrap_err();
+        p.purchased.insert(position, cid);
 
         if let PurchaseSource::Market { tier, slot } = source {
             self.market[tier.index()][slot as usize] = None;
@@ -914,6 +921,13 @@ impl FullState {
             }
             if p.reserved.len() > self.ruleset.max_reserved as usize {
                 return Err(EngineError::Invariant("too many reserved".into()));
+            }
+
+            if p.purchased.windows(2).any(|w| w[0].0 >= w[1].0) {
+                return Err(EngineError::Invariant(format!(
+                    "player {} purchased cards are not sorted by card id",
+                    p.id.0
+                )));
             }
 
             let mut expected_bonuses = [0u8; 5];

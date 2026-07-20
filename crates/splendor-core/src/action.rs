@@ -5,7 +5,7 @@ use crate::gems::Gems;
 
 /// Semantic game action. Protocol and replay use this shape, not policy indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
     /// Take gems and optionally return excess in one atomic step.
     TakeTokens {

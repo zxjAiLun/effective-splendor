@@ -1,4 +1,4 @@
-//! NDJSON agent protocol (v0.3).
+//! NDJSON agent protocol (v0.4).
 //!
 //! One JSON object per line. Transport (stdio / TCP / WS) is independent of
 //! the schema.
@@ -18,7 +18,7 @@ use splendor_core::{
     ENGINE_VERSION,
 };
 
-pub const PROTOCOL_VERSION: &str = "0.3";
+pub const PROTOCOL_VERSION: &str = "0.4";
 
 /// Server-owned fields shared by genuinely broadcast server messages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
