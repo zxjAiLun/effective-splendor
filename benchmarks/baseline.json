@@ -1,11 +1,14 @@
 {
-  "commit": "b1bbb3c1eff6c42bc75a2f54944499df27b13424",
+  "commit": "25da35189fddd14599f9b6b577298905b685a816",
   "rust_version": "1.94.1",
-  "os": "MINGW64_NT-10.0-26200 3.4.9-be826601.x86_64 x86_64",
-  "cpu": "x86_64",
+  "os": "Microsoft Windows NT 10.0.26200.0",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
   "players": 2,
   "games": 20000,
   "invariants_enabled": true,
-  "games_per_s": 1354.6,
-  "actions_per_game": 93.0
+  "games_per_s": 1104.3,
+  "actions_per_s": 104140.5,
+  "actions_per_game": 94.3,
+  "avg_legal_actions_per_decision": 32.96,
+  "max_legal_actions_seen": 582
 }
