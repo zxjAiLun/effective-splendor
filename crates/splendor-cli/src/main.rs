@@ -12,6 +12,7 @@ use splendor_protocol::{
     to_ndjson, ClientMessage, ClientRequestMeta, ObservationMeta, RecipientMeta, RequestMeta,
     ServerMessage, PROTOCOL_VERSION,
 };
+use splendor_replay::{record_random_game, verify_replay, ReplayV1};
 
 #[derive(Parser)]
 #[command(name = "splendor", about = "Splendor rules engine CLI")]
@@ -42,12 +43,21 @@ enum Commands {
         #[arg(long, default_value_t = false)]
         verbose: bool,
     },
-    /// Verify that replaying recorded actions reproduces the final hash
-    ReplayCheck {
+    /// Record a deterministic random game to a replay v1 file
+    RecordReplay {
         #[arg(long, default_value_t = 2)]
         players: u8,
         #[arg(long, default_value_t = 42)]
         seed: u64,
+        #[arg(long, default_value_t = 1001)]
+        action_seed: u64,
+        #[arg(long)]
+        out: String,
+    },
+    /// Load and strictly verify a replay v1 file
+    VerifyReplay {
+        #[arg(long)]
+        input: String,
     },
     /// Smoke-test NDJSON protocol message encoding against a live state
     ProtocolDemo {
@@ -80,7 +90,13 @@ fn main() {
             seed,
             verbose,
         } => cmd_play(players, seed, verbose),
-        Commands::ReplayCheck { players, seed } => cmd_replay_check(players, seed),
+        Commands::RecordReplay {
+            players,
+            seed,
+            action_seed,
+            out,
+        } => cmd_record_replay(players, seed, action_seed, &out),
+        Commands::VerifyReplay { input } => cmd_verify_replay(&input),
         Commands::ProtocolDemo { seed } => cmd_protocol_demo(seed),
         Commands::GenFixtures { out_dir } => cmd_gen_fixtures(&out_dir),
     }
@@ -178,36 +194,69 @@ fn cmd_play(players: u8, seed: u64, verbose: bool) {
     );
 }
 
-fn cmd_replay_check(players: u8, seed: u64) {
-    let (mut state, _) = FullState::new(GameConfig {
-        player_count: players,
-        seed,
-        ..Default::default()
-    })
-    .unwrap();
+fn cmd_record_replay(players: u8, seed: u64, action_seed: u64, out: &str) {
+    let (_state, replay) = record_random_game(players, seed, action_seed).unwrap_or_else(|e| {
+        eprintln!("record failed: {e}");
+        std::process::exit(1);
+    });
+    let json = serde_json::to_string_pretty(&replay).expect("serialize replay");
+    let mut json = json;
+    json.push('\n');
+    fs::write(out, json).unwrap_or_else(|e| {
+        eprintln!("write failed: {e}");
+        std::process::exit(1);
+    });
+    println!("ok");
+    println!("out={out}");
+    println!("steps={}", replay.steps.len());
+    println!("final_hash={}", replay.final_state_hash.as_str());
+}
 
-    let mut actions: Vec<Action> = Vec::new();
-    let mut rng = SmallRng::seed_from_u64(seed ^ 0x1111);
-    while !state.is_terminal() {
-        let acts = state.legal_actions();
-        let a = acts[rng.gen_range(0..acts.len())];
-        actions.push(a);
-        state.apply(a).unwrap();
+fn cmd_verify_replay(input: &str) {
+    let raw = match fs::read_to_string(input) {
+        Ok(raw) => raw,
+        Err(e) => {
+            eprintln!("read failed: {e}");
+            std::process::exit(1);
+        }
+    };
+    let replay: ReplayV1 = match serde_json::from_str(&raw) {
+        Ok(replay) => replay,
+        Err(e) => {
+            eprintln!("parse error: {e}");
+            std::process::exit(1);
+        }
+    };
+    match verify_replay(&replay) {
+        Ok(verified) => {
+            println!("ok");
+            println!("format_version={}", replay.version);
+            println!("steps={}", verified.steps);
+            println!("final_hash={}", verified.final_state_hash);
+            println!("reason={}", result_reason_str(&verified.result));
+            println!("winners={}", format_winners(&verified.result));
+        }
+        Err(e) => {
+            eprintln!("verify error: {e}");
+            std::process::exit(1);
+        }
     }
-    let expected = full_state_hash(&state).as_str().to_string();
+}
 
-    let (mut replay, _) = FullState::new(GameConfig {
-        player_count: players,
-        seed,
-        ..Default::default()
-    })
-    .unwrap();
-    for a in &actions {
-        replay.apply(*a).unwrap();
+fn result_reason_str(result: &splendor_replay::ReplayGameResultV1) -> &'static str {
+    match result.reason {
+        splendor_replay::ReplayTerminalReason::PrestigeThreshold => "prestige_threshold",
+        splendor_replay::ReplayTerminalReason::Stalemate => "stalemate",
     }
-    let got = full_state_hash(&replay).as_str().to_string();
-    assert_eq!(expected, got, "replay hash mismatch");
-    println!("ok actions={} final_hash={}", actions.len(), expected);
+}
+
+fn format_winners(result: &splendor_replay::ReplayGameResultV1) -> String {
+    result
+        .winners
+        .iter()
+        .map(|w| w.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn cmd_protocol_demo(seed: u64) {

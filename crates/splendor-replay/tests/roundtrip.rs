@@ -27,3 +27,25 @@ fn round_trip_complete_game_for_2_3_4_players() {
 fn same_game_produces_byte_identical_replay() {
     assert_eq!(record_json(2, 42, 1001), record_json(2, 42, 1001));
 }
+
+/// The committed golden replay is a byte-regression lock: the deterministic
+/// generator must reproduce exactly the checked-in file (pretty JSON, two-space
+/// indent, single trailing newline, no host-specific data).
+#[test]
+fn golden_replay_matches_committed_fixture() {
+    let mut generated = record_json(2, 42, 1001);
+    generated.push('\n');
+    assert_eq!(
+        generated,
+        include_str!("../../../fixtures/replay/v1/normal-2p-seed42.json"),
+        "golden replay fixture is stale; regenerate with `splendor record-replay`"
+    );
+}
+
+#[test]
+fn golden_replay_fixture_verifies() {
+    let raw = include_str!("../../../fixtures/replay/v1/normal-2p-seed42.json");
+    let replay: ReplayV1 = serde_json::from_str(raw).unwrap();
+    let verified = verify_replay(&replay).unwrap();
+    assert_eq!(verified.player_count, 2);
+}

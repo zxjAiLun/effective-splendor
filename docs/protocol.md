@@ -1,6 +1,11 @@
-# Protocol (NDJSON, v0.3)
+# Protocol (NDJSON, v0.4)
 
 One JSON object per line. Transport (stdio / TCP / WS) is independent of schema.
+
+> v0.4 canonicalized purchased-card ownership (sorted by `CardId`), which
+> changed the observation hash. Golden transcripts live under
+> `fixtures/protocol/v0.4/`; the v0.2 / v0.3 fixtures are kept as historical
+> records. Replay files are a separate referee artifact — see `docs/replay.md`.
 
 ## Identity model
 
@@ -56,8 +61,9 @@ spectator (`Audience::Spectator`) sees no blind identities. The referee log
 (`RefereeEvent`) is never serialized; even the setup seed is omitted from the
 visible event projection.
 
-The v0.3 observation also includes public purchased-card identities and the
-public forced-pass counter. Reserve actions are atomic: their `return` field
+The v0.4 observation also includes public purchased-card identities (sorted by
+`CardId`, purchase order not exposed) and the public forced-pass counter.
+Reserve actions are atomic: their `return` field
 records the exact `Gems` returned when the reserve grants gold and the player
 would otherwise exceed the token limit.
 

@@ -475,6 +475,7 @@ dependencies = [
  "serde_json",
  "splendor-core",
  "splendor-protocol",
+ "splendor-replay",
 ]
 
 [[package]]

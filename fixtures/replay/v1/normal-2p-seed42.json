@@ -1,0 +1,1604 @@
+{
+  "format": "effective-splendor-replay",
+  "version": 1,
+  "engine_version": "0.4.0",
+  "ruleset": {
+    "id": "splendor-base-v1",
+    "catalog_version": "0.1.0",
+    "min_players": 2,
+    "max_players": 4,
+    "prestige_to_end": 15,
+    "max_tokens": 10,
+    "max_reserved": 3,
+    "market_slots_per_tier": 4,
+    "gold_tokens": 5,
+    "color_tokens_by_players": [
+      4,
+      5,
+      7
+    ],
+    "noble_extra": 1
+  },
+  "ruleset_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+  "player_count": 2,
+  "seed": 42,
+  "initial_state_hash": "67e9d8b48c5a152704eb23a027978a7ee0851c006526016bb20e70bb67f30c5e",
+  "steps": [
+    {
+      "ply": 0,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 2,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "67e9d8b48c5a152704eb23a027978a7ee0851c006526016bb20e70bb67f30c5e",
+      "state_hash_after": "b3aea04b31d540e88f5a40487f8833dadd71ffcc23bc27be98bb17e5bad9d8e6"
+    },
+    {
+      "ply": 1,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "b3aea04b31d540e88f5a40487f8833dadd71ffcc23bc27be98bb17e5bad9d8e6",
+      "state_hash_after": "a4aacac86df58ef56f4bd44424af7bc187e0c835356b770b76571f31a2a570d4"
+    },
+    {
+      "ply": 2,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "One",
+        "slot": 3,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "a4aacac86df58ef56f4bd44424af7bc187e0c835356b770b76571f31a2a570d4",
+      "state_hash_after": "5d2f9aa9c3774646f34c4071a13ae6f55d20bd43c4a9683582f07430d9219aec"
+    },
+    {
+      "ply": 3,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "5d2f9aa9c3774646f34c4071a13ae6f55d20bd43c4a9683582f07430d9219aec",
+      "state_hash_after": "fc2b2f293ea228803a4ad82c212c4989421a277f618cb53b148ce27cb96c5354"
+    },
+    {
+      "ply": 4,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "One",
+        "slot": 3,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "fc2b2f293ea228803a4ad82c212c4989421a277f618cb53b148ce27cb96c5354",
+      "state_hash_after": "1e76f052583b00b24cc7353d46aad8c5bdae075fac1180c4f57ffa60377950f4"
+    },
+    {
+      "ply": 5,
+      "actor": 1,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Three",
+        "slot": 1,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "1e76f052583b00b24cc7353d46aad8c5bdae075fac1180c4f57ffa60377950f4",
+      "state_hash_after": "504a1ee011d437b409f77f9aa2128b5f0a41d418323425378b2f94c1c8d32f49"
+    },
+    {
+      "ply": 6,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "One",
+        "slot": 0,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "504a1ee011d437b409f77f9aa2128b5f0a41d418323425378b2f94c1c8d32f49",
+      "state_hash_after": "16708bf117cd64480bec37a3b63a4709031ecfd4d262f6d2be3261a8c4c500a5"
+    },
+    {
+      "ply": 7,
+      "actor": 1,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Two",
+        "slot": 0,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "16708bf117cd64480bec37a3b63a4709031ecfd4d262f6d2be3261a8c4c500a5",
+      "state_hash_after": "0dbf468e99232643e2b100f791e86baf925e2df590da1478d97781b0633977ec"
+    },
+    {
+      "ply": 8,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "0dbf468e99232643e2b100f791e86baf925e2df590da1478d97781b0633977ec",
+      "state_hash_after": "73226cd83fbd64da37caf7f60b5216268566b81ecd7fcf3689f85fc7f30c1064"
+    },
+    {
+      "ply": 9,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "73226cd83fbd64da37caf7f60b5216268566b81ecd7fcf3689f85fc7f30c1064",
+      "state_hash_after": "f3ff2640a29a22282dce06b5d17925322797e86561c0ee84265cbfe0da88e3eb"
+    },
+    {
+      "ply": 10,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "f3ff2640a29a22282dce06b5d17925322797e86561c0ee84265cbfe0da88e3eb",
+      "state_hash_after": "d230d994e0f3d2acdc644d3a0d4560fe93bce4946d5d68de23311e052c42e6cf"
+    },
+    {
+      "ply": 11,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 2
+        }
+      },
+      "state_hash_before": "d230d994e0f3d2acdc644d3a0d4560fe93bce4946d5d68de23311e052c42e6cf",
+      "state_hash_after": "419221b11915e8091ec8ffa7e1b0b78130103f6133b3b42ee9512299ea246b83"
+    },
+    {
+      "ply": 12,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 2,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 1
+        }
+      },
+      "state_hash_before": "419221b11915e8091ec8ffa7e1b0b78130103f6133b3b42ee9512299ea246b83",
+      "state_hash_after": "b911e04b7135d4b5890aafdda5a0735b9c9982d667085deeb3c06212c9a51a53"
+    },
+    {
+      "ply": 13,
+      "actor": 1,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Two",
+        "slot": 2,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 1
+        }
+      },
+      "state_hash_before": "b911e04b7135d4b5890aafdda5a0735b9c9982d667085deeb3c06212c9a51a53",
+      "state_hash_after": "3db4732e34cae9405dc03c678e448bae2d3bd369fbd99ca22a7b33ded2b9866c"
+    },
+    {
+      "ply": 14,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 2
+      },
+      "state_hash_before": "3db4732e34cae9405dc03c678e448bae2d3bd369fbd99ca22a7b33ded2b9866c",
+      "state_hash_after": "3091f9561273ead5358f55b2775a2c0440600bcf8f4d98d20620ff7868fa1d49"
+    },
+    {
+      "ply": 15,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 2,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "3091f9561273ead5358f55b2775a2c0440600bcf8f4d98d20620ff7868fa1d49",
+      "state_hash_after": "2a7ea0fc0d343e36da60eecad1ad6575650f062b8b063e2ad3a284fe7db1d9d9"
+    },
+    {
+      "ply": 16,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "2a7ea0fc0d343e36da60eecad1ad6575650f062b8b063e2ad3a284fe7db1d9d9",
+      "state_hash_after": "1d83079da8a4a237db64b603ab1efd0855a79bf753bc797e1bc1fd3722744528"
+    },
+    {
+      "ply": 17,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "1d83079da8a4a237db64b603ab1efd0855a79bf753bc797e1bc1fd3722744528",
+      "state_hash_after": "1f4b0666c08415da8e9456089f88186fd4466cdaa0b666dee29f44fc19ba9fed"
+    },
+    {
+      "ply": 18,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 1
+      },
+      "state_hash_before": "1f4b0666c08415da8e9456089f88186fd4466cdaa0b666dee29f44fc19ba9fed",
+      "state_hash_after": "d513423f86a149801c56db6441b4e2ddf04dc94d31658214014d4e1872581564"
+    },
+    {
+      "ply": 19,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "d513423f86a149801c56db6441b4e2ddf04dc94d31658214014d4e1872581564",
+      "state_hash_after": "d0416fb29af0b22c85f18d785df98b6902b585d2c33b585eb80acff8e5b83536"
+    },
+    {
+      "ply": 20,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Two",
+        "slot": 3,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "d0416fb29af0b22c85f18d785df98b6902b585d2c33b585eb80acff8e5b83536",
+      "state_hash_after": "c37f2ea81e99b61a82b2e66b6e55ef8df148ca20eeaeb6adec0d18b85885d853"
+    },
+    {
+      "ply": 21,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 3,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "c37f2ea81e99b61a82b2e66b6e55ef8df148ca20eeaeb6adec0d18b85885d853",
+      "state_hash_after": "0122050d03f5af46fbb74ce8b381224ad738a917fea12d06aaa1bb3d4428225f"
+    },
+    {
+      "ply": 22,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 2
+      },
+      "state_hash_before": "0122050d03f5af46fbb74ce8b381224ad738a917fea12d06aaa1bb3d4428225f",
+      "state_hash_after": "ddf5efc66d46de0a7846fbb57eb69721b1b1ff713d94d067008d78ac737d5668"
+    },
+    {
+      "ply": 23,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 2,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "ddf5efc66d46de0a7846fbb57eb69721b1b1ff713d94d067008d78ac737d5668",
+      "state_hash_after": "c89c3b295945d15e2ba6522fe35afd0ccfc1454a1232ba2a30bb1de7880b780f"
+    },
+    {
+      "ply": 24,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "c89c3b295945d15e2ba6522fe35afd0ccfc1454a1232ba2a30bb1de7880b780f",
+      "state_hash_after": "7e96d6fe0147ea1dddcc94501bd85d087c5929032fd4efadbb85d66d9648bf03"
+    },
+    {
+      "ply": 25,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "7e96d6fe0147ea1dddcc94501bd85d087c5929032fd4efadbb85d66d9648bf03",
+      "state_hash_after": "a7aed5ee38d033e14c2a8db6a0dc022f1b112db96fdd90b469a58e7b5a9f2a10"
+    },
+    {
+      "ply": 26,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "a7aed5ee38d033e14c2a8db6a0dc022f1b112db96fdd90b469a58e7b5a9f2a10",
+      "state_hash_after": "9603416ea954056aa4f89d87c70df07cb913f4732338a3cb296e73c0d9dfac76"
+    },
+    {
+      "ply": 27,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "9603416ea954056aa4f89d87c70df07cb913f4732338a3cb296e73c0d9dfac76",
+      "state_hash_after": "08372affc919c6b833ff1bcd8b291d7a49c220caeb4b94031040614e5a5021e0"
+    },
+    {
+      "ply": 28,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 1
+      },
+      "state_hash_before": "08372affc919c6b833ff1bcd8b291d7a49c220caeb4b94031040614e5a5021e0",
+      "state_hash_after": "9c2b5eafa3cea7cf6a32b4b5f2ae77d02c4d4973554125a4651b633b9f5fb0fb"
+    },
+    {
+      "ply": 29,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "9c2b5eafa3cea7cf6a32b4b5f2ae77d02c4d4973554125a4651b633b9f5fb0fb",
+      "state_hash_after": "c4de2b0c7d6bcbb9f7ac9c96e2198409b28ef407ca84fc6ba779a11da58ea642"
+    },
+    {
+      "ply": 30,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 1
+      },
+      "state_hash_before": "c4de2b0c7d6bcbb9f7ac9c96e2198409b28ef407ca84fc6ba779a11da58ea642",
+      "state_hash_after": "f97504a43ea851f373973104581ef2c35f5c1a2d686488ea9fd15870d3d8ad5e"
+    },
+    {
+      "ply": 31,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 2,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "f97504a43ea851f373973104581ef2c35f5c1a2d686488ea9fd15870d3d8ad5e",
+      "state_hash_after": "a231fd33cd0f292fe7e1df9a0cd50ca2e569401dd0a0decd10cc8d240ef6089f"
+    },
+    {
+      "ply": 32,
+      "actor": 0,
+      "action": {
+        "type": "reserve_deck",
+        "tier": "Three",
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "a231fd33cd0f292fe7e1df9a0cd50ca2e569401dd0a0decd10cc8d240ef6089f",
+      "state_hash_after": "ee266757f06e55c6437fb46e70562a4d6d796f587e0d9dc50c4cddac573e34ad"
+    },
+    {
+      "ply": 33,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 2,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "ee266757f06e55c6437fb46e70562a4d6d796f587e0d9dc50c4cddac573e34ad",
+      "state_hash_after": "4cbff977bc9b40e042a0d3da501dcc35862d7b6992ebd65289d6dccbdd1cc922"
+    },
+    {
+      "ply": 34,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 1
+      },
+      "state_hash_before": "4cbff977bc9b40e042a0d3da501dcc35862d7b6992ebd65289d6dccbdd1cc922",
+      "state_hash_after": "f9ac3ae0bbb9e53f30f3a5d5f4aee6f99116cd348c8833295c4f0cb4e3d15a0f"
+    },
+    {
+      "ply": 35,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "f9ac3ae0bbb9e53f30f3a5d5f4aee6f99116cd348c8833295c4f0cb4e3d15a0f",
+      "state_hash_after": "9466741cbdaaccebd745c0ad7d79aac6e9cee669980bfb24e77771200fe6155f"
+    },
+    {
+      "ply": 36,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "9466741cbdaaccebd745c0ad7d79aac6e9cee669980bfb24e77771200fe6155f",
+      "state_hash_after": "8dd9f50a4099be859de448772b7667572c5a1113cb1648ace193ff82aa62d428"
+    },
+    {
+      "ply": 37,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "8dd9f50a4099be859de448772b7667572c5a1113cb1648ace193ff82aa62d428",
+      "state_hash_after": "99b1f2138cc818f0da3d1e725fabb4a565446e2e3cbd466752e9813aeba425d3"
+    },
+    {
+      "ply": 38,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 3
+      },
+      "state_hash_before": "99b1f2138cc818f0da3d1e725fabb4a565446e2e3cbd466752e9813aeba425d3",
+      "state_hash_after": "29a3bbc483b674e6998f9994dd7501f3339b2f64587240f462f8ed6546bf5023"
+    },
+    {
+      "ply": 39,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "29a3bbc483b674e6998f9994dd7501f3339b2f64587240f462f8ed6546bf5023",
+      "state_hash_after": "10e607f9d719702292262535605daf8aeb4d24b9a20d190318c516baee90df0f"
+    },
+    {
+      "ply": 40,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 1
+      },
+      "state_hash_before": "10e607f9d719702292262535605daf8aeb4d24b9a20d190318c516baee90df0f",
+      "state_hash_after": "df2ef5c9080d187826927b3dcc8fdfd70e31d73be0bfc47a8ed3f0f4563e5a37"
+    },
+    {
+      "ply": 41,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 2,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "df2ef5c9080d187826927b3dcc8fdfd70e31d73be0bfc47a8ed3f0f4563e5a37",
+      "state_hash_after": "1b44fa4132d2e3cb4bc419e85f786523fff719506fe5c32b6ff59af70a369ebb"
+    },
+    {
+      "ply": 42,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 1
+      },
+      "state_hash_before": "1b44fa4132d2e3cb4bc419e85f786523fff719506fe5c32b6ff59af70a369ebb",
+      "state_hash_after": "98b924e0bad4b4523236dadf620438576505745d57840d14deb455e8cd3c099f"
+    },
+    {
+      "ply": 43,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 2,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "98b924e0bad4b4523236dadf620438576505745d57840d14deb455e8cd3c099f",
+      "state_hash_after": "335ad2e1129e0f3d6e9dab37dfa0db960b3ec936d1b878653b610469ff307b04"
+    },
+    {
+      "ply": 44,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 1
+      },
+      "state_hash_before": "335ad2e1129e0f3d6e9dab37dfa0db960b3ec936d1b878653b610469ff307b04",
+      "state_hash_after": "27861b3365d8633f8b70e9b555def6567d5f589653b77c85c085f3be9c290196"
+    },
+    {
+      "ply": 45,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 2,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "27861b3365d8633f8b70e9b555def6567d5f589653b77c85c085f3be9c290196",
+      "state_hash_after": "3ab46ab3e6abd64cec82523812b7f3fd513de3f6b027c75756c1a0141b8d29ef"
+    },
+    {
+      "ply": 46,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "3ab46ab3e6abd64cec82523812b7f3fd513de3f6b027c75756c1a0141b8d29ef",
+      "state_hash_after": "04e3a5387d5e13e0b0a6a13b31c17f91018414f43ce7a017ec7d0968110081b7"
+    },
+    {
+      "ply": 47,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 2,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "04e3a5387d5e13e0b0a6a13b31c17f91018414f43ce7a017ec7d0968110081b7",
+      "state_hash_after": "7fef3aff4be44c9505a1d6a05c544be14c6ee0dac7f53b656d95031c3e2fcff6"
+    },
+    {
+      "ply": 48,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 2
+      },
+      "state_hash_before": "7fef3aff4be44c9505a1d6a05c544be14c6ee0dac7f53b656d95031c3e2fcff6",
+      "state_hash_after": "7bada5be491339d8b0d331cf48812266f0fac1743dff364e2f74a314931c7723"
+    },
+    {
+      "ply": 49,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 3,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "7bada5be491339d8b0d331cf48812266f0fac1743dff364e2f74a314931c7723",
+      "state_hash_after": "3ada8f49a4d54c3809418c70157514620a132867d5dd497c7f6e66da4c1af0ad"
+    },
+    {
+      "ply": 50,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "One",
+        "slot": 3
+      },
+      "state_hash_before": "3ada8f49a4d54c3809418c70157514620a132867d5dd497c7f6e66da4c1af0ad",
+      "state_hash_after": "94d09aff2b6e105a02845854f49ecfd48a52258d8a80b74b2e417ea057f58964"
+    },
+    {
+      "ply": 51,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 2,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "94d09aff2b6e105a02845854f49ecfd48a52258d8a80b74b2e417ea057f58964",
+      "state_hash_after": "8b77cf910f36a00ce9988e7fe66fa7b817dcb5ddb15011f83a8d38a82d7d2acb"
+    },
+    {
+      "ply": 52,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "Two",
+        "slot": 3
+      },
+      "state_hash_before": "8b77cf910f36a00ce9988e7fe66fa7b817dcb5ddb15011f83a8d38a82d7d2acb",
+      "state_hash_after": "1e1d62425744e750331973596e9602afff5834538c721382633ce4c42970cf26"
+    },
+    {
+      "ply": 53,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 2,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "1e1d62425744e750331973596e9602afff5834538c721382633ce4c42970cf26",
+      "state_hash_after": "01b330a7f1a92215ecd05b5c0fe5ade7106e0ade18a79ab42f3ac2db21ebdc5b"
+    },
+    {
+      "ply": 54,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 0
+      },
+      "state_hash_before": "01b330a7f1a92215ecd05b5c0fe5ade7106e0ade18a79ab42f3ac2db21ebdc5b",
+      "state_hash_after": "25eaca455715e39e5aa49407041682b1c83d961ca5cf19f52ff2f540ec76e4de"
+    },
+    {
+      "ply": 55,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "25eaca455715e39e5aa49407041682b1c83d961ca5cf19f52ff2f540ec76e4de",
+      "state_hash_after": "a59db07c701864e6a3fcade6cea661cb533a585a718b952cb89dbee75d96dbb4"
+    },
+    {
+      "ply": 56,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "One",
+        "slot": 1,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "a59db07c701864e6a3fcade6cea661cb533a585a718b952cb89dbee75d96dbb4",
+      "state_hash_after": "c007b26ed4a63459e1e17f8e4be3a528eda13daef7c9b69a07823ef141d25541"
+    },
+    {
+      "ply": 57,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "c007b26ed4a63459e1e17f8e4be3a528eda13daef7c9b69a07823ef141d25541",
+      "state_hash_after": "3d5545f9d78df0b2cd7b89b48458b3ad236048ff5a0cdebb1a1c9affe453cd0c"
+    },
+    {
+      "ply": 58,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 2
+      },
+      "state_hash_before": "3d5545f9d78df0b2cd7b89b48458b3ad236048ff5a0cdebb1a1c9affe453cd0c",
+      "state_hash_after": "e0980c8097923d81686272e992556d5f52a1a4039ecc2f5ee4a8b77d42346047"
+    },
+    {
+      "ply": 59,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "e0980c8097923d81686272e992556d5f52a1a4039ecc2f5ee4a8b77d42346047",
+      "state_hash_after": "8c63656f480e241f648535ac34e857a4c925bfbd1fc8e8c268f69830e2486945"
+    },
+    {
+      "ply": 60,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Two",
+        "slot": 0,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "8c63656f480e241f648535ac34e857a4c925bfbd1fc8e8c268f69830e2486945",
+      "state_hash_after": "0b90fc7be4ee6725ca7a71d22ca79bd087c263f612e7a47b9f54d15601768613"
+    },
+    {
+      "ply": 61,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 2,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "0b90fc7be4ee6725ca7a71d22ca79bd087c263f612e7a47b9f54d15601768613",
+      "state_hash_after": "045afa1fdc7b500c594ba281aa57f4f8885a6a34c03b07a2d0ec6db00da77ba9"
+    },
+    {
+      "ply": 62,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 2
+      },
+      "state_hash_before": "045afa1fdc7b500c594ba281aa57f4f8885a6a34c03b07a2d0ec6db00da77ba9",
+      "state_hash_after": "c42b4e215f9b5d9820b7e713c94e39f03d247e3e1af94b5f556eeaa5b559fffe"
+    },
+    {
+      "ply": 63,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 2,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "c42b4e215f9b5d9820b7e713c94e39f03d247e3e1af94b5f556eeaa5b559fffe",
+      "state_hash_after": "383b1d4cfd9bb86d53c0c5b6a017606502bca17876e4acf7b60797ff1ffc41d1"
+    },
+    {
+      "ply": 64,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "Two",
+        "slot": 0
+      },
+      "state_hash_before": "383b1d4cfd9bb86d53c0c5b6a017606502bca17876e4acf7b60797ff1ffc41d1",
+      "state_hash_after": "04a3d6bcd589ff325b7b2bc746129d6ad214d8a6d973ba619ff103b4d273972a"
+    },
+    {
+      "ply": 65,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 2,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "04a3d6bcd589ff325b7b2bc746129d6ad214d8a6d973ba619ff103b4d273972a",
+      "state_hash_after": "fa02000ac1db2be3f9c7ce9fa5ae5c5b6fab8a3bdf126e9481856660074542bc"
+    },
+    {
+      "ply": 66,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 0,
+          "blue": 0,
+          "green": 1,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "fa02000ac1db2be3f9c7ce9fa5ae5c5b6fab8a3bdf126e9481856660074542bc",
+      "state_hash_after": "03fabca35b96ee5c1f50baa7517b0016f6285df8867dc7ef89d91699c7ba7067"
+    },
+    {
+      "ply": 67,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 1,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 3,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "03fabca35b96ee5c1f50baa7517b0016f6285df8867dc7ef89d91699c7ba7067",
+      "state_hash_after": "5c81b94493e97d9c76c530af9be2a4b856a997f47d0cefa418eab56b88ce8b93"
+    },
+    {
+      "ply": 68,
+      "actor": 0,
+      "action": {
+        "type": "buy_market",
+        "tier": "Two",
+        "slot": 3
+      },
+      "state_hash_before": "5c81b94493e97d9c76c530af9be2a4b856a997f47d0cefa418eab56b88ce8b93",
+      "state_hash_after": "ee308d9759b18856126ebbe6a6f2935d1c82080a46d6131227060260aebddb82"
+    },
+    {
+      "ply": 69,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "ee308d9759b18856126ebbe6a6f2935d1c82080a46d6131227060260aebddb82",
+      "state_hash_after": "df76b070baa250bc7568114dc49cde0f6515ef2d6633463c3120ee05bb57d836"
+    },
+    {
+      "ply": 70,
+      "actor": 0,
+      "action": {
+        "type": "reserve_market",
+        "tier": "Three",
+        "slot": 0,
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "df76b070baa250bc7568114dc49cde0f6515ef2d6633463c3120ee05bb57d836",
+      "state_hash_after": "2eedce2cb7eed18f135fdb3136fcbd4b2dc4b41c7e1e187ae6e5dad519bc0a0b"
+    },
+    {
+      "ply": 71,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 1,
+          "green": 1,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "2eedce2cb7eed18f135fdb3136fcbd4b2dc4b41c7e1e187ae6e5dad519bc0a0b",
+      "state_hash_after": "1316502ef551254b9f522d08bc2ec3c8016dae7c77f723e05811571f1fb14224"
+    },
+    {
+      "ply": 72,
+      "actor": 0,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 1,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "1316502ef551254b9f522d08bc2ec3c8016dae7c77f723e05811571f1fb14224",
+      "state_hash_after": "3f8e735f9d44516058c601c4d2e330f65b3ace1ad167eeb0caf77570682548ff"
+    },
+    {
+      "ply": 73,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 0,
+          "gold": 0
+        },
+        "return": {
+          "white": 0,
+          "blue": 0,
+          "green": 0,
+          "red": 0,
+          "black": 1,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "3f8e735f9d44516058c601c4d2e330f65b3ace1ad167eeb0caf77570682548ff",
+      "state_hash_after": "570c6bb751cf3db28c150eee3282eecf651d9fb12f061da09abe823b1e2e1daa"
+    },
+    {
+      "ply": 74,
+      "actor": 0,
+      "action": {
+        "type": "buy_reserved",
+        "slot": 0
+      },
+      "state_hash_before": "570c6bb751cf3db28c150eee3282eecf651d9fb12f061da09abe823b1e2e1daa",
+      "state_hash_after": "9f3d052350b962a273469273a85a5371278e901e88771510a63d6ad2d6f103f9"
+    },
+    {
+      "ply": 75,
+      "actor": 1,
+      "action": {
+        "type": "take_tokens",
+        "take": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 1,
+          "black": 1,
+          "gold": 0
+        },
+        "return": {
+          "white": 1,
+          "blue": 0,
+          "green": 0,
+          "red": 2,
+          "black": 0,
+          "gold": 0
+        }
+      },
+      "state_hash_before": "9f3d052350b962a273469273a85a5371278e901e88771510a63d6ad2d6f103f9",
+      "state_hash_after": "bc3a94ad9d2fa4e26fe1c7e6436e50990adc324306ed0098e8070c1446c5f7b0"
+    }
+  ],
+  "final_state_hash": "bc3a94ad9d2fa4e26fe1c7e6436e50990adc324306ed0098e8070c1446c5f7b0",
+  "result": {
+    "scores": [
+      15,
+      0
+    ],
+    "ranks": [
+      0,
+      1
+    ],
+    "winners": [
+      0
+    ],
+    "reason": "prestige_threshold"
+  }
+}

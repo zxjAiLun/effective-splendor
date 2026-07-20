@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "CLI for Splendor self-play, replay check, and benchmarks"
+description = "CLI for Splendor self-play, replay record/verify, and benchmarks"
 
 [[bin]]
 name = "splendor"
@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 splendor-core = { workspace = true }
 splendor-protocol = { workspace = true }
+splendor-replay = { workspace = true }
 clap = { workspace = true }
 serde_json = { workspace = true }
 rand = { workspace = true }

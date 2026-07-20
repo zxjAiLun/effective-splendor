@@ -11,11 +11,15 @@ splendor-catalog        (pure data: cards, nobles, rulesets)
         ▼
 splendor-core           (domain state, legal actions, transitions, referee events)
         │
-        ├───────────────┬────────────────┬─────────────────┐
-        ▼               ▼                ▼                 ▼
-splendor-protocol  splendor-arena  splendor-search   splendor-python
-   (wire DTO)      (stdio runner)  (rollout/MCTS)   (PyO3 batched env)
+        ├──────────────┬───────────────┬────────────────┬─────────────────┐
+        ▼              ▼               ▼                ▼                 ▼
+splendor-protocol  splendor-replay  splendor-arena  splendor-search  splendor-python
+   (wire DTO)      (referee replay) (stdio runner)  (rollout/MCTS)   (PyO3 env)
 ```
+
+`splendor-replay` depends on `splendor-core` (and `splendor-catalog`) only.
+It MUST NOT depend on `splendor-protocol`, and `splendor-core` MUST NOT depend
+on it: a replay is a referee artifact, not an agent projection.
 
 Rules:
 - **`splendor-catalog`** is pure data + accessors. No game logic.
@@ -26,6 +30,10 @@ Rules:
   `ServerMeta` / `RecipientMeta` / `ObservationMeta` / `RequestMeta`). It MUST
   NOT serialize `RefereeEvent` or `FullStateHash` directly; it uses
   `VisibleEvent`, `ObservationHash`, and the separate `RulesetFingerprint`.
+- **`splendor-replay`** (M03) records a game to a self-verifying replay v1
+  file and re-executes it ply by ply against `splendor-core`. It is a
+  referee-only audit record: it stores the raw seed and full-state hashes and
+  must never be sent to an agent or spectator mid-game. See `docs/replay.md`.
 - **`splendor-arena`** (PR-04) binds an agent process to a seat, enforces
   deadlines / timeouts / illegal-action policy, and is the only place that
   decides *who* a client is. Clients never authorize their own seat.
