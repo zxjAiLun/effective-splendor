@@ -22,8 +22,8 @@ pub use events::{
 };
 pub use gems::Gems;
 pub use hash::{
-    full_state_hash, observation_hash, observer_hash, public_state_hash, FullStateHash, HashHex,
-    ObservationHash, PublicStateHash,
+    full_state_hash, observation_hash, observer_hash, public_state_hash, ruleset_fingerprint,
+    FullStateHash, HashHex, ObservationHash, PublicStateHash,
 };
 pub use observation::{
     Observation, PrivatePlayerView, PublicPlayerView, PublicState, ReservedView,

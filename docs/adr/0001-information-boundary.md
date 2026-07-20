@@ -36,8 +36,13 @@ able to distinguish information sets that should be indistinguishable.
 
 3. **Explicit identity fields.** `recipient_player_id` (server → client
    receiver) and `actor_player_id` (single, in `ActionApplied` only) are
-   distinct. Client `Action` carries no authorizing seat; seat binding is the
-   runner's job (PR-04).
+   distinct. Client `Action` uses a separate `ClientMeta` with no seat,
+   server-sequence, or state-hash field; seat binding is the runner's job
+   (PR-04).
+
+4. **No seed in visible events.** The referee's setup seed remains in
+   `RefereeEvent`, but `VisibleEvent::GameStarted` omits it. A seed can be used
+   to reconstruct deck order and is therefore not a player-facing field.
 
 ## Consequences
 

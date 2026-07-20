@@ -23,7 +23,8 @@ Rules:
   It is the single source of truth for what is and isn't a legal move.
 - **`splendor-protocol`** owns wire DTOs (`ServerMessage` / `ClientMessage`,
   `Meta`). It MUST NOT serialize `RefereeEvent` or `FullStateHash` directly;
-  it uses `VisibleEvent` and `ObservationHash` only.
+  it uses `VisibleEvent`, `ObservationHash`, and the safe ruleset
+  `PublicStateHash` fingerprint.
 - **`splendor-arena`** (PR-04) binds an agent process to a seat, enforces
   deadlines / timeouts / illegal-action policy, and is the only place that
   decides *who* a client is. Clients never authorize their own seat.
@@ -51,6 +52,7 @@ Rules:
 Three hash types enforce the boundary at the type level:
 - `FullStateHash` — referee only, never leaves core.
 - `PublicStateHash` — board + public reserved identities; safe for anyone.
-- `ObservationHash` — one player's view; the only hash the protocol carries.
+- `ObservationHash` — one player's view; the only per-state hash the protocol
+  carries. Hello may also carry the safe ruleset `PublicStateHash` fingerprint.
 
 `visible_events(referee_log, audience)` is the single projection exit point.

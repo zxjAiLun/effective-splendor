@@ -247,7 +247,7 @@ impl FullState {
             state,
             StepResult {
                 events,
-                state_hash_before: FullStateHash(String::new()),
+                state_hash_before: FullStateHash::empty(),
                 state_hash_after: hash_after,
             },
         ))

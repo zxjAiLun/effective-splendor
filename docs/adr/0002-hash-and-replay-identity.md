@@ -20,17 +20,16 @@ legal actions and terminal judgement.
 ## Decision
 
 1. **Deterministic, version-tagged byte encoding** for all three hashes
-   (`splendor-full-v2|`, `splendor-public-v2|`, `splendor-obs-v2|`). No
+   (`splendor-full-v3`, `splendor-public-v3`, `splendor-obs-v3`). No
    `Debug`/`serde_json` in the hash path.
 
 2. **Full coverage of behavior-affecting fields:**
-   - `FullStateHash`: ruleset id + catalog version, deck order, all reserved
-     `CardId`s, `end_game_triggered`, `turns_remaining_in_final_round`,
-     `pending_nobles`, and (when terminal) the `GameResult` summary +
-     `TerminalReason`.
-   - `PublicStateHash`: public reserved card identities, `end_game_triggered`,
-     `turns_remaining_in_final_round`, `pending_nobles`, ruleset id +
-     catalog version.
+   - `FullStateHash`: ruleset id + all ruleset parameters + catalog version,
+     seed, deck order, all reserved `CardId`s, `end_game_triggered`,
+     `turns_remaining_in_final_round`, `pending_nobles`, and (when terminal)
+     the complete `GameResult` summary + `TerminalReason`.
+   - `PublicStateHash`: all public observation fields, public reserved card
+     identities, terminal result, and all ruleset parameters.
    - `ObservationHash`: full public board + the viewer's own private
      reserved (slot/card/tier/from_deck).
 

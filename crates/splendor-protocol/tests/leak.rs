@@ -3,10 +3,10 @@
 //! `FullStateHash`.
 
 use splendor_core::{
-    full_state_hash, observation_hash, visible_events, Action, Audience, FullState, GameConfig,
-    PlayerId, VisibleEvent,
+    full_state_hash, observation_hash, visible_events, Action, Audience, ChanceEvent, FullState,
+    GameConfig, PlayerId, RefereeEvent, Visibility, VisibleEvent,
 };
-use splendor_protocol::{ClientMessage, Meta, ServerMessage, PROTOCOL_VERSION};
+use splendor_protocol::{ClientMessage, ClientMeta, Meta, ServerMessage, PROTOCOL_VERSION};
 
 fn reserve_deck(state: &mut FullState) {
     let act = Action::ReserveDeck {
@@ -17,6 +17,34 @@ fn reserve_deck(state: &mut FullState) {
         "reserve deck expected legal at start"
     );
     state.apply(act).expect("apply reserve");
+}
+
+fn swap_blind_card_and_referee_log(state: &mut FullState) {
+    let other = state.decks[0][0];
+    let original = state.players[0].reserved[0].card;
+    assert_ne!(other, original);
+    state.players[0].reserved[0].card = other;
+    state.decks[0][0] = original;
+
+    // Keep the second referee world internally consistent too. This makes the
+    // transcript test sensitive to an accidental projection of the raw card.
+    for event in &mut state.log {
+        match event {
+            RefereeEvent::CardReserved {
+                player: PlayerId(0),
+                card,
+                public_identity: false,
+                ..
+            } => *card = other,
+            RefereeEvent::Chance(ChanceEvent::CardRevealed {
+                card,
+                slot: None,
+                visible_to: Visibility::Player(PlayerId(0)),
+                ..
+            }) => *card = other,
+            _ => {}
+        }
+    }
 }
 
 /// Two states differing ONLY in a blind-reserved CardId must produce byte-identical
@@ -38,11 +66,7 @@ fn blind_reserve_transcript_is_identical_for_opponent_worlds() {
     reserve_deck(&mut b);
 
     // Swap P0's blind card in b for another tier-1 card still in the deck.
-    let other = b.decks[0][0];
-    let original = b.players[0].reserved[0].card;
-    assert_ne!(other, original);
-    b.players[0].reserved[0].card = other;
-    b.decks[0][0] = original;
+    swap_blind_card_and_referee_log(&mut b);
 
     let ta: Vec<VisibleEvent> = visible_events(&a.log, Audience::Player(PlayerId(1)));
     let tb: Vec<VisibleEvent> = visible_events(&b.log, Audience::Player(PlayerId(1)));
@@ -82,6 +106,11 @@ fn blind_reserve_transcript_differs_for_owner() {
     assert!(transcript
         .iter()
         .any(|ev| matches!(ev, VisibleEvent::SetupDealt { .. })));
+
+    // The setup seed is referee-only because it can reconstruct hidden deck
+    // order. It must not reappear through the visible event projection.
+    let wire = serde_json::to_string(&transcript).unwrap();
+    assert!(!wire.contains("\"seed\""));
 }
 
 /// Full hash differs between the two blind worlds, but the opponent's observation
@@ -101,10 +130,7 @@ fn full_hash_differs_but_opponent_observation_hash_matches() {
     reserve_deck(&mut a);
     reserve_deck(&mut b);
 
-    let other = b.decks[0][0];
-    let original = b.players[0].reserved[0].card;
-    b.players[0].reserved[0].card = other;
-    b.decks[0][0] = original;
+    swap_blind_card_and_referee_log(&mut b);
 
     assert_ne!(
         full_state_hash(&a),
@@ -185,24 +211,23 @@ fn action_applied_contains_one_actor_field() {
 fn client_action_cannot_claim_player_identity() {
     // Valid action message echoes only `recipient_player_id`, no `player_id`.
     let ok = ClientMessage::Action {
-        meta: Meta::new("g1", 3).with_recipient(PlayerId(0)),
+        meta: ClientMeta::new("g1").with_request(3),
         action: Action::Pass,
     };
     let line = serde_json::to_string(&ok).unwrap();
-    // No bare authorizing `player_id` key; only `recipient_player_id` (echo).
-    assert!(!line.contains("\"player_id\""));
+    // No client-side seat, server sequence, or state-hash field exists.
+    assert!(!line.contains("player_id"));
+    assert!(!line.contains("server_seq"));
+    assert!(!line.contains("state_hash"));
 
     // A hostile payload attempting to assert another seat must be dropped, not
-    // honored. serde ignores unknown fields, so it parses — but the claimed
-    // identity has no place to land and the bound seat is unaffected.
-    let hostile = r#"{"type":"action","protocol_version":"0.2","game_id":"g1","server_seq":3,"recipient_player_id":0,"player_id":7,"action":{"type":"pass"}}"#;
+    // honored. serde ignores unknown server-owned fields, so the claim has no
+    // place to land and the bound seat is unaffected.
+    let hostile = r#"{"type":"action","protocol_version":"0.2","game_id":"g1","request_id":3,"server_seq":99,"recipient_player_id":0,"player_id":7,"observation_hash":"full","action":{"type":"pass"}}"#;
     let parsed: ClientMessage = serde_json::from_str(hostile).expect("unknown fields ignored");
     match parsed {
         ClientMessage::Action { meta, action } => {
-            // The hostile `player_id:7` claim leaves no trace; recipient is the
-            // runner-assigned value (here None, since the hostile one was the
-            // echo field and is not an authorization).
-            assert_eq!(meta.recipient_player_id, Some(0));
+            assert_eq!(meta.request_id, Some(3));
             assert_eq!(action, Action::Pass);
         }
         _ => panic!("wrong variant"),
@@ -221,7 +246,7 @@ fn protocol_golden_transcript_matches() {
     }
 
     // Blind-reserve transcript (opponent view) must NOT reveal a card id in the
-    // card_reserved / chance_revealed redacted lines.
+    // wrapped card_reserved / chance_revealed redacted events.
     let blind = include_str!("../../../fixtures/protocol/v0.2/blind-reserve.ndjson");
     let mut saw_redacted = false;
     let blind_lines: Vec<&str> = blind
@@ -229,13 +254,15 @@ fn protocol_golden_transcript_matches() {
         .filter(|l: &&str| !l.trim().is_empty())
         .collect();
     for line in blind_lines {
-        if line.contains("card_reserved") || line.contains("chance_revealed") {
+        if line.contains("\"card_reserved\"") || line.contains("\"chance_revealed\"") {
             assert!(
                 line.contains("\"card\":null"),
                 "opponent blind transcript must redact card identity: {line}"
             );
             saw_redacted = true;
         }
+        let _: ServerMessage = serde_json::from_str(line)
+            .unwrap_or_else(|e| panic!("blind fixture line failed: {e}\n{line}"));
     }
     assert!(saw_redacted, "expected at least one redacted blind event");
 }
@@ -252,6 +279,7 @@ impl ProtocolVersion for ServerMessage {
             | ServerMessage::Observation { meta, .. }
             | ServerMessage::RequestAction { meta, .. }
             | ServerMessage::ActionApplied { meta, .. }
+            | ServerMessage::Event { meta, .. }
             | ServerMessage::GameEnd { meta, .. }
             | ServerMessage::Error { meta, .. }
             | ServerMessage::Ping { meta } => &meta.protocol_version,

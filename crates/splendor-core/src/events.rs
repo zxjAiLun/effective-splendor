@@ -126,7 +126,6 @@ pub enum Audience {
 pub enum VisibleEvent {
     GameStarted {
         player_count: u8,
-        seed: u64,
         ruleset: String,
     },
     ActionApplied {
@@ -196,11 +195,10 @@ fn project_event(e: &RefereeEvent, audience: Audience, can_see_hidden: bool) -> 
     match e {
         RefereeEvent::GameStarted {
             player_count,
-            seed,
             ruleset,
+            ..
         } => VisibleEvent::GameStarted {
             player_count: *player_count,
-            seed: *seed,
             ruleset: ruleset.clone(),
         },
         RefereeEvent::ActionApplied { player, action } => VisibleEvent::ActionApplied {

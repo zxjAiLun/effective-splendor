@@ -5,10 +5,10 @@ use clap::{Parser, Subcommand};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
-    full_state_hash, observation_hash, play_random_game, visible_events, Action, Audience,
-    FullState, GameConfig, PlayerId, VisibleEvent, ENGINE_VERSION,
+    full_state_hash, observation_hash, play_random_game, ruleset_fingerprint, visible_events,
+    Action, Audience, FullState, GameConfig, PlayerId, VisibleEvent, ENGINE_VERSION,
 };
-use splendor_protocol::{ClientMessage, Meta, ServerMessage, PROTOCOL_VERSION};
+use splendor_protocol::{ClientMessage, ClientMeta, Meta, ServerMessage, PROTOCOL_VERSION};
 
 #[derive(Parser)]
 #[command(name = "splendor", about = "Splendor rules engine CLI (Phase 0)")]
@@ -202,14 +202,11 @@ fn cmd_protocol_demo(seed: u64) {
     })
     .unwrap();
     let game_id = format!("demo-{seed}");
-    let fp = splendor_core::public_state_hash(&state)
-        .as_str()
-        .to_string();
     let hello = ServerMessage::hello(
         &game_id,
         splendor_core::RULESET_BASE_V1.0,
         splendor_core::CATALOG_VERSION,
-        &fp,
+        ruleset_fingerprint(&state.ruleset),
     );
     println!("{}", hello.to_json_line().unwrap());
 
@@ -233,7 +230,7 @@ fn cmd_protocol_demo(seed: u64) {
 
     let action = state.legal_actions()[0];
     let client = ClientMessage::Action {
-        meta: Meta::new(&game_id, 3).with_recipient(PlayerId(0)),
+        meta: ClientMeta::new(&game_id).with_request(1),
         action,
     };
     println!("{}", serde_json::to_string(&client).unwrap());
@@ -256,16 +253,13 @@ fn cmd_gen_fixtures(out_dir: &str) {
     {
         let (state, _) = FullState::new(GameConfig::default()).unwrap();
         let game_id = "golden-normal";
-        let fp = splendor_core::public_state_hash(&state)
-            .as_str()
-            .to_string();
         let mut lines = Vec::new();
         lines.push(
             ServerMessage::hello(
                 game_id,
                 splendor_core::RULESET_BASE_V1.0,
                 splendor_core::CATALOG_VERSION,
-                &fp,
+                ruleset_fingerprint(&state.ruleset),
             )
             .to_json_line()
             .unwrap(),
@@ -314,24 +308,25 @@ fn cmd_gen_fixtures(out_dir: &str) {
         let visible: Vec<VisibleEvent> =
             visible_events(&step.events, Audience::Player(PlayerId(1)));
         let game_id = "golden-blind";
-        let fp = splendor_core::public_state_hash(&state)
-            .as_str()
-            .to_string();
         let mut lines = Vec::new();
         lines.push(
             ServerMessage::hello(
                 game_id,
                 splendor_core::RULESET_BASE_V1.0,
                 splendor_core::CATALOG_VERSION,
-                &fp,
+                ruleset_fingerprint(&state.ruleset),
             )
             .to_json_line()
             .unwrap(),
         );
         for ev in &visible {
-            // Serialize each visible event as its own protocol line so the file is
-            // a faithful, redacted transcript for the opponent.
-            lines.push(serde_json::to_string(ev).unwrap());
+            // Serialize each already-projected event as a protocol message.
+            let server_seq = lines.len() as u64;
+            lines.push(
+                ServerMessage::event(Meta::new(game_id, server_seq), ev.clone())
+                    .to_json_line()
+                    .unwrap(),
+            );
         }
         write_transcript("blind-reserve", out_dir, &lines);
     }

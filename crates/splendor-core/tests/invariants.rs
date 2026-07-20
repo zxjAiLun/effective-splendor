@@ -38,6 +38,27 @@ fn different_seeds_usually_differ() {
 }
 
 #[test]
+fn hashes_include_ruleset_parameters_and_terminal_result() {
+    let (state, _) = FullState::new(GameConfig::default()).unwrap();
+    let mut changed_rules = state.clone();
+    changed_rules.ruleset.max_tokens += 1;
+    assert_ne!(
+        full_state_hash(&state),
+        full_state_hash(&changed_rules),
+        "full hash must include ruleset parameters"
+    );
+
+    let mut terminal = state;
+    let before_terminal = full_state_hash(&terminal);
+    terminal.force_stalemate_end();
+    assert_ne!(
+        before_terminal,
+        full_state_hash(&terminal),
+        "terminal reason/result must be part of the full hash"
+    );
+}
+
+#[test]
 fn token_conservation_holds_after_setup() {
     for n in 2..=4 {
         let (state, _) = FullState::new(GameConfig {

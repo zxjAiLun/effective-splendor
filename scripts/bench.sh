@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Benchmark the random self-play engine and append a baseline record.
+# Benchmark the random self-play engine and write a baseline snapshot.
 #
 # Usage: scripts/bench.sh [games] [players] [seed]
 #
-# Emits a JSON line to benchmarks/baseline.json capturing the environment and
-# throughput so CI / reviewers can track regressions. It does NOT store large
-# self-play datasets or model weights (those belong in releases / object storage).
+# Writes one valid JSON snapshot to benchmarks/baseline.json capturing the
+# environment and throughput. It does NOT store large self-play datasets or
+# model weights (those belong in releases / object storage).
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ OS="$(uname -srm 2>/dev/null || echo unknown)"
 CPU="$(uname -m 2>/dev/null || echo unknown)"
 
 # Run the bench and capture its machine-readable stdout.
-OUT="$(cargo run -q -r -p splendor-cli -- bench --games "$GAMES" --players "$PLAYERS" --seed "$SEED")"
+OUT="$(cargo run --locked -q -r -p splendor-cli -- bench --games "$GAMES" --players "$PLAYERS" --seed "$SEED")"
 
 GAMES_PER_S="$(echo "$OUT" | awk -F= '/^games_per_s=/{print $2}')"
 ACTIONS_PER_GAME="$(echo "$OUT" | awk -F= '/^avg_actions_per_game=/{print $2}')"
@@ -42,6 +42,6 @@ EOF
 )"
 
 mkdir -p benchmarks
-echo "$RECORD" >> benchmarks/baseline.json
-echo "appended baseline record:"
+printf '%s\n' "$RECORD" > benchmarks/baseline.json
+echo "wrote baseline record:"
 echo "$RECORD"
