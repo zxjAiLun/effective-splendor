@@ -1,0 +1,16 @@
+[package]
+name = "splendor-replay"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Referee-only replay v1 recording and strict verification for the Splendor engine"
+
+[dependencies]
+splendor-catalog = { workspace = true }
+splendor-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
