@@ -24,7 +24,10 @@ CPU="$(uname -m 2>/dev/null || echo unknown)"
 OUT="$(cargo run --locked -q -r -p splendor-cli -- bench --games "$GAMES" --players "$PLAYERS" --seed "$SEED")"
 
 GAMES_PER_S="$(echo "$OUT" | awk -F= '/^games_per_s=/{print $2}')"
+ACTIONS_PER_S="$(echo "$OUT" | awk -F= '/^actions_per_s=/{print $2}')"
 ACTIONS_PER_GAME="$(echo "$OUT" | awk -F= '/^avg_actions_per_game=/{print $2}')"
+AVG_LEGAL_ACTIONS="$(echo "$OUT" | awk -F= '/^avg_legal_actions_per_decision=/{print $2}')"
+MAX_LEGAL_ACTIONS="$(echo "$OUT" | awk -F= '/^max_legal_actions_seen=/{print $2}')"
 
 RECORD="$(cat <<EOF
 {
@@ -36,7 +39,10 @@ RECORD="$(cat <<EOF
   "games": $GAMES,
   "invariants_enabled": true,
   "games_per_s": $GAMES_PER_S,
-  "actions_per_game": $ACTIONS_PER_GAME
+  "actions_per_s": $ACTIONS_PER_S,
+  "actions_per_game": $ACTIONS_PER_GAME,
+  "avg_legal_actions_per_decision": $AVG_LEGAL_ACTIONS,
+  "max_legal_actions_seen": $MAX_LEGAL_ACTIONS
 }
 EOF
 )"

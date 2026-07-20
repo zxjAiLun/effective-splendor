@@ -1,4 +1,4 @@
-//! NDJSON agent protocol (v0.2).
+//! NDJSON agent protocol (v0.3).
 //!
 //! One JSON object per line. Transport (stdio / TCP / WS) is independent of
 //! the schema.
@@ -18,7 +18,7 @@ use splendor_core::{
     ENGINE_VERSION,
 };
 
-pub const PROTOCOL_VERSION: &str = "0.2";
+pub const PROTOCOL_VERSION: &str = "0.3";
 
 /// Server-owned fields shared by genuinely broadcast server messages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -365,11 +365,11 @@ mod tests {
 
     #[test]
     fn request_id_is_required_on_both_request_and_action() {
-        let request_without_id = r#"{"type":"request_action","protocol_version":"0.2","game_id":"g1","server_seq":1,"recipient_player_id":0,"observation_hash":"hash","deadline_ms":1000,"legal_actions":[{"type":"pass"}]}"#;
+        let request_without_id = r#"{"type":"request_action","protocol_version":"0.3","game_id":"g1","server_seq":1,"recipient_player_id":0,"observation_hash":"hash","deadline_ms":1000,"legal_actions":[{"type":"pass"}]}"#;
         assert!(serde_json::from_str::<ServerMessage>(request_without_id).is_err());
 
         let action_without_id =
-            r#"{"type":"action","protocol_version":"0.2","game_id":"g1","action":{"type":"pass"}}"#;
+            r#"{"type":"action","protocol_version":"0.3","game_id":"g1","action":{"type":"pass"}}"#;
         assert!(serde_json::from_str::<ClientMessage>(action_without_id).is_err());
     }
 
@@ -385,7 +385,7 @@ mod tests {
         .unwrap();
         assert!(line.contains("\"recipient_player_id\":1"));
         assert!(serde_json::from_str::<ServerMessage>(
-            r#"{"type":"event","protocol_version":"0.2","game_id":"g1","server_seq":4,"event":{"type":"turn_advanced","next_player":0}}"#
+            r#"{"type":"event","protocol_version":"0.3","game_id":"g1","server_seq":4,"event":{"type":"turn_advanced","next_player":0}}"#
         )
         .is_err());
     }

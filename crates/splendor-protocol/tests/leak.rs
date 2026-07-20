@@ -271,8 +271,8 @@ fn protocol_never_serializes_full_state_hash() {
         !line.contains(&full),
         "server message must not embed the full state hash"
     );
-    // And the protocol version is 0.2.
-    assert!(line.contains("\"protocol_version\":\"0.2\""));
+    // And the protocol version is 0.3.
+    assert!(line.contains("\"protocol_version\":\"0.3\""));
 }
 
 /// `ActionApplied` has exactly one actor field and no ambiguous `player_id`.
@@ -308,7 +308,7 @@ fn client_action_cannot_claim_player_identity() {
     // A hostile payload attempting to assert another seat must be dropped, not
     // honored. serde ignores unknown server-owned fields, so the claim has no
     // place to land and the bound seat is unaffected.
-    let hostile = r#"{"type":"action","protocol_version":"0.2","game_id":"g1","request_id":3,"server_seq":99,"recipient_player_id":0,"player_id":7,"observation_hash":"full","action":{"type":"pass"}}"#;
+    let hostile = r#"{"type":"action","protocol_version":"0.3","game_id":"g1","request_id":3,"server_seq":99,"recipient_player_id":0,"player_id":7,"observation_hash":"full","action":{"type":"pass"}}"#;
     let parsed: ClientMessage = serde_json::from_str(hostile).expect("unknown fields ignored");
     match parsed {
         ClientMessage::Action { meta, action } => {
@@ -346,13 +346,13 @@ fn protocol_golden_transcript_matches_generated_wire() {
     let normal = normal_golden_transcript();
     assert_eq!(
         normal,
-        include_str!("../../../fixtures/protocol/v0.2/normal-game.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.3/normal-game.ndjson"),
         "normal protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
     let blind = blind_reserve_transcript(Audience::Player(PlayerId(1)));
     assert_eq!(
         blind,
-        include_str!("../../../fixtures/protocol/v0.2/blind-reserve.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.3/blind-reserve.ndjson"),
         "blind protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
 

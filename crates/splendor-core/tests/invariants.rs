@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
-    full_state_hash, observation_hash, play_random_game, Action, FullState, GameConfig, Gems,
-    Phase, PlayerId,
+    full_state_hash, observation_hash, play_random_game, public_state_hash, Action, CardId,
+    FullState, GameConfig, GameEvent, Gems, NobleId, Phase, PlayerId, TerminalReason, Tier,
 };
 
 #[test]
@@ -270,4 +270,514 @@ fn legal_actions_unique() {
     let acts = state.legal_actions();
     let set: HashSet<_> = acts.iter().copied().collect();
     assert_eq!(set.len(), acts.len());
+}
+
+fn put_card_zero_in_first_market_slot(state: &mut FullState) {
+    let target = CardId(0);
+    if state.market[0][0] == Some(target) {
+        return;
+    }
+
+    let replacement = state.market[0][0].expect("initial market is full");
+    let mut moved = false;
+    for tier in 0..3 {
+        for slot in 0..4 {
+            if state.market[tier][slot] == Some(target) {
+                state.market[tier][slot] = Some(replacement);
+                moved = true;
+                break;
+            }
+        }
+        if moved {
+            break;
+        }
+    }
+    if !moved {
+        let position = state.decks[0]
+            .iter()
+            .position(|&card| card == target)
+            .expect("card 0 must be in a live zone");
+        state.decks[0][position] = replacement;
+    }
+    state.market[0][0] = Some(target);
+}
+
+fn give_player_black_three(state: &mut FullState, player: PlayerId) {
+    let tokens = Gems {
+        black: 3,
+        ..Gems::ZERO
+    };
+    state.bank = state.bank.checked_sub(tokens).expect("bank has payment");
+    state.players[player.index()].tokens = tokens;
+}
+
+fn state_with_player_tokens(tokens: Gems) -> FullState {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    state.bank = state.bank.checked_sub(tokens).expect("bank has tokens");
+    state.players[0].tokens = tokens;
+    state.assert_invariants().unwrap();
+    state
+}
+
+fn market_returns_for_first_slot(state: &FullState) -> Vec<Gems> {
+    state
+        .legal_actions()
+        .into_iter()
+        .filter_map(|action| match action {
+            Action::ReserveMarket {
+                tier: Tier::One,
+                slot: 0,
+                give_back,
+            } => Some(give_back),
+            _ => None,
+        })
+        .collect()
+}
+
+fn blocked_state(player_count: u8) -> FullState {
+    let (mut state, _) = FullState::new(GameConfig {
+        player_count,
+        ..Default::default()
+    })
+    .unwrap();
+    state.bank = Gems::ZERO;
+    state.market = [[None; 4]; 3];
+    state.decks = [Vec::new(), Vec::new(), Vec::new()];
+    for player in &mut state.players {
+        player.tokens = Gems::ZERO;
+    }
+    state
+}
+
+#[test]
+fn purchased_card_moves_to_player_zone() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    give_player_black_three(&mut state, PlayerId(0));
+    state.assert_invariants().unwrap();
+
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+
+    assert_eq!(state.players[0].purchased, vec![CardId(0)]);
+    assert_eq!(state.players[0].bonuses[1], 1);
+    state.assert_invariants().unwrap();
+}
+
+#[test]
+fn all_90_cards_exist_exactly_once() {
+    let (state, _) = FullState::new(GameConfig::default()).unwrap();
+    state.assert_invariants().unwrap();
+
+    let finished = play_random_game(GameConfig {
+        seed: 0xDADA,
+        ..Default::default()
+    })
+    .unwrap();
+    finished.assert_invariants().unwrap();
+}
+
+#[test]
+fn bonus_cache_matches_purchased_cards() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    give_player_black_three(&mut state, PlayerId(0));
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+    assert_eq!(state.players[0].bonuses, [0, 1, 0, 0, 0]);
+    state.assert_invariants().unwrap();
+}
+
+#[test]
+fn prestige_cache_matches_cards_and_nobles() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    give_player_black_three(&mut state, PlayerId(0));
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+    state.players[0].nobles.push(NobleId(0));
+    state.players[0].prestige = 3;
+    state.assert_invariants().unwrap();
+}
+
+#[test]
+fn public_observation_contains_purchased_cards() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    give_player_black_three(&mut state, PlayerId(0));
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+    assert_eq!(
+        state.observation(PlayerId(1)).public.players[0].purchased,
+        vec![CardId(0)]
+    );
+}
+
+#[test]
+fn reserve_at_ten_tokens_enumerates_all_returns() {
+    let state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 2,
+        gold: 0,
+    });
+    let returns: HashSet<_> = market_returns_for_first_slot(&state).into_iter().collect();
+    let expected: HashSet<_> = [
+        Gems {
+            white: 1,
+            ..Gems::ZERO
+        },
+        Gems {
+            blue: 1,
+            ..Gems::ZERO
+        },
+        Gems {
+            green: 1,
+            ..Gems::ZERO
+        },
+        Gems {
+            red: 1,
+            ..Gems::ZERO
+        },
+        Gems {
+            black: 1,
+            ..Gems::ZERO
+        },
+        Gems {
+            gold: 1,
+            ..Gems::ZERO
+        },
+    ]
+    .into_iter()
+    .collect();
+    assert_eq!(returns, expected);
+}
+
+#[test]
+fn reserve_may_return_newly_received_gold() {
+    let mut state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 2,
+        gold: 0,
+    });
+    let action = market_returns_for_first_slot(&state)
+        .into_iter()
+        .find(|give_back| give_back.gold == 1)
+        .map(|give_back| Action::ReserveMarket {
+            tier: Tier::One,
+            slot: 0,
+            give_back,
+        })
+        .expect("returning newly received gold must be legal");
+    let step = state.apply(action).unwrap();
+    assert_eq!(state.players[0].tokens.gold, 0);
+    assert_eq!(state.bank.gold, 5);
+    assert!(step.events.iter().any(|event| {
+        matches!(
+            event,
+            GameEvent::TokensTransferred {
+                taken_from_bank: Gems { gold: 1, .. },
+                returned_to_bank: Gems { gold: 1, .. },
+                ..
+            }
+        )
+    }));
+}
+
+#[test]
+fn reserve_at_nine_tokens_requires_no_return() {
+    let state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 1,
+        gold: 0,
+    });
+    assert_eq!(market_returns_for_first_slot(&state), vec![Gems::ZERO]);
+}
+
+#[test]
+fn reserve_without_available_gold_requires_no_return() {
+    let mut state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 2,
+        gold: 0,
+    });
+    let gold = Gems {
+        gold: 5,
+        ..Gems::ZERO
+    };
+    state.bank = state.bank.checked_sub(gold).unwrap();
+    state.players[1].tokens = gold;
+    assert_eq!(market_returns_for_first_slot(&state), vec![Gems::ZERO]);
+}
+
+#[test]
+fn reserve_cannot_return_unheld_tokens() {
+    let state = state_with_player_tokens(Gems {
+        white: 4,
+        blue: 4,
+        green: 1,
+        ..Gems::ZERO
+    });
+    let invalid = Action::ReserveMarket {
+        tier: Tier::One,
+        slot: 0,
+        give_back: Gems {
+            red: 1,
+            ..Gems::ZERO
+        },
+    };
+    assert!(!state.legal_actions().contains(&invalid));
+}
+
+#[test]
+fn reserve_return_actions_are_unique() {
+    let state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 2,
+        gold: 0,
+    });
+    let returns = market_returns_for_first_slot(&state);
+    let unique: HashSet<_> = returns.iter().copied().collect();
+    assert_eq!(returns.len(), unique.len());
+}
+
+#[test]
+fn reserve_transfer_event_records_take_and_return() {
+    let mut state = state_with_player_tokens(Gems {
+        white: 2,
+        blue: 2,
+        green: 2,
+        red: 2,
+        black: 2,
+        gold: 0,
+    });
+    let action = Action::ReserveMarket {
+        tier: Tier::One,
+        slot: 0,
+        give_back: Gems {
+            gold: 1,
+            ..Gems::ZERO
+        },
+    };
+    let step = state.apply(action).unwrap();
+    let transfer = step
+        .events
+        .iter()
+        .position(|event| matches!(event, GameEvent::TokensTransferred { .. }))
+        .expect("reserve token transfer event");
+    let reserved = step
+        .events
+        .iter()
+        .position(|event| matches!(event, GameEvent::CardReserved { .. }))
+        .expect("reserve card event");
+    assert!(
+        transfer < reserved,
+        "token transfer precedes card reservation"
+    );
+}
+
+#[test]
+fn pass_illegal_when_any_other_action_exists() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    assert!(state
+        .legal_actions()
+        .iter()
+        .any(|action| !matches!(action, Action::Pass)));
+    assert!(state.apply(Action::Pass).is_err());
+}
+
+#[test]
+fn pass_only_action_when_player_is_blocked() {
+    let state = blocked_state(2);
+    assert_eq!(state.legal_actions(), vec![Action::Pass]);
+}
+
+#[test]
+fn non_pass_resets_consecutive_passes() {
+    let mut state = blocked_state(2);
+    state.apply(Action::Pass).unwrap();
+    assert_eq!(state.consecutive_forced_passes, 1);
+    state.bank.white = 1;
+    let action = Action::TakeTokens {
+        take: Gems {
+            white: 1,
+            ..Gems::ZERO
+        },
+        give_back: Gems::ZERO,
+    };
+    assert!(state.legal_actions().contains(&action));
+    state.apply(action).unwrap();
+    assert_eq!(state.consecutive_forced_passes, 0);
+}
+
+#[test]
+fn full_round_of_forced_passes_ends_game() {
+    for player_count in 2..=4 {
+        let mut state = blocked_state(player_count);
+        for _ in 0..player_count {
+            state.apply(Action::Pass).unwrap();
+        }
+        assert!(state.is_terminal());
+        assert_eq!(
+            state.result.as_ref().unwrap().reason,
+            TerminalReason::Stalemate
+        );
+        assert_eq!(state.consecutive_forced_passes, player_count);
+    }
+}
+
+#[test]
+fn forced_pass_counter_changes_all_state_hashes() {
+    let mut state = blocked_state(2);
+    let full_before = full_state_hash(&state);
+    let public_before = public_state_hash(&state);
+    let observation_before = observation_hash(&state.observation(PlayerId(0)));
+    state.apply(Action::Pass).unwrap();
+    assert_ne!(full_before, full_state_hash(&state));
+    assert_ne!(public_before, public_state_hash(&state));
+    assert_ne!(
+        observation_before,
+        observation_hash(&state.observation(PlayerId(0)))
+    );
+}
+
+#[test]
+fn cli_and_core_reach_same_stalemate_hash() {
+    let mut core = blocked_state(3);
+    let mut replay = blocked_state(3);
+    for _ in 0..3 {
+        core.apply(Action::Pass).unwrap();
+        replay.apply(Action::Pass).unwrap();
+    }
+    assert_eq!(full_state_hash(&core), full_state_hash(&replay));
+}
+
+fn threshold_state(player_count: u8, trigger: u8) -> FullState {
+    let (mut state, _) = FullState::new(GameConfig {
+        player_count,
+        ..Default::default()
+    })
+    .unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    for tier in 0..3 {
+        for slot in 0..4 {
+            if !(tier == 0 && slot == 0) {
+                state.market[tier][slot] = None;
+            }
+        }
+        state.decks[tier].clear();
+    }
+    state.nobles.clear();
+    state.current_player = PlayerId(trigger);
+    state.players[trigger as usize].prestige = state.ruleset.prestige_to_end;
+    give_player_black_three(&mut state, PlayerId(trigger));
+    state
+}
+
+fn record_action_players(events: &[GameEvent], counts: &mut [u8]) {
+    for event in events {
+        if let GameEvent::ActionApplied { player, .. } = event {
+            counts[player.index()] += 1;
+        }
+    }
+}
+
+#[test]
+fn final_round_gives_each_seat_one_action_after_trigger() {
+    for player_count in 2..=4 {
+        for trigger in 0..player_count {
+            let mut state = threshold_state(player_count, trigger);
+            let mut counts = vec![0u8; player_count as usize];
+            let step = state
+                .apply(Action::BuyMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                })
+                .unwrap();
+            record_action_players(&step.events, &mut counts);
+
+            // Make the remaining final-round actions forced passes. This test
+            // isolates turn accounting from unrelated card/token choices.
+            state.bank = Gems::ZERO;
+            state.market = [[None; 4]; 3];
+            state.decks = [Vec::new(), Vec::new(), Vec::new()];
+            while !state.is_terminal() {
+                let step = state.apply(Action::Pass).unwrap();
+                record_action_players(&step.events, &mut counts);
+            }
+            assert_eq!(counts, vec![1; player_count as usize]);
+            assert_eq!(
+                state.result.as_ref().unwrap().reason,
+                TerminalReason::PrestigeThreshold
+            );
+        }
+    }
+}
+
+fn multiple_noble_threshold_state() -> FullState {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    put_card_zero_in_first_market_slot(&mut state);
+    state.nobles = vec![NobleId(0), NobleId(1)];
+    state.players[0].bonuses = [4; 5];
+    state.players[0].prestige = state.ruleset.prestige_to_end - 1;
+    give_player_black_three(&mut state, PlayerId(0));
+    state
+}
+
+#[test]
+fn threshold_reached_before_multiple_noble_choice() {
+    let mut state = multiple_noble_threshold_state();
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+    assert_eq!(state.phase, Phase::ChooseNoble);
+    assert!(!state.end_game_triggered);
+}
+
+#[test]
+fn game_only_triggers_after_noble_is_chosen() {
+    let mut state = multiple_noble_threshold_state();
+    state
+        .apply(Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        })
+        .unwrap();
+    let noble = state.pending_nobles[0];
+    state.apply(Action::ChooseNoble { noble }).unwrap();
+    assert!(state.end_game_triggered);
+    assert!(state.result.is_none());
 }

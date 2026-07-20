@@ -111,6 +111,14 @@ pub struct GameConfig {
     pub ruleset: Ruleset,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RandomGameStats {
+    pub actions: u64,
+    pub decisions: u64,
+    pub total_legal_actions: u64,
+    pub max_legal_actions: usize,
+}
+
 impl Default for GameConfig {
     fn default() -> Self {
         Self {
@@ -779,15 +787,9 @@ impl FullState {
         let score = self.players[pid.index()].prestige;
         if score >= self.ruleset.prestige_to_end {
             self.end_game_triggered = true;
-            // Remaining players in the round (after current) still play.
-            let n = self.player_count();
-            // After this turn advances, players (pid+1 .. first_player-1) play.
-            // We set remaining turns = players after current until back to 0...
-            // Standard: finish the round so everyone has equal turns.
-            // Current player is about to end their turn; remaining = n - 1 - pid.index()?
-            // If player 0 triggers, players 1..n-1 still play → n-1 turns.
-            // If player k triggers, players k+1..n-1 still play → n-1-k turns.
-            let remaining = n - 1 - pid.0;
+            // Finish the current round: every other seat gets exactly one more
+            // action, regardless of which seat crossed the threshold.
+            let remaining = self.player_count() - 1;
             self.turns_remaining_in_final_round = Some(remaining);
             events.push(GameEvent::EndGameTriggered { by: pid });
             if remaining == 0 {
@@ -1063,10 +1065,19 @@ pub fn random_action<R: Rng>(state: &FullState, rng: &mut R) -> Option<Action> {
 
 /// Play a full random game; returns final state.
 pub fn play_random_game(config: GameConfig) -> EngineResult<FullState> {
+    let (state, _) = play_random_game_with_stats(config)?;
+    Ok(state)
+}
+
+/// Play a full random game and expose selection metrics for benchmark tools.
+pub fn play_random_game_with_stats(
+    config: GameConfig,
+) -> EngineResult<(FullState, RandomGameStats)> {
     let action_seed = config.seed ^ 0xA11C_E7A5_5EED_u64;
     let (mut state, _) = FullState::new(config)?;
     let mut rng = SmallRng::seed_from_u64(action_seed);
     let mut guard = 0u32;
+    let mut stats = RandomGameStats::default();
     while !state.is_terminal() {
         guard += 1;
         if guard > 10_000 {
@@ -1079,6 +1090,9 @@ pub fn play_random_game(config: GameConfig) -> EngineResult<FullState> {
                 state.phase
             )));
         }
+        stats.decisions += 1;
+        stats.total_legal_actions += acts.len() as u64;
+        stats.max_legal_actions = stats.max_legal_actions.max(acts.len());
         // Prefer non-pass actions so random rollouts keep progressing.
         let non_pass: Vec<Action> = acts
             .iter()
@@ -1094,6 +1108,66 @@ pub fn play_random_game(config: GameConfig) -> EngineResult<FullState> {
         let action = pool[idx];
         state.apply(action)?;
         state.assert_invariants()?;
+        stats.actions += 1;
     }
-    Ok(state)
+    Ok((state, stats))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ranking_fixture(scores: &[u8], purchased_counts: &[usize]) -> GameResult {
+        let players: Vec<FullPlayerState> = scores
+            .iter()
+            .copied()
+            .zip(purchased_counts.iter().copied())
+            .enumerate()
+            .map(|(index, (prestige, purchased_count))| FullPlayerState {
+                id: PlayerId(index as u8),
+                tokens: Gems::ZERO,
+                bonuses: [0; 5],
+                prestige,
+                reserved: Vec::new(),
+                purchased: (0..purchased_count)
+                    .map(|card| CardId(card as u8))
+                    .collect(),
+                nobles: Vec::new(),
+            })
+            .collect();
+        compute_result(&players)
+    }
+
+    #[test]
+    fn fewer_purchased_cards_wins_score_tie() {
+        let result = ranking_fixture(&[16, 16], &[12, 10]);
+        assert_eq!(result.ranks, vec![1, 0]);
+        assert_eq!(result.winners, vec![PlayerId(1)]);
+    }
+
+    #[test]
+    fn exact_tie_players_share_rank_zero() {
+        let result = ranking_fixture(&[16, 16], &[12, 12]);
+        assert_eq!(result.ranks, vec![0, 0]);
+        assert_eq!(result.winners, vec![PlayerId(0), PlayerId(1)]);
+    }
+
+    #[test]
+    fn dense_ranks_skip_no_values() {
+        let result = ranking_fixture(&[16, 16, 15, 12], &[12, 12, 10, 8]);
+        assert_eq!(result.ranks, vec![0, 0, 1, 2]);
+    }
+
+    #[test]
+    fn winners_match_rank_zero() {
+        let result = ranking_fixture(&[18, 17, 17, 12], &[8, 9, 9, 2]);
+        let rank_zero: Vec<PlayerId> = result
+            .ranks
+            .iter()
+            .enumerate()
+            .filter(|(_, rank)| **rank == 0)
+            .map(|(index, _)| PlayerId(index as u8))
+            .collect();
+        assert_eq!(result.winners, rank_zero);
+    }
 }

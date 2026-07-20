@@ -232,7 +232,7 @@ fn write_observation_private(h: &mut Sha256, observation: &Observation) {
 /// changes incompatibly.
 pub fn full_state_hash(state: &FullState) -> FullStateHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-full-v3\0");
+    h.update(b"splendor-full-v4\0");
     write_ruleset(&mut h, &state.ruleset);
     h.update(state.seed.to_le_bytes());
     h.update([
@@ -282,7 +282,7 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
 /// Hash of public information only.
 pub fn public_state_hash(state: &FullState) -> PublicStateHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-public-v3\0");
+    h.update(b"splendor-public-v4\0");
     write_ruleset(&mut h, &state.ruleset);
     write_public_state(&mut h, &state.observation(state.current_player).public);
     // A terminal reason/result is public once the game has ended and must not
@@ -304,7 +304,7 @@ pub fn ruleset_fingerprint(ruleset: &Ruleset) -> RulesetFingerprint {
 /// not depend on `Debug` or serde field formatting.
 pub fn observation_hash(observation: &Observation) -> ObservationHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-obs-v4\0");
+    h.update(b"splendor-obs-v5\0");
     write_str(&mut h, observation.ruleset_fingerprint.as_str());
     h.update([observation.viewer.0]);
     write_public_state(&mut h, &observation.public);

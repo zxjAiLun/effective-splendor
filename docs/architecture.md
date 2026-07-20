@@ -1,6 +1,7 @@
 # Architecture
 
-Splendor rules engine, structured for a future RL / MCTS training stack.
+Splendor rules engine, with the M02 rules closure serving as the canonical
+foundation for replay, search, arena, and RL integrations.
 
 ## Crate dependency direction
 
@@ -41,11 +42,15 @@ Rules:
 3. Chance outcomes are explicit `ChanceEvent`s, not implicit seed side-effects.
 4. `Action`s are semantic (not policy indices); policy indices live in the
    training layer.
-5. **No rules behavior lives in a host.** Any state transition or terminal
+5. Purchased development cards are canonical ownership; bonus and prestige
+   fields are validated hot-path caches.
+6. **No rules behavior lives in a host.** Any state transition or terminal
    judgement must be reachable by calling only `FullState::legal_actions()`
-   and `FullState::apply()`. The CLI's `play` / `replay-check` and any future
-   runner must agree because they share this engine. (Stalemate/pass handling
-   is being moved fully into core in PR-02.)
+   and `FullState::apply()`. Forced Pass and Stalemate semantics, reserve
+   returns, and final-round accounting are core behavior. The CLI and future
+   runners only select actions and consume results.
+7. `FullState` contains no agent RNG. Setup randomness is resolved into the
+   shuffled deck state; each agent owns its own action-selection RNG.
 
 ## Information boundary (see `docs/adr/0001-information-boundary.md`)
 

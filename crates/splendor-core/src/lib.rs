@@ -29,8 +29,9 @@ pub use observation::{
     Observation, PrivatePlayerView, PublicPlayerView, PublicState, ReservedView,
 };
 pub use state::{
-    play_random_game, random_action, FullPlayerState, FullState, GameConfig, GameResult, Phase,
-    PlayerId, ReservedCard, SetupInfo, TerminalReason,
+    play_random_game, play_random_game_with_stats, random_action, FullPlayerState, FullState,
+    GameConfig, GameResult, Phase, PlayerId, RandomGameStats, ReservedCard, SetupInfo,
+    TerminalReason,
 };
 
 pub use splendor_catalog::{
@@ -39,4 +40,4 @@ pub use splendor_catalog::{
 };
 
 /// Engine semantic version for replays / protocol compatibility.
-pub const ENGINE_VERSION: &str = "0.2.0";
+pub const ENGINE_VERSION: &str = "0.3.0";

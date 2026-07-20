@@ -1,4 +1,4 @@
-# Protocol (NDJSON, v0.2)
+# Protocol (NDJSON, v0.3)
 
 One JSON object per line. Transport (stdio / TCP / WS) is independent of schema.
 
@@ -43,7 +43,8 @@ echo. There is no client-side seat, `server_seq`, or state-hash field.
 ### Client → Server
 
 - `hello` — `agent_name`, `agent_version`.
-- `action` — `action` plus `ClientMeta`. Seat is implied by the bound connection.
+- `action` — `action` plus `ClientRequestMeta` and its required `request_id`.
+  Seat is implied by the bound connection.
 - `pong`.
 
 ## Observation scoping
@@ -54,6 +55,11 @@ Every non-broadcast server message is generated **per recipient**. The
 spectator (`Audience::Spectator`) sees no blind identities. The referee log
 (`RefereeEvent`) is never serialized; even the setup seed is omitted from the
 visible event projection.
+
+The v0.3 observation also includes public purchased-card identities and the
+public forced-pass counter. Reserve actions are atomic: their `return` field
+records the exact `Gems` returned when the reserve grants gold and the player
+would otherwise exceed the token limit.
 
 ## Hash fields
 

@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
-    full_state_hash, observation_hash, play_random_game, ruleset_fingerprint, visible_events,
-    Action, Audience, FullState, GameConfig, PlayerId, ENGINE_VERSION,
+    full_state_hash, observation_hash, play_random_game_with_stats, ruleset_fingerprint,
+    visible_events, Action, Audience, FullState, GameConfig, PlayerId, ENGINE_VERSION,
 };
 use splendor_protocol::{
     to_ndjson, ClientMessage, ClientRequestMeta, ObservationMeta, RecipientMeta, RequestMeta,
@@ -14,7 +14,7 @@ use splendor_protocol::{
 };
 
 #[derive(Parser)]
-#[command(name = "splendor", about = "Splendor rules engine CLI (Phase 0)")]
+#[command(name = "splendor", about = "Splendor rules engine CLI")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -54,9 +54,9 @@ enum Commands {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
-    /// Generate golden protocol transcripts under fixtures/protocol/v0.2/
+    /// Generate golden protocol transcripts under fixtures/protocol/v0.3/
     GenFixtures {
-        #[arg(long, default_value = "fixtures/protocol/v0.2")]
+        #[arg(long, default_value = "fixtures/protocol/v0.3")]
         out_dir: String,
     },
 }
@@ -90,11 +90,14 @@ fn cmd_bench(games: u32, players: u8, seed: u64) {
     let mut rng = SmallRng::seed_from_u64(seed);
     let start = Instant::now();
     let mut total_plies = 0u64;
+    let mut total_legal_actions = 0u64;
+    let mut total_decisions = 0u64;
+    let mut max_legal_actions = 0usize;
     let mut wins = vec![0u64; players as usize];
 
     for _ in 0..games {
         let s = rng.gen::<u64>();
-        let state = play_random_game(GameConfig {
+        let (state, stats) = play_random_game_with_stats(GameConfig {
             player_count: players,
             seed: s,
             ..Default::default()
@@ -105,6 +108,9 @@ fn cmd_bench(games: u32, players: u8, seed: u64) {
             .iter()
             .filter(|e| matches!(e, splendor_core::GameEvent::ActionApplied { .. }))
             .count() as u64;
+        total_legal_actions += stats.total_legal_actions;
+        total_decisions += stats.decisions;
+        max_legal_actions = max_legal_actions.max(stats.max_legal_actions);
         if let Some(res) = &state.result {
             for w in &res.winners {
                 wins[w.index()] += 1;
@@ -121,6 +127,12 @@ fn cmd_bench(games: u32, players: u8, seed: u64) {
         "avg_actions_per_game={:.1}",
         total_plies as f64 / games as f64
     );
+    println!("actions_per_s={:.1}", total_plies as f64 / elapsed);
+    println!(
+        "avg_legal_actions_per_decision={:.2}",
+        total_legal_actions as f64 / total_decisions.max(1) as f64
+    );
+    println!("max_legal_actions_seen={max_legal_actions}");
     println!("wins_by_seat={:?}", wins);
 }
 
