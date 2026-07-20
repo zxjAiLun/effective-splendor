@@ -20,9 +20,13 @@
 
 mod error;
 mod format;
+mod recorder;
+mod verify;
 
 pub use error::{ReplayError, ReplayResult};
 pub use format::{
     ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayTerminalReason, ReplayV1,
     REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
 };
+pub use recorder::{record_random_game, ReplayRecorder};
+pub use verify::{verify_replay, VerifiedReplay};
