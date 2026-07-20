@@ -14,8 +14,8 @@
 
 use serde::{Deserialize, Serialize};
 use splendor_core::{
-    visible_events, Action, Audience, FullState, GameConfig, GameResult, Observation,
-    ObservationHash, PlayerId, RefereeEvent, RulesetFingerprint, VisibleEvent, ENGINE_VERSION,
+    Action, GameResult, Observation, ObservationHash, PlayerId, RulesetFingerprint, VisibleEvent,
+    ENGINE_VERSION,
 };
 
 pub const PROTOCOL_VERSION: &str = "0.2";
@@ -275,94 +275,15 @@ impl ClientMessage {
     }
 }
 
-/// Build a complete player-scoped server transcript. This is shared by the
-/// committed fixture generator and the wire regression tests, so a fixture is
-/// compared against current serialization rather than merely parsed by it.
-pub fn server_transcript(
-    game_id: &str,
-    state: &FullState,
-    events: &[RefereeEvent],
-    recipient: PlayerId,
-    audience: Audience,
-    request_id: u64,
-) -> String {
-    let observation = state.observation(recipient);
-    let observation_hash = splendor_core::observation_hash(&observation);
-    let mut messages = vec![
-        ServerMessage::hello(
-            game_id,
-            state.ruleset.id.0,
-            state.ruleset.catalog_version,
-            splendor_core::ruleset_fingerprint(&state.ruleset),
-        ),
-        ServerMessage::GameStart {
-            meta: RecipientMeta::new(game_id, 1, recipient),
-            player_count: state.player_count(),
-            seed_commitment: format!("fixture-commitment-{game_id}"),
-        },
-        ServerMessage::Observation {
-            meta: ObservationMeta::new(game_id, 2, recipient, observation_hash.clone()),
-            observation,
-        },
-    ];
-
-    for event in visible_events(events, audience) {
-        let server_seq = messages.len() as u64;
-        messages.push(ServerMessage::event(
-            RecipientMeta::new(game_id, server_seq, recipient),
-            event,
-        ));
-    }
-
-    let server_seq = messages.len() as u64;
-    messages.push(ServerMessage::RequestAction {
-        meta: RequestMeta::new(game_id, server_seq, recipient, request_id, observation_hash),
-        deadline_ms: 1000,
-        legal_actions: state.legal_actions(),
-    });
-
+/// Serialize an already-constructed sequence of player-scoped wire messages.
+/// State construction and event projection remain outside this DTO crate.
+pub fn to_ndjson(messages: &[ServerMessage]) -> String {
     messages
         .iter()
         .map(|message| message.to_json_line().expect("protocol serialization"))
         .collect::<Vec<_>>()
         .join("\n")
         + "\n"
-}
-
-/// Deterministic normal-game fixture transcript.
-pub fn normal_golden_transcript() -> String {
-    let (state, setup) = FullState::new(GameConfig::default()).expect("fixture setup");
-    server_transcript(
-        "golden-normal",
-        &state,
-        &setup.events,
-        PlayerId(0),
-        Audience::Player(PlayerId(0)),
-        1,
-    )
-}
-
-/// Deterministic blind-reserve fixture transcript for a selected player.
-pub fn blind_reserve_transcript(audience: Audience) -> String {
-    let recipient = match audience {
-        Audience::Player(player) => player,
-        _ => panic!("blind fixture requires a player audience"),
-    };
-    let (mut state, setup) = FullState::new(GameConfig {
-        seed: 7,
-        ..Default::default()
-    })
-    .expect("fixture setup");
-    let reserve = state
-        .legal_actions()
-        .into_iter()
-        .find(|action| matches!(action, Action::ReserveDeck { .. }))
-        .expect("reserve deck is legal at start");
-    let step = state.apply(reserve).expect("apply reserve");
-    let mut events = setup.events;
-    events.extend(step.events);
-
-    server_transcript("golden-blind", &state, &events, recipient, audience, 2)
 }
 
 #[cfg(test)]
