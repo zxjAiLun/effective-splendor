@@ -127,6 +127,7 @@ fn observation_hash_stable_when_only_opponent_blind_changes() {
     // Reserve from deck on both.
     let act = Action::ReserveDeck {
         tier: splendor_core::Tier::One,
+        give_back: Gems::ZERO,
     };
     if a.legal_actions().contains(&act) {
         a.apply(act).unwrap();

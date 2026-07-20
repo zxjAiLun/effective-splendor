@@ -308,15 +308,36 @@ impl FullState {
         }
 
         // --- Reserve ---
+        let reserve_received = if self.bank.gold > 0 {
+            Gems {
+                gold: 1,
+                ..Gems::ZERO
+            }
+        } else {
+            Gems::ZERO
+        };
+        let reserve_returns =
+            legal_returns_after_receiving(player.tokens, reserve_received, self.ruleset.max_tokens);
         if player.reserved.len() < self.ruleset.max_reserved as usize {
             for tier in Tier::ALL {
                 for slot in 0..4u8 {
                     if self.market[tier.index()][slot as usize].is_some() {
-                        actions.push(Action::ReserveMarket { tier, slot });
+                        actions.extend(reserve_returns.iter().copied().map(|give_back| {
+                            Action::ReserveMarket {
+                                tier,
+                                slot,
+                                give_back,
+                            }
+                        }));
                     }
                 }
                 if !self.decks[tier.index()].is_empty() {
-                    actions.push(Action::ReserveDeck { tier });
+                    actions.extend(
+                        reserve_returns
+                            .iter()
+                            .copied()
+                            .map(|give_back| Action::ReserveDeck { tier, give_back }),
+                    );
                 }
             }
         }
@@ -386,24 +407,7 @@ impl FullState {
             return;
         }
 
-        let after = current + take;
-        let total = after.total();
-        if total <= max_tokens {
-            out.push(Action::TakeTokens {
-                take,
-                give_back: Gems::ZERO,
-            });
-            return;
-        }
-
-        let must_return = total - max_tokens;
-        // Enumerate all give_back multisets from `after` totaling must_return.
-        // Bound is small (must_return ≤ 3 typically, tokens ≤ 12).
-        let mut give_options = Vec::new();
-        enumerate_returns(after, must_return, &mut give_options);
-        for give_back in give_options {
-            // Cannot return more than held after take; already enforced.
-            // Must not return tokens you didn't effectively have — ok.
+        for give_back in legal_returns_after_receiving(current, take, max_tokens) {
             out.push(Action::TakeTokens { take, give_back });
         }
     }
@@ -494,7 +498,11 @@ impl FullState {
                 self.players[pid.index()].reserved.remove(slot as usize);
                 self.after_purchase(pid, events)?;
             }
-            Action::ReserveMarket { tier, slot } => {
+            Action::ReserveMarket {
+                tier,
+                slot,
+                give_back,
+            } => {
                 let cid = self.market[tier.index()][slot as usize]
                     .ok_or_else(|| EngineError::IllegalAction("empty market slot".into()))?;
                 self.apply_reserve(
@@ -502,6 +510,7 @@ impl FullState {
                     cid,
                     false,
                     ReserveSource::Market { tier, slot },
+                    give_back,
                     events,
                 )?;
                 if let Some(new_c) = self.draw_from_deck(tier) {
@@ -517,17 +526,26 @@ impl FullState {
                 }
                 self.advance_turn(events);
             }
-            Action::ReserveDeck { tier } => {
-                let cid = self
-                    .draw_from_deck(tier)
+            Action::ReserveDeck { tier, give_back } => {
+                let cid = *self.decks[tier.index()]
+                    .last()
                     .ok_or_else(|| EngineError::IllegalAction("empty deck".into()))?;
+                self.validate_reserve_return(pid, give_back)?;
+                self.decks[tier.index()].pop();
                 events.push(GameEvent::Chance(ChanceEvent::CardRevealed {
                     tier,
                     slot: None,
                     card: cid,
                     visible_to: Visibility::Player(pid),
                 }));
-                self.apply_reserve(pid, cid, true, ReserveSource::Deck { tier }, events)?;
+                self.apply_reserve(
+                    pid,
+                    cid,
+                    true,
+                    ReserveSource::Deck { tier },
+                    give_back,
+                    events,
+                )?;
                 self.advance_turn(events);
             }
             Action::ChooseNoble { .. } => unreachable!(),
@@ -542,24 +560,29 @@ impl FullState {
         give_back: Gems,
         events: &mut Vec<GameEvent>,
     ) -> EngineResult<()> {
+        if take.gold != 0 {
+            return Err(EngineError::IllegalAction(
+                "players cannot take gold with TakeTokens".into(),
+            ));
+        }
+        let held_before = self.players[pid.index()].tokens;
+        if !legal_returns_after_receiving(held_before, take, self.ruleset.max_tokens)
+            .contains(&give_back)
+        {
+            return Err(EngineError::IllegalAction(
+                "invalid token return for TakeTokens".into(),
+            ));
+        }
         self.bank = self
             .bank
             .checked_sub(take)
             .ok_or_else(|| EngineError::IllegalAction("bank lacks tokens".into()))?;
-        let p = &mut self.players[pid.index()];
-        p.tokens += take;
-
-        if !give_back.is_zero() {
-            p.tokens = p
-                .tokens
-                .checked_sub(give_back)
-                .ok_or_else(|| EngineError::IllegalAction("cannot return tokens".into()))?;
-            self.bank += give_back;
-        }
-
-        if p.tokens.total() > self.ruleset.max_tokens {
-            return Err(EngineError::IllegalAction("exceeds max tokens".into()));
-        }
+        let final_tokens = held_before
+            .saturating_add(take)
+            .checked_sub(give_back)
+            .ok_or_else(|| EngineError::IllegalAction("cannot return tokens".into()))?;
+        self.bank = self.bank.saturating_add(give_back);
+        self.players[pid.index()].tokens = final_tokens;
 
         events.push(GameEvent::TokensTransferred {
             player: pid,
@@ -610,30 +633,31 @@ impl FullState {
         cid: CardId,
         from_deck: bool,
         source: ReserveSource,
+        give_back: Gems,
         events: &mut Vec<GameEvent>,
     ) -> EngineResult<()> {
+        let received = self.validate_reserve_return(pid, give_back)?;
         if let ReserveSource::Market { tier, slot } = source {
             self.market[tier.index()][slot as usize] = None;
         }
+        let held_before = self.players[pid.index()].tokens;
+        let final_tokens = held_before
+            .saturating_add(received)
+            .checked_sub(give_back)
+            .ok_or_else(|| EngineError::IllegalAction("invalid token return".into()))?;
+        self.bank = self
+            .bank
+            .checked_sub(received)
+            .ok_or_else(|| EngineError::IllegalAction("bank lacks reserve token".into()))?
+            .saturating_add(give_back);
+        self.players[pid.index()].tokens = final_tokens;
 
-        let mut received_gold = false;
-        if self.bank.gold > 0 {
-            self.bank.gold -= 1;
-            self.players[pid.index()].tokens.gold += 1;
-            received_gold = true;
-            // If over 10 tokens after gold, must return — official rules: if taking
-            // gold would exceed 10, you still get it then discard down to 10.
-            let max = self.ruleset.max_tokens;
-            let p = &mut self.players[pid.index()];
-            if p.tokens.total() > max {
-                // Prefer discarding a non-gold if possible; for determinism, discard
-                // gold last. Enumerate is complex for legal_actions — for reserve,
-                // legal_actions currently doesn't expand return choices.
-                // Spec simplification for Phase 0: auto-discard gold first if over,
-                // else lowest color index. This is a known Phase-0 approximation;
-                // full atomic return-on-reserve will be added with legal expansion.
-                auto_discard_to_max(p, max, &mut self.bank);
-            }
+        if received != Gems::ZERO || give_back != Gems::ZERO {
+            events.push(GameEvent::TokensTransferred {
+                player: pid,
+                taken_from_bank: received,
+                returned_to_bank: give_back,
+            });
         }
 
         self.players[pid.index()].reserved.push(ReservedCard {
@@ -645,7 +669,7 @@ impl FullState {
             player: pid,
             card: cid,
             from: source,
-            received_gold,
+            received_gold: received.gold != 0,
             public_identity: !from_deck,
             visible_to: if from_deck {
                 Visibility::Player(pid)
@@ -654,6 +678,29 @@ impl FullState {
             },
         });
         Ok(())
+    }
+
+    fn validate_reserve_return(&self, pid: PlayerId, give_back: Gems) -> EngineResult<Gems> {
+        let received = if self.bank.gold > 0 {
+            Gems {
+                gold: 1,
+                ..Gems::ZERO
+            }
+        } else {
+            Gems::ZERO
+        };
+        if !legal_returns_after_receiving(
+            self.players[pid.index()].tokens,
+            received,
+            self.ruleset.max_tokens,
+        )
+        .contains(&give_back)
+        {
+            return Err(EngineError::IllegalAction(
+                "invalid token return for reserve".into(),
+            ));
+        }
+        Ok(received)
     }
 
     fn after_purchase(&mut self, pid: PlayerId, events: &mut Vec<GameEvent>) -> EngineResult<()> {
@@ -890,29 +937,6 @@ fn player_qualifies(player: &FullPlayerState, noble: NobleId) -> bool {
         .all(|&c| player.bonuses[c.index()] >= def.requirements[c.index()])
 }
 
-fn auto_discard_to_max(player: &mut FullPlayerState, max: u8, bank: &mut Gems) {
-    while player.tokens.total() > max {
-        // Discard gold first (deterministic Phase-0 policy when reserve overflows).
-        if player.tokens.gold > 0 {
-            player.tokens.gold -= 1;
-            bank.gold += 1;
-            continue;
-        }
-        let mut discarded = false;
-        for c in GemColor::ALL {
-            if player.tokens.color(c) > 0 {
-                player.tokens.sub_color(c, 1);
-                bank.add_color(c, 1);
-                discarded = true;
-                break;
-            }
-        }
-        if !discarded {
-            break;
-        }
-    }
-}
-
 fn compute_result(players: &[FullPlayerState]) -> GameResult {
     let scores: Vec<u8> = players.iter().map(|p| p.prestige).collect();
 
@@ -968,6 +992,24 @@ fn combinations<T: Copy>(items: &[T], k: usize) -> Vec<Vec<T>> {
     }
     rec(items, k, 0, &mut cur, &mut out);
     out
+}
+
+fn legal_returns_after_receiving(held_before: Gems, received: Gems, max_tokens: u8) -> Vec<Gems> {
+    let held_after = held_before.saturating_add(received);
+    let required_return = held_after.total().saturating_sub(max_tokens);
+    if required_return == 0 {
+        return vec![Gems::ZERO];
+    }
+
+    let mut returns = Vec::new();
+    enumerate_returns(held_after, required_return, &mut returns);
+    returns.sort_by_key(|gems| {
+        (
+            gems.white, gems.blue, gems.green, gems.red, gems.black, gems.gold,
+        )
+    });
+    returns.dedup();
+    returns
 }
 
 fn enumerate_returns(held: Gems, count: u8, out: &mut Vec<Gems>) {

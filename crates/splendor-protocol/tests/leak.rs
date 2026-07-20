@@ -14,6 +14,7 @@ use splendor_protocol::{
 fn reserve_deck(state: &mut FullState) {
     let act = Action::ReserveDeck {
         tier: splendor_core::Tier::One,
+        give_back: splendor_core::Gems::ZERO,
     };
     assert!(
         state.legal_actions().contains(&act),
