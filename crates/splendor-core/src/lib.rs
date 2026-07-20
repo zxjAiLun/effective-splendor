@@ -1,7 +1,7 @@
 //! Deterministic Splendor rules engine.
 //!
 //! Design invariants:
-//! - `FullState` is referee-only (deck order, blind reserves, RNG).
+//! - `FullState` is referee-only (deck order and blind reserves).
 //! - `Observation` never leaks other players' blind reserved cards.
 //! - Chance outcomes are explicit events, not implicit seed side-effects alone.
 //! - Semantic `Action` values are protocol-stable; policy indices live elsewhere.

@@ -49,8 +49,16 @@ fn hashes_include_ruleset_parameters_and_terminal_result() {
     );
 
     let mut terminal = state;
+    terminal.bank = Gems::ZERO;
+    terminal.market = [[None; 4]; 3];
+    terminal.decks = [Vec::new(), Vec::new(), Vec::new()];
     let before_terminal = full_state_hash(&terminal);
-    terminal.force_stalemate_end();
+    assert_eq!(terminal.legal_actions(), vec![Action::Pass]);
+    terminal.apply(Action::Pass).unwrap();
+    assert!(!terminal.is_terminal());
+    assert_eq!(terminal.legal_actions(), vec![Action::Pass]);
+    terminal.apply(Action::Pass).unwrap();
+    assert!(terminal.is_terminal());
     assert_ne!(
         before_terminal,
         full_state_hash(&terminal),

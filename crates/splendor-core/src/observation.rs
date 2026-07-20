@@ -18,6 +18,7 @@ pub struct PublicState {
     pub players: Vec<PublicPlayerView>,
     pub end_game_triggered: bool,
     pub turns_remaining_in_final_round: Option<u8>,
+    pub consecutive_forced_passes: u8,
     pub pending_nobles: Vec<NobleId>,
 }
 
@@ -95,6 +96,7 @@ impl FullState {
                 .collect(),
             end_game_triggered: self.end_game_triggered,
             turns_remaining_in_final_round: self.turns_remaining_in_final_round,
+            consecutive_forced_passes: self.consecutive_forced_passes,
             pending_nobles: self.pending_nobles.clone(),
         };
 

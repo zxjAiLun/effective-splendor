@@ -135,7 +135,6 @@ pub struct SetupInfo {
 pub struct FullState {
     pub ruleset: Ruleset,
     pub seed: u64,
-    pub rng: SmallRng,
     pub decks: [Vec<CardId>; 3],
     pub market: [[Option<CardId>; 4]; 3],
     pub nobles: Vec<NobleId>,
@@ -148,6 +147,8 @@ pub struct FullState {
     /// After end is triggered, remaining turns in the final round (including
     /// players after the triggerer, not including the triggerer's finished turn).
     pub turns_remaining_in_final_round: Option<u8>,
+    /// Number of consecutive turns whose only legal main action was Pass.
+    pub consecutive_forced_passes: u8,
     pub result: Option<GameResult>,
     /// Event log for the current game (optional accumulation).
     pub log: Vec<GameEvent>,
@@ -195,7 +196,6 @@ impl FullState {
         let mut state = FullState {
             ruleset: config.ruleset,
             seed: config.seed,
-            rng,
             decks,
             market: [[None; 4]; 3],
             nobles,
@@ -213,6 +213,7 @@ impl FullState {
             pending_nobles: Vec::new(),
             end_game_triggered: false,
             turns_remaining_in_final_round: None,
+            consecutive_forced_passes: 0,
             result: None,
             log: Vec::new(),
         };
@@ -452,6 +453,9 @@ impl FullState {
         }
 
         let pid = self.current_player;
+        if !matches!(action, Action::Pass) {
+            self.consecutive_forced_passes = 0;
+        }
         events.push(GameEvent::ActionApplied {
             player: pid,
             action,
@@ -459,7 +463,11 @@ impl FullState {
 
         match action {
             Action::Pass => {
+                self.consecutive_forced_passes = self.consecutive_forced_passes.saturating_add(1);
                 self.advance_turn(events);
+                if self.consecutive_forced_passes >= self.player_count() && !self.is_terminal() {
+                    self.finish_game_with_reason(TerminalReason::Stalemate, events);
+                }
             }
             Action::TakeTokens { take, give_back } => {
                 self.apply_take(pid, take, give_back, events)?;
@@ -740,6 +748,7 @@ impl FullState {
             return Err(EngineError::IllegalAction("noble not available".into()));
         }
         let pid = self.current_player;
+        self.consecutive_forced_passes = 0;
         events.push(GameEvent::ActionApplied {
             player: pid,
             action: Action::ChooseNoble { noble },
@@ -1054,10 +1063,10 @@ pub fn random_action<R: Rng>(state: &FullState, rng: &mut R) -> Option<Action> {
 
 /// Play a full random game; returns final state.
 pub fn play_random_game(config: GameConfig) -> EngineResult<FullState> {
+    let action_seed = config.seed ^ 0xA11C_E7A5_5EED_u64;
     let (mut state, _) = FullState::new(config)?;
+    let mut rng = SmallRng::seed_from_u64(action_seed);
     let mut guard = 0u32;
-    let mut consecutive_passes = 0u32;
-    let pass_limit = state.player_count() as u32;
     while !state.is_terminal() {
         guard += 1;
         if guard > 10_000 {
@@ -1081,32 +1090,10 @@ pub fn play_random_game(config: GameConfig) -> EngineResult<FullState> {
         } else {
             &non_pass
         };
-        let idx = state.rng.gen_range(0..pool.len());
+        let idx = rng.gen_range(0..pool.len());
         let action = pool[idx];
-        if matches!(action, Action::Pass) {
-            consecutive_passes += 1;
-        } else {
-            consecutive_passes = 0;
-        }
         state.apply(action)?;
         state.assert_invariants()?;
-
-        // Full round of forced passes → stalemate terminal.
-        if consecutive_passes >= pass_limit && !state.is_terminal() {
-            state.force_stalemate_end();
-        }
     }
     Ok(state)
-}
-
-impl FullState {
-    /// End the game immediately with current scores (stalemate / soft-lock).
-    pub fn force_stalemate_end(&mut self) {
-        if self.is_terminal() {
-            return;
-        }
-        let mut events = Vec::new();
-        self.finish_game_with_reason(TerminalReason::Stalemate, &mut events);
-        self.log.extend(events);
-    }
 }

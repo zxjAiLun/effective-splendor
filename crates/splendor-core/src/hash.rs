@@ -185,6 +185,7 @@ fn write_public_state(h: &mut Sha256, public: &PublicState) {
     h.update([phase_byte(public.phase)]);
     h.update([public.end_game_triggered as u8]);
     write_option_u8(h, public.turns_remaining_in_final_round);
+    h.update([public.consecutive_forced_passes]);
     write_gems(h, public.bank);
 
     for tier in 0..3 {
@@ -239,6 +240,7 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
         state.current_player.0,
         phase_byte(state.phase),
         state.end_game_triggered as u8,
+        state.consecutive_forced_passes,
     ]);
     write_option_u8(&mut h, state.turns_remaining_in_final_round);
     write_gems(&mut h, state.bank);
