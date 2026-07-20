@@ -22,9 +22,9 @@ Rules:
   `Action`, legal-action enumeration, state transitions, and `RefereeEvent`.
   It is the single source of truth for what is and isn't a legal move.
 - **`splendor-protocol`** owns wire DTOs (`ServerMessage` / `ClientMessage`,
-  `Meta`). It MUST NOT serialize `RefereeEvent` or `FullStateHash` directly;
-  it uses `VisibleEvent`, `ObservationHash`, and the safe ruleset
-  `PublicStateHash` fingerprint.
+  `ServerMeta` / `RecipientMeta` / `ObservationMeta` / `RequestMeta`). It MUST
+  NOT serialize `RefereeEvent` or `FullStateHash` directly; it uses
+  `VisibleEvent`, `ObservationHash`, and the separate `RulesetFingerprint`.
 - **`splendor-arena`** (PR-04) binds an agent process to a seat, enforces
   deadlines / timeouts / illegal-action policy, and is the only place that
   decides *who* a client is. Clients never authorize their own seat.
@@ -49,10 +49,13 @@ Rules:
 
 ## Information boundary (see `docs/adr/0001-information-boundary.md`)
 
-Three hash types enforce the boundary at the type level:
+The state hashes and compatibility fingerprint enforce the boundary at the
+type level:
 - `FullStateHash` — referee only, never leaves core.
 - `PublicStateHash` — board + public reserved identities; safe for anyone.
-- `ObservationHash` — one player's view; the only per-state hash the protocol
-  carries. Hello may also carry the safe ruleset `PublicStateHash` fingerprint.
+- `ObservationHash` — one player's view plus its ruleset scope; the only
+  per-state hash the protocol carries.
+- `RulesetFingerprint` — ruleset/catalog compatibility identity, independent
+  of a particular game state.
 
 `visible_events(referee_log, audience)` is the single projection exit point.

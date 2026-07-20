@@ -26,8 +26,8 @@ able to distinguish information sets that should be indistinguishable.
 1. **Three typed hashes.** `FullStateHash`, `PublicStateHash`,
    `ObservationHash` are distinct newtypes. `FullStateHash` can only be
    produced inside `splendor-core` and can never be passed where an
-   `ObservationHash` is expected (the protocol's `Meta::with_observation_hash`
-   accepts `ObservationHash` only).
+   `ObservationHash` is expected (the protocol's `ObservationMeta` and
+   `RequestMeta` accept `ObservationHash` only).
 
 2. **Two event layers.** `RefereeEvent` (may contain all hidden info) and
    `VisibleEvent` (redacted by audience). The single projection function
@@ -36,9 +36,11 @@ able to distinguish information sets that should be indistinguishable.
 
 3. **Explicit identity fields.** `recipient_player_id` (server → client
    receiver) and `actor_player_id` (single, in `ActionApplied` only) are
-   distinct. Client `Action` uses a separate `ClientMeta` with no seat,
-   server-sequence, or state-hash field; seat binding is the runner's job
-   (PR-04).
+   distinct. `ServerMeta`, `RecipientMeta`, `ObservationMeta`, and
+   `RequestMeta` make broadcast scope, recipient scope, observation identity,
+   and request correlation non-optional at the type level. Client `Action` uses
+   `ClientRequestMeta` with a mandatory request ID but no seat, server-sequence,
+   or state-hash field; seat binding is the runner's job (PR-04).
 
 4. **No seed in visible events.** The referee's setup seed remains in
    `RefereeEvent`, but `VisibleEvent::GameStarted` omits it. A seed can be used

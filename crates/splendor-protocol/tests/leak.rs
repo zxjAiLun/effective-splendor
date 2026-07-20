@@ -4,9 +4,12 @@
 
 use splendor_core::{
     full_state_hash, observation_hash, visible_events, Action, Audience, ChanceEvent, FullState,
-    GameConfig, PlayerId, RefereeEvent, Visibility, VisibleEvent,
+    GameConfig, PlayerId, RefereeEvent, Ruleset, Visibility, VisibleEvent,
 };
-use splendor_protocol::{ClientMessage, ClientMeta, Meta, ServerMessage, PROTOCOL_VERSION};
+use splendor_protocol::{
+    blind_reserve_transcript, normal_golden_transcript, server_transcript, ClientMessage,
+    ClientRequestMeta, ObservationMeta, RecipientMeta, ServerMessage, PROTOCOL_VERSION,
+};
 
 fn reserve_deck(state: &mut FullState) {
     let act = Action::ReserveDeck {
@@ -176,9 +179,7 @@ fn protocol_never_serializes_full_state_hash() {
 
     let obs = state.observation(PlayerId(0));
     let msg = ServerMessage::Observation {
-        meta: Meta::new(game_id, 1)
-            .with_recipient(PlayerId(0))
-            .with_observation_hash(observation_hash(&obs)),
+        meta: ObservationMeta::new(game_id, 1, PlayerId(0), observation_hash(&obs)),
         observation: obs,
     };
     let line = msg.to_json_line().unwrap();
@@ -194,7 +195,7 @@ fn protocol_never_serializes_full_state_hash() {
 #[test]
 fn action_applied_contains_one_actor_field() {
     let msg = ServerMessage::ActionApplied {
-        meta: Meta::new("g1", 3).with_recipient(PlayerId(1)),
+        meta: RecipientMeta::new("g1", 3, PlayerId(1)),
         actor_player_id: 0,
         action: Action::Pass,
     };
@@ -211,7 +212,7 @@ fn action_applied_contains_one_actor_field() {
 fn client_action_cannot_claim_player_identity() {
     // Valid action message echoes only `recipient_player_id`, no `player_id`.
     let ok = ClientMessage::Action {
-        meta: ClientMeta::new("g1").with_request(3),
+        meta: ClientRequestMeta::new("g1", 3),
         action: Action::Pass,
     };
     let line = serde_json::to_string(&ok).unwrap();
@@ -227,62 +228,142 @@ fn client_action_cannot_claim_player_identity() {
     let parsed: ClientMessage = serde_json::from_str(hostile).expect("unknown fields ignored");
     match parsed {
         ClientMessage::Action { meta, action } => {
-            assert_eq!(meta.request_id, Some(3));
+            assert_eq!(meta.request_id, 3);
             assert_eq!(action, Action::Pass);
         }
         _ => panic!("wrong variant"),
     }
 }
 
-/// The committed golden transcript matches the parser and contains no blind leak.
+/// Observation hashes must include the ruleset scope even when the visible
+/// board and private cards are otherwise identical.
 #[test]
-fn protocol_golden_transcript_matches() {
-    // Normal game transcript round-trips as ServerMessages.
-    let raw = include_str!("../../../fixtures/protocol/v0.2/normal-game.ndjson");
-    for line in raw.lines().filter(|l: &&str| !l.trim().is_empty()) {
-        let msg: ServerMessage = serde_json::from_str(line)
-            .unwrap_or_else(|e| panic!("normal-game fixture line failed: {e}\n{line}"));
-        assert_eq!(msg.protocol_version(), PROTOCOL_VERSION);
+fn observation_hash_includes_ruleset_scope() {
+    let (a, _) = FullState::new(GameConfig::default()).unwrap();
+    let mut alternate = Ruleset::base_v1();
+    alternate.prestige_to_end += 1;
+    let (b, _) = FullState::new(GameConfig {
+        ruleset: alternate,
+        ..Default::default()
+    })
+    .unwrap();
+
+    let oa = a.observation(PlayerId(0));
+    let ob = b.observation(PlayerId(0));
+    assert_eq!(oa.public, ob.public);
+    assert_ne!(oa.ruleset_fingerprint, ob.ruleset_fingerprint);
+    assert_ne!(observation_hash(&oa), observation_hash(&ob));
+}
+
+/// The committed fixtures are wire-regression locks: current serialization
+/// must produce exactly the checked-in bytes, not merely parse them.
+#[test]
+fn protocol_golden_transcript_matches_generated_wire() {
+    let normal = normal_golden_transcript();
+    assert_eq!(
+        normal,
+        include_str!("../../../fixtures/protocol/v0.2/normal-game.ndjson"),
+        "normal protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
+    );
+    let blind = blind_reserve_transcript(Audience::Player(PlayerId(1)));
+    assert_eq!(
+        blind,
+        include_str!("../../../fixtures/protocol/v0.2/blind-reserve.ndjson"),
+        "blind protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
+    );
+
+    for (name, raw) in [("normal", normal.as_str()), ("blind", blind.as_str())] {
+        for line in raw.lines().filter(|line| !line.trim().is_empty()) {
+            let msg: ServerMessage = serde_json::from_str(line)
+                .unwrap_or_else(|e| panic!("{name} fixture line failed: {e}\n{line}"));
+            assert_eq!(msg.protocol_version(), PROTOCOL_VERSION);
+            if let ServerMessage::GameStart { .. } = msg {
+                assert!(!line.contains("your_player_id"));
+            }
+        }
     }
 
     // Blind-reserve transcript (opponent view) must NOT reveal a card id in the
     // wrapped card_reserved / chance_revealed redacted events.
-    let blind = include_str!("../../../fixtures/protocol/v0.2/blind-reserve.ndjson");
     let mut saw_redacted = false;
-    let blind_lines: Vec<&str> = blind
-        .lines()
-        .filter(|l: &&str| !l.trim().is_empty())
-        .collect();
-    for line in blind_lines {
-        if line.contains("\"card_reserved\"") || line.contains("\"chance_revealed\"") {
-            assert!(
-                line.contains("\"card\":null"),
-                "opponent blind transcript must redact card identity: {line}"
-            );
+    for line in blind.lines().filter(|line| !line.trim().is_empty()) {
+        let message: ServerMessage = serde_json::from_str(line).unwrap();
+        if let ServerMessage::Event {
+            event:
+                VisibleEvent::CardReserved {
+                    card,
+                    public_identity: false,
+                    ..
+                }
+                | VisibleEvent::ChanceRevealed {
+                    card, slot: None, ..
+                },
+            ..
+        } = message
+        {
+            assert_eq!(card, None, "opponent blind transcript leaked: {line}");
             saw_redacted = true;
         }
-        let _: ServerMessage = serde_json::from_str(line)
-            .unwrap_or_else(|e| panic!("blind fixture line failed: {e}\n{line}"));
     }
     assert!(saw_redacted, "expected at least one redacted blind event");
 }
 
-// Small helper for the golden test above.
-trait ProtocolVersion {
-    fn protocol_version(&self) -> &str;
-}
-impl ProtocolVersion for ServerMessage {
-    fn protocol_version(&self) -> &str {
-        match self {
-            ServerMessage::Hello { meta, .. }
-            | ServerMessage::GameStart { meta, .. }
-            | ServerMessage::Observation { meta, .. }
-            | ServerMessage::RequestAction { meta, .. }
+/// The full player transcript remains identical when only an opponent's blind
+/// card identity changes. This covers metadata, observation hash, request ID,
+/// legal actions, sequence numbers, and projected events together.
+#[test]
+fn blind_reserve_full_server_transcript_is_identical_for_opponent_worlds() {
+    let (mut a, _) = FullState::new(GameConfig {
+        seed: 1234,
+        ..Default::default()
+    })
+    .unwrap();
+    let (mut b, _) = FullState::new(GameConfig {
+        seed: 1234,
+        ..Default::default()
+    })
+    .unwrap();
+    reserve_deck(&mut a);
+    reserve_deck(&mut b);
+    swap_blind_card_and_referee_log(&mut b);
+
+    let ta = server_transcript(
+        "blind-world",
+        &a,
+        &a.log,
+        PlayerId(1),
+        Audience::Player(PlayerId(1)),
+        2,
+    );
+    let tb = server_transcript(
+        "blind-world",
+        &b,
+        &b.log,
+        PlayerId(1),
+        Audience::Player(PlayerId(1)),
+        2,
+    );
+    assert_eq!(ta, tb, "opponent wire transcript must be world-independent");
+
+    for line in ta.lines().filter(|line| !line.trim().is_empty()) {
+        let msg: ServerMessage = serde_json::from_str(line).unwrap();
+        match msg {
+            ServerMessage::Hello { .. } => {}
+            ServerMessage::GameStart { meta, .. }
             | ServerMessage::ActionApplied { meta, .. }
             | ServerMessage::Event { meta, .. }
             | ServerMessage::GameEnd { meta, .. }
             | ServerMessage::Error { meta, .. }
-            | ServerMessage::Ping { meta } => &meta.protocol_version,
+            | ServerMessage::Ping { meta } => {
+                assert_eq!(meta.recipient_player_id, 1)
+            }
+            ServerMessage::Observation { meta, .. } => {
+                assert_eq!(meta.recipient.recipient_player_id, 1)
+            }
+            ServerMessage::RequestAction { meta, .. } => {
+                assert_eq!(meta.recipient.recipient_player_id, 1);
+                assert_eq!(meta.request_id, 2);
+            }
         }
     }
 }

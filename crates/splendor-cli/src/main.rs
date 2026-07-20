@@ -5,10 +5,13 @@ use clap::{Parser, Subcommand};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
-    full_state_hash, observation_hash, play_random_game, ruleset_fingerprint, visible_events,
-    Action, Audience, FullState, GameConfig, PlayerId, VisibleEvent, ENGINE_VERSION,
+    full_state_hash, observation_hash, play_random_game, ruleset_fingerprint, Action, FullState,
+    GameConfig, PlayerId, ENGINE_VERSION,
 };
-use splendor_protocol::{ClientMessage, ClientMeta, Meta, ServerMessage, PROTOCOL_VERSION};
+use splendor_protocol::{
+    blind_reserve_transcript, normal_golden_transcript, ClientMessage, ClientRequestMeta,
+    ObservationMeta, RequestMeta, ServerMessage, PROTOCOL_VERSION,
+};
 
 #[derive(Parser)]
 #[command(name = "splendor", about = "Splendor rules engine CLI (Phase 0)")]
@@ -212,17 +215,19 @@ fn cmd_protocol_demo(seed: u64) {
 
     let obs = state.observation(PlayerId(0));
     let obs_msg = ServerMessage::Observation {
-        meta: Meta::new(&game_id, 1)
-            .with_recipient(PlayerId(0))
-            .with_observation_hash(observation_hash(&obs)),
+        meta: ObservationMeta::new(&game_id, 1, PlayerId(0), observation_hash(&obs)),
         observation: obs,
     };
     println!("{}", obs_msg.to_json_line().unwrap());
 
     let req = ServerMessage::RequestAction {
-        meta: Meta::new(&game_id, 2)
-            .with_recipient(PlayerId(0))
-            .with_observation_hash(observation_hash(&state.observation(PlayerId(0)))),
+        meta: RequestMeta::new(
+            &game_id,
+            2,
+            PlayerId(0),
+            1,
+            observation_hash(&state.observation(PlayerId(0))),
+        ),
         deadline_ms: 1000,
         legal_actions: state.legal_actions(),
     };
@@ -230,104 +235,26 @@ fn cmd_protocol_demo(seed: u64) {
 
     let action = state.legal_actions()[0];
     let client = ClientMessage::Action {
-        meta: ClientMeta::new(&game_id).with_request(1),
+        meta: ClientRequestMeta::new(&game_id, 1),
         action,
     };
     println!("{}", serde_json::to_string(&client).unwrap());
 }
 
-/// Build a golden protocol transcript (NDJSON) for a sequence of server messages
-/// plus a single client action, writing it to `<out_dir>/<name>.ndjson`.
-///
-/// The transcript is produced by the referee and projected to a spectator, so it
-/// must contain NO hidden card identities and NO full state hash.
-fn write_transcript(name: &str, out_dir: &str, lines: &[String]) {
+/// Write a deterministic protocol transcript to `<out_dir>/<name>.ndjson`.
+fn write_transcript(name: &str, out_dir: &str, transcript: String) {
     fs::create_dir_all(out_dir).expect("mkdir fixtures dir");
     let path = format!("{out_dir}/{name}.ndjson");
-    fs::write(&path, lines.join("\n") + "\n").expect("write fixture");
-    println!("wrote {path} ({} lines)", lines.len());
+    let line_count = transcript.lines().count();
+    fs::write(&path, transcript).expect("write fixture");
+    println!("wrote {path} ({line_count} lines)");
 }
 
 fn cmd_gen_fixtures(out_dir: &str) {
-    // --- normal-game.ndjson: setup + first request for player 0 ---
-    {
-        let (state, _) = FullState::new(GameConfig::default()).unwrap();
-        let game_id = "golden-normal";
-        let mut lines = Vec::new();
-        lines.push(
-            ServerMessage::hello(
-                game_id,
-                splendor_core::RULESET_BASE_V1.0,
-                splendor_core::CATALOG_VERSION,
-                ruleset_fingerprint(&state.ruleset),
-            )
-            .to_json_line()
-            .unwrap(),
-        );
-        let obs0 = state.observation(PlayerId(0));
-        lines.push(
-            ServerMessage::Observation {
-                meta: Meta::new(game_id, 1)
-                    .with_recipient(PlayerId(0))
-                    .with_observation_hash(observation_hash(&obs0)),
-                observation: obs0,
-            }
-            .to_json_line()
-            .unwrap(),
-        );
-        lines.push(
-            ServerMessage::RequestAction {
-                meta: Meta::new(game_id, 2)
-                    .with_recipient(PlayerId(0))
-                    .with_observation_hash(observation_hash(&state.observation(PlayerId(0)))),
-                deadline_ms: 1000,
-                legal_actions: state.legal_actions(),
-            }
-            .to_json_line()
-            .unwrap(),
-        );
-        write_transcript("normal-game", out_dir, &lines);
-    }
-
-    // --- blind-reserve.ndjson: a blind deck reserve, projected to the OPPONENT ---
-    // The opponent's transcript must NOT reveal the reserved card identity.
-    {
-        let (mut state, _) = FullState::new(GameConfig {
-            seed: 7,
-            ..Default::default()
-        })
-        .unwrap();
-        let reserve = state
-            .legal_actions()
-            .into_iter()
-            .find(|a| matches!(a, Action::ReserveDeck { .. }))
-            .expect("reserve deck is legal at start");
-        let step = state.apply(reserve).expect("apply reserve");
-
-        // Project the referee log to the opponent (player 1) and serialize.
-        let visible: Vec<VisibleEvent> =
-            visible_events(&step.events, Audience::Player(PlayerId(1)));
-        let game_id = "golden-blind";
-        let mut lines = Vec::new();
-        lines.push(
-            ServerMessage::hello(
-                game_id,
-                splendor_core::RULESET_BASE_V1.0,
-                splendor_core::CATALOG_VERSION,
-                ruleset_fingerprint(&state.ruleset),
-            )
-            .to_json_line()
-            .unwrap(),
-        );
-        for ev in &visible {
-            // Serialize each already-projected event as a protocol message.
-            let server_seq = lines.len() as u64;
-            lines.push(
-                ServerMessage::event(Meta::new(game_id, server_seq), ev.clone())
-                    .to_json_line()
-                    .unwrap(),
-            );
-        }
-        write_transcript("blind-reserve", out_dir, &lines);
-    }
+    write_transcript("normal-game", out_dir, normal_golden_transcript());
+    write_transcript(
+        "blind-reserve",
+        out_dir,
+        blind_reserve_transcript(splendor_core::Audience::Player(PlayerId(1))),
+    );
 }

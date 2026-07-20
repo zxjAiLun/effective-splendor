@@ -4,26 +4,35 @@ One JSON object per line. Transport (stdio / TCP / WS) is independent of schema.
 
 ## Identity model
 
-| field | who | meaning |
-|-------|-----|---------|
-| `recipient_player_id` (in `Meta`) | server → client | the seat this message is addressed to |
-| `actor_player_id` (in `ActionApplied` only) | server → all | the seat that performed the action |
-| `server_seq` (in `Meta`) | server | monotonic per-game sequence number |
-| `request_id` | server/request echo | correlates a client `Action` to its `RequestAction` |
+The Rust DTOs deliberately use separate metadata types:
 
-**A client `Action` carries NO authorizing identity.** It contains `action` plus
-`ClientMeta`, which has only `protocol_version`, `game_id`, and the optional
-`request_id`. There is no client-side seat, `server_seq`, or state-hash field.
-The runner still validates the echoed identifiers against server-side state.
+| type | scope | required fields |
+|------|-------|-----------------|
+| `ServerMeta` | broadcast (`Hello`) | protocol, game, server sequence |
+| `RecipientMeta` | one player | `ServerMeta` + `recipient_player_id` |
+| `ObservationMeta` | one player observation | `RecipientMeta` + `observation_hash` |
+| `RequestMeta` | one action request | `RecipientMeta` + `request_id` + `observation_hash` |
+| `ClientMeta` | client hello/pong | protocol, game |
+| `ClientRequestMeta` | client action | `ClientMeta` + `request_id` |
+
+Only `Hello` is broadcast. `GameStart`, `Observation`, `RequestAction`,
+`Event`, `ActionApplied`, `GameEnd`, `Error`, and `Ping` require a recipient at
+the type and wire level. `RequestAction` and client `Action` cannot be
+constructed or parsed without a `request_id`.
+
+**A client `Action` carries NO authorizing identity.** Its seat is bound by the
+runner-side connection, while the mandatory `request_id` is only a correlation
+echo. There is no client-side seat, `server_seq`, or state-hash field.
 
 ## Messages
 
 ### Server → Client
 
-- `hello` — `engine_version`, `ruleset`, `catalog_version`,
-  `ruleset_fingerprint` (a typed `PublicStateHash`). v0.2 adds the last two.
-- `game_start` — `player_count`, `your_player_id`, `seed_commitment`.
-- `observation` — `Observation` + `observation_hash` (`ObservationHash`).
+- `hello` — `engine_version`, `ruleset`, `catalog_version`, and the typed
+  `RulesetFingerprint`.
+- `game_start` — recipient metadata, `player_count`, `seed_commitment`.
+- `observation` — recipient metadata, `Observation` (including its
+  `ruleset_fingerprint`) + `observation_hash` (`ObservationHash`).
 - `request_action` — `deadline_ms`, `legal_actions`, `observation_hash`.
 - `action_applied` — `actor_player_id` (single, unambiguous) + `action`.
 - `event` — one already-projected `VisibleEvent`; raw `RefereeEvent` is not a
@@ -48,7 +57,8 @@ visible event projection.
 
 ## Hash fields
 
-Agent-facing state messages carry `ObservationHash`; the hello message may
-carry the safe ruleset/catalog `PublicStateHash` fingerprint. They MUST NOT
-carry `FullStateHash` — that would leak deck order and opponents' blind cards
-as a comparable fingerprint.
+Agent-facing state messages carry `ObservationHash`, whose encoding includes
+the `RulesetFingerprint` embedded in the observation. The hello message carries
+the separate, safe `RulesetFingerprint` for compatibility negotiation. They
+MUST NOT carry `FullStateHash` — that would leak deck order and opponents'
+blind cards as a comparable fingerprint.

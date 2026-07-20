@@ -34,8 +34,8 @@ impl std::fmt::Display for FullStateHash {
 
 /// Hash of public information only (board + public reserved identities).
 ///
-/// This type is safe to expose publicly. It is also used for the ruleset
-/// fingerprint carried by the protocol hello message.
+/// This type is safe to expose publicly and identifies a particular public
+/// game state. It is not interchangeable with a ruleset fingerprint.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PublicStateHash(HashHex);
@@ -47,6 +47,24 @@ impl PublicStateHash {
 }
 
 impl std::fmt::Display for PublicStateHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Fingerprint of the ruleset/catalog parameters, independent of a game
+/// state. This is used for compatibility negotiation and observation scope.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RulesetFingerprint(HashHex);
+
+impl RulesetFingerprint {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for RulesetFingerprint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
     }
@@ -265,18 +283,19 @@ pub fn public_state_hash(state: &FullState) -> PublicStateHash {
 
 /// Stable fingerprint for ruleset/catalog compatibility negotiation. It does
 /// not include a particular game's seed, deck, or initial deal.
-pub fn ruleset_fingerprint(ruleset: &Ruleset) -> PublicStateHash {
+pub fn ruleset_fingerprint(ruleset: &Ruleset) -> RulesetFingerprint {
     let mut h = Sha256::new();
     h.update(b"splendor-ruleset-v1\0");
     write_ruleset(&mut h, ruleset);
-    PublicStateHash(finish(h))
+    RulesetFingerprint(finish(h))
 }
 
 /// Hash of a single player's observation. This encoding is explicit and does
 /// not depend on `Debug` or serde field formatting.
 pub fn observation_hash(observation: &Observation) -> ObservationHash {
     let mut h = Sha256::new();
-    h.update(b"splendor-obs-v3\0");
+    h.update(b"splendor-obs-v4\0");
+    write_str(&mut h, observation.ruleset_fingerprint.as_str());
     h.update([observation.viewer.0]);
     write_public_state(&mut h, &observation.public);
     write_observation_private(&mut h, observation);

@@ -23,7 +23,7 @@ pub use events::{
 pub use gems::Gems;
 pub use hash::{
     full_state_hash, observation_hash, observer_hash, public_state_hash, ruleset_fingerprint,
-    FullStateHash, HashHex, ObservationHash, PublicStateHash,
+    FullStateHash, HashHex, ObservationHash, PublicStateHash, RulesetFingerprint,
 };
 pub use observation::{
     Observation, PrivatePlayerView, PublicPlayerView, PublicState, ReservedView,
@@ -39,4 +39,4 @@ pub use splendor_catalog::{
 };
 
 /// Engine semantic version for replays / protocol compatibility.
-pub const ENGINE_VERSION: &str = "0.1.0";
+pub const ENGINE_VERSION: &str = "0.2.0";

@@ -20,7 +20,7 @@ legal actions and terminal judgement.
 ## Decision
 
 1. **Deterministic, version-tagged byte encoding** for all three hashes
-   (`splendor-full-v3`, `splendor-public-v3`, `splendor-obs-v3`). No
+   (`splendor-full-v3`, `splendor-public-v3`, `splendor-obs-v4`). No
    `Debug`/`serde_json` in the hash path.
 
 2. **Full coverage of behavior-affecting fields:**
@@ -30,11 +30,13 @@ legal actions and terminal judgement.
      the complete `GameResult` summary + `TerminalReason`.
    - `PublicStateHash`: all public observation fields, public reserved card
      identities, terminal result, and all ruleset parameters.
-   - `ObservationHash`: full public board + the viewer's own private
-     reserved (slot/card/tier/from_deck).
+   - `ObservationHash`: the ruleset fingerprint + full public board + the
+     viewer's own private reserved (slot/card/tier/from_deck).
 
 3. **Typed wrappers** (`FullStateHash` / `PublicStateHash` /
-   `ObservationHash`) prevent cross-use at compile time.
+   `ObservationHash`) prevent cross-use at compile time. The independent
+   `RulesetFingerprint` type is used for ruleset/catalog compatibility and is
+   included in every `Observation` and `ObservationHash`.
 
 ## Consequences
 
