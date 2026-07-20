@@ -30,6 +30,8 @@ pub struct PublicPlayerView {
     pub reserved_count: u8,
     /// Face-up reserved cards only (from market). Blind reserves are omitted.
     pub public_reserved: Vec<CardId>,
+    /// All purchased development cards are public canonical ownership.
+    pub purchased: Vec<CardId>,
     pub nobles: Vec<NobleId>,
 }
 
@@ -87,6 +89,7 @@ impl FullState {
                         .filter(|r| !r.from_deck)
                         .map(|r| r.card)
                         .collect(),
+                    purchased: p.purchased.clone(),
                     nobles: p.nobles.clone(),
                 })
                 .collect(),

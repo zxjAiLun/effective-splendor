@@ -45,6 +45,8 @@ pub struct FullPlayerState {
     pub bonuses: [u8; 5],
     pub prestige: u8,
     pub reserved: Vec<ReservedCard>,
+    /// Canonical ownership of purchased development cards.
+    pub purchased: Vec<CardId>,
     pub nobles: Vec<NobleId>,
 }
 
@@ -56,6 +58,7 @@ impl FullPlayerState {
             bonuses: [0; 5],
             prestige: 0,
             reserved: Vec::new(),
+            purchased: Vec::new(),
             nobles: Vec::new(),
         }
     }
@@ -586,6 +589,7 @@ impl FullState {
 
         p.bonuses[def.bonus.index()] = p.bonuses[def.bonus.index()].saturating_add(1);
         p.prestige = p.prestige.saturating_add(def.prestige);
+        p.purchased.push(cid);
 
         if let PurchaseSource::Market { tier, slot } = source {
             self.market[tier.index()][slot as usize] = None;
@@ -803,10 +807,13 @@ impl FullState {
             )));
         }
 
-        // Each card appears at most once
+        // Every catalog card appears exactly once across the live zones.
         let mut seen = [false; 90];
         let mut mark = |id: CardId| -> EngineResult<()> {
             let i = id.index();
+            if i >= seen.len() {
+                return Err(EngineError::Invariant(format!("invalid card {i}")));
+            }
             if seen[i] {
                 return Err(EngineError::Invariant(format!("duplicate card {i}")));
             }
@@ -827,7 +834,16 @@ impl FullState {
             for r in &p.reserved {
                 mark(r.card)?;
             }
-            // Purchased cards are only tracked as bonuses, not IDs — OK for Phase 0.
+            for &id in &p.purchased {
+                mark(id)?;
+            }
+        }
+        if seen.iter().filter(|&&present| present).count() != all_cards().len() {
+            return Err(EngineError::Invariant(format!(
+                "card conservation incomplete: saw {} of {}",
+                seen.iter().filter(|&&present| present).count(),
+                all_cards().len()
+            )));
         }
 
         for p in &self.players {
@@ -836,6 +852,31 @@ impl FullState {
             }
             if p.reserved.len() > self.ruleset.max_reserved as usize {
                 return Err(EngineError::Invariant("too many reserved".into()));
+            }
+
+            let mut expected_bonuses = [0u8; 5];
+            let mut expected_prestige = 0u8;
+            for &id in &p.purchased {
+                let def = card(id);
+                expected_bonuses[def.bonus.index()] =
+                    expected_bonuses[def.bonus.index()].saturating_add(1);
+                expected_prestige = expected_prestige.saturating_add(def.prestige);
+            }
+            for &noble in &p.nobles {
+                expected_prestige = expected_prestige
+                    .saturating_add(splendor_catalog::all_nobles()[noble.index()].prestige);
+            }
+            if p.bonuses != expected_bonuses {
+                return Err(EngineError::Invariant(format!(
+                    "player {} bonus cache does not match purchased cards",
+                    p.id.0
+                )));
+            }
+            if p.prestige != expected_prestige {
+                return Err(EngineError::Invariant(format!(
+                    "player {} prestige cache does not match cards and nobles",
+                    p.id.0
+                )));
             }
         }
         Ok(())
@@ -874,30 +915,11 @@ fn auto_discard_to_max(player: &mut FullPlayerState, max: u8, bank: &mut Gems) {
 
 fn compute_result(players: &[FullPlayerState]) -> GameResult {
     let scores: Vec<u8> = players.iter().map(|p| p.prestige).collect();
-    let best = *scores.iter().max().unwrap_or(&0);
 
-    // Tie-break: fewer development cards (bonuses sum) wins among top score.
-    let card_counts: Vec<u8> = players
-        .iter()
-        .map(|p| p.bonuses.iter().sum::<u8>())
-        .collect();
+    // Tie-break: fewer purchased development cards wins among top score.
+    let card_counts: Vec<u8> = players.iter().map(|p| p.purchased.len() as u8).collect();
 
-    let mut contenders: Vec<usize> = scores
-        .iter()
-        .enumerate()
-        .filter(|(_, &s)| s == best)
-        .map(|(i, _)| i)
-        .collect();
-    let min_cards = contenders
-        .iter()
-        .map(|&i| card_counts[i])
-        .min()
-        .unwrap_or(0);
-    contenders.retain(|&i| card_counts[i] == min_cards);
-
-    let winners: Vec<PlayerId> = contenders.iter().map(|&i| PlayerId(i as u8)).collect();
-
-    // Dense ranks: 0 = best
+    // Sort by prestige descending, then purchased-card count ascending.
     let mut order: Vec<usize> = (0..players.len()).collect();
     order.sort_by(|&a, &b| {
         scores[b]
@@ -905,9 +927,22 @@ fn compute_result(players: &[FullPlayerState]) -> GameResult {
             .then_with(|| card_counts[a].cmp(&card_counts[b]))
     });
     let mut ranks = vec![0u8; players.len()];
-    for (rank, &i) in order.iter().enumerate() {
-        ranks[i] = rank as u8;
+    let mut dense_rank = 0u8;
+    for (position, &i) in order.iter().enumerate() {
+        if position > 0 {
+            let previous = order[position - 1];
+            if scores[i] != scores[previous] || card_counts[i] != card_counts[previous] {
+                dense_rank = dense_rank.saturating_add(1);
+            }
+        }
+        ranks[i] = dense_rank;
     }
+    let winners: Vec<PlayerId> = order
+        .iter()
+        .copied()
+        .filter(|&i| ranks[i] == 0)
+        .map(|i| PlayerId(i as u8))
+        .collect();
 
     GameResult {
         scores,

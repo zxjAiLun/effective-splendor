@@ -204,6 +204,10 @@ fn write_public_state(h: &mut Sha256, public: &PublicState) {
         for card in &player.public_reserved {
             h.update([card.0]);
         }
+        write_len(h, player.purchased.len());
+        for card in &player.purchased {
+            h.update([card.0]);
+        }
         write_nobles(h, &player.nobles);
     }
 
@@ -259,6 +263,10 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
         write_len(&mut h, player.reserved.len());
         for reserved in &player.reserved {
             h.update([reserved.card.0, reserved.from_deck as u8]);
+        }
+        write_len(&mut h, player.purchased.len());
+        for card in &player.purchased {
+            h.update([card.0]);
         }
         write_nobles(&mut h, &player.nobles);
     }
