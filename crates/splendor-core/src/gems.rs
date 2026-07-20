@@ -110,10 +110,7 @@ impl Gems {
 
     /// Number of distinct non-zero color piles (ignores gold).
     pub fn distinct_colors(self) -> u8 {
-        GemColor::ALL
-            .iter()
-            .filter(|&&c| self.color(c) > 0)
-            .count() as u8
+        GemColor::ALL.iter().filter(|&&c| self.color(c) > 0).count() as u8
     }
 
     pub fn is_zero(self) -> bool {

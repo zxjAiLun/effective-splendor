@@ -1,0 +1,11 @@
+{
+  "commit": "b1bbb3c1eff6c42bc75a2f54944499df27b13424",
+  "rust_version": "1.94.1",
+  "os": "MINGW64_NT-10.0-26200 3.4.9-be826601.x86_64 x86_64",
+  "cpu": "x86_64",
+  "players": 2,
+  "games": 20000,
+  "invariants_enabled": true,
+  "games_per_s": 1354.6,
+  "actions_per_game": 93.0
+}

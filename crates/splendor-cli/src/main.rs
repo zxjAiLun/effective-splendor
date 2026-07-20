@@ -1,12 +1,17 @@
+use std::fs;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
-    full_state_hash, play_random_game, Action, FullState, GameConfig, PlayerId, ENGINE_VERSION,
+    full_state_hash, observation_hash, play_random_game, ruleset_fingerprint, visible_events,
+    Action, Audience, FullState, GameConfig, PlayerId, ENGINE_VERSION,
 };
-use splendor_protocol::{ClientMessage, Meta, ServerMessage, PROTOCOL_VERSION};
+use splendor_protocol::{
+    to_ndjson, ClientMessage, ClientRequestMeta, ObservationMeta, RecipientMeta, RequestMeta,
+    ServerMessage, PROTOCOL_VERSION,
+};
 
 #[derive(Parser)]
 #[command(name = "splendor", about = "Splendor rules engine CLI (Phase 0)")]
@@ -49,6 +54,11 @@ enum Commands {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
+    /// Generate golden protocol transcripts under fixtures/protocol/v0.2/
+    GenFixtures {
+        #[arg(long, default_value = "fixtures/protocol/v0.2")]
+        out_dir: String,
+    },
 }
 
 fn main() {
@@ -72,6 +82,7 @@ fn main() {
         } => cmd_play(players, seed, verbose),
         Commands::ReplayCheck { players, seed } => cmd_replay_check(players, seed),
         Commands::ProtocolDemo { seed } => cmd_protocol_demo(seed),
+        Commands::GenFixtures { out_dir } => cmd_gen_fixtures(&out_dir),
     }
 }
 
@@ -121,7 +132,7 @@ fn cmd_play(players: u8, seed: u64, verbose: bool) {
     })
     .expect("setup");
     if verbose {
-        eprintln!("setup_hash={}", setup.state_hash_after);
+        eprintln!("setup_hash={}", setup.state_hash_after.as_str());
     }
 
     let mut rng = SmallRng::seed_from_u64(seed ^ 0xA5A5_A5A5_A5A5_A5A5);
@@ -146,7 +157,7 @@ fn cmd_play(players: u8, seed: u64, verbose: bool) {
             "scores": result.scores,
             "ranks": result.ranks,
             "winners": result.winners.iter().map(|p| p.0).collect::<Vec<_>>(),
-            "full_hash": full_state_hash(&state),
+            "full_hash": full_state_hash(&state).as_str(),
             "actions": state.log.iter().filter(|e| {
                 matches!(e, splendor_core::GameEvent::ActionApplied { .. })
             }).count(),
@@ -171,7 +182,7 @@ fn cmd_replay_check(players: u8, seed: u64) {
         actions.push(a);
         state.apply(a).unwrap();
     }
-    let expected = full_state_hash(&state);
+    let expected = full_state_hash(&state).as_str().to_string();
 
     let (mut replay, _) = FullState::new(GameConfig {
         player_count: players,
@@ -182,7 +193,7 @@ fn cmd_replay_check(players: u8, seed: u64) {
     for a in &actions {
         replay.apply(*a).unwrap();
     }
-    let got = full_state_hash(&replay);
+    let got = full_state_hash(&replay).as_str().to_string();
     assert_eq!(expected, got, "replay hash mismatch");
     println!("ok actions={} final_hash={}", actions.len(), expected);
 }
@@ -194,20 +205,29 @@ fn cmd_protocol_demo(seed: u64) {
     })
     .unwrap();
     let game_id = format!("demo-{seed}");
-    let hello = ServerMessage::hello(&game_id, splendor_core::RULESET_BASE_V1.0);
+    let hello = ServerMessage::hello(
+        &game_id,
+        splendor_core::RULESET_BASE_V1.0,
+        splendor_core::CATALOG_VERSION,
+        ruleset_fingerprint(&state.ruleset),
+    );
     println!("{}", hello.to_json_line().unwrap());
 
     let obs = state.observation(PlayerId(0));
     let obs_msg = ServerMessage::Observation {
-        meta: Meta::new(&game_id, 1)
-            .with_player(PlayerId(0))
-            .with_hash(full_state_hash(&state)),
+        meta: ObservationMeta::new(&game_id, 1, PlayerId(0), observation_hash(&obs)),
         observation: obs,
     };
     println!("{}", obs_msg.to_json_line().unwrap());
 
     let req = ServerMessage::RequestAction {
-        meta: Meta::new(&game_id, 2).with_player(PlayerId(0)),
+        meta: RequestMeta::new(
+            &game_id,
+            2,
+            PlayerId(0),
+            1,
+            observation_hash(&state.observation(PlayerId(0))),
+        ),
         deadline_ms: 1000,
         legal_actions: state.legal_actions(),
     };
@@ -215,8 +235,111 @@ fn cmd_protocol_demo(seed: u64) {
 
     let action = state.legal_actions()[0];
     let client = ClientMessage::Action {
-        meta: Meta::new(&game_id, 3).with_player(PlayerId(0)),
+        meta: ClientRequestMeta::new(&game_id, 1),
         action,
     };
     println!("{}", serde_json::to_string(&client).unwrap());
+}
+
+/// Build a complete player-scoped server transcript. State construction and
+/// referee-event projection stay in the host/fixture layer; only the final
+/// `ServerMessage` values cross into the protocol serializer.
+fn server_transcript(
+    game_id: &str,
+    state: &FullState,
+    events: &[splendor_core::RefereeEvent],
+    recipient: PlayerId,
+    audience: Audience,
+    request_id: u64,
+) -> String {
+    let observation = state.observation(recipient);
+    let observation_hash = observation_hash(&observation);
+    let mut messages = vec![
+        ServerMessage::hello(
+            game_id,
+            state.ruleset.id.0,
+            state.ruleset.catalog_version,
+            ruleset_fingerprint(&state.ruleset),
+        ),
+        ServerMessage::GameStart {
+            meta: RecipientMeta::new(game_id, 1, recipient),
+            player_count: state.player_count(),
+            seed_commitment: format!("fixture-commitment-{game_id}"),
+        },
+        ServerMessage::Observation {
+            meta: ObservationMeta::new(game_id, 2, recipient, observation_hash.clone()),
+            observation,
+        },
+    ];
+
+    for event in visible_events(events, audience) {
+        let server_seq = messages.len() as u64;
+        messages.push(ServerMessage::event(
+            RecipientMeta::new(game_id, server_seq, recipient),
+            event,
+        ));
+    }
+
+    let server_seq = messages.len() as u64;
+    messages.push(ServerMessage::RequestAction {
+        meta: RequestMeta::new(game_id, server_seq, recipient, request_id, observation_hash),
+        deadline_ms: 1000,
+        legal_actions: state.legal_actions(),
+    });
+
+    to_ndjson(&messages)
+}
+
+/// Pure deterministic normal-game fixture generator.
+fn normal_golden_transcript() -> String {
+    let (state, setup) = FullState::new(GameConfig::default()).expect("fixture setup");
+    server_transcript(
+        "golden-normal",
+        &state,
+        &setup.events,
+        PlayerId(0),
+        Audience::Player(PlayerId(0)),
+        1,
+    )
+}
+
+/// Pure deterministic blind-reserve fixture generator for a selected player.
+fn blind_reserve_transcript(audience: Audience) -> String {
+    let recipient = match audience {
+        Audience::Player(player) => player,
+        _ => panic!("blind fixture requires a player audience"),
+    };
+    let (mut state, setup) = FullState::new(GameConfig {
+        seed: 7,
+        ..Default::default()
+    })
+    .expect("fixture setup");
+    let reserve = state
+        .legal_actions()
+        .into_iter()
+        .find(|action| matches!(action, Action::ReserveDeck { .. }))
+        .expect("reserve deck is legal at start");
+    let step = state.apply(reserve).expect("apply reserve");
+    let mut events = setup.events;
+    events.extend(step.events);
+
+    server_transcript("golden-blind", &state, &events, recipient, audience, 2)
+}
+
+/// Write a deterministic protocol transcript to `<out_dir>/<name>.ndjson`.
+fn write_transcript(name: &str, out_dir: &str, transcript: String) {
+    fs::create_dir_all(out_dir).expect("mkdir fixtures dir");
+    let path = format!("{out_dir}/{name}.ndjson");
+    let line_count = transcript.lines().count();
+    fs::write(&path, transcript).expect("write fixture");
+    println!("wrote {path} ({line_count} lines)");
+}
+
+fn cmd_gen_fixtures(out_dir: &str) {
+    write_transcript("normal-game", out_dir, normal_golden_transcript());
+    write_transcript(
+        "blind-reserve",
+        out_dir,
+        blind_reserve_transcript(splendor_core::Audience::Player(PlayerId(1))),
+    );
 }

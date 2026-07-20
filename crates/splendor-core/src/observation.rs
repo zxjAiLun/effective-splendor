@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use splendor_catalog::{CardId, NobleId, Tier};
 
 use crate::gems::Gems;
+use crate::hash::{ruleset_fingerprint, RulesetFingerprint};
 use crate::state::{FullState, Phase, PlayerId, ReservedCard};
 
 /// Fully public board information.
@@ -50,6 +51,8 @@ pub struct ReservedView {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Observation {
     pub viewer: PlayerId,
+    /// Ruleset/catalog scope for this observation and its hash identity.
+    pub ruleset_fingerprint: RulesetFingerprint,
     pub public: PublicState,
     pub private: PrivatePlayerView,
 }
@@ -104,6 +107,7 @@ impl FullState {
 
         Observation {
             viewer,
+            ruleset_fingerprint: ruleset_fingerprint(&self.ruleset),
             public,
             private,
         }

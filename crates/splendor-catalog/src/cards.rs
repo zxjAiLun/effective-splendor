@@ -67,6 +67,7 @@ pub fn card(id: CardId) -> &'static CardDef {
     &CARDS[id.index()]
 }
 
+#[allow(clippy::too_many_arguments)]
 const fn c(
     id: u8,
     tier: Tier,

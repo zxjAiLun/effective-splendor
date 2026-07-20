@@ -10,7 +10,7 @@ use crate::events::{
     ChanceEvent, GameEvent, PurchaseSource, ReserveSource, StepResult, Visibility,
 };
 use crate::gems::Gems;
-use crate::hash::full_state_hash;
+use crate::hash::{full_state_hash, FullStateHash};
 
 /// Zero-based player index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -247,7 +247,7 @@ impl FullState {
             state,
             StepResult {
                 events,
-                state_hash_before: String::new(),
+                state_hash_before: FullStateHash::empty(),
                 state_hash_after: hash_after,
             },
         ))
@@ -544,35 +544,24 @@ impl FullState {
             .checked_sub(take)
             .ok_or_else(|| EngineError::IllegalAction("bank lacks tokens".into()))?;
         let p = &mut self.players[pid.index()];
-        p.tokens = p.tokens + take;
+        p.tokens += take;
 
         if !give_back.is_zero() {
             p.tokens = p
                 .tokens
                 .checked_sub(give_back)
                 .ok_or_else(|| EngineError::IllegalAction("cannot return tokens".into()))?;
-            self.bank = self.bank + give_back;
+            self.bank += give_back;
         }
 
         if p.tokens.total() > self.ruleset.max_tokens {
             return Err(EngineError::IllegalAction("exceeds max tokens".into()));
         }
 
-        events.push(GameEvent::TokensChanged {
+        events.push(GameEvent::TokensTransferred {
             player: pid,
-            delta_player: take.checked_sub(give_back).unwrap_or_else(|| {
-                // give_back can exceed take on a color if player already held some
-                // Represent net as best-effort for logging; state is already correct.
-                Gems {
-                    white: take.white.saturating_sub(give_back.white),
-                    blue: take.blue.saturating_sub(give_back.blue),
-                    green: take.green.saturating_sub(give_back.green),
-                    red: take.red.saturating_sub(give_back.red),
-                    black: take.black.saturating_sub(give_back.black),
-                    gold: take.gold.saturating_sub(give_back.gold),
-                }
-            }),
-            delta_bank: give_back.checked_sub(take).unwrap_or(Gems::ZERO),
+            taken_from_bank: take,
+            returned_to_bank: give_back,
         });
         Ok(())
     }
@@ -593,7 +582,7 @@ impl FullState {
             .tokens
             .checked_sub(pay)
             .ok_or_else(|| EngineError::IllegalAction("payment failed".into()))?;
-        self.bank = self.bank + pay;
+        self.bank += pay;
 
         p.bonuses[def.bonus.index()] = p.bonuses[def.bonus.index()].saturating_add(1);
         p.prestige = p.prestige.saturating_add(def.prestige);
@@ -654,6 +643,11 @@ impl FullState {
             from: source,
             received_gold,
             public_identity: !from_deck,
+            visible_to: if from_deck {
+                Visibility::Player(pid)
+            } else {
+                Visibility::Public
+            },
         });
         Ok(())
     }
