@@ -787,9 +787,13 @@ impl FullState {
         let score = self.players[pid.index()].prestige;
         if score >= self.ruleset.prestige_to_end {
             self.end_game_triggered = true;
-            // Finish the current round: every other seat gets exactly one more
-            // action, regardless of which seat crossed the threshold.
-            let remaining = self.player_count() - 1;
+            // Finish the current round so every seat has taken the same number
+            // of actions: only the seats after the triggerer (up to the last
+            // seat) still act. The engine always starts at seat 0, so the count
+            // of remaining seats is `player_count - 1 - triggerer`. If start
+            // players become configurable this must use the ring distance from
+            // the round anchor / starting player instead.
+            let remaining = self.player_count() - 1 - pid.0;
             self.turns_remaining_in_final_round = Some(remaining);
             events.push(GameEvent::EndGameTriggered { by: pid });
             if remaining == 0 {
@@ -803,8 +807,8 @@ impl FullState {
             return;
         }
 
-        // End already triggered: `turns_remaining` is how many *other* players
-        // still get a turn after the triggerer's completed turn.
+        // End already triggered: `turns_remaining` is how many seats after the
+        // triggerer still get a turn to finish the current round.
         if self.end_game_triggered {
             if let Some(rem) = self.turns_remaining_in_final_round {
                 if rem == 0 {

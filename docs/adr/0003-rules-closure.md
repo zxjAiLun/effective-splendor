@@ -21,8 +21,12 @@ enumeration, and terminal semantics.
 - `Pass` is legal only when no other main action exists. Core tracks
   consecutive forced passes and ends a full round of them with
   `TerminalReason::Stalemate`.
-- A prestige threshold starts a final round in which every other seat receives
-  exactly one action, independent of which seat triggered the threshold.
+- A prestige threshold finishes the current round so every seat has taken the
+  same number of actions. Only the seats after the triggerer (up to the last
+  seat) still act; if the last seat triggers, the game ends immediately. The
+  engine starts at seat 0, so the remaining-seat count is
+  `player_count - 1 - triggerer`. Configurable start players would replace this
+  with the ring distance from the round anchor.
 - Setup shuffling uses a local RNG. `FullState` stores the resolved deck order,
   not an agent's action-selection RNG.
 

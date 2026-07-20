@@ -704,27 +704,34 @@ fn threshold_state(player_count: u8, trigger: u8) -> FullState {
     state
 }
 
-fn record_action_players(events: &[GameEvent], counts: &mut [u8]) {
+fn record_action_players(events: &[GameEvent], actors: &mut Vec<PlayerId>) {
     for event in events {
         if let GameEvent::ActionApplied { player, .. } = event {
-            counts[player.index()] += 1;
+            actors.push(*player);
         }
     }
 }
 
 #[test]
-fn final_round_gives_each_seat_one_action_after_trigger() {
+fn final_round_finishes_only_remaining_seats_in_current_round() {
     for player_count in 2..=4 {
         for trigger in 0..player_count {
             let mut state = threshold_state(player_count, trigger);
-            let mut counts = vec![0u8; player_count as usize];
+            let mut actors: Vec<PlayerId> = Vec::new();
             let step = state
                 .apply(Action::BuyMarket {
                     tier: Tier::One,
                     slot: 0,
                 })
                 .unwrap();
-            record_action_players(&step.events, &mut counts);
+            record_action_players(&step.events, &mut actors);
+
+            // The seat that crossed the threshold is the last seat, so the game
+            // ends immediately once its own action is applied.
+            if trigger == player_count - 1 {
+                assert!(state.is_terminal());
+                assert!(state.result.is_some());
+            }
 
             // Make the remaining final-round actions forced passes. This test
             // isolates turn accounting from unrelated card/token choices.
@@ -733,9 +740,15 @@ fn final_round_gives_each_seat_one_action_after_trigger() {
             state.decks = [Vec::new(), Vec::new(), Vec::new()];
             while !state.is_terminal() {
                 let step = state.apply(Action::Pass).unwrap();
-                record_action_players(&step.events, &mut counts);
+                record_action_players(&step.events, &mut actors);
             }
-            assert_eq!(counts, vec![1; player_count as usize]);
+
+            // Every seat has the same number of actions once the round finishes:
+            // the triggerer acts, then only the seats after it (up to the last
+            // seat) get their turn.
+            let mut expected: Vec<PlayerId> = vec![PlayerId(trigger)];
+            expected.extend(((trigger + 1)..player_count).map(PlayerId));
+            assert_eq!(actors, expected);
             assert_eq!(
                 state.result.as_ref().unwrap().reason,
                 TerminalReason::PrestigeThreshold
