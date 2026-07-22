@@ -346,13 +346,13 @@ fn protocol_golden_transcript_matches_generated_wire() {
     let normal = normal_golden_transcript();
     assert_eq!(
         normal,
-        include_str!("../../../fixtures/protocol/v0.4/normal-game.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.5/normal-game.ndjson"),
         "normal protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
     let blind = blind_reserve_transcript(Audience::Player(PlayerId(1)));
     assert_eq!(
         blind,
-        include_str!("../../../fixtures/protocol/v0.4/blind-reserve.ndjson"),
+        include_str!("../../../fixtures/protocol/v0.5/blind-reserve.ndjson"),
         "blind protocol fixture is stale; run `splendor gen-fixtures` after intentional review"
     );
 

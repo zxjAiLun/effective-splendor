@@ -499,6 +499,7 @@ dependencies = [
  "serde",
  "serde_json",
  "splendor-core",
+ "thiserror",
 ]
 
 [[package]]

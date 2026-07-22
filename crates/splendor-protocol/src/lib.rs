@@ -1,4 +1,4 @@
-//! NDJSON agent protocol (v0.4).
+//! NDJSON agent protocol (v0.5).
 //!
 //! One JSON object per line. Transport (stdio / TCP / WS) is independent of
 //! the schema.
@@ -11,14 +11,34 @@
 //! - client messages use a separate request metadata type and cannot claim a
 //!   seat, server sequence, or state hash;
 //! - event messages accept `VisibleEvent`, never `RefereeEvent`.
+//!
+//! # Strict parsing (arena entry points)
+//!
+//! [`parse_client_line`] and [`parse_server_line`] are the arena-facing parse
+//! entry points. Unlike a bare `serde_json::from_str`, they reject:
+//! - a `type` tag that is not valid for the direction ([`ProtocolParseError::WrongMessageType`]);
+//! - unknown fields at any depth of the envelope, metadata, or payload
+//!   ([`ProtocolParseError::UnknownField`]);
+//! - trailing bytes after the JSON object ([`ProtocolParseError::TrailingData`]);
+//! - non-object or empty lines.
+//!
+//! Unknown-field rejection is DTO-driven: the line is parsed into the typed
+//! message and re-serialized, then compared key-by-key against the original.
+//! Any key that survives in the input but not the faithful re-serialization is
+//! an unknown field. This is used instead of `serde_ignored` because the
+//! internally-tagged (`tag = "type"`) + `#[serde(flatten)]` DTOs buffer their
+//! contents through serde's `Content`, which silently drops unknown fields
+//! before `serde_ignored` can observe them.
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use splendor_core::{
     Action, GameResult, Observation, ObservationHash, PlayerId, RulesetFingerprint, VisibleEvent,
     ENGINE_VERSION,
 };
 
-pub const PROTOCOL_VERSION: &str = "0.4";
+pub const PROTOCOL_VERSION: &str = "0.5";
 
 /// Server-owned fields shared by genuinely broadcast server messages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,8 +290,161 @@ impl ServerMessage {
 }
 
 impl ClientMessage {
-    pub fn parse_line(line: &str) -> serde_json::Result<Self> {
-        serde_json::from_str(line)
+    /// Valid `type` tags for a client → server line.
+    pub const TYPES: &'static [&'static str] = &["hello", "action", "pong"];
+
+    /// Parse a single client line with the strict arena parser. Prefer this
+    /// over a bare `serde_json::from_str`; see [`parse_client_line`].
+    pub fn parse_line(line: &str) -> Result<Self, ProtocolParseError> {
+        parse_client_line(line)
+    }
+}
+
+impl ServerMessage {
+    /// Valid `type` tags for a server → client line.
+    pub const TYPES: &'static [&'static str] = &[
+        "hello",
+        "game_start",
+        "observation",
+        "request_action",
+        "action_applied",
+        "event",
+        "game_end",
+        "error",
+        "ping",
+    ];
+}
+
+/// Structured error classification for the strict parsers. This is
+/// deliberately not a single opaque `serde_json::Error`: the arena needs to map
+/// a client fault to a specific `AgentFault` category.
+#[derive(Debug, thiserror::Error)]
+pub enum ProtocolParseError {
+    /// The line was empty or whitespace only.
+    #[error("empty protocol line")]
+    Empty,
+    /// The line did not decode to a single JSON object.
+    #[error("protocol line is not a JSON object")]
+    NotAnObject,
+    /// The JSON object had no string `type` tag.
+    #[error("protocol line is missing a string `type` tag")]
+    MissingType,
+    /// The `type` tag is not valid for this direction (client vs server).
+    #[error("unexpected message type `{found}` for this direction")]
+    WrongMessageType { found: String },
+    /// A field was present in the wire object but is not part of the message
+    /// schema. `path` is a dotted/indexed path into the object.
+    #[error("unknown field `{path}` in `{message_type}` message")]
+    UnknownField { message_type: String, path: String },
+    /// Bytes remained on the line after the first JSON object.
+    #[error("trailing data after JSON object")]
+    TrailingData,
+    /// The line was syntactically or structurally invalid JSON for the schema.
+    #[error("invalid protocol JSON: {0}")]
+    Json(#[source] serde_json::Error),
+}
+
+/// Strictly parse one client → server NDJSON line.
+///
+/// Rejects unknown fields (at any depth), trailing data, wrong `type` tags, and
+/// non-object lines. `Action` / `Gems` remain strictly parsed. This is the only
+/// sanctioned decode path for client input; the arena never calls a bare
+/// `serde_json::from_str::<ClientMessage>()`.
+pub fn parse_client_line(line: &str) -> Result<ClientMessage, ProtocolParseError> {
+    parse_strict_line::<ClientMessage>(line, ClientMessage::TYPES)
+}
+
+/// Strictly parse one server → client NDJSON line. Mirrors
+/// [`parse_client_line`] for the server direction (used by fixtures and tests
+/// that consume server transcripts).
+pub fn parse_server_line(line: &str) -> Result<ServerMessage, ProtocolParseError> {
+    parse_strict_line::<ServerMessage>(line, ServerMessage::TYPES)
+}
+
+fn parse_strict_line<T>(line: &str, valid_types: &[&str]) -> Result<T, ProtocolParseError>
+where
+    T: DeserializeOwned + Serialize,
+{
+    if line.trim().is_empty() {
+        return Err(ProtocolParseError::Empty);
+    }
+
+    // 1. Decode exactly one JSON value and reject anything after it. Using the
+    //    streaming deserializer lets us classify trailing bytes distinctly from
+    //    ordinary syntax errors.
+    let mut de = serde_json::Deserializer::from_str(line);
+    let value = Value::deserialize(&mut de).map_err(ProtocolParseError::Json)?;
+    de.end().map_err(|_| ProtocolParseError::TrailingData)?;
+
+    // 2. The wire unit is always a single object.
+    let object = value.as_object().ok_or(ProtocolParseError::NotAnObject)?;
+
+    // 3. Classify the message type before any schema binding so a mis-directed
+    //    (but individually valid) message is a distinct fault.
+    let message_type = object
+        .get("type")
+        .and_then(Value::as_str)
+        .ok_or(ProtocolParseError::MissingType)?
+        .to_string();
+    if !valid_types.contains(&message_type.as_str()) {
+        return Err(ProtocolParseError::WrongMessageType {
+            found: message_type,
+        });
+    }
+
+    // 4. Bind to the typed schema. This enforces required fields and value
+    //    types; `Action` / `Gems` reject unknown fields when parsed as roots.
+    let typed: T = serde_json::from_value(value.clone()).map_err(ProtocolParseError::Json)?;
+
+    // 5. DTO-driven unknown-field detection. A faithful re-serialization cannot
+    //    contain a field the schema does not define, so any input key absent
+    //    from the re-serialized value is unknown. This works at every depth and
+    //    needs no hand-maintained field list, so it cannot drift from the DTOs.
+    //    (Safe because no DTO uses `skip_serializing_if`: the output key set is
+    //    always a superset of the legitimate input key set.)
+    let reserialized = serde_json::to_value(&typed).map_err(ProtocolParseError::Json)?;
+    if let Some(path) = first_unknown_field(&value, &reserialized, "") {
+        return Err(ProtocolParseError::UnknownField { message_type, path });
+    }
+
+    Ok(typed)
+}
+
+/// Return the first input path present in `input` but absent from the faithful
+/// re-serialization `known`, recursing structurally through matching objects
+/// and arrays. Scalar values are not compared — only the presence of keys.
+fn first_unknown_field(input: &Value, known: &Value, prefix: &str) -> Option<String> {
+    match (input, known) {
+        (Value::Object(input_map), Value::Object(known_map)) => {
+            for (key, input_child) in input_map {
+                let path = if prefix.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{prefix}.{key}")
+                };
+                match known_map.get(key) {
+                    None => return Some(path),
+                    Some(known_child) => {
+                        if let Some(found) = first_unknown_field(input_child, known_child, &path) {
+                            return Some(found);
+                        }
+                    }
+                }
+            }
+            None
+        }
+        (Value::Array(input_items), Value::Array(known_items)) => {
+            for (index, input_child) in input_items.iter().enumerate() {
+                if let Some(known_child) = known_items.get(index) {
+                    let path = format!("{prefix}[{index}]");
+                    if let Some(found) = first_unknown_field(input_child, known_child, &path) {
+                        return Some(found);
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
     }
 }
 

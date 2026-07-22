@@ -64,9 +64,9 @@ enum Commands {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
-    /// Generate golden protocol transcripts under fixtures/protocol/v0.4/
+    /// Generate golden protocol transcripts under fixtures/protocol/v0.5/
     GenFixtures {
-        #[arg(long, default_value = "fixtures/protocol/v0.4")]
+        #[arg(long, default_value = "fixtures/protocol/v0.5")]
         out_dir: String,
     },
 }
