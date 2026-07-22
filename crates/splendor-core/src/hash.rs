@@ -70,14 +70,21 @@ impl std::fmt::Display for RulesetFingerprint {
     }
 }
 
+/// True only for lowercase ASCII hex digits (`0-9`, `a-f`). Uppercase `A-F` is
+/// rejected so a fingerprint never silently accepts a different casing than it
+/// emits.
+fn is_lower_hex(byte: u8) -> bool {
+    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+}
+
 impl std::str::FromStr for RulesetFingerprint {
     type Err = String;
 
     /// Parse from a 64-char lowercase-hex digest. Used by tests and tooling
     /// that pin a known fingerprint without rebuilding a full `Ruleset`.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
-            return Err("ruleset fingerprint must be 64 ASCII hex characters".to_string());
+        if s.len() != 64 || !s.bytes().all(is_lower_hex) {
+            return Err("ruleset fingerprint must be 64 lowercase hex characters".to_string());
         }
         Ok(RulesetFingerprint(s.to_string()))
     }

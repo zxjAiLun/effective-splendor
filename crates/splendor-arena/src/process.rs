@@ -16,7 +16,7 @@ use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use splendor_core::PlayerId;
 use splendor_protocol::ServerMessage;
@@ -148,23 +148,33 @@ impl AgentProcess {
         // 1. Close stdin so a reading child observes EOF.
         self.stdin = None;
 
-        // 2. Poll under the grace period.
-        let deadline = std::time::Instant::now() + grace;
+        // 2. Poll under the grace period. Cleanup must run on every exit path,
+        //    including a `try_wait` error: the contract is "error also cleans
+        //    up", never "error skips cleanup".
+        let deadline = Instant::now() + grace;
         loop {
-            if let Some(status) = self.child.try_wait().map_err(ProcessError::Wait)? {
-                self.join_readers();
-                return Ok(status);
+            match self.child.try_wait() {
+                Ok(Some(status)) => {
+                    self.join_readers();
+                    return Ok(status);
+                }
+                Ok(None) => {
+                    if Instant::now() >= deadline {
+                        break;
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                Err(e) => {
+                    let _ = self.child.kill();
+                    let _ = self.child.wait();
+                    self.join_readers();
+                    return Err(ProcessError::Wait(e));
+                }
             }
-            if std::time::Instant::now() >= deadline {
-                break;
-            }
-            thread::sleep(Duration::from_millis(10));
         }
 
-        // 3. Escalate to kill.
+        // 3. Escalate to kill, then final wait.
         let _ = self.child.kill();
-
-        // 4. Final wait.
         let status = self.child.wait().map_err(ProcessError::Wait)?;
         self.join_readers();
         Ok(status)
@@ -184,11 +194,16 @@ impl AgentProcess {
 
 impl Drop for AgentProcess {
     fn drop(&mut self) {
-        // Best-effort reaping backstop; must never panic.
+        // Best-effort reaping backstop; must never panic. A `try_wait` error is
+        // treated like "still running": kill + wait before joining readers so
+        // the reader threads are never left blocking on a live pipe.
         self.stdin = None;
-        if self.child.try_wait().map(|s| s.is_none()).unwrap_or(false) {
-            let _ = self.child.kill();
-            let _ = self.child.wait();
+        match self.child.try_wait() {
+            Ok(Some(_)) => {}
+            Ok(None) | Err(_) => {
+                let _ = self.child.kill();
+                let _ = self.child.wait();
+            }
         }
         self.join_readers();
     }
@@ -252,6 +267,9 @@ fn run_stdout_reader(stdout: &mut impl Read, seat: PlayerId, tx: &Sender<Inbound
     const CHUNK: usize = 8192;
     let mut buf = [0u8; CHUNK];
     let mut line: Vec<u8> = Vec::with_capacity(256);
+    // While true, the tail of an oversize line is being dropped until the next
+    // newline: no `Line` may be emitted for it, and only one fault may fire.
+    let mut discarding_oversize_line = false;
 
     loop {
         match stdout.read(&mut buf) {
@@ -262,12 +280,20 @@ fn run_stdout_reader(stdout: &mut impl Read, seat: PlayerId, tx: &Sender<Inbound
                     let remaining = &buf[start..n];
                     if let Some(pos) = remaining.iter().position(|&b| b == b'\n') {
                         let slice = &remaining[..pos];
-                        if line.len() + slice.len() > MAX_AGENT_LINE_BYTES {
+                        if discarding_oversize_line {
+                            // This newline ends the oversize line; drop it
+                            // entirely and exit discard mode (no Line emitted).
+                            discarding_oversize_line = false;
+                            line.clear();
+                        } else if line.len() + slice.len() > MAX_AGENT_LINE_BYTES {
+                            // The completed line overflows: fire exactly one
+                            // fault and start discarding its (already-sent)
+                            // tail, if any.
                             let _ = tx.send(InboundEvent::MessageTooLarge {
                                 seat,
                                 limit: MAX_AGENT_LINE_BYTES,
                             });
-                            // Discard this (overflowing) line entirely.
+                            discarding_oversize_line = true;
                             line.clear();
                         } else {
                             line.extend_from_slice(slice);
@@ -279,18 +305,20 @@ fn run_stdout_reader(stdout: &mut impl Read, seat: PlayerId, tx: &Sender<Inbound
                             line.clear();
                         }
                         start += pos + 1;
+                    } else if discarding_oversize_line {
+                        // Still inside the oversize line; skip this data.
+                        start = n;
+                    } else if line.len() + remaining.len() > MAX_AGENT_LINE_BYTES {
+                        let _ = tx.send(InboundEvent::MessageTooLarge {
+                            seat,
+                            limit: MAX_AGENT_LINE_BYTES,
+                        });
+                        discarding_oversize_line = true;
+                        line.clear();
+                        start = n;
                     } else {
-                        if line.len() + remaining.len() > MAX_AGENT_LINE_BYTES {
-                            let _ = tx.send(InboundEvent::MessageTooLarge {
-                                seat,
-                                limit: MAX_AGENT_LINE_BYTES,
-                            });
-                            line.clear();
-                            start = n;
-                        } else {
-                            line.extend_from_slice(remaining);
-                            start = n;
-                        }
+                        line.extend_from_slice(remaining);
+                        start = n;
                     }
                 }
             }
@@ -304,8 +332,10 @@ fn run_stdout_reader(stdout: &mut impl Read, seat: PlayerId, tx: &Sender<Inbound
         }
     }
 
-    // Emit any trailing partial line (no terminating newline).
-    if !line.is_empty() {
+    // Emit a trailing partial line only if it was a real (in-bounds) line.
+    // If we are still discarding an oversize line, its tail must NOT be
+    // forwarded as a partial `Line`.
+    if !discarding_oversize_line && !line.is_empty() {
         emit_line(seat, &line, tx);
     }
 

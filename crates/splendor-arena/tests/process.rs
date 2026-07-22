@@ -31,6 +31,24 @@ fn agent(sub: &str) -> AgentCommand {
     }
 }
 
+/// Collect every event up to and including `StdoutEof`, with a bounded timeout
+/// so a misbehaving transport cannot hang the test forever. The `StdoutEof`
+/// marker is normalized (seat irrelevant) for stable assertions.
+fn drain_to_eof(rx: &mpsc::Receiver<InboundEvent>, timeout: Duration) -> Vec<InboundEvent> {
+    let mut out = Vec::new();
+    loop {
+        match rx.recv_timeout(timeout) {
+            Ok(InboundEvent::StdoutEof { .. }) => {
+                out.push(InboundEvent::StdoutEof { seat: PlayerId(0) });
+                break;
+            }
+            Ok(ev) => out.push(ev),
+            Err(_) => break,
+        }
+    }
+    out
+}
+
 #[test]
 fn spawn_binds_reported_seat() {
     let seat = PlayerId(1);
@@ -151,23 +169,85 @@ fn early_exit_reports_eof() {
 fn oversize_line_is_bounded() {
     let (tx, rx) = mpsc::channel();
     let _proc = spawn_agent(PlayerId(0), &agent("oversize-line"), tx).expect("spawn");
-    let mut too_large = false;
-    loop {
-        match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(InboundEvent::MessageTooLarge { limit, .. }) => {
-                assert_eq!(limit, MAX_AGENT_LINE_BYTES);
-                too_large = true;
-                break;
+    let events = drain_to_eof(&rx, Duration::from_secs(5));
+    let faults: Vec<usize> = events
+        .iter()
+        .filter_map(|e| match e {
+            InboundEvent::MessageTooLarge { limit, .. } => Some(*limit),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(faults.len(), 1, "expected exactly one MessageTooLarge");
+    assert_eq!(faults[0], MAX_AGENT_LINE_BYTES);
+}
+
+#[test]
+fn oversize_line_emits_exactly_one_fault() {
+    let (tx, rx) = mpsc::channel();
+    let _proc = spawn_agent(PlayerId(0), &agent("oversize-line"), tx).expect("spawn");
+    let events = drain_to_eof(&rx, Duration::from_secs(5));
+    let faults = events
+        .iter()
+        .filter(|e| matches!(e, InboundEvent::MessageTooLarge { .. }))
+        .count();
+    assert_eq!(
+        faults, 1,
+        "a single oversize line must emit exactly one fault"
+    );
+}
+
+#[test]
+fn oversize_line_emits_no_tail_fragment() {
+    let (tx, rx) = mpsc::channel();
+    let _proc = spawn_agent(PlayerId(0), &agent("oversize-line"), tx).expect("spawn");
+    let events = drain_to_eof(&rx, Duration::from_secs(5));
+    // The oversize line's tail must never be forwarded as a Line.
+    assert!(
+        events
+            .iter()
+            .all(|e| !matches!(e, InboundEvent::Line { .. })),
+        "oversize tail must not be forwarded: {events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, InboundEvent::MessageTooLarge { .. })),
+        "expected the single MessageTooLarge fault"
+    );
+}
+
+#[test]
+fn oversize_then_valid_line_recovers_at_next_newline() {
+    let (tx, rx) = mpsc::channel();
+    let _proc = spawn_agent(PlayerId(0), &agent("oversize-then-valid"), tx).expect("spawn");
+    let events = drain_to_eof(&rx, Duration::from_secs(5));
+
+    let mut saw_fault = false;
+    let mut saw_ok = false;
+    let mut line_before_fault = false;
+    for e in &events {
+        match e {
+            InboundEvent::MessageTooLarge { .. } => saw_fault = true,
+            InboundEvent::Line { line, .. } => {
+                if !saw_fault {
+                    line_before_fault = true;
+                }
+                if line == "OK" {
+                    saw_ok = true;
+                }
             }
-            Ok(InboundEvent::Line { line, .. }) => {
-                // Any forwarded line must be within the cap.
-                assert!(line.len() <= MAX_AGENT_LINE_BYTES);
-            }
-            Ok(_) => continue,
-            Err(_) => break,
+            _ => {}
         }
     }
-    assert!(too_large, "expected MessageTooLarge for oversize line");
+    assert!(saw_fault, "expected the oversize fault");
+    assert!(
+        !line_before_fault,
+        "no valid line should appear before the fault"
+    );
+    assert!(
+        saw_ok,
+        "a valid line after the oversize line must still be forwarded"
+    );
 }
 
 #[test]

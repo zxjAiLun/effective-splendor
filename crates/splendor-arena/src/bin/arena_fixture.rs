@@ -20,6 +20,7 @@ fn main() {
         "echo-crlf" => fixture_echo_crlf(),
         "early-exit" => std::process::exit(0),
         "oversize-line" => fixture_oversize(),
+        "oversize-then-valid" => fixture_oversize_then_valid(),
         "stderr-flood" => fixture_stderr_flood(),
         "sleep" => fixture_sleep(args.get(2)),
         other => {
@@ -63,6 +64,19 @@ fn fixture_oversize() {
     let mut out = stdout.lock();
     let _ = out.write_all(line.as_bytes());
     let _ = out.write_all(b"\n");
+    let _ = out.flush();
+}
+
+/// One oversize line (terminated) followed by a valid short line. Exercises the
+/// transport's "discard until the next newline, then resume normal parsing"
+/// behavior.
+fn fixture_oversize_then_valid() {
+    let big = "a".repeat(2 * 1024 * 1024);
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+    let _ = out.write_all(big.as_bytes());
+    let _ = out.write_all(b"\n");
+    let _ = out.write_all(b"OK\n");
     let _ = out.flush();
 }
 

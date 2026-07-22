@@ -61,3 +61,46 @@ fn seed_commitment_is_stable_newtype_and_hex() {
     assert_eq!(a.as_str(), a.as_str().to_ascii_lowercase());
     assert!(a.as_str().bytes().all(|b| b.is_ascii_hexdigit()));
 }
+
+#[test]
+fn seed_commitment_rejects_uppercase_hex() {
+    // Uppercase form of the frozen vector digest must be rejected: lowercase
+    // only.
+    let upper = "E19E4C351E3AD58ECAD21D70B9DDB89B0495A2C419C00D973C7835EB99EE87E8";
+    let res = serde_json::from_str::<SeedCommitment>(&format!("\"{upper}\""));
+    assert!(res.is_err(), "uppercase hex must be rejected");
+}
+
+#[test]
+fn seed_commitment_rejects_non_hex() {
+    // Contains 'g' (non-hex) and is the wrong length.
+    let bad = "g19e4c351e3ad58ecad21d70b9ddb89b0495a2c419c00d973c7835eb99ee87e8";
+    assert!(
+        serde_json::from_str::<SeedCommitment>(&format!("\"{bad}\"")).is_err(),
+        "non-hex string must be rejected"
+    );
+    // Wrong length.
+    let short = "abc123";
+    assert!(
+        serde_json::from_str::<SeedCommitment>(&format!("\"{short}\"")).is_err(),
+        "wrong-length hex must be rejected"
+    );
+}
+
+#[test]
+fn ruleset_fingerprint_from_str_rejects_uppercase() {
+    let upper = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+    assert!(
+        RulesetFingerprint::from_str(upper).is_err(),
+        "uppercase fingerprint must be rejected"
+    );
+}
+
+#[test]
+fn ruleset_fingerprint_from_str_accepts_lowercase() {
+    let lower = "00000000000000000000000000000000000000000000000000000000000000aa";
+    assert!(
+        RulesetFingerprint::from_str(lower).is_ok(),
+        "lowercase fingerprint must be accepted"
+    );
+}

@@ -11,6 +11,13 @@ use splendor_core::RulesetFingerprint;
 #[cfg(test)]
 use std::str::FromStr;
 
+/// True only for lowercase ASCII hex digits (`0-9`, `a-f`). Uppercase `A-F` is
+/// rejected so the strict commitment digest never silently accepts a casing
+/// different from what it emits.
+fn is_lower_hex(byte: u8) -> bool {
+    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+}
+
 /// Domain separation prefix for the v1 seed commitment.
 const SEED_COMMITMENT_DOMAIN: &[u8] = b"effective-splendor-seed-v1\x00";
 
@@ -42,9 +49,9 @@ impl serde::Serialize for SeedCommitment {
 impl<'de> serde::Deserialize<'de> for SeedCommitment {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = String::deserialize(deserializer)?;
-        if raw.len() != 64 || !raw.bytes().all(|b| b.is_ascii_hexdigit()) {
+        if raw.len() != 64 || !raw.bytes().all(is_lower_hex) {
             return Err(serde::de::Error::custom(
-                "seed commitment must be 64 hex chars",
+                "seed commitment must be 64 lowercase hex chars",
             ));
         }
         Ok(SeedCommitment(raw))
