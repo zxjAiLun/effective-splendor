@@ -459,6 +459,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-arena"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "splendor-core",
+ "splendor-protocol",
+ "thiserror",
+]
+
+[[package]]
 name = "splendor-catalog"
 version = "0.1.0"
 dependencies = [

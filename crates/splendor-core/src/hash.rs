@@ -70,6 +70,19 @@ impl std::fmt::Display for RulesetFingerprint {
     }
 }
 
+impl std::str::FromStr for RulesetFingerprint {
+    type Err = String;
+
+    /// Parse from a 64-char lowercase-hex digest. Used by tests and tooling
+    /// that pin a known fingerprint without rebuilding a full `Ruleset`.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 64 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err("ruleset fingerprint must be 64 ASCII hex characters".to_string());
+        }
+        Ok(RulesetFingerprint(s.to_string()))
+    }
+}
+
 /// Hash of a single player's observation (public board + own private cards).
 ///
 /// This is the only state hash that the protocol may carry.

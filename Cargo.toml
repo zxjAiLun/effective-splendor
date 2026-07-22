@@ -5,6 +5,7 @@ members = [
     "crates/splendor-core",
     "crates/splendor-protocol",
     "crates/splendor-replay",
+    "crates/splendor-arena",
     "crates/splendor-cli",
 ]
 default-members = [
@@ -12,6 +13,7 @@ default-members = [
     "crates/splendor-core",
     "crates/splendor-protocol",
     "crates/splendor-replay",
+    "crates/splendor-arena",
     "crates/splendor-cli",
 ]
 
