@@ -286,14 +286,16 @@ fn run_stdout_reader(stdout: &mut impl Read, seat: PlayerId, tx: &Sender<Inbound
                             discarding_oversize_line = false;
                             line.clear();
                         } else if line.len() + slice.len() > MAX_AGENT_LINE_BYTES {
-                            // The completed line overflows: fire exactly one
-                            // fault and start discarding its (already-sent)
-                            // tail, if any.
+                            // The completed line overflows, but its terminating
+                            // newline was found in this same chunk, so the line
+                            // is already finished. Fire exactly one fault and
+                            // move on: do NOT enter discard mode, otherwise the
+                            // next (valid) line after this newline would be
+                            // wrongly dropped on the same boundary.
                             let _ = tx.send(InboundEvent::MessageTooLarge {
                                 seat,
                                 limit: MAX_AGENT_LINE_BYTES,
                             });
-                            discarding_oversize_line = true;
                             line.clear();
                         } else {
                             line.extend_from_slice(slice);
@@ -359,5 +361,88 @@ fn emit_line(seat: PlayerId, line: &[u8], tx: &Sender<InboundEvent>) {
                 message: "non-UTF-8 stdout line".to_string(),
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use std::sync::mpsc;
+
+    /// Drive the private reader over an in-memory byte stream so the 8192-byte
+    /// chunk boundary is fully under our control (no OS pipe splitting), then
+    /// collect every emitted event in order.
+    fn collect(reader_input: Vec<u8>, seat: PlayerId) -> Vec<InboundEvent> {
+        let (tx, rx) = mpsc::channel();
+        let mut cursor = Cursor::new(reader_input);
+        run_stdout_reader(&mut cursor, seat, &tx);
+        // The reader returns only after EOF, having sent StdoutEof last.
+        // Drop the sender so `rx.iter()` terminates once drained.
+        drop(tx);
+        rx.iter().collect()
+    }
+
+    #[test]
+    fn oversize_boundary_newline_then_valid_line_recovers() {
+        // A single oversize line whose terminating newline lands in the same
+        // read that first detects the overflow, immediately followed by a valid
+        // line. The overflow must fire exactly one fault, and the valid line
+        // after the newline must NOT be discarded.
+        //
+        // With 8192-byte reads and MAX = 1024*1024 = 128*8192, the line
+        // accumulates to exactly MAX without triggering the no-newline discard
+        // path; the final read ("a\nOK\n") is where overflow and the newline
+        // coincide.
+        let mut input = vec![b'a'; MAX_AGENT_LINE_BYTES + 1];
+        input.push(b'\n');
+        input.extend_from_slice(b"OK\n");
+
+        let events = collect(input, PlayerId(0));
+
+        let faults = events
+            .iter()
+            .filter(|e| matches!(e, InboundEvent::MessageTooLarge { .. }))
+            .count();
+        assert_eq!(faults, 1, "expected exactly one MessageTooLarge");
+
+        let ok_forwarded = events
+            .iter()
+            .any(|e| matches!(e, InboundEvent::Line { line, .. } if line == "OK"));
+        assert!(
+            ok_forwarded,
+            "valid line after boundary overflow must be forwarded: {events:?}"
+        );
+
+        // The oversize line's tail must never be forwarded as a Line.
+        let oversize_fragment = events
+            .iter()
+            .any(|e| matches!(e, InboundEvent::Line { line, .. } if line.starts_with('a')));
+        assert!(
+            !oversize_fragment,
+            "oversize tail must not be forwarded: {events:?}"
+        );
+
+        // Strict ordering: the fault, then the recovered valid line, then EOF.
+        let seq: Vec<&str> = events
+            .iter()
+            .map(|e| match e {
+                InboundEvent::MessageTooLarge { .. } => "fault",
+                InboundEvent::Line { line, .. } => {
+                    if line == "OK" {
+                        "ok"
+                    } else {
+                        "other"
+                    }
+                }
+                InboundEvent::StdoutEof { .. } => "eof",
+                _ => "ignored",
+            })
+            .collect();
+        assert_eq!(
+            seq,
+            vec!["fault", "ok", "eof"],
+            "unexpected event sequence after boundary overflow: {seq:?}"
+        );
     }
 }
