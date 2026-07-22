@@ -133,6 +133,21 @@ fn unsupported_ruleset_is_rejected() {
     assert!(matches!(verify_err(&v), ReplayError::UnsupportedRuleset(_)));
 }
 
+#[test]
+fn invalid_player_count_is_rejected_before_state_rebuild() {
+    // A count outside [min, max] must be reported as a precise
+    // `InvalidPlayerCount` *before* the engine rebuild, not as a generic
+    // engine error leaking out of `FullState::new`.
+    for bad in [0u64, 1, 5, 255] {
+        let mut v = base_value();
+        v["player_count"] = json!(bad);
+        assert!(
+            matches!(verify_err(&v), ReplayError::InvalidPlayerCount { .. }),
+            "player_count={bad} should be rejected before rebuild"
+        );
+    }
+}
+
 // ---- Tamper detection --------------------------------------------------------
 
 #[test]
@@ -184,10 +199,11 @@ fn action_tamper_is_detected_at_exact_ply() {
     }
     let idx = target.expect("game should contain a non-pass action");
     v["steps"][idx]["action"] = json!({ "type": "pass" });
+    // Legality is checked before apply and before the after-hash comparison, so
+    // an illegal substituted action must be reported as exactly `IllegalAction`
+    // at the tampered ply — never as a downstream hash mismatch.
     match verify_err(&v) {
-        ReplayError::IllegalAction { ply, .. } | ReplayError::AfterHashMismatch { ply, .. } => {
-            assert_eq!(ply as usize, idx);
-        }
+        ReplayError::IllegalAction { ply, .. } => assert_eq!(ply as usize, idx),
         other => panic!("unexpected error: {other:?}"),
     }
 }
@@ -217,13 +233,9 @@ fn truncated_replay_is_rejected() {
     let mut v = base_value();
     let steps = v["steps"].as_array_mut().unwrap();
     steps.pop();
-    // After removing the last step the game is no longer terminal at the end.
-    match verify_err(&v) {
-        ReplayError::NotTerminal { .. }
-        | ReplayError::FinalHashMismatch { .. }
-        | ReplayError::AfterHashMismatch { .. } => {}
-        other => panic!("unexpected error: {other:?}"),
-    }
+    // Every recorded step still verifies; the game simply is not terminal after
+    // the last one, so the error must be exactly `NotTerminal`.
+    assert!(matches!(verify_err(&v), ReplayError::NotTerminal { .. }));
 }
 
 #[test]
@@ -235,10 +247,12 @@ fn step_after_terminal_is_rejected() {
     let mut extra = last;
     extra["ply"] = json!(len as u64);
     v["steps"].as_array_mut().unwrap().push(extra);
-    match verify_err(&v) {
-        ReplayError::StepAfterTerminal { .. } | ReplayError::AfterHashMismatch { .. } => {}
-        other => panic!("unexpected error: {other:?}"),
-    }
+    // The terminal check fires before the extra step's hashes are examined, so
+    // the error must be exactly `StepAfterTerminal`.
+    assert!(matches!(
+        verify_err(&v),
+        ReplayError::StepAfterTerminal { .. }
+    ));
 }
 
 #[test]

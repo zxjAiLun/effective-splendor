@@ -18,6 +18,7 @@
 //! chance stream, so v1 makes no promise of reconstruction across incompatible
 //! engine versions. A future v2 would add an explicit chance stream.
 
+mod compat;
 mod error;
 mod format;
 mod recorder;
@@ -28,5 +29,5 @@ pub use format::{
     ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayTerminalReason, ReplayV1,
     REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
 };
-pub use recorder::{record_random_game, ReplayRecorder};
+pub use recorder::{record_random_game, ReplayRecorder, MAX_RANDOM_REPLAY_PLIES};
 pub use verify::{verify_replay, VerifiedReplay};

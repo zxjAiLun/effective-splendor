@@ -32,6 +32,9 @@ pub enum ReplayError {
     #[error("ruleset fingerprint mismatch: replay {recorded:?}, engine {current:?}")]
     RulesetFingerprintMismatch { current: String, recorded: String },
 
+    #[error("player count {recorded} is out of range [{min}, {max}]")]
+    InvalidPlayerCount { recorded: u8, min: u8, max: u8 },
+
     #[error("player count mismatch: replay {recorded}, rebuilt {rebuilt}")]
     PlayerCountMismatch { recorded: u8, rebuilt: u8 },
 
@@ -86,6 +89,9 @@ pub enum ReplayError {
 
     #[error("recorder cannot finish: game is not terminal")]
     ReplayNotTerminal,
+
+    #[error("random recording exceeded the {limit}-ply safety limit")]
+    PlyLimitExceeded { limit: u32 },
 
     #[error("engine error: {0}")]
     Engine(#[from] EngineError),

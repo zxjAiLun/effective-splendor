@@ -51,6 +51,21 @@ mutable handle, so the recorded document always reflects exactly the actions
 that drove the engine. `finish()` only succeeds once the game is terminal
 (otherwise `ReplayNotTerminal`).
 
+**Recorder only supports canonical `splendor-base-v1`.** `ReplayRecorder::new`
+validates the runtime ruleset *before* building any state: the `id` must be
+`splendor-base-v1` and every parameter must match `Ruleset::base_v1()` exactly.
+A non-canonical ruleset is rejected immediately (`UnsupportedRuleset` for a
+wrong id, `RulesetParameterMismatch` for a tampered parameter) rather than
+producing a document the verifier is guaranteed to reject. This keeps the
+recorder's public contract honest: every completed recording it emits verifies.
+The runtime ↔ recorded-file compatibility check lives in one shared internal
+module, so the recorder and verifier can never drift apart.
+
+`record_random_game` is bounded by `MAX_RANDOM_REPLAY_PLIES` (10,000). Splendor
+token actions can loop without progress, and the CLI accepts an arbitrary
+user-supplied `action-seed`, so a run that fails to terminate within the limit
+returns `PlyLimitExceeded` instead of looping forever.
+
 ## Verifying
 
 ```bash
@@ -62,7 +77,9 @@ cargo run -p splendor-cli -- verify-replay --input game.replay.json
 1. format and replay version;
 2. engine, catalog, and ruleset (`id`) compatibility;
 3. ruleset fingerprint;
-4. player count;
+4. player count is in `[min_players, max_players]` — validated **before** the
+   rebuild, so an out-of-range count yields a precise `InvalidPlayerCount`
+   rather than a generic engine error leaking from `FullState::new`;
 5. rebuild the initial state from ruleset + seed + player count;
 6. compare `initial_state_hash`;
 7. for each step: contiguous `ply` from 0; not already terminal; `actor ==

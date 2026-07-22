@@ -3,10 +3,9 @@ use splendor_core::{
     ENGINE_VERSION,
 };
 
+use crate::compat::check_ruleset_params;
 use crate::error::{ReplayError, ReplayResult};
-use crate::format::{
-    ReplayRulesetV1, ReplayV1, REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
-};
+use crate::format::{ReplayV1, REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID};
 
 /// A replay that has been fully re-executed and confirmed against the engine.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,48 +14,6 @@ pub struct VerifiedReplay {
     pub steps: u32,
     pub final_state_hash: String,
     pub result: crate::format::ReplayGameResultV1,
-}
-
-fn check_ruleset_params(recorded: &ReplayRulesetV1, engine: &Ruleset) -> ReplayResult<()> {
-    macro_rules! check {
-        ($field:literal, $recorded:expr, $engine:expr) => {
-            if $recorded != $engine {
-                return Err(ReplayError::RulesetParameterMismatch {
-                    field: $field,
-                    current: format!("{:?}", $engine),
-                    recorded: format!("{:?}", $recorded),
-                });
-            }
-        };
-    }
-    check!("id", recorded.id.as_str(), engine.id.0);
-    check!(
-        "catalog_version",
-        recorded.catalog_version.as_str(),
-        engine.catalog_version
-    );
-    check!("min_players", recorded.min_players, engine.min_players);
-    check!("max_players", recorded.max_players, engine.max_players);
-    check!(
-        "prestige_to_end",
-        recorded.prestige_to_end,
-        engine.prestige_to_end
-    );
-    check!("max_tokens", recorded.max_tokens, engine.max_tokens);
-    check!("max_reserved", recorded.max_reserved, engine.max_reserved);
-    check!(
-        "market_slots_per_tier",
-        recorded.market_slots_per_tier,
-        engine.market_slots_per_tier
-    );
-    check!("gold_tokens", recorded.gold_tokens, engine.gold_tokens);
-    check!(
-        "color_tokens_by_players",
-        recorded.color_tokens_by_players,
-        engine.color_tokens_by_players
-    );
-    check!("noble_extra", recorded.noble_extra, engine.noble_extra);
-    Ok(())
 }
 
 /// Re-execute and strictly verify a replay, ply by ply.
@@ -107,6 +64,20 @@ pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
         });
     }
 
+    // 4. Player count: validate the recorded count is in range *before*
+    //    rebuilding, so an out-of-range count yields a precise
+    //    `InvalidPlayerCount` rather than a generic engine error surfacing from
+    //    `FullState::new`.
+    if replay.player_count < engine_ruleset.min_players
+        || replay.player_count > engine_ruleset.max_players
+    {
+        return Err(ReplayError::InvalidPlayerCount {
+            recorded: replay.player_count,
+            min: engine_ruleset.min_players,
+            max: engine_ruleset.max_players,
+        });
+    }
+
     // 5. Rebuild the initial state from ruleset + seed + player count.
     let (mut state, _) = FullState::new(GameConfig {
         player_count: replay.player_count,
@@ -114,8 +85,8 @@ pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
         ruleset: engine_ruleset,
     })?;
 
-    // 4. Player count (rebuild honors the recorded count; guard against engine
-    //    clamping differences).
+    // Defense in depth: guard against engine clamping differences between the
+    // recorded count and the rebuilt state.
     if state.player_count() != replay.player_count {
         return Err(ReplayError::PlayerCountMismatch {
             recorded: replay.player_count,

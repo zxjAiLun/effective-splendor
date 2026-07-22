@@ -3,11 +3,19 @@ use splendor_core::{
     ENGINE_VERSION,
 };
 
+use crate::compat::ensure_supported_runtime_ruleset;
 use crate::error::{ReplayError, ReplayResult};
 use crate::format::{
     ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayV1, REPLAY_FORMAT,
     REPLAY_VERSION,
 };
+
+/// Upper bound on plies recorded by [`record_random_game`].
+///
+/// Splendor token actions can loop for a long time without progress; the CLI
+/// feeds an arbitrary user-supplied `action_seed`, so the random recorder must
+/// never have an unbounded run path. Mirrors the engine's 10,000-ply guard.
+pub const MAX_RANDOM_REPLAY_PLIES: u32 = 10_000;
 
 /// Wraps a `FullState` and records every applied action into a `ReplayV1`.
 ///
@@ -33,6 +41,10 @@ fn hash_of(state: &FullState) -> ReplayHash {
 
 impl ReplayRecorder {
     pub fn new(config: GameConfig) -> ReplayResult<Self> {
+        // Reject any non-canonical ruleset up front: Replay v1 only supports
+        // `splendor-base-v1`, so recording under any other ruleset would emit a
+        // document the verifier is guaranteed to reject.
+        ensure_supported_runtime_ruleset(&config.ruleset)?;
         let seed = config.seed;
         let (state, _) = FullState::new(config)?;
         let ruleset = ReplayRulesetV1::from_ruleset(&state.ruleset);
@@ -147,11 +159,18 @@ pub fn record_random_game(
         x.wrapping_mul(0x2545_F491_4F6C_DD1D)
     };
 
+    let mut plies = 0u32;
     while !recorder.is_terminal() {
+        if plies >= MAX_RANDOM_REPLAY_PLIES {
+            return Err(ReplayError::PlyLimitExceeded {
+                limit: MAX_RANDOM_REPLAY_PLIES,
+            });
+        }
         let actions = recorder.legal_actions();
         debug_assert!(!actions.is_empty(), "non-terminal state must have actions");
         let index = (next() % actions.len() as u64) as usize;
         recorder.apply(actions[index])?;
+        plies += 1;
     }
 
     recorder.finish()
