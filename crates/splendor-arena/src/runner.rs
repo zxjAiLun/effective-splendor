@@ -90,6 +90,16 @@ struct RunCtx {
     player_count: u8,
 }
 
+/// Send one message and, on failure, surface the transport's bound seat.
+///
+/// Outbound send/flush failures during a running match are *agent faults*
+/// ([`AgentFault::AgentIo`] against the recipient seat), never internal
+/// errors. Callers map the returned seat to the phase-appropriate abort.
+fn send_or_seat(transport: &mut dyn AgentTransport, msg: &ServerMessage) -> Result<(), PlayerId> {
+    let seat = transport.seat();
+    transport.send(msg).map_err(|_| seat)
+}
+
 fn build_report(ctx: &RunCtx, seats: &[SeatState], outcome: ArenaOutcomeV1) -> ArenaReportV1 {
     let agents: Vec<AgentIdentity> = seats.iter().map(|s| s.identity.clone()).collect();
     ArenaReportV1::new(
@@ -229,7 +239,10 @@ impl ArenaRunner {
 
         let mut counters = MatchCounters::default();
 
-        // ---- Handshake: send Hello to every seat, then start one deadline. ----
+        // ---- Handshake: send Hello to every seat, then start one deadline.
+        // The deadline starts only after every Hello flushed successfully; a
+        // send failure is that seat's AgentIo fault, not a handshake timeout.
+        let mut hello_failed: Option<PlayerId> = None;
         for t in transports.iter_mut() {
             let seq = counters.next_server_seq()?;
             let hello = ServerMessage::Hello {
@@ -239,7 +252,22 @@ impl ArenaRunner {
                 catalog_version: ctx.catalog_version.clone(),
                 ruleset_fingerprint: ctx.fingerprint.clone(),
             };
-            let _ = t.send(&hello);
+            if let Err(seat) = send_or_seat(t.as_mut(), &hello) {
+                hello_failed = Some(seat);
+                break;
+            }
+        }
+        if let Some(seat) = hello_failed {
+            return Ok(finish_aborted(
+                &mut transports,
+                &ctx,
+                &seats,
+                seat.0,
+                ArenaPhase::Handshake,
+                AgentFault::AgentIo,
+                None,
+                0,
+            ));
         }
         let handshake_deadline =
             Instant::now() + Duration::from_millis(config.handshake_timeout_ms);
@@ -338,7 +366,9 @@ impl ArenaRunner {
             return Ok(run);
         }
 
-        // ---- GameStart to every seat, in order. ----
+        // ---- GameStart to every seat, in order. A send failure is the
+        // recipient seat's AgentIo fault (still handshake phase). ----
+        let mut game_start_failed: Option<PlayerId> = None;
         for t in transports.iter_mut() {
             let seq = counters.next_server_seq()?;
             let msg = ServerMessage::GameStart {
@@ -346,7 +376,22 @@ impl ArenaRunner {
                 player_count: ctx.player_count,
                 seed_commitment: ctx.seed_commitment.as_str().to_string(),
             };
-            let _ = t.send(&msg);
+            if let Err(seat) = send_or_seat(t.as_mut(), &msg) {
+                game_start_failed = Some(seat);
+                break;
+            }
+        }
+        if let Some(seat) = game_start_failed {
+            return Ok(finish_aborted(
+                &mut transports,
+                &ctx,
+                &seats,
+                seat.0,
+                ArenaPhase::Handshake,
+                AgentFault::AgentIo,
+                None,
+                0,
+            ));
         }
 
         // ---- Per-turn loop. ----
@@ -367,13 +412,26 @@ impl ArenaRunner {
             let obs = recorder.state().observation(current);
             let obs_hash = observation_hash(&obs);
 
+            // Observation send failure: no request was issued yet, so the
+            // abort carries request_id=None.
             {
                 let seq = counters.next_server_seq()?;
                 let msg = ServerMessage::Observation {
                     meta: ObservationMeta::new(ctx.game_id.clone(), seq, current, obs_hash.clone()),
                     observation: obs,
                 };
-                let _ = transports[current.index()].send(&msg);
+                if let Err(seat) = send_or_seat(transports[current.index()].as_mut(), &msg) {
+                    return Ok(finish_aborted(
+                        &mut transports,
+                        &ctx,
+                        &seats,
+                        seat.0,
+                        ArenaPhase::ActionRequest,
+                        AgentFault::AgentIo,
+                        None,
+                        counters.completed_plies(),
+                    ));
+                }
             }
 
             let legal = recorder.legal_actions();
@@ -385,9 +443,24 @@ impl ArenaRunner {
                     deadline_ms: config.move_timeout_ms,
                     legal_actions: legal.clone(),
                 };
-                let _ = transports[current.index()].send(&msg);
+                // The move deadline may only start after a successful flush;
+                // a failed RequestAction send is AgentIo with this request's
+                // id and must never be misreported as ActionTimeout.
+                if let Err(seat) = send_or_seat(transports[current.index()].as_mut(), &msg) {
+                    return Ok(finish_aborted(
+                        &mut transports,
+                        &ctx,
+                        &seats,
+                        seat.0,
+                        ArenaPhase::ActionRequest,
+                        AgentFault::AgentIo,
+                        Some(request_id),
+                        counters.completed_plies(),
+                    ));
+                }
             }
 
+            // Deadline starts only now: the request is known to be flushed.
             let move_deadline = Instant::now() + Duration::from_millis(config.move_timeout_ms);
             let completed_plies = counters.completed_plies();
 
@@ -408,8 +481,43 @@ impl ArenaRunner {
                     let step = recorder
                         .apply(action)
                         .map_err(|e| ArenaInternalError::Engine(e.to_string()))?;
-                    broadcast_events(&mut transports, &ctx, &mut counters, &step.events)?;
+                    // The ply is completed the moment the engine applied it:
+                    // the recorder already contains the action, so the
+                    // counter must advance before any broadcast can fail.
                     counters.inc_completed()?;
+
+                    if recorder.is_terminal() {
+                        // Terminal sends are best-effort: the replay is
+                        // already formed and must not be discarded because a
+                        // recipient hung up. Remaining seats are still tried.
+                        broadcast_events(
+                            &mut transports,
+                            &ctx,
+                            &mut counters,
+                            &step.events,
+                            BroadcastMode::BestEffort,
+                        )?;
+                    } else if let Some(failed_seat) = broadcast_events(
+                        &mut transports,
+                        &ctx,
+                        &mut counters,
+                        &step.events,
+                        BroadcastMode::Strict,
+                    )? {
+                        // Non-terminal event delivery failed: the failing
+                        // recipient seat is at fault, and completed_plies
+                        // already reflects the applied action.
+                        return Ok(finish_aborted(
+                            &mut transports,
+                            &ctx,
+                            &seats,
+                            failed_seat.0,
+                            ArenaPhase::ActionReceived,
+                            AgentFault::AgentIo,
+                            Some(request_id),
+                            counters.completed_plies(),
+                        ));
+                    }
                 }
             }
         }
@@ -633,17 +741,34 @@ fn classify_action(
     }
 }
 
+/// How [`broadcast_events`] treats a per-recipient send failure.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BroadcastMode {
+    /// Stop at the first failed send and report the recipient seat. Used for
+    /// non-terminal event delivery, where a broken recipient aborts the match.
+    Strict,
+    /// Ignore send failures and keep trying every remaining recipient. Used
+    /// for terminal delivery, where the replay is already formed and one
+    /// broken pipe must not block the other seats' game-end messages.
+    BestEffort,
+}
+
 /// Project one step's referee events to every seat and forward them.
 ///
 /// Each recipient is re-projected independently (no cloning of one seat's
 /// transcript to another). `ActionApplied` and `GameEnded` are sent as their
 /// dedicated wire messages; all other visible events go through `Event`.
+///
+/// Returns `Ok(Some(seat))` for the first failed recipient in
+/// [`BroadcastMode::Strict`]; `Ok(None)` otherwise. Counter overflow is the
+/// only internal error.
 fn broadcast_events(
     transports: &mut [Box<dyn AgentTransport>],
     ctx: &RunCtx,
     counters: &mut MatchCounters,
     events: &[RefereeEvent],
-) -> Result<(), ArenaInternalError> {
+    mode: BroadcastMode,
+) -> Result<Option<PlayerId>, ArenaInternalError> {
     let count = ctx.player_count as usize;
     for (seat_idx, transport) in transports.iter_mut().enumerate().take(count) {
         let seat = PlayerId(seat_idx as u8);
@@ -660,10 +785,17 @@ fn broadcast_events(
                 VisibleEvent::GameEnded { result } => ServerMessage::GameEnd { meta, result },
                 other => ServerMessage::Event { meta, event: other },
             };
-            let _ = transport.send(&msg);
+            if let Err(failed) = send_or_seat(transport.as_mut(), &msg) {
+                match mode {
+                    BroadcastMode::Strict => return Ok(Some(failed)),
+                    // Best-effort: skip the rest of this seat's messages but
+                    // keep serving the remaining recipients.
+                    BroadcastMode::BestEffort => break,
+                }
+            }
         }
     }
-    Ok(())
+    Ok(None)
 }
 
 #[cfg(test)]

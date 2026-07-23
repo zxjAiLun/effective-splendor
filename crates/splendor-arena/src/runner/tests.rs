@@ -42,6 +42,34 @@ enum Script {
     PlayThenWrongId,
 }
 
+/// Which outbound server message kind this seat's `send()` fails on.
+///
+/// A failed send is *not* logged and triggers no scripted reaction: the wire
+/// broke, so the agent never saw the message.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FailOn {
+    Hello,
+    GameStart,
+    Observation,
+    RequestAction,
+    ActionApplied,
+    GameEnd,
+}
+
+impl FailOn {
+    fn matches(self, msg: &ServerMessage) -> bool {
+        matches!(
+            (self, msg),
+            (FailOn::Hello, ServerMessage::Hello { .. })
+                | (FailOn::GameStart, ServerMessage::GameStart { .. })
+                | (FailOn::Observation, ServerMessage::Observation { .. })
+                | (FailOn::RequestAction, ServerMessage::RequestAction { .. })
+                | (FailOn::ActionApplied, ServerMessage::ActionApplied { .. })
+                | (FailOn::GameEnd, ServerMessage::GameEnd { .. })
+        )
+    }
+}
+
 struct ScriptedAgent {
     seat: PlayerId,
     tx: Sender<InboundEvent>,
@@ -50,6 +78,7 @@ struct ScriptedAgent {
     queue: Arc<Mutex<VecDeque<Action>>>,
     log: SharedLog,
     shutdown_flag: Arc<AtomicBool>,
+    fail_on: Option<FailOn>,
 }
 
 impl ScriptedAgent {
@@ -75,6 +104,13 @@ impl AgentTransport for ScriptedAgent {
     }
 
     fn send(&mut self, msg: &ServerMessage) -> Result<(), ArenaInternalError> {
+        if let Some(fail) = self.fail_on {
+            if fail.matches(msg) {
+                return Err(ArenaInternalError::Transport(
+                    "injected outbound failure".into(),
+                ));
+            }
+        }
         self.log.lock().unwrap().push((self.seat, msg.clone()));
         match (&self.script, msg) {
             (Script::Mute, _) => {}
@@ -163,6 +199,22 @@ fn run_scripted(
     SharedLog,
     Vec<Arc<AtomicBool>>,
 ) {
+    let fails = vec![None; scripts.len()];
+    run_scripted_failing(config, scripts, queue, fails)
+}
+
+/// Like [`run_scripted`], with one optional injected send failure per seat.
+fn run_scripted_failing(
+    config: ArenaConfig,
+    scripts: Vec<Script>,
+    queue: VecDeque<Action>,
+    fails: Vec<Option<FailOn>>,
+) -> (
+    Result<ArenaRun, ArenaInternalError>,
+    SharedLog,
+    Vec<Arc<AtomicBool>>,
+) {
+    assert_eq!(scripts.len(), fails.len());
     let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
     let flags: Vec<Arc<AtomicBool>> = scripts
         .iter()
@@ -185,6 +237,7 @@ fn run_scripted(
             queue: Arc::clone(&queue),
             log: Arc::clone(&log_for_make),
             shutdown_flag: Arc::clone(&flags_for_make[idx]),
+            fail_on: fails[idx],
         };
         Ok(Box::new(agent) as Box<dyn AgentTransport>)
     });
@@ -542,4 +595,256 @@ fn handshake_timeout_selects_lowest_pending_seat() {
     );
     assert_eq!(run.report.agents[1].agent_name, None);
     assert_eq!(run.report.agents[2].agent_name, None);
+}
+
+// ---------------------------------------------------------------------------
+// Outbound send-failure classification (fix-forward for Commit 3 review).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn hello_send_failure_aborts_as_agent_io() {
+    let (actions, _) = recorded_actions();
+    // A generous handshake timeout: if the failure were misclassified as
+    // HandshakeTimeout the match would sit here for 30 s.
+    let start = Instant::now();
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 30_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![None, Some(FailOn::Hello)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    assert!(run.replay.is_none());
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            seat: 1,
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::Handshake,
+            request_id: None,
+            completed_plies: 0,
+        } => {}
+        ref other => panic!("expected agent_io handshake abort on seat 1, got {other:?}"),
+    }
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "hello send failure must not wait for the handshake deadline"
+    );
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn game_start_send_failure_aborts_as_agent_io() {
+    let (actions, _) = recorded_actions();
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![None, Some(FailOn::GameStart)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    assert!(run.replay.is_none());
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            seat: 1,
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::Handshake,
+            request_id: None,
+            completed_plies: 0,
+        } => {}
+        ref other => panic!("expected agent_io game_start abort on seat 1, got {other:?}"),
+    }
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn observation_send_failure_starts_no_request() {
+    let (actions, _) = recorded_actions();
+    // Both seats fail on Observation, so whichever seat is current at ply 1
+    // trips the failure before any request is issued.
+    let (result, log, flags) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![Some(FailOn::Observation), Some(FailOn::Observation)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    assert!(run.replay.is_none());
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::ActionRequest,
+            request_id: None,
+            completed_plies: 0,
+            ..
+        } => {}
+        ref other => panic!("expected agent_io abort before any request, got {other:?}"),
+    }
+    // No RequestAction may ever have been issued (or delivered).
+    assert!(
+        !log.lock()
+            .unwrap()
+            .iter()
+            .any(|(_, m)| matches!(m, ServerMessage::RequestAction { .. })),
+        "no action request may follow a failed observation send"
+    );
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn request_send_failure_starts_no_deadline() {
+    let (actions, _) = recorded_actions();
+    // A deliberately huge move timeout: if the deadline were started (and the
+    // failure misreported as ActionTimeout) this test would stall for 60 s.
+    let start = Instant::now();
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 5_000, 60_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![Some(FailOn::RequestAction), Some(FailOn::RequestAction)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    assert!(run.replay.is_none());
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::ActionRequest,
+            request_id: Some(1),
+            completed_plies: 0,
+            ..
+        } => {}
+        ref other => panic!("expected agent_io abort on request 1, got {other:?}"),
+    }
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "request send failure must abort immediately, not after the move deadline"
+    );
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn nonterminal_event_send_failure_preserves_applied_ply() {
+    let (actions, _) = recorded_actions();
+    // The first applied action's ActionApplied broadcast fails (strict mode
+    // hits seat 0 first). The engine and recorder already contain that ply,
+    // so the abort must report completed_plies == 1.
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![Some(FailOn::ActionApplied), Some(FailOn::ActionApplied)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    assert!(run.replay.is_none(), "aborted match carries no replay");
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            seat: 0,
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::ActionReceived,
+            request_id: Some(1),
+            completed_plies: 1,
+        } => {}
+        ref other => panic!("expected agent_io abort with the applied ply counted, got {other:?}"),
+    }
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn terminal_game_end_send_failure_still_completes() {
+    let (actions, reference) = recorded_actions();
+    let expected_plies = actions.len() as u32;
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![Some(FailOn::GameEnd), None],
+    );
+    let run = result.expect("terminal send failure must not become an error");
+
+    // The terminal replay is already formed; a broken game-end pipe must not
+    // erase it.
+    let replay = run.replay.as_ref().expect("completed match keeps replay");
+    verify_replay(replay).expect("replay must still re-verify");
+    assert_eq!(replay.final_state_hash, reference.final_state_hash);
+    match &run.report.outcome {
+        ArenaOutcomeV1::Completed {
+            completed_plies, ..
+        } => assert_eq!(*completed_plies, expected_plies),
+        other => panic!("expected completed outcome, got {other:?}"),
+    }
+    for flag in &flags {
+        assert!(flag.load(Ordering::SeqCst));
+    }
+}
+
+#[test]
+fn terminal_send_failure_does_not_block_other_recipients() {
+    let (actions, _) = recorded_actions();
+    let (result, log, _) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![Some(FailOn::GameEnd), None],
+    );
+    let run = result.expect("terminal send failure must not become an error");
+    assert!(run.replay.is_some());
+
+    // Seat 0's game-end pipe broke, but seat 1 must still have received its
+    // own GameEnd (best-effort continues over remaining recipients).
+    let log = log.lock().unwrap();
+    let seat1_game_end = log
+        .iter()
+        .any(|(seat, m)| *seat == PlayerId(1) && matches!(m, ServerMessage::GameEnd { .. }));
+    assert!(seat1_game_end, "seat 1 must still receive its GameEnd");
+    let seat0_game_end = log
+        .iter()
+        .any(|(seat, m)| *seat == PlayerId(0) && matches!(m, ServerMessage::GameEnd { .. }));
+    assert!(
+        !seat0_game_end,
+        "seat 0's GameEnd send failed and was not delivered"
+    );
+}
+
+#[test]
+fn outbound_failure_shuts_down_every_transport() {
+    let (actions, _) = recorded_actions();
+    let (result, _, flags) = run_scripted_failing(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        vec![None, Some(FailOn::ActionApplied)],
+    );
+    let run = result.expect("outbound failure is an agent fault, not internal");
+
+    // Seat 1's transport failed, and the fault is attributed to seat 1
+    // (the failing transport's bound recipient), not to the actor.
+    match run.report.outcome {
+        ArenaOutcomeV1::Aborted {
+            seat: 1,
+            reason: AgentFault::AgentIo,
+            phase: ArenaPhase::ActionReceived,
+            ..
+        } => {}
+        ref other => panic!("expected agent_io abort on seat 1, got {other:?}"),
+    }
+    for (i, flag) in flags.iter().enumerate() {
+        assert!(
+            flag.load(Ordering::SeqCst),
+            "transport {i} must be shut down after an outbound failure"
+        );
+    }
 }

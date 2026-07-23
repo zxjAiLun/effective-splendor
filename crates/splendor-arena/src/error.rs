@@ -91,7 +91,14 @@ pub enum ArenaInternalError {
     #[error("arena configuration error: {0}")]
     Config(#[from] ArenaConfigError),
 
-    /// An agent process could not be spawned or its pipe broke unexpectedly.
+    /// A transport could not be constructed for reasons that cannot be
+    /// attributed to a specific agent (infrastructure failure).
+    ///
+    /// This is *not* used for runtime pipe failures: once a match is running,
+    /// any send/flush or read failure on an agent's pipe is classified as
+    /// that seat's `AgentFault::AgentIo` and produces an `Aborted` report,
+    /// never an internal error. Ordinary spawn failures likewise produce an
+    /// `Aborted` report blaming the seat that failed to start.
     #[error("agent transport error: {0}")]
     Transport(String),
 
