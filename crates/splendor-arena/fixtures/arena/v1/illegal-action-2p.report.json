@@ -1,0 +1,31 @@
+{
+  "format": "effective-splendor-arena-report",
+  "version": 1,
+  "game_id": "golden-arena-illegal-2p",
+  "engine_version": "0.4.0",
+  "protocol_version": "0.5",
+  "ruleset": "splendor-base-v1",
+  "ruleset_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+  "player_count": 2,
+  "seed_commitment": "d8e64cb0c6c615386f89c418507eb71ad3dbcf46bd52fcf8b8041097ec417697",
+  "agents": [
+    {
+      "seat": 0,
+      "agent_name": "arena-fixture",
+      "agent_version": "1.0"
+    },
+    {
+      "seat": 1,
+      "agent_name": "arena-fixture",
+      "agent_version": "1.0"
+    }
+  ],
+  "outcome": {
+    "status": "aborted",
+    "seat": 0,
+    "phase": "action_request",
+    "reason": "illegal_action",
+    "request_id": 1,
+    "completed_plies": 0
+  }
+}
