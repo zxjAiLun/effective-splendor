@@ -468,6 +468,7 @@ dependencies = [
  "sha2",
  "splendor-core",
  "splendor-protocol",
+ "splendor-replay",
  "thiserror",
 ]
 

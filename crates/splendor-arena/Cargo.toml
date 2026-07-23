@@ -9,6 +9,7 @@ rust-version = "1.75"
 [dependencies]
 splendor-core = { workspace = true }
 splendor-protocol = { workspace = true }
+splendor-replay = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

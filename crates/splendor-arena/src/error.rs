@@ -77,3 +77,33 @@ impl ProcessError {
         }
     }
 }
+
+/// An arena-internal failure that is *not* an agent fault.
+///
+/// These surface as `Err` from [`crate::runner::ArenaRunner::run`], distinct
+/// from an `Aborted` match outcome (which is a normal `Ok` result with no
+/// replay). Internal errors mean the arena itself could not honor its own
+/// invariants: bad configuration, engine/replay divergence, or a broken
+/// internal channel.
+#[derive(Debug, thiserror::Error)]
+pub enum ArenaInternalError {
+    /// The arena configuration violated a frozen invariant.
+    #[error("arena configuration error: {0}")]
+    Config(#[from] ArenaConfigError),
+
+    /// An agent process could not be spawned or its pipe broke unexpectedly.
+    #[error("agent transport error: {0}")]
+    Transport(String),
+
+    /// The rules engine reported an internal error the arena could not absorb.
+    #[error("engine internal error: {0}")]
+    Engine(String),
+
+    /// Replay recording or verification failed internally.
+    #[error("replay internal error: {0}")]
+    Replay(String),
+
+    /// An internal channel (inbound event fan-in) disconnected unexpectedly.
+    #[error("internal channel error: {0}")]
+    Channel(String),
+}
