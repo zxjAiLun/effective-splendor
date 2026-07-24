@@ -1,4 +1,4 @@
-# Splendor AI Platform (M03 replay v1)
+# Splendor AI Platform (M04 arena v1)
 
 Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, and an NDJSON agent protocol foundation.
 
@@ -12,7 +12,8 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-core` | Rules engine (`FullState`, legal/apply, replay log, hashes) |
 | `splendor-protocol` | NDJSON message schema |
 | `splendor-replay` | Referee replay v1: record + strict step-by-step verify |
-| `splendor-cli` | Bench / play / record-replay / verify-replay / protocol demo |
+| `splendor-arena` | Stdio match runner: spawns agent processes, referees one match, writes report + replay |
+| `splendor-cli` | Bench / play / record-replay / verify-replay / protocol demo / run-match / agent-random |
 
 ## Quick start
 
@@ -26,6 +27,23 @@ cargo run -p splendor-cli -- verify-replay --input game.replay.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
+### Run an arena match
+
+The same binary is both the match runner and the reference agent, so a
+self-play match needs no other program:
+
+```bash
+cargo build -p splendor-cli   # ensure `splendor` exists on PATH / target dir
+splendor run-match \
+  --config     arena-config.json \
+  --report-out arena-report.json \
+  --replay-out replay.json
+```
+
+Exit `0` = completed (writes report + verified replay), `2` = aborted (report
+only), `1` = CLI/config/I/O/internal error (no artifacts). See `docs/arena.md`
+for the config schema, artifact contract, and the reference random agent.
+
 See `docs/replay.md` for the replay v1 format and verification chain.
 
 ## Architecture (M02 slice)
@@ -37,7 +55,8 @@ splendor-core   (FullState / Observation / Action / events / hash)
       │
       ├── splendor-protocol  (NDJSON schema)
       ├── splendor-replay    (referee replay v1)
-      └── splendor-cli       (local tools)
+      ├── splendor-arena     (stdio match runner)
+      └── splendor-cli       (local tools + run-match / agent-random)
 ```
 
 ### Non-negotiable invariants

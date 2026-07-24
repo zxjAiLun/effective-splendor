@@ -2,6 +2,10 @@ use std::fs;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
+
+mod arena_command;
+mod atomic_output;
+mod random_agent;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
@@ -72,6 +76,16 @@ enum Commands {
 }
 
 fn main() {
+    // The arena entry commands are parsed by a dedicated strict parser (not
+    // clap) so their contract — every flag required, no unknown/extra tokens,
+    // stable exit codes — is exact. Route them before clap ever sees the args.
+    let argv: Vec<String> = std::env::args().collect();
+    match argv.get(1).map(String::as_str) {
+        Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
+        Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
+        _ => {}
+    }
+
     let cli = Cli::parse();
     match cli.command {
         Commands::Version => {

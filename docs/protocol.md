@@ -1,11 +1,18 @@
-# Protocol (NDJSON, v0.4)
+# Protocol (NDJSON, v0.5)
 
 One JSON object per line. Transport (stdio / TCP / WS) is independent of schema.
 
+> v0.5 added **strict, arena-ready parsing**: `parse_server_line` and
+> `parse_client_line` reject unknown fields, trailing data, wrong-typed fields,
+> and non-object lines, so a foreign agent process cannot smuggle a malformed or
+> over-broad message past the referee. The message shapes are otherwise
+> unchanged from v0.4. Golden transcripts live under `fixtures/protocol/v0.5/`;
+> the v0.2 / v0.3 / v0.4 fixtures are kept as historical records.
+>
 > v0.4 canonicalized purchased-card ownership (sorted by `CardId`), which
-> changed the observation hash. Golden transcripts live under
-> `fixtures/protocol/v0.4/`; the v0.2 / v0.3 fixtures are kept as historical
-> records. Replay files are a separate referee artifact — see `docs/replay.md`.
+> changed the observation hash. Replay files are a separate referee artifact
+> (see `docs/replay.md`), and the arena runner that drives this protocol over
+> subprocess stdio is described in `docs/arena.md`.
 
 ## Identity model
 

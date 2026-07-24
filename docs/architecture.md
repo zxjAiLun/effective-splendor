@@ -34,9 +34,14 @@ Rules:
   file and re-executes it ply by ply against `splendor-core`. It is a
   referee-only audit record: it stores the raw seed and full-state hashes and
   must never be sent to an agent or spectator mid-game. See `docs/replay.md`.
-- **`splendor-arena`** (PR-04) binds an agent process to a seat, enforces
-  deadlines / timeouts / illegal-action policy, and is the only place that
-  decides *who* a client is. Clients never authorize their own seat.
+- **`splendor-arena`** (M04) spawns each agent as an OS subprocess, binds it to
+  a seat, enforces deadlines / timeouts / illegal-action policy, records a
+  referee replay, and writes a self-verifying `ArenaReportV1`. It is the only
+  place that decides *who* a client is; clients never authorize their own seat,
+  and agent commands are spawned literally (never shell-interpreted). See
+  `docs/arena.md` and `docs/adr/0005-stdio-arena-process-boundary.md`. The
+  `splendor` CLI exposes it via `run-match`, with `agent-random` as a reference
+  stdio agent.
 - **`splendor-search`** (PR-06+) uses the in-process `splendor-core` API
   for rollouts / MCTS / determinization.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
