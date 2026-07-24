@@ -201,34 +201,6 @@ fn run_pair(game_id: &str, mode0: &str, mode1: &str) -> ArenaRun {
     run
 }
 
-/// Run a match where seat 0 is a normal scripted agent (owns the outstanding
-/// request) and seat 1 runs the given fault mode.
-fn run_pair_scripted_vs(game_id: &str, mode1: &str) -> ArenaRun {
-    let actions = recorded_actions(2, 42, 1001);
-    let dir = tmp_dir();
-    let script = dir.join("script.json");
-    write_script(&actions, &script);
-    let script_str = script.to_str().unwrap().to_string();
-    let config = ArenaConfig {
-        game_id: game_id.to_string(),
-        seed: 42,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
-        shutdown_grace_ms: 200,
-        agents: vec![
-            agent_cmd("scripted", &["--script", &script_str]),
-            agent_cmd(mode1, &[]),
-        ],
-    };
-    let start = Instant::now();
-    let run = ArenaRunner::run(config).expect("scripted-vs match returns a result");
-    assert!(
-        start.elapsed() < Duration::from_secs(10),
-        "scripted-vs match ({mode1}) must not hang"
-    );
-    run
-}
-
 // ---------------------------------------------------------------------------
 // Assertions
 // ---------------------------------------------------------------------------
@@ -430,21 +402,29 @@ fn fault_duplicate_hello() {
 
 #[test]
 fn fault_unsolicited_message() {
-    // seat 0 is a normal scripted agent that owns the outstanding request;
-    // seat 1 handshakes cleanly, then speaks unsolicited upon receiving its
-    // own GameStart (no request is ever addressed to it) and stays alive
-    // reading stdin. seat 1's line reaches the fan-in channel while request 1
-    // is outstanding, so the abort is deterministically the inactive seat
-    // speaking during the action window.
-    let run = run_pair_scripted_vs("fault-unsolicited", "unsolicited-message");
-    assert_aborted(
-        &run,
-        1,
-        ArenaPhase::ActionRequest,
-        AgentFault::UnexpectedMessage,
-        Some(1),
-        0,
-    );
+    // seat 0 = action-timeout: handshakes cleanly, then stays silent after
+    // receiving RequestAction (the 500ms timeout is only a backstop). seat 1 =
+    // unsolicited-message: handshakes cleanly, then speaks an unsolicited Action
+    // upon receiving its own GameStart and stays alive reading stdin.
+    //
+    // Because seat 0 never emits an Action line, the only client line that can
+    // enter the fan-in channel while request 1 is outstanding is seat 1's
+    // unsolicited Action. This removes the cross-process race where seat 0's
+    // legal reply could win the channel first. seat 1's message therefore
+    // deterministically triggers `unexpected_message` at the action window
+    // before ActionTimeout can fire. Repeat to prove stability across
+    // scheduling variance.
+    for _ in 0..10 {
+        let run = run_pair("fault-unsolicited", "action-timeout", "unsolicited-message");
+        assert_aborted(
+            &run,
+            1,
+            ArenaPhase::ActionRequest,
+            AgentFault::UnexpectedMessage,
+            Some(1),
+            0,
+        );
+    }
 }
 
 #[test]
