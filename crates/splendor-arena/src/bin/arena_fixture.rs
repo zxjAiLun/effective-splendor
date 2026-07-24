@@ -11,7 +11,9 @@
 //! `scripted`, `handshake-timeout`, `action-timeout`, `malformed-action`,
 //! `wrong-protocol`, `wrong-game-id`, `wrong-request-id`, `illegal-action`,
 //! `duplicate-hello`, `unsolicited-message`, `early-exit`, `oversize-handshake`,
-//! `oversize-action`, `non-utf8-action`, `scripted-stderr-flood`.
+//! `oversize-action`, `non-utf8-action`, `scripted-stderr-flood`,
+//! `action-wrong-protocol-and-request`, `action-wrong-game-and-illegal`,
+//! `action-correct-meta-illegal`.
 //!
 //! Options:
 //! - `--script <path>` : JSON array of [`Action`] the `scripted` agent replays
@@ -329,26 +331,113 @@ fn run_agent(agent_args: &[String]) {
                 _ => {}
             },
             "duplicate-hello" => {
+                // Send two Hellos back-to-back, then stay alive reading stdin
+                // until the arena tears the pipe down. Never exiting on our
+                // own removes any EOF/abort race: the abort is always the
+                // second Hello, classified while the handshake is still open.
                 if let ServerMessage::Hello { .. } = &msg {
                     let g = gid.clone().unwrap();
                     send_client_hello(&mut out, &g);
                     send_client_hello(&mut out, &g);
-                    break;
                 }
             }
             "unsolicited-message" => {
-                if let ServerMessage::Hello { .. } = &msg {
+                // Complete a normal handshake; then, on receiving our own
+                // GameStart (i.e. no request is addressed to us), speak
+                // unsolicited. Stay alive afterwards so the runner observes
+                // the line — never a racy EOF — while another seat owns the
+                // outstanding request.
+                match &msg {
+                    ServerMessage::Hello { .. } => {
+                        if let Some(g) = &gid {
+                            send_client_hello(&mut out, g);
+                        }
+                    }
+                    ServerMessage::GameStart { .. } => {
+                        let g = gid.clone().unwrap();
+                        let bad = ClientMessage::Action {
+                            meta: ClientRequestMeta::new(&g, 1),
+                            action: Action::Pass,
+                        };
+                        let _ = writeln!(out, "{}", serde_json::to_string(&bad).unwrap());
+                        let _ = out.flush();
+                    }
+                    _ => {}
+                }
+            }
+            "action-wrong-protocol-and-request" => match &msg {
+                ServerMessage::Hello { .. } => {
+                    if let Some(g) = &gid {
+                        send_client_hello(&mut out, g);
+                    }
+                }
+                ServerMessage::RequestAction { legal_actions, .. } => {
+                    // Combined fault inside ONE action message: wrong protocol
+                    // version + wrong request id, but a perfectly legal action
+                    // and the correct game id. Locks `protocol` as the first
+                    // check in the action validation order.
                     let g = gid.clone().unwrap();
-                    send_client_hello(&mut out, &g);
+                    let legal = legal_actions.first().copied().unwrap_or(Action::Pass);
                     let bad = ClientMessage::Action {
-                        meta: ClientRequestMeta::new(&g, 1),
-                        action: Action::Pass,
+                        meta: ClientRequestMeta {
+                            client: ClientMeta {
+                                protocol_version: "0.0".to_string(),
+                                game_id: g,
+                            },
+                            request_id: 9999,
+                        },
+                        action: legal,
                     };
                     let _ = writeln!(out, "{}", serde_json::to_string(&bad).unwrap());
                     let _ = out.flush();
-                    break;
                 }
-            }
+                _ => {}
+            },
+            "action-wrong-game-and-illegal" => match &msg {
+                ServerMessage::Hello { .. } => {
+                    if let Some(g) = &gid {
+                        send_client_hello(&mut out, g);
+                    }
+                }
+                ServerMessage::RequestAction { meta, .. } => {
+                    // Combined fault: correct protocol + correct request id,
+                    // wrong game id + illegal action. Locks `game_id` ahead of
+                    // legality in the action validation order.
+                    let bad = ClientMessage::Action {
+                        meta: ClientRequestMeta::new("wrong-game-id-literal", meta.request_id),
+                        action: Action::BuyMarket {
+                            tier: Tier::One,
+                            slot: 99,
+                        },
+                    };
+                    let _ = writeln!(out, "{}", serde_json::to_string(&bad).unwrap());
+                    let _ = out.flush();
+                }
+                _ => {}
+            },
+            "action-correct-meta-illegal" => match &msg {
+                ServerMessage::Hello { .. } => {
+                    if let Some(g) = &gid {
+                        send_client_hello(&mut out, g);
+                    }
+                }
+                ServerMessage::RequestAction { meta, .. } => {
+                    // All metadata correct; only the action itself is illegal.
+                    // Only after protocol/game/request pass may `illegal_action`
+                    // be reached.
+                    let g = gid.clone().unwrap();
+                    let bad = ClientMessage::Action {
+                        meta: ClientRequestMeta::new(&g, meta.request_id),
+                        action: Action::BuyMarket {
+                            tier: Tier::One,
+                            slot: 99,
+                        },
+                    };
+                    let _ = writeln!(out, "{}", serde_json::to_string(&bad).unwrap());
+                    let _ = out.flush();
+                }
+                _ => {}
+            },
             "oversize-handshake" => {
                 if let ServerMessage::Hello { .. } = &msg {
                     let big = "a".repeat(2 * 1024 * 1024);

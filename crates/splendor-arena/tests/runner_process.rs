@@ -181,6 +181,54 @@ fn run_fault(mode: &str) -> ArenaRun {
     run
 }
 
+/// Run a match with two explicit fixture modes (seat 0 / seat 1) and no
+/// scripts; used by fault pairings that must control both seats' behavior.
+fn run_pair(game_id: &str, mode0: &str, mode1: &str) -> ArenaRun {
+    let config = ArenaConfig {
+        game_id: game_id.to_string(),
+        seed: 42,
+        handshake_timeout_ms: 500,
+        move_timeout_ms: 500,
+        shutdown_grace_ms: 200,
+        agents: vec![agent_cmd(mode0, &[]), agent_cmd(mode1, &[])],
+    };
+    let start = Instant::now();
+    let run = ArenaRunner::run(config).expect("pair match returns a result");
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "pair match ({mode0}/{mode1}) must not hang"
+    );
+    run
+}
+
+/// Run a match where seat 0 is a normal scripted agent (owns the outstanding
+/// request) and seat 1 runs the given fault mode.
+fn run_pair_scripted_vs(game_id: &str, mode1: &str) -> ArenaRun {
+    let actions = recorded_actions(2, 42, 1001);
+    let dir = tmp_dir();
+    let script = dir.join("script.json");
+    write_script(&actions, &script);
+    let script_str = script.to_str().unwrap().to_string();
+    let config = ArenaConfig {
+        game_id: game_id.to_string(),
+        seed: 42,
+        handshake_timeout_ms: 500,
+        move_timeout_ms: 500,
+        shutdown_grace_ms: 200,
+        agents: vec![
+            agent_cmd("scripted", &["--script", &script_str]),
+            agent_cmd(mode1, &[]),
+        ],
+    };
+    let start = Instant::now();
+    let run = ArenaRunner::run(config).expect("scripted-vs match returns a result");
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "scripted-vs match ({mode1}) must not hang"
+    );
+    run
+}
+
 // ---------------------------------------------------------------------------
 // Assertions
 // ---------------------------------------------------------------------------
@@ -361,7 +409,15 @@ fn fault_illegal_action() {
 
 #[test]
 fn fault_duplicate_hello() {
-    let run = run_fault("duplicate-hello");
+    // seat 0 sends two Hellos and stays alive; seat 1 never handshakes at
+    // all. The handshake window is therefore guaranteed to still be open when
+    // the second Hello is processed: the abort is deterministically the
+    // duplicate Hello in the handshake phase, never a phase race.
+    let run = run_pair(
+        "fault-duplicate-hello",
+        "duplicate-hello",
+        "handshake-timeout",
+    );
     assert_aborted(
         &run,
         0,
@@ -374,30 +430,21 @@ fn fault_duplicate_hello() {
 
 #[test]
 fn fault_unsolicited_message() {
-    // The unsolicited action may arrive during the handshake window or the
-    // action window depending on scheduling; the contract that holds in both
-    // is `unexpected_message` with zero completed plies and no replay.
-    let run = run_fault("unsolicited-message");
-    match &run.report.outcome {
-        ArenaOutcomeV1::Aborted {
-            seat,
-            phase,
-            reason,
-            request_id,
-            completed_plies,
-        } => {
-            assert_eq!(*seat, 0);
-            assert_eq!(*reason, AgentFault::UnexpectedMessage);
-            assert_eq!(*completed_plies, 0);
-            assert!(run.replay.is_none());
-            match phase {
-                ArenaPhase::Handshake => assert_eq!(*request_id, None),
-                ArenaPhase::ActionRequest => assert_eq!(*request_id, Some(1)),
-                other => panic!("unexpected phase for unsolicited: {other:?}"),
-            }
-        }
-        other => panic!("expected Aborted, got {other:?}"),
-    }
+    // seat 0 is a normal scripted agent that owns the outstanding request;
+    // seat 1 handshakes cleanly, then speaks unsolicited upon receiving its
+    // own GameStart (no request is ever addressed to it) and stays alive
+    // reading stdin. seat 1's line reaches the fan-in channel while request 1
+    // is outstanding, so the abort is deterministically the inactive seat
+    // speaking during the action window.
+    let run = run_pair_scripted_vs("fault-unsolicited", "unsolicited-message");
+    assert_aborted(
+        &run,
+        1,
+        ArenaPhase::ActionRequest,
+        AgentFault::UnexpectedMessage,
+        Some(1),
+        0,
+    );
 }
 
 #[test]
@@ -458,37 +505,41 @@ fn fault_non_utf8_action() {
 
 #[test]
 fn fault_seq_wrong_protocol_wins_over_request_id() {
-    // A Hello with the wrong protocol aborts at handshake regardless of any
-    // later wrong request id.
-    let run = run_fault("wrong-protocol");
+    // A single Action message combining wrong protocol + wrong request id
+    // (correct game id, legal action) after a clean handshake must classify
+    // as the protocol mismatch: `protocol` outranks `request_id`.
+    let run = run_fault("action-wrong-protocol-and-request");
     assert_aborted(
         &run,
         0,
-        ArenaPhase::Handshake,
+        ArenaPhase::ActionRequest,
         AgentFault::ProtocolVersionMismatch,
-        None,
+        Some(1),
         0,
     );
 }
 
 #[test]
 fn fault_seq_wrong_game_wins_over_illegal() {
-    // Correct protocol + wrong game id aborts before any legality check.
-    let run = run_fault("wrong-game-id");
+    // A single Action message combining wrong game id + illegal action
+    // (correct protocol, correct request id) must classify as the game-id
+    // mismatch: `game_id` outranks `legality`.
+    let run = run_fault("action-wrong-game-and-illegal");
     assert_aborted(
         &run,
         0,
-        ArenaPhase::Handshake,
+        ArenaPhase::ActionRequest,
         AgentFault::GameIdMismatch,
-        None,
+        Some(1),
         0,
     );
 }
 
 #[test]
 fn fault_seq_correct_metadata_illegal_action() {
-    // Correct metadata + illegal action is classified as illegal_action.
-    let run = run_fault("illegal-action");
+    // All metadata correct; only the action itself is illegal. Only then may
+    // the classification fall through to `illegal_action`.
+    let run = run_fault("action-correct-meta-illegal");
     assert_aborted(
         &run,
         0,
@@ -517,10 +568,15 @@ fn scripted_stderr_flood_exceeds_64kib() {
         .expect("spawn flood fixture");
     let mut stderr = child.stderr.take().expect("stderr piped");
     let counter = std::thread::spawn(move || {
+        // Read until the 64 KiB threshold is clearly exceeded, with a
+        // generous wall-clock cap for slow or loaded builders. The contract
+        // under test is "the flood can exceed 64 KiB", not a fixed-window
+        // throughput figure.
+        let target = 64 * 1024 + 1;
         let mut buf = [0u8; 8192];
         let mut total: usize = 0;
-        let deadline = Instant::now() + Duration::from_millis(300);
-        while Instant::now() < deadline {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while total < target && Instant::now() < deadline {
             match stderr.read(&mut buf) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => total += n,
@@ -904,11 +960,13 @@ fn golden_illegal_2p() -> ArenaRun {
 }
 
 /// Compare a freshly-pretty-printed value against the committed golden file.
-/// `write_rel` is the path under `CARGO_MANIFEST_DIR` to write; `embedded` is
-/// the `include_str!` literal read at compile time. With `ARENA_GOLDEN_UPDATE=1`
-/// the file is (re)written instead of compared.
+/// Golden artifacts live at the frozen repository-root path
+/// `fixtures/arena/v1/`; `write_rel` is relative to the repo root and
+/// `embedded` is the `include_str!` literal read at compile time. With
+/// `ARENA_GOLDEN_UPDATE=1` the file is (re)written instead of compared.
 fn check_golden(write_rel: &str, embedded: &str, pretty: &str) {
-    let full = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), write_rel);
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let full = repo_root.join(write_rel);
     if std::env::var("ARENA_GOLDEN_UPDATE").is_ok() {
         std::fs::write(&full, format!("{pretty}\n")).expect("write golden artifact");
         return;
@@ -926,7 +984,7 @@ fn golden_normal_2p_report_matches() {
     let pretty = serde_json::to_string_pretty(&run.report).expect("pretty report");
     check_golden(
         "fixtures/arena/v1/normal-2p-seed42.report.json",
-        include_str!("../fixtures/arena/v1/normal-2p-seed42.report.json"),
+        include_str!("../../../fixtures/arena/v1/normal-2p-seed42.report.json"),
         &pretty,
     );
 }
@@ -937,7 +995,7 @@ fn golden_normal_2p_replay_matches() {
     let pretty = serde_json::to_string_pretty(run.replay.as_ref().unwrap()).expect("pretty replay");
     check_golden(
         "fixtures/arena/v1/normal-2p-seed42.replay.json",
-        include_str!("../fixtures/arena/v1/normal-2p-seed42.replay.json"),
+        include_str!("../../../fixtures/arena/v1/normal-2p-seed42.replay.json"),
         &pretty,
     );
 }
@@ -948,7 +1006,7 @@ fn golden_illegal_action_2p_report_matches() {
     let pretty = serde_json::to_string_pretty(&run.report).expect("pretty report");
     check_golden(
         "fixtures/arena/v1/illegal-action-2p.report.json",
-        include_str!("../fixtures/arena/v1/illegal-action-2p.report.json"),
+        include_str!("../../../fixtures/arena/v1/illegal-action-2p.report.json"),
         &pretty,
     );
 }
