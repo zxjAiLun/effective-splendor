@@ -20,7 +20,8 @@
 //! On success the *only* thing written to stdout is a single compact
 //! `ArenaOutcomeV1` JSON line.
 
-use std::io::{self, BufReader, Write};
+use std::fs::{self, File};
+use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -164,19 +165,25 @@ fn run_match_inner(args: &[String]) -> Result<MatchExit, RunMatchError> {
 }
 
 /// Read and strictly deserialize the arena config document.
+///
+/// The read is *bounded by the bytes actually read*, not by an up-front
+/// `metadata.len()` that a growing file could outrun: we read at most
+/// `MAX_ARENA_CONFIG_BYTES + 1` bytes and reject if that overflows the limit.
 fn read_config(path: &Path) -> Result<ArenaConfig, RunMatchError> {
-    let metadata = std::fs::metadata(path).map_err(|e| {
-        RunMatchError::ConfigRead(format!("cannot stat config {}: {e}", path.display()))
+    let file = File::open(path).map_err(|e| {
+        RunMatchError::ConfigRead(format!("cannot open config {}: {e}", path.display()))
     })?;
-    if metadata.len() > MAX_ARENA_CONFIG_BYTES {
+    let mut raw = Vec::new();
+    file.take(MAX_ARENA_CONFIG_BYTES + 1)
+        .read_to_end(&mut raw)
+        .map_err(|e| {
+            RunMatchError::ConfigRead(format!("cannot read config {}: {e}", path.display()))
+        })?;
+    if raw.len() as u64 > MAX_ARENA_CONFIG_BYTES {
         return Err(RunMatchError::ConfigRead(format!(
-            "config exceeds {MAX_ARENA_CONFIG_BYTES} bytes ({} bytes)",
-            metadata.len()
+            "config exceeds {MAX_ARENA_CONFIG_BYTES} bytes"
         )));
     }
-    let raw = std::fs::read(path).map_err(|e| {
-        RunMatchError::ConfigRead(format!("cannot read config {}: {e}", path.display()))
-    })?;
     let text = String::from_utf8(raw)
         .map_err(|_| RunMatchError::ConfigRead("config is not valid UTF-8".to_string()))?;
 
@@ -221,16 +228,16 @@ fn commit_completed(
     let replay_json = to_pretty_line(replay)
         .map_err(|e| RunMatchError::Internal(format!("serialize replay failed: {e}")))?;
 
-    atomic_output::commit_completed(
+    let mut stdout = io::stdout().lock();
+    publish_completed(
         &parsed.replay_out,
         &replay_json,
         &parsed.report_out,
         &report_json,
+        &report.outcome,
+        &mut stdout,
+        atomic_output::publish_new,
     )
-    .map_err(|e| RunMatchError::Io(e.to_string()))?;
-
-    print_outcome_line(&report.outcome)?;
-    Ok(MatchExit::Completed(0))
 }
 
 /// Serialize and atomically publish an aborted match's report (only).
@@ -240,22 +247,84 @@ fn commit_aborted(
 ) -> Result<MatchExit, RunMatchError> {
     let report_json = to_pretty_line(report)
         .map_err(|e| RunMatchError::Internal(format!("serialize report failed: {e}")))?;
-    atomic_output::commit_aborted(&parsed.report_out, &report_json)
+    let mut stdout = io::stdout().lock();
+    publish_aborted(
+        &parsed.report_out,
+        &report_json,
+        &report.outcome,
+        &mut stdout,
+        atomic_output::publish_new,
+    )
+}
+
+/// Publish a completed pair, then emit the outcome line — order matters.
+///
+/// The compact outcome line is serialized *before* any artifact is committed,
+/// and if the stdout write or flush fails *after* the artifacts landed, **both**
+/// artifacts are removed and an I/O error is returned. This upholds the frozen
+/// contract: an error exit (1) must never leave artifacts behind, even when
+/// stdout is a closed pipe.
+fn publish_completed<W, P>(
+    replay_out: &Path,
+    replay_json: &str,
+    report_out: &Path,
+    report_json: &str,
+    outcome: &splendor_arena::ArenaOutcomeV1,
+    stdout: &mut W,
+    publish: P,
+) -> Result<MatchExit, RunMatchError>
+where
+    W: Write,
+    P: Fn(&Path, &Path) -> io::Result<()>,
+{
+    let line = compact_outcome_line(outcome)?;
+    atomic_output::commit_completed_with(replay_out, replay_json, report_out, report_json, publish)
         .map_err(|e| RunMatchError::Io(e.to_string()))?;
-    print_outcome_line(&report.outcome)?;
+    if let Err(e) = write_outcome_line(stdout, &line) {
+        let _ = fs::remove_file(report_out);
+        let _ = fs::remove_file(replay_out);
+        return Err(RunMatchError::Io(e));
+    }
+    Ok(MatchExit::Completed(0))
+}
+
+/// Publish an aborted report, then emit the outcome line, with the same
+/// serialize-first / roll-back-on-stdout-failure discipline as
+/// [`publish_completed`].
+fn publish_aborted<W, P>(
+    report_out: &Path,
+    report_json: &str,
+    outcome: &splendor_arena::ArenaOutcomeV1,
+    stdout: &mut W,
+    publish: P,
+) -> Result<MatchExit, RunMatchError>
+where
+    W: Write,
+    P: Fn(&Path, &Path) -> io::Result<()>,
+{
+    let line = compact_outcome_line(outcome)?;
+    atomic_output::commit_aborted_with(report_out, report_json, publish)
+        .map_err(|e| RunMatchError::Io(e.to_string()))?;
+    if let Err(e) = write_outcome_line(stdout, &line) {
+        let _ = fs::remove_file(report_out);
+        return Err(RunMatchError::Io(e));
+    }
     Ok(MatchExit::Aborted(2))
 }
 
-/// Print the single compact outcome JSON line to stdout.
-fn print_outcome_line(outcome: &splendor_arena::ArenaOutcomeV1) -> Result<(), RunMatchError> {
-    let line = serde_json::to_string(outcome)
-        .map_err(|e| RunMatchError::Internal(format!("serialize outcome failed: {e}")))?;
-    let mut stdout = io::stdout().lock();
-    writeln!(stdout, "{line}")
-        .map_err(|e| RunMatchError::Io(format!("stdout write failed: {e}")))?;
+/// Serialize the single compact outcome JSON line (no trailing newline yet).
+fn compact_outcome_line(outcome: &splendor_arena::ArenaOutcomeV1) -> Result<String, RunMatchError> {
+    serde_json::to_string(outcome)
+        .map_err(|e| RunMatchError::Internal(format!("serialize outcome failed: {e}")))
+}
+
+/// Write the outcome line + LF to `stdout` and flush, returning a stable error
+/// string on failure (mapped to `RunMatchError::Io` by the caller).
+fn write_outcome_line<W: Write>(stdout: &mut W, line: &str) -> Result<(), String> {
+    writeln!(stdout, "{line}").map_err(|e| format!("stdout write failed: {e}"))?;
     stdout
         .flush()
-        .map_err(|e| RunMatchError::Io(format!("stdout flush failed: {e}")))
+        .map_err(|e| format!("stdout flush failed: {e}"))
 }
 
 /// Serialize a value with 2-space pretty formatting and a single trailing LF.
@@ -397,4 +466,234 @@ fn print_stdout(text: &str) {
     let mut stdout = io::stdout().lock();
     let _ = writeln!(stdout, "{text}");
     let _ = stdout.flush();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use splendor_arena::{AgentFault, ArenaOutcomeV1, ArenaPhase};
+
+    static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
+
+    fn tmp_dir() -> PathBuf {
+        let n = TMP_SEQ.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!("arena-cmd-{}-{}", std::process::id(), n));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn assert_no_tmp(dir: &Path) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let name = entry.unwrap().file_name().to_string_lossy().into_owned();
+            assert!(!name.ends_with(".tmp"), "temp residue: {name}");
+        }
+    }
+
+    /// A stand-in outcome; only its serialized bytes matter to these tests.
+    fn sample_outcome() -> ArenaOutcomeV1 {
+        ArenaOutcomeV1::aborted(0, ArenaPhase::Handshake, AgentFault::AgentIo, None, 0)
+    }
+
+    /// A `Write` that fails on `write` (fail_flush=false) or on `flush`
+    /// (fail_flush=true), used to simulate a closed stdout pipe.
+    struct FailWriter {
+        fail_flush: bool,
+    }
+
+    impl Write for FailWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            if self.fail_flush {
+                Ok(buf.len())
+            } else {
+                Err(io::Error::other("stdout write failed"))
+            }
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            if self.fail_flush {
+                Err(io::Error::other("stdout flush failed"))
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    // -- Blocker 1: a target that appears during the match is never clobbered --
+
+    #[test]
+    fn report_target_appears_during_match_is_not_overwritten() {
+        // Model the race: the early exists() check passed, the match ran, and
+        // the report target appeared before final publish. publish_new must
+        // refuse to clobber it; our replay is rolled back; nothing on stdout.
+        let dir = tmp_dir();
+        let replay_out = dir.join("replay.json");
+        let report_out = dir.join("report.json");
+        fs::write(&report_out, "PRE-EXISTING REPORT").unwrap();
+
+        let mut stdout: Vec<u8> = Vec::new();
+        let res = publish_completed(
+            &replay_out,
+            "REPLAY\n",
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        );
+
+        assert!(matches!(res, Err(RunMatchError::Io(_))));
+        assert_eq!(
+            fs::read_to_string(&report_out).unwrap(),
+            "PRE-EXISTING REPORT",
+            "pre-existing report must be preserved"
+        );
+        assert!(!replay_out.exists(), "our replay must be rolled back");
+        assert!(stdout.is_empty(), "no stdout on error");
+        assert_no_tmp(&dir);
+    }
+
+    #[test]
+    fn replay_target_appears_during_match_is_not_overwritten() {
+        let dir = tmp_dir();
+        let replay_out = dir.join("replay.json");
+        let report_out = dir.join("report.json");
+        fs::write(&replay_out, "PRE-EXISTING REPLAY").unwrap();
+
+        let mut stdout: Vec<u8> = Vec::new();
+        let res = publish_completed(
+            &replay_out,
+            "REPLAY\n",
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        );
+
+        assert!(matches!(res, Err(RunMatchError::Io(_))));
+        assert_eq!(
+            fs::read_to_string(&replay_out).unwrap(),
+            "PRE-EXISTING REPLAY",
+            "pre-existing replay must be preserved"
+        );
+        assert!(!report_out.exists(), "our report must not be published");
+        assert!(stdout.is_empty(), "no stdout on error");
+        assert_no_tmp(&dir);
+    }
+
+    // -- Blocker 2: a stdout failure must roll the artifacts back to none --
+
+    #[test]
+    fn completed_stdout_failure_rolls_back_artifacts() {
+        let dir = tmp_dir();
+        let replay_out = dir.join("replay.json");
+        let report_out = dir.join("report.json");
+
+        let mut stdout = FailWriter { fail_flush: false };
+        let res = publish_completed(
+            &replay_out,
+            "REPLAY\n",
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        );
+
+        assert!(matches!(res, Err(RunMatchError::Io(_))));
+        assert!(!report_out.exists(), "report must be rolled back");
+        assert!(!replay_out.exists(), "replay must be rolled back");
+        assert_no_tmp(&dir);
+    }
+
+    #[test]
+    fn aborted_stdout_failure_rolls_back_report() {
+        let dir = tmp_dir();
+        let report_out = dir.join("report.json");
+
+        let mut stdout = FailWriter { fail_flush: false };
+        let res = publish_aborted(
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        );
+
+        assert!(matches!(res, Err(RunMatchError::Io(_))));
+        assert!(!report_out.exists(), "report must be rolled back");
+        assert_no_tmp(&dir);
+    }
+
+    #[test]
+    fn stdout_flush_failure_rolls_back_artifacts() {
+        let dir = tmp_dir();
+        let replay_out = dir.join("replay.json");
+        let report_out = dir.join("report.json");
+
+        let mut stdout = FailWriter { fail_flush: true };
+        let res = publish_completed(
+            &replay_out,
+            "REPLAY\n",
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        );
+
+        assert!(matches!(res, Err(RunMatchError::Io(_))));
+        assert!(
+            !report_out.exists(),
+            "report must be rolled back on flush failure"
+        );
+        assert!(
+            !replay_out.exists(),
+            "replay must be rolled back on flush failure"
+        );
+        assert_no_tmp(&dir);
+    }
+
+    #[test]
+    fn completed_success_writes_one_outcome_line_and_both_artifacts() {
+        let dir = tmp_dir();
+        let replay_out = dir.join("replay.json");
+        let report_out = dir.join("report.json");
+
+        let mut stdout: Vec<u8> = Vec::new();
+        let res = publish_completed(
+            &replay_out,
+            "REPLAY\n",
+            &report_out,
+            "REPORT\n",
+            &sample_outcome(),
+            &mut stdout,
+            atomic_output::publish_new,
+        )
+        .unwrap();
+
+        assert!(matches!(res, MatchExit::Completed(0)));
+        assert_eq!(fs::read_to_string(&report_out).unwrap(), "REPORT\n");
+        assert_eq!(fs::read_to_string(&replay_out).unwrap(), "REPLAY\n");
+        let printed = String::from_utf8(stdout).unwrap();
+        assert!(printed.ends_with('\n'));
+        assert_eq!(printed.lines().count(), 1);
+        assert_no_tmp(&dir);
+    }
+
+    // -- Sibling fix: config read is bounded by bytes actually read --
+
+    #[test]
+    fn config_actual_bytes_over_limit_is_rejected() {
+        let dir = tmp_dir();
+        let path = dir.join("big.json");
+        let oversized = vec![b' '; MAX_ARENA_CONFIG_BYTES as usize + 16];
+        fs::write(&path, &oversized).unwrap();
+        let err = read_config(&path).unwrap_err();
+        assert!(
+            matches!(err, RunMatchError::ConfigRead(_)),
+            "oversized config must be a ConfigRead error, got {err:?}"
+        );
+    }
 }

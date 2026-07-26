@@ -146,8 +146,12 @@ fn run_normal(game_id: &str, player_count: u8, seed: u64, action_seed: u64) -> A
     let config = ArenaConfig {
         game_id: game_id.to_string(),
         seed,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
+        // Normal-completion helper: use a generous handshake/move budget so
+        // subprocess-spawn oversubscription under `--all-targets` parallelism
+        // never turns a scheduling delay into a protocol timeout. Fault helpers
+        // (`run_fault` / `run_pair`) keep the tight 500 ms budget on purpose.
+        handshake_timeout_ms: 10_000,
+        move_timeout_ms: 10_000,
         shutdown_grace_ms: 200,
         agents,
     };
@@ -591,8 +595,9 @@ fn normal_match_with_stderr_flood_completes() {
     let config = ArenaConfig {
         game_id: "stderr-flood-e2e".to_string(),
         seed: 42,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
+        // Normal-completion test: generous budget (see run_normal).
+        handshake_timeout_ms: 10_000,
+        move_timeout_ms: 10_000,
         shutdown_grace_ms: 200,
         agents,
     };
@@ -736,8 +741,9 @@ fn blind_reserve_information_isolation() {
     let config = ArenaConfig {
         game_id: "blind-reserve-iso".to_string(),
         seed: 42,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
+        // Normal-completion test: generous budget (see run_normal).
+        handshake_timeout_ms: 10_000,
+        move_timeout_ms: 10_000,
         shutdown_grace_ms: 200,
         agents,
     };
@@ -824,8 +830,9 @@ fn transcript_files_are_reopenable_and_removable() {
     let config = ArenaConfig {
         game_id: "transcript-lifecycle".to_string(),
         seed: 42,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
+        // Normal-completion test: generous budget (see run_normal).
+        handshake_timeout_ms: 10_000,
+        move_timeout_ms: 10_000,
         shutdown_grace_ms: 200,
         agents,
     };
@@ -885,8 +892,9 @@ fn process_cleanup_stderr_flood_returns() {
     let config = ArenaConfig {
         game_id: "cleanup-stderr-flood".to_string(),
         seed: 42,
-        handshake_timeout_ms: 500,
-        move_timeout_ms: 500,
+        // Normal-completion test: generous budget (see run_normal).
+        handshake_timeout_ms: 10_000,
+        move_timeout_ms: 10_000,
         shutdown_grace_ms: 200,
         agents,
     };

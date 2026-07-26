@@ -102,14 +102,26 @@ nothing published).
 
 ### Atomic publish
 
-Files are never written in place. For each target the CLI writes a sibling temp
-file (`<name>.<pid>.<seq>.tmp`, `create_new`) then `write` → `flush` →
-`sync_all` → `rename` onto the final path. A **Completed** match commits the
-replay first and the **report last**, so a reader that sees the report can trust
-that the replay is already present. If the report rename fails, the already
--committed replay is rolled back and every temp is removed — a partial pair is
-never observable. An **Aborted** match commits only the report. Any failure
-leaves no `.tmp` residue.
+Files are never written in place, and an existing target is never overwritten.
+For each target the CLI writes a sibling temp file (`<name>.<pid>.<seq>.tmp`,
+`create_new`), then `write` → `flush` → `sync_all` → close, and finally
+publishes it with an atomic **create-if-absent** step (`hard_link` onto the
+target, then unlink the temp). Because that step fails if the target already
+exists, it also closes the race between the early `exists()` check and the final
+publish: if the file appears in between, publishing fails instead of clobbering
+it (there is no fallback to an overwrite-capable `rename`).
+
+For a **Completed** match the replay is published first and the **report
+last**. The report is the single *commit marker*: a consumer must treat the
+replay as committed only once the report exists. These are two separate
+publishes, so a consumer racing the writer could momentarily see the replay
+before the report — that intermediate state is expected, which is precisely why
+the report is the marker; the pair is not published atomically as a unit. If the
+report publish fails, the already-published replay is rolled back so no
+"replay-only" success remains. An **Aborted** match publishes only the report.
+
+Cleanup of temp files is best-effort on the failure paths the code reaches; a
+hard crash mid-publish may leave an inert `.tmp` sibling (never a target).
 
 ## Reference random agent
 

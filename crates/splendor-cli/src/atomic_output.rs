@@ -1,26 +1,43 @@
 //! Atomic, no-overwrite artifact commit for the arena CLI.
 //!
-//! The `run-match` command must publish its artifacts (report and, for a
-//! completed match, replay) *atomically*: a reader must never observe a
-//! half-written file, a lone replay without its report, or leftover temp
-//! files after a crash mid-write.
+//! The `run-match` command must publish each artifact (report and, for a
+//! completed match, replay) *atomically and without ever overwriting an
+//! existing target*: a reader must never observe a half-written file, and a
+//! pre-existing file at a target path must never be clobbered.
 //!
-//! The strategy is the classic write-temp-then-rename:
+//! The strategy is write-temp-then-publish:
 //! 1. write each payload to a sibling temp file in the *same directory* as the
-//!    final target (so the rename is a same-filesystem, atomic operation),
-//!    named with the process id and a per-process atomic counter so concurrent
-//!    invocations never collide;
-//! 2. `write_all` → `flush` → `sync_all` → close each temp before any rename;
-//! 3. rename the temps into place. For a completed match the **replay is
-//!    committed first and the report last**: the report is the single
-//!    "success marker". If the report rename fails after the replay has already
-//!    landed, the committed replay is rolled back so no "replay-only" success
-//!    can ever appear on disk.
+//!    final target (so publishing is a same-filesystem operation), named with
+//!    the process id and a per-process atomic counter so concurrent invocations
+//!    never collide;
+//! 2. `write_all` → `flush` → `sync_all` → close each temp before any publish;
+//! 3. publish the temp with [`publish_new`], an atomic **create-if-absent**
+//!    operation (`hard_link` then unlink the temp). Unlike `rename`, this fails
+//!    if the target already exists, so it closes the TOCTOU window between the
+//!    command layer's early `exists()` check and this final publish: if the
+//!    target appears in between, the publish fails rather than overwriting it.
+//!    There is deliberately **no** fallback to an overwrite-capable `rename`.
 //!
-//! No-overwrite of the *targets* is enforced by the caller (the command layer
-//! checks both targets are absent before running the match, for role-specific
-//! error messages); the temp files additionally use `create_new(true)` so a
-//! stray sibling temp is never clobbered.
+//! ## What is and is not guaranteed
+//!
+//! Each individual publish is atomic and non-clobbering. For a completed match
+//! the replay is published first and the **report last**: the report is the
+//! single *commit marker*. A consumer must treat the replay as committed only
+//! once the report exists. The two publishes are separate operations, so a
+//! consumer racing the writer could briefly observe the replay without the
+//! report — that intermediate state is expected, which is exactly why the
+//! report is the marker. The pair is *not* claimed to appear atomically.
+//!
+//! If the report publish fails after the replay has landed, the committed
+//! replay is rolled back so no "replay-only" success is left behind, and every
+//! temp this code touched is removed. This cleanup is best-effort on the
+//! failure paths the code actually reaches; a hard process crash mid-publish
+//! may still leave a `.tmp` sibling, which is inert (never a target).
+//!
+//! The command layer keeps an early `exists()` check on both targets purely for
+//! a role-specific, fast error message; [`publish_new`] is what actually
+//! *enforces* no-overwrite. Temp files additionally use `create_new(true)` so a
+//! stray sibling temp is never clobbered either.
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
@@ -100,34 +117,28 @@ fn write_temp(target: &Path, contents: &str) -> Result<PathBuf, AtomicWriteError
     Ok(tmp)
 }
 
-/// Atomically commit a completed match's replay and report.
+/// Atomic **create-if-absent** publish of a fully-written temp onto `target`.
 ///
-/// The replay is committed first and the report last (the report is the
-/// success marker). Both payloads must already be serialized by the caller.
-pub fn commit_completed(
-    replay_out: &Path,
-    replay_json: &str,
-    report_out: &Path,
-    report_json: &str,
-) -> Result<(), AtomicWriteError> {
-    commit_completed_with(
-        replay_out,
-        replay_json,
-        report_out,
-        report_json,
-        |from, to| fs::rename(from, to),
-    )
+/// Uses `hard_link` (which fails if `target` already exists) then unlinks the
+/// temp, so `target` is *never* overwritten — even under a race where the file
+/// appears after an earlier `exists()` check. There is deliberately no fallback
+/// to an overwrite-capable `rename`: if `hard_link` is unsupported the error is
+/// propagated and the caller turns it into an artifact error.
+pub(crate) fn publish_new(temp: &Path, target: &Path) -> io::Result<()> {
+    fs::hard_link(temp, target)?;
+    fs::remove_file(temp)?;
+    Ok(())
 }
 
-/// [`commit_completed`] with an injectable `rename`, for tests that need to
-/// force a failure *after* the replay has already been committed (exercising
-/// the rollback path).
+/// Atomically commit a completed match's replay and report using the real
+/// [`publish_new`] no-clobber primitive. Both payloads must already be
+/// serialized by the caller.
 pub(crate) fn commit_completed_with<F>(
     replay_out: &Path,
     replay_json: &str,
     report_out: &Path,
     report_json: &str,
-    rename: F,
+    publish: F,
 ) -> Result<(), AtomicWriteError>
 where
     F: Fn(&Path, &Path) -> io::Result<()>,
@@ -143,8 +154,8 @@ where
         }
     };
 
-    // 3. Commit the replay first.
-    if let Err(source) = rename(&replay_tmp, replay_out) {
+    // 3. Publish the replay first (create-if-absent).
+    if let Err(source) = publish(&replay_tmp, replay_out) {
         let _ = fs::remove_file(&replay_tmp);
         let _ = fs::remove_file(&report_tmp);
         return Err(AtomicWriteError::Io {
@@ -153,10 +164,10 @@ where
         });
     }
 
-    // 4. Commit the report last. On failure, roll back the already-committed
-    //    replay so a "replay-only" success can never appear, and drop the
-    //    remaining temp.
-    if let Err(source) = rename(&report_tmp, report_out) {
+    // 4. Publish the report last (the commit marker). On failure, roll back the
+    //    already-published replay so a "replay-only" success can never appear,
+    //    and drop the remaining temp.
+    if let Err(source) = publish(&report_tmp, report_out) {
         let _ = fs::remove_file(replay_out);
         let _ = fs::remove_file(&report_tmp);
         return Err(AtomicWriteError::Io {
@@ -168,23 +179,18 @@ where
     Ok(())
 }
 
-/// Atomically commit an aborted match's report only. No replay is written for
-/// an aborted match.
-pub fn commit_aborted(report_out: &Path, report_json: &str) -> Result<(), AtomicWriteError> {
-    commit_aborted_with(report_out, report_json, |from, to| fs::rename(from, to))
-}
-
-/// [`commit_aborted`] with an injectable `rename`, for symmetry and tests.
+/// Atomically commit an aborted match's report only (no replay), using the real
+/// [`publish_new`] no-clobber primitive.
 pub(crate) fn commit_aborted_with<F>(
     report_out: &Path,
     report_json: &str,
-    rename: F,
+    publish: F,
 ) -> Result<(), AtomicWriteError>
 where
     F: Fn(&Path, &Path) -> io::Result<()>,
 {
     let report_tmp = write_temp(report_out, report_json)?;
-    if let Err(source) = rename(&report_tmp, report_out) {
+    if let Err(source) = publish(&report_tmp, report_out) {
         let _ = fs::remove_file(&report_tmp);
         return Err(AtomicWriteError::Io {
             context: "commit report output",
@@ -219,10 +225,41 @@ mod tests {
         let dir = tmp_dir();
         let replay = dir.join("replay.json");
         let report = dir.join("report.json");
-        commit_completed(&replay, "REPLAY\n", &report, "REPORT\n").unwrap();
+        commit_completed_with(&replay, "REPLAY\n", &report, "REPORT\n", publish_new).unwrap();
         assert_eq!(fs::read_to_string(&replay).unwrap(), "REPLAY\n");
         assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
         assert_eq!(dir_names(&dir), vec!["replay.json", "report.json"]);
+    }
+
+    #[test]
+    fn publish_new_refuses_to_overwrite_existing_report() {
+        // The real create-if-absent primitive must not clobber a report that
+        // appears after the command's early exists() check. The already
+        // -published replay is rolled back and no temp is left behind.
+        let dir = tmp_dir();
+        let replay = dir.join("replay.json");
+        let report = dir.join("report.json");
+        fs::write(&report, "PRE-EXISTING REPORT").unwrap();
+        let err = commit_completed_with(&replay, "REPLAY\n", &report, "REPORT\n", publish_new)
+            .unwrap_err();
+        assert!(matches!(err, AtomicWriteError::Io { .. }));
+        assert_eq!(fs::read_to_string(&report).unwrap(), "PRE-EXISTING REPORT");
+        assert!(!replay.exists(), "our replay must be rolled back");
+        assert_eq!(dir_names(&dir), vec!["report.json"]);
+    }
+
+    #[test]
+    fn publish_new_refuses_to_overwrite_existing_replay() {
+        let dir = tmp_dir();
+        let replay = dir.join("replay.json");
+        let report = dir.join("report.json");
+        fs::write(&replay, "PRE-EXISTING REPLAY").unwrap();
+        let err = commit_completed_with(&replay, "REPLAY\n", &report, "REPORT\n", publish_new)
+            .unwrap_err();
+        assert!(matches!(err, AtomicWriteError::Io { .. }));
+        assert_eq!(fs::read_to_string(&replay).unwrap(), "PRE-EXISTING REPLAY");
+        assert!(!report.exists(), "our report must not be published");
+        assert_eq!(dir_names(&dir), vec!["replay.json"]);
     }
 
     #[test]
@@ -282,7 +319,7 @@ mod tests {
     fn aborted_commit_writes_only_report() {
         let dir = tmp_dir();
         let report = dir.join("report.json");
-        commit_aborted(&report, "REPORT\n").unwrap();
+        commit_aborted_with(&report, "REPORT\n", publish_new).unwrap();
         assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
         assert_eq!(dir_names(&dir), vec!["report.json"]);
     }
