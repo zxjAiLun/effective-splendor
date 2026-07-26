@@ -32,7 +32,10 @@
 //! replay is rolled back so no "replay-only" success is left behind, and every
 //! temp this code touched is removed. This cleanup is best-effort on the
 //! failure paths the code actually reaches; a hard process crash mid-publish
-//! may still leave a `.tmp` sibling, which is inert (never a target).
+//! may still leave a `.tmp` sibling, which is inert (never a target). Likewise,
+//! a temp unlink that fails *after* `hard_link` has already succeeded is
+//! swallowed: the target is committed the moment the link lands, so a cleanup
+//! failure can never downgrade a successful publication into an error.
 //!
 //! The command layer keeps an early `exists()` check on both targets purely for
 //! a role-specific, fast error message; [`publish_new`] is what actually
@@ -117,22 +120,43 @@ fn write_temp(target: &Path, contents: &str) -> Result<PathBuf, AtomicWriteError
     Ok(tmp)
 }
 
-/// Atomic **create-if-absent** publish of a fully-written temp onto `target`.
+/// Atomic **create-if-absent** publish of a fully-written temp onto `target`,
+/// using `unlink` to drop the now-redundant temp after the link succeeds.
 ///
-/// Uses `hard_link` (which fails if `target` already exists) then unlinks the
-/// temp, so `target` is *never* overwritten — even under a race where the file
-/// appears after an earlier `exists()` check. There is deliberately no fallback
-/// to an overwrite-capable `rename`: if `hard_link` is unsupported the error is
-/// propagated and the caller turns it into an artifact error.
-pub(crate) fn publish_new(temp: &Path, target: &Path) -> io::Result<()> {
+/// The `hard_link` is the true *commit point*: it fails if `target` already
+/// exists, so the publish is non-clobbering even under a race where the file
+/// appears after an earlier `exists()` check (there is deliberately no fallback
+/// to an overwrite-capable `rename`). Once `hard_link` succeeds, `target` is
+/// committed and durable; the subsequent temp unlink is only best-effort
+/// cleanup, so its failure is deliberately swallowed — it must never convert a
+/// successful publication into an `Err`.
+pub(crate) fn publish_new_with<U>(temp: &Path, target: &Path, unlink: U) -> io::Result<()>
+where
+    U: FnOnce(&Path) -> io::Result<()>,
+{
     fs::hard_link(temp, target)?;
-    fs::remove_file(temp)?;
+    // Target is committed. Temp unlink is best-effort cleanup and must not
+    // convert a successful publication into a failed one.
+    let _ = unlink(temp);
     Ok(())
 }
 
-/// Atomically commit a completed match's replay and report using the real
-/// [`publish_new`] no-clobber primitive. Both payloads must already be
-/// serialized by the caller.
+/// Production [`publish_new_with`] using the real [`fs::remove_file`] for temp
+/// cleanup. `Err` is only ever returned when `hard_link` itself fails — i.e.
+/// when the target was *not* created. A temp-cleanup failure can never undo an
+/// already-published target.
+pub(crate) fn publish_new(temp: &Path, target: &Path) -> io::Result<()> {
+    publish_new_with(temp, target, |t| fs::remove_file(t))
+}
+
+/// Atomically commit a completed match's replay and report. Both payloads must
+/// already be serialized by the caller.
+///
+/// `publish` is an atomic create-if-absent primitive: it MUST return `Err` only
+/// when the target was *not* created, and once `hard_link` succeeds the target
+/// is committed — the callback then MUST return `Ok` (any temp-cleanup failure
+/// is best-effort and must not surface as `Err`). This contract is what lets a
+/// temp-cleanup failure never reverse an already-published target.
 pub(crate) fn commit_completed_with<F>(
     replay_out: &Path,
     replay_json: &str,
@@ -179,8 +203,12 @@ where
     Ok(())
 }
 
-/// Atomically commit an aborted match's report only (no replay), using the real
-/// [`publish_new`] no-clobber primitive.
+/// Atomically commit an aborted match's report only (no replay).
+///
+/// `publish` follows the same contract as [`commit_completed_with`]: return
+/// `Err` only when the report target was *not* created, and `Ok` once the link
+/// succeeds (a temp-cleanup failure is best-effort and must not surface as
+/// `Err`).
 pub(crate) fn commit_aborted_with<F>(
     report_out: &Path,
     report_json: &str,
@@ -322,5 +350,109 @@ mod tests {
         commit_aborted_with(&report, "REPORT\n", publish_new).unwrap();
         assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
         assert_eq!(dir_names(&dir), vec!["report.json"]);
+    }
+
+    #[test]
+    fn publish_new_with_failing_unlink_still_commits_target() {
+        // Direct check of the new primitive: a temp unlink that fails *after*
+        // a successful hard_link must NOT turn the publication into an error.
+        let dir = tmp_dir();
+        let temp = dir.join("x.tmp");
+        let target = dir.join("x.json");
+        fs::write(&temp, "DATA").unwrap();
+        let res = publish_new_with(&temp, &target, |_| Err(io::Error::other("unlink failed")));
+        assert!(res.is_ok(), "temp cleanup failure must not fail commit");
+        assert_eq!(fs::read_to_string(&target).unwrap(), "DATA");
+        assert!(
+            temp.exists(),
+            "temp residue may remain after a failed unlink; it is inert"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn replay_temp_unlink_failure_does_not_uncommit_replay() {
+        let dir = tmp_dir();
+        let replay = dir.join("replay.json");
+        let report = dir.join("report.json");
+        let replay_target = replay.clone();
+        // Publish callback commits the target via hard_link but simulates a
+        // failing temp unlink for the replay only. The committed target must
+        // survive the cleanup failure.
+        let publish = move |from: &Path, to: &Path| -> io::Result<()> {
+            fs::hard_link(from, to)?;
+            if to == replay_target.as_path() {
+                return Ok(()); // target is committed; swallow unlink failure
+            }
+            let _ = fs::remove_file(from);
+            Ok(())
+        };
+        commit_completed_with(&replay, "REPLAY\n", &report, "REPORT\n", publish).unwrap();
+        assert_eq!(fs::read_to_string(&replay).unwrap(), "REPLAY\n");
+        assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
+        assert!(
+            replay.exists() && report.exists(),
+            "both artifacts stay committed after replay temp cleanup failure"
+        );
+        let has_residue = dir_names(&dir)
+            .iter()
+            .any(|n| n.starts_with("replay.json.") && n.ends_with(".tmp"));
+        assert!(
+            has_residue,
+            "replay temp should remain after the simulated unlink failure"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn report_temp_unlink_failure_does_not_uncommit_report() {
+        let dir = tmp_dir();
+        let replay = dir.join("replay.json");
+        let report = dir.join("report.json");
+        let report_target = report.clone();
+        // Simulate a failing temp unlink for the report only. The commit must
+        // NOT collapse into a report-only error state.
+        let publish = move |from: &Path, to: &Path| -> io::Result<()> {
+            fs::hard_link(from, to)?;
+            if to == report_target.as_path() {
+                return Ok(()); // target is committed; swallow unlink failure
+            }
+            let _ = fs::remove_file(from);
+            Ok(())
+        };
+        commit_completed_with(&replay, "REPLAY\n", &report, "REPORT\n", publish).unwrap();
+        assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
+        assert_eq!(fs::read_to_string(&replay).unwrap(), "REPLAY\n");
+        assert!(
+            report.exists() && replay.exists(),
+            "no report-only state: replay must also remain committed"
+        );
+        let has_residue = dir_names(&dir)
+            .iter()
+            .any(|n| n.starts_with("report.json.") && n.ends_with(".tmp"));
+        assert!(
+            has_residue,
+            "report temp should remain after the simulated unlink failure"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn aborted_temp_unlink_failure_still_commits_report() {
+        let dir = tmp_dir();
+        let report = dir.join("report.json");
+        // Aborted publishes only the report; simulate a (failing) temp unlink.
+        let publish = |from: &Path, to: &Path| -> io::Result<()> {
+            fs::hard_link(from, to)?;
+            let _ = fs::remove_file(from); // best-effort; target already committed
+            Ok(())
+        };
+        commit_aborted_with(&report, "REPORT\n", publish).unwrap();
+        assert_eq!(fs::read_to_string(&report).unwrap(), "REPORT\n");
+        assert!(
+            report.exists(),
+            "report must stay committed after temp cleanup failure"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 }

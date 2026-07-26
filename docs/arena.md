@@ -121,7 +121,10 @@ report publish fails, the already-published replay is rolled back so no
 "replay-only" success remains. An **Aborted** match publishes only the report.
 
 Cleanup of temp files is best-effort on the failure paths the code reaches; a
-hard crash mid-publish may leave an inert `.tmp` sibling (never a target).
+hard crash mid-publish may leave an inert `.tmp` sibling (never a target). The
+`hard_link` onto the target is the true commit point, so a failure during temp
+cleanup can **never** reverse an already-created target: the publication is
+durable the moment the link succeeds.
 
 ## Reference random agent
 
