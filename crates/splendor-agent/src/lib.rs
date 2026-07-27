@@ -15,11 +15,13 @@
 //! xorshift64\* output of the historical `splendor agent-random --seed <u64>`.
 
 mod error;
+mod heuristic;
 mod policy;
 mod runtime;
 mod stable_rng;
 
 pub use error::AgentError;
+pub use heuristic::{HeuristicAgentPolicy, HEURISTIC_AGENT_NAME, HEURISTIC_AGENT_VERSION};
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
 pub use runtime::{run_agent, AgentIdentity};
 pub use stable_rng::StableRng;
@@ -59,5 +61,37 @@ where
         },
         seed,
         RandomAgentPolicy::new(),
+    )
+}
+
+/// Convenience entry for the deterministic heuristic agent: a
+/// [`HeuristicAgentPolicy`] over a seed-initialized [`StableRng`], presenting
+/// the heuristic identity (`HEURISTIC_AGENT_NAME` / `HEURISTIC_AGENT_VERSION`).
+///
+/// The heuristic policy is fully deterministic and uses its `seed` only to
+/// break ties among equally-scored legal actions; a unique best action is
+/// chosen without consuming the RNG, so the same server transcript always
+/// yields the same action regardless of seed.
+pub fn run_heuristic_agent<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    seed: u64,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: HEURISTIC_AGENT_NAME,
+            version: HEURISTIC_AGENT_VERSION,
+        },
+        seed,
+        HeuristicAgentPolicy::new(),
     )
 }

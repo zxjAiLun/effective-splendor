@@ -7,6 +7,7 @@ rust-version.workspace = true
 description = "Protocol runtime and policy boundary for Splendor stdio agents"
 
 [dependencies]
+splendor-catalog = { workspace = true }
 splendor-core = { workspace = true }
 splendor-protocol = { workspace = true }
 serde = { workspace = true }

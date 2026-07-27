@@ -82,6 +82,7 @@ fn main() {
     match argv.get(1).map(String::as_str) {
         Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
+        Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
         _ => {}
     }
 

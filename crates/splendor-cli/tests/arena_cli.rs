@@ -174,6 +174,132 @@ fn normal_match_completes_with_verified_artifacts() {
     );
 }
 
+/// A two-agent config mixing the heuristic and random programs.
+fn mixed_config(game_id: &str, seed: u64, args0: &[&str], args1: &[&str]) -> Value {
+    let program = bin().to_string_lossy().into_owned();
+    serde_json::json!({
+        "game_id": game_id,
+        "seed": seed,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 10_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            { "program": program, "args": args0 },
+            { "program": program, "args": args1 },
+        ]
+    })
+}
+
+/// Run a completed match and assert the artifacts verify and the agent
+/// identities are reported correctly. Returns the report for further checks.
+fn assert_completed_match(config: &Path, dir: &Path) -> ArenaReportV1 {
+    let report_out = dir.join("report.json");
+    let replay_out = dir.join("replay.json");
+    let out = run_match(config, &report_out, &replay_out);
+    assert_eq!(
+        out.code, 0,
+        "expected completed exit 0; stderr={}",
+        out.stderr
+    );
+    assert!(
+        out.stderr.is_empty(),
+        "stderr must be empty: {}",
+        out.stderr
+    );
+
+    let report_text = std::fs::read_to_string(&report_out).expect("read report");
+    let replay_text = std::fs::read_to_string(&replay_out).expect("read replay");
+    let report: ArenaReportV1 = strict_json(&report_text).expect("strict report");
+    let replay: ReplayV1 = strict_json(&replay_text).expect("strict replay");
+
+    let verified = verify_replay(&replay).expect("replay verifies");
+    let report_hash = match &report.outcome {
+        ArenaOutcomeV1::Completed {
+            replay_final_hash, ..
+        } => replay_final_hash.clone(),
+        ArenaOutcomeV1::Aborted { .. } => panic!("completed match reported aborted"),
+    };
+    assert_eq!(report_hash, replay.final_state_hash.as_str());
+    assert_eq!(report_hash, verified.final_state_hash);
+    assert_no_temp(dir);
+    report
+}
+
+#[test]
+fn heuristic_vs_random_match_completes() {
+    let dir = tmp_dir();
+    let config = write_config(
+        &dir,
+        &mixed_config(
+            "cli-heur-vs-rand",
+            42,
+            &["agent-heuristic", "--seed", "1001"],
+            &["agent-random", "--seed", "1002"],
+        ),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(report.agents.len(), 2);
+    assert_eq!(
+        report.agents[0].agent_name.as_deref(),
+        Some("splendor-cli-heuristic")
+    );
+    assert_eq!(report.agents[0].agent_version.as_deref(), Some("0.1.0"));
+    assert_eq!(
+        report.agents[1].agent_name.as_deref(),
+        Some("splendor-cli-random")
+    );
+}
+
+#[test]
+fn random_vs_heuristic_match_completes() {
+    // Seat swap: random in seat 0, heuristic in seat 1.
+    let dir = tmp_dir();
+    let config = write_config(
+        &dir,
+        &mixed_config(
+            "cli-rand-vs-heur",
+            43,
+            &["agent-random", "--seed", "2001"],
+            &["agent-heuristic", "--seed", "2002"],
+        ),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(report.agents.len(), 2);
+    assert_eq!(
+        report.agents[0].agent_name.as_deref(),
+        Some("splendor-cli-random")
+    );
+    assert_eq!(
+        report.agents[1].agent_name.as_deref(),
+        Some("splendor-cli-heuristic")
+    );
+    assert_eq!(report.agents[1].agent_version.as_deref(), Some("0.1.0"));
+}
+
+#[test]
+fn heuristic_vs_random_replay_verifies() {
+    let dir = tmp_dir();
+    let config = write_config(
+        &dir,
+        &mixed_config(
+            "cli-heur-replay",
+            44,
+            &["agent-heuristic", "--seed", "3001"],
+            &["agent-random", "--seed", "3002"],
+        ),
+    );
+    let report = assert_completed_match(&config, &dir);
+    // The replay must verify and bind to the report's final hash; both agents
+    // must appear with their distinct identities.
+    let names: Vec<&str> = report
+        .agents
+        .iter()
+        .map(|a| a.agent_name.as_deref().unwrap_or(""))
+        .collect();
+    assert!(names.contains(&"splendor-cli-heuristic"));
+    assert!(names.contains(&"splendor-cli-random"));
+}
+
 /// Strict deserialize: reject unknown fields (via the DTO's own
 /// `deny_unknown_fields`) and any trailing data after the JSON object.
 fn strict_json<T: serde::de::DeserializeOwned>(text: &str) -> serde_json::Result<T> {

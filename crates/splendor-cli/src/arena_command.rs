@@ -29,7 +29,7 @@ use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner};
 use splendor_replay::verify_replay;
 
 use crate::atomic_output;
-use splendor_agent::run_random_agent;
+use splendor_agent::{run_heuristic_agent, run_random_agent};
 
 /// Maximum size of an arena config document, in bytes. A larger file is
 /// rejected before any parse to bound accidental/hostile input.
@@ -60,6 +60,18 @@ random legal action on stdout. Deterministic for a given --seed.
 
 Options:
   --seed <u64>   Seed for the stable action RNG (required).
+  -h, --help     Print this help and exit 0.";
+
+const AGENT_HEURISTIC_USAGE: &str = "\
+Usage: splendor agent-heuristic --seed <u64>
+
+Deterministic heuristic stdio agent: reads server NDJSON on stdin, replies with
+the highest-scoring legal action on stdout. Uses the --seed only to break ties
+among equally-scored actions; a unique best action is chosen without consuming
+the RNG, so the same server transcript always yields the same action.
+
+Options:
+  --seed <u64>   Seed for the tie-break RNG (required).
   -h, --help     Print this help and exit 0.";
 
 /// A user-facing error while preparing or committing a `run-match`. `Display`
@@ -362,6 +374,44 @@ pub fn agent_random(args: &[String]) -> i32 {
     let diagnostics = stderr.lock();
 
     match run_random_agent(input, output, diagnostics, seed) {
+        Ok(()) => 0,
+        Err(_) => 1, // The diagnostic was already written to stderr.
+    }
+}
+
+// ---------------------------------------------------------------------------
+// agent-heuristic
+// ---------------------------------------------------------------------------
+
+/// Entry point for `splendor agent-heuristic --seed <u64>`. Returns the exit code.
+///
+/// The argument contract is identical to `agent_random` (required `--seed`,
+/// strict flag parsing, help on `-h`/`--help`). It drives the same generic
+/// runtime via [`run_heuristic_agent`], so stdout carries only client NDJSON
+/// and diagnostics go to stderr.
+pub fn agent_heuristic(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_HEURISTIC_USAGE);
+        return 0;
+    }
+    let seed = match parse_agent_random_args(args) {
+        Ok(seed) => seed,
+        Err(msg) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {msg}");
+            let _ = stderr.flush();
+            return 1;
+        }
+    };
+
+    let stdin = io::stdin();
+    let input = BufReader::new(stdin.lock());
+    let stdout = io::stdout();
+    let output = stdout.lock();
+    let stderr = io::stderr();
+    let diagnostics = stderr.lock();
+
+    match run_heuristic_agent(input, output, diagnostics, seed) {
         Ok(()) => 0,
         Err(_) => 1, // The diagnostic was already written to stderr.
     }
