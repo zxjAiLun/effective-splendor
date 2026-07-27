@@ -58,6 +58,28 @@ pub enum EvaluationError {
         player_count: u8,
     },
 
+    /// A completed outcome named a winner seat that was out of bounds for the
+    /// player count. Validated before any winner is accumulated so malformed
+    /// input can never panic the aggregator.
+    #[error("winner seat {seat} out of bounds for {player_count} players (match {match_index})")]
+    WinnerSeatOutOfBounds {
+        match_index: u32,
+        seat: u8,
+        player_count: u8,
+    },
+
+    /// A completed outcome named the same winner seat more than once. Each
+    /// winner must reference a distinct seat.
+    #[error("duplicate winner seat {seat} in match {match_index}")]
+    DuplicateWinnerSeat { match_index: u32, seat: u8 },
+
+    /// A record's seat→agent mapping referenced an agent id that is not part of
+    /// the plan. This is a fail-closed defense: once the canonical-schedule
+    /// binding and seat-mapping checks pass this should be unreachable, but the
+    /// aggregator never indexes untrusted ids with a panicking `Index`.
+    #[error("record for match {match_index} references unknown agent '{agent_id}'")]
+    UnknownAgentInRecord { match_index: u32, agent_id: String },
+
     /// A submitted record referenced a `match_index` absent from the schedule.
     #[error("record references unknown match index {0}")]
     UnknownMatchIndex(u32),

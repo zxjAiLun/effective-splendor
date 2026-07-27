@@ -18,7 +18,8 @@ pub mod schedule;
 pub use error::EvaluationError;
 pub use plan::{
     evaluation_plan_hash_v1, EvaluationAgentV1, EvaluationPlanHash, EvaluationPlanV1,
-    EVALUATION_PLAN_FORMAT, EVALUATION_VERSION, MAX_MATCHES,
+    EVALUATION_PLAN_FORMAT, EVALUATION_VERSION, MATCH_GAME_ID_SUFFIX_BYTES, MAX_AGENT_ID_BYTES,
+    MAX_EVALUATION_ID_BYTES, MAX_MATCHES,
 };
 pub use report::{
     aggregate, AgentAggregateV1, EvaluationMatchRecordV1, EvaluationReportV1, SeatAggregateV1,

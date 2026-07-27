@@ -7,10 +7,15 @@
 //! and are intentionally never serialized, so floating-point formatting never
 //! becomes a compatibility surface.
 //!
-//! [`aggregate`] is a pure function over `(plan, schedule, records)`. It rejects
-//! malformed input (missing/duplicate/extra records, game-id or seat-mapping
-//! mismatches, length/aborted-seat violations) instead of panicking, and its
-//! output is independent of the order in which records are supplied.
+//! [`aggregate`] is a pure function over `(plan, records)`. The canonical
+//! schedule is derived *inside* `aggregate` from the plan via
+//! [`expand_schedule`](crate::expand_schedule); callers cannot inject an
+//! arbitrary schedule, so a report's `plan_hash`, `scheduled_matches`, and
+//! per-seat tallies are always bound to the plan's own canonical schedule.
+//! It rejects malformed input (missing/duplicate/extra records, game-id or
+//! seat-mapping mismatches, length/winner/aborted-seat violations) instead of
+//! panicking, and its output is independent of the order in which records are
+//! supplied.
 
 use std::collections::HashMap;
 
@@ -18,7 +23,7 @@ use splendor_arena::ArenaOutcomeV1;
 
 use crate::error::EvaluationError;
 use crate::plan::{evaluation_plan_hash_v1, EvaluationPlanV1, EVALUATION_VERSION};
-use crate::schedule::EvaluationMatchSpecV1;
+use crate::schedule::{expand_schedule, EvaluationMatchSpecV1};
 
 /// Top-level report format tag written into every evaluation report.
 pub const EVALUATION_REPORT_FORMAT: &str = "effective-splendor-evaluation-report";
@@ -107,15 +112,21 @@ pub struct EvaluationReportV1 {
     pub agents: Vec<AgentAggregateV1>,
 }
 
-/// Aggregate a set of match records against a plan and its expanded schedule.
+/// Aggregate a set of match records against a plan.
 ///
-/// Validation performed:
+/// The canonical schedule is derived *inside* this function from `plan` via
+/// [`expand_schedule`](crate::expand_schedule). Callers pass only the plan and
+/// the per-match records; they cannot inject an arbitrary schedule, so the
+/// resulting report is always bound to the plan's own canonical schedule (and
+/// therefore to its [`plan_hash`](EvaluationReportV1::plan_hash)).
+///
+/// Validation performed against the canonical schedule:
 /// - every `match_index` exists in the schedule and appears exactly once;
 /// - every scheduled match has a record (no missing, no extra);
 /// - each record's `game_id`, `seed_index`, `rotation`, and seat→agent mapping
 ///   match its scheduled slot;
 /// - completed outcomes carry `scores`/`ranks` of length equal to the player
-///   count;
+///   count, and every winner seat is in bounds and distinct;
 /// - aborted outcomes name a seat within bounds.
 ///
 /// Aggregation semantics:
@@ -124,6 +135,18 @@ pub struct EvaluationReportV1 {
 /// - **Aborted**: every participant's `aborted_matches += 1`; only the attributed
 ///   seat's agent gets `faults_caused += 1`. No score/rank/win is fabricated.
 pub fn aggregate(
+    plan: &EvaluationPlanV1,
+    records: &[EvaluationMatchRecordV1],
+) -> Result<EvaluationReportV1, EvaluationError> {
+    let specs = expand_schedule(plan)?;
+    aggregate_canonical(plan, &specs, records)
+}
+
+/// Internal aggregation over an already-canonical schedule. Private so no
+/// external caller can bypass [`expand_schedule`] and inject an arbitrary
+/// schedule. `specs` MUST be exactly `expand_schedule(plan)` — the public
+/// [`aggregate`] guarantees this.
+fn aggregate_canonical(
     plan: &EvaluationPlanV1,
     specs: &[EvaluationMatchSpecV1],
     records: &[EvaluationMatchRecordV1],
@@ -202,6 +225,20 @@ pub fn aggregate(
         });
     }
 
+    // Fail-closed lookup of an agent's aggregate index from an untrusted record
+    // id. The canonical-schedule + seat-mapping checks above guarantee every
+    // record id is a plan agent id, so this never fails on the happy path — but
+    // the aggregator must not panic on a `HashMap` Index miss.
+    let agent_index_of = |id: &str, match_index: u32| -> Result<usize, EvaluationError> {
+        agent_index
+            .get(id)
+            .copied()
+            .ok_or_else(|| EvaluationError::UnknownAgentInRecord {
+                match_index,
+                agent_id: id.to_string(),
+            })
+    };
+
     ordered.sort_by_key(|r| r.match_index);
     for record in ordered {
         let n = record.agent_ids_by_seat.len();
@@ -214,8 +251,29 @@ pub fn aggregate(
                         found: result.scores.len(),
                     });
                 }
+                // Validate every winner BEFORE accumulating: out-of-bounds or
+                // duplicate winner seats must return an error, never panic on
+                // an unchecked `agent_ids_by_seat[seat]` index.
+                let mut winner_seats: std::collections::HashSet<u8> =
+                    std::collections::HashSet::new();
+                for winner in &result.winners {
+                    let seat = winner.0;
+                    if (seat as usize) >= n {
+                        return Err(EvaluationError::WinnerSeatOutOfBounds {
+                            match_index: record.match_index,
+                            seat,
+                            player_count: n as u8,
+                        });
+                    }
+                    if !winner_seats.insert(seat) {
+                        return Err(EvaluationError::DuplicateWinnerSeat {
+                            match_index: record.match_index,
+                            seat,
+                        });
+                    }
+                }
                 for seat in 0..n {
-                    let ai = agent_index[record.agent_ids_by_seat[seat].as_str()];
+                    let ai = agent_index_of(&record.agent_ids_by_seat[seat], record.match_index)?;
                     agents[ai].by_seat[seat].completed_matches += 1;
                     agents[ai].by_seat[seat].score_sum += result.scores[seat] as u64;
                     agents[ai].by_seat[seat].rank_sum += result.ranks[seat] as u64;
@@ -225,7 +283,7 @@ pub fn aggregate(
                 }
                 for winner in &result.winners {
                     let seat = winner.0 as usize;
-                    let ai = agent_index[record.agent_ids_by_seat[seat].as_str()];
+                    let ai = agent_index_of(&record.agent_ids_by_seat[seat], record.match_index)?;
                     agents[ai].wins += 1;
                     agents[ai].by_seat[seat].wins += 1;
                 }
@@ -239,11 +297,14 @@ pub fn aggregate(
                     });
                 }
                 for s in 0..n {
-                    let ai = agent_index[record.agent_ids_by_seat[s].as_str()];
+                    let ai = agent_index_of(&record.agent_ids_by_seat[s], record.match_index)?;
                     agents[ai].aborted_matches += 1;
                     agents[ai].by_seat[s].aborted_matches += 1;
                 }
-                let ai = agent_index[record.agent_ids_by_seat[*seat as usize].as_str()];
+                let ai = agent_index_of(
+                    &record.agent_ids_by_seat[*seat as usize],
+                    record.match_index,
+                )?;
                 agents[ai].faults_caused += 1;
                 agents[ai].by_seat[*seat as usize].faults_caused += 1;
             }
@@ -346,7 +407,7 @@ mod tests {
         let plan = crate::make_plan(&["A", "B"], &[1, 2]);
         let specs = expand_schedule(&plan).unwrap();
         let records = build_records(&specs);
-        let report = aggregate(&plan, &specs, &records).unwrap();
+        let report = aggregate(&plan, &records).unwrap();
 
         assert_eq!(report.scheduled_matches, 4);
         let a = report.agents.iter().find(|a| a.agent_id == "A").unwrap();
@@ -392,7 +453,7 @@ mod tests {
                 ),
             };
         }
-        let report = aggregate(&plan, &specs, &records).unwrap();
+        let report = aggregate(&plan, &records).unwrap();
         let a = report.agents.iter().find(|a| a.agent_id == "A").unwrap();
         let b = report.agents.iter().find(|a| a.agent_id == "B").unwrap();
         // Each agent is the seat-0 winner in exactly one of the two matches.
@@ -410,7 +471,7 @@ mod tests {
         // Both matches aborted at seat 0: in [A,B] A faults, in [B,A] B faults.
         records[0] = aborted_record(specs[0].match_index, &specs[0], 0);
         records[1] = aborted_record(specs[1].match_index, &specs[1], 0);
-        let report = aggregate(&plan, &specs, &records).unwrap();
+        let report = aggregate(&plan, &records).unwrap();
         let a = report.agents.iter().find(|a| a.agent_id == "A").unwrap();
         let b = report.agents.iter().find(|a| a.agent_id == "B").unwrap();
         // Every participant is counted in every aborted match...
@@ -432,7 +493,7 @@ mod tests {
             .iter()
             .map(|spec| aborted_record(spec.match_index, spec, 0))
             .collect();
-        let report = aggregate(&plan, &specs, &records).unwrap();
+        let report = aggregate(&plan, &records).unwrap();
         for agent in &report.agents {
             assert_eq!(agent.completed_matches, 0);
             assert_eq!(agent.score_sum, 0);
@@ -454,7 +515,7 @@ mod tests {
         let mut rec = build_records(&specs);
         rec[0].game_id = "tampered".to_string();
         assert!(matches!(
-            aggregate(&plan, &specs, &rec),
+            aggregate(&plan, &rec),
             Err(EvaluationError::RecordGameIdMismatch { .. })
         ));
 
@@ -463,7 +524,7 @@ mod tests {
         // specs[1] = [B,A]; claim [A,B].
         rec2[1].agent_ids_by_seat = vec!["A".to_string(), "B".to_string()];
         assert!(matches!(
-            aggregate(&plan, &specs, &rec2),
+            aggregate(&plan, &rec2),
             Err(EvaluationError::RecordSeatMappingMismatch { .. })
         ));
     }
@@ -473,12 +534,12 @@ mod tests {
         let plan = crate::make_plan(&["A", "B", "C"], &[1, 2]);
         let specs = expand_schedule(&plan).unwrap();
         let records = build_records(&specs);
-        let sorted = aggregate(&plan, &specs, &records).unwrap();
+        let sorted = aggregate(&plan, &records).unwrap();
 
         // Rotate the records vector to emulate a different submission order.
         let mut shuffled = records.clone();
         shuffled.rotate_left(2);
-        let rotated = aggregate(&plan, &specs, &shuffled).unwrap();
+        let rotated = aggregate(&plan, &shuffled).unwrap();
         assert_eq!(sorted, rotated);
     }
 
@@ -487,7 +548,7 @@ mod tests {
         let plan = crate::make_plan(&["A", "B"], &[1, 2]);
         let specs = expand_schedule(&plan).unwrap();
         let records = build_records(&specs);
-        let report = aggregate(&plan, &specs, &records).unwrap();
+        let report = aggregate(&plan, &records).unwrap();
 
         let json = serde_json::to_string(&report).unwrap();
         let back: EvaluationReportV1 = serde_json::from_str(&json).unwrap();
@@ -496,5 +557,115 @@ mod tests {
         // Unknown top-level field must be rejected.
         let noisy = json.trim_end_matches('}').to_string() + ",\"extra\":1}";
         assert!(serde_json::from_str::<EvaluationReportV1>(&noisy).is_err());
+    }
+
+    // ----- Blocker 1: aggregate binds the canonical schedule -----
+
+    #[test]
+    fn empty_records_are_missing_against_canonical_schedule() {
+        // A valid, non-empty plan with zero records must NOT yield an empty
+        // report. The canonical schedule has matches 0..N, so the first missing
+        // one (match_index 0) is reported.
+        let plan = crate::make_plan(&["A", "B"], &[1, 2]);
+        let records: Vec<EvaluationMatchRecordV1> = vec![];
+        let err = aggregate(&plan, &records).unwrap_err();
+        assert!(matches!(err, EvaluationError::MissingRecord(0)));
+    }
+
+    #[test]
+    fn partial_records_are_rejected() {
+        // Submit only the first match's record; the second scheduled match is
+        // missing → MissingRecord(1).
+        let plan = crate::make_plan(&["A", "B"], &[1]);
+        let specs = expand_schedule(&plan).unwrap();
+        let partial = vec![build_records(&specs)[0].clone()];
+        let err = aggregate(&plan, &partial).unwrap_err();
+        assert!(matches!(err, EvaluationError::MissingRecord(1)));
+    }
+
+    #[test]
+    fn duplicate_record_is_rejected() {
+        let plan = crate::make_plan(&["A", "B"], &[1]);
+        let specs = expand_schedule(&plan).unwrap();
+        let mut records = build_records(&specs);
+        // Duplicate the first record (match_index 0).
+        records.push(records[0].clone());
+        let err = aggregate(&plan, &records).unwrap_err();
+        assert!(matches!(err, EvaluationError::DuplicateRecord(0)));
+    }
+
+    #[test]
+    fn unknown_match_index_is_rejected() {
+        let plan = crate::make_plan(&["A", "B"], &[1]);
+        let specs = expand_schedule(&plan).unwrap();
+        let mut records = build_records(&specs);
+        // Point the second record at a match_index that does not exist in the
+        // 2-match schedule (only 0 and 1 exist).
+        records[1].match_index = 99;
+        let err = aggregate(&plan, &records).unwrap_err();
+        assert!(matches!(err, EvaluationError::UnknownMatchIndex(99)));
+    }
+
+    #[test]
+    fn canonical_schedule_is_derived_from_plan() {
+        // The public API accepts only (plan, records); the schedule is derived
+        // internally. Records built from expand_schedule(plan) must aggregate
+        // successfully, and the report's scheduled_matches must equal the
+        // canonical schedule length — proving the binding, not a caller-supplied
+        // schedule.
+        let plan = crate::make_plan(&["A", "B", "C"], &[1, 2]);
+        let canonical = expand_schedule(&plan).unwrap();
+        let records = build_records(&canonical);
+        let report = aggregate(&plan, &records).unwrap();
+        assert_eq!(report.scheduled_matches, canonical.len() as u32);
+        // plan_hash is real (non-empty) and bound to the same plan.
+        assert_eq!(report.plan_hash.len(), 64);
+        // Every agent is scheduled for every match under rotation.
+        for agent in &report.agents {
+            assert_eq!(agent.scheduled_matches, canonical.len() as u32);
+        }
+    }
+
+    // ----- Blocker 2: completed winner bounds never panic -----
+
+    #[test]
+    fn completed_winner_out_of_bounds_is_rejected_without_panic() {
+        let plan = crate::make_plan(&["A", "B"], &[1]);
+        let specs = expand_schedule(&plan).unwrap();
+        // Submit a COMPLETE record set so the canonical-schedule missing-record
+        // check passes; replace match_index 0 with a record whose winner
+        // references seat 255 (out of bounds for a 2-player match). scores/ranks
+        // lengths match the player count, so the length check passes — the
+        // winner bounds check must reject it without ever indexing
+        // agent_ids_by_seat[255].
+        let mut records = build_records(&specs);
+        records[0] = completed_record(specs[0].match_index, &specs[0], &[15, 5], &[1, 2], &[255]);
+        let err = aggregate(&plan, &records).unwrap_err();
+        assert!(matches!(
+            err,
+            EvaluationError::WinnerSeatOutOfBounds {
+                match_index: 0,
+                seat: 255,
+                player_count: 2
+            }
+        ));
+    }
+
+    #[test]
+    fn duplicate_winner_seat_is_rejected() {
+        let plan = crate::make_plan(&["A", "B"], &[1]);
+        let specs = expand_schedule(&plan).unwrap();
+        // Complete record set; match_index 0 names seat 0 as winner twice —
+        // must be rejected, not double-counted.
+        let mut records = build_records(&specs);
+        records[0] = completed_record(specs[0].match_index, &specs[0], &[15, 5], &[1, 2], &[0, 0]);
+        let err = aggregate(&plan, &records).unwrap_err();
+        assert!(matches!(
+            err,
+            EvaluationError::DuplicateWinnerSeat {
+                match_index: 0,
+                seat: 0
+            }
+        ));
     }
 }

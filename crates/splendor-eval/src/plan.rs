@@ -25,9 +25,27 @@ pub const EVALUATION_VERSION: u32 = 1;
 /// single plan from exploding into unbounded work and bounds config accidents.
 pub const MAX_MATCHES: u32 = 10_000;
 
-/// Maximum UTF-8 byte length of an evaluation id or agent id. Held to the same
-/// grade as the arena `game_id` limit so ids cannot corrupt framing.
-pub const MAX_EVALUATION_ID_BYTES: usize = 128;
+/// Fixed byte length of the suffix `expand_schedule` appends to each plan's
+/// `evaluation_id` to derive a per-match `game_id`:
+/// `-s{seed_index:06}-r{rotation:02}` → `-s000000-r00` = exactly 12 bytes.
+///
+/// This is kept as a named constant (rather than recomputed) so the
+/// `evaluation_id` length ceiling can be derived from the arena's
+/// [`MAX_GAME_ID_BYTES`](splendor_arena::config::MAX_GAME_ID_BYTES) without
+/// hiding the arithmetic.
+pub const MATCH_GAME_ID_SUFFIX_BYTES: usize = 12;
+
+/// Maximum UTF-8 byte length of an `evaluation_id`. Held to
+/// `arena::MAX_GAME_ID_BYTES - MATCH_GAME_ID_SUFFIX_BYTES` so every derived
+/// match `game_id` (`{evaluation_id}-s......-r..`) is guaranteed to fit the
+/// arena's 128-byte `game_id` ceiling. A plan that hashes must also be
+/// schedulable: an id at this limit still expands cleanly.
+pub const MAX_EVALUATION_ID_BYTES: usize =
+    splendor_arena::config::MAX_GAME_ID_BYTES - MATCH_GAME_ID_SUFFIX_BYTES;
+
+/// Maximum UTF-8 byte length of an agent id. Agent ids are never embedded in a
+/// derived `game_id`, so they may use the full arena `game_id` byte budget.
+pub const MAX_AGENT_ID_BYTES: usize = splendor_arena::config::MAX_GAME_ID_BYTES;
 
 /// One agent participating in the evaluation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,7 +123,11 @@ impl EvaluationPlanV1 {
             )));
         }
 
-        check_id("evaluation_id", &self.evaluation_id)?;
+        check_id(
+            "evaluation_id",
+            &self.evaluation_id,
+            MAX_EVALUATION_ID_BYTES,
+        )?;
 
         let n = self.agents.len();
         if !(2..=4).contains(&n) {
@@ -116,7 +138,7 @@ impl EvaluationPlanV1 {
 
         let mut seen = std::collections::HashSet::new();
         for agent in &self.agents {
-            check_id("agent id", &agent.id)?;
+            check_id("agent id", &agent.id, MAX_AGENT_ID_BYTES)?;
             if !seen.insert(agent.id.as_str()) {
                 return Err(EvaluationError::InvalidPlan(format!(
                     "duplicate agent id '{}'",
@@ -157,19 +179,21 @@ impl EvaluationPlanV1 {
     }
 }
 
-/// Reject empty/over-long/control-character ids at the same grade as arena
-/// `game_id`s.
-fn check_id(kind: &str, value: &str) -> Result<(), EvaluationError> {
+/// Reject empty/over-long/control-character ids. Each kind carries its own byte
+/// ceiling: `evaluation_id` is bounded by [`MAX_EVALUATION_ID_BYTES`] (so the
+/// derived `game_id` always fits the arena limit), agent ids by
+/// [`MAX_AGENT_ID_BYTES`]. Control characters (C0) are forbidden so ids cannot
+/// corrupt framing.
+fn check_id(kind: &str, value: &str, max_bytes: usize) -> Result<(), EvaluationError> {
     if value.trim().is_empty() {
         return Err(EvaluationError::InvalidPlan(format!(
             "{kind} must not be empty"
         )));
     }
     let bytes = value.as_bytes();
-    if bytes.len() > MAX_EVALUATION_ID_BYTES {
+    if bytes.len() > max_bytes {
         return Err(EvaluationError::InvalidPlan(format!(
-            "{kind} exceeds the {} byte limit",
-            MAX_EVALUATION_ID_BYTES
+            "{kind} exceeds the {max_bytes} byte limit"
         )));
     }
     if bytes.iter().any(|b| *b < 0x20) {
@@ -283,5 +307,64 @@ mod tests {
         // The hash is a 64-char lowercase hex string.
         assert_eq!(h1.as_str().len(), 64);
         assert!(h1.as_str().chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    // ----- Blocker 3: evaluation_id / agent_id byte ceilings -----
+
+    #[test]
+    fn evaluation_id_116_bytes_validates_hashes_and_expands() {
+        // 116 bytes is the maximum schedulable evaluation_id: the derived
+        // game_id (116 + 12-byte suffix) lands exactly on the arena's
+        // 128-byte ceiling. Validate, hash, AND expand must all succeed — a
+        // plan that hashes must be schedulable.
+        let mut plan = crate::make_plan(&["A", "B"], &[1]);
+        plan.evaluation_id = "e".repeat(116);
+        assert_eq!(plan.evaluation_id.len(), 116);
+        assert_eq!(116, MAX_EVALUATION_ID_BYTES);
+        assert_eq!(128, MAX_AGENT_ID_BYTES);
+        assert_eq!(12, MATCH_GAME_ID_SUFFIX_BYTES);
+
+        plan.validate()
+            .expect("116-byte evaluation_id must validate");
+        let _hash = evaluation_plan_hash_v1(&plan).expect("116-byte id must hash");
+        let specs = expand_schedule(&plan).expect("116-byte id must expand");
+
+        // Every derived game_id fits the arena ceiling; the seed-0 / rot-0
+        // game_id sits exactly at 128 bytes (116 + "-s000000-r00").
+        for spec in &specs {
+            assert!(spec.arena_config.game_id.len() <= 128);
+        }
+        assert_eq!(specs[0].arena_config.game_id.len(), 128);
+    }
+
+    #[test]
+    fn evaluation_id_117_bytes_is_rejected_by_plan_validation() {
+        // 117 bytes would derive a 129-byte game_id (117 + 12), exceeding the
+        // arena ceiling. Plan validation must reject it — so it can never be
+        // hashed, and the system never produces a plan hash for an
+        // unschedulable plan.
+        let mut plan = crate::make_plan(&["A", "B"], &[1]);
+        plan.evaluation_id = "e".repeat(117);
+        assert!(matches!(
+            plan.validate(),
+            Err(EvaluationError::InvalidPlan(_))
+        ));
+        // Hashing runs validate first, so it must also refuse.
+        assert!(evaluation_plan_hash_v1(&plan).is_err());
+        // And expand must refuse too.
+        assert!(expand_schedule(&plan).is_err());
+    }
+
+    #[test]
+    fn agent_id_128_bytes_remains_valid() {
+        // Agent ids are never embedded in a derived game_id, so they may use
+        // the full 128-byte arena budget.
+        let mut plan = crate::make_plan(&["A", "B"], &[1]);
+        plan.agents[0].id = "x".repeat(128);
+        plan.validate().expect("128-byte agent id must validate");
+        let _ = evaluation_plan_hash_v1(&plan).expect("128-byte agent id must hash");
+        let specs = expand_schedule(&plan).expect("128-byte agent id must expand");
+        // The 128-byte agent sits at seat 0 in rotation 0.
+        assert_eq!(specs[0].agent_ids_by_seat[0], "x".repeat(128));
     }
 }
