@@ -46,10 +46,13 @@ pub struct DecisionContext<'a> {
 /// owns transport, protocol validation, and output; the policy owns only the
 /// decision.
 ///
-/// The associated `Error` must be `Display` so the runtime can emit a stable
-/// diagnostic if the policy cannot decide.
+/// The associated `Error` is required to be `Display` (see the `Error` bound on
+/// the trait) so the runtime can emit a stable diagnostic if the policy cannot
+/// decide. Because the bound lives on the trait, any type that implements
+/// `AgentPolicy` is immediately usable with [`crate::run_agent`] — there is no
+/// deferred "trait ok, but the error isn't `Display`" failure.
 pub trait AgentPolicy {
-    type Error;
+    type Error: std::fmt::Display;
 
     fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error>;
 }

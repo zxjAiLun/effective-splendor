@@ -43,8 +43,14 @@ impl StableRng {
     /// A uniformly distributed index in `[0, len)` using rejection sampling to
     /// avoid the modulo bias a bare `next_u64() % len` would introduce.
     ///
+    /// This is the **public, stable** sampling entry point of the SDK: an
+    /// external `AgentPolicy` selects a legal action via
+    /// `context.rng.index(len)`. The algorithm, seed-init constant, and output
+    /// sequence are frozen (see the `rng_is_frozen` test); changing any of them
+    /// would alter every reference transcript, so do not modify it.
+    ///
     /// Panics if `len == 0`; callers must guarantee a non-empty range.
-    pub(crate) fn index(&mut self, len: usize) -> usize {
+    pub fn index(&mut self, len: usize) -> usize {
         assert!(len > 0, "index range must be non-empty");
         let len = len as u64;
         // `2^64 mod len`: the size of the biased tail we must reject so the

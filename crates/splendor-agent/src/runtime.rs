@@ -12,7 +12,7 @@
 
 use std::io::{BufRead, Write};
 
-use splendor_core::{Observation, ObservationHash, PlayerId, ENGINE_VERSION};
+use splendor_core::{Observation, ObservationHash, PlayerId};
 use splendor_protocol::{
     parse_server_line, ClientMessage, ClientMeta, ClientRequestMeta, ProtocolParseError,
     ServerMessage, PROTOCOL_VERSION,
@@ -21,6 +21,19 @@ use splendor_protocol::{
 use crate::error::AgentError;
 use crate::policy::{AgentPolicy, DecisionContext, PublicRequestMeta};
 use crate::stable_rng::StableRng;
+
+/// The public identity a policy presents to the arena in its `Client Hello`.
+///
+/// The generic runtime does **not** assume any particular agent: identity is an
+/// explicit input so a `HeuristicAgentPolicy` (or any future policy) declares its
+/// own `name` / `version` instead of impersonating the reference random agent.
+/// This keeps arena reports, evaluation aggregation, and version-compatibility
+/// analysis correct — a heuristic agent must never appear as `splendor-cli-random`.
+#[derive(Debug, Clone, Copy)]
+pub struct AgentIdentity<'a> {
+    pub name: &'a str,
+    pub version: &'a str,
+}
 
 /// Internal FSM state, threaded through the read loop.
 struct AgentState {
@@ -37,10 +50,16 @@ struct AgentState {
 /// Returns `Ok(())` on a clean `game_end`. On any protocol/I/O/policy fault it
 /// writes a single `error: <reason>` line to `diagnostics` and returns the
 /// classified error; the caller maps that to a non-zero exit code.
+///
+/// `identity` is the `Client Hello` identity the agent presents to the arena;
+/// it is an explicit input (not a runtime constant) so any `AgentPolicy` can
+/// declare its own name/version. Use [`crate::run_random_agent`] for the
+/// byte-compatible reference identity.
 pub fn run_agent<R, W, E, P>(
     input: R,
     mut output: W,
     mut diagnostics: E,
+    identity: AgentIdentity<'_>,
     seed: u64,
     mut policy: P,
 ) -> Result<(), AgentError>
@@ -49,7 +68,6 @@ where
     W: Write,
     E: Write,
     P: AgentPolicy,
-    P::Error: std::fmt::Display,
 {
     let mut state = AgentState {
         rng: StableRng::new(seed),
@@ -60,7 +78,7 @@ where
         last_request_id: None,
     };
 
-    let result = drive(input, &mut output, &mut state, &mut policy);
+    let result = drive(input, &mut output, &mut state, &mut policy, &identity);
     if let Err(err) = &result {
         // Best-effort diagnostic; never fail the run on a diagnostics write.
         let _ = writeln!(diagnostics, "error: {err}");
@@ -74,12 +92,12 @@ fn drive<R, W, P>(
     output: &mut W,
     state: &mut AgentState,
     policy: &mut P,
+    identity: &AgentIdentity<'_>,
 ) -> Result<(), AgentError>
 where
     R: BufRead,
     W: Write,
     P: AgentPolicy,
-    P::Error: std::fmt::Display,
 {
     let mut line = String::new();
     loop {
@@ -104,7 +122,7 @@ where
         }
 
         let message = parse_server_line(&line).map_err(classify_parse_error)?;
-        if handle_message(output, state, policy, message)? {
+        if handle_message(output, state, policy, message, identity)? {
             return Ok(()); // game_end reached.
         }
     }
@@ -116,11 +134,11 @@ fn handle_message<W, P>(
     state: &mut AgentState,
     policy: &mut P,
     message: ServerMessage,
+    identity: &AgentIdentity<'_>,
 ) -> Result<bool, AgentError>
 where
     W: Write,
     P: AgentPolicy,
-    P::Error: std::fmt::Display,
 {
     match message {
         ServerMessage::Hello {
@@ -142,8 +160,8 @@ where
             state.game_id = Some(meta.game_id.clone());
             let reply = ClientMessage::Hello {
                 meta: ClientMeta::new(meta.game_id),
-                agent_name: crate::RANDOM_AGENT_NAME.to_string(),
-                agent_version: ENGINE_VERSION.to_string(),
+                agent_name: identity.name.to_string(),
+                agent_version: identity.version.to_string(),
             };
             send(output, &reply)?;
             Ok(false)
@@ -226,6 +244,16 @@ where
             let action = policy
                 .choose_action(context)
                 .map_err(|e| AgentError::Policy(e.to_string()))?;
+            // The runtime enforces the hard policy boundary: a policy may only
+            // return an action the server certified as legal for this request.
+            // Without this check a buggy/over-eager built-in policy would ship an
+            // illegal action to the server and surface as an opaque server-side
+            // IllegalAction instead of a clear, owned policy error.
+            if !legal_actions.contains(&action) {
+                return Err(AgentError::Policy(
+                    "policy returned an action outside legal_actions".to_string(),
+                ));
+            }
             let reply = ClientMessage::Action {
                 meta: ClientRequestMeta::new(
                     meta.recipient.server.game_id.clone(),

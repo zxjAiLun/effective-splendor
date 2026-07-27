@@ -21,7 +21,7 @@ mod stable_rng;
 
 pub use error::AgentError;
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
-pub use runtime::run_agent;
+pub use runtime::{run_agent, AgentIdentity};
 pub use stable_rng::StableRng;
 
 /// The agent name the reference random agent declares in its `hello`. Kept
@@ -33,6 +33,11 @@ pub const RANDOM_AGENT_NAME: &str = "splendor-cli-random";
 /// over a seed-initialized [`StableRng`]. This is the exact behavior the
 /// `splendor agent-random --seed <u64>` subcommand has always had, so existing
 /// reference transcripts are byte-for-byte unchanged.
+///
+/// The reference identity (`RANDOM_AGENT_NAME` / `ENGINE_VERSION`) is passed
+/// explicitly to [`run_agent`], so the CLI and every other caller are insulated
+/// from the runtime's identity input — the random agent keeps presenting exactly
+/// `splendor-cli-random / 0.4.0`.
 pub fn run_random_agent<R, W, E>(
     input: R,
     output: W,
@@ -44,5 +49,15 @@ where
     W: std::io::Write,
     E: std::io::Write,
 {
-    run_agent(input, output, diagnostics, seed, RandomAgentPolicy::new())
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: RANDOM_AGENT_NAME,
+            version: splendor_core::ENGINE_VERSION,
+        },
+        seed,
+        RandomAgentPolicy::new(),
+    )
 }
