@@ -521,6 +521,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-eval"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "splendor-arena",
+ "splendor-core",
+ "thiserror",
+]
+
+[[package]]
 name = "splendor-protocol"
 version = "0.1.0"
 dependencies = [
