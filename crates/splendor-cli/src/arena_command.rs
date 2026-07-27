@@ -29,7 +29,7 @@ use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner};
 use splendor_replay::verify_replay;
 
 use crate::atomic_output;
-use crate::random_agent::run_random_agent;
+use splendor_agent::run_random_agent;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
 /// rejected before any parse to bound accidental/hostile input.

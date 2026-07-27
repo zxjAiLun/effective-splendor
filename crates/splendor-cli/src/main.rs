@@ -5,7 +5,6 @@ use clap::{Parser, Subcommand};
 
 mod arena_command;
 mod atomic_output;
-mod random_agent;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{

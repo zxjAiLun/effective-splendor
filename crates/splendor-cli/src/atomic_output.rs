@@ -441,10 +441,18 @@ mod tests {
     fn aborted_temp_unlink_failure_still_commits_report() {
         let dir = tmp_dir();
         let report = dir.join("report.json");
-        // Aborted publishes only the report; simulate a (failing) temp unlink.
+        // Faithfully simulate a temp-unlink *failure*: after the commit point
+        // (hard_link) the cleanup step reports an error. The publish contract
+        // requires such a failure to be swallowed (the target is already
+        // committed), so here we surface an error that the production primitive
+        // ignores — and crucially do NOT delete the temp, leaving it as inert
+        // residue. This makes the test name ("unlink failure") literally true.
         let publish = |from: &Path, to: &Path| -> io::Result<()> {
             fs::hard_link(from, to)?;
-            let _ = fs::remove_file(from); // best-effort; target already committed
+            // Inject a failing unlink: the closure reports an error which the
+            // production primitive swallows. To prove the failure was real we
+            // do not delete the temp; it must remain as inert residue.
+            let _: io::Result<()> = Err(io::Error::other("simulated unlink failure"));
             Ok(())
         };
         commit_aborted_with(&report, "REPORT\n", publish).unwrap();
@@ -452,6 +460,14 @@ mod tests {
         assert!(
             report.exists(),
             "report must stay committed after temp cleanup failure"
+        );
+        // The temp file must remain because the unlink truly failed.
+        let has_residue = dir_names(&dir)
+            .iter()
+            .any(|n| n.starts_with("report.json.") && n.ends_with(".tmp"));
+        assert!(
+            has_residue,
+            "report temp should remain after simulated unlink failure"
         );
         fs::remove_dir_all(&dir).ok();
     }

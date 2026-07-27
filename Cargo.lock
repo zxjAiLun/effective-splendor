@@ -459,6 +459,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-agent"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "splendor-core",
+ "splendor-protocol",
+]
+
+[[package]]
 name = "splendor-arena"
 version = "0.1.0"
 dependencies = [
@@ -488,6 +498,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "splendor-agent",
  "splendor-arena",
  "splendor-core",
  "splendor-protocol",

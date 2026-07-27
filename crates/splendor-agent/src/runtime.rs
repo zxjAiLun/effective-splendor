@@ -1,138 +1,66 @@
-//! The reference stdio random agent (`splendor-cli agent-random`).
+//! The reference stdio agent runtime (NDJSON FSM) and its generic driver.
 //!
-//! This is a *real* protocol client: it speaks NDJSON over stdin/stdout exactly
-//! like any third-party agent would. It never calls the rules engine to "play"
-//! the game, never reconstructs the deck, never sees the seed, the full-state
-//! hash, or the replay. It only ever chooses from the `legal_actions` the
-//! server hands it in each `request_action`.
+//! [`run_agent`] speaks the strict server protocol exactly like any third-party
+//! agent would: it never calls the rules engine to "play" the game, never
+//! reconstructs the deck, never sees the seed, the full-state hash, or the
+//! replay. It only ever chooses from the `legal_actions` the server hands it in
+//! each `request_action`, delegating that choice to an [`AgentPolicy`].
 //!
-//! [`run_random_agent`] is transport-agnostic (it takes `BufRead` / `Write`
-//! handles) so it can be unit-tested against hand-built server transcripts. The
-//! command layer is the only place that binds the real stdin/stdout/stderr.
-//!
-//! # Determinism
-//!
-//! Action selection uses [`StableRng`], a fixed xorshift64\* generator seeded
-//! only from the `--seed` argument. It uses no `std` RNG and does not depend on
-//! the `rand` crate, so the same seed and the same server transcript always
-//! select the same actions, byte-for-byte, on every platform.
+//! The runtime is transport-agnostic (it takes `BufRead` / `Write` handles) so
+//! it can be unit-tested against hand-built server transcripts. The command
+//! layer is the only place that binds the real stdin/stdout/stderr.
 
 use std::io::{BufRead, Write};
 
-use splendor_core::{Action, ObservationHash, PlayerId, ENGINE_VERSION};
+use splendor_core::{Observation, ObservationHash, PlayerId, ENGINE_VERSION};
 use splendor_protocol::{
     parse_server_line, ClientMessage, ClientMeta, ClientRequestMeta, ProtocolParseError,
     ServerMessage, PROTOCOL_VERSION,
 };
 
-/// The agent name this reference client declares in its `hello`.
-pub const RANDOM_AGENT_NAME: &str = "splendor-cli-random";
-
-/// A stable, seed-only pseudo-random generator (xorshift64\*).
-///
-/// The algorithm and the seed-initialization constant are frozen and covered by
-/// [`tests::rng_is_frozen`]. Do not change them: a change would silently alter
-/// every reference-agent transcript.
-#[derive(Debug, Clone)]
-pub struct StableRng(u64);
-
-impl StableRng {
-    /// Odd dispersal constant (fractional bits of the golden ratio). Mixing the
-    /// raw seed with this and OR-ing in the low bit guarantees the xorshift
-    /// state is never the forbidden all-zero fixed point — in particular
-    /// `StableRng::new(0)` is well-behaved.
-    const SEED_INIT: u64 = 0x9E37_79B9_7F4A_7C15;
-
-    /// Multiplier of the `*` (star) output stage.
-    const MULTIPLIER: u64 = 0x2545_F491_4F6C_DD1D;
-
-    /// Seed the generator. Any `u64` seed (including 0) yields a valid,
-    /// non-degenerate state.
-    pub fn new(seed: u64) -> Self {
-        StableRng((seed ^ Self::SEED_INIT) | 1)
-    }
-
-    /// Advance the state and return the next 64-bit output.
-    fn next_u64(&mut self) -> u64 {
-        let mut x = self.0;
-        x ^= x >> 12;
-        x ^= x << 25;
-        x ^= x >> 27;
-        self.0 = x;
-        x.wrapping_mul(Self::MULTIPLIER)
-    }
-
-    /// A uniformly distributed index in `[0, len)` using rejection sampling to
-    /// avoid the modulo bias a bare `next_u64() % len` would introduce.
-    ///
-    /// Panics if `len == 0`; callers must guarantee a non-empty range.
-    fn index(&mut self, len: usize) -> usize {
-        assert!(len > 0, "index range must be non-empty");
-        let len = len as u64;
-        // `2^64 mod len`: the size of the biased tail we must reject so the
-        // accepted region is an exact multiple of `len`.
-        let reject_below = (0u64.wrapping_sub(len)) % len;
-        loop {
-            let v = self.next_u64();
-            if v >= reject_below {
-                return (v % len) as usize;
-            }
-        }
-    }
-}
-
-/// Why the reference agent stopped before a clean `game_end`.
-#[derive(Debug)]
-pub enum RandomAgentError {
-    /// The server sent something that violated the protocol state machine
-    /// (unexpected type, wrong game id / recipient / request id, stale
-    /// observation hash, empty legal-action set, a server `error`, or EOF
-    /// before `game_end`). Carries a stable, concise reason.
-    Protocol(String),
-    /// A stdin/stdout I/O failure or a malformed (unparseable) server line.
-    Io(String),
-}
-
-impl std::fmt::Display for RandomAgentError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RandomAgentError::Protocol(m) => write!(f, "{m}"),
-            RandomAgentError::Io(m) => write!(f, "{m}"),
-        }
-    }
-}
-
-impl std::error::Error for RandomAgentError {}
+use crate::error::AgentError;
+use crate::policy::{AgentPolicy, DecisionContext, PublicRequestMeta};
+use crate::stable_rng::StableRng;
 
 /// Internal FSM state, threaded through the read loop.
 struct AgentState {
-    seed: StableRng,
+    rng: StableRng,
     game_id: Option<String>,
     seat: Option<PlayerId>,
+    last_observation: Option<Observation>,
     last_observation_hash: Option<ObservationHash>,
     last_request_id: Option<u64>,
 }
 
-/// Run the reference random agent to completion over the given streams.
+/// Run an agent to completion over the given streams using `policy`.
 ///
-/// Returns `Ok(())` on a clean `game_end`. On any protocol/I/O fault it writes
-/// a single `error: <reason>` line to `diagnostics` and returns the classified
-/// error; the caller maps that to a non-zero exit code.
-pub fn run_random_agent<R: BufRead, W: Write, E: Write>(
+/// Returns `Ok(())` on a clean `game_end`. On any protocol/I/O/policy fault it
+/// writes a single `error: <reason>` line to `diagnostics` and returns the
+/// classified error; the caller maps that to a non-zero exit code.
+pub fn run_agent<R, W, E, P>(
     input: R,
     mut output: W,
     mut diagnostics: E,
     seed: u64,
-) -> Result<(), RandomAgentError> {
+    mut policy: P,
+) -> Result<(), AgentError>
+where
+    R: BufRead,
+    W: Write,
+    E: Write,
+    P: AgentPolicy,
+    P::Error: std::fmt::Display,
+{
     let mut state = AgentState {
-        seed: StableRng::new(seed),
+        rng: StableRng::new(seed),
         game_id: None,
         seat: None,
+        last_observation: None,
         last_observation_hash: None,
         last_request_id: None,
     };
 
-    let result = drive(input, &mut output, &mut state);
+    let result = drive(input, &mut output, &mut state, &mut policy);
     if let Err(err) = &result {
         // Best-effort diagnostic; never fail the run on a diagnostics write.
         let _ = writeln!(diagnostics, "error: {err}");
@@ -141,22 +69,29 @@ pub fn run_random_agent<R: BufRead, W: Write, E: Write>(
     result
 }
 
-fn drive<R: BufRead, W: Write>(
+fn drive<R, W, P>(
     mut input: R,
     output: &mut W,
     state: &mut AgentState,
-) -> Result<(), RandomAgentError> {
+    policy: &mut P,
+) -> Result<(), AgentError>
+where
+    R: BufRead,
+    W: Write,
+    P: AgentPolicy,
+    P::Error: std::fmt::Display,
+{
     let mut line = String::new();
     loop {
         line.clear();
         let n = input
             .read_line(&mut line)
-            .map_err(|e| RandomAgentError::Io(format!("stdin read failed: {e}")))?;
+            .map_err(|e| AgentError::Io(format!("stdin read failed: {e}")))?;
         if n == 0 {
             // EOF before a clean game_end is a fault (the runner closes our
             // stdin only on abort/shutdown; a completed match ends with a
             // game_end that returns Ok above).
-            return Err(RandomAgentError::Protocol(
+            return Err(AgentError::Protocol(
                 "server stream ended before game_end".to_string(),
             ));
         }
@@ -169,18 +104,24 @@ fn drive<R: BufRead, W: Write>(
         }
 
         let message = parse_server_line(&line).map_err(classify_parse_error)?;
-        if handle_message(output, state, message)? {
+        if handle_message(output, state, policy, message)? {
             return Ok(()); // game_end reached.
         }
     }
 }
 
 /// Handle one server message. Returns `Ok(true)` when the match ended cleanly.
-fn handle_message<W: Write>(
+fn handle_message<W, P>(
     output: &mut W,
     state: &mut AgentState,
+    policy: &mut P,
     message: ServerMessage,
-) -> Result<bool, RandomAgentError> {
+) -> Result<bool, AgentError>
+where
+    W: Write,
+    P: AgentPolicy,
+    P::Error: std::fmt::Display,
+{
     match message {
         ServerMessage::Hello {
             meta,
@@ -188,12 +129,12 @@ fn handle_message<W: Write>(
             ..
         } => {
             if state.game_id.is_some() {
-                return Err(RandomAgentError::Protocol(
+                return Err(AgentError::Protocol(
                     "duplicate hello from server".to_string(),
                 ));
             }
             if meta.protocol_version != PROTOCOL_VERSION {
-                return Err(RandomAgentError::Protocol(format!(
+                return Err(AgentError::Protocol(format!(
                     "protocol version mismatch: server {}, agent {}",
                     meta.protocol_version, PROTOCOL_VERSION
                 )));
@@ -201,7 +142,7 @@ fn handle_message<W: Write>(
             state.game_id = Some(meta.game_id.clone());
             let reply = ClientMessage::Hello {
                 meta: ClientMeta::new(meta.game_id),
-                agent_name: RANDOM_AGENT_NAME.to_string(),
+                agent_name: crate::RANDOM_AGENT_NAME.to_string(),
                 agent_version: ENGINE_VERSION.to_string(),
             };
             send(output, &reply)?;
@@ -210,17 +151,18 @@ fn handle_message<W: Write>(
         ServerMessage::GameStart { meta, .. } => {
             expect_game_id(state, &meta.server.game_id)?;
             if state.seat.is_some() {
-                return Err(RandomAgentError::Protocol(
+                return Err(AgentError::Protocol(
                     "duplicate game_start from server".to_string(),
                 ));
             }
             state.seat = Some(meta.player_id());
             Ok(false)
         }
-        ServerMessage::Observation { meta, .. } => {
+        ServerMessage::Observation { meta, observation } => {
             expect_game_id(state, &meta.recipient.server.game_id)?;
             expect_seat(state, meta.recipient.player_id())?;
             state.last_observation_hash = Some(meta.observation_hash.clone());
+            state.last_observation = Some(observation);
             Ok(false)
         }
         ServerMessage::RequestAction {
@@ -234,7 +176,7 @@ fn handle_message<W: Write>(
             // Request ids must be strictly increasing across the match.
             if let Some(last) = state.last_request_id {
                 if meta.request_id <= last {
-                    return Err(RandomAgentError::Protocol(format!(
+                    return Err(AgentError::Protocol(format!(
                         "request_id must strictly increase (got {}, last {})",
                         meta.request_id, last
                     )));
@@ -246,30 +188,50 @@ fn handle_message<W: Write>(
             match &state.last_observation_hash {
                 Some(hash) if *hash == meta.observation_hash => {}
                 Some(_) => {
-                    return Err(RandomAgentError::Protocol(
+                    return Err(AgentError::Protocol(
                         "request observation_hash does not match latest observation".to_string(),
                     ));
                 }
                 None => {
-                    return Err(RandomAgentError::Protocol(
+                    return Err(AgentError::Protocol(
                         "request_action arrived before any observation".to_string(),
                     ));
                 }
             }
 
             if legal_actions.is_empty() {
-                return Err(RandomAgentError::Protocol(
+                return Err(AgentError::Protocol(
                     "request_action carried an empty legal_actions set".to_string(),
                 ));
             }
 
-            let choice: Action = legal_actions[state.seed.index(legal_actions.len())];
+            // Hand the policy a view that cannot leak referee-only state: the
+            // observation, the certified legal actions, public metadata, and the
+            // agent's own RNG. The policy never sees FullState / FullStateHash /
+            // seed / replay / blind reserves / deck order.
+            let observation = state.last_observation.clone().ok_or_else(|| {
+                AgentError::Protocol("request_action arrived before any observation".to_string())
+            })?;
+            let context = DecisionContext {
+                observation,
+                legal_actions: &legal_actions,
+                meta: PublicRequestMeta {
+                    game_id: meta.recipient.server.game_id.clone(),
+                    recipient_seat: meta.recipient.player_id(),
+                    request_id: meta.request_id,
+                    observation_hash: meta.observation_hash.clone(),
+                },
+                rng: &mut state.rng,
+            };
+            let action = policy
+                .choose_action(context)
+                .map_err(|e| AgentError::Policy(e.to_string()))?;
             let reply = ClientMessage::Action {
                 meta: ClientRequestMeta::new(
                     meta.recipient.server.game_id.clone(),
                     meta.request_id,
                 ),
-                action: choice,
+                action,
             };
             send(output, &reply)?;
             Ok(false)
@@ -295,43 +257,43 @@ fn handle_message<W: Write>(
             expect_game_id(state, &meta.server.game_id)?;
             Ok(true)
         }
-        ServerMessage::Error { message, .. } => Err(RandomAgentError::Protocol(format!(
+        ServerMessage::Error { message, .. } => Err(AgentError::Protocol(format!(
             "server reported an error: {message}"
         ))),
     }
 }
 
 /// Serialize and flush one client message as a single NDJSON line.
-fn send<W: Write>(output: &mut W, message: &ClientMessage) -> Result<(), RandomAgentError> {
+fn send<W: Write>(output: &mut W, message: &ClientMessage) -> Result<(), AgentError> {
     let line = serde_json::to_string(message)
-        .map_err(|e| RandomAgentError::Io(format!("serialize client message failed: {e}")))?;
+        .map_err(|e| AgentError::Io(format!("serialize client message failed: {e}")))?;
     output
         .write_all(line.as_bytes())
         .and_then(|()| output.write_all(b"\n"))
         .and_then(|()| output.flush())
-        .map_err(|e| RandomAgentError::Io(format!("stdout write failed: {e}")))
+        .map_err(|e| AgentError::Io(format!("stdout write failed: {e}")))
 }
 
-fn expect_game_id(state: &AgentState, got: &str) -> Result<(), RandomAgentError> {
+fn expect_game_id(state: &AgentState, got: &str) -> Result<(), AgentError> {
     match &state.game_id {
         Some(expected) if expected == got => Ok(()),
-        Some(expected) => Err(RandomAgentError::Protocol(format!(
+        Some(expected) => Err(AgentError::Protocol(format!(
             "game_id mismatch: expected {expected}, got {got}"
         ))),
-        None => Err(RandomAgentError::Protocol(
+        None => Err(AgentError::Protocol(
             "server message arrived before hello".to_string(),
         )),
     }
 }
 
-fn expect_seat(state: &AgentState, got: PlayerId) -> Result<(), RandomAgentError> {
+fn expect_seat(state: &AgentState, got: PlayerId) -> Result<(), AgentError> {
     match state.seat {
         Some(seat) if seat == got => Ok(()),
-        Some(seat) => Err(RandomAgentError::Protocol(format!(
+        Some(seat) => Err(AgentError::Protocol(format!(
             "recipient seat mismatch: bound to {}, message for {}",
             seat.0, got.0
         ))),
-        None => Err(RandomAgentError::Protocol(
+        None => Err(AgentError::Protocol(
             "player-scoped message arrived before game_start".to_string(),
         )),
     }
@@ -339,71 +301,25 @@ fn expect_seat(state: &AgentState, got: PlayerId) -> Result<(), RandomAgentError
 
 /// Map a strict-parser error to the agent's error taxonomy. A parse failure is
 /// a malformed server line.
-fn classify_parse_error(err: ProtocolParseError) -> RandomAgentError {
+fn classify_parse_error(err: ProtocolParseError) -> AgentError {
     match err {
         ProtocolParseError::WrongMessageType { found } => {
-            RandomAgentError::Protocol(format!("unexpected server message type `{found}`"))
+            AgentError::Protocol(format!("unexpected server message type `{found}`"))
         }
-        other => RandomAgentError::Io(format!("malformed server line: {other}")),
+        other => AgentError::Io(format!("malformed server line: {other}")),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use splendor_core::{observation_hash, ruleset_fingerprint, FullState, GameConfig};
-    use splendor_protocol::{ObservationMeta, RecipientMeta, RequestMeta, ServerMessage};
-
-    /// The xorshift64\* algorithm and seed-init constant are frozen. If this
-    /// ever fails, the reference agent's transcripts changed — do not "fix" the
-    /// expectations, revert the algorithm change.
-    #[test]
-    fn rng_is_frozen() {
-        let mut r0 = StableRng::new(0);
-        assert_eq!(
-            [r0.next_u64(), r0.next_u64(), r0.next_u64(), r0.next_u64()],
-            [
-                0x0D83_B3E2_9A21_487A,
-                0x54C4_4C79_F1FE_9D67,
-                0xA845_F342_007A_0E78,
-                0x7D6E_0B87_8A79_4779,
-            ]
-        );
-        let mut r42 = StableRng::new(42);
-        assert_eq!(
-            [
-                r42.next_u64(),
-                r42.next_u64(),
-                r42.next_u64(),
-                r42.next_u64()
-            ],
-            [
-                0x0832_8D7F_03BC_EC1A,
-                0x077E_7279_E17A_B6CD,
-                0x0C4E_098F_541B_B09E,
-                0xD861_FCF4_7B8B_124E,
-            ]
-        );
-    }
-
-    #[test]
-    fn seed_zero_is_not_degenerate() {
-        let mut r = StableRng::new(0);
-        // A degenerate all-zero state would emit only zeros forever.
-        assert!((0..8).any(|_| r.next_u64() != 0));
-    }
-
-    #[test]
-    fn index_is_always_in_range() {
-        let mut r = StableRng::new(7);
-        for len in 1..=32usize {
-            for _ in 0..64 {
-                assert!(r.index(len) < len);
-            }
-        }
-    }
-
-    // --- FSM tests over hand-built server transcripts ----------------------
+    use crate::{run_random_agent, AgentError, RANDOM_AGENT_NAME};
+    use splendor_core::{
+        observation_hash, ruleset_fingerprint, FullState, GameConfig, PlayerId, ENGINE_VERSION,
+    };
+    use splendor_protocol::{
+        parse_server_line, ClientMessage, ObservationMeta, RecipientMeta, RequestMeta,
+        ServerMessage,
+    };
 
     /// Build a real 2-player start state and its first-turn server messages.
     fn scenario() -> (String, Vec<String>) {
@@ -457,10 +373,7 @@ mod tests {
         }
     }
 
-    fn run_over(
-        lines: &[String],
-        seed: u64,
-    ) -> (Vec<String>, Vec<String>, Result<(), RandomAgentError>) {
+    fn run_over(lines: &[String], seed: u64) -> (Vec<String>, Vec<String>, Result<(), AgentError>) {
         let input = lines.join("\n") + "\n";
         let mut out = Vec::new();
         let mut err = Vec::new();
