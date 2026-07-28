@@ -502,6 +502,7 @@ dependencies = [
  "splendor-agent",
  "splendor-arena",
  "splendor-core",
+ "splendor-eval",
  "splendor-protocol",
  "splendor-replay",
 ]

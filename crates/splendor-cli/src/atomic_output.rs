@@ -94,7 +94,7 @@ fn temp_path(target: &Path) -> PathBuf {
 
 /// Write `contents` to a fresh sibling temp of `target`, fully durable on
 /// return (`flush` + `sync_all`). Returns the temp path on success.
-fn write_temp(target: &Path, contents: &str) -> Result<PathBuf, AtomicWriteError> {
+pub(crate) fn write_temp(target: &Path, contents: &str) -> Result<PathBuf, AtomicWriteError> {
     let tmp = temp_path(target);
     let mut file = OpenOptions::new()
         .write(true)

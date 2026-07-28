@@ -16,6 +16,7 @@ splendor-protocol = { workspace = true }
 splendor-replay = { workspace = true }
 splendor-arena = { workspace = true }
 splendor-agent = { workspace = true }
+splendor-eval = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

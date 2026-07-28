@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 
 mod arena_command;
 mod atomic_output;
+mod eval_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
@@ -83,6 +84,7 @@ fn main() {
         Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
         Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
+        Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         _ => {}
     }
 
