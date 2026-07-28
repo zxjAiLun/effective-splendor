@@ -15,7 +15,16 @@ splendor-core           (domain state, legal actions, transitions, referee event
         ▼              ▼               ▼                ▼                 ▼
 splendor-protocol  splendor-replay  splendor-arena  splendor-search  splendor-python
    (wire DTO)      (referee replay) (stdio runner)  (rollout/MCTS)   (PyO3 env)
+        │                               │
+        ▼                               ▼
+splendor-agent                    splendor-eval
+ (stdio agent SDK)          (pure evaluation model)
 ```
+
+The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
+protocol, replay, arena, agent, and eval. Dependency direction is strictly
+`cli → eval → arena`; nothing depends on the CLI, and `splendor-eval` stays a
+leaf model crate with no process or file I/O.
 
 `splendor-replay` depends on `splendor-core` (and `splendor-catalog`) only.
 It MUST NOT depend on `splendor-protocol`, and `splendor-core` MUST NOT depend
@@ -42,6 +51,19 @@ Rules:
   `docs/arena.md` and `docs/adr/0005-stdio-arena-process-boundary.md`. The
   `splendor` CLI exposes it via `run-match`, with `agent-random` as a reference
   stdio agent.
+- **`splendor-agent`** (M05) is the stdio agent SDK: an NDJSON client FSM
+  generic over an `AgentPolicy`. A policy sees only its own `Observation`,
+  the server's `legal_actions`, public request metadata, and a derived
+  `StableRng` — never `FullState`, the raw seed, or the replay. The runtime
+  rejects any policy action outside `legal_actions`. `agent-random` and
+  `agent-heuristic` are the reference policies exposed by the CLI.
+- **`splendor-eval`** (M05) is the pure evaluation model: plan validation and
+  hashing, canonical cyclic-seat schedule expansion, and integer-only
+  aggregation into an `EvaluationReportV1`. It performs no process spawning
+  and no file I/O; the `splendor eval` subcommand drives it and atomically
+  publishes artifacts (`eval-report.json` is the commit marker, and per-match
+  artifact filenames derive from `match_index` only, so plan content can
+  never write outside the output directory). See `docs/evaluation.md`.
 - **`splendor-search`** (PR-06+) uses the in-process `splendor-core` API
   for rollouts / MCTS / determinization.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for

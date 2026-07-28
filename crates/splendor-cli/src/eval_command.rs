@@ -520,12 +520,13 @@ mod tests {
         )
     }
 
-    /// No leftover `.tmp-*` siblings in the fixture directory.
+    /// No leftover temp siblings in the fixture directory. Real temp names
+    /// have the shape `<target>.<pid>.<seq>.tmp`, so match the `.tmp` suffix.
     fn assert_no_temp_residue(dir: &Path) {
         let leftovers: Vec<String> = fs::read_dir(dir)
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .filter(|n| n.contains(".tmp-"))
+            .filter(|n| n.ends_with(".tmp"))
             .collect();
         assert!(leftovers.is_empty(), "temp residue found: {leftovers:?}");
     }
