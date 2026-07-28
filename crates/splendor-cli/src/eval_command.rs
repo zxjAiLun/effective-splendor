@@ -8,9 +8,18 @@
 //!
 //! - `eval-report.json` — the consolidated roll-up (the **commit marker**);
 //! - `plan.json` and `plan-hash.txt` — the inputs the report was built from;
-//! - `matches/<game_id>.report.json` — every match's arena report;
-//! - `matches/<game_id>.replay.json` — every *completed* match's replay (an
-//!   aborted match publishes no replay).
+//! - `matches/match-<index>.report.json` — every match's arena report;
+//! - `matches/match-<index>.replay.json` — every *completed* match's replay
+//!   (an aborted match publishes no replay).
+//!
+//! Per-match artifact filenames are derived **only** from the canonical
+//! `match_index` — never from `game_id`. An evaluation ID may legally contain
+//! path separators, `..`, or an absolute-path prefix (the C3 model only
+//! rejects empty/overlong/control-character IDs), and the game ID embeds the
+//! evaluation ID verbatim; using it in a filename would let plan content
+//! escape the output directory. Records map files to matches via
+//! `match_index`, which the canonical schedule guarantees to be dense and
+//! unique; `game_id` remains inside the JSON artifacts themselves.
 //!
 //! All publishing is non-clobbering and atomic via [`atomic_output`]: each
 //! target is written to a sibling temp and committed with a create-if-absent
@@ -35,7 +44,7 @@ use serde::Deserialize;
 use splendor_arena::{ArenaRun, ArenaRunner};
 use splendor_eval::{
     aggregate, evaluation_plan_hash_v1, expand_schedule, EvaluationMatchRecordV1,
-    EvaluationPlanV1, EvaluationPlanHash, EvaluationReportV1,
+    EvaluationPlanHash, EvaluationPlanV1, EvaluationReportV1,
 };
 
 use crate::atomic_output;
@@ -133,19 +142,20 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
 
     // Read + validate + hash the plan.
     let plan = read_plan(&parsed.plan)?;
-    let plan_hash: EvaluationPlanHash = evaluation_plan_hash_v1(&plan)
-        .map_err(|e| EvalError::PlanInvalid(e.to_string()))?;
+    let plan_hash: EvaluationPlanHash =
+        evaluation_plan_hash_v1(&plan).map_err(|e| EvalError::PlanInvalid(e.to_string()))?;
 
     // Expand the canonical schedule (cheap; already validated for hashing).
     let specs = expand_schedule(&plan).map_err(|e| EvalError::PlanInvalid(e.to_string()))?;
 
     // Pre-check every per-match target path so a pre-existing artifact fails
-    // fast (exit 1) with no partial commits, rather than mid-run.
+    // fast (exit 1) with no partial commits, rather than mid-run. The same
+    // path helpers are used here and at publish time so the rules cannot
+    // drift apart.
     let matches_dir = parsed.out_dir.join("matches");
     for spec in &specs {
-        let game_id = &spec.arena_config.game_id;
-        pre_check_target(&matches_dir.join(format!("{game_id}.report.json")))?;
-        pre_check_target(&matches_dir.join(format!("{game_id}.replay.json")))?;
+        pre_check_target(&match_report_path(&matches_dir, spec.match_index))?;
+        pre_check_target(&match_replay_path(&matches_dir, spec.match_index))?;
     }
 
     // Create the output tree now that all targets are confirmed clear.
@@ -170,14 +180,13 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
 
         let report_json = to_pretty_line(&run.report)
             .map_err(|e| EvalError::Internal(format!("serialize match report failed: {e}")))?;
-        let report_path = matches_dir.join(format!("{}.report.json", spec.arena_config.game_id));
+        let report_path = match_report_path(&matches_dir, spec.match_index);
 
         match &run.replay {
             Some(replay) => {
                 let replay_json = to_pretty_line(replay)
                     .map_err(|e| EvalError::Internal(format!("serialize replay failed: {e}")))?;
-                let replay_path =
-                    matches_dir.join(format!("{}.replay.json", spec.arena_config.game_id));
+                let replay_path = match_replay_path(&matches_dir, spec.match_index);
                 atomic_output::commit_completed_with(
                     &replay_path,
                     &replay_json,
@@ -188,8 +197,12 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
                 .map_err(|e| EvalError::Io(e.to_string()))?;
             }
             None => {
-                atomic_output::commit_aborted_with(&report_path, &report_json, atomic_output::publish_new)
-                    .map_err(|e| EvalError::Io(e.to_string()))?;
+                atomic_output::commit_aborted_with(
+                    &report_path,
+                    &report_json,
+                    atomic_output::publish_new,
+                )
+                .map_err(|e| EvalError::Io(e.to_string()))?;
             }
         }
     }
@@ -207,30 +220,56 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
     let eval_report_json = to_pretty_line(&report)
         .map_err(|e| EvalError::Internal(format!("serialize eval report failed: {e}")))?;
 
-    commit_eval_report(
+    commit_eval_report_with(
         &plan_path,
         &plan_json,
         &hash_path,
         &hash_text,
         &eval_report_path,
         &eval_report_json,
+        atomic_output::publish_new,
     )?;
 
     Ok(())
+}
+
+/// Build the per-match report path from the canonical `match_index`.
+///
+/// This is the **only** source of per-match report filenames — both the
+/// up-front pre-check and the publish path call it, so the naming rule cannot
+/// drift. `game_id` (which embeds the caller-controlled evaluation ID and may
+/// contain path separators or `..`) never enters a filesystem path.
+fn match_report_path(matches_dir: &Path, match_index: u32) -> PathBuf {
+    matches_dir.join(format!("match-{match_index:06}.report.json"))
+}
+
+/// Build the per-match replay path from the canonical `match_index`.
+/// Same containment rule as [`match_report_path`].
+fn match_replay_path(matches_dir: &Path, match_index: u32) -> PathBuf {
+    matches_dir.join(format!("match-{match_index:06}.replay.json"))
 }
 
 /// Atomically publish `plan.json` then `plan-hash.txt`, then `eval-report.json`
 /// (the commit marker) last. On any failure, roll back every artifact published
 /// so far. Each commit is a create-if-absent `hard_link`, so a pre-existing
 /// target (guarded by [`pre_check_target`] up front) would fail here too.
-fn commit_eval_report(
+///
+/// `publish` is injectable for fault tests (mirroring the M04
+/// `commit_completed_with` pattern); production passes
+/// [`atomic_output::publish_new`], whose commit-point semantics are unchanged.
+#[allow(clippy::too_many_arguments)]
+fn commit_eval_report_with<F>(
     plan_path: &Path,
     plan_json: &str,
     hash_path: &Path,
     hash_text: &str,
     report_path: &Path,
     report_json: &str,
-) -> Result<(), EvalError> {
+    publish: F,
+) -> Result<(), EvalError>
+where
+    F: Fn(&Path, &Path) -> io::Result<()>,
+{
     // Write every temp up front so a mid-publish failure leaves at most temps
     // (which are inert) and never a half-written target.
     let plan_tmp = write_temp_checked(plan_path, plan_json)?;
@@ -252,15 +291,13 @@ fn commit_eval_report(
 
     // Publish plan.json (auxiliary), then hash.txt (auxiliary), then
     // eval-report.json (marker). Roll back on first failure.
-    if let Err(source) = atomic_output::publish_new(&plan_tmp, plan_path) {
+    if let Err(source) = publish(&plan_tmp, plan_path) {
         let _ = fs::remove_file(&plan_tmp);
         let _ = fs::remove_file(&hash_tmp);
         let _ = fs::remove_file(&report_tmp);
-        return Err(EvalError::Io(format!(
-            "commit plan.json failed: {source}"
-        )));
+        return Err(EvalError::Io(format!("commit plan.json failed: {source}")));
     }
-    if let Err(source) = atomic_output::publish_new(&hash_tmp, hash_path) {
+    if let Err(source) = publish(&hash_tmp, hash_path) {
         let _ = fs::remove_file(plan_path);
         let _ = fs::remove_file(&hash_tmp);
         let _ = fs::remove_file(&report_tmp);
@@ -268,7 +305,7 @@ fn commit_eval_report(
             "commit plan-hash.txt failed: {source}"
         )));
     }
-    if let Err(source) = atomic_output::publish_new(&report_tmp, report_path) {
+    if let Err(source) = publish(&report_tmp, report_path) {
         let _ = fs::remove_file(plan_path);
         let _ = fs::remove_file(hash_path);
         let _ = fs::remove_file(&report_tmp);
@@ -305,9 +342,8 @@ fn pre_check_target(target: &Path) -> Result<(), EvalError> {
 /// `metadata.len()` that a growing file could outrun: we read at most
 /// `MAX_EVAL_PLAN_BYTES + 1` bytes and reject if that overflows the limit.
 fn read_plan(path: &Path) -> Result<EvaluationPlanV1, EvalError> {
-    let file = File::open(path).map_err(|e| {
-        EvalError::PlanRead(format!("cannot open plan {}: {e}", path.display()))
-    })?;
+    let file = File::open(path)
+        .map_err(|e| EvalError::PlanRead(format!("cannot open plan {}: {e}", path.display())))?;
     let mut raw = Vec::new();
     file.take(MAX_EVAL_PLAN_BYTES + 1)
         .read_to_end(&mut raw)
@@ -325,8 +361,9 @@ fn read_plan(path: &Path) -> Result<EvaluationPlanV1, EvalError> {
     let mut de = serde_json::Deserializer::from_str(&text);
     let plan = EvaluationPlanV1::deserialize(&mut de)
         .map_err(|e| EvalError::PlanParse(format!("invalid evaluation plan: {e}")))?;
-    de.end()
-        .map_err(|_| EvalError::PlanParse("trailing data after evaluation plan JSON".to_string()))?;
+    de.end().map_err(|_| {
+        EvalError::PlanParse("trailing data after evaluation plan JSON".to_string())
+    })?;
     Ok(plan)
 }
 
@@ -419,6 +456,159 @@ fn print_stdout(text: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    /// Per-match artifact names are derived only from `match_index` with a
+    /// fixed, zero-padded shape; the (caller-controlled) game ID never
+    /// appears in a filesystem path.
+    #[test]
+    fn match_artifact_paths_use_only_match_index() {
+        let dir = PathBuf::from("out/matches");
+        assert_eq!(
+            match_report_path(&dir, 0),
+            dir.join("match-000000.report.json")
+        );
+        assert_eq!(
+            match_replay_path(&dir, 0),
+            dir.join("match-000000.replay.json")
+        );
+        assert_eq!(
+            match_report_path(&dir, 123_456),
+            dir.join("match-123456.report.json")
+        );
+    }
+
+    // -----------------------------------------------------------------
+    // commit_eval_report_with fault injection (M04-style callback form)
+    // -----------------------------------------------------------------
+
+    struct EvalCommitFixture {
+        dir: PathBuf,
+        plan_path: PathBuf,
+        hash_path: PathBuf,
+        report_path: PathBuf,
+    }
+
+    fn eval_commit_fixture(label: &str) -> EvalCommitFixture {
+        static SEQ: AtomicU32 = AtomicU32::new(0);
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!(
+            "splendor-eval-commit-{}-{label}-{n}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        EvalCommitFixture {
+            plan_path: dir.join("plan.json"),
+            hash_path: dir.join("plan-hash.txt"),
+            report_path: dir.join("eval-report.json"),
+            dir,
+        }
+    }
+
+    fn commit_with<F>(fx: &EvalCommitFixture, publish: F) -> Result<(), EvalError>
+    where
+        F: Fn(&Path, &Path) -> io::Result<()>,
+    {
+        commit_eval_report_with(
+            &fx.plan_path,
+            "{\"plan\":true}\n",
+            &fx.hash_path,
+            "hash\n",
+            &fx.report_path,
+            "{\"report\":true}\n",
+            publish,
+        )
+    }
+
+    /// No leftover `.tmp-*` siblings in the fixture directory.
+    fn assert_no_temp_residue(dir: &Path) {
+        let leftovers: Vec<String> = fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n.contains(".tmp-"))
+            .collect();
+        assert!(leftovers.is_empty(), "temp residue found: {leftovers:?}");
+    }
+
+    /// A publish callback that fails when the target file name matches
+    /// `fail_on`, and otherwise delegates to the real `publish_new`.
+    fn failing_on(fail_on: &'static str) -> impl Fn(&Path, &Path) -> io::Result<()> {
+        move |temp: &Path, target: &Path| {
+            if target.file_name().and_then(|n| n.to_str()) == Some(fail_on) {
+                return Err(io::Error::other(format!("injected failure on {fail_on}")));
+            }
+            atomic_output::publish_new(temp, target)
+        }
+    }
+
+    #[test]
+    fn eval_commit_plan_publish_failure_leaves_nothing() {
+        let fx = eval_commit_fixture("plan-fail");
+        let err = commit_with(&fx, failing_on("plan.json")).unwrap_err();
+        assert!(err.to_string().contains("commit plan.json failed"));
+        assert!(!fx.plan_path.exists(), "plan.json must not be committed");
+        assert!(
+            !fx.hash_path.exists(),
+            "plan-hash.txt must not be committed"
+        );
+        assert!(!fx.report_path.exists(), "marker must not be committed");
+        assert_no_temp_residue(&fx.dir);
+    }
+
+    #[test]
+    fn eval_commit_hash_publish_failure_rolls_back_plan() {
+        let fx = eval_commit_fixture("hash-fail");
+        let err = commit_with(&fx, failing_on("plan-hash.txt")).unwrap_err();
+        assert!(err.to_string().contains("commit plan-hash.txt failed"));
+        assert!(
+            !fx.plan_path.exists(),
+            "already-committed plan.json must be rolled back"
+        );
+        assert!(!fx.hash_path.exists());
+        assert!(!fx.report_path.exists(), "marker must not be committed");
+        assert_no_temp_residue(&fx.dir);
+    }
+
+    #[test]
+    fn eval_commit_marker_publish_failure_rolls_back_plan_and_hash() {
+        let fx = eval_commit_fixture("marker-fail");
+        let err = commit_with(&fx, failing_on("eval-report.json")).unwrap_err();
+        assert!(err.to_string().contains("commit eval-report.json failed"));
+        assert!(
+            !fx.plan_path.exists() && !fx.hash_path.exists(),
+            "no committed auxiliary targets may remain after marker failure"
+        );
+        assert!(!fx.report_path.exists());
+        assert_no_temp_residue(&fx.dir);
+    }
+
+    #[test]
+    fn eval_commit_pre_existing_marker_race_fails_and_preserves_it() {
+        let fx = eval_commit_fixture("race");
+        // Simulate a race: the marker target appears after the pre-check.
+        let sentinel = "SENTINEL\n";
+        fs::write(&fx.report_path, sentinel).unwrap();
+        let err = commit_with(&fx, atomic_output::publish_new).unwrap_err();
+        assert!(err.to_string().contains("commit eval-report.json failed"));
+        assert_eq!(
+            fs::read_to_string(&fx.report_path).unwrap(),
+            sentinel,
+            "pre-existing marker must never be clobbered"
+        );
+        assert!(
+            !fx.plan_path.exists() && !fx.hash_path.exists(),
+            "auxiliary targets must be rolled back after the race failure"
+        );
+        assert_no_temp_residue(&fx.dir);
+    }
+
+    #[test]
+    fn eval_commit_success_commits_all_three() {
+        let fx = eval_commit_fixture("ok");
+        commit_with(&fx, atomic_output::publish_new).unwrap();
+        assert!(fx.plan_path.exists() && fx.hash_path.exists() && fx.report_path.exists());
+        assert_no_temp_residue(&fx.dir);
+    }
 
     #[test]
     fn parse_eval_args_requires_both_flags() {
