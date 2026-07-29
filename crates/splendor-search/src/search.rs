@@ -223,17 +223,119 @@ impl Searcher {
 
         let (_, action, best_util, pv) =
             best.expect("non-terminal node at remaining_depth>0 always has legal actions");
+        // Build the complete principal variation from this node before caching it.
+        // A transposition hit must return the same PV an initial solve returns,
+        // including this node's own chosen action — not just the best child's PV,
+        // which would drop an action from every TT-served segment of the root PV.
+        let mut full_pv = Vec::with_capacity(pv.len() + 1);
+        full_pv.push(action);
+        full_pv.extend(pv);
         self.tt.insert(
             key,
             TableEntry {
                 utility: best_util.clone(),
-                pv: pv.clone(),
+                pv: full_pv.clone(),
             },
         );
         self.stats.transposition_entries += 1;
-        let mut full_pv = Vec::with_capacity(pv.len() + 1);
-        full_pv.push(action);
-        full_pv.extend(pv);
         Ok(Some((best_util, full_pv)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use splendor_core::{GameConfig, Ruleset};
+
+    fn fresh_state(player_count: u8, seed: u64) -> FullState {
+        let (state, _) = FullState::new(GameConfig {
+            player_count,
+            seed,
+            ruleset: Ruleset::base_v1(),
+        })
+        .expect("valid game config");
+        state
+    }
+
+    /// Regression for the C2 P1: a TT entry must store the complete principal
+    /// variation *from the cached node*, including that node's own chosen
+    /// action. Caching only the best child's PV made a later TT hit drop one
+    /// action from every TT-served segment of the root PV.
+    #[test]
+    fn tt_hit_returns_same_complete_pv_as_initial_solve() {
+        let state = fresh_state(2, 11);
+        let player_count = state.player_count() as usize;
+        // Depth 2 is enough for a non-leaf solve with a non-empty PV while
+        // staying well inside a generous node budget.
+        let remaining_depth = 2u8;
+
+        let mut searcher = Searcher {
+            remaining_budget: 50_000,
+            tt: HashMap::new(),
+            stats: SearchStatsV1 {
+                nodes_visited: 0,
+                nodes_expanded: 0,
+                leaf_evaluations: 0,
+                transposition_hits: 0,
+                transposition_entries: 0,
+            },
+        };
+
+        let first = searcher
+            .search_node(&state, remaining_depth, player_count)
+            .expect("search must not error")
+            .expect("depth-2 solve must complete within budget");
+        let (first_util, first_pv) = first;
+
+        assert!(
+            !first_pv.is_empty(),
+            "non-leaf exact solve must return a non-empty PV"
+        );
+        let expected_root_action = first_pv[0];
+        assert!(
+            state.legal_actions().contains(&expected_root_action),
+            "PV head must be a legal root action"
+        );
+
+        let key = (full_state_hash(&state), remaining_depth);
+        let entry = searcher
+            .tt
+            .get(&key)
+            .expect("exact solve must write a TT entry for the root key");
+        assert_eq!(
+            entry.utility, first_util,
+            "cached utility must match the initial solve"
+        );
+        assert_eq!(
+            entry.pv, first_pv,
+            "cached PV must be the complete node PV, not the best child's PV"
+        );
+        assert_eq!(
+            entry.pv.first().copied(),
+            Some(expected_root_action),
+            "cached PV head must be the action chosen at this node"
+        );
+
+        let hits_before = searcher.stats.transposition_hits;
+        let second = searcher
+            .search_node(&state, remaining_depth, player_count)
+            .expect("search must not error")
+            .expect("TT hit path must still return a solved node");
+        let (hit_util, hit_pv) = second;
+
+        assert!(
+            searcher.stats.transposition_hits > hits_before,
+            "second call with the same key must be served from the TT"
+        );
+        assert_eq!(
+            hit_util, first_util,
+            "TT hit utility must match initial solve"
+        );
+        assert_eq!(hit_pv, first_pv, "TT hit PV must match initial solve");
+        assert_eq!(
+            hit_pv.first().copied(),
+            Some(expected_root_action),
+            "TT hit PV head must still be the action chosen at this node"
+        );
     }
 }

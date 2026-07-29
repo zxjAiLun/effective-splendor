@@ -417,3 +417,46 @@ fn utility_shape_matches_player_count() {
         assert_eq!(tiny.utility_by_player.len(), state.player_count() as usize);
     }
 }
+
+#[test]
+fn principal_variation_is_a_legal_sequence() {
+    // Use a depth/budget large enough that iterative deepening and the exact
+    // TT both fire, so the returned PV is exercised through the TT path and
+    // not only through pure recursion.
+    let state = new_state(2, 11);
+    let config = SearchConfigV1 {
+        max_depth_turns: 3,
+        max_nodes: 20_000,
+    };
+    let result = search_maxn_v1(&state, config).unwrap();
+
+    assert!(
+        result.stats.transposition_hits > 0,
+        "test must exercise the TT path; got 0 hits"
+    );
+    assert!(
+        !result.principal_variation.is_empty(),
+        "non-fallback search must return a non-empty principal variation"
+    );
+    assert_eq!(
+        result.principal_variation[0], result.action,
+        "PV head must equal the chosen root action"
+    );
+
+    // Replay every PV action from a root clone. Each step must be legal in the
+    // state reached so far; this catches a TT-truncated intermediate action
+    // (the C2 P1) because the next PV entry would then be illegal, and it also
+    // catches a PV that skips a required ChooseNoble continuation.
+    let mut cursor = state.clone();
+    for (i, &action) in result.principal_variation.iter().enumerate() {
+        let legal = cursor.legal_actions();
+        assert!(
+            legal.contains(&action),
+            "principal_variation[{i}] = {action:?} is not legal in the state \
+             reached after applying the previous PV prefix; legal = {legal:?}"
+        );
+        cursor.apply(action).unwrap_or_else(|e| {
+            panic!("principal_variation[{i}] = {action:?} failed to apply: {e}")
+        });
+    }
+}
