@@ -556,6 +556,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-search"
+version = "0.1.0"
+dependencies = [
+ "splendor-catalog",
+ "splendor-core",
+ "thiserror",
+]
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

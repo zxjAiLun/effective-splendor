@@ -1,0 +1,12 @@
+[package]
+name = "splendor-search"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+splendor-catalog = { workspace = true }
+splendor-core = { workspace = true }
+thiserror = { workspace = true }
