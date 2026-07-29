@@ -22,6 +22,7 @@ mod error;
 mod evaluation;
 mod model;
 mod order;
+mod search;
 
 pub use config::{
     SearchConfigV1, MAX_SEARCH_DEPTH_TURNS, MAX_SEARCH_NODES, MIN_SEARCH_DEPTH_TURNS,
@@ -31,6 +32,7 @@ pub use error::SearchError;
 pub use evaluation::{terminal_rank_base, StaticEvaluatorV1, TERMINAL_RANK_UNIT};
 pub use model::{SearchResultV1, SearchStatsV1, SearchStopReasonV1};
 pub use order::{canonical_order, canonical_sort, first_canonical_action, gems_tuple};
+pub use search::search_maxn_v1;
 
 /// Frozen public identity of the search algorithm family.
 pub const SEARCH_ALGORITHM_ID: &str = "effective-splendor-maxn";
