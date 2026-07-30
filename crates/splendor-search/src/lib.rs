@@ -17,6 +17,7 @@
 //! Dependency discipline: `splendor-search -> splendor-core + splendor-catalog`
 //! only. No dependency on protocol, replay, arena, agent, eval or cli.
 
+mod analysis;
 mod config;
 mod error;
 mod evaluation;
@@ -24,6 +25,9 @@ mod model;
 mod order;
 mod search;
 
+pub use analysis::{
+    ReplaySearchSourceV1, SearchAnalysisV1, SEARCH_ANALYSIS_FORMAT, SEARCH_ANALYSIS_VERSION,
+};
 pub use config::{
     SearchConfigV1, MAX_SEARCH_DEPTH_TURNS, MAX_SEARCH_NODES, MIN_SEARCH_DEPTH_TURNS,
     MIN_SEARCH_NODES,

@@ -1,6 +1,6 @@
 use splendor_core::{
-    full_state_hash, ruleset_fingerprint, FullState, GameConfig, Ruleset, CATALOG_VERSION,
-    ENGINE_VERSION,
+    full_state_hash, ruleset_fingerprint, Action, FullState, GameConfig, PlayerId, Ruleset,
+    CATALOG_VERSION, ENGINE_VERSION,
 };
 
 use crate::compat::check_ruleset_params;
@@ -16,11 +16,100 @@ pub struct VerifiedReplay {
     pub result: crate::format::ReplayGameResultV1,
 }
 
+/// One fully verified replay position: the referee `FullState` as it stood
+/// *before* `replay.steps[ply]` was executed, together with the recorded
+/// decision at that ply and the summary of the whole verified replay.
+///
+/// This value is only ever produced after the **entire** replay — prefix,
+/// the captured position, and the full suffix through the terminal result —
+/// has been re-executed and verified. A tampered step anywhere in the replay
+/// (including after the captured ply) prevents this value from existing.
+///
+/// Information boundary: like the replay itself this carries a referee-only
+/// `FullState` (deck order, blind reserves) and MUST NOT be sent to an agent.
+#[derive(Debug, Clone)]
+pub struct VerifiedReplayPosition {
+    /// Summary of the fully verified replay (identical to [`verify_replay`]).
+    pub verified: VerifiedReplay,
+    /// The requested ply: `state` is the position before `steps[ply]`.
+    pub ply: u32,
+    /// `full_state_hash` of `state`; equals `steps[ply].state_hash_before`.
+    pub state_hash: String,
+    /// The rebuilt referee state before the recorded action at `ply`.
+    pub state: FullState,
+    /// The actor recorded at `steps[ply]`; equals `state.current_player`.
+    pub recorded_actor: PlayerId,
+    /// The action recorded at `steps[ply]`.
+    pub recorded_action: Action,
+}
+
+/// A position captured mid-verification by [`verify_replay_core`].
+struct CapturedPosition {
+    state: FullState,
+    state_hash: String,
+    actor: PlayerId,
+    action: Action,
+}
+
 /// Re-execute and strictly verify a replay, ply by ply.
 ///
 /// On any divergence the returned error names the exact `ply` (where relevant)
 /// and the specific kind of mismatch. This never returns a bare "mismatch".
 pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
+    let (verified, _) = verify_replay_core(replay, None)?;
+    Ok(verified)
+}
+
+/// Fully verify a replay and return the referee state *before*
+/// `replay.steps[ply]` was executed, together with the recorded decision.
+///
+/// Frozen semantics:
+/// - `ply` addresses the state before `replay.steps[ply]`; the legal range is
+///   `0 <= ply < replay.steps.len()`. `ply == steps.len()` is rejected with
+///   [`ReplayError::PlyOutOfRange`] — the complete replay is terminal and has
+///   no pending recorded decision to analyze.
+/// - The **whole** replay is verified, not just the prefix up to `ply`: the
+///   position is cloned only after its before-hash check succeeds, and the
+///   entire suffix (through the final hash and result) must also verify. A
+///   tampered suffix after the target ply therefore fails this API too.
+///
+/// Both this function and [`verify_replay`] share one private verifier core;
+/// there is deliberately no second replay verifier.
+pub fn verify_replay_position(replay: &ReplayV1, ply: u32) -> ReplayResult<VerifiedReplayPosition> {
+    let steps = replay.steps.len() as u32;
+    if ply >= steps {
+        return Err(ReplayError::PlyOutOfRange {
+            requested: ply,
+            steps,
+        });
+    }
+    let (verified, captured) = verify_replay_core(replay, Some(ply))?;
+    // The bounds check above guarantees the capture happened; stay fail-closed
+    // rather than unwrap if that invariant is ever broken.
+    let captured = captured.ok_or(ReplayError::PlyOutOfRange {
+        requested: ply,
+        steps,
+    })?;
+    Ok(VerifiedReplayPosition {
+        verified,
+        ply,
+        state_hash: captured.state_hash,
+        state: captured.state,
+        recorded_actor: captured.actor,
+        recorded_action: captured.action,
+    })
+}
+
+/// The single verifier core shared by [`verify_replay`] and
+/// [`verify_replay_position`].
+///
+/// Runs the complete strict verification; when `capture_ply` is `Some(p)` it
+/// additionally clones the state at ply `p` immediately after that step's
+/// before-hash check succeeds, then keeps verifying the rest of the replay.
+fn verify_replay_core(
+    replay: &ReplayV1,
+    capture_ply: Option<u32>,
+) -> ReplayResult<(VerifiedReplay, Option<CapturedPosition>)> {
     // 1. Format + replay version.
     if replay.format != REPLAY_FORMAT {
         return Err(ReplayError::WrongFormat {
@@ -103,7 +192,9 @@ pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
         });
     }
 
-    // 7. Step-by-step verification.
+    // 7. Step-by-step verification (capturing the requested position, if any,
+    //    once its before-hash check has succeeded).
+    let mut captured: Option<CapturedPosition> = None;
     for (index, step) in replay.steps.iter().enumerate() {
         let expected_ply = index as u32;
         if step.ply != expected_ply {
@@ -131,6 +222,15 @@ pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
                 ply: step.ply,
                 expected: step.state_hash_before.as_str().to_string(),
                 actual: before.as_str().to_string(),
+            });
+        }
+
+        if capture_ply == Some(step.ply) {
+            captured = Some(CapturedPosition {
+                state: state.clone(),
+                state_hash: before.as_str().to_string(),
+                actor: step.actor,
+                action: step.action,
             });
         }
 
@@ -189,10 +289,13 @@ pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
         return Err(ReplayError::ResultMismatch);
     }
 
-    Ok(VerifiedReplay {
-        player_count: replay.player_count,
-        steps: replay.steps.len() as u32,
-        final_state_hash: final_hash.as_str().to_string(),
-        result: replay.result.clone(),
-    })
+    Ok((
+        VerifiedReplay {
+            player_count: replay.player_count,
+            steps: replay.steps.len() as u32,
+            final_state_hash: final_hash.as_str().to_string(),
+            result: replay.result.clone(),
+        },
+        captured,
+    ))
 }

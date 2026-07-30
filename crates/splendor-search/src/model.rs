@@ -1,7 +1,12 @@
+use serde::{Deserialize, Serialize};
 use splendor_core::{Action, PlayerId};
 
 /// Why the search stopped.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// Serialized with stable snake_case tags (`depth_limit_reached`,
+/// `node_budget_reached`) for artifact use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SearchStopReasonV1 {
     /// Every iteration up to `max_depth_turns` completed within budget.
     DepthLimitReached,
@@ -21,7 +26,8 @@ pub enum SearchStopReasonV1 {
 ///   terminal node or depth cutoff.
 /// - The transposition table stores only fully solved exact entries; partial
 ///   subtrees interrupted by the budget are never cached.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SearchStatsV1 {
     pub nodes_visited: u64,
     pub nodes_expanded: u64,
@@ -37,7 +43,8 @@ pub struct SearchStatsV1 {
 }
 
 /// Result of a deterministic MaxN search from a non-terminal root.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SearchResultV1 {
     /// Chosen root action; always a member of the root's `legal_actions()`.
     pub action: Action,

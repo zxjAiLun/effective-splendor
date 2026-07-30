@@ -505,6 +505,7 @@ dependencies = [
  "splendor-eval",
  "splendor-protocol",
  "splendor-replay",
+ "splendor-search",
 ]
 
 [[package]]
@@ -550,6 +551,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "sha2",
  "splendor-catalog",
  "splendor-core",
  "thiserror",
@@ -559,6 +561,8 @@ dependencies = [
 name = "splendor-search"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "splendor-catalog",
  "splendor-core",
  "thiserror",

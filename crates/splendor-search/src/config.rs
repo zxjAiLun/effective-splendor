@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::error::SearchError;
 
 /// Frozen lower bound for `max_depth_turns`.
@@ -16,7 +18,8 @@ pub const MAX_SEARCH_NODES: u64 = 10_000_000;
 /// deliberately no timeout, temperature, seed, thread count or floating-point
 /// parameter: the same `(state, config)` pair must always produce the same
 /// result.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SearchConfigV1 {
     /// Maximum search depth in completed player turns.
     pub max_depth_turns: u8,

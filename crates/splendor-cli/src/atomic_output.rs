@@ -203,6 +203,38 @@ where
     Ok(())
 }
 
+/// Atomically commit a single standalone artifact (e.g. a search analysis).
+///
+/// `publish` follows the same contract as [`commit_completed_with`]: it MUST
+/// return `Err` only when the target was *not* created, and once `hard_link`
+/// succeeds the target is committed — any temp-cleanup failure is best-effort
+/// and must not surface as `Err`. On publish failure the temp is removed so no
+/// residue is left behind, and a pre-existing target is never clobbered.
+pub(crate) fn commit_single_with<F>(
+    target: &Path,
+    contents: &str,
+    publish: F,
+) -> Result<(), AtomicWriteError>
+where
+    F: Fn(&Path, &Path) -> io::Result<()>,
+{
+    let tmp = write_temp(target, contents)?;
+    if let Err(source) = publish(&tmp, target) {
+        let _ = fs::remove_file(&tmp);
+        return Err(AtomicWriteError::Io {
+            context: "commit output",
+            source,
+        });
+    }
+    Ok(())
+}
+
+/// Production [`commit_single_with`] using the real create-if-absent
+/// [`publish_new`] primitive.
+pub(crate) fn commit_single(target: &Path, contents: &str) -> Result<(), AtomicWriteError> {
+    commit_single_with(target, contents, publish_new)
+}
+
 /// Atomically commit an aborted match's report only (no replay).
 ///
 /// `publish` follows the same contract as [`commit_completed_with`]: return
@@ -341,6 +373,73 @@ mod tests {
             "no temp residue expected: {:?}",
             dir_names(&dir)
         );
+    }
+
+    #[test]
+    fn single_commit_writes_target_with_no_residue() {
+        let dir = tmp_dir();
+        let target = dir.join("analysis.json");
+        commit_single(&target, "ANALYSIS\n").unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "ANALYSIS\n");
+        assert_eq!(dir_names(&dir), vec!["analysis.json"]);
+    }
+
+    #[test]
+    fn single_commit_refuses_to_overwrite_and_preserves_sentinel() {
+        // Simulate a race: the target appears after any earlier exists() check.
+        let dir = tmp_dir();
+        let target = dir.join("analysis.json");
+        fs::write(&target, "SENTINEL\n").unwrap();
+        let err = commit_single(&target, "ANALYSIS\n").unwrap_err();
+        assert!(matches!(err, AtomicWriteError::Io { .. }));
+        assert_eq!(
+            fs::read_to_string(&target).unwrap(),
+            "SENTINEL\n",
+            "pre-existing target must never be clobbered"
+        );
+        assert_eq!(dir_names(&dir), vec!["analysis.json"], "no temp residue");
+    }
+
+    #[test]
+    fn single_commit_publish_failure_leaves_no_residue() {
+        let dir = tmp_dir();
+        let target = dir.join("analysis.json");
+        let err = commit_single_with(&target, "ANALYSIS\n", |_, _| {
+            Err(io::Error::other("injected publish failure"))
+        })
+        .unwrap_err();
+        assert!(matches!(err, AtomicWriteError::Io { .. }));
+        assert!(!target.exists(), "target must not be committed");
+        assert!(
+            dir_names(&dir).is_empty(),
+            "no temp residue expected: {:?}",
+            dir_names(&dir)
+        );
+    }
+
+    #[test]
+    fn single_commit_unlink_failure_still_commits_target() {
+        // A temp unlink that fails *after* the hard_link commit point must not
+        // turn the publication into an error; the temp remains inert residue.
+        let dir = tmp_dir();
+        let target = dir.join("analysis.json");
+        let publish = |from: &Path, to: &Path| -> io::Result<()> {
+            fs::hard_link(from, to)?;
+            // Injected failing unlink is swallowed by the publish contract; do
+            // not delete the temp so the failure is literally real.
+            let _: io::Result<()> = Err(io::Error::other("simulated unlink failure"));
+            Ok(())
+        };
+        commit_single_with(&target, "ANALYSIS\n", publish).unwrap();
+        assert_eq!(fs::read_to_string(&target).unwrap(), "ANALYSIS\n");
+        let has_residue = dir_names(&dir)
+            .iter()
+            .any(|n| n.starts_with("analysis.json.") && n.ends_with(".tmp"));
+        assert!(
+            has_residue,
+            "temp should remain after the simulated unlink failure"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

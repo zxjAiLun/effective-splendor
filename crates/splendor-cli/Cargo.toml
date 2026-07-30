@@ -17,6 +17,7 @@ splendor-replay = { workspace = true }
 splendor-arena = { workspace = true }
 splendor-agent = { workspace = true }
 splendor-eval = { workspace = true }
+splendor-search = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

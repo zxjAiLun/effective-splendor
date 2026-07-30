@@ -19,15 +19,17 @@
 //! engine versions. A future v2 would add an explicit chance stream.
 
 mod compat;
+mod document_hash;
 mod error;
 mod format;
 mod recorder;
 mod verify;
 
+pub use document_hash::replay_document_hash_v1;
 pub use error::{ReplayError, ReplayResult};
 pub use format::{
     ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayTerminalReason, ReplayV1,
     REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
 };
 pub use recorder::{record_random_game, ReplayRecorder, MAX_RANDOM_REPLAY_PLIES};
-pub use verify::{verify_replay, VerifiedReplay};
+pub use verify::{verify_replay, verify_replay_position, VerifiedReplay, VerifiedReplayPosition};

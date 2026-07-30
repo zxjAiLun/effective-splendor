@@ -93,6 +93,9 @@ pub enum ReplayError {
     #[error("random recording exceeded the {limit}-ply safety limit")]
     PlyLimitExceeded { limit: u32 },
 
+    #[error("replay ply {requested} is out of range: replay has {steps} steps (valid plies are 0..{steps})")]
+    PlyOutOfRange { requested: u32, steps: u32 },
+
     #[error("engine error: {0}")]
     Engine(#[from] EngineError),
 
