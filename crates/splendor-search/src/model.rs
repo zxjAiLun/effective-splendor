@@ -27,6 +27,12 @@ pub struct SearchStatsV1 {
     pub nodes_expanded: u64,
     pub leaf_evaluations: u64,
     pub transposition_hits: u64,
+    /// Number of *unique* exact-TT entries in the current search context.
+    ///
+    /// Equals the live transposition-table length (`tt.len()`): the value is
+    /// re-synced from the table after every store, so it counts distinct cached
+    /// nodes rather than cumulative insert calls. A re-insert of an existing key
+    /// (replacement) must not inflate this counter.
     pub transposition_entries: u64,
 }
 

@@ -116,10 +116,21 @@ struct TableEntry {
     pv: Vec<Action>,
 }
 
-/// A solved node's value: the MaxN utility vector and the principal variation
-/// from that node. `None` means the shared node budget was exhausted before the
-/// node (and therefore its whole iteration) could be solved.
-type NodeSolution = Option<(Vec<i64>, Vec<Action>)>;
+/// A solved node's exact MaxN value: the utility vector and the complete
+/// principal variation from that node.
+type NodeSolution = (Vec<i64>, Vec<Action>);
+
+/// Outcome of an exact-TT lookup at a node key.
+enum TtLookup {
+    /// No entry for the key; the node must be solved by expansion.
+    Miss,
+    /// A fully solved entry was found. The contained `(utility, pv)` is the
+    /// exact MaxN solution from that node.
+    Hit(NodeSolution),
+    /// The key was hit (or the node would otherwise be entered) but no node
+    /// budget remains; the caller must abandon this node for this iteration.
+    BudgetExhausted,
+}
 
 /// Mutable search context shared across iterative-deepening iterations.
 struct Searcher {
@@ -129,37 +140,90 @@ struct Searcher {
 }
 
 impl Searcher {
-    /// Explore one node. Returns `None` if the shared node budget is exhausted
-    /// before the node (and therefore the whole iteration) can be solved.
+    /// Attempt to serve `key` from the exact transposition table.
     ///
-    /// A node consumes exactly one budget unit on entry. A transposition hit is
-    /// itself a node visit (counts `nodes_visited`, not `nodes_expanded`/`leaf`).
-    fn search_node(
+    /// On a hit this consumes exactly one node budget and updates the visit and
+    /// transposition-hit statistics, then returns the cached solution. The
+    /// cached utility is validated against `player_count`; a mismatch is
+    /// reported as [`SearchError::InvalidUtilityShape`] rather than panicking.
+    ///
+    /// Returns [`TtLookup::BudgetExhausted`] when no budget remains to pay for
+    /// the visit, in which case the caller abandons this node for the iteration.
+    fn lookup_exact(
         &mut self,
-        state: &FullState,
-        remaining_depth: u8,
+        key: &(FullStateHash, u8),
         player_count: usize,
-    ) -> Result<NodeSolution, SearchError> {
-        let key = (full_state_hash(state), remaining_depth);
-
-        // Exact-only transposition hit: a cached entry always represents a
-        // fully solved subtree, never a budget-interrupted one.
-        if let Some(entry) = self.tt.get(&key) {
-            if entry.utility.len() == player_count {
-                if self.remaining_budget == 0 {
-                    return Ok(None);
-                }
-                self.remaining_budget -= 1;
-                self.stats.nodes_visited += 1;
-                self.stats.transposition_hits += 1;
-                return Ok(Some((entry.utility.clone(), entry.pv.clone())));
-            }
+    ) -> Result<TtLookup, SearchError> {
+        let Some(entry) = self.tt.get(key) else {
+            return Ok(TtLookup::Miss);
+        };
+        if entry.utility.len() != player_count {
             return Err(SearchError::InvalidUtilityShape {
                 expected: player_count,
                 found: entry.utility.len(),
             });
         }
+        if self.remaining_budget == 0 {
+            return Ok(TtLookup::BudgetExhausted);
+        }
+        self.remaining_budget -= 1;
+        self.stats.nodes_visited += 1;
+        self.stats.transposition_hits += 1;
+        Ok(TtLookup::Hit((entry.utility.clone(), entry.pv.clone())))
+    }
 
+    /// Store a fully-solved exact node.
+    ///
+    /// Validates the utility shape against `player_count` first. After insertion
+    /// `transposition_entries` is re-synced to the live `tt.len()`, so it counts
+    /// *unique* exact entries rather than cumulative insert calls (a re-insert
+    /// of an existing key must not inflate the counter).
+    fn store_exact(
+        &mut self,
+        key: (FullStateHash, u8),
+        utility: Vec<i64>,
+        principal_variation: Vec<Action>,
+        player_count: usize,
+    ) -> Result<(), SearchError> {
+        if utility.len() != player_count {
+            return Err(SearchError::InvalidUtilityShape {
+                expected: player_count,
+                found: utility.len(),
+            });
+        }
+        self.tt.insert(
+            key,
+            TableEntry {
+                utility,
+                pv: principal_variation,
+            },
+        );
+        self.stats.transposition_entries = self.tt.len() as u64;
+        Ok(())
+    }
+
+    /// Explore one node. Returns `None` if the shared node budget is exhausted
+    /// before the node (and therefore the whole iteration) can be solved.
+    ///
+    /// A node consumes exactly one budget unit on entry, either via an exact
+    /// transposition hit (which is itself a node visit, counted in
+    /// `nodes_visited`/`transposition_hits`, not `nodes_expanded`/`leaf`) or by
+    /// expanding the node after a miss.
+    fn search_node(
+        &mut self,
+        state: &FullState,
+        remaining_depth: u8,
+        player_count: usize,
+    ) -> Result<Option<NodeSolution>, SearchError> {
+        let key = (full_state_hash(state), remaining_depth);
+
+        match self.lookup_exact(&key, player_count)? {
+            TtLookup::Hit(solution) => return Ok(Some(solution)),
+            TtLookup::BudgetExhausted => return Ok(None),
+            TtLookup::Miss => {}
+        }
+
+        // Miss: pay the node-visit budget to enter and expand this node.
         if self.remaining_budget == 0 {
             return Ok(None);
         }
@@ -169,28 +233,21 @@ impl Searcher {
         if state.is_terminal() || remaining_depth == 0 {
             self.stats.leaf_evaluations += 1;
             let util = StaticEvaluatorV1::utilities(state)?;
-            if util.len() != player_count {
-                return Err(SearchError::InvalidUtilityShape {
-                    expected: player_count,
-                    found: util.len(),
-                });
-            }
-            self.tt.insert(
-                key,
-                TableEntry {
-                    utility: util.clone(),
-                    pv: Vec::new(),
-                },
-            );
-            self.stats.transposition_entries += 1;
+            self.store_exact(key, util.clone(), Vec::new(), player_count)?;
             return Ok(Some((util, Vec::new())));
         }
 
         self.stats.nodes_expanded += 1;
         let ordered = canonical_order(&state.legal_actions());
+        // Fail-closed: a non-terminal node at remaining_depth > 0 must have at
+        // least one legal action. A degenerate state (e.g. ChooseNoble phase
+        // with no pending nobles) must error, never panic on an empty `best`.
+        if ordered.is_empty() {
+            return Err(SearchError::NoLegalActions);
+        }
         let current = state.current_player.index();
-        let mut best: Option<(i64, Action, Vec<i64>, Vec<Action>)> = None;
 
+        let mut best: Option<(i64, Action, Vec<i64>, Vec<Action>)> = None;
         for action in ordered {
             let mut child = state.clone();
             let step = child
@@ -209,7 +266,13 @@ impl Searcher {
             match self.search_node(&child, child_remaining, player_count)? {
                 None => return Ok(None),
                 Some((util, pv)) => {
-                    let score = util[current];
+                    // Safe access: `current` is a valid seat index in any
+                    // well-formed state, but diagnose a malformed utility vector
+                    // instead of indexing out of bounds.
+                    let score = *util.get(current).ok_or(SearchError::InvalidUtilityShape {
+                        expected: player_count,
+                        found: util.len(),
+                    })?;
                     let replace = match &best {
                         Some((b_score, _, _, _)) => score > *b_score,
                         None => true,
@@ -221,23 +284,18 @@ impl Searcher {
             }
         }
 
-        let (_, action, best_util, pv) =
-            best.expect("non-terminal node at remaining_depth>0 always has legal actions");
-        // Build the complete principal variation from this node before caching it.
-        // A transposition hit must return the same PV an initial solve returns,
-        // including this node's own chosen action — not just the best child's PV,
-        // which would drop an action from every TT-served segment of the root PV.
+        // `ordered` is non-empty (guarded above), so `best` is always `Some`
+        // unless a child exhausted the budget (handled by the `None` path).
+        let (_, action, best_util, pv) = best.ok_or(SearchError::NoLegalActions)?;
+        // Build the complete principal variation from this node before caching
+        // it. A transposition hit must return the same PV an initial solve
+        // returns, including this node's own chosen action — not just the best
+        // child's PV, which would drop an action from every TT-served segment of
+        // the root PV.
         let mut full_pv = Vec::with_capacity(pv.len() + 1);
         full_pv.push(action);
         full_pv.extend(pv);
-        self.tt.insert(
-            key,
-            TableEntry {
-                utility: best_util.clone(),
-                pv: full_pv.clone(),
-            },
-        );
-        self.stats.transposition_entries += 1;
+        self.store_exact(key, best_util.clone(), full_pv.clone(), player_count)?;
         Ok(Some((best_util, full_pv)))
     }
 }
@@ -245,7 +303,7 @@ impl Searcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use splendor_core::{GameConfig, Ruleset};
+    use splendor_core::{GameConfig, Phase, Ruleset};
 
     fn fresh_state(player_count: u8, seed: u64) -> FullState {
         let (state, _) = FullState::new(GameConfig {
@@ -336,6 +394,96 @@ mod tests {
             hit_pv.first().copied(),
             Some(expected_root_action),
             "TT hit PV head must still be the action chosen at this node"
+        );
+    }
+
+    /// A non-terminal node with no legal actions (ChooseNoble phase with an
+    /// empty pending set) must fail-closed with `NoLegalActions` rather than
+    /// panicking on an empty `best`.
+    #[test]
+    fn internal_empty_legal_set_returns_error_not_panic() {
+        let mut state = fresh_state(2, 1);
+        state.phase = Phase::ChooseNoble;
+        state.pending_nobles.clear();
+        assert!(!state.is_terminal());
+        assert!(state.legal_actions().is_empty());
+
+        let mut searcher = Searcher {
+            remaining_budget: 10_000,
+            tt: HashMap::new(),
+            stats: SearchStatsV1 {
+                nodes_visited: 0,
+                nodes_expanded: 0,
+                leaf_evaluations: 0,
+                transposition_hits: 0,
+                transposition_entries: 0,
+            },
+        };
+        let result = searcher.search_node(&state, 1, state.player_count() as usize);
+        assert!(
+            matches!(result, Err(SearchError::NoLegalActions)),
+            "internal empty legal set must error, got {result:?}"
+        );
+    }
+
+    /// A cached entry whose utility length disagrees with the player count must
+    /// be reported as `InvalidUtilityShape`, never indexed or panicked.
+    #[test]
+    fn malformed_tt_entry_shape_returns_error_not_panic() {
+        let state = fresh_state(2, 1);
+        let player_count = state.player_count() as usize;
+        let key = (full_state_hash(&state), 1u8);
+
+        let mut searcher = Searcher {
+            remaining_budget: 10_000,
+            tt: HashMap::new(),
+            stats: SearchStatsV1 {
+                nodes_visited: 0,
+                nodes_expanded: 0,
+                leaf_evaluations: 0,
+                transposition_hits: 0,
+                transposition_entries: 0,
+            },
+        };
+        // Inject a deliberately malformed entry (wrong utility length).
+        searcher.tt.insert(
+            key,
+            TableEntry {
+                utility: vec![0i64; player_count + 1],
+                pv: Vec::new(),
+            },
+        );
+        let result = searcher.search_node(&state, 1, player_count);
+        assert!(
+            matches!(result, Err(SearchError::InvalidUtilityShape { .. })),
+            "malformed TT entry must error, got {result:?}"
+        );
+    }
+
+    /// After a solve, `transposition_entries` must equal the live TT length
+    /// (unique entries), not a cumulative insert count.
+    #[test]
+    fn transposition_entries_counts_unique_tt_entries() {
+        let state = fresh_state(2, 11);
+        let player_count = state.player_count() as usize;
+        let mut searcher = Searcher {
+            remaining_budget: 50_000,
+            tt: HashMap::new(),
+            stats: SearchStatsV1 {
+                nodes_visited: 0,
+                nodes_expanded: 0,
+                leaf_evaluations: 0,
+                transposition_hits: 0,
+                transposition_entries: 0,
+            },
+        };
+        let _ = searcher
+            .search_node(&state, 2, player_count)
+            .expect("solve must succeed");
+        assert_eq!(
+            searcher.stats.transposition_entries,
+            searcher.tt.len() as u64,
+            "transposition_entries must equal unique TT length"
         );
     }
 }
