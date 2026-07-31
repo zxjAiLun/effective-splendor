@@ -15,14 +15,19 @@
 //!
 //! Contract:
 //! - all five flags are required, each exactly once, no unknown or positional
-//!   tokens: `--input --ply --max-depth-turns --max-nodes --out`;
+//!   tokens: `--input --ply --max-depth-turns --max-nodes --out`. There is no
+//!   help mode: `-h` and `--help` are unknown flags like any other and can
+//!   never bypass the strict grammar;
 //! - on success **stdout and stderr are both empty**; the artifact is the
 //!   single output;
-//! - exit codes: `0` success; `2` usage error (bad argv grammar, non-numeric
-//!   values, or a config value outside the frozen search limits); `1` fatal
-//!   runtime error (I/O, oversized/invalid replay, verification failure
-//!   including an out-of-range ply, internal binding violation, search
-//!   failure, or publish failure — a pre-existing `--out` target included).
+//! - on any failure stdout is empty and stderr is exactly one `error: ...`
+//!   line; no artifact is published;
+//! - exit codes: `0` success; `2` usage error only (bad argv grammar: missing,
+//!   unknown, duplicate or valueless flags, stray positional tokens and
+//!   non-numeric values); `1` every fatal runtime error — a search config
+//!   outside the frozen limits, I/O, oversized/invalid replay, verification
+//!   failure including an out-of-range ply, internal binding violation, search
+//!   failure, or publish failure (a pre-existing `--out` target included).
 //! - the publish is atomic create-if-absent: a half-written artifact is never
 //!   observable and an existing file at `--out` is never clobbered.
 
@@ -44,33 +49,11 @@ use crate::atomic_output;
 /// before any parse to bound accidental/hostile input.
 pub const MAX_REPLAY_BYTES: u64 = 16 * 1024 * 1024;
 
-const ANALYZE_USAGE: &str = "\
-Usage: splendor analyze-replay --input <replay.json> --ply <n> \\
-           --max-depth-turns <n> --max-nodes <n> --out <analysis.json>
-
-Fully verify a replay, rebuild the referee state before steps[<ply>], run the
-deterministic MaxN search on it, and atomically publish a search-analysis JSON
-artifact. The artifact binds the replay document hash, the analyzed position,
-the exact search configuration and the full search result.
-
-Options:
-  --input <path>           Path to the replay v1 JSON (UTF-8, <= 16 MiB).
-  --ply <n>                Position to analyze: the state before steps[n].
-                           Valid range is 0 <= n < steps.len().
-  --max-depth-turns <n>    Search depth limit in completed player turns.
-  --max-nodes <n>          Hard node budget for the whole search.
-  --out <path>             Artifact target. Must not already exist; its parent
-                           directory must exist. Never overwritten.
-  -h, --help               Print this help and exit 0.
-
-Exit codes: 0 success (artifact written; stdout and stderr empty),
-2 usage error, 1 fatal error (I/O, verification, search, publish).";
-
 /// A user-facing error for `analyze-replay`. `Display` yields the stable
 /// `error:` message body; the variant selects the exit code.
 #[derive(Debug)]
 enum AnalyzeError {
-    /// Bad command-line arguments or config outside frozen limits (exit 2).
+    /// Bad command-line argument grammar only (exit 2).
     Usage(String),
     /// Any fatal runtime failure (exit 1).
     Fatal(String),
@@ -102,24 +85,18 @@ pub fn run_analyze_replay(args: &[String]) -> i32 {
 }
 
 fn run_analyze_inner(args: &[String]) -> Result<(), AnalyzeError> {
-    if wants_help(args) {
-        let mut stdout = io::stdout().lock();
-        let _ = writeln!(stdout, "{ANALYZE_USAGE}");
-        let _ = stdout.flush();
-        return Ok(());
-    }
-
     let parsed = parse_analyze_args(args).map_err(AnalyzeError::Usage)?;
 
-    // Config validation against the frozen limits is an argument-level error:
-    // the values came straight from the command line.
+    // The argv *grammar* was well formed; a value outside the frozen search
+    // limits is a runtime rejection by the search crate, not a usage error, so
+    // it exits 1 like every other fatal failure.
     let config = SearchConfigV1 {
         max_depth_turns: parsed.max_depth_turns,
         max_nodes: parsed.max_nodes,
     };
     config
         .validate()
-        .map_err(|e| AnalyzeError::Usage(e.to_string()))?;
+        .map_err(|e| AnalyzeError::Fatal(format!("invalid search config: {e}")))?;
 
     // Output invariants before any heavy work.
     if !parent_dir_exists(&parsed.out) {
@@ -138,14 +115,16 @@ fn run_analyze_inner(args: &[String]) -> Result<(), AnalyzeError> {
     // Read + strictly parse the replay document.
     let replay = read_replay(&parsed.input)?;
 
-    // Canonical document identity of the input as parsed.
-    let replay_document_hash = replay_document_hash_v1(&replay)
-        .map_err(|e| AnalyzeError::Fatal(format!("replay document hash failed: {e}")))?;
-
     // Full verification (prefix + position + entire suffix) and position
-    // capture. An out-of-range ply or any tampering fails here.
+    // capture. An out-of-range ply or any tampering — before *or* after the
+    // analyzed ply — fails here. Nothing downstream, the document identity
+    // included, is computed for a replay that did not fully verify.
     let position = verify_replay_position(&replay, parsed.ply)
         .map_err(|e| AnalyzeError::Fatal(format!("replay verification failed: {e}")))?;
+
+    // Canonical document identity, only ever taken of a fully verified replay.
+    let replay_document_hash = replay_document_hash_v1(&replay)
+        .map_err(|e| AnalyzeError::Fatal(format!("replay document hash failed: {e}")))?;
 
     // Binding assertions: fail closed on any internal inconsistency between
     // the captured position and the replay document it claims to come from.
@@ -346,10 +325,6 @@ fn looks_like_value(token: &str) -> bool {
     !token.starts_with("--")
 }
 
-fn wants_help(args: &[String]) -> bool {
-    args.iter().any(|a| a == "--help" || a == "-h")
-}
-
 fn parent_dir_exists(path: &Path) -> bool {
     match path.parent() {
         Some(dir) if dir.as_os_str().is_empty() => true, // implicit current dir
@@ -473,5 +448,55 @@ mod tests {
         assert!(parse_analyze_args(&args)
             .unwrap_err()
             .contains("missing a value"));
+    }
+
+    /// There is no help mode: `-h`/`--help` are ordinary unknown flags and can
+    /// never short-circuit the strict grammar, in any argv position and in
+    /// combination with any other malformed token.
+    #[test]
+    fn help_flags_are_ordinary_unknown_flags() {
+        for args in [
+            s(&["--help"]),
+            s(&["-h"]),
+            s(&["--help", "--bogus", "x"]),
+            s(&["--ply", "1", "--ply", "2", "--help"]),
+        ] {
+            let err = match parse_analyze_args(&args) {
+                Ok(parsed) => {
+                    panic!("help must never be accepted; args {args:?} parsed: {parsed:?}")
+                }
+                Err(e) => e,
+            };
+            assert!(
+                err.contains("unknown flag") || err.contains("duplicate flag"),
+                "args {args:?} should be rejected by the strict grammar, got: {err}"
+            );
+        }
+
+        // `--help` appended to an otherwise valid invocation still fails.
+        let mut trailing = full_ok();
+        trailing.push("--help".to_string());
+        assert!(parse_analyze_args(&trailing)
+            .unwrap_err()
+            .contains("unknown flag"));
+    }
+
+    /// `--flag=value` is not part of the frozen grammar.
+    #[test]
+    fn equals_form_is_rejected() {
+        let args = s(&[
+            "--input=r.json",
+            "--ply",
+            "0",
+            "--max-depth-turns",
+            "1",
+            "--max-nodes",
+            "1000",
+            "--out",
+            "a.json",
+        ]);
+        assert!(parse_analyze_args(&args)
+            .unwrap_err()
+            .contains("unknown flag"));
     }
 }
