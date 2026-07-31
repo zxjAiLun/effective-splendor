@@ -21,7 +21,10 @@ on top of the existing engine/replay versions.
 splendor-search  →  splendor-core  (+ splendor-catalog)
 ```
 
-- `splendor-search` depends **only** on `splendor-core` and `splendor-catalog`.
+- Among workspace crates, `splendor-search` depends **only** on
+  `splendor-core` and `splendor-catalog`. (It additionally uses the external
+  crates `serde` and `thiserror`; the hard boundary is about workspace crates,
+  not third-party utility crates.)
 - `splendor-search` MUST NOT depend on `splendor-replay`, `splendor-protocol`,
   `splendor-agent`, `splendor-eval`, or `splendor-cli`.
 - `search ↛ replay` and `replay ↛ search`: the two crates are independent.
@@ -33,7 +36,7 @@ splendor-search  →  splendor-core  (+ splendor-catalog)
 
 - The search reads `FullState` directly — a **referee** artifact that contains
   deck order and every player's blind-reserved `CardId`.
-- The search is **not** an Agent SDK policy. `HeuristicAuthorPolicy` (the
+- The search is **not** an Agent SDK policy. `HeuristicAgentPolicy` (the
   baseline used for the offline strength gate) may only see its `Observation`,
   the server-certified `legal_actions`, public request metadata, and its own
   `StableRng` — never `FullState`, the raw seed, or the replay.
@@ -82,9 +85,14 @@ splendor-search  →  splendor-core  (+ splendor-catalog)
 - TT key = `(full_state_hash(state), remaining_depth_turns)`.
 - **Exact-only**: no alpha-beta bounds, no depth-relative values. Only nodes
   solved to completion are cached.
-- Each cached entry stores the **complete PV from that node** (non-empty), so
-  PV semantics are identical across the three code paths: initial solve,
-  TT-cached return, and TT-hit return.
+- Every exact entry stores the **complete PV from the cached node**, so PV
+  semantics are identical across the three code paths: initial solve,
+  TT-cached return, and TT-hit return. Specifically:
+  - a **non-leaf** entry's PV begins with that node's chosen action, followed
+    by the child's PV;
+  - a **terminal or depth-cutoff** entry stores an **empty** PV.
+- An empty leaf PV is the frozen contract, not an invariant violation: leaf
+  entries have no continuation to record.
 - Statistics: `nodes_visited`, `nodes_expanded`, `leaf_evaluations`,
   `transposition_hits`, `transposition_entries`.
 - Invariant: `transposition_entries == tt.len()` (kept synchronized on every
@@ -102,11 +110,17 @@ splendor-search  →  splendor-core  (+ splendor-catalog)
 - An independent `reference_maxn` (no TT, no iterative deepening, no node
   budget) is reimplemented under `crates/splendor-search/tests/support`. It is
   production-inaccessible and exists only to cross-check.
-- Twelve differential / identity tests assert, per corpus case:
-  - `action` equality vs reference,
-  - utility-vector equality vs reference,
-  - PV equality vs reference (including playability from the root),
-  - stat identities (`visited = expanded + leaf + tt_hits`).
+- The 12-test exact-TT suite contains **eight fixed differential positions**
+  plus dedicated TT-hit, statistics, fallback, and public-PV checks:
+  - each differential position asserts `action`, utility-vector, and full-PV
+    equality against the reference solver;
+  - one test proves at least one position actually exercises a TT hit;
+  - one test asserts the stats classification identity
+    `visited = expanded + leaf + tt_hits`;
+  - one test asserts the tiny-budget (`max_nodes = 1`) fallback identity
+    (`1 / 1 / 0 / 0`);
+  - one test replays the public root PV and asserts every entry is legal and
+    applyable.
 - Recursive resolution is **fail-closed**: `NoLegalActions` and
   `InvalidUtilityShape` replace any `expect`/index panic.
 
@@ -154,7 +168,15 @@ splendor-search  →  splendor-core  (+ splendor-catalog)
 - The artifact is written to a temp file in the **same** output directory, then
   `hard_link` create-if-absent at the target path. A published artifact is
   never overwritten.
-- No `.tmp` residue is left behind after a successful or failed run.
+- The `hard_link` is the **commit point**: once it succeeds the target is
+  published, and the subsequent temp unlink is best-effort cleanup whose
+  failure is deliberately swallowed — it can never reverse a successful
+  publication into an error.
+- Temp cleanup therefore covers the normal success path and every failure path
+  the code actually reaches. If a temp unlink fails *after* the hard-link
+  commit succeeded, or the process crashes near the commit point, an **inert**
+  `.tmp` sibling may remain. Such a residue is never authoritative: it is never
+  a target, and it neither undoes nor overwrites an already-committed artifact.
 
 ## 15. Frozen benchmark corpus (M06)
 
@@ -170,7 +192,7 @@ part of any production crate's API.
   The manifest holds **no** self-referential hash field.
 - **Run command** (explicit, `#[ignore]`):
   `cargo test --locked -p splendor-cli --test search_benchmark -- --ignored --test-threads=1`
-- **Offline heuristic strength gate**: the real `HeuristicAuthorPolicy` (name
+- **Offline heuristic strength gate**: the real `HeuristicAgentPolicy` (name
   `splendor-cli-heuristic`, version `0.1.0`, `StableRng::new(101)`, re-created
   per case) is compared against a test-only no-TT reference MaxN forced to take
   the heuristic's root action at the same exact depth. Gate:

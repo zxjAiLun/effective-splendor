@@ -68,9 +68,10 @@ Rules:
   artifact filenames derive from `match_index` only, so plan content can
   never write outside the output directory). See `docs/evaluation.md`.
 - **`splendor-search`** (M06) is the deterministic perfect-information MaxN
-  search v1. It depends only on `splendor-core` (+ `splendor-catalog`); it
-  MUST NOT depend on `splendor-replay`, `splendor-protocol`, agent, eval, or
-  the CLI. It returns an integer utility vector `[u(p0), u(p1), …]` and a
+  search v1. Among workspace crates it depends only on `splendor-core`
+  (+ `splendor-catalog`) — it additionally uses the external `serde` and
+  `thiserror` crates; it MUST NOT depend on `splendor-replay`,
+  `splendor-protocol`, agent, eval, or the CLI. It returns an integer utility vector `[u(p0), u(p1), …]` and a
   principal variation, with no floats, RNG, wall-clock reads, or threads. A
   replay position is handed in only by the CLI (`analyze-replay`), which
   verifies the replay first and then calls `search_maxn_v1`. See
