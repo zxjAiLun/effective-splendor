@@ -14,7 +14,7 @@ splendor-core           (domain state, legal actions, transitions, referee event
         ├──────────────┬───────────────┬────────────────┬─────────────────┐
         ▼              ▼               ▼                ▼                 ▼
 splendor-protocol  splendor-replay  splendor-arena  splendor-search  splendor-python
-   (wire DTO)      (referee replay) (stdio runner)  (rollout/MCTS)   (PyO3 env)
+   (wire DTO)      (referee replay) (stdio runner)  (deterministic MaxN v1)  (PyO3 env)
         │                               │
         ▼                               ▼
 splendor-agent                    splendor-eval
@@ -22,9 +22,12 @@ splendor-agent                    splendor-eval
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
-protocol, replay, arena, agent, and eval. Dependency direction is strictly
-`cli → eval → arena`; nothing depends on the CLI, and `splendor-eval` stays a
-leaf model crate with no process or file I/O.
+protocol, replay, arena, agent, eval, and search. Dependency direction is
+strictly `cli → eval → arena` and `cli → search` and `cli → replay`; nothing
+depends on the CLI, and `splendor-eval` stays a leaf model crate with no
+process or file I/O. `splendor-search` and `splendor-replay` are independent
+crates that do NOT depend on each other — the CLI is the only layer that binds
+a referee replay to a search analysis. See `docs/search.md`.
 
 `splendor-replay` depends on `splendor-core` (and `splendor-catalog`) only.
 It MUST NOT depend on `splendor-protocol`, and `splendor-core` MUST NOT depend
@@ -64,8 +67,14 @@ Rules:
   publishes artifacts (`eval-report.json` is the commit marker, and per-match
   artifact filenames derive from `match_index` only, so plan content can
   never write outside the output directory). See `docs/evaluation.md`.
-- **`splendor-search`** (PR-06+) uses the in-process `splendor-core` API
-  for rollouts / MCTS / determinization.
+- **`splendor-search`** (M06) is the deterministic perfect-information MaxN
+  search v1. It depends only on `splendor-core` (+ `splendor-catalog`); it
+  MUST NOT depend on `splendor-replay`, `splendor-protocol`, agent, eval, or
+  the CLI. It returns an integer utility vector `[u(p0), u(p1), …]` and a
+  principal variation, with no floats, RNG, wall-clock reads, or threads. A
+  replay position is handed in only by the CLI (`analyze-replay`), which
+  verifies the replay first and then calls `search_maxn_v1`. See
+  `docs/search.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 

@@ -1,0 +1,844 @@
+{
+  "format": "effective-splendor-search-benchmark",
+  "version": 1,
+  "benchmark_id": "m06-search-v1",
+  "heuristic": {
+    "name": "splendor-cli-heuristic",
+    "version": "0.1.0",
+    "rng_seed": 101
+  },
+  "positions": [
+    {
+      "case_id": "2p-s42-a1001-p0",
+      "player_count": 2,
+      "game_seed": 42,
+      "action_seed": 1001,
+      "ply": 0,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "139ce278ff68b3389873f56ac5d8d0c107c5a7e301f20f73f54f951ca13b38b3",
+        "analysis_sha256": "fc61573d4f7f542fc782a97ff3a64c9c1cf4f93a9e249cf580fa34f6c1e55c7e",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 0,
+            "blue": 0,
+            "green": 1,
+            "red": 1,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          0,
+          0
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 927,
+          "nodes_expanded": 32,
+          "leaf_evaluations": 895,
+          "transposition_hits": 0,
+          "transposition_entries": 927
+        }
+      }
+    },
+    {
+      "case_id": "2p-s42-a1001-p10",
+      "player_count": 2,
+      "game_seed": 42,
+      "action_seed": 1001,
+      "ply": 10,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "139ce278ff68b3389873f56ac5d8d0c107c5a7e301f20f73f54f951ca13b38b3",
+        "analysis_sha256": "d4ab49828a2d93136e622cdc2769ee04d7dcc12be44b92d9c29052e01f448e40",
+        "action": {
+          "type": "buy_market",
+          "tier": "Two",
+          "slot": 2
+        },
+        "utility_by_player": [
+          191480000,
+          -191480000
+        ],
+        "principal_variation": [
+          {
+            "type": "buy_market",
+            "tier": "Two",
+            "slot": 2
+          },
+          {
+            "type": "reserve_market",
+            "tier": "One",
+            "slot": 0,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 1,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 4753,
+          "nodes_expanded": 27,
+          "leaf_evaluations": 3221,
+          "transposition_hits": 1505,
+          "transposition_entries": 3248
+        }
+      }
+    },
+    {
+      "case_id": "2p-s7-a7001-p5",
+      "player_count": 2,
+      "game_seed": 7,
+      "action_seed": 7001,
+      "ply": 5,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "85e09dedc6315c149ca051864ff8b2828c1b3675703e911bc1a910568c847f55",
+        "analysis_sha256": "6c27f00f91a3dcfb57501469be799ac09ec81f76cc58616392c0945639ec60d3",
+        "action": {
+          "type": "reserve_market",
+          "tier": "One",
+          "slot": 0,
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          2050000,
+          -2050000
+        ],
+        "principal_variation": [
+          {
+            "type": "reserve_market",
+            "tier": "One",
+            "slot": 0,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "buy_market",
+            "tier": "One",
+            "slot": 1
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 466,
+          "nodes_expanded": 31,
+          "leaf_evaluations": 435,
+          "transposition_hits": 0,
+          "transposition_entries": 466
+        }
+      }
+    },
+    {
+      "case_id": "2p-s7-a7001-p15",
+      "player_count": 2,
+      "game_seed": 7,
+      "action_seed": 7001,
+      "ply": 15,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "85e09dedc6315c149ca051864ff8b2828c1b3675703e911bc1a910568c847f55",
+        "analysis_sha256": "e610a17923456a02c8a8ffb76f4665972e9a32609447715c48c183ba0223ecff",
+        "action": {
+          "type": "buy_market",
+          "tier": "Two",
+          "slot": 1
+        },
+        "utility_by_player": [
+          -92280000,
+          92280000
+        ],
+        "principal_variation": [
+          {
+            "type": "buy_market",
+            "tier": "Two",
+            "slot": 1
+          },
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 1,
+              "green": 0,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 2018,
+          "nodes_expanded": 149,
+          "leaf_evaluations": 1373,
+          "transposition_hits": 496,
+          "transposition_entries": 1522
+        }
+      }
+    },
+    {
+      "case_id": "3p-s12-a1201-p0",
+      "player_count": 3,
+      "game_seed": 12,
+      "action_seed": 1201,
+      "ply": 0,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "2da59046208e87d939ee7611a7f818d3f30db680ad92b55a5c22252db32acd41",
+        "analysis_sha256": "73b403d295a5d3a7fc59c418deff3a871a3820d87aba2fa5c1e650bf5b5b19b0",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 0,
+            "blue": 0,
+            "green": 1,
+            "red": 1,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          60000,
+          60000,
+          -120000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 957,
+          "nodes_expanded": 32,
+          "leaf_evaluations": 925,
+          "transposition_hits": 0,
+          "transposition_entries": 957
+        }
+      }
+    },
+    {
+      "case_id": "3p-s12-a1201-p10",
+      "player_count": 3,
+      "game_seed": 12,
+      "action_seed": 1201,
+      "ply": 10,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "2da59046208e87d939ee7611a7f818d3f30db680ad92b55a5c22252db32acd41",
+        "analysis_sha256": "d2f6646bf85855c5cd699948484469cb72bd306ed50e3a8716d9f208d373ddbd",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 1,
+            "blue": 0,
+            "green": 0,
+            "red": 1,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          -15610000,
+          15140000,
+          470000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 1,
+              "blue": 0,
+              "green": 0,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 752,
+          "nodes_expanded": 30,
+          "leaf_evaluations": 722,
+          "transposition_hits": 0,
+          "transposition_entries": 752
+        }
+      }
+    },
+    {
+      "case_id": "3p-s21-a2101-p5",
+      "player_count": 3,
+      "game_seed": 21,
+      "action_seed": 2101,
+      "ply": 5,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "d3558858b8cd2d5c983f65e47341a1073eb5fb626d7db466782a6d895222bb1c",
+        "analysis_sha256": "1d25480af59a5108e1a4e82953957dc207b710de67fa2986ebb1d5f6cd4884f2",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 1,
+            "blue": 1,
+            "green": 0,
+            "red": 1,
+            "black": 0,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          180000,
+          -270000,
+          90000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 1,
+              "blue": 1,
+              "green": 0,
+              "red": 1,
+              "black": 0,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "reserve_market",
+            "tier": "One",
+            "slot": 0,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 660,
+          "nodes_expanded": 28,
+          "leaf_evaluations": 632,
+          "transposition_hits": 0,
+          "transposition_entries": 660
+        }
+      }
+    },
+    {
+      "case_id": "3p-s21-a2101-p15",
+      "player_count": 3,
+      "game_seed": 21,
+      "action_seed": 2101,
+      "ply": 15,
+      "max_depth_turns": 2,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "d3558858b8cd2d5c983f65e47341a1073eb5fb626d7db466782a6d895222bb1c",
+        "analysis_sha256": "968dd9056af4f27dc7187f8469def39b12b580bbecdc2d7100a5b31af7a651ee",
+        "action": {
+          "type": "reserve_market",
+          "tier": "Two",
+          "slot": 2,
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          -1440000,
+          8370000,
+          -6930000
+        ],
+        "principal_variation": [
+          {
+            "type": "reserve_market",
+            "tier": "Two",
+            "slot": 2,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          },
+          {
+            "type": "reserve_market",
+            "tier": "Two",
+            "slot": 0,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 1,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 2,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 3944,
+          "nodes_expanded": 21,
+          "leaf_evaluations": 2738,
+          "transposition_hits": 1185,
+          "transposition_entries": 2759
+        }
+      }
+    },
+    {
+      "case_id": "4p-s99-a9901-p0",
+      "player_count": 4,
+      "game_seed": 99,
+      "action_seed": 9901,
+      "ply": 0,
+      "max_depth_turns": 1,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "824970ddf110a64ac619a43ae5791a200b870a3993025db420060ceeedf5c383",
+        "analysis_sha256": "84bb936f42eec7087c4c5ff318b489944c3cb5d209f8737093c6c2a6273da416",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 0,
+            "blue": 0,
+            "green": 1,
+            "red": 1,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          180000,
+          -60000,
+          -60000,
+          -60000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 1,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 31,
+          "nodes_expanded": 1,
+          "leaf_evaluations": 30,
+          "transposition_hits": 0,
+          "transposition_entries": 31
+        }
+      }
+    },
+    {
+      "case_id": "4p-s99-a9901-p10",
+      "player_count": 4,
+      "game_seed": 99,
+      "action_seed": 9901,
+      "ply": 10,
+      "max_depth_turns": 1,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "824970ddf110a64ac619a43ae5791a200b870a3993025db420060ceeedf5c383",
+        "analysis_sha256": "6fbadde097d58ad0542cd13373430c2d364280473939d8f3d717a2adf542a0d6",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 1,
+            "blue": 1,
+            "green": 0,
+            "red": 0,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          -630000,
+          690000,
+          730000,
+          -790000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 1,
+              "blue": 1,
+              "green": 0,
+              "red": 0,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 1,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 28,
+          "nodes_expanded": 1,
+          "leaf_evaluations": 27,
+          "transposition_hits": 0,
+          "transposition_entries": 28
+        }
+      }
+    },
+    {
+      "case_id": "4p-s123-a12301-p5",
+      "player_count": 4,
+      "game_seed": 123,
+      "action_seed": 12301,
+      "ply": 5,
+      "max_depth_turns": 1,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "b58e85a2a286bc473689533ec0260f5b2834b03626e2e25bf5ea5e2ff9011878",
+        "analysis_sha256": "2cadf07ae970c5c2c501921dd60ff31f6b895b06d05faef3888bd4fb7cf521a9",
+        "action": {
+          "type": "take_tokens",
+          "take": {
+            "white": 0,
+            "blue": 0,
+            "green": 1,
+            "red": 1,
+            "black": 1,
+            "gold": 0
+          },
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          -30000,
+          450000,
+          -190000,
+          -230000
+        ],
+        "principal_variation": [
+          {
+            "type": "take_tokens",
+            "take": {
+              "white": 0,
+              "blue": 0,
+              "green": 1,
+              "red": 1,
+              "black": 1,
+              "gold": 0
+            },
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 1,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 30,
+          "nodes_expanded": 1,
+          "leaf_evaluations": 29,
+          "transposition_hits": 0,
+          "transposition_entries": 30
+        }
+      }
+    },
+    {
+      "case_id": "4p-s123-a12301-p15",
+      "player_count": 4,
+      "game_seed": 123,
+      "action_seed": 12301,
+      "ply": 15,
+      "max_depth_turns": 1,
+      "max_nodes": 500000,
+      "expected": {
+        "replay_document_hash": "b58e85a2a286bc473689533ec0260f5b2834b03626e2e25bf5ea5e2ff9011878",
+        "analysis_sha256": "cb10f18969187db868ea7854247e1823d442457d92f59ae99dd358715f7ad2d3",
+        "action": {
+          "type": "reserve_market",
+          "tier": "One",
+          "slot": 3,
+          "return": {
+            "white": 0,
+            "blue": 0,
+            "green": 0,
+            "red": 0,
+            "black": 0,
+            "gold": 0
+          }
+        },
+        "utility_by_player": [
+          -80000,
+          1000000,
+          80000,
+          -1000000
+        ],
+        "principal_variation": [
+          {
+            "type": "reserve_market",
+            "tier": "One",
+            "slot": 3,
+            "return": {
+              "white": 0,
+              "blue": 0,
+              "green": 0,
+              "red": 0,
+              "black": 0,
+              "gold": 0
+            }
+          }
+        ],
+        "completed_depth_turns": 1,
+        "stop_reason": "depth_limit_reached",
+        "stats": {
+          "nodes_visited": 27,
+          "nodes_expanded": 1,
+          "leaf_evaluations": 26,
+          "transposition_hits": 0,
+          "transposition_entries": 27
+        }
+      }
+    }
+  ]
+}
