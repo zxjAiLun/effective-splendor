@@ -10,6 +10,7 @@ members = [
     "crates/splendor-eval",
     "crates/splendor-search",
     "crates/splendor-belief",
+    "crates/splendor-imperfect-search",
     "crates/splendor-cli",
 ]
 default-members = [
@@ -22,6 +23,7 @@ default-members = [
     "crates/splendor-eval",
     "crates/splendor-search",
     "crates/splendor-belief",
+    "crates/splendor-imperfect-search",
     "crates/splendor-cli",
 ]
 
@@ -42,6 +44,7 @@ splendor-agent = { path = "crates/splendor-agent" }
 splendor-eval = { path = "crates/splendor-eval" }
 splendor-search = { path = "crates/splendor-search" }
 splendor-belief = { path = "crates/splendor-belief" }
+splendor-imperfect-search = { path = "crates/splendor-imperfect-search" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

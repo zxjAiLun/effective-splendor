@@ -549,6 +549,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-imperfect-search"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "splendor-belief",
+ "splendor-catalog",
+ "splendor-core",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
 name = "splendor-protocol"
 version = "0.1.0"
 dependencies = [
