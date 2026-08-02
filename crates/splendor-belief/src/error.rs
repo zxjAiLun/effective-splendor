@@ -54,4 +54,17 @@ pub enum BeliefError {
     /// Serialization of the visible history failed.
     #[error("serialization failed: {0}")]
     Serialization(String),
+
+    /// C2 determinization sampling is only defined for non-terminal
+    /// information sets: the current `Observation` does not carry a full
+    /// `GameResult`, so a terminal state cannot be reconstructed faithfully.
+    #[error("cannot sample a terminal information set (phase GameOver)")]
+    TerminalInformationSet,
+
+    /// A sampled determinization violated a frozen post-condition (card
+    /// partition, deck lengths, hidden-slot tier, known regions, or
+    /// observation equality). This is an internal invariant failure; it is
+    /// reported as a structured error and never panics.
+    #[error("sampled determinization failed invariant check: {0}")]
+    SamplingInvariant(String),
 }

@@ -23,13 +23,17 @@
 //! or cli.
 
 mod build;
+mod deterministic_rng;
 mod error;
 mod hash;
 mod model;
+mod sampler;
 
 pub use build::build_information_set_v1;
 pub use error::BeliefError;
 pub use hash::{InformationSetHashV1, VisibleHistoryHashV1};
 pub use model::{
-    InformationSetV1, PlayerReservedKnowledgeV1, ReservedKnowledgeV1, INFORMATION_SET_VERSION,
+    DeterminizationV1, InformationSetV1, PlayerReservedKnowledgeV1, ReservedKnowledgeV1,
+    DETERMINIZATION_VERSION, INFORMATION_SET_VERSION,
 };
+pub use sampler::sample_determinization_v1;
