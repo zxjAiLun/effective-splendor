@@ -484,6 +484,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-belief"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde_json",
+ "sha2",
+ "splendor-catalog",
+ "splendor-core",
+ "thiserror",
+]
+
+[[package]]
 name = "splendor-catalog"
 version = "0.1.0"
 dependencies = [
