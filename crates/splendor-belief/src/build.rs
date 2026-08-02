@@ -24,7 +24,11 @@ pub fn build_information_set_v1(
 ) -> Result<InformationSetV1, BeliefError> {
     validate_observation(ruleset, observation)?;
 
-    let mut tracker = Tracker::new(observation.viewer, observation.public.player_count as usize);
+    let mut tracker = Tracker::new(
+        observation.viewer,
+        observation.public.player_count as usize,
+        ruleset.max_reserved as usize,
+    );
     tracker.run(visible_history, observation, &ruleset)?;
     tracker.check_against_observation(observation)?;
 
@@ -103,11 +107,11 @@ struct Tracker {
 }
 
 impl Tracker {
-    fn new(viewer: PlayerId, player_count: usize) -> Self {
+    fn new(viewer: PlayerId, player_count: usize, max_reserved: usize) -> Self {
         Self {
             viewer,
             player_count,
-            max_reserved: 3,
+            max_reserved,
             slots: vec![Vec::new(); player_count],
         }
     }
@@ -204,12 +208,19 @@ impl Tracker {
         card: Option<CardId>,
         from: ReserveSourceInfo,
         public_identity: bool,
-        _visible_to: Visibility,
+        visible_to: Visibility,
     ) -> Result<(), BeliefError> {
         self.check_player(index, player)?;
         let slots = &mut self.slots[player.index()];
         match from {
-            ReserveSourceInfo::Market { tier, .. } => {
+            ReserveSourceInfo::Market { tier } => {
+                // Frozen projector semantics: a market reserve is public.
+                if visible_to != Visibility::Public {
+                    return Err(BeliefError::MalformedHistory {
+                        index,
+                        reason: "market reserve visible_to must be Public".to_string(),
+                    });
+                }
                 let Some(card) = card else {
                     return Err(BeliefError::MalformedHistory {
                         index,
@@ -229,6 +240,14 @@ impl Tracker {
                 });
             }
             ReserveSourceInfo::Deck { tier } => {
+                // Frozen projector semantics: a blind deck draw is only ever
+                // visible to the reserving player.
+                if visible_to != Visibility::Player(player) {
+                    return Err(BeliefError::MalformedHistory {
+                        index,
+                        reason: "deck reserve visible_to must be the reserving player".to_string(),
+                    });
+                }
                 if player == self.viewer {
                     let Some(card) = card else {
                         return Err(BeliefError::MalformedHistory {
@@ -324,26 +343,51 @@ impl Tracker {
         card: Option<CardId>,
         visible_to: Visibility,
     ) -> Result<(), BeliefError> {
-        if slot.is_some() {
-            if card.is_none() {
+        if let Some(slot) = slot {
+            // Market refill reveal: fully public, carries the card, tier and
+            // slot must be consistent with the market layout.
+            if slot >= 4 {
+                return Err(BeliefError::MalformedHistory {
+                    index,
+                    reason: format!("market reveal slot {slot} out of range"),
+                });
+            }
+            if visible_to != Visibility::Public {
+                return Err(BeliefError::MalformedHistory {
+                    index,
+                    reason: "market reveal must be public".to_string(),
+                });
+            }
+            let Some(card) = card else {
                 return Err(BeliefError::MalformedHistory {
                     index,
                     reason: "market reveal must carry the public card identity".to_string(),
                 });
-            }
-            return Ok(());
+            };
+            return validate_card_tier(index, card, tier, "market reveal");
         }
-        // Blind draw: an identity may appear only for the viewer's own reserve.
-        match (card, visible_to) {
-            (None, _) => Ok(()),
-            (Some(card), Visibility::Player(player)) if player == self.viewer => {
-                validate_card_tier(index, card, tier, "viewer blind draw")
-            }
-            (Some(_), Visibility::Public) => Err(BeliefError::MalformedHistory {
+        // Blind draw (slot None): never public; an identity may appear only
+        // for the viewer's own reserve, and must be absent for opponents.
+        match visible_to {
+            Visibility::Public => Err(BeliefError::MalformedHistory {
                 index,
                 reason: "blind draw cannot be public".to_string(),
             }),
-            (Some(_), Visibility::Player(_)) => Err(BeliefError::HiddenInformationLeak { index }),
+            Visibility::Player(player) if player == self.viewer => {
+                let Some(card) = card else {
+                    return Err(BeliefError::MalformedHistory {
+                        index,
+                        reason: "viewer blind draw must carry the card identity".to_string(),
+                    });
+                };
+                validate_card_tier(index, card, tier, "viewer blind draw")
+            }
+            Visibility::Player(_) => {
+                if card.is_some() {
+                    return Err(BeliefError::HiddenInformationLeak { index });
+                }
+                Ok(())
+            }
         }
     }
 

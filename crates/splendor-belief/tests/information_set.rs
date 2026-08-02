@@ -11,7 +11,7 @@ use splendor_belief::{
 use splendor_catalog::{card, cards_for_tier, CardId, Tier, CARD_COUNT};
 use splendor_core::{
     visible_events, Action, Audience, FullState, GameConfig, Gems, Observation, Phase, PlayerId,
-    Ruleset, VisibleEvent,
+    Ruleset, Visibility, VisibleEvent,
 };
 
 // ---------------------------------------------------------------------------
@@ -1011,4 +1011,392 @@ fn inputs_remain_unchanged() {
     build_information_set_v1(Ruleset::base_v1(), &observation, &history).expect("build");
     assert_eq!(observation, observation_before);
     assert_eq!(history, history_before);
+}
+
+// ---------------------------------------------------------------------------
+// Visibility-boundary enforcement (C1 fix-forward P1)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn market_reserve_non_public_visibility_rejected() {
+    let mut state = new_game(2, 1);
+    drive(&mut state, &[(0, rm(Tier::One, 0))]);
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    let reserve = find_event(&history, |e| matches!(e, VisibleEvent::CardReserved { .. }));
+    let VisibleEvent::CardReserved {
+        player,
+        card,
+        from,
+        received_gold,
+        public_identity,
+        ..
+    } = reserve
+    else {
+        unreachable!("find_event matched a CardReserved")
+    };
+    let bad = VisibleEvent::CardReserved {
+        player: *player,
+        card: *card,
+        from: *from,
+        received_gold: *received_gold,
+        public_identity: *public_identity,
+        visible_to: Visibility::Player(PlayerId(1)),
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("non-public market reserve rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+#[test]
+fn viewer_deck_reserve_wrong_visibility_rejected() {
+    let mut state = new_game(2, 1);
+    drive(
+        &mut state,
+        &[
+            (0, rm(Tier::One, 0)),
+            (1, rm(Tier::One, 1)),
+            (0, rd(Tier::Two)),
+        ],
+    );
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    // The viewer's own blind draw: card Some, visible_to Player(0).
+    let reserve = find_event(&history, |e| {
+        matches!(
+            e,
+            VisibleEvent::CardReserved {
+                public_identity: false,
+                ..
+            }
+        )
+    });
+    let VisibleEvent::CardReserved {
+        player,
+        card,
+        from,
+        received_gold,
+        public_identity,
+        ..
+    } = reserve
+    else {
+        unreachable!("find_event matched a CardReserved")
+    };
+    assert!(card.is_some());
+    let bad = VisibleEvent::CardReserved {
+        player: *player,
+        card: *card,
+        from: *from,
+        received_gold: *received_gold,
+        public_identity: *public_identity,
+        visible_to: Visibility::Player(PlayerId(1)), // != Player(0) viewer
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("viewer deck reserve with wrong visible_to rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+#[test]
+fn opponent_deck_reserve_wrong_visibility_rejected() {
+    let mut state = new_game(2, 1);
+    drive(&mut state, &[(0, rm(Tier::One, 0)), (1, rd(Tier::One))]);
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    let reserve = find_event(&history, |e| {
+        matches!(
+            e,
+            VisibleEvent::CardReserved {
+                player: PlayerId(1),
+                ..
+            }
+        )
+    });
+    let VisibleEvent::CardReserved {
+        player,
+        card,
+        from,
+        received_gold,
+        public_identity,
+        ..
+    } = reserve
+    else {
+        unreachable!("find_event matched a CardReserved")
+    };
+    assert!(card.is_none());
+    let bad = VisibleEvent::CardReserved {
+        player: *player,
+        card: *card,
+        from: *from,
+        received_gold: *received_gold,
+        public_identity: *public_identity,
+        visible_to: Visibility::Player(PlayerId(0)), // != Player(1) opponent
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("opponent deck reserve with wrong visible_to rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+#[test]
+fn blind_chance_reveal_public_rejected() {
+    let mut state = new_game(2, 1);
+    drive(&mut state, &[(0, rm(Tier::One, 0)), (1, rd(Tier::One))]);
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    let reveal = find_event(&history, |e| {
+        matches!(e, VisibleEvent::ChanceRevealed { slot: None, .. })
+    });
+    let VisibleEvent::ChanceRevealed {
+        tier, slot, card, ..
+    } = reveal
+    else {
+        unreachable!("find_event matched a ChanceRevealed")
+    };
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: *slot,
+        card: *card,
+        visible_to: Visibility::Public,
+    };
+    let err =
+        build_with(&observation, &[game_started(2), bad]).expect_err("public blind draw rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+#[test]
+fn viewer_blind_chance_reveal_without_card_rejected() {
+    let mut state = new_game(2, 1);
+    drive(
+        &mut state,
+        &[
+            (0, rm(Tier::One, 0)),
+            (1, rm(Tier::One, 1)),
+            (0, rd(Tier::Two)),
+        ],
+    );
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    // The viewer's own blind draw carries the card identity.
+    let reveal = find_event(&history, |e| {
+        matches!(
+            e,
+            VisibleEvent::ChanceRevealed {
+                slot: None,
+                card: Some(_),
+                ..
+            }
+        )
+    });
+    let VisibleEvent::ChanceRevealed {
+        tier,
+        slot,
+        visible_to,
+        ..
+    } = reveal
+    else {
+        unreachable!("find_event matched a ChanceRevealed")
+    };
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: *slot,
+        card: None,
+        visible_to: *visible_to,
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("viewer blind draw without card rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+#[test]
+fn market_reveal_visibility_and_shape_enforced() {
+    // Real game: P0 buys a market card, the deck refills the slot and the
+    // engine emits a market reveal (slot Some, card Some, Public).
+    let mut state = new_game(2, 3);
+    let buy_card = state.observation(PlayerId(0)).public.market[Tier::One.index()][2]
+        .expect("market card at slot 2");
+    fund(&mut state, 0, buy_card);
+    drive(
+        &mut state,
+        &[(
+            0,
+            Action::BuyMarket {
+                tier: Tier::One,
+                slot: 2,
+            },
+        )],
+    );
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    let reveal = find_event(&history, |e| {
+        matches!(e, VisibleEvent::ChanceRevealed { slot: Some(_), .. })
+    });
+    let VisibleEvent::ChanceRevealed {
+        tier,
+        slot,
+        card,
+        visible_to,
+    } = reveal
+    else {
+        unreachable!("find_event matched a ChanceRevealed")
+    };
+    let card_val = card.expect("market reveal carries a card");
+    assert_eq!(*tier, Tier::One);
+    assert!((card_val.0 as usize) < CARD_COUNT);
+
+    // (a) non-Public visibility
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: *slot,
+        card: *card,
+        visible_to: Visibility::Player(PlayerId(1)),
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("non-public market reveal rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+
+    // (b) missing card identity
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: *slot,
+        card: None,
+        visible_to: *visible_to,
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("cardless market reveal rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+
+    // (c) tier mismatch: a tier-2 card in a tier-1 reveal
+    let tier_two_card = cards_for_tier(Tier::Two)[0].id;
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: *slot,
+        card: Some(tier_two_card),
+        visible_to: *visible_to,
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("tier-mismatched market reveal rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+
+    // (d) out-of-range slot
+    let bad = VisibleEvent::ChanceRevealed {
+        tier: *tier,
+        slot: Some(9),
+        card: *card,
+        visible_to: *visible_to,
+    };
+    let err = build_with(&observation, &[game_started(2), bad])
+        .expect_err("bad-slot market reveal rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index: 1, .. }
+    ));
+}
+
+// ---------------------------------------------------------------------------
+// Ruleset-driven reserve bounds (C1 fix-forward P1)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ruleset_max_reserved_two_rejects_third_reserve() {
+    let mut ruleset = Ruleset::base_v1();
+    ruleset.max_reserved = 2;
+    let (mut state, _setup) = FullState::new(GameConfig {
+        player_count: 2,
+        seed: 1,
+        ruleset,
+    })
+    .expect("setup");
+    drive(
+        &mut state,
+        &[
+            (0, rm(Tier::One, 0)),
+            (1, rm(Tier::One, 1)),
+            (0, rm(Tier::One, 2)), // P0 second reserve: exactly at the cap
+        ],
+    );
+    let observation = state.observation(PlayerId(0));
+    let mut history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    // Append a synthetic third reserve for P0 by reusing its last reserve event.
+    let last_p0 = history
+        .iter()
+        .rposition(|e| {
+            matches!(
+                e,
+                VisibleEvent::CardReserved {
+                    player: PlayerId(0),
+                    ..
+                }
+            )
+        })
+        .expect("P0 reserve event");
+    let extra = history[last_p0].clone();
+    history.push(extra);
+    let err = build_information_set_v1(ruleset, &observation, &history)
+        .expect_err("third reserve with max_reserved=2 rejected");
+    assert!(matches!(
+        err,
+        BeliefError::MalformedHistory { index, .. } if index == history.len() - 1
+    ));
+}
+
+#[test]
+fn ruleset_max_reserved_four_accepts_fourth_reserve() {
+    let mut ruleset = Ruleset::base_v1();
+    ruleset.max_reserved = 4;
+    let (mut state, _setup) = FullState::new(GameConfig {
+        player_count: 2,
+        seed: 1,
+        ruleset,
+    })
+    .expect("setup");
+    drive(
+        &mut state,
+        &[
+            (0, rm(Tier::One, 0)),
+            (1, rm(Tier::One, 1)),
+            (0, rm(Tier::One, 2)),
+            (1, rm(Tier::One, 3)),
+            (0, rm(Tier::Two, 0)),
+            (1, rm(Tier::Two, 1)),
+            (0, rm(Tier::Two, 2)), // P0 fourth reserve: legal at max 4
+            (1, rm(Tier::Two, 3)),
+        ],
+    );
+    let observation = state.observation(PlayerId(0));
+    let history = visible_events(&state.log, Audience::Player(PlayerId(0)));
+    let info = build_information_set_v1(ruleset, &observation, &history)
+        .expect("four reserves accepted at max_reserved=4");
+    assert_eq!(info.reserved_knowledge()[0].slots.len(), 4);
+    for slot in &info.reserved_knowledge()[0].slots {
+        assert!(matches!(
+            slot,
+            ReservedKnowledgeV1::Known {
+                from_deck: false,
+                ..
+            }
+        ));
+    }
 }
