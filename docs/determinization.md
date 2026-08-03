@@ -13,6 +13,8 @@ The public model identities are:
 INFORMATION_SET_VERSION      = 1
 DETERMINIZATION_VERSION      = 1
 IMPERFECT_SEARCH_VERSION     = 1
+PROTOCOL_VERSION             = 0.5
+SEARCH_VERSION               = 1
 PLAYER_VIEW_ANALYSIS_VERSION = 1
 ENGINE_VERSION               = 0.4.0
 REPLAY_VERSION               = 1
@@ -153,8 +155,13 @@ SHA-256(
 
 The sampler verifies observation equality, the complete 90-card partition,
 deck lengths, tier correctness of hidden reserves, and preservation of known
-slots before returning a sampled `FullState`. That state is referee-only and
-is not part of the public C2 result identity.
+slots before returning a sampled `FullState`.
+
+`sample_determinization_v1` returns `DeterminizationV1`. Its public read-only
+`state()` getter exposes the reconstructed `FullState` to referee/offline
+callers such as `splendor-imperfect-search`. That `FullState` is not an
+agent-facing object and is not serialized into `RootDeterminizationResultV1`
+or the replay-bound player-view artifact.
 
 ## C3: root determinization aggregation
 
