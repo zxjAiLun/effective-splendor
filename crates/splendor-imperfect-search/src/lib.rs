@@ -19,6 +19,7 @@
 mod config;
 mod error;
 mod model;
+mod player_view;
 mod search;
 
 pub use config::{
@@ -26,7 +27,9 @@ pub use config::{
 };
 pub use error::{ImperfectSearchError, RootDeterminizationError};
 pub use model::{RootActionAggregateV1, RootDeterminizationResultV1, RootDeterminizationStatsV1};
+pub use player_view::{analyze_player_view_v1, PlayerViewRootAnalysisV1};
 pub use search::{aggregate_root_determinizations_v1, search_root_determinizations_v1};
+pub use splendor_belief::{DETERMINIZATION_VERSION, INFORMATION_SET_VERSION};
 
 /// Frozen public identity of the root-determinization algorithm family.
 pub const IMPERFECT_SEARCH_ALGORITHM_ID: &str = "effective-splendor-root-determinization-maxn";

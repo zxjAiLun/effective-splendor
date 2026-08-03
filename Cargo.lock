@@ -516,6 +516,7 @@ dependencies = [
  "splendor-arena",
  "splendor-core",
  "splendor-eval",
+ "splendor-imperfect-search",
  "splendor-protocol",
  "splendor-replay",
  "splendor-search",

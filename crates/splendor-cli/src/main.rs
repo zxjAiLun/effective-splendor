@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 mod arena_command;
 mod atomic_output;
 mod eval_command;
+mod imperfect_search_command;
 mod search_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -89,6 +90,9 @@ fn main() {
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))
         }
+        Some("analyze-replay-player-view") => std::process::exit(
+            imperfect_search_command::run_analyze_replay_player_view(&argv[2..]),
+        ),
         _ => {}
     }
 
