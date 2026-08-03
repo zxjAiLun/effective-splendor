@@ -14,9 +14,9 @@ pub const DEFAULT_SAMPLE_COUNT: u16 = 8;
 
 /// Frozen configuration for root-determinization aggregation.
 ///
-/// `continuation_search.max_depth_turns` is the horizon *after* the root
-/// action has been applied. The root action itself is therefore always
-/// evaluated, even when the continuation horizon is zero.
+/// The root action is applied first. `continuation_search` then controls the
+/// frozen perfect-information continuation search; its validated minimum is
+/// one turn, so the root action is always evaluated before that continuation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RootDeterminizationConfigV1 {

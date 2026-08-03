@@ -10,8 +10,10 @@
 //! - Production inputs are `Ruleset` + `Observation` + `&[VisibleEvent]` only.
 //! - No production entry point accepts `FullState`, `RefereeEvent`, `ReplayV1`,
 //!   a raw setup seed, deck order, `FullStateHash`, or another player's
-//!   blind-reserved `CardId`. `FullState` may appear only in tests as an oracle
-//!   that *produces* observations and visible transcripts.
+//!   blind-reserved `CardId`. C2 may produce a referee-only sampled `FullState`
+//!   internally from a validated information set; that sampled state is never
+//!   accepted as a production input and is not exposed by C2's public result
+//!   identity.
 //! - Any hidden-information leak in the input history (an opponent's blind
 //!   reserved `CardId`) is rejected with `BeliefError::HiddenInformationLeak`,
 //!   never silently ignored.
