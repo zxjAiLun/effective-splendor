@@ -32,6 +32,8 @@ use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent};
 use splendor_determinization_agent::run_determinization_agent_v1;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
+use splendor_ismcts::IsmctsConfigV1;
+use splendor_ismcts_agent::run_ismcts_agent_v1;
 use splendor_search::SearchConfigV1;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
@@ -91,6 +93,20 @@ Options:
   --max-depth-turns <u8>   MaxN continuation depth, 1..=12 (required).
   --max-nodes <u64>        MaxN node budget, 1..=10000000 (required).
   -h, --help               Print this help and exit 0.";
+
+const AGENT_ISMCTS_USAGE: &str = "\
+Usage: splendor agent-ismcts --sample-seed <u64> --simulations <u32> \
+--max-depth-turns <u8> --exploration-bias <u64>
+
+Player-view-only information-set MCTS agent. Simulations sample hidden worlds,
+while future policies are shared by acting-player Observation identity.
+
+Options:
+  --sample-seed <u64>       Deterministic hidden-state sampler seed.
+  --simulations <u32>       Simulation budget, 1..=10000.
+  --max-depth-turns <u8>    Simulation depth in completed turns, 1..=8.
+  --exploration-bias <u64>  Integer confidence bonus, 0..=1000000000000.
+  -h, --help                Print this help and exit 0.";
 
 /// A user-facing error while preparing or committing a `run-match`. `Display`
 /// yields the stable `error:` message body.
@@ -468,6 +484,35 @@ pub fn agent_determinization(args: &[String]) -> i32 {
     }
 }
 
+/// Entry point for the live M10 information-set tree-search agent.
+pub fn agent_ismcts(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_ISMCTS_USAGE);
+        return 0;
+    }
+    let config = match parse_agent_ismcts_args(args) {
+        Ok(config) => config,
+        Err(message) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {message}");
+            let _ = stderr.flush();
+            return 1;
+        }
+    };
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    match run_ismcts_agent_v1(
+        BufReader::new(stdin.lock()),
+        stdout.lock(),
+        stderr.lock(),
+        config,
+    ) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Strict argument parsing
 // ---------------------------------------------------------------------------
@@ -563,6 +608,34 @@ fn parse_agent_determinization_args(
             max_nodes,
         },
     })
+}
+
+fn parse_agent_ismcts_args(args: &[String]) -> Result<IsmctsConfigV1, String> {
+    let mut sample_seed = None;
+    let mut simulations = None;
+    let mut max_depth_turns = None;
+    let mut exploration_bias = None;
+    let mut index = 0;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        match flag {
+            "--sample-seed" => set_flag(&mut sample_seed, flag, args.get(index + 1))?,
+            "--simulations" => set_flag(&mut simulations, flag, args.get(index + 1))?,
+            "--max-depth-turns" => set_flag(&mut max_depth_turns, flag, args.get(index + 1))?,
+            "--exploration-bias" => set_flag(&mut exploration_bias, flag, args.get(index + 1))?,
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
+            other => return Err(format!("unexpected positional argument `{other}`")),
+        }
+        index += 2;
+    }
+    let config = IsmctsConfigV1 {
+        sample_seed: parse_required_number(sample_seed, "--sample-seed", "u64")?,
+        simulations: parse_required_number(simulations, "--simulations", "u32")?,
+        max_depth_turns: parse_required_number(max_depth_turns, "--max-depth-turns", "u8")?,
+        exploration_bias: parse_required_number(exploration_bias, "--exploration-bias", "u64")?,
+    };
+    config.validate().map_err(|error| error.to_string())?;
+    Ok(config)
 }
 
 fn parse_required_number<T>(value: Option<String>, flag: &str, kind: &str) -> Result<T, String>

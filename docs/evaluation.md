@@ -224,6 +224,21 @@ least 50%. These are frozen calibration inputs, not a pre-recorded promotion:
 no result may be claimed until the plan is executed and the resulting report is
 successfully gated.
 
+### Fixed M10 candidate inputs
+
+M11's checked-in league manifest and the unchanged M09 gate are:
+
+```text
+benchmarks/m10-ismcts-v1.league.json
+benchmarks/m10-ismcts-v1.gate.json
+```
+
+Run `league-plan` to derive the canonical evaluation plan, execute it through
+the existing evaluator, then apply the M10 gate. The schedule compares the M10
+observation-history ISMCTS candidate with the frozen M07 root-determinization
+champion across 32 seeds and both seat rotations. These files freeze inputs
+only; no promotion or strength result is checked in.
+
 ### Performance observability boundary
 
 Arena report v1 records outcomes and fault classes but does not record per-move
@@ -244,5 +259,8 @@ REPLAY       = 1
 ARENA_REPORT = 1
 EVALUATION   = 1   (plan + report)
 PROMOTION    = 1   (gate + report)
+ISMCTS       = 1
+LEAGUE       = 1
+DATASET      = 1
 MSRV         = 1.75.0
 ```

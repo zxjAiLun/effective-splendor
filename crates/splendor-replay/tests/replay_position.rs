@@ -8,7 +8,7 @@
 use splendor_core::full_state_hash;
 use splendor_replay::{
     record_random_game, replay_document_hash_v1, verify_replay, verify_replay_position,
-    ReplayError, ReplayHash, ReplayV1,
+    verify_replay_trace, ReplayError, ReplayHash, ReplayV1,
 };
 
 /// A deterministic completed 2-player replay used by most tests.
@@ -121,6 +121,43 @@ fn position_verified_summary_equals_verify_replay() {
     let full = verify_replay(&replay).expect("verify");
     let position = verify_replay_position(&replay, 1).expect("ply 1");
     assert_eq!(position.verified, full);
+}
+
+#[test]
+fn trace_captures_every_verified_pre_action_position_once() {
+    let replay = sample_replay();
+    let trace = verify_replay_trace(&replay).expect("verify trace");
+    assert_eq!(trace.verified, verify_replay(&replay).unwrap());
+    assert_eq!(trace.positions.len(), replay.steps.len());
+    for (position, step) in trace.positions.iter().zip(&replay.steps) {
+        assert_eq!(position.ply, step.ply);
+        assert_eq!(position.recorded_actor, step.actor);
+        assert_eq!(position.recorded_action, step.action);
+        assert_eq!(position.state_hash, step.state_hash_before.as_str());
+        assert_eq!(
+            full_state_hash(&position.state).as_str(),
+            position.state_hash
+        );
+    }
+
+    let middle = replay.steps.len() / 2;
+    let single = verify_replay_position(&replay, middle as u32).unwrap();
+    assert_eq!(trace.positions[middle].state_hash, single.state_hash);
+    assert_eq!(
+        trace.positions[middle].recorded_action,
+        single.recorded_action
+    );
+}
+
+#[test]
+fn trace_rejects_a_tampered_suffix() {
+    let mut replay = sample_replay();
+    let last = replay.steps.len() - 1;
+    replay.steps[last].state_hash_after = fake_hash();
+    assert!(matches!(
+        verify_replay_trace(&replay),
+        Err(ReplayError::AfterHashMismatch { ply, .. }) if ply == last as u32
+    ));
 }
 
 #[test]

@@ -1,0 +1,14 @@
+[package]
+name = "splendor-ismcts-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Live player-view ISMCTS policy for the Splendor Arena"
+
+[dependencies]
+splendor-core = { workspace = true }
+splendor-agent = { workspace = true }
+splendor-search = { workspace = true }
+splendor-ismcts = { workspace = true }
+thiserror = { workspace = true }

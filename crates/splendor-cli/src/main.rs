@@ -7,6 +7,7 @@ mod arena_command;
 mod atomic_output;
 mod eval_command;
 mod imperfect_search_command;
+mod league_command;
 mod promotion_command;
 mod search_command;
 use rand::rngs::SmallRng;
@@ -90,10 +91,13 @@ fn main() {
         Some("agent-determinization") => {
             std::process::exit(arena_command::agent_determinization(&argv[2..]))
         }
+        Some("agent-ismcts") => std::process::exit(arena_command::agent_ismcts(&argv[2..])),
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("promotion-gate") => {
             std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))
         }
+        Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
+        Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))
         }

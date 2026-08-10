@@ -1,6 +1,6 @@
-# Splendor AI Platform (M09 competitive evaluation v1 candidate)
+# Splendor AI Platform (M10/M11 search and learning-data foundation)
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, an NDJSON agent protocol, a frozen player-view root-determinization baseline, and a live Arena policy that consumes only player-visible state.
+Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, and traceable player-view dataset generation.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
 
@@ -18,6 +18,9 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-imperfect-search` | Replay-neutral root determinization over player-view information sets |
 | `splendor-determinization-agent` | Live player-view policy that binds Arena observations/history to M07 search |
 | `splendor-eval` | Canonical evaluation plans/reports and deterministic promotion gates |
+| `splendor-ismcts` | M10 deterministic observation-history information-set tree search |
+| `splendor-ismcts-agent` | Live player-view Arena policy for M10 search |
+| `splendor-league` | M11 league manifests and report/replay-bound player-view datasets |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 
 ## Quick start
@@ -32,7 +35,10 @@ cargo run -p splendor-cli -- verify-replay --input game.replay.json
 cargo run -p splendor-cli -- analyze-replay --input game.replay.json --ply 0 --max-depth-turns 1 --max-nodes 2000 --out full-state-analysis.json
 cargo run -p splendor-cli -- analyze-replay-player-view --input game.replay.json --ply 0 --sample-seed 20260703 --sample-count 4 --max-depth-turns 1 --max-nodes 2000 --out player-view-analysis.json
 cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-count 1 --max-depth-turns 1 --max-nodes 100
+cargo run -p splendor-cli -- agent-ismcts --sample-seed 17 --simulations 64 --max-depth-turns 2 --exploration-bias 100000000
 cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
+cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
+cargo run -p splendor-cli -- build-dataset --manifest league.json --replays replay-list.json --out dataset.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -55,7 +61,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M09 slice)
+## Architecture (M10/M11 slice)
 
 ```text
 splendor-core
@@ -64,10 +70,15 @@ splendor-core
 │   └── splendor-imperfect-search
 │       └── splendor-determinization-agent
 │           └── splendor-agent
+├── splendor-ismcts
+│   └── splendor-ismcts-agent
+│       └── splendor-agent
+├── splendor-arena
+│   └── splendor-eval
+│       └── splendor-league
+├── splendor-replay
+│   └── splendor-league
 └── splendor-cli
-    ├── splendor-replay
-    ├── splendor-search
-    └── splendor-imperfect-search
 ```
 
 The replay-bound `analyze-replay` command is a referee full-state MaxN
@@ -91,13 +102,14 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M09 status and roadmap
+## M10/M11 status and roadmap
 
 1. M08: live player-view search agent (complete)
-2. M09: paired competitive evaluation and promotion gate v1 (implemented)
-3. M10: information-set tree search / ISMCTS
-4. M11–M13: self-play, policy-value model, neural-guided search
-5. M14+: Python/PyO3 and research UI
+2. M09: paired competitive evaluation and promotion gate v1 (complete)
+3. M10: observation-history ISMCTS v1 + live agent (implemented candidate)
+4. M11: league manifest + traceable player-view dataset v1 (implemented)
+5. M12–M13: policy-value model and neural-guided search
+6. M14+: Python/PyO3 and research UI
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -105,6 +117,14 @@ deterministic one-sided 95% confidence lower bound, reliability limits, and the
 configured Arena move deadline must all pass before promotion. See
 `docs/evaluation.md`; a result is evidence for the exact hashed plan, not a
 general strength claim.
+
+M10 shares future policies across sampled worlds using only acting-player
+observations and visible simulated history; its v1 pre-root opponent-history
+abstraction is documented in `docs/ismcts.md`. M11 binds every dataset source
+to a completed Arena report, a strictly verified replay, and exact league
+policy/model identities before projecting actor-only examples. See
+`docs/league.md`. Neither the checked-in M10 matchup nor the new infrastructure
+is a promotion or measured strength claim until its frozen evaluation runs.
 
 ## License
 

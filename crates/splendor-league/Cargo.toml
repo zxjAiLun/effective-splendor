@@ -1,0 +1,20 @@
+[package]
+name = "splendor-league"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Traceable self-play league plans and player-view datasets"
+
+[dependencies]
+splendor-core = { workspace = true }
+splendor-arena = { workspace = true }
+splendor-belief = { workspace = true }
+splendor-eval = { workspace = true }
+splendor-replay = { workspace = true }
+splendor-search = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }

@@ -43,6 +43,24 @@ pub struct VerifiedReplayPosition {
     pub recorded_action: Action,
 }
 
+/// Every decision state from one replay, captured during a single strict
+/// verification pass. This is a referee/offline artifact and must be projected
+/// before use in a player-view dataset.
+#[derive(Debug, Clone)]
+pub struct VerifiedReplayTrace {
+    pub verified: VerifiedReplay,
+    pub positions: Vec<VerifiedReplayTraceStep>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VerifiedReplayTraceStep {
+    pub ply: u32,
+    pub state_hash: String,
+    pub state: FullState,
+    pub recorded_actor: PlayerId,
+    pub recorded_action: Action,
+}
+
 /// A position captured mid-verification by [`verify_replay_core`].
 struct CapturedPosition {
     state: FullState,
@@ -56,7 +74,7 @@ struct CapturedPosition {
 /// On any divergence the returned error names the exact `ply` (where relevant)
 /// and the specific kind of mismatch. This never returns a bare "mismatch".
 pub fn verify_replay(replay: &ReplayV1) -> ReplayResult<VerifiedReplay> {
-    let (verified, _) = verify_replay_core(replay, None)?;
+    let (verified, _) = verify_replay_core(replay, None, false)?;
     Ok(verified)
 }
 
@@ -83,13 +101,16 @@ pub fn verify_replay_position(replay: &ReplayV1, ply: u32) -> ReplayResult<Verif
             steps,
         });
     }
-    let (verified, captured) = verify_replay_core(replay, Some(ply))?;
+    let (verified, captured) = verify_replay_core(replay, Some(ply), false)?;
     // The bounds check above guarantees the capture happened; stay fail-closed
     // rather than unwrap if that invariant is ever broken.
-    let captured = captured.ok_or(ReplayError::PlyOutOfRange {
-        requested: ply,
-        steps,
-    })?;
+    let captured = captured
+        .into_iter()
+        .next()
+        .ok_or(ReplayError::PlyOutOfRange {
+            requested: ply,
+            steps,
+        })?;
     Ok(VerifiedReplayPosition {
         verified,
         ply,
@@ -97,6 +118,27 @@ pub fn verify_replay_position(replay: &ReplayV1, ply: u32) -> ReplayResult<Verif
         state: captured.state,
         recorded_actor: captured.actor,
         recorded_action: captured.action,
+    })
+}
+
+/// Strictly verify a replay once and capture every pre-action referee state.
+/// Callers must project each state to its recorded actor before serialization.
+pub fn verify_replay_trace(replay: &ReplayV1) -> ReplayResult<VerifiedReplayTrace> {
+    let (verified, positions) = verify_replay_core(replay, None, true)?;
+    let positions = positions
+        .into_iter()
+        .enumerate()
+        .map(|(index, captured)| VerifiedReplayTraceStep {
+            ply: index as u32,
+            state_hash: captured.state_hash,
+            state: captured.state,
+            recorded_actor: captured.actor,
+            recorded_action: captured.action,
+        })
+        .collect();
+    Ok(VerifiedReplayTrace {
+        verified,
+        positions,
     })
 }
 
@@ -109,7 +151,8 @@ pub fn verify_replay_position(replay: &ReplayV1, ply: u32) -> ReplayResult<Verif
 fn verify_replay_core(
     replay: &ReplayV1,
     capture_ply: Option<u32>,
-) -> ReplayResult<(VerifiedReplay, Option<CapturedPosition>)> {
+    capture_all: bool,
+) -> ReplayResult<(VerifiedReplay, Vec<CapturedPosition>)> {
     // 1. Format + replay version.
     if replay.format != REPLAY_FORMAT {
         return Err(ReplayError::WrongFormat {
@@ -194,7 +237,7 @@ fn verify_replay_core(
 
     // 7. Step-by-step verification (capturing the requested position, if any,
     //    once its before-hash check has succeeded).
-    let mut captured: Option<CapturedPosition> = None;
+    let mut captured: Vec<CapturedPosition> = Vec::new();
     for (index, step) in replay.steps.iter().enumerate() {
         let expected_ply = index as u32;
         if step.ply != expected_ply {
@@ -225,8 +268,8 @@ fn verify_replay_core(
             });
         }
 
-        if capture_ply == Some(step.ply) {
-            captured = Some(CapturedPosition {
+        if capture_all || capture_ply == Some(step.ply) {
+            captured.push(CapturedPosition {
                 state: state.clone(),
                 state_hash: before.as_str().to_string(),
                 actor: step.actor,

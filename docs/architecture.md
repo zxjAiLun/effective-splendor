@@ -23,15 +23,21 @@ splendor-agent                    splendor-eval
         ▼
 splendor-determinization-agent
  (live player-view M07 policy)
+
+splendor-belief ──► splendor-ismcts ──► splendor-ismcts-agent
+                    (M10 tree)          (live player-view policy)
+
+splendor-arena ──► splendor-eval ──► splendor-league
+splendor-replay ───────────────────► splendor-league
+                         (M11 plans + offline dataset projection)
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
-protocol, replay, arena, agent, eval, and search. Dependency direction is
-strictly `cli → eval → arena` and `cli → search` and `cli → replay`; nothing
-depends on the CLI, and `splendor-eval` stays a leaf model crate with no
-process or file I/O. `splendor-search` and `splendor-replay` are independent
-crates that do NOT depend on each other — the CLI is the only layer that binds
-a referee replay to a search analysis. See `docs/search.md`.
+protocol, replay, arena, agent, eval, search, ISMCTS, and league layers.
+Nothing depends on the CLI, and `splendor-eval` stays a model crate with no
+process or file I/O. `splendor-search` and `splendor-replay` remain independent
+and do not depend on each other; higher-level CLI and offline league tooling
+compose their public APIs. See `docs/search.md` and `docs/league.md`.
 
 `splendor-replay` depends on `splendor-core` (and `splendor-catalog`) only.
 It MUST NOT depend on `splendor-protocol`, and `splendor-core` MUST NOT depend
@@ -69,6 +75,11 @@ Rules:
   the frozen M07 replay-neutral analysis API. It depends on the Agent SDK and
   imperfect-search layers, verifies the certified legal root, and never
   accepts replay or referee-only state.
+- **`splendor-ismcts` / `splendor-ismcts-agent`** (M10) implement a
+  deterministic observation-history ISMCTS candidate and its live Agent SDK
+  binding. Tree keys contain acting-player observations and their visible
+  post-root simulated history, never referee state. The M07 sampler remains a
+  separate frozen dependency and baseline. See `docs/ismcts.md`.
 - **`splendor-eval`** (M05/M09) is the pure evaluation model: plan/gate
   validation and hashing, canonical cyclic-seat schedule expansion,
   integer-only aggregation, and paired promotion decisions. It performs no
@@ -86,6 +97,11 @@ Rules:
   replay position is handed in only by the CLI (`analyze-replay`), which
   verifies the replay first and then calls `search_maxn_v1`. See
   `docs/search.md`.
+- **`splendor-league`** (M11) validates versioned league roles and identities,
+  expands them through the pure evaluation plan, and offline-projects strictly
+  verified Arena report/replay pairs into actor player-view examples. It never
+  sends referee artifacts to an agent and performs no training. See
+  `docs/league.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 

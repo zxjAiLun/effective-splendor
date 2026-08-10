@@ -20,6 +20,9 @@ splendor-eval = { workspace = true }
 splendor-search = { workspace = true }
 splendor-imperfect-search = { workspace = true }
 splendor-determinization-agent = { workspace = true }
+splendor-ismcts = { workspace = true }
+splendor-ismcts-agent = { workspace = true }
+splendor-league = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

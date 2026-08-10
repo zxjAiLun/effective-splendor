@@ -12,6 +12,9 @@ members = [
     "crates/splendor-belief",
     "crates/splendor-imperfect-search",
     "crates/splendor-determinization-agent",
+    "crates/splendor-ismcts",
+    "crates/splendor-ismcts-agent",
+    "crates/splendor-league",
     "crates/splendor-cli",
 ]
 default-members = [
@@ -26,6 +29,9 @@ default-members = [
     "crates/splendor-belief",
     "crates/splendor-imperfect-search",
     "crates/splendor-determinization-agent",
+    "crates/splendor-ismcts",
+    "crates/splendor-ismcts-agent",
+    "crates/splendor-league",
     "crates/splendor-cli",
 ]
 
@@ -48,6 +54,9 @@ splendor-search = { path = "crates/splendor-search" }
 splendor-belief = { path = "crates/splendor-belief" }
 splendor-imperfect-search = { path = "crates/splendor-imperfect-search" }
 splendor-determinization-agent = { path = "crates/splendor-determinization-agent" }
+splendor-ismcts = { path = "crates/splendor-ismcts" }
+splendor-ismcts-agent = { path = "crates/splendor-ismcts-agent" }
+splendor-league = { path = "crates/splendor-league" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

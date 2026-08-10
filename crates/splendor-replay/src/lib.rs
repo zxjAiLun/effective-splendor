@@ -32,4 +32,7 @@ pub use format::{
     REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
 };
 pub use recorder::{record_random_game, ReplayRecorder, MAX_RANDOM_REPLAY_PLIES};
-pub use verify::{verify_replay, verify_replay_position, VerifiedReplay, VerifiedReplayPosition};
+pub use verify::{
+    verify_replay, verify_replay_position, verify_replay_trace, VerifiedReplay,
+    VerifiedReplayPosition, VerifiedReplayTrace, VerifiedReplayTraceStep,
+};

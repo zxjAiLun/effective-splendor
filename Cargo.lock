@@ -518,6 +518,9 @@ dependencies = [
  "splendor-determinization-agent",
  "splendor-eval",
  "splendor-imperfect-search",
+ "splendor-ismcts",
+ "splendor-ismcts-agent",
+ "splendor-league",
  "splendor-protocol",
  "splendor-replay",
  "splendor-search",
@@ -570,6 +573,46 @@ dependencies = [
  "splendor-belief",
  "splendor-catalog",
  "splendor-core",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-ismcts"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "splendor-belief",
+ "splendor-core",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-ismcts-agent"
+version = "0.1.0"
+dependencies = [
+ "splendor-agent",
+ "splendor-core",
+ "splendor-ismcts",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-league"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "splendor-arena",
+ "splendor-belief",
+ "splendor-core",
+ "splendor-eval",
+ "splendor-replay",
  "splendor-search",
  "thiserror",
 ]

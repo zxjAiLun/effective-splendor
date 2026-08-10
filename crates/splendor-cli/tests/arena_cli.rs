@@ -331,6 +331,36 @@ fn determinization_agent_runs_complete_live_matches_for_two_three_four_players()
 }
 
 #[test]
+fn ismcts_agent_completes_a_live_player_view_match() {
+    let dir = tmp_dir();
+    let config = write_config(
+        &dir,
+        &mixed_config(
+            "cli-ismcts-vs-heuristic",
+            55,
+            &[
+                "agent-ismcts",
+                "--sample-seed",
+                "23",
+                "--simulations",
+                "8",
+                "--max-depth-turns",
+                "1",
+                "--exploration-bias",
+                "100000000",
+            ],
+            &["agent-heuristic", "--seed", "1002"],
+        ),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(
+        report.agents[0].agent_name.as_deref(),
+        Some("effective-splendor-ismcts-agent-v1")
+    );
+    assert_eq!(report.agents[0].agent_version.as_deref(), Some("1"));
+}
+
+#[test]
 fn heuristic_vs_random_replay_verifies() {
     let dir = tmp_dir();
     let config = write_config(
@@ -640,6 +670,30 @@ fn agent_determinization_help_exits_zero() {
         stdout.contains("Usage: splendor agent-determinization"),
         "stdout: {stdout}"
     );
+}
+
+#[test]
+fn agent_ismcts_help_and_required_budgets_are_strict() {
+    let help = Command::new(bin())
+        .arg("agent-ismcts")
+        .arg("--help")
+        .output()
+        .expect("spawn agent-ismcts --help");
+    assert_eq!(help.status.code(), Some(0));
+    assert!(String::from_utf8(help.stdout)
+        .unwrap()
+        .contains("Usage: splendor agent-ismcts"));
+
+    let missing = Command::new(bin())
+        .arg("agent-ismcts")
+        .arg("--sample-seed")
+        .arg("1")
+        .output()
+        .expect("spawn agent-ismcts");
+    assert_eq!(missing.status.code(), Some(1));
+    assert!(String::from_utf8(missing.stderr)
+        .unwrap()
+        .contains("--simulations"));
 }
 
 #[test]

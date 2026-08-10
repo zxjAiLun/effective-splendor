@@ -58,6 +58,19 @@ required. The Arena projects and sends the engine's setup events to every seat
 after `GameStart` and before the first request, so the live transcript begins
 with `GameStarted` just like M07 offline reconstruction.
 
+### `agent-ismcts`
+
+```bash
+splendor agent-ismcts \
+  --sample-seed 17 --simulations 64 \
+  --max-depth-turns 2 --exploration-bias 100000000
+```
+
+The M10 live policy uses the same player-view-only Agent SDK boundary, samples
+M07-consistent root worlds, and shares observation/history-keyed tree nodes
+across simulations. All four deterministic budget flags are required. See
+`docs/ismcts.md` for algorithm semantics and v1 limitations.
+
 ## Config schema
 
 `ArenaConfig` (`deny_unknown_fields`):
