@@ -7,6 +7,7 @@ mod arena_command;
 mod atomic_output;
 mod eval_command;
 mod imperfect_search_command;
+mod promotion_command;
 mod search_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -90,6 +91,9 @@ fn main() {
             std::process::exit(arena_command::agent_determinization(&argv[2..]))
         }
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
+        Some("promotion-gate") => {
+            std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))
+        }
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))
         }
