@@ -12,7 +12,7 @@ use splendor_agent::{
 };
 use splendor_core::{
     observation_hash, ruleset_fingerprint, Action, FullState, GameConfig, GameResult, PlayerId,
-    TerminalReason, ENGINE_VERSION,
+    TerminalReason, VisibleEvent, ENGINE_VERSION,
 };
 use splendor_protocol::{
     ClientMessage, ObservationMeta, RecipientMeta, RequestMeta, ServerMessage,
@@ -127,6 +127,29 @@ impl AgentPolicy for BrokenPolicy {
         // `Pass` is only legal when no other main action exists; in a normal
         // starting state it is outside `legal_actions` (asserted below).
         Ok(Action::Pass)
+    }
+}
+
+/// A policy that pins the runtime's cumulative Event/ActionApplied projection.
+struct HistoryPolicy;
+
+impl AgentPolicy for HistoryPolicy {
+    type Error = String;
+
+    fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
+        if !matches!(
+            context.visible_history,
+            [
+                VisibleEvent::GameStarted { .. },
+                VisibleEvent::ActionApplied {
+                    player: PlayerId(1),
+                    action: Action::Pass
+                }
+            ]
+        ) {
+            return Err("visible history did not preserve wire event order".to_string());
+        }
+        Ok(context.legal_actions[0])
     }
 }
 
@@ -285,4 +308,72 @@ fn policy_action_must_belong_to_legal_actions() {
         out_str.contains("\"type\":\"hello\""),
         "runtime should have sent hello before rejecting the bad action: {out_str}"
     );
+}
+
+#[test]
+fn runtime_exposes_cumulative_visible_event_history() {
+    let game_id = "history-test";
+    let (state, _) = FullState::new(GameConfig::default()).unwrap();
+    let seat = PlayerId(0);
+    let observation = state.observation(seat);
+    let observation_hash = observation_hash(&observation);
+    let lines = [
+        ServerMessage::hello(
+            game_id,
+            splendor_core::RULESET_BASE_V1.0,
+            splendor_core::CATALOG_VERSION,
+            ruleset_fingerprint(&state.ruleset),
+        ),
+        ServerMessage::GameStart {
+            meta: RecipientMeta::new(game_id, 1, seat),
+            player_count: 2,
+            seed_commitment: "commitment".to_string(),
+        },
+        ServerMessage::Event {
+            meta: RecipientMeta::new(game_id, 2, seat),
+            event: VisibleEvent::GameStarted {
+                player_count: 2,
+                ruleset: splendor_core::RULESET_BASE_V1.0.to_string(),
+            },
+        },
+        ServerMessage::ActionApplied {
+            meta: RecipientMeta::new(game_id, 3, seat),
+            actor_player_id: 1,
+            action: Action::Pass,
+        },
+        ServerMessage::Observation {
+            meta: ObservationMeta::new(game_id, 4, seat, observation_hash.clone()),
+            observation,
+        },
+        ServerMessage::RequestAction {
+            meta: RequestMeta::new(game_id, 5, seat, 1, observation_hash),
+            deadline_ms: 1_000,
+            legal_actions: state.legal_actions(),
+        },
+        ServerMessage::GameEnd {
+            meta: RecipientMeta::new(game_id, 6, seat),
+            result: terminal_result(),
+        },
+    ]
+    .iter()
+    .map(|message| message.to_json_line().unwrap())
+    .collect::<Vec<_>>();
+    let input = lines.join("\n") + "\n";
+    let mut output = Vec::new();
+    let mut diagnostics = Vec::new();
+
+    let result = run_agent(
+        input.as_bytes(),
+        &mut output,
+        &mut diagnostics,
+        AgentIdentity {
+            name: "history-policy",
+            version: "1",
+        },
+        0,
+        HistoryPolicy,
+    );
+
+    assert!(result.is_ok(), "history policy failed: {result:?}");
+    assert!(diagnostics.is_empty());
 }

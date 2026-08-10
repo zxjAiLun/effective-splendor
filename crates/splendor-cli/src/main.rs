@@ -86,6 +86,9 @@ fn main() {
         Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
         Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
+        Some("agent-determinization") => {
+            std::process::exit(arena_command::agent_determinization(&argv[2..]))
+        }
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))

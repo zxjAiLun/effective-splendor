@@ -31,6 +31,7 @@ fn decide(obs: &Observation, actions: &[Action], seed: u64) -> Action {
     let mut rng = StableRng::new(seed);
     let ctx = DecisionContext {
         observation: obs.clone(),
+        visible_history: &[],
         legal_actions: actions,
         meta: PublicRequestMeta {
             game_id: "t".into(),

@@ -183,7 +183,7 @@ impl ArenaRunner {
         let player_count = config.player_count();
         let seed = config.seed;
 
-        let mut recorder = ReplayRecorder::new(GameConfig {
+        let (mut recorder, setup) = ReplayRecorder::new_with_setup(GameConfig {
             player_count,
             seed,
             ruleset: Ruleset::base_v1(),
@@ -387,6 +387,29 @@ impl ArenaRunner {
                 &ctx,
                 &seats,
                 seat.0,
+                ArenaPhase::Handshake,
+                AgentFault::AgentIo,
+                None,
+                0,
+            ));
+        }
+
+        // Every live player-view policy needs the same cumulative transcript
+        // used by offline M07 analysis. Deliver the projected setup events
+        // before the first observation/request; this includes GameStarted and
+        // SetupDealt but never exposes the raw seed or hidden deck order.
+        if let Some(failed_seat) = broadcast_events(
+            &mut transports,
+            &ctx,
+            &mut counters,
+            &setup.events,
+            BroadcastMode::Strict,
+        )? {
+            return Ok(finish_aborted(
+                &mut transports,
+                &ctx,
+                &seats,
+                failed_seat.0,
                 ArenaPhase::Handshake,
                 AgentFault::AgentIo,
                 None,

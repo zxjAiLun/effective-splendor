@@ -213,6 +213,7 @@ fn heuristic_root_action(state: &FullState, case_id: &str, ply: u32) -> Action {
     policy
         .choose_action(DecisionContext {
             observation,
+            visible_history: &[],
             legal_actions: &legal,
             meta,
             rng: &mut rng,

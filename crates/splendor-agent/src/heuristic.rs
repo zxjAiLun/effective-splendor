@@ -364,6 +364,7 @@ mod tests {
         let mut rng = StableRng::new(seed);
         let ctx = DecisionContext {
             observation: obs.clone(),
+            visible_history: &[],
             legal_actions: actions,
             meta: PublicRequestMeta {
                 game_id: "t".into(),

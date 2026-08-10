@@ -2,12 +2,13 @@
 //!
 //! A [`AgentPolicy`] chooses a single action for one request given only a
 //! [`DecisionContext`]. The context is the hard information boundary of the
-//! agent SDK: it exposes the agent's own `Observation`, the server-certified
-//! `legal_actions`, public request metadata, and the agent's own RNG — and
+//! agent SDK: it exposes the agent's own `Observation`, cumulative projected
+//! `VisibleEvent` history, the server-certified `legal_actions`, public request
+//! metadata, and the agent's own RNG — and
 //! *nothing* referee-only (no `FullState`, `FullStateHash`, raw game seed,
 //! `ReplayV1`, opponent blind-reserved `CardId`, or deck order).
 
-use splendor_core::{Action, Observation, ObservationHash, PlayerId};
+use splendor_core::{Action, Observation, ObservationHash, PlayerId, VisibleEvent};
 
 use crate::StableRng;
 
@@ -28,12 +29,16 @@ pub struct PublicRequestMeta {
 /// Everything a policy is allowed to see when choosing an action.
 ///
 /// This is the hard information boundary of the agent SDK. A policy receives its
-/// own `Observation`, the server-certified `legal_actions`, public request
-/// metadata, and its own RNG. It receives **nothing** referee-only: not
+/// own `Observation`, cumulative player-projected event history, the
+/// server-certified `legal_actions`, public request metadata, and its own RNG.
+/// It receives **nothing** referee-only: not
 /// `FullState`, `FullStateHash`, the raw game seed, a `ReplayV1`, an opponent's
 /// blind-reserved `CardId`, or the deck order.
 pub struct DecisionContext<'a> {
     pub observation: Observation,
+    /// Cumulative, player-projected event history from game start through the
+    /// latest event delivered before this request.
+    pub visible_history: &'a [VisibleEvent],
     pub legal_actions: &'a [Action],
     pub meta: PublicRequestMeta,
     pub rng: &'a mut StableRng,

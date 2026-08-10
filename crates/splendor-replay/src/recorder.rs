@@ -41,28 +41,41 @@ fn hash_of(state: &FullState) -> ReplayHash {
 
 impl ReplayRecorder {
     pub fn new(config: GameConfig) -> ReplayResult<Self> {
+        Self::new_with_setup(config).map(|(recorder, _setup)| recorder)
+    }
+
+    /// Construct a recorder and return the engine's initial referee events.
+    ///
+    /// Replay v1 stores the setup seed rather than duplicating setup events,
+    /// but live hosts still need those events to produce each player's
+    /// cumulative visible transcript. This constructor keeps that host-facing
+    /// stream available without exposing the recorder's mutable `FullState`.
+    pub fn new_with_setup(config: GameConfig) -> ReplayResult<(Self, StepResult)> {
         // Reject any non-canonical ruleset up front: Replay v1 only supports
         // `splendor-base-v1`, so recording under any other ruleset would emit a
         // document the verifier is guaranteed to reject.
         ensure_supported_runtime_ruleset(&config.ruleset)?;
         let seed = config.seed;
-        let (state, _) = FullState::new(config)?;
+        let (state, setup) = FullState::new(config)?;
         let ruleset = ReplayRulesetV1::from_ruleset(&state.ruleset);
         let ruleset_fingerprint =
             ReplayHash::from_hash_str(ruleset_fingerprint(&state.ruleset).as_str())
                 .expect("ruleset fingerprint is always valid hex");
         let initial_state_hash = hash_of(&state);
         let player_count = state.player_count();
-        Ok(Self {
-            state,
-            initial_state_hash,
-            ruleset,
-            ruleset_fingerprint,
-            player_count,
-            seed,
-            steps: Vec::new(),
-            next_ply: 0,
-        })
+        Ok((
+            Self {
+                state,
+                initial_state_hash,
+                ruleset,
+                ruleset_fingerprint,
+                player_count,
+                seed,
+                steps: Vec::new(),
+                next_ply: 0,
+            },
+            setup,
+        ))
     }
 
     pub fn state(&self) -> &FullState {

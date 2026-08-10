@@ -11,6 +11,7 @@ generic over an `AgentPolicy`. A policy decides from a `DecisionContext`
 containing **only**:
 
 - the agent's own `Observation` (never `FullState`);
+- cumulative `VisibleEvent` history projected for that same player;
 - the server-provided `legal_actions` list;
 - public request metadata (`PublicRequestMeta`);
 - a `StableRng` derived for the decision (never the raw game seed).
@@ -22,17 +23,25 @@ fault, not an illegal state transition.
 
 ## Reference agents
 
-Both reference agents are subcommands of the `splendor` binary and speak the
+The reference and M08 agents are subcommands of the `splendor` binary and speak the
 NDJSON protocol on stdio:
 
 ```text
 splendor agent-random    --seed <u64>   # uniform random over legal actions
 splendor agent-heuristic --seed <u64>   # deterministic integer-weight policy
+splendor agent-determinization --sample-seed <u64> --sample-count <u16> \
+  --max-depth-turns <u8> --max-nodes <u64>
 ```
 
 The heuristic prefers `Buy > Take > Reserve-visible > Reserve-blind > Pass`
 using pure integer weights; its RNG is consumed only to break exact ties, so
 runs are reproducible given the seed.
+
+The determinization agent is the live binding of the frozen M07 baseline. It
+builds every decision from the current observation and cumulative projected
+history, checks that the search root matches the server-certified legal action
+set, and fails closed on any mismatch. Its configurable deterministic budgets
+are inputs for M09 calibration, not a frozen strength claim.
 
 ## Evaluation plan format
 

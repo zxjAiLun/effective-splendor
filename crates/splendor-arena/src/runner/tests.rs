@@ -341,6 +341,49 @@ fn server_seq_is_globally_monotonic() {
 }
 
 #[test]
+fn setup_history_reaches_every_seat_before_the_first_request() {
+    let (actions, _) = recorded_actions();
+    let (result, log, _) = run_scripted(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+    );
+    result.expect("no internal error");
+
+    let log = log.lock().unwrap();
+    for seat in [PlayerId(0), PlayerId(1)] {
+        let messages = log
+            .iter()
+            .filter(|(recipient, _)| *recipient == seat)
+            .map(|(_, message)| message)
+            .collect::<Vec<_>>();
+        let start = messages
+            .iter()
+            .position(|message| matches!(message, ServerMessage::GameStart { .. }))
+            .expect("game_start");
+        let request = messages
+            .iter()
+            .position(|message| matches!(message, ServerMessage::RequestAction { .. }))
+            .expect("first request");
+        let setup_events = &messages[start + 1..request];
+        assert!(matches!(
+            setup_events.first(),
+            Some(ServerMessage::Event {
+                event: VisibleEvent::GameStarted { .. },
+                ..
+            })
+        ));
+        assert!(setup_events.iter().any(|message| matches!(
+            message,
+            ServerMessage::Event {
+                event: VisibleEvent::SetupDealt { .. },
+                ..
+            }
+        )));
+    }
+}
+
+#[test]
 fn request_id_starts_at_one() {
     let (actions, _) = recorded_actions();
     let (result, log, _) = run_scripted(

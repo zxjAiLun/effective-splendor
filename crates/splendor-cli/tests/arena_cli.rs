@@ -277,6 +277,60 @@ fn random_vs_heuristic_match_completes() {
 }
 
 #[test]
+fn determinization_agent_runs_complete_live_matches_for_two_three_four_players() {
+    for player_count in 2usize..=4 {
+        let dir = tmp_dir();
+        let program = bin().to_string_lossy().into_owned();
+        let determinization_seat = if player_count == 2 {
+            0
+        } else {
+            player_count - 1
+        };
+        let agents = (0..player_count)
+            .map(|seat| {
+                if seat == determinization_seat {
+                    serde_json::json!({
+                        "program": program,
+                        "args": [
+                            "agent-determinization",
+                            "--sample-seed", "17",
+                            "--sample-count", "1",
+                            "--max-depth-turns", "1",
+                            "--max-nodes", "100"
+                        ]
+                    })
+                } else {
+                    serde_json::json!({
+                        "program": program,
+                        "args": ["agent-heuristic", "--seed", (1000 + seat).to_string()]
+                    })
+                }
+            })
+            .collect::<Vec<_>>();
+        let config = write_config(
+            &dir,
+            &serde_json::json!({
+                "game_id": format!("cli-determinization-{player_count}p"),
+                "seed": 40 + player_count,
+                "handshake_timeout_ms": 10_000,
+                "move_timeout_ms": 10_000,
+                "shutdown_grace_ms": 2_000,
+                "agents": agents
+            }),
+        );
+        let report = assert_completed_match(&config, &dir);
+        assert_eq!(
+            report.agents[determinization_seat].agent_name.as_deref(),
+            Some("effective-splendor-determinization-agent-v1")
+        );
+        assert_eq!(
+            report.agents[determinization_seat].agent_version.as_deref(),
+            Some("1")
+        );
+    }
+}
+
+#[test]
 fn heuristic_vs_random_replay_verifies() {
     let dir = tmp_dir();
     let config = write_config(
@@ -558,6 +612,34 @@ fn agent_random_requires_seed() {
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("--seed"), "stderr: {stderr}");
+}
+
+#[test]
+fn agent_determinization_requires_all_budgets() {
+    let output = Command::new(bin())
+        .arg("agent-determinization")
+        .arg("--sample-seed")
+        .arg("17")
+        .output()
+        .expect("spawn agent-determinization");
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("--sample-count"), "stderr: {stderr}");
+}
+
+#[test]
+fn agent_determinization_help_exits_zero() {
+    let output = Command::new(bin())
+        .arg("agent-determinization")
+        .arg("--help")
+        .output()
+        .expect("spawn agent-determinization --help");
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Usage: splendor agent-determinization"),
+        "stdout: {stdout}"
+    );
 }
 
 #[test]

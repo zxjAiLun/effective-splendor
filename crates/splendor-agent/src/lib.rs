@@ -5,7 +5,8 @@
 //! (Hello / GameStart / Observation / RequestAction / Ping / Pong) and adds the
 //! [`AgentPolicy`] boundary: a policy may only choose an action from the
 //! `legal_actions` the server hands it, using the `Observation`, public request
-//! metadata, and its own RNG. It can never observe `FullState`, the
+//! metadata, its cumulative player-projected `VisibleEvent` history, and its
+//! own RNG. It can never observe `FullState`, the
 //! `FullStateHash`, the raw game seed, a `ReplayV1`, an opponent's blind-reserved
 //! `CardId`, or the deck order.
 //!

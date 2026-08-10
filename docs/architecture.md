@@ -19,6 +19,10 @@ splendor-protocol  splendor-replay  splendor-arena  splendor-search  splendor-py
         ▼                               ▼
 splendor-agent                    splendor-eval
  (stdio agent SDK)          (pure evaluation model)
+        │
+        ▼
+splendor-determinization-agent
+ (live player-view M07 policy)
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
@@ -54,12 +58,17 @@ Rules:
   `docs/arena.md` and `docs/adr/0005-stdio-arena-process-boundary.md`. The
   `splendor` CLI exposes it via `run-match`, with `agent-random` as a reference
   stdio agent.
-- **`splendor-agent`** (M05) is the stdio agent SDK: an NDJSON client FSM
+- **`splendor-agent`** (M05/M08) is the stdio agent SDK: an NDJSON client FSM
   generic over an `AgentPolicy`. A policy sees only its own `Observation`,
-  the server's `legal_actions`, public request metadata, and a derived
+  cumulative player-projected `VisibleEvent` history, the server's
+  `legal_actions`, public request metadata, and a derived
   `StableRng` — never `FullState`, the raw seed, or the replay. The runtime
   rejects any policy action outside `legal_actions`. `agent-random` and
   `agent-heuristic` are the reference policies exposed by the CLI.
+- **`splendor-determinization-agent`** (M08) is the live player-view binding of
+  the frozen M07 replay-neutral analysis API. It depends on the Agent SDK and
+  imperfect-search layers, verifies the certified legal root, and never
+  accepts replay or referee-only state.
 - **`splendor-eval`** (M05) is the pure evaluation model: plan validation and
   hashing, canonical cyclic-seat schedule expansion, and integer-only
   aggregation into an `EvaluationReportV1`. It performs no process spawning

@@ -1,0 +1,14 @@
+[package]
+name = "splendor-determinization-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Live player-view root-determinization agent for Splendor Arena"
+
+[dependencies]
+splendor-agent = { workspace = true }
+splendor-core = { workspace = true }
+splendor-imperfect-search = { workspace = true }
+splendor-search = { workspace = true }
+thiserror = { workspace = true }

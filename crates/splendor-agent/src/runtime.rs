@@ -12,7 +12,7 @@
 
 use std::io::{BufRead, Write};
 
-use splendor_core::{Observation, ObservationHash, PlayerId};
+use splendor_core::{Observation, ObservationHash, PlayerId, VisibleEvent};
 use splendor_protocol::{
     parse_server_line, ClientMessage, ClientMeta, ClientRequestMeta, ProtocolParseError,
     ServerMessage, PROTOCOL_VERSION,
@@ -43,6 +43,7 @@ struct AgentState {
     last_observation: Option<Observation>,
     last_observation_hash: Option<ObservationHash>,
     last_request_id: Option<u64>,
+    visible_history: Vec<VisibleEvent>,
 }
 
 /// Run an agent to completion over the given streams using `policy`.
@@ -76,6 +77,7 @@ where
         last_observation: None,
         last_observation_hash: None,
         last_request_id: None,
+        visible_history: Vec::new(),
     };
 
     let result = drive(input, &mut output, &mut state, &mut policy, &identity);
@@ -224,14 +226,16 @@ where
             }
 
             // Hand the policy a view that cannot leak referee-only state: the
-            // observation, the certified legal actions, public metadata, and the
-            // agent's own RNG. The policy never sees FullState / FullStateHash /
-            // seed / replay / blind reserves / deck order.
+            // observation, cumulative projected event history, the certified
+            // legal actions, public metadata, and the agent's own RNG. The
+            // policy never sees FullState / FullStateHash / seed / replay /
+            // blind reserves / deck order.
             let observation = state.last_observation.clone().ok_or_else(|| {
                 AgentError::Protocol("request_action arrived before any observation".to_string())
             })?;
             let context = DecisionContext {
                 observation,
+                visible_history: &state.visible_history,
                 legal_actions: &legal_actions,
                 meta: PublicRequestMeta {
                     game_id: meta.recipient.server.game_id.clone(),
@@ -273,12 +277,23 @@ where
             Ok(false)
         }
         // Informational broadcasts: verify the game id and continue.
-        ServerMessage::ActionApplied { meta, .. } => {
+        ServerMessage::ActionApplied {
+            meta,
+            actor_player_id,
+            action,
+        } => {
             expect_game_id(state, &meta.server.game_id)?;
+            expect_seat(state, meta.player_id())?;
+            state.visible_history.push(VisibleEvent::ActionApplied {
+                player: PlayerId(actor_player_id),
+                action,
+            });
             Ok(false)
         }
-        ServerMessage::Event { meta, .. } => {
+        ServerMessage::Event { meta, event } => {
             expect_game_id(state, &meta.server.game_id)?;
+            expect_seat(state, meta.player_id())?;
+            state.visible_history.push(event);
             Ok(false)
         }
         ServerMessage::GameEnd { meta, .. } => {

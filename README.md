@@ -1,6 +1,6 @@
-# Splendor AI Platform (M07 determinization v1)
+# Splendor AI Platform (M08 player-view agent v1 candidate)
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, an NDJSON agent protocol, replay-bound perfect-information search, and a frozen player-view root-determinization baseline.
+Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, an NDJSON agent protocol, a frozen player-view root-determinization baseline, and a live Arena policy that consumes only player-visible state.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
 
@@ -16,6 +16,7 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-search` | Deterministic perfect-information MaxN continuation search |
 | `splendor-belief` | Validated player information sets and deterministic hidden-state sampling |
 | `splendor-imperfect-search` | Replay-neutral root determinization over player-view information sets |
+| `splendor-determinization-agent` | Live player-view policy that binds Arena observations/history to M07 search |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 
 ## Quick start
@@ -29,6 +30,7 @@ cargo run -p splendor-cli -- record-replay --players 2 --seed 42 --action-seed 1
 cargo run -p splendor-cli -- verify-replay --input game.replay.json
 cargo run -p splendor-cli -- analyze-replay --input game.replay.json --ply 0 --max-depth-turns 1 --max-nodes 2000 --out full-state-analysis.json
 cargo run -p splendor-cli -- analyze-replay-player-view --input game.replay.json --ply 0 --sample-seed 20260703 --sample-count 4 --max-depth-turns 1 --max-nodes 2000 --out player-view-analysis.json
+cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-count 1 --max-depth-turns 1 --max-nodes 100
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -51,13 +53,15 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M07 slice)
+## Architecture (M08 slice)
 
 ```text
 splendor-core
 ├── splendor-search
 ├── splendor-belief
 │   └── splendor-imperfect-search
+│       └── splendor-determinization-agent
+│           └── splendor-agent
 └── splendor-cli
     ├── splendor-replay
     ├── splendor-search
@@ -69,6 +73,9 @@ analysis. `analyze-replay-player-view` reconstructs only the recorded actor's
 visible prefix, builds a C1 information set, samples C2 hidden states, and
 aggregates the C3 continuation results. Root determinization is a reproducible
 baseline with a documented strategy-fusion limitation; it is not MCTS.
+`agent-determinization` applies that same replay-neutral API to the live
+`Observation + cumulative VisibleEvent history` stream. The M07 algorithm is
+unchanged; M08 only adds the Arena/Agent binding.
 
 ### Non-negotiable invariants
 
@@ -82,17 +89,18 @@ baseline with a documented strategy-fusion limitation; it is not MCTS.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M07 status and roadmap
+## M08 status and roadmap
 
-1. Heuristic agents
-2. Perfect-information MaxN + replay-bound root determinization baseline
-3. Policy-value net + self-play league
-4. Python/PyO3 env, Web UI
+1. M08: live player-view search agent
+2. M09: competitive evaluation and search calibration
+3. M10: information-set tree search / ISMCTS
+4. M11–M13: self-play, policy-value model, neural-guided search
+5. M14+: Python/PyO3 and research UI
 
-M07 C1–C4 freeze the information-set, deterministic sampler, root
-aggregation, and player-view artifact contracts. C5 freezes the benchmark and
-documentation; the `m07-determinization-v1` tag is created only after the
-independent C5 review is approved.
+M07 is frozen at `m07-determinization-v1`. M08 preserves those search semantics
+and adds cumulative live history delivery, a fail-closed policy adapter, strict
+CLI budgets, and real subprocess Arena coverage. Strength claims and parameter
+promotion remain M09 work.
 
 ## License
 

@@ -43,6 +43,21 @@ The reference agent (see [below](#reference-random-agent)). Reads server NDJSON
 on stdin and replies with a uniformly random **legal** action on stdout,
 deterministically for a given `--seed`. `--seed` is required.
 
+### `agent-determinization`
+
+```bash
+splendor agent-determinization \
+  --sample-seed 17 --sample-count 1 \
+  --max-depth-turns 1 --max-nodes 100
+```
+
+The M08 live search agent uses only its `Observation`, cumulative
+player-projected `VisibleEvent` history, public request metadata, and the
+server-certified legal actions. All four deterministic search budget flags are
+required. The Arena projects and sends the engine's setup events to every seat
+after `GameStart` and before the first request, so the live transcript begins
+with `GameStarted` just like M07 offline reconstruction.
+
 ## Config schema
 
 `ArenaConfig` (`deny_unknown_fields`):
@@ -135,12 +150,14 @@ in-process. Its identity in the handshake is `agent_name =
 - **Hello** → validate protocol version, record `game_id`, reply `ClientHello`
   and flush.
 - **GameStart** → bind this seat, check `game_id`.
+- **Event / ActionApplied** → append the player-projected event to the
+  cumulative policy history. Setup events arrive before the first request.
 - **Observation** → check recipient + `game_id`, remember the observation hash.
 - **RequestAction** → check recipient + `game_id`, require a strictly
   increasing `request_id`, require the request's observation hash to match the
   latest observation, require a non-empty `legal_actions`, pick one uniformly,
   reply `ClientAction` and flush.
-- **Ping** → **Pong**. **ActionApplied / Event** → continue. **GameEnd** →
+- **Ping** → **Pong**. **GameEnd** →
   exit `0`.
 - **Error / malformed / unexpected / EOF before game end** → write a diagnostic
   to stderr and exit non-zero.
