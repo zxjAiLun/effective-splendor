@@ -1,4 +1,4 @@
-# Evaluation v1 (M05)
+# Evaluation and promotion v1 (M05 + M09)
 
 M05 adds the agent SDK (`splendor-agent`), a deterministic heuristic reference
 agent, the pure evaluation model (`splendor-eval`), and the `splendor eval`
@@ -162,6 +162,79 @@ report outcome, checks the frozen plan hash, and enforces the gate. It is
 cargo test --locked -p splendor-cli --test eval_benchmark -- --ignored --test-threads=1
 ```
 
+## Competitive promotion gate (M09)
+
+M09 adds a pure promotion layer on top of the immutable M05 artifacts. It does
+not rerun games or accept caller-provided summary numbers. Given the exact
+`EvaluationPlanV1`, its canonical `EvaluationReportV1`, and a
+`PromotionGateV1`, `evaluate_promotion_v1` first re-aggregates every match
+record and requires exact model equality with the supplied report. The output
+binds both the evaluation-plan SHA-256 and a domain-separated promotion-gate
+SHA-256.
+
+Each game seed is one independent block containing all cyclic seat rotations.
+If any rotation aborts, the whole block is excluded from the strength sample;
+the abort and attributed candidate fault still count against reliability
+limits. Pairwise candidate/champion outcomes use rank only: win = 2 half-points,
+tie = 1, loss = 0. The point estimate is the half-point score over all complete
+blocks.
+
+The frozen v1 confidence rule is a deterministic integer one-sided Hoeffding
+bound at greater than 95% confidence:
+
+```text
+epsilon_bps = ceil(sqrt(150000000 / completed_seed_blocks))
+lower_bps   = max(0, score_bps - epsilon_bps)
+```
+
+The block count, abort limit, candidate-fault limit, Arena move deadline, and
+minimum pairwise lower bound must all pass. No single check can override
+another. A zero-complete-block report is therefore a normal rejection, never a
+strength result.
+
+Run the gate after `splendor eval` has committed its report:
+
+```text
+splendor promotion-gate \
+  --plan <plan.json> \
+  --eval-report <eval-report.json> \
+  --gate <gate.json> \
+  --out <promotion-report.json>
+```
+
+The output is atomically created and never overwritten. Exit `0` means
+`promote`, exit `2` means a valid `reject`, and exit `1` is fatal input,
+binding, or I/O failure. Both policy decisions write `PromotionReportV1` and
+keep stdout empty.
+
+### Fixed M09 calibration inputs
+
+The checked-in inputs are:
+
+```text
+benchmarks/m09-competitive-eval-v1.plan.json
+benchmarks/m09-competitive-eval-v1.gate.json
+```
+
+They schedule `determinization-s4-d1-n2000-v1` against `heuristic-v1` over 32
+fixed seeds and both seat rotations (64 matches). Promotion requires every seed
+block to complete, zero aborts, zero candidate faults, the configured move
+deadline to be at most 10 seconds, and the one-sided 95% lower bound to be at
+least 50%. These are frozen calibration inputs, not a pre-recorded promotion:
+no result may be claimed until the plan is executed and the resulting report is
+successfully gated.
+
+### Performance observability boundary
+
+Arena report v1 records outcomes and fault classes but does not record per-move
+latency, nodes visited, samples consumed, or peak memory. Consequently M09 v1
+can enforce the configured move deadline and observed timeout/fault/abort
+counts only. `--max-nodes` and `--sample-count` in an agent command are hashed
+configuration inputs; they are **not** measured actual cost and must not be
+reported as such. Adding nodes/samples/latency promotion checks requires a new
+versioned telemetry/report contract rather than changing ArenaReportV1 in
+place.
+
 ## Version matrix
 
 ```text
@@ -170,5 +243,6 @@ PROTOCOL     = 0.5
 REPLAY       = 1
 ARENA_REPORT = 1
 EVALUATION   = 1   (plan + report)
+PROMOTION    = 1   (gate + report)
 MSRV         = 1.75.0
 ```

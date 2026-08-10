@@ -1,4 +1,4 @@
-# Splendor AI Platform (M08 player-view agent v1 candidate)
+# Splendor AI Platform (M09 competitive evaluation v1 candidate)
 
 Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, an NDJSON agent protocol, a frozen player-view root-determinization baseline, and a live Arena policy that consumes only player-visible state.
 
@@ -17,6 +17,7 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-belief` | Validated player information sets and deterministic hidden-state sampling |
 | `splendor-imperfect-search` | Replay-neutral root determinization over player-view information sets |
 | `splendor-determinization-agent` | Live player-view policy that binds Arena observations/history to M07 search |
+| `splendor-eval` | Canonical evaluation plans/reports and deterministic promotion gates |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 
 ## Quick start
@@ -31,6 +32,7 @@ cargo run -p splendor-cli -- verify-replay --input game.replay.json
 cargo run -p splendor-cli -- analyze-replay --input game.replay.json --ply 0 --max-depth-turns 1 --max-nodes 2000 --out full-state-analysis.json
 cargo run -p splendor-cli -- analyze-replay-player-view --input game.replay.json --ply 0 --sample-seed 20260703 --sample-count 4 --max-depth-turns 1 --max-nodes 2000 --out player-view-analysis.json
 cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-count 1 --max-depth-turns 1 --max-nodes 100
+cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -53,7 +55,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M08 slice)
+## Architecture (M09 slice)
 
 ```text
 splendor-core
@@ -89,18 +91,20 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M08 status and roadmap
+## M09 status and roadmap
 
-1. M08: live player-view search agent
-2. M09: competitive evaluation and search calibration
+1. M08: live player-view search agent (complete)
+2. M09: paired competitive evaluation and promotion gate v1 (implemented)
 3. M10: information-set tree search / ISMCTS
 4. M11–M13: self-play, policy-value model, neural-guided search
 5. M14+: Python/PyO3 and research UI
 
-M07 is frozen at `m07-determinization-v1`. M08 preserves those search semantics
-and adds cumulative live history delivery, a fail-closed policy adapter, strict
-CLI budgets, and real subprocess Arena coverage. Strength claims and parameter
-promotion remain M09 work.
+M09 consumes immutable M05 plan/report artifacts and compares a candidate with
+a champion over complete seed blocks, after all cyclic seat rotations. A
+deterministic one-sided 95% confidence lower bound, reliability limits, and the
+configured Arena move deadline must all pass before promotion. See
+`docs/evaluation.md`; a result is evidence for the exact hashed plan, not a
+general strength claim.
 
 ## License
 

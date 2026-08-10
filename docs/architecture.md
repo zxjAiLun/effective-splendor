@@ -69,9 +69,10 @@ Rules:
   the frozen M07 replay-neutral analysis API. It depends on the Agent SDK and
   imperfect-search layers, verifies the certified legal root, and never
   accepts replay or referee-only state.
-- **`splendor-eval`** (M05) is the pure evaluation model: plan validation and
-  hashing, canonical cyclic-seat schedule expansion, and integer-only
-  aggregation into an `EvaluationReportV1`. It performs no process spawning
+- **`splendor-eval`** (M05/M09) is the pure evaluation model: plan/gate
+  validation and hashing, canonical cyclic-seat schedule expansion,
+  integer-only aggregation, and paired promotion decisions. It performs no
+  process spawning
   and no file I/O; the `splendor eval` subcommand drives it and atomically
   publishes artifacts (`eval-report.json` is the commit marker, and per-match
   artifact filenames derive from `match_index` only, so plan content can

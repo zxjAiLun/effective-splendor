@@ -95,4 +95,17 @@ pub enum EvaluationError {
     /// Serialization (for hashing or round-trip) failed internally.
     #[error("serialization error: {0}")]
     Serialization(String),
+
+    /// A promotion gate failed schema or cross-document validation.
+    #[error("invalid promotion gate: {0}")]
+    InvalidPromotionGate(String),
+
+    /// The supplied evaluation report was not the canonical aggregation of
+    /// the supplied plan and its own records.
+    #[error("evaluation report does not match canonical aggregation for the supplied plan")]
+    EvaluationReportMismatch,
+
+    /// A promotion gate referenced an agent absent from the evaluation plan.
+    #[error("promotion gate references unknown agent '{0}'")]
+    UnknownPromotionAgent(String),
 }

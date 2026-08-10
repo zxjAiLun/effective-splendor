@@ -12,6 +12,7 @@
 
 pub mod error;
 pub mod plan;
+pub mod promotion;
 pub mod report;
 pub mod schedule;
 
@@ -20,6 +21,11 @@ pub use plan::{
     evaluation_plan_hash_v1, EvaluationAgentV1, EvaluationPlanHash, EvaluationPlanV1,
     EVALUATION_PLAN_FORMAT, EVALUATION_VERSION, MATCH_GAME_ID_SUFFIX_BYTES, MAX_AGENT_ID_BYTES,
     MAX_EVALUATION_ID_BYTES, MAX_MATCHES,
+};
+pub use promotion::{
+    evaluate_promotion_v1, promotion_gate_hash_v1, PairwiseSummaryV1, PromotionChecksV1,
+    PromotionDecisionV1, PromotionGateHash, PromotionGateV1, PromotionReportV1, BASIS_POINTS_SCALE,
+    PROMOTION_CONFIDENCE_BPS, PROMOTION_GATE_FORMAT, PROMOTION_REPORT_FORMAT, PROMOTION_VERSION,
 };
 pub use report::{
     aggregate, AgentAggregateV1, EvaluationMatchRecordV1, EvaluationReportV1, SeatAggregateV1,
