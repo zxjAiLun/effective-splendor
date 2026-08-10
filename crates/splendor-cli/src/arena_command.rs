@@ -30,6 +30,9 @@ use splendor_replay::verify_replay;
 
 use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent};
+use splendor_determinization_agent::run_determinization_agent_v1;
+use splendor_imperfect_search::RootDeterminizationConfigV1;
+use splendor_search::SearchConfigV1;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
 /// rejected before any parse to bound accidental/hostile input.
@@ -73,6 +76,21 @@ the RNG, so the same server transcript always yields the same action.
 Options:
   --seed <u64>   Seed for the tie-break RNG (required).
   -h, --help     Print this help and exit 0.";
+
+const AGENT_DETERMINIZATION_USAGE: &str = "\
+Usage: splendor agent-determinization --sample-seed <u64> \
+--sample-count <u16> --max-depth-turns <u8> --max-nodes <u64>
+
+Player-view-only root-determinization stdio agent. Every decision is built from
+the live Observation plus cumulative VisibleEvent history; no replay or raw
+game seed crosses the policy boundary.
+
+Options:
+  --sample-seed <u64>      Deterministic hidden-state sampler seed (required).
+  --sample-count <u16>     Number of determinizations, 1..=64 (required).
+  --max-depth-turns <u8>   MaxN continuation depth, 1..=12 (required).
+  --max-nodes <u64>        MaxN node budget, 1..=10000000 (required).
+  -h, --help               Print this help and exit 0.";
 
 /// A user-facing error while preparing or committing a `run-match`. `Display`
 /// yields the stable `error:` message body.
@@ -418,6 +436,39 @@ pub fn agent_heuristic(args: &[String]) -> i32 {
 }
 
 // ---------------------------------------------------------------------------
+// agent-determinization
+// ---------------------------------------------------------------------------
+
+/// Entry point for the live M07-backed player-view search agent.
+pub fn agent_determinization(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_DETERMINIZATION_USAGE);
+        return 0;
+    }
+    let config = match parse_agent_determinization_args(args) {
+        Ok(config) => config,
+        Err(msg) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {msg}");
+            let _ = stderr.flush();
+            return 1;
+        }
+    };
+
+    let stdin = io::stdin();
+    let input = BufReader::new(stdin.lock());
+    let stdout = io::stdout();
+    let output = stdout.lock();
+    let stderr = io::stderr();
+    let diagnostics = stderr.lock();
+
+    match run_determinization_agent_v1(input, output, diagnostics, config) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Strict argument parsing
 // ---------------------------------------------------------------------------
 
@@ -476,6 +527,52 @@ fn parse_agent_random_args(args: &[String]) -> Result<u64, String> {
     let seed = seed.ok_or_else(|| "missing required --seed".to_string())?;
     seed.parse::<u64>()
         .map_err(|_| format!("--seed must be a u64 (got `{seed}`)"))
+}
+
+fn parse_agent_determinization_args(
+    args: &[String],
+) -> Result<RootDeterminizationConfigV1, String> {
+    let mut sample_seed: Option<String> = None;
+    let mut sample_count: Option<String> = None;
+    let mut max_depth_turns: Option<String> = None;
+    let mut max_nodes: Option<String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        match arg {
+            "--sample-seed" => set_flag(&mut sample_seed, arg, args.get(i + 1))?,
+            "--sample-count" => set_flag(&mut sample_count, arg, args.get(i + 1))?,
+            "--max-depth-turns" => set_flag(&mut max_depth_turns, arg, args.get(i + 1))?,
+            "--max-nodes" => set_flag(&mut max_nodes, arg, args.get(i + 1))?,
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
+            other => return Err(format!("unexpected positional argument `{other}`")),
+        }
+        i += 2;
+    }
+
+    let sample_seed = parse_required_number::<u64>(sample_seed, "--sample-seed", "u64")?;
+    let sample_count = parse_required_number::<u16>(sample_count, "--sample-count", "u16")?;
+    let max_depth_turns = parse_required_number::<u8>(max_depth_turns, "--max-depth-turns", "u8")?;
+    let max_nodes = parse_required_number::<u64>(max_nodes, "--max-nodes", "u64")?;
+
+    Ok(RootDeterminizationConfigV1 {
+        sample_seed,
+        sample_count,
+        continuation_search: SearchConfigV1 {
+            max_depth_turns,
+            max_nodes,
+        },
+    })
+}
+
+fn parse_required_number<T>(value: Option<String>, flag: &str, kind: &str) -> Result<T, String>
+where
+    T: std::str::FromStr,
+{
+    let value = value.ok_or_else(|| format!("missing required {flag}"))?;
+    value
+        .parse::<T>()
+        .map_err(|_| format!("{flag} must be a {kind} (got `{value}`)"))
 }
 
 /// Assign a flag value exactly once, rejecting duplicates and missing values.

@@ -326,3 +326,28 @@ M07 is limited to the supported base ruleset and the frozen C1–C4 contracts.
 It is not ISMCTS, POMCP, a belief-tree search, or an optimal imperfect-
 information policy. It is a deterministic root-determinization baseline with a
 perfect-information continuation and an explicit strategy-fusion caveat.
+
+## M08 live Agent binding
+
+M08 does not change the frozen sampler or root aggregation. The new
+`splendor-determinization-agent` crate implements `AgentPolicy` and calls the
+same replay-neutral `analyze_player_view_v1` API with exactly:
+
+```text
+Ruleset::base_v1()
+current Observation
+cumulative player-projected VisibleEvent history
+RootDeterminizationConfigV1
+```
+
+The generic Agent runtime owns the cumulative history. It converts the
+dedicated `ActionApplied` wire message back into its equivalent visible event
+and appends ordinary `Event` payloads directly. Arena now projects the engine's
+setup events to every seat after `GameStart`, before the first action request,
+so live history begins with `GameStarted` and includes `SetupDealt`.
+
+Before returning an action, the policy canonicalizes the server-certified
+legal list and requires exact equality with the search root action aggregates.
+It fails closed on recipient/viewer mismatch, malformed information history,
+invalid search configuration, or legal-set mismatch. The policy never accepts
+`ReplayV1`, raw game seed, `RefereeEvent`, or `FullState`.

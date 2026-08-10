@@ -49,6 +49,11 @@ echo. There is no client-side seat, `server_seq`, or state-hash field.
 - `action_applied` — `actor_player_id` (single, unambiguous) + `action`.
 - `event` — one already-projected `VisibleEvent`; raw `RefereeEvent` is not a
   protocol type.
+
+For live player-view search, the Arena sends the projected setup event stream
+to every seat after `game_start` and before the first `request_action`. The
+stream starts with `GameStarted`; clients accumulate subsequent `event` and
+`action_applied` messages in delivery order. This changes no v0.5 wire shape.
 - `game_end` — `GameResult`.
 - `error`, `ping`.
 

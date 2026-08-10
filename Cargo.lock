@@ -515,6 +515,7 @@ dependencies = [
  "splendor-agent",
  "splendor-arena",
  "splendor-core",
+ "splendor-determinization-agent",
  "splendor-eval",
  "splendor-imperfect-search",
  "splendor-protocol",
@@ -533,6 +534,17 @@ dependencies = [
  "serde_json",
  "sha2",
  "splendor-catalog",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-determinization-agent"
+version = "0.1.0"
+dependencies = [
+ "splendor-agent",
+ "splendor-core",
+ "splendor-imperfect-search",
+ "splendor-search",
  "thiserror",
 ]
 
