@@ -8,10 +8,14 @@ pub enum LeagueError {
     InvalidDataset(String),
     #[error("evaluation plan is invalid: {0}")]
     InvalidEvaluationPlan(String),
+    #[error("evaluation execution binding failed: {0}")]
+    EvaluationBinding(String),
     #[error("replay `{source_id}` failed verification: {message}")]
     ReplayVerification { source_id: String, message: String },
     #[error("duplicate replay source id `{0}`")]
     DuplicateReplaySource(String),
+    #[error("duplicate evaluation match index `{0}`")]
+    DuplicateEvaluationMatch(u32),
     #[error("arena/replay binding failed for `{source_id}`: {message}")]
     ArenaBinding { source_id: String, message: String },
     #[error("replay `{source_id}` cannot produce information set at ply {ply}: {message}")]

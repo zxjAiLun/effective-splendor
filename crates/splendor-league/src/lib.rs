@@ -5,7 +5,8 @@ mod error;
 mod manifest;
 
 pub use dataset::{
-    build_training_dataset_v1, training_dataset_hash_v1, DatasetReplaySourceV1,
+    arena_report_document_hash_v1, build_training_dataset_v1, evaluation_report_document_hash_v1,
+    training_dataset_hash_v1, DatasetEvaluationRunV1, DatasetReplaySourceV1,
     TrainingAgentIdentityV1, TrainingDatasetV1, TrainingExampleV1, TrainingReplayV1,
     TRAINING_DATASET_FORMAT, TRAINING_DATASET_VERSION,
 };

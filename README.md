@@ -38,7 +38,7 @@ cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-cou
 cargo run -p splendor-cli -- agent-ismcts --sample-seed 17 --simulations 64 --max-depth-turns 2 --exploration-bias 100000000
 cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
 cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
-cargo run -p splendor-cli -- build-dataset --manifest league.json --replays replay-list.json --out dataset.json
+cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-dir eval-output --replays replay-list.json --out dataset.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -121,8 +121,9 @@ general strength claim.
 M10 shares future policies across sampled worlds using only acting-player
 observations and visible simulated history; its v1 pre-root opponent-history
 abstraction is documented in `docs/ismcts.md`. M11 binds every dataset source
-to a completed Arena report, a strictly verified replay, and exact league
-policy/model identities before projecting actor-only examples. See
+through the executed evaluation plan/report and canonical match index to a
+completed Arena report, strictly verified replay, and exact scheduled league
+policy/model identity before projecting actor-only examples. See
 `docs/league.md`. Neither the checked-in M10 matchup nor the new infrastructure
 is a promotion or measured strength claim until its frozen evaluation runs.
 

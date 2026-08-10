@@ -98,10 +98,10 @@ Rules:
   verifies the replay first and then calls `search_maxn_v1`. See
   `docs/search.md`.
 - **`splendor-league`** (M11) validates versioned league roles and identities,
-  expands them through the pure evaluation plan, and offline-projects strictly
-  verified Arena report/replay pairs into actor player-view examples. It never
-  sends referee artifacts to an agent and performs no training. See
-  `docs/league.md`.
+  binds the manifest-derived plan hash to a canonical executed evaluation
+  report and match schedule, then offline-projects the bound Arena
+  report/replay pairs into actor player-view examples. It never sends referee
+  artifacts to an agent and performs no training. See `docs/league.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 

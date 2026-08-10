@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use splendor_arena::ArenaReportV1;
-use splendor_league::{build_training_dataset_v1, DatasetReplaySourceV1, LeagueManifestV1};
+use splendor_eval::{EvaluationPlanV1, EvaluationReportV1};
+use splendor_league::{
+    build_training_dataset_v1, DatasetEvaluationRunV1, DatasetReplaySourceV1, LeagueManifestV1,
+};
 use splendor_replay::ReplayV1;
 
 use crate::atomic_output;
@@ -15,6 +18,7 @@ use crate::atomic_output;
 const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 const MAX_REPLAY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_REPORT_BYTES: u64 = 1024 * 1024;
+const MAX_EVALUATION_REPORT_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_DATASET_REPLAYS: usize = 1_000;
 
 const LEAGUE_PLAN_USAGE: &str = "\
@@ -24,11 +28,11 @@ Validate a LeagueManifestV1 and atomically publish its canonical seat-rotated
 EvaluationPlanV1. Exit 0 success, 1 fatal; stdout is empty.";
 
 const BUILD_DATASET_USAGE: &str = "\
-Usage: splendor build-dataset --manifest <league.json> --replays <replay-list.json> --out <dataset.json>
+Usage: splendor build-dataset --manifest <league.json> --evaluation-dir <eval-output> --replays <replay-list.json> --out <dataset.json>
 
-Strictly bind every Arena report to its replay, verify the replay, and atomically
-publish a player-view training dataset. Paths are resolved relative to
-replay-list.json. Exit 0 success, 1 fatal; stdout is empty.";
+Bind the manifest to an executed evaluation plan/report, bind each canonical
+match report to its replay, and atomically publish a player-view training
+dataset. Exit 0 success, 1 fatal; stdout is empty.";
 
 const REPLAY_LIST_FORMAT: &str = "effective-splendor-dataset-replay-list";
 
@@ -45,8 +49,7 @@ struct DatasetReplayListV1 {
 #[serde(deny_unknown_fields)]
 struct DatasetReplayPathV1 {
     source_id: String,
-    path: PathBuf,
-    report: PathBuf,
+    match_index: u32,
 }
 
 #[derive(Debug)]
@@ -88,6 +91,16 @@ pub fn run_build_dataset(args: &[String]) -> i32 {
         precheck_output(&parsed.out)?;
         let manifest: LeagueManifestV1 =
             read_json(&parsed.manifest, MAX_MANIFEST_BYTES, "league manifest")?;
+        let plan: EvaluationPlanV1 = read_json(
+            &parsed.evaluation_dir.join("plan.json"),
+            MAX_MANIFEST_BYTES,
+            "executed evaluation plan",
+        )?;
+        let evaluation_report: EvaluationReportV1 = read_json(
+            &parsed.evaluation_dir.join("eval-report.json"),
+            MAX_EVALUATION_REPORT_BYTES,
+            "evaluation report",
+        )?;
         let list: DatasetReplayListV1 =
             read_json(&parsed.replays, MAX_MANIFEST_BYTES, "replay list")?;
         if list.format != REPLAY_LIST_FORMAT || list.version != 1 {
@@ -98,39 +111,40 @@ pub fn run_build_dataset(args: &[String]) -> i32 {
                 "replay list must contain 1..={MAX_DATASET_REPLAYS} entries"
             )));
         }
-        let base = parsed
-            .replays
-            .parent()
-            .filter(|parent| !parent.as_os_str().is_empty())
-            .unwrap_or_else(|| Path::new("."));
         let mut owned = Vec::with_capacity(list.replays.len());
         for entry in &list.replays {
-            let replay_path = resolve_input(base, &entry.path);
-            let report_path = resolve_input(base, &entry.report);
+            let matches_dir = parsed.evaluation_dir.join("matches");
+            let replay_path =
+                matches_dir.join(format!("match-{:06}.replay.json", entry.match_index));
+            let report_path =
+                matches_dir.join(format!("match-{:06}.report.json", entry.match_index));
             let replay: ReplayV1 = read_json(&replay_path, MAX_REPLAY_BYTES, "replay")?;
             let report: ArenaReportV1 = read_json(&report_path, MAX_REPORT_BYTES, "arena report")?;
-            owned.push((entry.source_id.clone(), replay, report));
+            owned.push((entry.source_id.clone(), entry.match_index, replay, report));
         }
         let sources = owned
             .iter()
-            .map(|(source_id, replay, arena_report)| DatasetReplaySourceV1 {
-                source_id,
-                replay,
-                arena_report,
-            })
+            .map(
+                |(source_id, match_index, replay, arena_report)| DatasetReplaySourceV1 {
+                    source_id,
+                    match_index: *match_index,
+                    replay,
+                    arena_report,
+                },
+            )
             .collect::<Vec<_>>();
-        let dataset = build_training_dataset_v1(&list.dataset_id, &manifest, &sources)
-            .map_err(|error| CommandError(error.to_string()))?;
+        let dataset = build_training_dataset_v1(
+            &list.dataset_id,
+            &manifest,
+            DatasetEvaluationRunV1 {
+                plan: &plan,
+                report: &evaluation_report,
+            },
+            &sources,
+        )
+        .map_err(|error| CommandError(error.to_string()))?;
         commit_json(&parsed.out, &dataset)
     })
-}
-
-fn resolve_input(base: &Path, path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        base.join(path)
-    }
 }
 
 fn run_command<F>(command: F) -> i32
@@ -233,12 +247,14 @@ fn parse_two_paths(
 
 struct DatasetArgs {
     manifest: PathBuf,
+    evaluation_dir: PathBuf,
     replays: PathBuf,
     out: PathBuf,
 }
 
 fn parse_dataset_args(args: &[String]) -> Result<DatasetArgs, CommandError> {
     let mut manifest = None;
+    let mut evaluation_dir = None;
     let mut replays = None;
     let mut out = None;
     let mut index = 0;
@@ -246,6 +262,7 @@ fn parse_dataset_args(args: &[String]) -> Result<DatasetArgs, CommandError> {
         let flag = args[index].as_str();
         let slot = match flag {
             "--manifest" => &mut manifest,
+            "--evaluation-dir" => &mut evaluation_dir,
             "--replays" => &mut replays,
             "--out" => &mut out,
             _ => return Err(CommandError(format!("unknown flag `{flag}`"))),
@@ -255,6 +272,8 @@ fn parse_dataset_args(args: &[String]) -> Result<DatasetArgs, CommandError> {
     }
     Ok(DatasetArgs {
         manifest: manifest.ok_or_else(|| CommandError("missing required --manifest".into()))?,
+        evaluation_dir: evaluation_dir
+            .ok_or_else(|| CommandError("missing required --evaluation-dir".into()))?,
         replays: replays.ok_or_else(|| CommandError("missing required --replays".into()))?,
         out: out.ok_or_else(|| CommandError("missing required --out".into()))?,
     })
@@ -304,5 +323,14 @@ mod tests {
         )
         .is_err());
         assert!(parse_dataset_args(&["--wat".into(), "x".into()]).is_err());
+        assert!(parse_dataset_args(&[
+            "--manifest".into(),
+            "league.json".into(),
+            "--replays".into(),
+            "replays.json".into(),
+            "--out".into(),
+            "dataset.json".into(),
+        ])
+        .is_err());
     }
 }
