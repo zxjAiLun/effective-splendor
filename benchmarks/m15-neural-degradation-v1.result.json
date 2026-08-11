@@ -1,0 +1,61 @@
+{
+  "format": "effective-splendor-neural-degradation-result",
+  "version": 1,
+  "diagnostic_date": "2026-08-12",
+  "diagnostic_implementation_commit": "da6349005bf97f2c3b74ea19b1afffc01ca5e92c",
+  "source_evaluation": {
+    "evaluation_id": "m13-neural-ismcts-v1-neural-ismcts-vs-root-determinization",
+    "evaluation_plan_hash": "d6193b40d5c4c95475c0c206bd074f1b79e72f73a87dc35a58a362dc00fcf207",
+    "evaluation_report_hash": "243653032aee2ba8fa956178769acba578b24f9dca66273a88ff1c7ad6494775",
+    "checkpoint_hash": "108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462",
+    "matches": 64,
+    "frames": 3905
+  },
+  "local_diagnostic": {
+    "semantic_hash": "de995fff20dec1a9dc0c06491fd766fe6f4470074f06f98dff696ce38e47624f",
+    "file_sha256": "1c46e914dba19f49d01b28a49f011d97d295c5fab59ee03801407f8671611e1d",
+    "sidecars": 64,
+    "sidecar_bytes": 118212990
+  },
+  "candidate_outcome": {
+    "wins": 12,
+    "ties": 0,
+    "losses": 52,
+    "seat_0_wins": 9,
+    "seat_1_wins": 3,
+    "seed_blocks_zero_wins": 20,
+    "seed_blocks_one_win": 12,
+    "seed_blocks_two_wins": 0
+  },
+  "candidate_decisions": {
+    "frames": 1955,
+    "full_reproduction_bps": 10000,
+    "full_matches_direct_policy_bps": 7744,
+    "full_matches_value_only_bps": 2757,
+    "full_matches_policy_only_bps": 7775,
+    "full_matches_neutral_bps": 4829,
+    "visited_legal_action_coverage_bps": 6650
+  },
+  "champion_reference_decisions": {
+    "frames": 1950,
+    "full_matches_recorded_bps": 3231,
+    "direct_policy_matches_recorded_bps": 3251,
+    "value_only_matches_recorded_bps": 1108,
+    "policy_only_matches_recorded_bps": 3313,
+    "neutral_matches_recorded_bps": 1913,
+    "full_matches_direct_policy_bps": 8046,
+    "full_matches_value_only_bps": 2144,
+    "full_matches_policy_only_bps": 8108,
+    "full_matches_neutral_bps": 3195,
+    "visited_legal_action_coverage_bps": 5414
+  },
+  "verdict": {
+    "primary_cause": "weak_value_head",
+    "secondary_cause": "small_mixed_policy_training_corpus",
+    "amplifier": "low_budget_prior_dominated_search",
+    "runtime_or_provenance_mismatch": false,
+    "seat_bias_only": false,
+    "m13_status": "rejected_not_promoted",
+    "m15a_status": "diagnosis_complete"
+  }
+}

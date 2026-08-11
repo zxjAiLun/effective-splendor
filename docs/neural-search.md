@@ -117,3 +117,9 @@ The non-`full` modes are experimental controls, not league agents and not
 promotion candidates. Their outputs may diagnose which component changes a
 decision, but agreement with a recorded action is not proof that the action was
 optimal.
+
+The complete frozen-evaluation result and causal judgement are recorded in
+`docs/m15-neural-degradation-diagnostic.md`. M15A found exact reproduction of
+all recorded M13 decisions, a weak learned-Value control, and strong prior
+dominance at 64 simulations. This authorizes corrective M15B experiments, not
+a result-oriented rerun of M13.
