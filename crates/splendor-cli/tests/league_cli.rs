@@ -236,6 +236,34 @@ fn checked_in_m13_neural_candidate_inputs_are_frozen_and_valid() {
 }
 
 #[test]
+fn checked_in_m15b_policy_only_diagnostic_is_frozen_and_valid() {
+    let benchmark_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../benchmarks");
+    let manifest: LeagueManifestV1 = serde_json::from_str(
+        &std::fs::read_to_string(benchmark_dir.join("m15b-policy-only-diagnostic-v1.league.json"))
+            .unwrap(),
+    )
+    .unwrap();
+
+    manifest.validate().unwrap();
+    let plan = manifest.evaluation_plan_v1().unwrap();
+    assert_eq!(manifest.game_seeds, (940_000..940_016).collect::<Vec<_>>());
+    assert_eq!(expand_schedule(&plan).unwrap().len(), 32);
+    assert_eq!(
+        manifest.agents[1].runtime_name,
+        "effective-splendor-neural-ismcts-ablation-agent-v1"
+    );
+    assert_eq!(
+        manifest.agents[1].model_version.as_deref(),
+        Some("m15b-pv-h32-v1@c5f4ae0a5e9c0dd574478a4333c69a22cfa419492680a8bd89fbfeeb577f5120")
+    );
+    assert!(manifest.agents[1]
+        .command
+        .args
+        .windows(2)
+        .any(|pair| pair == ["--mode", "policy_only"]));
+}
+
+#[test]
 fn league_manifest_publishes_canonical_evaluation_plan() {
     let dir = temp_dir("plan");
     write_json(&dir.join("league.json"), &manifest_json(101, "8", "1"));

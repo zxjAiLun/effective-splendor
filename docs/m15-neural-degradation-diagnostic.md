@@ -145,6 +145,30 @@ diagnostic design.
 6. Freeze a new M15 candidate and entirely new formal promotion seeds. M13
    remains rejected and the determinization champion remains unchanged.
 
+## M15B source-aware first candidate
+
+M15B now freezes a version-2 training contract that separates the Policy and
+Value source selections without changing the accepted M12 v1 hash contract.
+Policy imitation uses only decisions made by the determinization champion;
+Value retains completed trajectories from both agents. Train/validation
+partitioning remains source-grouped and both heads have predeclared material
+offline gates.
+
+The first deterministic run produced checkpoint semantic hash
+`c5f4ae0a5e9c0dd574478a4333c69a22cfa419492680a8bd89fbfeeb577f5120`.
+Its champion-only Policy NLL improved 20.20% over uniform, passing the frozen
+15% gate. Value MSE improved only 2.52% over the training prior, failing the
+frozen 5% gate. The gate is not lowered: this checkpoint is not a full
+Policy/Value candidate.
+
+The passed Policy component is carried into one predeclared prospective
+control: `benchmarks/m15b-policy-only-diagnostic-v1.league.json` runs learned
+priors with neutral non-terminal leaf values against the unchanged champion on
+16 new seeds (`940000..940015`) with both seat rotations. The ablation uses a
+distinct runtime identity and cannot select `full`. This 32-match screen is a
+diagnostic experiment, not a promotion run; its seeds cannot later be reused
+as formal M15 promotion evidence.
+
 ## Status
 
 ```text
@@ -153,5 +177,9 @@ M15A_CONTROLLED_ABLATION  IMPLEMENTED / COMPLETE
 M15A_DIAGNOSIS            VALUE HEAD PRIMARY / DATA SECONDARY / BUDGET AMPLIFIER
 M13_STATUS                REJECTED / NOT PROMOTED
 CURRENT_CHAMPION          determinization-s4-d1-n2000-v1
-M15B                      NEXT
+M15B_SOURCE_AWARE_TRAINING IMPLEMENTED
+M15B_POLICY_GATE           PASS
+M15B_VALUE_GATE            FAIL / NOT LOWERED
+M15B_POLICY_ONLY_SCREEN    FROZEN / PENDING
+M15B_FULL_CANDIDATE        NOT AUTHORIZED
 ```

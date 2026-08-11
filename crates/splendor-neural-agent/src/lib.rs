@@ -4,25 +4,48 @@ use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, Decision
 use splendor_core::{Action, Ruleset};
 use splendor_learning::{model_checkpoint_hash_v1, PolicyValueCheckpointV1, PolicyValueModelV1};
 use splendor_neural_search::{
-    analyze_player_view_neural_ismcts_v1, NeuralIsmctsConfigV1, NeuralSearchError,
+    analyze_player_view_neural_ismcts_ablation_v1, analyze_player_view_neural_ismcts_v1,
+    NeuralAblationModeV1, NeuralIsmctsConfigV1, NeuralSearchError,
 };
 use splendor_search::canonical_order;
 use thiserror::Error;
 
 pub const NEURAL_ISMCTS_AGENT_NAME: &str = "effective-splendor-neural-ismcts-agent-v1";
 pub const NEURAL_ISMCTS_AGENT_VERSION: &str = "1";
+pub const NEURAL_ISMCTS_ABLATION_AGENT_NAME: &str =
+    "effective-splendor-neural-ismcts-ablation-agent-v1";
 
 #[derive(Debug, Clone)]
 pub struct NeuralIsmctsAgentPolicyV1 {
     ruleset: Ruleset,
     model: PolicyValueModelV1,
     config: NeuralIsmctsConfigV1,
+    mode: NeuralAblationModeV1,
 }
 
 impl NeuralIsmctsAgentPolicyV1 {
     pub fn new(
         checkpoint: PolicyValueCheckpointV1,
         config: NeuralIsmctsConfigV1,
+    ) -> Result<Self, NeuralIsmctsAgentError> {
+        Self::new_with_mode(checkpoint, config, NeuralAblationModeV1::Full)
+    }
+
+    pub fn new_ablation(
+        checkpoint: PolicyValueCheckpointV1,
+        config: NeuralIsmctsConfigV1,
+        mode: NeuralAblationModeV1,
+    ) -> Result<Self, NeuralIsmctsAgentError> {
+        if mode == NeuralAblationModeV1::Full {
+            return Err(NeuralIsmctsAgentError::InvalidAblationMode);
+        }
+        Self::new_with_mode(checkpoint, config, mode)
+    }
+
+    fn new_with_mode(
+        checkpoint: PolicyValueCheckpointV1,
+        config: NeuralIsmctsConfigV1,
+        mode: NeuralAblationModeV1,
     ) -> Result<Self, NeuralIsmctsAgentError> {
         config.validate()?;
         let checkpoint_hash = model_checkpoint_hash_v1(&checkpoint)
@@ -40,6 +63,7 @@ impl NeuralIsmctsAgentPolicyV1 {
             ruleset: Ruleset::base_v1(),
             model,
             config,
+            mode,
         })
     }
 
@@ -49,6 +73,10 @@ impl NeuralIsmctsAgentPolicyV1 {
 
     pub fn model(&self) -> &PolicyValueModelV1 {
         &self.model
+    }
+
+    pub fn mode(&self) -> NeuralAblationModeV1 {
+        self.mode
     }
 }
 
@@ -62,6 +90,8 @@ pub enum NeuralIsmctsAgentError {
     RecipientViewerMismatch,
     #[error("server-certified legal actions do not match the neural search root")]
     LegalActionSetMismatch,
+    #[error("live ablation agent requires a non-full diagnostic mode")]
+    InvalidAblationMode,
 }
 
 impl AgentPolicy for NeuralIsmctsAgentPolicyV1 {
@@ -71,13 +101,24 @@ impl AgentPolicy for NeuralIsmctsAgentPolicyV1 {
         if context.meta.recipient_seat != context.observation.viewer {
             return Err(NeuralIsmctsAgentError::RecipientViewerMismatch);
         }
-        let analysis = analyze_player_view_neural_ismcts_v1(
-            self.ruleset,
-            &context.observation,
-            context.visible_history,
-            &self.model,
-            &self.config,
-        )?;
+        let analysis = if self.mode == NeuralAblationModeV1::Full {
+            analyze_player_view_neural_ismcts_v1(
+                self.ruleset,
+                &context.observation,
+                context.visible_history,
+                &self.model,
+                &self.config,
+            )?
+        } else {
+            analyze_player_view_neural_ismcts_ablation_v1(
+                self.ruleset,
+                &context.observation,
+                context.visible_history,
+                &self.model,
+                &self.config,
+                self.mode,
+            )?
+        };
         let search_actions = analysis
             .result()
             .action_stats
@@ -89,6 +130,34 @@ impl AgentPolicy for NeuralIsmctsAgentPolicyV1 {
         }
         Ok(analysis.result().action)
     }
+}
+
+pub fn run_neural_ismcts_ablation_agent_v1<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    checkpoint: PolicyValueCheckpointV1,
+    config: NeuralIsmctsConfigV1,
+    mode: NeuralAblationModeV1,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    let policy = NeuralIsmctsAgentPolicyV1::new_ablation(checkpoint, config, mode)
+        .map_err(|error| AgentError::Policy(error.to_string()))?;
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: NEURAL_ISMCTS_ABLATION_AGENT_NAME,
+            version: NEURAL_ISMCTS_AGENT_VERSION,
+        },
+        0,
+        policy,
+    )
 }
 
 pub fn run_neural_ismcts_agent_v1<R, W, E>(
@@ -202,6 +271,51 @@ mod tests {
             .choose_action(context)
             .unwrap();
         assert!(legal.contains(&action));
+    }
+
+    #[test]
+    fn policy_only_control_returns_a_server_certified_legal_action() {
+        let (state, setup) = FullState::new(GameConfig::default()).unwrap();
+        let viewer = PlayerId(0);
+        let observation = state.observation(viewer);
+        let history = visible_events(&setup.events, Audience::Player(viewer));
+        let legal = state.legal_actions();
+        let mut rng = StableRng::new(0);
+        let context = DecisionContext {
+            observation: observation.clone(),
+            visible_history: &history,
+            legal_actions: &legal,
+            meta: PublicRequestMeta {
+                game_id: "m15-policy-only-agent-test".into(),
+                recipient_seat: viewer,
+                request_id: 1,
+                observation_hash: observation_hash(&observation),
+            },
+            rng: &mut rng,
+        };
+        let checkpoint = checkpoint();
+        let mut policy = NeuralIsmctsAgentPolicyV1::new_ablation(
+            checkpoint.clone(),
+            config(&checkpoint),
+            NeuralAblationModeV1::PolicyOnly,
+        )
+        .unwrap();
+        assert_eq!(policy.mode(), NeuralAblationModeV1::PolicyOnly);
+        let action = policy.choose_action(context).unwrap();
+        assert!(legal.contains(&action));
+    }
+
+    #[test]
+    fn ablation_agent_rejects_full_mode() {
+        let checkpoint = checkpoint();
+        assert!(matches!(
+            NeuralIsmctsAgentPolicyV1::new_ablation(
+                checkpoint.clone(),
+                config(&checkpoint),
+                NeuralAblationModeV1::Full,
+            ),
+            Err(NeuralIsmctsAgentError::InvalidAblationMode)
+        ));
     }
 
     #[test]

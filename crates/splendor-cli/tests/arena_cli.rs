@@ -445,6 +445,51 @@ fn neural_ismcts_agent_loads_a_bound_checkpoint_and_completes() {
 }
 
 #[test]
+fn neural_policy_only_agent_uses_distinct_identity_and_completes() {
+    let dir = tmp_dir();
+    let checkpoint = synthetic_checkpoint();
+    let checkpoint_hash = model_checkpoint_hash_v1(&checkpoint).unwrap();
+    let checkpoint_path = write_file(
+        &dir,
+        "checkpoint.json",
+        &serde_json::to_string_pretty(&checkpoint).unwrap(),
+    );
+    let program = bin().to_string_lossy().into_owned();
+    let config = write_config(
+        &dir,
+        &serde_json::json!({
+            "game_id": "cli-neural-policy-only-vs-heuristic",
+            "seed": 57,
+            "handshake_timeout_ms": 10_000,
+            "move_timeout_ms": 10_000,
+            "shutdown_grace_ms": 2_000,
+            "agents": [
+                {
+                    "program": program,
+                    "args": [
+                        "agent-neural-ismcts-ablation",
+                        "--mode", "policy_only",
+                        "--checkpoint", checkpoint_path.to_string_lossy(),
+                        "--checkpoint-hash", checkpoint_hash,
+                        "--sample-seed", "23",
+                        "--simulations", "8",
+                        "--max-depth-turns", "1",
+                        "--puct-exploration-milli", "1500"
+                    ]
+                },
+                { "program": program, "args": ["agent-heuristic", "--seed", "1002"] }
+            ]
+        }),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(
+        report.agents[0].agent_name.as_deref(),
+        Some("effective-splendor-neural-ismcts-ablation-agent-v1")
+    );
+    assert_eq!(report.agents[0].agent_version.as_deref(), Some("1"));
+}
+
+#[test]
 fn neural_ismcts_agent_rejects_checkpoint_mismatch_before_hello() {
     let dir = tmp_dir();
     let checkpoint_path = write_file(

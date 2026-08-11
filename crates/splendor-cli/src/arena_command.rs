@@ -35,8 +35,8 @@ use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
 use splendor_learning::PolicyValueCheckpointV1;
-use splendor_neural_agent::run_neural_ismcts_agent_v1;
-use splendor_neural_search::NeuralIsmctsConfigV1;
+use splendor_neural_agent::{run_neural_ismcts_ablation_agent_v1, run_neural_ismcts_agent_v1};
+use splendor_neural_search::{NeuralAblationModeV1, NeuralIsmctsConfigV1};
 use splendor_search::SearchConfigV1;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
@@ -123,6 +123,24 @@ the protocol handshake. Model inference receives Observation only.
 
 Options:
   --checkpoint <path>              M12 checkpoint JSON, <= 16 MiB.
+  --checkpoint-hash <sha256>       Required semantic checkpoint hash.
+  --sample-seed <u64>              Deterministic hidden-state sampler seed.
+  --simulations <u32>              Simulation budget, 1..=10000.
+  --max-depth-turns <u8>           Simulation depth in completed turns, 1..=8.
+  --puct-exploration-milli <u32>   PUCT constant x1000, 0..=100000.
+  -h, --help                       Print this help and exit 0.";
+
+const AGENT_NEURAL_ISMCTS_ABLATION_USAGE: &str = "\
+Usage: splendor agent-neural-ismcts-ablation --mode <policy_only|value_only|neutral> \
+--checkpoint <checkpoint.json> --checkpoint-hash <sha256> --sample-seed <u64> \
+--simulations <u32> --max-depth-turns <u8> --puct-exploration-milli <u32>
+
+Experimental M15 player-view neural-search control. It uses a distinct runtime
+identity and rejects `full`, so it cannot masquerade as the accepted M13 agent.
+
+Options:
+  --mode <mode>                    policy_only, value_only, or neutral.
+  --checkpoint <path>              Policy/Value checkpoint JSON, <= 16 MiB.
   --checkpoint-hash <sha256>       Required semantic checkpoint hash.
   --sample-seed <u64>              Deterministic hidden-state sampler seed.
   --simulations <u32>              Simulation budget, 1..=10000.
@@ -564,6 +582,36 @@ pub fn agent_neural_ismcts(args: &[String]) -> i32 {
     }
 }
 
+/// Entry point for an explicitly non-production M15 neural-search control.
+pub fn agent_neural_ismcts_ablation(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_NEURAL_ISMCTS_ABLATION_USAGE);
+        return 0;
+    }
+    let parsed = match parse_agent_neural_ismcts_ablation_args(args) {
+        Ok(parsed) => parsed,
+        Err(message) => return print_agent_error(&message),
+    };
+    let checkpoint = match read_neural_checkpoint(&parsed.agent.checkpoint) {
+        Ok(checkpoint) => checkpoint,
+        Err(message) => return print_agent_error(&message),
+    };
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    match run_neural_ismcts_ablation_agent_v1(
+        BufReader::new(stdin.lock()),
+        stdout.lock(),
+        stderr.lock(),
+        checkpoint,
+        parsed.agent.config,
+        parsed.mode,
+    ) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
 fn print_agent_error(message: &str) -> i32 {
     let mut stderr = io::stderr().lock();
     let _ = writeln!(stderr, "error: {message}");
@@ -723,17 +771,52 @@ struct NeuralAgentArgs {
     config: NeuralIsmctsConfigV1,
 }
 
+struct NeuralAblationAgentArgs {
+    agent: NeuralAgentArgs,
+    mode: NeuralAblationModeV1,
+}
+
 fn parse_agent_neural_ismcts_args(args: &[String]) -> Result<NeuralAgentArgs, String> {
+    parse_agent_neural_ismcts_common_args(args, false).map(|(agent, _)| agent)
+}
+
+fn parse_agent_neural_ismcts_ablation_args(
+    args: &[String],
+) -> Result<NeuralAblationAgentArgs, String> {
+    let (agent, mode) = parse_agent_neural_ismcts_common_args(args, true)?;
+    let mode = match mode
+        .ok_or_else(|| "missing required --mode".to_string())?
+        .as_str()
+    {
+        "policy_only" => NeuralAblationModeV1::PolicyOnly,
+        "value_only" => NeuralAblationModeV1::ValueOnly,
+        "neutral" => NeuralAblationModeV1::Neutral,
+        "full" => return Err("--mode `full` is reserved for agent-neural-ismcts".into()),
+        value => {
+            return Err(format!(
+                "--mode must be policy_only, value_only, or neutral (got `{value}`)"
+            ))
+        }
+    };
+    Ok(NeuralAblationAgentArgs { agent, mode })
+}
+
+fn parse_agent_neural_ismcts_common_args(
+    args: &[String],
+    allow_mode: bool,
+) -> Result<(NeuralAgentArgs, Option<String>), String> {
     let mut checkpoint = None;
     let mut checkpoint_hash = None;
     let mut sample_seed = None;
     let mut simulations = None;
     let mut max_depth_turns = None;
     let mut puct_exploration_milli = None;
+    let mut mode = None;
     let mut index = 0;
     while index < args.len() {
         let flag = args[index].as_str();
         match flag {
+            "--mode" if allow_mode => set_flag(&mut mode, flag, args.get(index + 1))?,
             "--checkpoint" => set_flag(&mut checkpoint, flag, args.get(index + 1))?,
             "--checkpoint-hash" => set_flag(&mut checkpoint_hash, flag, args.get(index + 1))?,
             "--sample-seed" => set_flag(&mut sample_seed, flag, args.get(index + 1))?,
@@ -760,12 +843,15 @@ fn parse_agent_neural_ismcts_args(args: &[String]) -> Result<NeuralAgentArgs, St
             .ok_or_else(|| "missing required --checkpoint-hash".to_string())?,
     };
     config.validate().map_err(|error| error.to_string())?;
-    Ok(NeuralAgentArgs {
-        checkpoint: PathBuf::from(
-            checkpoint.ok_or_else(|| "missing required --checkpoint".to_string())?,
-        ),
-        config,
-    })
+    Ok((
+        NeuralAgentArgs {
+            checkpoint: PathBuf::from(
+                checkpoint.ok_or_else(|| "missing required --checkpoint".to_string())?,
+            ),
+            config,
+        },
+        mode,
+    ))
 }
 
 fn parse_required_number<T>(value: Option<String>, flag: &str, kind: &str) -> Result<T, String>
@@ -873,6 +959,37 @@ mod tests {
         let mut missing = args.clone();
         missing.drain(2..4);
         assert!(parse_agent_neural_ismcts_args(&missing).is_err());
+    }
+
+    #[test]
+    fn neural_ablation_parser_requires_a_non_full_mode() {
+        let base = [
+            "--checkpoint",
+            "model.json",
+            "--checkpoint-hash",
+            &"11".repeat(32),
+            "--sample-seed",
+            "17",
+            "--simulations",
+            "64",
+            "--max-depth-turns",
+            "2",
+            "--puct-exploration-milli",
+            "1500",
+        ]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+
+        let mut policy_only = vec!["--mode".into(), "policy_only".into()];
+        policy_only.extend(base.clone());
+        let parsed = parse_agent_neural_ismcts_ablation_args(&policy_only).unwrap();
+        assert_eq!(parsed.mode, NeuralAblationModeV1::PolicyOnly);
+
+        assert!(parse_agent_neural_ismcts_ablation_args(&base).is_err());
+        let mut full = vec!["--mode".into(), "full".into()];
+        full.extend(base);
+        assert!(parse_agent_neural_ismcts_ablation_args(&full).is_err());
     }
 
     /// A `Write` that fails on `write` (fail_flush=false) or on `flush`

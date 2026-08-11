@@ -3,7 +3,8 @@ use splendor_core::{Observation, Ruleset, VisibleEvent};
 use splendor_learning::PolicyValueModelV1;
 
 use crate::{
-    search_neural_ismcts_v1, NeuralIsmctsConfigV1, NeuralIsmctsResultV1, NeuralSearchError,
+    search_neural_ismcts_ablation_v1, search_neural_ismcts_v1, NeuralAblationModeV1,
+    NeuralIsmctsConfigV1, NeuralIsmctsResultV1, NeuralSearchError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +40,26 @@ pub fn analyze_player_view_neural_ismcts_v1(
     let visible_history_hash = information_set.visible_history_hash().clone();
     let information_set_hash = information_set.information_set_hash().clone();
     let result = search_neural_ismcts_v1(&information_set, model, config)?;
+    Ok(PlayerViewNeuralIsmctsAnalysisV1 {
+        visible_history_hash,
+        information_set_hash,
+        result,
+    })
+}
+
+pub fn analyze_player_view_neural_ismcts_ablation_v1(
+    ruleset: Ruleset,
+    observation: &Observation,
+    visible_history: &[VisibleEvent],
+    model: &PolicyValueModelV1,
+    config: &NeuralIsmctsConfigV1,
+    mode: NeuralAblationModeV1,
+) -> Result<PlayerViewNeuralIsmctsAnalysisV1, NeuralSearchError> {
+    let information_set = build_information_set_v1(ruleset, observation, visible_history)
+        .map_err(|error| NeuralSearchError::Belief(error.to_string()))?;
+    let visible_history_hash = information_set.visible_history_hash().clone();
+    let information_set_hash = information_set.information_set_hash().clone();
+    let result = search_neural_ismcts_ablation_v1(&information_set, model, config, mode)?;
     Ok(PlayerViewNeuralIsmctsAnalysisV1 {
         visible_history_hash,
         information_set_hash,

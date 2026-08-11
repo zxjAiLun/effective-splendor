@@ -1,0 +1,79 @@
+{
+  "format": "effective-splendor-league-manifest",
+  "version": 1,
+  "league_id": "m15b-policy-only-diagnostic-v1",
+  "lineup_id": "teacher-policy-only-vs-root-determinization",
+  "agents": [
+    {
+      "id": "determinization-s4-d1-n2000-v1",
+      "role": "champion",
+      "policy_version": "root-determinization-v1",
+      "model_version": null,
+      "runtime_name": "effective-splendor-determinization-agent-v1",
+      "runtime_version": "1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-determinization",
+          "--sample-seed",
+          "20260810",
+          "--sample-count",
+          "4",
+          "--max-depth-turns",
+          "1",
+          "--max-nodes",
+          "2000"
+        ]
+      }
+    },
+    {
+      "id": "neural-policy-only-s64-d2-c1500-m15b-v1",
+      "role": "candidate",
+      "policy_version": "neural-policy-only-s64-d2-c1500-v1",
+      "model_version": "m15b-pv-h32-v1@c5f4ae0a5e9c0dd574478a4333c69a22cfa419492680a8bd89fbfeeb577f5120",
+      "runtime_name": "effective-splendor-neural-ismcts-ablation-agent-v1",
+      "runtime_version": "1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-neural-ismcts-ablation",
+          "--mode",
+          "policy_only",
+          "--checkpoint",
+          "local-artifacts/m15b-source-aware-policy-value-v1/checkpoint.json",
+          "--checkpoint-hash",
+          "c5f4ae0a5e9c0dd574478a4333c69a22cfa419492680a8bd89fbfeeb577f5120",
+          "--sample-seed",
+          "20260812",
+          "--simulations",
+          "64",
+          "--max-depth-turns",
+          "2",
+          "--puct-exploration-milli",
+          "1500"
+        ]
+      }
+    }
+  ],
+  "game_seeds": [
+    940000,
+    940001,
+    940002,
+    940003,
+    940004,
+    940005,
+    940006,
+    940007,
+    940008,
+    940009,
+    940010,
+    940011,
+    940012,
+    940013,
+    940014,
+    940015
+  ],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 10000,
+  "shutdown_grace_ms": 2000
+}
