@@ -1,0 +1,42 @@
+{
+  "format": "effective-splendor-arena-report",
+  "version": 1,
+  "game_id": "m09-competitive-eval-v1-s000021-r01",
+  "engine_version": "0.4.0",
+  "protocol_version": "0.5",
+  "ruleset": "splendor-base-v1",
+  "ruleset_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+  "player_count": 2,
+  "seed_commitment": "b883edf8fc72de1c114dc95782a58ff166d1cb00639831e1c63e35d19a40a402",
+  "agents": [
+    {
+      "seat": 0,
+      "agent_name": "splendor-cli-heuristic",
+      "agent_version": "0.1.0"
+    },
+    {
+      "seat": 1,
+      "agent_name": "effective-splendor-determinization-agent-v1",
+      "agent_version": "1"
+    }
+  ],
+  "outcome": {
+    "status": "completed",
+    "result": {
+      "scores": [
+        15,
+        15
+      ],
+      "ranks": [
+        1,
+        0
+      ],
+      "winners": [
+        1
+      ],
+      "reason": "prestige_threshold"
+    },
+    "completed_plies": 66,
+    "replay_final_hash": "7e93f267f35c19002d3295b0e53ff0ef18bb4f2fc8598d7b23d92bf9ec2b0873"
+  }
+}

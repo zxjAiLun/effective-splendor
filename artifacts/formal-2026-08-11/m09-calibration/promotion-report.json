@@ -1,0 +1,37 @@
+{
+  "format": "effective-splendor-promotion-report",
+  "version": 1,
+  "promotion_id": "m09-competitive-eval-v1",
+  "evaluation_id": "m09-competitive-eval-v1",
+  "evaluation_plan_hash": "95b3c89c56f6411b6ce697ae7e15980ef3089045d33df826780d5c44590a26f5",
+  "promotion_gate_hash": "8224cfc0e3022f20334b40483e458854c5bccfcb3ca0c48200cc35586c86efdb",
+  "candidate_agent_id": "determinization-s4-d1-n2000-v1",
+  "champion_agent_id": "heuristic-v1",
+  "confidence_bps": 9500,
+  "pairwise": {
+    "scheduled_seed_blocks": 32,
+    "completed_seed_blocks": 32,
+    "excluded_seed_blocks": 0,
+    "completed_matches": 64,
+    "candidate_wins": 15,
+    "ties": 0,
+    "candidate_losses": 49,
+    "score_half_points": 30,
+    "score_basis_points": 2343,
+    "confidence_lower_bound_basis_points": 177,
+    "confidence_upper_bound_basis_points": 4509,
+    "candidate_rank_sum": 49,
+    "champion_rank_sum": 15
+  },
+  "aborted_matches": 0,
+  "candidate_faults": 0,
+  "move_timeout_ms": 10000,
+  "checks": {
+    "sufficient_completed_seed_blocks": true,
+    "aborted_matches_within_limit": true,
+    "candidate_faults_within_limit": true,
+    "move_timeout_within_limit": true,
+    "pairwise_lower_bound_meets_threshold": false
+  },
+  "decision": "reject"
+}

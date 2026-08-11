@@ -1,0 +1,78 @@
+{
+  "format": "effective-splendor-evaluation-plan",
+  "version": 1,
+  "evaluation_id": "m10-ismcts-v1-ismcts-vs-root-determinization",
+  "agents": [
+    {
+      "id": "determinization-s4-d1-n2000-v1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-determinization",
+          "--sample-seed",
+          "20260810",
+          "--sample-count",
+          "4",
+          "--max-depth-turns",
+          "1",
+          "--max-nodes",
+          "2000"
+        ]
+      }
+    },
+    {
+      "id": "ismcts-s64-d2-x100000000-v1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-ismcts",
+          "--sample-seed",
+          "20260810",
+          "--simulations",
+          "64",
+          "--max-depth-turns",
+          "2",
+          "--exploration-bias",
+          "100000000"
+        ]
+      }
+    }
+  ],
+  "game_seeds": [
+    910000,
+    910001,
+    910002,
+    910003,
+    910004,
+    910005,
+    910006,
+    910007,
+    910008,
+    910009,
+    910010,
+    910011,
+    910012,
+    910013,
+    910014,
+    910015,
+    910016,
+    910017,
+    910018,
+    910019,
+    910020,
+    910021,
+    910022,
+    910023,
+    910024,
+    910025,
+    910026,
+    910027,
+    910028,
+    910029,
+    910030,
+    910031
+  ],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 10000,
+  "shutdown_grace_ms": 2000
+}

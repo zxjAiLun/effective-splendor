@@ -1,0 +1,1931 @@
+{
+  "format": "effective-splendor-evaluation-report",
+  "version": 1,
+  "evaluation_id": "m10-ismcts-v1-ismcts-vs-root-determinization",
+  "plan_hash": "1975ff93701b04a3187cc86839b3d9d7dfd34960790a54919dfcae70922c3aeb",
+  "scheduled_matches": 64,
+  "records": [
+    {
+      "match_index": 0,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000000-r00",
+      "seed_index": 0,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            12
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "f5c5a0b34da965c69ae84e5b9d9473b63733823351f38cf04a533ef7a62c65ed"
+      }
+    },
+    {
+      "match_index": 1,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000000-r01",
+      "seed_index": 0,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            19,
+            12
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "069663492bc31ab73f0b36e062694a3d2452369fa8632ca022847ffcff8847b3"
+      }
+    },
+    {
+      "match_index": 2,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000001-r00",
+      "seed_index": 1,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            13
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 68,
+        "replay_final_hash": "030cd8cbbfce4cbe3bbf11154c5609370dc4b3bccf77c2e6267956b8b170b0fa"
+      }
+    },
+    {
+      "match_index": 3,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000001-r01",
+      "seed_index": 1,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "9feffbb15274f69a4861abb5fec68ff3fa0f5a4793b265e8c86fb6c10448a4c1"
+      }
+    },
+    {
+      "match_index": 4,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000002-r00",
+      "seed_index": 2,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            11
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "4cdb69c439cab1e93a17559a8b9acac8600f8c7bca8379303cb8bfa08a6100e7"
+      }
+    },
+    {
+      "match_index": 5,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000002-r01",
+      "seed_index": 2,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            18,
+            15
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "e98cd9e78076f703a361cc05300888a011db90517592880e64cecf4aae62d701"
+      }
+    },
+    {
+      "match_index": 6,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000003-r00",
+      "seed_index": 3,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            12,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "f6309946876325ad796c4458c4470aae62231e90125c555e812bf661058693b0"
+      }
+    },
+    {
+      "match_index": 7,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000003-r01",
+      "seed_index": 3,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            17,
+            13
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 70,
+        "replay_final_hash": "54a6da9d6d514439ee02852243e42ae939edeea85f01494c6c586048c4b5ef6c"
+      }
+    },
+    {
+      "match_index": 8,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000004-r00",
+      "seed_index": 4,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            9,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "06e4274f6dd7ba18b89ae4155161835461b5c2668968b13bcdde480123cfddab"
+      }
+    },
+    {
+      "match_index": 9,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000004-r01",
+      "seed_index": 4,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 68,
+        "replay_final_hash": "adeda6bf27e8af0b28da6b6339fcde1b399e41b92534ba7ba650a3e19c898cbc"
+      }
+    },
+    {
+      "match_index": 10,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000005-r00",
+      "seed_index": 5,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            13,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "e071489200c9dbc61187a534d2152fb74fdae0edf49b24b80c258b5fd7503e98"
+      }
+    },
+    {
+      "match_index": 11,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000005-r01",
+      "seed_index": 5,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            15
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "c1ae9a46c07cb291a5e20c7674e8322355440faccafdf127ec79b5c530425fc1"
+      }
+    },
+    {
+      "match_index": 12,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000006-r00",
+      "seed_index": 6,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            13,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "90fa4e0e39426d79d307765886808b0d68d4bf8bdf50effdd180854ce39788cb"
+      }
+    },
+    {
+      "match_index": 13,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000006-r01",
+      "seed_index": 6,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "86c13a09915d3719a29a4fa8103f7ce810c7363f4aac1367f587d5e0673198a8"
+      }
+    },
+    {
+      "match_index": 14,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000007-r00",
+      "seed_index": 7,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "5952657d8de486b9522229db5363089a10587fae05c37f3648227a12bc3970d0"
+      }
+    },
+    {
+      "match_index": 15,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000007-r01",
+      "seed_index": 7,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "810e8c89f336056e2fbced3215ca959b0375c61f49bff3eaec085fa763b63547"
+      }
+    },
+    {
+      "match_index": 16,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000008-r00",
+      "seed_index": 8,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            9,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 56,
+        "replay_final_hash": "e88dc8e1622d11d352ee1bcf8eb7faf12299b82dfef3e6c3981382cdc34ddafb"
+      }
+    },
+    {
+      "match_index": 17,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000008-r01",
+      "seed_index": 8,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "499d643adc986a609ffd76c3a7875b3f7a96e9859b26a2bb20c16bf6f0f3bd06"
+      }
+    },
+    {
+      "match_index": 18,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000009-r00",
+      "seed_index": 9,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            10
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "78306f7c92baeb3dc5f0989e6eb837e0e0aa88e089560a33329501077a482330"
+      }
+    },
+    {
+      "match_index": 19,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000009-r01",
+      "seed_index": 9,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            15
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "db8203d42afe582cb10fea44d49aec7baba65d3e49f21460bde9ee27a5d7a443"
+      }
+    },
+    {
+      "match_index": 20,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000010-r00",
+      "seed_index": 10,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            14,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "a56d02d3e1d651fee13bc747137ed2e9f29876ae7099e0c8ea24020b1e32eb46"
+      }
+    },
+    {
+      "match_index": 21,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000010-r01",
+      "seed_index": 10,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            9,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "987141246ab10893c5a3383a6a58a86a0093c1d6028e380ae029342493300ea2"
+      }
+    },
+    {
+      "match_index": 22,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000011-r00",
+      "seed_index": 11,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            12,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "40a82c399180e908273d2f5e38d97becd4654b0310e943461006f74ab623efe2"
+      }
+    },
+    {
+      "match_index": 23,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000011-r01",
+      "seed_index": 11,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            10
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "4c8073ada21f890a21b929c108892ac643fce2a60a94a850208860c2a3d8389a"
+      }
+    },
+    {
+      "match_index": 24,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000012-r00",
+      "seed_index": 12,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "fdbb96bf61d2f1d8e04f306dcd7f2858ceff6c9487e68ddb8c6b5f8be3b7ec32"
+      }
+    },
+    {
+      "match_index": 25,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000012-r01",
+      "seed_index": 12,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            7
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 54,
+        "replay_final_hash": "93e4c32bc34d221396c6eeca417f7b83736e38b358f772b60fa4e09846b21825"
+      }
+    },
+    {
+      "match_index": 26,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000013-r00",
+      "seed_index": 13,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            7
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "ea68abc34f88597ccb07bf540486b59358d95f35005e64f46dca55eab063c444"
+      }
+    },
+    {
+      "match_index": 27,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000013-r01",
+      "seed_index": 13,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "8d8bf17992f5bc85f7c859928824d50f5d29679e19ac3e3d5906fd72b5974a5c"
+      }
+    },
+    {
+      "match_index": 28,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000014-r00",
+      "seed_index": 14,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "e223492c61fefad2a7a0f2f63efb0a6abca26adeb6fea071e255178d7dbde6f3"
+      }
+    },
+    {
+      "match_index": 29,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000014-r01",
+      "seed_index": 14,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            14,
+            21
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "1f7cc23c2b894b02f9050e0acdce42c1aa2e4906130fb38c44041bc7b993e4f8"
+      }
+    },
+    {
+      "match_index": 30,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000015-r00",
+      "seed_index": 15,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            17,
+            9
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "d2aec50ade0aca6aed305c03ad2a349cc39203276f0b6a062a8914837ca42c79"
+      }
+    },
+    {
+      "match_index": 31,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000015-r01",
+      "seed_index": 15,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            13
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "f8dc38d25075ceb0bb7c8a568aea65e230e270b9490453c1eef559c7e7dcfba4"
+      }
+    },
+    {
+      "match_index": 32,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000016-r00",
+      "seed_index": 16,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "8dd1a7109c7cf47a6c64849686b7950e7b2034b7f0da41439aae10f51cee9c7b"
+      }
+    },
+    {
+      "match_index": 33,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000016-r01",
+      "seed_index": 16,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            14,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 68,
+        "replay_final_hash": "9c8c349c233ec39d122d0a1c50119e6e467c3ca9e356b759a8b6d47efce5c461"
+      }
+    },
+    {
+      "match_index": 34,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000017-r00",
+      "seed_index": 17,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            7,
+            18
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "ee124b1f2a48203e97a5ab7722ac7a35d7a3e04266c4f066345ca030adb6b0fc"
+      }
+    },
+    {
+      "match_index": 35,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000017-r01",
+      "seed_index": 17,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "571e42347730c97b0f0e4d2dd2c08991ecd1e65788857cc75401c7a29c5b70a3"
+      }
+    },
+    {
+      "match_index": 36,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000018-r00",
+      "seed_index": 18,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            9
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "f11d1144bebf9b9c2f295a1027133cfe254891c5ea1cfd45f3e46a9981a450aa"
+      }
+    },
+    {
+      "match_index": 37,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000018-r01",
+      "seed_index": 18,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            10,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 56,
+        "replay_final_hash": "691e7b6ff2becc6c9976140bb3146213f1088322c5bc19d217f40158bd8b5426"
+      }
+    },
+    {
+      "match_index": 38,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000019-r00",
+      "seed_index": 19,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            12
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "9c5cdf0a610d8b82089f94692a5a330fe8fce10a2408424663910e45ae3e89c1"
+      }
+    },
+    {
+      "match_index": 39,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000019-r01",
+      "seed_index": 19,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            13,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "24d8099d9db177fd530d0098d9e567d0f1373a9cfa40458bea399769b1d17290"
+      }
+    },
+    {
+      "match_index": 40,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000020-r00",
+      "seed_index": 20,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            17,
+            9
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "18b02ef4a100353f52e516912d67be9080c19827c8fc4da955c0a822ad0f2d3c"
+      }
+    },
+    {
+      "match_index": 41,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000020-r01",
+      "seed_index": 20,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            15
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "3daa875b0f40fe00641e113fc291c3cf7cfcb47263c7881af360e55006a4b940"
+      }
+    },
+    {
+      "match_index": 42,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000021-r00",
+      "seed_index": 21,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            18,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 68,
+        "replay_final_hash": "9ab4b8e205a66b0ba09dcb7190d373ad7bd9608e514d98b2729d598d88cbc215"
+      }
+    },
+    {
+      "match_index": 43,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000021-r01",
+      "seed_index": 21,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            17,
+            12
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "973ec8f2104685e415759b48c0628c87f3881cd82d072eba239f72e7ae26266e"
+      }
+    },
+    {
+      "match_index": 44,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000022-r00",
+      "seed_index": 22,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "0bd74a7b6e5bd6f5ac46c8f56424e79357bf9e800187569574b97f4079203732"
+      }
+    },
+    {
+      "match_index": 45,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000022-r01",
+      "seed_index": 22,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            9
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "60b2183a73b320f873a17af847d519fba8b11637e284e3efe568acad2cf5405b"
+      }
+    },
+    {
+      "match_index": 46,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000023-r00",
+      "seed_index": 23,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            11
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "73e1aed79468b07f73bec6b01edd7b1b7d50cf6459e8a994fb19b806b8f7e45c"
+      }
+    },
+    {
+      "match_index": 47,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000023-r01",
+      "seed_index": 23,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            14
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "8e80d2051304c55e811b470f03a071d6adb177f077e819d3fdd1737f3c4d4b84"
+      }
+    },
+    {
+      "match_index": 48,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000024-r00",
+      "seed_index": 24,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            11
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "c10e51017f939269b9576f8e4057a7935e7bae84c18385b7cb62513706a73a35"
+      }
+    },
+    {
+      "match_index": 49,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000024-r01",
+      "seed_index": 24,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            16,
+            13
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "4ebe9372e7b9ed278e16617490b9f04015ad2065712be92f35ed84c3f3d84f39"
+      }
+    },
+    {
+      "match_index": 50,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000025-r00",
+      "seed_index": 25,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            14,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "9bdf6fa867a05e16db024baa0bdd7563d8f2dbdde498c10a2a9f9fff85a5abd6"
+      }
+    },
+    {
+      "match_index": 51,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000025-r01",
+      "seed_index": 25,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            14,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "84e9ca2d407cda70e8362d2a253710837a6f61e9bd9920f54e9d7e451c74bdc9"
+      }
+    },
+    {
+      "match_index": 52,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000026-r00",
+      "seed_index": 26,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            10,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 58,
+        "replay_final_hash": "0d9928f3a297768896380b2824974780b45b9466b522919c7fc0251c7c677e36"
+      }
+    },
+    {
+      "match_index": 53,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000026-r01",
+      "seed_index": 26,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            12,
+            18
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "e2f5ac765434157258472d5705d083849284f55c3513c4ff6c33962566ab8079"
+      }
+    },
+    {
+      "match_index": 54,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000027-r00",
+      "seed_index": 27,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            10,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 56,
+        "replay_final_hash": "3789351317d104e9d7f3c6e2fcb42689b820d12cfbc722c7a9fc0c0341b9fe6a"
+      }
+    },
+    {
+      "match_index": 55,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000027-r01",
+      "seed_index": 27,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            10
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 56,
+        "replay_final_hash": "1a4eaefb66b9c78f2de28d3c8af3244ed394e68cc5e2f3b08af3df70ed6c6ef2"
+      }
+    },
+    {
+      "match_index": 56,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000028-r00",
+      "seed_index": 28,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            10
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 66,
+        "replay_final_hash": "b879b4b8a40da7bc58832f647f8806fbae0f63503cadf275cafecd04caea696f"
+      }
+    },
+    {
+      "match_index": 57,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000028-r01",
+      "seed_index": 28,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            17,
+            13
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "a8d68c40a7b87332dfce1079dbafe9b5f53d1b49f1ed2a86e136231a37024c45"
+      }
+    },
+    {
+      "match_index": 58,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000029-r00",
+      "seed_index": 29,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            13,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "8ef58b9277f7b930ae01a1777ad9a0f037e10b2f41b68a8e6f58fd7b3006e2ac"
+      }
+    },
+    {
+      "match_index": 59,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000029-r01",
+      "seed_index": 29,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            11,
+            16
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 64,
+        "replay_final_hash": "721d32179469b50ec2fa3cef93dd14a9626a397b66a40bba381b933c6669889d"
+      }
+    },
+    {
+      "match_index": 60,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000030-r00",
+      "seed_index": 30,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            7
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 62,
+        "replay_final_hash": "6a928e7afdefa19d9074bae21b405ec024f7cdf315a087d98dad971f33084bcd"
+      }
+    },
+    {
+      "match_index": 61,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000030-r01",
+      "seed_index": 30,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            4,
+            15
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 54,
+        "replay_final_hash": "390fc714905b1675f22288130b2abf05e9accde504b77f977246b37b08f73e27"
+      }
+    },
+    {
+      "match_index": 62,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000031-r00",
+      "seed_index": 31,
+      "rotation": 0,
+      "agent_ids_by_seat": [
+        "determinization-s4-d1-n2000-v1",
+        "ismcts-s64-d2-x100000000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            15,
+            8
+          ],
+          "ranks": [
+            0,
+            1
+          ],
+          "winners": [
+            0
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "83955be7e92d0ec4533f6a665aa541e3e63d6754048601eb01eb2e6ba26dc835"
+      }
+    },
+    {
+      "match_index": 63,
+      "game_id": "m10-ismcts-v1-ismcts-vs-root-determinization-s000031-r01",
+      "seed_index": 31,
+      "rotation": 1,
+      "agent_ids_by_seat": [
+        "ismcts-s64-d2-x100000000-v1",
+        "determinization-s4-d1-n2000-v1"
+      ],
+      "outcome": {
+        "status": "completed",
+        "result": {
+          "scores": [
+            12,
+            17
+          ],
+          "ranks": [
+            1,
+            0
+          ],
+          "winners": [
+            1
+          ],
+          "reason": "prestige_threshold"
+        },
+        "completed_plies": 60,
+        "replay_final_hash": "5179b38d0591824caa49427844282370352615c83a210d9e296b2822bcbcda3c"
+      }
+    }
+  ],
+  "agents": [
+    {
+      "agent_id": "determinization-s4-d1-n2000-v1",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "wins": 35,
+      "rank_sum": 29,
+      "score_sum": 903,
+      "faults_caused": 0,
+      "by_seat": [
+        {
+          "seat": 0,
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 19,
+          "rank_sum": 13,
+          "score_sum": 445,
+          "faults_caused": 0
+        },
+        {
+          "seat": 1,
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 16,
+          "rank_sum": 16,
+          "score_sum": 458,
+          "faults_caused": 0
+        }
+      ]
+    },
+    {
+      "agent_id": "ismcts-s64-d2-x100000000-v1",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "wins": 29,
+      "rank_sum": 35,
+      "score_sum": 866,
+      "faults_caused": 0,
+      "by_seat": [
+        {
+          "seat": 0,
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 16,
+          "rank_sum": 16,
+          "score_sum": 443,
+          "faults_caused": 0
+        },
+        {
+          "seat": 1,
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 13,
+          "rank_sum": 19,
+          "score_sum": 423,
+          "faults_caused": 0
+        }
+      ]
+    }
+  ]
+}

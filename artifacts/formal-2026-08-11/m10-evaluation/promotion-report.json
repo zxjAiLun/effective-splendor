@@ -1,0 +1,37 @@
+{
+  "format": "effective-splendor-promotion-report",
+  "version": 1,
+  "promotion_id": "m10-ismcts-v1",
+  "evaluation_id": "m10-ismcts-v1-ismcts-vs-root-determinization",
+  "evaluation_plan_hash": "1975ff93701b04a3187cc86839b3d9d7dfd34960790a54919dfcae70922c3aeb",
+  "promotion_gate_hash": "3b270e7290b07f882bea8d6a75d6c8127234004ef63e05d92ee2c21637a0198b",
+  "candidate_agent_id": "ismcts-s64-d2-x100000000-v1",
+  "champion_agent_id": "determinization-s4-d1-n2000-v1",
+  "confidence_bps": 9500,
+  "pairwise": {
+    "scheduled_seed_blocks": 32,
+    "completed_seed_blocks": 32,
+    "excluded_seed_blocks": 0,
+    "completed_matches": 64,
+    "candidate_wins": 29,
+    "ties": 0,
+    "candidate_losses": 35,
+    "score_half_points": 58,
+    "score_basis_points": 4531,
+    "confidence_lower_bound_basis_points": 2365,
+    "confidence_upper_bound_basis_points": 6697,
+    "candidate_rank_sum": 35,
+    "champion_rank_sum": 29
+  },
+  "aborted_matches": 0,
+  "candidate_faults": 0,
+  "move_timeout_ms": 10000,
+  "checks": {
+    "sufficient_completed_seed_blocks": true,
+    "aborted_matches_within_limit": true,
+    "candidate_faults_within_limit": true,
+    "move_timeout_within_limit": true,
+    "pairwise_lower_bound_meets_threshold": false
+  },
+  "decision": "reject"
+}
