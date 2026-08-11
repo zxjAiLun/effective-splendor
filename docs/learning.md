@@ -229,3 +229,11 @@ The exact hashes and exclusion list are recorded in
 training attempt before execution. Architecture, optimizer, initialization,
 source filters and offline gates remain identical to the first M15B attempt;
 only the new dataset binding and encoder-gradient isolation differ.
+
+The deterministic run doubled the champion Policy split to 2,942 train / 978
+validation examples. Policy NLL improved 21.00% over uniform and passed the
+unchanged 15% gate; Value MSE improved only 1.61% over the train prior and
+failed the unchanged 5% gate. Therefore checkpoint
+`6ef032a0cb0c65e89f80386484f04e1aadb0d82d6c140a31e8f6fad7c6afebf9`
+is not a full candidate. The passed Policy component alone is authorized for
+one frozen 32-match prospective screen on new seeds `960000..960015`.

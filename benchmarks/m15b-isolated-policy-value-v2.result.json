@@ -1,0 +1,45 @@
+{
+  "format": "effective-splendor-m15b-isolated-training-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "training_implementation_commit": "ef62d34",
+  "frozen_inputs_commit": "b0c42b8",
+  "dataset": {
+    "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+    "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+    "replays": 125,
+    "examples": 7843
+  },
+  "training": {
+    "training_config_hash": "496fa02ae94fe42629721040b0b8072c47940f4391516c2f11b98c02b7b1709a",
+    "training_config_file_sha256": "4737b7a3f511af5608b7985a53b0544a35644848abb04e55eb1b1fd7bc34ec0b",
+    "checkpoint_hash": "6ef032a0cb0c65e89f80386484f04e1aadb0d82d6c140a31e8f6fad7c6afebf9",
+    "checkpoint_file_sha256": "963914865cb39463de764ab1e8a72386d634243f48380c967c60a2b35950aa73",
+    "training_report_file_sha256": "b186adbd67f4182d43b391f17e32f89e005960399f97c26efc744d778f23316c",
+    "offline_eval_file_sha256": "7cbb85ba40d0a175000ff3330f587d9a37a7ae38b1db93ee799ede87de00c4f8",
+    "value_updates_shared_encoder": false,
+    "train_policy_examples": 2942,
+    "validation_policy_examples": 978,
+    "train_value_examples": 5887,
+    "validation_value_examples": 1956,
+    "validation_policy_top1_accuracy": 0.339468302658487,
+    "validation_policy_mean_nll": 2.3522550601035,
+    "validation_value_mse": 0.240744781740579,
+    "uniform_policy_mean_nll": 2.97790219633511,
+    "train_prior_value_mse": 0.244698474609749,
+    "policy_nll_relative_improvement_bps": 2100,
+    "policy_gate_required_bps": 1500,
+    "policy_gate_passed": true,
+    "value_mse_relative_improvement_bps": 161,
+    "value_gate_required_bps": 500,
+    "value_gate_passed": false,
+    "overall_gate_passed": false
+  },
+  "authorization": {
+    "full_candidate": false,
+    "policy_only_prospective_screen": true,
+    "promotion": false,
+    "screen_seed_range": "960000..960015",
+    "screen_seeds_reusable_for_training_or_promotion": false
+  }
+}

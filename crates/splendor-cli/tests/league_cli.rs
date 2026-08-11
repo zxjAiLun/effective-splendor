@@ -314,6 +314,36 @@ fn checked_in_m15b_teacher_collection_is_independent_and_complete() {
 }
 
 #[test]
+fn checked_in_m15b_isolated_policy_screen_is_new_seed_and_valid() {
+    let benchmark_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../benchmarks");
+    let manifest: LeagueManifestV1 = serde_json::from_str(
+        &std::fs::read_to_string(
+            benchmark_dir.join("m15b-isolated-policy-only-diagnostic-v2.league.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    manifest.validate().unwrap();
+    assert_eq!(manifest.game_seeds, (960_000..960_016).collect::<Vec<_>>());
+    assert_eq!(
+        expand_schedule(&manifest.evaluation_plan_v1().unwrap())
+            .unwrap()
+            .len(),
+        32
+    );
+    assert_eq!(
+        manifest.agents[1].runtime_name,
+        "effective-splendor-neural-ismcts-ablation-agent-v1"
+    );
+    assert!(manifest.agents[1]
+        .command
+        .args
+        .windows(2)
+        .any(|pair| pair == ["--mode", "policy_only"]));
+    assert!(manifest.game_seeds.iter().all(|seed| *seed > 950_063));
+}
+
+#[test]
 fn league_manifest_publishes_canonical_evaluation_plan() {
     let dir = temp_dir("plan");
     write_json(&dir.join("league.json"), &manifest_json(101, "8", "1"));
