@@ -131,7 +131,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (accepted at `e5dfb95`)
 8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
 9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
-10. M15B: source-aware training plus prospective Policy-only screen (first candidate rejected 4–28; second data round in progress)
+10. M15B: source-aware/isolated training plus two prospective Policy-only screens (complete; rejected 4–28 and 5–27, no candidate)
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -172,7 +172,10 @@ material offline gates: Policy passed, Value failed, but a new-seed Policy-only
 screen still lost 4–28. The current evidence therefore implicates both Policy
 generalization and Value quality, amplified by 64-simulation search. The next
 round isolates Policy representation from Value gradients and collects new
-champion-teacher trajectories; no rejected or diagnostic seed is reused. See
+champion-teacher trajectories. That second Policy-only screen still lost 5–27,
+so M15B closes without a candidate: one-hot imitation NLL is not a sufficient
+strength gate and Value failed both material gates. No rejected or diagnostic
+seed is reused. See
 `docs/m15-neural-degradation-diagnostic.md`.
 
 ## License

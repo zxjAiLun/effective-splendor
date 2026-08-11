@@ -1,0 +1,43 @@
+{
+  "format": "effective-splendor-m15b-isolated-policy-diagnostic-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "implementation_commit": "55dbba9",
+  "checkpoint_hash": "6ef032a0cb0c65e89f80386484f04e1aadb0d82d6c140a31e8f6fad7c6afebf9",
+  "evaluation": {
+    "evaluation_id": "m15b-isolated-policy-only-diagnostic-v2-isolated-teacher-policy-only-vs-root-determinization",
+    "league_manifest_file_sha256": "5fc34f9df2f9f1a8c5eac851ab8a89b52972d4e1d9e8255598654e2398c26fcf",
+    "evaluation_plan_hash": "20e2857f1ec594fbfe6961fa1b1b2a442814c3b5ef92388aa55e4fcd4dbfebc9",
+    "evaluation_plan_file_sha256": "45310d89581f388b3c611b80a3aefc44193792cdc36e022f52bc87484920ebb7",
+    "evaluation_report_file_sha256": "0d8859c3c0e288c16a0318fc25f822a815d8af1ae31bf45a14c267ab4497d34e",
+    "scheduled_matches": 32,
+    "completed_matches": 32,
+    "aborted_matches": 0,
+    "candidate_faults": 0,
+    "candidate_wins": 5,
+    "ties": 0,
+    "candidate_losses": 27,
+    "candidate_score_bps": 1562,
+    "diagnostic_hoeffding_lower_bound_bps": 0,
+    "diagnostic_hoeffding_upper_bound_bps": 4624,
+    "seat_0_wins": 2,
+    "seat_1_wins": 3,
+    "seed_blocks_zero_wins": 12,
+    "seed_blocks_one_win": 3,
+    "seed_blocks_two_wins": 1,
+    "arena_reports_verified": 32,
+    "replays_verified": 32,
+    "match_indices_exactly_0_through_31": true,
+    "canonical_schedule_and_aggregate_recomputed": true
+  },
+  "verdict": {
+    "policy_only_screen": "fail",
+    "full_policy_value_candidate_authorized": false,
+    "promotion_authorized": false,
+    "shared_encoder_value_gradient_is_sufficient_explanation": false,
+    "more_same_distribution_one_hot_teacher_data_is_sufficient_fix": false,
+    "offline_policy_nll_is_sufficient_strength_gate": false,
+    "m15b_status": "complete_without_candidate",
+    "next_action": "replace_one_hot_behavioral_cloning_with_search_distribution_targets_and_redesign_value_supervision"
+  }
+}

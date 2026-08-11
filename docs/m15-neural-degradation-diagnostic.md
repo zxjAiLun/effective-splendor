@@ -220,3 +220,44 @@ M15B_TEACHER_DATA_RESULT   125 COMPLETE / 3 CHAMPION TIMEOUT / DATASET BUILT
 M15B_ISOLATED_TRAINING_V2  COMPLETE / POLICY PASS / VALUE FAIL
 M15B_ISOLATED_POLICY_SCREEN FROZEN (32 MATCHES, SEEDS 960000..960015)
 ```
+
+## M15B second-candidate result
+
+The isolated second checkpoint passed its Policy offline gate but failed its
+Value gate. Its authorized Policy-only screen then completed all 32 matches on
+the frozen `960000..960015` seeds with zero aborts and zero faults:
+
+```text
+candidate wins / ties / losses:  5 / 0 / 27
+candidate seat 0 / seat 1 wins:  2 / 3
+candidate score:              1562 bps
+diagnostic Hoeffding interval:   0 .. 4624 bps
+seed blocks 0 / 1 / 2 wins:     12 / 3 / 1
+```
+
+All 32 replays independently verified and the schedule/aggregate were
+recomputed. The exact binding is tracked in
+`benchmarks/m15b-isolated-policy-only-diagnostic-v2.result.json`; generated
+artifacts remain local.
+
+This closes M15B without a candidate. Doubling the same type of champion
+teacher data and preventing Value loss from touching the Policy encoder raised
+held-out Policy top-1 from 30.72% to 33.95%, but prospective play remained
+decisively weak (5–27 versus the first screen's 4–28 on different seeds).
+Therefore shared-encoder Value contamination is not a sufficient explanation,
+and one-hot behavioral-cloning NLL is not a sufficient strength gate for PUCT
+priors. Value supervision also failed the material gate in both attempts.
+
+The next evidence-supported design should preserve root search distributions
+(visits and/or normalized utilities) as Policy targets rather than imitating
+only the selected action, and redesign Value supervision/calibration. Increasing
+the search budget around the rejected heads, lowering offline gates, or running
+another same-design seed screen is not authorized.
+
+```text
+M15B_STATUS                 COMPLETE / NO CANDIDATE
+M15B_ISOLATED_SCREEN        COMPLETE / FAIL (5-0-27)
+M15_FULL_CANDIDATE          NOT AUTHORIZED
+CURRENT_CHAMPION            determinization-s4-d1-n2000-v1
+NEXT                        SEARCH-DISTRIBUTION POLICY TARGETS + VALUE REDESIGN
+```
