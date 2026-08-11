@@ -1,6 +1,13 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  actionKey,
+  buildAnalysisRows,
+  formatActionLabel as formatAction,
+  isAnalysisTraceEnvelope,
+  validateAnalysisTrace,
+} from "./trace-runtime.mjs";
 
 type CardId = number;
 type NobleId = number;
@@ -230,56 +237,12 @@ function demoFrame(ply: number, actor: number, mismatch: boolean): Frame {
   };
 }
 
-function actionKey(action: Action): string {
-  return JSON.stringify(action);
-}
-
-function tierIndex(tier: unknown): number {
-  return tier === "One" ? 0 : tier === "Two" ? 1 : 2;
-}
-
-function formatAction(action: Action, frame: Frame, cards: Map<number, Trace["catalog"]["cards"][number]>): string {
-  if (action.type === "buy_market" || action.type === "reserve_market") {
-    const tier = tierIndex(action.tier);
-    const slot = Number(action.slot);
-    const id = frame.player_view.public.market[tier]?.[slot];
-    const verb = action.type === "buy_market" ? "Buy" : "Reserve";
-    return `${verb} T${tier + 1} ${id == null ? `slot ${slot + 1}` : cardLabel(id, cards)}`;
-  }
-  if (action.type === "buy_reserved") {
-    const slot = Number(action.slot);
-    const id = frame.player_view.private.reserved.find((card) => card.slot === slot)?.card;
-    return `Buy reserved ${id == null ? `slot ${slot + 1}` : cardLabel(id, cards)}`;
-  }
-  if (action.type === "reserve_deck") return `Reserve deck T${tierIndex(action.tier) + 1}`;
-  if (action.type === "choose_noble") return `Choose noble #${Number(action.noble)}`;
-  if (action.type === "take_tokens") {
-    const gems = action.take as Gems;
-    const taken = GEM_KEYS.filter((key) => gems[key] > 0)
-      .map((key) => `${gemCode(key)}${gems[key] > 1 ? `×${gems[key]}` : ""}`)
-      .join(" ");
-    return `Take ${taken}`;
-  }
-  return action.type === "pass" ? "Pass" : action.type;
-}
-
-function cardLabel(id: number, cards: Map<number, Trace["catalog"]["cards"][number]>): string {
-  const card = cards.get(id);
-  return card ? `#${id} · ${card.bonus[0]}${card.prestige}` : `card #${id}`;
-}
-
 function gemCode(key: keyof Gems): string {
   return { white: "W", blue: "U", green: "G", red: "R", black: "K", gold: "★" }[key];
 }
 
 function shortHash(hash: string): string {
   return `${hash.slice(0, 8)}…${hash.slice(-6)}`;
-}
-
-function isTrace(value: unknown): value is Trace {
-  if (!value || typeof value !== "object") return false;
-  const trace = value as Partial<Trace>;
-  return trace.format === "effective-splendor-analysis-trace" && trace.version === 1 && Array.isArray(trace.frames) && trace.frames.length > 0;
 }
 
 function isReplay(value: unknown): value is Replay {
@@ -330,11 +293,12 @@ export default function ReplayStudio() {
     if (!files.length) return;
     try {
       const parsed = await Promise.all(files.map(async (file) => ({ file, value: JSON.parse(await file.text()) as unknown })));
-      const traceFile = parsed.find((item) => isTrace(item.value));
+      const traceFile = parsed.find((item) => isAnalysisTraceEnvelope(item.value));
       const replayFile = parsed.find((item) => isReplay(item.value));
-      if (!traceFile || !isTrace(traceFile.value)) throw new Error("Select an AnalysisTraceV1 sidecar, optionally with its ReplayV1.");
-      if (replayFile && isReplay(replayFile.value)) bindReplay(traceFile.value, replayFile.value);
-      setTrace(traceFile.value);
+      if (!traceFile) throw new Error("Select an AnalysisTraceV1 sidecar, optionally with its ReplayV1.");
+      const nextTrace = validateAnalysisTrace(traceFile.value) as Trace;
+      if (replayFile && isReplay(replayFile.value)) bindReplay(nextTrace, replayFile.value);
+      setTrace(nextTrace);
       setFrameIndex(0);
       setReveal(false);
       setFileName(parsed.map((item) => item.file.name).join(" + "));
@@ -347,18 +311,14 @@ export default function ReplayStudio() {
     }
   };
 
-  const rootVisits = frame.neural_result.stats.root_visits;
   const actor = frame.actor;
-  const rows = frame.neural_result.action_stats
-    .map((stats) => ({
-      ...stats,
-      prior: stats.prior_micros / trace.value_scale,
-      visit: rootVisits ? stats.visits / rootVisits : 0,
-      q: stats.visits ? stats.value_sum_by_player[actor] / stats.visits / trace.value_scale : null,
-      actual: actionKey(stats.action) === actionKey(frame.recorded_action),
-      best: actionKey(stats.action) === actionKey(frame.neural_result.action),
-    }))
-    .sort((left, right) => right.visits - left.visits);
+  const rows = buildAnalysisRows(trace, frame) as Array<EdgeStats & {
+    prior: number;
+    visit: number;
+    q: number | null;
+    actual: boolean;
+    best: boolean;
+  }>;
   const bestQ = rows.find((row) => row.best)?.q ?? null;
 
   return (

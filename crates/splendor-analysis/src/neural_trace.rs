@@ -280,4 +280,41 @@ mod tests {
             Err(AnalysisError::Learning(message)) if message.contains("checkpoint hash mismatch")
         ));
     }
+
+    #[test]
+    fn tampered_frozen_catalog_content_is_rejected() {
+        let (_, replay) = record_random_game(2, 42, 9).unwrap();
+        let checkpoint = checkpoint();
+        let mut trace =
+            analyze_replay_neural_v1(&replay, &checkpoint, &config(&checkpoint)).unwrap();
+        trace.catalog.cards[52].prestige ^= 1;
+        assert!(matches!(
+            trace.validate(),
+            Err(AnalysisError::InvalidTrace(message))
+                if message.contains("frozen dense catalog")
+        ));
+    }
+
+    #[test]
+    fn out_of_domain_referee_card_and_noble_ids_fail_closed() {
+        let (_, replay) = record_random_game(2, 42, 9).unwrap();
+        let checkpoint = checkpoint();
+        let trace = analyze_replay_neural_v1(&replay, &checkpoint, &config(&checkpoint)).unwrap();
+
+        let mut bad_card = trace.clone();
+        bad_card.frames[0].referee_reveal.decks[0][0] = splendor_core::CardId(u8::MAX);
+        assert!(matches!(
+            bad_card.validate(),
+            Err(AnalysisError::InvalidTrace(message)) if message.contains("card id out of range")
+        ));
+
+        let mut bad_noble = trace;
+        bad_noble.frames[0].referee_reveal.players[0]
+            .nobles
+            .push(splendor_core::NobleId(u8::MAX));
+        assert!(matches!(
+            bad_noble.validate(),
+            Err(AnalysisError::InvalidTrace(message)) if message.contains("noble id out of range")
+        ));
+    }
 }

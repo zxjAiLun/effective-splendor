@@ -139,11 +139,13 @@ impl AnalysisTraceV1 {
         for (index, frame) in self.frames.iter().enumerate() {
             if frame.ply != index as u32
                 || frame.actor != frame.player_view.viewer
+                || frame.actor.index() >= self.player_count as usize
                 || frame.player_view.public.current_player != frame.actor
                 || frame.player_view.public.player_count != self.player_count
                 || frame.player_view.public.players.len() != self.player_count as usize
                 || frame.referee_reveal.players.len() != self.player_count as usize
                 || frame.referee_reveal.seed != seed
+                || frame.player_view.ruleset_fingerprint.as_str() != self.ruleset_fingerprint
                 || frame.visible_event_count == 0
             {
                 return Err(invalid(format!("frame {index} identity/shape mismatch")));
@@ -154,6 +156,11 @@ impl AnalysisTraceV1 {
                 return Err(invalid(format!("frame {index} observation hash mismatch")));
             }
             validate_projection(frame, index)?;
+            validate_action(frame.recorded_action, index)?;
+            validate_action(frame.neural_result.action, index)?;
+            for action in &frame.legal_actions {
+                validate_action(*action, index)?;
+            }
             for (label, hash) in [
                 ("state_hash_before", frame.state_hash_before.as_str()),
                 ("observation_hash", frame.observation_hash.as_str()),
@@ -211,12 +218,28 @@ impl AnalysisTraceV1 {
 }
 
 fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), AnalysisError> {
+    let mut card_zones = vec![false; splendor_catalog::CARD_COUNT];
     for tier in 0..3 {
         let count = u8::try_from(frame.referee_reveal.decks[tier].len())
             .map_err(|_| invalid(format!("frame {index} deck count overflow")))?;
         if frame.player_view.public.deck_counts[tier] != count {
             return Err(invalid(format!("frame {index} deck projection mismatch")));
         }
+        for card in frame.player_view.public.market[tier].iter().flatten() {
+            validate_card(*card, Some(tier), index, &mut card_zones)?;
+        }
+        for card in &frame.referee_reveal.decks[tier] {
+            validate_card(*card, Some(tier), index, &mut card_zones)?;
+        }
+    }
+    for noble in frame
+        .player_view
+        .public
+        .nobles
+        .iter()
+        .chain(&frame.player_view.public.pending_nobles)
+    {
+        validate_noble(*noble, index)?;
     }
     for (seat, (public, full)) in frame
         .player_view
@@ -226,6 +249,24 @@ fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), Anal
         .zip(&frame.referee_reveal.players)
         .enumerate()
     {
+        for card in &public.public_reserved {
+            validate_card_domain(*card, index)?;
+        }
+        for card in &public.purchased {
+            validate_card_domain(*card, index)?;
+        }
+        for noble in &public.nobles {
+            validate_noble(*noble, index)?;
+        }
+        for reserved in &full.reserved {
+            validate_card(reserved.card, None, index, &mut card_zones)?;
+        }
+        for card in &full.purchased {
+            validate_card(*card, None, index, &mut card_zones)?;
+        }
+        for noble in &full.nobles {
+            validate_noble(*noble, index)?;
+        }
         let public_reserved = full
             .reserved
             .iter()
@@ -271,7 +312,54 @@ fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), Anal
             }
         }
     }
+    if card_zones.iter().any(|present| !present) {
+        return Err(invalid(format!(
+            "frame {index} card zones do not partition the frozen catalog"
+        )));
+    }
     Ok(())
+}
+
+fn validate_card(
+    card: CardId,
+    expected_tier: Option<usize>,
+    index: usize,
+    zones: &mut [bool],
+) -> Result<(), AnalysisError> {
+    validate_card_domain(card, index)?;
+    let card_index = card.index();
+    if expected_tier.is_some_and(|tier| splendor_catalog::card(card).tier.index() != tier) {
+        return Err(invalid(format!("frame {index} card tier mismatch")));
+    }
+    if zones[card_index] {
+        return Err(invalid(format!("frame {index} duplicate card zone")));
+    }
+    zones[card_index] = true;
+    Ok(())
+}
+
+fn validate_card_domain(card: CardId, index: usize) -> Result<(), AnalysisError> {
+    if card.index() >= splendor_catalog::CARD_COUNT {
+        return Err(invalid(format!("frame {index} card id out of range")));
+    }
+    Ok(())
+}
+
+fn validate_noble(noble: NobleId, index: usize) -> Result<(), AnalysisError> {
+    if noble.index() >= splendor_catalog::NOBLE_COUNT {
+        return Err(invalid(format!("frame {index} noble id out of range")));
+    }
+    Ok(())
+}
+
+fn validate_action(action: Action, index: usize) -> Result<(), AnalysisError> {
+    match action {
+        Action::BuyMarket { slot, .. } | Action::ReserveMarket { slot, .. } if slot >= 4 => {
+            Err(invalid(format!("frame {index} market slot out of range")))
+        }
+        Action::ChooseNoble { noble } => validate_noble(noble, index),
+        _ => Ok(()),
+    }
 }
 
 pub fn analysis_trace_hash_v1(trace: &AnalysisTraceV1) -> Result<String, AnalysisError> {
@@ -285,18 +373,31 @@ pub fn analysis_trace_hash_v1(trace: &AnalysisTraceV1) -> Result<String, Analysi
 }
 
 fn validate_catalog(catalog: &AnalysisCatalogV1) -> Result<(), AnalysisError> {
-    if catalog.cards.len() != splendor_catalog::CARD_COUNT
-        || catalog.nobles.len() != splendor_catalog::NOBLE_COUNT
-        || catalog
+    let cards_match =
+        catalog
             .cards
             .iter()
-            .enumerate()
-            .any(|(index, card)| card.id.index() != index)
-        || catalog
-            .nobles
-            .iter()
-            .enumerate()
-            .any(|(index, noble)| noble.id.index() != index)
+            .zip(splendor_catalog::all_cards())
+            .all(|(actual, expected)| {
+                actual.id == expected.id
+                    && actual.tier == expected.tier
+                    && actual.bonus == expected.bonus
+                    && actual.prestige == expected.prestige
+                    && actual.cost == expected.cost
+            });
+    let nobles_match = catalog
+        .nobles
+        .iter()
+        .zip(splendor_catalog::all_nobles())
+        .all(|(actual, expected)| {
+            actual.id == expected.id
+                && actual.prestige == expected.prestige
+                && actual.requirements == expected.requirements
+        });
+    if catalog.cards.len() != splendor_catalog::CARD_COUNT
+        || catalog.nobles.len() != splendor_catalog::NOBLE_COUNT
+        || !cards_match
+        || !nobles_match
     {
         return Err(invalid("catalog is not the frozen dense catalog"));
     }
