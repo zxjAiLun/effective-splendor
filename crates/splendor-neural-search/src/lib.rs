@@ -12,15 +12,15 @@ mod player_view;
 mod search;
 
 pub use config::{
-    NeuralIsmctsConfigV1, MAX_NEURAL_ISMCTS_DEPTH_TURNS, MAX_NEURAL_ISMCTS_SIMULATIONS,
-    MAX_PUCT_EXPLORATION_MILLI,
+    NeuralAblationModeV1, NeuralIsmctsConfigV1, MAX_NEURAL_ISMCTS_DEPTH_TURNS,
+    MAX_NEURAL_ISMCTS_SIMULATIONS, MAX_PUCT_EXPLORATION_MILLI,
 };
 pub use error::NeuralSearchError;
 pub use model::{
     NeuralIsmctsActionStatsV1, NeuralIsmctsResultV1, NeuralIsmctsStatsV1, NEURAL_VALUE_SCALE_V1,
 };
 pub use player_view::{analyze_player_view_neural_ismcts_v1, PlayerViewNeuralIsmctsAnalysisV1};
-pub use search::search_neural_ismcts_v1;
+pub use search::{search_neural_ismcts_ablation_v1, search_neural_ismcts_v1};
 
 pub const NEURAL_ISMCTS_ALGORITHM_ID: &str = "effective-splendor-neural-ismcts";
 pub const NEURAL_ISMCTS_VERSION: u32 = 1;

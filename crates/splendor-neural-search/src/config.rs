@@ -6,6 +6,29 @@ pub const MAX_NEURAL_ISMCTS_SIMULATIONS: u32 = 10_000;
 pub const MAX_NEURAL_ISMCTS_DEPTH_TURNS: u8 = 8;
 pub const MAX_PUCT_EXPLORATION_MILLI: u32 = 100_000;
 
+/// Experimental switches used to isolate the M12 policy and value heads.
+///
+/// `Full` is exactly the accepted M13 algorithm. The other modes are diagnostic
+/// controls and must not be used as a promoted runtime identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NeuralAblationModeV1 {
+    Full,
+    ValueOnly,
+    PolicyOnly,
+    Neutral,
+}
+
+impl NeuralAblationModeV1 {
+    pub(crate) const fn uses_learned_priors(self) -> bool {
+        matches!(self, Self::Full | Self::PolicyOnly)
+    }
+
+    pub(crate) const fn uses_learned_values(self) -> bool {
+        matches!(self, Self::Full | Self::ValueOnly)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NeuralIsmctsConfigV1 {

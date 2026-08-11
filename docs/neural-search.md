@@ -100,3 +100,20 @@ Generated evidence remains under ignored
 the final result for the frozen M13 v1 candidate; it must not trigger a seed,
 checkpoint, budget, PUCT constant, timeout, or gate change followed by a
 result-oriented rerun. The determinization champion remains in place.
+
+## M15 diagnostic controls
+
+The search crate also exposes four checkpoint-bound analysis modes for causal
+diagnosis of the rejected M13 candidate:
+
+- `full`: the accepted M13 algorithm, unchanged;
+- `value_only`: uniform root/tree priors with learned leaf values;
+- `policy_only`: learned priors with a neutral 0.5 leaf value;
+- `neutral`: uniform priors and neutral leaf values.
+
+All four modes retain the same player-view information set, determinization
+stream, terminal values, depth, budget, PUCT arithmetic and root tie-breaking.
+The non-`full` modes are experimental controls, not league agents and not
+promotion candidates. Their outputs may diagnose which component changes a
+decision, but agreement with a recorded action is not proof that the action was
+optimal.

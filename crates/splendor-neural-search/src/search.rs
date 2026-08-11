@@ -6,8 +6,8 @@ use splendor_learning::{model_checkpoint_hash_v1, PolicyValueModelV1};
 use splendor_search::canonical_order;
 
 use crate::{
-    NeuralIsmctsActionStatsV1, NeuralIsmctsConfigV1, NeuralIsmctsResultV1, NeuralIsmctsStatsV1,
-    NeuralSearchError, NEURAL_VALUE_SCALE_V1,
+    NeuralAblationModeV1, NeuralIsmctsActionStatsV1, NeuralIsmctsConfigV1, NeuralIsmctsResultV1,
+    NeuralIsmctsStatsV1, NeuralSearchError, NEURAL_VALUE_SCALE_V1,
 };
 
 #[derive(Debug)]
@@ -54,6 +54,29 @@ pub fn search_neural_ismcts_v1(
     model: &PolicyValueModelV1,
     config: &NeuralIsmctsConfigV1,
 ) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
+    search_neural_ismcts_internal_v1(information_set, model, config, NeuralAblationModeV1::Full)
+}
+
+/// Runs a controlled M15 diagnostic variant of the accepted M13 search.
+///
+/// The checkpoint, information-set boundary, determinization stream, PUCT
+/// arithmetic and root choice are unchanged. Only learned priors and/or learned
+/// leaf values are replaced by deterministic neutral controls.
+pub fn search_neural_ismcts_ablation_v1(
+    information_set: &InformationSetV1,
+    model: &PolicyValueModelV1,
+    config: &NeuralIsmctsConfigV1,
+    mode: NeuralAblationModeV1,
+) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
+    search_neural_ismcts_internal_v1(information_set, model, config, mode)
+}
+
+fn search_neural_ismcts_internal_v1(
+    information_set: &InformationSetV1,
+    model: &PolicyValueModelV1,
+    config: &NeuralIsmctsConfigV1,
+    mode: NeuralAblationModeV1,
+) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
     config.validate()?;
     let checkpoint_hash = model_checkpoint_hash_v1(model.checkpoint())
         .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
@@ -87,8 +110,10 @@ pub fn search_neural_ismcts_v1(
                 break terminal_values(&state, player_count)?;
             }
             if remaining_depth == 0 {
-                model_evaluations = checked_increment(model_evaluations)?;
-                break model_values(&state, model, player_count)?;
+                if mode.uses_learned_values() {
+                    model_evaluations = checked_increment(model_evaluations)?;
+                }
+                break evaluation_values(&state, model, player_count, mode)?;
             }
             let actor = state.current_player.index();
             let legal_actions = canonical_order(&state.legal_actions());
@@ -106,8 +131,10 @@ pub fn search_neural_ismcts_v1(
                         entry.into_mut()
                     }
                     Entry::Vacant(entry) => {
-                        model_evaluations = checked_increment(model_evaluations)?;
-                        let priors = model_priors(model, &observation, &legal_actions)?;
+                        if mode.uses_learned_priors() {
+                            model_evaluations = checked_increment(model_evaluations)?;
+                        }
+                        let priors = evaluation_priors(model, &observation, &legal_actions, mode)?;
                         entry.insert(TreeNode::new(legal_actions.clone(), priors, player_count)?)
                     }
                 };
@@ -135,8 +162,10 @@ pub fn search_neural_ismcts_v1(
                     terminal_evaluations = checked_increment(terminal_evaluations)?;
                     break terminal_values(&state, player_count)?;
                 }
-                model_evaluations = checked_increment(model_evaluations)?;
-                break model_values(&state, model, player_count)?;
+                if mode.uses_learned_values() {
+                    model_evaluations = checked_increment(model_evaluations)?;
+                }
+                break evaluation_values(&state, model, player_count, mode)?;
             }
         };
 
@@ -188,6 +217,45 @@ pub fn search_neural_ismcts_v1(
             terminal_evaluations,
         },
     ))
+}
+
+fn evaluation_priors(
+    model: &PolicyValueModelV1,
+    observation: &Observation,
+    legal_actions: &[Action],
+    mode: NeuralAblationModeV1,
+) -> Result<Vec<u32>, NeuralSearchError> {
+    if mode.uses_learned_priors() {
+        model_priors(model, observation, legal_actions)
+    } else {
+        uniform_priors(legal_actions.len())
+    }
+}
+
+fn uniform_priors(action_count: usize) -> Result<Vec<u32>, NeuralSearchError> {
+    if action_count == 0 {
+        return Err(NeuralSearchError::NoLegalActions);
+    }
+    let action_count_u32 =
+        u32::try_from(action_count).map_err(|_| NeuralSearchError::ArithmeticOverflow)?;
+    let base = NEURAL_VALUE_SCALE_V1 / action_count_u32;
+    let remainder = NEURAL_VALUE_SCALE_V1 % action_count_u32;
+    Ok((0..action_count_u32)
+        .map(|index| base + u32::from(index < remainder))
+        .collect())
+}
+
+fn evaluation_values(
+    state: &FullState,
+    model: &PolicyValueModelV1,
+    player_count: usize,
+    mode: NeuralAblationModeV1,
+) -> Result<Vec<u32>, NeuralSearchError> {
+    if mode.uses_learned_values() {
+        model_values(state, model, player_count)
+    } else {
+        Ok(vec![NEURAL_VALUE_SCALE_V1 / 2; player_count])
+    }
 }
 
 fn model_priors(
@@ -505,6 +573,100 @@ mod tests {
             "neutral first-play value must not collapse all visits onto one edge"
         );
         assert!(first.stats.model_evaluations > 0);
+    }
+
+    #[test]
+    fn full_ablation_mode_is_the_accepted_search_path() {
+        let model = model();
+        let information_set = information_set(2, 42);
+        let accepted = search_neural_ismcts_v1(&information_set, &model, &config(&model)).unwrap();
+        let diagnostic = search_neural_ismcts_ablation_v1(
+            &information_set,
+            &model,
+            &config(&model),
+            NeuralAblationModeV1::Full,
+        )
+        .unwrap();
+        assert_eq!(accepted, diagnostic);
+    }
+
+    #[test]
+    fn neutral_controls_are_deterministic_and_normalized() {
+        let model = model();
+        let information_set = information_set(2, 91);
+        let first = search_neural_ismcts_ablation_v1(
+            &information_set,
+            &model,
+            &config(&model),
+            NeuralAblationModeV1::Neutral,
+        )
+        .unwrap();
+        let second = search_neural_ismcts_ablation_v1(
+            &information_set,
+            &model,
+            &config(&model),
+            NeuralAblationModeV1::Neutral,
+        )
+        .unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first.stats.model_evaluations, 0);
+        assert_eq!(
+            first
+                .action_stats
+                .iter()
+                .map(|stats| stats.prior_micros)
+                .sum::<u32>(),
+            NEURAL_VALUE_SCALE_V1
+        );
+        let minimum = first
+            .action_stats
+            .iter()
+            .map(|stats| stats.prior_micros)
+            .min()
+            .unwrap();
+        let maximum = first
+            .action_stats
+            .iter()
+            .map(|stats| stats.prior_micros)
+            .max()
+            .unwrap();
+        assert!(maximum - minimum <= 1);
+        assert!(first.action_stats.iter().all(|stats| {
+            stats
+                .value_sum_by_player
+                .iter()
+                .all(|sum| *sum <= u64::from(stats.visits) * u64::from(NEURAL_VALUE_SCALE_V1))
+        }));
+    }
+
+    #[test]
+    fn component_controls_only_invoke_enabled_model_heads() {
+        let model = model();
+        let information_set = information_set(2, 73);
+        let value_only = search_neural_ismcts_ablation_v1(
+            &information_set,
+            &model,
+            &config(&model),
+            NeuralAblationModeV1::ValueOnly,
+        )
+        .unwrap();
+        let policy_only = search_neural_ismcts_ablation_v1(
+            &information_set,
+            &model,
+            &config(&model),
+            NeuralAblationModeV1::PolicyOnly,
+        )
+        .unwrap();
+        assert!(value_only.stats.model_evaluations > 0);
+        assert!(policy_only.stats.model_evaluations > 0);
+        assert_eq!(
+            value_only
+                .action_stats
+                .iter()
+                .map(|stats| stats.prior_micros)
+                .sum::<u32>(),
+            NEURAL_VALUE_SCALE_V1
+        );
     }
 
     #[test]
