@@ -144,6 +144,7 @@ fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
         value_target_agent_ids: vec![],
         min_policy_nll_relative_improvement_bps: None,
         min_value_mse_relative_improvement_bps: None,
+        value_updates_shared_encoder: None,
     };
     (dataset, config)
 }

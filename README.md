@@ -130,8 +130,8 @@ unchanged; M08 only adds the Arena/Agent binding.
 6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
 7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (accepted at `e5dfb95`)
 8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
-9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete; weak Value head is primary)
-10. M15B+: corrective data/value/search experiments on new non-formal seeds
+9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
+10. M15B: source-aware training plus prospective Policy-only screen (first candidate rejected 4–28; second data round in progress)
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -166,10 +166,13 @@ future appear only after an explicit Referee Reveal switch. See
 
 M14B bound all 64 formal M13 replays into a 3,905-frame diagnostic bundle.
 M15A exactly reproduced every candidate decision and found that `policy_only`
-was the strongest neural variant against recorded champion actions, while
-`value_only` was worse than neutral. The accepted M12 Value head is therefore
-the primary supported cause, with the small mixed-policy corpus as the data
-cause and the 64-simulation prior-dominated search as an amplifier. See
+was the strongest retrospective neural control, while `value_only` was worse
+than neutral. M15B then filtered Policy labels to the champion and enforced
+material offline gates: Policy passed, Value failed, but a new-seed Policy-only
+screen still lost 4–28. The current evidence therefore implicates both Policy
+generalization and Value quality, amplified by 64-simulation search. The next
+round isolates Policy representation from Value gradients and collects new
+champion-teacher trajectories; no rejected or diagnostic seed is reused. See
 `docs/m15-neural-degradation-diagnostic.md`.
 
 ## License

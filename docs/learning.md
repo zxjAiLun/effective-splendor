@@ -199,3 +199,20 @@ The first frozen M15B config uses only the determinization champion as Policy
 teacher, keeps both completed M10 policies as Value outcome sources, requires a
 15% Policy-NLL improvement and a 5% Value-MSE improvement, and does not use the
 M13 formal seeds.
+
+After the first Policy-only prospective screen failed, the same version-2
+contract gained one optional, hash-bound control:
+`value_updates_shared_encoder: false`. Value examples still update the Value
+head, but their loss cannot update or L2-decay the shared encoder. Examples
+selected for both heads update the encoder from Policy loss only. The setting
+is repeated in training/offline reports, and a unit test proves that changing
+Value-only targets changes Value parameters while leaving the encoder and
+Policy parameters byte-identical. Absence continues to preserve the accepted
+M12 and first M15B behavior.
+
+The second data round is frozen by
+`benchmarks/m15b-teacher-data-v2.league.json` and its complete replay list. It
+collects 128 new matches on seeds `950000..950063`; none overlap M13 formal or
+M15B diagnostic seeds. Only champion-owned actions may become Policy labels.
+The generated evaluation, dataset and checkpoints remain local and the data
+seeds are permanently excluded from later diagnostic or promotion evidence.

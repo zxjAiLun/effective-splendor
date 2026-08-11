@@ -264,6 +264,37 @@ fn checked_in_m15b_policy_only_diagnostic_is_frozen_and_valid() {
 }
 
 #[test]
+fn checked_in_m15b_teacher_collection_is_independent_and_complete() {
+    let benchmark_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../benchmarks");
+    let manifest: LeagueManifestV1 = serde_json::from_str(
+        &std::fs::read_to_string(benchmark_dir.join("m15b-teacher-data-v2.league.json")).unwrap(),
+    )
+    .unwrap();
+    let replay_list: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(benchmark_dir.join("m15b-teacher-data-v2.replay-list.json"))
+            .unwrap(),
+    )
+    .unwrap();
+
+    manifest.validate().unwrap();
+    let plan = manifest.evaluation_plan_v1().unwrap();
+    assert_eq!(manifest.game_seeds, (950_000..950_064).collect::<Vec<_>>());
+    assert_eq!(expand_schedule(&plan).unwrap().len(), 128);
+    assert!(manifest
+        .game_seeds
+        .iter()
+        .all(|seed| !(930_000..=940_015).contains(seed)));
+    let entries = replay_list["replays"].as_array().unwrap();
+    assert_eq!(entries.len(), 128);
+    assert_eq!(entries[0]["match_index"], 0);
+    assert_eq!(entries[127]["match_index"], 127);
+    assert_eq!(
+        replay_list["dataset_id"],
+        "m15b-champion-teacher-2026-08-12-v2"
+    );
+}
+
+#[test]
 fn league_manifest_publishes_canonical_evaluation_plan() {
     let dir = temp_dir("plan");
     write_json(&dir.join("league.json"), &manifest_json(101, "8", "1"));

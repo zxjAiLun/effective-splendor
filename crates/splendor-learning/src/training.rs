@@ -56,6 +56,10 @@ pub struct PolicyValueTrainingConfigV1 {
     pub min_policy_nll_relative_improvement_bps: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_value_mse_relative_improvement_bps: Option<u32>,
+    /// When false, Value loss may update the Value head but never the shared
+    /// encoder. Absent preserves the accepted M12 and first M15B behavior.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_updates_shared_encoder: Option<bool>,
 }
 
 impl PolicyValueTrainingConfigV1 {
@@ -119,6 +123,7 @@ impl PolicyValueTrainingConfigV1 {
                     || !self.value_target_agent_ids.is_empty()
                     || self.min_policy_nll_relative_improvement_bps.is_some()
                     || self.min_value_mse_relative_improvement_bps.is_some()
+                    || self.value_updates_shared_encoder.is_some()
                 {
                     return Err(invalid_config(
                         "source-aware fields require training_contract_version 2",
@@ -251,6 +256,8 @@ pub struct PolicyValueTrainingReportV1 {
     pub validation_head_metrics: Option<HeadOfflineMetricsV1>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub material_gate: Option<MaterialOfflineGateV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_updates_shared_encoder: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -274,6 +281,8 @@ pub struct OfflineEvaluationReportV1 {
     pub validation_head_metrics: Option<HeadOfflineMetricsV1>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub material_gate: Option<MaterialOfflineGateV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_updates_shared_encoder: Option<bool>,
 }
 
 pub fn training_config_hash_v1(
@@ -392,6 +401,7 @@ pub fn train_policy_value_v1(
             .training_contract_version
             .map(|_| validation_head_metrics),
         material_gate,
+        value_updates_shared_encoder: config.value_updates_shared_encoder,
     };
     Ok((checkpoint, report))
 }
@@ -469,6 +479,7 @@ pub fn evaluate_checkpoint_v1(
         train_head_metrics: None,
         validation_head_metrics: None,
         material_gate: None,
+        value_updates_shared_encoder: None,
     })
 }
 
@@ -538,6 +549,7 @@ pub fn evaluate_checkpoint_with_config_v1(
         train_head_metrics: Some(train_head_metrics),
         validation_head_metrics: Some(validation_head_metrics),
         material_gate,
+        value_updates_shared_encoder: config.value_updates_shared_encoder,
     })
 }
 
@@ -820,6 +832,7 @@ fn train_example(
     let player_count = example.observation.public.player_count as usize;
     let values = model.values(&hidden, player_count);
     let targets = value_targets(&example.final_ranks, player_count)?;
+    let value_updates_shared_encoder = config.value_updates_shared_encoder.unwrap_or(true);
 
     let mut d_logits = if update_policy {
         probabilities
@@ -849,7 +862,7 @@ fn train_example(
                     .fold(0.0, |sum, (weight, gradient)| sum + weight * gradient);
             }
         }
-        if update_value {
+        if update_value && value_updates_shared_encoder {
             for player in 0..player_count {
                 let error = values[player] - targets[player];
                 let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
@@ -894,15 +907,17 @@ fn train_example(
             parameters.value_bias[player] -= learning_rate * clip(d_logit);
         }
     }
-    for (unit, observation_gradient) in d_hidden.iter().enumerate().take(hidden_width) {
-        let d_pre_activation = observation_gradient * (1.0 - hidden[unit] * hidden[unit]);
-        for (feature, observation_value) in observation.iter().enumerate() {
-            let index = unit * OBSERVATION_FEATURES_V1 + feature;
-            let gradient =
-                d_pre_activation * observation_value + l2 * parameters.encoder_weights[index];
-            parameters.encoder_weights[index] -= learning_rate * clip(gradient);
+    if update_policy || (update_value && value_updates_shared_encoder) {
+        for (unit, observation_gradient) in d_hidden.iter().enumerate().take(hidden_width) {
+            let d_pre_activation = observation_gradient * (1.0 - hidden[unit] * hidden[unit]);
+            for (feature, observation_value) in observation.iter().enumerate() {
+                let index = unit * OBSERVATION_FEATURES_V1 + feature;
+                let gradient =
+                    d_pre_activation * observation_value + l2 * parameters.encoder_weights[index];
+                parameters.encoder_weights[index] -= learning_rate * clip(gradient);
+            }
+            parameters.encoder_bias[unit] -= learning_rate * clip(d_pre_activation);
         }
-        parameters.encoder_bias[unit] -= learning_rate * clip(d_pre_activation);
     }
     Ok(())
 }
@@ -1282,6 +1297,7 @@ mod tests {
             value_target_agent_ids: vec![],
             min_policy_nll_relative_improvement_bps: None,
             min_value_mse_relative_improvement_bps: None,
+            value_updates_shared_encoder: None,
         };
         (dataset, config)
     }
@@ -1335,6 +1351,51 @@ mod tests {
             report.validation_head_metrics
         );
         assert_eq!(offline.material_gate, report.material_gate);
+    }
+
+    #[test]
+    fn value_only_examples_cannot_change_policy_representation_when_isolated() {
+        let (dataset, mut config) = dataset_and_config();
+        config.training_contract_version = Some(2);
+        config.policy_teacher_agent_ids = vec!["teacher".into()];
+        config.value_target_agent_ids = vec!["rejected".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        config.value_updates_shared_encoder = Some(false);
+
+        let (baseline, report) = train_policy_value_v1(&dataset, &config).unwrap();
+        assert_eq!(report.value_updates_shared_encoder, Some(false));
+
+        let mut changed_targets = dataset.clone();
+        for example in &mut changed_targets.examples {
+            if example.source_id == "source-2" || example.source_id == "source-3" {
+                example.final_scores.reverse();
+                example.final_ranks.reverse();
+            }
+        }
+        config.expected_dataset_hash = training_dataset_hash_v1(&changed_targets).unwrap();
+        let (changed, _) = train_policy_value_v1(&changed_targets, &config).unwrap();
+
+        assert_eq!(
+            baseline.parameters.encoder_weights,
+            changed.parameters.encoder_weights
+        );
+        assert_eq!(
+            baseline.parameters.encoder_bias,
+            changed.parameters.encoder_bias
+        );
+        assert_eq!(
+            baseline.parameters.policy_bilinear,
+            changed.parameters.policy_bilinear
+        );
+        assert_eq!(
+            baseline.parameters.policy_action_bias,
+            changed.parameters.policy_action_bias
+        );
+        assert_ne!(
+            baseline.parameters.value_weights,
+            changed.parameters.value_weights
+        );
     }
 
     #[test]
