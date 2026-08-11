@@ -1,0 +1,13 @@
+{
+  "format": "effective-splendor-promotion-gate",
+  "version": 1,
+  "promotion_id": "m13-neural-ismcts-v1",
+  "candidate_agent_id": "neural-ismcts-s64-d2-c1500-m12v1",
+  "champion_agent_id": "determinization-s4-d1-n2000-v1",
+  "confidence_bps": 9500,
+  "min_completed_seed_blocks": 32,
+  "min_pairwise_score_lower_bound_bps": 5000,
+  "max_aborted_matches": 0,
+  "max_candidate_faults": 0,
+  "max_move_timeout_ms": 10000
+}

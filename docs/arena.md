@@ -71,6 +71,21 @@ M07-consistent root worlds, and shares observation/history-keyed tree nodes
 across simulations. All four deterministic budget flags are required. See
 `docs/ismcts.md` for algorithm semantics and v1 limitations.
 
+### `agent-neural-ismcts`
+
+```bash
+splendor agent-neural-ismcts \
+  --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json \
+  --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 \
+  --sample-seed 20260811 --simulations 64 \
+  --max-depth-turns 2 --puct-exploration-milli 1500
+```
+
+The M13 live policy strictly loads the M12 checkpoint before the protocol
+handshake and rejects any semantic hash mismatch. It preserves the Agent SDK
+player-view boundary and verifies the search root against the server-certified
+legal set. See `docs/neural-search.md`.
+
 ## Config schema
 
 `ArenaConfig` (`deny_unknown_fields`):

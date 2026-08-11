@@ -522,6 +522,8 @@ dependencies = [
  "splendor-ismcts-agent",
  "splendor-league",
  "splendor-learning",
+ "splendor-neural-agent",
+ "splendor-neural-search",
  "splendor-protocol",
  "splendor-replay",
  "splendor-search",
@@ -630,6 +632,31 @@ dependencies = [
  "splendor-core",
  "splendor-league",
  "splendor-replay",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-neural-agent"
+version = "0.1.0"
+dependencies = [
+ "splendor-agent",
+ "splendor-core",
+ "splendor-learning",
+ "splendor-neural-search",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-neural-search"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "splendor-belief",
+ "splendor-core",
+ "splendor-learning",
+ "splendor-search",
  "thiserror",
 ]
 

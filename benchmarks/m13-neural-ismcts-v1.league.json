@@ -1,0 +1,93 @@
+{
+  "format": "effective-splendor-league-manifest",
+  "version": 1,
+  "league_id": "m13-neural-ismcts-v1",
+  "lineup_id": "neural-ismcts-vs-root-determinization",
+  "agents": [
+    {
+      "id": "determinization-s4-d1-n2000-v1",
+      "role": "champion",
+      "policy_version": "root-determinization-v1",
+      "model_version": null,
+      "runtime_name": "effective-splendor-determinization-agent-v1",
+      "runtime_version": "1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-determinization",
+          "--sample-seed",
+          "20260810",
+          "--sample-count",
+          "4",
+          "--max-depth-turns",
+          "1",
+          "--max-nodes",
+          "2000"
+        ]
+      }
+    },
+    {
+      "id": "neural-ismcts-s64-d2-c1500-m12v1",
+      "role": "candidate",
+      "policy_version": "neural-ismcts-s64-d2-c1500-v1",
+      "model_version": "m12-policy-value-h32-v1@108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462",
+      "runtime_name": "effective-splendor-neural-ismcts-agent-v1",
+      "runtime_version": "1",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-neural-ismcts",
+          "--checkpoint",
+          "local-artifacts/m12-policy-value-v1-final/checkpoint.json",
+          "--checkpoint-hash",
+          "108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462",
+          "--sample-seed",
+          "20260811",
+          "--simulations",
+          "64",
+          "--max-depth-turns",
+          "2",
+          "--puct-exploration-milli",
+          "1500"
+        ]
+      }
+    }
+  ],
+  "game_seeds": [
+    930000,
+    930001,
+    930002,
+    930003,
+    930004,
+    930005,
+    930006,
+    930007,
+    930008,
+    930009,
+    930010,
+    930011,
+    930012,
+    930013,
+    930014,
+    930015,
+    930016,
+    930017,
+    930018,
+    930019,
+    930020,
+    930021,
+    930022,
+    930023,
+    930024,
+    930025,
+    930026,
+    930027,
+    930028,
+    930029,
+    930030,
+    930031
+  ],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 10000,
+  "shutdown_grace_ms": 2000
+}

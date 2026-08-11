@@ -34,12 +34,20 @@ splendor-replay ───────────────────► spl
                                       ▼
                               splendor-learning
                          (M12 offline Policy/Value)
+                                      │
+                                      ▼
+                         splendor-neural-search
+                         (M13 guided ISMCTS tree)
+                                      │
+                                      ▼
+                         splendor-neural-agent
+                         (live player-view policy)
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
-protocol, replay, arena, agent, eval, search, ISMCTS, and league layers.
-It also exposes M12 offline training/evaluation commands over
-`splendor-learning`.
+protocol, replay, arena, agent, eval, search, ISMCTS, league, learning, and
+neural-search layers. It exposes M12 offline training/evaluation and the M13
+checkpoint-bound live neural agent.
 Nothing depends on the CLI, and `splendor-eval` stays a model crate with no
 process or file I/O. `splendor-search` and `splendor-replay` remain independent
 and do not depend on each other; higher-level CLI and offline league tooling
@@ -114,6 +122,14 @@ Rules:
   trainer, versioned checkpoint, inference API, and source-level held-out
   evaluation. It does not depend on Arena, protocol, agents, ISMCTS, or the
   CLI, and it does not guide live search. See `docs/learning.md`.
+- **`splendor-neural-search` / `splendor-neural-agent`** (M13) load an exact
+  semantic M12 checkpoint, use its legal-action Policy probabilities as priors
+  and its 2–4 seat Value vector for leaf bootstrap, then select with an
+  integerized PUCT-like rule. Tree keys remain acting-player Observation plus
+  visible simulated history; model inference never accepts `FullState`. The
+  live policy independently matches the search root against the server's
+  certified legal set. This is a candidate layer and does not modify or
+  promote the frozen M10 agent. See `docs/neural-search.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 

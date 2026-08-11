@@ -1,6 +1,6 @@
-# Splendor AI Platform (M12 policy/value learning baseline)
+# Splendor AI Platform (M13 neural-guided search candidate)
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, and an offline supervised policy/value baseline.
+Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, and checkpoint-bound neural-guided search.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
 
@@ -22,6 +22,8 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-ismcts-agent` | Live player-view Arena policy for M10 search |
 | `splendor-league` | M11 league manifests and report/replay-bound player-view datasets |
 | `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
+| `splendor-neural-search` | M13 checkpoint-bound Policy-prior + vector-Value neural ISMCTS candidate |
+| `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 
 ## Quick start
@@ -42,6 +44,7 @@ cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
 cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-dir eval-output --replays replay-list.json --out dataset.json
 cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config benchmarks/m12-policy-value-v1.config.json --checkpoint local-artifacts/m12/checkpoint.json --report local-artifacts/m12/training-report.json
 cargo run -p splendor-cli -- evaluate-policy-value --dataset dataset.json --checkpoint local-artifacts/m12/checkpoint.json --out local-artifacts/m12/offline-eval.json
+cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -64,7 +67,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M12 slice)
+## Architecture (M13 slice)
 
 ```text
 splendor-core
@@ -76,6 +79,10 @@ splendor-core
 ├── splendor-ismcts
 │   └── splendor-ismcts-agent
 │       └── splendor-agent
+├── splendor-learning
+│   └── splendor-neural-search
+│       └── splendor-neural-agent
+│           └── splendor-agent
 ├── splendor-arena
 │   └── splendor-eval
 │       └── splendor-league
@@ -106,14 +113,14 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M10–M12 status and roadmap
+## M10–M13 status and roadmap
 
 1. M08: live player-view search agent (complete)
 2. M09: paired competitive evaluation and promotion gate v1 (complete)
 3. M10: observation-history ISMCTS v1 + live agent (implemented; formal promotion rejected)
 4. M11: league manifest + traceable player-view dataset v1 (accepted)
-5. M12: supervised player-view Policy + multiplayer vector Value baseline (implemented)
-6. M13: neural-guided search (not part of M12)
+5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
+6. M13: checkpoint-bound neural-guided ISMCTS + live agent (candidate implemented; formal promotion pending)
 7. M14+: Python/PyO3 and research UI
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
@@ -132,7 +139,11 @@ agent identity. M12 consumes only those player-view examples, uses a frozen
 source-level split, and emits a provenance-bound checkpoint plus independently
 recomputable offline metrics. Its Git-tracked formal result manifest pins the
 content hashes of the otherwise local model artifacts. It does not guide search
-or change the champion. See `docs/learning.md`.
+or change the champion. M13 binds that exact semantic checkpoint hash into a
+new player-view agent, using legal-action Policy priors and multiplayer Value
+bootstraps in deterministic integer PUCT-like selection. The frozen M10 agent
+and current champion remain unchanged until a formal gate passes. See
+`docs/learning.md` and `docs/neural-search.md`.
 
 ## License
 

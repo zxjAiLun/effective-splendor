@@ -14,6 +14,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde_json::Value;
 use splendor_arena::{ArenaOutcomeV1, ArenaReportV1};
+use splendor_learning::{
+    model_checkpoint_hash_v1, ModelParametersV1, PolicyValueCheckpointV1, ACTION_FEATURES_V1,
+    MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, POLICY_VALUE_CHECKPOINT_FORMAT,
+    POLICY_VALUE_CHECKPOINT_VERSION, REPRESENTATION_VERSION_V1,
+};
 use splendor_replay::{verify_replay, ReplayV1};
 
 /// Path to the CLI binary under test.
@@ -330,6 +335,39 @@ fn determinization_agent_runs_complete_live_matches_for_two_three_four_players()
     }
 }
 
+fn synthetic_checkpoint() -> PolicyValueCheckpointV1 {
+    let hidden = 4usize;
+    PolicyValueCheckpointV1 {
+        format: POLICY_VALUE_CHECKPOINT_FORMAT.into(),
+        version: POLICY_VALUE_CHECKPOINT_VERSION,
+        model_id: "m13-cli-test-model".into(),
+        representation_version: REPRESENTATION_VERSION_V1.into(),
+        observation_features: OBSERVATION_FEATURES_V1 as u32,
+        action_features: ACTION_FEATURES_V1 as u32,
+        hidden_features: hidden as u32,
+        max_players: MAX_PLAYERS_V1 as u8,
+        source_dataset_id: "m13-cli-test-dataset".into(),
+        source_dataset_hash: "11".repeat(32),
+        league_manifest_hash: "22".repeat(32),
+        evaluation_plan_hash: "33".repeat(32),
+        evaluation_report_hash: "44".repeat(32),
+        training_config_hash: "55".repeat(32),
+        trained_examples: 4,
+        validation_examples: 2,
+        validation_seed_modulus: 2,
+        validation_seed_remainder: 0,
+        epochs: 1,
+        parameters: ModelParametersV1 {
+            encoder_weights: vec![0.0; hidden * OBSERVATION_FEATURES_V1],
+            encoder_bias: vec![0.0; hidden],
+            policy_bilinear: vec![0.0; hidden * ACTION_FEATURES_V1],
+            policy_action_bias: vec![0.0; ACTION_FEATURES_V1],
+            value_weights: vec![0.0; MAX_PLAYERS_V1 * hidden],
+            value_bias: vec![0.0; MAX_PLAYERS_V1],
+        },
+    }
+}
+
 #[test]
 fn ismcts_agent_completes_a_live_player_view_match() {
     let dir = tmp_dir();
@@ -358,6 +396,80 @@ fn ismcts_agent_completes_a_live_player_view_match() {
         Some("effective-splendor-ismcts-agent-v1")
     );
     assert_eq!(report.agents[0].agent_version.as_deref(), Some("1"));
+}
+
+#[test]
+fn neural_ismcts_agent_loads_a_bound_checkpoint_and_completes() {
+    let dir = tmp_dir();
+    let checkpoint = synthetic_checkpoint();
+    let checkpoint_hash = model_checkpoint_hash_v1(&checkpoint).unwrap();
+    let checkpoint_path = dir.join("checkpoint.json");
+    write_file(
+        &dir,
+        "checkpoint.json",
+        &serde_json::to_string_pretty(&checkpoint).unwrap(),
+    );
+    let program = bin().to_string_lossy().into_owned();
+    let config = write_config(
+        &dir,
+        &serde_json::json!({
+            "game_id": "cli-neural-ismcts-vs-heuristic",
+            "seed": 56,
+            "handshake_timeout_ms": 10_000,
+            "move_timeout_ms": 10_000,
+            "shutdown_grace_ms": 2_000,
+            "agents": [
+                {
+                    "program": program,
+                    "args": [
+                        "agent-neural-ismcts",
+                        "--checkpoint", checkpoint_path.to_string_lossy(),
+                        "--checkpoint-hash", checkpoint_hash,
+                        "--sample-seed", "23",
+                        "--simulations", "8",
+                        "--max-depth-turns", "1",
+                        "--puct-exploration-milli", "1500"
+                    ]
+                },
+                { "program": program, "args": ["agent-heuristic", "--seed", "1002"] }
+            ]
+        }),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(
+        report.agents[0].agent_name.as_deref(),
+        Some("effective-splendor-neural-ismcts-agent-v1")
+    );
+    assert_eq!(report.agents[0].agent_version.as_deref(), Some("1"));
+}
+
+#[test]
+fn neural_ismcts_agent_rejects_checkpoint_mismatch_before_hello() {
+    let dir = tmp_dir();
+    let checkpoint_path = write_file(
+        &dir,
+        "checkpoint.json",
+        &serde_json::to_string_pretty(&synthetic_checkpoint()).unwrap(),
+    );
+    let output = Command::new(bin())
+        .arg("agent-neural-ismcts")
+        .arg("--checkpoint")
+        .arg(checkpoint_path)
+        .arg("--checkpoint-hash")
+        .arg("00".repeat(32))
+        .arg("--sample-seed")
+        .arg("23")
+        .arg("--simulations")
+        .arg("8")
+        .arg("--max-depth-turns")
+        .arg("1")
+        .arg("--puct-exploration-milli")
+        .arg("1500")
+        .output()
+        .expect("spawn neural agent");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty(), "must not publish protocol hello");
 }
 
 #[test]

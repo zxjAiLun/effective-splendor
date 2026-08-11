@@ -16,6 +16,8 @@ members = [
     "crates/splendor-ismcts-agent",
     "crates/splendor-league",
     "crates/splendor-learning",
+    "crates/splendor-neural-search",
+    "crates/splendor-neural-agent",
     "crates/splendor-cli",
 ]
 default-members = [
@@ -34,6 +36,8 @@ default-members = [
     "crates/splendor-ismcts-agent",
     "crates/splendor-league",
     "crates/splendor-learning",
+    "crates/splendor-neural-search",
+    "crates/splendor-neural-agent",
     "crates/splendor-cli",
 ]
 
@@ -60,6 +64,8 @@ splendor-ismcts = { path = "crates/splendor-ismcts" }
 splendor-ismcts-agent = { path = "crates/splendor-ismcts-agent" }
 splendor-league = { path = "crates/splendor-league" }
 splendor-learning = { path = "crates/splendor-learning" }
+splendor-neural-search = { path = "crates/splendor-neural-search" }
+splendor-neural-agent = { path = "crates/splendor-neural-agent" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

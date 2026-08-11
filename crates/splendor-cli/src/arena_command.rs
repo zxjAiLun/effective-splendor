@@ -34,11 +34,15 @@ use splendor_determinization_agent::run_determinization_agent_v1;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
+use splendor_learning::PolicyValueCheckpointV1;
+use splendor_neural_agent::run_neural_ismcts_agent_v1;
+use splendor_neural_search::NeuralIsmctsConfigV1;
 use splendor_search::SearchConfigV1;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
 /// rejected before any parse to bound accidental/hostile input.
 pub const MAX_ARENA_CONFIG_BYTES: u64 = 1024 * 1024;
+pub const MAX_POLICY_VALUE_CHECKPOINT_BYTES: u64 = 16 * 1024 * 1024;
 
 const RUN_MATCH_USAGE: &str = "\
 Usage: splendor run-match --config <arena-config.json> \
@@ -107,6 +111,24 @@ Options:
   --max-depth-turns <u8>    Simulation depth in completed turns, 1..=8.
   --exploration-bias <u64>  Integer confidence bonus, 0..=1000000000000.
   -h, --help                Print this help and exit 0.";
+
+const AGENT_NEURAL_ISMCTS_USAGE: &str = "\
+Usage: splendor agent-neural-ismcts --checkpoint <checkpoint.json> \
+--checkpoint-hash <sha256> --sample-seed <u64> --simulations <u32> \
+--max-depth-turns <u8> --puct-exploration-milli <u32>
+
+M13 player-view neural-guided information-set MCTS agent. The M12 checkpoint
+is strictly parsed, validated and matched to the required semantic hash before
+the protocol handshake. Model inference receives Observation only.
+
+Options:
+  --checkpoint <path>              M12 checkpoint JSON, <= 16 MiB.
+  --checkpoint-hash <sha256>       Required semantic checkpoint hash.
+  --sample-seed <u64>              Deterministic hidden-state sampler seed.
+  --simulations <u32>              Simulation budget, 1..=10000.
+  --max-depth-turns <u8>           Simulation depth in completed turns, 1..=8.
+  --puct-exploration-milli <u32>   PUCT constant x1000, 0..=100000.
+  -h, --help                       Print this help and exit 0.";
 
 /// A user-facing error while preparing or committing a `run-match`. `Display`
 /// yields the stable `error:` message body.
@@ -513,6 +535,64 @@ pub fn agent_ismcts(args: &[String]) -> i32 {
     }
 }
 
+/// Entry point for the live M13 checkpoint-bound neural search agent.
+pub fn agent_neural_ismcts(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_NEURAL_ISMCTS_USAGE);
+        return 0;
+    }
+    let parsed = match parse_agent_neural_ismcts_args(args) {
+        Ok(parsed) => parsed,
+        Err(message) => return print_agent_error(&message),
+    };
+    let checkpoint = match read_neural_checkpoint(&parsed.checkpoint) {
+        Ok(checkpoint) => checkpoint,
+        Err(message) => return print_agent_error(&message),
+    };
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    match run_neural_ismcts_agent_v1(
+        BufReader::new(stdin.lock()),
+        stdout.lock(),
+        stderr.lock(),
+        checkpoint,
+        parsed.config,
+    ) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
+fn print_agent_error(message: &str) -> i32 {
+    let mut stderr = io::stderr().lock();
+    let _ = writeln!(stderr, "error: {message}");
+    let _ = stderr.flush();
+    1
+}
+
+fn read_neural_checkpoint(path: &Path) -> Result<PolicyValueCheckpointV1, String> {
+    let file = File::open(path)
+        .map_err(|error| format!("cannot open checkpoint {}: {error}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_POLICY_VALUE_CHECKPOINT_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("cannot read checkpoint {}: {error}", path.display()))?;
+    if bytes.len() as u64 > MAX_POLICY_VALUE_CHECKPOINT_BYTES {
+        return Err(format!(
+            "checkpoint exceeds {MAX_POLICY_VALUE_CHECKPOINT_BYTES} bytes"
+        ));
+    }
+    let text = String::from_utf8(bytes).map_err(|_| "checkpoint is not valid UTF-8".to_string())?;
+    let mut deserializer = serde_json::Deserializer::from_str(&text);
+    let checkpoint = PolicyValueCheckpointV1::deserialize(&mut deserializer)
+        .map_err(|error| format!("invalid checkpoint: {error}"))?;
+    deserializer
+        .end()
+        .map_err(|_| "trailing data after checkpoint JSON".to_string())?;
+    Ok(checkpoint)
+}
+
 // ---------------------------------------------------------------------------
 // Strict argument parsing
 // ---------------------------------------------------------------------------
@@ -638,6 +718,56 @@ fn parse_agent_ismcts_args(args: &[String]) -> Result<IsmctsConfigV1, String> {
     Ok(config)
 }
 
+struct NeuralAgentArgs {
+    checkpoint: PathBuf,
+    config: NeuralIsmctsConfigV1,
+}
+
+fn parse_agent_neural_ismcts_args(args: &[String]) -> Result<NeuralAgentArgs, String> {
+    let mut checkpoint = None;
+    let mut checkpoint_hash = None;
+    let mut sample_seed = None;
+    let mut simulations = None;
+    let mut max_depth_turns = None;
+    let mut puct_exploration_milli = None;
+    let mut index = 0;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        match flag {
+            "--checkpoint" => set_flag(&mut checkpoint, flag, args.get(index + 1))?,
+            "--checkpoint-hash" => set_flag(&mut checkpoint_hash, flag, args.get(index + 1))?,
+            "--sample-seed" => set_flag(&mut sample_seed, flag, args.get(index + 1))?,
+            "--simulations" => set_flag(&mut simulations, flag, args.get(index + 1))?,
+            "--max-depth-turns" => set_flag(&mut max_depth_turns, flag, args.get(index + 1))?,
+            "--puct-exploration-milli" => {
+                set_flag(&mut puct_exploration_milli, flag, args.get(index + 1))?
+            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
+            other => return Err(format!("unexpected positional argument `{other}`")),
+        }
+        index += 2;
+    }
+    let config = NeuralIsmctsConfigV1 {
+        sample_seed: parse_required_number(sample_seed, "--sample-seed", "u64")?,
+        simulations: parse_required_number(simulations, "--simulations", "u32")?,
+        max_depth_turns: parse_required_number(max_depth_turns, "--max-depth-turns", "u8")?,
+        puct_exploration_milli: parse_required_number(
+            puct_exploration_milli,
+            "--puct-exploration-milli",
+            "u32",
+        )?,
+        expected_checkpoint_hash: checkpoint_hash
+            .ok_or_else(|| "missing required --checkpoint-hash".to_string())?,
+    };
+    config.validate().map_err(|error| error.to_string())?;
+    Ok(NeuralAgentArgs {
+        checkpoint: PathBuf::from(
+            checkpoint.ok_or_else(|| "missing required --checkpoint".to_string())?,
+        ),
+        config,
+    })
+}
+
 fn parse_required_number<T>(value: Option<String>, flag: &str, kind: &str) -> Result<T, String>
 where
     T: std::str::FromStr,
@@ -714,6 +844,35 @@ mod tests {
     /// A stand-in outcome; only its serialized bytes matter to these tests.
     fn sample_outcome() -> ArenaOutcomeV1 {
         ArenaOutcomeV1::aborted(0, ArenaPhase::Handshake, AgentFault::AgentIo, None, 0)
+    }
+
+    #[test]
+    fn neural_agent_parser_binds_checkpoint_and_all_search_budgets() {
+        let args = [
+            "--checkpoint",
+            "model.json",
+            "--checkpoint-hash",
+            &"11".repeat(32),
+            "--sample-seed",
+            "17",
+            "--simulations",
+            "64",
+            "--max-depth-turns",
+            "2",
+            "--puct-exploration-milli",
+            "1500",
+        ]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+        let parsed = parse_agent_neural_ismcts_args(&args).unwrap();
+        assert_eq!(parsed.checkpoint, PathBuf::from("model.json"));
+        assert_eq!(parsed.config.simulations, 64);
+        assert_eq!(parsed.config.puct_exploration_milli, 1_500);
+
+        let mut missing = args.clone();
+        missing.drain(2..4);
+        assert!(parse_agent_neural_ismcts_args(&missing).is_err());
     }
 
     /// A `Write` that fails on `write` (fail_flush=false) or on `flush`

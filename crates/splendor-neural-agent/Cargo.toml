@@ -1,0 +1,15 @@
+[package]
+name = "splendor-neural-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Live M13 neural-guided player-view Agent for the Splendor Arena"
+
+[dependencies]
+splendor-core = { workspace = true }
+splendor-agent = { workspace = true }
+splendor-search = { workspace = true }
+splendor-learning = { workspace = true }
+splendor-neural-search = { workspace = true }
+thiserror = { workspace = true }

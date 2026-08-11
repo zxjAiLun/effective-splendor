@@ -7,7 +7,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use splendor_arena::{seed_commitment_v1, AgentIdentity, ArenaOutcomeV1, ArenaReportV1};
 use splendor_core::{FullState, PlayerId, RulesetFingerprint};
 use splendor_eval::{
-    aggregate, expand_schedule, EvaluationMatchRecordV1, EvaluationMatchSpecV1, EvaluationPlanV1,
+    aggregate, expand_schedule, promotion_gate_hash_v1, EvaluationMatchRecordV1,
+    EvaluationMatchSpecV1, EvaluationPlanV1, PromotionGateV1,
 };
 use splendor_league::{
     league_manifest_hash_v1, LeagueManifestV1, TrainingDatasetV1, TRAINING_DATASET_FORMAT,
@@ -195,6 +196,42 @@ fn checked_in_m10_league_manifest_is_frozen_and_valid() {
     assert_eq!(
         league_manifest_hash_v1(&manifest).unwrap(),
         "3a8d3d779f0dc56d9284546af5a4552c2b3b15e3cdcd7a2e4908f3d006714ca6"
+    );
+}
+
+#[test]
+fn checked_in_m13_neural_candidate_inputs_are_frozen_and_valid() {
+    let benchmark_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../benchmarks");
+    let manifest: LeagueManifestV1 = serde_json::from_str(
+        &std::fs::read_to_string(benchmark_dir.join("m13-neural-ismcts-v1.league.json")).unwrap(),
+    )
+    .unwrap();
+    let gate: PromotionGateV1 = serde_json::from_str(
+        &std::fs::read_to_string(benchmark_dir.join("m13-neural-ismcts-v1.gate.json")).unwrap(),
+    )
+    .unwrap();
+
+    manifest.validate().unwrap();
+    gate.validate().unwrap();
+    let plan = manifest.evaluation_plan_v1().unwrap();
+    assert_eq!(manifest.game_seeds.len(), 32);
+    assert_eq!(expand_schedule(&plan).unwrap().len(), 64);
+    assert_eq!(gate.min_completed_seed_blocks, 32);
+    assert_eq!(gate.candidate_agent_id, manifest.agents[1].id);
+    assert_eq!(gate.champion_agent_id, manifest.agents[0].id);
+    assert_eq!(
+        manifest.agents[1].model_version.as_deref(),
+        Some(
+            "m12-policy-value-h32-v1@108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462"
+        )
+    );
+    assert_eq!(
+        league_manifest_hash_v1(&manifest).unwrap(),
+        "d43a15ce20bde451b8bb41b389a71eb136d1b4c07e7908e543c52bcf90841190"
+    );
+    assert_eq!(
+        promotion_gate_hash_v1(&gate).unwrap().as_str(),
+        "039d3ce342d6f1bdcc462b3e6c3cfde98f289391372a48be76b31edda6f97f2c"
     );
 }
 

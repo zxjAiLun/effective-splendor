@@ -93,6 +93,9 @@ fn main() {
             std::process::exit(arena_command::agent_determinization(&argv[2..]))
         }
         Some("agent-ismcts") => std::process::exit(arena_command::agent_ismcts(&argv[2..])),
+        Some("agent-neural-ismcts") => {
+            std::process::exit(arena_command::agent_neural_ismcts(&argv[2..]))
+        }
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("promotion-gate") => {
             std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))
