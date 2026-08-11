@@ -110,6 +110,9 @@ fn main() {
         Some("evaluate-policy-value") => {
             std::process::exit(learning_command::run_evaluate_policy_value(&argv[2..]))
         }
+        Some("evaluate-policy-value-source-aware") => std::process::exit(
+            learning_command::run_evaluate_policy_value_source_aware(&argv[2..]),
+        ),
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))
         }

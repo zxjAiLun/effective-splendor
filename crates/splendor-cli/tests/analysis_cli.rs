@@ -51,6 +51,7 @@ fn checkpoint() -> PolicyValueCheckpointV1 {
         evaluation_plan_hash: "33".repeat(32),
         evaluation_report_hash: "44".repeat(32),
         training_config_hash: "55".repeat(32),
+        training_contract_version: None,
         trained_examples: 4,
         validation_examples: 2,
         validation_seed_modulus: 2,

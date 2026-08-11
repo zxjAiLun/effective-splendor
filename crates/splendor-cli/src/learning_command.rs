@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use splendor_league::TrainingDatasetV1;
 use splendor_learning::{
-    evaluate_checkpoint_v1, train_policy_value_v1, PolicyValueCheckpointV1,
-    PolicyValueTrainingConfigV1,
+    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1, train_policy_value_v1,
+    PolicyValueCheckpointV1, PolicyValueTrainingConfigV1,
 };
 
 use crate::atomic_output;
@@ -31,6 +31,14 @@ Usage: splendor evaluate-policy-value --dataset <dataset.json> --checkpoint <che
 
 Recompute source-level train/validation metrics from a bound M12 checkpoint.
 The output is atomic and never overwrites an existing file.
+
+Exit codes: 0 success, 1 fatal; stdout is empty.";
+
+const EVALUATE_SOURCE_AWARE_USAGE: &str = "\
+Usage: splendor evaluate-policy-value-source-aware --dataset <dataset.json> --checkpoint <checkpoint.json> --config <config.json> --out <offline-eval.json>
+
+Recompute the exact M15B per-head source selection and material offline gates.
+The checkpoint must bind training_contract_version 2 and the supplied config.
 
 Exit codes: 0 success, 1 fatal; stdout is empty.";
 
@@ -87,6 +95,31 @@ pub fn run_evaluate_policy_value(args: &[String]) -> i32 {
             "policy/value checkpoint",
         )?;
         let report = evaluate_checkpoint_v1(&dataset, &checkpoint)
+            .map_err(|error| CommandError(error.to_string()))?;
+        let report_json = pretty_json(&report)?;
+        atomic_output::commit_single(&paths.out, &report_json)
+            .map_err(|error| CommandError(error.to_string()))
+    })
+}
+
+pub fn run_evaluate_policy_value_source_aware(args: &[String]) -> i32 {
+    run_command(|| {
+        if wants_help(args) {
+            print_stdout(EVALUATE_SOURCE_AWARE_USAGE);
+            return Ok(());
+        }
+        let paths = parse_source_aware_evaluate_args(args)?;
+        precheck_output(&paths.out)?;
+        let dataset: TrainingDatasetV1 =
+            read_json(&paths.dataset, MAX_DATASET_BYTES, "training dataset")?;
+        let checkpoint: PolicyValueCheckpointV1 = read_json(
+            &paths.checkpoint,
+            MAX_CHECKPOINT_BYTES,
+            "policy/value checkpoint",
+        )?;
+        let config: PolicyValueTrainingConfigV1 =
+            read_json(&paths.config, MAX_CONFIG_BYTES, "training config")?;
+        let report = evaluate_checkpoint_with_config_v1(&dataset, &checkpoint, &config)
             .map_err(|error| CommandError(error.to_string()))?;
         let report_json = pretty_json(&report)?;
         atomic_output::commit_single(&paths.out, &report_json)
@@ -196,6 +229,13 @@ struct EvaluatePaths {
     out: PathBuf,
 }
 
+struct SourceAwareEvaluatePaths {
+    dataset: PathBuf,
+    checkpoint: PathBuf,
+    config: PathBuf,
+    out: PathBuf,
+}
+
 fn parse_evaluate_args(args: &[String]) -> Result<EvaluatePaths, CommandError> {
     let mut dataset = None;
     let mut checkpoint = None;
@@ -211,6 +251,30 @@ fn parse_evaluate_args(args: &[String]) -> Result<EvaluatePaths, CommandError> {
     Ok(EvaluatePaths {
         dataset: required(dataset, "--dataset")?,
         checkpoint: required(checkpoint, "--checkpoint")?,
+        out: required(out, "--out")?,
+    })
+}
+
+fn parse_source_aware_evaluate_args(
+    args: &[String],
+) -> Result<SourceAwareEvaluatePaths, CommandError> {
+    let mut dataset = None;
+    let mut checkpoint = None;
+    let mut config = None;
+    let mut out = None;
+    parse_flags(
+        args,
+        &mut [
+            ("--dataset", &mut dataset),
+            ("--checkpoint", &mut checkpoint),
+            ("--config", &mut config),
+            ("--out", &mut out),
+        ],
+    )?;
+    Ok(SourceAwareEvaluatePaths {
+        dataset: required(dataset, "--dataset")?,
+        checkpoint: required(checkpoint, "--checkpoint")?,
+        config: required(config, "--config")?,
         out: required(out, "--out")?,
     })
 }

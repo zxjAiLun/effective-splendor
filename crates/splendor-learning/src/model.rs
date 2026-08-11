@@ -39,6 +39,10 @@ pub struct PolicyValueCheckpointV1 {
     pub evaluation_plan_hash: String,
     pub evaluation_report_hash: String,
     pub training_config_hash: String,
+    /// Absent for the accepted M12 contract. `Some(2)` marks a source-aware
+    /// M15B training contract and requires config-aware offline evaluation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub training_contract_version: Option<u32>,
     pub trained_examples: u64,
     pub validation_examples: u64,
     pub validation_seed_modulus: u32,
@@ -78,6 +82,14 @@ impl PolicyValueCheckpointV1 {
         validate_hash("evaluation_plan_hash", &self.evaluation_plan_hash)?;
         validate_hash("evaluation_report_hash", &self.evaluation_report_hash)?;
         validate_hash("training_config_hash", &self.training_config_hash)?;
+        if self
+            .training_contract_version
+            .is_some_and(|version| version != 2)
+        {
+            return Err(invalid_checkpoint(
+                "unsupported source-aware training contract version",
+            ));
+        }
         validate_label("source_dataset_id", &self.source_dataset_id)?;
         if self.trained_examples == 0 || self.validation_examples == 0 || self.epochs == 0 {
             return Err(invalid_checkpoint(
@@ -277,6 +289,7 @@ pub(crate) fn initialize_checkpoint(
         evaluation_plan_hash: String::new(),
         evaluation_report_hash: String::new(),
         training_config_hash: String::new(),
+        training_contract_version: None,
         trained_examples: 0,
         validation_examples: 0,
         validation_seed_modulus: 0,

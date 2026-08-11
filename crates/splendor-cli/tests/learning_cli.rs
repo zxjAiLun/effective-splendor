@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use splendor_core::{CardId, FullState, GameConfig, PlayerId};
 use splendor_league::{
-    training_dataset_hash_v1, TrainingDatasetV1, TrainingExampleV1, TrainingReplayV1,
-    TRAINING_DATASET_FORMAT, TRAINING_DATASET_VERSION,
+    training_dataset_hash_v1, TrainingAgentIdentityV1, TrainingDatasetV1, TrainingExampleV1,
+    TrainingReplayV1, TRAINING_DATASET_FORMAT, TRAINING_DATASET_VERSION,
 };
 use splendor_learning::{
     OfflineEvaluationReportV1, PolicyValueCheckpointV1, PolicyValueTrainingConfigV1,
@@ -84,7 +84,24 @@ fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
                 winners: vec![0],
                 reason: ReplayTerminalReason::PrestigeThreshold,
             },
-            agents_by_seat: Vec::new(),
+            agents_by_seat: vec![
+                TrainingAgentIdentityV1 {
+                    seat: PlayerId(0),
+                    league_agent_id: "teacher".into(),
+                    policy_version: "unit-policy".into(),
+                    model_version: None,
+                    runtime_name: "unit-runtime".into(),
+                    runtime_version: "1".into(),
+                },
+                TrainingAgentIdentityV1 {
+                    seat: PlayerId(1),
+                    league_agent_id: "other".into(),
+                    policy_version: "unit-policy".into(),
+                    model_version: None,
+                    runtime_name: "unit-runtime".into(),
+                    runtime_version: "1".into(),
+                },
+            ],
         });
         for ply in 0..2u32 {
             dataset.examples.push(TrainingExampleV1 {
@@ -122,6 +139,11 @@ fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
         init_seed: 9,
         validation_seed_modulus: 2,
         validation_seed_remainder: 0,
+        training_contract_version: None,
+        policy_teacher_agent_ids: vec![],
+        value_target_agent_ids: vec![],
+        min_policy_nll_relative_improvement_bps: None,
+        min_value_mse_relative_improvement_bps: None,
     };
     (dataset, config)
 }
@@ -208,6 +230,77 @@ fn provenance_mismatch_creates_no_outputs() {
     assert_eq!(output.status.code(), Some(1));
     assert!(!dir.join("checkpoint.json").exists());
     assert!(!dir.join("training-report.json").exists());
+}
+
+#[test]
+fn source_aware_training_requires_config_bound_offline_evaluation() {
+    let dir = temp_dir("source-aware");
+    let (dataset, mut config) = fixture();
+    config.training_contract_version = Some(2);
+    config.policy_teacher_agent_ids = vec!["teacher".into()];
+    config.value_target_agent_ids = vec!["teacher".into()];
+    config.min_policy_nll_relative_improvement_bps = Some(1);
+    config.min_value_mse_relative_improvement_bps = Some(1);
+    write_json(&dir.join("dataset.json"), &dataset);
+    write_json(&dir.join("config.json"), &config);
+    let train = run(
+        &[
+            "train-policy-value",
+            "--dataset",
+            "dataset.json",
+            "--config",
+            "config.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--report",
+            "training-report.json",
+        ],
+        &dir,
+    );
+    assert_eq!(train.status.code(), Some(0));
+
+    let legacy = run(
+        &[
+            "evaluate-policy-value",
+            "--dataset",
+            "dataset.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--out",
+            "legacy.json",
+        ],
+        &dir,
+    );
+    assert_eq!(legacy.status.code(), Some(1));
+    assert!(!dir.join("legacy.json").exists());
+
+    let source_aware = run(
+        &[
+            "evaluate-policy-value-source-aware",
+            "--dataset",
+            "dataset.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--config",
+            "config.json",
+            "--out",
+            "offline.json",
+        ],
+        &dir,
+    );
+    assert_eq!(
+        source_aware.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&source_aware.stderr)
+    );
+    let training: PolicyValueTrainingReportV1 =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("training-report.json")).unwrap())
+            .unwrap();
+    let offline: OfflineEvaluationReportV1 =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("offline.json")).unwrap()).unwrap();
+    assert_eq!(offline.head_split, training.head_split);
+    assert_eq!(offline.material_gate, training.material_gate);
 }
 
 #[test]

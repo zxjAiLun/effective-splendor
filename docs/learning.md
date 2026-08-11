@@ -162,3 +162,40 @@ different platform cannot reproduce it byte-for-byte.
 - No checkpoint is a champion and no M09 promotion gate applies to offline metrics.
 - Larger datasets/checkpoints require local or content-addressed artifact storage,
   not ordinary Git commits.
+
+## M15B source-aware training contract
+
+M15B contract version 2 keeps the accepted M12 JSON/hash behavior when its new
+fields are absent. When enabled, the config must explicitly name:
+
+- `policy_teacher_agent_ids`: only decisions made by these league agents are
+  Policy imitation labels;
+- `value_target_agent_ids`: only decisions owned by these agents contribute
+  terminal-rank Value targets;
+- material relative-improvement gates, in basis points, for Policy NLL versus
+  uniform and Value MSE versus the train-source prior.
+
+The actor identity is derived from the example's provenance-bound replay and
+seat, not from a caller-supplied label. Unknown and duplicate agent ids fail
+closed. Source-level train/validation splitting still happens before head
+selection, and both heads must retain non-empty examples on both sides.
+
+The checkpoint records `training_contract_version: 2`. The legacy offline
+evaluator rejects such a checkpoint because it cannot infer head selection from
+the checkpoint alone. Reproduction requires the exact config:
+
+```powershell
+cargo run -p splendor-cli -- evaluate-policy-value-source-aware `
+  --dataset <dataset.json> `
+  --checkpoint <checkpoint.json> `
+  --config benchmarks/m15b-source-aware-policy-value-v1.config.json `
+  --out <offline-eval.json>
+```
+
+Reports retain the M12 aggregate fields for compatibility and add exact
+per-head example counts/metrics plus a material gate. A failed material gate is
+recorded as evidence; it does not silently suppress or rewrite the checkpoint.
+The first frozen M15B config uses only the determinization champion as Policy
+teacher, keeps both completed M10 policies as Value outcome sources, requires a
+15% Policy-NLL improvement and a 5% Value-MSE improvement, and does not use the
+M13 formal seeds.

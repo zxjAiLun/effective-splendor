@@ -44,6 +44,18 @@ pub struct PolicyValueTrainingConfigV1 {
     pub init_seed: u64,
     pub validation_seed_modulus: u32,
     pub validation_seed_remainder: u32,
+    /// Absent preserves the accepted M12 behavior byte-for-byte. Version 2
+    /// enables explicit per-head source selection and material offline gates.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub training_contract_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub policy_teacher_agent_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub value_target_agent_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_policy_nll_relative_improvement_bps: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_value_mse_relative_improvement_bps: Option<u32>,
 }
 
 impl PolicyValueTrainingConfigV1 {
@@ -101,6 +113,39 @@ impl PolicyValueTrainingConfigV1 {
                 "validation split requires modulus >= 2 and remainder < modulus",
             ));
         }
+        match self.training_contract_version {
+            None => {
+                if !self.policy_teacher_agent_ids.is_empty()
+                    || !self.value_target_agent_ids.is_empty()
+                    || self.min_policy_nll_relative_improvement_bps.is_some()
+                    || self.min_value_mse_relative_improvement_bps.is_some()
+                {
+                    return Err(invalid_config(
+                        "source-aware fields require training_contract_version 2",
+                    ));
+                }
+            }
+            Some(2) => {
+                validate_agent_selection(
+                    "policy_teacher_agent_ids",
+                    &self.policy_teacher_agent_ids,
+                )?;
+                validate_agent_selection("value_target_agent_ids", &self.value_target_agent_ids)?;
+                validate_material_gate(
+                    "min_policy_nll_relative_improvement_bps",
+                    self.min_policy_nll_relative_improvement_bps,
+                )?;
+                validate_material_gate(
+                    "min_value_mse_relative_improvement_bps",
+                    self.min_value_mse_relative_improvement_bps,
+                )?;
+            }
+            Some(_) => {
+                return Err(invalid_config(
+                    "training_contract_version must be absent or 2",
+                ));
+            }
+        }
         Ok(())
     }
 }
@@ -124,6 +169,15 @@ pub struct DatasetSplitV1 {
     pub validation_replays: u64,
     pub train_examples: u64,
     pub validation_examples: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeadDatasetSplitV1 {
+    pub train_policy_examples: u64,
+    pub validation_policy_examples: u64,
+    pub train_value_examples: u64,
+    pub validation_value_examples: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -154,6 +208,29 @@ pub struct MetricComparisonV1 {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct HeadOfflineMetricsV1 {
+    pub policy_examples: u64,
+    pub policy_top1_accuracy: f64,
+    pub mean_policy_nll: f64,
+    pub value_examples: u64,
+    pub value_components: u64,
+    pub value_mse: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MaterialOfflineGateV1 {
+    pub min_policy_nll_relative_improvement_bps: u32,
+    pub actual_policy_nll_relative_improvement_bps: u32,
+    pub policy_passed: bool,
+    pub min_value_mse_relative_improvement_bps: u32,
+    pub actual_value_mse_relative_improvement_bps: u32,
+    pub value_passed: bool,
+    pub passed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PolicyValueTrainingReportV1 {
     pub format: String,
     pub version: u32,
@@ -166,6 +243,14 @@ pub struct PolicyValueTrainingReportV1 {
     pub train_metrics: OfflineMetricsV1,
     pub validation_metrics: OfflineMetricsV1,
     pub validation_comparison: MetricComparisonV1,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_split: Option<HeadDatasetSplitV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub train_head_metrics: Option<HeadOfflineMetricsV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_head_metrics: Option<HeadOfflineMetricsV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material_gate: Option<MaterialOfflineGateV1>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -181,6 +266,14 @@ pub struct OfflineEvaluationReportV1 {
     pub train_metrics: OfflineMetricsV1,
     pub validation_metrics: OfflineMetricsV1,
     pub validation_comparison: MetricComparisonV1,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_split: Option<HeadDatasetSplitV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub train_head_metrics: Option<HeadOfflineMetricsV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_head_metrics: Option<HeadOfflineMetricsV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub material_gate: Option<MaterialOfflineGateV1>,
 }
 
 pub fn training_config_hash_v1(
@@ -202,6 +295,8 @@ pub fn train_policy_value_v1(
         dataset,
         config.validation_seed_modulus,
         config.validation_seed_remainder,
+        &config.policy_teacher_agent_ids,
+        &config.value_target_agent_ids,
     )?;
     validate_config_binding(config, &prepared.identity)?;
     let config_hash = training_config_hash_v1(config)?;
@@ -216,6 +311,7 @@ pub fn train_policy_value_v1(
     checkpoint.evaluation_plan_hash = prepared.identity.evaluation_plan_hash.clone();
     checkpoint.evaluation_report_hash = prepared.identity.evaluation_report_hash.clone();
     checkpoint.training_config_hash = config_hash.clone();
+    checkpoint.training_contract_version = config.training_contract_version;
     checkpoint.trained_examples = prepared.train_indices.len() as u64;
     checkpoint.validation_examples = prepared.validation_indices.len() as u64;
     checkpoint.validation_seed_modulus = config.validation_seed_modulus;
@@ -224,25 +320,60 @@ pub fn train_policy_value_v1(
 
     let mut model = PolicyValueModelV1::from_checkpoint(checkpoint)?;
     let mut order = prepared.train_indices.clone();
+    let train_policy = prepared
+        .train_policy_indices
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>();
+    let train_value = prepared
+        .train_value_indices
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>();
     let mut rng = StableRng::new(config.init_seed ^ 0x6d31_325f_7368_7566);
     for _ in 0..config.epochs {
         stable_shuffle(&mut order, &mut rng);
         for &index in &order {
-            train_example(&mut model, &dataset.examples[index], config)?;
+            train_example(
+                &mut model,
+                &dataset.examples[index],
+                config,
+                train_policy.contains(&index),
+                train_value.contains(&index),
+            )?;
         }
     }
     model.checkpoint().validate()?;
     let checkpoint = model.checkpoint().clone();
     let checkpoint_hash = model_checkpoint_hash_v1(&checkpoint)?;
-    let priors = value_priors(dataset, &prepared.train_indices)?;
-    let train_metrics = metrics(&model, dataset, &prepared.train_indices)?;
-    let validation_metrics = metrics(&model, dataset, &prepared.validation_indices)?;
+    let priors = value_priors(dataset, &prepared.train_value_indices)?;
+    let train_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.train_policy_indices,
+        &prepared.train_value_indices,
+    )?;
+    let validation_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
+    )?;
+    let train_metrics = legacy_metrics(&train_head_metrics, prepared.train_indices.len());
+    let validation_metrics =
+        legacy_metrics(&validation_head_metrics, prepared.validation_indices.len());
     let validation_comparison = comparison(
         dataset,
-        &prepared.validation_indices,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
         &validation_metrics,
         &priors,
     )?;
+    let material_gate =
+        material_gate_from_metrics(config, &validation_metrics, &validation_comparison)?;
+    let head_split = config
+        .training_contract_version
+        .map(|_| prepared.head_split());
     let report = PolicyValueTrainingReportV1 {
         format: POLICY_VALUE_TRAINING_REPORT_FORMAT.into(),
         version: POLICY_VALUE_TRAINING_REPORT_VERSION,
@@ -255,6 +386,12 @@ pub fn train_policy_value_v1(
         train_metrics,
         validation_metrics,
         validation_comparison,
+        head_split,
+        train_head_metrics: config.training_contract_version.map(|_| train_head_metrics),
+        validation_head_metrics: config
+            .training_contract_version
+            .map(|_| validation_head_metrics),
+        material_gate,
     };
     Ok((checkpoint, report))
 }
@@ -264,10 +401,17 @@ pub fn evaluate_checkpoint_v1(
     checkpoint: &PolicyValueCheckpointV1,
 ) -> Result<OfflineEvaluationReportV1, LearningError> {
     checkpoint.validate()?;
+    if checkpoint.training_contract_version.is_some() {
+        return Err(invalid_checkpoint(
+            "source-aware checkpoint requires config-aware offline evaluation",
+        ));
+    }
     let prepared = PreparedDataset::new(
         dataset,
         checkpoint.validation_seed_modulus,
         checkpoint.validation_seed_remainder,
+        &[],
+        &[],
     )?;
     if checkpoint.source_dataset_id != prepared.identity.dataset_id
         || checkpoint.source_dataset_hash != prepared.identity.dataset_hash
@@ -287,12 +431,26 @@ pub fn evaluate_checkpoint_v1(
         ));
     }
     let model = PolicyValueModelV1::from_checkpoint(checkpoint.clone())?;
-    let priors = value_priors(dataset, &prepared.train_indices)?;
-    let train_metrics = metrics(&model, dataset, &prepared.train_indices)?;
-    let validation_metrics = metrics(&model, dataset, &prepared.validation_indices)?;
+    let priors = value_priors(dataset, &prepared.train_value_indices)?;
+    let train_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.train_policy_indices,
+        &prepared.train_value_indices,
+    )?;
+    let validation_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
+    )?;
+    let train_metrics = legacy_metrics(&train_head_metrics, prepared.train_indices.len());
+    let validation_metrics =
+        legacy_metrics(&validation_head_metrics, prepared.validation_indices.len());
     let validation_comparison = comparison(
         dataset,
-        &prepared.validation_indices,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
         &validation_metrics,
         &priors,
     )?;
@@ -307,6 +465,79 @@ pub fn evaluate_checkpoint_v1(
         train_metrics,
         validation_metrics,
         validation_comparison,
+        head_split: None,
+        train_head_metrics: None,
+        validation_head_metrics: None,
+        material_gate: None,
+    })
+}
+
+pub fn evaluate_checkpoint_with_config_v1(
+    dataset: &TrainingDatasetV1,
+    checkpoint: &PolicyValueCheckpointV1,
+    config: &PolicyValueTrainingConfigV1,
+) -> Result<OfflineEvaluationReportV1, LearningError> {
+    checkpoint.validate()?;
+    config.validate()?;
+    if checkpoint.training_contract_version != Some(2)
+        || config.training_contract_version != Some(2)
+        || checkpoint.training_config_hash != training_config_hash_v1(config)?
+    {
+        return Err(invalid_checkpoint(
+            "checkpoint does not match the supplied source-aware config",
+        ));
+    }
+    let prepared = PreparedDataset::new(
+        dataset,
+        config.validation_seed_modulus,
+        config.validation_seed_remainder,
+        &config.policy_teacher_agent_ids,
+        &config.value_target_agent_ids,
+    )?;
+    validate_config_binding(config, &prepared.identity)?;
+    validate_checkpoint_binding(checkpoint, &prepared)?;
+    let model = PolicyValueModelV1::from_checkpoint(checkpoint.clone())?;
+    let priors = value_priors(dataset, &prepared.train_value_indices)?;
+    let train_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.train_policy_indices,
+        &prepared.train_value_indices,
+    )?;
+    let validation_head_metrics = metrics_by_head(
+        &model,
+        dataset,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
+    )?;
+    let train_metrics = legacy_metrics(&train_head_metrics, prepared.train_indices.len());
+    let validation_metrics =
+        legacy_metrics(&validation_head_metrics, prepared.validation_indices.len());
+    let validation_comparison = comparison(
+        dataset,
+        &prepared.validation_policy_indices,
+        &prepared.validation_value_indices,
+        &validation_metrics,
+        &priors,
+    )?;
+    let material_gate =
+        material_gate_from_metrics(config, &validation_metrics, &validation_comparison)?;
+    let head_split = prepared.head_split();
+    Ok(OfflineEvaluationReportV1 {
+        format: OFFLINE_EVALUATION_FORMAT.into(),
+        version: OFFLINE_EVALUATION_VERSION,
+        model_id: checkpoint.model_id.clone(),
+        training_config_hash: checkpoint.training_config_hash.clone(),
+        checkpoint_hash: model_checkpoint_hash_v1(checkpoint)?,
+        dataset: prepared.identity,
+        split: prepared.split,
+        train_metrics,
+        validation_metrics,
+        validation_comparison,
+        head_split: Some(head_split),
+        train_head_metrics: Some(train_head_metrics),
+        validation_head_metrics: Some(validation_head_metrics),
+        material_gate,
     })
 }
 
@@ -315,6 +546,10 @@ struct PreparedDataset {
     split: DatasetSplitV1,
     train_indices: Vec<usize>,
     validation_indices: Vec<usize>,
+    train_policy_indices: Vec<usize>,
+    validation_policy_indices: Vec<usize>,
+    train_value_indices: Vec<usize>,
+    validation_value_indices: Vec<usize>,
 }
 
 impl PreparedDataset {
@@ -322,6 +557,8 @@ impl PreparedDataset {
         dataset: &TrainingDatasetV1,
         modulus: u32,
         remainder: u32,
+        policy_teacher_agent_ids: &[String],
+        value_target_agent_ids: &[String],
     ) -> Result<Self, LearningError> {
         if dataset.format != TRAINING_DATASET_FORMAT || dataset.version != TRAINING_DATASET_VERSION
         {
@@ -340,6 +577,8 @@ impl PreparedDataset {
             evaluation_report_hash: dataset.evaluation_report_hash.clone(),
         };
         let mut source_seed = HashMap::new();
+        let mut source_agents = HashMap::new();
+        let mut dataset_agent_ids = HashSet::new();
         let mut train_replays = 0u64;
         let mut validation_replays = 0u64;
         for replay in &dataset.replays {
@@ -352,27 +591,86 @@ impl PreparedDataset {
                     replay.source_id
                 )));
             }
+            source_agents.insert(replay.source_id.as_str(), replay.agents_by_seat.as_slice());
+            for agent in &replay.agents_by_seat {
+                dataset_agent_ids.insert(agent.league_agent_id.as_str());
+            }
             if replay.seed_index % modulus == remainder {
                 validation_replays += 1;
             } else {
                 train_replays += 1;
             }
         }
+        for selected in policy_teacher_agent_ids
+            .iter()
+            .chain(value_target_agent_ids)
+        {
+            if !dataset_agent_ids.contains(selected.as_str()) {
+                return Err(invalid_dataset(format!(
+                    "selected training agent `{selected}` is absent from the dataset"
+                )));
+            }
+        }
+        let policy_filter = policy_teacher_agent_ids.iter().collect::<HashSet<_>>();
+        let value_filter = value_target_agent_ids.iter().collect::<HashSet<_>>();
+        let select_all = policy_filter.is_empty() && value_filter.is_empty();
         let mut train_indices = Vec::new();
         let mut validation_indices = Vec::new();
+        let mut train_policy_indices = Vec::new();
+        let mut validation_policy_indices = Vec::new();
+        let mut train_value_indices = Vec::new();
+        let mut validation_value_indices = Vec::new();
         for (index, example) in dataset.examples.iter().enumerate() {
             validate_example(example, &source_seed)?;
             let seed = source_seed[example.source_id.as_str()];
-            if seed % modulus == remainder {
+            let (use_policy, use_value) = if select_all {
+                (true, true)
+            } else {
+                let agent = source_agents
+                    .get(example.source_id.as_str())
+                    .and_then(|agents| agents.get(example.actor.index()))
+                    .filter(|agent| agent.seat == example.actor)
+                    .ok_or_else(|| {
+                        invalid_dataset(format!(
+                            "example `{}` ply {} has no bound actor agent identity",
+                            example.source_id, example.ply
+                        ))
+                    })?;
+                (
+                    policy_filter.contains(&agent.league_agent_id),
+                    value_filter.contains(&agent.league_agent_id),
+                )
+            };
+            if !use_policy && !use_value {
+                continue;
+            }
+            let validation = seed % modulus == remainder;
+            if validation {
                 validation_indices.push(index);
+                if use_policy {
+                    validation_policy_indices.push(index);
+                }
+                if use_value {
+                    validation_value_indices.push(index);
+                }
             } else {
                 train_indices.push(index);
+                if use_policy {
+                    train_policy_indices.push(index);
+                }
+                if use_value {
+                    train_value_indices.push(index);
+                }
             }
         }
         if train_replays == 0
             || validation_replays == 0
             || train_indices.is_empty()
             || validation_indices.is_empty()
+            || train_policy_indices.is_empty()
+            || validation_policy_indices.is_empty()
+            || train_value_indices.is_empty()
+            || validation_value_indices.is_empty()
         {
             return Err(invalid_dataset(
                 "source-level split must produce non-empty train and validation sets",
@@ -391,7 +689,20 @@ impl PreparedDataset {
             split,
             train_indices,
             validation_indices,
+            train_policy_indices,
+            validation_policy_indices,
+            train_value_indices,
+            validation_value_indices,
         })
+    }
+
+    fn head_split(&self) -> HeadDatasetSplitV1 {
+        HeadDatasetSplitV1 {
+            train_policy_examples: self.train_policy_indices.len() as u64,
+            validation_policy_examples: self.validation_policy_indices.len() as u64,
+            train_value_examples: self.train_value_indices.len() as u64,
+            validation_value_examples: self.validation_value_indices.len() as u64,
+        }
     }
 }
 
@@ -407,6 +718,25 @@ fn validate_config_binding(
     {
         return Err(invalid_config(
             "expected dataset provenance does not match the supplied dataset",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_checkpoint_binding(
+    checkpoint: &PolicyValueCheckpointV1,
+    prepared: &PreparedDataset,
+) -> Result<(), LearningError> {
+    if checkpoint.source_dataset_id != prepared.identity.dataset_id
+        || checkpoint.source_dataset_hash != prepared.identity.dataset_hash
+        || checkpoint.league_manifest_hash != prepared.identity.league_manifest_hash
+        || checkpoint.evaluation_plan_hash != prepared.identity.evaluation_plan_hash
+        || checkpoint.evaluation_report_hash != prepared.identity.evaluation_report_hash
+        || checkpoint.trained_examples != prepared.train_indices.len() as u64
+        || checkpoint.validation_examples != prepared.validation_indices.len() as u64
+    {
+        return Err(invalid_checkpoint(
+            "checkpoint provenance/split does not match the source-aware dataset view",
         ));
     }
     Ok(())
@@ -468,7 +798,12 @@ fn train_example(
     model: &mut PolicyValueModelV1,
     example: &TrainingExampleV1,
     config: &PolicyValueTrainingConfigV1,
+    update_policy: bool,
+    update_value: bool,
 ) -> Result<(), LearningError> {
+    if !update_policy && !update_value {
+        return Err(invalid_config("training example has no enabled head"));
+    }
     let observation = encode_observation_v1(&example.observation)?;
     let actions = example
         .legal_actions
@@ -486,8 +821,14 @@ fn train_example(
     let values = model.values(&hidden, player_count);
     let targets = value_targets(&example.final_ranks, player_count)?;
 
-    let mut d_logits = probabilities;
-    d_logits[chosen] -= 1.0;
+    let mut d_logits = if update_policy {
+        probabilities
+    } else {
+        vec![0.0; actions.len()]
+    };
+    if update_policy {
+        d_logits[chosen] -= 1.0;
+    }
     let mut d_context = vec![0.0f32; ACTION_FEATURES_V1];
     for (coefficient, action) in d_logits.iter().zip(&actions) {
         for (target, feature) in d_context.iter_mut().zip(action) {
@@ -498,22 +839,27 @@ fn train_example(
     let mut d_hidden = vec![0.0f32; hidden_width];
     {
         let parameters = &model.checkpoint().parameters;
-        for (unit, hidden_gradient) in d_hidden.iter_mut().enumerate().take(hidden_width) {
-            let row = &parameters.policy_bilinear
-                [unit * ACTION_FEATURES_V1..(unit + 1) * ACTION_FEATURES_V1];
-            *hidden_gradient += row
-                .iter()
-                .zip(&d_context)
-                .fold(0.0, |sum, (weight, gradient)| sum + weight * gradient);
+        if update_policy {
+            for (unit, hidden_gradient) in d_hidden.iter_mut().enumerate().take(hidden_width) {
+                let row = &parameters.policy_bilinear
+                    [unit * ACTION_FEATURES_V1..(unit + 1) * ACTION_FEATURES_V1];
+                *hidden_gradient += row
+                    .iter()
+                    .zip(&d_context)
+                    .fold(0.0, |sum, (weight, gradient)| sum + weight * gradient);
+            }
         }
-        for player in 0..player_count {
-            let error = values[player] - targets[player];
-            let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
-                * values[player]
-                * (1.0 - values[player]);
-            let row = &parameters.value_weights[player * hidden_width..(player + 1) * hidden_width];
-            for (target, weight) in d_hidden.iter_mut().zip(row) {
-                *target += d_logit * weight;
+        if update_value {
+            for player in 0..player_count {
+                let error = values[player] - targets[player];
+                let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
+                    * values[player]
+                    * (1.0 - values[player]);
+                let row =
+                    &parameters.value_weights[player * hidden_width..(player + 1) * hidden_width];
+                for (target, weight) in d_hidden.iter_mut().zip(row) {
+                    *target += d_logit * weight;
+                }
             }
         }
     }
@@ -521,27 +867,32 @@ fn train_example(
     let learning_rate = config.learning_rate;
     let l2 = config.l2_weight;
     let parameters = &mut model.checkpoint_mut().parameters;
-    for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
-        for (feature, context_gradient) in d_context.iter().enumerate() {
-            let index = unit * ACTION_FEATURES_V1 + feature;
-            let gradient = hidden_value * context_gradient + l2 * parameters.policy_bilinear[index];
-            parameters.policy_bilinear[index] -= learning_rate * clip(gradient);
-        }
-    }
-    for (weight, gradient) in parameters.policy_action_bias.iter_mut().zip(&d_context) {
-        *weight -= learning_rate * clip(*gradient + l2 * *weight);
-    }
-    for player in 0..player_count {
-        let error = values[player] - targets[player];
-        let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
-            * values[player]
-            * (1.0 - values[player]);
+    if update_policy {
         for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
-            let index = player * hidden_width + unit;
-            let gradient = d_logit * hidden_value + l2 * parameters.value_weights[index];
-            parameters.value_weights[index] -= learning_rate * clip(gradient);
+            for (feature, context_gradient) in d_context.iter().enumerate() {
+                let index = unit * ACTION_FEATURES_V1 + feature;
+                let gradient =
+                    hidden_value * context_gradient + l2 * parameters.policy_bilinear[index];
+                parameters.policy_bilinear[index] -= learning_rate * clip(gradient);
+            }
         }
-        parameters.value_bias[player] -= learning_rate * clip(d_logit);
+        for (weight, gradient) in parameters.policy_action_bias.iter_mut().zip(&d_context) {
+            *weight -= learning_rate * clip(*gradient + l2 * *weight);
+        }
+    }
+    if update_value {
+        for player in 0..player_count {
+            let error = values[player] - targets[player];
+            let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
+                * values[player]
+                * (1.0 - values[player]);
+            for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
+                let index = player * hidden_width + unit;
+                let gradient = d_logit * hidden_value + l2 * parameters.value_weights[index];
+                parameters.value_weights[index] -= learning_rate * clip(gradient);
+            }
+            parameters.value_bias[player] -= learning_rate * clip(d_logit);
+        }
     }
     for (unit, observation_gradient) in d_hidden.iter().enumerate().take(hidden_width) {
         let d_pre_activation = observation_gradient * (1.0 - hidden[unit] * hidden[unit]);
@@ -556,16 +907,17 @@ fn train_example(
     Ok(())
 }
 
-fn metrics(
+fn metrics_by_head(
     model: &PolicyValueModelV1,
     dataset: &TrainingDatasetV1,
-    indices: &[usize],
-) -> Result<OfflineMetricsV1, LearningError> {
+    policy_indices: &[usize],
+    value_indices: &[usize],
+) -> Result<HeadOfflineMetricsV1, LearningError> {
     let mut correct = 0u64;
     let mut nll = 0.0f64;
     let mut value_squared_error = 0.0f64;
     let mut value_components = 0u64;
-    for &index in indices {
+    for &index in policy_indices {
         let example = &dataset.examples[index];
         let prediction = model.predict(&example.observation, &example.legal_actions)?;
         let chosen = example
@@ -590,6 +942,10 @@ fn metrics(
             correct += 1;
         }
         nll -= f64::from(prediction.policy[chosen].probability.max(1.0e-12)).ln();
+    }
+    for &index in value_indices {
+        let example = &dataset.examples[index];
+        let prediction = model.predict(&example.observation, &example.legal_actions)?;
         let targets = value_targets(
             &example.final_ranks,
             example.observation.public.player_count as usize,
@@ -600,12 +956,23 @@ fn metrics(
             value_components += 1;
         }
     }
-    Ok(OfflineMetricsV1 {
-        examples: indices.len() as u64,
-        policy_top1_accuracy: correct as f64 / indices.len() as f64,
-        mean_policy_nll: nll / indices.len() as f64,
+    Ok(HeadOfflineMetricsV1 {
+        policy_examples: policy_indices.len() as u64,
+        policy_top1_accuracy: correct as f64 / policy_indices.len() as f64,
+        mean_policy_nll: nll / policy_indices.len() as f64,
+        value_examples: value_indices.len() as u64,
+        value_components,
         value_mse: value_squared_error / value_components as f64,
     })
+}
+
+fn legacy_metrics(metrics: &HeadOfflineMetricsV1, union_examples: usize) -> OfflineMetricsV1 {
+    OfflineMetricsV1 {
+        examples: union_examples as u64,
+        policy_top1_accuracy: metrics.policy_top1_accuracy,
+        mean_policy_nll: metrics.mean_policy_nll,
+        value_mse: metrics.value_mse,
+    }
 }
 
 fn value_priors(dataset: &TrainingDatasetV1, indices: &[usize]) -> Result<[f64; 4], LearningError> {
@@ -633,16 +1000,20 @@ fn value_priors(dataset: &TrainingDatasetV1, indices: &[usize]) -> Result<[f64; 
 
 fn comparison(
     dataset: &TrainingDatasetV1,
-    indices: &[usize],
+    policy_indices: &[usize],
+    value_indices: &[usize],
     model_metrics: &OfflineMetricsV1,
     priors: &[f64; 4],
 ) -> Result<MetricComparisonV1, LearningError> {
     let mut uniform_nll = 0.0;
     let mut prior_squared_error = 0.0;
     let mut components = 0u64;
-    for &index in indices {
+    for &index in policy_indices {
         let example = &dataset.examples[index];
         uniform_nll += (example.legal_actions.len() as f64).ln();
+    }
+    for &index in value_indices {
+        let example = &dataset.examples[index];
         let player_count = example.observation.public.player_count as usize;
         for (player, target) in value_targets(&example.final_ranks, player_count)?
             .into_iter()
@@ -653,7 +1024,7 @@ fn comparison(
             components += 1;
         }
     }
-    uniform_nll /= indices.len() as f64;
+    uniform_nll /= policy_indices.len() as f64;
     let prior_mse = prior_squared_error / components as f64;
     let policy_better = model_metrics.mean_policy_nll < uniform_nll;
     let value_better = model_metrics.value_mse < prior_mse;
@@ -668,6 +1039,44 @@ fn comparison(
             TrainingOutcomeV1::BaselineNotBeaten
         },
     })
+}
+
+fn material_gate_from_metrics(
+    config: &PolicyValueTrainingConfigV1,
+    metrics: &OfflineMetricsV1,
+    comparison: &MetricComparisonV1,
+) -> Result<Option<MaterialOfflineGateV1>, LearningError> {
+    if config.training_contract_version.is_none() {
+        return Ok(None);
+    }
+    let min_policy = config
+        .min_policy_nll_relative_improvement_bps
+        .ok_or_else(|| invalid_config("missing Policy material gate"))?;
+    let min_value = config
+        .min_value_mse_relative_improvement_bps
+        .ok_or_else(|| invalid_config("missing Value material gate"))?;
+    let actual_policy =
+        relative_improvement_bps(comparison.uniform_policy_mean_nll, metrics.mean_policy_nll);
+    let actual_value =
+        relative_improvement_bps(comparison.train_prior_value_mse, metrics.value_mse);
+    let policy_passed = actual_policy >= min_policy;
+    let value_passed = actual_value >= min_value;
+    Ok(Some(MaterialOfflineGateV1 {
+        min_policy_nll_relative_improvement_bps: min_policy,
+        actual_policy_nll_relative_improvement_bps: actual_policy,
+        policy_passed,
+        min_value_mse_relative_improvement_bps: min_value,
+        actual_value_mse_relative_improvement_bps: actual_value,
+        value_passed,
+        passed: policy_passed && value_passed,
+    }))
+}
+
+fn relative_improvement_bps(baseline: f64, actual: f64) -> u32 {
+    if !baseline.is_finite() || !actual.is_finite() || baseline <= 0.0 || actual >= baseline {
+        return 0;
+    }
+    (((baseline - actual) / baseline * 10_000.0).floor() as u64).min(10_000) as u32
 }
 
 fn value_targets(ranks: &[u8], player_count: usize) -> Result<Vec<f32>, LearningError> {
@@ -699,6 +1108,29 @@ fn validate_hash(label: &str, value: &str) -> Result<(), LearningError> {
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
     {
         return Err(invalid_config(format!("{label} is not lowercase SHA-256")));
+    }
+    Ok(())
+}
+
+fn validate_agent_selection(label: &str, values: &[String]) -> Result<(), LearningError> {
+    if values.is_empty() {
+        return Err(invalid_config(format!("{label} must not be empty")));
+    }
+    let mut seen = HashSet::new();
+    for value in values {
+        validate_label(label, value)?;
+        if !seen.insert(value) {
+            return Err(invalid_config(format!("{label} contains a duplicate")));
+        }
+    }
+    Ok(())
+}
+
+fn validate_material_gate(label: &str, value: Option<u32>) -> Result<(), LearningError> {
+    if !matches!(value, Some(1..=10_000)) {
+        return Err(invalid_config(format!(
+            "{label} must be present and in 1..=10000"
+        )));
     }
     Ok(())
 }
@@ -742,7 +1174,9 @@ fn stable_shuffle(values: &mut [usize], rng: &mut StableRng) {
 #[cfg(test)]
 mod tests {
     use splendor_core::{FullState, GameConfig, PlayerId};
-    use splendor_league::{TrainingDatasetV1, TrainingExampleV1, TrainingReplayV1};
+    use splendor_league::{
+        TrainingAgentIdentityV1, TrainingDatasetV1, TrainingExampleV1, TrainingReplayV1,
+    };
 
     use super::*;
 
@@ -783,7 +1217,28 @@ mod tests {
                     winners: vec![0],
                     reason: splendor_replay::ReplayTerminalReason::PrestigeThreshold,
                 },
-                agents_by_seat: Vec::new(),
+                agents_by_seat: vec![
+                    TrainingAgentIdentityV1 {
+                        seat: PlayerId(0),
+                        league_agent_id: if seed_index < 2 {
+                            "teacher".into()
+                        } else {
+                            "rejected".into()
+                        },
+                        policy_version: "unit-policy".into(),
+                        model_version: None,
+                        runtime_name: "unit-runtime".into(),
+                        runtime_version: "1".into(),
+                    },
+                    TrainingAgentIdentityV1 {
+                        seat: PlayerId(1),
+                        league_agent_id: "other-seat".into(),
+                        policy_version: "unit-policy".into(),
+                        model_version: None,
+                        runtime_name: "unit-runtime".into(),
+                        runtime_version: "1".into(),
+                    },
+                ],
             });
             for ply in 0..4u32 {
                 let chosen = legal[(seed_index as usize + ply as usize) % legal.len()];
@@ -822,6 +1277,11 @@ mod tests {
             init_seed: 17,
             validation_seed_modulus: 2,
             validation_seed_remainder: 0,
+            training_contract_version: None,
+            policy_teacher_agent_ids: vec![],
+            value_target_agent_ids: vec![],
+            min_policy_nll_relative_improvement_bps: None,
+            min_value_mse_relative_improvement_bps: None,
         };
         (dataset, config)
     }
@@ -846,6 +1306,54 @@ mod tests {
         assert!(matches!(
             train_policy_value_v1(&dataset, &config),
             Err(LearningError::InvalidConfig(_))
+        ));
+    }
+
+    #[test]
+    fn source_aware_contract_filters_policy_and_recomputes_exact_gates() {
+        let (dataset, mut config) = dataset_and_config();
+        config.training_contract_version = Some(2);
+        config.policy_teacher_agent_ids = vec!["teacher".into()];
+        config.value_target_agent_ids = vec!["teacher".into(), "rejected".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        let (checkpoint, report) = train_policy_value_v1(&dataset, &config).unwrap();
+        assert_eq!(checkpoint.training_contract_version, Some(2));
+        let split = report.head_split.as_ref().unwrap();
+        assert_eq!(split.train_policy_examples, 4);
+        assert_eq!(split.validation_policy_examples, 4);
+        assert_eq!(split.train_value_examples, 8);
+        assert_eq!(split.validation_value_examples, 8);
+        assert!(report.material_gate.is_some());
+        assert!(evaluate_checkpoint_v1(&dataset, &checkpoint).is_err());
+
+        let offline = evaluate_checkpoint_with_config_v1(&dataset, &checkpoint, &config).unwrap();
+        assert_eq!(offline.head_split, report.head_split);
+        assert_eq!(offline.train_head_metrics, report.train_head_metrics);
+        assert_eq!(
+            offline.validation_head_metrics,
+            report.validation_head_metrics
+        );
+        assert_eq!(offline.material_gate, report.material_gate);
+    }
+
+    #[test]
+    fn source_aware_contract_rejects_unknown_or_duplicate_agents() {
+        let (dataset, mut config) = dataset_and_config();
+        config.training_contract_version = Some(2);
+        config.policy_teacher_agent_ids = vec!["missing".into()];
+        config.value_target_agent_ids = vec!["teacher".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        assert!(matches!(
+            train_policy_value_v1(&dataset, &config),
+            Err(LearningError::InvalidDataset(message)) if message.contains("absent")
+        ));
+
+        config.policy_teacher_agent_ids = vec!["teacher".into(), "teacher".into()];
+        assert!(matches!(
+            config.validate(),
+            Err(LearningError::InvalidConfig(message)) if message.contains("duplicate")
         ));
     }
 

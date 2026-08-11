@@ -25,9 +25,10 @@ pub use representation::{
     OBSERVATION_FEATURES_V1, REPRESENTATION_VERSION_V1,
 };
 pub use training::{
-    evaluate_checkpoint_v1, train_policy_value_v1, training_config_hash_v1, DatasetIdentityV1,
-    DatasetSplitV1, MetricComparisonV1, OfflineEvaluationReportV1, OfflineMetricsV1,
-    PolicyValueTrainingConfigV1, PolicyValueTrainingReportV1, TrainingOutcomeV1,
+    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1, train_policy_value_v1,
+    training_config_hash_v1, DatasetIdentityV1, DatasetSplitV1, HeadDatasetSplitV1,
+    HeadOfflineMetricsV1, MaterialOfflineGateV1, MetricComparisonV1, OfflineEvaluationReportV1,
+    OfflineMetricsV1, PolicyValueTrainingConfigV1, PolicyValueTrainingReportV1, TrainingOutcomeV1,
     OFFLINE_EVALUATION_FORMAT, OFFLINE_EVALUATION_VERSION, POLICY_VALUE_TRAINING_CONFIG_FORMAT,
     POLICY_VALUE_TRAINING_CONFIG_VERSION, POLICY_VALUE_TRAINING_REPORT_FORMAT,
     POLICY_VALUE_TRAINING_REPORT_VERSION,
