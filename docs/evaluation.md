@@ -239,6 +239,17 @@ observation-history ISMCTS candidate with the frozen M07 root-determinization
 champion across 32 seeds and both seat rotations. These files freeze inputs
 only; no promotion or strength result is checked in.
 
+### Fixed M13 candidate inputs and result
+
+`benchmarks/m13-neural-ismcts-v1.league.json` and
+`benchmarks/m13-neural-ismcts-v1.gate.json` freeze the checkpoint-bound neural
+candidate against the same determinization champion over 32 new seeds and both
+seat rotations. The 2026-08-11 formal run completed all 64 matches with zero
+aborts and zero candidate faults, but the candidate went 12–52 and the 95%
+lower bound was 0 bps, so the unchanged gate returned `reject`. Exact local
+artifact hashes are recorded in `docs/neural-search.md`; generated evaluation
+files remain outside Git.
+
 ### Performance observability boundary
 
 Arena report v1 records outcomes and fault classes but does not record per-move

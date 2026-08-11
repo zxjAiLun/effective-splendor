@@ -120,7 +120,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 3. M10: observation-history ISMCTS v1 + live agent (implemented; formal promotion rejected)
 4. M11: league manifest + traceable player-view dataset v1 (accepted)
 5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
-6. M13: checkpoint-bound neural-guided ISMCTS + live agent (candidate implemented; formal promotion pending)
+6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
 7. M14+: Python/PyO3 and research UI
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
@@ -141,8 +141,9 @@ recomputable offline metrics. Its Git-tracked formal result manifest pins the
 content hashes of the otherwise local model artifacts. It does not guide search
 or change the champion. M13 binds that exact semantic checkpoint hash into a
 new player-view agent, using legal-action Policy priors and multiplayer Value
-bootstraps in deterministic integer PUCT-like selection. The frozen M10 agent
-and current champion remain unchanged until a formal gate passes. See
+bootstraps in deterministic integer PUCT-like selection. Its frozen formal
+64-match gate completed with zero aborts/faults but rejected promotion, so the
+current determinization champion remains unchanged. See
 `docs/learning.md` and `docs/neural-search.md`.
 
 ## License
