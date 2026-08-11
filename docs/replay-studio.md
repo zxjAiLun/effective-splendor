@@ -12,6 +12,20 @@ AnalysisTraceV1
   = what one exact algorithm/checkpoint/config evaluated at every decision
 ```
 
+## Acceptance
+
+M14A v1 is formally accepted after one linear fix-forward repair:
+
+```text
+base implementation  e83d79e287955bc9dd0100441900a3624990a7e0
+repair / accepted    e5dfb959823614f24eaf1121d2afe71efa7c2a5a
+findings             P0 0 / P1 0 / P2 0
+```
+
+The repair closed semantic token-return labels, frozen catalog/referee-domain
+validation, and the Rust-to-browser runtime schema contract. No Repair 2 is
+required. M13's formal 12–52 rejection and champion status are unchanged.
+
 ## Generate a neural sidecar
 
 ```powershell

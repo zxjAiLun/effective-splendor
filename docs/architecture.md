@@ -137,7 +137,8 @@ Rules:
   live policy independently matches the search root against the server's
   certified legal set. This is a candidate layer and does not modify or
   promote the frozen M10 agent. See `docs/neural-search.md`.
-- **`splendor-analysis`** (M14A) fully verifies `ReplayV1`, projects each
+- **`splendor-analysis`** (M14A, accepted at `e5dfb95`) fully verifies
+  `ReplayV1`, projects each
   recorded actor's Observation/visible history, reruns an exact checkpoint-bound
   analyzer, and emits a strict `AnalysisTraceV1` sidecar. Default-safe
   `player_view` and referee-only hidden data are separate fields. The local

@@ -1,7 +1,7 @@
 # Effective Splendor Replay Studio
 
-Local M14A analysis viewer for verified Splendor replays. The browser performs
-no search and loads no model. Use the Rust CLI to generate a replay-bound
+Accepted M14A v1 analysis viewer for verified Splendor replays. The browser
+performs no search and loads no model. Use the Rust CLI to generate a replay-bound
 `AnalysisTraceV1`, then load the sidecar and its source `ReplayV1` through the
 file picker.
 

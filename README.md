@@ -70,7 +70,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M13 slice)
+## Architecture (M14A slice)
 
 ```text
 splendor-core
@@ -126,7 +126,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 4. M11: league manifest + traceable player-view dataset v1 (accepted)
 5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
 6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
-7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (implemented)
+7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (accepted at `e5dfb95`)
 8. M14B+: comparative analyzers, Python/PyO3, and broader research tooling
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
@@ -152,8 +152,10 @@ bootstraps in deterministic integer PUCT-like selection. Its frozen formal
 current determinization champion remains unchanged. See
 `docs/learning.md` and `docs/neural-search.md`.
 
-M14A keeps `ReplayV1` objective and writes analysis into a separate sidecar
-bound to the verified replay, exact checkpoint, and search config. Replay
+M14A is accepted at repair commit `e5dfb95` (base `e83d79e`) with independent
+re-review findings P0/P1/P2 all zero. It keeps `ReplayV1` objective and writes
+analysis into a separate sidecar bound to the verified replay, exact
+checkpoint, and search config. Replay
 Studio defaults to the recorded actor's Observation; hidden reserves and deck
 future appear only after an explicit Referee Reveal switch. See
 `docs/replay-studio.md`.
