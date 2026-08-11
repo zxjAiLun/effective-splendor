@@ -8,6 +8,8 @@ pub enum LearningError {
     InvalidDataset(String),
     #[error("invalid M12 checkpoint: {0}")]
     InvalidCheckpoint(String),
+    #[error("invalid M12 formal result: {0}")]
+    InvalidFormalResult(String),
     #[error("M12 serialization failed: {0}")]
     Serialization(String),
 }
@@ -22,4 +24,8 @@ pub(crate) fn invalid_dataset(message: impl Into<String>) -> LearningError {
 
 pub(crate) fn invalid_checkpoint(message: impl Into<String>) -> LearningError {
     LearningError::InvalidCheckpoint(message.into())
+}
+
+pub(crate) fn invalid_formal_result(message: impl Into<String>) -> LearningError {
+    LearningError::InvalidFormalResult(message.into())
 }

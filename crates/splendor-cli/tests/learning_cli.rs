@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use splendor_core::{FullState, GameConfig, PlayerId};
+use splendor_core::{CardId, FullState, GameConfig, PlayerId};
 use splendor_league::{
     training_dataset_hash_v1, TrainingDatasetV1, TrainingExampleV1, TrainingReplayV1,
     TRAINING_DATASET_FORMAT, TRAINING_DATASET_VERSION,
@@ -177,6 +177,7 @@ fn training_and_offline_evaluation_are_atomic_and_bound() {
     let offline: OfflineEvaluationReportV1 =
         serde_json::from_str(&std::fs::read_to_string(dir.join("offline.json")).unwrap()).unwrap();
     assert_eq!(offline.checkpoint_hash, training.checkpoint_hash);
+    assert_eq!(offline.training_config_hash, training.training_config_hash);
     assert_eq!(offline.validation_metrics, training.validation_metrics);
 
     let second = run(&train_args, &dir);
@@ -205,6 +206,38 @@ fn provenance_mismatch_creates_no_outputs() {
         &dir,
     );
     assert_eq!(output.status.code(), Some(1));
+    assert!(!dir.join("checkpoint.json").exists());
+    assert!(!dir.join("training-report.json").exists());
+}
+
+#[test]
+fn malformed_catalog_id_is_fatal_without_panic_or_outputs() {
+    let dir = temp_dir("bad-card-id");
+    let (mut dataset, mut config) = fixture();
+    dataset.examples[0].observation.public.market[0][0] = Some(CardId(255));
+    config.expected_dataset_hash = training_dataset_hash_v1(&dataset).unwrap();
+    write_json(&dir.join("dataset.json"), &dataset);
+    write_json(&dir.join("config.json"), &config);
+
+    let output = run(
+        &[
+            "train-policy-value",
+            "--dataset",
+            "dataset.json",
+            "--config",
+            "config.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--report",
+            "training-report.json",
+        ],
+        &dir,
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("outside the catalog"), "{stderr}");
+    assert!(!stderr.contains("panicked"), "{stderr}");
     assert!(!dir.join("checkpoint.json").exists());
     assert!(!dir.join("training-report.json").exists());
 }

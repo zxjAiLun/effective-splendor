@@ -1,5 +1,8 @@
-use splendor_catalog::{card, GemColor, CARD_COUNT, NOBLE_COUNT};
+use splendor_catalog::{card, CardId, GemColor, NobleId, CARD_COUNT, NOBLE_COUNT};
 use splendor_core::{Action, Gems, Observation, Phase};
+
+use crate::error::invalid_dataset;
+use crate::LearningError;
 
 /// Frozen M12 player-view representation identity.
 pub const REPRESENTATION_VERSION_V1: &str = "player-view-dense-v1";
@@ -9,7 +12,8 @@ pub const ACTION_FEATURES_V1: usize = 36;
 
 /// Encode only an [`Observation`]. Referee state, replay seed and hidden deck
 /// identities cannot enter this API by construction.
-pub fn encode_observation_v1(observation: &Observation) -> Vec<f32> {
+pub fn encode_observation_v1(observation: &Observation) -> Result<Vec<f32>, LearningError> {
+    validate_observation_v1(observation)?;
     let mut out = Vec::with_capacity(OBSERVATION_FEATURES_V1);
     out.push(1.0);
     one_hot(&mut out, observation.viewer.index(), MAX_PLAYERS_V1);
@@ -114,10 +118,11 @@ pub fn encode_observation_v1(observation: &Observation) -> Vec<f32> {
     }
 
     debug_assert_eq!(out.len(), OBSERVATION_FEATURES_V1);
-    out
+    Ok(out)
 }
 
-pub fn encode_action_v1(action: &Action) -> Vec<f32> {
+pub fn encode_action_v1(action: &Action) -> Result<Vec<f32>, LearningError> {
+    validate_action_v1(action)?;
     let mut out = vec![0.0; ACTION_FEATURES_V1];
     let (kind, take, give_back, tier, slot, noble) = match *action {
         Action::TakeTokens { take, give_back } => (0, take, give_back, None, None, None),
@@ -168,7 +173,144 @@ pub fn encode_action_v1(action: &Action) -> Vec<f32> {
             out[26 + noble] = 1.0;
         }
     }
-    out
+    Ok(out)
+}
+
+fn validate_observation_v1(observation: &Observation) -> Result<(), LearningError> {
+    let player_count = observation.public.player_count as usize;
+    if !(2..=MAX_PLAYERS_V1).contains(&player_count)
+        || observation.viewer.index() >= player_count
+        || observation.public.current_player.index() >= player_count
+        || observation.public.players.len() != player_count
+    {
+        return Err(invalid_dataset(
+            "observation has an invalid player/viewer shape",
+        ));
+    }
+    for (expected_seat, player) in observation.public.players.iter().enumerate() {
+        if player.id.index() != expected_seat
+            || player.reserved_count > 3
+            || player.public_reserved.len() > player.reserved_count as usize
+        {
+            return Err(invalid_dataset(
+                "observation has an invalid public player shape",
+            ));
+        }
+        validate_card_ids(player.public_reserved.iter().copied())?;
+        validate_card_ids(player.purchased.iter().copied())?;
+        validate_noble_ids(player.nobles.iter().copied())?;
+    }
+    for (tier_index, tier) in observation.public.market.iter().enumerate() {
+        for card_id in tier.iter().flatten() {
+            validate_card_id(*card_id)?;
+            if card(*card_id).tier.index() != tier_index {
+                return Err(invalid_dataset(
+                    "observation market card does not match its tier",
+                ));
+            }
+        }
+    }
+    validate_noble_ids(observation.public.nobles.iter().copied())?;
+    validate_noble_ids(observation.public.pending_nobles.iter().copied())?;
+    if observation.private.reserved.len() > 3 {
+        return Err(invalid_dataset(
+            "observation has more than three private reserved cards",
+        ));
+    }
+    let viewer = &observation.public.players[observation.viewer.index()];
+    if viewer.reserved_count as usize != observation.private.reserved.len() {
+        return Err(invalid_dataset(
+            "private reserved cards do not match the viewer's public count",
+        ));
+    }
+    for (expected_slot, reserved) in observation.private.reserved.iter().enumerate() {
+        validate_card_id(reserved.card)?;
+        if reserved.slot as usize != expected_slot || card(reserved.card).tier != reserved.tier {
+            return Err(invalid_dataset(
+                "private reserved card has an invalid slot or tier",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_action_v1(action: &Action) -> Result<(), LearningError> {
+    match *action {
+        Action::TakeTokens { take, give_back } => {
+            let colors = [take.white, take.blue, take.green, take.red, take.black];
+            let non_zero = colors.iter().filter(|value| **value != 0).count();
+            let total = colors.iter().map(|value| u16::from(*value)).sum::<u16>();
+            let valid_take = take.gold == 0
+                && ((non_zero == 1 && total == 2)
+                    || ((1..=3).contains(&non_zero)
+                        && total == non_zero as u16
+                        && colors.iter().all(|value| *value <= 1)));
+            if !valid_take || gems_total(give_back) > 3 {
+                return Err(invalid_dataset(
+                    "take_tokens action has an invalid token payload",
+                ));
+            }
+        }
+        Action::BuyMarket { slot, .. } | Action::ReserveMarket { slot, .. } if slot >= 4 => {
+            return Err(invalid_dataset("market action slot is out of range"));
+        }
+        Action::BuyReserved { slot } if slot >= 3 => {
+            return Err(invalid_dataset("reserved action slot is out of range"));
+        }
+        Action::ReserveMarket { give_back, .. } | Action::ReserveDeck { give_back, .. }
+            if gems_total(give_back) > 1 =>
+        {
+            return Err(invalid_dataset(
+                "reserve action has an invalid token return payload",
+            ));
+        }
+        Action::ChooseNoble { noble } => validate_noble_id(noble)?,
+        _ => {}
+    }
+    Ok(())
+}
+
+fn validate_card_ids(ids: impl Iterator<Item = CardId>) -> Result<(), LearningError> {
+    for id in ids {
+        validate_card_id(id)?;
+    }
+    Ok(())
+}
+
+fn validate_card_id(id: CardId) -> Result<(), LearningError> {
+    if id.index() >= CARD_COUNT {
+        return Err(invalid_dataset(format!(
+            "card id {} is outside the catalog",
+            id.index()
+        )));
+    }
+    Ok(())
+}
+
+fn validate_noble_ids(ids: impl Iterator<Item = NobleId>) -> Result<(), LearningError> {
+    for id in ids {
+        validate_noble_id(id)?;
+    }
+    Ok(())
+}
+
+fn validate_noble_id(id: NobleId) -> Result<(), LearningError> {
+    if id.index() >= NOBLE_COUNT {
+        return Err(invalid_dataset(format!(
+            "noble id {} is outside the catalog",
+            id.index()
+        )));
+    }
+    Ok(())
+}
+
+fn gems_total(gems: Gems) -> u16 {
+    [
+        gems.white, gems.blue, gems.green, gems.red, gems.black, gems.gold,
+    ]
+    .iter()
+    .map(|value| u16::from(*value))
+    .sum()
 }
 
 fn relative_seat(seat: usize, viewer: usize, player_count: usize) -> usize {
@@ -270,11 +412,11 @@ mod tests {
         let (state, _) = FullState::new(GameConfig::default()).unwrap();
         let observation = state.observation(PlayerId(0));
         assert_eq!(
-            encode_observation_v1(&observation).len(),
+            encode_observation_v1(&observation).unwrap().len(),
             OBSERVATION_FEATURES_V1
         );
         for action in state.legal_actions() {
-            assert_eq!(encode_action_v1(&action).len(), ACTION_FEATURES_V1);
+            assert_eq!(encode_action_v1(&action).unwrap().len(), ACTION_FEATURES_V1);
         }
     }
 
@@ -297,8 +439,30 @@ mod tests {
         right.players[0].reserved[0].card = replacement;
         right.decks[0][0] = original;
 
-        let left_features = encode_observation_v1(&left.observation(PlayerId(1)));
-        let right_features = encode_observation_v1(&right.observation(PlayerId(1)));
+        let left_features = encode_observation_v1(&left.observation(PlayerId(1))).unwrap();
+        let right_features = encode_observation_v1(&right.observation(PlayerId(1))).unwrap();
         assert_eq!(left_features, right_features);
+    }
+
+    #[test]
+    fn malformed_catalog_ids_and_action_slots_are_rejected() {
+        let (state, _) = FullState::new(GameConfig::default()).unwrap();
+        let mut observation = state.observation(PlayerId(0));
+        observation.public.market[0][0] = Some(CardId(255));
+        assert!(matches!(
+            encode_observation_v1(&observation),
+            Err(LearningError::InvalidDataset(_))
+        ));
+
+        assert!(matches!(
+            encode_action_v1(&Action::BuyReserved { slot: 3 }),
+            Err(LearningError::InvalidDataset(_))
+        ));
+        assert!(matches!(
+            encode_action_v1(&Action::ChooseNoble {
+                noble: NobleId(255)
+            }),
+            Err(LearningError::InvalidDataset(_))
+        ));
     }
 }

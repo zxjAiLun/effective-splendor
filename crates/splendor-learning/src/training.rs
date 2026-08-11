@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -174,6 +174,7 @@ pub struct OfflineEvaluationReportV1 {
     pub format: String,
     pub version: u32,
     pub model_id: String,
+    pub training_config_hash: String,
     pub checkpoint_hash: String,
     pub dataset: DatasetIdentityV1,
     pub split: DatasetSplitV1,
@@ -299,6 +300,7 @@ pub fn evaluate_checkpoint_v1(
         format: OFFLINE_EVALUATION_FORMAT.into(),
         version: OFFLINE_EVALUATION_VERSION,
         model_id: checkpoint.model_id.clone(),
+        training_config_hash: checkpoint.training_config_hash.clone(),
         checkpoint_hash: model_checkpoint_hash_v1(checkpoint)?,
         dataset: prepared.identity,
         split: prepared.split,
@@ -438,6 +440,17 @@ fn validate_example(
             example.source_id, example.ply
         )));
     }
+    encode_observation_v1(&example.observation)?;
+    let mut unique_actions = HashSet::new();
+    for action in &example.legal_actions {
+        encode_action_v1(action)?;
+        if !unique_actions.insert(action) {
+            return Err(invalid_dataset(format!(
+                "example `{}` ply {} has duplicate legal actions",
+                example.source_id, example.ply
+            )));
+        }
+    }
     if example
         .final_ranks
         .iter()
@@ -456,19 +469,19 @@ fn train_example(
     example: &TrainingExampleV1,
     config: &PolicyValueTrainingConfigV1,
 ) -> Result<(), LearningError> {
-    let observation = encode_observation_v1(&example.observation);
+    let observation = encode_observation_v1(&example.observation)?;
     let actions = example
         .legal_actions
         .iter()
         .map(encode_action_v1)
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, _>>()?;
     let chosen = example
         .legal_actions
         .iter()
         .position(|action| action == &example.chosen_action)
         .ok_or_else(|| invalid_dataset("chosen action disappeared during training"))?;
     let hidden = model.hidden(&observation);
-    let probabilities = model.policy_probabilities(&hidden, &actions);
+    let probabilities = model.policy_probabilities(&hidden, &actions)?;
     let player_count = example.observation.public.player_count as usize;
     let values = model.values(&hidden, player_count);
     let targets = value_targets(&example.final_ranks, player_count)?;

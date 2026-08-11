@@ -1,0 +1,40 @@
+{
+  "format": "effective-splendor-policy-value-formal-result",
+  "version": 1,
+  "result_id": "formal-m12-policy-value-2026-08-11-v1",
+  "formal_date": "2026-08-11",
+  "implementation_commit": "963019ece89a7912f81ce37dcb640eab726ffea8",
+  "dataset": {
+    "dataset_id": "formal-m10-evaluation-2026-08-11-v1",
+    "dataset_hash": "d60d2ddb6054bf32cd0c915f75d85bacdb62158414370e8e73efcfd65c7a7720",
+    "league_manifest_hash": "3a8d3d779f0dc56d9284546af5a4552c2b3b15e3cdcd7a2e4908f3d006714ca6",
+    "evaluation_plan_hash": "1975ff93701b04a3187cc86839b3d9d7dfd34960790a54919dfcae70922c3aeb",
+    "evaluation_report_hash": "bfe37aa341207f4e020a18bfb4abeaced9c7ef64b69e65cb3cf7960b70a172f8"
+  },
+  "training_config_hash": "a83f67b0adb9da4e2220dcdc429205be173b9efd47e8259bf8d23b6c24a2798a",
+  "checkpoint_hash": "108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462",
+  "checkpoint_file_sha256": "96af1f0e67c0f1f96c4b304eea813e06eaa80724aaea82143d84a96988383916",
+  "training_report_file_sha256": "f95fbb7eab1034a471c685de6e35c4538b056ce4c1597e4f7333c0a304a8e3fc",
+  "offline_eval_file_sha256": "3f8bd57460a8238749001e1966423d2429b5844ab0314ce914ca7dae10f617f3",
+  "split": {
+    "validation_seed_modulus": 4,
+    "validation_seed_remainder": 0,
+    "train_replays": 48,
+    "validation_replays": 16,
+    "train_examples": 2960,
+    "validation_examples": 996
+  },
+  "validation_metrics": {
+    "examples": 996,
+    "policy_top1_accuracy": 0.3232931726907631,
+    "mean_policy_nll": 2.3848185622323985,
+    "value_mse": 0.24670730509816985
+  },
+  "validation_comparison": {
+    "uniform_policy_mean_nll": 3.0542689667431726,
+    "train_prior_value_mse": 0.24858367729500558,
+    "policy_nll_beats_uniform": true,
+    "value_mse_beats_train_prior": true,
+    "outcome": "baselines_beaten"
+  }
+}

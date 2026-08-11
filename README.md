@@ -130,8 +130,9 @@ through the executed evaluation plan/report and canonical match index to a
 completed Arena report, strictly verified replay, and exact scheduled league
 agent identity. M12 consumes only those player-view examples, uses a frozen
 source-level split, and emits a provenance-bound checkpoint plus independently
-recomputable offline metrics. It does not guide search or change the champion.
-See `docs/learning.md`.
+recomputable offline metrics. Its Git-tracked formal result manifest pins the
+content hashes of the otherwise local model artifacts. It does not guide search
+or change the champion. See `docs/learning.md`.
 
 ## License
 

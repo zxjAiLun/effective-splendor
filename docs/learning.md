@@ -21,7 +21,8 @@ M11 provenance hashes and source metadata
 ```
 
 It has no dependency on replay reconstruction, Arena, Agent protocol, or
-search. `encode_observation_v1(&Observation)` is the only state encoder. A
+search. `encode_observation_v1(&Observation)` is the only state encoder and
+returns an error for malformed static catalog/player domains. A
 two-world test changes an opponent's blind-reserved card identity and requires
 the encoded features to remain byte-identical.
 
@@ -115,7 +116,13 @@ Outputs are strict, versioned JSON, published atomically without overwrite.
 For training, the checkpoint is published first and the report last as the
 commit marker. The checkpoint records dataset/upstream hashes, training config
 hash, split, dimensions, epochs and all parameters. Offline evaluation refuses
-a checkpoint whose provenance or split counts do not match the dataset.
+a checkpoint whose provenance or split counts do not match the dataset, and
+records the checkpoint's `training_config_hash` directly.
+
+Malformed catalog IDs, noble IDs and action slots are rejected as
+`InvalidDataset` before training begins. Inference also fails closed if a
+finite-but-extreme external checkpoint overflows into non-finite hidden values,
+policy logits, probabilities, or value predictions.
 
 ## First local smoke result
 
@@ -137,6 +144,14 @@ The same config was trained twice and produced identical checkpoint/report
 files. `evaluate-policy-value` independently reproduced the training report's
 held-out metrics. These numbers are evidence for this exact two-player dataset
 and split only; they are not a general strength or promotion claim.
+
+The Git-tracked formal identity anchor is
+`benchmarks/m12-policy-value-v1.result.json`. It binds the exact implementation
+commit, dataset/upstream roots, training config hash, semantic checkpoint hash,
+three local artifact file SHA-256 values, split and full held-out metrics. The
+large checkpoint/report/evaluation files remain local; the result manifest
+identifies which local checkpoint produced this formal result even where a
+different platform cannot reproduce it byte-for-byte.
 
 ## M12 limitations
 

@@ -5,11 +5,16 @@
 //! connect the learned model to M07/M10 search and never accepts `FullState`.
 
 mod error;
+mod formal_result;
 mod model;
 mod representation;
 mod training;
 
 pub use error::LearningError;
+pub use formal_result::{
+    FormalPolicyValueResultV1, FORMAL_POLICY_VALUE_RESULT_FORMAT,
+    FORMAL_POLICY_VALUE_RESULT_VERSION,
+};
 pub use model::{
     model_checkpoint_hash_v1, ModelParametersV1, PolicyActionProbabilityV1,
     PolicyValueCheckpointV1, PolicyValueModelV1, PolicyValuePredictionV1,

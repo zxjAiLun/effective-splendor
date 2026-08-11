@@ -140,13 +140,24 @@ impl PolicyValueModelV1 {
                 "observation has an invalid player/viewer shape",
             ));
         }
-        let hidden = self.hidden(&encode_observation_v1(observation));
+        let observation_features = encode_observation_v1(observation)?;
+        let hidden = self.hidden(&observation_features);
+        if hidden.iter().any(|value| !value.is_finite()) {
+            return Err(invalid_checkpoint(
+                "checkpoint produced a non-finite hidden representation",
+            ));
+        }
         let action_features = legal_actions
             .iter()
             .map(encode_action_v1)
-            .collect::<Vec<_>>();
-        let probabilities = self.policy_probabilities(&hidden, &action_features);
+            .collect::<Result<Vec<_>, _>>()?;
+        let probabilities = self.policy_probabilities(&hidden, &action_features)?;
         let values = self.values(&hidden, player_count);
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err(invalid_checkpoint(
+                "checkpoint produced a non-finite value prediction",
+            ));
+        }
         Ok(PolicyValuePredictionV1 {
             policy: legal_actions
                 .iter()
@@ -176,7 +187,11 @@ impl PolicyValueModelV1 {
         output
     }
 
-    pub(crate) fn policy_probabilities(&self, hidden: &[f32], actions: &[Vec<f32>]) -> Vec<f32> {
+    pub(crate) fn policy_probabilities(
+        &self,
+        hidden: &[f32],
+        actions: &[Vec<f32>],
+    ) -> Result<Vec<f32>, LearningError> {
         let context = self.policy_context(hidden);
         let mut logits = actions
             .iter()
@@ -190,8 +205,8 @@ impl PolicyValueModelV1 {
                     })
             })
             .collect::<Vec<_>>();
-        softmax_in_place(&mut logits);
-        logits
+        softmax_in_place(&mut logits)?;
+        Ok(logits)
     }
 
     pub(crate) fn policy_context(&self, hidden: &[f32]) -> Vec<f32> {
@@ -349,16 +364,32 @@ fn validate_label(label: &str, value: &str) -> Result<(), LearningError> {
     Ok(())
 }
 
-fn softmax_in_place(values: &mut [f32]) {
+fn softmax_in_place(values: &mut [f32]) -> Result<(), LearningError> {
+    if values.is_empty() || values.iter().any(|value| !value.is_finite()) {
+        return Err(invalid_checkpoint(
+            "checkpoint produced non-finite policy logits",
+        ));
+    }
     let max = values.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-    let mut sum = 0.0;
+    let mut sum = 0.0f32;
     for value in values.iter_mut() {
         *value = (*value - max).exp();
         sum += *value;
     }
+    if !sum.is_finite() || sum <= 0.0 {
+        return Err(invalid_checkpoint(
+            "checkpoint produced an invalid policy normalization",
+        ));
+    }
     for value in values {
         *value /= sum;
+        if !value.is_finite() {
+            return Err(invalid_checkpoint(
+                "checkpoint produced a non-finite policy probability",
+            ));
+        }
     }
+    Ok(())
 }
 
 pub(crate) fn sigmoid(value: f32) -> f32 {
@@ -395,4 +426,36 @@ impl SplitMix64 {
 
 fn random_vector(rng: &mut SplitMix64, length: usize, scale: f32) -> Vec<f32> {
     (0..length).map(|_| rng.symmetric_f32(scale)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use splendor_core::{FullState, GameConfig, PlayerId};
+
+    use super::*;
+
+    #[test]
+    fn extreme_finite_checkpoint_fails_closed_at_inference() {
+        let mut checkpoint = initialize_checkpoint("extreme-finite".into(), 2, 1);
+        checkpoint.source_dataset_id = "dataset".into();
+        checkpoint.source_dataset_hash = "11".repeat(32);
+        checkpoint.league_manifest_hash = "22".repeat(32);
+        checkpoint.evaluation_plan_hash = "33".repeat(32);
+        checkpoint.evaluation_report_hash = "44".repeat(32);
+        checkpoint.training_config_hash = "55".repeat(32);
+        checkpoint.trained_examples = 1;
+        checkpoint.validation_examples = 1;
+        checkpoint.validation_seed_modulus = 2;
+        checkpoint.validation_seed_remainder = 0;
+        checkpoint.epochs = 1;
+        checkpoint.parameters.encoder_weights.fill(0.0);
+        checkpoint.parameters.encoder_bias.fill(1.0);
+        checkpoint.parameters.policy_bilinear.fill(f32::MAX);
+        checkpoint.validate().unwrap();
+
+        let model = PolicyValueModelV1::from_checkpoint(checkpoint).unwrap();
+        let (state, _) = FullState::new(GameConfig::default()).unwrap();
+        let result = model.predict(&state.observation(PlayerId(0)), &state.legal_actions());
+        assert!(matches!(result, Err(LearningError::InvalidCheckpoint(_))));
+    }
 }
