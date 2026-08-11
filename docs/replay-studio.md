@@ -1,0 +1,100 @@
+# M14A Replay Studio v1
+
+M14A adds the first visual replay workflow without changing `ReplayV1` or any
+search result. It separates objective game history from a reproducible opinion
+about that history:
+
+```text
+ReplayV1
+  = what objectively happened
+
+AnalysisTraceV1
+  = what one exact algorithm/checkpoint/config evaluated at every decision
+```
+
+## Generate a neural sidecar
+
+```powershell
+cargo run -p splendor-cli -- analyze-replay-neural `
+  --input <match.replay.json> `
+  --checkpoint <checkpoint.json> `
+  --checkpoint-hash <semantic-sha256> `
+  --sample-seed 20260811 `
+  --simulations 64 `
+  --max-depth-turns 2 `
+  --puct-exploration-milli 1500 `
+  --out <match.m13.analysis.json>
+```
+
+The command strictly parses both inputs, validates the semantic checkpoint hash
+before replay analysis, verifies the complete replay once, analyzes every
+pre-action position, validates the complete trace, and atomically creates a
+no-overwrite sidecar.
+
+Each frame binds:
+
+- replay ply, before-state hash, actor, and recorded action;
+- replay document/final hash at trace level;
+- actor `Observation`, observation/history/information-set hashes;
+- canonical legal actions;
+- exact M13 result with Policy prior, visits and vector Value sums;
+- segregated referee reveal containing seed, remaining deck order, and all
+  blind-reserved identities;
+- model id, semantic checkpoint hash, and full neural search config.
+
+For an edge visited at least once, Replay Studio displays:
+
+```text
+Prior   = prior_micros / 1,000,000
+Visit   = visits / root_visits
+Q(Pn)   = value_sum_by_player[n] / visits / 1,000,000
+Delta Q = Q(action, actor) - Q(search_best, actor)
+```
+
+It does not repeat the M12 state Value across every action or mislabel M07/M10
+utilities as win probabilities.
+
+## Run the local viewer
+
+```powershell
+cd apps/replay-studio
+npm install
+npm run dev
+```
+
+Open the displayed local URL and select the analysis sidecar, optionally
+together with the source replay. Replay Studio structurally checks an attached
+replay against every frame. Cryptographic replay verification remains the Rust
+analyzer's responsibility; the browser is a read-only presentation layer.
+
+The main UI includes:
+
+- previous/next buttons, arrow-key navigation, and a full-ply timeline;
+- nobles, tier markets, deck counts, bank, players, tokens, bonuses and reserves;
+- action rows with actual/search-best markers, Prior, Visit, Q and Delta Q;
+- checkpoint/information-set provenance handles;
+- default **Player view** and explicit **Referee reveal**.
+
+Referee Reveal is intentionally not sticky across newly loaded files. It shows
+a warning before exposing opponent blind reserves and future deck order, to
+reduce hindsight bias while judging an Agent decision.
+
+## Real M13 smoke
+
+The accepted M12 checkpoint and formal M13 `match-000001.replay.json` produced
+a 60-frame sidecar with the frozen M13 s64/d2/c1.500 configuration in 0.329s on
+the local release build. The file is 2,471,625 bytes with SHA-256:
+
+```text
+346d8041717f352bce6699ca2013706b8667f8eddb2419bec421e42c39f0b527
+```
+
+It remains under ignored `local-artifacts/m14a-replay-studio-v1/`; generated
+replays, analysis traces, datasets, checkpoints and reports are not committed.
+
+## v1 boundary
+
+M14A v1 supports M13 neural traces. The schema is a sidecar rather than a
+Replay v2 change, so future M07/M10/M12/future-model analyzers can coexist as
+separate files. Cross-analyzer comparison is deliberately deferred until each
+analyzer has a typed, semantically honest metric adapter.

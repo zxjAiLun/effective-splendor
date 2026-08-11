@@ -470,6 +470,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "splendor-analysis"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "splendor-catalog",
+ "splendor-core",
+ "splendor-learning",
+ "splendor-neural-search",
+ "splendor-replay",
+ "splendor-search",
+ "thiserror",
+]
+
+[[package]]
 name = "splendor-arena"
 version = "0.1.0"
 dependencies = [
@@ -513,6 +530,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "splendor-agent",
+ "splendor-analysis",
  "splendor-arena",
  "splendor-core",
  "splendor-determinization-agent",

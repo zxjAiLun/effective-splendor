@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 
+mod analysis_command;
 mod arena_command;
 mod atomic_output;
 mod eval_command;
@@ -114,6 +115,9 @@ fn main() {
         Some("analyze-replay-player-view") => std::process::exit(
             imperfect_search_command::run_analyze_replay_player_view(&argv[2..]),
         ),
+        Some("analyze-replay-neural") => {
+            std::process::exit(analysis_command::run_analyze_replay_neural(&argv[2..]))
+        }
         _ => {}
     }
 

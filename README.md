@@ -1,6 +1,6 @@
-# Splendor AI Platform (M13 neural-guided search candidate)
+# Splendor AI Platform (M14A Replay Studio)
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, and checkpoint-bound neural-guided search.
+Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, checkpoint-bound neural search, and player-view-first replay analysis.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
 
@@ -24,7 +24,9 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
 | `splendor-neural-search` | M13 checkpoint-bound Policy-prior + vector-Value neural ISMCTS candidate |
 | `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
+| `splendor-analysis` | M14A replay-bound multi-ply neural traces and player/referee projections |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
+| `apps/replay-studio` | Local web viewer for board state, timeline, Prior/Visit/Q/ΔQ, and explicit referee reveal |
 
 ## Quick start
 
@@ -45,6 +47,7 @@ cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-d
 cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config benchmarks/m12-policy-value-v1.config.json --checkpoint local-artifacts/m12/checkpoint.json --report local-artifacts/m12/training-report.json
 cargo run -p splendor-cli -- evaluate-policy-value --dataset dataset.json --checkpoint local-artifacts/m12/checkpoint.json --out local-artifacts/m12/offline-eval.json
 cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500
+cargo run -p splendor-cli -- analyze-replay-neural --input match.replay.json --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --out match.analysis.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -83,6 +86,8 @@ splendor-core
 │   └── splendor-neural-search
 │       └── splendor-neural-agent
 │           └── splendor-agent
+│       └── splendor-analysis
+│           └── apps/replay-studio (JSON sidecar consumer)
 ├── splendor-arena
 │   └── splendor-eval
 │       └── splendor-league
@@ -121,7 +126,8 @@ unchanged; M08 only adds the Arena/Agent binding.
 4. M11: league manifest + traceable player-view dataset v1 (accepted)
 5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
 6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
-7. M14+: Python/PyO3 and research UI
+7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (implemented)
+8. M14B+: comparative analyzers, Python/PyO3, and broader research tooling
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -145,6 +151,12 @@ bootstraps in deterministic integer PUCT-like selection. Its frozen formal
 64-match gate completed with zero aborts/faults but rejected promotion, so the
 current determinization champion remains unchanged. See
 `docs/learning.md` and `docs/neural-search.md`.
+
+M14A keeps `ReplayV1` objective and writes analysis into a separate sidecar
+bound to the verified replay, exact checkpoint, and search config. Replay
+Studio defaults to the recorded actor's Observation; hidden reserves and deck
+future appear only after an explicit Referee Reveal switch. See
+`docs/replay-studio.md`.
 
 ## License
 

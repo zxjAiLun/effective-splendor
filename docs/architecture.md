@@ -42,12 +42,19 @@ splendor-replay ───────────────────► spl
                                       ▼
                          splendor-neural-agent
                          (live player-view policy)
+                                      │
+splendor-replay ───────────────► splendor-analysis
+                          (M14A verified sidecars)
+                                      │ JSON only
+                                      ▼
+                              Replay Studio
+                         (local player-view-first UI)
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
 protocol, replay, arena, agent, eval, search, ISMCTS, league, learning, and
 neural-search layers. It exposes M12 offline training/evaluation and the M13
-checkpoint-bound live neural agent.
+checkpoint-bound live neural agent, plus M14A replay-wide analysis sidecars.
 Nothing depends on the CLI, and `splendor-eval` stays a model crate with no
 process or file I/O. `splendor-search` and `splendor-replay` remain independent
 and do not depend on each other; higher-level CLI and offline league tooling
@@ -130,6 +137,12 @@ Rules:
   live policy independently matches the search root against the server's
   certified legal set. This is a candidate layer and does not modify or
   promote the frozen M10 agent. See `docs/neural-search.md`.
+- **`splendor-analysis`** (M14A) fully verifies `ReplayV1`, projects each
+  recorded actor's Observation/visible history, reruns an exact checkpoint-bound
+  analyzer, and emits a strict `AnalysisTraceV1` sidecar. Default-safe
+  `player_view` and referee-only hidden data are separate fields. The local
+  `apps/replay-studio` frontend consumes JSON only; it never loads a model or
+  runs search. See `docs/replay-studio.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 
