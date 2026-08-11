@@ -169,6 +169,38 @@ distinct runtime identity and cannot select `full`. This 32-match screen is a
 diagnostic experiment, not a promotion run; its seeds cannot later be reused
 as formal M15 promotion evidence.
 
+That screen completed once on 2026-08-12 from implementation commit `47168a4`:
+
+```text
+completed matches:              32 / 32
+candidate wins / ties / losses:  4 / 0 / 28
+candidate seat 0 / seat 1 wins:  1 / 3
+candidate score:              1250 bps
+diagnostic Hoeffding interval:   0 .. 4312 bps
+seed blocks 0 / 1 / 2 wins:     13 / 2 / 1
+aborts / candidate faults:       0 / 0
+```
+
+All match indices were exactly `0..31`, every Arena report was completed, all
+32 replays independently verified, and the schedule plus aggregate were
+recomputed from records. The local artifacts remain ignored. Their binding is
+recorded in `benchmarks/m15b-policy-only-diagnostic-v1.result.json`.
+
+This prospective result changes the causal emphasis. M15A remains correct that
+the accepted M12 Value head is weak, but removing learned Value is not enough:
+the new source-filtered Policy-only control still loses decisively from both
+seats. Its 12.5% point score is below M13's 18.75%, although the different seed
+sets and smaller sample mean those point estimates are not a paired comparison.
+The defensible conclusion is that both Policy generalization and Value quality
+are insufficient, with low-budget search amplifying them.
+
+One concrete limitation is now material: the v2 source contract filters Policy
+labels, but Policy and Value still share an encoder and Value examples update
+that encoder. The next controlled candidate must isolate Policy representation
+learning from Value gradients and use additional independent champion-teacher
+trajectories. Raising simulations, lowering gates, or reusing M13/M15B
+diagnostic seeds is not authorized.
+
 ## Status
 
 ```text
@@ -180,6 +212,7 @@ CURRENT_CHAMPION          determinization-s4-d1-n2000-v1
 M15B_SOURCE_AWARE_TRAINING IMPLEMENTED
 M15B_POLICY_GATE           PASS
 M15B_VALUE_GATE            FAIL / NOT LOWERED
-M15B_POLICY_ONLY_SCREEN    FROZEN / PENDING
+M15B_POLICY_ONLY_SCREEN    COMPLETE / FAIL (4-0-28)
 M15B_FULL_CANDIDATE        NOT AUTHORIZED
+M15B_NEXT                  NEW TEACHER DATA + ENCODER GRADIENT ISOLATION
 ```
