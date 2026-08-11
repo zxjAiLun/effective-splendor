@@ -16,4 +16,8 @@ pub enum AnalysisError {
     InvalidTrace(String),
     #[error("analysis serialization failed: {0}")]
     Serialization(String),
+    #[error("evaluation provenance failed: {0}")]
+    Evaluation(String),
+    #[error("invalid evaluation diagnostic: {0}")]
+    InvalidDiagnostic(String),
 }

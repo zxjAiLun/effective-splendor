@@ -1,4 +1,4 @@
-# Splendor AI Platform (M14A Replay Studio)
+# Splendor AI Platform (M14B / M15 Neural Diagnostics)
 
 Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, checkpoint-bound neural search, and player-view-first replay analysis.
 
@@ -24,7 +24,7 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
 | `splendor-neural-search` | M13 checkpoint-bound Policy-prior + vector-Value neural ISMCTS candidate |
 | `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
-| `splendor-analysis` | M14A replay-bound multi-ply neural traces and player/referee projections |
+| `splendor-analysis` | M14 replay-bound traces, formal-evaluation binding, and M15 neural ablation metrics |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 | `apps/replay-studio` | Local web viewer for board state, timeline, Prior/Visit/Q/ΔQ, and explicit referee reveal |
 
@@ -48,6 +48,7 @@ cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config 
 cargo run -p splendor-cli -- evaluate-policy-value --dataset dataset.json --checkpoint local-artifacts/m12/checkpoint.json --out local-artifacts/m12/offline-eval.json
 cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500
 cargo run -p splendor-cli -- analyze-replay-neural --input match.replay.json --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --out match.analysis.json
+cargo run -p splendor-cli -- diagnose-neural-evaluation --evaluation-dir eval-output --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --candidate-agent-id candidate --champion-agent-id champion --out-dir local-artifacts/diagnostic
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -70,7 +71,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M14A slice)
+## Architecture (M14B / M15 diagnostic slice)
 
 ```text
 splendor-core
@@ -118,7 +119,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M10–M13 status and roadmap
+## M10–M15 status and roadmap
 
 1. M08: live player-view search agent (complete)
 2. M09: paired competitive evaluation and promotion gate v1 (complete)
@@ -127,7 +128,9 @@ unchanged; M08 only adds the Arena/Agent binding.
 5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
 6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
 7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (accepted at `e5dfb95`)
-8. M14B+: comparative analyzers, Python/PyO3, and broader research tooling
+8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
+9. M15A: controlled Policy/Value/neutral search ablations (implemented; diagnosis pending publication)
+10. M15B+: corrective data/value/search experiments on new non-formal seeds
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A

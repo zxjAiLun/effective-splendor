@@ -45,6 +45,39 @@ before replay analysis, verifies the complete replay once, analyzes every
 pre-action position, validates the complete trace, and atomically creates a
 no-overwrite sidecar.
 
+## Batch evaluation diagnostic
+
+M14B can analyze a complete frozen evaluation without accepting arbitrary
+replay paths:
+
+```powershell
+cargo run -p splendor-cli -- diagnose-neural-evaluation `
+  --evaluation-dir <formal-evaluation-dir> `
+  --checkpoint <checkpoint.json> `
+  --checkpoint-hash <semantic-sha256> `
+  --sample-seed 20260811 `
+  --simulations 64 `
+  --max-depth-turns 2 `
+  --puct-exploration-milli 1500 `
+  --candidate-agent-id <candidate-id> `
+  --champion-agent-id <champion-id> `
+  --out-dir <new-diagnostic-dir>
+```
+
+The command re-aggregates `plan.json + eval-report.json`, requires the report
+to be canonical, derives every replay path from contiguous `match_index`, and
+binds seed, seat rotation, result, ply count and final replay hash before any
+analysis is published. It emits 64 replay sidecars under `matches/` and writes
+`diagnostic.json` last as the bundle completion marker. Existing output
+directories are rejected.
+
+The diagnostic reruns the accepted M13 `full` analysis and three M15 controls:
+uniform-prior learned-Value (`value_only`), learned-Policy neutral-Value
+(`policy_only`), and fully neutral search. It records integer agreement,
+coverage, prior, visit and Q aggregates separately for candidate and champion
+decision frames. Champion-action agreement is a behavioral reference, not an
+optimal-action label.
+
 Each frame binds:
 
 - replay ply, before-state hash, actor, and recorded action;
@@ -125,7 +158,8 @@ replays, analysis traces, datasets, checkpoints and reports are not committed.
 
 ## v1 boundary
 
-M14A v1 supports M13 neural traces. The schema is a sidecar rather than a
+M14A v1 supports M13 neural traces. M14B adds evaluation-wide provenance and
+controlled M15 aggregates without changing the trace schema. The schema is a sidecar rather than a
 Replay v2 change, so future M07/M10/M12/future-model analyzers can coexist as
 separate files. Cross-analyzer comparison is deliberately deferred until each
 analyzer has a typed, semantically honest metric adapter.

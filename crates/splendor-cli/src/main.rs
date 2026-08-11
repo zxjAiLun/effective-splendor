@@ -7,6 +7,7 @@ mod analysis_command;
 mod arena_command;
 mod atomic_output;
 mod eval_command;
+mod evaluation_analysis_command;
 mod imperfect_search_command;
 mod league_command;
 mod learning_command;
@@ -118,6 +119,9 @@ fn main() {
         Some("analyze-replay-neural") => {
             std::process::exit(analysis_command::run_analyze_replay_neural(&argv[2..]))
         }
+        Some("diagnose-neural-evaluation") => std::process::exit(
+            evaluation_analysis_command::run_diagnose_neural_evaluation(&argv[2..]),
+        ),
         _ => {}
     }
 
