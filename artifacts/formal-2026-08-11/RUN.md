@@ -124,4 +124,26 @@ must not replace the champion on the basis of this run.
 - Evaluation stdout and stderr logs are empty for both runs.
 - Artifact root at verification time: 269 files, 3,815,314 bytes.
 
-No training dataset was generated in this run.
+The evaluation commands themselves did not generate a training dataset. After
+the formal M10 evaluation had been archived unchanged, its complete 64-match
+corpus was used to derive the first formal M11 dataset.
+
+## M11 first formal dataset
+
+- Dataset id: `formal-m10-evaluation-2026-08-11-v1`
+- Source: all M10 canonical match indices `0..63`; no outcome filtering
+- Replay sources: 64 completed, 0 aborted
+- Examples: 3,956 total
+- `root-determinization-v1`: 1,978 examples
+- `observation-history-ismcts-v1`: 1,978 examples
+- League manifest hash: `3a8d3d779f0dc56d9284546af5a4552c2b3b15e3cdcd7a2e4908f3d006714ca6`
+- Evaluation plan hash: `1975ff93701b04a3187cc86839b3d9d7dfd34960790a54919dfcae70922c3aeb`
+- Evaluation report hash: `bfe37aa341207f4e020a18bfb4abeaced9c7ef64b69e65cb3cf7960b70a172f8`
+- Dataset file SHA-256: `2adfb8cb827fa0f2ac1be94d375e5449d3b89ed5ce4e679b9d438fd93af8fc03`
+- Dataset semantic hash v1: `d60d2ddb6054bf32cd0c915f75d85bacdb62158414370e8e73efcfd65c7a7720`
+- Independent validation: `PASS`
+
+The M10 promotion report remains archived as the valid `reject` conclusion but
+is not an input to the M11 dataset provenance chain. Full validation evidence
+and the rerunnable verifier are in `m11-dataset/VALIDATION.md` and
+`m11-dataset/verify-formal-dataset.mjs`.
