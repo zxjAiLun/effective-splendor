@@ -216,3 +216,16 @@ collects 128 new matches on seeds `950000..950063`; none overlap M13 formal or
 M15B diagnostic seeds. Only champion-owned actions may become Policy labels.
 The generated evaluation, dataset and checkpoints remain local and the data
 seeds are permanently excluded from later diagnostic or promotion evidence.
+
+The data run completed 125/128 matches. Matches `27`, `96`, and `109` were
+excluded because the determinization champion exceeded the frozen 10-second
+action deadline; the opponent caused zero faults. No match was rerun. All 125
+completed replays independently verified, and the dataset builder revalidated
+the canonical report and match provenance before producing 7,843 examples.
+The exact hashes and exclusion list are recorded in
+`benchmarks/m15b-teacher-data-v2.result.json`.
+
+`benchmarks/m15b-isolated-policy-value-v2.config.json` freezes the second
+training attempt before execution. Architecture, optimizer, initialization,
+source filters and offline gates remain identical to the first M15B attempt;
+only the new dataset binding and encoder-gradient isolation differ.

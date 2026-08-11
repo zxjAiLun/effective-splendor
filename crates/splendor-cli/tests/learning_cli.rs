@@ -335,3 +335,20 @@ fn malformed_catalog_id_is_fatal_without_panic_or_outputs() {
     assert!(!dir.join("checkpoint.json").exists());
     assert!(!dir.join("training-report.json").exists());
 }
+
+#[test]
+fn checked_in_m15b_isolated_config_is_source_bound_and_frozen() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../benchmarks/m15b-isolated-policy-value-v2.config.json");
+    let config: PolicyValueTrainingConfigV1 =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    config.validate().unwrap();
+    assert_eq!(config.training_contract_version, Some(2));
+    assert_eq!(config.value_updates_shared_encoder, Some(false));
+    assert_eq!(
+        config.expected_dataset_hash,
+        "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24"
+    );
+    assert_eq!(config.min_policy_nll_relative_improvement_bps, Some(1500));
+    assert_eq!(config.min_value_mse_relative_improvement_bps, Some(500));
+}

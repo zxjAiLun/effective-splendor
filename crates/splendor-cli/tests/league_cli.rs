@@ -275,6 +275,13 @@ fn checked_in_m15b_teacher_collection_is_independent_and_complete() {
             .unwrap(),
     )
     .unwrap();
+    let completed_replay_list: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            benchmark_dir.join("m15b-teacher-data-v2.completed-replay-list.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 
     manifest.validate().unwrap();
     let plan = manifest.evaluation_plan_v1().unwrap();
@@ -291,6 +298,18 @@ fn checked_in_m15b_teacher_collection_is_independent_and_complete() {
     assert_eq!(
         replay_list["dataset_id"],
         "m15b-champion-teacher-2026-08-12-v2"
+    );
+    let completed_entries = completed_replay_list["replays"].as_array().unwrap();
+    assert_eq!(completed_entries.len(), 125);
+    let completed_indices = completed_entries
+        .iter()
+        .map(|entry| entry["match_index"].as_u64().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        (0u64..128)
+            .filter(|index| ![27, 96, 109].contains(index))
+            .collect::<Vec<_>>(),
+        completed_indices
     );
 }
 

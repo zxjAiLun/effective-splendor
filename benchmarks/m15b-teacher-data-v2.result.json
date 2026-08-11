@@ -1,0 +1,45 @@
+{
+  "format": "effective-splendor-m15b-teacher-data-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "implementation_commit": "ef62d34",
+  "evaluation": {
+    "evaluation_id": "m15b-teacher-data-v2-champion-teacher-vs-ismcts-data-collection",
+    "league_manifest_hash": "1c1e3c8a377cdf02f3502e020f478812a71602e2cae1724a8f823e51e632178e",
+    "league_manifest_file_sha256": "c7049a535cd592fbde6344f948339be0f1e5a0033a2fa23998efe36025250838",
+    "evaluation_plan_hash": "80606d90e74dc9a1ac651c26ef58e7d25f187db4488919524e7512496b4531ff",
+    "evaluation_plan_file_sha256": "6f1f76f94acf6ae5a487f6f9e5044673a3d6a655dbab107cfebff839649bbdb2",
+    "evaluation_report_hash": "d8dc7ef18afdfd0445c90f4fc6b7964b61f669d2ef252b25643a92dc9a8bdd93",
+    "evaluation_report_file_sha256": "a4e5989435aef83d7639c392ce3e3026c21192d9b215d40f7e8ed8a769f0b8a0",
+    "scheduled_matches": 128,
+    "completed_matches": 125,
+    "aborted_matches": 3,
+    "champion_faults": 3,
+    "opponent_faults": 0,
+    "excluded_match_indices": [
+      27,
+      96,
+      109
+    ],
+    "exclusion_reason": "champion_action_timeout"
+  },
+  "dataset": {
+    "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+    "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+    "dataset_file_sha256": "5b71711e24b18ee19830ca187475cc4a21b54d535dc081c6514e71a96be252dd",
+    "planned_replay_list_file_sha256": "c2e299bd1dc7a0b0029531309deaf5810fa90463dd6e220042243b9a25479f77",
+    "completed_replay_list_file_sha256": "98c79400c1b6951b362d6e092981b1e68b284e1781a056114f70f9b6727c0b4c",
+    "replays": 125,
+    "examples": 7843,
+    "verified_replays": 125,
+    "aborted_sources_included": 0,
+    "builder_revalidated_canonical_report_and_match_provenance": true
+  },
+  "use_boundary": {
+    "policy_labels": "determinization_champion_only",
+    "value_sources": "both_completed_agents",
+    "formal_or_diagnostic_evidence": false,
+    "seeds_reserved_from_future_diagnostic_and_promotion": true,
+    "generated_artifacts_committed": false
+  }
+}
