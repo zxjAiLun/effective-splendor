@@ -7,3 +7,12 @@
 /fixtures/tmp/
 /.workbuddy/
 /handoff.md
+
+# Generated learning data and model artifacts stay local. The already tracked
+# formal-2026-08-11 evidence is a historical exception.
+/local-artifacts/
+/artifacts/**/*.dataset.json
+/artifacts/**/*.checkpoint.json
+/artifacts/**/*.model.json
+/artifacts/**/*.training-report.json
+/artifacts/**/*.offline-eval.json

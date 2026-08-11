@@ -521,6 +521,7 @@ dependencies = [
  "splendor-ismcts",
  "splendor-ismcts-agent",
  "splendor-league",
+ "splendor-learning",
  "splendor-protocol",
  "splendor-replay",
  "splendor-search",
@@ -614,6 +615,21 @@ dependencies = [
  "splendor-eval",
  "splendor-replay",
  "splendor-search",
+ "thiserror",
+]
+
+[[package]]
+name = "splendor-learning"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "splendor-catalog",
+ "splendor-core",
+ "splendor-league",
+ "splendor-replay",
  "thiserror",
 ]
 

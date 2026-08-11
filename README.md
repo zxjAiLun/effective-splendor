@@ -1,6 +1,6 @@
-# Splendor AI Platform (M10/M11 search and learning-data foundation)
+# Splendor AI Platform (M12 policy/value learning baseline)
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, and traceable player-view dataset generation.
+Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, and an offline supervised policy/value baseline.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
 
@@ -21,6 +21,7 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-ismcts` | M10 deterministic observation-history information-set tree search |
 | `splendor-ismcts-agent` | Live player-view Arena policy for M10 search |
 | `splendor-league` | M11 league manifests and report/replay-bound player-view datasets |
+| `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
 
 ## Quick start
@@ -39,6 +40,8 @@ cargo run -p splendor-cli -- agent-ismcts --sample-seed 17 --simulations 64 --ma
 cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
 cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
 cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-dir eval-output --replays replay-list.json --out dataset.json
+cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config benchmarks/m12-policy-value-v1.config.json --checkpoint local-artifacts/m12/checkpoint.json --report local-artifacts/m12/training-report.json
+cargo run -p splendor-cli -- evaluate-policy-value --dataset dataset.json --checkpoint local-artifacts/m12/checkpoint.json --out local-artifacts/m12/offline-eval.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -61,7 +64,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M10/M11 slice)
+## Architecture (M12 slice)
 
 ```text
 splendor-core
@@ -76,6 +79,7 @@ splendor-core
 ├── splendor-arena
 │   └── splendor-eval
 │       └── splendor-league
+│           └── splendor-learning
 ├── splendor-replay
 │   └── splendor-league
 └── splendor-cli
@@ -102,14 +106,15 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M10/M11 status and roadmap
+## M10–M12 status and roadmap
 
 1. M08: live player-view search agent (complete)
 2. M09: paired competitive evaluation and promotion gate v1 (complete)
-3. M10: observation-history ISMCTS v1 + live agent (implemented candidate)
-4. M11: league manifest + traceable player-view dataset v1 (implemented)
-5. M12–M13: policy-value model and neural-guided search
-6. M14+: Python/PyO3 and research UI
+3. M10: observation-history ISMCTS v1 + live agent (implemented; formal promotion rejected)
+4. M11: league manifest + traceable player-view dataset v1 (accepted)
+5. M12: supervised player-view Policy + multiplayer vector Value baseline (implemented)
+6. M13: neural-guided search (not part of M12)
+7. M14+: Python/PyO3 and research UI
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -123,9 +128,10 @@ observations and visible simulated history; its v1 pre-root opponent-history
 abstraction is documented in `docs/ismcts.md`. M11 binds every dataset source
 through the executed evaluation plan/report and canonical match index to a
 completed Arena report, strictly verified replay, and exact scheduled league
-policy/model identity before projecting actor-only examples. See
-`docs/league.md`. Neither the checked-in M10 matchup nor the new infrastructure
-is a promotion or measured strength claim until its frozen evaluation runs.
+agent identity. M12 consumes only those player-view examples, uses a frozen
+source-level split, and emits a provenance-bound checkpoint plus independently
+recomputable offline metrics. It does not guide search or change the champion.
+See `docs/learning.md`.
 
 ## License
 

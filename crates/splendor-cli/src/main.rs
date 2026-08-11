@@ -8,6 +8,7 @@ mod atomic_output;
 mod eval_command;
 mod imperfect_search_command;
 mod league_command;
+mod learning_command;
 mod promotion_command;
 mod search_command;
 use rand::rngs::SmallRng;
@@ -98,6 +99,12 @@ fn main() {
         }
         Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
+        Some("train-policy-value") => {
+            std::process::exit(learning_command::run_train_policy_value(&argv[2..]))
+        }
+        Some("evaluate-policy-value") => {
+            std::process::exit(learning_command::run_evaluate_policy_value(&argv[2..]))
+        }
         Some("analyze-replay") => {
             std::process::exit(search_command::run_analyze_replay(&argv[2..]))
         }

@@ -30,10 +30,16 @@ splendor-belief ──► splendor-ismcts ──► splendor-ismcts-agent
 splendor-arena ──► splendor-eval ──► splendor-league
 splendor-replay ───────────────────► splendor-league
                          (M11 plans + offline dataset projection)
+                                      │
+                                      ▼
+                              splendor-learning
+                         (M12 offline Policy/Value)
 ```
 
 The `splendor` CLI (`splendor-cli`) is the only binary front-end; it consumes
 protocol, replay, arena, agent, eval, search, ISMCTS, and league layers.
+It also exposes M12 offline training/evaluation commands over
+`splendor-learning`.
 Nothing depends on the CLI, and `splendor-eval` stays a model crate with no
 process or file I/O. `splendor-search` and `splendor-replay` remain independent
 and do not depend on each other; higher-level CLI and offline league tooling
@@ -102,6 +108,12 @@ Rules:
   report and match schedule, then offline-projects the bound Arena
   report/replay pairs into actor player-view examples. It never sends referee
   artifacts to an agent and performs no training. See `docs/league.md`.
+- **`splendor-learning`** (M12) accepts `TrainingDatasetV1`, never
+  `FullState`/replay, and implements the frozen player-view representation,
+  legal-action policy head, 2–4 seat value vector, deterministic supervised
+  trainer, versioned checkpoint, inference API, and source-level held-out
+  evaluation. It does not depend on Arena, protocol, agents, ISMCTS, or the
+  CLI, and it does not guide live search. See `docs/learning.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 
