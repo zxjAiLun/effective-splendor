@@ -146,7 +146,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 17. M18B: distributional Double-DQN / Rainbow-style RL (complete route; first smoke candidate rejected 1–7 vs heuristic)
 18. M19: internal championship complete (42/42, zero abort; provisional ranking, M07 champion unchanged)
 19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
-20. M21: optional external benchmark only after internal routes are measured
+20. M21: external benchmark decision complete; deferred until a new internal checkpoint clears the frozen multi-seed league/promotion gate
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A

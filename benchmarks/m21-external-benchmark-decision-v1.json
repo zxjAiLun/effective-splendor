@@ -1,0 +1,66 @@
+{
+  "format": "effective-splendor-m21-external-benchmark-decision",
+  "version": 1,
+  "decision_id": "m21-external-benchmark-decision-v1",
+  "decision_date": "2026-08-12",
+  "status": "complete_decision_deferred",
+  "scope": "1v1_only",
+  "prerequisites": {
+    "m17_own_gpu_model": {
+      "status": "complete_candidate_rejected",
+      "implementation_commit": "c41120385f3378c7223e44f9541131ddb40810dd",
+      "result_commit": "2c3563018d124cda510edb85279017db29af6ac4",
+      "result_path": "benchmarks/m17-gpu-supervised-warmstart-v1.result.json",
+      "result_file_sha256": "47d7ee0eafe04428813b0110c783f29f0d43f92b6d5c55e82af2f85ad57cc524"
+    },
+    "m18a_alpha_zero_like": {
+      "status": "complete_candidate_rejected",
+      "implementation_commit": "e179c1bc75a48bdb1c18ad9d360686b14cdeb705",
+      "result_path": "benchmarks/m18a-neural-self-play-smoke-v1.result.json",
+      "result_file_sha256": "1a928e76dd4773e80b5a876008e8ba6ed017b3255d8783bee2cace3b32e171d4"
+    },
+    "m18b_rainbow": {
+      "status": "complete_candidate_rejected",
+      "implementation_commit": "d1bb1828cbbda048cffc988086eac94d6d9b7d55",
+      "result_path": "benchmarks/m18b-rainbow-smoke-v1.result.json",
+      "result_file_sha256": "9037533c049a5aed6de57e2072012d883bb7158910c01bdafdd92145ce3517ec"
+    },
+    "m19_internal_championship": {
+      "status": "complete_provisional",
+      "result_commit": "1841413c78a181c6aabd81b085a2fe0dc1eebb81",
+      "result_path": "benchmarks/m19-internal-championship-v1.result.json",
+      "result_file_sha256": "72d3891d3e0d59ff40a8675f4ffe320551fb7882cc0dde346f02a94fc9019c75",
+      "completed_matches": 42,
+      "aborted_matches": 0,
+      "seeds_per_pair": 1,
+      "champion_decision": "unchanged_m07"
+    },
+    "m20_human_play": {
+      "status": "complete",
+      "implementation_commit": "1e88e4ef50c7d52bb6a09bb964c206f6876b1937"
+    }
+  },
+  "decision": {
+    "external_benchmark": "deferred",
+    "external_teacher_training": "not_authorized",
+    "external_model_downloaded": false,
+    "external_match_executed": false,
+    "reason": "Both own RL routes are implemented and measured, but their first frozen candidates were rejected and the seven-agent championship has only one seed per pair. An external score now would benchmark immature training scale more than the intended internal architecture choices.",
+    "next_internal_focus": [
+      "scale 1v1 self-play and replay diversity beyond the two-game M18A corpus",
+      "train new M18A and M18B checkpoints without changing frozen rejected evidence",
+      "run a multi-seed M16 league screen before any promotion or external comparison"
+    ]
+  },
+  "reopen_gate": {
+    "all_required": true,
+    "conditions": [
+      "at least one new internally trained checkpoint completes a frozen multi-seed 1v1 league with zero candidate faults",
+      "the checkpoint is not rejected by the frozen internal promotion gate against the current champion",
+      "the external runtime is adapted to the existing player-view NDJSON protocol without hidden-state access",
+      "external weights, source revision, adapter argv, seeds and deadlines are content-bound before execution"
+    ],
+    "allowed_use_after_reopen": "benchmark opponent only; teacher labels or fine-tuning require a separate explicit authorization and provenance contract"
+  },
+  "artifact_policy": "external downloads and match artifacts, if later authorized, remain ignored under local-artifacts; this tracked file records only the decision and evidence bindings"
+}
