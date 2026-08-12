@@ -9,6 +9,7 @@ type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
 type Gems = Record<GemName, number>;
 type Agent = { id:string; display_name:string; class:string; policy_version:string; model_version:string|null; checkpoint_hash:string|null };
 type Catalog = { cards:DevelopmentCardData[]; nobles:Array<{id:number;prestige:number;requirements:number[]}> };
+type NobleData = Catalog["nobles"][number];
 type Player = { id:number; tokens:Gems; bonuses:number[]; prestige:number; reserved_count:number; public_reserved:number[]; purchased:number[]; nobles:number[] };
 type HistoryItem = { ply:number; actor:number; action:Action };
 type State = {
@@ -55,6 +56,11 @@ function GemStrip({gems}:{gems:Gems}) {
   return <span className="history-gems">{GEM_NAMES.flatMap(gem=>Array.from({length:gems[gem]},(_,index)=><i className={`history-gem gem-${gem}`} title={GEM_LABELS[gem]} key={`${gem}-${index}`}/>))}</span>;
 }
 
+function NobleTile({noble,owned=false,selectable=false,disabled=false,onClick}:{noble:NobleData;owned?:boolean;selectable?:boolean;disabled?:boolean;onClick?:()=>void}) {
+  const body=<><div className="table-noble-top"><strong>{noble.prestige}</strong><span>{owned?"ACQUIRED":"NOBLE"}</span></div><div className="table-noble-cost">{noble.requirements.map((amount,index)=>amount>0?<span className={`gem gem-${TAKE_GEMS[index]}`} key={index}>{amount}</span>:null)}</div><small>#{noble.id}</small></>;
+  return selectable?<button type="button" className="table-noble selectable" disabled={disabled} onClick={onClick} aria-label={`Choose noble ${noble.id}, ${noble.prestige} prestige`}>{body}</button>:<div className={`table-noble ${owned?"owned":""}`} aria-label={`Noble ${noble.id}, ${noble.prestige} prestige`}>{body}</div>;
+}
+
 function actionReturns(action:Action) { return gemsOf(action.return); }
 
 export default function HumanPlayPage() {
@@ -71,6 +77,7 @@ export default function HumanPlayPage() {
   const [selectedCard,setSelectedCard] = useState<{tier:number;slot:number;cardId:number}|null>(null);
   const [contextActions,setContextActions] = useState<Action[]>([]);
   const cards = useMemo(() => new Map((catalog?.cards ?? []).map(card => [card.id, card])), [catalog]);
+  const nobles = useMemo(() => new Map((catalog?.nobles ?? []).map(noble => [noble.id, noble])), [catalog]);
   const takeActions = useMemo(() => (state?.legal_actions ?? []).filter(action=>action.type==="take_tokens"), [state?.legal_actions]);
   const exactTakeActions = useMemo(() => takeActions.filter(action=>sameGems(gemsOf(action.take),pendingTake)), [pendingTake,takeActions]);
 
@@ -113,8 +120,9 @@ export default function HumanPlayPage() {
     {error?<div className="error-banner" role="alert">{error}</div>:null}
     {state?<section className="human-workspace">
       <article className="human-board">
-        <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments</small><div className="player-gems">{GEM_NAMES.map(gem=><GemChip gem={gem} count={item.tokens[gem]} key={gem}/>)}</div></div>)}</div>
+        <div className="human-score">{state.observation.public.players.map(item=>{const tokenTotal=GEM_NAMES.reduce((sum,gem)=>sum+item.tokens[gem],0);return <div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><div className="token-total"><b>{tokenTotal}</b><span>/ 10 GEMS</span></div><div className="player-gems">{GEM_NAMES.map(gem=><GemChip gem={gem} count={item.tokens[gem]} key={gem}/>)}</div>{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>;})}</div>
         <div className="human-bank"><span><b>BANK</b><small>Click gems to build a legal take</small></span>{GEM_NAMES.map(gem=><GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={busy||gem==="gold"||state.result!==null} onClick={()=>changePendingGem(gem,1)} key={gem}/>)}</div>
+        <section className="table-nobles"><div><b>NOBLES</b><small>{state.observation.public.nobles.length} available · requirements use permanent bonuses</small></div>{state.observation.public.nobles.map(id=>{const noble=nobles.get(id);const action=state.legal_actions.find(candidate=>candidate.type==="choose_noble"&&candidate.noble===id);return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||busy} onClick={()=>{if(action)void play(action);}} key={id}/>:null;})}</section>
         {state.observation.private.reserved.length?<section className="reserved-tray"><span>YOUR RESERVE</span>{state.observation.private.reserved.map(reserved=>cards.has(reserved.card)?<DevelopmentCard card={cards.get(reserved.card)!} interactive affordable={(state.legal_actions).some(action=>action.type==="buy_reserved"&&action.slot===reserved.slot)} disabled={busy} onClick={()=>openReserved(reserved.slot,reserved.card)} slotLabel={`reserve ${reserved.slot+1}`} key={reserved.slot}/>:null)}</section>:null}
         <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><button type="button" className="tier-deck" disabled={busy||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)}><span>TIER {tier+1}</span><b>{state.observation.public.deck_counts[tier]}</b><small>click to blind reserve</small></button>{state.observation.public.market[tier].map((cardId,slot)=>{const card=cardId==null?null:cards.get(cardId);return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={busy} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;})}</div>)}</div>
         <div className="human-private"><span>PLAYER-VIEW ONLY</span><p>Actions and token holdings are public. Blind-reserved card identities and deck order remain hidden.</p></div>
