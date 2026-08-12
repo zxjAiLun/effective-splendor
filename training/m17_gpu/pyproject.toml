@@ -1,0 +1,10 @@
+[project]
+name = "effective-splendor-gpu"
+version = "0.1.0"
+description = "M17 GPU Policy-Value training and Arena inference for Effective Splendor"
+requires-python = ">=3.12"
+dependencies = ["torch>=2.6,<2.7"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

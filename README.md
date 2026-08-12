@@ -229,6 +229,12 @@ replay, and evaluation payloads remain local artifacts rather than GitHub
 content; only schemas, frozen configs, code, documentation, and compact result
 manifests are candidates for source control.
 
+M17's GPU route is a compact non-Transformer architecture: Flat ResMLP is the
+control and Entity Mixer is the object-structured candidate. Both are strictly
+1v1/player-view and score the Arena-certified legal action set. See
+`docs/m17-gpu-model.md`; generated `.pt` checkpoints and reports remain under
+ignored `local-artifacts/`.
+
 ## License
 
 MIT
