@@ -1,0 +1,12 @@
+{
+  "format": "effective-splendor-rating-config",
+  "version": 1,
+  "tournament_id": "m22-scaled-self-play-v1",
+  "participant_ids": ["heuristic-v1", "m07-champion", "m18a-smoke", "m22-scaled-self-play"],
+  "game_seeds": [220100, 220101, 220102, 220103],
+  "handshake_timeout_ms": 30000,
+  "move_timeout_ms": 90000,
+  "shutdown_grace_ms": 2000,
+  "initial_elo": 1500,
+  "live_k_factor": 32
+}

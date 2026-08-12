@@ -1,0 +1,51 @@
+{
+  "format": "effective-splendor-rating-registry",
+  "version": 1,
+  "registry_id": "m22-scaled-self-play-v1",
+  "agents": [
+    {
+      "id": "heuristic-v1",
+      "display_name": "Heuristic baseline",
+      "class": "baseline",
+      "policy_version": "handwritten-heuristic-v1",
+      "model_version": null,
+      "checkpoint_hash": null,
+      "runtime_name": "splendor-cli-heuristic",
+      "runtime_version": "0.1.0",
+      "command": {"program": "target/debug/splendor.exe", "args": ["agent-heuristic", "--seed", "20260812"]}
+    },
+    {
+      "id": "m07-champion",
+      "display_name": "M07 determinization champion",
+      "class": "search",
+      "policy_version": "root-determinization-s4-d1-n2000-v1",
+      "model_version": null,
+      "checkpoint_hash": null,
+      "runtime_name": "effective-splendor-determinization-agent-v1",
+      "runtime_version": "1",
+      "command": {"program": "target/debug/splendor.exe", "args": ["agent-determinization", "--sample-seed", "20260810", "--sample-count", "4", "--max-depth-turns", "1", "--max-nodes", "2000"]}
+    },
+    {
+      "id": "m18a-smoke",
+      "display_name": "M18A Self-Play (2 games)",
+      "class": "checkpoint",
+      "policy_version": "neural-ismcts-s8-d1-c1500-v1",
+      "model_version": "m18a-entity-mixer-self-play-smoke-v1",
+      "checkpoint_hash": "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca",
+      "runtime_name": "effective-splendor-gpu-neural-ismcts-agent-v1",
+      "runtime_version": "1",
+      "command": {"program": "target/debug/splendor.exe", "args": ["agent-gpu-neural-ismcts", "--python", "python", "--module-root", "training/m17_gpu", "--checkpoint", "local-artifacts/m18a-neural-self-play-smoke-v1/trained-final/checkpoint.pt", "--checkpoint-hash", "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca", "--catalog", "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json", "--device", "cuda", "--sample-seed", "18000018", "--simulations", "8", "--max-depth-turns", "1", "--puct-exploration-milli", "1500"]}
+    },
+    {
+      "id": "m22-scaled-self-play",
+      "display_name": "M22 Self-Play (32 games)",
+      "class": "checkpoint",
+      "policy_version": "neural-ismcts-s16-d1-c1500-v1",
+      "model_version": "m22-entity-mixer-self-play-v1",
+      "checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+      "runtime_name": "effective-splendor-gpu-neural-ismcts-agent-v1",
+      "runtime_version": "1",
+      "command": {"program": "target/debug/splendor.exe", "args": ["agent-gpu-neural-ismcts", "--python", "python", "--module-root", "training/m17_gpu", "--checkpoint", "local-artifacts/m22-scaled-self-play-v1/checkpoint/checkpoint.pt", "--checkpoint-hash", "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04", "--catalog", "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json", "--device", "cuda", "--sample-seed", "22000018", "--simulations", "16", "--max-depth-turns", "1", "--puct-exploration-milli", "1500"]}
+    }
+  ]
+}

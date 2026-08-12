@@ -1,0 +1,55 @@
+{
+  "format": "effective-splendor-m22-result",
+  "version": 1,
+  "status": "candidate_not_promoted",
+  "experiment_id": "m22-scaled-self-play-v1",
+  "self_play": {
+    "base_checkpoint_hash": "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca",
+    "config_file_sha256": "e4348d956bf69664d1adf4e36b6907180c6de163fe18f04957de92be8384307d",
+    "hash": "c3c4928fa0cb80285a8b995faffd2f32c1f600f63887fa6d9d329723a005c0dd",
+    "games": 32,
+    "examples": 1992,
+    "simulations": 16
+  },
+  "training": {
+    "config_file_sha256": "030e93c49b30e9bfe8b1feafc8372e6ff2fe93dad8268d4c023eb6527b8da733",
+    "device": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "best_epoch": 16,
+    "checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+    "checkpoint_file_sha256": "a058ec81eb9ab030fc1af78d2f17ad7ce19c54bc105c6d35d2fcc0dbd92de358",
+    "training_report_file_sha256": "b6f176f2e292c0986100a2ae6337432c19b8be85c41fdd616a816ebe9a76c51a",
+    "offline_validation": {
+      "examples": 491,
+      "policy_cross_entropy": 1.5266640968089678,
+      "visit_top1": 0.8859470468431772,
+      "value_mse": 0.22265611403828484,
+      "strength_evidence": false
+    }
+  },
+  "multi_seed_league": {
+    "registry_file_sha256": "cb2392569e7e0f8644ed63a0b5759d2bb18af0511b5f423d3e0a0e7acdd00fe8",
+    "rating_config_file_sha256": "05f1adba1dfcedb12ce28cbca41ebe1f83a409a8daa0282fda5aec0a9027fdc8",
+    "registry_hash": "8a13fa4ed4c1dfae9dbc0a1d625851628ab08c99dc12e70a161886de38a93063",
+    "round_robin_plan_hash": "df95640f34630633030b8f9a8294b290ff0f36d775e2a183834729aee3105b9b",
+    "rating_report_file_sha256": "181d9df083f58fcc1efdf56d92d534558e4307b227c87b37e28d565e9a6078e5",
+    "seeds_per_pair": 4,
+    "seat_rotations": 2,
+    "scheduled_matches": 48,
+    "completed_matches": 48,
+    "aborted_matches": 0,
+    "ranking": [
+      {"rank": 1, "agent_id": "heuristic-v1", "wins": 21, "losses": 3, "official_elo": 1778},
+      {"rank": 2, "agent_id": "m07-champion", "wins": 15, "losses": 9, "official_elo": 1580},
+      {"rank": 3, "agent_id": "m18a-smoke", "wins": 6, "losses": 18, "official_elo": 1321},
+      {"rank": 4, "agent_id": "m22-scaled-self-play", "wins": 6, "losses": 18, "official_elo": 1321}
+    ],
+    "m22_head_to_head": {
+      "vs_heuristic": {"wins": 1, "losses": 7},
+      "vs_m07": {"wins": 1, "losses": 7},
+      "vs_m18a": {"wins": 4, "losses": 4}
+    }
+  },
+  "verdict": "no_measured_improvement_over_m18a",
+  "champion_decision": "unchanged_m07",
+  "artifact_policy": "self-play dataset, checkpoint, training report, rating report and 48 verified match artifacts remain ignored under local-artifacts"
+}

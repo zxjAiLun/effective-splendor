@@ -147,6 +147,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 18. M19: internal championship complete (42/42, zero abort; provisional ranking, M07 champion unchanged)
 19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
 20. M21: external benchmark decision complete; deferred until a new internal checkpoint clears the frozen multi-seed league/promotion gate
+21. M22: 32-game CUDA self-play + 48-match multi-seed league complete; no measured improvement over M18A, not promoted
 
 Training `validation` means held-out offline fit only; teacher top-1, NLL,
 search-visit cross-entropy, Value MSE, and TD error never establish playing

@@ -1,0 +1,19 @@
+{
+  "format": "effective-splendor-self-play-training-config",
+  "version": 1,
+  "training_id": "m22-scaled-self-play-v1",
+  "model_id": "m22-entity-mixer-self-play-v1",
+  "base_checkpoint": "local-artifacts/m18a-neural-self-play-smoke-v1/trained-final/checkpoint.pt",
+  "base_checkpoint_hash": "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca",
+  "expected_self_play_hash": "c3c4928fa0cb80285a8b995faffd2f32c1f600f63887fa6d9d329723a005c0dd",
+  "device": "cuda",
+  "seed": 220018,
+  "batch_size": 128,
+  "epochs": 16,
+  "learning_rate": 0.0001,
+  "weight_decay": 0.0001,
+  "value_loss_weight": 0.5,
+  "gradient_clip_norm": 1.0,
+  "validation_game_modulus": 4,
+  "validation_game_remainder": 0
+}
