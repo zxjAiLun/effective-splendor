@@ -1,0 +1,16 @@
+{
+  "format": "effective-splendor-rating-config",
+  "version": 1,
+  "tournament_id": "m16-foundation-smoke-v1",
+  "participant_ids": [
+    "random-v1",
+    "heuristic-v1",
+    "determinization-s4-d1-n2000-v1"
+  ],
+  "game_seeds": [960000],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 30000,
+  "shutdown_grace_ms": 2000,
+  "initial_elo": 1500,
+  "live_k_factor": 32
+}

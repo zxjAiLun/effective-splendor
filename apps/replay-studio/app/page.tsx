@@ -337,6 +337,7 @@ export default function ReplayStudio() {
           <span>Actor P{frame.actor}</span>
         </div>
         <div className="header-actions">
+          <a className="studio-link" href="/ratings">Rating Studio</a>
           <label className="load-button">
             Load replay + analysis
             <input type="file" accept="application/json,.json" multiple onChange={loadTrace} />

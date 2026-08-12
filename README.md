@@ -1,4 +1,4 @@
-# Splendor AI Platform (M14B / M15 Neural Diagnostics)
+# Splendor AI Platform (M16 1v1 League Rating)
 
 Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, checkpoint-bound neural search, and player-view-first replay analysis.
 
@@ -26,7 +26,7 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
 | `splendor-analysis` | M14 replay-bound traces, formal-evaluation binding, and M15 neural ablation metrics |
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
-| `apps/replay-studio` | Local web viewer for board state, timeline, Prior/Visit/Q/ΔQ, and explicit referee reveal |
+| `apps/replay-studio` | Local Replay + Rating Studio for board analysis, Elo leaderboard, and head-to-head matrix |
 
 ## Quick start
 
@@ -42,6 +42,8 @@ cargo run -p splendor-cli -- analyze-replay-player-view --input game.replay.json
 cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-count 1 --max-depth-turns 1 --max-nodes 100
 cargo run -p splendor-cli -- agent-ismcts --sample-seed 17 --simulations 64 --max-depth-turns 2 --exploration-bias 100000000
 cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
+cargo run -p splendor-cli -- rating-plan --registry benchmarks/m16-internal-1v1.registry.json --config benchmarks/m16-foundation-smoke.rating.json --out local-artifacts/m16-plan.json
+cargo run -p splendor-cli -- rating-run --plan local-artifacts/m16-plan.json --out-dir local-artifacts/m16-run
 cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
 cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-dir eval-output --replays replay-list.json --out dataset.json
 cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config benchmarks/m12-policy-value-v1.config.json --checkpoint local-artifacts/m12/checkpoint.json --report local-artifacts/m12/training-report.json
@@ -75,7 +77,7 @@ for the config schema, artifact contract, and the reference random agent.
 
 See `docs/replay.md` for the replay v1 format and verification chain.
 
-## Architecture (M14B / M15 diagnostic slice)
+## Architecture (M16 rating foundation)
 
 ```text
 splendor-core
@@ -123,7 +125,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M10–M15 status and roadmap
+## M10–M21 status and roadmap
 
 1. M08: live player-view search agent (complete)
 2. M09: paired competitive evaluation and promotion gate v1 (complete)
@@ -138,6 +140,13 @@ unchanged; M08 only adds the Arena/Agent binding.
 11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (complete; both frozen offline gates failed, no candidate)
 12. M15D: nonlinear action interaction + independent Value encoder, h64 (complete; both unchanged offline gates failed, no candidate)
 13. M15E: deterministic Adam optimization control (complete; train fit improved, source-level validation gates still failed, no candidate)
+14. M16: 1v1 round-robin registry, Live/Official Elo, head-to-head matrix, and Rating Studio (implemented)
+15. M17: own GPU Policy-Value model v1 (Flat ResMLP control + Entity Mixer candidate)
+16. M18A: Neural ISMCTS / AlphaZero-like self-play RL
+17. M18B: distributional Double-DQN / Rainbow-style RL
+18. M19: formal internal championship and promotion evidence
+19. M20: Human Play Studio against any registered checkpoint
+20. M21: optional external benchmark only after internal routes are measured
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -209,6 +218,16 @@ did not follow: Policy top-1 was 32.00%, cross-entropy improved only 5.33% over
 uniform, and Value MSE 0.01925 remained worse than its constant prior. This
 localizes the next investigation to source generalization, data coverage and
 target factorization; M15E produces no candidate or prospective screen.
+
+M16 now provides the common 1v1 measurement layer before any GPU/RL expansion.
+It schedules every unordered pair with identical seeds and both seat rotations,
+keeps sequential Live Elo separate from order-independent Official Elo, and
+retains the full head-to-head matrix so cyclic matchups are visible. The formal
+rating report is content-bound to the agent registry, round-robin plan, and
+canonical pair evaluation reports. See `docs/rating.md`. Dataset, checkpoint,
+replay, and evaluation payloads remain local artifacts rather than GitHub
+content; only schemas, frozen configs, code, documentation, and compact result
+manifests are candidates for source control.
 
 ## License
 

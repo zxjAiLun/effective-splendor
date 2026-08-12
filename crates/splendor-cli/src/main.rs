@@ -12,6 +12,7 @@ mod imperfect_search_command;
 mod league_command;
 mod learning_command;
 mod promotion_command;
+mod rating_command;
 mod search_command;
 mod teacher_target_command;
 use rand::rngs::SmallRng;
@@ -106,6 +107,9 @@ fn main() {
         Some("promotion-gate") => {
             std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))
         }
+        Some("rating-plan") => std::process::exit(rating_command::run_rating_plan(&argv[2..])),
+        Some("rating-run") => std::process::exit(rating_command::run_rating_run(&argv[2..])),
+        Some("rating-report") => std::process::exit(rating_command::run_rating_report(&argv[2..])),
         Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("train-policy-value") => {

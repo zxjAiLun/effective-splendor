@@ -126,22 +126,35 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
 
     let parsed = parse_eval_args(args).map_err(EvalError::Cli)?;
 
+    let plan = read_plan(&parsed.plan)?;
+    execute_plan_inner(plan, &parsed.out_dir)
+}
+
+/// Execute an already-deserialized plan into a fresh output directory.
+///
+/// The M16 round-robin driver uses this entry point so every pair receives the
+/// exact same canonical execution and atomic artifact guarantees as the
+/// standalone `eval` command.
+pub(crate) fn execute_plan(plan: EvaluationPlanV1, out_dir: &Path) -> Result<(), String> {
+    execute_plan_inner(plan, out_dir).map_err(|error| error.to_string())
+}
+
+fn execute_plan_inner(plan: EvaluationPlanV1, out_dir: &Path) -> Result<(), EvalError> {
     // Output invariants, before touching the runner or any target.
-    if !parent_dir_exists(&parsed.out_dir) {
+    if !parent_dir_exists(out_dir) {
         return Err(EvalError::Cli(format!(
             "output directory parent does not exist: {}",
-            parsed.out_dir.display()
+            out_dir.display()
         )));
     }
-    let eval_report_path = parsed.out_dir.join("eval-report.json");
-    let plan_path = parsed.out_dir.join("plan.json");
-    let hash_path = parsed.out_dir.join("plan-hash.txt");
+    let eval_report_path = out_dir.join("eval-report.json");
+    let plan_path = out_dir.join("plan.json");
+    let hash_path = out_dir.join("plan-hash.txt");
     pre_check_target(&eval_report_path)?;
     pre_check_target(&plan_path)?;
     pre_check_target(&hash_path)?;
 
-    // Read + validate + hash the plan.
-    let plan = read_plan(&parsed.plan)?;
+    // Validate + hash the plan.
     let plan_hash: EvaluationPlanHash =
         evaluation_plan_hash_v1(&plan).map_err(|e| EvalError::PlanInvalid(e.to_string()))?;
 
@@ -152,14 +165,14 @@ fn run_eval_inner(args: &[String]) -> Result<(), EvalError> {
     // fast (exit 1) with no partial commits, rather than mid-run. The same
     // path helpers are used here and at publish time so the rules cannot
     // drift apart.
-    let matches_dir = parsed.out_dir.join("matches");
+    let matches_dir = out_dir.join("matches");
     for spec in &specs {
         pre_check_target(&match_report_path(&matches_dir, spec.match_index))?;
         pre_check_target(&match_replay_path(&matches_dir, spec.match_index))?;
     }
 
     // Create the output tree now that all targets are confirmed clear.
-    fs::create_dir_all(&parsed.out_dir).map_err(|e| EvalError::Io(e.to_string()))?;
+    fs::create_dir_all(out_dir).map_err(|e| EvalError::Io(e.to_string()))?;
     fs::create_dir_all(&matches_dir).map_err(|e| EvalError::Io(e.to_string()))?;
 
     // Serial execution: run each match, collect a record, and publish its

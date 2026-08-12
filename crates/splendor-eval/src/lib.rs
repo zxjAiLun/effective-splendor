@@ -13,6 +13,7 @@
 pub mod error;
 pub mod plan;
 pub mod promotion;
+pub mod rating;
 pub mod report;
 pub mod schedule;
 
@@ -26,6 +27,12 @@ pub use promotion::{
     evaluate_promotion_v1, promotion_gate_hash_v1, PairwiseSummaryV1, PromotionChecksV1,
     PromotionDecisionV1, PromotionGateHash, PromotionGateV1, PromotionReportV1, BASIS_POINTS_SCALE,
     PROMOTION_CONFIDENCE_BPS, PROMOTION_GATE_FORMAT, PROMOTION_REPORT_FORMAT, PROMOTION_VERSION,
+};
+pub use rating::{
+    build_rating_report_v1, build_round_robin_plan_v1, rating_registry_hash_v1,
+    round_robin_plan_hash_v1, AgentClassV1, HeadToHeadV1, PairEvaluationV1, RatedAgentV1,
+    RatingAgentResultV1, RatingConfigV1, RatingRegistryV1, RatingReportV1, RoundRobinPlanV1,
+    RATING_CONFIG_FORMAT, RATING_REGISTRY_FORMAT, RATING_REPORT_FORMAT, ROUND_ROBIN_PLAN_FORMAT,
 };
 pub use report::{
     aggregate, AgentAggregateV1, EvaluationMatchRecordV1, EvaluationReportV1, SeatAggregateV1,
