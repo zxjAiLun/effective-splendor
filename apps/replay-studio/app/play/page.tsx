@@ -68,7 +68,7 @@ function GemStrip({gems}:{gems:Gems}) {
 }
 
 function NobleTile({noble,owned=false,selectable=false,disabled=false,onClick}:{noble:NobleData;owned?:boolean;selectable?:boolean;disabled?:boolean;onClick?:()=>void}) {
-  const body=<><div className="table-noble-top"><strong>{noble.prestige}</strong><span>{owned?"ACQUIRED":"NOBLE"}</span></div><div className="table-noble-cost">{noble.requirements.map((amount,index)=>amount>0?<span className={`gem gem-${TAKE_GEMS[index]}`} key={index}>{amount}</span>:null)}</div><small>#{noble.id}</small></>;
+  const body=<><div className="table-noble-top"><strong>{noble.prestige}</strong><span>{owned?"ACQUIRED":"NOBLE"}</span></div><div className="table-noble-name">NOBLE #{noble.id}</div><div className="table-noble-cost">{noble.requirements.map((amount,index)=>amount>0?<span className={`gem gem-${TAKE_GEMS[index]}`} key={index}>{amount}</span>:null)}</div></>;
   return selectable?<button type="button" className="table-noble selectable" disabled={disabled} onClick={onClick} aria-label={`Choose noble ${noble.id}, ${noble.prestige} prestige`}>{body}</button>:<div className={`table-noble ${owned?"owned":""}`} aria-label={`Noble ${noble.id}, ${noble.prestige} prestige`}>{body}</div>;
 }
 
