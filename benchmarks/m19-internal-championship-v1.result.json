@@ -1,0 +1,26 @@
+{
+  "format": "effective-splendor-m19-result",
+  "version": 1,
+  "status": "complete_provisional",
+  "tournament_id": "m19-internal-championship-v1",
+  "round_robin_plan_hash": "4e6799c6c9af1f699d26dd17ef9b30e171388e3713fc4ef31d5411c005ba5949",
+  "rating_report_file_sha256": "b0f591e442f8df2de96037681917e43fb9de203dc82296becd23b7b3006ca00c",
+  "scheduled_matches": 42,
+  "completed_matches": 42,
+  "aborted_matches": 0,
+  "verified_replays": 42,
+  "seeds_per_pair": 1,
+  "seat_rotations": 2,
+  "ranking": [
+    {"rank":1,"agent_id":"heuristic-v1","wins":11,"losses":1,"official_elo":1908},
+    {"rank":2,"agent_id":"m07-champion","wins":8,"losses":4,"official_elo":1637},
+    {"rank":3,"agent_id":"m10-ismcts","wins":7,"losses":5,"official_elo":1567},
+    {"rank":4,"agent_id":"m17-entity-mixer","wins":7,"losses":5,"official_elo":1567},
+    {"rank":5,"agent_id":"m18a-self-play","wins":5,"losses":7,"official_elo":1429},
+    {"rank":6,"agent_id":"m13-neural-ismcts","wins":2,"losses":10,"official_elo":1196},
+    {"rank":7,"agent_id":"m18b-rainbow","wins":2,"losses":10,"official_elo":1196}
+  ],
+  "champion_decision": "unchanged_m07",
+  "interpretation": "heuristic leads this small provisional measurement but is a baseline, not a promotion candidate; M07 remains the frozen search champion",
+  "artifact_policy": "full plan, pair reports and 42 verified replays remain ignored under local-artifacts"
+}
