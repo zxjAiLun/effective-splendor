@@ -50,6 +50,7 @@ cargo run -p splendor-cli -- evaluate-policy-value-source-aware --dataset datase
 cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500
 cargo run -p splendor-cli -- analyze-replay-neural --input match.replay.json --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --out match.analysis.json
 cargo run -p splendor-cli -- diagnose-neural-evaluation --evaluation-dir eval-output --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --candidate-agent-id candidate --champion-agent-id champion --out-dir local-artifacts/diagnostic
+cargo run -p splendor-cli -- build-search-teacher-targets --dataset dataset.json --evaluation-dir eval-output --config benchmarks/m15c-search-teacher-targets-v1.config.json --out local-artifacts/m15c/search-teacher-targets.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -132,6 +133,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
 9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
 10. M15B: source-aware/isolated training plus two prospective Policy-only screens (complete; rejected 4–28 and 5–27, no candidate)
+11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (target generation implemented)
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A

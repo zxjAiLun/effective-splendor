@@ -1,0 +1,24 @@
+{
+  "format": "effective-splendor-search-teacher-build-config",
+  "version": 1,
+  "expected_dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+  "expected_dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+  "expected_league_manifest_hash": "1c1e3c8a377cdf02f3502e020f478812a71602e2cae1724a8f823e51e632178e",
+  "expected_evaluation_plan_hash": "80606d90e74dc9a1ac651c26ef58e7d25f187db4488919524e7512496b4531ff",
+  "expected_evaluation_report_hash": "d8dc7ef18afdfd0445c90f4fc6b7964b61f669d2ef252b25643a92dc9a8bdd93",
+  "teacher_agent_ids": [
+    "determinization-s4-d1-n2000-v1"
+  ],
+  "targets": {
+    "search": {
+      "sample_seed": 20260810,
+      "sample_count": 4,
+      "continuation_search": {
+        "max_depth_turns": 1,
+        "max_nodes": 2000
+      }
+    },
+    "uniform_floor_micros": 100000,
+    "value_utility_scale": 1000000000
+  }
+}

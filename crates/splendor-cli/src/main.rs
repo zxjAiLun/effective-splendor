@@ -13,6 +13,7 @@ mod league_command;
 mod learning_command;
 mod promotion_command;
 mod search_command;
+mod teacher_target_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use splendor_core::{
@@ -127,6 +128,9 @@ fn main() {
         }
         Some("diagnose-neural-evaluation") => std::process::exit(
             evaluation_analysis_command::run_diagnose_neural_evaluation(&argv[2..]),
+        ),
+        Some("build-search-teacher-targets") => std::process::exit(
+            teacher_target_command::run_build_search_teacher_targets(&argv[2..]),
         ),
         _ => {}
     }

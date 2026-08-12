@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use splendor_analysis::{analysis_trace_hash_v1, AnalysisTraceV1};
+use splendor_analysis::{analysis_trace_hash_v1, AnalysisTraceV1, SearchTeacherBuildConfigV1};
 use splendor_learning::{
     model_checkpoint_hash_v1, ModelParametersV1, PolicyValueCheckpointV1, ACTION_FEATURES_V1,
     MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, POLICY_VALUE_CHECKPOINT_FORMAT,
@@ -137,4 +137,21 @@ fn checkpoint_mismatch_creates_no_sidecar_or_protocol_output() {
     assert!(String::from_utf8(output.stderr)
         .unwrap()
         .contains("checkpoint hash mismatch"));
+}
+
+#[test]
+fn checked_in_m15c_teacher_build_config_is_frozen_and_valid() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../benchmarks/m15c-search-teacher-targets-v1.config.json");
+    let config: SearchTeacherBuildConfigV1 =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    config.validate().unwrap();
+    assert_eq!(
+        config.expected_dataset_hash,
+        "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24"
+    );
+    assert_eq!(config.teacher_agent_ids, ["determinization-s4-d1-n2000-v1"]);
+    assert_eq!(config.targets.search.sample_count, 4);
+    assert_eq!(config.targets.uniform_floor_micros, 100_000);
+    assert_eq!(config.targets.value_utility_scale, 1_000_000_000);
 }

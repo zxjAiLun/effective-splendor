@@ -237,3 +237,44 @@ failed the unchanged 5% gate. Therefore checkpoint
 `6ef032a0cb0c65e89f80386484f04e1aadb0d82d6c140a31e8f6fad7c6afebf9`
 is not a full candidate. The passed Policy component alone is authorized for
 one frozen 32-match prospective screen on new seeds `960000..960015`.
+
+## M15C search-teacher targets
+
+M15B proved that held-out one-hot imitation NLL can improve while prospective
+play remains weak. M15C therefore preserves the full root search signal in a
+separate, content-addressed artifact rather than changing `TrainingDatasetV1`.
+The frozen generator config binds the exact dataset provenance, teacher agent,
+sample stream, continuation search budget, Policy projection and Value scale.
+
+For every champion-owned player-view example, the generator independently
+verifies the complete source replay, reconstructs the actor's Observation and
+visible history, requires their hashes and canonical legal actions to equal the
+dataset, and reruns the frozen M07 root-determinization search. No replay seed,
+sampled `FullState`, hidden card identity or referee state is serialized into
+the target artifact.
+
+Policy targets are exact integer millionths. Ten percent total mass is spread
+uniformly across legal actions; the remaining 90% is allocated in proportion
+to each root action's non-negative advantage over the minimum actor utility.
+Largest-remainder allocation with canonical-action tie breaking makes the sum
+exactly `1_000_000`. An all-tied root becomes uniform.
+
+Value targets use the full utility vector of the teacher-selected action. Each
+player's mean utility across determinizations maps linearly around `0.5`, with
+absolute utility `1_000_000_000` mapping to an endpoint and larger magnitudes
+clamped. This is explicitly a search-shaped progress target, not a calibrated
+win probability. The projection scale is an input to the artifact and cannot
+be changed after seeing offline or competitive results.
+
+```powershell
+cargo run -p splendor-cli -- build-search-teacher-targets `
+  --dataset local-artifacts/m15b-teacher-data-v2/dataset.json `
+  --evaluation-dir local-artifacts/m15b-teacher-data-v2/evaluation `
+  --config benchmarks/m15c-search-teacher-targets-v1.config.json `
+  --out local-artifacts/m15c-search-teacher-targets-v1/targets.json
+```
+
+The output binds every target by dataset hash, source id, replay document hash,
+ply, actor, Observation hash, visible-history hash and InformationSet hash. It
+also retains the complete canonical action/utility vectors, so Policy and
+Value projections can be independently recomputed before training.

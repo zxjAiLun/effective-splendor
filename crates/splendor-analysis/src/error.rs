@@ -20,4 +20,6 @@ pub enum AnalysisError {
     Evaluation(String),
     #[error("invalid evaluation diagnostic: {0}")]
     InvalidDiagnostic(String),
+    #[error("search-teacher target generation failed: {0}")]
+    TeacherTarget(String),
 }

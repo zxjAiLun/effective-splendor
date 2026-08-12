@@ -14,6 +14,8 @@ splendor-replay = { workspace = true }
 splendor-arena = { workspace = true }
 splendor-eval = { workspace = true }
 splendor-learning = { workspace = true }
+splendor-league = { workspace = true }
+splendor-imperfect-search = { workspace = true }
 splendor-neural-search = { workspace = true }
 splendor-search = { workspace = true }
 serde = { workspace = true }
