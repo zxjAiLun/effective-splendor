@@ -24,6 +24,8 @@ use splendor_replay::{replay_document_hash_v1, verify_replay, ReplayRecorder, Re
 use splendor_search::SearchConfigV1;
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> (--opponent <heuristic|m07> | --registry <registry.json> --agent-id <id>) --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
+const HOST_USAGE: &str =
+    "Usage: splendor studio-host --registry <registry.json> --port <u16> [--move-timeout-ms <u64>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 
@@ -528,6 +530,115 @@ struct Args {
     replay_out: Option<PathBuf>,
 }
 
+#[derive(Debug)]
+struct HostArgs {
+    registry: PathBuf,
+    port: u16,
+    move_timeout_ms: u64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NewGameRequest {
+    agent_id: String,
+    human_seat: u8,
+    seed: u64,
+}
+
+#[derive(serde::Serialize)]
+struct PublicAgentV1<'a> {
+    id: &'a str,
+    display_name: &'a str,
+    class: splendor_eval::AgentClassV1,
+    policy_version: &'a str,
+    model_version: Option<&'a str>,
+    checkpoint_hash: Option<&'a str>,
+}
+
+struct StudioHost {
+    registry_path: PathBuf,
+    registry: RatingRegistryV1,
+    move_timeout_ms: u64,
+    next_session_number: u64,
+    session: Option<Session>,
+}
+
+impl StudioHost {
+    fn agents_json(&self) -> Result<String, String> {
+        let agents = self
+            .registry
+            .agents
+            .iter()
+            .map(|agent| PublicAgentV1 {
+                id: &agent.id,
+                display_name: &agent.display_name,
+                class: agent.class,
+                policy_version: &agent.policy_version,
+                model_version: agent.model_version.as_deref(),
+                checkpoint_hash: agent.checkpoint_hash.as_deref(),
+            })
+            .collect::<Vec<_>>();
+        serde_json::to_string(&serde_json::json!({
+            "format": "effective-splendor-studio-agents",
+            "version": 1,
+            "registry_id": self.registry.registry_id,
+            "agents": agents,
+        }))
+        .map_err(|error| error.to_string())
+    }
+
+    fn new_game(&mut self, request: NewGameRequest) -> Result<HumanSessionState, String> {
+        if request.human_seat > 1 {
+            return Err("human_seat must be 0 or 1".into());
+        }
+        if !self
+            .registry
+            .agents
+            .iter()
+            .any(|agent| agent.id == request.agent_id)
+        {
+            return Err(format!(
+                "agent id `{}` is not in the Studio registry",
+                request.agent_id
+            ));
+        }
+        let session_number = self.next_session_number;
+        self.next_session_number = self
+            .next_session_number
+            .checked_add(1)
+            .ok_or("Studio session counter overflow")?;
+        let session = build_registered_session(
+            request.seed,
+            request.human_seat,
+            &self.registry_path,
+            &request.agent_id,
+            self.move_timeout_ms,
+            None,
+            Some(session_number),
+        )?;
+        self.session = Some(session);
+        Ok(self
+            .session
+            .as_ref()
+            .expect("session was installed")
+            .snapshot())
+    }
+}
+
+pub fn run_studio_host(args: &[String]) -> i32 {
+    if args == ["--help"] || args == ["-h"] {
+        println!("{HOST_USAGE}");
+        return 0;
+    }
+    match serve_studio_host(args) {
+        Ok(()) => 0,
+        Err(error) => {
+            eprintln!("error: {error}");
+            1
+        }
+    }
+}
+
 pub fn run_human_play_server(args: &[String]) -> i32 {
     if args == ["--help"] || args == ["-h"] {
         println!("{USAGE}");
@@ -544,6 +655,33 @@ pub fn run_human_play_server(args: &[String]) -> i32 {
 
 fn serve(args: &[String]) -> Result<(), String> {
     let args = parse_args(args)?;
+    let mut session = build_session(&args)?;
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port))
+        .map_err(|error| format!("cannot bind 127.0.0.1:{}: {error}", args.port))?;
+    println!("human_play_server=http://127.0.0.1:{}", args.port);
+    println!("opponent={}", session.opponent.label());
+    for connection in listener.incoming() {
+        let stream = connection.map_err(|error| error.to_string())?;
+        if let Err(error) = handle_session(stream, &mut session) {
+            eprintln!("request error: {error}");
+        }
+    }
+    Ok(())
+}
+
+fn build_session(args: &Args) -> Result<Session, String> {
+    if let (None, Some(registry), Some(agent_id)) = (&args.opponent, &args.registry, &args.agent_id)
+    {
+        return build_registered_session(
+            args.seed,
+            args.human_seat,
+            registry,
+            agent_id,
+            args.move_timeout_ms,
+            args.replay_out.clone(),
+            None,
+        );
+    }
     let id = format!(
         "human-{}-{}-{}",
         args.seed,
@@ -555,9 +693,8 @@ fn serve(args: &[String]) -> Result<(), String> {
         seed: args.seed,
         ..Default::default()
     };
-    let (recorder, setup) = ReplayRecorder::new_with_setup(config)
+    let (recorder, _setup) = ReplayRecorder::new_with_setup(config)
         .map_err(|error| format!("cannot create replay recorder: {error}"))?;
-    let opponent_seat = PlayerId(1 - args.human_seat);
     let opponent = match (&args.opponent, &args.registry, &args.agent_id) {
         (Some(name), None, None) if name == "heuristic" => Opponent::InProcess {
             label: "Heuristic baseline",
@@ -577,16 +714,6 @@ fn serve(args: &[String]) -> Result<(), String> {
                 .map_err(|error| error.to_string())?,
             ),
         },
-        (None, Some(registry), Some(agent_id)) => Opponent::Registered(RegisteredOpponent::start(
-            registry,
-            agent_id,
-            opponent_seat,
-            &id,
-            args.seed,
-            recorder.state(),
-            &setup.events,
-            args.move_timeout_ms,
-        )?),
         (Some(_), None, None) => return Err("--opponent must be heuristic or m07".into()),
         _ => {
             return Err(
@@ -595,7 +722,7 @@ fn serve(args: &[String]) -> Result<(), String> {
             )
         }
     };
-    let replay_out = args.replay_out.unwrap_or_else(|| {
+    let replay_out = args.replay_out.clone().unwrap_or_else(|| {
         PathBuf::from("local-artifacts")
             .join("m20-human-play")
             .join(format!("{id}.replay.json"))
@@ -615,28 +742,111 @@ fn serve(args: &[String]) -> Result<(), String> {
         ply: 0,
     };
     session.advance_opponent()?;
-    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port))
-        .map_err(|error| format!("cannot bind 127.0.0.1:{}: {error}", args.port))?;
-    println!("human_play_server=http://127.0.0.1:{}", args.port);
-    println!("opponent={}", session.opponent.label());
+    Ok(session)
+}
+
+fn build_registered_session(
+    seed: u64,
+    human_seat: u8,
+    registry: &PathBuf,
+    agent_id: &str,
+    move_timeout_ms: u64,
+    replay_out: Option<PathBuf>,
+    session_number: Option<u64>,
+) -> Result<Session, String> {
+    let id = match session_number {
+        Some(number) => format!("human-{seed}-{human_seat}-{}-{number}", std::process::id()),
+        None => format!("human-{seed}-{human_seat}-{}", std::process::id()),
+    };
+    let (recorder, setup) = ReplayRecorder::new_with_setup(GameConfig {
+        player_count: 2,
+        seed,
+        ..Default::default()
+    })
+    .map_err(|error| format!("cannot create replay recorder: {error}"))?;
+    let opponent_seat = PlayerId(1 - human_seat);
+    let opponent = Opponent::Registered(RegisteredOpponent::start(
+        registry,
+        agent_id,
+        opponent_seat,
+        &id,
+        seed,
+        recorder.state(),
+        &setup.events,
+        move_timeout_ms,
+    )?);
+    let replay_out = replay_out.unwrap_or_else(|| {
+        PathBuf::from("local-artifacts")
+            .join("m20-human-play")
+            .join(format!("{id}.replay.json"))
+    });
+    let mut session = Session {
+        id,
+        human_seat: PlayerId(human_seat),
+        recorder: Some(recorder),
+        terminal_state: None,
+        replay: None,
+        replay_hash: None,
+        replay_out,
+        frames: Vec::new(),
+        opponent,
+        opponent_rng: StableRng::new(seed ^ 0xa5a5_5a5a),
+        request_id: 0,
+        ply: 0,
+    };
+    session.advance_opponent()?;
+    Ok(session)
+}
+
+fn serve_studio_host(args: &[String]) -> Result<(), String> {
+    let args = parse_host_args(args)?;
+    let bytes = fs::read(&args.registry).map_err(|error| {
+        format!(
+            "cannot read Studio registry {}: {error}",
+            args.registry.display()
+        )
+    })?;
+    let registry: RatingRegistryV1 = serde_json::from_slice(&bytes)
+        .map_err(|error| format!("invalid Studio registry JSON: {error}"))?;
+    registry.validate()?;
+    let mut host = StudioHost {
+        registry_path: args.registry,
+        registry,
+        move_timeout_ms: args.move_timeout_ms,
+        next_session_number: 1,
+        session: None,
+    };
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port)).map_err(|error| {
+        format!(
+            "cannot bind Studio Host at 127.0.0.1:{}: {error}",
+            args.port
+        )
+    })?;
+    println!("studio_host=http://127.0.0.1:{}", args.port);
     for connection in listener.incoming() {
         let stream = connection.map_err(|error| error.to_string())?;
-        if let Err(error) = handle(stream, &mut session) {
-            eprintln!("request error: {error}");
+        if let Err(error) = handle_host(stream, &mut host) {
+            eprintln!("Studio Host request error: {error}");
         }
     }
     Ok(())
 }
 
-fn handle(mut stream: TcpStream, session: &mut Session) -> Result<(), String> {
+struct HttpRequest {
+    method: String,
+    path: String,
+    body: Vec<u8>,
+}
+
+fn read_request(stream: &TcpStream) -> Result<HttpRequest, String> {
     let mut reader = BufReader::new(stream.try_clone().map_err(|error| error.to_string())?);
     let mut request_line = String::new();
     reader
         .read_line(&mut request_line)
         .map_err(|error| error.to_string())?;
     let mut parts = request_line.split_whitespace();
-    let method = parts.next().unwrap_or("");
-    let path = parts.next().unwrap_or("");
+    let method = parts.next().unwrap_or("").to_string();
+    let path = parts.next().unwrap_or("").to_string();
     let mut content_length = 0usize;
     loop {
         let mut line = String::new();
@@ -650,23 +860,76 @@ fn handle(mut stream: TcpStream, session: &mut Session) -> Result<(), String> {
             content_length = value.trim().parse().map_err(|_| "invalid content length")?;
         }
     }
-    if method == "OPTIONS" {
+    if content_length > 64 * 1024 {
+        return Err("request body exceeds 64 KiB".into());
+    }
+    let mut body = vec![0; content_length];
+    reader
+        .read_exact(&mut body)
+        .map_err(|error| error.to_string())?;
+    Ok(HttpRequest { method, path, body })
+}
+
+fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), String> {
+    let request = read_request(&stream)?;
+    if request.method == "OPTIONS" {
         return respond(&mut stream, 204, "application/json", "");
     }
-    let result: Result<String, String> = match (method, path) {
-        ("GET", "/state") => serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string()),
-        ("POST", "/action") if content_length <= 64 * 1024 => {
-            let mut body = vec![0; content_length];
-            reader
-                .read_exact(&mut body)
-                .map_err(|error| error.to_string())?;
-            serde_json::from_slice::<Action>(&body)
-                .map_err(|error| format!("invalid action JSON: {error}"))
-                .and_then(|action| session.human_action(action))
-                .and_then(|()| {
-                    serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())
-                })
+    let result: Result<String, String> = match (request.method.as_str(), request.path.as_str()) {
+        ("GET", "/health") => Ok("{\"status\":\"ok\",\"mode\":\"studio_host\"}".into()),
+        ("GET", "/agents") => host.agents_json(),
+        ("GET", "/state") => host
+            .session
+            .as_ref()
+            .ok_or_else(|| "no active game; create one with POST /games".to_string())
+            .and_then(|session| {
+                serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())
+            }),
+        ("POST", "/games") => serde_json::from_slice::<NewGameRequest>(&request.body)
+            .map_err(|error| format!("invalid new-game JSON: {error}"))
+            .and_then(|value| host.new_game(value))
+            .and_then(|state| serde_json::to_string(&state).map_err(|e| e.to_string())),
+        ("POST", "/action") => host
+            .session
+            .as_mut()
+            .ok_or_else(|| "no active game".to_string())
+            .and_then(|session| {
+                serde_json::from_slice::<Action>(&request.body)
+                    .map_err(|error| format!("invalid action JSON: {error}"))
+                    .and_then(|action| session.human_action(action))
+                    .and_then(|()| {
+                        serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())
+                    })
+            }),
+        ("GET", "/archive") => host
+            .session
+            .as_ref()
+            .ok_or_else(|| "no active game".to_string())
+            .and_then(Session::archive)
+            .and_then(|archive| serde_json::to_string(&archive).map_err(|e| e.to_string())),
+        _ => {
+            return respond(
+                &mut stream,
+                404,
+                "application/json",
+                "{\"error\":\"not found\"}",
+            )
         }
+    };
+    respond_result(&mut stream, result)
+}
+
+fn handle_session(mut stream: TcpStream, session: &mut Session) -> Result<(), String> {
+    let request = read_request(&stream)?;
+    if request.method == "OPTIONS" {
+        return respond(&mut stream, 204, "application/json", "");
+    }
+    let result: Result<String, String> = match (request.method.as_str(), request.path.as_str()) {
+        ("GET", "/state") => serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string()),
+        ("POST", "/action") => serde_json::from_slice::<Action>(&request.body)
+            .map_err(|error| format!("invalid action JSON: {error}"))
+            .and_then(|action| session.human_action(action))
+            .and_then(|()| serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())),
         ("GET", "/archive") => session
             .archive()
             .and_then(|archive| serde_json::to_string(&archive).map_err(|e| e.to_string())),
@@ -680,10 +943,14 @@ fn handle(mut stream: TcpStream, session: &mut Session) -> Result<(), String> {
             )
         }
     };
+    respond_result(&mut stream, result)
+}
+
+fn respond_result(stream: &mut TcpStream, result: Result<String, String>) -> Result<(), String> {
     match result {
-        Ok(body) => respond(&mut stream, 200, "application/json", &body),
+        Ok(body) => respond(stream, 200, "application/json", &body),
         Err(error) => respond(
-            &mut stream,
+            stream,
             400,
             "application/json",
             &serde_json::json!({"error": error}).to_string(),
@@ -771,6 +1038,45 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     })
 }
 
+fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
+    let mut registry = None;
+    let mut port = None;
+    let mut move_timeout_ms = None;
+    let mut index = 0;
+    while index < args.len() {
+        let value = args
+            .get(index + 1)
+            .ok_or_else(|| format!("missing value for `{}`; {HOST_USAGE}", args[index]))?
+            .clone();
+        match args[index].as_str() {
+            "--registry" => set_once(&mut registry, PathBuf::from(value), "--registry")?,
+            "--port" => set_once(&mut port, value, "--port")?,
+            "--move-timeout-ms" => set_once(&mut move_timeout_ms, value, "--move-timeout-ms")?,
+            other => return Err(format!("unknown argument `{other}`; {HOST_USAGE}")),
+        }
+        index += 2;
+    }
+    let port = port
+        .ok_or("missing --port")?
+        .parse::<u16>()
+        .map_err(|_| "--port must be u16")?;
+    if port == 0 {
+        return Err("--port must be nonzero".into());
+    }
+    let move_timeout_ms = move_timeout_ms
+        .unwrap_or_else(|| DEFAULT_MOVE_TIMEOUT_MS.to_string())
+        .parse::<u64>()
+        .map_err(|_| "--move-timeout-ms must be u64")?;
+    if move_timeout_ms == 0 || move_timeout_ms > 24 * 60 * 60 * 1_000 {
+        return Err("--move-timeout-ms must be in 1..=86400000".into());
+    }
+    Ok(HostArgs {
+        registry: registry.ok_or("missing --registry")?,
+        port,
+        move_timeout_ms,
+    })
+}
+
 fn set_once<T>(slot: &mut Option<T>, value: T, name: &str) -> Result<(), String> {
     if slot.is_some() {
         return Err(format!("duplicate argument `{name}`"));
@@ -851,5 +1157,58 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(error, "invalid opponent selection");
+    }
+
+    #[test]
+    fn studio_host_requires_registry_and_port() {
+        let parsed = parse_host_args(&[
+            "--registry".into(),
+            "registry.json".into(),
+            "--port".into(),
+            "43120".into(),
+        ])
+        .unwrap();
+        assert_eq!(parsed.registry, PathBuf::from("registry.json"));
+        assert_eq!(parsed.port, 43120);
+        assert_eq!(parsed.move_timeout_ms, DEFAULT_MOVE_TIMEOUT_MS);
+    }
+
+    #[test]
+    fn studio_agent_discovery_hides_commands_and_local_paths() {
+        let registry: RatingRegistryV1 = serde_json::from_value(serde_json::json!({
+            "format": "effective-splendor-rating-registry",
+            "version": 1,
+            "registry_id": "test-registry",
+            "agents": [{
+                "id": "gpu-agent",
+                "display_name": "GPU Agent",
+                "class": "checkpoint",
+                "policy_version": "gpu-policy-v1",
+                "model_version": "gpu-model-v1",
+                "checkpoint_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "runtime_name": "gpu-runtime",
+                "runtime_version": "1",
+                "command": {
+                    "program": "python",
+                    "args": ["agent.py", "--checkpoint", "private/checkpoint.pt"]
+                }
+            }]
+        }))
+        .unwrap();
+        let host = StudioHost {
+            registry_path: PathBuf::from("private/registry.json"),
+            registry,
+            move_timeout_ms: DEFAULT_MOVE_TIMEOUT_MS,
+            next_session_number: 1,
+            session: None,
+        };
+        let value: serde_json::Value = serde_json::from_str(&host.agents_json().unwrap()).unwrap();
+        assert_eq!(value["agents"][0]["id"], "gpu-agent");
+        assert_eq!(value["agents"][0]["model_version"], "gpu-model-v1");
+        let json = value.to_string();
+        assert!(!json.contains("command"));
+        assert!(!json.contains("python"));
+        assert!(!json.contains("private/checkpoint.pt"));
+        assert!(!json.contains("private/registry.json"));
     }
 }

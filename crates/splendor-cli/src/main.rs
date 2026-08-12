@@ -114,6 +114,7 @@ fn main() {
         Some("human-play-server") => {
             std::process::exit(human_play_command::run_human_play_server(&argv[2..]))
         }
+        Some("studio-host") => std::process::exit(human_play_command::run_studio_host(&argv[2..])),
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("promotion-gate") => {
             std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))

@@ -39,3 +39,7 @@ npm test
 Prior/Visit/Q projection, rejects a malformed trace, and verifies that actions
 which differ only by `return` never receive the same label. Regenerate the
 golden with `cargo run -p splendor-analysis --example generate_frontend_fixture`.
+
+For a local human-vs-agent game, double-click `Start Splendor Studio.cmd` at the
+repository root. It starts both services and opens `/play`; opponent selection,
+session creation, and connection happen in the page without terminal commands.

@@ -6,18 +6,26 @@ legal actions, public session metadata and the terminal result. It never
 receives the raw game seed, deck order, `FullState`, or opponent blind-reserve
 identity.
 
-Start the local player-view server from the repository root:
+From the standard repository root, double-click:
 
-```powershell
-cargo run -p splendor-cli -- human-play-server `
-  --seed 200001 --human-seat 0 --opponent m07 --port 43120
+```text
+Start Splendor Studio.cmd
 ```
 
-Then start Replay Studio:
+That single launcher builds the local binary when needed, starts the persistent
+Studio Host and Replay Studio in the background, waits until both are healthy,
+and opens `/play`. The page discovers every agent in the M19 registry. Choose a
+baseline, search agent, or GPU checkpoint, then press **Start new game**. There
+is no port field or manual Connect step.
 
-```powershell
-cd apps/replay-studio
-npm run dev -- --host 127.0.0.1 --port 4173
+The Host API owns session creation:
+
+```text
+GET  /agents
+POST /games  { agent_id, human_seat, seed }
+GET  /state
+POST /action
+GET  /archive
 ```
 
 Open `http://127.0.0.1:4173/play`. Every action button is sourced from the
@@ -25,8 +33,7 @@ engine's current legal-action list. Market cards offer direct Buy buttons when
 legal, while the complete action list includes token returns, reserve choices,
 noble selection and forced pass.
 
-The v1 local server supports the heuristic baseline and frozen M07 champion.
-It also accepts any agent in a validated M16 rating registry, including local
+The Host accepts any agent in a validated M16 rating registry, including local
 GPU checkpoints, through the same strict Arena NDJSON handshake and
 Observation/action protocol:
 
@@ -39,7 +46,11 @@ target/debug/splendor.exe human-play-server `
 
 Registry identity, game/request ids, deadlines and the server-certified legal
 action set are checked before a move reaches the engine. No command is joined
-through a shell.
+through a shell. The browser's public `/agents` response deliberately omits
+registry command lines and local checkpoint paths.
+
+`human-play-server` remains available as a low-level diagnostic command, but it
+is not the normal user workflow.
 
 Every completed match is verified as Replay v1 and written without overwrite
 under `local-artifacts/m20-human-play/` by default. The terminal screen's
