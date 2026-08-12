@@ -31,11 +31,11 @@ test("server-renders the M16 Rating Studio route", async () => {
   const html = await response.text();
   assert.match(html, /<title>Rating Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Rating Studio/);
-  assert.match(html, /M19 internal championship/);
-  assert.match(html, /M17 Entity Mixer/);
-  assert.match(html, /M18A Self-Play Neural ISMCTS/);
-  assert.match(html, /M18B Rainbow/);
-  assert.match(html, /42<!-- -->\/<!-- -->42/);
+  assert.match(html, /m22-scaled-self-play-v1/);
+  assert.match(html, /M22 Self-Play/);
+  assert.match(html, /48<!-- -->\/<!-- -->48/);
+  assert.match(html, /M22 multi-seed/);
+  assert.match(html, /M19 full pool/);
   assert.match(html, /Non-transitivity matrix/);
   assert.match(html, /Load rating report/);
 });
