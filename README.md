@@ -148,6 +148,11 @@ unchanged; M08 only adds the Arena/Agent binding.
 19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
 20. M21: external benchmark decision complete; deferred until a new internal checkpoint clears the frozen multi-seed league/promotion gate
 
+Training `validation` means held-out offline fit only; teacher top-1, NLL,
+search-visit cross-entropy, Value MSE, and TD error never establish playing
+strength. Only completed Arena screens, leagues, and frozen promotion gates do.
+See [`docs/model-evaluation-contract.md`](docs/model-evaluation-contract.md).
+
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
 deterministic one-sided 95% confidence lower bound, reliability limits, and the

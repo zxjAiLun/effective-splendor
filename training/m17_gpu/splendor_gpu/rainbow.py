@@ -318,12 +318,13 @@ def main() -> None:
         "cuda_version": torch.version.cuda, "gpu_name": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
         "elapsed_seconds": time.perf_counter() - start, "checkpoint_hash": checkpoint_hash,
         "checkpoint_file_sha256": file_sha256(checkpoint_path), "best_step": best_step,
+        "metric_semantics": {"validation_kind": "offline_game_held_out_td_fit", "diagnostic_only": True, "strength_authority": "arena_rating_or_promotion_gate"},
         "validation": validation_metrics, "priority_range": [float(priorities.min()), float(priorities.max())],
         "initialization": {"base_checkpoint_hash": config["base_checkpoint_hash"], "copied_tensor_count": len(initialization["copied_tensors"])},
         "history": history,
     }
     (args.out_dir / "training-report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"checkpoint": str(checkpoint_path), "checkpoint_hash": checkpoint_hash, "validation": validation_metrics}))
+    print(json.dumps({"checkpoint": str(checkpoint_path), "checkpoint_hash": checkpoint_hash, "offline_validation": validation_metrics}))
 
 
 if __name__ == "__main__":

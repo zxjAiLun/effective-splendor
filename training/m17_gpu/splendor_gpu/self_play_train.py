@@ -230,12 +230,17 @@ def main() -> None:
         "self_play_hash": actual_self_play_hash,
         "checkpoint_hash": checkpoint_hash,
         "checkpoint_file_sha256": file_sha256(checkpoint_path),
+        "metric_semantics": {
+            "validation_kind": "offline_game_held_out_search_visit_fit",
+            "diagnostic_only": True,
+            "strength_authority": "arena_rating_or_promotion_gate",
+        },
         "selection": {"best_epoch": best_epoch, "best_score": best_score},
         "validation": validation,
         "history": history,
     }
     (args.out_dir / "training-report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"checkpoint": str(checkpoint_path), "checkpoint_hash": checkpoint_hash, "validation": validation}))
+    print(json.dumps({"checkpoint": str(checkpoint_path), "checkpoint_hash": checkpoint_hash, "offline_validation": validation}))
 
 
 if __name__ == "__main__":

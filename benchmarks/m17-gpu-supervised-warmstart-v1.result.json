@@ -10,6 +10,11 @@
   "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
   "train_examples": 2942,
   "validation_examples": 978,
+  "metric_semantics": {
+    "offline_validation_kind": "source_held_out_m07_teacher_fit",
+    "offline_metrics_are_strength_evidence": false,
+    "strength_authority": "prospective_screen"
+  },
   "device": "NVIDIA GeForce RTX 4060 Laptop GPU",
   "flat_resmlp": {
     "checkpoint_hash": "df790639182e8f6cc5d118c2a31c272dbd128001dadab447c4f45e65b3b93cd4",

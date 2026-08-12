@@ -11,6 +11,7 @@
   "verified_replays": 42,
   "seeds_per_pair": 1,
   "seat_rotations": 2,
+  "strength_authority": "arena_round_robin",
   "ranking": [
     {"rank":1,"agent_id":"heuristic-v1","wins":11,"losses":1,"official_elo":1908},
     {"rank":2,"agent_id":"m07-champion","wins":8,"losses":4,"official_elo":1637},

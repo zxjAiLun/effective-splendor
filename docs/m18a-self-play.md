@@ -1,5 +1,10 @@
 # M18A Neural-ISMCTS Self-Play v1
 
+Terminology: the game-held-out `validation` metrics below measure fit to search
+visit distributions and terminal outcomes. They are diagnostic checkpoint
+selection metrics, not move correctness, Elo, or promotion evidence. Playing
+strength is measured only by the prospective Arena screen/league.
+
 M18A implements the project's first own-model reinforcement-learning loop. It
 is AlphaZero-like, but because Splendor contains hidden information it uses the
 accepted information-set search boundary rather than pretending the game is

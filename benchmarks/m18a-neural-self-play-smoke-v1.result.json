@@ -8,6 +8,11 @@
   "self_play_examples": 122,
   "trained_checkpoint_hash": "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca",
   "trained_checkpoint_file_sha256": "2973542a7cce9c88064ee92afd154b19e4c6c82d4ce3a75e4349691acb681e42",
+  "metric_semantics": {
+    "offline_validation_kind": "game_held_out_search_visit_fit",
+    "offline_metrics_are_strength_evidence": false,
+    "strength_authority": "prospective_screen"
+  },
   "validation": {
     "examples": 56,
     "policy_cross_entropy": 1.6794470378330775,

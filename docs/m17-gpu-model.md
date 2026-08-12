@@ -39,9 +39,10 @@ optimizer    = AdamW
 epochs       = 32
 ```
 
-Every epoch is independently evaluated. The published local checkpoint is the
-minimum of `validation Policy NLL + value_loss_weight * Value MSE`, not simply
-the last epoch. This closes the overfitting behavior seen in the Flat control.
+Every epoch is independently evaluated on an offline held-out split. The
+published local checkpoint is the minimum of `Policy NLL +
+value_loss_weight * Value MSE`, not simply the last epoch. This selects an epoch
+and detects overfitting; it does not establish playing strength.
 
 The semantic checkpoint hash covers canonical metadata and all named tensor
 dtype/shape/bytes under a domain separator. The ordinary `.pt` SHA-256 remains
@@ -66,8 +67,8 @@ championship/promotion stays in M19.
 ## Frozen v1 result
 
 The run bound to implementation `c411203` completed on the RTX 4060 Laptop GPU.
-Entity Mixer used 949,060 parameters and beat the larger 1,665,283-parameter
-Flat control on both held-out heads:
+Entity Mixer used 949,060 parameters and fit both offline held-out heads better
+than the larger 1,665,283-parameter Flat control:
 
 ```text
                          Flat ResMLP    Entity Mixer

@@ -7,6 +7,11 @@
   "self_play_hash": "495d5a9d708abfe5dd3078ce4b8f6c4d837d4011b2b0b47012c942d3f4237c6b",
   "checkpoint_hash": "e7d1bd75d6270de3f54fbd4c1477d9df34fe7b8817bae4552adca670061d9ad6",
   "checkpoint_file_sha256": "61fce31814fa8fcdb24dfb2cea147862d39888ef4771b4caf1fd503d83ad5ebb",
+  "metric_semantics": {
+    "offline_validation_kind": "game_held_out_td_fit",
+    "offline_metrics_are_strength_evidence": false,
+    "strength_authority": "prospective_screen"
+  },
   "training": {
     "train_transitions": 66,
     "validation_transitions": 56,

@@ -21,6 +21,10 @@ M18A two-game corpus (66 train and 56 validation transitions), using CUDA for
 800 gradient steps. Checkpoint semantic hash:
 `e7d1bd75d6270de3f54fbd4c1477d9df34fe7b8817bae4552adca670061d9ad6`.
 
+The reported held-out cross-entropy and TD error measure offline fit to the
+training target construction only. They select/debug a checkpoint; they are
+not a strength gate. Win/loss/Elo evidence begins at the Arena screen below.
+
 The strict Arena agent chooses the legal action with maximum expected value
 under the learned distribution. Its prospective M16 screen completed 8/8 with
 zero aborts but lost 1-7 to heuristic (Official Elo 1332). The first M18B
