@@ -14,7 +14,8 @@ Start Splendor Studio.cmd
 
 That single launcher builds the local binary when needed, starts the persistent
 Studio Host and Replay Studio in the background, waits until both are healthy,
-and opens `/play`. The page discovers every agent in the M19 registry. Choose a
+and opens `/play`. The page discovers every agent in the tracked Studio 1v1
+registry, including M17/M18A/M18B/M22 GPU checkpoints. Choose a
 baseline, search agent, or GPU checkpoint, then press **Start new game**. There
 is no port field or manual Connect step.
 

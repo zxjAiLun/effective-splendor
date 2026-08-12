@@ -1,10 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "REGISTRY=%~dp0local-artifacts\m19-internal-championship-v1\registry.json"
+set "REGISTRY=%~dp0benchmarks\studio-1v1.registry.json"
 set "LOGROOT=%~dp0local-artifacts\studio-host"
 if not exist "%REGISTRY%" (
-  echo Missing M19 registry: "%REGISTRY%"
+  echo Missing Studio registry: "%REGISTRY%"
   pause
   exit /b 1
 )
