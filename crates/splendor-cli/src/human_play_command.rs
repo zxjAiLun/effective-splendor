@@ -390,9 +390,17 @@ struct HumanSessionState {
     ply: u32,
     observation: Observation,
     legal_actions: Vec<Action>,
+    action_history: Vec<HumanActionHistoryV1>,
     result: Option<GameResult>,
     replay_ready: bool,
     replay_document_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct HumanActionHistoryV1 {
+    ply: u32,
+    actor: PlayerId,
+    action: Action,
 }
 
 struct Session {
@@ -525,6 +533,15 @@ impl Session {
             } else {
                 state.legal_actions()
             },
+            action_history: self
+                .frames
+                .iter()
+                .map(|frame| HumanActionHistoryV1 {
+                    ply: frame.ply,
+                    actor: frame.actor,
+                    action: frame.recorded_action,
+                })
+                .collect(),
             result: state.result.clone(),
             replay_ready: self.replay.is_some(),
             replay_document_hash: self.replay_hash.clone(),
@@ -1170,6 +1187,25 @@ mod tests {
         let json = serde_json::to_string(&session.snapshot()).unwrap();
         assert!(json.contains("observation"));
         assert!(json.contains("legal_actions"));
+        assert!(!json.contains("decks"));
+        assert!(!json.contains("seed\""));
+    }
+
+    #[test]
+    fn snapshot_history_contains_only_semantic_actions() {
+        let mut session = test_session();
+        let action = session
+            .state()
+            .legal_actions()
+            .into_iter()
+            .find(|action| matches!(action, Action::TakeTokens { .. }))
+            .unwrap();
+        session.apply_recorded(PlayerId(0), action).unwrap();
+        let value = serde_json::to_value(session.snapshot()).unwrap();
+        assert_eq!(value["action_history"][0]["ply"], 0);
+        assert_eq!(value["action_history"][0]["actor"], 0);
+        assert_eq!(value["action_history"][0]["action"]["type"], "take_tokens");
+        let json = value.to_string();
         assert!(!json.contains("decks"));
         assert!(!json.contains("seed\""));
     }
