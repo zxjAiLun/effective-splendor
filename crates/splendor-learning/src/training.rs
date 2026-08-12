@@ -8,7 +8,7 @@ use splendor_league::{
 };
 
 use crate::error::{invalid_checkpoint, invalid_config, invalid_dataset};
-use crate::model::initialize_checkpoint;
+use crate::model::{initialize_checkpoint, initialize_checkpoint_v2};
 use crate::{
     encode_action_v1, encode_observation_v1, model_checkpoint_hash_v1, LearningError,
     PolicyValueCheckpointV1, PolicyValueModelV1, SearchTeacherTargetSetV1, SearchTeacherTargetV1,
@@ -64,6 +64,11 @@ pub struct PolicyValueTrainingConfigV1 {
     /// artifact consumed by both heads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_search_teacher_targets_hash: Option<String>,
+    /// Absent preserves the accepted linear/bilinear M12 architecture.
+    /// Version 2 enables the M15D nonlinear action-interaction Policy head and
+    /// an independently trainable Value encoder.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_architecture_version: Option<u32>,
 }
 
 impl PolicyValueTrainingConfigV1 {
@@ -129,6 +134,7 @@ impl PolicyValueTrainingConfigV1 {
                     || self.min_value_mse_relative_improvement_bps.is_some()
                     || self.value_updates_shared_encoder.is_some()
                     || self.expected_search_teacher_targets_hash.is_some()
+                    || self.model_architecture_version.is_some()
                 {
                     return Err(invalid_config(
                         "source-aware fields require training_contract_version 2",
@@ -152,6 +158,11 @@ impl PolicyValueTrainingConfigV1 {
                 if self.expected_search_teacher_targets_hash.is_some() {
                     return Err(invalid_config(
                         "search-teacher hash requires training_contract_version 3",
+                    ));
+                }
+                if self.model_architecture_version.is_some() {
+                    return Err(invalid_config(
+                        "architecture v2 requires search-teacher contract v3",
                     ));
                 }
             }
@@ -182,6 +193,21 @@ impl PolicyValueTrainingConfigV1 {
                             invalid_config("contract v3 requires search-teacher target hash")
                         })?,
                 )?;
+                if self
+                    .model_architecture_version
+                    .is_some_and(|version| version != 2)
+                {
+                    return Err(invalid_config(
+                        "model_architecture_version must be absent or 2",
+                    ));
+                }
+                if self.model_architecture_version == Some(2)
+                    && self.value_updates_shared_encoder != Some(false)
+                {
+                    return Err(invalid_config(
+                        "architecture v2 requires isolated Policy/Value encoders",
+                    ));
+                }
             }
             Some(_) => {
                 return Err(invalid_config(
@@ -298,6 +324,8 @@ pub struct PolicyValueTrainingReportV1 {
     pub value_updates_shared_encoder: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search_teacher_targets_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_architecture_version: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -325,6 +353,8 @@ pub struct OfflineEvaluationReportV1 {
     pub value_updates_shared_encoder: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search_teacher_targets_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_architecture_version: Option<u32>,
 }
 
 pub fn training_config_hash_v1(
@@ -356,11 +386,19 @@ pub fn train_policy_value_v1(
     )?;
     validate_config_binding(config, &prepared.identity)?;
     let config_hash = training_config_hash_v1(config)?;
-    let mut checkpoint = initialize_checkpoint(
-        config.model_id.clone(),
-        config.hidden_features as usize,
-        config.init_seed,
-    );
+    let mut checkpoint = if config.model_architecture_version == Some(2) {
+        initialize_checkpoint_v2(
+            config.model_id.clone(),
+            config.hidden_features as usize,
+            config.init_seed,
+        )
+    } else {
+        initialize_checkpoint(
+            config.model_id.clone(),
+            config.hidden_features as usize,
+            config.init_seed,
+        )
+    };
     checkpoint.source_dataset_id = prepared.identity.dataset_id.clone();
     checkpoint.source_dataset_hash = prepared.identity.dataset_hash.clone();
     checkpoint.league_manifest_hash = prepared.identity.league_manifest_hash.clone();
@@ -451,6 +489,7 @@ pub fn train_policy_value_v1(
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: None,
+        model_architecture_version: None,
     };
     Ok((checkpoint, report))
 }
@@ -477,11 +516,19 @@ pub fn train_policy_value_with_search_targets_v1(
     let target_hash = validate_search_targets(dataset, targets, config, &prepared)?;
     let targets_by_example = search_targets_by_example(dataset, targets, &prepared)?;
     let config_hash = training_config_hash_v1(config)?;
-    let mut checkpoint = initialize_checkpoint(
-        config.model_id.clone(),
-        config.hidden_features as usize,
-        config.init_seed,
-    );
+    let mut checkpoint = if config.model_architecture_version == Some(2) {
+        initialize_checkpoint_v2(
+            config.model_id.clone(),
+            config.hidden_features as usize,
+            config.init_seed,
+        )
+    } else {
+        initialize_checkpoint(
+            config.model_id.clone(),
+            config.hidden_features as usize,
+            config.init_seed,
+        )
+    };
     checkpoint.source_dataset_id = prepared.identity.dataset_id.clone();
     checkpoint.source_dataset_hash = prepared.identity.dataset_hash.clone();
     checkpoint.league_manifest_hash = prepared.identity.league_manifest_hash.clone();
@@ -558,6 +605,7 @@ pub fn train_policy_value_with_search_targets_v1(
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: Some(target_hash),
+        model_architecture_version: config.model_architecture_version,
     };
     Ok((checkpoint, report))
 }
@@ -637,6 +685,7 @@ pub fn evaluate_checkpoint_v1(
         material_gate: None,
         value_updates_shared_encoder: None,
         search_teacher_targets_hash: None,
+        model_architecture_version: None,
     })
 }
 
@@ -708,6 +757,7 @@ pub fn evaluate_checkpoint_with_config_v1(
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: None,
+        model_architecture_version: None,
     })
 }
 
@@ -787,6 +837,7 @@ pub fn evaluate_checkpoint_with_search_targets_v1(
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: Some(target_hash),
+        model_architecture_version: config.model_architecture_version,
     })
 }
 
@@ -1256,6 +1307,9 @@ fn train_search_target(
     target: &SearchTeacherTargetV1,
     config: &PolicyValueTrainingConfigV1,
 ) -> Result<(), LearningError> {
+    if model.checkpoint().model_architecture_version == Some(2) {
+        return train_search_target_v2(model, example, target, config);
+    }
     let observation = encode_observation_v1(&example.observation)?;
     let actions = example
         .legal_actions
@@ -1349,6 +1403,146 @@ fn train_search_target(
             parameters.encoder_weights[index] -= learning_rate * clip(gradient);
         }
         parameters.encoder_bias[unit] -= learning_rate * clip(d_pre_activation);
+    }
+    Ok(())
+}
+
+fn train_search_target_v2(
+    model: &mut PolicyValueModelV1,
+    example: &TrainingExampleV1,
+    target: &SearchTeacherTargetV1,
+    config: &PolicyValueTrainingConfigV1,
+) -> Result<(), LearningError> {
+    let observation = encode_observation_v1(&example.observation)?;
+    let actions = example
+        .legal_actions
+        .iter()
+        .map(encode_action_v1)
+        .collect::<Result<Vec<_>, _>>()?;
+    if target.action_targets.len() != actions.len() {
+        return Err(invalid_dataset("search Policy target shape changed"));
+    }
+    let policy_hidden = model.hidden(&observation);
+    let probabilities = model.policy_probabilities(&policy_hidden, &actions)?;
+    let value_hidden = model.value_hidden(&observation);
+    let player_count = example.observation.public.player_count as usize;
+    if target.value_target_by_player_micros.len() != player_count {
+        return Err(invalid_dataset("search Value target shape changed"));
+    }
+    let values = model.values(&value_hidden, player_count);
+    let value_targets = target
+        .value_target_by_player_micros
+        .iter()
+        .map(|value| *value as f32 / SEARCH_VALUE_TARGET_SCALE_V1 as f32)
+        .collect::<Vec<_>>();
+    let mut d_logits = probabilities;
+    for (gradient, desired) in d_logits.iter_mut().zip(&target.action_targets) {
+        *gradient -= desired.policy_target_micros as f32 / SEARCH_VALUE_TARGET_SCALE_V1 as f32;
+    }
+
+    let hidden_width = policy_hidden.len();
+    let mut d_policy_hidden = vec![0.0f32; hidden_width];
+    let mut d_policy_bilinear = vec![0.0f32; hidden_width * ACTION_FEATURES_V1];
+    let mut d_policy_action_bias = vec![0.0f32; ACTION_FEATURES_V1];
+    let mut d_policy_hidden_bias = vec![0.0f32; hidden_width];
+    let mut d_policy_output = vec![0.0f32; hidden_width];
+    {
+        let parameters = &model.checkpoint().parameters;
+        for ((action, d_logit), _) in actions.iter().zip(&d_logits).zip(&target.action_targets) {
+            for (slot, feature) in d_policy_action_bias.iter_mut().zip(action) {
+                *slot += d_logit * feature;
+            }
+            for unit in 0..hidden_width {
+                let row = &parameters.policy_bilinear
+                    [unit * ACTION_FEATURES_V1..(unit + 1) * ACTION_FEATURES_V1];
+                let pre = row.iter().zip(action).fold(
+                    policy_hidden[unit] + parameters.policy_hidden_bias[unit],
+                    |sum, (weight, feature)| sum + weight * feature,
+                );
+                let action_hidden = pre.tanh();
+                d_policy_output[unit] += d_logit * action_hidden;
+                let d_pre = d_logit
+                    * parameters.policy_output_weights[unit]
+                    * (1.0 - action_hidden * action_hidden);
+                d_policy_hidden[unit] += d_pre;
+                d_policy_hidden_bias[unit] += d_pre;
+                for (feature, value) in action.iter().enumerate() {
+                    d_policy_bilinear[unit * ACTION_FEATURES_V1 + feature] += d_pre * value;
+                }
+            }
+        }
+    }
+
+    let mut d_value_hidden = vec![0.0f32; hidden_width];
+    let mut d_value_weights = vec![0.0f32; MAX_PLAYERS_V1 * hidden_width];
+    let mut d_value_bias = vec![0.0f32; MAX_PLAYERS_V1];
+    {
+        let parameters = &model.checkpoint().parameters;
+        for player in 0..player_count {
+            let error = values[player] - value_targets[player];
+            let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
+                * values[player]
+                * (1.0 - values[player]);
+            d_value_bias[player] = d_logit;
+            for unit in 0..hidden_width {
+                let index = player * hidden_width + unit;
+                d_value_weights[index] = d_logit * value_hidden[unit];
+                d_value_hidden[unit] += d_logit * parameters.value_weights[index];
+            }
+        }
+    }
+
+    let learning_rate = config.learning_rate;
+    let l2 = config.l2_weight;
+    let parameters = &mut model.checkpoint_mut().parameters;
+    for (weight, gradient) in parameters.policy_bilinear.iter_mut().zip(d_policy_bilinear) {
+        *weight -= learning_rate * clip(gradient + l2 * *weight);
+    }
+    for (weight, gradient) in parameters
+        .policy_action_bias
+        .iter_mut()
+        .zip(d_policy_action_bias)
+    {
+        *weight -= learning_rate * clip(gradient + l2 * *weight);
+    }
+    for (bias, gradient) in parameters
+        .policy_hidden_bias
+        .iter_mut()
+        .zip(d_policy_hidden_bias)
+    {
+        *bias -= learning_rate * clip(gradient);
+    }
+    for (weight, gradient) in parameters
+        .policy_output_weights
+        .iter_mut()
+        .zip(d_policy_output)
+    {
+        *weight -= learning_rate * clip(gradient + l2 * *weight);
+    }
+    for unit in 0..hidden_width {
+        let d_pre = d_policy_hidden[unit] * (1.0 - policy_hidden[unit] * policy_hidden[unit]);
+        for (feature, value) in observation.iter().enumerate() {
+            let index = unit * OBSERVATION_FEATURES_V1 + feature;
+            let gradient = d_pre * value + l2 * parameters.encoder_weights[index];
+            parameters.encoder_weights[index] -= learning_rate * clip(gradient);
+        }
+        parameters.encoder_bias[unit] -= learning_rate * clip(d_pre);
+    }
+
+    for (weight, gradient) in parameters.value_weights.iter_mut().zip(d_value_weights) {
+        *weight -= learning_rate * clip(gradient + l2 * *weight);
+    }
+    for (bias, gradient) in parameters.value_bias.iter_mut().zip(d_value_bias) {
+        *bias -= learning_rate * clip(gradient);
+    }
+    for unit in 0..hidden_width {
+        let d_pre = d_value_hidden[unit] * (1.0 - value_hidden[unit] * value_hidden[unit]);
+        for (feature, value) in observation.iter().enumerate() {
+            let index = unit * OBSERVATION_FEATURES_V1 + feature;
+            let gradient = d_pre * value + l2 * parameters.value_encoder_weights[index];
+            parameters.value_encoder_weights[index] -= learning_rate * clip(gradient);
+        }
+        parameters.value_encoder_bias[unit] -= learning_rate * clip(d_pre);
     }
     Ok(())
 }
@@ -1848,6 +2042,7 @@ mod tests {
             min_value_mse_relative_improvement_bps: None,
             value_updates_shared_encoder: None,
             expected_search_teacher_targets_hash: None,
+            model_architecture_version: None,
         };
         (dataset, config)
     }
@@ -1995,6 +2190,81 @@ mod tests {
             report.validation_head_metrics
         );
         assert_eq!(offline.material_gate, report.material_gate);
+    }
+
+    #[test]
+    fn architecture_v2_is_deterministic_and_value_is_policy_isolated() {
+        let (dataset, mut config) = dataset_and_config();
+        let targets = search_targets(&dataset);
+        config.training_contract_version = Some(3);
+        config.model_architecture_version = Some(2);
+        config.hidden_features = 8;
+        config.policy_teacher_agent_ids = vec!["teacher".into()];
+        config.value_target_agent_ids = vec!["teacher".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        config.value_updates_shared_encoder = Some(false);
+        config.expected_search_teacher_targets_hash =
+            Some(crate::search_teacher_targets_hash_v1(&targets).unwrap());
+
+        let (left, report) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        let (right, _) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        assert_eq!(left, right);
+        assert_eq!(left.model_architecture_version, Some(2));
+        assert!(!left.parameters.policy_output_weights.is_empty());
+        assert!(!left.parameters.value_encoder_weights.is_empty());
+        let offline =
+            evaluate_checkpoint_with_search_targets_v1(&dataset, &targets, &left, &config).unwrap();
+        assert_eq!(
+            offline.validation_head_metrics,
+            report.validation_head_metrics
+        );
+
+        let mut changed_targets = targets.clone();
+        for target in &mut changed_targets.targets {
+            for action in &mut target.action_targets {
+                action.utility_sum_by_player[1] = 1_000_000_000;
+            }
+            target.value_target_by_player_micros[1] = 1_000_000;
+        }
+        config.expected_search_teacher_targets_hash =
+            Some(crate::search_teacher_targets_hash_v1(&changed_targets).unwrap());
+        let (changed, _) =
+            train_policy_value_with_search_targets_v1(&dataset, &changed_targets, &config).unwrap();
+        assert_eq!(
+            left.parameters.encoder_weights,
+            changed.parameters.encoder_weights
+        );
+        assert_eq!(
+            left.parameters.encoder_bias,
+            changed.parameters.encoder_bias
+        );
+        assert_eq!(
+            left.parameters.policy_bilinear,
+            changed.parameters.policy_bilinear
+        );
+        assert_eq!(
+            left.parameters.policy_action_bias,
+            changed.parameters.policy_action_bias
+        );
+        assert_eq!(
+            left.parameters.policy_hidden_bias,
+            changed.parameters.policy_hidden_bias
+        );
+        assert_eq!(
+            left.parameters.policy_output_weights,
+            changed.parameters.policy_output_weights
+        );
+        assert_ne!(
+            left.parameters.value_weights,
+            changed.parameters.value_weights
+        );
+        assert_ne!(
+            left.parameters.value_encoder_weights,
+            changed.parameters.value_encoder_weights
+        );
     }
 
     #[test]

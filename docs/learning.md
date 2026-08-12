@@ -325,9 +325,43 @@ Value MSE was worse than the train-source constant prior. Both unchanged gates
 failed. `benchmarks/m15c-search-policy-value-v1.result.json` records the exact
 hashes and metrics; no candidate or prospective screen is authorized.
 
-This failure changes the next development boundary: target provenance and
-projection are now adequate for measurement, while the accepted M12
-representation/architecture is the active bottleneck. A later M15D may compare
-a richer observation/action interaction model under the same target artifact,
-split, gates and initialization discipline. It must not tune the target scale,
-floor, gates, or reuse formal M13 seeds in response to this result.
+This failure authorized one controlled representation/capacity comparison
+under the same target artifact, split, gates and initialization discipline. It
+did not authorize tuning the target scale, floor, gates, or formal M13 seeds.
+
+### M15D architecture v2
+
+M15D keeps checkpoint format v1 but adds an optional
+`model_architecture_version: 2`. When absent, all accepted M12/M15B and M15C
+JSON/hash behavior remains unchanged. Version 2 makes two structural changes:
+
+- Policy encodes the player-view state, combines it with each legal action in
+  a nonlinear hidden interaction, then scores that interaction. Unlike the v1
+  additive tier/slot context, this can condition a slot choice on the complete
+  encoded board state.
+- Value has a separate observation encoder. Search-shaped Value gradients
+  update that encoder and the vector head but can never change Policy
+  parameters. A deterministic test changes only Value utilities and proves
+  every Policy parameter remains byte-identical.
+
+The frozen config doubles hidden width from 32 to 64. Dataset, target semantic
+hash, split, 24 epochs, optimizer settings, initialization seed and both gates
+are identical to M15C.
+
+```powershell
+cargo run -p splendor-cli -- train-policy-value-search-teacher `
+  --dataset local-artifacts/m15b-teacher-data-v2/dataset.json `
+  --targets local-artifacts/m15c-search-teacher-targets-v1/targets.json `
+  --config benchmarks/m15d-interaction-policy-value-v1.config.json `
+  --checkpoint local-artifacts/m15d-interaction-policy-value-v1/checkpoint.json `
+  --report local-artifacts/m15d-interaction-policy-value-v1/training-report.json
+```
+
+The frozen run did not pass. Policy top-1 increased slightly from 30.27% to
+30.98%, but validation soft cross-entropy worsened from 2.8326 to 2.8382.
+Relative improvement over uniform was 4.75% on train and 4.69% on validation,
+far below the unchanged 15% gate. The near-identical train/validation result
+points to optimization or underfitting, not a held-out generalization gap.
+Independent Value MSE was 0.02448 versus a 0.01906 constant prior, so the 5%
+Value gate also failed. `benchmarks/m15d-interaction-policy-value-v1.result.json`
+records the exact hashes. M15D closes without a candidate or screen.

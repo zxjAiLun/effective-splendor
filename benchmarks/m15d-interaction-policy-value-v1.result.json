@@ -1,0 +1,57 @@
+{
+  "format": "effective-splendor-m15d-interaction-training-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "frozen_inputs": {
+    "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+    "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+    "search_teacher_targets_hash": "5557252270a0f6a1cb5d881ac975802a6bd14b74e6130daf03f00fc09c6a46de",
+    "targets": 3920,
+    "train_examples": 2942,
+    "validation_examples": 978
+  },
+  "architecture": {
+    "model_architecture_version": 2,
+    "hidden_features": 64,
+    "policy": "state encoder plus nonlinear action-conditioned interaction head",
+    "value": "independent state encoder plus vector sigmoid head",
+    "value_updates_policy_encoder": false
+  },
+  "training": {
+    "training_config_hash": "a14ec3958c48c79d3630215cf33d7961d7fc00f7c78a29586c2c57f99f7d7fd4",
+    "training_config_file_sha256": "6bc912dc0a84a8fd5f3665da859873f047b39368923386de3afe6a45ce8c9fff",
+    "checkpoint_hash": "e3183e4e143cae156ca68b887bf6b5e44c11398bb749f01c2d07d1293d72e4de",
+    "checkpoint_file_sha256": "05c47f9101ed8c838bcdaeecb4c323b37ffc9472e504ff90f9d223b8e9c68821",
+    "training_report_file_sha256": "62519a8ad6b3df0a8fe54a4750c1d75450301aff6bf35c2f642325a41ed81510",
+    "offline_eval_file_sha256": "eca5543eff91fc8f27b03df3ff6e8e0c26b1be9fdf5f781661de01e34fb9e0b0",
+    "train_policy_top1_accuracy": 0.3130523453433039,
+    "train_policy_cross_entropy": 2.9100248592643947,
+    "train_uniform_cross_entropy": 3.055274892,
+    "train_policy_relative_improvement_bps": 475,
+    "validation_policy_top1_accuracy": 0.3098159509202454,
+    "validation_policy_cross_entropy": 2.8381573788741017,
+    "validation_uniform_cross_entropy": 2.9779021963351053,
+    "validation_policy_relative_improvement_bps": 469,
+    "policy_gate_required_bps": 1500,
+    "policy_gate_passed": false,
+    "train_value_mse": 0.02064914671972559,
+    "validation_value_mse": 0.024480677068096326,
+    "train_prior_value_mse": 0.019055392543991724,
+    "value_relative_improvement_bps": 0,
+    "value_gate_required_bps": 500,
+    "value_gate_passed": false,
+    "overall_gate_passed": false,
+    "independent_offline_reproduction": true
+  },
+  "m15c_comparison": {
+    "policy_top1_delta": 0.00715746421267895,
+    "policy_cross_entropy_delta": 0.0055450523511822,
+    "value_mse_delta": 0.0008657301623707123
+  },
+  "verdict": {
+    "candidate": false,
+    "prospective_screen_authorized": false,
+    "promotion": false,
+    "interpretation": "The richer h64 architecture did not materially fit the frozen search targets under the unchanged optimizer and 24-epoch schedule. Similar train and validation Policy improvements indicate underfitting or optimization failure rather than a held-out generalization gap. M15D closes without a candidate; no gate, target, or seed was changed."
+  }
+}

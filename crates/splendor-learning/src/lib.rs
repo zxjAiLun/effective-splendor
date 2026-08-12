@@ -1,8 +1,9 @@
-//! M12 supervised player-view policy + multiplayer vector-value baseline.
+//! Player-view Policy + multiplayer vector-Value learning contracts.
 //!
 //! This crate deliberately stops at representation, offline supervised
-//! training, checkpointing, inference, and held-out evaluation. It does not
-//! connect the learned model to M07/M10 search and never accepts `FullState`.
+//! training, checkpointing, inference, and held-out evaluation. M15C/M15D add
+//! provenance-bound search targets and an optional nonlinear architecture;
+//! every representation still accepts only `Observation`, never `FullState`.
 
 mod error;
 mod formal_result;

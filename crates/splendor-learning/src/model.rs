@@ -20,6 +20,14 @@ pub struct ModelParametersV1 {
     pub policy_action_bias: Vec<f32>,
     pub value_weights: Vec<f32>,
     pub value_bias: Vec<f32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub policy_hidden_bias: Vec<f32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub policy_output_weights: Vec<f32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub value_encoder_weights: Vec<f32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub value_encoder_bias: Vec<f32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -45,6 +53,8 @@ pub struct PolicyValueCheckpointV1 {
     pub training_contract_version: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search_teacher_targets_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_architecture_version: Option<u32>,
     pub trained_examples: u64,
     pub validation_examples: u64,
     pub validation_seed_modulus: u32,
@@ -106,6 +116,19 @@ impl PolicyValueCheckpointV1 {
             }
             _ => {}
         }
+        if self
+            .model_architecture_version
+            .is_some_and(|version| version != 2)
+        {
+            return Err(invalid_checkpoint(
+                "model_architecture_version must be absent or 2",
+            ));
+        }
+        if self.model_architecture_version.is_some() && self.training_contract_version != Some(3) {
+            return Err(invalid_checkpoint(
+                "architecture v2 requires search-teacher contract v3",
+            ));
+        }
         validate_label("source_dataset_id", &self.source_dataset_id)?;
         if self.trained_examples == 0 || self.validation_examples == 0 || self.epochs == 0 {
             return Err(invalid_checkpoint(
@@ -117,7 +140,7 @@ impl PolicyValueCheckpointV1 {
         {
             return Err(invalid_checkpoint("invalid source-level validation split"));
         }
-        validate_parameters(&self.parameters, hidden)
+        validate_parameters(&self.parameters, hidden, self.model_architecture_version)
     }
 }
 
@@ -180,7 +203,17 @@ impl PolicyValueModelV1 {
             .map(encode_action_v1)
             .collect::<Result<Vec<_>, _>>()?;
         let probabilities = self.policy_probabilities(&hidden, &action_features)?;
-        let values = self.values(&hidden, player_count);
+        let values = if self.checkpoint.model_architecture_version == Some(2) {
+            let value_hidden = self.value_hidden(&observation_features);
+            if value_hidden.iter().any(|value| !value.is_finite()) {
+                return Err(invalid_checkpoint(
+                    "checkpoint produced a non-finite Value representation",
+                ));
+            }
+            self.values(&value_hidden, player_count)
+        } else {
+            self.values(&hidden, player_count)
+        };
         if values.iter().any(|value| !value.is_finite()) {
             return Err(invalid_checkpoint(
                 "checkpoint produced a non-finite value prediction",
@@ -220,6 +253,9 @@ impl PolicyValueModelV1 {
         hidden: &[f32],
         actions: &[Vec<f32>],
     ) -> Result<Vec<f32>, LearningError> {
+        if self.checkpoint.model_architecture_version == Some(2) {
+            return self.policy_probabilities_v2(hidden, actions);
+        }
         let context = self.policy_context(hidden);
         let mut logits = actions
             .iter()
@@ -233,6 +269,35 @@ impl PolicyValueModelV1 {
                     })
             })
             .collect::<Vec<_>>();
+        softmax_in_place(&mut logits)?;
+        Ok(logits)
+    }
+
+    fn policy_probabilities_v2(
+        &self,
+        hidden: &[f32],
+        actions: &[Vec<f32>],
+    ) -> Result<Vec<f32>, LearningError> {
+        let parameters = &self.checkpoint.parameters;
+        let hidden_width = hidden.len();
+        let mut logits = Vec::with_capacity(actions.len());
+        for action in actions {
+            let mut logit = parameters
+                .policy_action_bias
+                .iter()
+                .zip(action)
+                .fold(0.0, |sum, (bias, feature)| sum + bias * feature);
+            for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
+                let row = &parameters.policy_bilinear
+                    [unit * ACTION_FEATURES_V1..(unit + 1) * ACTION_FEATURES_V1];
+                let pre = row.iter().zip(action).fold(
+                    *hidden_value + parameters.policy_hidden_bias[unit],
+                    |sum, (w, x)| sum + w * x,
+                );
+                logit += parameters.policy_output_weights[unit] * pre.tanh();
+            }
+            logits.push(logit);
+        }
         softmax_in_place(&mut logits)?;
         Ok(logits)
     }
@@ -262,6 +327,27 @@ impl PolicyValueModelV1 {
                 sigmoid(logit)
             })
             .collect()
+    }
+
+    pub(crate) fn value_hidden(&self, observation: &[f32]) -> Vec<f32> {
+        if self.checkpoint.model_architecture_version != Some(2) {
+            return self.hidden(observation);
+        }
+        let hidden = self.checkpoint.hidden_features as usize;
+        let parameters = &self.checkpoint.parameters;
+        let mut output = vec![0.0; hidden];
+        for (unit, target) in output.iter_mut().enumerate() {
+            let row = &parameters.value_encoder_weights
+                [unit * OBSERVATION_FEATURES_V1..(unit + 1) * OBSERVATION_FEATURES_V1];
+            *target = row
+                .iter()
+                .zip(observation)
+                .fold(parameters.value_encoder_bias[unit], |sum, (w, x)| {
+                    sum + w * x
+                })
+                .tanh();
+        }
+        output
     }
 
     pub(crate) fn checkpoint_mut(&mut self) -> &mut PolicyValueCheckpointV1 {
@@ -307,6 +393,7 @@ pub(crate) fn initialize_checkpoint(
         training_config_hash: String::new(),
         training_contract_version: None,
         search_teacher_targets_hash: None,
+        model_architecture_version: None,
         trained_examples: 0,
         validation_examples: 0,
         validation_seed_modulus: 0,
@@ -323,11 +410,37 @@ pub(crate) fn initialize_checkpoint(
             policy_action_bias: vec![0.0; ACTION_FEATURES_V1],
             value_weights: random_vector(&mut rng, MAX_PLAYERS_V1 * hidden, value_scale),
             value_bias: vec![0.0; MAX_PLAYERS_V1],
+            policy_hidden_bias: Vec::new(),
+            policy_output_weights: Vec::new(),
+            value_encoder_weights: Vec::new(),
+            value_encoder_bias: Vec::new(),
         },
     }
 }
 
-fn validate_parameters(parameters: &ModelParametersV1, hidden: usize) -> Result<(), LearningError> {
+pub(crate) fn initialize_checkpoint_v2(
+    model_id: String,
+    hidden: usize,
+    init_seed: u64,
+) -> PolicyValueCheckpointV1 {
+    let mut checkpoint = initialize_checkpoint(model_id, hidden, init_seed);
+    let mut rng = SplitMix64::new(init_seed ^ 0x6d31_3564_6172_6368);
+    let encoder_scale = (6.0 / (OBSERVATION_FEATURES_V1 + hidden) as f32).sqrt();
+    let output_scale = (6.0 / (hidden + 1) as f32).sqrt();
+    checkpoint.model_architecture_version = Some(2);
+    checkpoint.parameters.policy_hidden_bias = vec![0.0; hidden];
+    checkpoint.parameters.policy_output_weights = random_vector(&mut rng, hidden, output_scale);
+    checkpoint.parameters.value_encoder_weights =
+        random_vector(&mut rng, hidden * OBSERVATION_FEATURES_V1, encoder_scale);
+    checkpoint.parameters.value_encoder_bias = vec![0.0; hidden];
+    checkpoint
+}
+
+fn validate_parameters(
+    parameters: &ModelParametersV1,
+    hidden: usize,
+    architecture_version: Option<u32>,
+) -> Result<(), LearningError> {
     let shapes = [
         (
             "encoder_weights",
@@ -359,6 +472,40 @@ fn validate_parameters(parameters: &ModelParametersV1, hidden: usize) -> Result<
             )));
         }
     }
+    let v2_shapes = [
+        (
+            "policy_hidden_bias",
+            parameters.policy_hidden_bias.len(),
+            hidden,
+        ),
+        (
+            "policy_output_weights",
+            parameters.policy_output_weights.len(),
+            hidden,
+        ),
+        (
+            "value_encoder_weights",
+            parameters.value_encoder_weights.len(),
+            hidden * OBSERVATION_FEATURES_V1,
+        ),
+        (
+            "value_encoder_bias",
+            parameters.value_encoder_bias.len(),
+            hidden,
+        ),
+    ];
+    for (name, found, expected) in v2_shapes {
+        let expected = if architecture_version == Some(2) {
+            expected
+        } else {
+            0
+        };
+        if found != expected {
+            return Err(invalid_checkpoint(format!(
+                "{name} length {found} does not match {expected}"
+            )));
+        }
+    }
     if parameters
         .encoder_weights
         .iter()
@@ -367,6 +514,10 @@ fn validate_parameters(parameters: &ModelParametersV1, hidden: usize) -> Result<
         .chain(&parameters.policy_action_bias)
         .chain(&parameters.value_weights)
         .chain(&parameters.value_bias)
+        .chain(&parameters.policy_hidden_bias)
+        .chain(&parameters.policy_output_weights)
+        .chain(&parameters.value_encoder_weights)
+        .chain(&parameters.value_encoder_bias)
         .any(|value| !value.is_finite())
     {
         return Err(invalid_checkpoint("parameters contain a non-finite value"));

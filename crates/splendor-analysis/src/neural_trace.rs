@@ -199,6 +199,7 @@ mod tests {
             training_config_hash: "55".repeat(32),
             training_contract_version: None,
             search_teacher_targets_hash: None,
+            model_architecture_version: None,
             trained_examples: 4,
             validation_examples: 2,
             validation_seed_modulus: 2,
@@ -211,6 +212,10 @@ mod tests {
                 policy_action_bias: vec![0.0; ACTION_FEATURES_V1],
                 value_weights: vec![0.0; MAX_PLAYERS_V1 * hidden],
                 value_bias: vec![0.0; MAX_PLAYERS_V1],
+                policy_hidden_bias: vec![],
+                policy_output_weights: vec![],
+                value_encoder_weights: vec![],
+                value_encoder_bias: vec![],
             },
         }
     }

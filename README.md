@@ -136,6 +136,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
 10. M15B: source-aware/isolated training plus two prospective Policy-only screens (complete; rejected 4–28 and 5–27, no candidate)
 11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (complete; both frozen offline gates failed, no candidate)
+12. M15D: nonlinear action interaction + independent Value encoder, h64 (complete; both unchanged offline gates failed, no candidate)
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -189,6 +190,15 @@ cross-entropy only 4.87% over uniform and made search-shaped Value MSE worse
 than its constant prior. Both unchanged gates failed; no prospective screen or
 candidate is authorized. The next useful round is representation/capacity
 work, not target or gate tuning.
+
+M15D tested that boundary without changing the M15C data, target projection,
+split, optimizer schedule, or gates. Architecture v2 adds a nonlinear
+action-conditioned Policy head and a separately trainable Value encoder, and
+doubles width to h64. Policy top-1 rose slightly, but soft cross-entropy was
+slightly worse than M15C; train and validation improved only 4.75% and 4.69%
+over uniform. Value also remained worse than its constant prior. This is an
+optimization/underfitting result for the frozen run, not evidence authorizing
+gate or target tuning; no candidate or prospective screen exists.
 
 ## License
 

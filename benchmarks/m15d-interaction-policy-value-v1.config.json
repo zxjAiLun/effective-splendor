@@ -1,0 +1,31 @@
+{
+  "format": "effective-splendor-policy-value-training-config",
+  "version": 1,
+  "training_id": "m15d-interaction-policy-value-v1",
+  "model_id": "m15d-interaction-policy-value-h64-v1",
+  "expected_dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+  "expected_dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+  "expected_league_manifest_hash": "1c1e3c8a377cdf02f3502e020f478812a71602e2cae1724a8f823e51e632178e",
+  "expected_evaluation_plan_hash": "80606d90e74dc9a1ac651c26ef58e7d25f187db4488919524e7512496b4531ff",
+  "expected_evaluation_report_hash": "d8dc7ef18afdfd0445c90f4fc6b7964b61f669d2ef252b25643a92dc9a8bdd93",
+  "hidden_features": 64,
+  "epochs": 24,
+  "learning_rate": 0.0003,
+  "value_loss_weight": 0.5,
+  "l2_weight": 0.0001,
+  "init_seed": 20260812,
+  "validation_seed_modulus": 4,
+  "validation_seed_remainder": 0,
+  "training_contract_version": 3,
+  "policy_teacher_agent_ids": [
+    "determinization-s4-d1-n2000-v1"
+  ],
+  "value_target_agent_ids": [
+    "determinization-s4-d1-n2000-v1"
+  ],
+  "min_policy_nll_relative_improvement_bps": 1500,
+  "min_value_mse_relative_improvement_bps": 500,
+  "value_updates_shared_encoder": false,
+  "expected_search_teacher_targets_hash": "5557252270a0f6a1cb5d881ac975802a6bd14b74e6130daf03f00fc09c6a46de",
+  "model_architecture_version": 2
+}
