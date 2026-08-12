@@ -11,6 +11,7 @@ name = "splendor"
 path = "src/main.rs"
 
 [dependencies]
+splendor-catalog = { workspace = true }
 splendor-core = { workspace = true }
 splendor-protocol = { workspace = true }
 splendor-replay = { workspace = true }

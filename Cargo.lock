@@ -538,6 +538,7 @@ dependencies = [
  "splendor-analysis",
  "splendor-arena",
  "splendor-belief",
+ "splendor-catalog",
  "splendor-core",
  "splendor-determinization-agent",
  "splendor-eval",

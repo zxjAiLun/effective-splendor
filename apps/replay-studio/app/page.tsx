@@ -8,6 +8,7 @@ import {
   isAnalysisTraceEnvelope,
   validateAnalysisTrace,
 } from "./trace-runtime.mjs";
+import { DevelopmentCard, EmptyDevelopmentCard, type DevelopmentCardData } from "./development-card";
 
 type CardId = number;
 type NobleId = number;
@@ -142,6 +143,7 @@ type HumanReplayArchive = {
   opponent: string;
   replay_document_hash: string;
   replay: Replay;
+  catalog?: { cards: DevelopmentCardData[]; nobles: Array<{ id:number; prestige:number; requirements:number[] }> };
   frames: Array<{
     ply: number;
     actor: PlayerId;
@@ -421,7 +423,7 @@ export default function ReplayStudio() {
               <div className="market-row" key={tier}>
                 <div className="row-label"><span>Tier {tier + 1}</span><small>{frame.player_view.public.deck_counts[tier]} in deck</small></div>
                 <div className="deck-card"><span>T{tier + 1}</span><strong>{frame.player_view.public.deck_counts[tier]}</strong>{reveal && <small>next #{frame.referee_reveal.decks[tier]?.at(-1) ?? "—"}</small>}</div>
-                {frame.player_view.public.market[tier].map((id, slot) => id == null ? <div className="empty-card" key={slot}>empty</div> : <MarketCard id={id} key={slot} cards={cards} />)}
+                {frame.player_view.public.market[tier].map((id, slot) => id == null ? <EmptyDevelopmentCard key={slot} /> : <MarketCard id={id} key={slot} cards={cards} />)}
               </div>
             ))}
           </div>
@@ -503,6 +505,7 @@ function HumanReplayAudit({ archive }: { archive: HumanReplayArchive }) {
   const [index, setIndex] = useState(0);
   const frame = archive.frames[index];
   const view = frame.player_view.public;
+  const cards = useMemo(() => new Map((archive.catalog?.cards ?? []).map(card=>[card.id,card])), [archive.catalog]);
   const change = (next: number) => setIndex(Math.max(0, Math.min(archive.frames.length - 1, next)));
   return <main className="studio human-replay-audit">
     <header className="topbar">
@@ -515,7 +518,7 @@ function HumanReplayAudit({ archive }: { archive: HumanReplayArchive }) {
       <article className="human-board">
         <div className="human-score">{view.players.map(player=><div className={player.id===frame.actor?"you":""} key={player.id}><span>{player.id===frame.actor?"ACTOR":`PLAYER ${player.id}`}</span><strong>{player.prestige}<small> VP</small></strong><small>{player.reserved_count} reserved</small></div>)}</div>
         <div className="human-bank"><span>BANK</span>{GEM_KEYS.map(gem=><i className={`token-${gem}`} key={gem}>{gemCode(gem)} <b>{view.bank[gem]}</b></i>)}</div>
-        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><span>TIER {tier+1}<small>{view.deck_counts[tier]} deck</small></span>{view.market[tier].map((card,slot)=><div className="human-audit-card" key={slot}><b>{card==null?"—":`#${card}`}</b><small>slot {slot+1}</small></div>)}</div>)}</div>
+        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><span>TIER {tier+1}<small>{view.deck_counts[tier]} deck</small></span>{view.market[tier].map((cardId,slot)=>cardId==null?<EmptyDevelopmentCard key={slot}/>:cards.has(cardId)?<DevelopmentCard card={cards.get(cardId)!} slotLabel={`slot ${slot+1}`} key={slot}/>:<div className="development-card development-card-empty" key={slot}>#{cardId}</div>)}</div>)}</div>
         <div className="human-private"><span>ACTOR PLAYER VIEW</span><p>Each frame shows only the Observation that the acting player received at that decision. Hidden deck order and opponent blind reserves remain unavailable.</p></div>
       </article>
       <aside className="human-actions"><span className="section-kicker">RECORDED DECISION</span><h2>{simpleActionLabel(frame.recorded_action)}</h2><div className="human-audit-action"><small>Chosen from {frame.legal_actions.length} server-certified legal actions</small><code>{JSON.stringify(frame.recorded_action,null,2)}</code></div></aside>
@@ -546,6 +549,6 @@ function GemSet({ gems, compact = false }: { gems: Gems; compact?: boolean }) {
 
 function MarketCard({ id, cards }: { id: CardId; cards: Map<number, Trace["catalog"]["cards"][number]> }) {
   const card = cards.get(id);
-  if (!card) return <div className="market-card unknown"><span>#{id}</span></div>;
-  return <div className={`market-card card-${card.bonus.toLowerCase()}`}><div className="card-top"><strong>{card.prestige}</strong><span>{card.bonus[0]}</span></div><div className="card-id">#{id}</div><div className="card-cost">{card.cost.map((amount, index) => amount > 0 && <i className={`gem gem-${COST_COLORS[index]}`} key={index}>{amount}</i>)}</div></div>;
+  if (!card) return <div className="development-card development-card-empty"><span>#{id}</span></div>;
+  return <DevelopmentCard card={card} />;
 }

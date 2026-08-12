@@ -9,6 +9,7 @@ use splendor_agent::{
     AgentPolicy, DecisionContext, HeuristicAgentPolicy, PublicRequestMeta, StableRng,
 };
 use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, InboundEvent};
+use splendor_catalog::{all_cards, all_nobles, CardId, GemColor, NobleId, Tier};
 use splendor_core::{
     observation_hash, ruleset_fingerprint, visible_events, Action, Audience, FullState, GameConfig,
     GameResult, Observation, PlayerId, RefereeEvent, VisibleEvent, CATALOG_VERSION, ENGINE_VERSION,
@@ -331,6 +332,52 @@ struct HumanReplayArchiveV1<'a> {
     replay_document_hash: &'a str,
     replay: &'a ReplayV1,
     frames: &'a [HumanReplayFrameV1],
+    catalog: PublicCatalogV1,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PublicCatalogCardV1 {
+    id: CardId,
+    tier: Tier,
+    bonus: GemColor,
+    prestige: u8,
+    cost: [u8; 5],
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PublicCatalogNobleV1 {
+    id: NobleId,
+    prestige: u8,
+    requirements: [u8; 5],
+}
+
+#[derive(Debug, serde::Serialize)]
+struct PublicCatalogV1 {
+    cards: Vec<PublicCatalogCardV1>,
+    nobles: Vec<PublicCatalogNobleV1>,
+}
+
+fn public_catalog() -> PublicCatalogV1 {
+    PublicCatalogV1 {
+        cards: all_cards()
+            .iter()
+            .map(|card| PublicCatalogCardV1 {
+                id: card.id,
+                tier: card.tier,
+                bonus: card.bonus,
+                prestige: card.prestige,
+                cost: card.cost,
+            })
+            .collect(),
+        nobles: all_nobles()
+            .iter()
+            .map(|noble| PublicCatalogNobleV1 {
+                id: noble.id,
+                prestige: noble.prestige,
+                requirements: noble.requirements,
+            })
+            .collect(),
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -499,6 +546,7 @@ impl Session {
                 .as_ref()
                 .ok_or_else(|| "replay is available only after game completion".to_string())?,
             frames: &self.frames,
+            catalog: public_catalog(),
         })
     }
 
@@ -878,6 +926,7 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
     let result: Result<String, String> = match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/health") => Ok("{\"status\":\"ok\",\"mode\":\"studio_host\"}".into()),
         ("GET", "/agents") => host.agents_json(),
+        ("GET", "/catalog") => serde_json::to_string(&public_catalog()).map_err(|e| e.to_string()),
         ("GET", "/state") => host
             .session
             .as_ref()
@@ -1210,5 +1259,14 @@ mod tests {
         assert!(!json.contains("python"));
         assert!(!json.contains("private/checkpoint.pt"));
         assert!(!json.contains("private/registry.json"));
+    }
+
+    #[test]
+    fn public_catalog_contains_the_canonical_visible_components() {
+        let catalog = public_catalog();
+        assert_eq!(catalog.cards.len(), 90);
+        assert_eq!(catalog.nobles.len(), 10);
+        assert_eq!(catalog.cards[0].id, CardId(0));
+        assert!(catalog.cards.iter().all(|card| card.cost.len() == 5));
     }
 }

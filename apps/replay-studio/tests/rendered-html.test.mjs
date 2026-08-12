@@ -22,6 +22,8 @@ test("server-renders the Replay Studio product shell", async () => {
   assert.match(html, /ACTION ANALYSIS/);
   assert.match(html, /Load replay \+ analysis/);
   assert.match(html, /Rating Studio/);
+  assert.match(html, /Purchase cost/);
+  assert.match(html, /permanent bonus/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
