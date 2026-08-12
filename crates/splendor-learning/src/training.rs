@@ -11,8 +11,8 @@ use crate::error::{invalid_checkpoint, invalid_config, invalid_dataset};
 use crate::model::initialize_checkpoint;
 use crate::{
     encode_action_v1, encode_observation_v1, model_checkpoint_hash_v1, LearningError,
-    PolicyValueCheckpointV1, PolicyValueModelV1, ACTION_FEATURES_V1, MAX_PLAYERS_V1,
-    OBSERVATION_FEATURES_V1,
+    PolicyValueCheckpointV1, PolicyValueModelV1, SearchTeacherTargetSetV1, SearchTeacherTargetV1,
+    ACTION_FEATURES_V1, MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, SEARCH_VALUE_TARGET_SCALE_V1,
 };
 
 pub const POLICY_VALUE_TRAINING_CONFIG_FORMAT: &str =
@@ -60,6 +60,10 @@ pub struct PolicyValueTrainingConfigV1 {
     /// encoder. Absent preserves the accepted M12 and first M15B behavior.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_updates_shared_encoder: Option<bool>,
+    /// Required by contract v3. Binds the exact full-search supervision
+    /// artifact consumed by both heads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_search_teacher_targets_hash: Option<String>,
 }
 
 impl PolicyValueTrainingConfigV1 {
@@ -124,6 +128,7 @@ impl PolicyValueTrainingConfigV1 {
                     || self.min_policy_nll_relative_improvement_bps.is_some()
                     || self.min_value_mse_relative_improvement_bps.is_some()
                     || self.value_updates_shared_encoder.is_some()
+                    || self.expected_search_teacher_targets_hash.is_some()
                 {
                     return Err(invalid_config(
                         "source-aware fields require training_contract_version 2",
@@ -144,10 +149,43 @@ impl PolicyValueTrainingConfigV1 {
                     "min_value_mse_relative_improvement_bps",
                     self.min_value_mse_relative_improvement_bps,
                 )?;
+                if self.expected_search_teacher_targets_hash.is_some() {
+                    return Err(invalid_config(
+                        "search-teacher hash requires training_contract_version 3",
+                    ));
+                }
+            }
+            Some(3) => {
+                validate_agent_selection(
+                    "policy_teacher_agent_ids",
+                    &self.policy_teacher_agent_ids,
+                )?;
+                validate_agent_selection("value_target_agent_ids", &self.value_target_agent_ids)?;
+                if self.policy_teacher_agent_ids != self.value_target_agent_ids {
+                    return Err(invalid_config(
+                        "contract v3 requires identical Policy and Value teacher agents",
+                    ));
+                }
+                validate_material_gate(
+                    "min_policy_nll_relative_improvement_bps",
+                    self.min_policy_nll_relative_improvement_bps,
+                )?;
+                validate_material_gate(
+                    "min_value_mse_relative_improvement_bps",
+                    self.min_value_mse_relative_improvement_bps,
+                )?;
+                validate_hash(
+                    "expected_search_teacher_targets_hash",
+                    self.expected_search_teacher_targets_hash
+                        .as_deref()
+                        .ok_or_else(|| {
+                            invalid_config("contract v3 requires search-teacher target hash")
+                        })?,
+                )?;
             }
             Some(_) => {
                 return Err(invalid_config(
-                    "training_contract_version must be absent or 2",
+                    "training_contract_version must be absent, 2, or 3",
                 ));
             }
         }
@@ -258,6 +296,8 @@ pub struct PolicyValueTrainingReportV1 {
     pub material_gate: Option<MaterialOfflineGateV1>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_updates_shared_encoder: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_teacher_targets_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -283,6 +323,8 @@ pub struct OfflineEvaluationReportV1 {
     pub material_gate: Option<MaterialOfflineGateV1>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_updates_shared_encoder: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_teacher_targets_hash: Option<String>,
 }
 
 pub fn training_config_hash_v1(
@@ -300,6 +342,11 @@ pub fn train_policy_value_v1(
     config: &PolicyValueTrainingConfigV1,
 ) -> Result<(PolicyValueCheckpointV1, PolicyValueTrainingReportV1), LearningError> {
     config.validate()?;
+    if config.training_contract_version == Some(3) {
+        return Err(invalid_config(
+            "contract v3 requires train_policy_value_with_search_targets_v1",
+        ));
+    }
     let prepared = PreparedDataset::new(
         dataset,
         config.validation_seed_modulus,
@@ -321,6 +368,7 @@ pub fn train_policy_value_v1(
     checkpoint.evaluation_report_hash = prepared.identity.evaluation_report_hash.clone();
     checkpoint.training_config_hash = config_hash.clone();
     checkpoint.training_contract_version = config.training_contract_version;
+    checkpoint.search_teacher_targets_hash = None;
     checkpoint.trained_examples = prepared.train_indices.len() as u64;
     checkpoint.validation_examples = prepared.validation_indices.len() as u64;
     checkpoint.validation_seed_modulus = config.validation_seed_modulus;
@@ -402,6 +450,114 @@ pub fn train_policy_value_v1(
             .map(|_| validation_head_metrics),
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
+        search_teacher_targets_hash: None,
+    };
+    Ok((checkpoint, report))
+}
+
+pub fn train_policy_value_with_search_targets_v1(
+    dataset: &TrainingDatasetV1,
+    targets: &SearchTeacherTargetSetV1,
+    config: &PolicyValueTrainingConfigV1,
+) -> Result<(PolicyValueCheckpointV1, PolicyValueTrainingReportV1), LearningError> {
+    config.validate()?;
+    if config.training_contract_version != Some(3) {
+        return Err(invalid_config(
+            "search-teacher training requires training_contract_version 3",
+        ));
+    }
+    let prepared = PreparedDataset::new(
+        dataset,
+        config.validation_seed_modulus,
+        config.validation_seed_remainder,
+        &config.policy_teacher_agent_ids,
+        &config.value_target_agent_ids,
+    )?;
+    validate_config_binding(config, &prepared.identity)?;
+    let target_hash = validate_search_targets(dataset, targets, config, &prepared)?;
+    let targets_by_example = search_targets_by_example(dataset, targets, &prepared)?;
+    let config_hash = training_config_hash_v1(config)?;
+    let mut checkpoint = initialize_checkpoint(
+        config.model_id.clone(),
+        config.hidden_features as usize,
+        config.init_seed,
+    );
+    checkpoint.source_dataset_id = prepared.identity.dataset_id.clone();
+    checkpoint.source_dataset_hash = prepared.identity.dataset_hash.clone();
+    checkpoint.league_manifest_hash = prepared.identity.league_manifest_hash.clone();
+    checkpoint.evaluation_plan_hash = prepared.identity.evaluation_plan_hash.clone();
+    checkpoint.evaluation_report_hash = prepared.identity.evaluation_report_hash.clone();
+    checkpoint.training_config_hash = config_hash.clone();
+    checkpoint.training_contract_version = Some(3);
+    checkpoint.search_teacher_targets_hash = Some(target_hash.clone());
+    checkpoint.trained_examples = prepared.train_indices.len() as u64;
+    checkpoint.validation_examples = prepared.validation_indices.len() as u64;
+    checkpoint.validation_seed_modulus = config.validation_seed_modulus;
+    checkpoint.validation_seed_remainder = config.validation_seed_remainder;
+    checkpoint.epochs = config.epochs;
+
+    let mut model = PolicyValueModelV1::from_checkpoint(checkpoint)?;
+    let mut order = prepared.train_indices.clone();
+    let mut rng = StableRng::new(config.init_seed ^ 0x6d31_3563_736f_6674);
+    for _ in 0..config.epochs {
+        stable_shuffle(&mut order, &mut rng);
+        for &index in &order {
+            train_search_target(
+                &mut model,
+                &dataset.examples[index],
+                targets_by_example[index]
+                    .ok_or_else(|| invalid_dataset("missing bound search target"))?,
+                config,
+            )?;
+        }
+    }
+    model.checkpoint().validate()?;
+    let checkpoint = model.checkpoint().clone();
+    let checkpoint_hash = model_checkpoint_hash_v1(&checkpoint)?;
+    let priors = search_value_priors(&prepared.train_indices, &targets_by_example)?;
+    let train_head_metrics = search_metrics(
+        &model,
+        dataset,
+        &prepared.train_indices,
+        &targets_by_example,
+    )?;
+    let validation_head_metrics = search_metrics(
+        &model,
+        dataset,
+        &prepared.validation_indices,
+        &targets_by_example,
+    )?;
+    let train_metrics = legacy_metrics(&train_head_metrics, prepared.train_indices.len());
+    let validation_metrics =
+        legacy_metrics(&validation_head_metrics, prepared.validation_indices.len());
+    let validation_comparison = search_comparison(
+        dataset,
+        &prepared.validation_indices,
+        &targets_by_example,
+        &validation_metrics,
+        &priors,
+    )?;
+    let material_gate =
+        material_gate_from_metrics(config, &validation_metrics, &validation_comparison)?;
+    let head_split = prepared.head_split();
+    let report = PolicyValueTrainingReportV1 {
+        format: POLICY_VALUE_TRAINING_REPORT_FORMAT.into(),
+        version: POLICY_VALUE_TRAINING_REPORT_VERSION,
+        training_id: config.training_id.clone(),
+        model_id: config.model_id.clone(),
+        training_config_hash: config_hash,
+        checkpoint_hash,
+        dataset: prepared.identity,
+        split: prepared.split,
+        train_metrics,
+        validation_metrics,
+        validation_comparison,
+        head_split: Some(head_split),
+        train_head_metrics: Some(train_head_metrics),
+        validation_head_metrics: Some(validation_head_metrics),
+        material_gate,
+        value_updates_shared_encoder: config.value_updates_shared_encoder,
+        search_teacher_targets_hash: Some(target_hash),
     };
     Ok((checkpoint, report))
 }
@@ -480,6 +636,7 @@ pub fn evaluate_checkpoint_v1(
         validation_head_metrics: None,
         material_gate: None,
         value_updates_shared_encoder: None,
+        search_teacher_targets_hash: None,
     })
 }
 
@@ -550,7 +707,178 @@ pub fn evaluate_checkpoint_with_config_v1(
         validation_head_metrics: Some(validation_head_metrics),
         material_gate,
         value_updates_shared_encoder: config.value_updates_shared_encoder,
+        search_teacher_targets_hash: None,
     })
+}
+
+pub fn evaluate_checkpoint_with_search_targets_v1(
+    dataset: &TrainingDatasetV1,
+    targets: &SearchTeacherTargetSetV1,
+    checkpoint: &PolicyValueCheckpointV1,
+    config: &PolicyValueTrainingConfigV1,
+) -> Result<OfflineEvaluationReportV1, LearningError> {
+    checkpoint.validate()?;
+    config.validate()?;
+    if checkpoint.training_contract_version != Some(3)
+        || config.training_contract_version != Some(3)
+        || checkpoint.training_config_hash != training_config_hash_v1(config)?
+    {
+        return Err(invalid_checkpoint(
+            "checkpoint does not match the supplied search-teacher config",
+        ));
+    }
+    let prepared = PreparedDataset::new(
+        dataset,
+        config.validation_seed_modulus,
+        config.validation_seed_remainder,
+        &config.policy_teacher_agent_ids,
+        &config.value_target_agent_ids,
+    )?;
+    validate_config_binding(config, &prepared.identity)?;
+    validate_checkpoint_binding(checkpoint, &prepared)?;
+    let target_hash = validate_search_targets(dataset, targets, config, &prepared)?;
+    if checkpoint.search_teacher_targets_hash.as_deref() != Some(target_hash.as_str()) {
+        return Err(invalid_checkpoint(
+            "checkpoint does not bind the supplied search-teacher targets",
+        ));
+    }
+    let targets_by_example = search_targets_by_example(dataset, targets, &prepared)?;
+    let model = PolicyValueModelV1::from_checkpoint(checkpoint.clone())?;
+    let priors = search_value_priors(&prepared.train_indices, &targets_by_example)?;
+    let train_head_metrics = search_metrics(
+        &model,
+        dataset,
+        &prepared.train_indices,
+        &targets_by_example,
+    )?;
+    let validation_head_metrics = search_metrics(
+        &model,
+        dataset,
+        &prepared.validation_indices,
+        &targets_by_example,
+    )?;
+    let train_metrics = legacy_metrics(&train_head_metrics, prepared.train_indices.len());
+    let validation_metrics =
+        legacy_metrics(&validation_head_metrics, prepared.validation_indices.len());
+    let validation_comparison = search_comparison(
+        dataset,
+        &prepared.validation_indices,
+        &targets_by_example,
+        &validation_metrics,
+        &priors,
+    )?;
+    let material_gate =
+        material_gate_from_metrics(config, &validation_metrics, &validation_comparison)?;
+    let head_split = prepared.head_split();
+    Ok(OfflineEvaluationReportV1 {
+        format: OFFLINE_EVALUATION_FORMAT.into(),
+        version: OFFLINE_EVALUATION_VERSION,
+        model_id: checkpoint.model_id.clone(),
+        training_config_hash: checkpoint.training_config_hash.clone(),
+        checkpoint_hash: model_checkpoint_hash_v1(checkpoint)?,
+        dataset: prepared.identity,
+        split: prepared.split,
+        train_metrics,
+        validation_metrics,
+        validation_comparison,
+        head_split: Some(head_split),
+        train_head_metrics: Some(train_head_metrics),
+        validation_head_metrics: Some(validation_head_metrics),
+        material_gate,
+        value_updates_shared_encoder: config.value_updates_shared_encoder,
+        search_teacher_targets_hash: Some(target_hash),
+    })
+}
+
+fn validate_search_targets(
+    dataset: &TrainingDatasetV1,
+    targets: &SearchTeacherTargetSetV1,
+    config: &PolicyValueTrainingConfigV1,
+    prepared: &PreparedDataset,
+) -> Result<String, LearningError> {
+    targets.validate()?;
+    let hash = crate::search_teacher_targets_hash_v1(targets)?;
+    if config.expected_search_teacher_targets_hash.as_deref() != Some(hash.as_str()) {
+        return Err(invalid_config(
+            "expected search-teacher hash does not match supplied targets",
+        ));
+    }
+    if targets.dataset_id != dataset.dataset_id
+        || targets.dataset_hash != prepared.identity.dataset_hash
+        || targets.league_manifest_hash != dataset.league_manifest_hash
+        || targets.evaluation_plan_hash != dataset.evaluation_plan_hash
+        || targets.evaluation_report_hash != dataset.evaluation_report_hash
+        || targets.teacher_agent_ids != config.policy_teacher_agent_ids
+    {
+        return Err(invalid_dataset(
+            "search-teacher targets do not match dataset/config provenance",
+        ));
+    }
+    let selected = prepared.train_indices.len() + prepared.validation_indices.len();
+    if targets.targets.len() != selected {
+        return Err(invalid_dataset(
+            "search-teacher targets do not exactly cover selected examples",
+        ));
+    }
+    Ok(hash)
+}
+
+fn search_targets_by_example<'a>(
+    dataset: &TrainingDatasetV1,
+    targets: &'a SearchTeacherTargetSetV1,
+    prepared: &PreparedDataset,
+) -> Result<Vec<Option<&'a SearchTeacherTargetV1>>, LearningError> {
+    let mut examples = HashMap::new();
+    for (index, example) in dataset.examples.iter().enumerate() {
+        if examples
+            .insert((example.source_id.as_str(), example.ply), index)
+            .is_some()
+        {
+            return Err(invalid_dataset("duplicate dataset source_id/ply"));
+        }
+    }
+    let selected = prepared
+        .train_indices
+        .iter()
+        .chain(&prepared.validation_indices)
+        .copied()
+        .collect::<HashSet<_>>();
+    let mut bound = vec![None; dataset.examples.len()];
+    for target in &targets.targets {
+        let index = examples
+            .get(&(target.source_id.as_str(), target.ply))
+            .copied()
+            .ok_or_else(|| invalid_dataset("search target references unknown example"))?;
+        if !selected.contains(&index) || bound[index].is_some() {
+            return Err(invalid_dataset(
+                "search target is duplicated or outside selected examples",
+            ));
+        }
+        let example = &dataset.examples[index];
+        if target.replay_document_hash != example.replay_document_hash
+            || target.actor != example.actor
+            || target.observation_hash != example.observation_hash
+            || target.visible_history_hash != example.visible_history_hash
+            || target.information_set_hash != example.information_set_hash
+            || target.recorded_action != example.chosen_action
+            || target
+                .action_targets
+                .iter()
+                .map(|entry| entry.action)
+                .ne(example.legal_actions.iter().copied())
+        {
+            return Err(invalid_dataset(
+                "search target does not bind the exact dataset example",
+            ));
+        }
+        bound[index] = Some(target);
+    }
+    if selected.iter().any(|index| bound[*index].is_none()) {
+        return Err(invalid_dataset(
+            "selected dataset example lacks a search target",
+        ));
+    }
+    Ok(bound)
 }
 
 struct PreparedDataset {
@@ -922,6 +1250,109 @@ fn train_example(
     Ok(())
 }
 
+fn train_search_target(
+    model: &mut PolicyValueModelV1,
+    example: &TrainingExampleV1,
+    target: &SearchTeacherTargetV1,
+    config: &PolicyValueTrainingConfigV1,
+) -> Result<(), LearningError> {
+    let observation = encode_observation_v1(&example.observation)?;
+    let actions = example
+        .legal_actions
+        .iter()
+        .map(encode_action_v1)
+        .collect::<Result<Vec<_>, _>>()?;
+    if target.action_targets.len() != actions.len() {
+        return Err(invalid_dataset("search Policy target shape changed"));
+    }
+    let hidden = model.hidden(&observation);
+    let probabilities = model.policy_probabilities(&hidden, &actions)?;
+    let player_count = example.observation.public.player_count as usize;
+    if target.value_target_by_player_micros.len() != player_count {
+        return Err(invalid_dataset("search Value target shape changed"));
+    }
+    let values = model.values(&hidden, player_count);
+    let value_targets = target
+        .value_target_by_player_micros
+        .iter()
+        .map(|value| *value as f32 / SEARCH_VALUE_TARGET_SCALE_V1 as f32)
+        .collect::<Vec<_>>();
+    let mut d_logits = probabilities;
+    for (gradient, target) in d_logits.iter_mut().zip(&target.action_targets) {
+        *gradient -= target.policy_target_micros as f32 / SEARCH_VALUE_TARGET_SCALE_V1 as f32;
+    }
+    let mut d_context = vec![0.0f32; ACTION_FEATURES_V1];
+    for (coefficient, action) in d_logits.iter().zip(&actions) {
+        for (slot, feature) in d_context.iter_mut().zip(action) {
+            *slot += coefficient * feature;
+        }
+    }
+    let hidden_width = hidden.len();
+    let mut d_hidden = vec![0.0f32; hidden_width];
+    let value_updates_shared_encoder = config.value_updates_shared_encoder.unwrap_or(true);
+    {
+        let parameters = &model.checkpoint().parameters;
+        for (unit, hidden_gradient) in d_hidden.iter_mut().enumerate().take(hidden_width) {
+            let row = &parameters.policy_bilinear
+                [unit * ACTION_FEATURES_V1..(unit + 1) * ACTION_FEATURES_V1];
+            *hidden_gradient += row
+                .iter()
+                .zip(&d_context)
+                .fold(0.0, |sum, (weight, gradient)| sum + weight * gradient);
+        }
+        if value_updates_shared_encoder {
+            for player in 0..player_count {
+                let error = values[player] - value_targets[player];
+                let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
+                    * values[player]
+                    * (1.0 - values[player]);
+                let row =
+                    &parameters.value_weights[player * hidden_width..(player + 1) * hidden_width];
+                for (slot, weight) in d_hidden.iter_mut().zip(row) {
+                    *slot += d_logit * weight;
+                }
+            }
+        }
+    }
+
+    let learning_rate = config.learning_rate;
+    let l2 = config.l2_weight;
+    let parameters = &mut model.checkpoint_mut().parameters;
+    for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
+        for (feature, context_gradient) in d_context.iter().enumerate() {
+            let index = unit * ACTION_FEATURES_V1 + feature;
+            let gradient = hidden_value * context_gradient + l2 * parameters.policy_bilinear[index];
+            parameters.policy_bilinear[index] -= learning_rate * clip(gradient);
+        }
+    }
+    for (weight, gradient) in parameters.policy_action_bias.iter_mut().zip(&d_context) {
+        *weight -= learning_rate * clip(*gradient + l2 * *weight);
+    }
+    for player in 0..player_count {
+        let error = values[player] - value_targets[player];
+        let d_logit = config.value_loss_weight * 2.0 * error / player_count as f32
+            * values[player]
+            * (1.0 - values[player]);
+        for (unit, hidden_value) in hidden.iter().enumerate().take(hidden_width) {
+            let index = player * hidden_width + unit;
+            let gradient = d_logit * hidden_value + l2 * parameters.value_weights[index];
+            parameters.value_weights[index] -= learning_rate * clip(gradient);
+        }
+        parameters.value_bias[player] -= learning_rate * clip(d_logit);
+    }
+    for (unit, observation_gradient) in d_hidden.iter().enumerate().take(hidden_width) {
+        let d_pre_activation = observation_gradient * (1.0 - hidden[unit] * hidden[unit]);
+        for (feature, observation_value) in observation.iter().enumerate() {
+            let index = unit * OBSERVATION_FEATURES_V1 + feature;
+            let gradient =
+                d_pre_activation * observation_value + l2 * parameters.encoder_weights[index];
+            parameters.encoder_weights[index] -= learning_rate * clip(gradient);
+        }
+        parameters.encoder_bias[unit] -= learning_rate * clip(d_pre_activation);
+    }
+    Ok(())
+}
+
 fn metrics_by_head(
     model: &PolicyValueModelV1,
     dataset: &TrainingDatasetV1,
@@ -981,6 +1412,62 @@ fn metrics_by_head(
     })
 }
 
+fn search_metrics(
+    model: &PolicyValueModelV1,
+    dataset: &TrainingDatasetV1,
+    indices: &[usize],
+    targets_by_example: &[Option<&SearchTeacherTargetV1>],
+) -> Result<HeadOfflineMetricsV1, LearningError> {
+    let mut correct = 0u64;
+    let mut cross_entropy = 0.0f64;
+    let mut value_squared_error = 0.0f64;
+    let mut value_components = 0u64;
+    for &index in indices {
+        let example = &dataset.examples[index];
+        let target = targets_by_example[index]
+            .ok_or_else(|| invalid_dataset("missing search target while evaluating"))?;
+        let prediction = model.predict(&example.observation, &example.legal_actions)?;
+        let best = prediction
+            .policy
+            .iter()
+            .enumerate()
+            .max_by(|left, right| {
+                left.1
+                    .probability
+                    .partial_cmp(&right.1.probability)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| right.0.cmp(&left.0))
+            })
+            .map(|(position, _)| position)
+            .ok_or_else(|| invalid_dataset("empty search Policy prediction"))?;
+        if prediction.policy[best].action == target.teacher_action {
+            correct += 1;
+        }
+        for (predicted, desired) in prediction.policy.iter().zip(&target.action_targets) {
+            let mass = desired.policy_target_micros as f64 / SEARCH_VALUE_TARGET_SCALE_V1 as f64;
+            cross_entropy -= mass * f64::from(predicted.probability.max(1.0e-12)).ln();
+        }
+        for (predicted, desired) in prediction
+            .value_by_player
+            .iter()
+            .zip(&target.value_target_by_player_micros)
+        {
+            let desired = *desired as f64 / SEARCH_VALUE_TARGET_SCALE_V1 as f64;
+            let error = f64::from(*predicted) - desired;
+            value_squared_error += error * error;
+            value_components += 1;
+        }
+    }
+    Ok(HeadOfflineMetricsV1 {
+        policy_examples: indices.len() as u64,
+        policy_top1_accuracy: correct as f64 / indices.len() as f64,
+        mean_policy_nll: cross_entropy / indices.len() as f64,
+        value_examples: indices.len() as u64,
+        value_components,
+        value_mse: value_squared_error / value_components as f64,
+    })
+}
+
 fn legacy_metrics(metrics: &HeadOfflineMetricsV1, union_examples: usize) -> OfflineMetricsV1 {
     OfflineMetricsV1 {
         examples: union_examples as u64,
@@ -1001,6 +1488,29 @@ fn value_priors(dataset: &TrainingDatasetV1, indices: &[usize]) -> Result<[f64; 
             .enumerate()
         {
             sums[player] += f64::from(target);
+            counts[player] += 1;
+        }
+    }
+    let mut priors = [0.5; 4];
+    for player in 0..4 {
+        if counts[player] > 0 {
+            priors[player] = sums[player] / counts[player] as f64;
+        }
+    }
+    Ok(priors)
+}
+
+fn search_value_priors(
+    indices: &[usize],
+    targets_by_example: &[Option<&SearchTeacherTargetV1>],
+) -> Result<[f64; 4], LearningError> {
+    let mut sums = [0.0f64; 4];
+    let mut counts = [0u64; 4];
+    for &index in indices {
+        let target = targets_by_example[index]
+            .ok_or_else(|| invalid_dataset("missing search target for Value prior"))?;
+        for (player, value) in target.value_target_by_player_micros.iter().enumerate() {
+            sums[player] += *value as f64 / SEARCH_VALUE_TARGET_SCALE_V1 as f64;
             counts[player] += 1;
         }
     }
@@ -1045,6 +1555,45 @@ fn comparison(
     let value_better = model_metrics.value_mse < prior_mse;
     Ok(MetricComparisonV1 {
         uniform_policy_mean_nll: uniform_nll,
+        train_prior_value_mse: prior_mse,
+        policy_nll_beats_uniform: policy_better,
+        value_mse_beats_train_prior: value_better,
+        outcome: if policy_better && value_better {
+            TrainingOutcomeV1::BaselinesBeaten
+        } else {
+            TrainingOutcomeV1::BaselineNotBeaten
+        },
+    })
+}
+
+fn search_comparison(
+    dataset: &TrainingDatasetV1,
+    indices: &[usize],
+    targets_by_example: &[Option<&SearchTeacherTargetV1>],
+    model_metrics: &OfflineMetricsV1,
+    priors: &[f64; 4],
+) -> Result<MetricComparisonV1, LearningError> {
+    let mut uniform_cross_entropy = 0.0;
+    let mut prior_squared_error = 0.0;
+    let mut components = 0u64;
+    for &index in indices {
+        let example = &dataset.examples[index];
+        let target = targets_by_example[index]
+            .ok_or_else(|| invalid_dataset("missing search target for comparison"))?;
+        uniform_cross_entropy += (example.legal_actions.len() as f64).ln();
+        for (player, value) in target.value_target_by_player_micros.iter().enumerate() {
+            let desired = *value as f64 / SEARCH_VALUE_TARGET_SCALE_V1 as f64;
+            let error = priors[player] - desired;
+            prior_squared_error += error * error;
+            components += 1;
+        }
+    }
+    uniform_cross_entropy /= indices.len() as f64;
+    let prior_mse = prior_squared_error / components as f64;
+    let policy_better = model_metrics.mean_policy_nll < uniform_cross_entropy;
+    let value_better = model_metrics.value_mse < prior_mse;
+    Ok(MetricComparisonV1 {
+        uniform_policy_mean_nll: uniform_cross_entropy,
         train_prior_value_mse: prior_mse,
         policy_nll_beats_uniform: policy_better,
         value_mse_beats_train_prior: value_better,
@@ -1197,7 +1746,7 @@ mod tests {
 
     fn dataset_and_config() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
         let (state, _) = FullState::new(GameConfig::default()).unwrap();
-        let legal = state.legal_actions();
+        let legal = splendor_search::canonical_order(&state.legal_actions());
         let observation = state.observation(PlayerId(0));
         let mut dataset = TrainingDatasetV1 {
             format: TRAINING_DATASET_FORMAT.into(),
@@ -1298,8 +1847,67 @@ mod tests {
             min_policy_nll_relative_improvement_bps: None,
             min_value_mse_relative_improvement_bps: None,
             value_updates_shared_encoder: None,
+            expected_search_teacher_targets_hash: None,
         };
         (dataset, config)
+    }
+
+    fn search_targets(dataset: &TrainingDatasetV1) -> SearchTeacherTargetSetV1 {
+        let targets = dataset
+            .examples
+            .iter()
+            .filter(|example| example.source_id == "source-0" || example.source_id == "source-1")
+            .map(|example| {
+                let count = example.legal_actions.len() as u32;
+                let base = SEARCH_VALUE_TARGET_SCALE_V1 / count;
+                let remainder = SEARCH_VALUE_TARGET_SCALE_V1 % count;
+                SearchTeacherTargetV1 {
+                    source_id: example.source_id.clone(),
+                    replay_document_hash: example.replay_document_hash.clone(),
+                    ply: example.ply,
+                    actor: example.actor,
+                    observation_hash: example.observation_hash.clone(),
+                    visible_history_hash: example.visible_history_hash.clone(),
+                    information_set_hash: example.information_set_hash.clone(),
+                    recorded_action: example.chosen_action,
+                    teacher_action: example.legal_actions[0],
+                    action_targets: example
+                        .legal_actions
+                        .iter()
+                        .enumerate()
+                        .map(|(index, action)| crate::SearchTeacherActionTargetV1 {
+                            action: *action,
+                            policy_target_micros: base + u32::from((index as u32) < remainder),
+                            utility_sum_by_player: vec![0, 0],
+                        })
+                        .collect(),
+                    value_target_by_player_micros: vec![500_000, 500_000],
+                }
+            })
+            .collect();
+        SearchTeacherTargetSetV1 {
+            format: crate::SEARCH_TEACHER_TARGETS_FORMAT.into(),
+            version: crate::SEARCH_TEACHER_TARGETS_VERSION,
+            dataset_id: dataset.dataset_id.clone(),
+            dataset_hash: training_dataset_hash_v1(dataset).unwrap(),
+            league_manifest_hash: dataset.league_manifest_hash.clone(),
+            evaluation_plan_hash: dataset.evaluation_plan_hash.clone(),
+            evaluation_report_hash: dataset.evaluation_report_hash.clone(),
+            teacher_agent_ids: vec!["teacher".into()],
+            config: crate::SearchTeacherTargetsConfigV1 {
+                search: splendor_imperfect_search::RootDeterminizationConfigV1 {
+                    sample_seed: 7,
+                    sample_count: 1,
+                    continuation_search: splendor_search::SearchConfigV1 {
+                        max_depth_turns: 1,
+                        max_nodes: 1,
+                    },
+                },
+                uniform_floor_micros: 100_000,
+                value_utility_scale: 1_000_000_000,
+            },
+            targets,
+        }
     }
 
     #[test]
@@ -1345,6 +1953,42 @@ mod tests {
 
         let offline = evaluate_checkpoint_with_config_v1(&dataset, &checkpoint, &config).unwrap();
         assert_eq!(offline.head_split, report.head_split);
+        assert_eq!(offline.train_head_metrics, report.train_head_metrics);
+        assert_eq!(
+            offline.validation_head_metrics,
+            report.validation_head_metrics
+        );
+        assert_eq!(offline.material_gate, report.material_gate);
+    }
+
+    #[test]
+    fn search_teacher_contract_trains_deterministically_and_recomputes() {
+        let (dataset, mut config) = dataset_and_config();
+        let targets = search_targets(&dataset);
+        let target_hash = crate::search_teacher_targets_hash_v1(&targets).unwrap();
+        config.training_contract_version = Some(3);
+        config.policy_teacher_agent_ids = vec!["teacher".into()];
+        config.value_target_agent_ids = vec!["teacher".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        config.value_updates_shared_encoder = Some(false);
+        config.expected_search_teacher_targets_hash = Some(target_hash.clone());
+
+        let (left, report) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        let (right, _) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        assert_eq!(left, right);
+        assert_eq!(
+            left.search_teacher_targets_hash.as_deref(),
+            Some(target_hash.as_str())
+        );
+        assert_eq!(report.search_teacher_targets_hash, Some(target_hash));
+        assert_eq!(report.head_split.as_ref().unwrap().train_policy_examples, 4);
+        assert!(evaluate_checkpoint_with_config_v1(&dataset, &left, &config).is_err());
+
+        let offline =
+            evaluate_checkpoint_with_search_targets_v1(&dataset, &targets, &left, &config).unwrap();
         assert_eq!(offline.train_head_metrics, report.train_head_metrics);
         assert_eq!(
             offline.validation_head_metrics,

@@ -482,7 +482,6 @@ dependencies = [
  "splendor-catalog",
  "splendor-core",
  "splendor-eval",
- "splendor-imperfect-search",
  "splendor-league",
  "splendor-learning",
  "splendor-neural-search",
@@ -651,10 +650,13 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "splendor-belief",
  "splendor-catalog",
  "splendor-core",
+ "splendor-imperfect-search",
  "splendor-league",
  "splendor-replay",
+ "splendor-search",
  "thiserror",
 ]
 

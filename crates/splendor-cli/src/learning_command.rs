@@ -7,8 +7,10 @@ use std::path::{Path, PathBuf};
 use serde::de::DeserializeOwned;
 use splendor_league::TrainingDatasetV1;
 use splendor_learning::{
-    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1, train_policy_value_v1,
-    PolicyValueCheckpointV1, PolicyValueTrainingConfigV1,
+    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1,
+    evaluate_checkpoint_with_search_targets_v1, train_policy_value_v1,
+    train_policy_value_with_search_targets_v1, PolicyValueCheckpointV1,
+    PolicyValueTrainingConfigV1, SearchTeacherTargetSetV1,
 };
 
 use crate::atomic_output;
@@ -16,6 +18,7 @@ use crate::atomic_output;
 const MAX_DATASET_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
 const MAX_CHECKPOINT_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_SEARCH_TARGET_BYTES: u64 = 256 * 1024 * 1024;
 
 const TRAIN_USAGE: &str = "\
 Usage: splendor train-policy-value --dataset <dataset.json> --config <config.json> --checkpoint <checkpoint.json> --report <training-report.json>
@@ -39,6 +42,22 @@ Usage: splendor evaluate-policy-value-source-aware --dataset <dataset.json> --ch
 
 Recompute the exact M15B per-head source selection and material offline gates.
 The checkpoint must bind training_contract_version 2 and the supplied config.
+
+Exit codes: 0 success, 1 fatal; stdout is empty.";
+
+const TRAIN_SEARCH_TEACHER_USAGE: &str = "\
+Usage: splendor train-policy-value-search-teacher --dataset <dataset.json> --targets <targets.json> --config <config.json> --checkpoint <checkpoint.json> --report <training-report.json>
+
+Train M15C against provenance-bound soft Policy and search-shaped vector-Value
+targets. Contract v3 binds the exact target artifact into checkpoint/report.
+
+Exit codes: 0 success, 1 fatal; stdout is empty.";
+
+const EVALUATE_SEARCH_TEACHER_USAGE: &str = "\
+Usage: splendor evaluate-policy-value-search-teacher --dataset <dataset.json> --targets <targets.json> --checkpoint <checkpoint.json> --config <config.json> --out <offline-eval.json>
+
+Independently recompute M15C metrics and material gates from the exact bound
+search-teacher artifact.
 
 Exit codes: 0 success, 1 fatal; stdout is empty.";
 
@@ -127,6 +146,68 @@ pub fn run_evaluate_policy_value_source_aware(args: &[String]) -> i32 {
     })
 }
 
+pub fn run_train_policy_value_search_teacher(args: &[String]) -> i32 {
+    run_command(|| {
+        if wants_help(args) {
+            print_stdout(TRAIN_SEARCH_TEACHER_USAGE);
+            return Ok(());
+        }
+        let paths = parse_search_train_args(args)?;
+        precheck_output(&paths.checkpoint)?;
+        precheck_output(&paths.report)?;
+        let dataset: TrainingDatasetV1 =
+            read_json(&paths.dataset, MAX_DATASET_BYTES, "training dataset")?;
+        let targets: SearchTeacherTargetSetV1 = read_json(
+            &paths.targets,
+            MAX_SEARCH_TARGET_BYTES,
+            "search-teacher targets",
+        )?;
+        let config: PolicyValueTrainingConfigV1 =
+            read_json(&paths.config, MAX_CONFIG_BYTES, "training config")?;
+        let (checkpoint, report) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config)
+                .map_err(|error| CommandError(error.to_string()))?;
+        atomic_output::commit_completed_with(
+            &paths.checkpoint,
+            &pretty_json(&checkpoint)?,
+            &paths.report,
+            &pretty_json(&report)?,
+            atomic_output::publish_new,
+        )
+        .map_err(|error| CommandError(error.to_string()))
+    })
+}
+
+pub fn run_evaluate_policy_value_search_teacher(args: &[String]) -> i32 {
+    run_command(|| {
+        if wants_help(args) {
+            print_stdout(EVALUATE_SEARCH_TEACHER_USAGE);
+            return Ok(());
+        }
+        let paths = parse_search_evaluate_args(args)?;
+        precheck_output(&paths.out)?;
+        let dataset: TrainingDatasetV1 =
+            read_json(&paths.dataset, MAX_DATASET_BYTES, "training dataset")?;
+        let targets: SearchTeacherTargetSetV1 = read_json(
+            &paths.targets,
+            MAX_SEARCH_TARGET_BYTES,
+            "search-teacher targets",
+        )?;
+        let checkpoint: PolicyValueCheckpointV1 = read_json(
+            &paths.checkpoint,
+            MAX_CHECKPOINT_BYTES,
+            "policy/value checkpoint",
+        )?;
+        let config: PolicyValueTrainingConfigV1 =
+            read_json(&paths.config, MAX_CONFIG_BYTES, "training config")?;
+        let report =
+            evaluate_checkpoint_with_search_targets_v1(&dataset, &targets, &checkpoint, &config)
+                .map_err(|error| CommandError(error.to_string()))?;
+        atomic_output::commit_single(&paths.out, &pretty_json(&report)?)
+            .map_err(|error| CommandError(error.to_string()))
+    })
+}
+
 fn run_command<F>(command: F) -> i32
 where
     F: FnOnce() -> Result<(), CommandError>,
@@ -201,6 +282,39 @@ struct TrainPaths {
     report: PathBuf,
 }
 
+struct SearchTrainPaths {
+    dataset: PathBuf,
+    targets: PathBuf,
+    config: PathBuf,
+    checkpoint: PathBuf,
+    report: PathBuf,
+}
+
+fn parse_search_train_args(args: &[String]) -> Result<SearchTrainPaths, CommandError> {
+    let mut dataset = None;
+    let mut targets = None;
+    let mut config = None;
+    let mut checkpoint = None;
+    let mut report = None;
+    parse_flags(
+        args,
+        &mut [
+            ("--dataset", &mut dataset),
+            ("--targets", &mut targets),
+            ("--config", &mut config),
+            ("--checkpoint", &mut checkpoint),
+            ("--report", &mut report),
+        ],
+    )?;
+    Ok(SearchTrainPaths {
+        dataset: required(dataset, "--dataset")?,
+        targets: required(targets, "--targets")?,
+        config: required(config, "--config")?,
+        checkpoint: required(checkpoint, "--checkpoint")?,
+        report: required(report, "--report")?,
+    })
+}
+
 fn parse_train_args(args: &[String]) -> Result<TrainPaths, CommandError> {
     let mut dataset = None;
     let mut config = None;
@@ -234,6 +348,39 @@ struct SourceAwareEvaluatePaths {
     checkpoint: PathBuf,
     config: PathBuf,
     out: PathBuf,
+}
+
+struct SearchEvaluatePaths {
+    dataset: PathBuf,
+    targets: PathBuf,
+    checkpoint: PathBuf,
+    config: PathBuf,
+    out: PathBuf,
+}
+
+fn parse_search_evaluate_args(args: &[String]) -> Result<SearchEvaluatePaths, CommandError> {
+    let mut dataset = None;
+    let mut targets = None;
+    let mut checkpoint = None;
+    let mut config = None;
+    let mut out = None;
+    parse_flags(
+        args,
+        &mut [
+            ("--dataset", &mut dataset),
+            ("--targets", &mut targets),
+            ("--checkpoint", &mut checkpoint),
+            ("--config", &mut config),
+            ("--out", &mut out),
+        ],
+    )?;
+    Ok(SearchEvaluatePaths {
+        dataset: required(dataset, "--dataset")?,
+        targets: required(targets, "--targets")?,
+        checkpoint: required(checkpoint, "--checkpoint")?,
+        config: required(config, "--config")?,
+        out: required(out, "--out")?,
+    })
 }
 
 fn parse_evaluate_args(args: &[String]) -> Result<EvaluatePaths, CommandError> {

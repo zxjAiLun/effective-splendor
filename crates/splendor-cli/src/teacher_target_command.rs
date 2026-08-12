@@ -5,10 +5,10 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
-use splendor_analysis::{
+use splendor_league::TrainingDatasetV1;
+use splendor_learning::{
     build_search_teacher_targets_v1, search_teacher_targets_hash_v1, SearchTeacherBuildConfigV1,
 };
-use splendor_league::TrainingDatasetV1;
 use splendor_replay::ReplayV1;
 
 use crate::atomic_output;

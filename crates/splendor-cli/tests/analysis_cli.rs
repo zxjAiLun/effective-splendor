@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use splendor_analysis::{analysis_trace_hash_v1, AnalysisTraceV1, SearchTeacherBuildConfigV1};
+use splendor_analysis::{analysis_trace_hash_v1, AnalysisTraceV1};
 use splendor_learning::{
-    model_checkpoint_hash_v1, ModelParametersV1, PolicyValueCheckpointV1, ACTION_FEATURES_V1,
-    MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, POLICY_VALUE_CHECKPOINT_FORMAT,
-    POLICY_VALUE_CHECKPOINT_VERSION, REPRESENTATION_VERSION_V1,
+    model_checkpoint_hash_v1, ModelParametersV1, PolicyValueCheckpointV1,
+    SearchTeacherBuildConfigV1, ACTION_FEATURES_V1, MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1,
+    POLICY_VALUE_CHECKPOINT_FORMAT, POLICY_VALUE_CHECKPOINT_VERSION, REPRESENTATION_VERSION_V1,
 };
 use splendor_replay::record_random_game;
 
@@ -52,6 +52,7 @@ fn checkpoint() -> PolicyValueCheckpointV1 {
         evaluation_report_hash: "44".repeat(32),
         training_config_hash: "55".repeat(32),
         training_contract_version: None,
+        search_teacher_targets_hash: None,
         trained_examples: 4,
         validation_examples: 2,
         validation_seed_modulus: 2,

@@ -10,6 +10,8 @@ pub enum LearningError {
     InvalidCheckpoint(String),
     #[error("invalid M12 formal result: {0}")]
     InvalidFormalResult(String),
+    #[error("invalid M15C search-teacher target: {0}")]
+    InvalidTeacherTarget(String),
     #[error("M12 serialization failed: {0}")]
     Serialization(String),
 }
@@ -28,4 +30,8 @@ pub(crate) fn invalid_checkpoint(message: impl Into<String>) -> LearningError {
 
 pub(crate) fn invalid_formal_result(message: impl Into<String>) -> LearningError {
     LearningError::InvalidFormalResult(message.into())
+}
+
+pub(crate) fn invalid_teacher_target(message: impl Into<String>) -> LearningError {
+    LearningError::InvalidTeacherTarget(message.into())
 }

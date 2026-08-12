@@ -9,7 +9,6 @@ mod error;
 mod evaluation_diagnostic;
 mod neural_trace;
 mod schema;
-mod teacher_targets;
 
 pub use error::AnalysisError;
 pub use evaluation_diagnostic::{
@@ -22,11 +21,4 @@ pub use neural_trace::analyze_replay_neural_v1;
 pub use schema::{
     analysis_trace_hash_v1, AnalysisCardV1, AnalysisCatalogV1, AnalysisFrameV1, AnalysisNobleV1,
     AnalysisTraceV1, RefereeRevealV1, ANALYSIS_TRACE_FORMAT, ANALYSIS_TRACE_VERSION,
-};
-pub use teacher_targets::{
-    build_search_teacher_targets_v1, search_teacher_targets_hash_v1, SearchTeacherActionTargetV1,
-    SearchTeacherBuildConfigV1, SearchTeacherTargetSetV1, SearchTeacherTargetV1,
-    SearchTeacherTargetsConfigV1, SEARCH_TEACHER_BUILD_CONFIG_FORMAT,
-    SEARCH_TEACHER_BUILD_CONFIG_VERSION, SEARCH_TEACHER_TARGETS_FORMAT,
-    SEARCH_TEACHER_TARGETS_VERSION, SEARCH_VALUE_TARGET_SCALE_V1,
 };

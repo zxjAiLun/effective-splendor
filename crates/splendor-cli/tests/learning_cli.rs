@@ -11,8 +11,10 @@ use splendor_league::{
 };
 use splendor_learning::{
     OfflineEvaluationReportV1, PolicyValueCheckpointV1, PolicyValueTrainingConfigV1,
-    PolicyValueTrainingReportV1, POLICY_VALUE_TRAINING_CONFIG_FORMAT,
-    POLICY_VALUE_TRAINING_CONFIG_VERSION,
+    PolicyValueTrainingReportV1, SearchTeacherActionTargetV1, SearchTeacherTargetSetV1,
+    SearchTeacherTargetV1, SearchTeacherTargetsConfigV1, POLICY_VALUE_TRAINING_CONFIG_FORMAT,
+    POLICY_VALUE_TRAINING_CONFIG_VERSION, SEARCH_TEACHER_TARGETS_FORMAT,
+    SEARCH_TEACHER_TARGETS_VERSION,
 };
 use splendor_replay::{ReplayGameResultV1, ReplayTerminalReason};
 
@@ -49,7 +51,7 @@ fn run(args: &[&str], dir: &Path) -> Output {
 fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
     let (state, _) = FullState::new(GameConfig::default()).unwrap();
     let observation = state.observation(PlayerId(0));
-    let legal = state.legal_actions();
+    let legal = splendor_search::canonical_order(&state.legal_actions());
     let mut dataset = TrainingDatasetV1 {
         format: TRAINING_DATASET_FORMAT.into(),
         version: TRAINING_DATASET_VERSION,
@@ -145,8 +147,65 @@ fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
         min_policy_nll_relative_improvement_bps: None,
         min_value_mse_relative_improvement_bps: None,
         value_updates_shared_encoder: None,
+        expected_search_teacher_targets_hash: None,
     };
     (dataset, config)
+}
+
+fn target_fixture(dataset: &TrainingDatasetV1) -> SearchTeacherTargetSetV1 {
+    SearchTeacherTargetSetV1 {
+        format: SEARCH_TEACHER_TARGETS_FORMAT.into(),
+        version: SEARCH_TEACHER_TARGETS_VERSION,
+        dataset_id: dataset.dataset_id.clone(),
+        dataset_hash: training_dataset_hash_v1(dataset).unwrap(),
+        league_manifest_hash: dataset.league_manifest_hash.clone(),
+        evaluation_plan_hash: dataset.evaluation_plan_hash.clone(),
+        evaluation_report_hash: dataset.evaluation_report_hash.clone(),
+        teacher_agent_ids: vec!["teacher".into()],
+        config: SearchTeacherTargetsConfigV1 {
+            search: splendor_imperfect_search::RootDeterminizationConfigV1 {
+                sample_seed: 7,
+                sample_count: 1,
+                continuation_search: splendor_search::SearchConfigV1 {
+                    max_depth_turns: 1,
+                    max_nodes: 1,
+                },
+            },
+            uniform_floor_micros: 100_000,
+            value_utility_scale: 1_000_000_000,
+        },
+        targets: dataset
+            .examples
+            .iter()
+            .map(|example| {
+                let count = example.legal_actions.len() as u32;
+                let base = 1_000_000 / count;
+                let remainder = 1_000_000 % count;
+                SearchTeacherTargetV1 {
+                    source_id: example.source_id.clone(),
+                    replay_document_hash: example.replay_document_hash.clone(),
+                    ply: example.ply,
+                    actor: example.actor,
+                    observation_hash: example.observation_hash.clone(),
+                    visible_history_hash: example.visible_history_hash.clone(),
+                    information_set_hash: example.information_set_hash.clone(),
+                    recorded_action: example.chosen_action,
+                    teacher_action: example.legal_actions[0],
+                    action_targets: example
+                        .legal_actions
+                        .iter()
+                        .enumerate()
+                        .map(|(index, action)| SearchTeacherActionTargetV1 {
+                            action: *action,
+                            policy_target_micros: base + u32::from((index as u32) < remainder),
+                            utility_sum_by_player: vec![0, 0],
+                        })
+                        .collect(),
+                    value_target_by_player_micros: vec![500_000, 500_000],
+                }
+            })
+            .collect(),
+    }
 }
 
 #[test]
@@ -305,6 +364,110 @@ fn source_aware_training_requires_config_bound_offline_evaluation() {
 }
 
 #[test]
+fn search_teacher_cli_is_atomic_and_hash_bound() {
+    let dir = temp_dir("search-teacher");
+    let (dataset, mut config) = fixture();
+    let targets = target_fixture(&dataset);
+    let target_hash = splendor_learning::search_teacher_targets_hash_v1(&targets).unwrap();
+    config.training_contract_version = Some(3);
+    config.policy_teacher_agent_ids = vec!["teacher".into()];
+    config.value_target_agent_ids = vec!["teacher".into()];
+    config.min_policy_nll_relative_improvement_bps = Some(1);
+    config.min_value_mse_relative_improvement_bps = Some(1);
+    config.value_updates_shared_encoder = Some(false);
+    config.expected_search_teacher_targets_hash = Some(target_hash.clone());
+    write_json(&dir.join("dataset.json"), &dataset);
+    write_json(&dir.join("targets.json"), &targets);
+    write_json(&dir.join("config.json"), &config);
+
+    let train = run(
+        &[
+            "train-policy-value-search-teacher",
+            "--dataset",
+            "dataset.json",
+            "--targets",
+            "targets.json",
+            "--config",
+            "config.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--report",
+            "training-report.json",
+        ],
+        &dir,
+    );
+    assert_eq!(
+        train.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&train.stderr)
+    );
+    let checkpoint: PolicyValueCheckpointV1 =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("checkpoint.json")).unwrap())
+            .unwrap();
+    assert_eq!(checkpoint.search_teacher_targets_hash, Some(target_hash));
+
+    let evaluate = run(
+        &[
+            "evaluate-policy-value-search-teacher",
+            "--dataset",
+            "dataset.json",
+            "--targets",
+            "targets.json",
+            "--checkpoint",
+            "checkpoint.json",
+            "--config",
+            "config.json",
+            "--out",
+            "offline.json",
+        ],
+        &dir,
+    );
+    assert_eq!(
+        evaluate.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&evaluate.stderr)
+    );
+    let training: PolicyValueTrainingReportV1 =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("training-report.json")).unwrap())
+            .unwrap();
+    let offline: OfflineEvaluationReportV1 =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("offline.json")).unwrap()).unwrap();
+    assert_eq!(
+        offline.validation_head_metrics,
+        training.validation_head_metrics
+    );
+    assert_eq!(
+        offline.search_teacher_targets_hash,
+        training.search_teacher_targets_hash
+    );
+
+    let mut wrong = config;
+    wrong.expected_search_teacher_targets_hash = Some("aa".repeat(32));
+    write_json(&dir.join("wrong-config.json"), &wrong);
+    let rejected = run(
+        &[
+            "train-policy-value-search-teacher",
+            "--dataset",
+            "dataset.json",
+            "--targets",
+            "targets.json",
+            "--config",
+            "wrong-config.json",
+            "--checkpoint",
+            "wrong-checkpoint.json",
+            "--report",
+            "wrong-report.json",
+        ],
+        &dir,
+    );
+    assert_eq!(rejected.status.code(), Some(1));
+    assert!(!dir.join("wrong-checkpoint.json").exists());
+    assert!(!dir.join("wrong-report.json").exists());
+}
+
+#[test]
 fn malformed_catalog_id_is_fatal_without_panic_or_outputs() {
     let dir = temp_dir("bad-card-id");
     let (mut dataset, mut config) = fixture();
@@ -348,6 +511,23 @@ fn checked_in_m15b_isolated_config_is_source_bound_and_frozen() {
     assert_eq!(
         config.expected_dataset_hash,
         "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24"
+    );
+    assert_eq!(config.min_policy_nll_relative_improvement_bps, Some(1500));
+    assert_eq!(config.min_value_mse_relative_improvement_bps, Some(500));
+}
+
+#[test]
+fn checked_in_m15c_config_binds_search_targets_and_unchanged_gates() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../benchmarks/m15c-search-policy-value-v1.config.json");
+    let config: PolicyValueTrainingConfigV1 =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    config.validate().unwrap();
+    assert_eq!(config.training_contract_version, Some(3));
+    assert_eq!(config.value_updates_shared_encoder, Some(false));
+    assert_eq!(
+        config.expected_search_teacher_targets_hash.as_deref(),
+        Some("5557252270a0f6a1cb5d881ac975802a6bd14b74e6130daf03f00fc09c6a46de")
     );
     assert_eq!(config.min_policy_nll_relative_improvement_bps, Some(1500));
     assert_eq!(config.min_value_mse_relative_improvement_bps, Some(500));

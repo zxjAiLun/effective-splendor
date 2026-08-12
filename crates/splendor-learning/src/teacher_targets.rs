@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::thread;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -10,7 +11,8 @@ use splendor_league::{training_dataset_hash_v1, TrainingDatasetV1, TrainingRepla
 use splendor_replay::{replay_document_hash_v1, verify_replay_trace, ReplayV1};
 use splendor_search::canonical_order;
 
-use crate::AnalysisError;
+use crate::error::invalid_teacher_target;
+use crate::LearningError;
 
 pub const SEARCH_TEACHER_TARGETS_FORMAT: &str = "effective-splendor-search-teacher-targets";
 pub const SEARCH_TEACHER_TARGETS_VERSION: u32 = 1;
@@ -30,7 +32,7 @@ pub struct SearchTeacherTargetsConfigV1 {
 }
 
 impl SearchTeacherTargetsConfigV1 {
-    pub fn validate(&self) -> Result<(), AnalysisError> {
+    pub fn validate(&self) -> Result<(), LearningError> {
         self.search
             .validate()
             .map_err(|error| teacher(error.to_string()))?;
@@ -59,7 +61,7 @@ pub struct SearchTeacherBuildConfigV1 {
 }
 
 impl SearchTeacherBuildConfigV1 {
-    pub fn validate(&self) -> Result<(), AnalysisError> {
+    pub fn validate(&self) -> Result<(), LearningError> {
         if self.format != SEARCH_TEACHER_BUILD_CONFIG_FORMAT
             || self.version != SEARCH_TEACHER_BUILD_CONFIG_VERSION
         {
@@ -125,7 +127,7 @@ pub struct SearchTeacherTargetSetV1 {
 }
 
 impl SearchTeacherTargetSetV1 {
-    pub fn validate(&self) -> Result<(), AnalysisError> {
+    pub fn validate(&self) -> Result<(), LearningError> {
         if self.format != SEARCH_TEACHER_TARGETS_FORMAT
             || self.version != SEARCH_TEACHER_TARGETS_VERSION
         {
@@ -163,7 +165,7 @@ pub fn build_search_teacher_targets_v1(
     dataset: &TrainingDatasetV1,
     replays_by_match_index: &[(u32, ReplayV1)],
     build_config: &SearchTeacherBuildConfigV1,
-) -> Result<SearchTeacherTargetSetV1, AnalysisError> {
+) -> Result<SearchTeacherTargetSetV1, LearningError> {
     build_config.validate()?;
     let config = &build_config.targets;
     let dataset_hash = training_dataset_hash_v1(dataset)
@@ -207,97 +209,41 @@ pub fn build_search_teacher_targets_v1(
                     .push(example);
                 map
             });
-    let mut targets = Vec::new();
-    for metadata in &dataset.replays {
-        let replay = supplied
-            .get(&metadata.evaluation_match_index)
-            .ok_or_else(|| teacher("dataset replay index is missing"))?;
-        bind_replay(metadata, replay)?;
-        let trace = verify_replay_trace(replay)
-            .map_err(|error| teacher(format!("replay verification failed: {error}")))?;
-        let source_examples = examples_by_source
-            .get(metadata.source_id.as_str())
-            .ok_or_else(|| teacher("dataset replay has no examples"))?;
-        for example in source_examples {
-            let identity = metadata
-                .agents_by_seat
-                .get(example.actor.index())
-                .ok_or_else(|| teacher("example actor has no replay agent identity"))?;
-            if !teacher_ids.contains(&identity.league_agent_id) {
-                continue;
-            }
-            let position = trace
-                .positions
-                .get(example.ply as usize)
-                .ok_or_else(|| teacher("example ply is absent from verified replay"))?;
-            bind_example(example, position)?;
-            let observation = position.state.observation(example.actor);
-            let history = visible_events(&position.state.log, Audience::Player(example.actor));
-            let analysis =
-                analyze_player_view_v1(Ruleset::base_v1(), &observation, &history, config.search)
-                    .map_err(|error| teacher(format!("teacher search failed: {error}")))?;
-            if analysis.visible_history_hash().as_str() != example.visible_history_hash
-                || analysis.information_set_hash().as_str() != example.information_set_hash
-            {
-                return Err(teacher(
-                    "teacher information set differs from dataset provenance",
-                ));
-            }
-            let result = analysis.result();
-            let legal_actions = canonical_order(&position.state.legal_actions());
-            if legal_actions != example.legal_actions
-                || result
-                    .action_aggregates
-                    .iter()
-                    .map(|aggregate| aggregate.action)
-                    .ne(legal_actions.iter().copied())
-            {
-                return Err(teacher(
-                    "teacher root actions differ from dataset legal actions",
-                ));
-            }
-            let policy = policy_targets(
-                &result.action_aggregates,
-                example.actor.index(),
-                config.uniform_floor_micros,
-            )?;
-            let action_targets = result
-                .action_aggregates
-                .iter()
-                .zip(policy)
-                .map(
-                    |(aggregate, policy_target_micros)| SearchTeacherActionTargetV1 {
-                        action: aggregate.action,
-                        policy_target_micros,
-                        utility_sum_by_player: aggregate.utility_sum_by_player.clone(),
-                    },
-                )
-                .collect::<Vec<_>>();
-            let selected = result
-                .action_aggregates
-                .iter()
-                .find(|aggregate| aggregate.action == result.action)
-                .ok_or_else(|| teacher("teacher-selected action has no aggregate"))?;
-            let values = value_targets(
-                &selected.utility_sum_by_player,
-                result.sample_count,
-                config.value_utility_scale,
-            )?;
-            targets.push(SearchTeacherTargetV1 {
-                source_id: example.source_id.clone(),
-                replay_document_hash: example.replay_document_hash.clone(),
-                ply: example.ply,
-                actor: example.actor,
-                observation_hash: example.observation_hash.clone(),
-                visible_history_hash: analysis.visible_history_hash().as_str().into(),
-                information_set_hash: analysis.information_set_hash().as_str().into(),
-                recorded_action: example.chosen_action,
-                teacher_action: result.action,
-                action_targets,
-                value_target_by_player_micros: values,
-            });
+    let workers = thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(1)
+        .min(dataset.replays.len());
+    let chunk_size = dataset.replays.len().div_ceil(workers);
+    let targets = thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for chunk in dataset.replays.chunks(chunk_size) {
+            let supplied = &supplied;
+            let examples_by_source = &examples_by_source;
+            let teacher_ids = &teacher_ids;
+            handles.push(scope.spawn(move || {
+                let mut chunk_targets = Vec::new();
+                for metadata in chunk {
+                    chunk_targets.extend(build_replay_targets(
+                        metadata,
+                        supplied,
+                        examples_by_source,
+                        teacher_ids,
+                        config,
+                    )?);
+                }
+                Ok::<_, LearningError>(chunk_targets)
+            }));
         }
-    }
+        let mut targets = Vec::new();
+        for handle in handles {
+            targets.extend(
+                handle
+                    .join()
+                    .map_err(|_| teacher("search-teacher worker panicked"))??,
+            );
+        }
+        Ok::<_, LearningError>(targets)
+    })?;
     let output = SearchTeacherTargetSetV1 {
         format: SEARCH_TEACHER_TARGETS_FORMAT.into(),
         version: SEARCH_TEACHER_TARGETS_VERSION,
@@ -314,19 +260,118 @@ pub fn build_search_teacher_targets_v1(
     Ok(output)
 }
 
+fn build_replay_targets(
+    metadata: &TrainingReplayV1,
+    supplied: &HashMap<u32, &ReplayV1>,
+    examples_by_source: &HashMap<&str, Vec<&splendor_league::TrainingExampleV1>>,
+    teacher_ids: &HashSet<&String>,
+    config: &SearchTeacherTargetsConfigV1,
+) -> Result<Vec<SearchTeacherTargetV1>, LearningError> {
+    let replay = supplied
+        .get(&metadata.evaluation_match_index)
+        .ok_or_else(|| teacher("dataset replay index is missing"))?;
+    bind_replay(metadata, replay)?;
+    let trace = verify_replay_trace(replay)
+        .map_err(|error| teacher(format!("replay verification failed: {error}")))?;
+    let source_examples = examples_by_source
+        .get(metadata.source_id.as_str())
+        .ok_or_else(|| teacher("dataset replay has no examples"))?;
+    let mut targets = Vec::new();
+    for example in source_examples {
+        let identity = metadata
+            .agents_by_seat
+            .get(example.actor.index())
+            .ok_or_else(|| teacher("example actor has no replay agent identity"))?;
+        if !teacher_ids.contains(&identity.league_agent_id) {
+            continue;
+        }
+        let position = trace
+            .positions
+            .get(example.ply as usize)
+            .ok_or_else(|| teacher("example ply is absent from verified replay"))?;
+        bind_example(example, position)?;
+        let observation = position.state.observation(example.actor);
+        let history = visible_events(&position.state.log, Audience::Player(example.actor));
+        let analysis =
+            analyze_player_view_v1(Ruleset::base_v1(), &observation, &history, config.search)
+                .map_err(|error| teacher(format!("teacher search failed: {error}")))?;
+        if analysis.visible_history_hash().as_str() != example.visible_history_hash
+            || analysis.information_set_hash().as_str() != example.information_set_hash
+        {
+            return Err(teacher(
+                "teacher information set differs from dataset provenance",
+            ));
+        }
+        let result = analysis.result();
+        let legal_actions = canonical_order(&position.state.legal_actions());
+        if legal_actions != example.legal_actions
+            || result
+                .action_aggregates
+                .iter()
+                .map(|aggregate| aggregate.action)
+                .ne(legal_actions.iter().copied())
+        {
+            return Err(teacher(
+                "teacher root actions differ from dataset legal actions",
+            ));
+        }
+        let policy = policy_targets(
+            &result.action_aggregates,
+            example.actor.index(),
+            config.uniform_floor_micros,
+        )?;
+        let action_targets = result
+            .action_aggregates
+            .iter()
+            .zip(policy)
+            .map(
+                |(aggregate, policy_target_micros)| SearchTeacherActionTargetV1 {
+                    action: aggregate.action,
+                    policy_target_micros,
+                    utility_sum_by_player: aggregate.utility_sum_by_player.clone(),
+                },
+            )
+            .collect::<Vec<_>>();
+        let selected = result
+            .action_aggregates
+            .iter()
+            .find(|aggregate| aggregate.action == result.action)
+            .ok_or_else(|| teacher("teacher-selected action has no aggregate"))?;
+        let values = value_targets(
+            &selected.utility_sum_by_player,
+            result.sample_count,
+            config.value_utility_scale,
+        )?;
+        targets.push(SearchTeacherTargetV1 {
+            source_id: example.source_id.clone(),
+            replay_document_hash: example.replay_document_hash.clone(),
+            ply: example.ply,
+            actor: example.actor,
+            observation_hash: example.observation_hash.clone(),
+            visible_history_hash: analysis.visible_history_hash().as_str().into(),
+            information_set_hash: analysis.information_set_hash().as_str().into(),
+            recorded_action: example.chosen_action,
+            teacher_action: result.action,
+            action_targets,
+            value_target_by_player_micros: values,
+        });
+    }
+    Ok(targets)
+}
+
 pub fn search_teacher_targets_hash_v1(
     targets: &SearchTeacherTargetSetV1,
-) -> Result<String, AnalysisError> {
+) -> Result<String, LearningError> {
     targets.validate()?;
     let bytes = serde_json::to_vec(targets)
-        .map_err(|error| AnalysisError::Serialization(error.to_string()))?;
+        .map_err(|error| LearningError::Serialization(error.to_string()))?;
     let mut hasher = Sha256::new();
     hasher.update(b"effective-splendor-search-teacher-targets-v1\0");
     hasher.update(bytes);
     Ok(hex::encode(hasher.finalize()))
 }
 
-fn bind_replay(metadata: &TrainingReplayV1, replay: &ReplayV1) -> Result<(), AnalysisError> {
+fn bind_replay(metadata: &TrainingReplayV1, replay: &ReplayV1) -> Result<(), LearningError> {
     let hash = replay_document_hash_v1(replay)
         .map_err(|error| teacher(format!("replay hash failed: {error}")))?;
     if hash != metadata.replay_document_hash
@@ -346,7 +391,7 @@ fn bind_replay(metadata: &TrainingReplayV1, replay: &ReplayV1) -> Result<(), Ana
 fn bind_example(
     example: &splendor_league::TrainingExampleV1,
     position: &splendor_replay::VerifiedReplayTraceStep,
-) -> Result<(), AnalysisError> {
+) -> Result<(), LearningError> {
     let observation = position.state.observation(position.recorded_actor);
     if position.ply != example.ply
         || position.recorded_actor != example.actor
@@ -365,7 +410,7 @@ fn bind_example(
 fn validate_target(
     target: &SearchTeacherTargetV1,
     config: &SearchTeacherTargetsConfigV1,
-) -> Result<(), AnalysisError> {
+) -> Result<(), LearningError> {
     if target.action_targets.is_empty() {
         return Err(teacher("teacher target has no legal actions"));
     }
@@ -457,7 +502,7 @@ fn policy_targets(
     aggregates: &[RootActionAggregateV1],
     actor: usize,
     uniform_floor_micros: u32,
-) -> Result<Vec<u32>, AnalysisError> {
+) -> Result<Vec<u32>, LearningError> {
     if aggregates.is_empty()
         || aggregates
             .iter()
@@ -511,7 +556,7 @@ fn proportional_allocation(
     total: u32,
     weights: &[u128],
     weight_sum: u128,
-) -> Result<Vec<u32>, AnalysisError> {
+) -> Result<Vec<u32>, LearningError> {
     let mut allocated = Vec::with_capacity(weights.len());
     let mut remainders = Vec::with_capacity(weights.len());
     let mut used = 0u32;
@@ -538,7 +583,7 @@ fn value_targets(
     utility_sum_by_player: &[i64],
     sample_count: u16,
     value_utility_scale: u64,
-) -> Result<Vec<u32>, AnalysisError> {
+) -> Result<Vec<u32>, LearningError> {
     if sample_count == 0 || utility_sum_by_player.is_empty() {
         return Err(teacher("invalid utility vector for Value projection"));
     }
@@ -556,7 +601,7 @@ fn value_targets(
         .collect()
 }
 
-fn validate_teacher_ids(values: &[String]) -> Result<(), AnalysisError> {
+fn validate_teacher_ids(values: &[String]) -> Result<(), LearningError> {
     if values.is_empty() {
         return Err(teacher("teacher_agent_ids must not be empty"));
     }
@@ -573,7 +618,7 @@ fn validate_teacher_ids(values: &[String]) -> Result<(), AnalysisError> {
     Ok(())
 }
 
-fn validate_hash(value: &str) -> Result<(), AnalysisError> {
+fn validate_hash(value: &str) -> Result<(), LearningError> {
     if value.len() != 64
         || !value
             .bytes()
@@ -584,8 +629,8 @@ fn validate_hash(value: &str) -> Result<(), AnalysisError> {
     Ok(())
 }
 
-fn teacher(message: impl Into<String>) -> AnalysisError {
-    AnalysisError::TeacherTarget(message.into())
+fn teacher(message: impl Into<String>) -> LearningError {
+    invalid_teacher_target(message)
 }
 
 #[cfg(test)]

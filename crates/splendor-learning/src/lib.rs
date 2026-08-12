@@ -8,6 +8,7 @@ mod error;
 mod formal_result;
 mod model;
 mod representation;
+mod teacher_targets;
 mod training;
 
 pub use error::LearningError;
@@ -24,12 +25,21 @@ pub use representation::{
     encode_action_v1, encode_observation_v1, ACTION_FEATURES_V1, MAX_PLAYERS_V1,
     OBSERVATION_FEATURES_V1, REPRESENTATION_VERSION_V1,
 };
+pub use teacher_targets::{
+    build_search_teacher_targets_v1, search_teacher_targets_hash_v1, SearchTeacherActionTargetV1,
+    SearchTeacherBuildConfigV1, SearchTeacherTargetSetV1, SearchTeacherTargetV1,
+    SearchTeacherTargetsConfigV1, SEARCH_TEACHER_BUILD_CONFIG_FORMAT,
+    SEARCH_TEACHER_BUILD_CONFIG_VERSION, SEARCH_TEACHER_TARGETS_FORMAT,
+    SEARCH_TEACHER_TARGETS_VERSION, SEARCH_VALUE_TARGET_SCALE_V1,
+};
 pub use training::{
-    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1, train_policy_value_v1,
-    training_config_hash_v1, DatasetIdentityV1, DatasetSplitV1, HeadDatasetSplitV1,
-    HeadOfflineMetricsV1, MaterialOfflineGateV1, MetricComparisonV1, OfflineEvaluationReportV1,
-    OfflineMetricsV1, PolicyValueTrainingConfigV1, PolicyValueTrainingReportV1, TrainingOutcomeV1,
-    OFFLINE_EVALUATION_FORMAT, OFFLINE_EVALUATION_VERSION, POLICY_VALUE_TRAINING_CONFIG_FORMAT,
+    evaluate_checkpoint_v1, evaluate_checkpoint_with_config_v1,
+    evaluate_checkpoint_with_search_targets_v1, train_policy_value_v1,
+    train_policy_value_with_search_targets_v1, training_config_hash_v1, DatasetIdentityV1,
+    DatasetSplitV1, HeadDatasetSplitV1, HeadOfflineMetricsV1, MaterialOfflineGateV1,
+    MetricComparisonV1, OfflineEvaluationReportV1, OfflineMetricsV1, PolicyValueTrainingConfigV1,
+    PolicyValueTrainingReportV1, TrainingOutcomeV1, OFFLINE_EVALUATION_FORMAT,
+    OFFLINE_EVALUATION_VERSION, POLICY_VALUE_TRAINING_CONFIG_FORMAT,
     POLICY_VALUE_TRAINING_CONFIG_VERSION, POLICY_VALUE_TRAINING_REPORT_FORMAT,
     POLICY_VALUE_TRAINING_REPORT_VERSION,
 };

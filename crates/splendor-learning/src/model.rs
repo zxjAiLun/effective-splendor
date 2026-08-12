@@ -39,10 +39,12 @@ pub struct PolicyValueCheckpointV1 {
     pub evaluation_plan_hash: String,
     pub evaluation_report_hash: String,
     pub training_config_hash: String,
-    /// Absent for the accepted M12 contract. `Some(2)` marks a source-aware
-    /// M15B training contract and requires config-aware offline evaluation.
+    /// Absent for the accepted M12 contract. `Some(2)` marks source-aware
+    /// M15B; `Some(3)` binds M15C full-search targets.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub training_contract_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_teacher_targets_hash: Option<String>,
     pub trained_examples: u64,
     pub validation_examples: u64,
     pub validation_seed_modulus: u32,
@@ -84,11 +86,25 @@ impl PolicyValueCheckpointV1 {
         validate_hash("training_config_hash", &self.training_config_hash)?;
         if self
             .training_contract_version
-            .is_some_and(|version| version != 2)
+            .is_some_and(|version| version != 2 && version != 3)
         {
             return Err(invalid_checkpoint(
                 "unsupported source-aware training contract version",
             ));
+        }
+        match self.training_contract_version {
+            Some(3) => validate_hash(
+                "search_teacher_targets_hash",
+                self.search_teacher_targets_hash.as_deref().ok_or_else(|| {
+                    invalid_checkpoint("contract v3 requires search-teacher target hash")
+                })?,
+            )?,
+            _ if self.search_teacher_targets_hash.is_some() => {
+                return Err(invalid_checkpoint(
+                    "search-teacher target hash requires training contract v3",
+                ));
+            }
+            _ => {}
         }
         validate_label("source_dataset_id", &self.source_dataset_id)?;
         if self.trained_examples == 0 || self.validation_examples == 0 || self.epochs == 0 {
@@ -290,6 +306,7 @@ pub(crate) fn initialize_checkpoint(
         evaluation_report_hash: String::new(),
         training_config_hash: String::new(),
         training_contract_version: None,
+        search_teacher_targets_hash: None,
         trained_examples: 0,
         validation_examples: 0,
         validation_seed_modulus: 0,

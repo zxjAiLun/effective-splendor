@@ -1,0 +1,56 @@
+{
+  "format": "effective-splendor-m15c-search-training-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "dataset": {
+    "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+    "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+    "replays": 125,
+    "examples": 7843
+  },
+  "search_teacher_targets": {
+    "semantic_hash": "5557252270a0f6a1cb5d881ac975802a6bd14b74e6130daf03f00fc09c6a46de",
+    "file_sha256": "2766a1e057e912362b061c0fb8e39a8cc00c78bc2d0f861dbb20841defc2cd67",
+    "file_bytes": 61741232,
+    "targets": 3920,
+    "recorded_teacher_matches": 3920,
+    "mean_top_policy_mass": 0.313208,
+    "mean_policy_entropy": 2.345843,
+    "mean_uniform_cross_entropy": 3.035971,
+    "teacher_signal_ceiling_bps": 2273,
+    "mean_value": 0.500128,
+    "value_saturation_rate": 0.032653
+  },
+  "training": {
+    "training_config_hash": "5b83ad12d3b9b64df46ab2142bb7a64346970e3d8ccf6f116567e76b312c8f82",
+    "training_config_file_sha256": "5b235f5199b04fa04c5318b9c0b816b0bce6aa07e157ad031b50722cfc4096f3",
+    "checkpoint_hash": "29702dd4060af2fb44a2c84b7ee486f9bc0aa90ef96fd7a63ef528d17a95d6e1",
+    "checkpoint_file_sha256": "eaca3021475dfd5632681780ad5df6f80e374efea909c92c3d4d70c8115ecac5",
+    "training_report_file_sha256": "efa121180833fd74c18171f01b8b1c59588d8b07c2c60350f1b18f646ae74352",
+    "offline_eval_file_sha256": "e23d2c58b97341921c68f8e3fd318684537c21f00325e361f54df865c17fe464",
+    "value_updates_shared_encoder": false,
+    "train_policy_examples": 2942,
+    "validation_policy_examples": 978,
+    "train_value_examples": 2942,
+    "validation_value_examples": 978,
+    "validation_policy_top1_accuracy": 0.30265848670756645,
+    "validation_policy_cross_entropy": 2.8326123265229195,
+    "uniform_policy_cross_entropy": 2.9779021963351053,
+    "policy_relative_improvement_bps": 487,
+    "policy_gate_required_bps": 1500,
+    "policy_gate_passed": false,
+    "validation_value_mse": 0.023614946905725614,
+    "train_prior_value_mse": 0.019055392543991724,
+    "value_relative_improvement_bps": 0,
+    "value_gate_required_bps": 500,
+    "value_gate_passed": false,
+    "overall_gate_passed": false,
+    "independent_offline_reproduction": true
+  },
+  "verdict": {
+    "candidate": false,
+    "prospective_screen_authorized": false,
+    "promotion": false,
+    "interpretation": "Full search supervision is valid and non-degenerate, but the frozen h32 M12 architecture does not fit either target head materially. M15C closes without a candidate; gates and target projections were not changed after the result."
+  }
+}

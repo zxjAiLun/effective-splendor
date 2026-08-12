@@ -51,6 +51,8 @@ cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m1
 cargo run -p splendor-cli -- analyze-replay-neural --input match.replay.json --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --out match.analysis.json
 cargo run -p splendor-cli -- diagnose-neural-evaluation --evaluation-dir eval-output --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --candidate-agent-id candidate --champion-agent-id champion --out-dir local-artifacts/diagnostic
 cargo run -p splendor-cli -- build-search-teacher-targets --dataset dataset.json --evaluation-dir eval-output --config benchmarks/m15c-search-teacher-targets-v1.config.json --out local-artifacts/m15c/search-teacher-targets.json
+cargo run -p splendor-cli -- train-policy-value-search-teacher --dataset dataset.json --targets search-teacher-targets.json --config benchmarks/m15c-search-policy-value-v1.config.json --checkpoint local-artifacts/m15c/checkpoint.json --report local-artifacts/m15c/training-report.json
+cargo run -p splendor-cli -- evaluate-policy-value-search-teacher --dataset dataset.json --targets search-teacher-targets.json --checkpoint local-artifacts/m15c/checkpoint.json --config benchmarks/m15c-search-policy-value-v1.config.json --out local-artifacts/m15c/offline-eval.json
 cargo run -p splendor-cli -- protocol-demo
 ```
 
@@ -133,7 +135,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
 9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
 10. M15B: source-aware/isolated training plus two prospective Policy-only screens (complete; rejected 4–28 and 5–27, no candidate)
-11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (target generation implemented)
+11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (complete; both frozen offline gates failed, no candidate)
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with
 a champion over complete seed blocks, after all cyclic seat rotations. A
@@ -179,6 +181,14 @@ so M15B closes without a candidate: one-hot imitation NLL is not a sufficient
 strength gate and Value failed both material gates. No rejected or diagnostic
 seed is reused. See
 `docs/m15-neural-degradation-diagnostic.md`.
+
+M15C regenerated the accepted M07 root analysis for all 3,920 champion-owned
+decisions. Recorded and regenerated actions agreed 3,920/3,920 and the soft
+targets were non-degenerate, but the frozen h32 model improved held-out Policy
+cross-entropy only 4.87% over uniform and made search-shaped Value MSE worse
+than its constant prior. Both unchanged gates failed; no prospective screen or
+candidate is authorized. The next useful round is representation/capacity
+work, not target or gate tuning.
 
 ## License
 

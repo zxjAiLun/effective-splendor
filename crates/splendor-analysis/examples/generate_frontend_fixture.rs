@@ -60,6 +60,7 @@ fn fixture_checkpoint() -> PolicyValueCheckpointV1 {
         evaluation_report_hash: "44".repeat(32),
         training_config_hash: "55".repeat(32),
         training_contract_version: None,
+        search_teacher_targets_hash: None,
         trained_examples: 4,
         validation_examples: 2,
         validation_seed_modulus: 2,

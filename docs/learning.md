@@ -278,3 +278,56 @@ The output binds every target by dataset hash, source id, replay document hash,
 ply, actor, Observation hash, visible-history hash and InformationSet hash. It
 also retains the complete canonical action/utility vectors, so Policy and
 Value projections can be independently recomputed before training.
+
+### M15C training contract v3
+
+Contract version 3 consumes the target artifact directly. Policy minimizes
+cross-entropy against the complete integer-micros action distribution instead
+of a one-hot recorded action. Value minimizes vector MSE against the frozen
+search-shaped values instead of terminal ranks. Top-1 accuracy is measured
+against the canonical teacher-selected action; Policy cross-entropy is still
+compared with uniform, and Value MSE with a train-source constant prior.
+
+The training config, checkpoint, training report and independently recomputed
+offline report all bind `search_teacher_targets_hash`. Training fails before
+publishing either output if the target set is incomplete, contains an extra
+example, changes any dataset/replay/actor/information-set/action binding, or
+does not match the frozen hash. Contract-v2 and legacy evaluators reject a v3
+checkpoint.
+
+```powershell
+cargo run -p splendor-cli -- train-policy-value-search-teacher `
+  --dataset local-artifacts/m15b-teacher-data-v2/dataset.json `
+  --targets local-artifacts/m15c-search-teacher-targets-v1/targets.json `
+  --config benchmarks/m15c-search-policy-value-v1.config.json `
+  --checkpoint local-artifacts/m15c-search-policy-value-v1/checkpoint.json `
+  --report local-artifacts/m15c-search-policy-value-v1/training-report.json
+
+cargo run -p splendor-cli -- evaluate-policy-value-search-teacher `
+  --dataset local-artifacts/m15b-teacher-data-v2/dataset.json `
+  --targets local-artifacts/m15c-search-teacher-targets-v1/targets.json `
+  --checkpoint local-artifacts/m15c-search-policy-value-v1/checkpoint.json `
+  --config benchmarks/m15c-search-policy-value-v1.config.json `
+  --out local-artifacts/m15c-search-policy-value-v1/offline-eval.json
+```
+
+The target and learned artifacts remain local. A small checked-in result
+manifest records semantic/file hashes, exact split metrics and the unchanged
+material gates. Passing offline gates authorizes only a fresh prospective
+screen; it does not promote a model or permit tuning on formal M13 seeds.
+
+The frozen v1 run produced 3,920 targets and exactly reproduced every recorded
+champion action. Mean top Policy mass was 31.32%, mean target entropy 2.3458,
+and only 3.27% of Value components hit a clamp endpoint, so the source signal
+was neither one-hot nor globally saturated. Nevertheless, the h32 checkpoint
+improved held-out soft Policy cross-entropy only 4.87% over uniform and its
+Value MSE was worse than the train-source constant prior. Both unchanged gates
+failed. `benchmarks/m15c-search-policy-value-v1.result.json` records the exact
+hashes and metrics; no candidate or prospective screen is authorized.
+
+This failure changes the next development boundary: target provenance and
+projection are now adequate for measurement, while the accepted M12
+representation/architecture is the active bottleneck. A later M15D may compare
+a richer observation/action interaction model under the same target artifact,
+split, gates and initialization discipline. It must not tune the target scale,
+floor, gates, or reuse formal M13 seeds in response to this result.

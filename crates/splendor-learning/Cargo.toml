@@ -10,6 +10,9 @@ description = "Deterministic player-view policy/value learning baseline"
 splendor-catalog = { workspace = true }
 splendor-core = { workspace = true }
 splendor-league = { workspace = true }
+splendor-imperfect-search = { workspace = true }
+splendor-replay = { workspace = true }
+splendor-search = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
@@ -17,4 +20,4 @@ hex = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-splendor-replay = { workspace = true }
+splendor-belief = { workspace = true }
