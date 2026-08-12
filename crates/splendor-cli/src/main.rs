@@ -8,6 +8,7 @@ mod arena_command;
 mod atomic_output;
 mod eval_command;
 mod evaluation_analysis_command;
+mod human_play_command;
 mod imperfect_search_command;
 mod league_command;
 mod learning_command;
@@ -109,6 +110,9 @@ fn main() {
         }
         Some("collect-gpu-self-play") => {
             std::process::exit(m18a_command::run_collect_gpu_self_play(&argv[2..]))
+        }
+        Some("human-play-server") => {
+            std::process::exit(human_play_command::run_human_play_server(&argv[2..]))
         }
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("promotion-gate") => {

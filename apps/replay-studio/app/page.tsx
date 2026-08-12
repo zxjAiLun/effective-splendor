@@ -132,6 +132,23 @@ type Replay = {
     action: Action;
     state_hash_before: string;
   }>;
+  result?: { scores: number[]; ranks: number[]; winners: PlayerId[]; reason: string };
+};
+
+type HumanReplayArchive = {
+  format: "effective-splendor-human-replay-archive";
+  version: 1;
+  session_id: string;
+  opponent: string;
+  replay_document_hash: string;
+  replay: Replay;
+  frames: Array<{
+    ply: number;
+    actor: PlayerId;
+    player_view: PlayerView;
+    legal_actions: Action[];
+    recorded_action: Action;
+  }>;
 };
 
 const GEM_KEYS: Array<keyof Gems> = [
@@ -271,6 +288,7 @@ export default function ReplayStudio() {
   const [fileName, setFileName] = useState("Guided demo · load an AnalysisTraceV1");
   const [sourceState, setSourceState] = useState("DEMO");
   const [error, setError] = useState("");
+  const [humanArchive, setHumanArchive] = useState<HumanReplayArchive | null>(null);
   const frame = trace.frames[frameIndex] ?? trace.frames[0];
   const cards = useMemo(() => new Map(trace.catalog.cards.map((card) => [card.id, card])), [trace]);
   const nobles = useMemo(() => new Map(trace.catalog.nobles.map((noble) => [noble.id, noble])), [trace]);
@@ -287,6 +305,22 @@ export default function ReplayStudio() {
     window.addEventListener("keydown", navigate);
     return () => window.removeEventListener("keydown", navigate);
   }, [trace.frames.length]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("humanReplay") !== "1") return;
+    try {
+      const raw = sessionStorage.getItem("effective-splendor-human-replay");
+      if (!raw) throw new Error("The completed human match is no longer in this browser session.");
+      const value = JSON.parse(raw) as HumanReplayArchive;
+      if (value.format !== "effective-splendor-human-replay-archive" || value.version !== 1 || !isReplay(value.replay) || !Array.isArray(value.frames) || value.frames.length !== value.replay.steps.length) {
+        throw new Error("The human replay handoff is malformed or incomplete.");
+      }
+      queueMicrotask(() => setHumanArchive(value));
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unable to load human replay handoff.";
+      queueMicrotask(() => setError(message));
+    }
+  }, []);
 
   const loadTrace = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -321,6 +355,8 @@ export default function ReplayStudio() {
   }>;
   const bestQ = rows.find((row) => row.best)?.q ?? null;
 
+  if (humanArchive) return <HumanReplayAudit archive={humanArchive} />;
+
   return (
     <main className="studio">
       <header className="topbar">
@@ -337,6 +373,7 @@ export default function ReplayStudio() {
           <span>Actor P{frame.actor}</span>
         </div>
         <div className="header-actions">
+          <a className="studio-link" href="/play">Play vs AI</a>
           <a className="studio-link" href="/ratings">Rating Studio</a>
           <label className="load-button">
             Load replay + analysis
@@ -460,6 +497,43 @@ export default function ReplayStudio() {
       </footer>
     </main>
   );
+}
+
+function HumanReplayAudit({ archive }: { archive: HumanReplayArchive }) {
+  const [index, setIndex] = useState(0);
+  const frame = archive.frames[index];
+  const view = frame.player_view.public;
+  const change = (next: number) => setIndex(Math.max(0, Math.min(archive.frames.length - 1, next)));
+  return <main className="studio human-replay-audit">
+    <header className="topbar">
+      <div className="brand-block"><span className="eyebrow">M20 · VERIFIED HUMAN MATCH</span><h1>Replay Studio</h1></div>
+      <div className="match-meta"><span className="status-dot"/><span>{archive.opponent}</span><span className="meta-separator">/</span><span>Ply {frame.ply}</span><span className="meta-separator">/</span><span>Actor P{frame.actor}</span></div>
+      <div className="header-actions"><a className="studio-link" href="/play">Back to Human Play</a><button className="icon-button" onClick={()=>change(index-1)} disabled={index===0} aria-label="Previous ply">←</button><button className="icon-button" onClick={()=>change(index+1)} disabled={index===archive.frames.length-1} aria-label="Next ply">→</button></div>
+    </header>
+    <section className="human-audit-summary"><div><span className="section-kicker">REPLAY V1 VERIFIED</span><h2>{archive.session_id}</h2></div><dl><div><dt>Document hash</dt><dd>{archive.replay_document_hash}</dd></div><div><dt>Final score</dt><dd>{archive.replay.result?.scores.join(" – ")??"—"}</dd></div><div><dt>Frames</dt><dd>{archive.frames.length}</dd></div></dl></section>
+    <section className="human-audit-grid">
+      <article className="human-board">
+        <div className="human-score">{view.players.map(player=><div className={player.id===frame.actor?"you":""} key={player.id}><span>{player.id===frame.actor?"ACTOR":`PLAYER ${player.id}`}</span><strong>{player.prestige}<small> VP</small></strong><small>{player.reserved_count} reserved</small></div>)}</div>
+        <div className="human-bank"><span>BANK</span>{GEM_KEYS.map(gem=><i className={`token-${gem}`} key={gem}>{gemCode(gem)} <b>{view.bank[gem]}</b></i>)}</div>
+        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><span>TIER {tier+1}<small>{view.deck_counts[tier]} deck</small></span>{view.market[tier].map((card,slot)=><div className="human-audit-card" key={slot}><b>{card==null?"—":`#${card}`}</b><small>slot {slot+1}</small></div>)}</div>)}</div>
+        <div className="human-private"><span>ACTOR PLAYER VIEW</span><p>Each frame shows only the Observation that the acting player received at that decision. Hidden deck order and opponent blind reserves remain unavailable.</p></div>
+      </article>
+      <aside className="human-actions"><span className="section-kicker">RECORDED DECISION</span><h2>{simpleActionLabel(frame.recorded_action)}</h2><div className="human-audit-action"><small>Chosen from {frame.legal_actions.length} server-certified legal actions</small><code>{JSON.stringify(frame.recorded_action,null,2)}</code></div></aside>
+    </section>
+    <footer className="timeline-panel"><div className="timeline-title"><div><span className="section-kicker">HUMAN MATCH TIMELINE</span><strong>{index+1} / {archive.frames.length}</strong></div><span>player-view audit · no analysis sidecar</span></div><div className="timeline">{archive.frames.map((item,itemIndex)=><button key={item.ply} onClick={()=>change(itemIndex)} className={itemIndex===index?"current agreed":"agreed"} aria-label={`Ply ${item.ply}, actor P${item.actor}`}><span>{item.ply}</span><i/></button>)}</div></footer>
+  </main>;
+}
+
+function simpleActionLabel(action: Action): string {
+  const tier = typeof action.tier === "string" ? ` ${action.tier}` : "";
+  const slot = typeof action.slot === "number" ? ` slot ${action.slot + 1}` : "";
+  if (action.type === "buy_market") return `Buy${tier}${slot}`;
+  if (action.type === "buy_reserved") return `Buy reserved${slot}`;
+  if (action.type === "reserve_market") return `Reserve${tier}${slot}`;
+  if (action.type === "reserve_deck") return `Reserve from${tier} deck`;
+  if (action.type === "take_tokens") return "Take tokens";
+  if (action.type === "choose_noble") return `Choose noble #${action.noble}`;
+  return action.type.replaceAll("_", " ");
 }
 
 function MetricBar({ value, tone }: { value: number; tone: "prior" | "visit" }) {

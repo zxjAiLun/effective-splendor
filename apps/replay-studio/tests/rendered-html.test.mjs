@@ -35,3 +35,14 @@ test("server-renders the M16 Rating Studio route", async () => {
   assert.match(html, /Non-transitivity matrix/);
   assert.match(html, /Load rating report/);
 });
+
+test("server-renders the M20 Human Play Studio route", async () => {
+  const response = await render("/play");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Human Play Studio · Effective Splendor<\/title>/i);
+  assert.match(html, /Human Play Studio/);
+  assert.match(html, /PLAYER-VIEW ONLY/);
+  assert.match(html, /LEGAL ACTIONS/);
+  assert.match(html, /Connect to port 43120/);
+});

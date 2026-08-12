@@ -145,7 +145,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 16. M18A: neural-ISMCTS / AlphaZero-like self-play RL v1 (complete route; first smoke candidate rejected 2–6 vs heuristic)
 17. M18B: distributional Double-DQN / Rainbow-style RL (complete route; first smoke candidate rejected 1–7 vs heuristic)
 18. M19: internal championship complete (42/42, zero abort; provisional ranking, M07 champion unchanged)
-19. M20: Human Play Studio against any registered checkpoint
+19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
 20. M21: optional external benchmark only after internal routes are measured
 
 M09 consumes immutable M05 plan/report artifacts and compares a candidate with

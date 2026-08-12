@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useState } from "react";
+import Link from "next/link";
 import { headToHeadCell, validateRatingReport } from "../rating-runtime.mjs";
 
 type Agent = { rank: number; agent_id: string; display_name: string; class: string; completed: number; aborted: number; wins: number; ties: number; losses: number; live_elo: number; official_elo: number; provisional: boolean };
@@ -35,7 +36,7 @@ export default function RatingsPage() {
     <header className="rating-topbar">
       <div><span className="section-kicker">M16 · 1V1 LEAGUE</span><h1>Rating Studio</h1></div>
       <div className="rating-run"><span className="status-dot" />{report.tournament_id}</div>
-      <nav><a href="/">Replay Studio</a><label className="load-button">Load rating report<input type="file" accept="application/json,.json" onChange={load} /></label></nav>
+      <nav><Link href="/play">Play vs AI</Link><Link href="/">Replay Studio</Link><label className="load-button">Load rating report<input type="file" accept="application/json,.json" onChange={load} /></label></nav>
     </header>
     {error && <div className="error-banner">{error}</div>}
     <section className="rating-summary">
