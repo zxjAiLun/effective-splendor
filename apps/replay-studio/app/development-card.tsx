@@ -34,8 +34,8 @@ export function DevelopmentCard({
   const label = `${card.prestige} prestige, ${COLOR_NAMES[bonus] ?? card.bonus} bonus, card ${card.id}`;
   const body = <>
     <div className="development-card-top">
-      <strong>{card.prestige > 0 ? card.prestige : ""}</strong>
-      <span className={`development-bonus development-bonus-${bonus}`} style={{ marginLeft: "auto" }} aria-label={`${card.bonus} permanent bonus`}><i /></span>
+      <strong className="development-prestige">{card.prestige > 0 ? card.prestige : ""}</strong>
+      <span className={`development-bonus development-bonus-${bonus}`} aria-label={`${card.bonus} permanent bonus`}><i /></span>
     </div>
     <div className="development-card-art" aria-hidden="true"><i /><i /><i /></div>
     <div className="development-card-cost" aria-label="Purchase cost">
