@@ -165,3 +165,26 @@ fn rejects_a_checkpoint_registry_entry_without_a_hash() {
     assert!(!plan_path.exists());
     fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn checked_in_m17_result_is_provisional_and_rejected() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let result: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m17-gpu-supervised-warmstart-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        result["implementation_commit"],
+        "c41120385f3378c7223e44f9541131ddb40810dd"
+    );
+    assert_eq!(
+        result["entity_mixer"]["checkpoint_hash"],
+        "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf"
+    );
+    assert_eq!(result["prospective_screen"]["completed_matches"], 8);
+    assert_eq!(result["prospective_screen"]["aborted_matches"], 0);
+    assert_eq!(result["prospective_screen"]["wins"], 1);
+    assert_eq!(result["prospective_screen"]["losses"], 7);
+    assert_eq!(result["prospective_screen"]["verdict"], "reject");
+    assert_eq!(result["status"], "candidate_not_promoted");
+}

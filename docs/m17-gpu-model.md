@@ -62,3 +62,32 @@ M17 completion requires:
 It does not promote a model based on offline metrics or a one-game smoke. A
 prospective M16 screen is evidence for the exact frozen M17 checkpoint. Formal
 championship/promotion stays in M19.
+
+## Frozen v1 result
+
+The run bound to implementation `c411203` completed on the RTX 4060 Laptop GPU.
+Entity Mixer used 949,060 parameters and beat the larger 1,665,283-parameter
+Flat control on both held-out heads:
+
+```text
+                         Flat ResMLP    Entity Mixer
+best epoch                        5              17
+Policy top-1                 33.23%          36.91%
+Policy NLL                    2.324           2.155
+Value MSE                     0.373           0.253
+
+uniform Policy NLL                            2.978
+train-prior Value MSE                         0.272
+```
+
+Entity Mixer improves Policy NLL by 2,763 bps and Value MSE by 676 bps over
+the frozen baselines, so it is the M17 candidate. Its semantic checkpoint hash
+is `37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf`.
+
+The prospective M16 screen against heuristic completed 8/8 with zero aborts,
+but Entity Mixer lost 1–7 (provisional Official Elo 1332). Therefore M17 proves
+the native CUDA/model/runtime route, not competitive promotion. The checkpoint
+is retained for M18A/M18B initialization and later M19 comparison; it does not
+replace M07. Full local artifacts remain under
+`local-artifacts/m17-gpu-supervised-warmstart-v1-final/`; the compact identity is
+`benchmarks/m17-gpu-supervised-warmstart-v1.result.json`.

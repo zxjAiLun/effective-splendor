@@ -141,7 +141,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 12. M15D: nonlinear action interaction + independent Value encoder, h64 (complete; both unchanged offline gates failed, no candidate)
 13. M15E: deterministic Adam optimization control (complete; train fit improved, source-level validation gates still failed, no candidate)
 14. M16: 1v1 round-robin registry, Live/Official Elo, head-to-head matrix, and Rating Studio (implemented)
-15. M17: own GPU Policy-Value model v1 (Flat ResMLP control + Entity Mixer candidate)
+15. M17: own GPU Policy-Value model v1 (complete; Entity Mixer candidate rejected 1–7 vs heuristic, retained for RL initialization)
 16. M18A: Neural ISMCTS / AlphaZero-like self-play RL
 17. M18B: distributional Double-DQN / Rainbow-style RL
 18. M19: formal internal championship and promotion evidence

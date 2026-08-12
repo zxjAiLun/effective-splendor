@@ -1,0 +1,52 @@
+{
+  "format": "effective-splendor-gpu-formal-result",
+  "version": 1,
+  "result_id": "m17-gpu-supervised-warmstart-v1",
+  "formal_date": "2026-08-12",
+  "implementation_commit": "c41120385f3378c7223e44f9541131ddb40810dd",
+  "training_config_file_sha256": "71b46038ea67da7ef2b0e552ffa73a1d97eb63970a2e4c2f6d7ecff0bb2bb8a3",
+  "training_config_hash": "9292255f0159e38511a3045b47ea6c0e98cc9b67dae6ab4e94245135bf78f0b5",
+  "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+  "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+  "train_examples": 2942,
+  "validation_examples": 978,
+  "device": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "flat_resmlp": {
+    "checkpoint_hash": "df790639182e8f6cc5d118c2a31c272dbd128001dadab447c4f45e65b3b93cd4",
+    "checkpoint_file_sha256": "96b8f32825bf711f14e1e961742e6d6938e90dff8044fce8adfaef71717d5a60",
+    "training_report_file_sha256": "7d631df303c98ac59c3d453e3b44845a510591f8d3e2638913a3643da5e86141",
+    "parameter_count": 1665283,
+    "best_epoch": 5,
+    "policy_top1": 0.3323108384458078,
+    "policy_nll": 2.3243681238716607,
+    "value_mse": 0.3726403718101954
+  },
+  "entity_mixer": {
+    "checkpoint_hash": "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf",
+    "checkpoint_file_sha256": "19480721c7198515570cde20cf6f7fca6dfa466393a2231a3e85c438ff632a14",
+    "training_report_file_sha256": "a1b9557103efc95cf6d88cb976ea377d684edba59918d19c1fc7cf1f55eb24f0",
+    "parameter_count": 949060,
+    "best_epoch": 17,
+    "policy_top1": 0.36912065439672803,
+    "policy_nll": 2.154867472580362,
+    "uniform_policy_nll": 2.977902137428705,
+    "policy_relative_improvement_bps": 2763,
+    "value_mse": 0.25318934239736607,
+    "train_prior_value_mse": 0.27157220244407654,
+    "value_relative_improvement_bps": 676
+  },
+  "prospective_screen": {
+    "opponent": "heuristic-v1",
+    "round_robin_plan_hash": "0cd399b4601f4c14b6bff4dfc26ae5d6b9bcdcf7b4e937d10ed46d1b7083afdf",
+    "rating_report_file_sha256": "be4497679457fb54f4a87f9b529d82154b437b1138cedaa8b15706dab17593b5",
+    "scheduled_matches": 8,
+    "completed_matches": 8,
+    "aborted_matches": 0,
+    "wins": 1,
+    "ties": 0,
+    "losses": 7,
+    "official_elo": 1332,
+    "verdict": "reject"
+  },
+  "status": "candidate_not_promoted"
+}
