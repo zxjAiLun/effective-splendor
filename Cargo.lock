@@ -529,6 +529,7 @@ name = "splendor-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "hex",
  "rand",
  "serde",
  "serde_json",
@@ -536,6 +537,7 @@ dependencies = [
  "splendor-agent",
  "splendor-analysis",
  "splendor-arena",
+ "splendor-belief",
  "splendor-core",
  "splendor-determinization-agent",
  "splendor-eval",
@@ -664,7 +666,10 @@ dependencies = [
 name = "splendor-neural-agent"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "splendor-agent",
+ "splendor-belief",
  "splendor-core",
  "splendor-learning",
  "splendor-neural-search",

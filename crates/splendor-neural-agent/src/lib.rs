@@ -1,19 +1,307 @@
 //! Live player-view policy for M13 neural-guided ISMCTS v1.
 
+use serde::{Deserialize, Serialize};
 use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, DecisionContext};
-use splendor_core::{Action, Ruleset};
-use splendor_learning::{model_checkpoint_hash_v1, PolicyValueCheckpointV1, PolicyValueModelV1};
+use splendor_belief::build_information_set_v1;
+use splendor_core::{Action, Observation, Ruleset};
+use splendor_learning::{
+    model_checkpoint_hash_v1, PolicyValueCheckpointV1, PolicyValueModelV1, PolicyValuePredictionV1,
+};
 use splendor_neural_search::{
     analyze_player_view_neural_ismcts_ablation_v1, analyze_player_view_neural_ismcts_v1,
-    NeuralAblationModeV1, NeuralIsmctsConfigV1, NeuralSearchError,
+    search_neural_ismcts_with_evaluator_v1, NeuralAblationModeV1, NeuralIsmctsConfigV1,
+    NeuralSearchError, PolicyValueEvaluatorV1,
 };
 use splendor_search::canonical_order;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::Mutex;
 use thiserror::Error;
 
 pub const NEURAL_ISMCTS_AGENT_NAME: &str = "effective-splendor-neural-ismcts-agent-v1";
 pub const NEURAL_ISMCTS_AGENT_VERSION: &str = "1";
 pub const NEURAL_ISMCTS_ABLATION_AGENT_NAME: &str =
     "effective-splendor-neural-ismcts-ablation-agent-v1";
+pub const GPU_NEURAL_ISMCTS_AGENT_NAME: &str = "effective-splendor-gpu-neural-ismcts-agent-v1";
+
+#[derive(Debug, Clone)]
+pub struct GpuInferenceConfigV1 {
+    pub python: PathBuf,
+    pub module_root: PathBuf,
+    pub checkpoint: PathBuf,
+    pub checkpoint_hash: String,
+    pub catalog: PathBuf,
+    pub device: String,
+}
+
+struct GpuProcess {
+    child: Child,
+    input: BufWriter<ChildStdin>,
+    output: BufReader<ChildStdout>,
+    next_request_id: u64,
+}
+
+pub struct GpuPolicyValueEvaluatorV1 {
+    model_id: String,
+    checkpoint_hash: String,
+    process: Mutex<GpuProcess>,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum InferenceResponse {
+    Ready {
+        version: u32,
+        model_id: String,
+        checkpoint_hash: String,
+        value_order: String,
+        device: String,
+    },
+    Prediction {
+        version: u32,
+        request_id: u64,
+        policy: Vec<splendor_learning::PolicyActionProbabilityV1>,
+        value_by_player: Vec<f32>,
+    },
+}
+
+#[derive(Serialize)]
+struct InferenceRequest<'a> {
+    #[serde(rename = "type")]
+    kind: &'static str,
+    version: u32,
+    request_id: u64,
+    observation: &'a Observation,
+    legal_actions: &'a [Action],
+}
+
+impl GpuPolicyValueEvaluatorV1 {
+    pub fn spawn(config: &GpuInferenceConfigV1) -> Result<Self, NeuralIsmctsAgentError> {
+        validate_lower_hash(&config.checkpoint_hash)?;
+        if config.device != "cpu" && config.device != "cuda" {
+            return Err(NeuralIsmctsAgentError::GpuInference(
+                "device must be cpu or cuda".into(),
+            ));
+        }
+        let checkpoint = absolute_path(&config.checkpoint)?;
+        let catalog = absolute_path(&config.catalog)?;
+        let mut child = Command::new(&config.python)
+            .current_dir(&config.module_root)
+            .arg("-m")
+            .arg("splendor_gpu.inference")
+            .arg("--checkpoint")
+            .arg(checkpoint)
+            .arg("--checkpoint-hash")
+            .arg(&config.checkpoint_hash)
+            .arg("--catalog")
+            .arg(catalog)
+            .arg("--device")
+            .arg(&config.device)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .map_err(|error| NeuralIsmctsAgentError::GpuInference(error.to_string()))?;
+        let input = child.stdin.take().ok_or_else(|| {
+            NeuralIsmctsAgentError::GpuInference("inference stdin unavailable".into())
+        })?;
+        let output = child.stdout.take().ok_or_else(|| {
+            NeuralIsmctsAgentError::GpuInference("inference stdout unavailable".into())
+        })?;
+        let mut process = GpuProcess {
+            child,
+            input: BufWriter::new(input),
+            output: BufReader::new(output),
+            next_request_id: 1,
+        };
+        let ready = read_inference_response(&mut process.output)?;
+        let (model_id, found_hash) = match ready {
+            InferenceResponse::Ready {
+                version,
+                model_id,
+                checkpoint_hash,
+                value_order,
+                device,
+            } if version == 1 && value_order == "absolute_seat" && device == config.device => {
+                (model_id, checkpoint_hash)
+            }
+            _ => {
+                return Err(NeuralIsmctsAgentError::GpuInference(
+                    "invalid inference readiness response".into(),
+                ))
+            }
+        };
+        if found_hash != config.checkpoint_hash {
+            return Err(NeuralSearchError::CheckpointMismatch {
+                expected: config.checkpoint_hash.clone(),
+                found: found_hash,
+            }
+            .into());
+        }
+        Ok(Self {
+            model_id,
+            checkpoint_hash: config.checkpoint_hash.clone(),
+            process: Mutex::new(process),
+        })
+    }
+}
+
+impl PolicyValueEvaluatorV1 for GpuPolicyValueEvaluatorV1 {
+    fn model_id(&self) -> &str {
+        &self.model_id
+    }
+
+    fn checkpoint_hash(&self) -> Result<String, NeuralSearchError> {
+        Ok(self.checkpoint_hash.clone())
+    }
+
+    fn predict(
+        &self,
+        observation: &Observation,
+        legal_actions: &[Action],
+    ) -> Result<PolicyValuePredictionV1, NeuralSearchError> {
+        let mut process = self
+            .process
+            .lock()
+            .map_err(|_| NeuralSearchError::Learning("GPU inference lock poisoned".into()))?;
+        let request_id = process.next_request_id;
+        process.next_request_id = request_id
+            .checked_add(1)
+            .ok_or(NeuralSearchError::ArithmeticOverflow)?;
+        serde_json::to_writer(
+            &mut process.input,
+            &InferenceRequest {
+                kind: "predict",
+                version: 1,
+                request_id,
+                observation,
+                legal_actions,
+            },
+        )
+        .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
+        process
+            .input
+            .write_all(b"\n")
+            .and_then(|_| process.input.flush())
+            .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
+        match read_inference_response(&mut process.output)
+            .map_err(|error| NeuralSearchError::Learning(error.to_string()))?
+        {
+            InferenceResponse::Prediction {
+                version,
+                request_id: response_id,
+                policy,
+                value_by_player,
+            } if version == 1 && response_id == request_id => Ok(PolicyValuePredictionV1 {
+                policy,
+                value_by_player,
+            }),
+            _ => Err(NeuralSearchError::Learning(
+                "invalid GPU inference prediction response".into(),
+            )),
+        }
+    }
+}
+
+impl Drop for GpuPolicyValueEvaluatorV1 {
+    fn drop(&mut self) {
+        if let Ok(process) = self.process.get_mut() {
+            let _ = process.child.kill();
+            let _ = process.child.wait();
+        }
+    }
+}
+
+pub struct GpuNeuralIsmctsAgentPolicyV1 {
+    ruleset: Ruleset,
+    evaluator: GpuPolicyValueEvaluatorV1,
+    config: NeuralIsmctsConfigV1,
+}
+
+impl GpuNeuralIsmctsAgentPolicyV1 {
+    pub fn new(
+        inference: GpuInferenceConfigV1,
+        config: NeuralIsmctsConfigV1,
+    ) -> Result<Self, NeuralIsmctsAgentError> {
+        config.validate()?;
+        let evaluator = GpuPolicyValueEvaluatorV1::spawn(&inference)?;
+        if evaluator.checkpoint_hash != config.expected_checkpoint_hash {
+            return Err(NeuralSearchError::CheckpointMismatch {
+                expected: config.expected_checkpoint_hash,
+                found: evaluator.checkpoint_hash.clone(),
+            }
+            .into());
+        }
+        Ok(Self {
+            ruleset: Ruleset::base_v1(),
+            evaluator,
+            config,
+        })
+    }
+}
+
+impl AgentPolicy for GpuNeuralIsmctsAgentPolicyV1 {
+    type Error = NeuralIsmctsAgentError;
+
+    fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
+        if context.meta.recipient_seat != context.observation.viewer {
+            return Err(NeuralIsmctsAgentError::RecipientViewerMismatch);
+        }
+        let information_set =
+            build_information_set_v1(self.ruleset, &context.observation, context.visible_history)
+                .map_err(|error| NeuralSearchError::Belief(error.to_string()))?;
+        let result = search_neural_ismcts_with_evaluator_v1(
+            &information_set,
+            &self.evaluator,
+            &self.config,
+        )?;
+        let search_actions = result
+            .action_stats
+            .iter()
+            .map(|stats| stats.action)
+            .collect::<Vec<_>>();
+        if canonical_order(context.legal_actions) != search_actions {
+            return Err(NeuralIsmctsAgentError::LegalActionSetMismatch);
+        }
+        Ok(result.action)
+    }
+}
+
+fn validate_lower_hash(value: &str) -> Result<(), NeuralIsmctsAgentError> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        return Err(NeuralIsmctsAgentError::GpuInference(
+            "checkpoint hash is not lowercase SHA-256".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn absolute_path(path: &Path) -> Result<PathBuf, NeuralIsmctsAgentError> {
+    std::fs::canonicalize(path)
+        .map_err(|error| NeuralIsmctsAgentError::GpuInference(error.to_string()))
+}
+
+fn read_inference_response(
+    output: &mut BufReader<ChildStdout>,
+) -> Result<InferenceResponse, NeuralIsmctsAgentError> {
+    let mut line = String::new();
+    if output
+        .read_line(&mut line)
+        .map_err(|error| NeuralIsmctsAgentError::GpuInference(error.to_string()))?
+        == 0
+    {
+        return Err(NeuralIsmctsAgentError::GpuInference(
+            "GPU inference process closed stdout".into(),
+        ));
+    }
+    serde_json::from_str(&line)
+        .map_err(|error| NeuralIsmctsAgentError::GpuInference(error.to_string()))
+}
 
 #[derive(Debug, Clone)]
 pub struct NeuralIsmctsAgentPolicyV1 {
@@ -92,6 +380,8 @@ pub enum NeuralIsmctsAgentError {
     LegalActionSetMismatch,
     #[error("live ablation agent requires a non-full diagnostic mode")]
     InvalidAblationMode,
+    #[error("GPU inference bridge failed: {0}")]
+    GpuInference(String),
 }
 
 impl AgentPolicy for NeuralIsmctsAgentPolicyV1 {
@@ -180,6 +470,33 @@ where
         diagnostics,
         AgentIdentity {
             name: NEURAL_ISMCTS_AGENT_NAME,
+            version: NEURAL_ISMCTS_AGENT_VERSION,
+        },
+        0,
+        policy,
+    )
+}
+
+pub fn run_gpu_neural_ismcts_agent_v1<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    inference: GpuInferenceConfigV1,
+    config: NeuralIsmctsConfigV1,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    let policy = GpuNeuralIsmctsAgentPolicyV1::new(inference, config)
+        .map_err(|error| AgentError::Policy(error.to_string()))?;
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: GPU_NEURAL_ISMCTS_AGENT_NAME,
             version: NEURAL_ISMCTS_AGENT_VERSION,
         },
         0,

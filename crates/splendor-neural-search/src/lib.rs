@@ -17,13 +17,17 @@ pub use config::{
 };
 pub use error::NeuralSearchError;
 pub use model::{
-    NeuralIsmctsActionStatsV1, NeuralIsmctsResultV1, NeuralIsmctsStatsV1, NEURAL_VALUE_SCALE_V1,
+    NeuralIsmctsActionStatsV1, NeuralIsmctsResultV1, NeuralIsmctsStatsV1, PolicyValueEvaluatorV1,
+    NEURAL_VALUE_SCALE_V1,
 };
 pub use player_view::{
     analyze_player_view_neural_ismcts_ablation_v1, analyze_player_view_neural_ismcts_v1,
     PlayerViewNeuralIsmctsAnalysisV1,
 };
-pub use search::{search_neural_ismcts_ablation_v1, search_neural_ismcts_v1};
+pub use search::{
+    search_neural_ismcts_ablation_v1, search_neural_ismcts_v1,
+    search_neural_ismcts_with_evaluator_v1,
+};
 
 pub const NEURAL_ISMCTS_ALGORITHM_ID: &str = "effective-splendor-neural-ismcts";
 pub const NEURAL_ISMCTS_VERSION: u32 = 1;

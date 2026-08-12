@@ -1,0 +1,29 @@
+{
+  "format": "effective-splendor-m18a-result",
+  "version": 1,
+  "status": "candidate_rejected",
+  "base_checkpoint_hash": "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf",
+  "self_play_hash": "495d5a9d708abfe5dd3078ce4b8f6c4d837d4011b2b0b47012c942d3f4237c6b",
+  "self_play_games": 2,
+  "self_play_examples": 122,
+  "trained_checkpoint_hash": "4e504da4a9018d52d0e18d1bb69cebafe46803a559074b676c5c711b706182ca",
+  "trained_checkpoint_file_sha256": "2973542a7cce9c88064ee92afd154b19e4c6c82d4ce3a75e4349691acb681e42",
+  "validation": {
+    "examples": 56,
+    "policy_cross_entropy": 1.6794470378330775,
+    "visit_top1": 0.7321428571428571,
+    "value_mse": 0.3514303479875837
+  },
+  "prospective_screen": {
+    "opponent": "heuristic-v1",
+    "scheduled": 8,
+    "completed": 8,
+    "aborted": 0,
+    "wins": 2,
+    "losses": 6,
+    "official_elo": 1405,
+    "round_robin_plan_hash": "b0d8e6be6897bb21294e4272f7eb85fde2e4fbb2ec3ff15d5108ace1bfaa7f56",
+    "rating_report_file_sha256": "3bceb3a543681f240b10e0ae7d743327670b1cb2c605a55ca5eace7882770182"
+  },
+  "artifact_policy": "generated self-play, checkpoints, reports and replays remain ignored under local-artifacts"
+}

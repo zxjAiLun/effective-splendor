@@ -12,4 +12,7 @@ splendor-agent = { workspace = true }
 splendor-search = { workspace = true }
 splendor-learning = { workspace = true }
 splendor-neural-search = { workspace = true }
+splendor-belief = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }

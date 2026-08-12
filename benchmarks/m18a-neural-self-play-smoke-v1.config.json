@@ -1,0 +1,19 @@
+{
+  "format": "effective-splendor-neural-self-play-config",
+  "version": 1,
+  "self_play_id": "m18a-neural-self-play-smoke-v1",
+  "python": "python",
+  "module_root": "training/m17_gpu",
+  "checkpoint": "local-artifacts/m17-gpu-supervised-warmstart-v1-final/entity_mixer/checkpoint.pt",
+  "checkpoint_hash": "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf",
+  "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+  "device": "cuda",
+  "game_seeds": [2026081201, 2026081202],
+  "action_seed": 180018,
+  "search_seed": 18000018,
+  "simulations": 8,
+  "max_depth_turns": 1,
+  "puct_exploration_milli": 1500,
+  "temperature_plies": 20,
+  "max_plies": 512
+}

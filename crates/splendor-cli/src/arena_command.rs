@@ -35,7 +35,10 @@ use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
 use splendor_learning::PolicyValueCheckpointV1;
-use splendor_neural_agent::{run_neural_ismcts_ablation_agent_v1, run_neural_ismcts_agent_v1};
+use splendor_neural_agent::{
+    run_gpu_neural_ismcts_agent_v1, run_neural_ismcts_ablation_agent_v1,
+    run_neural_ismcts_agent_v1, GpuInferenceConfigV1,
+};
 use splendor_neural_search::{NeuralAblationModeV1, NeuralIsmctsConfigV1};
 use splendor_search::SearchConfigV1;
 
@@ -147,6 +150,19 @@ Options:
   --max-depth-turns <u8>           Simulation depth in completed turns, 1..=8.
   --puct-exploration-milli <u32>   PUCT constant x1000, 0..=100000.
   -h, --help                       Print this help and exit 0.";
+
+const AGENT_GPU_NEURAL_ISMCTS_USAGE: &str = "\
+Usage: splendor agent-gpu-neural-ismcts --python <python.exe> \
+--module-root <training/m17_gpu> --checkpoint <checkpoint.pt> \
+--checkpoint-hash <sha256> --catalog <catalog.json> --device <cpu|cuda> \
+--sample-seed <u64> --simulations <u32> --max-depth-turns <u8> \
+--puct-exploration-milli <u32>
+
+M18 player-view neural ISMCTS with a persistent M17/M18 PyTorch evaluator.
+Rust owns canonical belief sampling and search; Python only receives
+Observation plus legal actions and returns Policy/Value inference.
+
+All options are required. -h/--help prints this help and exits 0.";
 
 /// A user-facing error while preparing or committing a `run-match`. `Display`
 /// yields the stable `error:` message body.
@@ -612,6 +628,30 @@ pub fn agent_neural_ismcts_ablation(args: &[String]) -> i32 {
     }
 }
 
+pub fn agent_gpu_neural_ismcts(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_GPU_NEURAL_ISMCTS_USAGE);
+        return 0;
+    }
+    let (inference, config) = match parse_agent_gpu_neural_ismcts_args(args) {
+        Ok(parsed) => parsed,
+        Err(message) => return print_agent_error(&message),
+    };
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    match run_gpu_neural_ismcts_agent_v1(
+        BufReader::new(stdin.lock()),
+        stdout.lock(),
+        stderr.lock(),
+        inference,
+        config,
+    ) {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
 fn print_agent_error(message: &str) -> i32 {
     let mut stderr = io::stderr().lock();
     let _ = writeln!(stderr, "error: {message}");
@@ -774,6 +814,77 @@ struct NeuralAgentArgs {
 struct NeuralAblationAgentArgs {
     agent: NeuralAgentArgs,
     mode: NeuralAblationModeV1,
+}
+
+fn parse_agent_gpu_neural_ismcts_args(
+    args: &[String],
+) -> Result<(GpuInferenceConfigV1, NeuralIsmctsConfigV1), String> {
+    let mut python = None;
+    let mut module_root = None;
+    let mut checkpoint = None;
+    let mut checkpoint_hash = None;
+    let mut catalog = None;
+    let mut device = None;
+    let mut sample_seed = None;
+    let mut simulations = None;
+    let mut max_depth_turns = None;
+    let mut puct_exploration_milli = None;
+    let mut index = 0;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        match flag {
+            "--python" => set_flag(&mut python, flag, args.get(index + 1))?,
+            "--module-root" => set_flag(&mut module_root, flag, args.get(index + 1))?,
+            "--checkpoint" => set_flag(&mut checkpoint, flag, args.get(index + 1))?,
+            "--checkpoint-hash" => set_flag(&mut checkpoint_hash, flag, args.get(index + 1))?,
+            "--catalog" => set_flag(&mut catalog, flag, args.get(index + 1))?,
+            "--device" => set_flag(&mut device, flag, args.get(index + 1))?,
+            "--sample-seed" => set_flag(&mut sample_seed, flag, args.get(index + 1))?,
+            "--simulations" => set_flag(&mut simulations, flag, args.get(index + 1))?,
+            "--max-depth-turns" => set_flag(&mut max_depth_turns, flag, args.get(index + 1))?,
+            "--puct-exploration-milli" => {
+                set_flag(&mut puct_exploration_milli, flag, args.get(index + 1))?
+            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
+            other => return Err(format!("unexpected positional argument `{other}`")),
+        }
+        index += 2;
+    }
+    let checkpoint_hash =
+        checkpoint_hash.ok_or_else(|| "missing required --checkpoint-hash".to_string())?;
+    let config = NeuralIsmctsConfigV1 {
+        sample_seed: parse_required_number(sample_seed, "--sample-seed", "u64")?,
+        simulations: parse_required_number(simulations, "--simulations", "u32")?,
+        max_depth_turns: parse_required_number(max_depth_turns, "--max-depth-turns", "u8")?,
+        puct_exploration_milli: parse_required_number(
+            puct_exploration_milli,
+            "--puct-exploration-milli",
+            "u32",
+        )?,
+        expected_checkpoint_hash: checkpoint_hash.clone(),
+    };
+    config.validate().map_err(|error| error.to_string())?;
+    let device = device.ok_or_else(|| "missing required --device".to_string())?;
+    if device != "cpu" && device != "cuda" {
+        return Err(format!("--device must be cpu or cuda (got `{device}`)"));
+    }
+    Ok((
+        GpuInferenceConfigV1 {
+            python: PathBuf::from(python.ok_or_else(|| "missing required --python".to_string())?),
+            module_root: PathBuf::from(
+                module_root.ok_or_else(|| "missing required --module-root".to_string())?,
+            ),
+            checkpoint: PathBuf::from(
+                checkpoint.ok_or_else(|| "missing required --checkpoint".to_string())?,
+            ),
+            checkpoint_hash,
+            catalog: PathBuf::from(
+                catalog.ok_or_else(|| "missing required --catalog".to_string())?,
+            ),
+            device,
+        },
+        config,
+    ))
 }
 
 fn parse_agent_neural_ismcts_args(args: &[String]) -> Result<NeuralAgentArgs, String> {

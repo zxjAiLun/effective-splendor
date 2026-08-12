@@ -9,6 +9,7 @@ from splendor_gpu.encoding import ACTION_FEATURES, ENTITY_FEATURES, ENTITY_SLOTS
 from splendor_gpu.model import ModelSpec, build_model
 from splendor_gpu.agent import load_model
 from splendor_gpu.train import checkpoint_semantic_hash
+from splendor_gpu.self_play_train import normalized_visits
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
@@ -71,3 +72,13 @@ def test_semantic_checkpoint_hash_ignores_state_dict_insertion_order():
     changed = {key: value.clone() for key, value in state.items()}
     first = next(iter(changed)); changed[first].view(-1)[0] += 1
     assert checkpoint_semantic_hash(metadata, state) != checkpoint_semantic_hash(metadata, changed)
+
+
+def test_self_play_visit_targets_follow_legal_action_order():
+    take = {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": None}
+    passed = {"type": "pass"}
+    target = normalized_visits({
+        "legal_actions": [passed, take],
+        "action_stats": [{"action": take, "visits": 3}, {"action": passed, "visits": 1}],
+    })
+    assert torch.allclose(target, torch.tensor([0.25, 0.75]))

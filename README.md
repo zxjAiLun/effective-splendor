@@ -142,7 +142,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 13. M15E: deterministic Adam optimization control (complete; train fit improved, source-level validation gates still failed, no candidate)
 14. M16: 1v1 round-robin registry, Live/Official Elo, head-to-head matrix, and Rating Studio (implemented)
 15. M17: own GPU Policy-Value model v1 (complete; Entity Mixer candidate rejected 1–7 vs heuristic, retained for RL initialization)
-16. M18A: Neural ISMCTS / AlphaZero-like self-play RL
+16. M18A: neural-ISMCTS / AlphaZero-like self-play RL v1 (complete route; first smoke candidate rejected 2–6 vs heuristic)
 17. M18B: distributional Double-DQN / Rainbow-style RL
 18. M19: formal internal championship and promotion evidence
 19. M20: Human Play Studio against any registered checkpoint

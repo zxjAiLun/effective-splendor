@@ -2,12 +2,12 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use splendor_belief::{sample_determinization_v1, InformationSetV1};
 use splendor_core::{visible_events, Action, Audience, FullState, Observation, VisibleEvent};
-use splendor_learning::{model_checkpoint_hash_v1, PolicyValueModelV1};
+use splendor_learning::PolicyValueModelV1;
 use splendor_search::canonical_order;
 
 use crate::{
     NeuralAblationModeV1, NeuralIsmctsActionStatsV1, NeuralIsmctsConfigV1, NeuralIsmctsResultV1,
-    NeuralIsmctsStatsV1, NeuralSearchError, NEURAL_VALUE_SCALE_V1,
+    NeuralIsmctsStatsV1, NeuralSearchError, PolicyValueEvaluatorV1, NEURAL_VALUE_SCALE_V1,
 };
 
 #[derive(Debug)]
@@ -57,6 +57,23 @@ pub fn search_neural_ismcts_v1(
     search_neural_ismcts_internal_v1(information_set, model, config, NeuralAblationModeV1::Full)
 }
 
+/// Runs neural ISMCTS against an injected player-view evaluator.
+///
+/// This is the M18 boundary used by GPU checkpoints. The accepted M13 entry
+/// point above remains source-compatible and delegates to the same engine.
+pub fn search_neural_ismcts_with_evaluator_v1(
+    information_set: &InformationSetV1,
+    evaluator: &dyn PolicyValueEvaluatorV1,
+    config: &NeuralIsmctsConfigV1,
+) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
+    search_neural_ismcts_internal_v1(
+        information_set,
+        evaluator,
+        config,
+        NeuralAblationModeV1::Full,
+    )
+}
+
 /// Runs a controlled M15 diagnostic variant of the accepted M13 search.
 ///
 /// The checkpoint, information-set boundary, determinization stream, PUCT
@@ -64,7 +81,7 @@ pub fn search_neural_ismcts_v1(
 /// leaf values are replaced by deterministic neutral controls.
 pub fn search_neural_ismcts_ablation_v1(
     information_set: &InformationSetV1,
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     config: &NeuralIsmctsConfigV1,
     mode: NeuralAblationModeV1,
 ) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
@@ -73,13 +90,12 @@ pub fn search_neural_ismcts_ablation_v1(
 
 fn search_neural_ismcts_internal_v1(
     information_set: &InformationSetV1,
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     config: &NeuralIsmctsConfigV1,
     mode: NeuralAblationModeV1,
 ) -> Result<NeuralIsmctsResultV1, NeuralSearchError> {
     config.validate()?;
-    let checkpoint_hash = model_checkpoint_hash_v1(model.checkpoint())
-        .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
+    let checkpoint_hash = model.checkpoint_hash()?;
     if checkpoint_hash != config.expected_checkpoint_hash {
         return Err(NeuralSearchError::CheckpointMismatch {
             expected: config.expected_checkpoint_hash.clone(),
@@ -203,7 +219,7 @@ fn search_neural_ismcts_internal_v1(
         u32::try_from(tree.len()).map_err(|_| NeuralSearchError::ArithmeticOverflow)?;
     Ok(NeuralIsmctsResultV1::new(
         information_set.information_set_hash().as_str().into(),
-        model.checkpoint().model_id.clone(),
+        model.model_id().to_owned(),
         config.expected_checkpoint_hash.clone(),
         root.legal_actions[chosen_index],
         action_stats,
@@ -220,7 +236,7 @@ fn search_neural_ismcts_internal_v1(
 }
 
 fn evaluation_priors(
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     observation: &Observation,
     legal_actions: &[Action],
     mode: NeuralAblationModeV1,
@@ -247,7 +263,7 @@ fn uniform_priors(action_count: usize) -> Result<Vec<u32>, NeuralSearchError> {
 
 fn evaluation_values(
     state: &FullState,
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     player_count: usize,
     mode: NeuralAblationModeV1,
 ) -> Result<Vec<u32>, NeuralSearchError> {
@@ -259,13 +275,11 @@ fn evaluation_values(
 }
 
 fn model_priors(
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     observation: &Observation,
     legal_actions: &[Action],
 ) -> Result<Vec<u32>, NeuralSearchError> {
-    let prediction = model
-        .predict(observation, legal_actions)
-        .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
+    let prediction = model.predict(observation, legal_actions)?;
     if prediction.policy.len() != legal_actions.len()
         || prediction
             .policy
@@ -284,7 +298,7 @@ fn model_priors(
 
 fn model_values(
     state: &FullState,
-    model: &PolicyValueModelV1,
+    model: &dyn PolicyValueEvaluatorV1,
     player_count: usize,
 ) -> Result<Vec<u32>, NeuralSearchError> {
     let observation = state.observation(state.current_player);
@@ -292,9 +306,7 @@ fn model_values(
     if legal_actions.is_empty() {
         return Err(NeuralSearchError::NoLegalActions);
     }
-    let prediction = model
-        .predict(&observation, &legal_actions)
-        .map_err(|error| NeuralSearchError::Learning(error.to_string()))?;
+    let prediction = model.predict(&observation, &legal_actions)?;
     if prediction.value_by_player.len() != player_count {
         return Err(NeuralSearchError::InvalidValueShape {
             expected: player_count,

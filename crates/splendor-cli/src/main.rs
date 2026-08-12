@@ -11,6 +11,7 @@ mod evaluation_analysis_command;
 mod imperfect_search_command;
 mod league_command;
 mod learning_command;
+mod m18a_command;
 mod promotion_command;
 mod rating_command;
 mod search_command;
@@ -102,6 +103,12 @@ fn main() {
         }
         Some("agent-neural-ismcts-ablation") => {
             std::process::exit(arena_command::agent_neural_ismcts_ablation(&argv[2..]))
+        }
+        Some("agent-gpu-neural-ismcts") => {
+            std::process::exit(arena_command::agent_gpu_neural_ismcts(&argv[2..]))
+        }
+        Some("collect-gpu-self-play") => {
+            std::process::exit(m18a_command::run_collect_gpu_self_play(&argv[2..]))
         }
         Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
         Some("promotion-gate") => {
