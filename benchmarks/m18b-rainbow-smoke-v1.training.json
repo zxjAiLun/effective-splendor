@@ -1,0 +1,23 @@
+{
+  "format": "effective-splendor-rainbow-training-config",
+  "version": 1,
+  "training_id": "m18b-rainbow-smoke-v1",
+  "model_id": "m18b-rainbow-smoke-v1",
+  "base_checkpoint": "local-artifacts/m17-gpu-supervised-warmstart-v1-final/entity_mixer/checkpoint.pt",
+  "base_checkpoint_hash": "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf",
+  "expected_self_play_hash": "495d5a9d708abfe5dd3078ce4b8f6c4d837d4011b2b0b47012c942d3f4237c6b",
+  "device": "cuda",
+  "seed": 1800182,
+  "architecture": {"hidden_dim": 192, "blocks": 3, "atoms": 51, "v_min": -1.0, "v_max": 1.0},
+  "gamma": 0.99,
+  "gradient_steps": 800,
+  "learning_rate": 0.00005,
+  "weight_decay": 0.0001,
+  "gradient_clip_norm": 1.0,
+  "target_update_steps": 80,
+  "evaluation_interval_steps": 80,
+  "priority_alpha": 0.6,
+  "priority_epsilon": 0.0001,
+  "validation_game_modulus": 2,
+  "validation_game_remainder": 0
+}

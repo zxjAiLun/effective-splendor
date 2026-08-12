@@ -1,0 +1,30 @@
+{
+  "format": "effective-splendor-m18b-result",
+  "version": 1,
+  "status": "candidate_rejected",
+  "algorithm": "c51_double_dqn_prioritized_replay",
+  "base_checkpoint_hash": "37ad1f446f7fa7f72a06c1c1581d8a14c3aec193d1270b99b0b2254f6d10dadf",
+  "self_play_hash": "495d5a9d708abfe5dd3078ce4b8f6c4d837d4011b2b0b47012c942d3f4237c6b",
+  "checkpoint_hash": "e7d1bd75d6270de3f54fbd4c1477d9df34fe7b8817bae4552adca670061d9ad6",
+  "checkpoint_file_sha256": "61fce31814fa8fcdb24dfb2cea147862d39888ef4771b4caf1fd503d83ad5ebb",
+  "training": {
+    "train_transitions": 66,
+    "validation_transitions": 56,
+    "gradient_steps": 800,
+    "best_step": 800,
+    "mean_cross_entropy": 3.793230740087373,
+    "mean_abs_td_error": 0.09715985081025533
+  },
+  "prospective_screen": {
+    "opponent": "heuristic-v1",
+    "scheduled": 8,
+    "completed": 8,
+    "aborted": 0,
+    "wins": 1,
+    "losses": 7,
+    "official_elo": 1332,
+    "round_robin_plan_hash": "49d81703822027943d8309c5dacf224f18f3f9059fa9dc9e8184d4a1380938cf",
+    "rating_report_file_sha256": "3906116a8237110dc6d365f1ab9c51cb6ea4c6840c22275767e860933e91fa4f"
+  },
+  "artifact_policy": "generated checkpoints, reports and replays remain ignored under local-artifacts"
+}

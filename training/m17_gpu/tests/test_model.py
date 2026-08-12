@@ -10,6 +10,7 @@ from splendor_gpu.model import ModelSpec, build_model
 from splendor_gpu.agent import load_model
 from splendor_gpu.train import checkpoint_semantic_hash
 from splendor_gpu.self_play_train import normalized_visits
+from splendor_gpu.rainbow import DistributionalQNetwork, RainbowSpec, project_distribution
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
@@ -82,3 +83,24 @@ def test_self_play_visit_targets_follow_legal_action_order():
         "action_stats": [{"action": take, "visits": 3}, {"action": passed, "visits": 1}],
     })
     assert torch.allclose(target, torch.tensor([0.25, 0.75]))
+
+
+def test_c51_projection_is_normalized_and_terminal_reward_is_exact():
+    support = torch.linspace(-1.0, 1.0, 51)
+    distribution = torch.softmax(torch.randn(51), dim=0)
+    projected = project_distribution(distribution, 1.0, True, 0.99, support)
+    assert torch.isclose(projected.sum(), torch.tensor(1.0))
+    assert projected.argmax() == 50
+
+
+def test_distributional_q_returns_action_atom_logits():
+    model = DistributionalQNetwork(RainbowSpec(64, 2, 51, -1.0, 1.0))
+    logits = model(
+        torch.randn(2, ENTITY_SLOTS, ENTITY_FEATURES),
+        torch.ones(2, ENTITY_SLOTS, dtype=torch.bool),
+        torch.randn(2, GLOBAL_FEATURES),
+        torch.randn(2, 5, ACTION_FEATURES),
+        torch.ones(2, 5, dtype=torch.bool),
+    )
+    assert logits.shape == (2, 5, 51)
+    assert model.expected_q(logits).shape == (2, 5)
