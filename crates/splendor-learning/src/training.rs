@@ -11,8 +11,9 @@ use crate::error::{invalid_checkpoint, invalid_config, invalid_dataset};
 use crate::model::{initialize_checkpoint, initialize_checkpoint_v2};
 use crate::{
     encode_action_v1, encode_observation_v1, model_checkpoint_hash_v1, LearningError,
-    PolicyValueCheckpointV1, PolicyValueModelV1, SearchTeacherTargetSetV1, SearchTeacherTargetV1,
-    ACTION_FEATURES_V1, MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, SEARCH_VALUE_TARGET_SCALE_V1,
+    ModelParametersV1, PolicyValueCheckpointV1, PolicyValueModelV1, SearchTeacherTargetSetV1,
+    SearchTeacherTargetV1, ACTION_FEATURES_V1, MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1,
+    SEARCH_VALUE_TARGET_SCALE_V1,
 };
 
 pub const POLICY_VALUE_TRAINING_CONFIG_FORMAT: &str =
@@ -69,6 +70,10 @@ pub struct PolicyValueTrainingConfigV1 {
     /// an independently trainable Value encoder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_architecture_version: Option<u32>,
+    /// Absent preserves deterministic per-example SGD. Version 2 selects the
+    /// frozen M15E Adam optimizer (beta1=.9, beta2=.999, epsilon=1e-8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub optimizer_version: Option<u32>,
 }
 
 impl PolicyValueTrainingConfigV1 {
@@ -135,6 +140,7 @@ impl PolicyValueTrainingConfigV1 {
                     || self.value_updates_shared_encoder.is_some()
                     || self.expected_search_teacher_targets_hash.is_some()
                     || self.model_architecture_version.is_some()
+                    || self.optimizer_version.is_some()
                 {
                     return Err(invalid_config(
                         "source-aware fields require training_contract_version 2",
@@ -163,6 +169,11 @@ impl PolicyValueTrainingConfigV1 {
                 if self.model_architecture_version.is_some() {
                     return Err(invalid_config(
                         "architecture v2 requires search-teacher contract v3",
+                    ));
+                }
+                if self.optimizer_version.is_some() {
+                    return Err(invalid_config(
+                        "optimizer v2 requires search-teacher contract v3",
                     ));
                 }
             }
@@ -206,6 +217,14 @@ impl PolicyValueTrainingConfigV1 {
                 {
                     return Err(invalid_config(
                         "architecture v2 requires isolated Policy/Value encoders",
+                    ));
+                }
+                if self.optimizer_version.is_some_and(|version| version != 2) {
+                    return Err(invalid_config("optimizer_version must be absent or 2"));
+                }
+                if self.optimizer_version == Some(2) && self.model_architecture_version != Some(2) {
+                    return Err(invalid_config(
+                        "optimizer v2 requires model architecture v2",
                     ));
                 }
             }
@@ -326,6 +345,8 @@ pub struct PolicyValueTrainingReportV1 {
     pub search_teacher_targets_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_architecture_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub optimizer_version: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -355,6 +376,8 @@ pub struct OfflineEvaluationReportV1 {
     pub search_teacher_targets_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_architecture_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub optimizer_version: Option<u32>,
 }
 
 pub fn training_config_hash_v1(
@@ -407,6 +430,7 @@ pub fn train_policy_value_v1(
     checkpoint.training_config_hash = config_hash.clone();
     checkpoint.training_contract_version = config.training_contract_version;
     checkpoint.search_teacher_targets_hash = None;
+    checkpoint.optimizer_version = None;
     checkpoint.trained_examples = prepared.train_indices.len() as u64;
     checkpoint.validation_examples = prepared.validation_indices.len() as u64;
     checkpoint.validation_seed_modulus = config.validation_seed_modulus;
@@ -490,6 +514,7 @@ pub fn train_policy_value_v1(
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: None,
         model_architecture_version: None,
+        optimizer_version: None,
     };
     Ok((checkpoint, report))
 }
@@ -537,6 +562,7 @@ pub fn train_policy_value_with_search_targets_v1(
     checkpoint.training_config_hash = config_hash.clone();
     checkpoint.training_contract_version = Some(3);
     checkpoint.search_teacher_targets_hash = Some(target_hash.clone());
+    checkpoint.optimizer_version = config.optimizer_version;
     checkpoint.trained_examples = prepared.train_indices.len() as u64;
     checkpoint.validation_examples = prepared.validation_indices.len() as u64;
     checkpoint.validation_seed_modulus = config.validation_seed_modulus;
@@ -544,6 +570,9 @@ pub fn train_policy_value_with_search_targets_v1(
     checkpoint.epochs = config.epochs;
 
     let mut model = PolicyValueModelV1::from_checkpoint(checkpoint)?;
+    let mut optimizer = config
+        .optimizer_version
+        .map(|_| AdamOptimizerV2::new(&model.checkpoint().parameters));
     let mut order = prepared.train_indices.clone();
     let mut rng = StableRng::new(config.init_seed ^ 0x6d31_3563_736f_6674);
     for _ in 0..config.epochs {
@@ -555,6 +584,7 @@ pub fn train_policy_value_with_search_targets_v1(
                 targets_by_example[index]
                     .ok_or_else(|| invalid_dataset("missing bound search target"))?,
                 config,
+                optimizer.as_mut(),
             )?;
         }
     }
@@ -606,6 +636,7 @@ pub fn train_policy_value_with_search_targets_v1(
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: Some(target_hash),
         model_architecture_version: config.model_architecture_version,
+        optimizer_version: config.optimizer_version,
     };
     Ok((checkpoint, report))
 }
@@ -686,6 +717,7 @@ pub fn evaluate_checkpoint_v1(
         value_updates_shared_encoder: None,
         search_teacher_targets_hash: None,
         model_architecture_version: None,
+        optimizer_version: None,
     })
 }
 
@@ -758,6 +790,7 @@ pub fn evaluate_checkpoint_with_config_v1(
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: None,
         model_architecture_version: None,
+        optimizer_version: None,
     })
 }
 
@@ -771,6 +804,8 @@ pub fn evaluate_checkpoint_with_search_targets_v1(
     config.validate()?;
     if checkpoint.training_contract_version != Some(3)
         || config.training_contract_version != Some(3)
+        || checkpoint.model_architecture_version != config.model_architecture_version
+        || checkpoint.optimizer_version != config.optimizer_version
         || checkpoint.training_config_hash != training_config_hash_v1(config)?
     {
         return Err(invalid_checkpoint(
@@ -838,6 +873,7 @@ pub fn evaluate_checkpoint_with_search_targets_v1(
         value_updates_shared_encoder: config.value_updates_shared_encoder,
         search_teacher_targets_hash: Some(target_hash),
         model_architecture_version: config.model_architecture_version,
+        optimizer_version: config.optimizer_version,
     })
 }
 
@@ -1301,14 +1337,74 @@ fn train_example(
     Ok(())
 }
 
+struct AdamSlotV2 {
+    first: Vec<f32>,
+    second: Vec<f32>,
+}
+
+impl AdamSlotV2 {
+    fn new(length: usize) -> Self {
+        Self {
+            first: vec![0.0; length],
+            second: vec![0.0; length],
+        }
+    }
+}
+
+struct AdamOptimizerV2 {
+    beta1_power: f32,
+    beta2_power: f32,
+    encoder_weights: AdamSlotV2,
+    encoder_bias: AdamSlotV2,
+    policy_bilinear: AdamSlotV2,
+    policy_action_bias: AdamSlotV2,
+    policy_hidden_bias: AdamSlotV2,
+    policy_output_weights: AdamSlotV2,
+    value_weights: AdamSlotV2,
+    value_bias: AdamSlotV2,
+    value_encoder_weights: AdamSlotV2,
+    value_encoder_bias: AdamSlotV2,
+}
+
+impl AdamOptimizerV2 {
+    fn new(parameters: &ModelParametersV1) -> Self {
+        Self {
+            beta1_power: 1.0,
+            beta2_power: 1.0,
+            encoder_weights: AdamSlotV2::new(parameters.encoder_weights.len()),
+            encoder_bias: AdamSlotV2::new(parameters.encoder_bias.len()),
+            policy_bilinear: AdamSlotV2::new(parameters.policy_bilinear.len()),
+            policy_action_bias: AdamSlotV2::new(parameters.policy_action_bias.len()),
+            policy_hidden_bias: AdamSlotV2::new(parameters.policy_hidden_bias.len()),
+            policy_output_weights: AdamSlotV2::new(parameters.policy_output_weights.len()),
+            value_weights: AdamSlotV2::new(parameters.value_weights.len()),
+            value_bias: AdamSlotV2::new(parameters.value_bias.len()),
+            value_encoder_weights: AdamSlotV2::new(parameters.value_encoder_weights.len()),
+            value_encoder_bias: AdamSlotV2::new(parameters.value_encoder_bias.len()),
+        }
+    }
+
+    fn advance(&mut self) -> (f32, f32) {
+        self.beta1_power *= 0.9;
+        self.beta2_power *= 0.999;
+        (1.0 - self.beta1_power, 1.0 - self.beta2_power)
+    }
+}
+
 fn train_search_target(
     model: &mut PolicyValueModelV1,
     example: &TrainingExampleV1,
     target: &SearchTeacherTargetV1,
     config: &PolicyValueTrainingConfigV1,
+    optimizer: Option<&mut AdamOptimizerV2>,
 ) -> Result<(), LearningError> {
     if model.checkpoint().model_architecture_version == Some(2) {
-        return train_search_target_v2(model, example, target, config);
+        return train_search_target_v2(model, example, target, config, optimizer);
+    }
+    if optimizer.is_some() {
+        return Err(invalid_config(
+            "optimizer v2 requires model architecture v2",
+        ));
     }
     let observation = encode_observation_v1(&example.observation)?;
     let actions = example
@@ -1412,6 +1508,7 @@ fn train_search_target_v2(
     example: &TrainingExampleV1,
     target: &SearchTeacherTargetV1,
     config: &PolicyValueTrainingConfigV1,
+    optimizer: Option<&mut AdamOptimizerV2>,
 ) -> Result<(), LearningError> {
     let observation = encode_observation_v1(&example.observation)?;
     let actions = example
@@ -1475,7 +1572,7 @@ fn train_search_target_v2(
 
     let mut d_value_hidden = vec![0.0f32; hidden_width];
     let mut d_value_weights = vec![0.0f32; MAX_PLAYERS_V1 * hidden_width];
-    let mut d_value_bias = vec![0.0f32; MAX_PLAYERS_V1];
+    let mut d_value_bias = [0.0f32; MAX_PLAYERS_V1];
     {
         let parameters = &model.checkpoint().parameters;
         for player in 0..player_count {
@@ -1492,59 +1589,249 @@ fn train_search_target_v2(
         }
     }
 
+    let mut d_encoder_weights = vec![0.0f32; hidden_width * OBSERVATION_FEATURES_V1];
+    let mut d_encoder_bias = vec![0.0f32; hidden_width];
+    for unit in 0..hidden_width {
+        let d_pre = d_policy_hidden[unit] * (1.0 - policy_hidden[unit] * policy_hidden[unit]);
+        d_encoder_bias[unit] = d_pre;
+        for (feature, value) in observation.iter().enumerate() {
+            let index = unit * OBSERVATION_FEATURES_V1 + feature;
+            d_encoder_weights[index] = d_pre * value;
+        }
+    }
+    let mut d_value_encoder_weights = vec![0.0f32; hidden_width * OBSERVATION_FEATURES_V1];
+    let mut d_value_encoder_bias = vec![0.0f32; hidden_width];
+    for unit in 0..hidden_width {
+        let d_pre = d_value_hidden[unit] * (1.0 - value_hidden[unit] * value_hidden[unit]);
+        d_value_encoder_bias[unit] = d_pre;
+        for (feature, value) in observation.iter().enumerate() {
+            let index = unit * OBSERVATION_FEATURES_V1 + feature;
+            d_value_encoder_weights[index] = d_pre * value;
+        }
+    }
+
     let learning_rate = config.learning_rate;
     let l2 = config.l2_weight;
     let parameters = &mut model.checkpoint_mut().parameters;
-    for (weight, gradient) in parameters.policy_bilinear.iter_mut().zip(d_policy_bilinear) {
-        *weight -= learning_rate * clip(gradient + l2 * *weight);
-    }
-    for (weight, gradient) in parameters
-        .policy_action_bias
-        .iter_mut()
-        .zip(d_policy_action_bias)
-    {
-        *weight -= learning_rate * clip(gradient + l2 * *weight);
-    }
-    for (bias, gradient) in parameters
-        .policy_hidden_bias
-        .iter_mut()
-        .zip(d_policy_hidden_bias)
-    {
-        *bias -= learning_rate * clip(gradient);
-    }
-    for (weight, gradient) in parameters
-        .policy_output_weights
-        .iter_mut()
-        .zip(d_policy_output)
-    {
-        *weight -= learning_rate * clip(gradient + l2 * *weight);
-    }
-    for unit in 0..hidden_width {
-        let d_pre = d_policy_hidden[unit] * (1.0 - policy_hidden[unit] * policy_hidden[unit]);
-        for (feature, value) in observation.iter().enumerate() {
-            let index = unit * OBSERVATION_FEATURES_V1 + feature;
-            let gradient = d_pre * value + l2 * parameters.encoder_weights[index];
-            parameters.encoder_weights[index] -= learning_rate * clip(gradient);
-        }
-        parameters.encoder_bias[unit] -= learning_rate * clip(d_pre);
-    }
-
-    for (weight, gradient) in parameters.value_weights.iter_mut().zip(d_value_weights) {
-        *weight -= learning_rate * clip(gradient + l2 * *weight);
-    }
-    for (bias, gradient) in parameters.value_bias.iter_mut().zip(d_value_bias) {
-        *bias -= learning_rate * clip(gradient);
-    }
-    for unit in 0..hidden_width {
-        let d_pre = d_value_hidden[unit] * (1.0 - value_hidden[unit] * value_hidden[unit]);
-        for (feature, value) in observation.iter().enumerate() {
-            let index = unit * OBSERVATION_FEATURES_V1 + feature;
-            let gradient = d_pre * value + l2 * parameters.value_encoder_weights[index];
-            parameters.value_encoder_weights[index] -= learning_rate * clip(gradient);
-        }
-        parameters.value_encoder_bias[unit] -= learning_rate * clip(d_pre);
+    if let Some(optimizer) = optimizer {
+        let (correction1, correction2) = optimizer.advance();
+        apply_adam_v2(
+            &mut parameters.encoder_weights,
+            &d_encoder_weights,
+            l2,
+            &mut optimizer.encoder_weights,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.encoder_bias,
+            &d_encoder_bias,
+            0.0,
+            &mut optimizer.encoder_bias,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.policy_bilinear,
+            &d_policy_bilinear,
+            l2,
+            &mut optimizer.policy_bilinear,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.policy_action_bias,
+            &d_policy_action_bias,
+            l2,
+            &mut optimizer.policy_action_bias,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.policy_hidden_bias,
+            &d_policy_hidden_bias,
+            0.0,
+            &mut optimizer.policy_hidden_bias,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.policy_output_weights,
+            &d_policy_output,
+            l2,
+            &mut optimizer.policy_output_weights,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        let active_value = player_count * hidden_width;
+        apply_adam_v2(
+            &mut parameters.value_weights[..active_value],
+            &d_value_weights[..active_value],
+            l2,
+            &mut optimizer.value_weights.slice_mut(active_value),
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.value_bias[..player_count],
+            &d_value_bias[..player_count],
+            0.0,
+            &mut optimizer.value_bias.slice_mut(player_count),
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.value_encoder_weights,
+            &d_value_encoder_weights,
+            l2,
+            &mut optimizer.value_encoder_weights,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+        apply_adam_v2(
+            &mut parameters.value_encoder_bias,
+            &d_value_encoder_bias,
+            0.0,
+            &mut optimizer.value_encoder_bias,
+            learning_rate,
+            correction1,
+            correction2,
+        );
+    } else {
+        apply_sgd_v1(
+            &mut parameters.encoder_weights,
+            &d_encoder_weights,
+            l2,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.encoder_bias,
+            &d_encoder_bias,
+            0.0,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.policy_bilinear,
+            &d_policy_bilinear,
+            l2,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.policy_action_bias,
+            &d_policy_action_bias,
+            l2,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.policy_hidden_bias,
+            &d_policy_hidden_bias,
+            0.0,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.policy_output_weights,
+            &d_policy_output,
+            l2,
+            learning_rate,
+        );
+        let active_value = player_count * hidden_width;
+        apply_sgd_v1(
+            &mut parameters.value_weights[..active_value],
+            &d_value_weights[..active_value],
+            l2,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.value_bias[..player_count],
+            &d_value_bias[..player_count],
+            0.0,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.value_encoder_weights,
+            &d_value_encoder_weights,
+            l2,
+            learning_rate,
+        );
+        apply_sgd_v1(
+            &mut parameters.value_encoder_bias,
+            &d_value_encoder_bias,
+            0.0,
+            learning_rate,
+        );
     }
     Ok(())
+}
+
+impl AdamSlotV2 {
+    fn slice_mut(&mut self, length: usize) -> AdamSlotSliceMutV2<'_> {
+        AdamSlotSliceMutV2 {
+            first: &mut self.first[..length],
+            second: &mut self.second[..length],
+        }
+    }
+}
+
+struct AdamSlotSliceMutV2<'a> {
+    first: &'a mut [f32],
+    second: &'a mut [f32],
+}
+
+fn apply_sgd_v1(parameters: &mut [f32], gradients: &[f32], l2: f32, learning_rate: f32) {
+    debug_assert_eq!(parameters.len(), gradients.len());
+    for (parameter, gradient) in parameters.iter_mut().zip(gradients) {
+        *parameter -= learning_rate * clip(*gradient + l2 * *parameter);
+    }
+}
+
+fn apply_adam_v2(
+    parameters: &mut [f32],
+    gradients: &[f32],
+    l2: f32,
+    slot: &mut impl AdamMomentSlicesV2,
+    learning_rate: f32,
+    correction1: f32,
+    correction2: f32,
+) {
+    let (first, second) = slot.moments();
+    debug_assert_eq!(parameters.len(), gradients.len());
+    debug_assert_eq!(parameters.len(), first.len());
+    debug_assert_eq!(parameters.len(), second.len());
+    for (((parameter, gradient), first), second) in
+        parameters.iter_mut().zip(gradients).zip(first).zip(second)
+    {
+        let gradient = clip(*gradient + l2 * *parameter);
+        *first = 0.9 * *first + 0.1 * gradient;
+        *second = 0.999 * *second + 0.001 * gradient * gradient;
+        let first_hat = *first / correction1;
+        let second_hat = *second / correction2;
+        *parameter -= learning_rate * first_hat / (second_hat.sqrt() + 1.0e-8);
+    }
+}
+
+trait AdamMomentSlicesV2 {
+    fn moments(&mut self) -> (&mut [f32], &mut [f32]);
+}
+
+impl AdamMomentSlicesV2 for AdamSlotV2 {
+    fn moments(&mut self) -> (&mut [f32], &mut [f32]) {
+        (&mut self.first, &mut self.second)
+    }
+}
+
+impl AdamMomentSlicesV2 for AdamSlotSliceMutV2<'_> {
+    fn moments(&mut self) -> (&mut [f32], &mut [f32]) {
+        (self.first, self.second)
+    }
 }
 
 fn metrics_by_head(
@@ -2043,6 +2330,7 @@ mod tests {
             value_updates_shared_encoder: None,
             expected_search_teacher_targets_hash: None,
             model_architecture_version: None,
+            optimizer_version: None,
         };
         (dataset, config)
     }
@@ -2265,6 +2553,44 @@ mod tests {
             left.parameters.value_encoder_weights,
             changed.parameters.value_encoder_weights
         );
+    }
+
+    #[test]
+    fn adam_v2_is_deterministic_bound_and_requires_architecture_v2() {
+        let (dataset, mut config) = dataset_and_config();
+        let targets = search_targets(&dataset);
+        config.training_contract_version = Some(3);
+        config.model_architecture_version = Some(2);
+        config.optimizer_version = Some(2);
+        config.hidden_features = 8;
+        config.policy_teacher_agent_ids = vec!["teacher".into()];
+        config.value_target_agent_ids = vec!["teacher".into()];
+        config.min_policy_nll_relative_improvement_bps = Some(1);
+        config.min_value_mse_relative_improvement_bps = Some(1);
+        config.value_updates_shared_encoder = Some(false);
+        config.expected_search_teacher_targets_hash =
+            Some(crate::search_teacher_targets_hash_v1(&targets).unwrap());
+
+        let (left, report) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        let (right, _) =
+            train_policy_value_with_search_targets_v1(&dataset, &targets, &config).unwrap();
+        assert_eq!(left, right);
+        assert_eq!(left.optimizer_version, Some(2));
+        assert_eq!(report.optimizer_version, Some(2));
+        let offline =
+            evaluate_checkpoint_with_search_targets_v1(&dataset, &targets, &left, &config).unwrap();
+        assert_eq!(offline.optimizer_version, Some(2));
+        assert_eq!(
+            offline.validation_head_metrics,
+            report.validation_head_metrics
+        );
+
+        config.model_architecture_version = None;
+        assert!(matches!(
+            config.validate(),
+            Err(LearningError::InvalidConfig(message)) if message.contains("architecture v2")
+        ));
     }
 
     #[test]

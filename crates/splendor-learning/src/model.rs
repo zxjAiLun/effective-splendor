@@ -55,6 +55,8 @@ pub struct PolicyValueCheckpointV1 {
     pub search_teacher_targets_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_architecture_version: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub optimizer_version: Option<u32>,
     pub trained_examples: u64,
     pub validation_examples: u64,
     pub validation_seed_modulus: u32,
@@ -127,6 +129,14 @@ impl PolicyValueCheckpointV1 {
         if self.model_architecture_version.is_some() && self.training_contract_version != Some(3) {
             return Err(invalid_checkpoint(
                 "architecture v2 requires search-teacher contract v3",
+            ));
+        }
+        if self.optimizer_version.is_some_and(|version| version != 2) {
+            return Err(invalid_checkpoint("optimizer_version must be absent or 2"));
+        }
+        if self.optimizer_version == Some(2) && self.model_architecture_version != Some(2) {
+            return Err(invalid_checkpoint(
+                "optimizer v2 requires model architecture v2",
             ));
         }
         validate_label("source_dataset_id", &self.source_dataset_id)?;
@@ -394,6 +404,7 @@ pub(crate) fn initialize_checkpoint(
         training_contract_version: None,
         search_teacher_targets_hash: None,
         model_architecture_version: None,
+        optimizer_version: None,
         trained_examples: 0,
         validation_examples: 0,
         validation_seed_modulus: 0,

@@ -149,6 +149,7 @@ fn fixture() -> (TrainingDatasetV1, PolicyValueTrainingConfigV1) {
         value_updates_shared_encoder: None,
         expected_search_teacher_targets_hash: None,
         model_architecture_version: None,
+        optimizer_version: None,
     };
     (dataset, config)
 }
@@ -571,5 +572,49 @@ fn checked_in_m15d_config_changes_only_architecture_capacity() {
     assert_eq!(
         m15d.min_value_mse_relative_improvement_bps,
         m15c.min_value_mse_relative_improvement_bps
+    );
+}
+
+#[test]
+fn checked_in_m15e_config_changes_only_optimizer() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../benchmarks");
+    let m15d: PolicyValueTrainingConfigV1 = serde_json::from_str(
+        &std::fs::read_to_string(root.join("m15d-interaction-policy-value-v1.config.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let m15e: PolicyValueTrainingConfigV1 = serde_json::from_str(
+        &std::fs::read_to_string(root.join("m15e-adam-policy-value-v1.config.json")).unwrap(),
+    )
+    .unwrap();
+    m15e.validate().unwrap();
+    assert_eq!(m15e.optimizer_version, Some(2));
+    assert_eq!(
+        m15e.model_architecture_version,
+        m15d.model_architecture_version
+    );
+    assert_eq!(m15e.hidden_features, m15d.hidden_features);
+    assert_eq!(m15e.expected_dataset_hash, m15d.expected_dataset_hash);
+    assert_eq!(
+        m15e.expected_search_teacher_targets_hash,
+        m15d.expected_search_teacher_targets_hash
+    );
+    assert_eq!(m15e.epochs, m15d.epochs);
+    assert_eq!(m15e.learning_rate, m15d.learning_rate);
+    assert_eq!(m15e.value_loss_weight, m15d.value_loss_weight);
+    assert_eq!(m15e.l2_weight, m15d.l2_weight);
+    assert_eq!(m15e.init_seed, m15d.init_seed);
+    assert_eq!(m15e.validation_seed_modulus, m15d.validation_seed_modulus);
+    assert_eq!(
+        m15e.validation_seed_remainder,
+        m15d.validation_seed_remainder
+    );
+    assert_eq!(
+        m15e.min_policy_nll_relative_improvement_bps,
+        m15d.min_policy_nll_relative_improvement_bps
+    );
+    assert_eq!(
+        m15e.min_value_mse_relative_improvement_bps,
+        m15d.min_value_mse_relative_improvement_bps
     );
 }

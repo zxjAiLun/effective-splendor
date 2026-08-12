@@ -1,0 +1,55 @@
+{
+  "format": "effective-splendor-m15e-adam-training-result",
+  "version": 1,
+  "result_date": "2026-08-12",
+  "frozen_inputs": {
+    "dataset_id": "m15b-champion-teacher-2026-08-12-v2",
+    "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+    "search_teacher_targets_hash": "5557252270a0f6a1cb5d881ac975802a6bd14b74e6130daf03f00fc09c6a46de",
+    "targets": 3920,
+    "train_examples": 2942,
+    "validation_examples": 978
+  },
+  "controlled_change": {
+    "baseline": "m15d-interaction-policy-value-v1",
+    "optimizer_version": 2,
+    "optimizer": "deterministic per-example Adam beta1=0.9 beta2=0.999 epsilon=1e-8",
+    "unchanged": "architecture v2 h64, dataset, targets, split, epochs, learning rate, loss weights, l2, initialization seed and gates"
+  },
+  "training": {
+    "training_config_hash": "9c487be8a6b778e872d696c5fc5b88780e91b1728ffa9b4234ecf0f48d57158f",
+    "training_config_file_sha256": "0f6b05bcc50849cf985191d98db4912f35208d9897823e488789ca24490ba529",
+    "checkpoint_hash": "54c7a12a40d28b00ad5d751cf02815a29cd3f93df3ae13bd9c0a18fdeffd89bd",
+    "checkpoint_file_sha256": "7b8c63c6bb51e4fe4406ceb0d645d10d6d2632ce6c6e83b24d511eb7c3f51e08",
+    "training_report_file_sha256": "60f9c337e86baeec760f383c56be2a613538e477d665339b5074c3d330388197",
+    "offline_eval_file_sha256": "5dd57659da6594e5186787fbf9f4c27b44d79178f370dd1e11cdec49085248c4",
+    "train_policy_top1_accuracy": 0.433718558803535,
+    "train_policy_cross_entropy": 2.7131916386271433,
+    "train_uniform_cross_entropy": 3.055274892,
+    "train_policy_relative_improvement_bps": 1119,
+    "validation_policy_top1_accuracy": 0.32004089979550104,
+    "validation_policy_cross_entropy": 2.8190960619896592,
+    "validation_uniform_cross_entropy": 2.9779021963351053,
+    "validation_policy_relative_improvement_bps": 533,
+    "policy_gate_required_bps": 1500,
+    "policy_gate_passed": false,
+    "policy_top1_generalization_gap": 0.11367765900803395,
+    "policy_cross_entropy_generalization_gap": 0.10590442336251593,
+    "train_value_mse": 0.007351900511037668,
+    "validation_value_mse": 0.0192487486930392,
+    "train_prior_value_mse": 0.019055392543991724,
+    "value_generalization_gap_mse": 0.01189684818200153,
+    "value_relative_improvement_bps": 0,
+    "value_gate_required_bps": 500,
+    "value_gate_passed": false,
+    "overall_gate_passed": false,
+    "independent_offline_reproduction": true,
+    "debug_training_wall_seconds": 1881
+  },
+  "verdict": {
+    "candidate": false,
+    "prospective_screen_authorized": false,
+    "promotion": false,
+    "interpretation": "Adam materially improved fitting of training search targets but did not generalize across replay sources. Policy validation improvement reached only 5.33% and Value validation MSE remained worse than the constant prior. M15E closes without a candidate; target, gate and seed contracts were unchanged."
+  }
+}

@@ -503,6 +503,7 @@ mod tests {
             training_contract_version: None,
             search_teacher_targets_hash: None,
             model_architecture_version: None,
+            optimizer_version: None,
             trained_examples: 4,
             validation_examples: 2,
             validation_seed_modulus: 2,

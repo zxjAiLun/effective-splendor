@@ -365,3 +365,42 @@ points to optimization or underfitting, not a held-out generalization gap.
 Independent Value MSE was 0.02448 versus a 0.01906 constant prior, so the 5%
 Value gate also failed. `benchmarks/m15d-interaction-policy-value-v1.result.json`
 records the exact hashes. M15D closes without a candidate or screen.
+
+### M15E deterministic Adam control
+
+M15E changes one controlled variable from M15D: an optional
+`optimizer_version: 2` selects deterministic per-example Adam with beta1 0.9,
+beta2 0.999 and epsilon 1e-8. An absent optimizer version preserves the
+existing SGD contract, serialized JSON and hashes. Version 2 is accepted only
+by search-teacher contract v3 with architecture v2, and the optimizer version
+is bound into the config, checkpoint, training report and independent offline
+report.
+
+Adam moments and the step counter are deterministic training state but are not
+written into the inference checkpoint. The checkpoint is therefore not a
+training-resume artifact. Dataset, target hash, source split, 24 epochs,
+learning rate 0.0003, loss weights, L2, initialization seed and gates are
+identical to M15D.
+
+```powershell
+cargo run -p splendor-cli -- train-policy-value-search-teacher `
+  --dataset local-artifacts/m15b-teacher-data-v2/dataset.json `
+  --targets local-artifacts/m15c-search-teacher-targets-v1/targets.json `
+  --config benchmarks/m15e-adam-policy-value-v1.config.json `
+  --checkpoint local-artifacts/m15e-adam-policy-value-v1/checkpoint.json `
+  --report local-artifacts/m15e-adam-policy-value-v1/training-report.json
+```
+
+The frozen debug run completed in 1,881 seconds. Adam resolved the M15D train
+underfit: training Policy top-1 reached 43.37%, Policy cross-entropy improved
+11.19% over uniform, and Value MSE fell to 0.00735. These gains did not
+generalize across replay sources. Validation Policy top-1 was 32.00%, its
+cross-entropy improved only 5.33% versus the required 15%, and Value MSE was
+0.01925 versus a 0.01906 constant prior. Independent offline evaluation
+reproduced every metric and hash exactly.
+
+`benchmarks/m15e-adam-policy-value-v1.result.json` records the controlled
+change, local artifact hashes and exact metrics. Both unchanged gates failed;
+M15E closes without a candidate or prospective screen. The next round should
+audit target factorization and replay-source coverage rather than retune the
+optimizer, gates or formal seeds.
