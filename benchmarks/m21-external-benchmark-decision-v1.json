@@ -3,6 +3,8 @@
   "version": 1,
   "decision_id": "m21-external-benchmark-decision-v1",
   "decision_date": "2026-08-12",
+  "evidence_contract_commit": "86c44657695d4db7f24ddfae752727e09b745097",
+  "evidence_contract_note": "86c4465 (fix(eval): separate offline fit from playing strength) is the commit that re-baselined the four result files; result_file_sha256 values below are the canonical LF byte hashes of the post-86c4465 contract.",
   "status": "complete_decision_deferred",
   "scope": "1v1_only",
   "prerequisites": {
@@ -11,25 +13,25 @@
       "implementation_commit": "c41120385f3378c7223e44f9541131ddb40810dd",
       "result_commit": "2c3563018d124cda510edb85279017db29af6ac4",
       "result_path": "benchmarks/m17-gpu-supervised-warmstart-v1.result.json",
-      "result_file_sha256": "47d7ee0eafe04428813b0110c783f29f0d43f92b6d5c55e82af2f85ad57cc524"
+      "result_file_sha256": "771ef00b9fa91dcdd5942f8f459a69e76a370c634a6c36b6b9b95d9138ab6aa8"
     },
     "m18a_alpha_zero_like": {
       "status": "complete_candidate_rejected",
       "implementation_commit": "e179c1bc75a48bdb1c18ad9d360686b14cdeb705",
       "result_path": "benchmarks/m18a-neural-self-play-smoke-v1.result.json",
-      "result_file_sha256": "1a928e76dd4773e80b5a876008e8ba6ed017b3255d8783bee2cace3b32e171d4"
+      "result_file_sha256": "0ecfe84e45abaac300121b8e271a7c8bbe7b9e3804067a15f2c3817370ea9797"
     },
     "m18b_rainbow": {
       "status": "complete_candidate_rejected",
       "implementation_commit": "d1bb1828cbbda048cffc988086eac94d6d9b7d55",
       "result_path": "benchmarks/m18b-rainbow-smoke-v1.result.json",
-      "result_file_sha256": "9037533c049a5aed6de57e2072012d883bb7158910c01bdafdd92145ce3517ec"
+      "result_file_sha256": "d263c3d5c212a8b2560766baef572c7c944befd00589b650f981a8399bdfb6e7"
     },
     "m19_internal_championship": {
       "status": "complete_provisional",
       "result_commit": "1841413c78a181c6aabd81b085a2fe0dc1eebb81",
       "result_path": "benchmarks/m19-internal-championship-v1.result.json",
-      "result_file_sha256": "72d3891d3e0d59ff40a8675f4ffe320551fb7882cc0dde346f02a94fc9019c75",
+      "result_file_sha256": "2e7928c2668e110fd6f1f3486cd6e0c46e17c2ce2af928aae23eb4777ca166bb",
       "completed_matches": 42,
       "aborted_matches": 0,
       "seeds_per_pair": 1,
