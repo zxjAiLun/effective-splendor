@@ -2,9 +2,15 @@
 setlocal
 cd /d "%~dp0"
 set "REGISTRY=%~dp0benchmarks\studio-1v1.registry.json"
+set "REVIEWERREGISTRY=%~dp0benchmarks\studio-reviewers.registry.json"
 set "LOGROOT=%~dp0local-artifacts\studio-host"
 if not exist "%REGISTRY%" (
   echo Missing Studio registry: "%REGISTRY%"
+  pause
+  exit /b 1
+)
+if not exist "%REVIEWERREGISTRY%" (
+  echo Missing reviewer registry: "%REVIEWERREGISTRY%"
   pause
   exit /b 1
 )
@@ -17,8 +23,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell.exe -NoProfile -Command "try {$h=Invoke-RestMethod 'http://127.0.0.1:43120/health' -TimeoutSec 1;if($h.mode -eq 'studio_host'){exit 0}}catch{};exit 1"
-if errorlevel 1 powershell.exe -NoProfile -Command "Start-Process -FilePath '%~dp0target\debug\splendor.exe' -ArgumentList @('studio-host','--registry','%REGISTRY%','--port','43120') -WorkingDirectory '%~dp0' -WindowStyle Hidden -RedirectStandardOutput '%LOGROOT%\host.stdout.log' -RedirectStandardError '%LOGROOT%\host.stderr.log'"
+powershell.exe -NoProfile -Command "try {$h=Invoke-RestMethod 'http://127.0.0.1:43120/health' -TimeoutSec 1;$r=Invoke-RestMethod 'http://127.0.0.1:43120/reviewers' -TimeoutSec 1;if($h.mode -eq 'studio_host' -and $r.version -eq 1){exit 0}}catch{};exit 1"
+if errorlevel 1 powershell.exe -NoProfile -Command "Start-Process -FilePath '%~dp0target\debug\splendor.exe' -ArgumentList @('studio-host','--registry','%REGISTRY%','--reviewer-registry','%REVIEWERREGISTRY%','--port','43120') -WorkingDirectory '%~dp0' -WindowStyle Hidden -RedirectStandardOutput '%LOGROOT%\host.stdout.log' -RedirectStandardError '%LOGROOT%\host.stderr.log'"
 
 if not exist "%~dp0apps\replay-studio\node_modules" (
   pushd "%~dp0apps\replay-studio"

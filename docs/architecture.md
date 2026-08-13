@@ -144,6 +144,16 @@ Rules:
   `player_view` and referee-only hidden data are separate fields. The local
   `apps/replay-studio` frontend consumes JSON only; it never loads a model or
   runs search. See `docs/replay-studio.md`.
+- **`splendor-analysis`** (M23) additionally emits `AnalysisTraceV2`, a
+  reviewer-identified replay-wide trace whose per-frame `review_result` is a
+  discriminated union of `root_determinization` (M07 mean utility) and
+  `neural_ismcts` (M13 prior/visit/Q). V1 and the M13 CLI stay intact. The
+  `splendor` CLI exposes `analyze-replay-determinization` and
+  `analyze-replay-neural --trace-version 2`, and the Studio Host exposes a
+  local review job API (`GET /reviewers`, `POST /reviews`,
+  `GET /reviews/<id>`, `GET /reviews/<id>/bundle`) that runs reviewers in-process
+  and reuses a cache keyed by replay + reviewer + config + checkpoint. See
+  `docs/m23-review-productization.md`.
 - **`splendor-python`** (PR-08) exposes a batched environment over PyO3 for
   RL self-play. High-volume training does NOT go through NDJSON.
 

@@ -53,3 +53,13 @@ test("server-renders the M20 Human Play Studio route", async () => {
   assert.match(html, /Start Splendor Studio\.cmd/);
   assert.doesNotMatch(html, /Connect to port/);
 });
+
+test("server-renders the M23 one-click review route", async () => {
+  const response = await render("/review");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Replay Studio · Effective Splendor<\/title>/i);
+  assert.match(html, /Replay Studio/);
+  assert.match(html, /ONE-CLICK REVIEW/);
+  assert.match(html, /Advanced import/);
+});

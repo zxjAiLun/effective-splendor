@@ -8,6 +8,8 @@ type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
 type Gems = Record<GemName, number>;
 type Agent = { id:string; display_name:string; class:string; policy_version:string; model_version:string|null; checkpoint_hash:string|null };
+type Reviewer = { id:string; display_name:string; description:string; competitive_status:"champion"|"experimental"|"rejected"; result_kind:"root_determinization"|"neural_ismcts"; is_default:boolean; available_metrics:string[]; estimated_cost:string };
+type RecentGame = { session_id:string; opponent?:string|null; human_seat?:number|null; scores?:number[]; winners?:number[]; timestamp?:number|null; verification?:"verified"|"invalid"; available_reviews?:string[]; error?:string };
 type Catalog = { cards:DevelopmentCardData[]; nobles:Array<{id:number;prestige:number;requirements:number[]}> };
 type NobleData = Catalog["nobles"][number];
 type Player = { id:number; tokens:Gems; bonuses:number[]; prestige:number; reserved_count:number; public_reserved:number[]; purchased:number[]; nobles:number[] };
@@ -77,6 +79,9 @@ function actionReturns(action:Action) { return gemsOf(action.return); }
 export default function HumanPlayPage() {
   const [state,setState] = useState<State|null>(null);
   const [agents,setAgents] = useState<Agent[]>([]);
+  const [reviewers,setReviewers] = useState<Reviewer[]>([]);
+  const [recentGames,setRecentGames] = useState<RecentGame[]>([]);
+  const [showReviewers,setShowReviewers] = useState(false);
   const [catalog,setCatalog] = useState<Catalog|null>(null);
   const [agentId,setAgentId] = useState("m07-champion");
   const [humanSeat,setHumanSeat] = useState(0);
@@ -100,6 +105,8 @@ export default function HumanPlayPage() {
       setAgents(value.agents); setCatalog(catalogValue); setHostOnline(true); setError("");
       setAgentId(current=>value.agents.some(agent=>agent.id===current)?current:(value.agents[0]?.id??""));
       const stateResponse=await fetch(`${API}/state`); if(stateResponse.ok)setState(await stateResponse.json());
+      try { const reviewerResponse=await fetch(`${API}/reviewers`); if(reviewerResponse.ok){ const reviewerValue=await reviewerResponse.json() as {reviewers:Reviewer[]}; setReviewers(reviewerValue.reviewers); } } catch { /* reviewers optional */ }
+      try { const recentResponse=await fetch(`${API}/recent-games`); if(recentResponse.ok){ const recentValue=await recentResponse.json() as {games:RecentGame[]}; setRecentGames(recentValue.games); } } catch { /* recent games optional */ }
     } catch(reason){ setHostOnline(false); setError(`Studio Host is not running. Launch the project once with Start Splendor Studio.cmd. ${reason instanceof Error?reason.message:String(reason)}`); }
   })()); },[]);
 
@@ -126,6 +133,7 @@ export default function HumanPlayPage() {
 
   const confirmTake = exactTakeActions.length===1 ? exactTakeActions[0] : null;
   const pendingCount=TAKE_GEMS.reduce((sum,gem)=>sum+pendingTake[gem],0);
+  const defaultReviewerId=reviewers.find(reviewer=>reviewer.is_default)?.id??reviewers[0]?.id??"";
   return <main className="human-studio">
     <header className="human-topbar"><div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div><div className="human-status"><span className={`status-dot ${hostOnline?"":"offline"}`} />{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</div><nav><Link href="/">Replay Studio</Link><Link href="/ratings">Ratings</Link>{state?<button onClick={()=>{setState(null);clearPending();}}>New game</button>:null}</nav></header>
     {error?<div className="error-banner" role="alert">{error}</div>:null}
@@ -139,7 +147,7 @@ export default function HumanPlayPage() {
         <div className="human-private"><span>PLAYER-VIEW ONLY</span><p>Actions and token holdings are public. Blind-reserved card identities and deck order remain hidden.</p></div>
       </article>
       <aside className="human-actions">
-        {state.result?<div className="human-result"><strong>{state.result.winners.includes(state.human_seat)?"VICTORY":"DEFEAT"}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<button disabled={busy} onClick={()=>void openReplay()}>Open verified game in Replay Studio →</button>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}</div>:<>
+        {state.result?<div className="human-result"><strong>{state.result.winners.includes(state.human_seat)?"VICTORY":"DEFEAT"}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=><button key={reviewer.id} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}&seat=${state.human_seat}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.is_default?" · recommended default":""}</small></button>)}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}</div>:<>
           <section className="pending-panel"><span className="section-kicker">PENDING MOVE</span><h2>{pendingCount?"Take gems":selectedCard?`Card #${selectedCard.cardId}`:contextActions.some(action=>action.type==="reserve_deck")?"Blind reserve":"Select on the table"}</h2>
             {pendingCount?<><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div><p>{confirmTake?"Legal selection. Confirm to end your turn.":exactTakeActions.length>1?"Choose which gems to return below.":"Keep selecting a legal combination, or click a selected gem to return it."}</p></>:null}
             {selectedCard&&cards.has(selectedCard.cardId)?<div className="selected-card-preview"><DevelopmentCard card={cards.get(selectedCard.cardId)!}/></div>:null}
@@ -154,6 +162,6 @@ export default function HumanPlayPage() {
         </>}
       </aside>
     </section>:null}
-    {!state?<section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint and start immediately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={humanSeat} onChange={event=>setHumanSeat(Number(event.target.value))} disabled={!hostOnline||busy}><option value={0}>P0 · first</option><option value={1}>P1 · second</option></select></label><label>Game seed<input type="number" min="0" value={seed} onChange={event=>setSeed(Number(event.target.value))} disabled={!hostOnline||busy}/></label><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Start Splendor Studio.cmd in the project folder.`}</small></section>:null}
+    {!state?<><section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint and start immediately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={humanSeat} onChange={event=>setHumanSeat(Number(event.target.value))} disabled={!hostOnline||busy}><option value={0}>P0 · first</option><option value={1}>P1 · second</option></select></label><label>Game seed<input type="number" min="0" value={seed} onChange={event=>setSeed(Number(event.target.value))} disabled={!hostOnline||busy}/></label><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Start Splendor Studio.cmd in the project folder.`}</small></section><section className="recent-games"><span className="section-kicker">RECENT VERIFIED GAMES</span><h2>Review an earlier game</h2>{recentGames.length?<div className="recent-game-list">{recentGames.slice(0,8).map(game=><article key={game.session_id}><div><strong>{game.session_id}</strong><small>{game.error??`${game.scores?.join(" – ")??"—"} · ${game.opponent??"unknown opponent"}`}</small></div><div><span>{game.verification??"unreadable"}</span><small>{game.available_reviews?.length??0} cached reviews</small>{game.verification==="verified"&&defaultReviewerId?<Link href={`/review?session=${encodeURIComponent(game.session_id)}&reviewer=${encodeURIComponent(defaultReviewerId)}&seat=${game.human_seat??0}`}>Review →</Link>:null}</div></article>)}</div>:<p>No verified local games yet.</p>}</section></>:null}
   </main>;
 }

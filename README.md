@@ -24,9 +24,9 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
 | `splendor-neural-search` | M13 checkpoint-bound Policy-prior + vector-Value neural ISMCTS candidate |
 | `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
-| `splendor-analysis` | M14 replay-bound traces, formal-evaluation binding, and M15 neural ablation metrics |
-| `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / arena tools |
-| `apps/replay-studio` | Local Replay + Rating Studio for board analysis, Elo leaderboard, and head-to-head matrix |
+| `splendor-analysis` | M14 replay-bound traces, formal-evaluation binding, M15 neural ablation metrics, and M23 unified `AnalysisTraceV2` reviewers |
+| `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / determinization review / arena tools |
+| `apps/replay-studio` | Local Replay + Rating Studio for board analysis, Elo leaderboard, one-click review, and head-to-head matrix |
 
 ## Quick start
 
@@ -125,7 +125,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
    host loop.
 
-## M10–M21 status and roadmap
+## M10–M23 status and roadmap
 
 1. M08: live player-view search agent (complete)
 2. M09: paired competitive evaluation and promotion gate v1 (complete)
@@ -148,6 +148,7 @@ unchanged; M08 only adds the Arena/Agent binding.
 19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
 20. M21: external benchmark decision complete; deferred until a new internal checkpoint clears the frozen multi-seed league/promotion gate
 21. M22: 32-game CUDA self-play + 48-match multi-seed league complete; no measured improvement over M18A, not promoted
+22. M23: Review Studio productization (implemented: unified `AnalysisTraceV2`, one-shot M07/M13 replay-wide reviewers, reviewer registry, local review job API, one-click human game review; M07 champion is the default reviewer, M13 stays `rejected/experimental`)
 
 Training `validation` means held-out offline fit only; teacher top-1, NLL,
 search-visit cross-entropy, Value MSE, and TD error never establish playing

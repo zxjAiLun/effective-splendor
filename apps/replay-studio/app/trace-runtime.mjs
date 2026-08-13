@@ -334,3 +334,283 @@ export function buildAnalysisRows(trace, frame) {
     }))
     .sort((left, right) => right.visits - left.visits);
 }
+
+// ---------------------------------------------------------------------------
+// AnalysisTraceV2 (M23 unified reviewer trace)
+// ---------------------------------------------------------------------------
+
+const REVIEW_STATUSES = ["champion", "experimental", "rejected"];
+const REVIEW_KINDS = ["root_determinization", "neural_ismcts"];
+
+export function isReviewTraceEnvelope(value) {
+  return Boolean(value && typeof value === "object"
+    && value.format === "effective-splendor-analysis-trace"
+    && value.version === 2);
+}
+
+function validateReviewer(reviewer) {
+  const value = object(reviewer, "reviewer");
+  text(value.id, "reviewer.id");
+  text(value.display_name, "reviewer.display_name");
+  if (!REVIEW_STATUSES.includes(value.competitive_status)) fail("reviewer.competitive_status", "unsupported status");
+  if (!REVIEW_KINDS.includes(value.result_kind)) fail("reviewer.result_kind", "unsupported kind");
+  text(value.algorithm_id, "reviewer.algorithm_id");
+  integer(value.algorithm_version, "reviewer.algorithm_version", 1);
+  const config = object(value.config, "reviewer.config");
+  if (config.kind !== value.result_kind) fail("reviewer.config.kind", "must match result_kind");
+  if (value.checkpoint_hash !== null) hash(value.checkpoint_hash, "reviewer.checkpoint_hash");
+  const provenance = object(value.provenance, "reviewer.provenance");
+  text(provenance.seed_derivation, "reviewer.provenance.seed_derivation");
+  array(provenance.metrics, "reviewer.provenance.metrics");
+  if (value.result_kind === "root_determinization") {
+    integer(config.sample_seed, "reviewer.config.sample_seed");
+    integer(config.sample_count, "reviewer.config.sample_count", 1);
+    const continuation = object(config.continuation_search, "reviewer.config.continuation_search");
+    integer(continuation.max_depth_turns, "reviewer.config.continuation_search.max_depth_turns", 1);
+    integer(continuation.max_nodes, "reviewer.config.continuation_search.max_nodes", 1);
+    if (value.checkpoint_hash !== null) fail("reviewer.checkpoint_hash", "root determinization must not bind a checkpoint");
+  } else {
+    integer(config.sample_seed, "reviewer.config.sample_seed");
+    integer(config.simulations, "reviewer.config.simulations", 1);
+    integer(config.max_depth_turns, "reviewer.config.max_depth_turns", 1);
+    integer(config.puct_exploration_milli, "reviewer.config.puct_exploration_milli", 1);
+    hash(config.expected_checkpoint_hash, "reviewer.config.expected_checkpoint_hash");
+    if (config.expected_checkpoint_hash !== value.checkpoint_hash) fail("reviewer.config.expected_checkpoint_hash", "checkpoint binding mismatch");
+  }
+  return value;
+}
+
+function validateReviewResult(reviewResult, trace, frame, path) {
+  const value = object(reviewResult, path);
+  if (value.kind !== trace.reviewer.result_kind) fail(`${path}.kind`, "does not match reviewer result_kind");
+  if (value.kind === "root_determinization") {
+    validateAction(value.recommended_action, `${path}.recommended_action`);
+    integer(value.sample_seed, `${path}.sample_seed`);
+    const sampleCount = integer(value.sample_count, `${path}.sample_count`, 1);
+    const legalKeys = frame.legal_actions.map(actionKey);
+    if (!legalKeys.includes(actionKey(value.recommended_action))) fail(`${path}.recommended_action`, "not in legal actions");
+    array(value.action_stats, `${path}.action_stats`, legalKeys.length).forEach((entry, index) => {
+      const stats = object(entry, `${path}.action_stats[${index}]`);
+      validateAction(stats.action, `${path}.action_stats[${index}].action`);
+      if (actionKey(stats.action) !== legalKeys[index]) fail(`${path}.action_stats[${index}].action`, "must follow legal-action order");
+      numericVectorAllowSigned(stats.utility_sum_by_player, `${path}.action_stats[${index}].utility_sum_by_player`, trace.player_count);
+    });
+    const stats = object(value.stats, `${path}.stats`);
+    if (integer(stats.samples, `${path}.stats.samples`, 1) !== sampleCount) fail(`${path}.stats.samples`, "sample count mismatch");
+    return value;
+  }
+  // neural_ismcts: mirror the V1 neural_result validation.
+  const result = object(value.result, `${path}.result`);
+  text(result.algorithm, `${path}.result.algorithm`);
+  integer(result.version, `${path}.result.version`, 1);
+  if (result.information_set_hash !== frame.information_set_hash || result.checkpoint_hash !== trace.reviewer.checkpoint_hash) {
+    fail(`${path}.result`, "identity binding mismatch");
+  }
+  validateAction(result.action, `${path}.result.action`);
+  const legalKeys = frame.legal_actions.map(actionKey);
+  if (!legalKeys.includes(actionKey(result.action))) fail(`${path}.result.action`, "not in legal actions");
+  const actionStats = array(result.action_stats, `${path}.result.action_stats`, legalKeys.length);
+  let visitSum = 0;
+  actionStats.forEach((entry, actionIndex) => {
+    const stats = object(entry, `${path}.result.action_stats[${actionIndex}]`);
+    validateAction(stats.action, `${path}.result.action_stats[${actionIndex}].action`);
+    if (actionKey(stats.action) !== legalKeys[actionIndex]) fail(`${path}.result.action_stats[${actionIndex}].action`, "must follow legal-action order");
+    if (integer(stats.prior_micros, `${path}.result.action_stats[${actionIndex}].prior_micros`) > NEURAL_SCALE) {
+      fail(`${path}.result.action_stats[${actionIndex}].prior_micros`, "exceeds value scale");
+    }
+    const visits = integer(stats.visits, `${path}.result.action_stats[${actionIndex}].visits`);
+    visitSum += visits;
+    numericVector(stats.value_sum_by_player, `${path}.result.action_stats[${actionIndex}].value_sum_by_player`, trace.player_count).forEach((sum) => {
+      if (sum > visits * NEURAL_SCALE) fail(`${path}.result.action_stats[${actionIndex}].value_sum_by_player`, "exceeds visit/value bound");
+    });
+  });
+  const stats = object(result.stats, `${path}.result.stats`);
+  const rootVisits = integer(stats.root_visits, `${path}.result.stats.root_visits`, 1);
+  if (integer(stats.simulations, `${path}.result.stats.simulations`, 1) !== trace.reviewer.config.simulations
+      || integer(stats.sampled_determinizations, `${path}.result.stats.sampled_determinizations`, 1) !== trace.reviewer.config.simulations
+      || rootVisits !== trace.reviewer.config.simulations
+      || visitSum !== rootVisits) {
+    fail(`${path}.result.stats`, "simulation/visit binding mismatch");
+  }
+  integer(stats.tree_nodes, `${path}.result.stats.tree_nodes`, 1);
+  integer(stats.shared_node_hits, `${path}.result.stats.shared_node_hits`);
+  integer(stats.model_evaluations, `${path}.result.stats.model_evaluations`);
+  integer(stats.terminal_evaluations, `${path}.result.stats.terminal_evaluations`);
+  return value;
+}
+
+const NEURAL_SCALE = 1_000_000;
+
+function numericVectorAllowSigned(value, path, length) {
+  const values = array(value, path, length);
+  values.forEach((item, index) => {
+    if (!Number.isInteger(item)) fail(`${path}[${index}]`, "expected integer");
+  });
+  return values;
+}
+
+function validateReviewFrame(frame, index, trace) {
+  const path = `frames[${index}]`;
+  const value = object(frame, path);
+  if (integer(value.ply, `${path}.ply`) !== index) fail(`${path}.ply`, "expected contiguous ply");
+  const actor = domainId(value.actor, `${path}.actor`, trace.player_count);
+  validateAction(value.recorded_action, `${path}.recorded_action`);
+  hash(value.state_hash_before, `${path}.state_hash_before`);
+  hash(value.observation_hash, `${path}.observation_hash`);
+  hash(value.visible_history_hash, `${path}.visible_history_hash`);
+  hash(value.information_set_hash, `${path}.information_set_hash`);
+  integer(value.visible_event_count, `${path}.visible_event_count`, 1);
+  const playerView = validatePlayerView(value.player_view, `${path}.player_view`, trace.player_count, actor);
+  if (playerView.ruleset_fingerprint !== trace.ruleset_fingerprint) fail(`${path}.player_view.ruleset_fingerprint`, "trace binding mismatch");
+
+  const reveal = object(value.referee_reveal, `${path}.referee_reveal`);
+  integer(reveal.seed, `${path}.referee_reveal.seed`);
+  array(reveal.decks, `${path}.referee_reveal.decks`, 3).forEach((deck, tierIndex) => {
+    array(deck, `${path}.referee_reveal.decks[${tierIndex}]`).forEach((id, cardIndex) => domainId(id, `${path}.referee_reveal.decks[${tierIndex}][${cardIndex}]`, 90));
+  });
+  array(reveal.players, `${path}.referee_reveal.players`, trace.player_count).forEach((player, playerIndex) => {
+    validatePlayer(player, `${path}.referee_reveal.players[${playerIndex}]`, trace.player_count, true);
+    if (player.id !== playerIndex) fail(`${path}.referee_reveal.players[${playerIndex}].id`, "expected seat order");
+  });
+
+  const legalActions = array(value.legal_actions, `${path}.legal_actions`);
+  if (legalActions.length === 0) fail(`${path}.legal_actions`, "must not be empty");
+  legalActions.forEach((action, actionIndex) => validateAction(action, `${path}.legal_actions[${actionIndex}]`));
+  const legalKeys = legalActions.map(actionKey);
+  if (!legalKeys.includes(actionKey(value.recorded_action))) fail(`${path}.recorded_action`, "not in legal actions");
+  validateReviewResult(value.review_result, trace, frame, `${path}.review_result`);
+  const recommended = actionKey(reviewRecommendedAction(value.review_result));
+  if (value.recommended_matches_recorded !== (recommended === actionKey(value.recorded_action))) {
+    fail(`${path}.recommended_matches_recorded`, "does not match recommended/recorded action identity");
+  }
+}
+
+export function reviewRecommendedAction(reviewResult) {
+  return reviewResult.kind === "root_determinization"
+    ? reviewResult.recommended_action
+    : reviewResult.result.action;
+}
+
+export function validateReviewTrace(value) {
+  const trace = object(value, "trace");
+  if (!isReviewTraceEnvelope(trace)) fail("trace", "unsupported format/version");
+  text(trace.engine_version, "engine_version");
+  text(trace.catalog_version, "catalog_version");
+  integer(trace.replay_version, "replay_version", 1);
+  hash(trace.replay_document_hash, "replay_document_hash");
+  hash(trace.replay_final_state_hash, "replay_final_state_hash");
+  hash(trace.ruleset_fingerprint, "ruleset_fingerprint");
+  const playerCount = integer(trace.player_count, "player_count", 2);
+  if (playerCount > 4) fail("player_count", "expected at most 4");
+  validateReviewer(trace.reviewer);
+  validateCatalog(trace.catalog);
+  const result = object(trace.result, "result");
+  numericVector(result.scores, "result.scores", playerCount);
+  numericVector(result.ranks, "result.ranks", playerCount);
+  array(result.winners, "result.winners").forEach((id, index) => domainId(id, `result.winners[${index}]`, playerCount));
+  text(result.reason, "result.reason");
+  const frames = array(trace.frames, "frames");
+  if (frames.length === 0) fail("frames", "must not be empty");
+  frames.forEach((frame, index) => validateReviewFrame(frame, index, trace));
+  return trace;
+}
+
+function rankWithTies(values) {
+  const order = values
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => b.value - a.value);
+  const ranks = new Array(values.length).fill(0);
+  let position = 0;
+  while (position < order.length) {
+    let end = position;
+    while (end + 1 < order.length && order[end + 1].value === order[position].value) end += 1;
+    const rank = position + 1;
+    for (let i = position; i <= end; i += 1) ranks[order[i].index] = rank;
+    position = end + 1;
+  }
+  return ranks;
+}
+
+export function buildReviewRows(trace, frame) {
+  const actor = frame.actor;
+  if (trace.reviewer.result_kind === "root_determinization") {
+    const sampleCount = frame.review_result.sample_count;
+    const means = frame.review_result.action_stats.map((stats) => stats.utility_sum_by_player[actor] / sampleCount);
+    const best = Math.max(...means);
+    const ranks = rankWithTies(means);
+    return {
+      kind: "root_determinization",
+      rows: frame.review_result.action_stats.map((stats, index) => ({
+        action: stats.action,
+        meanUtility: means[index],
+        utilityGap: best - means[index],
+        actionRank: ranks[index],
+        actual: actionKey(stats.action) === actionKey(frame.recorded_action),
+        recommended: actionKey(stats.action) === actionKey(frame.review_result.recommended_action),
+      })).sort((a, b) => b.meanUtility - a.meanUtility),
+    };
+  }
+  const neural = frame.review_result.result;
+  const rootVisits = neural.stats.root_visits;
+  const qs = neural.action_stats.map((stats) => stats.visits ? stats.value_sum_by_player[actor] / stats.visits / NEURAL_SCALE : null);
+  const visitedQ = qs.filter((q) => q !== null);
+  const maxVisitedQ = visitedQ.length ? Math.max(...visitedQ) : null;
+  const ranks = rankWithTies(qs.map((q) => q ?? -Infinity)).map((rank, index) => qs[index] === null ? null : rank);
+  return {
+    kind: "neural_ismcts",
+    rows: neural.action_stats.map((stats, index) => ({
+      action: stats.action,
+      prior: stats.prior_micros / NEURAL_SCALE,
+      visit: rootVisits ? stats.visits / rootVisits : 0,
+      q: qs[index],
+      unscored: stats.visits === 0,
+      qRank: ranks[index],
+      qGap: qs[index] === null ? null : maxVisitedQ - qs[index],
+      actual: actionKey(stats.action) === actionKey(frame.recorded_action),
+      searchChoice: actionKey(stats.action) === actionKey(neural.action),
+      highestQ: qs[index] !== null && qs[index] === maxVisitedQ,
+    })).sort((a, b) => b.visit - a.visit),
+  };
+}
+
+export function buildReviewSummary(trace, humanSeat = null) {
+  const humanFrames = humanSeat === null
+    ? trace.frames
+    : trace.frames.filter((frame) => frame.actor === humanSeat);
+  const decisions = humanFrames.length;
+  let scored = 0;
+  let unscored = 0;
+  let agreements = 0;
+  let topRanked = 0;
+  const ranks = [];
+  for (const frame of humanFrames) {
+    const rows = buildReviewRows(trace, frame).rows;
+    const actual = rows.find((row) => row.actual);
+    if (!actual) continue;
+    if (frame.review_result.kind === "neural_ismcts" && actual.unscored) {
+      unscored += 1;
+      continue;
+    }
+    scored += 1;
+    if (actual.recommended || actual.searchChoice) agreements += 1;
+    const rank = trace.reviewer.result_kind === "root_determinization" ? actual.actionRank : actual.qRank;
+    if (rank !== null && rank !== undefined) {
+      ranks.push(rank);
+      if (rank === 1) topRanked += 1;
+    }
+  }
+  const median = (values) => {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  return {
+    decisions,
+    scored,
+    unscored,
+    agreements,
+    topRanked,
+    medianActionRank: median(ranks),
+  };
+}

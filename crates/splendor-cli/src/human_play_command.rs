@@ -1,12 +1,18 @@
-use std::fs::{self, OpenOptions};
+use std::collections::HashMap;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use splendor_agent::{
     AgentPolicy, DecisionContext, HeuristicAgentPolicy, PublicRequestMeta, StableRng,
+};
+use splendor_analysis::{
+    analyze_replay_determinization_v2_with_progress, analyze_replay_neural_v2_with_progress,
+    review_cache_key_v2, AnalysisTraceV2, ReviewerConfigV2, ReviewerIdentityV2, ReviewerRegistryV1,
 };
 use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, InboundEvent};
 use splendor_catalog::{all_cards, all_nobles, CardId, GemColor, NobleId, Tier};
@@ -17,6 +23,7 @@ use splendor_core::{
 use splendor_determinization_agent::DeterminizationAgentPolicyV1;
 use splendor_eval::RatingRegistryV1;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
+use splendor_learning::PolicyValueCheckpointV1;
 use splendor_protocol::{
     parse_client_line, ClientMessage, ObservationMeta, RecipientMeta, RequestMeta, ServerMessage,
     ServerMeta, PROTOCOL_VERSION,
@@ -26,9 +33,11 @@ use splendor_search::SearchConfigV1;
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> (--opponent <heuristic|m07> | --registry <registry.json> --agent-id <id>) --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
-    "Usage: splendor studio-host --registry <registry.json> --port <u16> [--move-timeout-ms <u64>]";
+    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
+const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
+const REVIEWS_DIR: &str = "reviews";
 
 enum InProcessOpponent {
     Heuristic(HeuristicAgentPolicy),
@@ -485,6 +494,31 @@ impl Session {
             .map_err(|error| format!("cannot serialize replay: {error}"))?;
         file.write_all(b"\n")
             .map_err(|error| format!("cannot finish replay file: {error}"))?;
+
+        let meta = serde_json::json!({
+            "format": "effective-splendor-human-meta",
+            "version": 1,
+            "session_id": self.id,
+            "opponent": self.opponent.label(),
+            "human_seat": self.human_seat.0,
+        });
+        let meta_path = self.replay_out.with_extension("meta.json");
+        let mut meta_file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&meta_path)
+            .map_err(|error| {
+                format!(
+                    "cannot create meta {} without overwrite: {error}",
+                    meta_path.display()
+                )
+            })?;
+        serde_json::to_writer_pretty(&mut meta_file, &meta)
+            .map_err(|error| format!("cannot serialize meta: {error}"))?;
+        meta_file
+            .write_all(b"\n")
+            .map_err(|error| format!("cannot finish meta file: {error}"))?;
+
         self.terminal_state = Some(state);
         self.replay = Some(replay);
         self.replay_hash = Some(replay_hash);
@@ -598,6 +632,7 @@ struct Args {
 #[derive(Debug)]
 struct HostArgs {
     registry: PathBuf,
+    reviewer_registry: PathBuf,
     port: u16,
     move_timeout_ms: u64,
 }
@@ -620,12 +655,94 @@ struct PublicAgentV1<'a> {
     checkpoint_hash: Option<&'a str>,
 }
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReviewRequest {
+    session_id: String,
+    reviewer_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReviewJobStatus {
+    Queued,
+    Running,
+    Completed,
+    Failed,
+}
+
+impl ReviewJobStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Running => "running",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ReviewJobState {
+    status: ReviewJobStatus,
+    processed_decisions: u32,
+    total_decisions: u32,
+    current_ply: u32,
+    error: Option<String>,
+    cache_key: String,
+    artifact_path: PathBuf,
+    cached: bool,
+}
+
+struct ReviewJobRecord {
+    id: String,
+    session_id: String,
+    reviewer_id: String,
+    state: Arc<Mutex<ReviewJobState>>,
+}
+
+#[derive(Default)]
+struct ReviewJobManager {
+    next_id: u64,
+    jobs: HashMap<String, ReviewJobRecord>,
+}
+
+impl ReviewJobManager {
+    fn allocate(
+        &mut self,
+        session_id: String,
+        reviewer_id: String,
+        state: ReviewJobState,
+    ) -> String {
+        self.next_id = self.next_id.wrapping_add(1);
+        let id = format!("review-{}", self.next_id);
+        self.jobs.insert(
+            id.clone(),
+            ReviewJobRecord {
+                id: id.clone(),
+                session_id,
+                reviewer_id,
+                state: Arc::new(Mutex::new(state)),
+            },
+        );
+        id
+    }
+
+    fn id_for_cache_key(&self, cache_key: &str) -> Option<String> {
+        self.jobs.values().find_map(|record| {
+            let state = record.state.lock().ok()?;
+            (state.cache_key == cache_key).then(|| record.id.clone())
+        })
+    }
+}
+
 struct StudioHost {
     registry_path: PathBuf,
     registry: RatingRegistryV1,
+    reviewer_registry: ReviewerRegistryV1,
     move_timeout_ms: u64,
     next_session_number: u64,
     session: Option<Session>,
+    jobs: ReviewJobManager,
 }
 
 impl StudioHost {
@@ -688,6 +805,235 @@ impl StudioHost {
             .expect("session was installed")
             .snapshot())
     }
+
+    fn reviewers_json(&self) -> Result<String, String> {
+        let reviewers = self
+            .reviewer_registry
+            .reviewers
+            .iter()
+            .map(|entry| {
+                serde_json::json!({
+                    "id": entry.id,
+                    "display_name": entry.display_name,
+                    "description": entry.description,
+                    "competitive_status": entry.competitive_status,
+                    "result_kind": entry.result_kind,
+                    "is_default": entry.is_default,
+                    "available_metrics": entry.available_metrics,
+                    "required_artifacts": entry.required_artifacts,
+                    "estimated_cost": entry.estimated_cost,
+                })
+            })
+            .collect::<Vec<_>>();
+        serde_json::to_string(&serde_json::json!({
+            "format": "effective-splendor-studio-reviewers",
+            "version": 1,
+            "registry_id": self.reviewer_registry.registry_id,
+            "reviewers": reviewers,
+        }))
+        .map_err(|error| error.to_string())
+    }
+
+    fn create_review(&mut self, request: ReviewRequest) -> Result<String, String> {
+        let session_id = sanitize_session_id(&request.session_id)?;
+        let entry = self
+            .reviewer_registry
+            .entry(&request.reviewer_id)
+            .map_err(|error| error.to_string())?
+            .clone();
+        let replay_path = Path::new(HUMAN_PLAY_DIR).join(format!("{session_id}.replay.json"));
+        let replay = read_replay_file(&replay_path)?;
+        verify_replay(&replay).map_err(|error| format!("replay verification failed: {error}"))?;
+        let replay_document_hash =
+            replay_document_hash_v1(&replay).map_err(|error| error.to_string())?;
+
+        let reviewer = reviewer_identity_from_entry(&entry)?;
+        let checkpoint = match &reviewer.config {
+            ReviewerConfigV2::NeuralIsmcts(config) => {
+                let path = entry
+                    .checkpoint_path
+                    .as_deref()
+                    .ok_or_else(|| "neural reviewer is missing checkpoint_path".to_string())?;
+                let checkpoint_path = resolve_checkpoint_path(Path::new(path))?;
+                let checkpoint = read_checkpoint_file(&checkpoint_path)?;
+                let actual_hash = splendor_learning::model_checkpoint_hash_v1(&checkpoint)
+                    .map_err(|error| error.to_string())?;
+                if actual_hash != config.expected_checkpoint_hash {
+                    return Err(format!(
+                        "checkpoint hash mismatch: expected {}, found {actual_hash}",
+                        config.expected_checkpoint_hash
+                    ));
+                }
+                Some(checkpoint)
+            }
+            ReviewerConfigV2::RootDeterminization(_) => None,
+        };
+
+        let cache_key = review_cache_key_v2(&replay_document_hash, &reviewer)
+            .map_err(|error| error.to_string())?;
+        let artifact_path = Path::new(HUMAN_PLAY_DIR)
+            .join(REVIEWS_DIR)
+            .join(&session_id)
+            .join(format!("{}-{}.analysis.json", reviewer.id, cache_key));
+
+        if let Some(job_id) = self.jobs.id_for_cache_key(&cache_key) {
+            return self.review_status(&job_id);
+        }
+
+        let state = ReviewJobState {
+            status: ReviewJobStatus::Queued,
+            processed_decisions: 0,
+            total_decisions: replay.steps.len() as u32,
+            current_ply: 0,
+            error: None,
+            cache_key: cache_key.clone(),
+            artifact_path: artifact_path.clone(),
+            cached: false,
+        };
+        let job_id = self
+            .jobs
+            .allocate(session_id.clone(), reviewer.id.clone(), state.clone());
+        let shared = self
+            .jobs
+            .jobs
+            .get(&job_id)
+            .expect("job was installed")
+            .state
+            .clone();
+
+        if artifact_path.exists() {
+            validate_cached_review_artifact(
+                &artifact_path,
+                &cache_key,
+                &reviewer.id,
+                &replay_document_hash,
+            )?;
+            {
+                let mut state = shared.lock().expect("review job lock");
+                state.status = ReviewJobStatus::Completed;
+                state.cached = true;
+                state.processed_decisions = state.total_decisions;
+            }
+            return self.review_status(&job_id);
+        }
+
+        spawn_review_job(shared, replay, reviewer, checkpoint, artifact_path);
+        self.review_status(&job_id)
+    }
+
+    fn review_status(&self, job_id: &str) -> Result<String, String> {
+        let record = self
+            .jobs
+            .jobs
+            .get(job_id)
+            .ok_or_else(|| format!("unknown review job `{job_id}`"))?;
+        let state = record.state.lock().expect("review job lock");
+        serde_json::to_string(&serde_json::json!({
+            "id": record.id,
+            "session_id": record.session_id,
+            "reviewer_id": record.reviewer_id,
+            "status": state.status.as_str(),
+            "processed_decisions": state.processed_decisions,
+            "total_decisions": state.total_decisions,
+            "current_ply": state.current_ply,
+            "error": state.error,
+            "cached": state.cached,
+            "cache_key": state.cache_key,
+        }))
+        .map_err(|error| error.to_string())
+    }
+
+    fn review_bundle(&self, job_id: &str) -> Result<String, String> {
+        let record = self
+            .jobs
+            .jobs
+            .get(job_id)
+            .ok_or_else(|| format!("unknown review job `{job_id}`"))?;
+        let state = record.state.lock().expect("review job lock");
+        if state.status != ReviewJobStatus::Completed {
+            return Err(format!(
+                "review job `{job_id}` is not completed (status: {})",
+                state.status.as_str()
+            ));
+        }
+        let path = state.artifact_path.clone();
+        let cache_key = state.cache_key.clone();
+        drop(state);
+        validate_cached_review_artifact(&path, &cache_key, &record.reviewer_id, "")?;
+        fs::read_to_string(&path).map_err(|error| format!("cannot read review artifact: {error}"))
+    }
+
+    fn recent_games(&self) -> Result<String, String> {
+        let dir = Path::new(HUMAN_PLAY_DIR);
+        let mut entries: Vec<serde_json::Value> = Vec::new();
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir).map_err(|error| error.to_string())? {
+                let entry = entry.map_err(|error| error.to_string())?;
+                let path = entry.path();
+                let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                    continue;
+                };
+                let Some(session_id) = name.strip_suffix(".replay.json") else {
+                    continue;
+                };
+                if !is_safe_component(session_id) {
+                    continue;
+                }
+                let Ok(replay) = read_replay_file(&path) else {
+                    entries.push(serde_json::json!({
+                        "session_id": session_id,
+                        "error": "unreadable replay",
+                    }));
+                    continue;
+                };
+                let verification = match verify_replay(&replay) {
+                    Ok(_) => "verified",
+                    Err(_) => "invalid",
+                };
+                let replay_document_hash = replay_document_hash_v1(&replay).ok();
+                let reviews_dir = dir.join(REVIEWS_DIR).join(session_id);
+                let available_reviews = replay_document_hash
+                    .as_deref()
+                    .map(|hash| {
+                        list_cached_reviewers(&reviews_dir, hash, &self.reviewer_registry.reviewers)
+                    })
+                    .unwrap_or_default();
+                let modified = fs::metadata(&path)
+                    .ok()
+                    .and_then(|meta| meta.modified().ok())
+                    .and_then(|time| {
+                        time.duration_since(std::time::UNIX_EPOCH)
+                            .ok()
+                            .map(|d| d.as_secs())
+                    });
+                let meta = read_human_meta(&dir.join(format!("{session_id}.meta.json")));
+                let opponent = meta.as_ref().and_then(|m| m.get("opponent")).cloned();
+                let human_seat = meta.as_ref().and_then(|m| m.get("human_seat")).cloned();
+                entries.push(serde_json::json!({
+                    "session_id": session_id,
+                    "opponent": opponent,
+                    "human_seat": human_seat,
+                    "scores": replay.result.scores,
+                    "winners": replay.result.winners,
+                    "player_count": replay.player_count,
+                    "timestamp": modified,
+                    "verification": verification,
+                    "available_reviews": available_reviews,
+                }));
+            }
+        }
+        entries.sort_by(|a, b| {
+            let ta = a["timestamp"].as_u64().unwrap_or(0);
+            let tb = b["timestamp"].as_u64().unwrap_or(0);
+            tb.cmp(&ta)
+        });
+        serde_json::to_string(&serde_json::json!({
+            "format": "effective-splendor-recent-games",
+            "version": 1,
+            "games": entries,
+        }))
+        .map_err(|error| error.to_string())
+    }
 }
 
 pub fn run_studio_host(args: &[String]) -> i32 {
@@ -701,6 +1047,255 @@ pub fn run_studio_host(args: &[String]) -> i32 {
             eprintln!("error: {error}");
             1
         }
+    }
+}
+
+fn sanitize_session_id(raw: &str) -> Result<String, String> {
+    if !is_safe_component(raw) {
+        return Err(format!("invalid session_id `{raw}`"));
+    }
+    Ok(raw.to_string())
+}
+
+fn is_safe_component(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 256
+        && value != "."
+        && value != ".."
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
+}
+
+fn reviewer_identity_from_entry(
+    entry: &splendor_analysis::ReviewerEntryV1,
+) -> Result<ReviewerIdentityV2, String> {
+    let checkpoint_hash = match &entry.default_config {
+        ReviewerConfigV2::NeuralIsmcts(config) => Some(config.expected_checkpoint_hash.clone()),
+        ReviewerConfigV2::RootDeterminization(_) => None,
+    };
+    Ok(ReviewerIdentityV2::new(
+        entry.id.clone(),
+        entry.display_name.clone(),
+        entry.competitive_status,
+        entry.result_kind,
+        entry.default_config.clone(),
+        checkpoint_hash,
+    ))
+}
+
+fn read_replay_file(path: &Path) -> Result<ReplayV1, String> {
+    read_json_file(path, 16 * 1024 * 1024, "replay")
+}
+
+fn read_checkpoint_file(path: &Path) -> Result<PolicyValueCheckpointV1, String> {
+    read_json_file(path, 64 * 1024 * 1024, "checkpoint")
+}
+
+fn resolve_checkpoint_path(path: &Path) -> Result<PathBuf, String> {
+    if path.is_absolute()
+        || path.components().any(|component| {
+            matches!(
+                component,
+                std::path::Component::ParentDir
+                    | std::path::Component::RootDir
+                    | std::path::Component::Prefix(_)
+            )
+        })
+    {
+        return Err("reviewer checkpoint_path must be a safe relative path".into());
+    }
+    let allowed_root = fs::canonicalize("local-artifacts")
+        .map_err(|error| format!("cannot resolve local-artifacts root: {error}"))?;
+    let resolved = fs::canonicalize(path)
+        .map_err(|error| format!("cannot resolve checkpoint {}: {error}", path.display()))?;
+    if !resolved.starts_with(&allowed_root) {
+        return Err(format!(
+            "reviewer checkpoint {} escapes local-artifacts",
+            path.display()
+        ));
+    }
+    Ok(resolved)
+}
+
+fn read_json_file<T: serde::de::DeserializeOwned>(
+    path: &Path,
+    max_bytes: u64,
+    label: &str,
+) -> Result<T, String> {
+    let file = File::open(path)
+        .map_err(|error| format!("cannot open {label} {}: {error}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(max_bytes + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("cannot read {label} {}: {error}", path.display()))?;
+    if bytes.len() as u64 > max_bytes {
+        return Err(format!("{label} exceeds {max_bytes} bytes"));
+    }
+    let text = String::from_utf8(bytes).map_err(|_| format!("{label} is not valid UTF-8"))?;
+    let mut deserializer = serde_json::Deserializer::from_str(&text);
+    let value =
+        T::deserialize(&mut deserializer).map_err(|error| format!("invalid {label}: {error}"))?;
+    deserializer
+        .end()
+        .map_err(|_| format!("trailing data after {label} JSON"))?;
+    Ok(value)
+}
+
+fn validate_cached_review_artifact(
+    path: &Path,
+    expected_cache_key: &str,
+    expected_reviewer_id: &str,
+    expected_replay_document_hash: &str,
+) -> Result<AnalysisTraceV2, String> {
+    let trace: AnalysisTraceV2 = read_json_file(path, 64 * 1024 * 1024, "review artifact")?;
+    trace.validate().map_err(|error| error.to_string())?;
+    if trace.reviewer.id != expected_reviewer_id {
+        return Err("cached review reviewer identity mismatch".into());
+    }
+    if !expected_replay_document_hash.is_empty()
+        && trace.replay_document_hash != expected_replay_document_hash
+    {
+        return Err("cached review replay identity mismatch".into());
+    }
+    let actual_cache_key = review_cache_key_v2(&trace.replay_document_hash, &trace.reviewer)
+        .map_err(|error| error.to_string())?;
+    if actual_cache_key != expected_cache_key {
+        return Err("cached review key mismatch".into());
+    }
+    Ok(trace)
+}
+
+fn list_cached_reviewers(
+    reviews_dir: &Path,
+    replay_document_hash: &str,
+    registry_reviewers: &[splendor_analysis::ReviewerEntryV1],
+) -> Vec<String> {
+    let mut available = Vec::new();
+    if let Ok(entries) = fs::read_dir(reviews_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            for registered in registry_reviewers {
+                let prefix = format!("{}-", registered.id);
+                let Some(cache_and_suffix) = name.strip_prefix(&prefix) else {
+                    continue;
+                };
+                let Some(cache_key) = cache_and_suffix.strip_suffix(".analysis.json") else {
+                    continue;
+                };
+                if cache_key.len() == 64
+                    && cache_key.bytes().all(|byte| byte.is_ascii_hexdigit())
+                    && validate_cached_review_artifact(
+                        &entry.path(),
+                        cache_key,
+                        &registered.id,
+                        replay_document_hash,
+                    )
+                    .is_ok()
+                    && !available.iter().any(|existing| existing == &registered.id)
+                {
+                    available.push(registered.id.clone());
+                }
+            }
+        }
+    }
+    available
+}
+
+fn read_human_meta(path: &Path) -> Option<serde_json::Value> {
+    let bytes = fs::read(path).ok()?;
+    serde_json::from_slice::<serde_json::Value>(&bytes).ok()
+}
+
+fn spawn_review_job(
+    shared: Arc<Mutex<ReviewJobState>>,
+    replay: ReplayV1,
+    reviewer: ReviewerIdentityV2,
+    checkpoint: Option<PolicyValueCheckpointV1>,
+    artifact_path: PathBuf,
+) {
+    std::thread::spawn(move || {
+        {
+            let mut state = shared.lock().expect("review job lock");
+            state.status = ReviewJobStatus::Running;
+        }
+        let result = run_review(
+            &replay,
+            &reviewer,
+            checkpoint.as_ref(),
+            &artifact_path,
+            &shared,
+        );
+        {
+            let mut state = shared.lock().expect("review job lock");
+            match result {
+                Ok(()) => {
+                    state.status = ReviewJobStatus::Completed;
+                    state.processed_decisions = state.total_decisions;
+                }
+                Err(error) => {
+                    state.status = ReviewJobStatus::Failed;
+                    state.error = Some(error);
+                }
+            }
+        }
+    });
+}
+
+fn run_review(
+    replay: &ReplayV1,
+    reviewer: &ReviewerIdentityV2,
+    checkpoint: Option<&PolicyValueCheckpointV1>,
+    artifact_path: &Path,
+    shared: &Arc<Mutex<ReviewJobState>>,
+) -> Result<(), String> {
+    let trace = {
+        let mut progress = |processed: u32, total: u32, ply: u32| {
+            if let Ok(mut state) = shared.lock() {
+                state.processed_decisions = processed;
+                state.total_decisions = total;
+                state.current_ply = ply;
+            }
+        };
+        match &reviewer.config {
+            ReviewerConfigV2::RootDeterminization(_) => {
+                analyze_replay_determinization_v2_with_progress(replay, reviewer, &mut progress)
+                    .map_err(|error| error.to_string())?
+            }
+            ReviewerConfigV2::NeuralIsmcts(_) => {
+                let checkpoint = checkpoint
+                    .ok_or_else(|| "missing checkpoint for neural reviewer".to_string())?;
+                analyze_replay_neural_v2_with_progress(replay, checkpoint, reviewer, &mut progress)
+                    .map_err(|error| error.to_string())?
+            }
+        }
+    };
+    let mut json = serde_json::to_string_pretty(&trace)
+        .map_err(|error| format!("serialize trace failed: {error}"))?;
+    json.push('\n');
+    if let Some(parent) = artifact_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("cannot create review directory: {error}"))?;
+    }
+    match crate::atomic_output::commit_single(artifact_path, &json) {
+        Ok(()) => Ok(()),
+        Err(_) if artifact_path.exists() => {
+            let cache_key = review_cache_key_v2(&trace.replay_document_hash, &trace.reviewer)
+                .map_err(|error| error.to_string())?;
+            let existing = validate_cached_review_artifact(
+                artifact_path,
+                &cache_key,
+                &trace.reviewer.id,
+                &trace.replay_document_hash,
+            )?;
+            if existing == trace {
+                Ok(())
+            } else {
+                Err("existing review artifact differs from generated trace".into())
+            }
+        }
+        Err(error) => Err(error.to_string()),
     }
 }
 
@@ -874,12 +1469,25 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
     let registry: RatingRegistryV1 = serde_json::from_slice(&bytes)
         .map_err(|error| format!("invalid Studio registry JSON: {error}"))?;
     registry.validate()?;
+    let reviewer_bytes = fs::read(&args.reviewer_registry).map_err(|error| {
+        format!(
+            "cannot read reviewer registry {}: {error}",
+            args.reviewer_registry.display()
+        )
+    })?;
+    let reviewer_registry: ReviewerRegistryV1 = serde_json::from_slice(&reviewer_bytes)
+        .map_err(|error| format!("invalid reviewer registry JSON: {error}"))?;
+    reviewer_registry
+        .validate()
+        .map_err(|error| error.to_string())?;
     let mut host = StudioHost {
         registry_path: args.registry,
         registry,
+        reviewer_registry,
         move_timeout_ms: args.move_timeout_ms,
         next_session_number: 1,
         session: None,
+        jobs: ReviewJobManager::default(),
     };
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port)).map_err(|error| {
         format!(
@@ -940,6 +1548,30 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
     if request.method == "OPTIONS" {
         return respond(&mut stream, 204, "application/json", "");
     }
+
+    match request.method.as_str() {
+        "GET" if request.path == "/reviewers" => {
+            return respond_result(&mut stream, host.reviewers_json());
+        }
+        "GET" if request.path == "/recent-games" => {
+            return respond_result(&mut stream, host.recent_games());
+        }
+        "GET" if request.path.starts_with("/reviews/") => {
+            let rest = &request.path["/reviews/".len()..];
+            if let Some(bare) = rest.strip_suffix("/bundle") {
+                return respond_result(&mut stream, host.review_bundle(bare));
+            }
+            return respond_result(&mut stream, host.review_status(rest));
+        }
+        "POST" if request.path == "/reviews" => {
+            let value: Result<ReviewRequest, String> = serde_json::from_slice(&request.body)
+                .map_err(|error| format!("invalid review JSON: {error}"));
+            let result = value.and_then(|request| host.create_review(request));
+            return respond_result(&mut stream, result);
+        }
+        _ => {}
+    }
+
     let result: Result<String, String> = match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/health") => Ok("{\"status\":\"ok\",\"mode\":\"studio_host\"}".into()),
         ("GET", "/agents") => host.agents_json(),
@@ -1106,6 +1738,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
 
 fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     let mut registry = None;
+    let mut reviewer_registry = None;
     let mut port = None;
     let mut move_timeout_ms = None;
     let mut index = 0;
@@ -1116,6 +1749,11 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
             .clone();
         match args[index].as_str() {
             "--registry" => set_once(&mut registry, PathBuf::from(value), "--registry")?,
+            "--reviewer-registry" => set_once(
+                &mut reviewer_registry,
+                PathBuf::from(value),
+                "--reviewer-registry",
+            )?,
             "--port" => set_once(&mut port, value, "--port")?,
             "--move-timeout-ms" => set_once(&mut move_timeout_ms, value, "--move-timeout-ms")?,
             other => return Err(format!("unknown argument `{other}`; {HOST_USAGE}")),
@@ -1138,6 +1776,8 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     }
     Ok(HostArgs {
         registry: registry.ok_or("missing --registry")?,
+        reviewer_registry: reviewer_registry
+            .unwrap_or_else(|| PathBuf::from("benchmarks/studio-reviewers.registry.json")),
         port,
         move_timeout_ms,
     })
@@ -1283,9 +1923,11 @@ mod tests {
         let host = StudioHost {
             registry_path: PathBuf::from("private/registry.json"),
             registry,
+            reviewer_registry: test_reviewer_registry(),
             move_timeout_ms: DEFAULT_MOVE_TIMEOUT_MS,
             next_session_number: 1,
             session: None,
+            jobs: ReviewJobManager::default(),
         };
         let value: serde_json::Value = serde_json::from_str(&host.agents_json().unwrap()).unwrap();
         assert_eq!(value["agents"][0]["id"], "gpu-agent");
@@ -1304,5 +1946,50 @@ mod tests {
         assert_eq!(catalog.nobles.len(), 10);
         assert_eq!(catalog.cards[0].id, CardId(0));
         assert!(catalog.cards.iter().all(|card| card.cost.len() == 5));
+    }
+
+    #[test]
+    fn review_session_ids_fail_closed_on_paths() {
+        assert_eq!(
+            sanitize_session_id("human-20260813_1").unwrap(),
+            "human-20260813_1"
+        );
+        for invalid in ["", ".", "..", "../game", "..\\game", "C:game", "game/name"] {
+            assert!(sanitize_session_id(invalid).is_err(), "accepted {invalid}");
+        }
+    }
+
+    fn test_reviewer_registry() -> ReviewerRegistryV1 {
+        ReviewerRegistryV1 {
+            format: "effective-splendor-studio-reviewers".into(),
+            version: 1,
+            registry_id: "test-reviewers".into(),
+            reviewers: vec![splendor_analysis::ReviewerEntryV1 {
+                id: "m07-determinization-champion".into(),
+                display_name: "M07 Determinization Champion".into(),
+                description: "test".into(),
+                competitive_status: splendor_analysis::ReviewerStatusV2::Champion,
+                result_kind: splendor_analysis::ReviewerResultKindV2::RootDeterminization,
+                is_default: true,
+                available_metrics: vec![
+                    "mean_utility".into(),
+                    "utility_gap".into(),
+                    "action_rank".into(),
+                ],
+                required_artifacts: vec![],
+                estimated_cost: "cpu".into(),
+                default_config: ReviewerConfigV2::RootDeterminization(
+                    RootDeterminizationConfigV1 {
+                        sample_seed: 20260810,
+                        sample_count: 4,
+                        continuation_search: SearchConfigV1 {
+                            max_depth_turns: 1,
+                            max_nodes: 2000,
+                        },
+                    },
+                ),
+                checkpoint_path: None,
+            }],
+        }
     }
 }
