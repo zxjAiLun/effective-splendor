@@ -28,6 +28,13 @@ Deterministic Splendor rules engine with strict **FullState / Observation** isol
 | `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / determinization review / arena tools |
 | `apps/replay-studio` | Local Replay + Rating Studio for board analysis, Elo leaderboard, one-click review, and head-to-head matrix |
 
+Agent-assisted project documentation follows the two-layer contract in
+[`AGENTS.md`](AGENTS.md): the local-only `handoff.md` records current project
+truth, while tracked `docs/mNN-*.md` files preserve each major round from
+initial design through iteration, evidence, and final decision. Reusable
+templates and status vocabulary live in
+[`docs/project-documentation-system.md`](docs/project-documentation-system.md).
+
 ## Quick start
 
 ```bash
