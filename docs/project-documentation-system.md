@@ -345,6 +345,9 @@ Avoid these documentation failures:
 
 ## Portable `AGENTS.md` rule
 
+For a completely project-independent, paste-ready global rule, use
+[`global-agent-documentation-rule.md`](global-agent-documentation-rule.md).
+
 Copy the root `AGENTS.md` from this repository into another project and change
 only the repository-specific subsection:
 

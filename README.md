@@ -34,6 +34,8 @@ truth, while tracked `docs/mNN-*.md` files preserve each major round from
 initial design through iteration, evidence, and final decision. Reusable
 templates and status vocabulary live in
 [`docs/project-documentation-system.md`](docs/project-documentation-system.md).
+The project-independent paste-ready global prompt is
+[`docs/global-agent-documentation-rule.md`](docs/global-agent-documentation-rule.md).
 
 ## Quick start
 
