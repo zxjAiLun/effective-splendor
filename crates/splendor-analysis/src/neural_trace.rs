@@ -1,13 +1,16 @@
 use splendor_catalog::{all_cards, all_nobles};
-use splendor_core::{observation_hash, visible_events, Audience, FullState, Ruleset};
+use splendor_core::{observation_hash, visible_events, Action, Audience, FullState, Ruleset};
 use splendor_learning::{model_checkpoint_hash_v1, PolicyValueCheckpointV1, PolicyValueModelV1};
 use splendor_neural_search::{analyze_player_view_neural_ismcts_v1, NeuralIsmctsConfigV1};
 use splendor_replay::{replay_document_hash_v1, verify_replay_trace, ReplayV1};
 use splendor_search::canonical_order;
 
+use crate::review_trace::build_catalog_v1;
 use crate::{
-    AnalysisCardV1, AnalysisCatalogV1, AnalysisError, AnalysisFrameV1, AnalysisNobleV1,
-    AnalysisTraceV1, RefereeRevealV1, ANALYSIS_TRACE_FORMAT, ANALYSIS_TRACE_VERSION,
+    AnalysisCardV1, AnalysisCatalogV1, AnalysisError, AnalysisFrameV1, AnalysisFrameV2,
+    AnalysisNobleV1, AnalysisTraceV1, AnalysisTraceV2, NeuralIsmctsReviewResultV2, RefereeRevealV1,
+    ReviewResultV2, ReviewerConfigV2, ReviewerIdentityV2, ReviewerResultKindV2,
+    ANALYSIS_TRACE_FORMAT, ANALYSIS_TRACE_VERSION, REVIEW_TRACE_VERSION,
 };
 
 pub fn analyze_replay_neural_v1(
@@ -85,11 +88,125 @@ pub fn analyze_replay_neural_v1(
     Ok(trace)
 }
 
-fn analyze_position(
+pub fn analyze_replay_neural_v2(
+    replay: &ReplayV1,
+    checkpoint: &PolicyValueCheckpointV1,
+    reviewer: &ReviewerIdentityV2,
+) -> Result<AnalysisTraceV2, AnalysisError> {
+    analyze_replay_neural_v2_with_progress(replay, checkpoint, reviewer, &mut |_, _, _| {})
+}
+
+pub fn analyze_replay_neural_v2_with_progress(
+    replay: &ReplayV1,
+    checkpoint: &PolicyValueCheckpointV1,
+    reviewer: &ReviewerIdentityV2,
+    progress: &mut dyn FnMut(u32, u32, u32),
+) -> Result<AnalysisTraceV2, AnalysisError> {
+    let ReviewerConfigV2::NeuralIsmcts(config) = &reviewer.config else {
+        return Err(AnalysisError::Reviewer(
+            "neural reviewer requires a neural-ismcts config".into(),
+        ));
+    };
+    if reviewer.result_kind != ReviewerResultKindV2::NeuralIsmcts {
+        return Err(AnalysisError::Reviewer(
+            "reviewer result kind is not neural_ismcts".into(),
+        ));
+    }
+    let checkpoint_hash = reviewer.checkpoint_hash.as_deref().ok_or_else(|| {
+        AnalysisError::Reviewer("neural reviewer requires a checkpoint hash".into())
+    })?;
+    config
+        .validate()
+        .map_err(|error| AnalysisError::Learning(error.to_string()))?;
+    let actual_hash = model_checkpoint_hash_v1(checkpoint)
+        .map_err(|error| AnalysisError::Learning(error.to_string()))?;
+    if actual_hash != checkpoint_hash {
+        return Err(AnalysisError::Learning(format!(
+            "checkpoint hash mismatch: expected {}, found {actual_hash}",
+            checkpoint_hash
+        )));
+    }
+    if config.expected_checkpoint_hash != checkpoint_hash {
+        return Err(AnalysisError::Reviewer(
+            "reviewer config checkpoint binding mismatch".into(),
+        ));
+    }
+    let model = PolicyValueModelV1::from_checkpoint(checkpoint.clone())
+        .map_err(|error| AnalysisError::Learning(error.to_string()))?;
+    let verified =
+        verify_replay_trace(replay).map_err(|error| AnalysisError::Replay(error.to_string()))?;
+    if verified.positions.len() != replay.steps.len() {
+        return Err(AnalysisError::Replay(
+            "verified trace length differs from replay".into(),
+        ));
+    }
+    let replay_document_hash = replay_document_hash_v1(replay)
+        .map_err(|error| AnalysisError::Replay(error.to_string()))?;
+
+    let total = verified.positions.len() as u32;
+    let mut frames = Vec::with_capacity(verified.positions.len());
+    for position in &verified.positions {
+        progress(position.ply, total, position.ply);
+        let raw = analyze_neural_position_raw(position, &model, config)?;
+        let recommended_matches_recorded = raw.neural_result.action == raw.recorded_action;
+        frames.push(AnalysisFrameV2 {
+            ply: raw.ply,
+            state_hash_before: raw.state_hash_before,
+            actor: raw.actor,
+            recorded_action: raw.recorded_action,
+            observation_hash: raw.observation_hash,
+            visible_event_count: raw.visible_event_count,
+            visible_history_hash: raw.visible_history_hash,
+            information_set_hash: raw.information_set_hash,
+            player_view: raw.player_view,
+            referee_reveal: raw.referee_reveal,
+            legal_actions: raw.legal_actions,
+            review_result: ReviewResultV2::NeuralIsmcts(NeuralIsmctsReviewResultV2 {
+                result: raw.neural_result,
+            }),
+            recommended_matches_recorded,
+        });
+    }
+
+    let trace = AnalysisTraceV2 {
+        format: ANALYSIS_TRACE_FORMAT.into(),
+        version: REVIEW_TRACE_VERSION,
+        engine_version: splendor_core::ENGINE_VERSION.into(),
+        catalog_version: splendor_core::CATALOG_VERSION.into(),
+        replay_version: replay.version,
+        replay_document_hash,
+        replay_final_state_hash: replay.final_state_hash.as_str().into(),
+        ruleset_fingerprint: replay.ruleset_fingerprint.as_str().into(),
+        player_count: replay.player_count,
+        result: replay.result.clone(),
+        reviewer: reviewer.clone(),
+        catalog: build_catalog_v1(),
+        frames,
+    };
+    trace.validate()?;
+    Ok(trace)
+}
+
+struct AnalyzedNeuralPosition {
+    ply: u32,
+    state_hash_before: String,
+    actor: splendor_core::PlayerId,
+    recorded_action: Action,
+    observation_hash: String,
+    visible_event_count: u32,
+    visible_history_hash: String,
+    information_set_hash: String,
+    player_view: splendor_core::Observation,
+    referee_reveal: RefereeRevealV1,
+    legal_actions: Vec<Action>,
+    neural_result: splendor_neural_search::NeuralIsmctsResultV1,
+}
+
+fn analyze_neural_position_raw(
     position: &splendor_replay::VerifiedReplayTraceStep,
     model: &PolicyValueModelV1,
     config: &NeuralIsmctsConfigV1,
-) -> Result<AnalysisFrameV1, AnalysisError> {
+) -> Result<AnalyzedNeuralPosition, AnalysisError> {
     bind_position(position)?;
     let actor = position.recorded_actor;
     let player_view = position.state.observation(actor);
@@ -123,7 +240,7 @@ fn analyze_position(
     }
     let visible_event_count =
         u32::try_from(visible_history.len()).map_err(|_| AnalysisError::ArithmeticOverflow)?;
-    Ok(AnalysisFrameV1 {
+    Ok(AnalyzedNeuralPosition {
         ply: position.ply,
         state_hash_before: position.state_hash.clone(),
         actor,
@@ -135,8 +252,30 @@ fn analyze_position(
         player_view,
         referee_reveal: referee_projection(&position.state),
         legal_actions,
-        recommended_matches_recorded: result.action == position.recorded_action,
         neural_result: result,
+    })
+}
+
+fn analyze_position(
+    position: &splendor_replay::VerifiedReplayTraceStep,
+    model: &PolicyValueModelV1,
+    config: &NeuralIsmctsConfigV1,
+) -> Result<AnalysisFrameV1, AnalysisError> {
+    let raw = analyze_neural_position_raw(position, model, config)?;
+    Ok(AnalysisFrameV1 {
+        ply: raw.ply,
+        state_hash_before: raw.state_hash_before,
+        actor: raw.actor,
+        recorded_action: raw.recorded_action,
+        observation_hash: raw.observation_hash,
+        visible_event_count: raw.visible_event_count,
+        visible_history_hash: raw.visible_history_hash,
+        information_set_hash: raw.information_set_hash,
+        player_view: raw.player_view,
+        referee_reveal: raw.referee_reveal,
+        legal_actions: raw.legal_actions,
+        recommended_matches_recorded: raw.neural_result.action == raw.recorded_action,
+        neural_result: raw.neural_result,
     })
 }
 
@@ -178,7 +317,10 @@ mod tests {
     use splendor_replay::record_random_game;
 
     use super::*;
-    use crate::analysis_trace_hash_v1;
+    use crate::{
+        analysis_trace_hash_v1, analysis_trace_hash_v2, ReviewResultV2, ReviewerStatusV2,
+        M13_REVIEWER_DISPLAY_NAME, M13_REVIEWER_ID,
+    };
 
     fn checkpoint() -> PolicyValueCheckpointV1 {
         let hidden = 4usize;
@@ -323,6 +465,53 @@ mod tests {
         assert!(matches!(
             bad_noble.validate(),
             Err(AnalysisError::InvalidTrace(message)) if message.contains("noble id out of range")
+        ));
+    }
+
+    fn neural_reviewer(checkpoint: &PolicyValueCheckpointV1) -> ReviewerIdentityV2 {
+        ReviewerIdentityV2::new(
+            M13_REVIEWER_ID,
+            M13_REVIEWER_DISPLAY_NAME,
+            ReviewerStatusV2::Rejected,
+            ReviewerResultKindV2::NeuralIsmcts,
+            ReviewerConfigV2::NeuralIsmcts(config(checkpoint)),
+            Some(config(checkpoint).expected_checkpoint_hash),
+        )
+    }
+
+    #[test]
+    fn neural_v2_trace_is_deterministic_and_rejected() {
+        let (_, replay) = record_random_game(2, 42, 9).unwrap();
+        let checkpoint = checkpoint();
+        let reviewer = neural_reviewer(&checkpoint);
+        let first = analyze_replay_neural_v2(&replay, &checkpoint, &reviewer).unwrap();
+        let second = analyze_replay_neural_v2(&replay, &checkpoint, &reviewer).unwrap();
+        assert_eq!(first, second);
+        first.validate().unwrap();
+        assert_eq!(first.frames.len(), replay.steps.len());
+        assert_eq!(
+            first.reviewer.competitive_status,
+            ReviewerStatusV2::Rejected
+        );
+        assert_eq!(
+            analysis_trace_hash_v2(&first).unwrap(),
+            analysis_trace_hash_v2(&second).unwrap()
+        );
+        assert!(first
+            .frames
+            .iter()
+            .all(|frame| matches!(frame.review_result, ReviewResultV2::NeuralIsmcts(_))));
+    }
+
+    #[test]
+    fn neural_v2_rejects_checkpoint_hash_mismatch() {
+        let (_, replay) = record_random_game(2, 1, 2).unwrap();
+        let checkpoint = checkpoint();
+        let mut reviewer = neural_reviewer(&checkpoint);
+        reviewer.checkpoint_hash = Some("00".repeat(32));
+        assert!(matches!(
+            analyze_replay_neural_v2(&replay, &checkpoint, &reviewer),
+            Err(AnalysisError::Learning(message)) if message.contains("checkpoint hash mismatch")
         ));
     }
 }

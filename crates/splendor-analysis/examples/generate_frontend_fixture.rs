@@ -1,7 +1,12 @@
 use std::fs;
 use std::path::PathBuf;
 
-use splendor_analysis::analyze_replay_neural_v1;
+use splendor_analysis::{
+    analyze_replay_determinization_v2, analyze_replay_neural_v1, ReviewerConfigV2,
+    ReviewerIdentityV2, ReviewerResultKindV2, ReviewerStatusV2, M07_REVIEWER_DISPLAY_NAME,
+    M07_REVIEWER_ID,
+};
+use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_learning::{
     model_checkpoint_hash_v1, ModelParametersV1, PolicyValueCheckpointV1, ACTION_FEATURES_V1,
     MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, POLICY_VALUE_CHECKPOINT_FORMAT,
@@ -9,6 +14,7 @@ use splendor_learning::{
 };
 use splendor_neural_search::NeuralIsmctsConfigV1;
 use splendor_replay::record_random_game;
+use splendor_search::SearchConfigV1;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let checkpoint = fixture_checkpoint();
@@ -29,6 +35,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output =
         workspace_root().join("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json");
     fs::create_dir_all(output.parent().expect("fixture path has parent"))?;
+    fs::write(&output, bytes)?;
+    println!("wrote {}", output.display());
+
+    let determinization_config = RootDeterminizationConfigV1 {
+        sample_seed: 20_260_810,
+        sample_count: 4,
+        continuation_search: SearchConfigV1 {
+            max_depth_turns: 1,
+            max_nodes: 2_000,
+        },
+    };
+    let reviewer = ReviewerIdentityV2::new(
+        M07_REVIEWER_ID,
+        M07_REVIEWER_DISPLAY_NAME,
+        ReviewerStatusV2::Champion,
+        ReviewerResultKindV2::RootDeterminization,
+        ReviewerConfigV2::RootDeterminization(determinization_config),
+        None,
+    );
+    let mut review = analyze_replay_determinization_v2(&replay, &reviewer)?;
+    review.frames.truncate(1);
+    review.validate()?;
+    let mut bytes = serde_json::to_vec_pretty(&review)?;
+    bytes.push(b'\n');
+    let output =
+        workspace_root().join("apps/replay-studio/tests/fixtures/rust-analysis-trace-v2-m07.json");
     fs::write(&output, bytes)?;
     println!("wrote {}", output.display());
     Ok(())

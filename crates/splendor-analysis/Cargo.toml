@@ -16,6 +16,7 @@ splendor-eval = { workspace = true }
 splendor-learning = { workspace = true }
 splendor-league = { workspace = true }
 splendor-neural-search = { workspace = true }
+splendor-imperfect-search = { workspace = true }
 splendor-search = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -155,7 +155,12 @@ impl AnalysisTraceV1 {
             {
                 return Err(invalid(format!("frame {index} observation hash mismatch")));
             }
-            validate_projection(frame, index)?;
+            validate_projection(
+                &frame.player_view,
+                &frame.referee_reveal,
+                frame.actor,
+                index,
+            )?;
             validate_action(frame.recorded_action, index)?;
             validate_action(frame.neural_result.action, index)?;
             for action in &frame.legal_actions {
@@ -217,36 +222,39 @@ impl AnalysisTraceV1 {
     }
 }
 
-fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), AnalysisError> {
+pub(crate) fn validate_projection(
+    player_view: &Observation,
+    referee_reveal: &RefereeRevealV1,
+    actor: PlayerId,
+    index: usize,
+) -> Result<(), AnalysisError> {
     let mut card_zones = vec![false; splendor_catalog::CARD_COUNT];
     for tier in 0..3 {
-        let count = u8::try_from(frame.referee_reveal.decks[tier].len())
+        let count = u8::try_from(referee_reveal.decks[tier].len())
             .map_err(|_| invalid(format!("frame {index} deck count overflow")))?;
-        if frame.player_view.public.deck_counts[tier] != count {
+        if player_view.public.deck_counts[tier] != count {
             return Err(invalid(format!("frame {index} deck projection mismatch")));
         }
-        for card in frame.player_view.public.market[tier].iter().flatten() {
+        for card in player_view.public.market[tier].iter().flatten() {
             validate_card(*card, Some(tier), index, &mut card_zones)?;
         }
-        for card in &frame.referee_reveal.decks[tier] {
+        for card in &referee_reveal.decks[tier] {
             validate_card(*card, Some(tier), index, &mut card_zones)?;
         }
     }
-    for noble in frame
-        .player_view
+    for noble in player_view
         .public
         .nobles
         .iter()
-        .chain(&frame.player_view.public.pending_nobles)
+        .chain(&player_view.public.pending_nobles)
     {
         validate_noble(*noble, index)?;
     }
-    for (seat, (public, full)) in frame
-        .player_view
+    for (seat, (public, full)) in player_view
         .public
         .players
         .iter()
-        .zip(&frame.referee_reveal.players)
+        .zip(&referee_reveal.players)
         .enumerate()
     {
         for card in &public.public_reserved {
@@ -287,14 +295,13 @@ fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), Anal
                 "frame {index} public player projection mismatch"
             )));
         }
-        if public.id == frame.actor {
-            if frame.player_view.private.reserved.len() != full.reserved.len() {
+        if public.id == actor {
+            if player_view.private.reserved.len() != full.reserved.len() {
                 return Err(invalid(format!(
                     "frame {index} private reserve count mismatch"
                 )));
             }
-            for (slot, (private, reserved)) in frame
-                .player_view
+            for (slot, (private, reserved)) in player_view
                 .private
                 .reserved
                 .iter()
@@ -320,7 +327,7 @@ fn validate_projection(frame: &AnalysisFrameV1, index: usize) -> Result<(), Anal
     Ok(())
 }
 
-fn validate_card(
+pub(crate) fn validate_card(
     card: CardId,
     expected_tier: Option<usize>,
     index: usize,
@@ -338,21 +345,21 @@ fn validate_card(
     Ok(())
 }
 
-fn validate_card_domain(card: CardId, index: usize) -> Result<(), AnalysisError> {
+pub(crate) fn validate_card_domain(card: CardId, index: usize) -> Result<(), AnalysisError> {
     if card.index() >= splendor_catalog::CARD_COUNT {
         return Err(invalid(format!("frame {index} card id out of range")));
     }
     Ok(())
 }
 
-fn validate_noble(noble: NobleId, index: usize) -> Result<(), AnalysisError> {
+pub(crate) fn validate_noble(noble: NobleId, index: usize) -> Result<(), AnalysisError> {
     if noble.index() >= splendor_catalog::NOBLE_COUNT {
         return Err(invalid(format!("frame {index} noble id out of range")));
     }
     Ok(())
 }
 
-fn validate_action(action: Action, index: usize) -> Result<(), AnalysisError> {
+pub(crate) fn validate_action(action: Action, index: usize) -> Result<(), AnalysisError> {
     match action {
         Action::BuyMarket { slot, .. } | Action::ReserveMarket { slot, .. } if slot >= 4 => {
             Err(invalid(format!("frame {index} market slot out of range")))
@@ -372,7 +379,7 @@ pub fn analysis_trace_hash_v1(trace: &AnalysisTraceV1) -> Result<String, Analysi
     Ok(hex::encode(hasher.finalize()))
 }
 
-fn validate_catalog(catalog: &AnalysisCatalogV1) -> Result<(), AnalysisError> {
+pub(crate) fn validate_catalog(catalog: &AnalysisCatalogV1) -> Result<(), AnalysisError> {
     let cards_match =
         catalog
             .cards
@@ -404,7 +411,7 @@ fn validate_catalog(catalog: &AnalysisCatalogV1) -> Result<(), AnalysisError> {
     Ok(())
 }
 
-fn validate_hash(label: &str, hash: &str) -> Result<(), AnalysisError> {
+pub(crate) fn validate_hash(label: &str, hash: &str) -> Result<(), AnalysisError> {
     if hash.len() != 64
         || !hash
             .bytes()
@@ -415,6 +422,6 @@ fn validate_hash(label: &str, hash: &str) -> Result<(), AnalysisError> {
     Ok(())
 }
 
-fn invalid(message: impl Into<String>) -> AnalysisError {
+pub(crate) fn invalid(message: impl Into<String>) -> AnalysisError {
     AnalysisError::InvalidTrace(message.into())
 }

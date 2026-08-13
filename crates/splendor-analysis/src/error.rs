@@ -8,6 +8,10 @@ pub enum AnalysisError {
     Learning(String),
     #[error("M13 neural analysis failed at ply {ply}: {message}")]
     Neural { ply: u32, message: String },
+    #[error("M07 determinization analysis failed: {0}")]
+    Determinization(String),
+    #[error("reviewer identity/registry failed: {0}")]
+    Reviewer(String),
     #[error("verified replay binding failed at ply {ply}: {message}")]
     Binding { ply: u32, message: String },
     #[error("analysis arithmetic overflow")]

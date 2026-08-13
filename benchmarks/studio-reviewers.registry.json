@@ -1,0 +1,45 @@
+{
+  "format": "effective-splendor-studio-reviewers",
+  "version": 1,
+  "registry_id": "studio-reviewers-2026-08-13",
+  "reviewers": [
+    {
+      "id": "m07-determinization-champion",
+      "display_name": "M07 Determinization Champion",
+      "description": "Frozen root-determinization baseline. Mean continuation utility per action, no priors or Q values.",
+      "competitive_status": "champion",
+      "result_kind": "root_determinization",
+      "is_default": true,
+      "available_metrics": ["mean_utility", "utility_gap", "action_rank"],
+      "required_artifacts": [],
+      "estimated_cost": "cpu",
+      "default_config": {
+        "kind": "root_determinization",
+        "sample_seed": 20260810,
+        "sample_count": 4,
+        "continuation_search": { "max_depth_turns": 1, "max_nodes": 2000 }
+      },
+      "checkpoint_path": null
+    },
+    {
+      "id": "m13-neural-ismcts",
+      "display_name": "M13 Neural ISMCTS",
+      "description": "Neural-guided information-set search. Model policy prior, visit share and value estimate only. Formal promotion rejected.",
+      "competitive_status": "rejected",
+      "result_kind": "neural_ismcts",
+      "is_default": false,
+      "available_metrics": ["prior", "visit", "q"],
+      "required_artifacts": ["checkpoint"],
+      "estimated_cost": "cpu",
+      "default_config": {
+        "kind": "neural_ismcts",
+        "sample_seed": 20260811,
+        "simulations": 64,
+        "max_depth_turns": 2,
+        "puct_exploration_milli": 1500,
+        "expected_checkpoint_hash": "108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462"
+      },
+      "checkpoint_path": "local-artifacts/m12-policy-value-v1-final/checkpoint.json"
+    }
+  ]
+}

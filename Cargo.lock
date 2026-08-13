@@ -482,6 +482,7 @@ dependencies = [
  "splendor-catalog",
  "splendor-core",
  "splendor-eval",
+ "splendor-imperfect-search",
  "splendor-league",
  "splendor-learning",
  "splendor-neural-search",

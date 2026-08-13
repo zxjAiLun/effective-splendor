@@ -5,7 +5,11 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::de::DeserializeOwned;
-use splendor_analysis::{analysis_trace_hash_v1, analyze_replay_neural_v1};
+use splendor_analysis::{
+    analysis_trace_hash_v1, analysis_trace_hash_v2, analyze_replay_neural_v1,
+    analyze_replay_neural_v2, ReviewerConfigV2, ReviewerIdentityV2, ReviewerResultKindV2,
+    ReviewerStatusV2, M13_REVIEWER_DISPLAY_NAME, M13_REVIEWER_ID,
+};
 use splendor_learning::PolicyValueCheckpointV1;
 use splendor_neural_search::NeuralIsmctsConfigV1;
 use splendor_replay::ReplayV1;
@@ -19,11 +23,12 @@ const USAGE: &str = "\
 Usage: splendor analyze-replay-neural --input <replay.json> \
 --checkpoint <checkpoint.json> --checkpoint-hash <sha256> \
 --sample-seed <u64> --simulations <u32> --max-depth-turns <u8> \
---puct-exploration-milli <u32> --out <analysis.json>
+--puct-exploration-milli <u32> --out <analysis.json> [--trace-version 1|2]
 
 Verify the complete ReplayV1 once, rerun the exact checkpoint-bound M13 search
-at every decision ply, and atomically publish an M14A AnalysisTraceV1 sidecar.
+at every decision ply, and atomically publish a replay-bound sidecar.
 The trace defaults to actor Observation and segregates referee reveal data.
+--trace-version 2 emits an AnalysisTraceV2 with the M13 reviewer identity.
 
 All eight flags are required exactly once. Existing outputs are never replaced.";
 
@@ -89,17 +94,48 @@ fn run_inner(args: &[String]) -> Result<(), CommandError> {
     let replay: ReplayV1 = read_json(&parsed.input, MAX_REPLAY_BYTES, "replay")?;
     let checkpoint: PolicyValueCheckpointV1 =
         read_json(&parsed.checkpoint, MAX_CHECKPOINT_BYTES, "checkpoint")?;
-    let trace = analyze_replay_neural_v1(&replay, &checkpoint, &parsed.config)
-        .map_err(|error| CommandError::Fatal(error.to_string()))?;
-    trace
-        .validate()
-        .map_err(|error| CommandError::Fatal(error.to_string()))?;
-    analysis_trace_hash_v1(&trace).map_err(|error| CommandError::Fatal(error.to_string()))?;
-    let mut json = serde_json::to_string_pretty(&trace)
-        .map_err(|error| CommandError::Fatal(format!("serialize trace failed: {error}")))?;
-    json.push('\n');
-    atomic_output::commit_single(&parsed.out, &json)
-        .map_err(|error| CommandError::Fatal(error.to_string()))
+
+    match parsed.trace_version {
+        1 => {
+            let trace = analyze_replay_neural_v1(&replay, &checkpoint, &parsed.config)
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            trace
+                .validate()
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            analysis_trace_hash_v1(&trace)
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            let mut json = serde_json::to_string_pretty(&trace)
+                .map_err(|error| CommandError::Fatal(format!("serialize trace failed: {error}")))?;
+            json.push('\n');
+            atomic_output::commit_single(&parsed.out, &json)
+                .map_err(|error| CommandError::Fatal(error.to_string()))
+        }
+        2 => {
+            let reviewer = ReviewerIdentityV2::new(
+                M13_REVIEWER_ID,
+                M13_REVIEWER_DISPLAY_NAME,
+                ReviewerStatusV2::Rejected,
+                ReviewerResultKindV2::NeuralIsmcts,
+                ReviewerConfigV2::NeuralIsmcts(parsed.config.clone()),
+                Some(parsed.config.expected_checkpoint_hash.clone()),
+            );
+            let trace = analyze_replay_neural_v2(&replay, &checkpoint, &reviewer)
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            trace
+                .validate()
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            analysis_trace_hash_v2(&trace)
+                .map_err(|error| CommandError::Fatal(error.to_string()))?;
+            let mut json = serde_json::to_string_pretty(&trace)
+                .map_err(|error| CommandError::Fatal(format!("serialize trace failed: {error}")))?;
+            json.push('\n');
+            atomic_output::commit_single(&parsed.out, &json)
+                .map_err(|error| CommandError::Fatal(error.to_string()))
+        }
+        other => Err(CommandError::Fatal(format!(
+            "unsupported --trace-version {other}; expected 1 or 2"
+        ))),
+    }
 }
 
 fn read_json<T: DeserializeOwned>(
@@ -137,6 +173,7 @@ struct Args {
     checkpoint: PathBuf,
     out: PathBuf,
     config: NeuralIsmctsConfigV1,
+    trace_version: u32,
 }
 
 fn parse_args(args: &[String]) -> Result<Args, String> {
@@ -148,6 +185,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     let mut max_depth_turns = None;
     let mut puct_exploration_milli = None;
     let mut out = None;
+    let mut trace_version = None;
     let mut index = 0usize;
     while index < args.len() {
         let flag = args[index].as_str();
@@ -159,6 +197,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
             "--simulations" => &mut simulations,
             "--max-depth-turns" => &mut max_depth_turns,
             "--puct-exploration-milli" => &mut puct_exploration_milli,
+            "--trace-version" => &mut trace_version,
             "--out" => &mut out,
             other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
@@ -181,6 +220,10 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     let max_depth_turns = parse_number(max_depth_turns, "--max-depth-turns", "u8")?;
     let puct_exploration_milli =
         parse_number(puct_exploration_milli, "--puct-exploration-milli", "u32")?;
+    let trace_version = match trace_version {
+        Some(value) => parse_number(Some(value), "--trace-version", "u32")?,
+        None => 1,
+    };
     Ok(Args {
         input: PathBuf::from(required(input, "--input")?),
         checkpoint: PathBuf::from(required(checkpoint, "--checkpoint")?),
@@ -192,6 +235,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
             puct_exploration_milli,
             expected_checkpoint_hash: required(checkpoint_hash, "--checkpoint-hash")?,
         },
+        trace_version,
     })
 }
 
