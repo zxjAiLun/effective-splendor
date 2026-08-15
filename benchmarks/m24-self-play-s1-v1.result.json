@@ -1,0 +1,75 @@
+{
+  "format": "effective-splendor-m24-s1-result",
+  "version": 1,
+  "status": "s1_collection_audit_and_training_complete",
+  "experiment_id": "m24-self-play-s1-v1",
+  "base_commit": "4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f",
+  "self_play": {
+    "config_file_sha256": "4a2ed142c1a4ec7c8710c6c38249942493fff1cbfe13193f6a64060efdc8945d",
+    "collector_config_hash": "523ef24f268b11711b4776e6266342435c6856f49a381ca441e2bbb87afb3a15",
+    "dataset_format": "effective-splendor-neural-self-play-v2",
+    "dataset_version": 2,
+    "dataset_file_sha256": "1a2344a8de838e5b1350965ffd88a57be63891f3cec71205e84d292076bcad8d",
+    "self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "base_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+    "search_config_identity": "neural-ismcts-s16-d1-c1500-v1",
+    "games": 128,
+    "examples": 7876,
+    "device": "cuda",
+    "verified_replays": 128
+  },
+  "diagnostics": {
+    "report_file_sha256": "42605979cbc721bcf23564c67be9289146faa609975c7269ae96c0546938565d",
+    "games_verified": 128,
+    "duplicate_game_seeds": 0,
+    "duplicate_observation_rate": 0.0,
+    "duplicate_information_set_rate": 0.0,
+    "plies_per_game": {
+      "min": 50,
+      "max": 76,
+      "mean": 61.53125
+    },
+    "winner_seat_counts": {
+      "seat_0": 72,
+      "seat_1": 56
+    },
+    "examples": 7876,
+    "diagnostics_file_sha256": "42605979cbc721bcf23564c67be9289146faa609975c7269ae96c0546938565d",
+    "duplicate_seeds": 0,
+    "validation_examples": 1953
+  },
+  "training": {
+    "config_file_sha256": "a2576ba24e4353e9649683daeeee553b600fbf85ee998ed90d27b78218877e00",
+    "training_report_file_sha256": "9df6355ee97e6de6d510039c1d797b4b50bcda592250fae839c9441fe6c6faae",
+    "device": "cuda",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch_version": "2.6.0+cu124",
+    "cuda_version": "12.4",
+    "deterministic_algorithms_enabled": true,
+    "best_epoch": 7,
+    "checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+    "checkpoint_file_sha256": "1eaf88a13bba816478c03edb8333e3fa754fe28ed3002d8c60504fc9ca2bc61c",
+    "validation": {
+      "examples": 1953,
+      "policy_cross_entropy": 1.2131885659432204,
+      "visit_top1": 0.9185867895545314,
+      "value_mse": 0.24513039903889786
+    },
+    "cuda_runtime_version": "12.4"
+  },
+  "gates": {
+    "G1_collection": "PASS",
+    "G2_audit": "PASS",
+    "G3_training": "PASS",
+    "G4_scale_decision": "NOT_YET_RUN",
+    "G5_continuation": "NOT_YET_RUN"
+  },
+  "interpretation": "M24-S1 establishes the 128-game diagnostic baseline. No promotion or Arena screen is claimed. m24-scale-gate-v1 must be frozen after S1 measurement noise is reviewed and before S2 is authorized.",
+  "artifact_policy": "self-play dataset, diagnostics, checkpoint, and training report remain ignored under local-artifacts/m24-self-play-s1-v1; only this compact tracked manifest and the two frozen tracked configs are checked in.",
+  "implementation_commit": "a797f131c25bffc49fd66abe212c63fc88c9305c",
+  "review": {
+    "source_review": "PENDING_GITHUB_PUSH_AND_INDEPENDENT_REVIEW",
+    "acceptance": "PENDING_INDEPENDENT_REVIEW",
+    "next_gate": "freeze_m24_scale_gate_v1_after_source_acceptance"
+  }
+}

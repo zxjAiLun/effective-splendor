@@ -4,6 +4,7 @@
 MILESTONE = M24
 STATUS = AUTHORIZED
 BASE_COMMIT = 4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f
+IMPLEMENTATION_COMMIT = a797f131c25bffc49fd66abe212c63fc88c9305c
 FINAL_COMMIT = <fill only after it exists>
 SCOPE = Build a provenance-bound, staged self-play data foundation for Entity Mixer and measure whether training scale alone improves learning before any architecture or search change.
 ```
@@ -267,11 +268,10 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 
 1. ~~Add SelfPlayDatasetV2 schema and collector fields with unit tests.~~ implemented.
 2. ~~Add the diagnostic command/report and an independent validator.~~ implemented.
-3. Run full workspace Rust tests and Clippy before marking implementation ready.
-4. Run M24-S1 collection on the user's CUDA machine using the frozen config.
-5. Freeze `expected_self_play_hash` into `benchmarks/m24-self-play-s1-v1.training.json`
-   before training, preserving the hyper-parameters above.
-6. Train M24-S1 and publish the diagnostic report and compact result manifest.
+3. ~~Run full workspace Rust tests and Clippy before marking implementation ready.~~ done.
+4. ~~Run M24-S1 collection on the user's CUDA machine using the frozen config.~~ done.
+5. ~~Freeze `expected_self_play_hash` into `benchmarks/m24-self-play-s1-v1.training.json` before training.~~ done.
+6. ~~Train M24-S1 and publish the diagnostic report and compact result manifest.~~ done.
 7. Review G1-G3 evidence; after S1 PASS, freeze `m24-scale-gate-v1` and only
    then authorize S2.
 
@@ -301,6 +301,21 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Outcome: implementation gate `PASS`; S1 is the next execution step.
 - Decision for next iteration: run M24-S1 collection and diagnostics on CUDA.
 
+### Iteration 3 — 2026-08-15
+
+- Change: installed project CUDA environment in ignored
+  `local-artifacts/m24-torch-cu124` (`torch 2.6.0+cu124`, CUDA 12.4 runtime
+  wheels, NVIDIA driver 580 / RTX 4060 Laptop GPU); validated v2 collector,
+  diagnostics, and self-play training end-to-end with small CUDA smokes.
+- Reason: current Linux workspace had no `python`/`torch`; formal S1 requires
+  CUDA without silent CPU fallback.
+- Evidence: full M24-S1 collection completed 128/128 games / 7,876 examples;
+  diagnostics verified 128/128 embedded replays with zero binding errors;
+  CUDA training completed in 63.3s and emitted the M24-S1 checkpoint.
+- Outcome: G1/G2/G3 `PASS`; M24-S1 baseline exists.
+- Decision for next iteration: review S1 diagnostics, freeze
+  `m24-scale-gate-v1`, then authorize S2.
+
 ## Final implementation
 
 - New strict CLI commands:
@@ -313,15 +328,49 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   `effective-splendor-self-play-diagnostics` report.
 - Python `self_play_train.py` accepts v1 and v2 datasets and records
   dataset version plus CUDA/determinism environment fields.
-- Formal S1 collection/training has not run.
+- Formal S1 collection, audit, and training have run; evidence is recorded in
+  `benchmarks/m24-self-play-s1-v1.result.json`.
 
 ## Validation and evidence
 
-<to be completed after S1 execution>
+```text
+implementation_commit = a797f131c25bffc49fd66abe212c63fc88c9305c
+base_commit           = 4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f
+
+command: ./target/debug/splendor collect-gpu-self-play-v2
+         --config benchmarks/m24-self-play-s1-v1.config.json
+         --out local-artifacts/m24-self-play-s1-v1/self-play.json
+result:  PASS; 128 games; 7,876 examples
+         self_play_hash b2284c6c...4053
+         dataset file SHA-256 1a2344a8...bcad8d
+
+command: ./target/debug/splendor diagnose-gpu-self-play-v2
+         --input local-artifacts/m24-self-play-s1-v1/self-play.json
+         --config benchmarks/m24-self-play-s1-v1.config.json
+         --out local-artifacts/m24-self-play-s1-v1/diagnostics.json
+result:  PASS; 128/128 games verified; zero duplicate seeds
+         duplicate observation rate 0.0
+         duplicate information-set rate 0.0
+
+command: python -m splendor_gpu.self_play_train ...
+result:  PASS; device cuda; RTX 4060 Laptop GPU; torch 2.6.0+cu124;
+         63.30s; best epoch 7
+         checkpoint semantic 1ae31dac...f0b8
+         checkpoint file SHA-256 1eaf88a1...2bc61c
+```
+
+Tracked identities: `benchmarks/m24-self-play-s1-v1.result.json` contains the
+full machine-verifiable manifest.
 
 ## Result and decision
 
-<to be completed after G1-G4>
+- G1 collection: `PASS`.
+- G2 audit: `PASS`.
+- G3 training: `PASS`.
+- G4 scale decision: not run. M24-S1 is the baseline only.
+- Decision: M24-S1 establishes the 128-game diagnostic baseline. No promotion,
+  Arena screen, or strength claim is made. S2 is not authorized until
+  `m24-scale-gate-v1` is frozen from this baseline. M25 is not authorized.
 
 ## Known limitations and non-claims
 
@@ -330,13 +379,11 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   teacher/bootstrap problem.
 - Offline learning-curve movement is not proof of Arena strength.
 - 128 games is the first non-smoke scale, not a promotion corpus.
-- The v2 collector/diagnostic implementation has unit and integration tests but
-  has not been exercised against a real GPU collector run yet.
+- M24-S1 diagnostics are observational; `m24-scale-gate-v1` is still unfrozen and no S2/S3 decision exists yet.
 
 ## Next authorized gate
 
-- Execute M24-S1 collection on the user's CUDA machine with the frozen config
-  and `device = cuda` (no silent CPU fallback), then run
-  `diagnose-gpu-self-play-v2` on the produced dataset.
-- On the same CUDA machine, run the `training/m17_gpu` pytest suite before
-  M24-S1 training.
+- Review the recorded M24-S1 diagnostics/measurement noise and freeze a
+  machine-checkable `m24-scale-gate-v1` (offline CE/NLL, visit top-1, Value
+  MSE, and a fresh multi-seed Arena screen) **before** authorizing S2.
+- Only after that gate file exists may M24-S2 collection start.
