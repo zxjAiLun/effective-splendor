@@ -1,0 +1,342 @@
+# M24 — Training Scale & Self-Play Dataset Foundation
+
+```ini
+MILESTONE = M24
+STATUS = AUTHORIZED
+BASE_COMMIT = 4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f
+FINAL_COMMIT = <fill only after it exists>
+SCOPE = Build a provenance-bound, staged self-play data foundation for Entity Mixer and measure whether training scale alone improves learning before any architecture or search change.
+```
+
+## Problem and evidence
+
+The current training mainline is:
+
+```text
+M17 Entity Mixer GPU Policy-Value
+ -> M18A neural-ISMCTS / AlphaZero-like self-play (2 games, 122 examples)
+ -> M22 scaled self-play (32 games, 1,992 examples)
+ -> 48-match multi-seed league: no measured improvement
+```
+
+The machine-verifiable strength evidence is unambiguous:
+
+```text
+M22 multi-seed league
+Heuristic  21-3  Elo 1778
+M07        15-9  Elo 1580
+M18A        6-18 Elo 1321
+M22         6-18 Elo 1321
+M22 vs M18A      4-4
+M22 vs M07       1-7
+M22 vs heuristic 1-7
+
+M19 internal championship (provisional)
+Heuristic  11-1  Elo 1908
+M07         8-4  Elo 1637
+M17         7-5  Elo 1567
+M18A        5-7  Elo 1429
+M13         2-10 Elo 1196
+M18B        2-10 Elo 1196
+```
+
+Two verified human replays against the currently strongest measured baseline
+(`heuristic-v1`) were won by the human 16-5 and 16-4 from both seats. Those
+two games are anecdotal, not a formal strength gate, but they agree with the
+project's formal conclusion: every trained checkpoint is still below a simple
+hand-written baseline.
+
+The largest uncertainty is therefore not infrastructure. It is:
+
+> Does the Entity Mixer + neural-ISMCTS AlphaZero-like pipeline learn playing
+> strength when data scale and data quality are sufficient?
+
+M22 used 1,992 examples. That is still a plumbing-test scale. This round
+freezes a staged scaling experiment before running it.
+
+## Objective and promotion target
+
+The training mainline now has one target:
+
+```text
+Produce the first neural checkpoint that beats M07 root determinization
+in a frozen multi-seed Arena promotion gate.
+```
+
+Notes on baselines:
+
+- M10/M13 gates already use `determinization-s4-d1-n2000-v1` as the frozen
+  search champion. M24 keeps that convention.
+- M09 and M19 show `heuristic-v1` currently measures stronger than M07. A
+  future neural candidate must also be screened against heuristic before any
+  external or product claim, but the first milestone target remains M07.
+
+M24 does **not** attempt promotion. It establishes the data foundation and
+scale learning curve needed before M25 warm-start v2 and M26 generation RL.
+
+## Initial design
+
+### Keep the architecture and search fixed
+
+```text
+Architecture       Entity Mixer Policy-Value, 949,060 parameters
+Policy target      normalized neural-ISMCTS root visit distribution
+Value target       terminal viewer-relative [self, opponent] outcome
+Search             player-view information set, hidden-state sampling, PUCT
+Device             CUDA (fail closed)
+```
+
+No Transformer, no new loss family, no PUCT/simulations/depth scaling in M24.
+
+### Staged corpus sizes
+
+All three stages collect self-play from the **same frozen M22 checkpoint**.
+The corpora are **nested**, not independent:
+
+```text
+M24-S1 = seeds 260001..260128               128 games
+M24-S2 = M24-S1 + 384 fresh seeds           512 games
+M24-S3 = M24-S2 + 1,536 fresh seeds         2,048 games
+```
+
+Each stage uses identical search/hyper-parameters except `self_play_id`,
+seed list, and the stage-specific training identity. S2 and S3 seed ranges are
+frozen only when those stages are authorized; the nesting rule above is frozen
+now. Comparing nested corpora means the only variable is added sample volume,
+not sample composition.
+
+Example counts are estimates; actual counts come from the dataset.
+
+### M24-S1 frozen collection config
+
+Tracked config: `benchmarks/m24-self-play-s1-v1.config.json`
+
+```text
+self_play_id          m24-self-play-s1-v1
+base checkpoint       M22 dc611f3d...98c04
+game seeds            260001..260128 (128 fresh seeds, no known reuse)
+action_seed           260018
+search_seed           26000018
+simulations           16
+max_depth_turns       1
+puct_exploration_milli 1500
+temperature_plies     24
+max_plies             512
+device                cuda
+```
+
+Frozen identities recorded before execution:
+
+```text
+config file SHA-256   4a2ed142c1a4ec7c8710c6c38249942493fff1cbfe13193f6a64060efdc8945d
+collector config_hash 523ef24f268b11711b4776e6266342435c6856f49a381ca441e2bbb87afb3a15
+```
+
+### M24-S1 training hyper-parameters (pre-registered)
+
+The training config file cannot be published until the self-play dataset hash
+exists, but the hyper-parameters are frozen now:
+
+```text
+training_id              m24-self-play-s1-v1
+model_id                 m24-entity-mixer-self-play-s1-v1
+base_checkpoint          M22 dc611f3d...98c04
+expected_self_play_hash  <fill from actual M24-S1 collection>
+device                   cuda
+seed                     260129
+batch_size               128
+epochs                   16
+learning_rate            1e-4
+weight_decay             1e-4
+value_loss_weight        0.5
+gradient_clip_norm       1.0
+validation_game_modulus  4
+validation_game_remainder 0
+```
+
+This isolates corpus size: M22 used the same search settings and training
+shape; M24-S1 changes only the game count and identities.
+
+### SelfPlayDatasetV2 provenance schema
+
+The v1 collector stays byte-for-byte frozen for M18A/M22 reproducibility. M24
+adds a second command that emits
+`effective-splendor-neural-self-play-v2` with this identity chain:
+
+```text
+SelfPlayGameSourceV2
+  game_index
+  game_seed
+  base_checkpoint_hash
+  collector_config_hash
+  search_config_identity
+  replay_document_hash
+  replay_final_state_hash
+  embedded verified ReplayV1
+  terminal result
+  first_example_index + example_count
+
+SelfPlayExampleV2
+  game_index / ply / actor
+  Observation
+  observation_hash
+  visible_history_hash
+  information_set_hash
+  legal_actions
+  search visit distribution (action_stats)
+  chosen_action
+  final scores / ranks
+  policy_target_visits (legal-action order)
+  value_target (viewer-relative [self, opponent])
+```
+
+`search_config_identity` is frozen as
+`neural-ismcts-s{simulations}-d{max_depth_turns}-c{puct_milli}-v1`.
+
+The diagnostic command re-verifies every embedded replay and every example
+from the replay trace, then reports:
+
+```text
+dataset/file hashes
+game count, seed uniqueness
+example count and plies-per-game distribution
+winner/seat balance
+legal-action-count distribution
+legal-action-type distribution
+chosen-action-type distribution
+policy-target entropy distribution
+search-visit entropy distribution
+duplicate observation rate
+duplicate information-set rate
+value-target distribution
+```
+
+A compact tracked result manifest is still published after the actual run,
+following the M12/M22 evidence pattern.
+
+## Scope and non-goals
+
+### In scope
+
+- M24-S1 collection and training under the frozen plan above.
+- SelfPlayDatasetV2 collector/schema and diagnostics.
+- Dataset audit and scale-progression decision.
+- Tracked milestone doc, configs, result manifest, and handoff updates.
+
+### Not in scope / not authorized
+
+- Architecture changes, Transformer experiments, or Entity Mixer v2.
+- Changing simulations, depth, PUCT, or temperature within M24.
+- M07 teacher-corpus generation (moved to M25).
+- Human-replay warm-up training (candidate data source, not part of M24-S1).
+- Rainbow/DQN scaling.
+- Promotion gate execution or champion changes.
+
+## Contracts and invariants
+
+- Agent decisions only read `Observation`, legal actions, and permitted public
+  history. `FullState` never enters the model or search evaluator.
+- Generated self-play datasets, checkpoints, and reports stay under ignored
+  `local-artifacts/`; only compact configs/result manifests are tracked.
+- Game seeds, action seeds, search seeds, and training seeds are frozen before
+  execution and are never changed after seeing results.
+- The M07 frozen baseline and all previous `REJECT`/`NOT PROMOTED` records
+  remain unchanged.
+- Offline CE, visit top-1, and Value MSE are diagnostic only. Only completed
+  Arena leagues and frozen promotion gates establish strength.
+
+## Acceptance and rejection gates
+
+| Gate | Evidence | Pass condition | Meaning |
+| --- | --- | --- | --- |
+| G1 S1 collection | `collect-gpu-self-play-v2` exit 0; v2 dataset under `local-artifacts/m24-self-play-s1-v1/` | 128/128 games collected, zero duplicate seeds, every embedded replay verifies, non-empty examples | S1 dataset is complete and provenance-bound |
+| G2 S1 audit | `diagnose-gpu-self-play-v2` report and unit/integration tests | report exists with every required metric and zero binding errors | Dataset is auditable |
+| G3 S1 training | training report and checkpoint | training runs to completion on CUDA; validation split non-empty; semantic checkpoint hash exists | S1 diagnostic checkpoint and baseline measurement noise exist |
+| G4 scale decision | S1 and S2 diagnostic learning curves | S2 is authorized after S1 PASS; `m24-scale-gate-v1` is frozen **after** S1 measurement noise is known and **before** S2 runs | S2 is the first actual scale test |
+| G5 continuation | recorded G4 decision in this doc and handoff | S1→S2 movement PASS permits S3/M25; movement FAIL stops M24 scaling, requires data-quality diagnosis, and does **not** auto-authorize M25 | No architecture/search changes are smuggled into M24 |
+
+G4 is deliberately not assigned a numeric threshold today. Inventing one before
+S1's measurement noise is known would be gate shopping in reverse. The frozen
+`m24-scale-gate-v1` must be machine-checkable and cover offline Policy CE/NLL,
+visit top-1, Value MSE, and a fresh multi-seed Arena screen; offline movement
+alone never establishes strength.
+
+A `REJECT` at G4 is a valid scientific result, not an execution failure.
+
+## Implementation plan
+
+1. ~~Add SelfPlayDatasetV2 schema and collector fields with unit tests.~~ implemented.
+2. ~~Add the diagnostic command/report and an independent validator.~~ implemented.
+3. Run full workspace Rust tests and Clippy before marking implementation ready.
+4. Run M24-S1 collection on the user's CUDA machine using the frozen config.
+5. Freeze `expected_self_play_hash` into `benchmarks/m24-self-play-s1-v1.training.json`
+   before training, preserving the hyper-parameters above.
+6. Train M24-S1 and publish the diagnostic report and compact result manifest.
+7. Review G1-G3 evidence; after S1 PASS, freeze `m24-scale-gate-v1` and only
+   then authorize S2.
+
+## Iteration log
+
+### Iteration 1 — 2026-08-15
+
+- Change: authored M24 milestone, froze M24-S1 collection config and pre-registered training hyper-parameters.
+- Reason: current main has no M24 config; training mainline is re-centered on data scale.
+- Evidence: repository state at `4ee8852`; M22/M19 tracked result files.
+- Outcome: M24 `AUTHORIZED`; S1 config created; no dataset/training has run yet.
+- Decision for next iteration: implement SelfPlayDatasetV2 and diagnostics before running S1.
+
+### Iteration 2 — 2026-08-15
+
+- Change: implemented `collect-gpu-self-play-v2` and
+  `diagnose-gpu-self-play-v2`; extended `self_play_train.py` to accept v2;
+  added Rust unit/integration tests and Python contract tests.
+- Reason: G1/G2 require a verifiable dataset before S1 can run.
+- Evidence: `cargo test --workspace -- --skip shutdown_reaps_child` passes
+  with zero failures; `shutdown_reaps_child` is an unrelated Linux-only
+  kill-by-signal process-test failure and is not part of M24.
+  `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all
+  --check`, and diff checks pass. Python files syntax-checked (Torch
+  unavailable in this Linux workspace, so full pytest remains a Windows/CUDA
+  step).
+- Outcome: implementation gate `PASS`; S1 is the next execution step.
+- Decision for next iteration: run M24-S1 collection and diagnostics on CUDA.
+
+## Final implementation
+
+- New strict CLI commands:
+  - `collect-gpu-self-play-v2 --config <config.json> --out <dataset.json>`
+  - `diagnose-gpu-self-play-v2 --input <dataset.json> --config <config.json> --out <diagnostics.json>`
+- V2 dataset embeds verified ReplayV1 per game, source identity fields, and
+  per-example observation/visible-history/information-set hashes and targets.
+- Diagnostics re-verify every replay, rebuild every information set from the
+  verified trace, validate every target, and emit a
+  `effective-splendor-self-play-diagnostics` report.
+- Python `self_play_train.py` accepts v1 and v2 datasets and records
+  dataset version plus CUDA/determinism environment fields.
+- Formal S1 collection/training has not run.
+
+## Validation and evidence
+
+<to be completed after S1 execution>
+
+## Result and decision
+
+<to be completed after G1-G4>
+
+## Known limitations and non-claims
+
+- M24-S1/S2/S3 are still self-play generated by a weak M22 checkpoint; the
+  experiment measures scale effects, not teacher quality. M25 addresses the
+  teacher/bootstrap problem.
+- Offline learning-curve movement is not proof of Arena strength.
+- 128 games is the first non-smoke scale, not a promotion corpus.
+- The v2 collector/diagnostic implementation has unit and integration tests but
+  has not been exercised against a real GPU collector run yet.
+
+## Next authorized gate
+
+- Execute M24-S1 collection on the user's CUDA machine with the frozen config
+  and `device = cuda` (no silent CPU fallback), then run
+  `diagnose-gpu-self-play-v2` on the produced dataset.
+- On the same CUDA machine, run the `training/m17_gpu` pytest suite before
+  M24-S1 training.

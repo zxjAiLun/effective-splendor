@@ -9,7 +9,7 @@ from splendor_gpu.encoding import ACTION_FEATURES, ENTITY_FEATURES, ENTITY_SLOTS
 from splendor_gpu.model import ModelSpec, build_model
 from splendor_gpu.agent import load_model
 from splendor_gpu.train import checkpoint_semantic_hash
-from splendor_gpu.self_play_train import normalized_visits
+from splendor_gpu.self_play_train import normalized_visits, self_play_hash
 from splendor_gpu.rainbow import DistributionalQNetwork, RainbowSpec, project_distribution
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -83,6 +83,33 @@ def test_self_play_visit_targets_follow_legal_action_order():
         "action_stats": [{"action": take, "visits": 3}, {"action": passed, "visits": 1}],
     })
     assert torch.allclose(target, torch.tensor([0.25, 0.75]))
+
+
+def test_self_play_hash_domain_follows_dataset_version():
+    payload = {"format": "effective-splendor-neural-self-play-v2", "version": 2, "self_play_id": "unit"}
+    assert self_play_hash(payload) == self_play_hash(payload)
+    legacy = {"format": "effective-splendor-neural-self-play", "version": 1, "self_play_id": "unit"}
+    assert self_play_hash(payload) != self_play_hash(legacy)
+
+
+def test_v2_policy_target_visits_are_explicit_and_must_match_action_stats():
+    take = {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": None}
+    passed = {"type": "pass"}
+    target = normalized_visits({
+        "legal_actions": [passed, take],
+        "action_stats": [
+            {"action": passed, "visits": 3},
+            {"action": take, "visits": 1},
+        ],
+        "policy_target_visits": [3, 1],
+    })
+    assert torch.allclose(target, torch.tensor([0.75, 0.25]))
+    with pytest.raises(ValueError, match="policy_target_visits"):
+        normalized_visits({
+            "legal_actions": [passed, take],
+            "action_stats": [{"action": passed, "visits": 3}, {"action": take, "visits": 1}],
+            "policy_target_visits": [0, 1],
+        })
 
 
 def test_c51_projection_is_normalized_and_terminal_reward_is_exact():

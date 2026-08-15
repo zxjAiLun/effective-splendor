@@ -24,24 +24,24 @@ const HASH_DOMAIN: &[u8] = b"effective-splendor-neural-self-play-v1\0";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct SelfPlayConfigV1 {
-    format: String,
-    version: u32,
-    self_play_id: String,
-    python: PathBuf,
-    module_root: PathBuf,
-    checkpoint: PathBuf,
-    checkpoint_hash: String,
-    catalog: PathBuf,
-    device: String,
-    game_seeds: Vec<u64>,
-    action_seed: u64,
-    search_seed: u64,
-    simulations: u32,
-    max_depth_turns: u8,
-    puct_exploration_milli: u32,
-    temperature_plies: u32,
-    max_plies: u32,
+pub(crate) struct SelfPlayConfigV1 {
+    pub(crate) format: String,
+    pub(crate) version: u32,
+    pub(crate) self_play_id: String,
+    pub(crate) python: PathBuf,
+    pub(crate) module_root: PathBuf,
+    pub(crate) checkpoint: PathBuf,
+    pub(crate) checkpoint_hash: String,
+    pub(crate) catalog: PathBuf,
+    pub(crate) device: String,
+    pub(crate) game_seeds: Vec<u64>,
+    pub(crate) action_seed: u64,
+    pub(crate) search_seed: u64,
+    pub(crate) simulations: u32,
+    pub(crate) max_depth_turns: u8,
+    pub(crate) puct_exploration_milli: u32,
+    pub(crate) temperature_plies: u32,
+    pub(crate) max_plies: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,7 +225,7 @@ fn collect(args: &[String]) -> Result<(PathBuf, String, usize, usize), String> {
     Ok((out_path, hash, dataset.games.len(), dataset.examples.len()))
 }
 
-fn sample_visits(
+pub(crate) fn sample_visits(
     stats: &[NeuralIsmctsActionStatsV1],
     rng: &mut SmallRng,
 ) -> Result<Action, String> {
@@ -268,7 +268,7 @@ fn parse_args(args: &[String]) -> Result<(PathBuf, PathBuf), String> {
     ))
 }
 
-fn validate_config(config: &SelfPlayConfigV1) -> Result<(), String> {
+pub(crate) fn validate_config(config: &SelfPlayConfigV1) -> Result<(), String> {
     if config.format != "effective-splendor-neural-self-play-config" || config.version != 1 {
         return Err("unsupported self-play config format/version".into());
     }
@@ -298,7 +298,7 @@ fn validate_config(config: &SelfPlayConfigV1) -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
-fn hash_bytes(domain: &[u8], bytes: &[u8]) -> String {
+pub(crate) fn hash_bytes(domain: &[u8], bytes: &[u8]) -> String {
     let mut digest = Sha256::new();
     digest.update(domain);
     digest.update(bytes);

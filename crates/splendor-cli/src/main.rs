@@ -17,6 +17,7 @@ mod m18a_command;
 mod promotion_command;
 mod rating_command;
 mod search_command;
+mod self_play_v2_command;
 mod teacher_target_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -112,6 +113,12 @@ fn main() {
         Some("collect-gpu-self-play") => {
             std::process::exit(m18a_command::run_collect_gpu_self_play(&argv[2..]))
         }
+        Some("collect-gpu-self-play-v2") => std::process::exit(
+            self_play_v2_command::run_collect_gpu_self_play_v2(&argv[2..]),
+        ),
+        Some("diagnose-gpu-self-play-v2") => std::process::exit(
+            self_play_v2_command::run_diagnose_gpu_self_play_v2(&argv[2..]),
+        ),
         Some("human-play-server") => {
             std::process::exit(human_play_command::run_human_play_server(&argv[2..]))
         }
