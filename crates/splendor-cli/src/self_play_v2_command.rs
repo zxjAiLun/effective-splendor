@@ -29,6 +29,7 @@ use splendor_neural_search::{
 };
 use splendor_replay::{
     replay_document_hash_v1, verify_replay, verify_replay_trace, ReplayRecorder, ReplayV1,
+    SUPPORTED_RULESET_ID,
 };
 use splendor_search::canonical_order;
 
@@ -453,6 +454,21 @@ fn audit_dataset(
     if dataset.games.len() != config.game_seeds.len() {
         return Err("dataset game count does not match config game_seeds".into());
     }
+    if dataset.engine_version != ENGINE_VERSION {
+        return Err(format!(
+            "dataset engine_version `{}` does not match `{ENGINE_VERSION}`",
+            dataset.engine_version
+        ));
+    }
+    if dataset.ruleset != SUPPORTED_RULESET_ID {
+        return Err(format!(
+            "dataset ruleset `{}` does not match `{SUPPORTED_RULESET_ID}`",
+            dataset.ruleset
+        ));
+    }
+    if dataset.ruleset_fingerprint != ruleset_fingerprint(&Ruleset::base_v1()).to_string() {
+        return Err("dataset ruleset_fingerprint does not match frozen base ruleset".into());
+    }
     if dataset.games.len()
         != dataset
             .games
@@ -509,6 +525,30 @@ fn audit_dataset(
             return Err(format!("game {game_index}: example range overruns dataset"));
         }
 
+        if game.replay.seed != game.game_seed {
+            return Err(format!(
+                "game {game_index}: replay.seed {} does not match game_seed {}",
+                game.replay.seed, game.game_seed
+            ));
+        }
+        if game.replay.player_count != 2 {
+            return Err(format!(
+                "game {game_index}: replay.player_count {} is not 1v1",
+                game.replay.player_count
+            ));
+        }
+        if game.replay.engine_version != dataset.engine_version {
+            return Err(format!(
+                "game {game_index}: replay engine_version does not match dataset"
+            ));
+        }
+        if game.replay.ruleset.id != dataset.ruleset
+            || game.replay.ruleset_fingerprint.as_str() != dataset.ruleset_fingerprint
+        {
+            return Err(format!(
+                "game {game_index}: replay ruleset identity does not match dataset"
+            ));
+        }
         let verified = verify_replay(&game.replay)
             .map_err(|error| format!("game {game_index}: replay verification failed: {error}"))?;
         if verified.steps != game.example_count
@@ -562,6 +602,7 @@ fn audit_dataset(
                 position.recorded_actor,
                 position.recorded_action,
                 &position.state,
+                config.simulations,
                 example,
             )?;
             *chosen_action_type_counts
@@ -629,6 +670,7 @@ fn validate_example(
     replay_actor: PlayerId,
     replay_action: Action,
     state: &splendor_core::FullState,
+    expected_simulations: u32,
     example: &SelfPlayExampleV2,
 ) -> Result<(), String> {
     if example.game_index as usize != game_index {
@@ -694,7 +736,7 @@ fn validate_example(
             example.ply
         ));
     }
-    validate_action_stats(game_index, example)?;
+    validate_action_stats(game_index, expected_simulations, example)?;
     let expected_value = viewer_relative_value_target(example.actor, &example.final_ranks)?;
     if example.value_target != expected_value {
         return Err(format!(
@@ -705,7 +747,11 @@ fn validate_example(
     Ok(())
 }
 
-fn validate_action_stats(game_index: usize, example: &SelfPlayExampleV2) -> Result<(), String> {
+fn validate_action_stats(
+    game_index: usize,
+    expected_simulations: u32,
+    example: &SelfPlayExampleV2,
+) -> Result<(), String> {
     if example.action_stats.len() != example.legal_actions.len() {
         return Err(format!(
             "game {game_index} ply {}: action_stats length mismatch",
@@ -720,6 +766,7 @@ fn validate_action_stats(game_index: usize, example: &SelfPlayExampleV2) -> Resu
             example.ply
         ));
     }
+    let mut total_visits: u64 = 0u64;
     for stats in &example.action_stats {
         if stats.prior_micros > 1_000_000 {
             return Err(format!(
@@ -733,12 +780,30 @@ fn validate_action_stats(game_index: usize, example: &SelfPlayExampleV2) -> Resu
                 example.ply
             ));
         }
+        total_visits = total_visits
+            .checked_add(u64::from(stats.visits))
+            .ok_or_else(|| format!("game {game_index} ply {}: visit sum overflow", example.ply))?;
+        let visit_budget = u64::from(stats.visits)
+            .checked_mul(1_000_000)
+            .ok_or_else(|| {
+                format!(
+                    "game {game_index} ply {}: visit budget overflow",
+                    example.ply
+                )
+            })?;
+        for value in &stats.value_sum_by_player {
+            if *value > visit_budget {
+                return Err(format!(
+                    "game {game_index} ply {}: value {} exceeds visits*1e6 {}",
+                    example.ply, value, visit_budget
+                ));
+            }
+        }
     }
-    let total_visits: u32 = example.action_stats.iter().map(|s| s.visits).sum();
-    if total_visits == 0 {
+    if total_visits != u64::from(expected_simulations) {
         return Err(format!(
-            "game {game_index} ply {}: zero root visits",
-            example.ply
+            "game {game_index} ply {}: visit sum {} does not match frozen simulations {}",
+            example.ply, total_visits, expected_simulations
         ));
     }
     if example.policy_target_visits.len() != example.legal_actions.len() {
@@ -955,8 +1020,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn audit_accepts_a_minimal_valid_v2_dataset_and_reports_metrics() {
+    fn minimal_fixture() -> (SelfPlayConfigV1, String, String, SelfPlayDatasetV2) {
         let checkpoint_hash = "11".repeat(32);
         let config = SelfPlayConfigV1 {
             format: "effective-splendor-neural-self-play-config".into(),
@@ -971,7 +1035,7 @@ mod tests {
             game_seeds: vec![42],
             action_seed: 1,
             search_seed: 2,
-            simulations: 8,
+            simulations: 16,
             max_depth_turns: 1,
             puct_exploration_milli: 1_500,
             temperature_plies: 10,
@@ -994,10 +1058,13 @@ mod tests {
             let legal_actions = canonical_order(&position.state.legal_actions());
             let action_stats = legal_actions
                 .iter()
-                .map(|action| NeuralIsmctsActionStatsV1 {
+                .enumerate()
+                .map(|(index, action)| NeuralIsmctsActionStatsV1 {
                     action: *action,
                     prior_micros: 1_000_000 / legal_actions.len() as u32,
-                    visits: 1,
+                    // Frozen search budget in this fixture: all root visits
+                    // must sum to exactly 16 simulations.
+                    visits: if index == 0 { 16 } else { 0 },
                     value_sum_by_player: vec![0, 0],
                 })
                 .collect::<Vec<_>>();
@@ -1054,21 +1121,89 @@ mod tests {
             games: vec![game],
             examples,
         };
-        let report = audit_dataset(
-            &dataset,
-            &config,
-            &config_hash,
-            &identity,
+        (config, config_hash, identity, dataset)
+    }
+
+    fn audit_fixture(
+        config: &SelfPlayConfigV1,
+        config_hash: &str,
+        identity: &str,
+        dataset: &SelfPlayDatasetV2,
+    ) -> Result<DiagnosticsReportV1, String> {
+        audit_dataset(
+            dataset,
+            config,
+            config_hash,
+            identity,
             "d".repeat(64),
             "c".repeat(64),
             "unit-v2-diagnostics-v1".into(),
         )
-        .unwrap();
+    }
+
+    #[test]
+    fn audit_accepts_a_minimal_valid_v2_dataset_and_reports_metrics() {
+        let (config, config_hash, identity, dataset) = minimal_fixture();
+        let report = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap();
         assert_eq!(report.games, 1);
         assert_eq!(report.plies_per_game.count, 1);
         assert_eq!(report.examples, report.plies_per_game.max as u64);
         assert_eq!(report.games_verified, 1);
         assert_eq!(report.duplicate_game_seeds, 0);
         assert!(report.policy_entropy.count > 0);
+    }
+
+    #[test]
+    fn audit_rejects_replay_seed_mismatch_with_game_source() {
+        let (mut config, config_hash, identity, mut dataset) = minimal_fixture();
+        // Keep the frozen config and game source consistent at 43, but leave
+        // the embedded ReplayV1 seed at 42. Only the new replay.seed binding
+        // can catch this provenance break.
+        config.game_seeds = vec![43];
+        dataset.games[0].game_seed = 43;
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("replay.seed"), "{error}");
+    }
+
+    #[test]
+    fn audit_rejects_replay_engine_and_ruleset_identity_mismatch() {
+        let (config, config_hash, identity, mut dataset) = minimal_fixture();
+        dataset.games[0].replay.ruleset.id = "tampered-ruleset".into();
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("ruleset identity"), "{error}");
+    }
+
+    #[test]
+    fn audit_rejects_visit_sum_below_frozen_simulations() {
+        let (config, config_hash, identity, mut dataset) = minimal_fixture();
+        dataset.examples[0].action_stats[0].visits = 15;
+        dataset.examples[0].policy_target_visits[0] = 15;
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("visit sum 15"), "{error}");
+    }
+
+    #[test]
+    fn audit_rejects_visit_sum_above_frozen_simulations() {
+        let (config, config_hash, identity, mut dataset) = minimal_fixture();
+        dataset.examples[0].action_stats[0].visits = 17;
+        dataset.examples[0].policy_target_visits[0] = 17;
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("visit sum 17"), "{error}");
+    }
+
+    #[test]
+    fn audit_rejects_value_exceeding_visits_times_one_million() {
+        let (config, config_hash, identity, mut dataset) = minimal_fixture();
+        dataset.examples[0].action_stats[0].value_sum_by_player[0] = 16_000_001;
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("visits*1e6"), "{error}");
+    }
+
+    #[test]
+    fn audit_rejects_tampered_dataset_engine_identity() {
+        let (config, config_hash, identity, mut dataset) = minimal_fixture();
+        dataset.engine_version = "tampered-engine".into();
+        let error = audit_fixture(&config, &config_hash, &identity, &dataset).unwrap_err();
+        assert!(error.contains("engine_version"), "{error}");
     }
 }

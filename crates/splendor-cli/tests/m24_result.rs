@@ -1,9 +1,21 @@
 use std::fs;
 
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    hex::encode(Sha256::digest(bytes))
+}
+
+fn collector_config_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"effective-splendor-self-play-config-v1\0");
+    hasher.update(bytes);
+    hex::encode(hasher.finalize())
 }
 
 #[test]
@@ -26,6 +38,24 @@ fn m24_s1_result_is_complete_and_does_not_claim_promotion() {
         "4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f"
     );
     assert_eq!(result["review"]["acceptance"], "PENDING_INDEPENDENT_REVIEW");
+
+    let collection_config =
+        fs::read(root.join("benchmarks/m24-self-play-s1-v1.config.json")).unwrap();
+    assert_eq!(
+        result["self_play"]["config_file_sha256"],
+        sha256_hex(&collection_config)
+    );
+    assert_eq!(
+        result["self_play"]["collector_config_hash"],
+        collector_config_hash(&collection_config)
+    );
+    let training_config =
+        fs::read(root.join("benchmarks/m24-self-play-s1-v1.training.json")).unwrap();
+    assert_eq!(
+        result["training"]["config_file_sha256"],
+        sha256_hex(&training_config)
+    );
+
     assert_eq!(result["self_play"]["games"], 128);
     assert_eq!(result["self_play"]["examples"], 7876);
     assert_eq!(
