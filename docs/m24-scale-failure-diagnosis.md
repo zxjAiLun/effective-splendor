@@ -1,6 +1,6 @@
 # M24.5 Scale-Failure Diagnosis
 
-Status: `AUTHORIZED` (Repair 1)
+Status: `AUTHORIZED` (Repair 2)
 Parent: `M24 Training Scale Foundation` — `COMPLETE / NEGATIVE RESULT`
 Diagnosis config: `benchmarks/m24-scale-failure-diagnosis-v1.json`
 
@@ -49,6 +49,13 @@ Compare S1-128 vs S2-fresh-384:
 - value target distribution
 - duplicate observation / information-set rates
 - whether S2-fresh adds novel positions or mostly repeats the M22 self-play distribution
+
+Key metric:
+
+```text
+cross_information_set_overlap =
+  fraction of S2-fresh information sets already present in S1 reference
+```
 
 ### B. Shared-reference model behavior
 
@@ -101,23 +108,43 @@ Selection:
 ```text
 sample_size   = 512
 per_source    = 256
+canonical_stratum_key = [phase, action_type, legal_bin]
+```
 
-quota_rule:
-  allocate 256 per source across phase x action_type x legal_bin
-  base quota = floor(256 * stratum_count / source_count)
-  remainder by descending fractional remainder, then ascending stratum key
-  every non-empty stratum gets at least 1
-  if over 256, trim from largest-quota stratum using ascending deterministic key
+Quota algorithm:
 
-deterministic_selector:
-  key       = sha256(diagnosis_id || information_set_hash)
-  encoding  = UTF-8 concatenation
-  order     = ascending
-  within stratum select first quota entries
+```text
+stratum_count = eligible examples in that stratum within the source
+source_count  = total eligible examples in that source
 
-output:
-  local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json
-  semantic hash recorded after selection
+base_quota = floor(per_source_size * stratum_count / source_count)
+remainders allocated by descending fractional remainder,
+then ascending canonical stratum key
+
+every non-empty stratum gets at least 1
+
+trim_loop:
+  while total_quota > per_source_size:
+    choose stratum by:
+      1. current quota descending
+      2. canonical stratum key ascending
+    decrement that stratum by 1
+```
+
+Deterministic selector:
+
+```text
+key       = sha256(diagnosis_id || information_set_hash)
+encoding  = UTF-8 concatenation
+order     = ascending
+within stratum select first quota entries
+```
+
+Output:
+
+```text
+local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json
+semantic hash recorded after selection
 ```
 
 ### D. Strength attribution
@@ -130,17 +157,23 @@ D1: existing-evidence attribution
 D2: mandatory fixed-model search-budget sensitivity
 
 ```text
-checkpoints        = S1, S2
-comparison pairs   = S2 vs S1, S2 vs M07, S1 vs M07,
-                     S2 vs heuristic, S1 vs heuristic
-sim_budgets        = [16, 32, 64]
-seeds              = 300001..300008
-seat_rotations     = 2
-max_depth_turns    = 1
-PUCT               = 1500
-catalog            = apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json
-device             = cuda
-timeouts           = 5000 / 10000 / 2000
+derived_from_plans:
+  benchmarks/m24-s2-vs-s1-v1.plan.json
+  benchmarks/m24-s2-vs-m07-v1.plan.json
+  benchmarks/m24-s1-vs-m07-v1.plan.json
+  benchmarks/m24-s2-vs-heuristic-v1.plan.json
+  benchmarks/m24-s1-vs-heuristic-v1.plan.json
+
+allowed_mutations ONLY:
+  1. game_seeds: 300001..300032 -> 300001..300008
+  2. neural agents --simulations -> one of {16, 32, 64}
+  3. evaluation_id: append -sim{sim}
+
+forbidden:
+  all other fields must remain identical:
+  sample_seed, checkpoint identity, M07 search config,
+  heuristic identity, python/module root, catalog,
+  PUCT/depth, timeouts, seat rotations
 ```
 
 Rescue criterion:
@@ -157,16 +190,54 @@ search_sensitivity_evidence =
   OR search_rescue_condition
 ```
 
+## Derived booleans
+
+```text
+A_redundancy_evidence =
+  cross_information_set_overlap >= 0.70
+
+B_shared_ref_improvement =
+  policy_ce_improvement_bps >= 50
+  OR value_mse_improvement_bps >= 50
+
+C_m07_no_improvement =
+  top1_agreement_delta <= 0.005
+  AND rank_correlation_delta <= 0.01
+  AND disagreement_rate_delta >= -0.005
+
+D2_rescue =
+  anchor_delta_m07(64) >= -200
+
+D2_sensitivity =
+  anchor_delta_m07(64) - anchor_delta_m07(16) >= 100
+  OR D2_rescue
+
+D2_monotonic =
+  delta16 <= delta32 <= delta64
+  AND delta64 - delta16 >= 50
+
+teacher_drift =
+  A_redundancy_evidence
+  AND C_m07_no_improvement
+  AND NOT D2_rescue
+
+representation_capacity_evidence =
+  B_shared_ref_improvement
+  AND NOT A_redundancy_evidence
+  AND C_m07_no_improvement
+  AND NOT D2_rescue
+```
+
 ## Decision Gate D24.5
 
 Precedence: if more than one branch matches, decision is `INCONCLUSIVE`.
 
-| Branch | Required evidence | Action |
+| Branch | Predicate | Action |
 | --- | --- | --- |
-| Teacher/bootstrap problem | A shows S2-fresh largely redundant; C shows M07 disagreement not improved/worsened; D2 rescue false | M25 strong GPU warm-start v2 with M07 teacher corpus |
-| Search bottleneck | D2 sensitivity true; rescue true or monotonic improvement across 16/32/64 | M27A fixed-model search-budget scaling |
-| Representation/capacity bottleneck | B shows S2 improves on train-like shared-reference metrics but fails on M07-disagreement slices; teacher-drift false; D2 rescue false | Targeted M28 preparation |
-| Inconclusive | Conflicting evidence, insufficient coverage, or no branch satisfies all predicates | One additional frozen diagnostic, not another 2048-game brute-force run |
+| Teacher/bootstrap problem | `A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue` | M25 strong GPU warm-start v2 with M07 teacher corpus |
+| Search bottleneck | `D2_sensitivity OR D2_monotonic` | M27A fixed-model search-budget scaling |
+| Representation/capacity bottleneck | `representation_capacity_evidence` | Targeted M28 preparation |
+| Inconclusive | `NOT (teacher OR search OR representation) OR multiple branches true` | One additional frozen diagnostic, not another 2048-game brute-force run |
 
 M26 generation chaining is not authorized before a strong teacher exists.
 

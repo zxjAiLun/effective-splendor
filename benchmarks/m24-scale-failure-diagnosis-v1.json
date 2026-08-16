@@ -2,7 +2,7 @@
   "format": "effective-splendor-m24-scale-failure-diagnosis",
   "version": 1,
   "diagnosis_id": "m24-scale-failure-diagnosis-v1",
-  "revision": "repair-1",
+  "revision": "repair-2",
   "status": "AUTHORIZED",
   "parent_milestone": "M24",
   "parent_result": "G4=FAIL / G5=STOP / M24-S2 final evidence ACCEPTED",
@@ -27,7 +27,11 @@
         "Compare S1-128 vs S2-fresh-384 distributions: game length, legal-action counts, chosen action types, policy entropy, visit entropy, value targets, duplicate observation/information-set rates.",
         "Measure whether S2-fresh examples are near-duplicates of the S1/M22 self-play distribution or add new strategic contexts.",
         "Compare S1 vs S2 first-128 nested overlap as a sanity check."
-      ]
+      ],
+      "metrics": {
+        "cross_information_set_overlap": "fraction of S2-fresh information sets already present in S1 reference",
+        "novel_information_set_fraction": "1 - cross_information_set_overlap"
+      }
     },
     {
       "id": "B",
@@ -42,6 +46,11 @@
         "dataset_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
         "validation_rule": "game_index % 4 == 0",
         "examples": 1953
+      },
+      "metrics": {
+        "policy_ce_improvement_bps": "relative improvement from S1 to S2 on fixed reference",
+        "value_mse_improvement_bps": "relative improvement from S1 to S2 on fixed reference",
+        "top1_delta": "absolute S2 - S1 top-1 on fixed reference"
       }
     },
     {
@@ -83,18 +92,39 @@
         ],
         "sample_size": 512,
         "per_source_size": 256,
-        "quota_rule": "Within each source, allocate 256 slots across phase x action_type x legal_bin strata. Base quota = floor(256 * stratum_count / source_count). Remainders are allocated by descending fractional remainder, then by ascending stratum key. Every non-empty stratum receives at least 1; if this exceeds 256, trim from the largest-quota stratum using ascending deterministic key until total is 256.",
+        "canonical_stratum_key": [
+          "phase",
+          "action_type",
+          "legal_bin"
+        ],
+        "quota_algorithm": {
+          "stratum_count": "number of eligible examples in that stratum within the source",
+          "source_count": "total eligible examples in that source",
+          "base_quota": "floor(per_source_size * stratum_count / source_count)",
+          "remainder_allocation": "descending fractional remainder, then ascending canonical stratum key",
+          "minimum_per_nonempty_stratum": 1,
+          "trim_loop": {
+            "while": "total_quota > per_source_size",
+            "choose_stratum": "1. current quota descending; 2. canonical stratum key ascending",
+            "decrement": "reduce chosen stratum quota by 1"
+          }
+        },
         "deterministic_selector": {
           "key": "sha256(diagnosis_id || information_set_hash)",
           "encoding": "UTF-8 concatenation of diagnosis_id and information_set_hash",
           "order": "ascending",
           "within_stratum": "select first quota entries"
         },
-        "sparse_stratum_rule": "Non-empty strata with computed quota 0 receive at least 1; reduction is applied to the stratum with the largest quota, using ascending deterministic key order to choose removed entries.",
+        "sparse_stratum_rule": "Non-empty strata with computed quota 0 receive at least 1; the trim loop resolves any resulting over-allocation deterministically.",
         "output": {
           "path": "local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json",
           "semantic_hash": "sha256 of canonical JSON output, to be recorded after selection"
         }
+      },
+      "metrics": {
+        "top1_agreement": "fraction of positions where model top-1 action equals M07 top-1 action",
+        "rank_correlation": "average rank correlation between model policy ranking and M07 root ranking",
+        "disagreement_rate": "1 - top1_agreement"
       },
       "methods": [
         "Run M07 root analysis on the frozen stratified position set.",
@@ -113,9 +143,12 @@
       ],
       "d2_search_sensitivity": {
         "mandatory": true,
-        "checkpoints": [
-          "s1_checkpoint",
-          "s2_checkpoint"
+        "derived_from_plans": [
+          "benchmarks/m24-s2-vs-s1-v1.plan.json",
+          "benchmarks/m24-s2-vs-m07-v1.plan.json",
+          "benchmarks/m24-s1-vs-m07-v1.plan.json",
+          "benchmarks/m24-s2-vs-heuristic-v1.plan.json",
+          "benchmarks/m24-s1-vs-heuristic-v1.plan.json"
         ],
         "comparison_pairs": [
           "S2 vs S1",
@@ -124,6 +157,15 @@
           "S2 vs heuristic",
           "S1 vs heuristic"
         ],
+        "allowed_mutations": [
+          "game_seeds: 300001..300032 -> 300001..300008",
+          "neural agents --simulations -> one of {16, 32, 64}",
+          "evaluation_id: append deterministic budget-specific suffix -sim{sim}"
+        ],
+        "forbidden_mutations": [
+          "All other fields must remain byte/semantic identical to the accepted source plan: sample_seed, checkpoint identity, M07 search config, heuristic identity, python/module root, catalog, PUCT/depth, timeouts, seat rotations."
+        ],
+        "evaluation_id_suffix_rule": "{base_evaluation_id}-sim{sim}",
         "sim_budgets": [
           16,
           32,
@@ -156,43 +198,57 @@
       }
     }
   ],
+  "derived_booleans": {
+    "A_redundancy_evidence": {
+      "definition": "cross_information_set_overlap >= 0.70",
+      "source_metric": "fraction of S2-fresh information sets already present in S1 reference"
+    },
+    "B_shared_ref_improvement": {
+      "definition": "policy_ce_improvement_bps >= 50 OR value_mse_improvement_bps >= 50",
+      "source": "B metrics on fixed S1 reference subset"
+    },
+    "C_m07_no_improvement": {
+      "definition": "top1_agreement_delta <= 0.005 AND rank_correlation_delta <= 0.01 AND disagreement_rate_delta >= -0.005",
+      "delta_meaning": "S2 value minus S1 value on C selected positions"
+    },
+    "D2_rescue": {
+      "definition": "anchor_delta_m07_bps(64) >= -200"
+    },
+    "D2_sensitivity": {
+      "definition": "anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 100 OR D2_rescue"
+    },
+    "D2_monotonic": {
+      "definition": "anchor_delta_m07_bps(16) <= anchor_delta_m07_bps(32) <= anchor_delta_m07_bps(64) AND anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 50"
+    },
+    "teacher_drift": {
+      "definition": "A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue"
+    },
+    "representation_capacity_evidence": {
+      "definition": "B_shared_ref_improvement AND NOT A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue"
+    }
+  },
   "decision_gate": {
     "id": "D24.5",
-    "precedence": "If more than one branch matches its required predicates, the decision is INCONCLUSIVE.",
-    "evidence_matrix": [
+    "precedence": "If more than one branch matches its predicate, the decision is INCONCLUSIVE.",
+    "branches": [
       {
         "branch": "teacher/bootstrap problem",
-        "required_evidence": [
-          "A shows S2-fresh is largely redundant with S1/M22 self-play distribution",
-          "C shows M07 disagreement does not improve or worsens",
-          "D2 search_rescue_condition is false"
-        ],
+        "predicate": "A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue",
         "action": "M25 strong GPU warm-start v2 with M07 teacher corpus"
       },
       {
         "branch": "search bottleneck",
-        "required_evidence": [
-          "D2 search_sensitivity_evidence is true",
-          "search_rescue_condition is true or monotonic improvement across 16/32/64"
-        ],
+        "predicate": "D2_sensitivity OR D2_monotonic",
         "action": "M27A fixed-model search-budget scaling"
       },
       {
         "branch": "representation/capacity bottleneck",
-        "required_evidence": [
-          "B shows S2 improves on train-like shared-reference metrics but fails on M07-disagreement slices",
-          "teacher-drift condition is false",
-          "D2 search_rescue_condition is false"
-        ],
+        "predicate": "representation_capacity_evidence",
         "action": "targeted M28 preparation"
       },
       {
         "branch": "inconclusive",
-        "required_evidence": [
-          "Conflicting evidence across branches",
-          "Insufficient coverage in A/B/C/D",
-          "No single branch satisfies all required predicates"
-        ],
+        "predicate": "NOT (teacher OR search OR representation) OR multiple branches true",
         "action": "one additional frozen diagnostic, not another 2048-game brute-force run"
       }
     ]

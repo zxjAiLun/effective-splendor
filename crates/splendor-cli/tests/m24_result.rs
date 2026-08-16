@@ -442,7 +442,7 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     assert_eq!(config["version"], 1);
     assert_eq!(config["diagnosis_id"], "m24-scale-failure-diagnosis-v1");
-    assert_eq!(config["revision"], "repair-1");
+    assert_eq!(config["revision"], "repair-2");
     assert_eq!(config["status"], "AUTHORIZED");
     assert_eq!(config["no_new_training"], true);
     assert_eq!(config["no_new_collection"], true);
@@ -486,19 +486,56 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     assert_eq!(b["reference_subset"]["examples"], 1953);
 
-    // C position-selection contract is frozen.
+    // C position-selection contract is frozen, including deterministic quota trim.
     let c = &analyses[2];
     let selection = &c["position_selection"];
     assert_eq!(selection["sample_size"], 512);
     assert_eq!(selection["per_source_size"], 256);
     assert_eq!(selection["source_populations"].as_array().unwrap().len(), 2);
     assert_eq!(selection["legal_action_bins"].as_array().unwrap().len(), 4);
+    assert_eq!(
+        selection["canonical_stratum_key"],
+        serde_json::json!(["phase", "action_type", "legal_bin"])
+    );
+    let quota = &selection["quota_algorithm"];
+    assert_eq!(
+        quota["stratum_count"],
+        "number of eligible examples in that stratum within the source"
+    );
+    assert_eq!(
+        quota["source_count"],
+        "total eligible examples in that source"
+    );
+    assert!(quota["base_quota"]
+        .as_str()
+        .unwrap()
+        .contains("floor(per_source_size"));
+    let trim = &quota["trim_loop"];
+    assert!(trim["choose_stratum"]
+        .as_str()
+        .unwrap()
+        .contains("current quota descending"));
+    assert!(trim["choose_stratum"]
+        .as_str()
+        .unwrap()
+        .contains("canonical stratum key ascending"));
     assert_eq!(selection["deterministic_selector"]["order"], "ascending");
+    assert!(selection["deterministic_selector"]["key"]
+        .as_str()
+        .unwrap()
+        .contains("information_set_hash"));
 
-    // D2 search sensitivity is mandatory and exact.
+    // D2 search sensitivity is mandatory, derived from accepted M24 plans, and exact.
     let d = &analyses[3];
     let d2 = &d["d2_search_sensitivity"];
     assert_eq!(d2["mandatory"], true);
+    assert_eq!(d2["derived_from_plans"].as_array().unwrap().len(), 5);
+    assert_eq!(d2["allowed_mutations"].as_array().unwrap().len(), 3);
+    assert_eq!(d2["forbidden_mutations"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        d2["evaluation_id_suffix_rule"],
+        "{base_evaluation_id}-sim{sim}"
+    );
     let budgets: Vec<u64> = d2["sim_budgets"]
         .as_array()
         .unwrap()
@@ -516,9 +553,34 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     assert_eq!(seeds[0], 300001);
     assert_eq!(seeds[7], 300008);
     assert_eq!(d2["comparison_pairs"].as_array().unwrap().len(), 5);
+    assert_eq!(d2["max_depth_turns"], 1);
+    assert_eq!(d2["puct_exploration_milli"], 1500);
+    assert_eq!(d2["device"], "cuda");
+    assert_eq!(d2["handshake_timeout_ms"], 5000);
+    assert_eq!(d2["move_timeout_ms"], 10000);
+    assert_eq!(d2["shutdown_grace_ms"], 2000);
 
-    // D24.5 evidence matrix and precedence are frozen.
+    // Derived booleans are explicit.
+    let derived = &config["derived_booleans"];
+    for key in [
+        "A_redundancy_evidence",
+        "B_shared_ref_improvement",
+        "C_m07_no_improvement",
+        "D2_rescue",
+        "D2_sensitivity",
+        "D2_monotonic",
+        "teacher_drift",
+        "representation_capacity_evidence",
+    ] {
+        assert!(
+            derived[key]["definition"].is_string(),
+            "derived boolean {key} must have a string definition"
+        );
+    }
+
+    // D24.5 branches and precedence are frozen.
     let gate = &config["decision_gate"];
+    assert_eq!(gate["id"], "D24.5");
     assert_eq!(
         gate["precedence"]
             .as_str()
@@ -526,7 +588,12 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
             .contains("INCONCLUSIVE"),
         true
     );
-    assert_eq!(gate["evidence_matrix"].as_array().unwrap().len(), 4);
+    let branches = gate["branches"].as_array().unwrap();
+    assert_eq!(branches.len(), 4);
+    for branch in branches {
+        assert!(branch["predicate"].as_str().unwrap().len() > 0);
+        assert!(branch["action"].as_str().unwrap().len() > 0);
+    }
 
     // Governance constraints are explicit.
     let constraints: Vec<&str> = config["constraints"]
@@ -546,7 +613,6 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
         .iter()
         .any(|c| c.contains("champion or promotion")));
 }
-
 #[test]
 fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     let root = root();
