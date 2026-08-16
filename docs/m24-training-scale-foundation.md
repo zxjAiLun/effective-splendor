@@ -316,6 +316,25 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Decision for next iteration: review S1 diagnostics, freeze
   `m24-scale-gate-v1`, then authorize S2.
 
+### Iteration 4 — 2026-08-15
+
+- Change: independent re-review of Commit C `dbe47ab` completed; the P1/P2
+  provenance fixes were confirmed against the hardened validator and
+  adversarial tests. M24-S1 is accepted as the first M24 scale baseline.
+- Reason: Commit C fixed P1-1 (replay seed binding), P1-2 (root visit sum and
+  value bounds), P2-1 (dataset top-level engine/ruleset identity), and P2-2
+  (result manifest hash recomputation). Re-running the hardened validator on
+  the original S1 dataset produced byte-identical diagnostics
+  (`42605979cbc721bcf23564c67be9289146faa609975c7269ae96c0546938565d`), so no
+  re-collection or retraining was required.
+- Evidence: `cargo test -p splendor-cli` passes, including the new adversarial
+  M24 provenance tests; Python `training/m17_gpu/tests` passes 13/13; tracked
+  result manifest now records `review.acceptance = ACCEPTED`.
+- Outcome: M24-S1 `ACCEPTED`; G1/G2/G3 remain `PASS`; G4 scale decision is
+  still `NOT_YET_RUN`.
+- Decision for next iteration: review S1 measurement noise and freeze
+  `m24-scale-gate-v1` before authorizing S2.
+
 ## Final implementation
 
 - New strict CLI commands:
@@ -336,6 +355,7 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 ```text
 implementation_commit = a797f131c25bffc49fd66abe212c63fc88c9305c
 base_commit           = 4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f
+repair_commit         = dbe47ab17a2b4a255109f6c0d60e68c89e426b9e
 
 command: ./target/debug/splendor collect-gpu-self-play-v2
          --config benchmarks/m24-self-play-s1-v1.config.json
@@ -368,9 +388,11 @@ full machine-verifiable manifest.
 - G2 audit: `PASS`.
 - G3 training: `PASS`.
 - G4 scale decision: not run. M24-S1 is the baseline only.
-- Decision: M24-S1 establishes the 128-game diagnostic baseline. No promotion,
-  Arena screen, or strength claim is made. S2 is not authorized until
-  `m24-scale-gate-v1` is frozen from this baseline. M25 is not authorized.
+- Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
+- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
+  promotion, Arena screen, or strength claim is made. S2 is not authorized
+  until `m24-scale-gate-v1` is frozen from this baseline. M25 is not
+  authorized.
 
 ## Known limitations and non-claims
 

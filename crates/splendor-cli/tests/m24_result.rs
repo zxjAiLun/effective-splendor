@@ -37,7 +37,11 @@ fn m24_s1_result_is_complete_and_does_not_claim_promotion() {
         result["base_commit"],
         "4ee8852c5ac7232c13e7f2ead1a25aaa4955ad3f"
     );
-    assert_eq!(result["review"]["acceptance"], "PENDING_INDEPENDENT_REVIEW");
+    assert_eq!(
+        result["review"]["source_review"],
+        "PASS_INDEPENDENT_REVIEW_OF_DBE47AB"
+    );
+    assert_eq!(result["review"]["acceptance"], "ACCEPTED");
 
     let collection_config =
         fs::read(root.join("benchmarks/m24-self-play-s1-v1.config.json")).unwrap();

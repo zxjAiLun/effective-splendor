@@ -68,8 +68,8 @@
   "artifact_policy": "self-play dataset, diagnostics, checkpoint, and training report remain ignored under local-artifacts/m24-self-play-s1-v1; only this compact tracked manifest and the two frozen tracked configs are checked in.",
   "implementation_commit": "a797f131c25bffc49fd66abe212c63fc88c9305c",
   "review": {
-    "source_review": "PENDING_GITHUB_PUSH_AND_INDEPENDENT_REVIEW",
-    "acceptance": "PENDING_INDEPENDENT_REVIEW",
-    "next_gate": "freeze_m24_scale_gate_v1_after_source_acceptance"
+    "source_review": "PASS_INDEPENDENT_REVIEW_OF_DBE47AB",
+    "acceptance": "ACCEPTED",
+    "next_gate": "freeze_m24_scale_gate_v1_after_acceptance"
   }
 }
