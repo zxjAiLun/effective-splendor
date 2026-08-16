@@ -73,20 +73,93 @@
     "G1_collection": "PASS",
     "G2_audit": "PASS",
     "G3_training": "PASS",
-    "G4_scale_decision": "NOT_YET_RUN",
-    "G5_continuation": "NOT_YET_RUN"
+    "G4_scale_decision": "FAIL",
+    "G5_continuation": "STOP"
   },
-  "interpretation": "M24-S2 establishes the 512-game scale experiment. Offline metrics are diagnostic only; G4 movement uses the frozen S1 reference subset and a future fresh multi-seed Arena screen. Arena screen is not authorized yet.",
+  "interpretation": "M24-S2 offline movement passed on the fixed S1 reference subset, but the fresh multi-seed Arena screen failed the M07 anchor regression threshold. G4 scale decision is FAIL: stop M24 scaling and do not auto-authorize S3/M25.",
   "artifact_policy": "self-play dataset, diagnostics, checkpoint, and training report remain ignored under local-artifacts/m24-self-play-s2-v1; only compact tracked configs and this result manifest are checked in.",
   "review": {
     "source_review": "PENDING_INDEPENDENT_REVIEW",
     "acceptance": "PENDING_INDEPENDENT_REVIEW",
-    "next_gate": "fixed_s1_reference_offline_eval_review_then_arena_materialization"
+    "next_gate": "stop_m24_scaling_no_s3_no_m25"
   },
   "arena_materialization": {
     "realized_manifest_path": "benchmarks/m24-s2-arena-screen-v1.realized.json",
     "realized_manifest_file_sha256": "a9036571300db9e923c1f0817f7e8b205ebb37039f28538008f05dc748e558ee",
     "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
     "materialization_validation": "PASS"
+  },
+  "competitive_movement": {
+    "screen_id": "m24-s2-arena-screen-v1",
+    "realized_manifest_path": "benchmarks/m24-s2-arena-screen-v1.realized.json",
+    "realized_manifest_file_sha256": "a9036571300db9e923c1f0817f7e8b205ebb37039f28538008f05dc748e558ee",
+    "pairs": [
+      {
+        "pair": "s2_vs_s1",
+        "plan_hash": "c0c23fb7d596bd2b0208762b920cab39cc94b3dfbd7e65654fd093fb5ab7eb40",
+        "wins": 30,
+        "ties": 1,
+        "losses": 33,
+        "matches": 64,
+        "aborted": 0,
+        "center_bps": 4765,
+        "lower_bps": 2599,
+        "pass": true
+      },
+      {
+        "pair": "s2_vs_m07",
+        "plan_hash": "e0f0c35e4d1bf7f1c358d039ca8f886f9b1b41e864a7678905e09cf21d49f491",
+        "wins": 15,
+        "ties": 0,
+        "losses": 49,
+        "matches": 64,
+        "aborted": 0,
+        "center_bps": 2343,
+        "lower_bps": 177,
+        "pass": null
+      },
+      {
+        "pair": "s1_vs_m07",
+        "plan_hash": "39d70ba68bdefc6f7acdf35c5a83e4d5542bc7dc2321879d9cebebdfb2a330b9",
+        "wins": 17,
+        "ties": 0,
+        "losses": 47,
+        "matches": 64,
+        "aborted": 0,
+        "center_bps": 2656,
+        "lower_bps": 490,
+        "pass": null
+      },
+      {
+        "pair": "s2_vs_heuristic",
+        "plan_hash": "f0d7a29b126fa1b08e4f67909cf6dd69e2ac79e07f8f63ce04433fd663619b84",
+        "wins": 9,
+        "ties": 0,
+        "losses": 55,
+        "matches": 64,
+        "aborted": 0,
+        "center_bps": 1406,
+        "lower_bps": 0,
+        "pass": null
+      },
+      {
+        "pair": "s1_vs_heuristic",
+        "plan_hash": "ed5ad81be2b30b4b5ead54bf90bbe456938b29819bcb7c4364f04a680687012d",
+        "wins": 3,
+        "ties": 0,
+        "losses": 61,
+        "matches": 64,
+        "aborted": 0,
+        "center_bps": 468,
+        "lower_bps": 0,
+        "pass": null
+      }
+    ],
+    "anchor_deltas_bps": {
+      "m07": -313,
+      "heuristic": 938
+    },
+    "verdict": "FAIL",
+    "fail_reason": "M07 anchor regression delta is -313 bps, below the frozen -200 bps threshold. S2 vs S1 primary lower bound passed (2599 bps >= 100 bps), but the competitive screen as a whole failed the anchor requirement."
   }
 }

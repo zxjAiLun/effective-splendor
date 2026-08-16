@@ -268,7 +268,8 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
     assert_eq!(result["gates"]["G1_collection"], "PASS");
     assert_eq!(result["gates"]["G2_audit"], "PASS");
     assert_eq!(result["gates"]["G3_training"], "PASS");
-    assert_eq!(result["gates"]["G4_scale_decision"], "NOT_YET_RUN");
+    assert_eq!(result["gates"]["G4_scale_decision"], "FAIL");
+    assert_eq!(result["gates"]["G5_continuation"], "STOP");
     assert_eq!(
         result["fixed_reference_offline_eval"]["validation_examples"],
         1953
@@ -337,6 +338,17 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
             result["training"]["checkpoint_hash"]
         );
     }
+
+    // Competitive Arena result must be recorded and fail the frozen anchor gate.
+    assert_eq!(result["competitive_movement"]["verdict"], "FAIL");
+    assert_eq!(
+        result["competitive_movement"]["anchor_deltas_bps"]["m07"],
+        -313
+    );
+    assert_eq!(
+        result["competitive_movement"]["anchor_deltas_bps"]["heuristic"],
+        938
+    );
 }
 
 #[test]

@@ -447,6 +447,17 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Decision for next iteration: execute the 5-pair competitive screen and compute G4 competitive movement.
 
 ## Final implementation
+### Iteration 13 — 2026-08-15
+
+- Change: executed the formal 5-pair M24-S2 Arena screen and computed G4 competitive movement.
+- Evidence:
+  - S2 vs S1: 64 matches, 30W/1T/33L, center 4765 bps, lower bound 2599 bps → primary lower-bound check PASS.
+  - Anchor deltas (center bps):
+    - M07: `-313` bps → below frozen `-200` bps threshold → FAIL
+    - heuristic: `+938` bps → PASS
+  - G4 competitive half: FAIL due M07 anchor regression.
+- Outcome: `G4_scale_decision = FAIL`; `G5_continuation = STOP`; M24 scaling stops; S3/M25 not authorized.
+- Decision for next iteration: record negative G4 result, preserve all evidence, do not auto-authorize further scaling.
 
 - New strict CLI commands:
   - `collect-gpu-self-play-v2 --config <config.json> --out <dataset.json>`
@@ -507,11 +518,12 @@ full machine-verifiable manifest.
 - G1 collection: `PASS` (S1 and S2).
 - G2 audit: `PASS` (S1 and S2).
 - G3 training: `PASS` (S1 and S2).
-- G4 scale decision: not run.
+- G4 scale decision: `FAIL`.
+- G5 continuation: `STOP`.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
 - Scale gate: `benchmarks/m24-scale-gate-v1.json` `ACCEPTED` / `FROZEN`.
 - S2 result: `benchmarks/m24-self-play-s2-v1.result.json` `FROZEN`.
-- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. M24-S2 512-game collection, diagnostics, and training are complete. No promotion or Arena strength claim is made. Arena screen is not yet authorized; M25 is not authorized.
+- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. M24-S2 collection, diagnostics, training, and Arena screen are complete. Offline movement passed, but competitive movement failed the M07 anchor threshold. M24 scaling stops; S3/M25 not authorized.
 
 ## Known limitations and non-claims
 
@@ -520,11 +532,11 @@ full machine-verifiable manifest.
   teacher/bootstrap problem.
 - Offline learning-curve movement is not proof of Arena strength.
 - 128 games is the first non-smoke scale, not a promotion corpus.
-- M24-S1 diagnostics are observational; `m24-scale-gate-v1` is now frozen, but no S2/S3 decision exists yet.
+- M24-S1 diagnostics are observational; `m24-scale-gate-v1` is frozen and the S2 Arena screen has completed with G4 `FAIL`; no S3/M25 continuation is authorized.
 
 ## Next authorized gate
 
-- `m24-scale-gate-v1` is `ACCEPTED` / `FROZEN`.
-- M24-S2 collection/diagnostics/training complete; S2 result manifest frozen.
-- Next: review S2 training evidence and fixed-S1-reference offline eval, then materialize the three S2 Arena plan templates with the S2 checkpoint hash.
-- M24-S2 Arena screen is not authorized yet; M25 remains not authorized.
+- M24-S2 G4 scale decision: `FAIL`.
+- M24 scaling stops; S3 is not authorized.
+- M25 is not authorized.
+- Preserve all S1/S2 evidence and negative result; no promotion or champion change is implied.
