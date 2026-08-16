@@ -562,3 +562,4 @@ full machine-verifiable manifest.
 - M24 scaling stops; S3 is not authorized.
 - M25 is not authorized.
 - Preserve all S1/S2 evidence and negative result; no promotion or champion change is implied.
+- Next milestone: `M24.5 Scale-Failure Diagnosis` — see `docs/m24-scale-failure-diagnosis.md`.

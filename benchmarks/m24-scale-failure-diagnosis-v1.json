@@ -1,0 +1,91 @@
+{
+  "format": "effective-splendor-m24-scale-failure-diagnosis",
+  "version": 1,
+  "diagnosis_id": "m24-scale-failure-diagnosis-v1",
+  "status": "AUTHORIZED",
+  "parent_milestone": "M24",
+  "parent_result": "G4=FAIL / G5=STOP / M24-S2 final evidence ACCEPTED",
+  "no_new_training": true,
+  "no_new_collection": true,
+  "inputs": {
+    "s1_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "s2_self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "s1_checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+    "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+    "m07_champion_id": "m07-champion",
+    "scale_gate_path": "benchmarks/m24-scale-gate-v1.json",
+    "arena_screen_result_manifest": "benchmarks/m24-s2-arena-screen-v1.result.json",
+    "s2_result_manifest": "benchmarks/m24-self-play-s2-v1.result.json"
+  },
+  "analyses": [
+    {
+      "id": "A",
+      "name": "Dataset shift",
+      "question": "What does the S2-fresh-384 add relative to S1-128?",
+      "methods": [
+        "Compare S1-128 vs S2-fresh-384 distributions: game length, legal-action counts, chosen action types, policy entropy, visit entropy, value targets, duplicate observation/information-set rates.",
+        "Measure whether S2-fresh examples are near-duplicates of the S1/M22 self-play distribution or add new strategic contexts.",
+        "Compare S1 vs S2 first-128 nested overlap as a sanity check."
+      ]
+    },
+    {
+      "id": "B",
+      "name": "Shared-reference model behavior",
+      "question": "On the same frozen S1 reference positions, how do S1 and S2 checkpoints differ in policy/value?",
+      "methods": [
+        "Use the frozen S1 reference validation subset (game_index % 4 == 0, 1953 examples).",
+        "Compare S1/S2 policy entropy, top-1 agreement, policy CE vs targets, Value MSE/calibration, and phase/action-type sliced metrics.",
+        "Produce a shared-reference model behavior matrix."
+      ]
+    },
+    {
+      "id": "C",
+      "name": "M07 disagreement",
+      "question": "Does S2 move closer to or farther from M07 on frozen stratified positions?",
+      "methods": [
+        "Freeze a stratified position set from S1/S2 corpus balanced by phase, action type, and legal-action count.",
+        "Run M07 root analysis on those positions.",
+        "Measure S1/S2 policy vs M07 action choice/ranking agreement, rank correlation, top-1 agreement, and disagreement rates.",
+        "This is the key next-stage indicator."
+      ]
+    },
+    {
+      "id": "D",
+      "name": "Strength attribution",
+      "question": "Which phase/action/confidence/value patterns explain the Arena anchor regression?",
+      "methods": [
+        "Slice Arena results by opening/mid/endgame and action types where possible.",
+        "Correlate S2 vs S1 policy confidence and value error with M07 anchor delta.",
+        "Optionally run fixed-model search-budget sensitivity (sims 16/32/64) on a small frozen pair screen as a non-training attribution."
+      ]
+    }
+  ],
+  "decision_gate": {
+    "id": "D24.5",
+    "options": [
+      {
+        "condition": "teacher/bootstrap problem",
+        "action": "M25 strong GPU warm-start v2 with M07 teacher corpus"
+      },
+      {
+        "condition": "search bottleneck",
+        "action": "M27A fixed-model search-budget scaling"
+      },
+      {
+        "condition": "representation/capacity bottleneck",
+        "action": "targeted M28 preparation"
+      },
+      {
+        "condition": "inconclusive",
+        "action": "one additional frozen diagnostic, not another 2048-game brute-force run"
+      }
+    ]
+  },
+  "constraints": [
+    "No new model training.",
+    "No new self-play collection.",
+    "No S3/M25/M26 start before D24.5.",
+    "No champion or promotion changes.",
+    "All heavy outputs remain under local-artifacts; compact manifests tracked."
+  ]
+}

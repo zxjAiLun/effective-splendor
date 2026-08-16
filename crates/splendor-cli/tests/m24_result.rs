@@ -422,6 +422,28 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
 }
 
 #[test]
+fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
+    let root = root();
+    let config: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        config["format"],
+        "effective-splendor-m24-scale-failure-diagnosis"
+    );
+    assert_eq!(config["version"], 1);
+    assert_eq!(config["diagnosis_id"], "m24-scale-failure-diagnosis-v1");
+    assert_eq!(config["status"], "AUTHORIZED");
+    assert_eq!(config["no_new_training"], true);
+    assert_eq!(config["no_new_collection"], true);
+    let analyses = config["analyses"].as_array().unwrap();
+    assert_eq!(analyses.len(), 4);
+    let options = config["decision_gate"]["options"].as_array().unwrap();
+    assert_eq!(options.len(), 4);
+}
+
+#[test]
 fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     let root = root();
     let result: Value = serde_json::from_slice(
