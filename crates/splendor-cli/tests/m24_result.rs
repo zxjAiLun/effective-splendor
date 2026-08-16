@@ -127,3 +127,29 @@ fn m24_s1_collection_config_is_nested_scale_first_stage() {
     assert_eq!(config["max_depth_turns"], 1);
     assert_eq!(config["device"], "cuda");
 }
+
+#[test]
+fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
+    let root = root();
+    let gate: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-scale-gate-v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(gate["format"], "effective-splendor-m24-scale-gate");
+    assert_eq!(gate["version"], 1);
+    assert_eq!(gate["gate_id"], "m24-scale-gate-v1");
+    assert_eq!(gate["status"], "FROZEN");
+    assert_eq!(gate["reference_s1"]["self_play_hash"], "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053");
+    assert_eq!(gate["reference_s1"]["checkpoint_hash"], "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8");
+    assert!(gate["offline_movement"]["metrics"]["policy_cross_entropy"]["max_regression_bps"].is_number());
+    assert!(gate["offline_movement"]["metrics"]["visit_top1"]["max_regression_abs"].is_number());
+    assert!(gate["offline_movement"]["metrics"]["value_mse"]["max_regression_bps"].is_number());
+    let opponents = gate["competitive_movement"]["arena_screen"]["opponents"]
+        .as_array()
+        .unwrap();
+    assert!(opponents.iter().any(|v| v == "m24-s1-checkpoint"));
+    assert!(opponents.iter().any(|v| v == "m07-champion"));
+    assert!(opponents.iter().any(|v| v == "heuristic-v1"));
+    assert_eq!(gate["competitive_movement"]["arena_screen"]["max_aborted_matches"], 0);
+    assert_eq!(gate["decision"]["G4_scale_decision"], "NOT_YET_RUN");
+}

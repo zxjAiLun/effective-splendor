@@ -1,0 +1,74 @@
+{
+  "format": "effective-splendor-m24-scale-gate",
+  "version": 1,
+  "gate_id": "m24-scale-gate-v1",
+  "experiment_id": "m24-training-scale-v1",
+  "status": "FROZEN",
+  "frozen_after": "m24_s1_accepted_at_dbe47ab17a2b4a255109f6c0d60e68c89e426b9e",
+  "reference_s1": {
+    "result_manifest": "benchmarks/m24-self-play-s1-v1.result.json",
+    "self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+    "offline_validation": {
+      "examples": 1953,
+      "policy_cross_entropy": 1.2131885659432204,
+      "visit_top1": 0.9185867895545314,
+      "value_mse": 0.24513039903889786
+    }
+  },
+  "offline_movement": {
+    "description": "S2 must show a non-degenerate learning signal relative to S1. These are diagnostic gates only and are not strength evidence.",
+    "metrics": {
+      "policy_cross_entropy": {
+        "direction": "lower_is_better",
+        "max_regression_bps": 100,
+        "min_improvement_bps": 50
+      },
+      "visit_top1": {
+        "direction": "higher_is_better",
+        "max_regression_abs": 0.01,
+        "min_improvement_abs": 0.005
+      },
+      "value_mse": {
+        "direction": "lower_is_better",
+        "max_regression_bps": 100,
+        "min_improvement_bps": 50
+      }
+    },
+    "pass_condition": "At least one offline metric must meet its minimum improvement threshold, and no offline metric may exceed its maximum regression threshold."
+  },
+  "competitive_movement": {
+    "description": "Fresh multi-seed Arena screen comparing the S2 checkpoint against the S1 checkpoint, with M07 and heuristic anchors. This is the strength-evidence layer.",
+    "arena_screen": {
+      "opponents": [
+        "m24-s1-checkpoint",
+        "m07-champion",
+        "heuristic-v1"
+      ],
+      "seeds_per_pair": 32,
+      "seat_rotations": 2,
+      "scheduled_matches_per_pair": 64,
+      "min_completed_seed_blocks": 32,
+      "max_aborted_matches": 0,
+      "max_candidate_faults": 0,
+      "max_move_timeout_ms": 10000
+    },
+    "pass_condition": {
+      "s2_vs_s1": "S2 must have a strictly positive pairwise score lower bound against S1 in the fresh multi-seed screen.",
+      "anchors": "S2 must not show a material regression against M07 or heuristic relative to S1's anchor results; max allowed anchor regression is 200 bps.",
+      "min_s2_vs_s1_pairwise_score_lower_bound_bps": 100,
+      "max_anchor_regression_bps": 200
+    }
+  },
+  "decision": {
+    "G4_scale_decision": "NOT_YET_RUN",
+    "pass_means": "S2 shows a non-degenerate offline learning signal and a positive competitive movement against S1 without anchor regression; S3 may be considered.",
+    "fail_means": "S2 fails offline movement or competitive movement; stop M24 scaling and do not auto-authorize M25.",
+    "does_not_authorize": [
+      "S2 collection",
+      "S3 collection",
+      "M25",
+      "promotion or champion changes"
+    ]
+  }
+}

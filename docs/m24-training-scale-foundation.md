@@ -256,11 +256,10 @@ following the M12/M22 evidence pattern.
 | G4 scale decision | S1 and S2 diagnostic learning curves | S2 is authorized after S1 PASS; `m24-scale-gate-v1` is frozen **after** S1 measurement noise is known and **before** S2 runs | S2 is the first actual scale test |
 | G5 continuation | recorded G4 decision in this doc and handoff | S1→S2 movement PASS permits S3/M25; movement FAIL stops M24 scaling, requires data-quality diagnosis, and does **not** auto-authorize M25 | No architecture/search changes are smuggled into M24 |
 
-G4 is deliberately not assigned a numeric threshold today. Inventing one before
-S1's measurement noise is known would be gate shopping in reverse. The frozen
-`m24-scale-gate-v1` must be machine-checkable and cover offline Policy CE/NLL,
-visit top-1, Value MSE, and a fresh multi-seed Arena screen; offline movement
-alone never establishes strength.
+G4 thresholds are now frozen in `benchmarks/m24-scale-gate-v1.json` after
+reviewing S1 measurement noise. The frozen gate is machine-checkable and covers
+offline Policy CE/NLL, visit top-1, Value MSE, and a fresh multi-seed Arena
+screen; offline movement alone never establishes strength.
 
 A `REJECT` at G4 is a valid scientific result, not an execution failure.
 
@@ -335,6 +334,23 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Decision for next iteration: review S1 measurement noise and freeze
   `m24-scale-gate-v1` before authorizing S2.
 
+### Iteration 5 — 2026-08-15
+
+- Change: reviewed S1 diagnostics/measurement noise and froze
+  `benchmarks/m24-scale-gate-v1.json` as the machine-checkable M24 scale gate.
+- Reason: M24-S1 is accepted; the next required pre-registration is the S1→S2
+  movement gate so that S2 cannot be authorized or interpreted after seeing S2
+  results.
+- Evidence: `benchmarks/m24-scale-gate-v1.json` defines offline movement
+  thresholds for Policy CE/NLL, visit top-1, and Value MSE against the S1
+  baseline, plus a fresh multi-seed Arena screen against S1 with M07 and
+  heuristic anchors. A workspace test binds the gate file to the S1 hashes and
+  required structure.
+- Outcome: `m24-scale-gate-v1` `FROZEN`; G4 scale decision remains
+  `NOT_YET_RUN`; S2 is still not authorized.
+- Decision for next iteration: freeze the S2 nested corpus/config and then
+  authorize S2 collection.
+
 ## Final implementation
 
 - New strict CLI commands:
@@ -349,6 +365,7 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   dataset version plus CUDA/determinism environment fields.
 - Formal S1 collection, audit, and training have run; evidence is recorded in
   `benchmarks/m24-self-play-s1-v1.result.json`.
+- The S1→S2 scale gate is frozen in `benchmarks/m24-scale-gate-v1.json`.
 
 ## Validation and evidence
 
@@ -389,10 +406,11 @@ full machine-verifiable manifest.
 - G3 training: `PASS`.
 - G4 scale decision: not run. M24-S1 is the baseline only.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
+- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN`.
 - Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
   promotion, Arena screen, or strength claim is made. S2 is not authorized
-  until `m24-scale-gate-v1` is frozen from this baseline. M25 is not
-  authorized.
+  until the S2 nested corpus/config is frozen and the frozen scale gate is in
+  place. M25 is not authorized.
 
 ## Known limitations and non-claims
 
@@ -401,11 +419,11 @@ full machine-verifiable manifest.
   teacher/bootstrap problem.
 - Offline learning-curve movement is not proof of Arena strength.
 - 128 games is the first non-smoke scale, not a promotion corpus.
-- M24-S1 diagnostics are observational; `m24-scale-gate-v1` is still unfrozen and no S2/S3 decision exists yet.
+- M24-S1 diagnostics are observational; `m24-scale-gate-v1` is now frozen, but no S2/S3 decision exists yet.
 
 ## Next authorized gate
 
-- Review the recorded M24-S1 diagnostics/measurement noise and freeze a
-  machine-checkable `m24-scale-gate-v1` (offline CE/NLL, visit top-1, Value
-  MSE, and a fresh multi-seed Arena screen) **before** authorizing S2.
-- Only after that gate file exists may M24-S2 collection start.
+- `m24-scale-gate-v1` is frozen in `benchmarks/m24-scale-gate-v1.json`.
+- Next, freeze the S2 nested corpus/config (S1 exact seeds + 384 fresh seeds)
+  and only then authorize M24-S2 collection.
+- M24-S2 remains not authorized; M25 remains not authorized.

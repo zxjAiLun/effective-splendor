@@ -70,6 +70,6 @@
   "review": {
     "source_review": "PASS_INDEPENDENT_REVIEW_OF_DBE47AB",
     "acceptance": "ACCEPTED",
-    "next_gate": "freeze_m24_scale_gate_v1_after_acceptance"
+    "next_gate": "freeze_s2_nested_corpus_config_then_authorize_s2"
   }
 }
