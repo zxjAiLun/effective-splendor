@@ -183,7 +183,7 @@ fn m24_s2_collection_config_is_nested_scale_second_stage() {
 }
 
 #[test]
-fn m24_s2_training_config_preserves_s1_recipe_and_pending_hash() {
+fn m24_s2_training_config_preserves_s1_recipe_and_frozen_hash() {
     let root = root();
     let s1: Value = serde_json::from_slice(
         &fs::read(root.join("benchmarks/m24-self-play-s1-v1.training.json")).unwrap(),
@@ -196,7 +196,10 @@ fn m24_s2_training_config_preserves_s1_recipe_and_pending_hash() {
 
     assert_eq!(s2["training_id"], "m24-self-play-s2-v1");
     assert_eq!(s2["model_id"], "m24-entity-mixer-self-play-s2-v1");
-    assert_eq!(s2["expected_self_play_hash"], "");
+    assert_eq!(
+        s2["expected_self_play_hash"],
+        "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46"
+    );
 
     for key in [
         "format",

@@ -400,6 +400,23 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
     - `expected_self_play_hash` remains `""` until formal S2 collection completes
 - Outcome: M24-S2 configs `FROZEN`; S2 collection still not authorized; G4 remains `NOT_YET_RUN`.
 - Decision for next iteration: after narrow pre-execution review, authorize and run M24-S2 collection.
+### Iteration 10 — 2026-08-15
+
+- Change: completed M24-S2 collection and hardened diagnostics; froze the formal S2 self-play hash into the S2 training config.
+- Evidence:
+  - `local-artifacts/m24-self-play-s2-v1/self-play.json`
+    - 512 games / 31,505 examples
+    - self_play_hash `b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46`
+    - file SHA-256 `ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f`
+  - `local-artifacts/m24-self-play-s2-v1/diagnostics.json`
+    - 512/512 games verified
+    - duplicate seeds 0
+    - duplicate observation/information-set rate 0.0
+    - every root visit sum = 16 (hardened validator)
+  - nested-corpus check: S2 games `0..127` match S1 games `0..127` on seed, replay document/final-state hashes, example count, observation/information-set hashes, legal actions, targets, and action stats.
+  - `benchmarks/m24-self-play-s2-v1.training.json` now has `expected_self_play_hash = b8a67f5f...`
+- Outcome: M24-S2 G1/G2 `PASS`; S2 training config hash frozen; S2 training still not authorized.
+- Decision for next iteration: review the hash-only materialization and then authorize S2 training.
 
 ## Final implementation
 
@@ -459,17 +476,14 @@ full machine-verifiable manifest.
 
 ## Result and decision
 
-- G1 collection: `PASS`.
-- G2 audit: `PASS`.
-- G3 training: `PASS`.
-- G4 scale decision: not run. M24-S1 is the baseline only.
+- G1 collection: `PASS` (S1 and S2).
+- G2 audit: `PASS` (S1 and S2).
+- G3 training: `PASS` for S1; S2 training not yet run.
+- G4 scale decision: not run.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
 - Scale gate: `benchmarks/m24-scale-gate-v1.json` `ACCEPTED` / `FROZEN`.
-- S2 config: `benchmarks/m24-self-play-s2-v1.config.json` and
-  `benchmarks/m24-self-play-s2-v1.training.json` `FROZEN`.
-- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
-  promotion, Arena screen, or strength claim is made. S2 collection is not yet
-  authorized; it awaits narrow pre-execution review. M25 is not authorized.
+- S2 config: `benchmarks/m24-self-play-s2-v1.config.json` `FROZEN`; S2 training config hash now frozen to `b8a67f5f...`.
+- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. M24-S2 512-game collection and diagnostics are complete. No promotion or Arena strength claim is made. S2 training is not yet authorized; M25 is not authorized.
 
 ## Known limitations and non-claims
 
@@ -483,7 +497,6 @@ full machine-verifiable manifest.
 ## Next authorized gate
 
 - `m24-scale-gate-v1` is `ACCEPTED` / `FROZEN`.
-- S2 nested collection/training configs are frozen.
-- Next: narrow pre-execution review of the S2 configs, then authorize and run
-  M24-S2 collection (512 games).
-- M24-S2 collection is not authorized yet; M25 remains not authorized.
+- M24-S2 collection/diagnostics complete; S2 self-play hash frozen into the training config.
+- Next: review the hash-only materialization and then authorize M24-S2 training.
+- M24-S2 training is not authorized yet; M25 remains not authorized.
