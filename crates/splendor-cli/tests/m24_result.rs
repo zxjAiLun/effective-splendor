@@ -20,6 +20,22 @@ fn collector_config_hash(bytes: &[u8]) -> String {
     hex::encode(hasher.finalize())
 }
 
+fn ceil_div(numerator: u64, denominator: u64) -> u64 {
+    numerator / denominator + u64::from(numerator % denominator != 0)
+}
+
+fn ceil_sqrt(value: u64) -> u64 {
+    let floor = (value as f64).sqrt() as u64;
+    let mut candidate = floor;
+    while candidate.saturating_mul(candidate) < value {
+        candidate += 1;
+    }
+    while candidate > 0 && (candidate - 1).saturating_mul(candidate - 1) >= value {
+        candidate -= 1;
+    }
+    candidate
+}
+
 #[test]
 fn m24_s1_result_is_complete_and_does_not_claim_promotion() {
     let root = root();
@@ -349,6 +365,55 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
         result["competitive_movement"]["anchor_deltas_bps"]["heuristic"],
         938
     );
+
+    // Arena screen result manifest is hash-bound into the S2 result and its
+    // competitive math is recomputed from the raw W/T/L values.
+    let arena_result_bytes =
+        fs::read(root.join("benchmarks/m24-s2-arena-screen-v1.result.json")).unwrap();
+    assert_eq!(
+        result["arena_screen_result"]["manifest_file_sha256"],
+        sha256_hex(&arena_result_bytes)
+    );
+    let arena: Value = serde_json::from_slice(&arena_result_bytes).unwrap();
+    assert_eq!(arena["screen_id"], "m24-s2-arena-screen-v1");
+    let arena_pairs = arena["pairs"].as_array().unwrap();
+    assert_eq!(arena_pairs.len(), 5);
+
+    let mut centers = std::collections::HashMap::new();
+    let mut lowers = std::collections::HashMap::new();
+    for pair in arena_pairs {
+        let wins = pair["wins"].as_u64().unwrap() as i64;
+        let ties = pair["ties"].as_u64().unwrap() as i64;
+        let losses = pair["losses"].as_u64().unwrap() as i64;
+        let matches = pair["matches"].as_u64().unwrap() as i64;
+        let aborted = pair["aborted"].as_u64().unwrap() as i64;
+        assert_eq!(wins + ties + losses, matches);
+        assert_eq!(matches, 64);
+        assert_eq!(aborted, 0);
+
+        let score_half = wins * 2 + ties;
+        let center = (score_half * 10_000) / (matches * 2);
+        assert_eq!(center, pair["center_bps"].as_i64().unwrap());
+
+        let margin = ceil_sqrt(ceil_div(150_000_000, 32)) as i64;
+        let lower = (center - margin).max(0);
+        assert_eq!(lower, pair["lower_bps"].as_i64().unwrap());
+
+        centers.insert(pair["pair"].as_str().unwrap().to_string(), center);
+        lowers.insert(pair["pair"].as_str().unwrap().to_string(), lower);
+    }
+
+    let primary_pass = lowers["s2_vs_s1"] >= 100;
+    let m07_delta = centers["s2_vs_m07"] - centers["s1_vs_m07"];
+    let heuristic_delta = centers["s2_vs_heuristic"] - centers["s1_vs_heuristic"];
+    let anchors_pass = m07_delta >= -200 && heuristic_delta >= -200;
+    let competitive_pass = primary_pass && anchors_pass;
+    assert!(!competitive_pass);
+    assert_eq!(arena["computed"]["competitive_pass"], false);
+    assert_eq!(arena["computed"]["G4_scale_decision"], "FAIL");
+    assert_eq!(arena["computed"]["G5_continuation"], "STOP");
+    assert_eq!(result["gates"]["G4_scale_decision"], "FAIL");
+    assert_eq!(result["gates"]["G5_continuation"], "STOP");
 }
 
 #[test]

@@ -161,5 +161,9 @@
     },
     "verdict": "FAIL",
     "fail_reason": "M07 anchor regression delta is -313 bps, below the frozen -200 bps threshold. S2 vs S1 primary lower bound passed (2599 bps >= 100 bps), but the competitive screen as a whole failed the anchor requirement."
+  },
+  "arena_screen_result": {
+    "manifest_path": "benchmarks/m24-s2-arena-screen-v1.result.json",
+    "manifest_file_sha256": "b3564bb90e7d1d07ef0962c233ee60a54bb94f19d43171a2242b1f964aa5801b"
   }
 }

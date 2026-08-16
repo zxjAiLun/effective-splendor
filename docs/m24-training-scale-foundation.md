@@ -446,7 +446,6 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Outcome: Arena materialization `PASS`; formal 5-pair Arena screen may proceed.
 - Decision for next iteration: execute the 5-pair competitive screen and compute G4 competitive movement.
 
-## Final implementation
 ### Iteration 13 — 2026-08-15
 
 - Change: executed the formal 5-pair M24-S2 Arena screen and computed G4 competitive movement.
@@ -458,6 +457,21 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   - G4 competitive half: FAIL due M07 anchor regression.
 - Outcome: `G4_scale_decision = FAIL`; `G5_continuation = STOP`; M24 scaling stops; S3/M25 not authorized.
 - Decision for next iteration: record negative G4 result, preserve all evidence, do not auto-authorize further scaling.
+
+### Iteration 14 — 2026-08-15
+
+- Change: added final Arena provenance binding for the five eval-report artifacts.
+- Evidence:
+  - Added `benchmarks/m24-s2-arena-screen-v1.result.json`:
+    - binds each pair to its local `eval-report.json` path and SHA-256
+    - records plan_hash, evaluation_id, scheduled_matches, W/T/L, center/lower bps
+    - recomputes primary/anchors/competitive verdict
+  - `benchmarks/m24-self-play-s2-v1.result.json` now references the Arena result manifest by SHA-256.
+  - Regression test recomputes center/lower from raw W/T/L and asserts G4/G5.
+- Outcome: final G4 evidence provenance `PASS`; scientific result remains `FAIL / STOP`.
+- Decision for next iteration: final narrow re-review of the provenance binding.
+
+## Final implementation
 
 - New strict CLI commands:
   - `collect-gpu-self-play-v2 --config <config.json> --out <dataset.json>`
@@ -480,6 +494,7 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - M24-S2 nested collection/training configs are frozen in:
   - `benchmarks/m24-self-play-s2-v1.config.json`
   - `benchmarks/m24-self-play-s2-v1.training.json`
+- M24-S2 Arena result provenance is bound in `benchmarks/m24-s2-arena-screen-v1.result.json`.
 
 ## Validation and evidence
 
