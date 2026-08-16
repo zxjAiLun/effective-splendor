@@ -262,6 +262,11 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
         "s2_collection_audit_and_training_complete"
     );
     assert_eq!(
+        result["review"]["source_review"],
+        "PASS_INDEPENDENT_REVIEW_OF_5176171"
+    );
+    assert_eq!(result["review"]["acceptance"], "ACCEPTED");
+    assert_eq!(
         result["self_play"]["config_file_sha256"],
         sha256_hex(&config)
     );

@@ -470,6 +470,12 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   - Regression test recomputes center/lower from raw W/T/L and asserts G4/G5.
 - Outcome: final G4 evidence provenance `PASS`; scientific result remains `FAIL / STOP`.
 - Decision for next iteration: final narrow re-review of the provenance binding.
+### Iteration 15 — 2026-08-15
+
+- Change: final narrow re-review accepted the M24-S2 final evidence.
+- Evidence: `benchmarks/m24-self-play-s2-v1.result.json` now records `review.source_review = PASS_INDEPENDENT_REVIEW_OF_5176171` and `review.acceptance = ACCEPTED`.
+- Outcome: M24-S2 final evidence `ACCEPTED`; scientific result remains `G4 = FAIL`, `G5 = STOP`.
+- Decision: M24 scaling experiment is closed as a negative result; S3/M25 remain not authorized.
 
 ## Final implementation
 
@@ -535,6 +541,7 @@ full machine-verifiable manifest.
 - G3 training: `PASS` (S1 and S2).
 - G4 scale decision: `FAIL`.
 - G5 continuation: `STOP`.
+- M24-S2 final evidence: `ACCEPTED`.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
 - Scale gate: `benchmarks/m24-scale-gate-v1.json` `ACCEPTED` / `FROZEN`.
 - S2 result: `benchmarks/m24-self-play-s2-v1.result.json` `FROZEN`.

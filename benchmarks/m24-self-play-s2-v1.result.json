@@ -79,9 +79,10 @@
   "interpretation": "M24-S2 offline movement passed on the fixed S1 reference subset, but the fresh multi-seed Arena screen failed the M07 anchor regression threshold. G4 scale decision is FAIL: stop M24 scaling and do not auto-authorize S3/M25.",
   "artifact_policy": "self-play dataset, diagnostics, checkpoint, and training report remain ignored under local-artifacts/m24-self-play-s2-v1; only compact tracked configs and this result manifest are checked in.",
   "review": {
-    "source_review": "PENDING_INDEPENDENT_REVIEW",
-    "acceptance": "PENDING_INDEPENDENT_REVIEW",
-    "next_gate": "stop_m24_scaling_no_s3_no_m25"
+    "source_review": "PASS_INDEPENDENT_REVIEW_OF_5176171",
+    "acceptance": "ACCEPTED",
+    "next_gate": "m24_scaling_stopped_g4_fail_g5_stop",
+    "review_commit": "51761719b549d4682737df78a581f53d6b11926d"
   },
   "arena_materialization": {
     "realized_manifest_path": "benchmarks/m24-s2-arena-screen-v1.realized.json",
