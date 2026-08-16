@@ -2,6 +2,7 @@
   "format": "effective-splendor-m24-scale-failure-diagnosis",
   "version": 1,
   "diagnosis_id": "m24-scale-failure-diagnosis-v1",
+  "revision": "repair-1",
   "status": "AUTHORIZED",
   "parent_milestone": "M24",
   "parent_result": "G4=FAIL / G5=STOP / M24-S2 final evidence ACCEPTED",
@@ -36,15 +37,67 @@
         "Use the frozen S1 reference validation subset (game_index % 4 == 0, 1953 examples).",
         "Compare S1/S2 policy entropy, top-1 agreement, policy CE vs targets, Value MSE/calibration, and phase/action-type sliced metrics.",
         "Produce a shared-reference model behavior matrix."
-      ]
+      ],
+      "reference_subset": {
+        "dataset_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+        "validation_rule": "game_index % 4 == 0",
+        "examples": 1953
+      }
     },
     {
       "id": "C",
       "name": "M07 disagreement",
       "question": "Does S2 move closer to or farther from M07 on frozen stratified positions?",
+      "position_selection": {
+        "source_populations": [
+          {
+            "name": "s1_reference",
+            "dataset_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+            "include_rule": "S1 examples with game_index % 4 == 0"
+          },
+          {
+            "name": "s2_fresh",
+            "dataset_self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+            "include_rule": "S2 examples with game_index >= 128"
+          }
+        ],
+        "phase_definition": "phase = opening if ply < 20; midgame if 20 <= ply < 40; endgame if ply >= 40",
+        "action_type_definition": "use chosen_action.type from the canonical action categories: take_tokens, buy_market, buy_reserved, reserve_market, reserve_deck, choose_noble, pass",
+        "legal_action_bins": [
+          {
+            "name": "small",
+            "condition": "len(legal_actions) < 10"
+          },
+          {
+            "name": "medium",
+            "condition": "10 <= len(legal_actions) < 30"
+          },
+          {
+            "name": "large",
+            "condition": "30 <= len(legal_actions) < 100"
+          },
+          {
+            "name": "huge",
+            "condition": "len(legal_actions) >= 100"
+          }
+        ],
+        "sample_size": 512,
+        "per_source_size": 256,
+        "quota_rule": "Within each source, allocate 256 slots across phase x action_type x legal_bin strata. Base quota = floor(256 * stratum_count / source_count). Remainders are allocated by descending fractional remainder, then by ascending stratum key. Every non-empty stratum receives at least 1; if this exceeds 256, trim from the largest-quota stratum using ascending deterministic key until total is 256.",
+        "deterministic_selector": {
+          "key": "sha256(diagnosis_id || information_set_hash)",
+          "encoding": "UTF-8 concatenation of diagnosis_id and information_set_hash",
+          "order": "ascending",
+          "within_stratum": "select first quota entries"
+        },
+        "sparse_stratum_rule": "Non-empty strata with computed quota 0 receive at least 1; reduction is applied to the stratum with the largest quota, using ascending deterministic key order to choose removed entries.",
+        "output": {
+          "path": "local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json",
+          "semantic_hash": "sha256 of canonical JSON output, to be recorded after selection"
+        }
+      },
       "methods": [
-        "Freeze a stratified position set from S1/S2 corpus balanced by phase, action type, and legal-action count.",
-        "Run M07 root analysis on those positions.",
+        "Run M07 root analysis on the frozen stratified position set.",
         "Measure S1/S2 policy vs M07 action choice/ranking agreement, rank correlation, top-1 agreement, and disagreement rates.",
         "This is the key next-stage indicator."
       ]
@@ -56,27 +109,90 @@
       "methods": [
         "Slice Arena results by opening/mid/endgame and action types where possible.",
         "Correlate S2 vs S1 policy confidence and value error with M07 anchor delta.",
-        "Optionally run fixed-model search-budget sensitivity (sims 16/32/64) on a small frozen pair screen as a non-training attribution."
-      ]
+        "Run mandatory D2 fixed-model search-budget sensitivity."
+      ],
+      "d2_search_sensitivity": {
+        "mandatory": true,
+        "checkpoints": [
+          "s1_checkpoint",
+          "s2_checkpoint"
+        ],
+        "comparison_pairs": [
+          "S2 vs S1",
+          "S2 vs M07",
+          "S1 vs M07",
+          "S2 vs heuristic",
+          "S1 vs heuristic"
+        ],
+        "sim_budgets": [
+          16,
+          32,
+          64
+        ],
+        "seeds": [
+          300001,
+          300002,
+          300003,
+          300004,
+          300005,
+          300006,
+          300007,
+          300008
+        ],
+        "seat_rotations": 2,
+        "max_depth_turns": 1,
+        "puct_exploration_milli": 1500,
+        "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+        "device": "cuda",
+        "handshake_timeout_ms": 5000,
+        "move_timeout_ms": 10000,
+        "shutdown_grace_ms": 2000,
+        "statistic": "pairwise center score bps using the same integer formula as M24 Arena; lower bound via frozen Hoeffding if needed",
+        "rescue_criterion": {
+          "anchor_delta_m07_bps": "center(S2,M07,b) - center(S1,M07,b)",
+          "search_rescue_condition": "anchor_delta_m07_bps(64) >= -200",
+          "search_sensitivity_evidence": "anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 100 OR search_rescue_condition"
+        }
+      }
     }
   ],
   "decision_gate": {
     "id": "D24.5",
-    "options": [
+    "precedence": "If more than one branch matches its required predicates, the decision is INCONCLUSIVE.",
+    "evidence_matrix": [
       {
-        "condition": "teacher/bootstrap problem",
+        "branch": "teacher/bootstrap problem",
+        "required_evidence": [
+          "A shows S2-fresh is largely redundant with S1/M22 self-play distribution",
+          "C shows M07 disagreement does not improve or worsens",
+          "D2 search_rescue_condition is false"
+        ],
         "action": "M25 strong GPU warm-start v2 with M07 teacher corpus"
       },
       {
-        "condition": "search bottleneck",
+        "branch": "search bottleneck",
+        "required_evidence": [
+          "D2 search_sensitivity_evidence is true",
+          "search_rescue_condition is true or monotonic improvement across 16/32/64"
+        ],
         "action": "M27A fixed-model search-budget scaling"
       },
       {
-        "condition": "representation/capacity bottleneck",
+        "branch": "representation/capacity bottleneck",
+        "required_evidence": [
+          "B shows S2 improves on train-like shared-reference metrics but fails on M07-disagreement slices",
+          "teacher-drift condition is false",
+          "D2 search_rescue_condition is false"
+        ],
         "action": "targeted M28 preparation"
       },
       {
-        "condition": "inconclusive",
+        "branch": "inconclusive",
+        "required_evidence": [
+          "Conflicting evidence across branches",
+          "Insufficient coverage in A/B/C/D",
+          "No single branch satisfies all required predicates"
+        ],
         "action": "one additional frozen diagnostic, not another 2048-game brute-force run"
       }
     ]

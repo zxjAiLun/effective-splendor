@@ -424,6 +424,14 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
 #[test]
 fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     let root = root();
+    let s1: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s1-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+    let s2: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s2-v1.result.json")).unwrap(),
+    )
+    .unwrap();
     let config: Value = serde_json::from_slice(
         &fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.json")).unwrap(),
     )
@@ -434,13 +442,109 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     assert_eq!(config["version"], 1);
     assert_eq!(config["diagnosis_id"], "m24-scale-failure-diagnosis-v1");
+    assert_eq!(config["revision"], "repair-1");
     assert_eq!(config["status"], "AUTHORIZED");
     assert_eq!(config["no_new_training"], true);
     assert_eq!(config["no_new_collection"], true);
+
+    // Input identities must be durably bound to accepted S1/S2 evidence.
+    assert_eq!(
+        config["inputs"]["s1_self_play_hash"],
+        s1["self_play"]["self_play_hash"]
+    );
+    assert_eq!(
+        config["inputs"]["s2_self_play_hash"],
+        s2["self_play"]["self_play_hash"]
+    );
+    assert_eq!(
+        config["inputs"]["s1_checkpoint_hash"],
+        s1["training"]["checkpoint_hash"]
+    );
+    assert_eq!(
+        config["inputs"]["s2_checkpoint_hash"],
+        s2["training"]["checkpoint_hash"]
+    );
+
+    // Analysis IDs are exactly A/B/C/D.
     let analyses = config["analyses"].as_array().unwrap();
     assert_eq!(analyses.len(), 4);
-    let options = config["decision_gate"]["options"].as_array().unwrap();
-    assert_eq!(options.len(), 4);
+    let ids: Vec<&str> = analyses
+        .iter()
+        .map(|analysis| analysis["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["A", "B", "C", "D"]);
+
+    // B reference subset is exact.
+    let b = &analyses[1];
+    assert_eq!(
+        b["reference_subset"]["dataset_self_play_hash"],
+        s1["self_play"]["self_play_hash"]
+    );
+    assert_eq!(
+        b["reference_subset"]["validation_rule"],
+        "game_index % 4 == 0"
+    );
+    assert_eq!(b["reference_subset"]["examples"], 1953);
+
+    // C position-selection contract is frozen.
+    let c = &analyses[2];
+    let selection = &c["position_selection"];
+    assert_eq!(selection["sample_size"], 512);
+    assert_eq!(selection["per_source_size"], 256);
+    assert_eq!(selection["source_populations"].as_array().unwrap().len(), 2);
+    assert_eq!(selection["legal_action_bins"].as_array().unwrap().len(), 4);
+    assert_eq!(selection["deterministic_selector"]["order"], "ascending");
+
+    // D2 search sensitivity is mandatory and exact.
+    let d = &analyses[3];
+    let d2 = &d["d2_search_sensitivity"];
+    assert_eq!(d2["mandatory"], true);
+    let budgets: Vec<u64> = d2["sim_budgets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_u64().unwrap())
+        .collect();
+    assert_eq!(budgets, [16, 32, 64]);
+    let seeds: Vec<u64> = d2["seeds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_u64().unwrap())
+        .collect();
+    assert_eq!(seeds.len(), 8);
+    assert_eq!(seeds[0], 300001);
+    assert_eq!(seeds[7], 300008);
+    assert_eq!(d2["comparison_pairs"].as_array().unwrap().len(), 5);
+
+    // D24.5 evidence matrix and precedence are frozen.
+    let gate = &config["decision_gate"];
+    assert_eq!(
+        gate["precedence"]
+            .as_str()
+            .unwrap()
+            .contains("INCONCLUSIVE"),
+        true
+    );
+    assert_eq!(gate["evidence_matrix"].as_array().unwrap().len(), 4);
+
+    // Governance constraints are explicit.
+    let constraints: Vec<&str> = config["constraints"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert!(constraints
+        .iter()
+        .any(|c| c.contains("No new model training")));
+    assert!(constraints
+        .iter()
+        .any(|c| c.contains("No new self-play collection")));
+    assert!(constraints.iter().any(|c| c.contains("S3/M25/M26")));
+    assert!(constraints
+        .iter()
+        .any(|c| c.contains("champion or promotion")));
 }
 
 #[test]
