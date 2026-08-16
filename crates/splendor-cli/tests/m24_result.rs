@@ -231,6 +231,13 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
         &fs::read(root.join("benchmarks/m24-self-play-s2-v1.result.json")).unwrap(),
     )
     .unwrap();
+    let s1_result: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s1-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+    let gate: Value =
+        serde_json::from_slice(&fs::read(root.join("benchmarks/m24-scale-gate-v1.json")).unwrap())
+            .unwrap();
     let config = fs::read(root.join("benchmarks/m24-self-play-s2-v1.config.json")).unwrap();
     let training = fs::read(root.join("benchmarks/m24-self-play-s2-v1.training.json")).unwrap();
 
@@ -266,6 +273,70 @@ fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
         result["fixed_reference_offline_eval"]["validation_examples"],
         1953
     );
+
+    // Fixed-reference S1 metrics must be durably bound to the frozen gate/S1 result.
+    let fixed = &result["fixed_reference_offline_eval"];
+    assert_eq!(
+        fixed["s1"]["policy_cross_entropy"],
+        gate["reference_s1"]["offline_validation"]["policy_cross_entropy"]
+    );
+    assert_eq!(
+        fixed["s1"]["visit_top1"],
+        gate["reference_s1"]["offline_validation"]["visit_top1"]
+    );
+    assert_eq!(
+        fixed["s1"]["value_mse"],
+        gate["reference_s1"]["offline_validation"]["value_mse"]
+    );
+    assert_eq!(
+        fixed["s1_checkpoint_hash"],
+        s1_result["training"]["checkpoint_hash"]
+    );
+    assert_eq!(
+        fixed["s2_checkpoint_hash"],
+        result["training"]["checkpoint_hash"]
+    );
+    assert_eq!(
+        fixed["dataset_self_play_hash"],
+        s1_result["self_play"]["self_play_hash"]
+    );
+    assert_eq!(fixed["report_file_sha256"].as_str().unwrap().len(), 64);
+
+    // Machine-check the frozen offline movement thresholds.
+    let s1_ce = fixed["s1"]["policy_cross_entropy"].as_f64().unwrap();
+    let s2_ce = fixed["s2"]["policy_cross_entropy"].as_f64().unwrap();
+    let s1_top1 = fixed["s1"]["visit_top1"].as_f64().unwrap();
+    let s2_top1 = fixed["s2"]["visit_top1"].as_f64().unwrap();
+    let s1_mse = fixed["s1"]["value_mse"].as_f64().unwrap();
+    let s2_mse = fixed["s2"]["value_mse"].as_f64().unwrap();
+    let ce_improvement_bps = (s1_ce - s2_ce) / s1_ce * 10_000.0;
+    let mse_improvement_bps = (s1_mse - s2_mse) / s1_mse * 10_000.0;
+    let top1_delta = s2_top1 - s1_top1;
+    assert!(ce_improvement_bps >= 50.0);
+    assert!(mse_improvement_bps >= 50.0);
+    assert!(top1_delta >= -0.01);
+
+    // Arena materialization manifest is hash-bound into the result manifest.
+    let realized_bytes =
+        fs::read(root.join("benchmarks/m24-s2-arena-screen-v1.realized.json")).unwrap();
+    assert_eq!(
+        result["arena_materialization"]["realized_manifest_file_sha256"],
+        sha256_hex(&realized_bytes)
+    );
+    let realized: Value = serde_json::from_slice(&realized_bytes).unwrap();
+    assert_eq!(
+        realized["s2_checkpoint_hash"],
+        result["training"]["checkpoint_hash"]
+    );
+    let realized_plans = realized["realized_plans"].as_array().unwrap();
+    assert_eq!(realized_plans.len(), 3);
+    for plan in realized_plans {
+        assert_eq!(plan["materialization_validation"], "PASS");
+        assert_eq!(
+            plan["s2_checkpoint_hash"],
+            result["training"]["checkpoint_hash"]
+        );
+    }
 }
 
 #[test]

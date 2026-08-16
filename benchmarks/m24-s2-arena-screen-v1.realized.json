@@ -1,0 +1,47 @@
+{
+  "format": "effective-splendor-m24-arena-screen-realized",
+  "version": 1,
+  "screen_id": "m24-s2-arena-screen-v1",
+  "template_bundle_path": "benchmarks/m24-s2-arena-screen-v1.bundle.json",
+  "template_bundle_file_sha256": "2ad0a3e3df1e8b5ce5042722672966ef8d95b2a639961df7e119056288f3bc27",
+  "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+  "realized_plans": [
+    {
+      "pair": "s2_vs_s1",
+      "evaluation_id": "m24-s2-vs-s1-v1",
+      "template_path": "benchmarks/m24-s2-vs-s1-v1.plan.json",
+      "template_file_sha256": "5da9b6d85215587b2baef3a5e04841f1cf9b4ffa43120869c67c1d6ecb3ddb62",
+      "realized_path": "local-artifacts/m24-s2-arena-screen-v1/m24-s2-vs-s1-v1.plan.json",
+      "realized_file_sha256": "7c078d22f9d633c228f5dadfdc83491c7ef760b9675b4ec9c1a4ce0f461ff6c1",
+      "realized_plan_canonical_sha256": "c0c23fb7d596bd2b0208762b920cab39cc94b3dfbd7e65654fd093fb5ab7eb40",
+      "materialization_validation": "PASS",
+      "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8"
+    },
+    {
+      "pair": "s2_vs_m07",
+      "evaluation_id": "m24-s2-vs-m07-v1",
+      "template_path": "benchmarks/m24-s2-vs-m07-v1.plan.json",
+      "template_file_sha256": "3af7026bc05e47516425e3aeb0d2b4daf3777e1aab453d4886d74313c7dc6488",
+      "realized_path": "local-artifacts/m24-s2-arena-screen-v1/m24-s2-vs-m07-v1.plan.json",
+      "realized_file_sha256": "6eab94cbea46ac534ea0d0e3fa3d9896183790afdaff547865b15872daf76345",
+      "realized_plan_canonical_sha256": "e0f0c35e4d1bf7f1c358d039ca8f886f9b1b41e864a7678905e09cf21d49f491",
+      "materialization_validation": "PASS",
+      "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8"
+    },
+    {
+      "pair": "s2_vs_heuristic",
+      "evaluation_id": "m24-s2-vs-heuristic-v1",
+      "template_path": "benchmarks/m24-s2-vs-heuristic-v1.plan.json",
+      "template_file_sha256": "9b8871247348d77274b673f0f501e47bf800ebd87e76397dc7590ff20ebec931",
+      "realized_path": "local-artifacts/m24-s2-arena-screen-v1/m24-s2-vs-heuristic-v1.plan.json",
+      "realized_file_sha256": "e9bf98c0d422b3ab0f5d4e2f4693271794980cc34df25bbdb7fd4506270d5560",
+      "realized_plan_canonical_sha256": "f0d7a29b126fa1b08e4f67909cf6dd69e2ac79e07f8f63ce04433fd663619b84",
+      "materialization_validation": "PASS",
+      "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8"
+    }
+  ],
+  "s1_only_plans_unchanged": [
+    "benchmarks/m24-s1-vs-m07-v1.plan.json",
+    "benchmarks/m24-s1-vs-heuristic-v1.plan.json"
+  ]
+}

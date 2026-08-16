@@ -433,6 +433,18 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   - `benchmarks/m24-self-play-s2-v1.result.json` now records collection, diagnostics, training, and fixed-reference offline evidence.
 - Outcome: M24-S2 G1/G2/G3 `PASS`; S2 training evidence frozen; G4 still `NOT_YET_RUN`; Arena not authorized.
 - Decision for next iteration: review S2 training evidence and then materialize the three S2 Arena plan templates with the S2 checkpoint hash.
+### Iteration 12 — 2026-08-15
+
+- Change: materialized the three S2 Arena plan templates with the formal S2 checkpoint hash and recorded realized-plan identity.
+- Evidence:
+  - `local-artifacts/m24-s2-arena-screen-v1/` contains realized plans:
+    - `m24-s2-vs-s1-v1.plan.json`
+    - `m24-s2-vs-m07-v1.plan.json`
+    - `m24-s2-vs-heuristic-v1.plan.json`
+  - `benchmarks/m24-s2-arena-screen-v1.realized.json` records template SHA, realized file SHA, realized canonical SHA, and materialization validation PASS.
+  - S2-only exact plans remain unchanged.
+- Outcome: Arena materialization `PASS`; formal 5-pair Arena screen may proceed.
+- Decision for next iteration: execute the 5-pair competitive screen and compute G4 competitive movement.
 
 ## Final implementation
 
