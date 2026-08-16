@@ -2,7 +2,7 @@
   "format": "effective-splendor-m24-scale-failure-diagnosis",
   "version": 1,
   "diagnosis_id": "m24-scale-failure-diagnosis-v1",
-  "revision": "repair-3",
+  "revision": "repair-4",
   "status": "AUTHORIZED",
   "parent_milestone": "M24",
   "parent_result": "G4=FAIL / G5=STOP / M24-S2 final evidence ACCEPTED",
@@ -29,8 +29,13 @@
         "Compare S1 vs S2 first-128 nested overlap as a sanity check."
       ],
       "metrics": {
-        "cross_information_set_overlap": "fraction of S2-fresh information sets already present in S1 reference",
-        "novel_information_set_fraction": "1 - cross_information_set_overlap"
+        "exact_information_set_overlap": "fraction of S2-fresh information sets already present in S1-128; descriptive only, expected approximately 0 because M24-S2 has duplicate_information_set_rate 0.0",
+        "novel_information_set_fraction": "1 - exact_information_set_overlap; descriptive only, does NOT by itself imply strategic novelty",
+        "distribution_similarity": "1 - total_variation_distance over 84 canonical strata",
+        "total_variation_distance": "0.5 * sum_i |p_i - q_i| over 84 strata",
+        "strata_definition": "3 phases x 7 action types x 4 legal-action bins = 84 canonical strata",
+        "source_1": "entire S1-128 dataset",
+        "source_2": "S2-fresh-384 dataset (S2 game_index >= 128)"
       }
     },
     {
@@ -224,11 +229,11 @@
   ],
   "derived_booleans": {
     "A_redundancy_evidence": {
-      "definition": "cross_information_set_overlap >= 0.70",
-      "source_metric": "fraction of S2-fresh information sets already present in S1 reference",
+      "definition": "distribution_similarity >= 0.70",
       "thresholds": {
-        "overlap_threshold": 0.7
-      }
+        "distribution_similarity_min": 0.7
+      },
+      "source_metric": "84-stratum distribution similarity between entire S1-128 and S2-fresh-384"
     },
     "B_shared_ref_improvement": {
       "definition": "policy_ce_improvement_bps >= 50 OR value_mse_improvement_bps >= 50",

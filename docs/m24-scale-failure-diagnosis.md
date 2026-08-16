@@ -50,11 +50,35 @@ Compare S1-128 vs S2-fresh-384:
 - duplicate observation / information-set rates
 - whether S2-fresh adds novel positions or mostly repeats the M22 self-play distribution
 
-Key metric:
+Exact information-set overlap is descriptive only:
 
 ```text
-cross_information_set_overlap =
-  fraction of S2-fresh information sets already present in S1 reference
+exact_information_set_overlap =
+  fraction of S2-fresh information sets already present in S1-128
+
+expected approximately 0 because M24-S2 has
+duplicate_information_set_rate = 0.0
+```
+
+This does NOT by itself imply strategic novelty.
+
+A gate metric is 84-stratum distribution similarity:
+
+```text
+strata:
+  3 phases x 7 action types x 4 legal-action bins = 84
+
+source_1 = entire S1-128 dataset
+source_2 = S2-fresh-384 dataset (S2 game_index >= 128)
+
+p_i = S1-128 frequency in stratum i
+q_i = S2-fresh-384 frequency in stratum i
+
+total_variation_distance =
+  0.5 * sum_i |p_i - q_i|
+
+distribution_similarity =
+  1 - total_variation_distance
 ```
 
 ### B. Shared-reference model behavior
@@ -231,7 +255,8 @@ search_sensitivity_evidence =
 
 ```text
 A_redundancy_evidence =
-  cross_information_set_overlap >= 0.70
+  distribution_similarity >= 0.70
+  (84-stratum similarity between entire S1-128 and S2-fresh-384)
 
 B_shared_ref_improvement =
   policy_ce_improvement_bps >= 50

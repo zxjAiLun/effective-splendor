@@ -442,7 +442,7 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     assert_eq!(config["version"], 1);
     assert_eq!(config["diagnosis_id"], "m24-scale-failure-diagnosis-v1");
-    assert_eq!(config["revision"], "repair-3");
+    assert_eq!(config["revision"], "repair-4");
     assert_eq!(config["status"], "AUTHORIZED");
     assert_eq!(config["no_new_training"], true);
     assert_eq!(config["no_new_collection"], true);
@@ -473,6 +473,26 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
         .map(|analysis| analysis["id"].as_str().unwrap())
         .collect();
     assert_eq!(ids, ["A", "B", "C", "D"]);
+
+    // A uses descriptive exact-overlap plus 84-stratum distribution similarity.
+    let a = &analyses[0];
+    assert!(a["metrics"]["exact_information_set_overlap"]
+        .as_str()
+        .unwrap()
+        .contains("descriptive only"));
+    assert!(a["metrics"]["distribution_similarity"]
+        .as_str()
+        .unwrap()
+        .contains("84 canonical strata"));
+    assert_eq!(
+        a["metrics"]["strata_definition"],
+        "3 phases x 7 action types x 4 legal-action bins = 84 canonical strata"
+    );
+    assert_eq!(a["metrics"]["source_1"], "entire S1-128 dataset");
+    assert_eq!(
+        a["metrics"]["source_2"],
+        "S2-fresh-384 dataset (S2 game_index >= 128)"
+    );
 
     // B reference subset is exact.
     let b = &analyses[1];
@@ -613,7 +633,7 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     // Derived booleans are explicit and thresholds are frozen.
     let derived = &config["derived_booleans"];
     assert_eq!(
-        derived["A_redundancy_evidence"]["thresholds"]["overlap_threshold"],
+        derived["A_redundancy_evidence"]["thresholds"]["distribution_similarity_min"],
         0.70
     );
     assert_eq!(
@@ -661,8 +681,14 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     let branches = gate["branches"].as_array().unwrap();
     assert_eq!(branches.len(), 4);
-    for branch in branches {
-        assert!(branch["predicate"].as_str().unwrap().len() > 0);
+    let expected_predicates = [
+        "A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue",
+        "D2_sensitivity OR D2_monotonic",
+        "representation_capacity_evidence",
+        "NOT (teacher OR search OR representation) OR multiple branches true",
+    ];
+    for (i, branch) in branches.iter().enumerate() {
+        assert_eq!(branch["predicate"], expected_predicates[i]);
         assert!(branch["action"].as_str().unwrap().len() > 0);
     }
 
