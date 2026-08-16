@@ -375,6 +375,17 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Evidence: all five plans share `game_seeds 300001..300032`, timeouts `5000/10000/2000`, and expand to exactly 64 matches each (32 seeds x 2 seat rotations). They are bound by `benchmarks/m24-s2-arena-screen-v1.bundle.json`, which the gate references by SHA-256. The Hoeffding formula now also records saturating bounds.
 - Outcome: `m24-scale-gate-v1` remains `FROZEN` as Repair 2; G4 remains `NOT_YET_RUN`; S2 is still not authorized.
 - Decision for next iteration: after independent re-review PASS, freeze the S2 nested corpus/config and authorize S2.
+### Iteration 8 — 2026-08-15
+
+- Change: M24 Scale Gate Repair 3 froze the S2 checkpoint placeholder materialization contract.
+- Reason: the three S2-containing plans are frozen templates, but their `__M24_S2_CHECKPOINT_HASH__` placeholder must have a machine-checkable path to a realized `EvaluationPlanV1` after formal S2 training. Without this, updating the plan after S2 would mutate the frozen gate.
+- Evidence: `benchmarks/m24-scale-gate-v1.json` and `benchmarks/m24-s2-arena-screen-v1.bundle.json` now define the exact allowed substitution:
+  - only `m24-s2-candidate --checkpoint-hash <placeholder>` may change
+  - placeholder is replaced by the formal M24-S2 checkpoint semantic hash
+  - all other plan fields remain immutable
+  - realized plans are generated under `local-artifacts/m24-s2-arena-screen-v1/`
+- Outcome: `m24-scale-gate-v1` remains `FROZEN` as Repair 3; G4 remains `NOT_YET_RUN`; S2 is still not authorized.
+- Decision for next iteration: after independent re-review PASS, freeze the S2 nested corpus/config and authorize S2.
 
 ## Final implementation
 
@@ -393,6 +404,9 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - The S1→S2 scale gate is frozen in `benchmarks/m24-scale-gate-v1.json`.
 - The fresh multi-seed Arena screen is frozen as five 2-agent pairwise plans
   in `benchmarks/m24-s2-arena-screen-v1.bundle.json`, which the gate hash-binds.
+- S2-containing plans are frozen templates with a machine-checkable
+  materialization contract: only the `__M24_S2_CHECKPOINT_HASH__` placeholder
+  may be replaced by the formal S2 checkpoint hash.
 
 ## Validation and evidence
 
@@ -433,7 +447,7 @@ full machine-verifiable manifest.
 - G3 training: `PASS`.
 - G4 scale decision: not run. M24-S1 is the baseline only.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
-- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN` (Repair 2; independent re-review of the repaired gate still pending).
+- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN` (Repair 3; independent re-review of the repaired gate still pending).
 - Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
   promotion, Arena screen, or strength claim is made. S2 is not authorized
   until the S2 nested corpus/config is frozen and the frozen scale gate is in

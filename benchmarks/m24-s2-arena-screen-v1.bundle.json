@@ -50,7 +50,11 @@
         "m24-s2-candidate",
         "m24-s1-checkpoint"
       ],
-      "role": "primary_lower_bound"
+      "role": "primary_lower_bound",
+      "kind": "template",
+      "placeholder": "__M24_S2_CHECKPOINT_HASH__",
+      "allowed_materialization": "Replace exactly the placeholder in m24-s2-candidate command args immediately after --checkpoint-hash with the formal M24-S2 checkpoint semantic hash. No other field may change.",
+      "realized_plan_path_pattern": "local-artifacts/m24-s2-arena-screen-v1/{evaluation_id}.plan.json"
     },
     {
       "pair": "s2_vs_m07",
@@ -61,7 +65,11 @@
         "m24-s2-candidate",
         "m07-champion"
       ],
-      "role": "anchor"
+      "role": "anchor",
+      "kind": "template",
+      "placeholder": "__M24_S2_CHECKPOINT_HASH__",
+      "allowed_materialization": "Replace exactly the placeholder in m24-s2-candidate command args immediately after --checkpoint-hash with the formal M24-S2 checkpoint semantic hash. No other field may change.",
+      "realized_plan_path_pattern": "local-artifacts/m24-s2-arena-screen-v1/{evaluation_id}.plan.json"
     },
     {
       "pair": "s1_vs_m07",
@@ -72,7 +80,11 @@
         "m24-s1-checkpoint",
         "m07-champion"
       ],
-      "role": "anchor"
+      "role": "anchor",
+      "kind": "exact",
+      "placeholder": null,
+      "allowed_materialization": null,
+      "realized_plan_path_pattern": null
     },
     {
       "pair": "s2_vs_heuristic",
@@ -83,7 +95,11 @@
         "m24-s2-candidate",
         "heuristic-v1"
       ],
-      "role": "anchor"
+      "role": "anchor",
+      "kind": "template",
+      "placeholder": "__M24_S2_CHECKPOINT_HASH__",
+      "allowed_materialization": "Replace exactly the placeholder in m24-s2-candidate command args immediately after --checkpoint-hash with the formal M24-S2 checkpoint semantic hash. No other field may change.",
+      "realized_plan_path_pattern": "local-artifacts/m24-s2-arena-screen-v1/{evaluation_id}.plan.json"
     },
     {
       "pair": "s1_vs_heuristic",
@@ -94,7 +110,34 @@
         "m24-s1-checkpoint",
         "heuristic-v1"
       ],
-      "role": "anchor"
+      "role": "anchor",
+      "kind": "exact",
+      "placeholder": null,
+      "allowed_materialization": null,
+      "realized_plan_path_pattern": null
     }
-  ]
+  ],
+  "materialization_contract": {
+    "description": "S2 checkpoint hash cannot be known before formal M24-S2 training. The three S2-containing plans are frozen templates. A realized plan may only replace the exact placeholder in the m24-s2-candidate --checkpoint-hash argument with the formal M24-S2 checkpoint semantic hash. No other field may change.",
+    "template_placeholder": "__M24_S2_CHECKPOINT_HASH__",
+    "allowed_difference": "m24-s2-candidate.command.args[--checkpoint-hash + 1] changes from __M24_S2_CHECKPOINT_HASH__ to the formal M24-S2 checkpoint semantic hash.",
+    "immutable_fields": [
+      "evaluation_id",
+      "agent IDs",
+      "checkpoint path",
+      "python/module root",
+      "catalog",
+      "device",
+      "sample seed",
+      "simulations",
+      "max depth turns",
+      "PUCT",
+      "game seeds",
+      "handshake timeout",
+      "move timeout",
+      "shutdown grace"
+    ],
+    "realized_plan_output_dir": "local-artifacts/m24-s2-arena-screen-v1",
+    "validation_required": "Each realized plan must deserialize as EvaluationPlanV1, validate, expand to 64 matches, and differ from its frozen template only by the checkpoint hash substitution."
+  }
 }

@@ -142,7 +142,7 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     assert_eq!(gate["format"], "effective-splendor-m24-scale-gate");
     assert_eq!(gate["version"], 1);
     assert_eq!(gate["gate_id"], "m24-scale-gate-v1");
-    assert_eq!(gate["revision"], "repair-2");
+    assert_eq!(gate["revision"], "repair-3");
     assert_eq!(gate["status"], "FROZEN");
 
     // The gate S1 baseline must be bound back to the tracked result manifest,
@@ -255,6 +255,68 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
             assert!(
                 actual_agents.contains(&expected),
                 "pair {expected_pair} missing agent {expected}"
+            );
+        }
+    }
+
+    // S2 template materialization must be a frozen, machine-checkable contract.
+    let materialization = &gate["competitive_movement"]["materialization_contract"];
+    assert_eq!(
+        materialization["template_placeholder"],
+        "__M24_S2_CHECKPOINT_HASH__"
+    );
+    let placeholder = materialization["template_placeholder"].as_str().unwrap();
+    let test_hash = "ab".repeat(32);
+
+    for item in pair_plans {
+        let plan_path = item["path"].as_str().unwrap();
+        let template_bytes = fs::read(root.join(plan_path)).unwrap();
+        if item["kind"] == "template" {
+            let template_value: Value = serde_json::from_slice(&template_bytes).unwrap();
+            let agent_index = template_value["agents"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .position(|agent| agent["id"] == "m24-s2-candidate")
+                .expect("template plan must contain m24-s2-candidate");
+            let args = template_value["agents"][agent_index]["command"]["args"]
+                .as_array()
+                .unwrap();
+            let mut placeholder_count = 0usize;
+            let mut hash_arg_index = None;
+            for (index, arg) in args.iter().enumerate() {
+                if arg == placeholder {
+                    placeholder_count += 1;
+                    assert!(
+                        index > 0 && args[index - 1] == "--checkpoint-hash",
+                        "placeholder must immediately follow --checkpoint-hash"
+                    );
+                    hash_arg_index = Some(index);
+                }
+            }
+            assert_eq!(placeholder_count, 1);
+            let hash_arg_index = hash_arg_index.unwrap();
+
+            let mut realized_value = template_value.clone();
+            realized_value["agents"][agent_index]["command"]["args"][hash_arg_index] =
+                Value::String(test_hash.clone());
+            let realized_bytes = serde_json::to_vec(&realized_value).unwrap();
+            let realized_plan: EvaluationPlanV1 = serde_json::from_slice(&realized_bytes).unwrap();
+            realized_plan.validate().unwrap();
+            let realized_schedule = expand_schedule(&realized_plan).unwrap();
+            assert_eq!(realized_schedule.len(), 64);
+
+            // The realized plan must be exactly the template with only the
+            // checkpoint hash placeholder replaced.
+            let mut expected_value = template_value;
+            expected_value["agents"][agent_index]["command"]["args"][hash_arg_index] =
+                Value::String(test_hash.clone());
+            assert_eq!(expected_value, realized_value);
+        } else {
+            let template_value: Value = serde_json::from_slice(&template_bytes).unwrap();
+            assert!(
+                !template_value.to_string().contains(placeholder),
+                "exact plan {plan_path} must not contain S2 placeholder"
             );
         }
     }

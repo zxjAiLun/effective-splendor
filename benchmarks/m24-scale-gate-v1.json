@@ -2,7 +2,7 @@
   "format": "effective-splendor-m24-scale-gate",
   "version": 1,
   "gate_id": "m24-scale-gate-v1",
-  "revision": "repair-2",
+  "revision": "repair-3",
   "experiment_id": "m24-training-scale-v1",
   "status": "FROZEN",
   "frozen_after": "m24_s1_accepted_at_dbe47ab17a2b4a255109f6c0d60e68c89e426b9e",
@@ -92,7 +92,7 @@
     "description": "Fresh multi-seed Arena screen using five 2-agent pairwise EvaluationPlans bundled by benchmarks/m24-s2-arena-screen-v1.bundle.json. All plans share the same 32 fresh seeds and timeouts, and each expands to exactly 64 matches (32 seeds x 2 seat rotations).",
     "arena_screen_bundle": {
       "path": "benchmarks/m24-s2-arena-screen-v1.bundle.json",
-      "file_sha256": "f07dcf44f490880126788d7e18d6f3779b705fef932d0ef7a9bd1f4008a371cb",
+      "file_sha256": "2ad0a3e3df1e8b5ce5042722672966ef8d95b2a639961df7e119056288f3bc27",
       "screen_id": "m24-s2-arena-screen-v1",
       "required_semantics": "Five plans, each with exactly 2 agents, same game_seeds 300001..300032, same timeouts 5000/10000/2000, and 2 cyclic seat rotations per seed."
     },
@@ -108,7 +108,7 @@
         "device": "cuda",
         "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
       },
-      "s2_checkpoint_rule": "m24-s2 candidate checkpoint hash must be derived only from formal M24-S2 training. All other runtime/search/plan fields are frozen before S2.",
+      "s2_checkpoint_rule": "See competitive_movement.materialization_contract: placeholder __M24_S2_CHECKPOINT_HASH__ is the only allowed substitution point for the formal M24-S2 checkpoint semantic hash.",
       "s2_checkpoint_path_template": "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt"
     },
     "statistics": {
@@ -153,6 +153,30 @@
         "max_anchor_regression_bps": 200,
         "pass_condition": "delta >= -200 bps for both M07 and heuristic anchors"
       }
+    },
+    "materialization_contract": {
+      "description": "The three S2-containing Arena plans are frozen templates. A realized plan may only replace the exact placeholder in the m24-s2-candidate --checkpoint-hash argument with the formal M24-S2 checkpoint semantic hash. No other field may change.",
+      "template_placeholder": "__M24_S2_CHECKPOINT_HASH__",
+      "allowed_difference": "m24-s2-candidate.command.args[--checkpoint-hash + 1] changes from __M24_S2_CHECKPOINT_HASH__ to the formal M24-S2 checkpoint semantic hash.",
+      "immutable_fields": [
+        "evaluation_id",
+        "agent IDs",
+        "checkpoint path",
+        "python/module root",
+        "catalog",
+        "device",
+        "sample seed",
+        "simulations",
+        "max depth turns",
+        "PUCT",
+        "game seeds",
+        "handshake timeout",
+        "move timeout",
+        "shutdown grace"
+      ],
+      "realized_plan_output_dir": "local-artifacts/m24-s2-arena-screen-v1",
+      "validation_required": "Each realized plan must deserialize as EvaluationPlanV1, validate, expand to 64 matches, and differ from its frozen template only by the checkpoint hash substitution.",
+      "s1_only_plans": "S1 vs M07 and S1 vs heuristic are exact plans and do not require materialization."
     }
   },
   "decision": {
