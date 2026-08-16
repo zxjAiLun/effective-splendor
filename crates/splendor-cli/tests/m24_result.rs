@@ -131,25 +131,108 @@ fn m24_s1_collection_config_is_nested_scale_first_stage() {
 #[test]
 fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     let root = root();
-    let gate: Value = serde_json::from_slice(
-        &fs::read(root.join("benchmarks/m24-scale-gate-v1.json")).unwrap(),
+    let result: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s1-v1.result.json")).unwrap(),
     )
     .unwrap();
+    let gate: Value =
+        serde_json::from_slice(&fs::read(root.join("benchmarks/m24-scale-gate-v1.json")).unwrap())
+            .unwrap();
     assert_eq!(gate["format"], "effective-splendor-m24-scale-gate");
     assert_eq!(gate["version"], 1);
     assert_eq!(gate["gate_id"], "m24-scale-gate-v1");
+    assert_eq!(gate["revision"], "repair-1");
     assert_eq!(gate["status"], "FROZEN");
-    assert_eq!(gate["reference_s1"]["self_play_hash"], "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053");
-    assert_eq!(gate["reference_s1"]["checkpoint_hash"], "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8");
-    assert!(gate["offline_movement"]["metrics"]["policy_cross_entropy"]["max_regression_bps"].is_number());
-    assert!(gate["offline_movement"]["metrics"]["visit_top1"]["max_regression_abs"].is_number());
-    assert!(gate["offline_movement"]["metrics"]["value_mse"]["max_regression_bps"].is_number());
-    let opponents = gate["competitive_movement"]["arena_screen"]["opponents"]
+
+    // The gate S1 baseline must be bound back to the tracked result manifest,
+    // not merely copied by hand.
+    assert_eq!(
+        gate["reference_s1"]["self_play_hash"],
+        result["self_play"]["self_play_hash"]
+    );
+    assert_eq!(
+        gate["reference_s1"]["checkpoint_hash"],
+        result["training"]["checkpoint_hash"]
+    );
+    assert_eq!(
+        gate["reference_s1"]["offline_validation"]["examples"],
+        result["training"]["validation"]["examples"]
+    );
+    assert_eq!(
+        gate["reference_s1"]["offline_validation"]["policy_cross_entropy"],
+        result["training"]["validation"]["policy_cross_entropy"]
+    );
+    assert_eq!(
+        gate["reference_s1"]["offline_validation"]["visit_top1"],
+        result["training"]["validation"]["visit_top1"]
+    );
+    assert_eq!(
+        gate["reference_s1"]["offline_validation"]["value_mse"],
+        result["training"]["validation"]["value_mse"]
+    );
+
+    // Offline comparison must be pinned to the exact S1 validation subset.
+    let reference_indices = gate["fixed_reference_offline_eval"]["reference_game_indices"]
         .as_array()
         .unwrap();
-    assert!(opponents.iter().any(|v| v == "m24-s1-checkpoint"));
-    assert!(opponents.iter().any(|v| v == "m07-champion"));
-    assert!(opponents.iter().any(|v| v == "heuristic-v1"));
-    assert_eq!(gate["competitive_movement"]["arena_screen"]["max_aborted_matches"], 0);
+    assert_eq!(reference_indices.len(), 32);
+    assert_eq!(reference_indices[0], 0);
+    assert_eq!(reference_indices[31], 124);
+    assert_eq!(
+        gate["fixed_reference_offline_eval"]["validation_game_modulus"],
+        4
+    );
+    assert_eq!(
+        gate["fixed_reference_offline_eval"]["validation_game_remainder"],
+        0
+    );
+
+    // The Arena screen plan must exist and be hash-bound into the gate.
+    let plan_bytes = fs::read(root.join("benchmarks/m24-s2-arena-screen-v1.plan.json")).unwrap();
+    let plan_sha = sha256_hex(&plan_bytes);
+    let plan_gate = &gate["competitive_movement"]["arena_screen_plan"];
+    assert_eq!(plan_gate["file_sha256"], plan_sha);
+    let plan: Value = serde_json::from_slice(&plan_bytes).unwrap();
+    assert_eq!(plan["format"], "effective-splendor-evaluation-plan");
+    assert_eq!(plan["version"], 1);
+    assert_eq!(plan["evaluation_id"], "m24-s2-arena-screen-v1");
+    assert_eq!(plan["game_seeds"], plan_gate["game_seeds"]);
+    assert_eq!(
+        plan["handshake_timeout_ms"],
+        plan_gate["handshake_timeout_ms"]
+    );
+    assert_eq!(plan["move_timeout_ms"], plan_gate["move_timeout_ms"]);
+    assert_eq!(plan["shutdown_grace_ms"], plan_gate["shutdown_grace_ms"]);
+    let agent_ids: Vec<&str> = plan["agents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|agent| agent["id"].as_str().unwrap())
+        .collect();
+    assert!(agent_ids.contains(&"m24-s1-checkpoint"));
+    assert!(agent_ids.contains(&"m24-s2-candidate"));
+    assert!(agent_ids.contains(&"m07-champion"));
+    assert!(agent_ids.contains(&"heuristic-v1"));
+
+    // Runtime/search recipe is frozen.
+    let search_recipe = &gate["competitive_movement"]["runtime_identity"]["search_recipe"];
+    assert_eq!(search_recipe["simulations"], 16);
+    assert_eq!(search_recipe["max_depth_turns"], 1);
+    assert_eq!(search_recipe["puct_exploration_milli"], 1500);
+    assert_eq!(search_recipe["device"], "cuda");
+
+    // Statistical method is frozen and reuses the accepted promotion Hoeffding
+    // contract.
+    let statistics = &gate["competitive_movement"]["statistics"];
+    assert_eq!(statistics["confidence_bps"], 9500);
+    assert!(statistics["pairwise_lower_bound_method"]
+        .as_str()
+        .unwrap()
+        .contains("Hoeffding"));
+    assert_eq!(
+        statistics["s2_vs_s1_min_pairwise_score_lower_bound_bps"],
+        100
+    );
+
     assert_eq!(gate["decision"]["G4_scale_decision"], "NOT_YET_RUN");
 }

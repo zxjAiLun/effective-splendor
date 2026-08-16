@@ -2,6 +2,7 @@
   "format": "effective-splendor-m24-scale-gate",
   "version": 1,
   "gate_id": "m24-scale-gate-v1",
+  "revision": "repair-1",
   "experiment_id": "m24-training-scale-v1",
   "status": "FROZEN",
   "frozen_after": "m24_s1_accepted_at_dbe47ab17a2b4a255109f6c0d60e68c89e426b9e",
@@ -16,54 +17,169 @@
       "value_mse": 0.24513039903889786
     }
   },
+  "fixed_reference_offline_eval": {
+    "description": "S1 and S2 offline metrics must be compared on exactly the same S1 validation subset. The full S2 512-game validation metrics are diagnostics only and are not used for G4 offline movement.",
+    "dataset_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "validation_rule": "game_index % validation_game_modulus == validation_game_remainder",
+    "validation_game_modulus": 4,
+    "validation_game_remainder": 0,
+    "reference_games": "S1 game indices 0,4,8,...,124 (32 games)",
+    "reference_game_indices": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60,
+      64,
+      68,
+      72,
+      76,
+      80,
+      84,
+      88,
+      92,
+      96,
+      100,
+      104,
+      108,
+      112,
+      116,
+      120,
+      124
+    ]
+  },
   "offline_movement": {
-    "description": "S2 must show a non-degenerate learning signal relative to S1. These are diagnostic gates only and are not strength evidence.",
+    "description": "S2 must show a non-degenerate learning signal on the fixed S1 reference subset relative to S1. These are diagnostic gates only and are not strength evidence.",
+    "comparison_basis": "fixed_reference_offline_eval",
+    "bps_definition": "Relative improvement/regression for lower-is-better metrics uses S1 as the denominator: delta_bps = (S1 - S2) / S1 * 10000. Positive delta_bps means improvement. Top-1 uses absolute differences.",
     "metrics": {
       "policy_cross_entropy": {
         "direction": "lower_is_better",
+        "improvement_pass": "S2 <= S1 * (1 - 50/10000)",
+        "regression_allowed": "S2 <= S1 * (1 + 100/10000)",
         "max_regression_bps": 100,
         "min_improvement_bps": 50
       },
       "visit_top1": {
         "direction": "higher_is_better",
+        "improvement_pass": "S2 >= S1 + 0.005",
+        "regression_allowed": "S2 >= S1 - 0.01",
         "max_regression_abs": 0.01,
         "min_improvement_abs": 0.005
       },
       "value_mse": {
         "direction": "lower_is_better",
+        "improvement_pass": "S2 <= S1 * (1 - 50/10000)",
+        "regression_allowed": "S2 <= S1 * (1 + 100/10000)",
         "max_regression_bps": 100,
         "min_improvement_bps": 50
       }
     },
-    "pass_condition": "At least one offline metric must meet its minimum improvement threshold, and no offline metric may exceed its maximum regression threshold."
+    "pass_condition": "At least one offline metric must meet its minimum improvement threshold on the fixed S1 reference subset, and no offline metric may exceed its maximum regression threshold."
   },
   "competitive_movement": {
-    "description": "Fresh multi-seed Arena screen comparing the S2 checkpoint against the S1 checkpoint, with M07 and heuristic anchors. This is the strength-evidence layer.",
-    "arena_screen": {
-      "opponents": [
-        "m24-s1-checkpoint",
-        "m07-champion",
-        "heuristic-v1"
+    "description": "Fresh multi-seed Arena screen using benchmarks/m24-s2-arena-screen-v1.plan.json. All agents share the same frozen seeds, seat rotations, and timeouts. Comparisons are derived from the same scheduled matches.",
+    "arena_screen_plan": {
+      "path": "benchmarks/m24-s2-arena-screen-v1.plan.json",
+      "file_sha256": "7892cf66a98289da1f23222ea0f4c62a16e3d628613566a1d7451d949a19687c",
+      "evaluation_id": "m24-s2-arena-screen-v1",
+      "format": "effective-splendor-evaluation-plan",
+      "version": 1,
+      "game_seeds": [
+        300001,
+        300002,
+        300003,
+        300004,
+        300005,
+        300006,
+        300007,
+        300008,
+        300009,
+        300010,
+        300011,
+        300012,
+        300013,
+        300014,
+        300015,
+        300016,
+        300017,
+        300018,
+        300019,
+        300020,
+        300021,
+        300022,
+        300023,
+        300024,
+        300025,
+        300026,
+        300027,
+        300028,
+        300029,
+        300030,
+        300031,
+        300032
       ],
-      "seeds_per_pair": 32,
-      "seat_rotations": 2,
-      "scheduled_matches_per_pair": 64,
-      "min_completed_seed_blocks": 32,
-      "max_aborted_matches": 0,
-      "max_candidate_faults": 0,
-      "max_move_timeout_ms": 10000
+      "handshake_timeout_ms": 5000,
+      "move_timeout_ms": 10000,
+      "shutdown_grace_ms": 2000,
+      "seat_schedule": "cyclic seat rotation from effective-splendor-evaluation-plan v1; one rotation per agent per seed"
     },
-    "pass_condition": {
-      "s2_vs_s1": "S2 must have a strictly positive pairwise score lower bound against S1 in the fresh multi-seed screen.",
-      "anchors": "S2 must not show a material regression against M07 or heuristic relative to S1's anchor results; max allowed anchor regression is 200 bps.",
-      "min_s2_vs_s1_pairwise_score_lower_bound_bps": 100,
-      "max_anchor_regression_bps": 200
+    "runtime_identity": {
+      "s1_agent_id": "m24-s1-checkpoint",
+      "s2_agent_id": "m24-s2-candidate",
+      "m07_agent_id": "m07-champion",
+      "heuristic_agent_id": "heuristic-v1",
+      "search_recipe": {
+        "simulations": 16,
+        "max_depth_turns": 1,
+        "puct_exploration_milli": 1500,
+        "device": "cuda",
+        "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
+      },
+      "s2_checkpoint_rule": "m24-s2 candidate checkpoint hash must be derived only from formal M24-S2 training. All other runtime/search/plan fields are frozen before S2.",
+      "s2_checkpoint_path_template": "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt"
+    },
+    "statistics": {
+      "pairwise_lower_bound_method": "reuse existing effective-splendor-promotion-v1 deterministic integer one-sided Hoeffding",
+      "confidence_bps": 9500,
+      "statistical_unit": "completed paired seed blocks",
+      "score_definition": "win=1.0, tie=0.5, loss=0.0 per completed match",
+      "score_basis_points_formula": "10000 * (wins * 2 + ties) / (2 * completed_matches)",
+      "lower_bound_formula": "center_bps - ceil(sqrt(ceil(150000000 / completed_seed_blocks)))",
+      "s2_vs_s1_min_pairwise_score_lower_bound_bps": 100
+    },
+    "comparisons": {
+      "primary": "S2 vs S1: pass requires min pairwise score lower bound >= 100 bps using the frozen Hoeffding method.",
+      "anchors": {
+        "description": "Anchor regression uses pairwise center score bps, not lower bounds, because S1/S2 anchor comparisons are calibration deltas.",
+        "pairs": [
+          "S2 vs M07 and S1 vs M07",
+          "S2 vs heuristic and S1 vs heuristic"
+        ],
+        "same_fresh_seeds": true,
+        "same_seat_rotations": true,
+        "anchor_delta_metric": "pairwise_center_score_bps",
+        "anchor_delta_formula": "delta = center(S2, anchor) - center(S1, anchor)",
+        "max_anchor_regression_bps": 200,
+        "pass_condition": "delta >= -200 bps for both M07 and heuristic anchors"
+      }
     }
   },
   "decision": {
     "G4_scale_decision": "NOT_YET_RUN",
-    "pass_means": "S2 shows a non-degenerate offline learning signal and a positive competitive movement against S1 without anchor regression; S3 may be considered.",
-    "fail_means": "S2 fails offline movement or competitive movement; stop M24 scaling and do not auto-authorize M25.",
+    "pass_means": "S2 shows a non-degenerate offline learning signal on the fixed S1 reference subset, a positive competitive movement against S1 by the frozen Hoeffding lower bound, and no anchor regression beyond 200 bps; S3 may be considered.",
+    "fail_means": "S2 fails offline movement, S2 vs S1 competitive movement, or anchor regression; stop M24 scaling and do not auto-authorize M25.",
     "does_not_authorize": [
       "S2 collection",
       "S3 collection",

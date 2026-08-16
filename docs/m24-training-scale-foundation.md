@@ -350,6 +350,18 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   `NOT_YET_RUN`; S2 is still not authorized.
 - Decision for next iteration: freeze the S2 nested corpus/config and then
   authorize S2 collection.
+### Iteration 6 — 2026-08-15
+
+- Change: M24 Scale Gate Repair 1 closed independent review P1-1..P1-4 and P2.
+- Reason: the first gate freeze candidate was not yet machine-checkable:
+  - P1-1: S1/S2 offline metrics must be compared on the same fixed S1 validation subset.
+  - P1-2: the pairwise lower-bound statistic must reuse the accepted promotion Hoeffding contract.
+  - P1-3: S1 anchor baselines must be explicitly included in the same fresh Arena screen.
+  - P1-4: exact Arena seeds, seat schedule, timeouts, and runtime/search identity must be frozen before S2.
+  - P2: the workspace test must bind the gate's S1 offline baseline back to the tracked result manifest and hash-bind the Arena plan.
+- Evidence: `benchmarks/m24-scale-gate-v1.json` now pins the fixed S1 reference offline subset, the Hoeffding statistical method, S2/S1/M07/heuristic comparisons, and references `benchmarks/m24-s2-arena-screen-v1.plan.json` by SHA-256. `crates/splendor-cli/tests/m24_result.rs` verifies these bindings.
+- Outcome: `m24-scale-gate-v1` remains `FROZEN` as Repair 1; G4 remains `NOT_YET_RUN`; S2 is still not authorized.
+- Decision for next iteration: after independent re-review PASS, freeze the S2 nested corpus/config and authorize S2.
 
 ## Final implementation
 
@@ -366,6 +378,8 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - Formal S1 collection, audit, and training have run; evidence is recorded in
   `benchmarks/m24-self-play-s1-v1.result.json`.
 - The S1→S2 scale gate is frozen in `benchmarks/m24-scale-gate-v1.json`.
+- The fresh multi-seed Arena screen is frozen in
+  `benchmarks/m24-s2-arena-screen-v1.plan.json` and hash-bound into the gate.
 
 ## Validation and evidence
 
@@ -406,7 +420,7 @@ full machine-verifiable manifest.
 - G3 training: `PASS`.
 - G4 scale decision: not run. M24-S1 is the baseline only.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
-- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN`.
+- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN` (Repair 1; independent re-review of the repaired gate still pending).
 - Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
   promotion, Arena screen, or strength claim is made. S2 is not authorized
   until the S2 nested corpus/config is frozen and the frozen scale gate is in
