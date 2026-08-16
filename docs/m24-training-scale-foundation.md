@@ -386,6 +386,20 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   - realized plans are generated under `local-artifacts/m24-s2-arena-screen-v1/`
 - Outcome: `m24-scale-gate-v1` remains `FROZEN` as Repair 3; G4 remains `NOT_YET_RUN`; S2 is still not authorized.
 - Decision for next iteration: after independent re-review PASS, freeze the S2 nested corpus/config and authorize S2.
+### Iteration 9 — 2026-08-15
+
+- Change: froze M24-S2 nested collection/training configs.
+- Reason: after `m24-scale-gate-v1` accepted, the next pre-registration is the exact S2 corpus and training recipe so that S2 remains a single-variable scale experiment.
+- Evidence:
+  - `benchmarks/m24-self-play-s2-v1.config.json`
+    - 512 games: S1 exact seeds `260001..260128` + fresh seeds `260130..260513`
+    - explicitly skips `260129` (the frozen S1 training seed)
+    - all collection/search/device fields match S1 except `self_play_id` and `game_seeds`
+  - `benchmarks/m24-self-play-s2-v1.training.json`
+    - same training recipe as S1: base M22, seed `260129`, batch 128, epochs 16, lr 1e-4, etc.
+    - `expected_self_play_hash` remains `""` until formal S2 collection completes
+- Outcome: M24-S2 configs `FROZEN`; S2 collection still not authorized; G4 remains `NOT_YET_RUN`.
+- Decision for next iteration: after narrow pre-execution review, authorize and run M24-S2 collection.
 
 ## Final implementation
 
@@ -407,6 +421,9 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
 - S2-containing plans are frozen templates with a machine-checkable
   materialization contract: only the `__M24_S2_CHECKPOINT_HASH__` placeholder
   may be replaced by the formal S2 checkpoint hash.
+- M24-S2 nested collection/training configs are frozen in:
+  - `benchmarks/m24-self-play-s2-v1.config.json`
+  - `benchmarks/m24-self-play-s2-v1.training.json`
 
 ## Validation and evidence
 
@@ -447,11 +464,12 @@ full machine-verifiable manifest.
 - G3 training: `PASS`.
 - G4 scale decision: not run. M24-S1 is the baseline only.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
-- Scale gate: `benchmarks/m24-scale-gate-v1.json` `FROZEN` (Repair 3; independent re-review of the repaired gate still pending).
+- Scale gate: `benchmarks/m24-scale-gate-v1.json` `ACCEPTED` / `FROZEN`.
+- S2 config: `benchmarks/m24-self-play-s2-v1.config.json` and
+  `benchmarks/m24-self-play-s2-v1.training.json` `FROZEN`.
 - Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. No
-  promotion, Arena screen, or strength claim is made. S2 is not authorized
-  until the S2 nested corpus/config is frozen and the frozen scale gate is in
-  place. M25 is not authorized.
+  promotion, Arena screen, or strength claim is made. S2 collection is not yet
+  authorized; it awaits narrow pre-execution review. M25 is not authorized.
 
 ## Known limitations and non-claims
 
@@ -464,7 +482,8 @@ full machine-verifiable manifest.
 
 ## Next authorized gate
 
-- `m24-scale-gate-v1` is frozen in `benchmarks/m24-scale-gate-v1.json`.
-- Next, freeze the S2 nested corpus/config (S1 exact seeds + 384 fresh seeds)
-  and only then authorize M24-S2 collection.
-- M24-S2 remains not authorized; M25 remains not authorized.
+- `m24-scale-gate-v1` is `ACCEPTED` / `FROZEN`.
+- S2 nested collection/training configs are frozen.
+- Next: narrow pre-execution review of the S2 configs, then authorize and run
+  M24-S2 collection (512 games).
+- M24-S2 collection is not authorized yet; M25 remains not authorized.

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 
 use serde_json::Value;
@@ -127,6 +128,97 @@ fn m24_s1_collection_config_is_nested_scale_first_stage() {
     assert_eq!(config["simulations"], 16);
     assert_eq!(config["max_depth_turns"], 1);
     assert_eq!(config["device"], "cuda");
+}
+
+#[test]
+fn m24_s2_collection_config_is_nested_scale_second_stage() {
+    let root = root();
+    let s1: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s1-v1.config.json")).unwrap(),
+    )
+    .unwrap();
+    let s2: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s2-v1.config.json")).unwrap(),
+    )
+    .unwrap();
+    let s1_seeds = s1["game_seeds"].as_array().unwrap();
+    let s2_seeds = s2["game_seeds"].as_array().unwrap();
+
+    assert_eq!(s2_seeds.len(), 512);
+    assert_eq!(&s2_seeds[0..128], &s1_seeds[..]);
+
+    let fresh = &s2_seeds[128..];
+    assert_eq!(fresh.len(), 384);
+    let fresh_set: HashSet<u64> = fresh.iter().map(|value| value.as_u64().unwrap()).collect();
+    let s1_set: HashSet<u64> = s1_seeds
+        .iter()
+        .map(|value| value.as_u64().unwrap())
+        .collect();
+    assert_eq!(fresh_set.len(), 384);
+    assert!(fresh_set.is_disjoint(&s1_set));
+    assert!(!fresh_set.contains(&260129));
+
+    for key in [
+        "format",
+        "version",
+        "python",
+        "module_root",
+        "checkpoint",
+        "checkpoint_hash",
+        "catalog",
+        "device",
+        "action_seed",
+        "search_seed",
+        "simulations",
+        "max_depth_turns",
+        "puct_exploration_milli",
+        "temperature_plies",
+        "max_plies",
+    ] {
+        assert_eq!(
+            s1[key], s2[key],
+            "S2 collection recipe field {key} must match S1"
+        );
+    }
+}
+
+#[test]
+fn m24_s2_training_config_preserves_s1_recipe_and_pending_hash() {
+    let root = root();
+    let s1: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s1-v1.training.json")).unwrap(),
+    )
+    .unwrap();
+    let s2: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s2-v1.training.json")).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(s2["training_id"], "m24-self-play-s2-v1");
+    assert_eq!(s2["model_id"], "m24-entity-mixer-self-play-s2-v1");
+    assert_eq!(s2["expected_self_play_hash"], "");
+
+    for key in [
+        "format",
+        "version",
+        "base_checkpoint",
+        "base_checkpoint_hash",
+        "device",
+        "seed",
+        "batch_size",
+        "epochs",
+        "learning_rate",
+        "weight_decay",
+        "value_loss_weight",
+        "gradient_clip_norm",
+        "validation_game_modulus",
+        "validation_game_remainder",
+    ] {
+        assert_eq!(
+            s1[key], s2[key],
+            "S2 training recipe field {key} must match S1"
+        );
+    }
 }
 
 #[test]
