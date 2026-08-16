@@ -1,0 +1,81 @@
+{
+  "format": "effective-splendor-m24-s2-result",
+  "version": 1,
+  "status": "s2_collection_audit_and_training_complete",
+  "experiment_id": "m24-self-play-s2-v1",
+  "config_freeze_commit": "e461696093d7064b312314bca50e21337c487df4",
+  "training_authorization_commit": "e6f5d1be97be0baf23939ddddb6493d770963771",
+  "base_commit": "85dbad1ce2cab99fef57ef01e183ec21c1d1e770",
+  "self_play": {
+    "config_file_sha256": "88d4daa45da4f39d09fd6625a028e395e9bce9b26e57e9c85255023e7d174b24",
+    "collector_config_hash": "0ce030663454c530c7aae368ce5eb650b7d74476aa2fd4a542e1c98a639a1fb9",
+    "dataset_format": "effective-splendor-neural-self-play-v2",
+    "dataset_version": 2,
+    "dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "base_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+    "search_config_identity": "neural-ismcts-s16-d1-c1500-v1",
+    "games": 512,
+    "examples": 31505,
+    "device": "cuda",
+    "verified_replays": 512
+  },
+  "diagnostics": {
+    "report_file_sha256": "baf4f00063eeb297df2f1cd8e070f9280a53f483b3fee842e72bd6f15fbdafb9",
+    "games_verified": 512,
+    "duplicate_game_seeds": 0,
+    "duplicate_observation_rate": 0.0,
+    "duplicate_information_set_rate": 0.0,
+    "examples": 31505,
+    "winner_seat_counts": {
+      "seat_0": 281,
+      "seat_1": 231
+    }
+  },
+  "training": {
+    "config_file_sha256": "634abe1c864331900b4e1376fb6fcf765b8a5c0e8d75fd0f36c2f21cf344904f",
+    "training_report_file_sha256": "a42b42d4e8fa0c543bbd0b246e93da01a0a8557684c17de5f914887692117503",
+    "device": "cuda",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch_version": "2.6.0+cu124",
+    "cuda_version": "12.4",
+    "deterministic_algorithms_enabled": true,
+    "best_epoch": 8,
+    "checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+    "checkpoint_file_sha256": "0ba19302a5cd0fe618fc5246a3d5bc9c562460d558cff2a128d1c25b6fe0543e",
+    "validation": {
+      "examples": 7851,
+      "policy_cross_entropy": 1.1873009657042906,
+      "visit_top1": 0.9261240606292193,
+      "value_mse": 0.23482048434066918
+    }
+  },
+  "fixed_reference_offline_eval": {
+    "description": "Both checkpoints evaluated on the frozen S1 reference validation subset (S1 game_index % 4 == 0, 1953 examples).",
+    "validation_examples": 1953,
+    "s1": {
+      "policy_cross_entropy": 1.2131885659432204,
+      "visit_top1": 0.9185867895545314,
+      "value_mse": 0.24513039903889786
+    },
+    "s2": {
+      "policy_cross_entropy": 1.2052568747212322,
+      "visit_top1": 0.9190988223246288,
+      "value_mse": 0.2366843743624592
+    }
+  },
+  "gates": {
+    "G1_collection": "PASS",
+    "G2_audit": "PASS",
+    "G3_training": "PASS",
+    "G4_scale_decision": "NOT_YET_RUN",
+    "G5_continuation": "NOT_YET_RUN"
+  },
+  "interpretation": "M24-S2 establishes the 512-game scale experiment. Offline metrics are diagnostic only; G4 movement uses the frozen S1 reference subset and a future fresh multi-seed Arena screen. Arena screen is not authorized yet.",
+  "artifact_policy": "self-play dataset, diagnostics, checkpoint, and training report remain ignored under local-artifacts/m24-self-play-s2-v1; only compact tracked configs and this result manifest are checked in.",
+  "review": {
+    "source_review": "PENDING_INDEPENDENT_REVIEW",
+    "acceptance": "PENDING_INDEPENDENT_REVIEW",
+    "next_gate": "fixed_s1_reference_offline_eval_review_then_arena_materialization"
+  }
+}

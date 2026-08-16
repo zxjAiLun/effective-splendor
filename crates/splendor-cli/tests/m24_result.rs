@@ -225,6 +225,50 @@ fn m24_s2_training_config_preserves_s1_recipe_and_frozen_hash() {
 }
 
 #[test]
+fn m24_s2_result_manifest_binds_frozen_configs_and_hashes() {
+    let root = root();
+    let result: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-self-play-s2-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+    let config = fs::read(root.join("benchmarks/m24-self-play-s2-v1.config.json")).unwrap();
+    let training = fs::read(root.join("benchmarks/m24-self-play-s2-v1.training.json")).unwrap();
+
+    assert_eq!(
+        result["status"],
+        "s2_collection_audit_and_training_complete"
+    );
+    assert_eq!(
+        result["self_play"]["config_file_sha256"],
+        sha256_hex(&config)
+    );
+    assert_eq!(
+        result["self_play"]["collector_config_hash"],
+        collector_config_hash(&config)
+    );
+    assert_eq!(
+        result["training"]["config_file_sha256"],
+        sha256_hex(&training)
+    );
+    assert_eq!(
+        result["self_play"]["self_play_hash"],
+        "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46"
+    );
+    assert_eq!(
+        result["training"]["checkpoint_hash"],
+        "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8"
+    );
+    assert_eq!(result["gates"]["G1_collection"], "PASS");
+    assert_eq!(result["gates"]["G2_audit"], "PASS");
+    assert_eq!(result["gates"]["G3_training"], "PASS");
+    assert_eq!(result["gates"]["G4_scale_decision"], "NOT_YET_RUN");
+    assert_eq!(
+        result["fixed_reference_offline_eval"]["validation_examples"],
+        1953
+    );
+}
+
+#[test]
 fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     let root = root();
     let result: Value = serde_json::from_slice(

@@ -417,6 +417,22 @@ A `REJECT` at G4 is a valid scientific result, not an execution failure.
   - `benchmarks/m24-self-play-s2-v1.training.json` now has `expected_self_play_hash = b8a67f5f...`
 - Outcome: M24-S2 G1/G2 `PASS`; S2 training config hash frozen; S2 training still not authorized.
 - Decision for next iteration: review the hash-only materialization and then authorize S2 training.
+### Iteration 11 — 2026-08-15
+
+- Change: completed M24-S2 training and recorded the formal S2 training evidence; computed the fixed-S1-reference offline evaluation.
+- Evidence:
+  - `local-artifacts/m24-self-play-s2-v1/trained/`
+    - checkpoint semantic `c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8`
+    - checkpoint file SHA-256 `0ba19302a5cd0fe618fc5246a3d5bc9c562460d558cff2a128d1c25b6fe0543e`
+    - training report SHA-256 `a42b42d4e8fa0c543bbd0b246e93da01a0a8557684c17de5f914887692117503`
+    - best epoch 8
+    - full S2 validation: CE 1.1873 / top1 0.9261 / MSE 0.2348 (diagnostic only)
+  - fixed S1 reference offline eval (same 1953 S1 validation examples):
+    - S1: CE 1.2132 / top1 0.9186 / MSE 0.2451
+    - S2: CE 1.2053 / top1 0.9191 / MSE 0.2367
+  - `benchmarks/m24-self-play-s2-v1.result.json` now records collection, diagnostics, training, and fixed-reference offline evidence.
+- Outcome: M24-S2 G1/G2/G3 `PASS`; S2 training evidence frozen; G4 still `NOT_YET_RUN`; Arena not authorized.
+- Decision for next iteration: review S2 training evidence and then materialize the three S2 Arena plan templates with the S2 checkpoint hash.
 
 ## Final implementation
 
@@ -478,12 +494,12 @@ full machine-verifiable manifest.
 
 - G1 collection: `PASS` (S1 and S2).
 - G2 audit: `PASS` (S1 and S2).
-- G3 training: `PASS` for S1; S2 training not yet run.
+- G3 training: `PASS` (S1 and S2).
 - G4 scale decision: not run.
 - Source review: independent re-review of `dbe47ab` `PASS`; M24-S1 `ACCEPTED`.
 - Scale gate: `benchmarks/m24-scale-gate-v1.json` `ACCEPTED` / `FROZEN`.
-- S2 config: `benchmarks/m24-self-play-s2-v1.config.json` `FROZEN`; S2 training config hash now frozen to `b8a67f5f...`.
-- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. M24-S2 512-game collection and diagnostics are complete. No promotion or Arena strength claim is made. S2 training is not yet authorized; M25 is not authorized.
+- S2 result: `benchmarks/m24-self-play-s2-v1.result.json` `FROZEN`.
+- Decision: M24-S1 establishes the accepted 128-game diagnostic baseline. M24-S2 512-game collection, diagnostics, and training are complete. No promotion or Arena strength claim is made. Arena screen is not yet authorized; M25 is not authorized.
 
 ## Known limitations and non-claims
 
@@ -497,6 +513,6 @@ full machine-verifiable manifest.
 ## Next authorized gate
 
 - `m24-scale-gate-v1` is `ACCEPTED` / `FROZEN`.
-- M24-S2 collection/diagnostics complete; S2 self-play hash frozen into the training config.
-- Next: review the hash-only materialization and then authorize M24-S2 training.
-- M24-S2 training is not authorized yet; M25 remains not authorized.
+- M24-S2 collection/diagnostics/training complete; S2 result manifest frozen.
+- Next: review S2 training evidence and fixed-S1-reference offline eval, then materialize the three S2 Arena plan templates with the S2 checkpoint hash.
+- M24-S2 Arena screen is not authorized yet; M25 remains not authorized.
