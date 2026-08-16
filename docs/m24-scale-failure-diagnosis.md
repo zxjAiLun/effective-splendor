@@ -147,6 +147,23 @@ local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json
 semantic hash recorded after selection
 ```
 
+
+Ranking definition:
+
+```text
+method          = Spearman rho
+universe        = exact legal_actions in canonical action order
+model_rank      = descending model probability
+M07_rank        = descending M07 root utility
+ties            = average ranks
+all tied on either side = 0
+action alignment = canonical legal_actions order
+missing/invalid  = exclude position and record exclusion
+aggregation      = mean rho over all selected positions
+
+top1 tie-break   = first action in canonical legal_actions order
+```
+
 ### D. Strength attribution
 
 D1: existing-evidence attribution
@@ -155,6 +172,26 @@ D1: existing-evidence attribution
 - Correlate S2 vs S1 policy confidence and value error with M07 anchor delta.
 
 D2: mandatory fixed-model search-budget sensitivity
+
+Stage 0 — inherited accepted materialization (not a D2 mutation):
+
+```text
+S2-containing templates:
+  benchmarks/m24-s2-vs-s1-v1.plan.json
+  benchmarks/m24-s2-vs-m07-v1.plan.json
+  benchmarks/m24-s2-vs-heuristic-v1.plan.json
+
+placeholder:
+  __M24_S2_CHECKPOINT_HASH__
+
+formal S2 checkpoint hash:
+  c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8
+
+materialization contract:
+  benchmarks/m24-s2-arena-screen-v1.realized.json
+```
+
+Stage 1 — D2 mutations only:
 
 ```text
 derived_from_plans:

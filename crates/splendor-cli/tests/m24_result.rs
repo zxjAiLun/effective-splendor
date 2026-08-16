@@ -442,7 +442,7 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     );
     assert_eq!(config["version"], 1);
     assert_eq!(config["diagnosis_id"], "m24-scale-failure-diagnosis-v1");
-    assert_eq!(config["revision"], "repair-2");
+    assert_eq!(config["revision"], "repair-3");
     assert_eq!(config["status"], "AUTHORIZED");
     assert_eq!(config["no_new_training"], true);
     assert_eq!(config["no_new_collection"], true);
@@ -525,12 +525,62 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
         .unwrap()
         .contains("information_set_hash"));
 
+    // C ranking semantics are unique.
+    let ranking = &c["ranking_definition"];
+    assert_eq!(ranking["method"], "Spearman rho");
+    assert_eq!(
+        ranking["universe"],
+        "exact legal_actions in canonical action order"
+    );
+    assert_eq!(ranking["ties"], "average ranks");
+    assert_eq!(ranking["all_tied_on_either_side"], 0);
+    assert_eq!(
+        ranking["aggregation"],
+        "mean rho over all selected positions"
+    );
+    assert_eq!(
+        ranking["top1_tie_break"],
+        "first action in canonical legal_actions order"
+    );
+
     // D2 search sensitivity is mandatory, derived from accepted M24 plans, and exact.
     let d = &analyses[3];
     let d2 = &d["d2_search_sensitivity"];
     assert_eq!(d2["mandatory"], true);
-    assert_eq!(d2["derived_from_plans"].as_array().unwrap().len(), 5);
-    assert_eq!(d2["allowed_mutations"].as_array().unwrap().len(), 3);
+
+    // Stage 0 materialization inheritance.
+    let stage0 = &d2["stage_0_materialization"];
+    assert_eq!(stage0["placeholder"], "__M24_S2_CHECKPOINT_HASH__");
+    assert_eq!(
+        stage0["formal_s2_checkpoint_hash"],
+        s2["training"]["checkpoint_hash"]
+    );
+    assert_eq!(
+        stage0["materialization_contract_reference"],
+        "benchmarks/m24-s2-arena-screen-v1.realized.json"
+    );
+    assert_eq!(
+        stage0["source_templates_with_s2"].as_array().unwrap().len(),
+        3
+    );
+
+    let derived_plans = d2["derived_from_plans"].as_array().unwrap();
+    let expected_plans = [
+        "benchmarks/m24-s2-vs-s1-v1.plan.json",
+        "benchmarks/m24-s2-vs-m07-v1.plan.json",
+        "benchmarks/m24-s1-vs-m07-v1.plan.json",
+        "benchmarks/m24-s2-vs-heuristic-v1.plan.json",
+        "benchmarks/m24-s1-vs-heuristic-v1.plan.json",
+    ];
+    assert_eq!(derived_plans.len(), 5);
+    for (i, plan) in expected_plans.iter().enumerate() {
+        assert_eq!(derived_plans[i], *plan);
+    }
+    let allowed = d2["allowed_mutations"].as_array().unwrap();
+    assert_eq!(allowed.len(), 3);
+    assert!(allowed[0].as_str().unwrap().contains("game_seeds"));
+    assert!(allowed[1].as_str().unwrap().contains("simulations"));
+    assert!(allowed[2].as_str().unwrap().contains("evaluation_id"));
     assert_eq!(d2["forbidden_mutations"].as_array().unwrap().len(), 1);
     assert_eq!(
         d2["evaluation_id_suffix_rule"],
@@ -560,23 +610,44 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     assert_eq!(d2["move_timeout_ms"], 10000);
     assert_eq!(d2["shutdown_grace_ms"], 2000);
 
-    // Derived booleans are explicit.
+    // Derived booleans are explicit and thresholds are frozen.
     let derived = &config["derived_booleans"];
-    for key in [
-        "A_redundancy_evidence",
-        "B_shared_ref_improvement",
-        "C_m07_no_improvement",
-        "D2_rescue",
-        "D2_sensitivity",
-        "D2_monotonic",
-        "teacher_drift",
-        "representation_capacity_evidence",
-    ] {
-        assert!(
-            derived[key]["definition"].is_string(),
-            "derived boolean {key} must have a string definition"
-        );
-    }
+    assert_eq!(
+        derived["A_redundancy_evidence"]["thresholds"]["overlap_threshold"],
+        0.70
+    );
+    assert_eq!(
+        derived["B_shared_ref_improvement"]["thresholds"]["ce_min_improvement_bps"],
+        50
+    );
+    assert_eq!(
+        derived["B_shared_ref_improvement"]["thresholds"]["mse_min_improvement_bps"],
+        50
+    );
+    assert_eq!(
+        derived["C_m07_no_improvement"]["thresholds"]["top1_delta_max"],
+        0.005
+    );
+    assert_eq!(
+        derived["C_m07_no_improvement"]["thresholds"]["rank_correlation_delta_max"],
+        0.01
+    );
+    assert_eq!(
+        derived["C_m07_no_improvement"]["thresholds"]["disagreement_delta_min"],
+        -0.005
+    );
+    assert_eq!(
+        derived["D2_rescue"]["thresholds"]["min_anchor_delta_bps"],
+        -200
+    );
+    assert_eq!(
+        derived["D2_sensitivity"]["thresholds"]["min_delta_bps"],
+        100
+    );
+    assert_eq!(
+        derived["D2_monotonic"]["thresholds"]["min_total_delta_bps"],
+        50
+    );
 
     // D24.5 branches and precedence are frozen.
     let gate = &config["decision_gate"];

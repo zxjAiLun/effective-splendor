@@ -2,7 +2,7 @@
   "format": "effective-splendor-m24-scale-failure-diagnosis",
   "version": 1,
   "diagnosis_id": "m24-scale-failure-diagnosis-v1",
-  "revision": "repair-2",
+  "revision": "repair-3",
   "status": "AUTHORIZED",
   "parent_milestone": "M24",
   "parent_result": "G4=FAIL / G5=STOP / M24-S2 final evidence ACCEPTED",
@@ -130,7 +130,19 @@
         "Run M07 root analysis on the frozen stratified position set.",
         "Measure S1/S2 policy vs M07 action choice/ranking agreement, rank correlation, top-1 agreement, and disagreement rates.",
         "This is the key next-stage indicator."
-      ]
+      ],
+      "ranking_definition": {
+        "method": "Spearman rho",
+        "universe": "exact legal_actions in canonical action order",
+        "model_rank": "descending model probability",
+        "m07_rank": "descending M07 root utility",
+        "ties": "average ranks",
+        "all_tied_on_either_side": 0,
+        "action_alignment": "canonical legal_actions order",
+        "missing_or_invalid_action_rule": "if any legal action is missing or invalid on either side, that position is excluded and the diagnostic manifest must record the exclusion",
+        "aggregation": "mean rho over all selected positions",
+        "top1_tie_break": "first action in canonical legal_actions order"
+      }
     },
     {
       "id": "D",
@@ -143,6 +155,18 @@
       ],
       "d2_search_sensitivity": {
         "mandatory": true,
+        "stage_0_materialization": {
+          "description": "Before applying D2 mutations, S2-containing templates must first inherit the already accepted M24 S2 materialization. This is not a D2 experimental mutation.",
+          "source_templates_with_s2": [
+            "benchmarks/m24-s2-vs-s1-v1.plan.json",
+            "benchmarks/m24-s2-vs-m07-v1.plan.json",
+            "benchmarks/m24-s2-vs-heuristic-v1.plan.json"
+          ],
+          "placeholder": "__M24_S2_CHECKPOINT_HASH__",
+          "formal_s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+          "materialization_contract_reference": "benchmarks/m24-s2-arena-screen-v1.realized.json",
+          "realized_manifest_file_sha256": "a9036571300db9e923c1f0817f7e8b205ebb37039f28538008f05dc748e558ee"
+        },
         "derived_from_plans": [
           "benchmarks/m24-s2-vs-s1-v1.plan.json",
           "benchmarks/m24-s2-vs-m07-v1.plan.json",
@@ -201,24 +225,45 @@
   "derived_booleans": {
     "A_redundancy_evidence": {
       "definition": "cross_information_set_overlap >= 0.70",
-      "source_metric": "fraction of S2-fresh information sets already present in S1 reference"
+      "source_metric": "fraction of S2-fresh information sets already present in S1 reference",
+      "thresholds": {
+        "overlap_threshold": 0.7
+      }
     },
     "B_shared_ref_improvement": {
       "definition": "policy_ce_improvement_bps >= 50 OR value_mse_improvement_bps >= 50",
-      "source": "B metrics on fixed S1 reference subset"
+      "source": "B metrics on fixed S1 reference subset",
+      "thresholds": {
+        "ce_min_improvement_bps": 50,
+        "mse_min_improvement_bps": 50
+      }
     },
     "C_m07_no_improvement": {
       "definition": "top1_agreement_delta <= 0.005 AND rank_correlation_delta <= 0.01 AND disagreement_rate_delta >= -0.005",
-      "delta_meaning": "S2 value minus S1 value on C selected positions"
+      "delta_meaning": "S2 value minus S1 value on C selected positions",
+      "thresholds": {
+        "top1_delta_max": 0.005,
+        "rank_correlation_delta_max": 0.01,
+        "disagreement_delta_min": -0.005
+      }
     },
     "D2_rescue": {
-      "definition": "anchor_delta_m07_bps(64) >= -200"
+      "definition": "anchor_delta_m07_bps(64) >= -200",
+      "thresholds": {
+        "min_anchor_delta_bps": -200
+      }
     },
     "D2_sensitivity": {
-      "definition": "anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 100 OR D2_rescue"
+      "definition": "anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 100 OR D2_rescue",
+      "thresholds": {
+        "min_delta_bps": 100
+      }
     },
     "D2_monotonic": {
-      "definition": "anchor_delta_m07_bps(16) <= anchor_delta_m07_bps(32) <= anchor_delta_m07_bps(64) AND anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 50"
+      "definition": "anchor_delta_m07_bps(16) <= anchor_delta_m07_bps(32) <= anchor_delta_m07_bps(64) AND anchor_delta_m07_bps(64) - anchor_delta_m07_bps(16) >= 50",
+      "thresholds": {
+        "min_total_delta_bps": 50
+      }
     },
     "teacher_drift": {
       "definition": "A_redundancy_evidence AND C_m07_no_improvement AND NOT D2_rescue"
