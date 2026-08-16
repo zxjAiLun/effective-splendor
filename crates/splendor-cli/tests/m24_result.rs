@@ -2,6 +2,7 @@ use std::fs;
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use splendor_eval::{plan::EvaluationPlanV1, schedule::expand_schedule};
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -141,7 +142,7 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     assert_eq!(gate["format"], "effective-splendor-m24-scale-gate");
     assert_eq!(gate["version"], 1);
     assert_eq!(gate["gate_id"], "m24-scale-gate-v1");
-    assert_eq!(gate["revision"], "repair-1");
+    assert_eq!(gate["revision"], "repair-2");
     assert_eq!(gate["status"], "FROZEN");
 
     // The gate S1 baseline must be bound back to the tracked result manifest,
@@ -187,32 +188,76 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
         0
     );
 
-    // The Arena screen plan must exist and be hash-bound into the gate.
-    let plan_bytes = fs::read(root.join("benchmarks/m24-s2-arena-screen-v1.plan.json")).unwrap();
-    let plan_sha = sha256_hex(&plan_bytes);
-    let plan_gate = &gate["competitive_movement"]["arena_screen_plan"];
-    assert_eq!(plan_gate["file_sha256"], plan_sha);
-    let plan: Value = serde_json::from_slice(&plan_bytes).unwrap();
-    assert_eq!(plan["format"], "effective-splendor-evaluation-plan");
-    assert_eq!(plan["version"], 1);
-    assert_eq!(plan["evaluation_id"], "m24-s2-arena-screen-v1");
-    assert_eq!(plan["game_seeds"], plan_gate["game_seeds"]);
+    // The Arena screen bundle must exist and be hash-bound into the gate.
+    let bundle_bytes =
+        fs::read(root.join("benchmarks/m24-s2-arena-screen-v1.bundle.json")).unwrap();
+    let bundle_sha = sha256_hex(&bundle_bytes);
+    let bundle_gate = &gate["competitive_movement"]["arena_screen_bundle"];
+    assert_eq!(bundle_gate["file_sha256"], bundle_sha);
+    let bundle: Value = serde_json::from_slice(&bundle_bytes).unwrap();
     assert_eq!(
-        plan["handshake_timeout_ms"],
-        plan_gate["handshake_timeout_ms"]
+        bundle["format"],
+        "effective-splendor-m24-arena-screen-bundle"
     );
-    assert_eq!(plan["move_timeout_ms"], plan_gate["move_timeout_ms"]);
-    assert_eq!(plan["shutdown_grace_ms"], plan_gate["shutdown_grace_ms"]);
-    let agent_ids: Vec<&str> = plan["agents"]
+    assert_eq!(bundle["version"], 1);
+    assert_eq!(bundle["screen_id"], "m24-s2-arena-screen-v1");
+
+    // The bundle must contain exactly five 2-agent pairwise plans.
+    let pair_plans = bundle["pair_plans"].as_array().unwrap();
+    assert_eq!(pair_plans.len(), 5);
+    let expected_pairs: [(&str, &[&str]); 5] = [
+        ("s2_vs_s1", &["m24-s2-candidate", "m24-s1-checkpoint"]),
+        ("s2_vs_m07", &["m24-s2-candidate", "m07-champion"]),
+        ("s1_vs_m07", &["m24-s1-checkpoint", "m07-champion"]),
+        ("s2_vs_heuristic", &["m24-s2-candidate", "heuristic-v1"]),
+        ("s1_vs_heuristic", &["m24-s1-checkpoint", "heuristic-v1"]),
+    ];
+    let common_seeds: Vec<u64> = bundle["game_seeds"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|agent| agent["id"].as_str().unwrap())
+        .map(|value| value.as_u64().unwrap())
         .collect();
-    assert!(agent_ids.contains(&"m24-s1-checkpoint"));
-    assert!(agent_ids.contains(&"m24-s2-candidate"));
-    assert!(agent_ids.contains(&"m07-champion"));
-    assert!(agent_ids.contains(&"heuristic-v1"));
+    assert_eq!(common_seeds.len(), 32);
+    assert_eq!(common_seeds[0], 300001);
+    assert_eq!(common_seeds[31], 300032);
+
+    for (expected_pair, expected_agents) in expected_pairs {
+        let item = pair_plans
+            .iter()
+            .find(|plan| plan["pair"] == expected_pair)
+            .unwrap_or_else(|| panic!("missing pair {expected_pair} in bundle"));
+        let plan_bytes = fs::read(root.join(item["path"].as_str().unwrap())).unwrap();
+        assert_eq!(sha256_hex(&plan_bytes), item["file_sha256"]);
+
+        let plan: EvaluationPlanV1 = serde_json::from_slice(&plan_bytes).unwrap();
+        plan.validate().unwrap();
+        assert_eq!(plan.agents.len(), 2);
+        assert_eq!(plan.game_seeds, common_seeds);
+        assert_eq!(plan.handshake_timeout_ms, 5000);
+        assert_eq!(plan.move_timeout_ms, 10000);
+        assert_eq!(plan.shutdown_grace_ms, 2000);
+
+        let schedule = expand_schedule(&plan).unwrap();
+        assert_eq!(schedule.len(), 64);
+        for seed_index in 0..32u32 {
+            let seed_matches: Vec<_> = schedule
+                .iter()
+                .filter(|spec| spec.seed_index == seed_index)
+                .collect();
+            assert_eq!(seed_matches.len(), 2);
+            assert!(seed_matches.iter().any(|spec| spec.rotation == 0));
+            assert!(seed_matches.iter().any(|spec| spec.rotation == 1));
+        }
+
+        let actual_agents: Vec<&str> = plan.agents.iter().map(|agent| agent.id.as_str()).collect();
+        for expected in expected_agents {
+            assert!(
+                actual_agents.contains(&expected),
+                "pair {expected_pair} missing agent {expected}"
+            );
+        }
+    }
 
     // Runtime/search recipe is frozen.
     let search_recipe = &gate["competitive_movement"]["runtime_identity"]["search_recipe"];
@@ -222,13 +267,21 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     assert_eq!(search_recipe["device"], "cuda");
 
     // Statistical method is frozen and reuses the accepted promotion Hoeffding
-    // contract.
+    // contract with saturating bounds.
     let statistics = &gate["competitive_movement"]["statistics"];
     assert_eq!(statistics["confidence_bps"], 9500);
     assert!(statistics["pairwise_lower_bound_method"]
         .as_str()
         .unwrap()
         .contains("Hoeffding"));
+    assert!(statistics["lower_bound_formula"]
+        .as_str()
+        .unwrap()
+        .contains("max(0"));
+    assert!(statistics["upper_bound_formula"]
+        .as_str()
+        .unwrap()
+        .contains("min(10000"));
     assert_eq!(
         statistics["s2_vs_s1_min_pairwise_score_lower_bound_bps"],
         100

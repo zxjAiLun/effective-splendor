@@ -1,0 +1,100 @@
+{
+  "format": "effective-splendor-m24-arena-screen-bundle",
+  "version": 1,
+  "screen_id": "m24-s2-arena-screen-v1",
+  "required_pair_semantics": "Every plan in this bundle must contain exactly 2 agents and use the same 32 fresh seeds; each plan expands to 64 matches (32 seeds x 2 seat rotations).",
+  "game_seeds": [
+    300001,
+    300002,
+    300003,
+    300004,
+    300005,
+    300006,
+    300007,
+    300008,
+    300009,
+    300010,
+    300011,
+    300012,
+    300013,
+    300014,
+    300015,
+    300016,
+    300017,
+    300018,
+    300019,
+    300020,
+    300021,
+    300022,
+    300023,
+    300024,
+    300025,
+    300026,
+    300027,
+    300028,
+    300029,
+    300030,
+    300031,
+    300032
+  ],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 10000,
+  "shutdown_grace_ms": 2000,
+  "pair_plans": [
+    {
+      "pair": "s2_vs_s1",
+      "evaluation_id": "m24-s2-vs-s1-v1",
+      "path": "benchmarks/m24-s2-vs-s1-v1.plan.json",
+      "file_sha256": "5da9b6d85215587b2baef3a5e04841f1cf9b4ffa43120869c67c1d6ecb3ddb62",
+      "agents": [
+        "m24-s2-candidate",
+        "m24-s1-checkpoint"
+      ],
+      "role": "primary_lower_bound"
+    },
+    {
+      "pair": "s2_vs_m07",
+      "evaluation_id": "m24-s2-vs-m07-v1",
+      "path": "benchmarks/m24-s2-vs-m07-v1.plan.json",
+      "file_sha256": "3af7026bc05e47516425e3aeb0d2b4daf3777e1aab453d4886d74313c7dc6488",
+      "agents": [
+        "m24-s2-candidate",
+        "m07-champion"
+      ],
+      "role": "anchor"
+    },
+    {
+      "pair": "s1_vs_m07",
+      "evaluation_id": "m24-s1-vs-m07-v1",
+      "path": "benchmarks/m24-s1-vs-m07-v1.plan.json",
+      "file_sha256": "9ec608eec87c87e05e3cf22272504a5a8a0e310a34c80fefefb7cf15d639cf5d",
+      "agents": [
+        "m24-s1-checkpoint",
+        "m07-champion"
+      ],
+      "role": "anchor"
+    },
+    {
+      "pair": "s2_vs_heuristic",
+      "evaluation_id": "m24-s2-vs-heuristic-v1",
+      "path": "benchmarks/m24-s2-vs-heuristic-v1.plan.json",
+      "file_sha256": "9b8871247348d77274b673f0f501e47bf800ebd87e76397dc7590ff20ebec931",
+      "agents": [
+        "m24-s2-candidate",
+        "heuristic-v1"
+      ],
+      "role": "anchor"
+    },
+    {
+      "pair": "s1_vs_heuristic",
+      "evaluation_id": "m24-s1-vs-heuristic-v1",
+      "path": "benchmarks/m24-s1-vs-heuristic-v1.plan.json",
+      "file_sha256": "8ee1e2c22fec1120d9334fa736e2e2bf48cab05e4d1a65563217aab42dd6d5c0",
+      "agents": [
+        "m24-s1-checkpoint",
+        "heuristic-v1"
+      ],
+      "role": "anchor"
+    }
+  ]
+}
