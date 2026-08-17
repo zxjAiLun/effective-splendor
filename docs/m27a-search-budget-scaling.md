@@ -4,6 +4,7 @@ Status: `ACCEPTED / FROZEN`; Repair 2 accepted; 14-plan materialization locally 
 Execution: `NOT AUTHORIZED`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
+Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): materialize M27A search-budget plans`)
 Review: `a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd` → `ACCEPTED`; documentation binding `4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1`
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
@@ -177,6 +178,8 @@ Out of scope:
 - Added executable synthetic decision tests for strict adjacent movement,
   strict region span, first-region selection, minimum run length, and the
   continuing-rise rejection case.
+- Tracked materialization commit:
+  `1db2241229a4d3bfe89cdf00f011789cdbbaee11`.
 - No eval-report, replay, result manifest, or Arena execution artifact was
   generated.
 
@@ -213,6 +216,8 @@ was created by M27A.
   `execution_authorization` remains `NOT_AUTHORIZED`.
 - Materialization bundle SHA-256:
   `04c1b9509d0eda4247831954d9e0fa3e28962951eeca2b4992429ddf31a2e9c2`.
+- Materialization commit:
+  `1db2241229a4d3bfe89cdf00f011789cdbbaee11`.
 - Materialization validation: JSON parse, `cargo fmt --all -- --check`,
   `cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1`
   (`3 passed`, exit 0), and `git diff --check` passed. All 14 plans
