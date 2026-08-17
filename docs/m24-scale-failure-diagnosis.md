@@ -354,6 +354,8 @@ M26 generation chaining is not authorized before a strong teacher exists.
 ## Final implementation
 
 - Tracked compact result: `benchmarks/m24-scale-failure-diagnosis-v1.result.json`.
+- The tracked result and recomputation test were committed at
+  `94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f`.
 - Full ignored result: `local-artifacts/m24-scale-failure-diagnosis-v1/final-diagnosis.json`.
 - Runtime snapshot SHA-256:
   `810b45ef38ff50e591522ef738e22a85d7dd67c60a2f329a514e5d5d72f57cd5`.
