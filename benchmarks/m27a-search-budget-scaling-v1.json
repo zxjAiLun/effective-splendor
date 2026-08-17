@@ -2,12 +2,13 @@
   "format": "effective-splendor-m27a-search-budget-scaling",
   "version": 1,
   "milestone": "M27A",
-  "revision": "design-1",
+  "revision": "design-1-repair-1",
   "status": "DESIGNED",
   "execution_authorization": "NOT_AUTHORIZED",
   "review": {
     "source_review": "PENDING_INDEPENDENT_REVIEW",
     "acceptance": "PENDING_INDEPENDENT_REVIEW",
+    "repair_status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
     "required_before_execution": true
   },
   "parent_diagnosis": {
@@ -113,8 +114,55 @@
     "checkpoint identity, model weights, architecture, dataset, catalog, neural sample seed, max depth, PUCT, M07 identity/config, seat schedule, or timeout policy"
   ],
   "statistics": {
+    "statistics_contract": "effective-splendor-m27a-paired-search-curve-v1",
+    "confidence_bps": 9500,
+    "confidence_interpretation": "Each reported lower or upper bound is a one-sided Hoeffding bound using exp(-3) < 0.05; bounds are per budget and diagnostic, not a promotion claim.",
+    "budget_aggregation": "Report every pair and budget independently; do not pool budgets, drop budgets, or revise the ordered budget list after observing results.",
+    "statistical_unit": {
+      "name": "paired_seed_block",
+      "definition": "One frozen game seed at one pair and simulation budget, containing both cyclic seat rotations.",
+      "blocks_per_plan": 32,
+      "matches_per_block": 2,
+      "block_complete_if": "Both seat rotations for the seed complete.",
+      "incomplete_block_policy": "Exclude an incomplete block from center and uncertainty calculations; any incomplete block fails the execution gate.",
+      "anchor_pairing_keys": [
+        "simulation_budget",
+        "game_seed",
+        "seat_rotation"
+      ]
+    },
     "primary_metric": "pairwise center score bps from W/T/L",
-    "anchor_metric": "center(S2,M07,budget) - center(S1,M07,budget)",
+    "anchor_metric": "floor(mean(anchor_block_delta_bps)) over matched S2/S1 seed blocks",
+    "score_estimator": {
+      "score_definition": "win=1.0, tie=0.5, loss=0.0 per completed match",
+      "center_formula": "floor(10000 * (wins * 2 + ties) / (2 * completed_matches))",
+      "margin_formula": "margin_bps = ceil_sqrt(ceil_div(150000000, completed_paired_seed_blocks))",
+      "lower_bound_formula": "lower_bps = max(0, center_bps - margin_bps)",
+      "upper_bound_formula": "upper_bps = min(10000, center_bps + margin_bps)",
+      "margin_numerator_bps_squared": 150000000
+    },
+    "anchor_estimator": {
+      "name": "matched_s2_minus_s1_anchor",
+      "pairing_definition": "Join s2_vs_m07 and s1_vs_m07 records at the same simulation budget, game seed, and seat rotation before forming each seed block.",
+      "block_score_formula": "block_score_bps = floor(10000 * (wins * 2 + ties) / (2 * 2)) over the two seat rotations",
+      "block_delta_formula": "anchor_block_delta_bps = block_score_bps(s2_vs_m07) - block_score_bps(s1_vs_m07)",
+      "block_value_range_bps": [-10000, 10000],
+      "center_formula": "floor(sum(anchor_block_delta_bps) / completed_paired_seed_blocks), with floor toward negative infinity",
+      "margin_formula": "anchor_margin_bps = ceil_sqrt(ceil_div(600000000, completed_paired_seed_blocks))",
+      "lower_bound_formula": "anchor_lower_bps = max(-10000, anchor_center_bps - anchor_margin_bps)",
+      "upper_bound_formula": "anchor_upper_bps = min(10000, anchor_center_bps + anchor_margin_bps)",
+      "margin_numerator_bps_squared": 600000000,
+      "margin_range_rationale": "The paired block delta lies in a 20000-bps-wide interval, so the one-sided exp(-3) Hoeffding margin uses 6 * 10000^2 / n."
+    },
+    "required_per_budget_report": [
+      "s2_vs_m07 score center/lower/upper bps",
+      "s1_vs_m07 score center/lower/upper bps",
+      "matched anchor center/lower/upper bps",
+      "raw W/T/L for both pair plans",
+      "completed paired seed blocks",
+      "aborted matches and candidate faults",
+      "seat-rotation split"
+    ],
     "secondary_metrics": [
       "Hoeffding lower and upper score bounds",
       "completed/aborted/fault counts",
@@ -124,9 +172,47 @@
     "curve_interpretation": "Report the full curve and uncertainty; do not assume monotonic improvement or select a budget from center score alone.",
     "promotion_claim": "none"
   },
+  "operating_region_decision": {
+    "contract": "effective-splendor-m27a-stable-operating-region-v1",
+    "ordered_budgets": [16, 24, 32, 48, 64, 96, 128],
+    "selection_endpoint": "matched_s2_minus_s1_anchor",
+    "eligibility": {
+      "required_complete_matrix": "Both pair plans at the budget have 32 completed paired seed blocks (64/64 matches each).",
+      "required_zero_aborts": true,
+      "required_zero_candidate_faults": true,
+      "anchor_lower_bound_min_bps": -200,
+      "anchor_lower_bound_min_rationale": "Reuse the frozen M24 200-bps anchor-regression tolerance, applied to the conservative matched-anchor lower bound for operating-region eligibility.",
+      "eligible_if": "The budget satisfies the complete-matrix and zero-fault requirements and anchor_lower_bps >= -200.",
+      "absolute_s2_curve_role": "descriptive_secondary",
+      "absolute_s2_curve_is_required_to_report": true,
+      "absolute_s2_curve_controls_selection": false,
+      "conflict_precedence": "The matched anchor eligibility and stability rules control; an absolute S2-vs-M07 center or bound never overrides them."
+    },
+    "adjacent_stability": {
+      "comparison_metric": "matched_anchor",
+      "max_center_regression_bps": 200,
+      "interval_overlap_rule": "previous_anchor_lower_bps <= next_anchor_upper_bps AND next_anchor_lower_bps <= previous_anchor_upper_bps",
+      "non_regression_rule": "next_anchor_center_bps >= previous_anchor_center_bps - 200",
+      "stable_transition_rule": "Both budgets are eligible, their matched-anchor intervals overlap, and the higher-budget center does not regress by more than 200 bps."
+    },
+    "stable_region": {
+      "minimum_consecutive_budgets": 3,
+      "construction_rule": "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible and whose adjacent transitions satisfy stable_transition_rule.",
+      "first_region_rule": "If multiple runs meet the minimum length, use the first run in ordered_budgets order.",
+      "selection_rule": "Select the lowest simulation budget in the first stable region; this is an operating point, not an optimum claim.",
+      "no_region_decision": "M27A_INCONCLUSIVE",
+      "no_region_decision_authorizes_execution": false,
+      "allowed_decisions": [
+        "M27A_STABLE_REGION_SELECTED",
+        "M27A_INCONCLUSIVE"
+      ]
+    }
+  },
   "execution_gates": {
     "must_be_frozen_before_run": true,
     "independent_review_required": true,
+    "statistics_contract_frozen_before_run": true,
+    "operating_region_contract_frozen_before_run": true,
     "all_plans_validate": true,
     "all_matches_complete": "896/896",
     "zero_aborts": true,
@@ -134,7 +220,7 @@
     "raw_report_and_plan_hashes_bound": true
   },
   "next_decision": {
-    "after_execution": "Use the reviewed curve to choose a follow-up fixed search operating region or close M27A without changing the model.",
+    "after_execution": "Apply operating_region_decision exactly to the reviewed full curve; select the lowest budget in the first stable region or record M27A_INCONCLUSIVE. No post-hoc optimum selection is allowed.",
     "m25_authorized": false,
     "m26_authorized": false,
     "m28_authorized": false

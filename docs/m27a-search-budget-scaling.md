@@ -1,8 +1,8 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `AUTHORIZED FOR PREREGISTRATION / DESIGN`
+Status: `AUTHORIZED FOR PREREGISTRATION / DESIGN`; Repair 1 `IMPLEMENTED`, independent review pending
 Execution: `NOT AUTHORIZED`
-Baseline: `77be94637b58610eacaaf51a9bb06da3f1e0aff7`
+Baseline: `2680e40ff5c123429a402a8dc48f8209cb6d1210`
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 
@@ -56,19 +56,39 @@ Out of scope:
   bind its plan hash, W/T/L, completion counts, and report SHA-256.
 - Runtime must use an explicit PATH bootstrap resolving literal `splendor` to
   the reviewed build; `PYTHONPATH` remains unset unless separately reviewed.
+- The statistical unit is one paired seed block: one seed containing both seat
+  rotations. Score bounds use the accepted deterministic one-sided Hoeffding
+  contract at `confidence_bps = 9500`, with 32 completed paired blocks per
+  plan. Anchor uncertainty uses the same blocks after matching S1 and S2 at
+  the same budget, seed, and rotation; its block-delta range is `[-10000,
+  10000]` bps and its margin numerator is `600000000`.
+- The stable operating-region endpoint is the matched S2-minus-S1 anchor. A
+  budget is eligible only when both pair plans are complete with zero aborts
+  and candidate faults and the anchor lower bound is at least `-200` bps. The
+  `200` bps magnitude reuses the frozen M24 anchor-regression tolerance, but is
+  applied to the conservative lower bound here.
+  Stable transitions require overlapping anchor intervals and no more than a
+  `200` bps higher-budget center regression. A stable region requires three
+  consecutive eligible budgets; choose the lowest budget in the first such
+  region, otherwise record `M27A_INCONCLUSIVE`.
+- The absolute S2-vs-M07 curve remains mandatory to report but is descriptive
+  secondary evidence. It never overrides the matched-anchor eligibility or
+  stability rule when the two signals disagree.
 - No execution occurs before independent review accepts the frozen design and
   realized-plan contract.
 
 ## Implementation plan
 
-1. Review and freeze the JSON design contract.
-2. Generate 14 pairwise plans from the frozen contract.
-3. Independently review plan hashes, seeds, identities, timeouts, and matrix
+1. Freeze the JSON statistical and operating-region contracts and strengthen
+   the design regression test.
+2. Independently review Repair 1 and the resulting design/config bindings.
+3. Only after that review, generate 14 pairwise plans from the frozen contract.
+4. Independently review plan hashes, seeds, identities, timeouts, and matrix
    coverage.
-4. Only after that review, execute the 896-match screen.
-5. Recompute center scores and matched anchor deltas from raw reports.
-6. Record the curve decision without treating higher simulations as inherently
-   better.
+5. Only after both reviews, execute the 896-match screen.
+6. Recompute center scores, paired uncertainty, and matched anchor deltas from
+   raw reports, then apply the frozen decision function without treating
+   higher simulations as inherently better.
 
 ## Iteration log
 
@@ -81,12 +101,35 @@ Out of scope:
 - The initial design uses a matched S1 control so the curve reports both
   absolute S2-vs-M07 strength and S2-minus-S1 movement.
 
+### 2026-08-17 — Prereg Repair 1 authorized and implemented
+
+- Review findings addressed: P1-1 stable operating region was previously
+  underspecified; P1-2 paired uncertainty and its statistical unit were
+  incomplete; P2 cross-bind coverage was only a shape test.
+- Frozen `effective-splendor-m27a-paired-search-curve-v1` statistics:
+  `confidence_bps = 9500`, one paired seed block per seed with two seat
+  rotations, score margin numerator `150000000`, and matched-anchor margin
+  numerator `600000000` for the `[-10000, 10000]` bps block-delta range.
+- Frozen `effective-splendor-m27a-stable-operating-region-v1` decision:
+  anchor lower bound `>= -200` bps for eligibility, three consecutive eligible
+  budgets, overlapping anchor intervals, at most `200` bps adjacent center
+  regression, and lowest budget in the first stable region. If no qualifying
+  region exists, the decision is `M27A_INCONCLUSIVE`; the absolute S2 curve is
+  descriptive only.
+- `crates/splendor-cli/tests/m27a_design.rs` now exact-binds the parent
+  manifest/review commits, checkpoint and search identities, full seed list,
+  runtime timeouts, statistics contract, and decision contract.
+- This is a preregistration repair only. No realized plan, checkpoint, dataset,
+  eval report, replay, or Arena result was generated.
+
 ## Final implementation
 
-This round contains only the design document and preregistration draft:
+This round contains only the design document, preregistration draft, and its
+machine-checking regression test:
 
 - `benchmarks/m27a-search-budget-scaling-v1.json`
 - `docs/m27a-search-budget-scaling.md`
+- `crates/splendor-cli/tests/m27a_design.rs`
 
 No checkpoint, dataset, realized plan, eval report, replay, or Arena result was
 created by M27A.
@@ -96,27 +139,46 @@ created by M27A.
 - Parent M24.5 result: `benchmarks/m24-scale-failure-diagnosis-v1.result.json`.
 - Parent review basis: `94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f`.
 - Parent documentation binding: `77be94637b58610eacaaf51a9bb06da3f1e0aff7`.
-- M27A config status is `DESIGNED`; `execution_authorization` is
-  `NOT_AUTHORIZED`.
+- M27A config revision is `design-1-repair-1`; status remains `DESIGNED`,
+  `review.repair_status` is `IMPLEMENTED_PENDING_INDEPENDENT_REVIEW`, and
+  `execution_authorization` remains `NOT_AUTHORIZED`.
+- Local validation commands and results:
+
+  ```text
+  python3 -m json.tool benchmarks/m27a-search-budget-scaling-v1.json >/dev/null — exit 0
+  cargo fmt --all -- --check — exit 0
+  cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1 — PASS, exit 0 (1 test)
+  cargo test --locked --workspace --all-targets -- --test-threads=1 — exit 101; only the known Linux process test `shutdown_reaps_child` failed
+  cargo test --locked --workspace --all-targets -- --test-threads=1 --skip shutdown_reaps_child — exit 0; all non-skipped workspace tests passed
+  git diff --check — exit 0
+  ```
+
 - Validation must include exact 14-plan / 896-match matrix coverage before any
   execution authorization is considered.
+- The unskipped workspace failure is an existing Linux child-process status
+  issue outside this design-only change and is recorded rather than relabeled
+  as a clean full-workspace pass.
 
 ## Result and decision
 
-M27A is `AUTHORIZED FOR PREREGISTRATION / DESIGN`, not authorized for
-execution. M24.5 remains `ACCEPTED`; M07 remains champion; no promotion has
-occurred.
+M27A Repair 1 is `IMPLEMENTED` and locally verified, but the design remains
+pending independent review and is not authorized for execution. M24.5 remains
+`ACCEPTED`; M07 remains champion; no promotion has occurred.
 
 ## Known limitations
 
-- The proposed 32-seed cells are a design choice pending independent review,
-  not executed evidence.
-- The 128-simulation cell may require the proposed fixed 30-second operational
-  timeout; this is an explicit review item, not a runtime exception.
-- No optimum or monotonicity claim is made before execution.
+- The 32-seed cells and all operating-region thresholds are preregistered
+  choices pending independent review, not executed evidence.
+- The 128-simulation cell uses the same fixed 30-second operational timeout as
+  every other budget; there is no budget-specific timeout exception.
+- The anchor Hoeffding interval is a per-budget diagnostic bound and is not a
+  promotion or family-wise claim across the seven budgets.
+- No optimum or monotonicity claim is made; the selected value, if any, is the
+  first low-cost stable operating point under the frozen rule.
 
 ## Next authorized gate
 
-Independent review of the M27A design/config and generated-plan contract.
-Until that review passes, do not generate formal plans or run search-budget
-Arena experiments. M25, M26, and M28 remain unauthorized.
+Independent review of the M27A Repair 1 design/config contract. Until that
+review passes, do not generate formal plans or run search-budget Arena
+experiments. After it passes, plan materialization requires a separate review;
+M25, M26, and M28 remain unauthorized.
