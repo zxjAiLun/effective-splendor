@@ -8,6 +8,7 @@ Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): ma
 Review: `a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd` → `ACCEPTED`; documentation binding `4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1`
 Materialization review: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` → `ACCEPTED`; P0/P1/P2 = `0/0/0`
 Execution-gate review: P1 = `1` (`HOLD`); no Arena authorization
+Execution-Gate Repair 1: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` (`fix(training): repair M27A execution decision gate`)
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -203,6 +204,8 @@ Out of scope:
 - The frozen thresholds, seeds, checkpoint identities, 14 plans, and plan
   hashes remain unchanged. The bundle's preregistration SHA metadata was
   updated only to bind the revised config wording; no plan hash changed.
+- Implementation commit:
+  `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731`.
 - Arena execution remains `NOT AUTHORIZED` pending this repair's review and
   the separate runtime/build freeze.
 
@@ -238,8 +241,9 @@ was created by M27A.
   `ACCEPTED`, plan materialization is authorized, and
   `execution_authorization` remains `NOT_AUTHORIZED`.
 - Materialization bundle SHA-256:
-  previous `04c1b9509d0eda4247831954d9e0fa3e28962951eeca2b4992429ddf31a2e9c2`;
-  current metadata-rebound bundle is recorded after this repair commit.
+  `19edd68cb089234e9571a3adae9d5fddc3fa88a40c35fb7b53d39d90bf2680e7`.
+- Current prereg config SHA-256:
+  `a50a62aed489cdc1c0022d924ba26463ba79fa29b7e66000d8fa9d51b1c2671e`.
 - Materialization commit:
   `1db2241229a4d3bfe89cdf00f011789cdbbaee11`.
 - Materialization plan invariance check against `8a703c9`: no tracked plan
@@ -247,6 +251,8 @@ was created by M27A.
 - Execution-Gate Repair 1 validation: `cargo fmt --all -- --check`, JSON parse,
   `cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1`
   (`3 passed`, exit 0), and `git diff --check` passed.
+- Execution-Gate Repair 1 commit:
+  `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731`.
 - Materialization validation: JSON parse, `cargo fmt --all -- --check`,
   `cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1`
   (`3 passed`, exit 0), and `git diff --check` passed. All 14 plans
