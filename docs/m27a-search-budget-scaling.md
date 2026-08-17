@@ -139,6 +139,8 @@ created by M27A.
 - Parent M24.5 result: `benchmarks/m24-scale-failure-diagnosis-v1.result.json`.
 - Parent review basis: `94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f`.
 - Parent documentation binding: `77be94637b58610eacaaf51a9bb06da3f1e0aff7`.
+- Implementation commit: `16cf9ec193f16175fd6c7e0425ab5212fbb61b51`, pushed to
+  `origin/main`.
 - M27A config revision is `design-1-repair-1`; status remains `DESIGNED`,
   `review.repair_status` is `IMPLEMENTED_PENDING_INDEPENDENT_REVIEW`, and
   `execution_authorization` remains `NOT_AUTHORIZED`.
