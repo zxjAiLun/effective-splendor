@@ -3,7 +3,7 @@ use std::fs;
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use splendor_eval::{plan::EvaluationPlanV1, schedule::expand_schedule};
+use splendor_eval::{evaluation_plan_hash_v1, plan::EvaluationPlanV1, schedule::expand_schedule};
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -710,6 +710,250 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
         .iter()
         .any(|c| c.contains("champion or promotion")));
 }
+
+#[test]
+fn m24_scale_failure_diagnosis_result_is_recomputable() {
+    let root = root();
+    let result: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+    let config: Value = serde_json::from_slice(
+        &fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.json")).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        result["format"],
+        "effective-splendor-m24-scale-failure-diagnosis-result"
+    );
+    assert_eq!(result["version"], 1);
+    assert_eq!(result["status"], "VERIFIED");
+    assert_eq!(result["diagnosis_id"], config["diagnosis_id"]);
+    assert_eq!(result["preregistration"]["revision"], "repair-4");
+    assert_eq!(
+        result["preregistration"]["file_sha256"],
+        sha256_hex(&fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.json")).unwrap())
+    );
+    assert_eq!(result["review"]["acceptance"], "PENDING_INDEPENDENT_REVIEW");
+
+    let evaluations = result["d2"]["evaluations"].as_array().unwrap();
+    assert_eq!(evaluations.len(), 15);
+    let mut evaluation_ids = HashSet::new();
+    let mut scheduled_matches = 0i64;
+    let mut completed_matches = 0i64;
+    let mut aborted_matches = 0i64;
+
+    for evaluation in evaluations {
+        let evaluation_id = evaluation["evaluation_id"].as_str().unwrap();
+        assert!(evaluation_ids.insert(evaluation_id.to_string()));
+        assert_eq!(evaluation["scheduled_matches"], 16);
+        assert_eq!(evaluation["completed_matches"], 16);
+        assert_eq!(evaluation["aborted_matches"], 0);
+
+        let wins = evaluation["wins"].as_i64().unwrap();
+        let ties = evaluation["ties"].as_i64().unwrap();
+        let losses = evaluation["losses"].as_i64().unwrap();
+        assert_eq!(wins + ties + losses, 16);
+        let center = ((2 * wins + ties) * 10_000) / (2 * 16);
+        assert_eq!(center, evaluation["center_bps"].as_i64().unwrap());
+
+        scheduled_matches += evaluation["scheduled_matches"].as_i64().unwrap();
+        completed_matches += evaluation["completed_matches"].as_i64().unwrap();
+        aborted_matches += evaluation["aborted_matches"].as_i64().unwrap();
+
+        // The compact manifest is sufficient for recomputation in a clean
+        // checkout. When ignored local evidence is present, also bind it back
+        // to the compact W/T/L and plan identities.
+        let report_path = root.join(evaluation["eval_report_path"].as_str().unwrap());
+        if report_path.is_file() {
+            let report_bytes = fs::read(&report_path).unwrap();
+            assert_eq!(
+                sha256_hex(&report_bytes),
+                evaluation["eval_report_file_sha256"]
+            );
+            let report: Value = serde_json::from_slice(&report_bytes).unwrap();
+            assert_eq!(report["evaluation_id"], evaluation["evaluation_id"]);
+            assert_eq!(report["plan_hash"], evaluation["plan_hash"]);
+            assert_eq!(report["scheduled_matches"], 16);
+
+            let candidate = if evaluation["pair"].as_str().unwrap().starts_with("s2_") {
+                "m24-s2-candidate"
+            } else {
+                "m24-s1-checkpoint"
+            };
+            let mut report_wins = 0i64;
+            let mut report_ties = 0i64;
+            let mut report_losses = 0i64;
+            for record in report["records"].as_array().unwrap() {
+                assert_eq!(record["outcome"]["status"], "completed");
+                let winners = record["outcome"]["result"]["winners"].as_array().unwrap();
+                if winners.is_empty() {
+                    report_ties += 1;
+                } else {
+                    let seat = winners[0].as_u64().unwrap() as usize;
+                    let winner = record["agent_ids_by_seat"][seat].as_str().unwrap();
+                    if winner == candidate {
+                        report_wins += 1;
+                    } else {
+                        report_losses += 1;
+                    }
+                }
+            }
+            assert_eq!(report_wins, wins);
+            assert_eq!(report_ties, ties);
+            assert_eq!(report_losses, losses);
+        }
+
+        let plan_path = root.join(evaluation["realized_plan_path"].as_str().unwrap());
+        if plan_path.is_file() {
+            let plan_bytes = fs::read(&plan_path).unwrap();
+            assert_eq!(
+                sha256_hex(&plan_bytes),
+                evaluation["realized_plan_file_sha256"]
+            );
+            let plan: EvaluationPlanV1 = serde_json::from_slice(&plan_bytes).unwrap();
+            plan.validate().unwrap();
+            assert_eq!(
+                evaluation_plan_hash_v1(&plan).unwrap().as_str(),
+                evaluation["plan_hash"].as_str().unwrap()
+            );
+        }
+    }
+
+    assert_eq!(
+        scheduled_matches,
+        result["d2"]["totals"]["scheduled_matches"]
+    );
+    assert_eq!(
+        completed_matches,
+        result["d2"]["totals"]["completed_matches"]
+    );
+    assert_eq!(aborted_matches, result["d2"]["totals"]["aborted_matches"]);
+    assert_eq!(scheduled_matches, 240);
+    assert_eq!(completed_matches, 240);
+    assert_eq!(aborted_matches, 0);
+
+    let find_center = |pair: &str, simulations: i64| {
+        evaluations
+            .iter()
+            .find(|evaluation| {
+                evaluation["pair"] == pair && evaluation["simulations"] == simulations
+            })
+            .unwrap()["center_bps"]
+            .as_i64()
+            .unwrap()
+    };
+    let delta16 = find_center("s2_vs_m07", 16) - find_center("s1_vs_m07", 16);
+    let delta32 = find_center("s2_vs_m07", 32) - find_center("s1_vs_m07", 32);
+    let delta64 = find_center("s2_vs_m07", 64) - find_center("s1_vs_m07", 64);
+    assert_eq!(result["d2"]["anchor_delta_m07_bps"]["sim16"], delta16);
+    assert_eq!(result["d2"]["anchor_delta_m07_bps"]["sim32"], delta32);
+    assert_eq!(result["d2"]["anchor_delta_m07_bps"]["sim64"], delta64);
+
+    let a = result["analyses"]["A"]["distribution_similarity"]
+        .as_f64()
+        .unwrap();
+    let b_ce = result["analyses"]["B"]["policy_ce_improvement_bps"]
+        .as_f64()
+        .unwrap();
+    let b_mse = result["analyses"]["B"]["value_mse_improvement_bps"]
+        .as_f64()
+        .unwrap();
+    let c_top1_delta = result["analyses"]["C"]["top1_delta"].as_f64().unwrap();
+    let c_rank_delta = result["analyses"]["C"]["rank_correlation_delta"]
+        .as_f64()
+        .unwrap();
+    let c_disagreement_delta = result["analyses"]["C"]["disagreement_delta"]
+        .as_f64()
+        .unwrap();
+
+    let a_redundancy = a
+        >= config["derived_booleans"]["A_redundancy_evidence"]["thresholds"]
+            ["distribution_similarity_min"]
+            .as_f64()
+            .unwrap();
+    let b_improvement = b_ce
+        >= config["derived_booleans"]["B_shared_ref_improvement"]["thresholds"]
+            ["ce_min_improvement_bps"]
+            .as_f64()
+            .unwrap()
+        || b_mse
+            >= config["derived_booleans"]["B_shared_ref_improvement"]["thresholds"]
+                ["mse_min_improvement_bps"]
+                .as_f64()
+                .unwrap();
+    let c_no_improvement = c_top1_delta
+        <= config["derived_booleans"]["C_m07_no_improvement"]["thresholds"]["top1_delta_max"]
+            .as_f64()
+            .unwrap()
+        && c_rank_delta
+            <= config["derived_booleans"]["C_m07_no_improvement"]["thresholds"]
+                ["rank_correlation_delta_max"]
+                .as_f64()
+                .unwrap()
+        && c_disagreement_delta
+            >= config["derived_booleans"]["C_m07_no_improvement"]["thresholds"]
+                ["disagreement_delta_min"]
+                .as_f64()
+                .unwrap();
+    let rescue = delta64
+        >= config["derived_booleans"]["D2_rescue"]["thresholds"]["min_anchor_delta_bps"]
+            .as_i64()
+            .unwrap();
+    let sensitivity = delta64 - delta16
+        >= config["derived_booleans"]["D2_sensitivity"]["thresholds"]["min_delta_bps"]
+            .as_i64()
+            .unwrap()
+        || rescue;
+    let monotonic = delta16 <= delta32
+        && delta32 <= delta64
+        && delta64 - delta16
+            >= config["derived_booleans"]["D2_monotonic"]["thresholds"]["min_total_delta_bps"]
+                .as_i64()
+                .unwrap();
+    let teacher = a_redundancy && c_no_improvement && !rescue;
+    let representation = b_improvement && !a_redundancy && c_no_improvement && !rescue;
+    let search = sensitivity || monotonic;
+    let inconclusive = !(teacher || search || representation)
+        || [teacher, search, representation]
+            .into_iter()
+            .filter(|matched| *matched)
+            .count()
+            > 1;
+
+    assert_eq!(
+        result["derived_booleans"]["A_redundancy_evidence"],
+        a_redundancy
+    );
+    assert_eq!(
+        result["derived_booleans"]["B_shared_ref_improvement"],
+        b_improvement
+    );
+    assert_eq!(
+        result["derived_booleans"]["C_m07_no_improvement"],
+        c_no_improvement
+    );
+    assert_eq!(result["derived_booleans"]["D2_rescue"], rescue);
+    assert_eq!(result["derived_booleans"]["D2_sensitivity"], sensitivity);
+    assert_eq!(result["derived_booleans"]["D2_monotonic"], monotonic);
+    assert_eq!(result["derived_booleans"]["teacher_drift"], teacher);
+    assert_eq!(
+        result["derived_booleans"]["representation_capacity_evidence"],
+        representation
+    );
+    assert_eq!(result["decision"]["teacher_branch"], teacher);
+    assert_eq!(result["decision"]["search_branch"], search);
+    assert_eq!(result["decision"]["representation_branch"], representation);
+    assert_eq!(result["decision"]["inconclusive_branch"], inconclusive);
+    assert_eq!(result["decision"]["outcome"], "SEARCH_BOTTLENECK");
+    assert_eq!(
+        result["decision"]["recommended_next"],
+        "M27A fixed-model search-budget scaling"
+    );
+    assert_eq!(result["decision"]["m27a_authorized"], false);
+}
+
 #[test]
 fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
     let root = root();

@@ -1,0 +1,182 @@
+{
+  "format": "effective-splendor-m24-scale-failure-diagnosis-result",
+  "version": 1,
+  "status": "VERIFIED",
+  "diagnosis_id": "m24-scale-failure-diagnosis-v1",
+  "preregistration": {
+    "path": "benchmarks/m24-scale-failure-diagnosis-v1.json",
+    "revision": "repair-4",
+    "commit": "af700c0d644a5681ad0682d100359dbb3b35e187",
+    "file_sha256": "2f3fab0ca3aae52716c2e29d0f35469018a218e50e39d7035010065938fe4f3d"
+  },
+  "parent": {
+    "milestone": "M24",
+    "s2_result_manifest": "benchmarks/m24-self-play-s2-v1.result.json",
+    "s2_result_manifest_sha256": "7a8b7882af115ce2dec161ab9275f9bc5eefb59cd0fa70b1df3a2bdf8107b2e1",
+    "g4": "FAIL",
+    "g5": "STOP"
+  },
+  "inputs": {
+    "s1_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "s2_self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "s1_dataset_file_sha256": "1a2344a8de838e5b1350965ffd88a57be63891f3cec71205e84d292076bcad8d",
+    "s2_dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "s1_checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+    "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+    "s1_checkpoint_file_sha256": "1eaf88a13bba816478c03edb8333e3fa754fe28ed3002d8c60504fc9ca2bc61c",
+    "s2_checkpoint_file_sha256": "0ba19302a5cd0fe618fc5246a3d5bc9c562460d558cff2a128d1c25b6fe0543e",
+    "m07_champion_id": "m07-champion",
+    "m07_reviewer": "m07-champion root determinization s4 d1 n2000"
+  },
+  "artifact_hashes": {
+    "A": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/a-dataset-shift.json",
+      "sha256": "7418e266b9b835662db1fb3127d4a1209eb2699a7d8dc79c4cf398faecd3f232"
+    },
+    "B": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/b-shared-reference.json",
+      "sha256": "561e98c88a73f5223cbec96d595ecfc87456d1b65865d78f350a1eeb410dfadf"
+    },
+    "C_selected_positions": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/c-selected-positions.json",
+      "sha256": "d10c0dc1810a946db534c2ceb3c4065cedc175a675304ef36800ffa1f886be99"
+    },
+    "C_model_policies": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/c-model-policies.json",
+      "sha256": "24aa010ae07b6d7b9c070158631007dfabdf6cadc1ced4a443ae2866f23f74bf"
+    },
+    "C_analysis": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/c-m07-analysis.json",
+      "sha256": "92b6266260c4e73e077b8190c59b82765befc0b86410449d1780b0fc6e228526"
+    },
+    "D1": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/d1-strength-attribution.json",
+      "sha256": "d6f071e7830a85b8f316fb8b912cba1eaa53528249457a8350ca268557add38d"
+    },
+    "runtime_environment": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/runtime-environment.json",
+      "sha256": "810b45ef38ff50e591522ef738e22a85d7dd67c60a2f329a514e5d5d72f57cd5"
+    },
+    "failed_attempts_index": {
+      "path": "local-artifacts/m24-scale-failure-diagnosis-v1/failed-attempts/index.json",
+      "sha256": "e193512dbd4bb92d3da8e8b99ebe1fca102b6c44f1351437223db5038290bb3f"
+    }
+  },
+  "runtime_recovery": {
+    "interrupted_attempt": true,
+    "cause": "PATH no longer resolved literal program \"splendor\" after remount",
+    "scientific_evidence_from_aborted_reports": false,
+    "retained_invalid_report_count": 12,
+    "failed_attempts_path": "local-artifacts/m24-scale-failure-diagnosis-v1/failed-attempts/remount-path-missing",
+    "failed_attempts_index_path": "local-artifacts/m24-scale-failure-diagnosis-v1/failed-attempts/index.json",
+    "same_frozen_plans_rerun": true,
+    "pythonpath_exported": false,
+    "wrapper_path": "local-artifacts/m24-scale-failure-diagnosis-v1/run-m24-env.sh",
+    "formal_d2_splendor_sha256": "a2e0eb02ac7b475cab902e4d9f9ed153ac5428031b607d0f1c85a1e8e733aa49",
+    "verification_rebuild_splendor_sha256": "c7ce197e42195c4dc2a065c7aaf3321194a3c09abb20e92a90fc292dc7ae74d3"
+  },
+  "analyses": {
+    "A": {
+      "distribution_similarity": 0.9658682665233417,
+      "total_variation_distance": 0.03413173347665832,
+      "exact_information_set_overlap": 0.0,
+      "A_redundancy_evidence": true
+    },
+    "B": {
+      "policy_ce_improvement_bps": 65.3789160561596,
+      "value_mse_improvement_bps": 344.552307094248,
+      "top1_agreement_s1_s2": 0.9544290834613415,
+      "B_shared_ref_improvement": true
+    },
+    "C": {
+      "selected_positions_semantic_hash": "5c90e8aabd373e9ad15ec377ff386f4396a14f13f1f5d51bc8533363cc1dd8c6",
+      "model_policies_semantic_hash": "e77e33cd7bbd66e800aaba7c98907404769404c046904b2723b59c18eff13c68",
+      "top1_agreement_s1": 0.287109375,
+      "top1_agreement_s2": 0.298828125,
+      "top1_delta": 0.01171875,
+      "rank_correlation_s1": 0.04057056017270724,
+      "rank_correlation_s2": 0.04526577712123335,
+      "rank_correlation_delta": 0.004695216948526107,
+      "disagreement_rate_s1": 0.712890625,
+      "disagreement_rate_s2": 0.701171875,
+      "disagreement_delta": -0.01171875,
+      "C_m07_no_improvement": false
+    },
+    "D1": {
+      "source_result_manifest": "benchmarks/m24-s2-arena-screen-v1.result.json",
+      "source_result_manifest_sha256": "b3564bb90e7d1d07ef0962c233ee60a54bb94f19d43171a2242b1f964aa5801b",
+      "m07_anchor_delta_bps": -313,
+      "heuristic_delta_bps": 938,
+      "detail_level": "existing Arena evidence summary; no replay phase/action slicing"
+    }
+  },
+  "d2": {
+    "seeds": [
+      300001,
+      300002,
+      300003,
+      300004,
+      300005,
+      300006,
+      300007,
+      300008
+    ],
+    "seat_rotations": 2,
+    "sim_budgets": [16, 32, 64],
+    "evaluations": [
+      {"evaluation_id":"m24-s1-vs-heuristic-v1-sim16","pair":"s1_vs_heuristic","simulations":16,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-heuristic-v1-sim16.plan.json","realized_plan_file_sha256":"a401f664220e4e56f9828ea5c210fd5cc5225807209b20f607fb1a7ce9971b82","plan_hash":"b81c7db883e36a164213ac2de335fae4d4cb3471e29782f4fd146f995940f332","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-heuristic-v1-sim16/eval-report.json","eval_report_file_sha256":"b06ab89d2e3fabf9cc2f2372a89f8de322baf80fe601e8e997111712ad896002","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":2,"ties":0,"losses":14,"center_bps":1250},
+      {"evaluation_id":"m24-s1-vs-heuristic-v1-sim32","pair":"s1_vs_heuristic","simulations":32,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-heuristic-v1-sim32.plan.json","realized_plan_file_sha256":"8f3e305f465df16c61b722d6f54eb739c51b4cedb779e479f2f104c4c64bdc28","plan_hash":"8bcafb5ad67abf6a39fd23fbb6e074b16ec08193e8a3370004e8adff7b06a54c","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-heuristic-v1-sim32/eval-report.json","eval_report_file_sha256":"60b6d2f6628e63c4fbea2f9dbad110ae91b5f411aee94f6b58843e19e55a590d","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":1,"ties":0,"losses":15,"center_bps":625},
+      {"evaluation_id":"m24-s1-vs-heuristic-v1-sim64","pair":"s1_vs_heuristic","simulations":64,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-heuristic-v1-sim64.plan.json","realized_plan_file_sha256":"12c70f07f8bc93a5f44bd9b7540b3663e393816d1a87af91cb789dd0af8adc28","plan_hash":"5d402f60c224f521177daedffb6f27f19487cde93081579371614feb5a393a0e","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-heuristic-v1-sim64/eval-report.json","eval_report_file_sha256":"8203d0b756a9f0fd5132c482d2230f672a97dea4d82803aec14c5c79837885e9","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":1,"ties":0,"losses":15,"center_bps":625},
+      {"evaluation_id":"m24-s1-vs-m07-v1-sim16","pair":"s1_vs_m07","simulations":16,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-m07-v1-sim16.plan.json","realized_plan_file_sha256":"60d3bd7cac3026bbe2326b18039526ea72551fb4dd45a1d96adaa4faa98ff813","plan_hash":"f75c3fb0b935fe5ee39fb1895b48ad3fb3e40370c975d2ec345eecc1b7e3b0a2","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-m07-v1-sim16/eval-report.json","eval_report_file_sha256":"23c59d0b7c58b150ed6454888d26714574487a3b26d972ca6316a6cff06773e9","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":5,"ties":0,"losses":11,"center_bps":3125},
+      {"evaluation_id":"m24-s1-vs-m07-v1-sim32","pair":"s1_vs_m07","simulations":32,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-m07-v1-sim32.plan.json","realized_plan_file_sha256":"72cc8de06cd404ee4ac8f5422068c6ece775b8abea782d1175672c7f916b40a9","plan_hash":"4e632f544d46b81644b96e0765d8a253cbed54460d02bc918589739126be7960","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-m07-v1-sim32/eval-report.json","eval_report_file_sha256":"577c4bc945f5c50a954b3b4373463a8801f5162de4180080c789bff2fdade0d0","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":4,"ties":0,"losses":12,"center_bps":2500},
+      {"evaluation_id":"m24-s1-vs-m07-v1-sim64","pair":"s1_vs_m07","simulations":64,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s1-vs-m07-v1-sim64.plan.json","realized_plan_file_sha256":"917280492ba900fe9726fe56699081a072c916bb22c2e9e6ed56ed7fd7e7b07a","plan_hash":"7e63f286654b67d0707bf2c8dee0801e824c644e7508707c4f84343d04a8f737","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s1-vs-m07-v1-sim64/eval-report.json","eval_report_file_sha256":"b43cde66167dfdd81379d1f4b43aa6bd53dfa638b203ee631c9c0a034089455a","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":3,"ties":0,"losses":13,"center_bps":1875},
+      {"evaluation_id":"m24-s2-vs-heuristic-v1-sim16","pair":"s2_vs_heuristic","simulations":16,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-heuristic-v1-sim16.plan.json","realized_plan_file_sha256":"c20f23c3c6f2478ac1716e16f690c24bdfd2781e7b092f1531c3734ddc1afb42","plan_hash":"e7a05b0ac8e838001e217b1f7146551f1930f607287ffd6ad95472d8fe311792","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-heuristic-v1-sim16/eval-report.json","eval_report_file_sha256":"ba9f06a18fda44c5f42f24190394bd8bf2a00efb504212d6ed8b8b8e88abdab7","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":3,"ties":0,"losses":13,"center_bps":1875},
+      {"evaluation_id":"m24-s2-vs-heuristic-v1-sim32","pair":"s2_vs_heuristic","simulations":32,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-heuristic-v1-sim32.plan.json","realized_plan_file_sha256":"d41b638ad1d4a892843fa25336ef6ec51e768cc19e0a9def48f4713c5e3d67e6","plan_hash":"027c1b174a11e2eb5db6229ce43b4e405234f6d7840466f5bf449ec5512ca695","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-heuristic-v1-sim32/eval-report.json","eval_report_file_sha256":"2c975b16b974b305eaa714491799426b9ef5bb5ae7704d05c371c307cf860959","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":1,"ties":0,"losses":15,"center_bps":625},
+      {"evaluation_id":"m24-s2-vs-heuristic-v1-sim64","pair":"s2_vs_heuristic","simulations":64,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-heuristic-v1-sim64.plan.json","realized_plan_file_sha256":"f57b2cdb4ce5245fa9198b1f4c2532bc16b5459adc64cea040c61b144a7e09cb","plan_hash":"a3b2c7d9b444df4244d5a01c648249f77deb9a0d1af0e65a0298da83c5f50ac8","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-heuristic-v1-sim64/eval-report.json","eval_report_file_sha256":"d035a4b8206288741358c126856822d7f5d5437309faca6e3b993fed769a5327","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":2,"ties":0,"losses":14,"center_bps":1250},
+      {"evaluation_id":"m24-s2-vs-m07-v1-sim16","pair":"s2_vs_m07","simulations":16,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-m07-v1-sim16.plan.json","realized_plan_file_sha256":"fc7582e8d10c297e3a3bce928f907b540091e1c3c9d095d2b5920e1c20a17038","plan_hash":"e6aae082ffa27aa15e071481100b8de6c1fca5f5384eb4c1d870d116dbc04771","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-m07-v1-sim16/eval-report.json","eval_report_file_sha256":"8524bc4fe7eaa7c25e9e856fb8da9618c87d5d04a7a8931f7d6ba668e1796f21","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":4,"ties":0,"losses":12,"center_bps":2500},
+      {"evaluation_id":"m24-s2-vs-m07-v1-sim32","pair":"s2_vs_m07","simulations":32,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-m07-v1-sim32.plan.json","realized_plan_file_sha256":"7e2f5c8e41637f81361f338691e11c3be2a63cb6932eef35ef86ab63ee6e7db7","plan_hash":"2224b6ff948f0923ecdde0bc778fa3f3f0d12764f7e5b0cb4f4b9b63d8f64a04","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-m07-v1-sim32/eval-report.json","eval_report_file_sha256":"be770bed129d8d833ee3f4f364d6473d1e78734aee39de6ec269f8195bccc1f2","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":9,"ties":0,"losses":7,"center_bps":5625},
+      {"evaluation_id":"m24-s2-vs-m07-v1-sim64","pair":"s2_vs_m07","simulations":64,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-m07-v1-sim64.plan.json","realized_plan_file_sha256":"d074b51f7ec650fd0dc3ce2e46776eafbe373b89a0825f210b8205247e94cc59","plan_hash":"cf87fcde2b03e73ea85e58344b9d140c07475e2c6f957bbd582b06d8b30b293f","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-m07-v1-sim64/eval-report.json","eval_report_file_sha256":"a0ce05309647e99d83beba0cfba5a6a58a877e1ff5b5e72baa507f57cd92b367","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":5,"ties":0,"losses":11,"center_bps":3125},
+      {"evaluation_id":"m24-s2-vs-s1-v1-sim16","pair":"s2_vs_s1","simulations":16,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-s1-v1-sim16.plan.json","realized_plan_file_sha256":"1800c4dbf8857077f5375b247b762f6f8f29e3eeea7e66cda175d7df5957fefb","plan_hash":"3aae96a47daa93c3f26fac03b22bd28053f4b971cbbb1a2bb8a115f0d86814ad","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-s1-v1-sim16/eval-report.json","eval_report_file_sha256":"cc989af3e2ed01ece839f3f1509b4baacc51ddce343fbb59c89f71866db9f700","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":10,"ties":0,"losses":6,"center_bps":6250},
+      {"evaluation_id":"m24-s2-vs-s1-v1-sim32","pair":"s2_vs_s1","simulations":32,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-s1-v1-sim32.plan.json","realized_plan_file_sha256":"eb5a66c848e78f236c8676ad356d0ac932d469d5d4c87318f6d7ef4cf2f273a7","plan_hash":"68a76fec0a32baacb9070b37d7fbfd20bbf4dea73511f22483148e0a2d917021","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-s1-v1-sim32/eval-report.json","eval_report_file_sha256":"73d8c3e555a10466b3064b217bcfc86e68ca92e4798e49fd31b140ce56164c56","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":10,"ties":0,"losses":6,"center_bps":6250},
+      {"evaluation_id":"m24-s2-vs-s1-v1-sim64","pair":"s2_vs_s1","simulations":64,"realized_plan_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/realized-plans/m24-s2-vs-s1-v1-sim64.plan.json","realized_plan_file_sha256":"514faf0d65f43347872996cd986588eb784fc110e4430c25b7cfedad745f8b2c","plan_hash":"a21a7a232ac41cd2aa77b1481b489f0900a32562e1d422af18b7a18b8208a922","eval_report_path":"local-artifacts/m24-scale-failure-diagnosis-v1/d2/eval-reports/m24-s2-vs-s1-v1-sim64/eval-report.json","eval_report_file_sha256":"ce66f1703a09226eb521c3ff2a87ec99cbe60f90ac52b8c881497ab8ade9dfb3","scheduled_matches":16,"completed_matches":16,"aborted_matches":0,"wins":4,"ties":0,"losses":12,"center_bps":2500}
+    ],
+    "totals": {
+      "evaluations": 15,
+      "scheduled_matches": 240,
+      "completed_matches": 240,
+      "aborted_matches": 0
+    },
+    "anchor_delta_m07_bps": {
+      "sim16": -625,
+      "sim32": 3125,
+      "sim64": 1250
+    },
+    "D2_rescue": true,
+    "D2_sensitivity": true,
+    "D2_monotonic": false
+  },
+  "derived_booleans": {
+    "A_redundancy_evidence": true,
+    "B_shared_ref_improvement": true,
+    "C_m07_no_improvement": false,
+    "D2_rescue": true,
+    "D2_sensitivity": true,
+    "D2_monotonic": false,
+    "teacher_drift": false,
+    "representation_capacity_evidence": false
+  },
+  "decision": {
+    "teacher_branch": false,
+    "search_branch": true,
+    "representation_branch": false,
+    "inconclusive_branch": false,
+    "outcome": "SEARCH_BOTTLENECK",
+    "recommended_next": "M27A fixed-model search-budget scaling",
+    "m27a_authorized": false
+  },
+  "review": {
+    "source_review": "PENDING_INDEPENDENT_REVIEW",
+    "acceptance": "PENDING_INDEPENDENT_REVIEW",
+    "next_gate": "independent review of final M24.5 evidence"
+  }
+}

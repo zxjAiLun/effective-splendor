@@ -1,8 +1,49 @@
 # M24.5 Scale-Failure Diagnosis
 
-Status: `AUTHORIZED` (Repair 2)
+Status: `VERIFIED` (D24.5 result pending independent review)
 Parent: `M24 Training Scale Foundation` — `COMPLETE / NEGATIVE RESULT`
 Diagnosis config: `benchmarks/m24-scale-failure-diagnosis-v1.json`
+
+## Historical execution checkpoint — 2026-08-17
+
+- A, B, and C artifacts exist locally and retain the preregistered inputs and
+  metrics. D1 remains the existing-evidence summary.
+- After the disk remount, the original D2 background process was gone. The
+  first resumed attempt produced 12 reports with `16/16` handshake `agent_io`
+  aborts because the CUDA/Python runtime environment was not restored.
+- Those reports are invalid execution artifacts and must not be used as D2
+  evidence. They were removed and the plans were retried with the recorded
+  CUDA virtual environment and `PYTHONPATH`; the retry still aborted at
+  handshake for both GPU and non-GPU pairings, including the previously
+  completed S1-vs-heuristic plan.
+- This checkpoint was superseded by the runtime recovery below. It is retained
+  as provenance for the invalid attempt and is not scientific evidence.
+
+## Final execution — 2026-08-17
+
+- Repair 4 pre-registration is accepted for this diagnostic execution;
+  `AUTHORIZED` remains the benchmark's execution-authorization state. Final
+  diagnosis acceptance is a separate independent-review gate.
+- Runtime root cause: after the remount, the literal Arena command
+  `splendor` was no longer resolvable because `target/debug` was absent from
+  `PATH`. No tracked source, frozen plan, checkpoint, CUDA installation, or
+  scientific input used `DISK1`.
+- The invalid retry reports were retained under
+  `local-artifacts/m24-scale-failure-diagnosis-v1/failed-attempts/remount-path-missing/`.
+  The indexed set contains 12 plans with 16/16 handshake `agent_io` aborts;
+  `scientific_evidence_used` is false.
+- The ignored wrapper
+  `local-artifacts/m24-scale-failure-diagnosis-v1/run-m24-env.sh` explicitly
+  prepends `target/debug` and the CUDA Python environment to `PATH`. Formal
+  D2 reran the exact frozen realized plans without exporting `PYTHONPATH`.
+- Formal D2 used the same-commit executable SHA
+  `a2e0eb02ac7b475cab902e4d9f9ed153ac5428031b607d0f1c85a1e8e733aa49`.
+  Afterward, the stale ignored `target/` was cleaned and rebuilt at the new
+  mount; the verification executable SHA is
+  `c7ce197e42195c4dc2a065c7aaf3321194a3c09abb20e92a90fc292dc7ae74d3`, with
+  no embedded `DISK1` path.
+- A runtime smoke and all 15 D2 evaluations completed successfully: 240/240
+  matches completed, 0 aborted, 0 agent faults.
 
 ## Problem
 
@@ -309,6 +350,76 @@ M26 generation chaining is not authorized before a strong teacher exists.
 - This living milestone document
 - Diagnostic result manifest(s) after analyses
 - Decision record for D24.5
+
+## Final implementation
+
+- Tracked compact result: `benchmarks/m24-scale-failure-diagnosis-v1.result.json`.
+- Full ignored result: `local-artifacts/m24-scale-failure-diagnosis-v1/final-diagnosis.json`.
+- Runtime snapshot SHA-256:
+  `810b45ef38ff50e591522ef738e22a85d7dd67c60a2f329a514e5d5d72f57cd5`.
+- Full final diagnosis SHA-256:
+  `7854542b94b1e5ded9d00cf4a171981491b6e792294d98cc9013e7fc66593e5a`.
+- The result manifest binds S1/S2 dataset and checkpoint identities, A/B/C/D1
+  artifact hashes, all 15 realized plan hashes and file hashes, all 15 report
+  hashes, and retained invalid-attempt provenance.
+
+## Validation and evidence
+
+- A: distribution similarity `0.9658682665233417`, TV `0.03413173347665832`,
+  exact information-set overlap `0.0` descriptive only; `A_redundancy_evidence = true`.
+- B: policy CE improvement `65.3789160561596` bps and value MSE improvement
+  `344.552307094248` bps; `B_shared_ref_improvement = true`.
+- C: top-1 delta `+0.01171875`, rank-correlation delta `+0.004695216948526107`,
+  disagreement delta `-0.01171875`; `C_m07_no_improvement = false`.
+- D1: accepted Arena evidence retains M07 anchor delta `-313` bps and
+  heuristic delta `+938` bps; detailed replay phase/action slicing was not run.
+- D2 M07 anchor deltas: `sim16 = -625` bps, `sim32 = +3125` bps,
+  `sim64 = +1250` bps.
+- D2 derived booleans: `D2_rescue = true`, `D2_sensitivity = true`,
+  `D2_monotonic = false`.
+- Commands passed:
+  `cargo fmt --all`; `cargo test -p splendor-cli --test m24_result -- --test-threads=1`
+  (9/9); `cargo test --workspace -- --skip shutdown_reaps_child`; `git diff --check`.
+- The first post-remount workspace run exposed stale ignored `target/` binaries
+  containing `/media/bailan/DISK1`; after `cargo clean`, the same workspace
+  command passed with all non-ignored tests and the expected skipped test.
+
+## Result and decision
+
+The frozen D24.5 function yields exactly one substantive branch:
+
+```text
+teacher branch        = false
+search branch         = true
+representation branch = false
+inconclusive branch   = false
+outcome               = SEARCH_BOTTLENECK
+recommended next      = M27A fixed-model search-budget scaling
+```
+
+`D2_rescue = true` makes both teacher/bootstrap and representation predicates
+false because each requires `NOT D2_rescue`; D2 sensitivity makes search true.
+The non-monotonic `16 -> 32 -> 64` curve is evidence for a search interaction,
+not evidence that more simulations are monotonically better.
+
+This is `VERIFIED` evidence, not milestone acceptance. Independent review of
+the tracked manifest, source hashes, raw report bindings, and recomputation is
+still required. M27A, M25, M26, and M28 remain unauthorized until that review
+passes.
+
+## Known limitations
+
+- Each D2 pair/budget contains 8 seeds and two seat rotations, so the curve
+  shape may include small-sample variance.
+- D1 is an existing-evidence summary and does not contain new replay slicing.
+- Heavy datasets, checkpoints, replays, and D2 reports remain local-only under
+  `local-artifacts/`.
+
+## Next authorized gate
+
+Independent review of `benchmarks/m24-scale-failure-diagnosis-v1.result.json`
+and the documented local evidence. No new training, collection, champion
+change, or M27A execution is authorized before that review.
 
 ## Constraints
 
