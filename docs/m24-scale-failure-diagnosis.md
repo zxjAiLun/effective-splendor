@@ -1,6 +1,6 @@
 # M24.5 Scale-Failure Diagnosis
 
-Status: `VERIFIED` (D24.5 result pending independent review)
+Status: `ACCEPTED` (D24.5 `SEARCH_BOTTLENECK`)
 Parent: `M24 Training Scale Foundation` — `COMPLETE / NEGATIVE RESULT`
 Diagnosis config: `benchmarks/m24-scale-failure-diagnosis-v1.json`
 
@@ -22,8 +22,7 @@ Diagnosis config: `benchmarks/m24-scale-failure-diagnosis-v1.json`
 ## Final execution — 2026-08-17
 
 - Repair 4 pre-registration is accepted for this diagnostic execution;
-  `AUTHORIZED` remains the benchmark's execution-authorization state. Final
-  diagnosis acceptance is a separate independent-review gate.
+  `AUTHORIZED` remains the benchmark's execution-authorization state.
 - Runtime root cause: after the remount, the literal Arena command
   `splendor` was no longer resolvable because `target/debug` was absent from
   `PATH`. No tracked source, frozen plan, checkpoint, CUDA installation, or
@@ -404,10 +403,17 @@ false because each requires `NOT D2_rescue`; D2 sensitivity makes search true.
 The non-monotonic `16 -> 32 -> 64` curve is evidence for a search interaction,
 not evidence that more simulations are monotonically better.
 
-This is `VERIFIED` evidence, not milestone acceptance. Independent review of
-the tracked manifest, source hashes, raw report bindings, and recomputation is
-still required. M27A, M25, M26, and M28 remain unauthorized until that review
-passes.
+Independent review accepted the final evidence. Review basis is
+`94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f`, with documentation binding
+`77be94637b58610eacaaf51a9bb06da3f1e0aff7`. Findings were P0=0, P1=0, and
+one non-blocking P2 for exact clean-checkout coverage of the full 5x3 D2 cell
+set. The P2 regression assertion is now implemented in
+`m24_scale_failure_diagnosis_result_is_recomputable`.
+
+M24.5 final evidence is `ACCEPTED`. M27A is authorized only for
+pre-registration/design; its experiment execution remains unauthorized until
+its own frozen plan receives independent review. M25, M26, and M28 remain
+unauthorized.
 
 ## Known limitations
 
@@ -416,12 +422,15 @@ passes.
 - D1 is an existing-evidence summary and does not contain new replay slicing.
 - Heavy datasets, checkpoints, replays, and D2 reports remain local-only under
   `local-artifacts/`.
+- Clean checkouts do not contain ignored raw D2 reports; the tracked manifest
+  therefore supplies the W/T/L and cryptographic identities, while local test
+  runs additionally re-open and hash-bind raw reports when present.
 
 ## Next authorized gate
 
-Independent review of `benchmarks/m24-scale-failure-diagnosis-v1.result.json`
-and the documented local evidence. No new training, collection, champion
-change, or M27A execution is authorized before that review.
+M24.5 is closed at `ACCEPTED`. The next authorized gate is independent review
+of the M27A pre-registration/design. No new training, collection, champion
+change, or M27A experiment execution is authorized before that review.
 
 ## Constraints
 

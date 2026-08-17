@@ -1,0 +1,142 @@
+{
+  "format": "effective-splendor-m27a-search-budget-scaling",
+  "version": 1,
+  "milestone": "M27A",
+  "revision": "design-1",
+  "status": "DESIGNED",
+  "execution_authorization": "NOT_AUTHORIZED",
+  "review": {
+    "source_review": "PENDING_INDEPENDENT_REVIEW",
+    "acceptance": "PENDING_INDEPENDENT_REVIEW",
+    "required_before_execution": true
+  },
+  "parent_diagnosis": {
+    "diagnosis_id": "m24-scale-failure-diagnosis-v1",
+    "result_manifest": "benchmarks/m24-scale-failure-diagnosis-v1.result.json",
+    "result_manifest_sha256": "7ca1ce824ed3715f099d7cdb3f6352aa42c1a141221928ab35756aaa4ff5d094",
+    "review_basis_commit": "94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f",
+    "documentation_binding_commit": "77be94637b58610eacaaf51a9bb06da3f1e0aff7",
+    "decision": "SEARCH_BOTTLENECK"
+  },
+  "question": "What is the fixed-model search-strength curve for the M24-S2 checkpoint against M07, and where is the stable operating region?",
+  "scope": {
+    "diagnostic_only": true,
+    "fixed_checkpoint": true,
+    "no_new_training": true,
+    "no_new_self_play_collection": true,
+    "no_architecture_change": true,
+    "no_dataset_change": true,
+    "no_m07_change": true,
+    "no_promotion": true,
+    "no_champion_change": true
+  },
+  "fixed_inputs": {
+    "s1_checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+    "s2_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+    "s1_self_play_hash": "b2284c6ce44a0a60bdd695d15ba42e00199a95e489970f920cfd4e4aaf464053",
+    "s2_self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "m07_champion_id": "m07-champion",
+    "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "neural_device": "cuda",
+    "neural_sample_seed": 26000018,
+    "max_depth_turns": 1,
+    "puct_exploration_milli": 1500,
+    "m07_sample_seed": 20260810,
+    "m07_sample_count": 4,
+    "m07_max_depth_turns": 1,
+    "m07_max_nodes": 2000
+  },
+  "planned_matrix": {
+    "candidate_pairs": [
+      "s2_vs_m07",
+      "s1_vs_m07"
+    ],
+    "sim_budgets": [16, 24, 32, 48, 64, 96, 128],
+    "game_seeds": [
+      301001,
+      301002,
+      301003,
+      301004,
+      301005,
+      301006,
+      301007,
+      301008,
+      301009,
+      301010,
+      301011,
+      301012,
+      301013,
+      301014,
+      301015,
+      301016,
+      301017,
+      301018,
+      301019,
+      301020,
+      301021,
+      301022,
+      301023,
+      301024,
+      301025,
+      301026,
+      301027,
+      301028,
+      301029,
+      301030,
+      301031,
+      301032
+    ],
+    "seat_rotations": 2,
+    "plans": 14,
+    "matches_per_plan": 64,
+    "total_matches": 896,
+    "evaluation_id_template": "m27a-{pair}-v1-sim{sim}"
+  },
+  "runtime_contract": {
+    "program": "splendor",
+    "program_resolution": "literal program must resolve to the reviewed target/debug/splendor via an explicit PATH bootstrap",
+    "python": "python",
+    "module_root": "training/m17_gpu",
+    "path_bootstrap": "local-artifacts/m24-scale-failure-diagnosis-v1/run-m24-env.sh or an equivalent reviewed wrapper",
+    "pythonpath_exported": false,
+    "handshake_timeout_ms": 5000,
+    "move_timeout_ms": 30000,
+    "shutdown_grace_ms": 2000,
+    "timeout_rationale": "Use one fixed operational timeout across all budgets; do not let the larger simulation cells be censored by the M24 10-second timeout."
+  },
+  "allowed_experimental_mutation": [
+    "neural agent simulations: one value from sim_budgets",
+    "evaluation_id: deterministic budget-specific suffix",
+    "game seeds: use the frozen M27A seed list"
+  ],
+  "forbidden_mutation": [
+    "checkpoint identity, model weights, architecture, dataset, catalog, neural sample seed, max depth, PUCT, M07 identity/config, seat schedule, or timeout policy"
+  ],
+  "statistics": {
+    "primary_metric": "pairwise center score bps from W/T/L",
+    "anchor_metric": "center(S2,M07,budget) - center(S1,M07,budget)",
+    "secondary_metrics": [
+      "Hoeffding lower and upper score bounds",
+      "completed/aborted/fault counts",
+      "seat-rotation split",
+      "raw W/T/L by budget"
+    ],
+    "curve_interpretation": "Report the full curve and uncertainty; do not assume monotonic improvement or select a budget from center score alone.",
+    "promotion_claim": "none"
+  },
+  "execution_gates": {
+    "must_be_frozen_before_run": true,
+    "independent_review_required": true,
+    "all_plans_validate": true,
+    "all_matches_complete": "896/896",
+    "zero_aborts": true,
+    "zero_candidate_faults": true,
+    "raw_report_and_plan_hashes_bound": true
+  },
+  "next_decision": {
+    "after_execution": "Use the reviewed curve to choose a follow-up fixed search operating region or close M27A without changing the model.",
+    "m25_authorized": false,
+    "m26_authorized": false,
+    "m28_authorized": false
+  }
+}

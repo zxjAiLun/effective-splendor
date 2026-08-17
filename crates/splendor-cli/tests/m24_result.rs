@@ -728,17 +728,62 @@ fn m24_scale_failure_diagnosis_result_is_recomputable() {
         "effective-splendor-m24-scale-failure-diagnosis-result"
     );
     assert_eq!(result["version"], 1);
-    assert_eq!(result["status"], "VERIFIED");
+    assert_eq!(result["status"], "ACCEPTED");
     assert_eq!(result["diagnosis_id"], config["diagnosis_id"]);
     assert_eq!(result["preregistration"]["revision"], "repair-4");
     assert_eq!(
         result["preregistration"]["file_sha256"],
         sha256_hex(&fs::read(root.join("benchmarks/m24-scale-failure-diagnosis-v1.json")).unwrap())
     );
-    assert_eq!(result["review"]["acceptance"], "PENDING_INDEPENDENT_REVIEW");
+    assert_eq!(
+        result["review"]["source_review"],
+        "PASS_INDEPENDENT_REVIEW_OF_94FC9B8"
+    );
+    assert_eq!(result["review"]["acceptance"], "ACCEPTED");
+    assert_eq!(
+        result["review"]["review_basis_commit"],
+        "94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f"
+    );
+    assert_eq!(
+        result["review"]["documentation_binding_commit"],
+        "77be94637b58610eacaaf51a9bb06da3f1e0aff7"
+    );
+    assert_eq!(result["review"]["findings"]["P0"], 0);
+    assert_eq!(result["review"]["findings"]["P1"], 0);
+    assert_eq!(result["review"]["findings"]["P2"], 1);
 
     let evaluations = result["d2"]["evaluations"].as_array().unwrap();
     assert_eq!(evaluations.len(), 15);
+    let expected_cells: HashSet<(String, i64)> = [
+        ("s1_vs_heuristic", 16),
+        ("s1_vs_heuristic", 32),
+        ("s1_vs_heuristic", 64),
+        ("s1_vs_m07", 16),
+        ("s1_vs_m07", 32),
+        ("s1_vs_m07", 64),
+        ("s2_vs_heuristic", 16),
+        ("s2_vs_heuristic", 32),
+        ("s2_vs_heuristic", 64),
+        ("s2_vs_m07", 16),
+        ("s2_vs_m07", 32),
+        ("s2_vs_m07", 64),
+        ("s2_vs_s1", 16),
+        ("s2_vs_s1", 32),
+        ("s2_vs_s1", 64),
+    ]
+    .into_iter()
+    .map(|(pair, simulations)| (pair.to_string(), simulations))
+    .collect();
+    let actual_cells: HashSet<(String, i64)> = evaluations
+        .iter()
+        .map(|evaluation| {
+            (
+                evaluation["pair"].as_str().unwrap().to_string(),
+                evaluation["simulations"].as_i64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(actual_cells, expected_cells);
     let mut evaluation_ids = HashSet::new();
     let mut scheduled_matches = 0i64;
     let mut completed_matches = 0i64;
@@ -951,6 +996,7 @@ fn m24_scale_failure_diagnosis_result_is_recomputable() {
         result["decision"]["recommended_next"],
         "M27A fixed-model search-budget scaling"
     );
+    assert_eq!(result["decision"]["m27a_preregistration_authorized"], true);
     assert_eq!(result["decision"]["m27a_authorized"], false);
 }
 

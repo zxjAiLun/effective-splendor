@@ -1,7 +1,7 @@
 {
   "format": "effective-splendor-m24-scale-failure-diagnosis-result",
   "version": 1,
-  "status": "VERIFIED",
+  "status": "ACCEPTED",
   "diagnosis_id": "m24-scale-failure-diagnosis-v1",
   "preregistration": {
     "path": "benchmarks/m24-scale-failure-diagnosis-v1.json",
@@ -172,11 +172,20 @@
     "inconclusive_branch": false,
     "outcome": "SEARCH_BOTTLENECK",
     "recommended_next": "M27A fixed-model search-budget scaling",
+    "m27a_preregistration_authorized": true,
     "m27a_authorized": false
   },
   "review": {
-    "source_review": "PENDING_INDEPENDENT_REVIEW",
-    "acceptance": "PENDING_INDEPENDENT_REVIEW",
-    "next_gate": "independent review of final M24.5 evidence"
+    "source_review": "PASS_INDEPENDENT_REVIEW_OF_94FC9B8",
+    "acceptance": "ACCEPTED",
+    "review_basis_commit": "94fc9b8b0acdde71b92a61566a4e6e9aa51c0f7f",
+    "documentation_binding_commit": "77be94637b58610eacaaf51a9bb06da3f1e0aff7",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P2_summary": "Add an exact 5x3 D2 cell-set assertion for durable clean-checkout regression coverage."
+    },
+    "next_gate": "M27A independent preregistration review"
   }
 }
