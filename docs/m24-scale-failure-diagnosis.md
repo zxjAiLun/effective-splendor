@@ -410,6 +410,9 @@ one non-blocking P2 for exact clean-checkout coverage of the full 5x3 D2 cell
 set. The P2 regression assertion is now implemented in
 `m24_scale_failure_diagnosis_result_is_recomputable`.
 
+The acceptance ledger and M27A design were recorded at commit
+`a0ce142489f67dc9df391cf65257b94eafc8af7c`.
+
 M24.5 final evidence is `ACCEPTED`. M27A is authorized only for
 pre-registration/design; its experiment execution remains unauthorized until
 its own frozen plan receives independent review. M25, M26, and M28 remain
