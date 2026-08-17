@@ -3,6 +3,7 @@
 Status: `AUTHORIZED FOR PREREGISTRATION / DESIGN`; Repair 2 `IMPLEMENTED`, independent review pending
 Execution: `NOT AUTHORIZED`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
+Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 
@@ -174,6 +175,8 @@ created by M27A.
 - Parent documentation binding: `77be94637b58610eacaaf51a9bb06da3f1e0aff7`.
 - Repair 1 implementation commit: `16cf9ec193f16175fd6c7e0425ab5212fbb61b51`;
   Repair 1 documentation binding: `d027a5aa9a80325f3fbfb823a775c303c6d14468`.
+- Repair 2 implementation commit: `a13bcdd`;
+  documentation binding is recorded by the follow-up documentation commit.
 - M27A config revision is `design-1-repair-2`; status remains `DESIGNED`,
   `review.repair_status` is `IMPLEMENTED_PENDING_INDEPENDENT_REVIEW`, and
   `execution_authorization` remains `NOT_AUTHORIZED`.
