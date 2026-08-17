@@ -5,7 +5,7 @@
   "revision": "design-1-repair-2",
   "preregistration": {
     "path": "benchmarks/m27a-search-budget-scaling-v1.json",
-    "sha256": "c1062b04c47d9d295a39ff758b0c74fbf5cd8e3e482eed2866bbaa0ad1c01834",
+    "sha256": "a50a62aed489cdc1c0022d924ba26463ba79fa29b7e66000d8fa9d51b1c2671e",
     "status": "ACCEPTED/FROZEN",
     "review_basis_commit": "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd",
     "documentation_binding_commit": "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1"

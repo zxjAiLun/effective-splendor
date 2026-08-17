@@ -275,7 +275,7 @@
     },
     "stable_region": {
       "minimum_consecutive_budgets": 3,
-      "construction_rule": "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible, whose adjacent transitions satisfy stable_transition_rule, and whose anchor-center span remains strictly below 2000 bps.",
+      "construction_rule": "Scan candidate start budgets from low to high; for each start, enumerate contiguous end points and select the first start for which any region of at least three consecutive budgets satisfies eligibility, strict adjacent movement, and strict anchor-center span predicates.",
       "region_span_rule": "max(anchor_center_bps in region) - min(anchor_center_bps in region) < 2000",
       "first_region_rule": "If multiple runs meet the minimum length, use the first run in ordered_budgets order.",
       "selection_rule": "Select the lowest simulation budget in the first stable region; this is an operating point, not an optimum claim.",

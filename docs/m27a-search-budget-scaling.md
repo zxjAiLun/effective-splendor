@@ -1,11 +1,13 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `ACCEPTED / FROZEN`; Repair 2 accepted; 14-plan materialization locally verified
+Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; Execution-Gate Repair 1 `HOLD`
 Execution: `NOT AUTHORIZED`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
 Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): materialize M27A search-budget plans`)
 Review: `a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd` → `ACCEPTED`; documentation binding `4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1`
+Materialization review: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` → `ACCEPTED`; P0/P1/P2 = `0/0/0`
+Execution-gate review: P1 = `1` (`HOLD`); no Arena authorization
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -82,10 +84,10 @@ Out of scope:
 - The absolute S2-vs-M07 curve remains mandatory to report but is descriptive
   secondary evidence. It never overrides the matched-anchor eligibility or
   stability rule when the two signals disagree.
-- The preregistration is now accepted/frozen. Plan materialization is
-  authorized, but execution remains unauthorized until the separate
-  materialization review accepts all 14 plan hashes, identities, seeds, and
-  matrix coverage.
+- The preregistration and 14-plan materialization are accepted/frozen. The
+  executable operating-region gate is on `HOLD` until overlapping stable
+  windows are handled by the start-window enumeration semantics and reviewed;
+  execution remains unauthorized.
 
 ## Implementation plan
 
@@ -95,9 +97,11 @@ Out of scope:
 3. Generate 14 pairwise realized plans and a compact hash-bound bundle.
 4. Independently review plan hashes, seeds, identities, timeouts, and matrix
    coverage; execute no Arena matches during this stage.
-5. Only after the materialization review and a separate execution
-   authorization, execute the 896-match screen.
-6. Recompute center scores, paired uncertainty, and matched anchor deltas from
+5. Repair and independently review executable stable-region decision semantics;
+   then freeze runtime/build identity and perform the reviewed execution smoke.
+6. Only after those gates and a separate execution authorization, execute the
+   896-match screen.
+7. Recompute center scores, paired uncertainty, and matched anchor deltas from
    raw reports, then apply the frozen decision function without treating
    higher simulations as inherently better.
 
@@ -183,6 +187,25 @@ Out of scope:
 - No eval-report, replay, result manifest, or Arena execution artifact was
   generated.
 
+### 2026-08-18 — Execution-Gate Repair 1 required
+
+- Materialization review accepted the 14 plans and bundle with basis
+  `1db2241229a4d3bfe89cdf00f011789cdbbaee11`, documentation binding
+  `8a703c9b3793757582b491afb125c0462bf85466`, and P0/P1/P2 = `0/0/0`.
+- The review found P1=1 in the synthetic executable decision helper: greedy
+  maximal-run partitioning skipped a valid stable window beginning at a later
+  budget when the earliest prefix failed the region-span predicate.
+- Repaired semantics now enumerate every candidate start from low to high and
+  every contiguous end point; the first start with any valid window of at least
+  three eligible budgets is selected. Added regressions for
+  `[1000,2900,4000,4100] => Some(24)`, the two-point negative case, and the
+  five-point extension case.
+- The frozen thresholds, seeds, checkpoint identities, 14 plans, and plan
+  hashes remain unchanged. The bundle's preregistration SHA metadata was
+  updated only to bind the revised config wording; no plan hash changed.
+- Arena execution remains `NOT AUTHORIZED` pending this repair's review and
+  the separate runtime/build freeze.
+
 ## Final implementation
 
 This round contains the accepted preregistration, its 14 realized plans, the
@@ -215,9 +238,15 @@ was created by M27A.
   `ACCEPTED`, plan materialization is authorized, and
   `execution_authorization` remains `NOT_AUTHORIZED`.
 - Materialization bundle SHA-256:
-  `04c1b9509d0eda4247831954d9e0fa3e28962951eeca2b4992429ddf31a2e9c2`.
+  previous `04c1b9509d0eda4247831954d9e0fa3e28962951eeca2b4992429ddf31a2e9c2`;
+  current metadata-rebound bundle is recorded after this repair commit.
 - Materialization commit:
   `1db2241229a4d3bfe89cdf00f011789cdbbaee11`.
+- Materialization plan invariance check against `8a703c9`: no tracked plan
+  file changed and no plan hash changed.
+- Execution-Gate Repair 1 validation: `cargo fmt --all -- --check`, JSON parse,
+  `cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1`
+  (`3 passed`, exit 0), and `git diff --check` passed.
 - Materialization validation: JSON parse, `cargo fmt --all -- --check`,
   `cargo test --locked -p splendor-cli --test m27a_design -- --test-threads=1`
   (`3 passed`, exit 0), and `git diff --check` passed. All 14 plans
@@ -242,10 +271,12 @@ was created by M27A.
 
 ## Result and decision
 
-M27A Repair 2 is `ACCEPTED / FROZEN`; the 14-plan materialization is complete
-and locally verified. A separate materialization review is pending; plan
-execution and Arena execution remain unauthorized. M24.5 remains `ACCEPTED`;
-M07 remains champion; no promotion has occurred.
+M27A Repair 2 and the 14-plan materialization are `ACCEPTED / FROZEN`. The
+materialization review is closed, but Execution-Gate Repair 1 is `HOLD` because
+the prior helper could miss an overlapping valid stable window. The repair is
+implemented and locally verified; plan execution and Arena execution remain
+unauthorized pending independent repair review and runtime/build freeze.
+M24.5 remains `ACCEPTED`; M07 remains champion; no promotion has occurred.
 
 ## Known limitations
 
@@ -254,6 +285,8 @@ M07 remains champion; no promotion has occurred.
 - Plan materialization proves only the exact schedule/provenance contract; it
   does not prove runtime availability, competitive strength, or the operating
   region decision.
+- The executable decision helper now uses start-window enumeration; its repair
+  still requires independent review before any execution authorization.
 - The 128-simulation cell uses the same fixed 30-second operational timeout as
   every other budget; there is no budget-specific timeout exception.
 - The anchor Hoeffding interval is a per-budget diagnostic bound and is not a
@@ -264,7 +297,7 @@ M07 remains champion; no promotion has occurred.
 
 ## Next authorized gate
 
-Independent review of the 14-plan materialization bundle. Until that review
-passes, do not execute any plan or generate eval-report/replay/result artifacts.
-After it passes, execution still requires a separate explicit authorization;
-M25, M26, and M28 remain unauthorized.
+Independent review of Execution-Gate Repair 1, followed by the runtime/build
+freeze and reviewed execution smoke. Until both gates pass, do not execute any
+plan or generate eval-report/replay/result artifacts. M25, M26, and M28 remain
+unauthorized.

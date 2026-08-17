@@ -400,7 +400,7 @@ fn m27a_design_is_frozen_and_execution_is_unauthorized() {
     assert_eq!(region["minimum_consecutive_budgets"], 3);
     assert_eq!(
         region["construction_rule"],
-        "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible, whose adjacent transitions satisfy stable_transition_rule, and whose anchor-center span remains strictly below 2000 bps."
+        "Scan candidate start budgets from low to high; for each start, enumerate contiguous end points and select the first start for which any region of at least three consecutive budgets satisfies eligibility, strict adjacent movement, and strict anchor-center span predicates."
     );
     assert_eq!(
         region["region_span_rule"],
@@ -675,36 +675,29 @@ fn synthetic_eligible(point: SyntheticBudget) -> bool {
 }
 
 fn select_first_stable_budget(points: &[SyntheticBudget]) -> Option<u64> {
-    let mut start = 0;
-    while start < points.len() {
+    for start in 0..points.len() {
         if !synthetic_eligible(points[start]) {
-            start += 1;
             continue;
         }
 
-        let mut end = start;
         let mut min_center = points[start].center_bps;
         let mut max_center = points[start].center_bps;
-        while end + 1 < points.len() {
-            let next = points[end + 1];
-            if !synthetic_eligible(next) || (next.center_bps - points[end].center_bps).abs() >= 2000
+        for end in start + 1..points.len() {
+            let next = points[end];
+            if !synthetic_eligible(next)
+                || (next.center_bps - points[end - 1].center_bps).abs() >= 2000
             {
                 break;
             }
-            let next_min = min_center.min(next.center_bps);
-            let next_max = max_center.max(next.center_bps);
-            if next_max - next_min >= 2000 {
+            min_center = min_center.min(next.center_bps);
+            max_center = max_center.max(next.center_bps);
+            if max_center - min_center >= 2000 {
                 break;
             }
-            min_center = next_min;
-            max_center = next_max;
-            end += 1;
+            if end - start + 1 >= 3 {
+                return Some(points[start].budget);
+            }
         }
-
-        if end - start + 1 >= 3 {
-            return Some(points[start].budget);
-        }
-        start = end + 1;
     }
     None
 }
@@ -746,5 +739,20 @@ fn m27a_operating_region_decision_semantics_are_executable() {
         select_first_stable_budget(&synthetic_curve(&[4200, 6000, 8000])),
         None,
         "one-sided non-regression must not accept a continuing rise"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 2900, 4000, 4100])),
+        Some(24),
+        "a valid stable window may begin after an invalid earlier prefix"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 2900, 4000])),
+        None,
+        "two eligible points are not a stable region"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 2900, 4000, 4100, 4200])),
+        Some(24),
+        "a later valid window keeps its first qualifying start"
     );
 }
