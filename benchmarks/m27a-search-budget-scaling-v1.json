@@ -2,13 +2,25 @@
   "format": "effective-splendor-m27a-search-budget-scaling",
   "version": 1,
   "milestone": "M27A",
-  "revision": "design-1-repair-1",
+  "revision": "design-1-repair-2",
   "status": "DESIGNED",
   "execution_authorization": "NOT_AUTHORIZED",
   "review": {
     "source_review": "PENDING_INDEPENDENT_REVIEW",
     "acceptance": "PENDING_INDEPENDENT_REVIEW",
     "repair_status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
+    "previous_review": {
+      "basis_commit": "16cf9ec193f16175fd6c7e0425ab5212fbb61b51",
+      "documentation_binding": "d027a5aa9a80325f3fbfb823a775c303c6d14468",
+      "decision": "HOLD",
+      "findings": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 1
+      },
+      "plan_materialization_authorized": false,
+      "arena_execution_authorized": false
+    },
     "required_before_execution": true
   },
   "parent_diagnosis": {
@@ -114,7 +126,7 @@
     "checkpoint identity, model weights, architecture, dataset, catalog, neural sample seed, max depth, PUCT, M07 identity/config, seat schedule, or timeout policy"
   ],
   "statistics": {
-    "statistics_contract": "effective-splendor-m27a-paired-search-curve-v1",
+    "statistics_contract": "effective-splendor-m27a-paired-search-curve-v2",
     "confidence_bps": 9500,
     "confidence_interpretation": "Each reported lower or upper bound is a one-sided Hoeffding bound using exp(-3) < 0.05; bounds are per budget and diagnostic, not a promotion claim.",
     "budget_aggregation": "Report every pair and budget independently; do not pool budgets, drop budgets, or revise the ordered budget list after observing results.",
@@ -163,6 +175,23 @@
       "aborted matches and candidate faults",
       "seat-rotation split"
     ],
+    "power_contract": {
+      "design_blocks_per_plan": 32,
+      "anchor_margin_formula_at_design_n": "ceil_sqrt(ceil_div(600000000, 32))",
+      "anchor_margin_bps_at_design_n": 4331,
+      "prior_lower_bound_gate_bps": -200,
+      "prior_effective_center_threshold_bps": 4131,
+      "prior_effective_center_formula": "anchor_center_bps - 4331 >= -200",
+      "revised_decision_role": "Use uncertainty bounds as reported diagnostic evidence; use the separately frozen practical center and plateau predicates for diagnostic operating-region selection."
+    },
+    "uncertainty_role": {
+      "role": "reported_diagnostic_evidence",
+      "used_for_eligibility": false,
+      "used_for_transition": false,
+      "used_for_region_span": false,
+      "used_for_promotion": false,
+      "rationale": "At 32 paired blocks the anchor margin is 4331 bps, so using anchor_lower_bps >= -200 would require anchor_center_bps >= 4131 and would be a low-power diagnostic gate."
+    },
     "secondary_metrics": [
       "Hoeffding lower and upper score bounds",
       "completed/aborted/fault counts",
@@ -173,31 +202,35 @@
     "promotion_claim": "none"
   },
   "operating_region_decision": {
-    "contract": "effective-splendor-m27a-stable-operating-region-v1",
+    "contract": "effective-splendor-m27a-stable-operating-region-v2",
     "ordered_budgets": [16, 24, 32, 48, 64, 96, 128],
     "selection_endpoint": "matched_s2_minus_s1_anchor",
+    "decision_mode": "diagnostic_practical_center",
     "eligibility": {
       "required_complete_matrix": "Both pair plans at the budget have 32 completed paired seed blocks (64/64 matches each).",
       "required_zero_aborts": true,
       "required_zero_candidate_faults": true,
-      "anchor_lower_bound_min_bps": -200,
-      "anchor_lower_bound_min_rationale": "Reuse the frozen M24 200-bps anchor-regression tolerance, applied to the conservative matched-anchor lower bound for operating-region eligibility.",
-      "eligible_if": "The budget satisfies the complete-matrix and zero-fault requirements and anchor_lower_bps >= -200.",
+      "anchor_center_min_bps": 1000,
+      "anchor_center_min_rationale": "Require a predeclared 1000-bps (10 percentage-point) practical S2-specific gain; this is below the prior M24.5 positive rescue scale of 1250 bps and is not a significance threshold.",
+      "anchor_lower_bound_controls_eligibility": false,
+      "eligible_if": "The budget satisfies the complete-matrix and zero-fault requirements and anchor_center_bps >= 1000.",
       "absolute_s2_curve_role": "descriptive_secondary",
       "absolute_s2_curve_is_required_to_report": true,
       "absolute_s2_curve_controls_selection": false,
       "conflict_precedence": "The matched anchor eligibility and stability rules control; an absolute S2-vs-M07 center or bound never overrides them."
     },
     "adjacent_stability": {
-      "comparison_metric": "matched_anchor",
-      "max_center_regression_bps": 200,
-      "interval_overlap_rule": "previous_anchor_lower_bps <= next_anchor_upper_bps AND next_anchor_lower_bps <= previous_anchor_upper_bps",
-      "non_regression_rule": "next_anchor_center_bps >= previous_anchor_center_bps - 200",
-      "stable_transition_rule": "Both budgets are eligible, their matched-anchor intervals overlap, and the higher-budget center does not regress by more than 200 bps."
+      "comparison_metric": "matched_anchor_center_bps",
+      "plateau_tolerance_bps": 2000,
+      "movement_rule": "abs(next_anchor_center_bps - previous_anchor_center_bps) < 2000",
+      "interval_overlap_required": false,
+      "interval_overlap_role": "secondary_diagnostic_only",
+      "stable_transition_rule": "Both budgets are eligible and the absolute matched-anchor center movement is strictly less than 2000 bps; this is a practical plateau rule, not a significance test."
     },
     "stable_region": {
       "minimum_consecutive_budgets": 3,
-      "construction_rule": "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible and whose adjacent transitions satisfy stable_transition_rule.",
+      "construction_rule": "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible, whose adjacent transitions satisfy stable_transition_rule, and whose anchor-center span remains strictly below 2000 bps.",
+      "region_span_rule": "max(anchor_center_bps in region) - min(anchor_center_bps in region) < 2000",
       "first_region_rule": "If multiple runs meet the minimum length, use the first run in ordered_budgets order.",
       "selection_rule": "Select the lowest simulation budget in the first stable region; this is an operating point, not an optimum claim.",
       "no_region_decision": "M27A_INCONCLUSIVE",
@@ -220,7 +253,7 @@
     "raw_report_and_plan_hashes_bound": true
   },
   "next_decision": {
-    "after_execution": "Apply operating_region_decision exactly to the reviewed full curve; select the lowest budget in the first stable region or record M27A_INCONCLUSIVE. No post-hoc optimum selection is allowed.",
+    "after_execution": "Apply operating_region_decision exactly to the reviewed full curve using practical anchor centers and plateau predicates; report Hoeffding intervals as uncertainty evidence only, select the lowest budget in the first stable region, or record M27A_INCONCLUSIVE. No post-hoc optimum selection is allowed.",
     "m25_authorized": false,
     "m26_authorized": false,
     "m28_authorized": false

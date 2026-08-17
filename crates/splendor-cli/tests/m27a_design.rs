@@ -1,9 +1,14 @@
 use std::fs;
 
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    hex::encode(Sha256::digest(bytes))
 }
 
 #[test]
@@ -19,7 +24,7 @@ fn m27a_design_is_preregistration_only() {
     );
     assert_eq!(config["version"], 1);
     assert_eq!(config["milestone"], "M27A");
-    assert_eq!(config["revision"], "design-1-repair-1");
+    assert_eq!(config["revision"], "design-1-repair-2");
     assert_eq!(config["status"], "DESIGNED");
     assert_eq!(config["execution_authorization"], "NOT_AUTHORIZED");
     assert_eq!(config["review"]["required_before_execution"], true);
@@ -28,9 +33,30 @@ fn m27a_design_is_preregistration_only() {
         "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW"
     );
     assert_eq!(config["parent_diagnosis"]["decision"], "SEARCH_BOTTLENECK");
+    let previous_review = &config["review"]["previous_review"];
+    assert_eq!(
+        previous_review["basis_commit"],
+        "16cf9ec193f16175fd6c7e0425ab5212fbb61b51"
+    );
+    assert_eq!(
+        previous_review["documentation_binding"],
+        "d027a5aa9a80325f3fbfb823a775c303c6d14468"
+    );
+    assert_eq!(previous_review["decision"], "HOLD");
+    assert_eq!(previous_review["findings"]["P0"], 0);
+    assert_eq!(previous_review["findings"]["P1"], 2);
+    assert_eq!(previous_review["findings"]["P2"], 1);
+    assert_eq!(previous_review["plan_materialization_authorized"], false);
+    assert_eq!(previous_review["arena_execution_authorized"], false);
+    assert_eq!(
+        config["parent_diagnosis"]["result_manifest"],
+        "benchmarks/m24-scale-failure-diagnosis-v1.result.json"
+    );
+    let parent_manifest =
+        fs::read(root().join("benchmarks/m24-scale-failure-diagnosis-v1.result.json")).unwrap();
     assert_eq!(
         config["parent_diagnosis"]["result_manifest_sha256"],
-        "7ca1ce824ed3715f099d7cdb3f6352aa42c1a141221928ab35756aaa4ff5d094"
+        sha256_hex(&parent_manifest)
     );
     assert_eq!(
         config["parent_diagnosis"]["review_basis_commit"],
@@ -122,7 +148,7 @@ fn m27a_design_is_preregistration_only() {
     let statistics = &config["statistics"];
     assert_eq!(
         statistics["statistics_contract"],
-        "effective-splendor-m27a-paired-search-curve-v1"
+        "effective-splendor-m27a-paired-search-curve-v2"
     );
     assert_eq!(statistics["confidence_bps"], 9500);
     assert_eq!(
@@ -225,6 +251,35 @@ fn m27a_design_is_preregistration_only() {
         "The paired block delta lies in a 20000-bps-wide interval, so the one-sided exp(-3) Hoeffding margin uses 6 * 10000^2 / n."
     );
 
+    let power = &statistics["power_contract"];
+    assert_eq!(power["design_blocks_per_plan"], 32);
+    assert_eq!(
+        power["anchor_margin_formula_at_design_n"],
+        "ceil_sqrt(ceil_div(600000000, 32))"
+    );
+    assert_eq!(power["anchor_margin_bps_at_design_n"], 4331);
+    assert_eq!(power["prior_lower_bound_gate_bps"], -200);
+    assert_eq!(power["prior_effective_center_threshold_bps"], 4131);
+    assert_eq!(
+        power["prior_effective_center_formula"],
+        "anchor_center_bps - 4331 >= -200"
+    );
+    assert_eq!(
+        power["revised_decision_role"],
+        "Use uncertainty bounds as reported diagnostic evidence; use the separately frozen practical center and plateau predicates for diagnostic operating-region selection."
+    );
+
+    let uncertainty = &statistics["uncertainty_role"];
+    assert_eq!(uncertainty["role"], "reported_diagnostic_evidence");
+    assert_eq!(uncertainty["used_for_eligibility"], false);
+    assert_eq!(uncertainty["used_for_transition"], false);
+    assert_eq!(uncertainty["used_for_region_span"], false);
+    assert_eq!(uncertainty["used_for_promotion"], false);
+    assert_eq!(
+        uncertainty["rationale"],
+        "At 32 paired blocks the anchor margin is 4331 bps, so using anchor_lower_bps >= -200 would require anchor_center_bps >= 4131 and would be a low-power diagnostic gate."
+    );
+
     assert_eq!(
         statistics["required_per_budget_report"],
         serde_json::json!([
@@ -241,13 +296,14 @@ fn m27a_design_is_preregistration_only() {
     let decision = &config["operating_region_decision"];
     assert_eq!(
         decision["contract"],
-        "effective-splendor-m27a-stable-operating-region-v1"
+        "effective-splendor-m27a-stable-operating-region-v2"
     );
     assert_eq!(
         decision["ordered_budgets"],
         serde_json::json!([16, 24, 32, 48, 64, 96, 128])
     );
     assert_eq!(decision["selection_endpoint"], "matched_s2_minus_s1_anchor");
+    assert_eq!(decision["decision_mode"], "diagnostic_practical_center");
     let eligibility = &decision["eligibility"];
     assert_eq!(
         eligibility["required_complete_matrix"],
@@ -255,15 +311,23 @@ fn m27a_design_is_preregistration_only() {
     );
     assert_eq!(eligibility["required_zero_aborts"], true);
     assert_eq!(eligibility["required_zero_candidate_faults"], true);
-    assert_eq!(eligibility["anchor_lower_bound_min_bps"], -200);
+    assert_eq!(eligibility["anchor_center_min_bps"], 1000);
     assert_eq!(
-        eligibility["anchor_lower_bound_min_rationale"],
-        "Reuse the frozen M24 200-bps anchor-regression tolerance, applied to the conservative matched-anchor lower bound for operating-region eligibility."
+        eligibility["anchor_center_min_rationale"],
+        "Require a predeclared 1000-bps (10 percentage-point) practical S2-specific gain; this is below the prior M24.5 positive rescue scale of 1250 bps and is not a significance threshold."
+    );
+    assert_eq!(
+        eligibility["anchor_lower_bound_controls_eligibility"],
+        false
     );
     assert_eq!(
         eligibility["eligible_if"],
-        "The budget satisfies the complete-matrix and zero-fault requirements and anchor_lower_bps >= -200."
+        "The budget satisfies the complete-matrix and zero-fault requirements and anchor_center_bps >= 1000."
     );
+    assert!(!eligibility
+        .as_object()
+        .unwrap()
+        .contains_key("anchor_lower_bound_min_bps"));
     assert_eq!(
         eligibility["absolute_s2_curve_role"],
         "descriptive_secondary"
@@ -276,26 +340,31 @@ fn m27a_design_is_preregistration_only() {
     );
 
     let adjacent = &decision["adjacent_stability"];
-    assert_eq!(adjacent["comparison_metric"], "matched_anchor");
-    assert_eq!(adjacent["max_center_regression_bps"], 200);
+    assert_eq!(adjacent["comparison_metric"], "matched_anchor_center_bps");
+    assert_eq!(adjacent["plateau_tolerance_bps"], 2000);
     assert_eq!(
-        adjacent["interval_overlap_rule"],
-        "previous_anchor_lower_bps <= next_anchor_upper_bps AND next_anchor_lower_bps <= previous_anchor_upper_bps"
+        adjacent["movement_rule"],
+        "abs(next_anchor_center_bps - previous_anchor_center_bps) < 2000"
     );
+    assert_eq!(adjacent["interval_overlap_required"], false);
     assert_eq!(
-        adjacent["non_regression_rule"],
-        "next_anchor_center_bps >= previous_anchor_center_bps - 200"
+        adjacent["interval_overlap_role"],
+        "secondary_diagnostic_only"
     );
     assert_eq!(
         adjacent["stable_transition_rule"],
-        "Both budgets are eligible, their matched-anchor intervals overlap, and the higher-budget center does not regress by more than 200 bps."
+        "Both budgets are eligible and the absolute matched-anchor center movement is strictly less than 2000 bps; this is a practical plateau rule, not a significance test."
     );
 
     let region = &decision["stable_region"];
     assert_eq!(region["minimum_consecutive_budgets"], 3);
     assert_eq!(
         region["construction_rule"],
-        "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible and whose adjacent transitions satisfy stable_transition_rule."
+        "Scan ordered_budgets from low to high and form maximal contiguous runs whose budgets are eligible, whose adjacent transitions satisfy stable_transition_rule, and whose anchor-center span remains strictly below 2000 bps."
+    );
+    assert_eq!(
+        region["region_span_rule"],
+        "max(anchor_center_bps in region) - min(anchor_center_bps in region) < 2000"
     );
     assert_eq!(
         region["first_region_rule"],
@@ -334,6 +403,10 @@ fn m27a_design_is_preregistration_only() {
         true
     );
 
+    assert_eq!(
+        config["next_decision"]["after_execution"],
+        "Apply operating_region_decision exactly to the reviewed full curve using practical anchor centers and plateau predicates; report Hoeffding intervals as uncertainty evidence only, select the lowest budget in the first stable region, or record M27A_INCONCLUSIVE. No post-hoc optimum selection is allowed."
+    );
     assert_eq!(config["next_decision"]["m25_authorized"], false);
     assert_eq!(config["next_decision"]["m26_authorized"], false);
     assert_eq!(config["next_decision"]["m28_authorized"], false);
