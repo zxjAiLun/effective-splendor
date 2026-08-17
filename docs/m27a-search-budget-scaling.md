@@ -1,14 +1,16 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; Execution-Gate Repair 1 `HOLD`
-Execution: `NOT AUTHORIZED`
+Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; Execution-Gate Repair 1 `REVIEWED`; runtime/build freeze and reviewed smoke `PASS`
+Execution: formal 896-match Arena `NOT AUTHORIZED`; reviewed runtime smoke `PASS`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
 Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): materialize M27A search-budget plans`)
 Review: `a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd` → `ACCEPTED`; documentation binding `4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1`
 Materialization review: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` → `ACCEPTED`; P0/P1/P2 = `0/0/0`
-Execution-gate review: P1 = `1` (`HOLD`); no Arena authorization
+Execution-gate review: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` → `ACCEPTED`; P0/P1/P2 = `0/0/0`; documentation binding `b3440d42e059888f939de31232c89b4141248e81`
 Execution-Gate Repair 1: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` (`fix(training): repair M27A execution decision gate`)
+Runtime/build freeze: source `b3440d42e059888f939de31232c89b4141248e81`; snapshot `local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json` (`5115f805f68afd623af2842cb0dd469686c888ea6e7944e418689c04800ed350`)
+Reviewed smoke: `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json` (`2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676`); 4/4 completed, 0 abort, 0 candidate fault
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -85,10 +87,10 @@ Out of scope:
 - The absolute S2-vs-M07 curve remains mandatory to report but is descriptive
   secondary evidence. It never overrides the matched-anchor eligibility or
   stability rule when the two signals disagree.
-- The preregistration and 14-plan materialization are accepted/frozen. The
-  executable operating-region gate is on `HOLD` until overlapping stable
-  windows are handled by the start-window enumeration semantics and reviewed;
-  execution remains unauthorized.
+- The preregistration, 14-plan materialization, and repaired executable
+  operating-region semantics are accepted/frozen. Runtime/build identity is
+  frozen and the reviewed smoke passed; the formal 896-match execution remains
+  `NOT AUTHORIZED` pending a separate explicit authorization.
 
 ## Implementation plan
 
@@ -100,8 +102,8 @@ Out of scope:
    coverage; execute no Arena matches during this stage.
 5. Repair and independently review executable stable-region decision semantics;
    then freeze runtime/build identity and perform the reviewed execution smoke.
-6. Only after those gates and a separate execution authorization, execute the
-   896-match screen.
+6. After the reviewed smoke, obtain a separate explicit execution
+   authorization before executing the 896-match screen.
 7. Recompute center scores, paired uncertainty, and matched anchor deltas from
    raw reports, then apply the frozen decision function without treating
    higher simulations as inherently better.
@@ -209,20 +211,45 @@ Out of scope:
 - Arena execution remains `NOT AUTHORIZED` pending this repair's review and
   the separate runtime/build freeze.
 
+### 2026-08-18 — Execution-Gate Repair 1 reviewed; runtime/build freeze and smoke passed
+
+- Independent review of the repaired semantics accepted basis
+  `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` with documentation binding
+  `b3440d42e059888f939de31232c89b4141248e81`; findings are P0/P1/P2 =
+  `0/0/0`. The review authorized only runtime/build freezing and the reviewed
+  smoke, not the 896-match Arena screen.
+- Rebuilt the current source at `b3440d42e059888f939de31232c89b4141248e81`
+  with `cargo build --locked -p splendor-cli` (exit 0). The frozen wrapper
+  resolves literal `splendor` to `target/debug/splendor`, resolves `python` to
+  the CUDA venv, and leaves `PYTHONPATH` unset. The snapshot records the
+  binary, Python/Torch/CUDA/GPU, checkpoint semantic hashes, prereg/bundle SHA,
+  and all 14 canonical plan hashes.
+- The authorized local-only smoke used S1-vs-M07 and S2-vs-M07 at sim128,
+  seed `301001`, two seat rotations each: 4/4 matches completed, 0 aborts, and
+  0 candidate faults. All four replays passed `verify-replay` with exit 0.
+- Exact smoke plans, plan hashes, eval-report/report/replay SHA-256 values, and
+  command exit codes are bound in the ignored manifest
+  `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json`.
+  `scientific_evidence=false`, `formal_M27A_result=false`, no formal M27A
+  result was generated, no promotion occurred, and M07 did not change.
+
 ## Final implementation
 
 This round contains the accepted preregistration, its 14 realized plans, the
-hash-bound materialization bundle, the machine-checking regression test, and
-the living milestone record:
+hash-bound materialization bundle, the machine-checking regression test, the
+runtime/build freeze record, the reviewed local-only smoke manifest, and the
+living milestone record:
 
 - `benchmarks/m27a-search-budget-scaling-v1.json`
 - `benchmarks/m27a-{s1_vs_m07,s2_vs_m07}-v1-sim{16,24,32,48,64,96,128}.plan.json`
 - `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
 - `docs/m27a-search-budget-scaling.md`
 - `crates/splendor-cli/tests/m27a_design.rs`
+- `local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json`
+- `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json`
 
-No checkpoint, dataset, eval report, replay, result manifest, or Arena result
-was created by M27A.
+The runtime snapshot and smoke outputs are ignored local artifacts. No formal
+M27A eval report, result manifest, or 896-match Arena result was created.
 
 ## Validation and evidence
 
@@ -274,25 +301,49 @@ was created by M27A.
 - The unskipped workspace failure is an existing Linux child-process status
   issue outside this design-only change and is recorded rather than relabeled
   as a clean full-workspace pass.
+- Runtime/build freeze: `cargo build --locked -p splendor-cli` exited 0;
+  `target/debug/splendor` SHA-256 is
+  `5003a58db33ffcd85fc0fc6a1edfb59dfb5cb9abf396c7c8a2b98f4b0017f56e`;
+  runtime snapshot SHA-256 is
+  `5115f805f68afd623af2842cb0dd469686c888ea6e7944e418689c04800ed350`.
+- Runtime identity: Python `3.12.13`, torch `2.6.0+cu124`, CUDA `12.4`,
+  `cuda_available=true`, GPU `NVIDIA GeForce RTX 4060 Laptop GPU`, and
+  `PYTHONPATH` absent; wrapper resolution was checked before execution.
+- Reviewed smoke evidence: S1 plan hash
+  `194f04240e5f44848c98851d272716a0843e4396cfd6d5b22f3e4b3ba1c29b1d`,
+  report SHA-256
+  `8277f57b05b4227995216323ce1beca73473fc778740ed5b885b99803fac176a`;
+  S2 plan hash
+  `69d8ef6bd41b04f24d745fc2a0e18deca5c95b2c02ae3ffe929f1d7af5e38351`,
+  report SHA-256
+  `e39de4edada1f1942ddbca84841e9ddef8f445fffb303b71ff9f26225737b25b`.
+  The four replay SHA-256 values are, in match order,
+  `362ba42dae8b917c050647c7a8518b45eddaf577f2f6ec5aa0593da16e49c167`,
+  `fa1a1cddd195452d61136e9da3209b6e0c02f750fe32d26ad086ffee7f237ecf`,
+  `ae1ef5e9d2dbe9081b2c8852c7d9cb8207ed74db8aeedc1c4e64bf43c2a1a6c1`,
+  `e6a56be367d8e417df9e37451ac74d1a0500f0c8208e7881394e5390e93f4cba`.
+- Smoke manifest SHA-256 is
+  `2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676`;
+  it records both eval exit codes as 0 and all four replay verification exit
+  codes as 0. These are runtime-health artifacts only, not M27A evidence.
 
 ## Result and decision
 
-M27A Repair 2 and the 14-plan materialization are `ACCEPTED / FROZEN`. The
-materialization review is closed, but Execution-Gate Repair 1 is `HOLD` because
-the prior helper could miss an overlapping valid stable window. The repair is
-implemented and locally verified; plan execution and Arena execution remain
-unauthorized pending independent repair review and runtime/build freeze.
-M24.5 remains `ACCEPTED`; M07 remains champion; no promotion has occurred.
+M27A Repair 2, the 14-plan materialization, and Execution-Gate Repair 1 are
+`ACCEPTED / FROZEN` / `REVIEWED`. Runtime/build identity is frozen and the
+reviewed smoke passed. The formal 896-match Arena execution remains
+`NOT AUTHORIZED`; no formal M27A result was generated, no promotion occurred,
+and M07 remains champion.
 
 ## Known limitations
 
 - The 32-seed cells and all Repair 2 operating-region thresholds are frozen
   diagnostic choices, not executed evidence.
 - Plan materialization proves only the exact schedule/provenance contract; it
-  does not prove runtime availability, competitive strength, or the operating
-  region decision.
-- The executable decision helper now uses start-window enumeration; its repair
-  still requires independent review before any execution authorization.
+  does not prove competitive strength or the operating-region decision.
+- The executable decision helper now uses reviewed start-window enumeration.
+  The reviewed smoke proves only the reviewed runtime path, not competitive
+  strength, formal M27A evidence, or a stable-region result.
 - The 128-simulation cell uses the same fixed 30-second operational timeout as
   every other budget; there is no budget-specific timeout exception.
 - The anchor Hoeffding interval is a per-budget diagnostic bound and is not a
@@ -303,7 +354,7 @@ M24.5 remains `ACCEPTED`; M07 remains champion; no promotion has occurred.
 
 ## Next authorized gate
 
-Independent review of Execution-Gate Repair 1, followed by the runtime/build
-freeze and reviewed execution smoke. Until both gates pass, do not execute any
-plan or generate eval-report/replay/result artifacts. M25, M26, and M28 remain
-unauthorized.
+The next gate is a separate explicit authorization for the frozen 896-match
+Arena screen. Until it is granted, do not execute the formal M27A plans or
+generate formal result artifacts. The reviewed smoke artifacts remain local
+and non-scientific. M25, M26, and M28 remain unauthorized.
