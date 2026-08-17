@@ -1,7 +1,9 @@
+use std::collections::HashSet;
 use std::fs;
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use splendor_eval::{evaluation_plan_hash_v1, expand_schedule, EvaluationPlanV1};
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -12,7 +14,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
 }
 
 #[test]
-fn m27a_design_is_preregistration_only() {
+fn m27a_design_is_frozen_and_execution_is_unauthorized() {
     let config: Value = serde_json::from_slice(
         &fs::read(root().join("benchmarks/m27a-search-budget-scaling-v1.json")).unwrap(),
     )
@@ -25,13 +27,28 @@ fn m27a_design_is_preregistration_only() {
     assert_eq!(config["version"], 1);
     assert_eq!(config["milestone"], "M27A");
     assert_eq!(config["revision"], "design-1-repair-2");
-    assert_eq!(config["status"], "DESIGNED");
+    assert_eq!(config["status"], "FROZEN");
     assert_eq!(config["execution_authorization"], "NOT_AUTHORIZED");
     assert_eq!(config["review"]["required_before_execution"], true);
+    assert_eq!(config["review"]["repair_status"], "ACCEPTED");
     assert_eq!(
-        config["review"]["repair_status"],
-        "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW"
+        config["review"]["source_review"],
+        "PASS_INDEPENDENT_REVIEW_OF_A13BCDDE"
     );
+    assert_eq!(config["review"]["acceptance"], "ACCEPTED");
+    assert_eq!(
+        config["review"]["review_basis_commit"],
+        "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd"
+    );
+    assert_eq!(
+        config["review"]["documentation_binding_commit"],
+        "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1"
+    );
+    assert_eq!(config["review"]["findings"]["P0"], 0);
+    assert_eq!(config["review"]["findings"]["P1"], 0);
+    assert_eq!(config["review"]["findings"]["P2"], 1);
+    assert_eq!(config["review"]["plan_materialization_authorized"], true);
+    assert_eq!(config["review"]["arena_execution_authorized"], false);
     assert_eq!(config["parent_diagnosis"]["decision"], "SEARCH_BOTTLENECK");
     let previous_review = &config["review"]["previous_review"];
     assert_eq!(
@@ -144,6 +161,29 @@ fn m27a_design_is_preregistration_only() {
     assert_eq!(runtime["handshake_timeout_ms"], 5000);
     assert_eq!(runtime["move_timeout_ms"], 30000);
     assert_eq!(runtime["shutdown_grace_ms"], 2000);
+
+    let materialization = &config["materialization_contract"];
+    assert_eq!(materialization["status"], "AUTHORIZED");
+    assert_eq!(
+        materialization["bundle_path"],
+        "benchmarks/m27a-search-budget-scaling-v1.bundle.json"
+    );
+    assert_eq!(
+        materialization["review_basis_commit"],
+        "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd"
+    );
+    assert_eq!(
+        materialization["documentation_binding_commit"],
+        "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1"
+    );
+    assert_eq!(materialization["plan_count"], 14);
+    assert_eq!(materialization["matches_per_plan"], 64);
+    assert_eq!(materialization["total_matches"], 896);
+    assert_eq!(materialization["execution_authorization"], "NOT_AUTHORIZED");
+    assert_eq!(
+        materialization["forbidden_outputs"],
+        serde_json::json!(["eval-report", "replay", "result manifest"])
+    );
 
     let statistics = &config["statistics"];
     assert_eq!(
@@ -387,6 +427,18 @@ fn m27a_design_is_preregistration_only() {
         true
     );
     assert_eq!(
+        config["execution_gates"]["plan_materialization_authorized"],
+        true
+    );
+    assert_eq!(
+        config["execution_gates"]["plan_execution_authorized"],
+        false
+    );
+    assert_eq!(
+        config["execution_gates"]["no_execution_artifacts_before_plan_review"],
+        true
+    );
+    assert_eq!(
         config["execution_gates"]["statistics_contract_frozen_before_run"],
         true
     );
@@ -410,4 +462,289 @@ fn m27a_design_is_preregistration_only() {
     assert_eq!(config["next_decision"]["m25_authorized"], false);
     assert_eq!(config["next_decision"]["m26_authorized"], false);
     assert_eq!(config["next_decision"]["m28_authorized"], false);
+}
+
+fn m27a_seeds() -> Vec<u64> {
+    (301001..=301032).collect()
+}
+
+fn plan_arg(plan: &EvaluationPlanV1, agent_index: usize, flag: &str) -> String {
+    let args = &plan.agents[agent_index].command.args;
+    let position = args
+        .iter()
+        .position(|arg| arg == flag)
+        .unwrap_or_else(|| panic!("missing argument {flag}"));
+    args.get(position + 1)
+        .unwrap_or_else(|| panic!("missing value for argument {flag}"))
+        .clone()
+}
+
+#[test]
+fn m27a_materialization_bundle_is_exact_and_execution_free() {
+    let root = root();
+    let config_bytes =
+        fs::read(root.join("benchmarks/m27a-search-budget-scaling-v1.json")).unwrap();
+    let config: Value = serde_json::from_slice(&config_bytes).unwrap();
+    let bundle_bytes =
+        fs::read(root.join("benchmarks/m27a-search-budget-scaling-v1.bundle.json")).unwrap();
+    let bundle: Value = serde_json::from_slice(&bundle_bytes).unwrap();
+
+    assert_eq!(
+        bundle["format"],
+        "effective-splendor-m27a-search-budget-scaling-bundle"
+    );
+    assert_eq!(bundle["version"], 1);
+    assert_eq!(bundle["milestone"], "M27A");
+    assert_eq!(bundle["revision"], "design-1-repair-2");
+    assert_eq!(
+        bundle["preregistration"]["path"],
+        "benchmarks/m27a-search-budget-scaling-v1.json"
+    );
+    assert_eq!(
+        bundle["preregistration"]["sha256"],
+        sha256_hex(&config_bytes)
+    );
+    assert_eq!(bundle["preregistration"]["status"], "ACCEPTED/FROZEN");
+    assert_eq!(
+        bundle["preregistration"]["review_basis_commit"],
+        "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd"
+    );
+    assert_eq!(
+        bundle["preregistration"]["documentation_binding_commit"],
+        "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1"
+    );
+    assert_eq!(
+        bundle["authorization"]["plan_materialization"],
+        "AUTHORIZED"
+    );
+    assert_eq!(bundle["authorization"]["plan_execution"], "NOT_AUTHORIZED");
+    assert_eq!(bundle["authorization"]["arena_execution"], "NOT_AUTHORIZED");
+    assert_eq!(bundle["authorization"]["promotion"], "NONE");
+    assert_eq!(
+        bundle["execution_artifacts"]["eval_reports"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        bundle["execution_artifacts"]["replays"],
+        serde_json::json!([])
+    );
+    assert_eq!(
+        bundle["execution_artifacts"]["result_manifests"],
+        serde_json::json!([])
+    );
+
+    let seeds = m27a_seeds();
+    assert_eq!(
+        bundle["matrix"]["candidate_pairs"],
+        serde_json::json!(["s2_vs_m07", "s1_vs_m07"])
+    );
+    assert_eq!(
+        bundle["matrix"]["simulations"],
+        serde_json::json!([16, 24, 32, 48, 64, 96, 128])
+    );
+    assert_eq!(bundle["matrix"]["game_seed_count"], 32);
+    assert_eq!(bundle["matrix"]["seat_rotations"], 2);
+    assert_eq!(bundle["matrix"]["plans"], 14);
+    assert_eq!(bundle["matrix"]["matches_per_plan"], 64);
+    assert_eq!(bundle["matrix"]["total_matches"], 896);
+    assert_eq!(
+        bundle["matrix"]["game_seeds_sha256"],
+        sha256_hex(&serde_json::to_vec(&seeds).unwrap())
+    );
+
+    let cells = bundle["cells"].as_array().unwrap();
+    assert_eq!(cells.len(), 14);
+    let budgets = [16u64, 24, 32, 48, 64, 96, 128];
+    let expected_pairs = ["s2_vs_m07", "s1_vs_m07"];
+    let mut actual_cells = HashSet::new();
+
+    for (index, cell) in cells.iter().enumerate() {
+        let pair = cell["pair"].as_str().unwrap();
+        let simulations = cell["simulations"].as_u64().unwrap();
+        let expected_pair = expected_pairs[index / budgets.len()];
+        let expected_simulations = budgets[index % budgets.len()];
+        assert_eq!(pair, expected_pair);
+        assert_eq!(simulations, expected_simulations);
+        assert!(actual_cells.insert((pair.to_string(), simulations)));
+
+        let evaluation_id = format!("m27a-{pair}-v1-sim{simulations}");
+        assert_eq!(cell["evaluation_id"], evaluation_id);
+        let plan_path = cell["plan_path"].as_str().unwrap();
+        assert_eq!(
+            plan_path,
+            format!("benchmarks/m27a-{pair}-v1-sim{simulations}.plan.json")
+        );
+        let plan_bytes = fs::read(root.join(plan_path)).unwrap();
+        assert_eq!(cell["plan_file_sha256"], sha256_hex(&plan_bytes));
+
+        let plan: EvaluationPlanV1 = serde_json::from_slice(&plan_bytes).unwrap();
+        plan.validate().unwrap();
+        assert_eq!(plan.evaluation_id, evaluation_id);
+        assert_eq!(plan.game_seeds, seeds);
+        assert_eq!(plan.agents.len(), 2);
+        assert_eq!(plan.handshake_timeout_ms, 5000);
+        assert_eq!(plan.move_timeout_ms, 30000);
+        assert_eq!(plan.shutdown_grace_ms, 2000);
+        assert_eq!(expand_schedule(&plan).unwrap().len(), 64);
+        assert_eq!(
+            cell["plan_hash"],
+            evaluation_plan_hash_v1(&plan).unwrap().as_str()
+        );
+        assert_eq!(
+            cell["game_seeds_sha256"],
+            bundle["matrix"]["game_seeds_sha256"]
+        );
+        assert_eq!(cell["game_seed_count"], 32);
+        assert_eq!(cell["seat_rotations"], 2);
+        assert_eq!(cell["scheduled_matches"], 64);
+
+        let (candidate_id, checkpoint_path, checkpoint_hash) = if pair == "s2_vs_m07" {
+            (
+                "m27a-s2-candidate",
+                "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt",
+                "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+            )
+        } else {
+            (
+                "m27a-s1-candidate",
+                "local-artifacts/m24-self-play-s1-v1/trained/checkpoint.pt",
+                "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+            )
+        };
+        assert_eq!(plan.agents[0].id, candidate_id);
+        assert_eq!(plan.agents[1].id, "m07-champion");
+        assert_eq!(plan.agents[0].command.program.to_string_lossy(), "splendor");
+        assert_eq!(plan.agents[1].command.program.to_string_lossy(), "splendor");
+        assert_eq!(plan_arg(&plan, 0, "--checkpoint"), checkpoint_path);
+        assert_eq!(plan_arg(&plan, 0, "--checkpoint-hash"), checkpoint_hash);
+        assert_eq!(plan_arg(&plan, 0, "--simulations"), simulations.to_string());
+        assert_eq!(plan_arg(&plan, 0, "--sample-seed"), "26000018");
+        assert_eq!(plan_arg(&plan, 0, "--max-depth-turns"), "1");
+        assert_eq!(plan_arg(&plan, 0, "--puct-exploration-milli"), "1500");
+        assert_eq!(
+            plan_arg(&plan, 0, "--catalog"),
+            "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
+        );
+        assert_eq!(plan_arg(&plan, 1, "--sample-seed"), "20260810");
+        assert_eq!(plan_arg(&plan, 1, "--sample-count"), "4");
+        assert_eq!(plan_arg(&plan, 1, "--max-depth-turns"), "1");
+        assert_eq!(plan_arg(&plan, 1, "--max-nodes"), "2000");
+    }
+
+    let expected_cells: HashSet<(String, u64)> = expected_pairs
+        .iter()
+        .flat_map(|pair| {
+            budgets
+                .iter()
+                .map(move |simulations| ((*pair).to_string(), *simulations))
+        })
+        .collect();
+    assert_eq!(actual_cells, expected_cells);
+
+    assert_eq!(config["execution_authorization"], "NOT_AUTHORIZED");
+    assert_eq!(
+        config["materialization_contract"]["bundle_path"],
+        "benchmarks/m27a-search-budget-scaling-v1.bundle.json"
+    );
+}
+
+#[derive(Clone, Copy)]
+struct SyntheticBudget {
+    budget: u64,
+    center_bps: i64,
+    complete: bool,
+    aborted_matches: u32,
+    candidate_faults: u32,
+}
+
+fn synthetic_budget(budget: u64, center_bps: i64) -> SyntheticBudget {
+    SyntheticBudget {
+        budget,
+        center_bps,
+        complete: true,
+        aborted_matches: 0,
+        candidate_faults: 0,
+    }
+}
+
+fn synthetic_eligible(point: SyntheticBudget) -> bool {
+    point.complete
+        && point.aborted_matches == 0
+        && point.candidate_faults == 0
+        && point.center_bps >= 1000
+}
+
+fn select_first_stable_budget(points: &[SyntheticBudget]) -> Option<u64> {
+    let mut start = 0;
+    while start < points.len() {
+        if !synthetic_eligible(points[start]) {
+            start += 1;
+            continue;
+        }
+
+        let mut end = start;
+        let mut min_center = points[start].center_bps;
+        let mut max_center = points[start].center_bps;
+        while end + 1 < points.len() {
+            let next = points[end + 1];
+            if !synthetic_eligible(next) || (next.center_bps - points[end].center_bps).abs() >= 2000
+            {
+                break;
+            }
+            let next_min = min_center.min(next.center_bps);
+            let next_max = max_center.max(next.center_bps);
+            if next_max - next_min >= 2000 {
+                break;
+            }
+            min_center = next_min;
+            max_center = next_max;
+            end += 1;
+        }
+
+        if end - start + 1 >= 3 {
+            return Some(points[start].budget);
+        }
+        start = end + 1;
+    }
+    None
+}
+
+fn synthetic_curve(centers: &[i64]) -> Vec<SyntheticBudget> {
+    [16u64, 24, 32, 48, 64, 96, 128]
+        .into_iter()
+        .zip(centers.iter().copied())
+        .map(|(budget, center_bps)| synthetic_budget(budget, center_bps))
+        .collect()
+}
+
+#[test]
+fn m27a_operating_region_decision_semantics_are_executable() {
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[500, 1200, 1500, 1800])),
+        Some(24)
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 3000, 3000])),
+        None,
+        "strict adjacent movement boundary must reject exactly 2000 bps"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 2500, 2999])),
+        Some(16)
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[1000, 2500, 3000])),
+        None,
+        "strict region span boundary must reject exactly 2000 bps"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[500, 700, 900, 1100, 1200])),
+        None,
+        "fewer than three consecutive eligible budgets is inconclusive"
+    );
+    assert_eq!(
+        select_first_stable_budget(&synthetic_curve(&[4200, 6000, 8000])),
+        None,
+        "one-sided non-regression must not accept a continuing rise"
+    );
 }

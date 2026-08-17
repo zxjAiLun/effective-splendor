@@ -1,0 +1,260 @@
+{
+  "format": "effective-splendor-m27a-search-budget-scaling-bundle",
+  "version": 1,
+  "milestone": "M27A",
+  "revision": "design-1-repair-2",
+  "preregistration": {
+    "path": "benchmarks/m27a-search-budget-scaling-v1.json",
+    "sha256": "c1062b04c47d9d295a39ff758b0c74fbf5cd8e3e482eed2866bbaa0ad1c01834",
+    "status": "ACCEPTED/FROZEN",
+    "review_basis_commit": "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd",
+    "documentation_binding_commit": "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1"
+  },
+  "authorization": {
+    "plan_materialization": "AUTHORIZED",
+    "plan_execution": "NOT_AUTHORIZED",
+    "arena_execution": "NOT_AUTHORIZED",
+    "promotion": "NONE"
+  },
+  "matrix": {
+    "candidate_pairs": [
+      "s2_vs_m07",
+      "s1_vs_m07"
+    ],
+    "simulations": [
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128
+    ],
+    "game_seeds": "benchmarks embedded in every plan",
+    "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+    "game_seed_count": 32,
+    "seat_rotations": 2,
+    "plans": 14,
+    "matches_per_plan": 64,
+    "total_matches": 896
+  },
+  "pair_definitions": [
+    {
+      "pair": "s2_vs_m07",
+      "candidate_agent_id": "m27a-s2-candidate",
+      "candidate_checkpoint_path": "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt",
+      "candidate_checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+      "opponent_agent_id": "m07-champion"
+    },
+    {
+      "pair": "s1_vs_m07",
+      "candidate_agent_id": "m27a-s1-candidate",
+      "candidate_checkpoint_path": "local-artifacts/m24-self-play-s1-v1/trained/checkpoint.pt",
+      "candidate_checkpoint_hash": "1ae31dac9eec37485efdbb906109227dbe77424e78b31a906d158ac1d414f0b8",
+      "opponent_agent_id": "m07-champion"
+    }
+  ],
+  "fixed_plan_contract": {
+    "required_pair_semantics": "Every plan contains exactly two agents: the selected fixed S1 or S2 candidate first, followed by m07-champion; each plan expands to 32 seeds x 2 cyclic seat rotations = 64 matches.",
+    "allowed_variations": [
+      "pair identity and its fixed candidate checkpoint path/semantic hash",
+      "neural agent simulations: one value from [16, 24, 32, 48, 64, 96, 128]",
+      "evaluation_id: m27a-{pair}-v1-sim{sim}"
+    ],
+    "immutable_fields": [
+      "format",
+      "version",
+      "game_seeds",
+      "M07 agent identity and command",
+      "neural sample seed",
+      "max depth turns",
+      "PUCT exploration",
+      "catalog",
+      "device",
+      "program and module root",
+      "handshake timeout",
+      "move timeout",
+      "shutdown grace"
+    ],
+    "timeouts_ms": {
+      "handshake": 5000,
+      "move": 30000,
+      "shutdown_grace": 2000
+    }
+  },
+  "cells": [
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 16,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim16",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim16.plan.json",
+      "plan_file_sha256": "063f84663358f62e4543e28a63440d89332d04932e14b7da8c16da2bf4ab9b9d",
+      "plan_hash": "88fc196f91e1ad6e55d433a7187b740ab0e1e39f4e9d75fa4d743473c0383a18",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 24,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim24",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim24.plan.json",
+      "plan_file_sha256": "d8c7d56c907a8497e705d43047e3373f44564a1c356c684fa5e1d75f88d3c853",
+      "plan_hash": "c59a458b6555dedc8617cecfd08be5dd4528d8d8baf766e05b732b69cc44440e",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 32,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim32",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+      "plan_file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+      "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 48,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim48",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim48.plan.json",
+      "plan_file_sha256": "50366ab034bd40d9856c79de84518f045d9dbb9b33847653b7eac867bc61b252",
+      "plan_hash": "061833a500829fae1abaa6a02f571c22bf8cb51759d0a9efadae1281dbd8ec00",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 64,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim64",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim64.plan.json",
+      "plan_file_sha256": "958d2bfa92f600f2e334161f936d256296091925f0b4801d9cfe803a10e4d4c5",
+      "plan_hash": "f7af8a691a7e52697b3fea0d43fcbe7cf2555ac8566b55a5e49151a21b903fb5",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 96,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim96",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim96.plan.json",
+      "plan_file_sha256": "5e17555be9683caa2937bfbbee643f4a53f7ed51fe5585fda65b5ec17dc58419",
+      "plan_hash": "1a8466292c82b1cefe7fbfcf3b006fc590412d474d2b079a0bcc382899a3b973",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s2_vs_m07",
+      "simulations": 128,
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim128",
+      "plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim128.plan.json",
+      "plan_file_sha256": "1bbd9d153feb90d35d1b1a8aa7c5dc4797f09a25ace51fb1e64603fb16c421ea",
+      "plan_hash": "25c9449af65f30e4b3a63acd2355c57e8ee613a0eecef6ab47865071e9f2d492",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 16,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim16",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim16.plan.json",
+      "plan_file_sha256": "5c6fd3fc9f5beb8fa9eeacab08e3a8c198caad4453d53555e1159edb220f5dda",
+      "plan_hash": "16a6511301c874f0d9672b0aaf86e2c7062c723b12c15b7e5d90858c4a7fa866",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 24,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim24",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim24.plan.json",
+      "plan_file_sha256": "3b2130419b4da53a52ab45a2546325950f8a5c92ff5105870372bc088435e308",
+      "plan_hash": "e36b317572ea5c049011147b75de77ee44a337a29573f7e4ca108fa9e4b363d5",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 32,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim32",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim32.plan.json",
+      "plan_file_sha256": "826fe72dc03e2b2411a0fe62d92abd541f85f0595e9129aad051da4c0011e78c",
+      "plan_hash": "cb4aa66d6ded56de8f91e643dfc9d593f560c36c31a0070fcc84f2303bfd51ad",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 48,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim48",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim48.plan.json",
+      "plan_file_sha256": "c4933f178c7ea90d867603bba7dcbc763d06b8f525c4e8d11c59b45918b7041f",
+      "plan_hash": "d70444eefeabf3acb93ebea27d4d8cff595764cd55a66e082b77539c7fb686ff",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 64,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim64",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim64.plan.json",
+      "plan_file_sha256": "86ff1b3fb7c7d88162cb83e55645f47591424fda5f0a6a1774508a85c8851029",
+      "plan_hash": "7d7d47e09a24310ff92ec68927c93016f331efd225d624537cf760c7fd75def7",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 96,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim96",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim96.plan.json",
+      "plan_file_sha256": "64ecd78e1f55b3dd3117b35128c69b387c8d58816c0b340ca42e6e28ac3bc529",
+      "plan_hash": "9cf91dec4752b9fbd46fb88e545dba890f0dc5dfa548c4c6bd1938c1692f8459",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    },
+    {
+      "pair": "s1_vs_m07",
+      "simulations": 128,
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim128",
+      "plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim128.plan.json",
+      "plan_file_sha256": "b3114a3440c39733da71ddb108d0b587f4c23fc88d90c9c3bd984484ca5fb086",
+      "plan_hash": "591403d64683abe24f6429a7779684031843824683b8bf29ffbacdcc0e701325",
+      "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c",
+      "game_seed_count": 32,
+      "seat_rotations": 2,
+      "scheduled_matches": 64
+    }
+  ],
+  "execution_artifacts": {
+    "eval_reports": [],
+    "replays": [],
+    "result_manifests": []
+  }
+}

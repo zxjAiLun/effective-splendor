@@ -1,0 +1,90 @@
+{
+  "format": "effective-splendor-evaluation-plan",
+  "version": 1,
+  "evaluation_id": "m27a-s2_vs_m07-v1-sim64",
+  "agents": [
+    {
+      "id": "m27a-s2-candidate",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-gpu-neural-ismcts",
+          "--python",
+          "python",
+          "--module-root",
+          "training/m17_gpu",
+          "--checkpoint",
+          "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt",
+          "--checkpoint-hash",
+          "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+          "--catalog",
+          "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+          "--device",
+          "cuda",
+          "--sample-seed",
+          "26000018",
+          "--simulations",
+          "64",
+          "--max-depth-turns",
+          "1",
+          "--puct-exploration-milli",
+          "1500"
+        ]
+      }
+    },
+    {
+      "id": "m07-champion",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-determinization",
+          "--sample-seed",
+          "20260810",
+          "--sample-count",
+          "4",
+          "--max-depth-turns",
+          "1",
+          "--max-nodes",
+          "2000"
+        ]
+      }
+    }
+  ],
+  "game_seeds": [
+    301001,
+    301002,
+    301003,
+    301004,
+    301005,
+    301006,
+    301007,
+    301008,
+    301009,
+    301010,
+    301011,
+    301012,
+    301013,
+    301014,
+    301015,
+    301016,
+    301017,
+    301018,
+    301019,
+    301020,
+    301021,
+    301022,
+    301023,
+    301024,
+    301025,
+    301026,
+    301027,
+    301028,
+    301029,
+    301030,
+    301031,
+    301032
+  ],
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 30000,
+  "shutdown_grace_ms": 2000
+}

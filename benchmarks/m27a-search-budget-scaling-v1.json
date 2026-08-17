@@ -3,12 +3,21 @@
   "version": 1,
   "milestone": "M27A",
   "revision": "design-1-repair-2",
-  "status": "DESIGNED",
+  "status": "FROZEN",
   "execution_authorization": "NOT_AUTHORIZED",
   "review": {
-    "source_review": "PENDING_INDEPENDENT_REVIEW",
-    "acceptance": "PENDING_INDEPENDENT_REVIEW",
-    "repair_status": "IMPLEMENTED_PENDING_INDEPENDENT_REVIEW",
+    "source_review": "PASS_INDEPENDENT_REVIEW_OF_A13BCDDE",
+    "acceptance": "ACCEPTED",
+    "repair_status": "ACCEPTED",
+    "review_basis_commit": "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd",
+    "documentation_binding_commit": "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1
+    },
+    "plan_materialization_authorized": true,
+    "arena_execution_authorized": false,
     "previous_review": {
       "basis_commit": "16cf9ec193f16175fd6c7e0425ab5212fbb61b51",
       "documentation_binding": "d027a5aa9a80325f3fbfb823a775c303c6d14468",
@@ -125,6 +134,43 @@
   "forbidden_mutation": [
     "checkpoint identity, model weights, architecture, dataset, catalog, neural sample seed, max depth, PUCT, M07 identity/config, seat schedule, or timeout policy"
   ],
+  "materialization_contract": {
+    "status": "AUTHORIZED",
+    "bundle_path": "benchmarks/m27a-search-budget-scaling-v1.bundle.json",
+    "review_basis_commit": "a13bcdde67cbb9390cd7cb905ae7f3a9fce469bd",
+    "documentation_binding_commit": "4d8ef5b82a11ec0a6a9df3aae42c7330f8e0cbb1",
+    "allowed_plan_variations": [
+      "pair identity: s2_vs_m07 or s1_vs_m07",
+      "candidate checkpoint path and semantic hash for the selected fixed checkpoint",
+      "neural agent simulations: one value from sim_budgets",
+      "evaluation_id: m27a-{pair}-v1-sim{sim}"
+    ],
+    "immutable_plan_fields": [
+      "format",
+      "version",
+      "game_seeds",
+      "seat schedule",
+      "M07 agent identity and command",
+      "neural sample seed",
+      "max depth turns",
+      "PUCT exploration",
+      "catalog",
+      "device",
+      "program and module root",
+      "handshake timeout",
+      "move timeout",
+      "shutdown grace"
+    ],
+    "plan_count": 14,
+    "matches_per_plan": 64,
+    "total_matches": 896,
+    "execution_authorization": "NOT_AUTHORIZED",
+    "forbidden_outputs": [
+      "eval-report",
+      "replay",
+      "result manifest"
+    ]
+  },
   "statistics": {
     "statistics_contract": "effective-splendor-m27a-paired-search-curve-v2",
     "confidence_bps": 9500,
@@ -244,6 +290,9 @@
   "execution_gates": {
     "must_be_frozen_before_run": true,
     "independent_review_required": true,
+    "plan_materialization_authorized": true,
+    "plan_execution_authorized": false,
+    "no_execution_artifacts_before_plan_review": true,
     "statistics_contract_frozen_before_run": true,
     "operating_region_contract_frozen_before_run": true,
     "all_plans_validate": true,
