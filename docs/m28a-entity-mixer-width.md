@@ -4,7 +4,7 @@
 MILESTONE = M28A
 STATUS = IMPLEMENTED (local contract checks; independent source/prereg review pending)
 BASE_COMMIT = 428c227f507a232be0aab9187e3195f8c352f4bd
-FINAL_COMMIT = pending documentation binding commit
+IMPLEMENTATION_COMMIT = e3e4285
 SCOPE = Fresh-init capacity-only comparison of Entity Mixer h192 versus h320 on the accepted M24-S2 corpus.
 TRAINING = NOT_AUTHORIZED
 ARENA = NOT_AUTHORIZED
@@ -165,8 +165,8 @@ git diff --check — PASS, exit 0
 Implementation smoke and contract tests are not formal training evidence and
 do not establish offline improvement or playing strength. The config SHA-256
 is `02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4`.
-The final documentation-binding commit is recorded after the implementation
-commit exists.
+Implementation commit: `e3e4285` (`feat(training): preregister M28A capacity
+scaling`).
 
 ## Result and decision
 
