@@ -2,11 +2,12 @@
 
 ```ini
 MILESTONE = M28A
-STATUS = IMPLEMENTED (local contract checks; independent source/prereg review pending)
+STATUS = TRAINING COMPLETE / OFFLINE STOP (training-evidence review pending)
 BASE_COMMIT = 428c227f507a232be0aab9187e3195f8c352f4bd
 IMPLEMENTATION_COMMIT = e3e4285
 SCOPE = Fresh-init capacity-only comparison of Entity Mixer h192 versus h320 on the accepted M24-S2 corpus.
-TRAINING = NOT_AUTHORIZED
+TRAINING = COMPLETED (CUDA; frozen recipe)
+OFFLINE = M28A_OFFLINE_NO_CAPACITY_SIGNAL
 ARENA = NOT_AUTHORIZED
 ```
 
@@ -48,13 +49,14 @@ explain every possible representation or objective failure in one round.
 - Pre-registered offline gates and a future 192-match Arena screen.
 - Machine-checked provenance, parameter counts, initialization, and decision
   contracts.
+- One authorized CUDA training run for each model and the preregistered offline
+  G1/G2 application.
 
 ### Not in scope / not authorized
 
 - New self-play collection or teacher changes.
 - Transformer, attention, entity-interaction redesign, target redesign,
   optimizer sweep, learning-rate sweep, PUCT tuning, or search-budget scaling.
-- Formal GPU training in this preregistration implementation round.
 - Arena execution, promotion, champion change, M25, M26, or any downstream
   M28 continuation.
 
@@ -109,9 +111,12 @@ as diagnostic uncertainty only; they are not eligibility or promotion gates.
 3. Add Python tests for exact models/counts, provenance rejection, split
    isolation, fresh initialization, determinism, and checkpoint metadata.
 4. Add a Rust contract test for the tracked preregistration.
-5. Run local contract checks, commit, and push. Do not run formal training.
-6. Stop for an independent source/prereg review. Training requires a later
-   explicit authorization.
+5. Run local contract checks, commit, and push, then stop for independent
+   source/prereg review.
+6. After source/prereg acceptance, run the exact frozen CUDA training command
+   and apply only the preregistered offline gates.
+7. If an offline stop occurs, record the compact result and stop before Arena;
+   otherwise submit training evidence for the next explicit execution review.
 
 ## Iteration log
 
@@ -128,6 +133,29 @@ as diagnostic uncertainty only; they are not eligibility or promotion gates.
 - Added Python and Rust contract tests. No GPU training, Arena match, result
   manifest, promotion, or downstream authorization was produced.
 
+### 2026-08-18 — source/prereg accepted; CUDA training and offline stop
+
+- Independent source/prereg review accepted implementation basis
+  `e3e428518ad946a3d1f7dfa82d911ee2673f27d2` with documentation binding
+  `2e527675945d0530129ad3fa0c0bb1c14b0e0a7e`; findings were P0/P1/P2
+  `0/0/2`, both non-blocking. Training was authorized; Arena remained
+  unauthorized. The prereg config was not edited to record that review, so its
+  frozen SHA remains unchanged.
+- An initial invocation was discarded after a reported OOM and left no
+  checkpoint/report/summary. The generated empty output directory was removed;
+  the attempt is not evidence. A same-config, same-batch one-batch diagnostic
+  passed without writing artifacts.
+- The exact frozen training command was then rerun successfully with exit 0.
+  Both fresh-init CUDA models completed 32 epochs under the frozen seed and
+  recipe. The tracked result manifest is
+  `benchmarks/m28a-entity-mixer-width-v1.result.json`, SHA-256
+  `180406250a05d0f0b6c38b32997565fa35d0265be395b77730e744eb707cf75b`.
+- Offline G1 failed: candidate versus control improved Policy CE by `10` bps,
+  Value MSE by `34` bps, and Top-1 changed by `-0.0007642`; G1 requires at
+  least one head to improve by `50` bps. G2 passed with `12` / `249` bps and
+  Top-1 `-0.0015361`. The frozen decision is
+  `M28A_OFFLINE_NO_CAPACITY_SIGNAL`; no Arena plan was materialized or run.
+
 ## Final implementation
 
 Tracked files for this round:
@@ -136,6 +164,7 @@ Tracked files for this round:
 - `training/m17_gpu/splendor_gpu/capacity_train.py`
 - `training/m17_gpu/tests/test_capacity_train.py`
 - `crates/splendor-cli/tests/m28a_design.rs`
+- `benchmarks/m28a-entity-mixer-width-v1.result.json`
 - `docs/m28a-entity-mixer-width.md`
 
 The trainer's future command is intentionally configuration-driven:
@@ -147,9 +176,10 @@ PYTHONPATH=training/m17_gpu python -m splendor_gpu.capacity_train \
   --out-dir local-artifacts/m28a-entity-mixer-width-v1
 ```
 
-This command is not run in the preregistration implementation round because
-the config remains `training_authorization = NOT_AUTHORIZED` and the recipe
-requires CUDA.
+This command was run only after the independent source/prereg review
+authorized training. The config remains `training_authorization =
+NOT_AUTHORIZED` by design: the review supplies execution authority without
+mutating the frozen preregistration file.
 
 ## Validation and evidence
 
@@ -162,39 +192,78 @@ cargo test --locked -p splendor-cli --test m28a_design -- --test-threads=1 — P
 git diff --check — PASS, exit 0
 ```
 
-Implementation smoke and contract tests are not formal training evidence and
-do not establish offline improvement or playing strength. The config SHA-256
-is `02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4`.
+The authorized training command completed with exit 0:
+
+```text
+PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.capacity_train --dataset local-artifacts/m24-self-play-s2-v1/self-play.json --config benchmarks/m28a-entity-mixer-width-v1.config.json --out-dir local-artifacts/m28a-entity-mixer-width-v1
+```
+
+Training evidence:
+
+| Model | Parameters | Best epoch | Checkpoint semantic hash | Checkpoint file SHA-256 |
+| --- | ---: | ---: | --- | --- |
+| control h192/b4 | 949,060 | 12 | `e5a203796efc8876d53d8f5ed34df201911c312df467b4435c3895ea8c6738ce` | `e36bb8d3c347b419f76667d2e19022d19ad7ecded2f2d1c7c64606ce6d3211d4` |
+| candidate h320/b4 | 2,605,764 | 9 | `73f35fcc83ca70985951e0d777b0fed4820be45bd393803c2eec9c4abf605fe3` | `b0a7947c2c1af003f99e72970867f73cb0d40e7c75e9c966b4e8895e5fef868f` |
+
+Both reports bind the S2 semantic/file hashes, generator checkpoint hash,
+training config hash `a5dbdfb0a7a418830b4d6b25eaf87f9c83af381997583e67d29a056583b3e39e`,
+fresh initialization seed `280129`, CUDA `12.4`, torch `2.6.0+cu124`, and
+deterministic algorithms. The summary file SHA-256 is
+`a1f377a07a7f8cbac7d688198dc1dbc3248679e481d52137f68369ee19ccbcba`.
+
+Offline gate application was:
+
+| Gate | Policy CE improvement | Value MSE improvement | Top-1 delta | Verdict |
+| --- | ---: | ---: | ---: | --- |
+| G1 full S2 validation | `10` bps | `34` bps | `-0.0007642` | FAIL |
+| G2 S1 reference | `12` bps | `249` bps | `-0.0015361` | PASS |
+
+Implementation smoke and contract tests are separate from the formal training
+evidence. The config SHA-256 is
+`02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4`.
+The compact tracked result manifest SHA-256 is
+`180406250a05d0f0b6c38b32997565fa35d0265be395b77730e744eb707cf75b`.
 Implementation commit: `e3e4285` (`feat(training): preregister M28A capacity
 scaling`).
 
 ## Result and decision
 
-The implementation establishes a machine-checkable M28A preregistration, not a
-scientific result. Current decision is `DESIGNED / NOT_AUTHORIZED` for both
-training and Arena. No checkpoint, offline metric, result, promotion, or
-champion change exists for M28A.
+The source/preregistration was accepted and the authorized training completed,
+but capacity-only scaling did not meet the preregistered full-S2 offline gate.
+The formal decision is `M28A_OFFLINE_NO_CAPACITY_SIGNAL`: G1 failed and G2
+passed. This is a valid negative training result, not a playing-strength
+result. Arena was not authorized or run, promotion remains `NONE`, and M07
+remains champion.
+
+The tracked result manifest records the local checkpoint/report paths and
+hashes. The config remains frozen with its original `DESIGNED` status and
+`NOT_AUTHORIZED` config fields; review-derived training authority is not
+written back into the prereg file.
 
 ## Known limitations and non-claims
 
-- No training has been run, so no capacity signal is established.
+- The experiment uses one deterministic seed (`280129`); this negative result
+  is a result under that frozen protocol, not a general proof about all seeds.
+- Offline fit remains diagnostic and no Arena strength estimate exists because
+  G1 failed before the Arena gate.
 - The S1 reference is a generalization diagnostic, not a causal training
   partition and not a checkpoint-selection signal.
-- Offline fit remains diagnostic; future competitive gates are Arena-only.
-- A future `M28A_CAPACITY_SIGNAL` would justify considering more width-scaling
-  work only. It would not promote the candidate or authorize M25/M26.
+- The catalog semantic hash is hard-bound in trainer source rather than config;
+  this is safe for v1 but is a durability follow-up for a future schema.
+- The negative result does not authorize M25, M26, or a downstream M28
+  continuation. A new route/diagnostic prereg is required for the next causal
+  question.
 - Runtime-invalid attempts must be preserved and excluded, then rerun with the
   exact frozen plan; seeds, timeouts, search, and checkpoints cannot change in
   response to W/T/L.
 
 ## Next authorized gate
 
-The next gate is an independent source/prereg review of the tracked config,
-trainer, and tests. Until that review and a subsequent explicit training
-authorization, the following remain unauthorized:
+The next gate is a compact independent review of the tracked training result
+manifest, local report/checkpoint provenance, and the exact offline G1/G2
+application. That review does not authorize Arena because the frozen offline
+stop has already fired. The following remain unauthorized:
 
-- both M28A training runs;
-- applying offline gates to generated reports;
 - materializing or executing the 192-match Arena screen;
 - promotion or champion changes;
 - M25, M26, and downstream M28 continuation.

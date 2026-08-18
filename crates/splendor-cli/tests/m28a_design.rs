@@ -216,3 +216,108 @@ fn m28a_capacity_only_prereg_is_frozen_and_not_authorized_to_run() {
     assert_eq!(config["decision_outputs"]["m25"], "NOT_AUTHORIZED");
     assert_eq!(config["decision_outputs"]["m26"], "NOT_AUTHORIZED");
 }
+
+#[test]
+fn m28a_training_result_records_frozen_offline_stop() {
+    let result: Value = serde_json::from_slice(
+        &fs::read(root().join("benchmarks/m28a-entity-mixer-width-v1.result.json")).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        result["format"],
+        "effective-splendor-m28a-entity-mixer-width-result"
+    );
+    assert_eq!(result["version"], 1);
+    assert_eq!(result["status"], "TRAINING_COMPLETE");
+    assert_eq!(result["milestone"], "M28A");
+    assert_eq!(
+        result["review"]["source_prereg_status"],
+        "ACCEPTED / FROZEN"
+    );
+    assert_eq!(result["review"]["training_authorization"], "AUTHORIZED");
+    assert_eq!(
+        result["review"]["training_evidence_status"],
+        "PENDING_INDEPENDENT_REVIEW"
+    );
+    assert_eq!(result["review"]["arena_authorization"], "NOT_AUTHORIZED");
+    assert_eq!(result["review"]["findings"]["P0"], 0);
+    assert_eq!(result["review"]["findings"]["P1"], 0);
+    assert_eq!(result["review"]["findings"]["P2"], 2);
+
+    assert_eq!(
+        result["preregistration"]["sha256"],
+        "02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4"
+    );
+    assert_eq!(
+        result["preregistration"]["config_status_fields_unchanged"],
+        true
+    );
+    assert_eq!(result["dataset"]["games"], 512);
+    assert_eq!(result["dataset"]["examples"], 31505);
+    assert_eq!(
+        result["dataset"]["self_play_hash"],
+        "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46"
+    );
+    assert_eq!(
+        result["dataset"]["file_sha256"],
+        "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f"
+    );
+
+    assert_eq!(result["training"]["status"], "VERIFIED");
+    assert_eq!(result["training"]["exit_code"], 0);
+    assert_eq!(result["training"]["device"], "cuda");
+    assert_eq!(result["training"]["initialization"], "fresh");
+    assert_eq!(result["training"]["initialization_seed"], 280129);
+    assert_eq!(result["training"]["shuffle_seed"], 280129);
+    assert_eq!(result["training"]["batch_size"], 128);
+    assert_eq!(result["training"]["epochs"], 32);
+    assert_eq!(result["training"]["deterministic_algorithms_enabled"], true);
+    assert_eq!(result["training"]["cublas_workspace_config"], ":4096:8");
+    assert_eq!(
+        result["training"]["training_config_hash"],
+        "a5dbdfb0a7a418830b4d6b25eaf87f9c83af381997583e67d29a056583b3e39e"
+    );
+
+    let models = result["training"]["models"].as_array().unwrap();
+    assert_eq!(models.len(), 2);
+    assert_eq!(models[0]["role"], "control");
+    assert_eq!(models[0]["parameter_count"], 949060);
+    assert_eq!(models[0]["best_epoch"], 12);
+    assert_eq!(models[1]["role"], "candidate");
+    assert_eq!(models[1]["parameter_count"], 2605764);
+    assert_eq!(models[1]["best_epoch"], 9);
+
+    let offline = &result["offline"];
+    assert_eq!(offline["status"], "APPLIED");
+    assert_eq!(offline["G1_full_s2_validation"]["pass"], false);
+    assert_eq!(
+        offline["G1_full_s2_validation"]["policy_ce_improvement_bps"],
+        10
+    );
+    assert_eq!(
+        offline["G1_full_s2_validation"]["value_mse_improvement_bps"],
+        34
+    );
+    assert_eq!(offline["G2_s1_reference_non_regression"]["pass"], true);
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["policy_ce_improvement_bps"],
+        12
+    );
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["value_mse_improvement_bps"],
+        249
+    );
+    assert_eq!(offline["decision"], "M28A_OFFLINE_NO_CAPACITY_SIGNAL");
+    assert_eq!(offline["fail_action"], "STOP_NO_ARENA");
+    assert_eq!(result["arena"]["authorization"], "NOT_AUTHORIZED");
+    assert_eq!(result["arena"]["not_run"], true);
+    assert_eq!(result["promotion"], "NONE");
+    assert_eq!(result["champion"], "M07");
+    assert_eq!(result["downstream_authorization"]["m25"], "NOT_AUTHORIZED");
+    assert_eq!(result["downstream_authorization"]["m26"], "NOT_AUTHORIZED");
+    assert_eq!(
+        result["downstream_authorization"]["m28_continuation"],
+        "NOT_AUTHORIZED"
+    );
+}

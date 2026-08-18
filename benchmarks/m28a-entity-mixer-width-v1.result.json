@@ -1,0 +1,144 @@
+{
+  "format": "effective-splendor-m28a-entity-mixer-width-result",
+  "version": 1,
+  "status": "TRAINING_COMPLETE",
+  "milestone": "M28A",
+  "generated_on": "2026-08-18",
+  "review": {
+    "source_prereg_status": "ACCEPTED / FROZEN",
+    "source_prereg_review_basis_commit": "e3e428518ad946a3d1f7dfa82d911ee2673f27d2",
+    "documentation_binding_commit": "2e527675945d0530129ad3fa0c0bb1c14b0e0a7e",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2
+    },
+    "training_authorization": "AUTHORIZED",
+    "training_evidence_status": "PENDING_INDEPENDENT_REVIEW",
+    "arena_authorization": "NOT_AUTHORIZED",
+    "p2_followups": [
+      "The single frozen seed 280129 supports a protocol-specific signal only; a positive result would not establish general superiority.",
+      "The catalog semantic hash is hard-bound in trainer source; a future schema change may move that binding into configuration."
+    ]
+  },
+  "preregistration": {
+    "path": "benchmarks/m28a-entity-mixer-width-v1.config.json",
+    "revision": "capacity-only-v1",
+    "status": "DESIGNED / FROZEN",
+    "sha256": "02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4",
+    "config_status_fields_unchanged": true
+  },
+  "dataset": {
+    "path": "local-artifacts/m24-self-play-s2-v1/self-play.json",
+    "format": "effective-splendor-neural-self-play-v2",
+    "version": 2,
+    "games": 512,
+    "examples": 31505,
+    "train_examples": 23654,
+    "validation_examples": 7851,
+    "s1_reference_examples": 1953,
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "generator_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04"
+  },
+  "training": {
+    "status": "VERIFIED",
+    "command": "PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.capacity_train --dataset local-artifacts/m24-self-play-s2-v1/self-play.json --config benchmarks/m28a-entity-mixer-width-v1.config.json --out-dir local-artifacts/m28a-entity-mixer-width-v1",
+    "exit_code": 0,
+    "device": "cuda",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch_version": "2.6.0+cu124",
+    "cuda_version": "12.4",
+    "training_config_hash": "a5dbdfb0a7a418830b4d6b25eaf87f9c83af381997583e67d29a056583b3e39e",
+    "initialization": "fresh",
+    "initialization_seed": 280129,
+    "shuffle_seed": 280129,
+    "batch_size": 128,
+    "epochs": 32,
+    "deterministic_algorithms_enabled": true,
+    "cublas_workspace_config": ":4096:8",
+    "summary_path": "local-artifacts/m28a-entity-mixer-width-v1/summary.json",
+    "summary_file_sha256": "a1f377a07a7f8cbac7d688198dc1dbc3248679e481d52137f68369ee19ccbcba",
+    "models": [
+      {
+        "role": "control",
+        "model_id": "m28a-entity-mixer-h192-b4-control-v1",
+        "parameter_count": 949060,
+        "best_epoch": 12,
+        "elapsed_seconds": 528.8913792859967,
+        "checkpoint_path": "local-artifacts/m28a-entity-mixer-width-v1/control/checkpoint.pt",
+        "checkpoint_semantic_hash": "e5a203796efc8876d53d8f5ed34df201911c312df467b4435c3895ea8c6738ce",
+        "checkpoint_file_sha256": "e36bb8d3c347b419f76667d2e19022d19ad7ecded2f2d1c7c64606ce6d3211d4",
+        "training_report_path": "local-artifacts/m28a-entity-mixer-width-v1/control/training-report.json",
+        "training_report_file_sha256": "32cf59736fc95117bb59cb178ff63257a5e868ff04d87d5d08225bcfc33a141d",
+        "validation": {
+          "examples": 7851,
+          "policy_cross_entropy": 1.192672847076793,
+          "value_mse": 0.23842166278213775,
+          "visit_top1": 0.9123678512291428
+        },
+        "s1_reference": {
+          "examples": 1953,
+          "policy_cross_entropy": 1.2109321227027279,
+          "value_mse": 0.2384815948533206,
+          "visit_top1": 0.905273937532002
+        }
+      },
+      {
+        "role": "candidate",
+        "model_id": "m28a-entity-mixer-h320-b4-v1",
+        "parameter_count": 2605764,
+        "best_epoch": 9,
+        "elapsed_seconds": 599.9184098960031,
+        "checkpoint_path": "local-artifacts/m28a-entity-mixer-width-v1/candidate/checkpoint.pt",
+        "checkpoint_semantic_hash": "73f35fcc83ca70985951e0d777b0fed4820be45bd393803c2eec9c4abf605fe3",
+        "checkpoint_file_sha256": "b0a7947c2c1af003f99e72970867f73cb0d40e7c75e9c966b4e8895e5fef868f",
+        "training_report_path": "local-artifacts/m28a-entity-mixer-width-v1/candidate/training-report.json",
+        "training_report_file_sha256": "fdcbadef76445b50fc02a78e43812970b6aaea22cac84ff002344ec726ed6acd",
+        "validation": {
+          "examples": 7851,
+          "policy_cross_entropy": 1.1914224271151141,
+          "value_mse": 0.23761102855926775,
+          "visit_top1": 0.911603617373583
+        },
+        "s1_reference": {
+          "examples": 1953,
+          "policy_cross_entropy": 1.209455368034179,
+          "value_mse": 0.2325400622514841,
+          "visit_top1": 0.9037378392217101
+        }
+      }
+    ]
+  },
+  "offline": {
+    "status": "APPLIED",
+    "G1_full_s2_validation": {
+      "pass": false,
+      "policy_ce_improvement_bps": 10,
+      "value_mse_improvement_bps": 34,
+      "top1_delta": -0.0007642338555597927
+    },
+    "G2_s1_reference_non_regression": {
+      "pass": true,
+      "policy_ce_improvement_bps": 12,
+      "value_mse_improvement_bps": 249,
+      "top1_delta": -0.001536098310291889
+    },
+    "decision": "M28A_OFFLINE_NO_CAPACITY_SIGNAL",
+    "fail_action": "STOP_NO_ARENA"
+  },
+  "arena": {
+    "authorization": "NOT_AUTHORIZED",
+    "not_run": true,
+    "planned_matches": 192,
+    "reason": "G1 failed; the preregistered offline stop rule forbids Arena execution."
+  },
+  "promotion": "NONE",
+  "champion": "M07",
+  "downstream_authorization": {
+    "m25": "NOT_AUTHORIZED",
+    "m26": "NOT_AUTHORIZED",
+    "m28_continuation": "NOT_AUTHORIZED"
+  },
+  "artifact_policy": "Dataset, checkpoints, reports, and summary remain ignored local artifacts; this compact result manifest is the tracked evidence record."
+}
