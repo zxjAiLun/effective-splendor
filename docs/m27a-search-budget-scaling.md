@@ -1,7 +1,7 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; Execution-Gate Repair 1 `REVIEWED`; runtime/build freeze and reviewed smoke `PASS`
-Execution: formal 896-match Arena `NOT AUTHORIZED`; reviewed runtime smoke `PASS`
+Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; execution gate `REVIEWED`; formal result `VERIFIED`; decision `M27A_INCONCLUSIVE`
+Execution: formal 896-match Arena `VERIFIED` (896/896, 0 abort, 0 candidate fault); promotion `NONE`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
 Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): materialize M27A search-budget plans`)
@@ -11,6 +11,8 @@ Execution-gate review: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` → `ACCEPTED`
 Execution-Gate Repair 1: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` (`fix(training): repair M27A execution decision gate`)
 Runtime/build freeze: source `b3440d42e059888f939de31232c89b4141248e81`; snapshot `local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json` (`5115f805f68afd623af2842cb0dd469686c888ea6e7944e418689c04800ed350`)
 Reviewed smoke: `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json` (`2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676`); 4/4 completed, 0 abort, 0 candidate fault
+Final execution authorization: source/runtime basis `b3440d42e059888f939de31232c89b4141248e81`; runtime/smoke binding `27455cb6935902db1aab4692f42f880a3ca13364`; 896 matches `AUTHORIZED`
+Formal result: `benchmarks/m27a-search-budget-scaling-v1.result.json` (`c59174dabcaa955aa84d5e011fcd9b862b7676a73564acf706a340a9afc1bace`); raw-report verifier `scripts/m27a_result.py`
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -89,8 +91,9 @@ Out of scope:
   stability rule when the two signals disagree.
 - The preregistration, 14-plan materialization, and repaired executable
   operating-region semantics are accepted/frozen. Runtime/build identity is
-  frozen and the reviewed smoke passed; the formal 896-match execution remains
-  `NOT AUTHORIZED` pending a separate explicit authorization.
+  frozen, the reviewed smoke passed, and the final execution authorization
+  allowed the formal 896-match screen. The resulting decision is recomputed
+  from raw reports and is `M27A_INCONCLUSIVE`; no promotion follows.
 
 ## Implementation plan
 
@@ -103,10 +106,14 @@ Out of scope:
 5. Repair and independently review executable stable-region decision semantics;
    then freeze runtime/build identity and perform the reviewed execution smoke.
 6. After the reviewed smoke, obtain a separate explicit execution
-   authorization before executing the 896-match screen.
+   authorization before executing the 896-match screen. **Completed** by the
+   final execution-authorization review.
 7. Recompute center scores, paired uncertainty, and matched anchor deltas from
    raw reports, then apply the frozen decision function without treating
    higher simulations as inherently better.
+8. Record the complete result with raw-report provenance and leave promotion
+   decisions to a separate review gate. **Completed**; the result is
+   `M27A_INCONCLUSIVE`.
 
 ## Iteration log
 
@@ -243,13 +250,16 @@ living milestone record:
 - `benchmarks/m27a-search-budget-scaling-v1.json`
 - `benchmarks/m27a-{s1_vs_m07,s2_vs_m07}-v1-sim{16,24,32,48,64,96,128}.plan.json`
 - `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
+- `benchmarks/m27a-search-budget-scaling-v1.result.json`
 - `docs/m27a-search-budget-scaling.md`
 - `crates/splendor-cli/tests/m27a_design.rs`
+- `scripts/m27a_result.py`
 - `local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json`
 - `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json`
 
-The runtime snapshot and smoke outputs are ignored local artifacts. No formal
-M27A eval report, result manifest, or 896-match Arena result was created.
+The runtime snapshot, smoke outputs, and formal raw reports/replays are ignored
+local artifacts. The tracked result manifest binds those raw artifacts by path
+and SHA-256.
 
 ## Validation and evidence
 
@@ -294,10 +304,13 @@ M27A eval report, result manifest, or 896-match Arena result was created.
   cargo test --locked --workspace --all-targets -- --test-threads=1 — exit 101; only the known Linux process test `shutdown_reaps_child` failed
   cargo test --locked --workspace --all-targets -- --test-threads=1 --skip shutdown_reaps_child — exit 0; all non-skipped workspace tests passed
   git diff --check — exit 0
+  python3 scripts/m27a_result.py --write — exit 0; result generated from accepted raw reports
+  python3 scripts/m27a_result.py — PASS, 896/896, 0 abort, 0 candidate fault, M27A_INCONCLUSIVE
+  find local-artifacts/m27a-formal-execution-v1/eval-reports-accepted -type f -name '*.replay.json' -print0 | xargs -0 -n 1 -P 8 target/debug/splendor verify-replay --input >/dev/null — exit 0 (896/896)
   ```
 
-- Validation includes exact 14-plan / 896-match matrix coverage before any
-  execution authorization is considered.
+- Validation records exact 14-plan / 896-match matrix coverage under the final
+  execution authorization.
 - The unskipped workspace failure is an existing Linux child-process status
   issue outside this design-only change and is recorded rather than relabeled
   as a clean full-workspace pass.
@@ -327,23 +340,73 @@ M27A eval report, result manifest, or 896-match Arena result was created.
   it records both eval exit codes as 0 and all four replay verification exit
   codes as 0. These are runtime-health artifacts only, not M27A evidence.
 
+### 2026-08-18 — final execution authorization and formal 896-match result
+
+- The final execution-authorization review authorized the frozen matrix on the
+  source/runtime basis `b3440d42e059888f939de31232c89b4141248e81`, bound to the
+  reviewed runtime/smoke commit `27455cb6935902db1aab4692f42f880a3ca13364`.
+  The authorization covered all 14 tracked plans, all 32 seeds, both seat
+  rotations, and no result-driven early stopping or plan mutation.
+- The exact runtime identity remained bound to binary SHA-256
+  `5003a58db33ffcd85fc0fc6a1edfb59dfb5cb9abf396c7c8a2b98f4b0017f56e` and the
+  frozen wrapper. Three invalid `s2/sim32` attempts were preserved under
+  `local-artifacts/m27a-formal-execution-v1/failed-attempts/`, marked
+  `RUNTIME_INVALID_EXCLUDED`, and excluded from scientific evidence. The exact
+  frozen plan was retried; the accepted `s2/sim32` cell completed 64/64.
+- All 14 accepted cells completed 64/64 matches, with 896/896 completed
+  matches, 0 aborts, 0 candidate faults, and 896 replays. The tracked result
+  binds every plan file SHA-256, canonical plan hash, eval-report SHA-256,
+  report/replay file digest, raw W/T/L, seat split, and all 32 matched paired
+  seed blocks per budget.
+- `scripts/m27a_result.py` directly parses the accepted raw
+  `eval-report.json` records, recomputes every W/T/L summary and paired anchor,
+  applies the frozen eligibility/stability function, and compares the result
+  manifest against that recomputation. It does not trust `selected_budget` from
+  the result JSON.
+
+The raw-report curve is:
+
+| simulations | S2 W/T/L; score [lower, upper] bps | S1 W/T/L; score [lower, upper] bps | matched anchor center [lower, upper] bps | eligible |
+|---:|---|---|---:|:---:|
+| 16 | 17/1/46; 2734 [568, 4900] | 14/0/50; 2187 [21, 4353] | 546 [-3785, 4877] | no |
+| 24 | 18/1/45; 2890 [724, 5056] | 16/0/48; 2500 [334, 4666] | 390 [-3941, 4721] | no |
+| 32 | 19/0/45; 2968 [802, 5134] | 15/0/49; 2343 [177, 4509] | 625 [-3706, 4956] | no |
+| 48 | 17/0/47; 2656 [490, 4822] | 17/0/47; 2656 [490, 4822] | 0 [-4331, 4331] | no |
+| 64 | 17/0/47; 2656 [490, 4822] | 13/0/51; 2031 [0, 4197] | 625 [-3706, 4956] | no |
+| 96 | 17/0/47; 2656 [490, 4822] | 14/0/50; 2187 [21, 4353] | 468 [-3863, 4799] | no |
+| 128 | 18/0/46; 2812 [646, 4978] | 17/0/47; 2656 [490, 4822] | 156 [-4175, 4487] | no |
+
+- Every budget fails the frozen practical anchor eligibility threshold of
+  `>= +1000` bps. Therefore the recomputed decision is
+  `M27A_INCONCLUSIVE`; no budget is selected, `M07` remains champion, and
+  promotion, M25, M26, and M28 remain unauthorized.
+- Final round checks passed: `cargo build --locked -p splendor-cli` restored
+  and verified the frozen binary SHA; the targeted M27A regression test passed
+  3/3; the workspace suite passed with the known `shutdown_reaps_child` Linux
+  process test excluded; all 896 accepted replays passed `verify-replay`; and
+  `git diff --check` passed.
+
 ## Result and decision
 
 M27A Repair 2, the 14-plan materialization, and Execution-Gate Repair 1 are
-`ACCEPTED / FROZEN` / `REVIEWED`. Runtime/build identity is frozen and the
-reviewed smoke passed. The formal 896-match Arena execution remains
-`NOT AUTHORIZED`; no formal M27A result was generated, no promotion occurred,
-and M07 remains champion.
+`ACCEPTED / FROZEN` / `REVIEWED`. Runtime/build identity is frozen, the
+reviewed smoke passed, and the final execution authorization was granted. The
+formal result is `VERIFIED` at 896/896 with zero aborts and zero candidate
+faults. Applying the frozen decision function to raw reports yields
+`M27A_INCONCLUSIVE`: no budget is selected, no promotion occurred, and M07
+remains champion.
 
 ## Known limitations
 
-- The 32-seed cells and all Repair 2 operating-region thresholds are frozen
-  diagnostic choices, not executed evidence.
-- Plan materialization proves only the exact schedule/provenance contract; it
-  does not prove competitive strength or the operating-region decision.
-- The executable decision helper now uses reviewed start-window enumeration.
-  The reviewed smoke proves only the reviewed runtime path, not competitive
-  strength, formal M27A evidence, or a stable-region result.
+- The formal reports and replays are local-only ignored artifacts; the tracked
+  result binds their paths and SHA-256 digests, and the local verifier must be
+  rerun when those artifacts are moved or regenerated.
+- The three invalid `s2/sim32` attempts are preserved for provenance but are
+  excluded from scientific evidence; only the exact frozen-plan retry is used
+  in the result.
+- The 32-seed cells and Repair 2 thresholds remain diagnostic choices. The
+  verified result is `M27A_INCONCLUSIVE`, not a strength promotion or a claim
+  that a higher simulation budget is better.
 - The 128-simulation cell uses the same fixed 30-second operational timeout as
   every other budget; there is no budget-specific timeout exception.
 - The anchor Hoeffding interval is a per-budget diagnostic bound and is not a
@@ -354,7 +417,6 @@ and M07 remains champion.
 
 ## Next authorized gate
 
-The next gate is a separate explicit authorization for the frozen 896-match
-Arena screen. Until it is granted, do not execute the formal M27A plans or
-generate formal result artifacts. The reviewed smoke artifacts remain local
-and non-scientific. M25, M26, and M28 remain unauthorized.
+The next gate is an independent review of the tracked result and its bound raw
+reports/replays. This round selected no operating budget and authorized no
+promotion or follow-up milestone. M25, M26, and M28 remain unauthorized.

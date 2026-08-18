@@ -1,0 +1,6365 @@
+{
+  "format": "effective-splendor-m27a-search-budget-scaling-result",
+  "version": 1,
+  "status": "VERIFIED",
+  "milestone": "M27A",
+  "generated_on": "2026-08-18",
+  "authorization": {
+    "arena_execution": "AUTHORIZED",
+    "authorization_basis_source_commit": "b3440d42e059888f939de31232c89b4141248e81",
+    "runtime_smoke_binding_commit": "27455cb6935902db1aab4692f42f880a3ca13364",
+    "promotion": "NONE"
+  },
+  "preregistration": {
+    "path": "benchmarks/m27a-search-budget-scaling-v1.json",
+    "revision": "design-1-repair-2",
+    "status": "ACCEPTED/FROZEN",
+    "sha256": "a50a62aed489cdc1c0022d924ba26463ba79fa29b7e66000d8fa9d51b1c2671e"
+  },
+  "materialization_bundle": {
+    "path": "benchmarks/m27a-search-budget-scaling-v1.bundle.json",
+    "revision": "design-1-repair-2",
+    "sha256": "19edd68cb089234e9571a3adae9d5fddc3fa88a40c35fb7b53d39d90bf2680e7"
+  },
+  "runtime": {
+    "source_commit": "b3440d42e059888f939de31232c89b4141248e81",
+    "execution_binding_commit": "27455cb6935902db1aab4692f42f880a3ca13364",
+    "binary_path": "target/debug/splendor",
+    "binary_sha256": "5003a58db33ffcd85fc0fc6a1edfb59dfb5cb9abf396c7c8a2b98f4b0017f56e",
+    "wrapper": {
+      "path": "local-artifacts/m27a-runtime-freeze-2026-08-18/run-m27a-runtime-smoke.sh",
+      "sha256": "906560a2fbc48431cb56ea94a10c61fc14a6d91356784bd18735959f50bdf2db"
+    },
+    "runtime_snapshot": {
+      "path": "local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json",
+      "sha256": "5115f805f68afd623af2842cb0dd469686c888ea6e7944e418689c04800ed350"
+    },
+    "reviewed_smoke_manifest": {
+      "path": "local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json",
+      "sha256": "2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676"
+    },
+    "pythonpath_exported": false
+  },
+  "matrix": {
+    "candidate_pairs": [
+      "s2_vs_m07",
+      "s1_vs_m07"
+    ],
+    "simulations": [
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128
+    ],
+    "game_seeds": [
+      301001,
+      301002,
+      301003,
+      301004,
+      301005,
+      301006,
+      301007,
+      301008,
+      301009,
+      301010,
+      301011,
+      301012,
+      301013,
+      301014,
+      301015,
+      301016,
+      301017,
+      301018,
+      301019,
+      301020,
+      301021,
+      301022,
+      301023,
+      301024,
+      301025,
+      301026,
+      301027,
+      301028,
+      301029,
+      301030,
+      301031,
+      301032
+    ],
+    "game_seed_count": 32,
+    "seat_rotations": 2,
+    "plans": 14,
+    "matches_per_plan": 64,
+    "total_matches": 896,
+    "game_seeds_sha256": "6e951965ff17dcb255dcfae1341c59d3cebed34b0586298ca53e76cce796cc2c"
+  },
+  "execution": {
+    "status": "VERIFIED",
+    "accepted_output_root": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted",
+    "scheduled_matches": 896,
+    "completed_matches": 896,
+    "aborted_matches": 0,
+    "candidate_faults": 0,
+    "eval_report_files": 896,
+    "replay_files": 896,
+    "execution_log": {
+      "path": "local-artifacts/m27a-formal-execution-v1/eval-reports-pending-v1.execution.log",
+      "sha256": "84638c91d26cd4fdcfe47d21a35ab82821c3ee35eae3f1c7566ddb9e811dd8a7"
+    },
+    "sim32_exact_retry_log": {
+      "path": "local-artifacts/m27a-formal-execution-v1/eval-reports-rerun-3/m27a-s2_vs_m07-v1-sim32.execution.log",
+      "sha256": "9d78cbbea52bda87485c9fd05d0e11b722eeba2c936d1b0784e1b28aa3eb6c32"
+    },
+    "failed_attempts_preserved": true,
+    "invalid_attempts_excluded_from_scientific_evidence": true,
+    "failed_attempts": [
+      {
+        "path": "local-artifacts/m27a-formal-execution-v1/failed-attempts/attempt-1-m27a-s2_vs_m07-v1-sim32-handshake-timeout",
+        "manifest_sha256": "b9f54e8136b9125c7bb96073e4616a2e2492eeef85f9caf340cfc04a15071388",
+        "status": "RUNTIME_INVALID_EXCLUDED",
+        "scientific_evidence": false,
+        "formal_M27A_result": false,
+        "plan": {
+          "path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+          "file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+          "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740"
+        },
+        "completed_matches": 63,
+        "aborted_matches": 1,
+        "candidate_faults": 1,
+        "eval_report_sha256": "85dbb948112ccbdab407e9870cf38153cf7c5638cd94ca14a8f0b9a020bdbaba",
+        "rerun_same_frozen_plan": true,
+        "plan_or_timeout_modified": false,
+        "binary_or_checkpoint_modified": false
+      },
+      {
+        "path": "local-artifacts/m27a-formal-execution-v1/failed-attempts/attempt-2-m27a-s2_vs_m07-v1-sim32-handshake-timeout",
+        "manifest_sha256": "47706fc89141bdbe341c4fce6afdcf02484056bb483b4d38e77fa77ccf007f7c",
+        "status": "RUNTIME_INVALID_EXCLUDED",
+        "scientific_evidence": false,
+        "formal_M27A_result": false,
+        "plan": {
+          "path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+          "file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+          "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740"
+        },
+        "completed_matches": 61,
+        "aborted_matches": 3,
+        "candidate_faults": 3,
+        "eval_report_sha256": "5fac37172623d78d02e1e28e850ee263a4bcc98fb4ef4cf68e0511b46ab1801d",
+        "rerun_same_frozen_plan": true,
+        "plan_or_timeout_modified": false,
+        "binary_or_checkpoint_modified": false
+      },
+      {
+        "path": "local-artifacts/m27a-formal-execution-v1/failed-attempts/attempt-3-m27a-s2_vs_m07-v1-sim32-interrupted",
+        "manifest_sha256": "a93461aba9f8ac81e92eae9fd6f65a8a3b4aa177da7d897c3819fb2f691d5025",
+        "status": "RUNTIME_INVALID_EXCLUDED",
+        "scientific_evidence": false,
+        "formal_M27A_result": false,
+        "plan": {
+          "path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+          "file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+          "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740"
+        },
+        "completed_matches": 8,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "eval_report_sha256": null,
+        "rerun_same_frozen_plan": true,
+        "plan_or_timeout_modified": false,
+        "binary_or_checkpoint_modified": false
+      }
+    ]
+  },
+  "evaluations": [
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim16",
+      "pair": "s2_vs_m07",
+      "simulations": 16,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim16.plan.json",
+      "realized_plan_file_sha256": "063f84663358f62e4543e28a63440d89332d04932e14b7da8c16da2bf4ab9b9d",
+      "plan_hash": "88fc196f91e1ad6e55d433a7187b740ab0e1e39f4e9d75fa4d743473c0383a18",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim16/eval-report.json",
+      "eval_report_file_sha256": "9905294c0b5a42a06e563baa95724178c8972cc07b3e2939eac924930bc8148d",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 1,
+        "losses": 46
+      },
+      "center_bps": 2734,
+      "margin_bps": 2166,
+      "lower_bps": 568,
+      "upper_bps": 4900,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 10,
+          "ties": 1,
+          "losses": 21,
+          "center_bps": 3281
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 7,
+          "ties": 0,
+          "losses": 25,
+          "center_bps": 2187
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "7631636e84bc8a43b8c5f87a515875d773dbb02f1e1295f606622d4a0c12034a",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "478c3345a136a2dd1b445fd30fdb1efe5481268419ef863b1c32d0207c92840d"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim24",
+      "pair": "s2_vs_m07",
+      "simulations": 24,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim24.plan.json",
+      "realized_plan_file_sha256": "d8c7d56c907a8497e705d43047e3373f44564a1c356c684fa5e1d75f88d3c853",
+      "plan_hash": "c59a458b6555dedc8617cecfd08be5dd4528d8d8baf766e05b732b69cc44440e",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim24/eval-report.json",
+      "eval_report_file_sha256": "3c0230aeadc1cbb8b4a2cba55a7465d12180013b9652b098c15175d7bbb7c6db",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 18,
+        "ties": 1,
+        "losses": 45
+      },
+      "center_bps": 2890,
+      "margin_bps": 2166,
+      "lower_bps": 724,
+      "upper_bps": 5056,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 9,
+          "ties": 1,
+          "losses": 22,
+          "center_bps": 2968
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 9,
+          "ties": 0,
+          "losses": 23,
+          "center_bps": 2812
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "53e7bc08a7f88b09fa549bd96765426569884b72ff903277b9c85899d99ea6d4",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "026c9d59feeba0976eca7da58b93e14c52b60b1588ac79b895e9c9eb70ac0379"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim32",
+      "pair": "s2_vs_m07",
+      "simulations": 32,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+      "realized_plan_file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+      "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim32/eval-report.json",
+      "eval_report_file_sha256": "95c557ab15d1cfbe2ccd8618f05ecb57f9353afa79f0e7faf5e590ae50d134fc",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 19,
+        "ties": 0,
+        "losses": 45
+      },
+      "center_bps": 2968,
+      "margin_bps": 2166,
+      "lower_bps": 802,
+      "upper_bps": 5134,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 12,
+          "ties": 0,
+          "losses": 20,
+          "center_bps": 3750
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 7,
+          "ties": 0,
+          "losses": 25,
+          "center_bps": 2187
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "0988bbbfcd56bde9c1c4af78491a0607aaf84974b1fdc379bba69c5a6c2ae7f9",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "2f988e01a0da84469f70bd7d538c1066b0df1cd6dafb021afef91654a55b5960"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim48",
+      "pair": "s2_vs_m07",
+      "simulations": 48,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim48.plan.json",
+      "realized_plan_file_sha256": "50366ab034bd40d9856c79de84518f045d9dbb9b33847653b7eac867bc61b252",
+      "plan_hash": "061833a500829fae1abaa6a02f571c22bf8cb51759d0a9efadae1281dbd8ec00",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim48/eval-report.json",
+      "eval_report_file_sha256": "ccdeb42d47b9c84a8afc0c3e5c0d42dc4d0bc3515b0c190881b57410e2f41214",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 0,
+        "losses": 47
+      },
+      "center_bps": 2656,
+      "margin_bps": 2166,
+      "lower_bps": 490,
+      "upper_bps": 4822,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 9,
+          "ties": 0,
+          "losses": 23,
+          "center_bps": 2812
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "663e131253d6ebdb47c0d3f103c3e24b716379abf72827f835971a1299931784",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "e6dc8e90e45b27994b8d333e026aefd63776dfd896a3eed0e37529456f5d6e97"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim64",
+      "pair": "s2_vs_m07",
+      "simulations": 64,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim64.plan.json",
+      "realized_plan_file_sha256": "958d2bfa92f600f2e334161f936d256296091925f0b4801d9cfe803a10e4d4c5",
+      "plan_hash": "f7af8a691a7e52697b3fea0d43fcbe7cf2555ac8566b55a5e49151a21b903fb5",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim64/eval-report.json",
+      "eval_report_file_sha256": "36ba339701b05910fb0427c30382a0c0ca2ce32c98edd76013602eedc1f48d88",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 0,
+        "losses": 47
+      },
+      "center_bps": 2656,
+      "margin_bps": 2166,
+      "lower_bps": 490,
+      "upper_bps": 4822,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 11,
+          "ties": 0,
+          "losses": 21,
+          "center_bps": 3437
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 6,
+          "ties": 0,
+          "losses": 26,
+          "center_bps": 1875
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "6f7eb0f308b1047af0cb9ee0c58b239b76fde34da3aceeca095ec4a992c1bdec",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "6082bbf8514899bafa74ba76800049d09f9b0c2e312b5c45f200190a318a8918"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim96",
+      "pair": "s2_vs_m07",
+      "simulations": 96,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim96.plan.json",
+      "realized_plan_file_sha256": "5e17555be9683caa2937bfbbee643f4a53f7ed51fe5585fda65b5ec17dc58419",
+      "plan_hash": "1a8466292c82b1cefe7fbfcf3b006fc590412d474d2b079a0bcc382899a3b973",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim96/eval-report.json",
+      "eval_report_file_sha256": "d6453cb3395f38317638372a9fd94075fe030391b72d4d152d322862c139caf4",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 0,
+        "losses": 47
+      },
+      "center_bps": 2656,
+      "margin_bps": 2166,
+      "lower_bps": 490,
+      "upper_bps": 4822,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 12,
+          "ties": 0,
+          "losses": 20,
+          "center_bps": 3750
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 5,
+          "ties": 0,
+          "losses": 27,
+          "center_bps": 1562
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "7093c9615ec9aba22808a31c4b561ed506dc1bceb18062e16bc0c2a9e2cf6d5b",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "0ff9991db3f97d674150f90fd5372f61046b9360db2a77f78ed5d0d1e93ae2d0"
+    },
+    {
+      "evaluation_id": "m27a-s2_vs_m07-v1-sim128",
+      "pair": "s2_vs_m07",
+      "simulations": 128,
+      "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim128.plan.json",
+      "realized_plan_file_sha256": "1bbd9d153feb90d35d1b1a8aa7c5dc4797f09a25ace51fb1e64603fb16c421ea",
+      "plan_hash": "25c9449af65f30e4b3a63acd2355c57e8ee613a0eecef6ab47865071e9f2d492",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim128/eval-report.json",
+      "eval_report_file_sha256": "d990c362c85da7f96dde94a953fb3140365b1282aafceb22184314b1c4a71ce6",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 18,
+        "ties": 0,
+        "losses": 46
+      },
+      "center_bps": 2812,
+      "margin_bps": 2166,
+      "lower_bps": 646,
+      "upper_bps": 4978,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 12,
+          "ties": 0,
+          "losses": 20,
+          "center_bps": 3750
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 6,
+          "ties": 0,
+          "losses": 26,
+          "center_bps": 1875
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "501e73083fccf17805e2060e165569a0ec71050a3c7fca8a3c57cbd61c699733",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "58c9e2c50a175c258ffc826822bd75e5a200258bbf67768e940603b825daa815"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim16",
+      "pair": "s1_vs_m07",
+      "simulations": 16,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim16.plan.json",
+      "realized_plan_file_sha256": "5c6fd3fc9f5beb8fa9eeacab08e3a8c198caad4453d53555e1159edb220f5dda",
+      "plan_hash": "16a6511301c874f0d9672b0aaf86e2c7062c723b12c15b7e5d90858c4a7fa866",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim16/eval-report.json",
+      "eval_report_file_sha256": "9a6ec544ebc1056cfacfe4baf030c5245c9805d0efc81b0b2d0aef6aca34f4d3",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 14,
+        "ties": 0,
+        "losses": 50
+      },
+      "center_bps": 2187,
+      "margin_bps": 2166,
+      "lower_bps": 21,
+      "upper_bps": 4353,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 6,
+          "ties": 0,
+          "losses": 26,
+          "center_bps": 1875
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "d8c87104c2da5c399c72daf93705b8661effb8986fe2b41547c3a9e8afb6fbdf",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "9606251b90b604b3314014a3b216657c2642d9b765bb94fd07fb41d6da182e4d"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim24",
+      "pair": "s1_vs_m07",
+      "simulations": 24,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim24.plan.json",
+      "realized_plan_file_sha256": "3b2130419b4da53a52ab45a2546325950f8a5c92ff5105870372bc088435e308",
+      "plan_hash": "e36b317572ea5c049011147b75de77ee44a337a29573f7e4ca108fa9e4b363d5",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim24/eval-report.json",
+      "eval_report_file_sha256": "472ae9ce96e164208d3e3617b4d2ac5805996e7cc5211915a74ea5010e6421a1",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 16,
+        "ties": 0,
+        "losses": 48
+      },
+      "center_bps": 2500,
+      "margin_bps": 2166,
+      "lower_bps": 334,
+      "upper_bps": 4666,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "ed07d189e6b47540c6f7114370f0d90c5411f9183496bc9384d5b842e78ae356",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "58c620509a6d396bda6e3f906ac3db7b26c61603170c083cfe938f0a978a2dd2"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim32",
+      "pair": "s1_vs_m07",
+      "simulations": 32,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim32.plan.json",
+      "realized_plan_file_sha256": "826fe72dc03e2b2411a0fe62d92abd541f85f0595e9129aad051da4c0011e78c",
+      "plan_hash": "cb4aa66d6ded56de8f91e643dfc9d593f560c36c31a0070fcc84f2303bfd51ad",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim32/eval-report.json",
+      "eval_report_file_sha256": "c846f1ef250b299ac36dda953e9d6edc50962fc9c908a92b2b6f510cd742bb73",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 15,
+        "ties": 0,
+        "losses": 49
+      },
+      "center_bps": 2343,
+      "margin_bps": 2166,
+      "lower_bps": 177,
+      "upper_bps": 4509,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 7,
+          "ties": 0,
+          "losses": 25,
+          "center_bps": 2187
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "40e409bbe6afec64a7ed45e1c33df816861d895f027c9e823fdf3695c50c1d2d",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "88c41ea7e157aa96637133a2c1c8aeecd32c8a32f07a2998037eb2da78309564"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim48",
+      "pair": "s1_vs_m07",
+      "simulations": 48,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim48.plan.json",
+      "realized_plan_file_sha256": "c4933f178c7ea90d867603bba7dcbc763d06b8f525c4e8d11c59b45918b7041f",
+      "plan_hash": "d70444eefeabf3acb93ebea27d4d8cff595764cd55a66e082b77539c7fb686ff",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim48/eval-report.json",
+      "eval_report_file_sha256": "9a7e3cd80ba893ad4541ee2c254602a4d19e5f3f5474fee8c9ddc70497284294",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 0,
+        "losses": 47
+      },
+      "center_bps": 2656,
+      "margin_bps": 2166,
+      "lower_bps": 490,
+      "upper_bps": 4822,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 9,
+          "ties": 0,
+          "losses": 23,
+          "center_bps": 2812
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "3cd5d35338824f83c33580ba3c1cf131f6825bb3e6abe578954b5da75925a7b2",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "37c6a0254389edb46c59ccb263ccbeb8eabd80808d9d41277942989b34dd66b0"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim64",
+      "pair": "s1_vs_m07",
+      "simulations": 64,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim64.plan.json",
+      "realized_plan_file_sha256": "86ff1b3fb7c7d88162cb83e55645f47591424fda5f0a6a1774508a85c8851029",
+      "plan_hash": "7d7d47e09a24310ff92ec68927c93016f331efd225d624537cf760c7fd75def7",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim64/eval-report.json",
+      "eval_report_file_sha256": "917f6b48a8c795b8da75e5d9918e09ab1bbf7a2007c0775380c074f4a6d32e67",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 13,
+        "ties": 0,
+        "losses": 51
+      },
+      "center_bps": 2031,
+      "margin_bps": 2166,
+      "lower_bps": 0,
+      "upper_bps": 4197,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 8,
+          "ties": 0,
+          "losses": 24,
+          "center_bps": 2500
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 5,
+          "ties": 0,
+          "losses": 27,
+          "center_bps": 1562
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "a3aec5a41e0943c107f2a297c338cc005f4fff0bdf63fda0b5335c077efe3171",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "5f020e7f53bd9fba126230ec76bca67cfa5847f7aaf660bd6bcf4646c1a44bfb"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim96",
+      "pair": "s1_vs_m07",
+      "simulations": 96,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim96.plan.json",
+      "realized_plan_file_sha256": "64ecd78e1f55b3dd3117b35128c69b387c8d58816c0b340ca42e6e28ac3bc529",
+      "plan_hash": "9cf91dec4752b9fbd46fb88e545dba890f0dc5dfa548c4c6bd1938c1692f8459",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim96/eval-report.json",
+      "eval_report_file_sha256": "14d1548849a8715d8cf42f55bdcae0cedb391d1570f393ecf47339b8312c74f0",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 14,
+        "ties": 0,
+        "losses": 50
+      },
+      "center_bps": 2187,
+      "margin_bps": 2166,
+      "lower_bps": 21,
+      "upper_bps": 4353,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 10,
+          "ties": 0,
+          "losses": 22,
+          "center_bps": 3125
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 4,
+          "ties": 0,
+          "losses": 28,
+          "center_bps": 1250
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "067301e6fd7a331fab32a447cf2503d001a070a3cb3fe2fe3e09e154c378279d",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "a47ca45eb99c075d9c3d39740dce703c7903a6b844cdbbb1c02522c67e8a2e75"
+    },
+    {
+      "evaluation_id": "m27a-s1_vs_m07-v1-sim128",
+      "pair": "s1_vs_m07",
+      "simulations": 128,
+      "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim128.plan.json",
+      "realized_plan_file_sha256": "b3114a3440c39733da71ddb108d0b587f4c23fc88d90c9c3bd984484ca5fb086",
+      "plan_hash": "591403d64683abe24f6429a7779684031843824683b8bf29ffbacdcc0e701325",
+      "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim128/eval-report.json",
+      "eval_report_file_sha256": "51b38065c262c1cc47e96465bb510dd9da3928a05d2aaaab7e8d2dd6b775aafc",
+      "scheduled_matches": 64,
+      "completed_matches": 64,
+      "aborted_matches": 0,
+      "candidate_faults": 0,
+      "raw_wtl": {
+        "wins": 17,
+        "ties": 0,
+        "losses": 47
+      },
+      "center_bps": 2656,
+      "margin_bps": 2166,
+      "lower_bps": 490,
+      "upper_bps": 4822,
+      "seat_rotation_split": {
+        "seat_0": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 11,
+          "ties": 0,
+          "losses": 21,
+          "center_bps": 3437
+        },
+        "seat_1": {
+          "scheduled_matches": 32,
+          "completed_matches": 32,
+          "aborted_matches": 0,
+          "wins": 6,
+          "ties": 0,
+          "losses": 26,
+          "center_bps": 1875
+        }
+      },
+      "report_files": 64,
+      "report_files_sha256_digest": "6741d996cf8559242c8dd2db4530f702e6ecda17d695f8133bd9c1ae5abf5ff1",
+      "replay_files": 64,
+      "replay_files_sha256_digest": "82bde9284bd7a23463532b3107c1baf6e2a2b31833d2ecf59bb10ecf22aaf4ef"
+    }
+  ],
+  "curve": [
+    {
+      "simulations": 16,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim16",
+        "pair": "s2_vs_m07",
+        "simulations": 16,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim16.plan.json",
+        "realized_plan_file_sha256": "063f84663358f62e4543e28a63440d89332d04932e14b7da8c16da2bf4ab9b9d",
+        "plan_hash": "88fc196f91e1ad6e55d433a7187b740ab0e1e39f4e9d75fa4d743473c0383a18",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim16/eval-report.json",
+        "eval_report_file_sha256": "9905294c0b5a42a06e563baa95724178c8972cc07b3e2939eac924930bc8148d",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 1,
+          "losses": 46
+        },
+        "center_bps": 2734,
+        "margin_bps": 2166,
+        "lower_bps": 568,
+        "upper_bps": 4900,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 10,
+            "ties": 1,
+            "losses": 21,
+            "center_bps": 3281
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 7,
+            "ties": 0,
+            "losses": 25,
+            "center_bps": 2187
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "7631636e84bc8a43b8c5f87a515875d773dbb02f1e1295f606622d4a0c12034a",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "478c3345a136a2dd1b445fd30fdb1efe5481268419ef863b1c32d0207c92840d"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim16",
+        "pair": "s1_vs_m07",
+        "simulations": 16,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim16.plan.json",
+        "realized_plan_file_sha256": "5c6fd3fc9f5beb8fa9eeacab08e3a8c198caad4453d53555e1159edb220f5dda",
+        "plan_hash": "16a6511301c874f0d9672b0aaf86e2c7062c723b12c15b7e5d90858c4a7fa866",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim16/eval-report.json",
+        "eval_report_file_sha256": "9a6ec544ebc1056cfacfe4baf030c5245c9805d0efc81b0b2d0aef6aca34f4d3",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 14,
+          "ties": 0,
+          "losses": 50
+        },
+        "center_bps": 2187,
+        "margin_bps": 2166,
+        "lower_bps": 21,
+        "upper_bps": 4353,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 6,
+            "ties": 0,
+            "losses": 26,
+            "center_bps": 1875
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "d8c87104c2da5c399c72daf93705b8661effb8986fe2b41547c3a9e8afb6fbdf",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "9606251b90b604b3314014a3b216657c2642d9b765bb94fd07fb41d6da182e4d"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 17500,
+        "center_bps": 546,
+        "margin_bps": 4331,
+        "lower_bps": -3785,
+        "upper_bps": 4877,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 1,
+                "losses": 0
+              },
+              "score_bps": 7500
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 2500
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 24,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim24",
+        "pair": "s2_vs_m07",
+        "simulations": 24,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim24.plan.json",
+        "realized_plan_file_sha256": "d8c7d56c907a8497e705d43047e3373f44564a1c356c684fa5e1d75f88d3c853",
+        "plan_hash": "c59a458b6555dedc8617cecfd08be5dd4528d8d8baf766e05b732b69cc44440e",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim24/eval-report.json",
+        "eval_report_file_sha256": "3c0230aeadc1cbb8b4a2cba55a7465d12180013b9652b098c15175d7bbb7c6db",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 18,
+          "ties": 1,
+          "losses": 45
+        },
+        "center_bps": 2890,
+        "margin_bps": 2166,
+        "lower_bps": 724,
+        "upper_bps": 5056,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 9,
+            "ties": 1,
+            "losses": 22,
+            "center_bps": 2968
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 9,
+            "ties": 0,
+            "losses": 23,
+            "center_bps": 2812
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "53e7bc08a7f88b09fa549bd96765426569884b72ff903277b9c85899d99ea6d4",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "026c9d59feeba0976eca7da58b93e14c52b60b1588ac79b895e9c9eb70ac0379"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim24",
+        "pair": "s1_vs_m07",
+        "simulations": 24,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim24.plan.json",
+        "realized_plan_file_sha256": "3b2130419b4da53a52ab45a2546325950f8a5c92ff5105870372bc088435e308",
+        "plan_hash": "e36b317572ea5c049011147b75de77ee44a337a29573f7e4ca108fa9e4b363d5",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim24/eval-report.json",
+        "eval_report_file_sha256": "472ae9ce96e164208d3e3617b4d2ac5805996e7cc5211915a74ea5010e6421a1",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 16,
+          "ties": 0,
+          "losses": 48
+        },
+        "center_bps": 2500,
+        "margin_bps": 2166,
+        "lower_bps": 334,
+        "upper_bps": 4666,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "ed07d189e6b47540c6f7114370f0d90c5411f9183496bc9384d5b842e78ae356",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "58c620509a6d396bda6e3f906ac3db7b26c61603170c083cfe938f0a978a2dd2"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 12500,
+        "center_bps": 390,
+        "margin_bps": 4331,
+        "lower_bps": -3941,
+        "upper_bps": 4721,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 1,
+                "losses": 0
+              },
+              "score_bps": 7500
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 7500
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 10000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 32,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim32",
+        "pair": "s2_vs_m07",
+        "simulations": 32,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim32.plan.json",
+        "realized_plan_file_sha256": "26e6ee53ea98f467f65186690f3203eb9bb13a38dd13583f0b9518f78f748a20",
+        "plan_hash": "08f43c66f4a5a44020015e78dabb0db8918c7ea0063d1c2f00bfabbafd85e740",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim32/eval-report.json",
+        "eval_report_file_sha256": "95c557ab15d1cfbe2ccd8618f05ecb57f9353afa79f0e7faf5e590ae50d134fc",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 19,
+          "ties": 0,
+          "losses": 45
+        },
+        "center_bps": 2968,
+        "margin_bps": 2166,
+        "lower_bps": 802,
+        "upper_bps": 5134,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 12,
+            "ties": 0,
+            "losses": 20,
+            "center_bps": 3750
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 7,
+            "ties": 0,
+            "losses": 25,
+            "center_bps": 2187
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "0988bbbfcd56bde9c1c4af78491a0607aaf84974b1fdc379bba69c5a6c2ae7f9",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "2f988e01a0da84469f70bd7d538c1066b0df1cd6dafb021afef91654a55b5960"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim32",
+        "pair": "s1_vs_m07",
+        "simulations": 32,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim32.plan.json",
+        "realized_plan_file_sha256": "826fe72dc03e2b2411a0fe62d92abd541f85f0595e9129aad051da4c0011e78c",
+        "plan_hash": "cb4aa66d6ded56de8f91e643dfc9d593f560c36c31a0070fcc84f2303bfd51ad",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim32/eval-report.json",
+        "eval_report_file_sha256": "c846f1ef250b299ac36dda953e9d6edc50962fc9c908a92b2b6f510cd742bb73",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 15,
+          "ties": 0,
+          "losses": 49
+        },
+        "center_bps": 2343,
+        "margin_bps": 2166,
+        "lower_bps": 177,
+        "upper_bps": 4509,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 7,
+            "ties": 0,
+            "losses": 25,
+            "center_bps": 2187
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "40e409bbe6afec64a7ed45e1c33df816861d895f027c9e823fdf3695c50c1d2d",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "88c41ea7e157aa96637133a2c1c8aeecd32c8a32f07a2998037eb2da78309564"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 20000,
+        "center_bps": 625,
+        "margin_bps": 4331,
+        "lower_bps": -3706,
+        "upper_bps": 4956,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 10000
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 48,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim48",
+        "pair": "s2_vs_m07",
+        "simulations": 48,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim48.plan.json",
+        "realized_plan_file_sha256": "50366ab034bd40d9856c79de84518f045d9dbb9b33847653b7eac867bc61b252",
+        "plan_hash": "061833a500829fae1abaa6a02f571c22bf8cb51759d0a9efadae1281dbd8ec00",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim48/eval-report.json",
+        "eval_report_file_sha256": "ccdeb42d47b9c84a8afc0c3e5c0d42dc4d0bc3515b0c190881b57410e2f41214",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 0,
+          "losses": 47
+        },
+        "center_bps": 2656,
+        "margin_bps": 2166,
+        "lower_bps": 490,
+        "upper_bps": 4822,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 9,
+            "ties": 0,
+            "losses": 23,
+            "center_bps": 2812
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "663e131253d6ebdb47c0d3f103c3e24b716379abf72827f835971a1299931784",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "e6dc8e90e45b27994b8d333e026aefd63776dfd896a3eed0e37529456f5d6e97"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim48",
+        "pair": "s1_vs_m07",
+        "simulations": 48,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim48.plan.json",
+        "realized_plan_file_sha256": "c4933f178c7ea90d867603bba7dcbc763d06b8f525c4e8d11c59b45918b7041f",
+        "plan_hash": "d70444eefeabf3acb93ebea27d4d8cff595764cd55a66e082b77539c7fb686ff",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim48/eval-report.json",
+        "eval_report_file_sha256": "9a7e3cd80ba893ad4541ee2c254602a4d19e5f3f5474fee8c9ddc70497284294",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 0,
+          "losses": 47
+        },
+        "center_bps": 2656,
+        "margin_bps": 2166,
+        "lower_bps": 490,
+        "upper_bps": 4822,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 9,
+            "ties": 0,
+            "losses": 23,
+            "center_bps": 2812
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "3cd5d35338824f83c33580ba3c1cf131f6825bb3e6abe578954b5da75925a7b2",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "37c6a0254389edb46c59ccb263ccbeb8eabd80808d9d41277942989b34dd66b0"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 0,
+        "center_bps": 0,
+        "margin_bps": 4331,
+        "lower_bps": -4331,
+        "upper_bps": 4331,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 64,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim64",
+        "pair": "s2_vs_m07",
+        "simulations": 64,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim64.plan.json",
+        "realized_plan_file_sha256": "958d2bfa92f600f2e334161f936d256296091925f0b4801d9cfe803a10e4d4c5",
+        "plan_hash": "f7af8a691a7e52697b3fea0d43fcbe7cf2555ac8566b55a5e49151a21b903fb5",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim64/eval-report.json",
+        "eval_report_file_sha256": "36ba339701b05910fb0427c30382a0c0ca2ce32c98edd76013602eedc1f48d88",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 0,
+          "losses": 47
+        },
+        "center_bps": 2656,
+        "margin_bps": 2166,
+        "lower_bps": 490,
+        "upper_bps": 4822,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 11,
+            "ties": 0,
+            "losses": 21,
+            "center_bps": 3437
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 6,
+            "ties": 0,
+            "losses": 26,
+            "center_bps": 1875
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "6f7eb0f308b1047af0cb9ee0c58b239b76fde34da3aceeca095ec4a992c1bdec",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "6082bbf8514899bafa74ba76800049d09f9b0c2e312b5c45f200190a318a8918"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim64",
+        "pair": "s1_vs_m07",
+        "simulations": 64,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim64.plan.json",
+        "realized_plan_file_sha256": "86ff1b3fb7c7d88162cb83e55645f47591424fda5f0a6a1774508a85c8851029",
+        "plan_hash": "7d7d47e09a24310ff92ec68927c93016f331efd225d624537cf760c7fd75def7",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim64/eval-report.json",
+        "eval_report_file_sha256": "917f6b48a8c795b8da75e5d9918e09ab1bbf7a2007c0775380c074f4a6d32e67",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 13,
+          "ties": 0,
+          "losses": 51
+        },
+        "center_bps": 2031,
+        "margin_bps": 2166,
+        "lower_bps": 0,
+        "upper_bps": 4197,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 8,
+            "ties": 0,
+            "losses": 24,
+            "center_bps": 2500
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 5,
+            "ties": 0,
+            "losses": 27,
+            "center_bps": 1562
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "a3aec5a41e0943c107f2a297c338cc005f4fff0bdf63fda0b5335c077efe3171",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "5f020e7f53bd9fba126230ec76bca67cfa5847f7aaf660bd6bcf4646c1a44bfb"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 20000,
+        "center_bps": 625,
+        "margin_bps": 4331,
+        "lower_bps": -3706,
+        "upper_bps": 4956,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 96,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim96",
+        "pair": "s2_vs_m07",
+        "simulations": 96,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim96.plan.json",
+        "realized_plan_file_sha256": "5e17555be9683caa2937bfbbee643f4a53f7ed51fe5585fda65b5ec17dc58419",
+        "plan_hash": "1a8466292c82b1cefe7fbfcf3b006fc590412d474d2b079a0bcc382899a3b973",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim96/eval-report.json",
+        "eval_report_file_sha256": "d6453cb3395f38317638372a9fd94075fe030391b72d4d152d322862c139caf4",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 0,
+          "losses": 47
+        },
+        "center_bps": 2656,
+        "margin_bps": 2166,
+        "lower_bps": 490,
+        "upper_bps": 4822,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 12,
+            "ties": 0,
+            "losses": 20,
+            "center_bps": 3750
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 5,
+            "ties": 0,
+            "losses": 27,
+            "center_bps": 1562
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "7093c9615ec9aba22808a31c4b561ed506dc1bceb18062e16bc0c2a9e2cf6d5b",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "0ff9991db3f97d674150f90fd5372f61046b9360db2a77f78ed5d0d1e93ae2d0"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim96",
+        "pair": "s1_vs_m07",
+        "simulations": 96,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim96.plan.json",
+        "realized_plan_file_sha256": "64ecd78e1f55b3dd3117b35128c69b387c8d58816c0b340ca42e6e28ac3bc529",
+        "plan_hash": "9cf91dec4752b9fbd46fb88e545dba890f0dc5dfa548c4c6bd1938c1692f8459",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim96/eval-report.json",
+        "eval_report_file_sha256": "14d1548849a8715d8cf42f55bdcae0cedb391d1570f393ecf47339b8312c74f0",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 14,
+          "ties": 0,
+          "losses": 50
+        },
+        "center_bps": 2187,
+        "margin_bps": 2166,
+        "lower_bps": 21,
+        "upper_bps": 4353,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 10,
+            "ties": 0,
+            "losses": 22,
+            "center_bps": 3125
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 4,
+            "ties": 0,
+            "losses": 28,
+            "center_bps": 1250
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "067301e6fd7a331fab32a447cf2503d001a070a3cb3fe2fe3e09e154c378279d",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "a47ca45eb99c075d9c3d39740dce703c7903a6b844cdbbb1c02522c67e8a2e75"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 15000,
+        "center_bps": 468,
+        "margin_bps": 4331,
+        "lower_bps": -3863,
+        "upper_bps": 4799,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 10000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    },
+    {
+      "simulations": 128,
+      "s2_vs_m07": {
+        "evaluation_id": "m27a-s2_vs_m07-v1-sim128",
+        "pair": "s2_vs_m07",
+        "simulations": 128,
+        "realized_plan_path": "benchmarks/m27a-s2_vs_m07-v1-sim128.plan.json",
+        "realized_plan_file_sha256": "1bbd9d153feb90d35d1b1a8aa7c5dc4797f09a25ace51fb1e64603fb16c421ea",
+        "plan_hash": "25c9449af65f30e4b3a63acd2355c57e8ee613a0eecef6ab47865071e9f2d492",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s2_vs_m07-v1-sim128/eval-report.json",
+        "eval_report_file_sha256": "d990c362c85da7f96dde94a953fb3140365b1282aafceb22184314b1c4a71ce6",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 18,
+          "ties": 0,
+          "losses": 46
+        },
+        "center_bps": 2812,
+        "margin_bps": 2166,
+        "lower_bps": 646,
+        "upper_bps": 4978,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 12,
+            "ties": 0,
+            "losses": 20,
+            "center_bps": 3750
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 6,
+            "ties": 0,
+            "losses": 26,
+            "center_bps": 1875
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "501e73083fccf17805e2060e165569a0ec71050a3c7fca8a3c57cbd61c699733",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "58c9e2c50a175c258ffc826822bd75e5a200258bbf67768e940603b825daa815"
+      },
+      "s1_vs_m07": {
+        "evaluation_id": "m27a-s1_vs_m07-v1-sim128",
+        "pair": "s1_vs_m07",
+        "simulations": 128,
+        "realized_plan_path": "benchmarks/m27a-s1_vs_m07-v1-sim128.plan.json",
+        "realized_plan_file_sha256": "b3114a3440c39733da71ddb108d0b587f4c23fc88d90c9c3bd984484ca5fb086",
+        "plan_hash": "591403d64683abe24f6429a7779684031843824683b8bf29ffbacdcc0e701325",
+        "eval_report_path": "local-artifacts/m27a-formal-execution-v1/eval-reports-accepted/m27a-s1_vs_m07-v1-sim128/eval-report.json",
+        "eval_report_file_sha256": "51b38065c262c1cc47e96465bb510dd9da3928a05d2aaaab7e8d2dd6b775aafc",
+        "scheduled_matches": 64,
+        "completed_matches": 64,
+        "aborted_matches": 0,
+        "candidate_faults": 0,
+        "raw_wtl": {
+          "wins": 17,
+          "ties": 0,
+          "losses": 47
+        },
+        "center_bps": 2656,
+        "margin_bps": 2166,
+        "lower_bps": 490,
+        "upper_bps": 4822,
+        "seat_rotation_split": {
+          "seat_0": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 11,
+            "ties": 0,
+            "losses": 21,
+            "center_bps": 3437
+          },
+          "seat_1": {
+            "scheduled_matches": 32,
+            "completed_matches": 32,
+            "aborted_matches": 0,
+            "wins": 6,
+            "ties": 0,
+            "losses": 26,
+            "center_bps": 1875
+          }
+        },
+        "report_files": 64,
+        "report_files_sha256_digest": "6741d996cf8559242c8dd2db4530f702e6ecda17d695f8133bd9c1ae5abf5ff1",
+        "replay_files": 64,
+        "replay_files_sha256_digest": "82bde9284bd7a23463532b3107c1baf6e2a2b31833d2ecf59bb10ecf22aaf4ef"
+      },
+      "matched_anchor": {
+        "completed_paired_seed_blocks": 32,
+        "anchor_block_delta_sum_bps": 5000,
+        "center_bps": 156,
+        "margin_bps": 4331,
+        "lower_bps": -4175,
+        "upper_bps": 4487,
+        "paired_blocks": [
+          {
+            "seed_index": 0,
+            "game_seed": 301001,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 1,
+            "game_seed": 301002,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 2,
+            "game_seed": 301003,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 3,
+            "game_seed": 301004,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 4,
+            "game_seed": 301005,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 5,
+            "game_seed": 301006,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 6,
+            "game_seed": 301007,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 7,
+            "game_seed": 301008,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 8,
+            "game_seed": 301009,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 9,
+            "game_seed": 301010,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 10,
+            "game_seed": 301011,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 11,
+            "game_seed": 301012,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 12,
+            "game_seed": 301013,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 13,
+            "game_seed": 301014,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 14,
+            "game_seed": 301015,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 15,
+            "game_seed": 301016,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 16,
+            "game_seed": 301017,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 17,
+            "game_seed": 301018,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 18,
+            "game_seed": 301019,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 19,
+            "game_seed": 301020,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 20,
+            "game_seed": 301021,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 21,
+            "game_seed": 301022,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 22,
+            "game_seed": 301023,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 23,
+            "game_seed": 301024,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 24,
+            "game_seed": 301025,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 25,
+            "game_seed": 301026,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 26,
+            "game_seed": 301027,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          },
+          {
+            "seed_index": 27,
+            "game_seed": 301028,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 2,
+                "ties": 0,
+                "losses": 0
+              },
+              "score_bps": 10000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 10000
+          },
+          {
+            "seed_index": 28,
+            "game_seed": 301029,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 29,
+            "game_seed": 301030,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": -5000
+          },
+          {
+            "seed_index": 30,
+            "game_seed": 301031,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 0,
+                "ties": 0,
+                "losses": 2
+              },
+              "score_bps": 0
+            },
+            "anchor_block_delta_bps": 5000
+          },
+          {
+            "seed_index": 31,
+            "game_seed": 301032,
+            "s2_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "s1_vs_m07": {
+              "raw_wtl": {
+                "wins": 1,
+                "ties": 0,
+                "losses": 1
+              },
+              "score_bps": 5000
+            },
+            "anchor_block_delta_bps": 0
+          }
+        ]
+      },
+      "eligibility": {
+        "complete_matrix": true,
+        "zero_aborts": true,
+        "zero_candidate_faults": true,
+        "anchor_center_min_bps": 1000,
+        "eligible": false
+      }
+    }
+  ],
+  "decision": {
+    "contract": "effective-splendor-m27a-stable-operating-region-v2",
+    "decision_mode": "diagnostic_practical_center",
+    "ordered_budgets": [
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128
+    ],
+    "eligible_budgets": [],
+    "stable_region": null,
+    "selected_budget": null,
+    "decision": "M27A_INCONCLUSIVE",
+    "decision_recomputed_from_raw_reports": true,
+    "higher_simulations_not_preferred_by_default": true,
+    "promotion_authorization": "NONE",
+    "champion_unchanged": "m07-champion",
+    "m25_authorized": false,
+    "m26_authorized": false,
+    "m28_authorized": false
+  }
+}
