@@ -1,9 +1,23 @@
 {
   "format": "effective-splendor-m27a-search-budget-scaling-result",
   "version": 1,
-  "status": "VERIFIED",
+  "status": "ACCEPTED",
   "milestone": "M27A",
   "generated_on": "2026-08-18",
+  "review": {
+    "status": "ACCEPTED",
+    "review_basis_commit": "e5f5dc616decb04cb43b9d060c8183487ec3e060",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2
+    },
+    "p2_followups": [
+      "Make the verifier read and exact-assert the frozen decision thresholds from preregistration.",
+      "Optionally fold semantic verify-replay into a tracked verifier gate instead of relying only on external validation."
+    ],
+    "downstream_authorization": "No downstream milestone is authorized by this acceptance."
+  },
   "authorization": {
     "arena_execution": "AUTHORIZED",
     "authorization_basis_source_commit": "b3440d42e059888f939de31232c89b4141248e81",

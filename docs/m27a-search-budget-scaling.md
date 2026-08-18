@@ -1,7 +1,7 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; execution gate `REVIEWED`; formal result `VERIFIED`; decision `M27A_INCONCLUSIVE`
-Execution: formal 896-match Arena `VERIFIED` (896/896, 0 abort, 0 candidate fault); promotion `NONE`
+Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; execution gate `REVIEWED`; formal result `ACCEPTED`; decision `M27A_INCONCLUSIVE`
+Execution: formal 896-match Arena `ACCEPTED` (896/896, 0 abort, 0 candidate fault); promotion `NONE`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
 Materialization: `1db2241229a4d3bfe89cdf00f011789cdbbaee11` (`feat(training): materialize M27A search-budget plans`)
@@ -12,7 +12,8 @@ Execution-Gate Repair 1: `6d79e8adfd6fd3143d62e26d5634bdb82dbd4731` (`fix(traini
 Runtime/build freeze: source `b3440d42e059888f939de31232c89b4141248e81`; snapshot `local-artifacts/m27a-runtime-freeze-2026-08-18/runtime-snapshot.json` (`5115f805f68afd623af2842cb0dd469686c888ea6e7944e418689c04800ed350`)
 Reviewed smoke: `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json` (`2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676`); 4/4 completed, 0 abort, 0 candidate fault
 Final execution authorization: source/runtime basis `b3440d42e059888f939de31232c89b4141248e81`; runtime/smoke binding `27455cb6935902db1aab4692f42f880a3ca13364`; 896 matches `AUTHORIZED`
-Formal result: `benchmarks/m27a-search-budget-scaling-v1.result.json` (`c59174dabcaa955aa84d5e011fcd9b862b7676a73564acf706a340a9afc1bace`); raw-report verifier `scripts/m27a_result.py`
+Formal-result independent review: basis `e5f5dc616decb04cb43b9d060c8183487ec3e060`; `ACCEPTED`; P0/P1/P2 = `0/0/2` non-blocking
+Formal result: `benchmarks/m27a-search-budget-scaling-v1.result.json` (`095b96759fd93514d845fbba9c6c4d56b4ee940964ad73d1b8ac1462ae96c309`); raw-report verifier `scripts/m27a_result.py`
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -112,8 +113,10 @@ Out of scope:
    raw reports, then apply the frozen decision function without treating
    higher simulations as inherently better.
 8. Record the complete result with raw-report provenance and leave promotion
-   decisions to a separate review gate. **Completed**; the result is
-   `M27A_INCONCLUSIVE`.
+   decisions to a separate review gate. **Completed**; the result is accepted
+   as `M27A_INCONCLUSIVE`.
+9. Persist the independent formal-result acceptance and record its two
+   non-blocking durability follow-ups. **Completed**.
 
 ## Iteration log
 
@@ -304,7 +307,7 @@ and SHA-256.
   cargo test --locked --workspace --all-targets -- --test-threads=1 — exit 101; only the known Linux process test `shutdown_reaps_child` failed
   cargo test --locked --workspace --all-targets -- --test-threads=1 --skip shutdown_reaps_child — exit 0; all non-skipped workspace tests passed
   git diff --check — exit 0
-  python3 scripts/m27a_result.py --write — exit 0; result generated from accepted raw reports
+  python3 scripts/m27a_result.py --write — exit 0; ACCEPTED result regenerated from accepted raw reports
   python3 scripts/m27a_result.py — PASS, 896/896, 0 abort, 0 candidate fault, M27A_INCONCLUSIVE
   find local-artifacts/m27a-formal-execution-v1/eval-reports-accepted -type f -name '*.replay.json' -print0 | xargs -0 -n 1 -P 8 target/debug/splendor verify-replay --input >/dev/null — exit 0 (896/896)
   ```
@@ -386,21 +389,41 @@ The raw-report curve is:
   process test excluded; all 896 accepted replays passed `verify-replay`; and
   `git diff --check` passed.
 
+### 2026-08-18 — formal-result independent review accepted
+
+- Independent review of commit
+  `e5f5dc616decb04cb43b9d060c8183487ec3e060` accepted the formal result with
+  P0/P1/P2 = `0/0/2`; both P2 findings are non-blocking durability follow-ups.
+- The tracked result status is now `ACCEPTED`. Its scientific decision remains
+  exactly `M27A_INCONCLUSIVE`: no eligible budget, no stable region, no
+  selected budget, no promotion, and M07 remains champion.
+- P2 follow-up 1 is to make the verifier read and exact-assert the frozen
+  decision thresholds from the preregistration rather than maintain parallel
+  threshold literals. P2 follow-up 2 is to optionally fold semantic
+  `verify-replay` into a tracked verifier gate rather than relying only on the
+  separately recorded 896/896 local validation command. Neither follow-up
+  changes the accepted result or reopens the frozen plans.
+- No downstream milestone is authorized by this acceptance. M25, M26, and M28
+  remain unauthorized.
+
 ## Result and decision
 
 M27A Repair 2, the 14-plan materialization, and Execution-Gate Repair 1 are
 `ACCEPTED / FROZEN` / `REVIEWED`. Runtime/build identity is frozen, the
 reviewed smoke passed, and the final execution authorization was granted. The
-formal result is `VERIFIED` at 896/896 with zero aborts and zero candidate
-faults. Applying the frozen decision function to raw reports yields
-`M27A_INCONCLUSIVE`: no budget is selected, no promotion occurred, and M07
-remains champion.
+formal result is `ACCEPTED` at 896/896 with zero aborts and zero candidate
+faults after independent review. Applying the frozen decision function to raw
+reports yields `M27A_INCONCLUSIVE`: no budget is selected, no promotion
+occurred, and M07 remains champion.
 
 ## Known limitations
 
 - The formal reports and replays are local-only ignored artifacts; the tracked
   result binds their paths and SHA-256 digests, and the local verifier must be
   rerun when those artifacts are moved or regenerated.
+- The accepted formal-result review recorded two non-blocking durability
+  follow-ups: dynamic preregistration threshold binding in the verifier and
+  optionally integrating semantic replay verification into a tracked gate.
 - The three invalid `s2/sim32` attempts are preserved for provenance but are
   excluded from scientific evidence; only the exact frozen-plan retry is used
   in the result.
@@ -417,6 +440,9 @@ remains champion.
 
 ## Next authorized gate
 
-The next gate is an independent review of the tracked result and its bound raw
-reports/replays. This round selected no operating budget and authorized no
-promotion or follow-up milestone. M25, M26, and M28 remain unauthorized.
+M27A formal result is now independently reviewed and `ACCEPTED`; this round
+selected no operating budget and authorized no promotion or follow-up
+milestone. Any next work must begin with a new independent preregistration
+route/diagnostic gate addressing the weakened M24.5 search signal. The two P2
+durability follow-ups may be handled separately without reopening this result.
+M25, M26, and M28 remain unauthorized.
