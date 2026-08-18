@@ -1,0 +1,290 @@
+{
+  "format": "effective-splendor-m28a-entity-mixer-width-scaling",
+  "version": 1,
+  "milestone": "M28A",
+  "revision": "capacity-only-v1",
+  "status": "DESIGNED",
+  "baseline_commit": "428c227f507a232be0aab9187e3195f8c352f4bd",
+  "parent": {
+    "milestone": "M27A",
+    "status": "ACCEPTED / CLOSED",
+    "closure_commit": "428c227f507a232be0aab9187e3195f8c352f4bd",
+    "outcome": "M27A_INCONCLUSIVE"
+  },
+  "champion": "M07",
+  "promotion": "NONE",
+  "downstream_authorization": false,
+  "training_authorization": "NOT_AUTHORIZED",
+  "arena_authorization": "NOT_AUTHORIZED",
+  "authorization": {
+    "training": "NOT_AUTHORIZED",
+    "arena": "NOT_AUTHORIZED",
+    "m25": false,
+    "m26": false,
+    "m28_downstream_continuation": false
+  },
+  "review": {
+    "source_prereg_review_required": true,
+    "source_prereg_review": "PENDING",
+    "training_requires_explicit_following_authorization": true,
+    "arena_requires_training_review_and_offline_gates": true
+  },
+  "question": "With fixed M24-S2 data, representation, Policy/Value objective, training recipe, and search, does only increasing Entity Mixer hidden width produce reproducible offline fit improvement and actual Arena improvement?",
+  "single_experimental_variable": "hidden_dim",
+  "scope": {
+    "fixed_dataset": true,
+    "fixed_representation": true,
+    "fixed_policy_value_objective": true,
+    "fixed_optimizer_recipe": true,
+    "fixed_search_algorithm": true,
+    "capacity_only": true,
+    "no_new_self_play": true,
+    "no_teacher_change": true,
+    "no_search_budget_scaling": true,
+    "no_transformer": true,
+    "no_attention": true,
+    "no_target_redesign": true,
+    "no_puct_tuning": true,
+    "no_optimizer_sweep": true,
+    "no_learning_rate_sweep": true,
+    "no_promotion_trial": true
+  },
+  "dataset": {
+    "path": "local-artifacts/m24-self-play-s2-v1/self-play.json",
+    "format": "effective-splendor-neural-self-play-v2",
+    "version": 2,
+    "games": 512,
+    "examples": 31505,
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "generator_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+    "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "artifact_policy": "dataset remains local-only and is never committed"
+  },
+  "split": {
+    "total_examples": 31505,
+    "validation": {
+      "condition": "game_index % 4 == 0",
+      "game_index_modulus": 4,
+      "game_index_remainder": 0,
+      "examples": 7851
+    },
+    "train": {
+      "condition": "game_index % 4 != 0",
+      "examples": 23654
+    },
+    "s1_reference": {
+      "condition": "game_index < 128 AND game_index % 4 == 0",
+      "game_index_lt": 128,
+      "game_index_modulus": 4,
+      "game_index_remainder": 0,
+      "examples": 1953,
+      "role": "generalization diagnostic only; never train or select an epoch"
+    }
+  },
+  "models": [
+    {
+      "role": "control",
+      "model_id": "m28a-entity-mixer-h192-b4-control-v1",
+      "architecture": "entity_mixer",
+      "hidden_dim": 192,
+      "blocks": 4,
+      "dropout": 0.0,
+      "expected_parameter_count": 949060
+    },
+    {
+      "role": "candidate",
+      "model_id": "m28a-entity-mixer-h320-b4-v1",
+      "architecture": "entity_mixer",
+      "hidden_dim": 320,
+      "blocks": 4,
+      "dropout": 0.0,
+      "expected_parameter_count": 2605764
+    }
+  ],
+  "initialization": {
+    "mode": "fresh",
+    "initialization_seed": 280129,
+    "shuffle_seed": 280129,
+    "reset_before_each_model": true,
+    "forbidden_sources": [
+      "M22 checkpoint weights",
+      "M24-S1 checkpoint weights",
+      "M24-S2 checkpoint weights",
+      "partial weight transplant",
+      "Net2Net",
+      "weight interpolation",
+      "checkpoint surgery"
+    ],
+    "same_seed_note": "The same seed freezes the initialization protocol; different tensor shapes do not imply element-wise corresponding weights."
+  },
+  "training": {
+    "device": "cuda",
+    "seed": 280129,
+    "initialization_seed": 280129,
+    "shuffle_seed": 280129,
+    "batch_size": 128,
+    "epochs": 32,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "value_loss_weight": 0.5,
+    "gradient_clip_norm": 1.0,
+    "optimizer": "AdamW",
+    "determinism": {
+      "cublas_workspace_config": ":4096:8",
+      "torch_deterministic": true,
+      "cudnn_benchmark": false,
+      "dataloader_workers": 0,
+      "new_generator_per_model": true
+    },
+    "selection": {
+      "score": "policy_cross_entropy + 0.5 * value_mse",
+      "source": "full S2 validation only",
+      "arena_reselection": false
+    }
+  },
+  "offline_gates": {
+    "relative_improvement_formula": "floor(10000 * (control - candidate) / control)",
+    "top1_delta_formula": "candidate_top1 - control_top1",
+    "G1_full_s2_validation": {
+      "pass_if": "(policy_ce_improvement_bps >= 50 OR value_mse_improvement_bps >= 50) AND policy_ce_improvement_bps >= -100 AND value_mse_improvement_bps >= -100 AND top1_delta >= -0.010",
+      "policy_ce_improvement_min_bps": 50,
+      "value_mse_improvement_min_bps": 50,
+      "policy_ce_non_regression_min_bps": -100,
+      "value_mse_non_regression_min_bps": -100,
+      "top1_delta_min": -0.01
+    },
+    "G2_s1_reference_non_regression": {
+      "pass_if": "policy_ce_improvement_bps >= -100 AND value_mse_improvement_bps >= -100 AND top1_delta >= -0.010",
+      "policy_ce_improvement_min_bps": -100,
+      "value_mse_improvement_min_bps": -100,
+      "top1_delta_min": -0.01
+    },
+    "fail_decision": "M28A_OFFLINE_NO_CAPACITY_SIGNAL",
+    "fail_action": "STOP_NO_ARENA",
+    "failure_semantics": "A failed offline gate is a valid negative training result, not an execution failure."
+  },
+  "historical_reference": {
+    "historical_reference_only": true,
+    "causal_control": false,
+    "checkpoint_hash": "c43e3c239124671c77bb7436dcf79e4fe6c71b66c8008186ac68621a8ad7d5a8",
+    "full_s2_validation": {
+      "policy_cross_entropy": 1.1873009657042906,
+      "visit_top1": 0.9261240606292193,
+      "value_mse": 0.23482048434066918
+    },
+    "s1_reference": {
+      "policy_cross_entropy": 1.2052568747212322,
+      "visit_top1": 0.9190988223246288,
+      "value_mse": 0.2366843743624592
+    },
+    "note": "M24-S2 is inherited/fine-tuned; neither M28A model may use it for initialization."
+  },
+  "arena_screen": {
+    "condition": "Only after explicit training review authorization and G1/G2 PASS; this prereg does not authorize execution.",
+    "agents": [
+      "m28a candidate h320",
+      "m28a fresh control h192",
+      "M07 champion"
+    ],
+    "neural_search": {
+      "agent": "GPU neural ISMCTS",
+      "simulations": 16,
+      "max_depth_turns": 1,
+      "puct_exploration_milli": 1500,
+      "sample_seed": 28000018,
+      "device": "cuda"
+    },
+    "m07": {
+      "sample_seed": 20260810,
+      "sample_count": 4,
+      "max_depth_turns": 1,
+      "max_nodes": 2000
+    },
+    "timeouts_ms": {
+      "handshake": 5000,
+      "move": 30000,
+      "shutdown": 2000
+    },
+    "matrix": {
+      "pairs": [
+        "candidate_vs_control",
+        "candidate_vs_m07",
+        "control_vs_m07"
+      ],
+      "game_seeds": [
+        302001,
+        302002,
+        302003,
+        302004,
+        302005,
+        302006,
+        302007,
+        302008,
+        302009,
+        302010,
+        302011,
+        302012,
+        302013,
+        302014,
+        302015,
+        302016,
+        302017,
+        302018,
+        302019,
+        302020,
+        302021,
+        302022,
+        302023,
+        302024,
+        302025,
+        302026,
+        302027,
+        302028,
+        302029,
+        302030,
+        302031,
+        302032
+      ],
+      "seat_rotations": 2,
+      "matches_per_pair": 64,
+      "total_matches": 192,
+      "completion_requirement": "192/192, 0 abort, 0 candidate fault"
+    },
+    "statistics": {
+      "direct_score": "candidate_vs_control score from win=1, tie=0.5, loss=0",
+      "direct_capacity_threshold_bps": 5500,
+      "matched_m07_anchor": "candidate_vs_m07 block score minus control_vs_m07 block score, matched by seed and rotation",
+      "m07_anchor_threshold_bps": 500,
+      "direct_hoeffding_margin_bps": 2166,
+      "matched_anchor_hoeffding_margin_bps": 4331,
+      "uncertainty_role": "diagnostic_only"
+    },
+    "runtime_invalid_policy": "Preserve and mark excluded; rerun the exact frozen plan. Never change seed, timeout, search, or checkpoint because W/T/L looks bad."
+  },
+  "decision_outputs": {
+    "allowed": [
+      "M28A_OFFLINE_NO_CAPACITY_SIGNAL",
+      "M28A_CAPACITY_SIGNAL",
+      "M28A_NO_CAPACITY_SIGNAL",
+      "M28A_MIXED",
+      "M28A_EXECUTION_INVALID"
+    ],
+    "arena_rule": "After offline PASS, M28A_CAPACITY_SIGNAL requires candidate_vs_control >= 5500 bps AND capacity_anchor >= +500 bps; both are practical diagnostic gates, not promotion gates.",
+    "execution_invalid_rule": "Any incomplete Arena matrix or formal abort/fault yields M28A_EXECUTION_INVALID, not a scientific conclusion.",
+    "promotion": "NONE",
+    "champion": "M07",
+    "m25": "NOT_AUTHORIZED",
+    "m26": "NOT_AUTHORIZED",
+    "downstream": "M28A_CAPACITY_SIGNAL only authorizes consideration of further width-scaling work; it does not authorize a downstream milestone."
+  },
+  "artifacts": {
+    "trainer": "training/m17_gpu/splendor_gpu/capacity_train.py",
+    "python_tests": "training/m17_gpu/tests/test_capacity_train.py",
+    "rust_contract_test": "crates/splendor-cli/tests/m28a_design.rs",
+    "milestone_document": "docs/m28a-entity-mixer-width.md",
+    "checkpoint_format": "effective-splendor-gpu-checkpoint",
+    "checkpoint_version": 1,
+    "generated_checkpoints": "local-only; no formal training is run in the preregistration implementation round"
+  }
+}
