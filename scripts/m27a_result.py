@@ -25,6 +25,7 @@ SOURCE_COMMIT = "b3440d42e059888f939de31232c89b4141248e81"
 EXECUTION_BINDING_COMMIT = "27455cb6935902db1aab4692f42f880a3ca13364"
 BINARY_SHA256 = "5003a58db33ffcd85fc0fc6a1edfb59dfb5cb9abf396c7c8a2b98f4b0017f56e"
 RESULT_REVIEW_BASIS_COMMIT = "e5f5dc616decb04cb43b9d060c8183487ec3e060"
+CLOSURE_REVIEW_BASIS_COMMIT = "c632b02d360f2a14bd46baf9e511d1d04abd688a"
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -365,6 +366,7 @@ def build_result() -> dict[str, Any]:
         "format": "effective-splendor-m27a-search-budget-scaling-result",
         "version": 1,
         "status": "ACCEPTED",
+        "lifecycle": "CLOSED",
         "milestone": "M27A",
         "generated_on": "2026-08-18",
         "review": {
@@ -376,6 +378,13 @@ def build_result() -> dict[str, Any]:
                 "Optionally fold semantic verify-replay into a tracked verifier gate instead of relying only on external validation.",
             ],
             "downstream_authorization": "No downstream milestone is authorized by this acceptance.",
+        },
+        "closure": {
+            "status": "CLOSED",
+            "review_basis_commit": CLOSURE_REVIEW_BASIS_COMMIT,
+            "parent_acceptance_commit": RESULT_REVIEW_BASIS_COMMIT,
+            "findings": {"P0": 0, "P1": 0, "P2": 0},
+            "downstream_authorization": "No downstream milestone is authorized by closure.",
         },
         "authorization": {
             "arena_execution": "AUTHORIZED",

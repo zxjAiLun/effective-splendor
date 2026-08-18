@@ -1,6 +1,6 @@
 # M27A Fixed-Model Search-Budget Scaling
 
-Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; execution gate `REVIEWED`; formal result `ACCEPTED`; decision `M27A_INCONCLUSIVE`
+Status: `ACCEPTED / FROZEN`; 14-plan materialization `ACCEPTED`; execution gate `REVIEWED`; formal result `ACCEPTED`; lifecycle `CLOSED`; decision `M27A_INCONCLUSIVE`
 Execution: formal 896-match Arena `ACCEPTED` (896/896, 0 abort, 0 candidate fault); promotion `NONE`
 Baseline: `d027a5aa9a80325f3fbfb823a775c303c6d14468`
 Implementation: `a13bcdd` (`fix(training): repair M27A diagnostic operating gate`)
@@ -13,7 +13,8 @@ Runtime/build freeze: source `b3440d42e059888f939de31232c89b4141248e81`; snapsho
 Reviewed smoke: `local-artifacts/m27a-runtime-freeze-2026-08-18/smoke-manifest.json` (`2dff0d518498a7922b602ed813821b5e9b98d3df81398410ef147fd59ddac676`); 4/4 completed, 0 abort, 0 candidate fault
 Final execution authorization: source/runtime basis `b3440d42e059888f939de31232c89b4141248e81`; runtime/smoke binding `27455cb6935902db1aab4692f42f880a3ca13364`; 896 matches `AUTHORIZED`
 Formal-result independent review: basis `e5f5dc616decb04cb43b9d060c8183487ec3e060`; `ACCEPTED`; P0/P1/P2 = `0/0/2` non-blocking
-Formal result: `benchmarks/m27a-search-budget-scaling-v1.result.json` (`095b96759fd93514d845fbba9c6c4d56b4ee940964ad73d1b8ac1462ae96c309`); raw-report verifier `scripts/m27a_result.py`
+Acceptance-persistence closure review: basis `c632b02d360f2a14bd46baf9e511d1d04abd688a`; `CLOSED`; P0/P1/P2 = `0/0/0`
+Formal result: `benchmarks/m27a-search-budget-scaling-v1.result.json` (`14ce29e6802feca2c5e03333962f333f15798e03c66f71883567295f6fa29228`); raw-report verifier `scripts/m27a_result.py`
 Parent: M24.5 `ACCEPTED` — D24.5 `SEARCH_BOTTLENECK`
 Design config: `benchmarks/m27a-search-budget-scaling-v1.json`
 Materialization bundle: `benchmarks/m27a-search-budget-scaling-v1.bundle.json`
@@ -117,6 +118,8 @@ Out of scope:
    as `M27A_INCONCLUSIVE`.
 9. Persist the independent formal-result acceptance and record its two
    non-blocking durability follow-ups. **Completed**.
+10. Persist the acceptance-persistence closure. **Completed**; M27A is
+    `ACCEPTED / CLOSED`.
 
 ## Iteration log
 
@@ -307,7 +310,7 @@ and SHA-256.
   cargo test --locked --workspace --all-targets -- --test-threads=1 — exit 101; only the known Linux process test `shutdown_reaps_child` failed
   cargo test --locked --workspace --all-targets -- --test-threads=1 --skip shutdown_reaps_child — exit 0; all non-skipped workspace tests passed
   git diff --check — exit 0
-  python3 scripts/m27a_result.py --write — exit 0; ACCEPTED result regenerated from accepted raw reports
+  python3 scripts/m27a_result.py --write — exit 0; ACCEPTED/CLOSED result regenerated from accepted raw reports
   python3 scripts/m27a_result.py — PASS, 896/896, 0 abort, 0 candidate fault, M27A_INCONCLUSIVE
   find local-artifacts/m27a-formal-execution-v1/eval-reports-accepted -type f -name '*.replay.json' -print0 | xargs -0 -n 1 -P 8 target/debug/splendor verify-replay --input >/dev/null — exit 0 (896/896)
   ```
@@ -406,15 +409,31 @@ The raw-report curve is:
 - No downstream milestone is authorized by this acceptance. M25, M26, and M28
   remain unauthorized.
 
+### 2026-08-18 — acceptance persistence closure approved
+
+- Independent closure review approved commit
+  `c632b02d360f2a14bd46baf9e511d1d04abd688a`, whose direct parent is the
+  accepted formal-result commit `e5f5dc616decb04cb43b9d060c8183487ec3e060`.
+  Closure findings are P0/P1/P2 = `0/0/0`.
+- The result and lifecycle ledger now record `M27A = ACCEPTED / CLOSED`.
+  The outcome remains `M27A_INCONCLUSIVE`, with 896/896, zero aborts, zero
+  candidate faults, no eligible or selected budget, no promotion, and M07
+  unchanged.
+- The historical formal-result findings remain recorded as P0/P1/P2 = `0/0/2`;
+  both P2 items remain non-blocking durability maintenance and do not reopen
+  M27A or require another 896-match run.
+- M25, M26, and M28 remain unauthorized. Any future work must start with a new
+  independently reviewed route/diagnostic preregistration.
+
 ## Result and decision
 
 M27A Repair 2, the 14-plan materialization, and Execution-Gate Repair 1 are
 `ACCEPTED / FROZEN` / `REVIEWED`. Runtime/build identity is frozen, the
 reviewed smoke passed, and the final execution authorization was granted. The
 formal result is `ACCEPTED` at 896/896 with zero aborts and zero candidate
-faults after independent review. Applying the frozen decision function to raw
-reports yields `M27A_INCONCLUSIVE`: no budget is selected, no promotion
-occurred, and M07 remains champion.
+faults after independent review. The lifecycle is now `CLOSED`. Applying the
+frozen decision function to raw reports yields `M27A_INCONCLUSIVE`: no budget
+is selected, no promotion occurred, and M07 remains champion.
 
 ## Known limitations
 
@@ -428,7 +447,7 @@ occurred, and M07 remains champion.
   excluded from scientific evidence; only the exact frozen-plan retry is used
   in the result.
 - The 32-seed cells and Repair 2 thresholds remain diagnostic choices. The
-  verified result is `M27A_INCONCLUSIVE`, not a strength promotion or a claim
+  accepted result is `M27A_INCONCLUSIVE`, not a strength promotion or a claim
   that a higher simulation budget is better.
 - The 128-simulation cell uses the same fixed 30-second operational timeout as
   every other budget; there is no budget-specific timeout exception.
@@ -440,8 +459,8 @@ occurred, and M07 remains champion.
 
 ## Next authorized gate
 
-M27A formal result is now independently reviewed and `ACCEPTED`; this round
-selected no operating budget and authorized no promotion or follow-up
+M27A formal result is independently reviewed, `ACCEPTED`, and `CLOSED`; this
+round selected no operating budget and authorized no promotion or follow-up
 milestone. Any next work must begin with a new independent preregistration
 route/diagnostic gate addressing the weakened M24.5 search signal. The two P2
 durability follow-ups may be handled separately without reopening this result.
