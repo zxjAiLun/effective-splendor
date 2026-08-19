@@ -1,0 +1,293 @@
+{
+  "format": "effective-splendor-m28b-contextual-entity-interaction",
+  "version": 1,
+  "milestone": "M28B",
+  "revision": "contextual-interaction-v1",
+  "status": "DESIGNED",
+  "baseline_commit": "c0caa883e47cadce1ae85c78b85ba7c4e69ac007",
+  "parent": {
+    "milestone": "M28A",
+    "status": "ACCEPTED / CLOSED",
+    "closure_commit": "c0caa883e47cadce1ae85c78b85ba7c4e69ac007",
+    "outcome": "M28A_OFFLINE_NO_CAPACITY_SIGNAL"
+  },
+  "question": "With fixed M24-S2 data, objective, optimizer, and 16-simulation evaluation, does masked contextual entity interaction improve offline fit and then competitive strength over the historical entity mixer?",
+  "single_experimental_variable": "entity_aggregation_architecture",
+  "training_authorization": "NOT_AUTHORIZED",
+  "arena_authorization": "NOT_AUTHORIZED",
+  "downstream_authorization": false,
+  "promotion": "NONE",
+  "champion": "M07",
+  "authorization": {
+    "training": "NOT_AUTHORIZED",
+    "arena": "NOT_AUTHORIZED",
+    "m25": false,
+    "m26": false,
+    "m28_downstream_continuation": false
+  },
+  "review": {
+    "source_prereg_review_required": true,
+    "source_prereg_review": "PENDING",
+    "training_requires_explicit_following_authorization": true,
+    "arena_requires_training_review_and_offline_gates": true
+  },
+  "scope": {
+    "fixed_dataset": true,
+    "fixed_entity_schema": true,
+    "fixed_policy_value_objective": true,
+    "fixed_optimizer_recipe": true,
+    "fixed_search_algorithm": true,
+    "single_architecture_intervention": true,
+    "no_new_self_play": true,
+    "no_teacher_change": true,
+    "no_width_sweep": true,
+    "no_transformer": true,
+    "no_multi_head_attention": true,
+    "no_target_redesign": true,
+    "no_puct_tuning": true,
+    "no_optimizer_sweep": true,
+    "no_learning_rate_sweep": true,
+    "no_promotion_trial": true
+  },
+  "dataset": {
+    "format": "effective-splendor-neural-self-play-v2",
+    "version": 2,
+    "games": 512,
+    "examples": 31505,
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "generator_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+    "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "artifact_policy": "tracked contract only; dataset and checkpoints remain local ignored artifacts"
+  },
+  "split": {
+    "total_examples": 31505,
+    "validation": {
+      "game_index_modulus": 4,
+      "game_index_remainder": 0,
+      "examples": 7851
+    },
+    "train": {
+      "examples": 23654
+    },
+    "s1_reference": {
+      "game_index_lt": 128,
+      "game_index_modulus": 4,
+      "game_index_remainder": 0,
+      "examples": 1953
+    },
+    "leakage_rule": "game-level split; validation games and S1 reference examples never enter training"
+  },
+  "models": [
+    {
+      "role": "control",
+      "model_id": "m28b-entity-mixer-h192-b4-control-v1",
+      "architecture": "entity_mixer",
+      "hidden_dim": 192,
+      "blocks": 4,
+      "dropout": 0.0,
+      "interaction_blocks": 0,
+      "expected_parameter_count": 949060
+    },
+    {
+      "role": "candidate",
+      "model_id": "m28b-contextual-entity-mixer-h192-b4-i2-v1",
+      "architecture": "contextual_entity_mixer",
+      "hidden_dim": 192,
+      "blocks": 4,
+      "dropout": 0.0,
+      "interaction_blocks": 2,
+      "expected_parameter_count": 1689798
+    }
+  ],
+  "initialization": {
+    "mode": "fresh",
+    "initialization_seed": 280229,
+    "shuffle_seed": 280229,
+    "reset_before_each_model": true,
+    "forbidden_sources": [
+      "M22 checkpoint weights",
+      "M24-S1 checkpoint weights",
+      "M24-S2 checkpoint weights",
+      "M28A control checkpoint weights",
+      "M28A candidate checkpoint weights",
+      "partial weight transplant",
+      "Net2Net",
+      "weight interpolation",
+      "checkpoint surgery"
+    ],
+    "reason": "A fresh control and fresh candidate keep the sole intervention architectural rather than inherited-weight initialization."
+  },
+  "interaction": {
+    "kind": "masked_pairwise_contextual_mixer",
+    "interaction_blocks": 2,
+    "entity_encoder": "existing_entity_encoder",
+    "pair_features": [
+      "q_i",
+      "k_j",
+      "q_i * k_j"
+    ],
+    "weight_activation": "sigmoid",
+    "source_mask": "visible_entities_only",
+    "target_mask": "visible_entities_only",
+    "exclude_self_pair": true,
+    "aggregation": "masked_weighted_mean",
+    "residual_input": [
+      "entity",
+      "context",
+      "global_context"
+    ],
+    "standard_multi_head_attention": false,
+    "transformer_encoder": false,
+    "description": "Each visible entity receives a masked weighted mean of other visible entity values; a residual MLP then combines the entity, pairwise context, and global context."
+  },
+  "training": {
+    "device": "cuda",
+    "seed": 280229,
+    "initialization_seed": 280229,
+    "shuffle_seed": 280229,
+    "batch_size": 128,
+    "epochs": 32,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "value_loss_weight": 0.5,
+    "gradient_clip_norm": 1.0,
+    "optimizer": "AdamW",
+    "determinism": {
+      "cublas_workspace_config": ":4096:8",
+      "torch_deterministic": true,
+      "cudnn_benchmark": false,
+      "dataloader_workers": 0,
+      "new_generator_per_model": true
+    },
+    "selection": {
+      "score": "policy_cross_entropy + 0.5 * value_mse",
+      "source": "full S2 validation only",
+      "arena_reselection": false
+    }
+  },
+  "offline_gates": {
+    "relative_improvement_formula": "floor(10000 * (control - candidate) / control)",
+    "top1_delta_formula": "candidate_top1 - control_top1",
+    "G1_full_s2_validation": {
+      "policy_ce_improvement_min_bps": 50,
+      "value_mse_improvement_min_bps": 50,
+      "policy_ce_non_regression_min_bps": -100,
+      "value_mse_non_regression_min_bps": -100,
+      "top1_delta_min": -0.01,
+      "rule": "at least one fit metric improves by 50 bps; neither fit metric regresses below -100 bps; Top-1 does not regress below -0.010"
+    },
+    "G2_s1_reference_non_regression": {
+      "policy_ce_improvement_min_bps": -100,
+      "value_mse_improvement_min_bps": -100,
+      "top1_delta_min": -0.01,
+      "rule": "S1 reference policy/value fit and Top-1 all remain within the frozen non-regression margins"
+    },
+    "fail_decision": "M28B_OFFLINE_NO_INTERACTION_SIGNAL",
+    "fail_action": "STOP_NO_ARENA",
+    "pass_decision": "M28B_ARENA_ELIGIBLE",
+    "arena_rule": "Offline gates are diagnostic eligibility only; they do not authorize Arena without a separate training-evidence review."
+  },
+  "arena_screen": {
+    "condition": "Only after explicit training review authorization and offline PASS; this prereg does not authorize execution.",
+    "neural_search": {
+      "simulations": 16,
+      "max_depth_turns": 1,
+      "puct_exploration_milli": 1500,
+      "sample_seed": 28000028,
+      "device": "cuda"
+    },
+    "m07": {
+      "sample_seed": 20260810,
+      "sample_count": 4,
+      "max_depth_turns": 1,
+      "max_nodes": 2000
+    },
+    "timeouts_ms": {
+      "handshake": 5000,
+      "move": 30000,
+      "shutdown": 2000
+    },
+    "matrix": {
+      "pairs": [
+        "candidate_vs_control",
+        "candidate_vs_m07",
+        "control_vs_m07"
+      ],
+      "game_seeds": [
+        303001,
+        303002,
+        303003,
+        303004,
+        303005,
+        303006,
+        303007,
+        303008,
+        303009,
+        303010,
+        303011,
+        303012,
+        303013,
+        303014,
+        303015,
+        303016,
+        303017,
+        303018,
+        303019,
+        303020,
+        303021,
+        303022,
+        303023,
+        303024,
+        303025,
+        303026,
+        303027,
+        303028,
+        303029,
+        303030,
+        303031,
+        303032
+      ],
+      "seat_rotations": 2,
+      "matches_per_pair": 64,
+      "total_matches": 192,
+      "completion_required": "all planned matches complete; aborts and candidate faults are invalid execution, not losses"
+    },
+    "statistics": {
+      "direct_score": "candidate_vs_control practical gain in bps",
+      "direct_capacity_threshold_bps": 5500,
+      "m07_anchor_score": "candidate_vs_m07 minus control_vs_m07 matched anchor in bps",
+      "m07_anchor_threshold_bps": 500,
+      "uncertainty_role": "diagnostic_only",
+      "decision_rule": "both direct and M07-anchor thresholds pass => M28B_INTERACTION_SIGNAL; both fail => M28B_NO_INTERACTION_SIGNAL; otherwise => M28B_MIXED"
+    }
+  },
+  "decision_outputs": {
+    "allowed": [
+      "M28B_OFFLINE_NO_INTERACTION_SIGNAL",
+      "M28B_ARENA_ELIGIBLE",
+      "M28B_INTERACTION_SIGNAL",
+      "M28B_NO_INTERACTION_SIGNAL",
+      "M28B_MIXED",
+      "M28B_EXECUTION_INVALID"
+    ],
+    "promotion": "NONE",
+    "champion": "M07",
+    "m25": "NOT_AUTHORIZED",
+    "m26": "NOT_AUTHORIZED",
+    "downstream_continuation": "NOT_AUTHORIZED"
+  },
+  "artifacts": {
+    "config": "benchmarks/m28b-contextual-entity-interaction-v1.config.json",
+    "trainer": "training/m17_gpu/splendor_gpu/interaction_train.py",
+    "model": "training/m17_gpu/splendor_gpu/model.py",
+    "tests": [
+      "training/m17_gpu/tests/test_interaction_model.py",
+      "training/m17_gpu/tests/test_interaction_train.py",
+      "crates/splendor-cli/tests/m28b_design.rs"
+    ],
+    "generated_artifacts": "local ignored checkpoints, reports, and Arena data only after later explicit authorization",
+    "this_round_training": "NOT_RUN",
+    "this_round_arena": "NOT_RUN"
+  }
+}

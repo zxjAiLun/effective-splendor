@@ -16,9 +16,10 @@ class ModelSpec:
     hidden_dim: int
     blocks: int
     dropout: float = 0.0
+    interaction_blocks: int = 0
 
     def validate(self) -> None:
-        if self.architecture not in {"flat_resmlp", "entity_mixer"}:
+        if self.architecture not in {"flat_resmlp", "entity_mixer", "contextual_entity_mixer"}:
             raise ValueError(f"unsupported architecture {self.architecture!r}")
         if not 32 <= self.hidden_dim <= 1024:
             raise ValueError("hidden_dim must be in 32..=1024")
@@ -26,6 +27,11 @@ class ModelSpec:
             raise ValueError("blocks must be in 1..=16")
         if not 0.0 <= self.dropout < 0.5:
             raise ValueError("dropout must be in [0, 0.5)")
+        if self.architecture == "contextual_entity_mixer":
+            if not 1 <= self.interaction_blocks <= 8:
+                raise ValueError("contextual interaction_blocks must be in 1..=8")
+        elif self.interaction_blocks != 0:
+            raise ValueError("interaction_blocks must be zero for non-contextual architectures")
 
 
 class ResidualBlock(nn.Module):
@@ -63,7 +69,12 @@ class PolicyValueBase(nn.Module):
         return logits, self.value(state)
 
     def checkpoint_metadata(self) -> dict[str, object]:
-        return {"architecture": asdict(self.spec), "entity_slots": ENTITY_SLOTS, "entity_features": ENTITY_FEATURES, "global_features": GLOBAL_FEATURES, "action_features": ACTION_FEATURES, "max_players": 2, "value_order": "viewer_relative"}
+        architecture = asdict(self.spec)
+        if self.spec.architecture != "contextual_entity_mixer":
+            # Preserve the historical metadata shape for old entity_mixer and
+            # flat_resmlp checkpoints while accepting the new optional field.
+            architecture.pop("interaction_blocks", None)
+        return {"architecture": architecture, "entity_slots": ENTITY_SLOTS, "entity_features": ENTITY_FEATURES, "global_features": GLOBAL_FEATURES, "action_features": ACTION_FEATURES, "max_players": 2, "value_order": "viewer_relative"}
 
 
 class FlatResMLPPolicyValue(PolicyValueBase):
@@ -99,8 +110,125 @@ class EntityMixerPolicyValue(PolicyValueBase):
         return self.norm(self.blocks(state))
 
 
+class ContextualInteractionBlock(nn.Module):
+    """Lightweight masked pairwise interaction, deliberately not attention."""
+
+    def __init__(self, width: int, dropout: float):
+        super().__init__()
+        self.norm = nn.LayerNorm(width)
+        self.query = nn.Linear(width, width)
+        self.key = nn.Linear(width, width)
+        self.value = nn.Linear(width, width)
+        self.pair = nn.Sequential(
+            nn.Linear(width * 3, width),
+            nn.GELU(),
+            nn.Linear(width, 1),
+        )
+        self.residual = nn.Sequential(
+            nn.Linear(width * 3, width),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(width, width),
+            nn.Dropout(dropout),
+        )
+
+    def forward(
+        self,
+        entities: torch.Tensor,
+        mask: torch.Tensor,
+        global_context: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        normalized = self.norm(entities)
+        queries = self.query(normalized)
+        keys = self.key(normalized)
+        values = self.value(normalized)
+
+        pair_features = torch.cat(
+            (
+                queries.unsqueeze(2).expand(-1, -1, entities.shape[1], -1),
+                keys.unsqueeze(1).expand(-1, entities.shape[1], -1, -1),
+                queries.unsqueeze(2) * keys.unsqueeze(1),
+            ),
+            dim=-1,
+        )
+        interaction = torch.sigmoid(self.pair(pair_features).squeeze(-1))
+        entity_count = entities.shape[1]
+        not_self = ~torch.eye(entity_count, dtype=torch.bool, device=entities.device).unsqueeze(0)
+        pair_mask = mask.unsqueeze(1) & mask.unsqueeze(2) & not_self
+        interaction = interaction.masked_fill(~pair_mask, 0.0)
+        denominator = interaction.sum(dim=-1, keepdim=True).clamp_min(1e-6)
+        context = (interaction.unsqueeze(-1) * values.unsqueeze(1)).sum(dim=2) / denominator
+        context = context.masked_fill(~mask.unsqueeze(-1), 0.0)
+
+        expanded_global = global_context.unsqueeze(1).expand(-1, entity_count, -1)
+        updated = entities + self.residual(torch.cat((entities, context, expanded_global), dim=-1))
+        updated = updated.masked_fill(~mask.unsqueeze(-1), 0.0)
+        return updated, context
+
+
+class ContextualEntityMixerPolicyValue(PolicyValueBase):
+    def __init__(self, spec: ModelSpec):
+        super().__init__(spec)
+        if spec.architecture != "contextual_entity_mixer":
+            raise ValueError("ContextualEntityMixerPolicyValue requires contextual_entity_mixer")
+        h = spec.hidden_dim
+        self.entity_encoder = nn.Sequential(nn.Linear(ENTITY_FEATURES, h), nn.GELU(), nn.Linear(h, h))
+        self.entity_gate = nn.Linear(h, 1)
+        self.global_encoder = nn.Sequential(nn.Linear(GLOBAL_FEATURES, h), nn.GELU(), nn.Linear(h, h))
+        self.mix = nn.Linear(h * 2, h)
+        self.interactions = nn.ModuleList(
+            ContextualInteractionBlock(h, spec.dropout)
+            for _ in range(spec.interaction_blocks)
+        )
+        self.blocks = nn.Sequential(*(ResidualBlock(h, spec.dropout) for _ in range(spec.blocks)))
+        self.norm = nn.LayerNorm(h)
+
+    def _contextual_entities(
+        self,
+        entities: torch.Tensor,
+        mask: torch.Tensor,
+        global_features: torch.Tensor,
+        collect_contexts: bool = False,
+    ) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        encoded = self.entity_encoder(entities)
+        encoded = encoded.masked_fill(~mask.unsqueeze(-1), 0.0)
+        global_context = self.global_encoder(global_features)
+        contexts: list[torch.Tensor] = []
+        for block in self.interactions:
+            encoded, context = block(encoded, mask, global_context)
+            if collect_contexts:
+                contexts.append(context)
+        return encoded, contexts
+
+    def contextual_entity_embeddings(
+        self,
+        entities: torch.Tensor,
+        mask: torch.Tensor,
+        global_features: torch.Tensor,
+    ) -> torch.Tensor:
+        return self._contextual_entities(entities, mask, global_features)[0]
+
+    def contextual_interaction_contexts(
+        self,
+        entities: torch.Tensor,
+        mask: torch.Tensor,
+        global_features: torch.Tensor,
+    ) -> list[torch.Tensor]:
+        return self._contextual_entities(entities, mask, global_features, collect_contexts=True)[1]
+
+    def state_embedding(self, entities: torch.Tensor, mask: torch.Tensor, global_features: torch.Tensor) -> torch.Tensor:
+        encoded, _ = self._contextual_entities(entities, mask, global_features)
+        gate = self.entity_gate(encoded).squeeze(-1).masked_fill(~mask, torch.finfo(encoded.dtype).min)
+        weights = torch.softmax(gate, dim=-1).unsqueeze(-1)
+        pooled = (encoded * weights).sum(dim=1)
+        state = self.mix(torch.cat([pooled, self.global_encoder(global_features)], dim=-1))
+        return self.norm(self.blocks(state))
+
+
 def build_model(spec: ModelSpec) -> PolicyValueBase:
     spec.validate()
     if spec.architecture == "flat_resmlp":
         return FlatResMLPPolicyValue(spec)
-    return EntityMixerPolicyValue(spec)
+    if spec.architecture == "entity_mixer":
+        return EntityMixerPolicyValue(spec)
+    return ContextualEntityMixerPolicyValue(spec)
