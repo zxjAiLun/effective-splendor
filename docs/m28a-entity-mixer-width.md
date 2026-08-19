@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M28A
-STATUS = ACCEPTED / OFFLINE STOP (Arena not authorized)
+STATUS = ACCEPTED / CLOSED (offline stop; Arena not authorized)
 BASE_COMMIT = 428c227f507a232be0aab9187e3195f8c352f4bd
 IMPLEMENTATION_COMMIT = e3e4285
 SCOPE = Fresh-init capacity-only comparison of Entity Mixer h192 versus h320 on the accepted M24-S2 corpus.
@@ -149,7 +149,7 @@ as diagnostic uncertainty only; they are not eligibility or promotion gates.
   Both fresh-init CUDA models completed 32 epochs under the frozen seed and
   recipe. The tracked result manifest is
   `benchmarks/m28a-entity-mixer-width-v1.result.json`, SHA-256
-  `b06ab99fd622c0bcf486463fbeb08ec0b69de1b8ec782b011dc6c88d80b7c085`.
+  `b3b4caa7305a6657021db30565e12bf4c872254ac376d4f6352b52652d30ae14`.
 - Offline G1 failed: candidate versus control improved Policy CE by `10` bps,
   Value MSE by `34` bps, and Top-1 changed by `-0.0007642`; G1 requires at
   least one head to improve by `50` bps. G2 passed with `12` / `249` bps and
@@ -170,6 +170,20 @@ as diagnostic uncertainty only; they are not eligibility or promotion gates.
   recorded offline values, while a future verifier may recompute G1/G2 and the
   decision directly from raw metrics and frozen thresholds. No retraining or
   rerun is required.
+
+### 2026-08-19 — M28A closure
+
+- M28A closure persistence keeps the independent training-evidence finding at
+  P0/P1/P2 `0/0/1` and the historical source/prereg finding at `0/0/2`, while
+  recording closure findings P0/P1/P2 `0/0/0`.
+- The result lifecycle is now `ACCEPTED / CLOSED`. The scientific decision is
+  unchanged: `M28A_OFFLINE_NO_CAPACITY_SIGNAL`; Arena was not run and remains
+  unauthorized, with no promotion and M07 unchanged.
+- The Rust result contract now reads the raw control/candidate validation and
+  S1-reference metrics, recomputes relative-improvement bps and Top-1 deltas,
+  reads the frozen thresholds from the M28A config, derives G1/G2 and the
+  decision, and compares those derived values with the tracked result. This
+  closes the current non-blocking durability finding without retraining.
 
 ## Final implementation
 
@@ -237,14 +251,15 @@ Implementation smoke and contract tests are separate from the formal training
 evidence. The config SHA-256 is
 `02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4`.
 The compact tracked result manifest SHA-256 is
-`b06ab99fd622c0bcf486463fbeb08ec0b69de1b8ec782b011dc6c88d80b7c085`.
+`b3b4caa7305a6657021db30565e12bf4c872254ac376d4f6352b52652d30ae14`.
 Implementation commit: `e3e4285` (`feat(training): preregister M28A capacity
 scaling`).
 
 ## Result and decision
 
 The source/preregistration and compact training-evidence review are accepted,
-but capacity-only scaling did not meet the preregistered full-S2 offline gate.
+and the M28A lifecycle is now closed. Capacity-only scaling did not meet the
+preregistered full-S2 offline gate.
 The formal decision is `M28A_OFFLINE_NO_CAPACITY_SIGNAL`: G1 failed and G2
 passed. This is an accepted negative training result, not a playing-strength
 result. Arena was not authorized or run, promotion remains `NONE`, and M07
@@ -265,9 +280,6 @@ written back into the prereg file.
   partition and not a checkpoint-selection signal.
 - The catalog semantic hash is hard-bound in trainer source rather than config;
   this is safe for v1 but is a durability follow-up for a future schema.
-- The current result contract test records expected G1/G2 values but does not
-  yet recompute them from raw metrics and frozen thresholds; this is a
-  non-blocking durability follow-up.
 - The negative result does not authorize M25, M26, or a downstream M28
   continuation. A new route/diagnostic prereg is required for the next causal
   question.

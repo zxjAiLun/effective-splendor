@@ -6,6 +6,22 @@ fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+fn relative_improvement_bps(control: &Value, candidate: &Value, split: &str, metric: &str) -> i64 {
+    let control_value = control[split][metric].as_f64().unwrap();
+    let candidate_value = candidate[split][metric].as_f64().unwrap();
+    assert!(control_value > 0.0);
+    (10000.0 * (control_value - candidate_value) / control_value).floor() as i64
+}
+
+fn top1_delta(control: &Value, candidate: &Value, split: &str) -> f64 {
+    candidate[split]["visit_top1"].as_f64().unwrap()
+        - control[split]["visit_top1"].as_f64().unwrap()
+}
+
+fn assert_close(actual: f64, expected: f64) {
+    assert!((actual - expected).abs() < 1e-12, "{actual} != {expected}");
+}
+
 #[test]
 fn m28a_capacity_only_prereg_is_frozen_and_not_authorized_to_run() {
     let config: Value = serde_json::from_slice(
@@ -219,6 +235,10 @@ fn m28a_capacity_only_prereg_is_frozen_and_not_authorized_to_run() {
 
 #[test]
 fn m28a_training_result_records_frozen_offline_stop() {
+    let config: Value = serde_json::from_slice(
+        &fs::read(root().join("benchmarks/m28a-entity-mixer-width-v1.config.json")).unwrap(),
+    )
+    .unwrap();
     let result: Value = serde_json::from_slice(
         &fs::read(root().join("benchmarks/m28a-entity-mixer-width-v1.result.json")).unwrap(),
     )
@@ -231,6 +251,42 @@ fn m28a_training_result_records_frozen_offline_stop() {
     assert_eq!(result["version"], 1);
     assert_eq!(result["status"], "ACCEPTED");
     assert_eq!(result["milestone"], "M28A");
+    assert_eq!(result["lifecycle"], "CLOSED");
+    assert_eq!(
+        result["independent_review"]["basis_commit"],
+        "82ce9843b585a5803fa97e5fec0b68b909e6679a"
+    );
+    assert_eq!(
+        result["independent_review"]["scope"],
+        "compact training-evidence"
+    );
+    assert_eq!(result["independent_review"]["findings"]["P0"], 0);
+    assert_eq!(result["independent_review"]["findings"]["P1"], 0);
+    assert_eq!(result["independent_review"]["findings"]["P2"], 1);
+    assert_eq!(
+        result["historical_source_prereg_review"]["basis_commit"],
+        "e3e428518ad946a3d1f7dfa82d911ee2673f27d2"
+    );
+    assert_eq!(
+        result["historical_source_prereg_review"]["documentation_binding_commit"],
+        "2e527675945d0530129ad3fa0c0bb1c14b0e0a7e"
+    );
+    assert_eq!(
+        result["historical_source_prereg_review"]["findings"]["P0"],
+        0
+    );
+    assert_eq!(
+        result["historical_source_prereg_review"]["findings"]["P1"],
+        0
+    );
+    assert_eq!(
+        result["historical_source_prereg_review"]["findings"]["P2"],
+        2
+    );
+    assert_eq!(result["closure"]["status"], "CLOSED");
+    assert_eq!(result["closure"]["findings"]["P0"], 0);
+    assert_eq!(result["closure"]["findings"]["P1"], 0);
+    assert_eq!(result["closure"]["findings"]["P2"], 0);
     assert_eq!(
         result["review"]["source_prereg_status"],
         "ACCEPTED / FROZEN"
@@ -304,27 +360,78 @@ fn m28a_training_result_records_frozen_offline_stop() {
     assert_eq!(models[1]["parameter_count"], 2605764);
     assert_eq!(models[1]["best_epoch"], 9);
 
+    let models = result["training"]["models"].as_array().unwrap();
+    let control = &models[0];
+    let candidate = &models[1];
+    let full_policy_bps =
+        relative_improvement_bps(control, candidate, "validation", "policy_cross_entropy");
+    let full_value_bps = relative_improvement_bps(control, candidate, "validation", "value_mse");
+    let full_top1_delta = top1_delta(control, candidate, "validation");
+    let reference_policy_bps =
+        relative_improvement_bps(control, candidate, "s1_reference", "policy_cross_entropy");
+    let reference_value_bps =
+        relative_improvement_bps(control, candidate, "s1_reference", "value_mse");
+    let reference_top1_delta = top1_delta(control, candidate, "s1_reference");
+
+    let g1 = &config["offline_gates"]["G1_full_s2_validation"];
+    let g2 = &config["offline_gates"]["G2_s1_reference_non_regression"];
+    let g1_pass = (full_policy_bps >= g1["policy_ce_improvement_min_bps"].as_i64().unwrap()
+        || full_value_bps >= g1["value_mse_improvement_min_bps"].as_i64().unwrap())
+        && full_policy_bps >= g1["policy_ce_non_regression_min_bps"].as_i64().unwrap()
+        && full_value_bps >= g1["value_mse_non_regression_min_bps"].as_i64().unwrap()
+        && full_top1_delta >= g1["top1_delta_min"].as_f64().unwrap();
+    let g2_pass = reference_policy_bps >= g2["policy_ce_improvement_min_bps"].as_i64().unwrap()
+        && reference_value_bps >= g2["value_mse_improvement_min_bps"].as_i64().unwrap()
+        && reference_top1_delta >= g2["top1_delta_min"].as_f64().unwrap();
+
     let offline = &result["offline"];
     assert_eq!(offline["status"], "APPLIED");
-    assert_eq!(offline["G1_full_s2_validation"]["pass"], false);
     assert_eq!(
-        offline["G1_full_s2_validation"]["policy_ce_improvement_bps"],
-        10
+        offline["G1_full_s2_validation"]["pass"].as_bool(),
+        Some(g1_pass)
     );
     assert_eq!(
-        offline["G1_full_s2_validation"]["value_mse_improvement_bps"],
-        34
-    );
-    assert_eq!(offline["G2_s1_reference_non_regression"]["pass"], true);
-    assert_eq!(
-        offline["G2_s1_reference_non_regression"]["policy_ce_improvement_bps"],
-        12
+        offline["G1_full_s2_validation"]["policy_ce_improvement_bps"].as_i64(),
+        Some(full_policy_bps)
     );
     assert_eq!(
-        offline["G2_s1_reference_non_regression"]["value_mse_improvement_bps"],
-        249
+        offline["G1_full_s2_validation"]["value_mse_improvement_bps"].as_i64(),
+        Some(full_value_bps)
     );
-    assert_eq!(offline["decision"], "M28A_OFFLINE_NO_CAPACITY_SIGNAL");
+    assert_close(
+        offline["G1_full_s2_validation"]["top1_delta"]
+            .as_f64()
+            .unwrap(),
+        full_top1_delta,
+    );
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["pass"].as_bool(),
+        Some(g2_pass)
+    );
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["policy_ce_improvement_bps"].as_i64(),
+        Some(reference_policy_bps)
+    );
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["value_mse_improvement_bps"].as_i64(),
+        Some(reference_value_bps)
+    );
+    assert_close(
+        offline["G2_s1_reference_non_regression"]["top1_delta"]
+            .as_f64()
+            .unwrap(),
+        reference_top1_delta,
+    );
+    let expected_decision = if g1_pass && g2_pass {
+        config["decision_outputs"]["allowed"][1].as_str().unwrap()
+    } else {
+        config["offline_gates"]["fail_decision"].as_str().unwrap()
+    };
+    assert_eq!(offline["decision"].as_str(), Some(expected_decision));
+    assert_eq!(
+        offline["fail_action"],
+        config["offline_gates"]["fail_action"]
+    );
     assert_eq!(offline["fail_action"], "STOP_NO_ARENA");
     assert_eq!(result["arena"]["authorization"], "NOT_AUTHORIZED");
     assert_eq!(result["arena"]["not_run"], true);

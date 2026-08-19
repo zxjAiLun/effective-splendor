@@ -3,7 +3,36 @@
   "version": 1,
   "status": "ACCEPTED",
   "milestone": "M28A",
+  "lifecycle": "CLOSED",
   "generated_on": "2026-08-18",
+  "independent_review": {
+    "basis_commit": "82ce9843b585a5803fa97e5fec0b68b909e6679a",
+    "scope": "compact training-evidence",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1
+    },
+    "arena_authorization": "NOT_AUTHORIZED"
+  },
+  "historical_source_prereg_review": {
+    "basis_commit": "e3e428518ad946a3d1f7dfa82d911ee2673f27d2",
+    "documentation_binding_commit": "2e527675945d0530129ad3fa0c0bb1c14b0e0a7e",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2
+    }
+  },
+  "closure": {
+    "status": "CLOSED",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0
+    },
+    "resolved_followup": "Result contract test now recomputes raw metric deltas, G1, G2, and the decision from the frozen config thresholds."
+  },
   "review": {
     "source_prereg_status": "ACCEPTED / FROZEN",
     "source_prereg_review_basis_commit": "e3e428518ad946a3d1f7dfa82d911ee2673f27d2",
@@ -29,8 +58,7 @@
     "arena_authorization": "NOT_AUTHORIZED",
     "p2_followups": [
       "The single frozen seed 280129 supports a protocol-specific signal only; a positive result would not establish general superiority.",
-      "The catalog semantic hash is hard-bound in trainer source; a future schema change may move that binding into configuration.",
-      "The result contract test asserts recorded offline values; a future verifier should recompute G1/G2 and the decision from raw metrics and preregistered thresholds."
+      "The catalog semantic hash is hard-bound in trainer source; a future schema change may move that binding into configuration."
     ]
   },
   "preregistration": {
