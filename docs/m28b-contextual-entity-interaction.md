@@ -4,6 +4,7 @@
 MILESTONE = M28B
 STATUS = IMPLEMENTED / CONTRACT VALIDATED; source/prereg review pending
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
+IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
 TRAINING = NOT_AUTHORIZED (implementation round only)
 ARENA = NOT_AUTHORIZED
@@ -159,6 +160,8 @@ automatically promotes the candidate or changes M07.
   execution path.
 - Added model/trainer Python tests and a Rust config contract test. Training,
   checkpoints, reports, and Arena remain not run.
+- Validation passed: full GPU Python suite `37/37`, targeted Rust contract
+  `1/1`, `cargo fmt --all -- --check`, JSON parsing, and `git diff --check`.
 
 ## Final implementation
 
@@ -187,28 +190,28 @@ in the implementation round.
 
 ## Validation and evidence
 
-The implementation validation commands and exit codes will be bound here at
-round completion. No command is described as run before its exit status is
-recorded.
-
-Expected checks are:
+The implementation-round checks completed before the implementation commit:
 
 ```text
-PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests — PASS
-cargo fmt --all -- --check — PASS
-cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS
-git diff --check — PASS
+PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 37 passed, exit 0
+cargo fmt --all -- --check — PASS, exit 0
+cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS, 1 passed, exit 0
+local-artifacts/m24-torch-cu124/bin/python -m json.tool benchmarks/m28b-contextual-entity-interaction-v1.config.json — PASS, exit 0
+git diff --check — PASS, exit 0
 ```
 
-The M28B config SHA-256 and implementation commit are recorded after those
-checks complete. Generated scientific artifacts have no result hash because
-training and Arena were not run.
+The M28B config SHA-256 is
+`95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd`.
+The implementation commit is
+`e1b80aa6673865d149ef1e56b9a41f1b384b563d` and is pushed to `origin/main`.
+Generated scientific artifacts have no result hash because training and Arena
+were not run.
 
 ## Result and decision
 
 M28B is implemented as a controlled representation experiment, but it is not
 yet scientifically executed. The current status is
-`IMPLEMENTED / CONTRACT VALIDATED` once the listed checks pass;
+`IMPLEMENTED / CONTRACT VALIDATED`;
 `training_authorization` and `arena_authorization` remain `NOT_AUTHORIZED`.
 There is no offline result, Arena result, promotion, or champion change.
 
