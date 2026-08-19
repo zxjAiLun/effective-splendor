@@ -1,7 +1,7 @@
 {
   "format": "effective-splendor-m28a-entity-mixer-width-result",
   "version": 1,
-  "status": "TRAINING_COMPLETE",
+  "status": "ACCEPTED",
   "milestone": "M28A",
   "generated_on": "2026-08-18",
   "review": {
@@ -14,11 +14,23 @@
       "P2": 2
     },
     "training_authorization": "AUTHORIZED",
-    "training_evidence_status": "PENDING_INDEPENDENT_REVIEW",
+    "training_evidence_status": "ACCEPTED",
+    "training_evidence_review_basis_commit": "82ce9843b585a5803fa97e5fec0b68b909e6679a",
+    "current_review_findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1
+    },
+    "historical_source_prereg_findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2
+    },
     "arena_authorization": "NOT_AUTHORIZED",
     "p2_followups": [
       "The single frozen seed 280129 supports a protocol-specific signal only; a positive result would not establish general superiority.",
-      "The catalog semantic hash is hard-bound in trainer source; a future schema change may move that binding into configuration."
+      "The catalog semantic hash is hard-bound in trainer source; a future schema change may move that binding into configuration.",
+      "The result contract test asserts recorded offline values; a future verifier should recompute G1/G2 and the decision from raw metrics and preregistered thresholds."
     ]
   },
   "preregistration": {

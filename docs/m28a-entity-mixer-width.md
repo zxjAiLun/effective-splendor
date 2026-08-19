@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28A
-STATUS = TRAINING COMPLETE / OFFLINE STOP (training-evidence review pending)
+STATUS = ACCEPTED / OFFLINE STOP (Arena not authorized)
 BASE_COMMIT = 428c227f507a232be0aab9187e3195f8c352f4bd
 IMPLEMENTATION_COMMIT = e3e4285
 SCOPE = Fresh-init capacity-only comparison of Entity Mixer h192 versus h320 on the accepted M24-S2 corpus.
-TRAINING = COMPLETED (CUDA; frozen recipe)
+TRAINING = ACCEPTED (CUDA; frozen recipe)
 OFFLINE = M28A_OFFLINE_NO_CAPACITY_SIGNAL
 ARENA = NOT_AUTHORIZED
 ```
@@ -149,12 +149,27 @@ as diagnostic uncertainty only; they are not eligibility or promotion gates.
   Both fresh-init CUDA models completed 32 epochs under the frozen seed and
   recipe. The tracked result manifest is
   `benchmarks/m28a-entity-mixer-width-v1.result.json`, SHA-256
-  `180406250a05d0f0b6c38b32997565fa35d0265be395b77730e744eb707cf75b`.
+  `b06ab99fd622c0bcf486463fbeb08ec0b69de1b8ec782b011dc6c88d80b7c085`.
 - Offline G1 failed: candidate versus control improved Policy CE by `10` bps,
   Value MSE by `34` bps, and Top-1 changed by `-0.0007642`; G1 requires at
   least one head to improve by `50` bps. G2 passed with `12` / `249` bps and
   Top-1 `-0.0015361`. The frozen decision is
   `M28A_OFFLINE_NO_CAPACITY_SIGNAL`; no Arena plan was materialized or run.
+
+### 2026-08-19 — M28A training-evidence accepted
+
+- Independent compact training-evidence review accepted result basis
+  `82ce9843b585a5803fa97e5fec0b68b909e6679a`; current findings are
+  P0/P1/P2 `0/0/1`, non-blocking. Historical source/prereg findings remain
+  P0/P1/P2 `0/0/2` and are unchanged.
+- The result manifest is now `ACCEPTED`; the scientific decision remains
+  `M28A_OFFLINE_NO_CAPACITY_SIGNAL`. Arena remains `NOT_AUTHORIZED`,
+  promotion remains `NONE`, M07 remains champion, and M25/M26/M28 continuation
+  remain unauthorized.
+- The one current P2 is durability-only: the result contract test checks the
+  recorded offline values, while a future verifier may recompute G1/G2 and the
+  decision directly from raw metrics and frozen thresholds. No retraining or
+  rerun is required.
 
 ## Final implementation
 
@@ -222,16 +237,16 @@ Implementation smoke and contract tests are separate from the formal training
 evidence. The config SHA-256 is
 `02693aba7bfa4de2a8e52c1490175572f2039691c564e7c9b25c2ce7f40519d4`.
 The compact tracked result manifest SHA-256 is
-`180406250a05d0f0b6c38b32997565fa35d0265be395b77730e744eb707cf75b`.
+`b06ab99fd622c0bcf486463fbeb08ec0b69de1b8ec782b011dc6c88d80b7c085`.
 Implementation commit: `e3e4285` (`feat(training): preregister M28A capacity
 scaling`).
 
 ## Result and decision
 
-The source/preregistration was accepted and the authorized training completed,
+The source/preregistration and compact training-evidence review are accepted,
 but capacity-only scaling did not meet the preregistered full-S2 offline gate.
 The formal decision is `M28A_OFFLINE_NO_CAPACITY_SIGNAL`: G1 failed and G2
-passed. This is a valid negative training result, not a playing-strength
+passed. This is an accepted negative training result, not a playing-strength
 result. Arena was not authorized or run, promotion remains `NONE`, and M07
 remains champion.
 
@@ -250,6 +265,9 @@ written back into the prereg file.
   partition and not a checkpoint-selection signal.
 - The catalog semantic hash is hard-bound in trainer source rather than config;
   this is safe for v1 but is a durability follow-up for a future schema.
+- The current result contract test records expected G1/G2 values but does not
+  yet recompute them from raw metrics and frozen thresholds; this is a
+  non-blocking durability follow-up.
 - The negative result does not authorize M25, M26, or a downstream M28
   continuation. A new route/diagnostic prereg is required for the next causal
   question.
@@ -259,10 +277,11 @@ written back into the prereg file.
 
 ## Next authorized gate
 
-The next gate is a compact independent review of the tracked training result
-manifest, local report/checkpoint provenance, and the exact offline G1/G2
-application. That review does not authorize Arena because the frozen offline
-stop has already fired. The following remain unauthorized:
+There is no further execution gate within M28A. The accepted result closes the
+capacity-only question at the current protocol: the frozen offline stop has
+fired and Arena is prohibited. The next scientific work requires a new,
+independent route/diagnostic preregistration; the following remain
+unauthorized:
 
 - materializing or executing the 192-match Arena screen;
 - promotion or champion changes;

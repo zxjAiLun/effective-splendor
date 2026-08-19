@@ -229,16 +229,32 @@ fn m28a_training_result_records_frozen_offline_stop() {
         "effective-splendor-m28a-entity-mixer-width-result"
     );
     assert_eq!(result["version"], 1);
-    assert_eq!(result["status"], "TRAINING_COMPLETE");
+    assert_eq!(result["status"], "ACCEPTED");
     assert_eq!(result["milestone"], "M28A");
     assert_eq!(
         result["review"]["source_prereg_status"],
         "ACCEPTED / FROZEN"
     );
     assert_eq!(result["review"]["training_authorization"], "AUTHORIZED");
+    assert_eq!(result["review"]["training_evidence_status"], "ACCEPTED");
     assert_eq!(
-        result["review"]["training_evidence_status"],
-        "PENDING_INDEPENDENT_REVIEW"
+        result["review"]["training_evidence_review_basis_commit"],
+        "82ce9843b585a5803fa97e5fec0b68b909e6679a"
+    );
+    assert_eq!(result["review"]["current_review_findings"]["P0"], 0);
+    assert_eq!(result["review"]["current_review_findings"]["P1"], 0);
+    assert_eq!(result["review"]["current_review_findings"]["P2"], 1);
+    assert_eq!(
+        result["review"]["historical_source_prereg_findings"]["P0"],
+        0
+    );
+    assert_eq!(
+        result["review"]["historical_source_prereg_findings"]["P1"],
+        0
+    );
+    assert_eq!(
+        result["review"]["historical_source_prereg_findings"]["P2"],
+        2
     );
     assert_eq!(result["review"]["arena_authorization"], "NOT_AUTHORIZED");
     assert_eq!(result["review"]["findings"]["P0"], 0);
