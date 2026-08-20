@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = RUNTIME REPAIR 1 IMPLEMENTED / DIAGNOSTIC AUTHORIZED / FORMAL TRAINING HOLD
+STATUS = RUNTIME REPAIR 1 DIAGNOSTIC HOST-SAFETY HOLD / FORMAL TRAINING HOLD
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
@@ -219,6 +219,27 @@ automatically promotes the candidate or changes M07.
   core. No unrelated process was terminated, and no scientific artifact was
   created.
 
+### 2026-08-20 — Runtime Repair diagnostic completed; host-safety gate failed
+
+- The authorized diagnostic built the local cache and checked all
+  `31,505/31,505` examples with exact `torch.equal()` equality. Cache manifest
+  semantic SHA is
+  `f549549ea0a44c552e0114dddde13a5e8385aa0a04d5cc96b3a0c8a62b827e6d`; the
+  `manifest.json` file SHA is
+  `f5e965a3c778c5de6d859ec1886c34b1196ccd6a9b92f87e2599230b66365294`.
+- The diagnostic report is
+  `local-artifacts/m28b-runtime-repair-1-diagnostic.json`, SHA-256
+  `772b3844122b08d9eea46c7ad3048baf13e655ec301231739f0a5b4aa9367a8a`.
+  It records `scientific_evidence=false`, `formal_training=false`, no
+  checkpoint/result/Arena output, CPU threads `2/1`, and all four environment
+  caps set to `2`.
+- Both model smokes produced finite outputs: control and candidate each ran
+  four batches / 512 examples. However telemetry rose from about `61–67°C`
+  before work to TCPU/package `85–90°C` after exact equality and `93°C` during
+  the smoke window. The diagnostic is therefore `NOT VERIFIED / HOST-SAFETY
+  HOLD`, despite the data/cache correctness checks passing. Formal M28B
+  training remains `HOLD`; Arena remains `NOT_AUTHORIZED`.
+
 ## Final implementation
 
 Tracked files for this round:
@@ -264,7 +285,7 @@ PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splend
 
 ## Validation and evidence
 
-The implementation-round checks completed before the implementation commit:
+The implementation and diagnostic checks completed so far are:
 
 ```text
 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 37 passed, exit 0
@@ -273,21 +294,23 @@ cargo fmt --all -- --check — PASS, exit 0
 cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS, 1 passed, exit 0
 local-artifacts/m24-torch-cu124/bin/python -m json.tool benchmarks/m28b-contextual-entity-interaction-v1.config.json — PASS, exit 0
 git diff --check — PASS, exit 0
+Runtime Repair diagnostic command — exit 0; exact/cache/thread/model checks passed, but host-safety gate failed and diagnostic is not accepted
 ```
 
 The M28B config SHA-256 is
 `95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd`.
 The implementation commit is
 `e1b80aa6673865d149ef1e56b9a41f1b384b563d` and is pushed to `origin/main`.
-Generated scientific artifacts have no result hash because training and Arena
-were not run. The Runtime Repair 1 real-data diagnostic is still pending
-thermal-safe host conditions.
+Generated scientific artifacts have no result hash because formal training and
+Arena were not run. The Runtime Repair 1 data correctness checks passed, but
+the diagnostic is not accepted because its own telemetry crossed the host
+thermal-safety condition.
 
 ## Result and decision
 
 M28B remains a controlled representation experiment with no new scientific
-result. The source/prereg is `ACCEPTED / FROZEN`, Runtime Repair diagnostic is
-authorized, and fresh formal training is on `HOLD` pending a diagnostic PASS.
+result. The source/prereg is `ACCEPTED / FROZEN`, but Runtime Repair diagnostic
+is `NOT VERIFIED / HOST-SAFETY HOLD`; fresh formal training remains on `HOLD`.
 The first host-interrupted attempt is
 `M28B_RUNTIME_INVALID` rather than a model result. Runtime Repair 1 is
 `IMPLEMENTED` but its real-data diagnostic is not yet `VERIFIED`.
@@ -314,10 +337,10 @@ may authorize a fresh CUDA training round; it does not itself authorize Arena.
 
 ## Next authorized gate
 
-Run the authorized Runtime Repair 1 diagnostic only after CPU package/core
-temperatures return to a stable safe range and unrelated high-CPU workloads
-have ended; record the full
-`31,505/31,505` exact-equality result and telemetry. Then, and only then, run
-the frozen fresh M28B training command in a new output directory. Do not
-resume the prior partial checkpoint, materialize Arena plans, run Arena, or
-authorize M25, M26, or downstream M28 work.
+Do not run formal training after this diagnostic. First restore a host cooling
+condition in which the same cache/equality/smoke diagnostic can complete
+without package/core temperatures entering the 90°C range; then obtain a
+short independent runtime-evidence review of the report and cache hashes.
+Only that review may release the frozen fresh M28B training command in a new
+output directory. Do not resume the prior partial checkpoint, materialize
+Arena plans, run Arena, or authorize M25, M26, or downstream M28 work.
