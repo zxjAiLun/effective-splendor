@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = RUNTIME REPAIR 1 IMPLEMENTED / DIAGNOSTIC PENDING
+STATUS = RUNTIME REPAIR 1 IMPLEMENTED / DIAGNOSTIC AUTHORIZED / FORMAL TRAINING HOLD
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = AUTHORIZED; fresh rerun pending Runtime Repair 1 diagnostic
+TRAINING = HOLD pending Runtime Repair 1 diagnostic PASS
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -204,6 +204,21 @@ automatically promotes the candidate or changes M07.
   temperature while unrelated parallel processes were consuming CPU. No new
   scientific evidence has been claimed.
 
+### 2026-08-20 — Runtime Repair 1 source review accepted; diagnostic authorized
+
+- Independent source review accepted commit
+  `828eb9e8656628d71b36289f6a9158d8f6e3890a` against direct parent
+  `097fe26c0ea63d2d5fe7dcbc954efd73775f3997`; P0/P1/P2=`0/0/2`, with both
+  P2 findings non-blocking.
+- Runtime Repair diagnostic is `AUTHORIZED`. Fresh formal M28B training is
+  `HOLD` until the diagnostic proves `31,505/31,505` exact equality, records
+  cache and report hashes, confirms thread caps `2/1`, and shows finite smokes
+  with safe host telemetry. Arena remains `NOT_AUTHORIZED`.
+- The diagnostic was not started in this turn: CPU package/core telemetry was
+  still `94–98°C` while unrelated Lichess processing consumed roughly one CPU
+  core. No unrelated process was terminated, and no scientific artifact was
+  created.
+
 ## Final implementation
 
 Tracked files for this round:
@@ -271,16 +286,16 @@ thermal-safe host conditions.
 ## Result and decision
 
 M28B remains a controlled representation experiment with no new scientific
-result. The source/prereg is `ACCEPTED / FROZEN`, training is authorized for a
-fresh rerun after Runtime Repair 1, and the first host-interrupted attempt is
+result. The source/prereg is `ACCEPTED / FROZEN`, Runtime Repair diagnostic is
+authorized, and fresh formal training is on `HOLD` pending a diagnostic PASS.
+The first host-interrupted attempt is
 `M28B_RUNTIME_INVALID` rather than a model result. Runtime Repair 1 is
 `IMPLEMENTED` but its real-data diagnostic is not yet `VERIFIED`.
 There is no accepted offline result, Arena result, promotion, or champion
 change; Arena remains `NOT_AUTHORIZED`.
 
-The next authorized gate is an independent source/prereg review of the exact
-tracked implementation and config. A review pass may authorize the subsequent
-CUDA training round; it does not itself authorize Arena.
+The next authorized gate is the Runtime Repair diagnostic. A diagnostic PASS
+may authorize a fresh CUDA training round; it does not itself authorize Arena.
 
 ## Known limitations
 
@@ -299,8 +314,9 @@ CUDA training round; it does not itself authorize Arena.
 
 ## Next authorized gate
 
-Run Runtime Repair 1 only after CPU package/core temperatures return to a
-stable safe range and unrelated high-CPU workloads have ended; record the full
+Run the authorized Runtime Repair 1 diagnostic only after CPU package/core
+temperatures return to a stable safe range and unrelated high-CPU workloads
+have ended; record the full
 `31,505/31,505` exact-equality result and telemetry. Then, and only then, run
 the frozen fresh M28B training command in a new output directory. Do not
 resume the prior partial checkpoint, materialize Arena plans, run Arena, or
