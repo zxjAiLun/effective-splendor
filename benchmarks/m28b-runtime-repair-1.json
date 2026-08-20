@@ -1,0 +1,84 @@
+{
+  "format": "effective-splendor-m28b-runtime-repair",
+  "version": 1,
+  "milestone": "M28B",
+  "repair": "m28b_runtime_repair_1",
+  "status": "IMPLEMENTED",
+  "scientific_config": {
+    "path": "benchmarks/m28b-contextual-entity-interaction-v1.config.json",
+    "sha256": "95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd",
+    "must_remain_unchanged": true
+  },
+  "source": {
+    "dataset_path": "local-artifacts/m24-self-play-s2-v1/self-play.json",
+    "dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "catalog_path": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "catalog_semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26",
+    "examples": 31505
+  },
+  "cpu_runtime": {
+    "torch_intra_op_threads": 2,
+    "torch_inter_op_threads": 1,
+    "required_environment": {
+      "OMP_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2",
+      "OPENBLAS_NUM_THREADS": "2",
+      "NUMEXPR_NUM_THREADS": "2"
+    },
+    "fail_closed_assertions": true
+  },
+  "encoded_cache": {
+    "path": "local-artifacts/m28b-encoded-cache-v1/",
+    "format": "effective-splendor-m28b-encoded-cache",
+    "version": 1,
+    "encoder_contract": "effective-splendor-m17-player-view-encoding-v1",
+    "dimensions": {
+      "entity_slots": 31,
+      "entity_features": 32,
+      "global_features": 40,
+      "action_features": 36
+    },
+    "arrays": [
+      "entities [examples,31,32] float32",
+      "entity_masks [examples,31] bool",
+      "global_features [examples,40] float32",
+      "value_targets [examples,2] float32",
+      "actions [total_actions,36] float32",
+      "policy_targets [total_actions] float32",
+      "action_offsets [examples+1] int64"
+    ],
+    "full_online_cache_exact_equality_required": true
+  },
+  "scientific_invariants": {
+    "architecture_unchanged": true,
+    "model_hidden_dim_unchanged": true,
+    "model_interaction_blocks_unchanged": true,
+    "seed_unchanged": true,
+    "batch_size_unchanged": true,
+    "epochs_unchanged": true,
+    "optimizer_unchanged": true,
+    "data_split_unchanged": true,
+    "search_algorithm_unchanged": true,
+    "dataloader_workers_unchanged": true,
+    "no_partial_checkpoint_resume": true,
+    "no_arena_authorization": true
+  },
+  "diagnostic": {
+    "command_module": "splendor_gpu.m28b_runtime_repair",
+    "writes_checkpoint": false,
+    "writes_training_result": false,
+    "writes_arena_artifacts": false,
+    "scientific_evidence": false
+  },
+  "formal_rerun": {
+    "requires": [
+      "valid cache manifest",
+      "full online/cache exact equality over 31505 examples",
+      "thread assertions 2/1",
+      "stable host temperature and power conditions",
+      "fresh out-dir with no partial checkpoint resume"
+    ],
+    "arena": "NOT_AUTHORIZED"
+  }
+}

@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = IMPLEMENTED / CONTRACT VALIDATED; source/prereg review pending
+STATUS = RUNTIME REPAIR 1 IMPLEMENTED / DIAGNOSTIC PENDING
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = NOT_AUTHORIZED (implementation round only)
+TRAINING = AUTHORIZED; fresh rerun pending Runtime Repair 1 diagnostic
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -63,10 +63,12 @@ standard multi-head attention and not a Transformer encoder.
 - Offline G1/G2 gates and a future 192-match Arena contract.
 - Machine-checked configuration, parameter counts, mask behavior, checkpoint
   metadata, and split/provenance bindings.
+- Runtime Repair 1: one packed encoded cache, explicit CPU thread caps, and a
+  non-scientific exact-equality/inference diagnostic.
 
 ### Not in scope / not authorized
 
-- M28B training or checkpoint generation in this implementation round.
+- Formal M28B training or checkpoint generation in this Runtime Repair 1 round.
 - New self-play, teacher/bootstrap changes, target redesign, or data changes.
 - Width sweep, Transformer, standard multi-head attention, optimizer sweep,
   learning-rate sweep, PUCT tuning, or search-budget scaling.
@@ -104,6 +106,16 @@ standard multi-head attention and not a Transformer encoder.
 - Dataset, checkpoints, reports, and future Arena artifacts remain local
   ignored files. Config, model source, tests, and this living record are
   tracked.
+- The original scientific config remains byte-for-byte bound to SHA-256
+  `95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd`.
+  Runtime Repair 1 is separately specified by
+  `benchmarks/m28b-runtime-repair-1.json`; it cannot alter the M28B model,
+  data, optimizer, split, seed, batch, or search contract.
+- The packed cache uses the existing player-view encoder once, stores
+  memory-mapped tensors plus a manifest, and is accepted only after all
+  `31,505/31,505` online/cache samples compare exactly. CPU runtime is
+  fail-closed at Torch intra-op `2`, inter-op `1`, with all four explicit
+  environment caps set to `2`.
 
 ## Offline and future Arena gates
 
@@ -142,6 +154,9 @@ automatically promotes the candidate or changes M07.
    source/prereg review before any training authorization.
 6. Only after that review, run the exact frozen CUDA training command and
    submit training evidence for a separate execution decision.
+7. For Runtime Repair 1, build/validate the cache and run the diagnostic first;
+   only a cool, stable host permits the fresh formal rerun in a new output
+   directory. The previous partial control checkpoint is never resumed.
 
 ## Iteration log
 
@@ -163,16 +178,47 @@ automatically promotes the candidate or changes M07.
 - Validation passed: full GPU Python suite `37/37`, targeted Rust contract
   `1/1`, `cargo fmt --all -- --check`, JSON parsing, and `git diff --check`.
 
+### 2026-08-20 — M28B Runtime Repair 1 implementation
+
+- The source/prereg review accepted the frozen M28B implementation and
+  authorized the GPU training stage, but the first control attempt was
+  interrupted by a host shutdown after `598.15s`; no OOM, NVIDIA Xid, or
+  critical thermal-trip record was found, and the partial checkpoint is not a
+  scientific result and must not be resumed.
+- Added the separately tracked Runtime Repair 1 contract
+  `benchmarks/m28b-runtime-repair-1.json`. The original M28B scientific config
+  remains unchanged and retains its original SHA-256.
+- Added `encoded_cache.py`: a packed memory-mapped cache for entities, masks,
+  globals, values, legal actions, policy targets, and action offsets. Its
+  manifest binds both source identities, the player-view encoder contract,
+  dimensions, array hashes, and a manifest digest. The formal trainer now
+  consumes only a validated cache and records its digest in any future
+  checkpoint/report metadata.
+- Added `runtime.py` with fail-closed Torch/BLAS thread caps (`2/1`) and
+  host CPU/RAM/GPU/temperature telemetry, plus
+  `m28b_runtime_repair.py`, which performs cache construction, full online vs
+  cache equality, and a short two-model inference smoke without writing a
+  checkpoint or result.
+- The implementation tests currently pass `41/41`. The real-data diagnostic
+  has not yet run because the host was observed at `94–97°C` CPU package/core
+  temperature while unrelated parallel processes were consuming CPU. No new
+  scientific evidence has been claimed.
+
 ## Final implementation
 
 Tracked files for this round:
 
 - `benchmarks/m28b-contextual-entity-interaction-v1.config.json`
+- `benchmarks/m28b-runtime-repair-1.json`
 - `training/m17_gpu/splendor_gpu/model.py`
 - `training/m17_gpu/splendor_gpu/interaction_train.py`
+- `training/m17_gpu/splendor_gpu/encoded_cache.py`
+- `training/m17_gpu/splendor_gpu/runtime.py`
+- `training/m17_gpu/splendor_gpu/m28b_runtime_repair.py`
 - `training/m17_gpu/splendor_gpu/__init__.py`
 - `training/m17_gpu/tests/test_interaction_model.py`
 - `training/m17_gpu/tests/test_interaction_train.py`
+- `training/m17_gpu/tests/test_encoded_cache.py`
 - `crates/splendor-cli/tests/m28b_design.rs`
 - `docs/m28b-contextual-entity-interaction.md`
 
@@ -182,11 +228,24 @@ The future authorized training command is:
 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.interaction_train \
   --dataset local-artifacts/m24-self-play-s2-v1/self-play.json \
   --config benchmarks/m28b-contextual-entity-interaction-v1.config.json \
-  --out-dir local-artifacts/m28b-contextual-entity-interaction-v1
+  --encoded-cache local-artifacts/m28b-encoded-cache-v1 \
+  --out-dir local-artifacts/m28b-contextual-entity-interaction-v1-rerun-rt1
 ```
 
-This command is recorded for the later authorized round only. It was not run
-in the implementation round.
+This command is recorded for the later authorized fresh rerun only. It was not
+run in the Runtime Repair 1 implementation round.
+
+The diagnostic command is:
+
+```text
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 \
+PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.m28b_runtime_repair \
+  --dataset local-artifacts/m24-self-play-s2-v1/self-play.json \
+  --config benchmarks/m28b-contextual-entity-interaction-v1.config.json \
+  --cache-dir local-artifacts/m28b-encoded-cache-v1 \
+  --report local-artifacts/m28b-runtime-repair-1-diagnostic.json \
+  --batches 4
+```
 
 ## Validation and evidence
 
@@ -194,6 +253,7 @@ The implementation-round checks completed before the implementation commit:
 
 ```text
 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 37 passed, exit 0
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 41 passed, exit 0
 cargo fmt --all -- --check — PASS, exit 0
 cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS, 1 passed, exit 0
 local-artifacts/m24-torch-cu124/bin/python -m json.tool benchmarks/m28b-contextual-entity-interaction-v1.config.json — PASS, exit 0
@@ -205,15 +265,18 @@ The M28B config SHA-256 is
 The implementation commit is
 `e1b80aa6673865d149ef1e56b9a41f1b384b563d` and is pushed to `origin/main`.
 Generated scientific artifacts have no result hash because training and Arena
-were not run.
+were not run. The Runtime Repair 1 real-data diagnostic is still pending
+thermal-safe host conditions.
 
 ## Result and decision
 
-M28B is implemented as a controlled representation experiment, but it is not
-yet scientifically executed. The current status is
-`IMPLEMENTED / CONTRACT VALIDATED`;
-`training_authorization` and `arena_authorization` remain `NOT_AUTHORIZED`.
-There is no offline result, Arena result, promotion, or champion change.
+M28B remains a controlled representation experiment with no new scientific
+result. The source/prereg is `ACCEPTED / FROZEN`, training is authorized for a
+fresh rerun after Runtime Repair 1, and the first host-interrupted attempt is
+`M28B_RUNTIME_INVALID` rather than a model result. Runtime Repair 1 is
+`IMPLEMENTED` but its real-data diagnostic is not yet `VERIFIED`.
+There is no accepted offline result, Arena result, promotion, or champion
+change; Arena remains `NOT_AUTHORIZED`.
 
 The next authorized gate is an independent source/prereg review of the exact
 tracked implementation and config. A review pass may authorize the subsequent
@@ -221,7 +284,9 @@ CUDA training round; it does not itself authorize Arena.
 
 ## Known limitations
 
-- M28B has no training evidence yet; all scientific claims remain prospective.
+- M28B has no accepted training evidence yet; all scientific claims remain
+  prospective. The preserved partial control artifact is excluded from
+  scientific evidence.
 - The candidate changes both the interaction architecture and parameter count
   relative to the historical control, so a later positive result identifies
   the frozen intervention as a package rather than isolating every additional
@@ -234,7 +299,9 @@ CUDA training round; it does not itself authorize Arena.
 
 ## Next authorized gate
 
-Independent M28B source/prereg review of the tracked config, model, trainer,
-tests, and documentation. Until that review and a separate explicit training
-authorization occur: do not run M28B training, do not materialize Arena plans,
-do not run Arena, and do not authorize M25, M26, or downstream M28 work.
+Run Runtime Repair 1 only after CPU package/core temperatures return to a
+stable safe range and unrelated high-CPU workloads have ended; record the full
+`31,505/31,505` exact-equality result and telemetry. Then, and only then, run
+the frozen fresh M28B training command in a new output directory. Do not
+resume the prior partial checkpoint, materialize Arena plans, run Arena, or
+authorize M25, M26, or downstream M28 work.

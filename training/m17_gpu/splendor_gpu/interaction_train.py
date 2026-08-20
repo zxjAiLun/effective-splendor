@@ -21,12 +21,12 @@ os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from .data import catalog_semantic_hash, load_catalog
+from .encoded_cache import EncodedCache, PackedEncodedDataset, cache_manifest_sha256
 from .model import ModelSpec, build_model
 from .self_play_train import (
-    SelfPlayDataset,
     collate,
     dataset_contract,
     evaluate,
@@ -41,6 +41,7 @@ from .train import (
     resolve_device,
     seed_everything,
 )
+from .runtime import EXPECTED_CPU_THREADS, configure_cpu_runtime
 
 
 CONFIG_FORMAT = "effective-splendor-m28b-contextual-entity-interaction"
@@ -368,6 +369,30 @@ def split_m28b_examples(payload: dict[str, Any], config: dict[str, Any]) -> tupl
     return train, validation, reference
 
 
+def split_m28b_indices(payload: dict[str, Any], config: dict[str, Any]) -> tuple[list[int], list[int], list[int]]:
+    """Return the frozen game-level partitions as indices into the full cache."""
+
+    split = config["split"]
+    modulus = int(split["validation"]["game_index_modulus"])
+    remainder = int(split["validation"]["game_index_remainder"])
+    reference_bound = int(split["s1_reference"]["game_index_lt"])
+    train, validation, reference = [], [], []
+    for index, example in enumerate(payload["examples"]):
+        game_index = int(example["game_index"])
+        if game_index % modulus == remainder:
+            validation.append(index)
+            if game_index < reference_bound:
+                reference.append(index)
+        else:
+            train.append(index)
+    _assert_equal(len(train), split["train"]["examples"], "train split indices")
+    _assert_equal(len(validation), split["validation"]["examples"], "validation split indices")
+    _assert_equal(len(reference), split["s1_reference"]["examples"], "S1 reference split indices")
+    if set(train) & set(validation) or set(reference) - set(validation):
+        raise ValueError("M28B cache partition indices overlap")
+    return train, validation, reference
+
+
 def parameter_count(model: nn.Module) -> int:
     return sum(parameter.numel() for parameter in model.parameters())
 
@@ -421,7 +446,7 @@ def offline_comparison(control_report: dict[str, Any], candidate_report: dict[st
     }
 
 
-def _loader(dataset: SelfPlayDataset, batch_size: int, shuffle: bool, seed: int | None, device: torch.device) -> DataLoader:
+def _loader(dataset: Dataset, batch_size: int, shuffle: bool, seed: int | None, device: torch.device) -> DataLoader:
     generator = torch.Generator().manual_seed(int(seed)) if shuffle and seed is not None else None
     return DataLoader(
         dataset,
@@ -444,9 +469,10 @@ def build_checkpoint_metadata(
     train_examples: int,
     validation_examples: int,
     s1_reference_examples: int,
+    cache_manifest_sha256_value: str | None = None,
 ) -> dict[str, Any]:
     training = config["training"]
-    return {
+    metadata = {
         "format": CHECKPOINT_FORMAT,
         "version": 1,
         "model_id": model_contract["model_id"],
@@ -468,13 +494,19 @@ def build_checkpoint_metadata(
         "s1_reference_examples": s1_reference_examples,
         "interaction_contract": config["interaction"],
     }
+    if cache_manifest_sha256_value is not None:
+        metadata["runtime_repair"] = "m28b_runtime_repair_1"
+        metadata["cpu_runtime"] = dict(EXPECTED_CPU_THREADS)
+        metadata["encoded_cache_manifest_sha256"] = cache_manifest_sha256_value
+    return metadata
 
 
 def train_one(
     model_contract: dict[str, Any],
-    train_examples: list[dict[str, Any]],
-    validation_examples: list[dict[str, Any]],
-    reference_examples: list[dict[str, Any]],
+    train_indices: list[int],
+    validation_indices: list[int],
+    reference_indices: list[int],
+    cache: EncodedCache,
     catalog: dict[str, Any],
     config: dict[str, Any],
     self_play_hash_value: str,
@@ -486,9 +518,9 @@ def train_one(
         raise RuntimeError("CUBLAS_WORKSPACE_CONFIG does not match frozen M28B recipe")
     device = resolve_device(str(training["device"]))
     model = build_fresh_model(model_contract, int(training["initialization_seed"])).to(device)
-    train_set = SelfPlayDataset(train_examples, catalog)
-    validation_set = SelfPlayDataset(validation_examples, catalog)
-    reference_set = SelfPlayDataset(reference_examples, catalog)
+    train_set = PackedEncodedDataset(cache, train_indices)
+    validation_set = PackedEncodedDataset(cache, validation_indices)
+    reference_set = PackedEncodedDataset(cache, reference_indices)
     train_loader = _loader(train_set, int(training["batch_size"]), True, int(training["shuffle_seed"]), device)
     validation_loader = _loader(validation_set, int(training["batch_size"]), False, None, device)
     reference_loader = _loader(reference_set, int(training["batch_size"]), False, None, device)
@@ -528,7 +560,18 @@ def train_one(
     validation_metrics = evaluate(model, validation_loader, device)
     reference_metrics = evaluate(model, reference_loader, device)
     role = str(model_contract["role"])
-    model_metadata = build_checkpoint_metadata(model, model_contract, config, catalog, self_play_hash_value, dataset_file_sha256, len(train_set), len(validation_set), len(reference_set))
+    model_metadata = build_checkpoint_metadata(
+        model,
+        model_contract,
+        config,
+        catalog,
+        self_play_hash_value,
+        dataset_file_sha256,
+        len(train_set),
+        len(validation_set),
+        len(reference_set),
+        cache_manifest_sha256(cache.root),
+    )
     checkpoint_hash = checkpoint_semantic_hash(model_metadata, best_state)
     role_dir = out_dir / role
     role_dir.mkdir(parents=True, exist_ok=False)
@@ -550,6 +593,9 @@ def train_one(
         "parameter_count": parameter_count(model),
         "source_self_play_hash": self_play_hash_value,
         "source_self_play_file_sha256": dataset_file_sha256,
+        "runtime_repair": "m28b_runtime_repair_1",
+        "cpu_runtime": dict(EXPECTED_CPU_THREADS),
+        "encoded_cache_manifest_sha256": model_metadata["encoded_cache_manifest_sha256"],
         "training_config_hash": model_metadata["training_config_hash"],
         "checkpoint_hash": checkpoint_hash,
         "checkpoint_file_sha256": file_sha256(checkpoint_path),
@@ -568,22 +614,34 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--catalog", type=Path, default=Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"))
+    parser.add_argument("--encoded-cache", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     args = parser.parse_args()
+
+    configure_cpu_runtime()
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
     validate_config(config)
     payload, actual_self_play_hash, dataset_file_sha256 = validate_dataset(args.dataset, config)
-    train_examples, validation_examples, reference_examples = split_m28b_examples(payload, config)
+    train_indices, validation_indices, reference_indices = split_m28b_indices(payload, config)
     catalog = load_catalog(args.catalog)
-    _assert_equal(catalog_semantic_hash(catalog), EXPECTED_CATALOG_HASH, "catalog semantic hash")
+    actual_catalog_hash = catalog_semantic_hash(catalog)
+    _assert_equal(actual_catalog_hash, EXPECTED_CATALOG_HASH, "catalog semantic hash")
+    cache = EncodedCache.load(args.encoded_cache)
+    cache.validate_identity(
+        dataset_file_sha256=dataset_file_sha256,
+        self_play_hash=actual_self_play_hash,
+        catalog_hash=actual_catalog_hash,
+        examples=len(payload["examples"]),
+    )
     args.out_dir.mkdir(parents=True, exist_ok=False)
     reports = [
         train_one(
             model_contract,
-            train_examples,
-            validation_examples,
-            reference_examples,
+            train_indices,
+            validation_indices,
+            reference_indices,
+            cache,
             catalog,
             config,
             actual_self_play_hash,
@@ -600,6 +658,9 @@ def main() -> None:
         "training_config_hash": training_config_hash(config),
         "dataset_file_sha256": dataset_file_sha256,
         "self_play_hash": actual_self_play_hash,
+        "runtime_repair": "m28b_runtime_repair_1",
+        "cpu_runtime": dict(EXPECTED_CPU_THREADS),
+        "encoded_cache_manifest_sha256": cache.manifest_sha256,
         "models": reports,
         "offline_comparison": offline_comparison(by_role["control"], by_role["candidate"], config),
         "arena_authorization": "NOT_AUTHORIZED",
