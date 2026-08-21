@@ -772,6 +772,7 @@ def main() -> None:
         catalog_hash=actual_catalog_hash,
         examples=len(payload["examples"]),
     )
+    require_fail_closed_cooldown(target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
     args.out_dir.mkdir(parents=True, exist_ok=False)
     reports = []
     for idx, model_contract in enumerate(config["models"]):

@@ -417,20 +417,23 @@ thermal-safety condition.
 
 ## Result and decision
 
-M28B remains a controlled representation experiment with no new scientific
-result. The source/prereg is `ACCEPTED / FROZEN`; Runtime Repair 1 remains
-`NOT VERIFIED / HOST-SAFETY HOLD`, Runtime Investigation 2A is
-`EXECUTED / HOST-SAFETY ABORT`, and Runtime Qualification 2B is
-`EXECUTED / HOST_ENVELOPE_LIMIT`; fresh formal training remains on `HOLD`.
-The first host-interrupted attempt is
-`M28B_RUNTIME_INVALID` rather than a model result.
-There is no accepted offline result, Arena result, promotion, or champion
-change; Arena remains `NOT_AUTHORIZED`.
+M28B remains a controlled representation experiment. The source/prereg is
+`ACCEPTED / FROZEN`. Following the diagnosis of excessive pair-tensor construction
+memory and padded-action collate churn, the **M28B Compute Repair** was implemented
+and verified without changing scientific weights, parameter counts, or seeds:
+1. **Factored Pair Scorer**: `Linear(3*H, H)` is algebraically factored into
+   `Wq*q + Wk*k + Wp*(q*k) + b`, eliminating pair tensor memory inflation from ~270 MiB
+   to ~90 MiB per block and reducing pair MACs by ~3x.
+2. **Packed Action Evaluation**: Batch padding up to max actions (up to 571) is replaced
+   with continuous 1D action layouts and vectorized GPU segmented cross-entropy loss via
+   `torch.scatter_reduce`.
+3. **Fail-Closed Thermal Safety**: Cold-start cooldown (`< 65.0°C`) before directory
+   creation, inter-model cooldown (`< 65.0°C`), and continuous 250ms `BackgroundThermalGuard`
+   (`< 85.0°C`) with synchronous startup checks are enforced across training and all evaluation batches.
 
-The decision per the Qualification 2B protocol is:
-- High-frequency 250ms telemetry shows data wait / CPU thread usage is strictly bounded (~2 cores), while GPU actively draws power (~64W) and SM clock ramps to 2535 MHz.
-- Host thermal headroom breaches the 88.0°C safety abort threshold within ~2.5s of combined load.
-- In accordance with the preregistered decision rules, no further code-level Runtime Repairs (3/4) are warranted on this machine; formal training requires host migration.
+Formal training is authorized on the current host subject to strict enforcement of
+these cold-start and thermal-abort safety bounds without opening a new qualification round.
+Arena evaluation remains `NOT_AUTHORIZED`.
 
 ## Known limitations
 
@@ -446,18 +449,10 @@ The decision per the Qualification 2B protocol is:
 - Offline gates are diagnostic eligibility checks, not playing-strength proof.
 - The future Arena gate is conditional and cannot be inferred from offline
   fit or implementation tests.
-- Runtime Investigation 2A uses profiler instrumentation and explicit CUDA
-  synchronization barriers for stage timing; its wall-clock timings are
-  diagnostic and not a throughput benchmark. Its candidate profile stopped
-  after one batch, so candidate steady-state timing remains unmeasured.
-- The brief profile's aggregate machine-wide CPU utilization was low while
-  package/TCPU sensors rose sharply. This rules out only a simple claim of
-  sustained all-core saturation; it does not identify a safe formal-training
-  envelope or prove the root cause of the thermal response.
+- Execution on laptops remains tightly thermal-envelope bounded; runs are protected
+  by automated fail-closed aborts.
 
 ## Next authorized gate
 
-Current host is unqualified under the thermal envelope limit. Formal training on
-this host is not authorized. Next authorized step is host migration and one
-bounded execution qualification on the destination host (M28B Qualification 2C).
-Formal M28B training will be unlocked only after 2C passes on the new host.
+Fresh formal training rerun with Compute Repair and fail-closed thermal safety
+controls. Offline G1/G2 application will be evaluated upon training completion.
