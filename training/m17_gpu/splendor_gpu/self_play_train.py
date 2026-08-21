@@ -140,20 +140,69 @@ def policy_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     return -(targets * torch.log_softmax(logits, dim=-1)).sum(dim=-1).mean()
 
 
+def packed_policy_loss(logits: torch.Tensor, targets: torch.Tensor, offsets: torch.Tensor) -> torch.Tensor:
+    """Vectorized, exact segmented cross-entropy loss over packed 1D actions."""
+    counts = offsets[1:] - offsets[:-1]
+    batch_size = counts.shape[0]
+    segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=logits.device), counts)
+    max_per_seg = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=logits.device)
+    max_per_seg.scatter_reduce_(0, segment_ids, logits, reduce="amax")
+    shifted_exp = torch.exp(logits - max_per_seg[segment_ids])
+    sum_exp_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+    sum_exp_per_seg.scatter_add_(0, segment_ids, shifted_exp)
+    lse_per_seg = max_per_seg + torch.log(sum_exp_per_seg)
+    log_probs = logits - lse_per_seg[segment_ids]
+    prod = targets * log_probs
+    loss_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+    loss_per_seg.scatter_add_(0, segment_ids, -prod)
+    return loss_per_seg.mean()
+
+
 @torch.no_grad()
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> dict[str, float | int]:
     model.eval()
     cross_entropy = value_mse = visit_top1 = model_top1 = examples = 0.0
     for raw in loader:
         batch = move(raw, device)
-        logits, values = model(
-            batch["entities"], batch["entity_mask"], batch["global_features"],
-            batch["actions"], batch["action_mask"],
-        )
-        count = logits.shape[0]
-        cross_entropy += (-(batch["policy_target"] * torch.log_softmax(logits, dim=-1)).sum(dim=-1)).sum().item()
+        if "action_offsets" in batch:
+            logits, values = model.forward_packed(
+                batch["entities"], batch["entity_mask"], batch["global_features"],
+                batch["actions"], batch["action_offsets"],
+            )
+            offsets = batch["action_offsets"]
+            counts = offsets[1:] - offsets[:-1]
+            batch_size = counts.shape[0]
+            segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=logits.device), counts)
+            max_per_seg = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=logits.device)
+            max_per_seg.scatter_reduce_(0, segment_ids, logits, reduce="amax")
+            shifted_exp = torch.exp(logits - max_per_seg[segment_ids])
+            sum_exp_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+            sum_exp_per_seg.scatter_add_(0, segment_ids, shifted_exp)
+            lse_per_seg = max_per_seg + torch.log(sum_exp_per_seg)
+            log_probs = logits - lse_per_seg[segment_ids]
+            prod = batch["policy_target"] * log_probs
+            loss_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+            loss_per_seg.scatter_add_(0, segment_ids, -prod)
+            cross_entropy += loss_per_seg.sum().item()
+
+            # Top 1 computation
+            splits_l = torch.tensor_split(logits.cpu(), offsets[1:-1].cpu())
+            splits_t = torch.tensor_split(batch["policy_target"].cpu(), offsets[1:-1].cpu())
+            for sl, st in zip(splits_l, splits_t):
+                if sl.argmax(dim=-1).item() == st.argmax(dim=-1).item():
+                    visit_top1 += 1.0
+
+            count = batch_size
+        else:
+            logits, values = model(
+                batch["entities"], batch["entity_mask"], batch["global_features"],
+                batch["actions"], batch["action_mask"],
+            )
+            count = logits.shape[0]
+            cross_entropy += (-(batch["policy_target"] * torch.log_softmax(logits, dim=-1)).sum(dim=-1)).sum().item()
+            visit_top1 += batch["policy_target"].argmax(dim=-1).eq(logits.argmax(dim=-1)).sum().item()
+
         value_mse += nn.functional.mse_loss(values, batch["value_target"], reduction="sum").item()
-        visit_top1 += batch["policy_target"].argmax(dim=-1).eq(logits.argmax(dim=-1)).sum().item()
         model_top1 += count
         examples += count
     return {

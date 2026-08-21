@@ -68,6 +68,21 @@ class PolicyValueBase(nn.Module):
         logits = logits.masked_fill(~action_mask, torch.finfo(logits.dtype).min)
         return logits, self.value(state)
 
+    def forward_packed(
+        self,
+        entities: torch.Tensor,
+        mask: torch.Tensor,
+        global_features: torch.Tensor,
+        actions: torch.Tensor,
+        action_offsets: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        state = self.state_embedding(entities, mask, global_features)
+        action = self.action_encoder(actions)
+        counts = action_offsets[1:] - action_offsets[:-1]
+        expanded = torch.repeat_interleave(state, counts, dim=0)
+        logits = self.policy(torch.cat([expanded, action, expanded * action], dim=-1)).squeeze(-1)
+        return logits, self.value(state)
+
     def checkpoint_metadata(self) -> dict[str, object]:
         architecture = asdict(self.spec)
         if self.spec.architecture != "contextual_entity_mixer":
@@ -143,15 +158,17 @@ class ContextualInteractionBlock(nn.Module):
         keys = self.key(normalized)
         values = self.value(normalized)
 
-        pair_features = torch.cat(
-            (
-                queries.unsqueeze(2).expand(-1, -1, entities.shape[1], -1),
-                keys.unsqueeze(1).expand(-1, entities.shape[1], -1, -1),
-                queries.unsqueeze(2) * keys.unsqueeze(1),
-            ),
-            dim=-1,
-        )
-        interaction = torch.sigmoid(self.pair(pair_features).squeeze(-1))
+        # Factored pair scorer: W_q*q_i + W_k*k_j + W_p*(q_i*k_j) + b
+        # mathematically identical to self.pair[0]([q_i, k_j, q_i * k_j])
+        w = self.pair[0].weight
+        b = self.pair[0].bias
+        h = entities.shape[-1]
+        proj_q = nn.functional.linear(queries, w[:, 0:h])
+        proj_k = nn.functional.linear(keys, w[:, h : 2 * h])
+        proj_p = nn.functional.linear(queries.unsqueeze(2) * keys.unsqueeze(1), w[:, 2 * h : 3 * h], b)
+        h_pair = proj_q.unsqueeze(2) + proj_k.unsqueeze(1) + proj_p
+        interaction = torch.sigmoid(self.pair[2](self.pair[1](h_pair)).squeeze(-1))
+
         entity_count = entities.shape[1]
         not_self = ~torch.eye(entity_count, dtype=torch.bool, device=entities.device).unsqueeze(0)
         pair_mask = mask.unsqueeze(1) & mask.unsqueeze(2) & not_self

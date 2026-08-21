@@ -24,12 +24,14 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from .data import catalog_semantic_hash, load_catalog
-from .encoded_cache import EncodedCache, PackedEncodedDataset, cache_manifest_sha256
+from .encoded_cache import EncodedCache, PackedEncodedDataset, cache_manifest_sha256, collate_packed
 from .model import ModelSpec, build_model
+from .runtime import cpu_temperatures_c
 from .self_play_train import (
     collate,
     dataset_contract,
     evaluate,
+    packed_policy_loss,
     policy_loss,
     self_play_hash,
     split_examples,
@@ -454,7 +456,7 @@ def _loader(dataset: Dataset, batch_size: int, shuffle: bool, seed: int | None, 
         shuffle=shuffle,
         generator=generator,
         num_workers=0,
-        collate_fn=collate,
+        collate_fn=collate_packed if isinstance(dataset, PackedEncodedDataset) else collate,
         pin_memory=device.type == "cuda",
     )
 
@@ -537,14 +539,26 @@ def train_one(
         for raw in train_loader:
             batch = {key: value.to(device, non_blocking=device.type == "cuda") for key, value in raw.items()}
             optimizer.zero_grad(set_to_none=True)
-            logits, values = model(batch["entities"], batch["entity_mask"], batch["global_features"], batch["actions"], batch["action_mask"])
-            policy = policy_loss(logits, batch["policy_target"])
+            if "action_offsets" in batch:
+                logits, values = model.forward_packed(
+                    batch["entities"], batch["entity_mask"], batch["global_features"],
+                    batch["actions"], batch["action_offsets"],
+                )
+                policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+                count = int(batch["entities"].shape[0])
+            else:
+                logits, values = model(
+                    batch["entities"], batch["entity_mask"], batch["global_features"],
+                    batch["actions"], batch["action_mask"],
+                )
+                policy = policy_loss(logits, batch["policy_target"])
+                count = int(logits.shape[0])
+
             value = nn.functional.mse_loss(values, batch["value_target"])
             loss = policy + float(training["value_loss_weight"]) * value
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), float(training["gradient_clip_norm"]))
             optimizer.step()
-            count = int(logits.shape[0])
             total_loss += loss.item() * count
             seen += count
         validation_metrics = evaluate(model, validation_loader, device)
@@ -635,8 +649,21 @@ def main() -> None:
         examples=len(payload["examples"]),
     )
     args.out_dir.mkdir(parents=True, exist_ok=False)
-    reports = [
-        train_one(
+    reports = []
+    for idx, model_contract in enumerate(config["models"]):
+        if idx > 0:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            print("Cooling down between models (target: < 65.0°C)...")
+            cooldown_start = time.perf_counter()
+            while True:
+                temps = cpu_temperatures_c()
+                max_c = max((float(t["celsius"]) for t in temps if "celsius" in t), default=0.0)
+                if max_c < 65.0 or (time.perf_counter() - cooldown_start > 180.0):
+                    print(f"Thermal cooldown complete (current max: {max_c:.1f}°C, elapsed: {time.perf_counter() - cooldown_start:.1f}s)")
+                    break
+                time.sleep(2.0)
+        report = train_one(
             model_contract,
             train_indices,
             validation_indices,
@@ -648,8 +675,7 @@ def main() -> None:
             dataset_file_sha256,
             args.out_dir,
         )
-        for model_contract in config["models"]
-    ]
+        reports.append(report)
     by_role = {report["model_role"]: report for report in reports}
     summary = {
         "format": "effective-splendor-m28b-interaction-training-summary",

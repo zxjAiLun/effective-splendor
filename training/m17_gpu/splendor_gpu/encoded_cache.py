@@ -228,6 +228,33 @@ class PackedEncodedDataset(Dataset):
         return self.cache.sample(self.indices[index])
 
 
+def collate_packed(samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
+    """Collate packed samples into a continuous 1D action batch without max-action padding."""
+    entities = torch.stack([s["entities"] for s in samples])
+    entity_mask = torch.stack([s["entity_mask"] for s in samples])
+    global_features = torch.stack([s["global_features"] for s in samples])
+    value_target = torch.stack([s["value_target"] for s in samples])
+
+    actions_list = [s["actions"] for s in samples]
+    policy_list = [s["policy_target"] for s in samples]
+    actions = torch.cat(actions_list, dim=0)
+    policy_target = torch.cat(policy_list, dim=0)
+
+    counts = [a.shape[0] for a in actions_list]
+    offsets = torch.zeros(len(samples) + 1, dtype=torch.int64)
+    offsets[1:] = torch.tensor(counts, dtype=torch.int64).cumsum(dim=0)
+
+    return {
+        "entities": entities,
+        "entity_mask": entity_mask,
+        "global_features": global_features,
+        "actions": actions,
+        "action_offsets": offsets,
+        "policy_target": policy_target,
+        "value_target": value_target,
+    }
+
+
 def _create_mapped_tensor(root: Path, name: str, shape: Sequence[int]) -> torch.Tensor:
     filename, dtype = EXPECTED_ARRAYS[name]
     return torch.from_file(
