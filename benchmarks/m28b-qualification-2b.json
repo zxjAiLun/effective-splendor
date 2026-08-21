@@ -1,0 +1,65 @@
+{
+  "format": "effective-splendor-m28b-qualification-2b",
+  "version": 1,
+  "milestone": "M28B",
+  "status": "AUTHORIZED",
+  "qualification": "m28b_qualification_2b",
+  "purpose": "Host runtime qualification via natural-path shadow epoch",
+  "scientific_evidence": false,
+  "formal_training": false,
+  "arena_authorization": "NOT_AUTHORIZED",
+  "scientific_config": {
+    "path": "benchmarks/m28b-contextual-entity-interaction-v1.config.json",
+    "sha256": "95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd",
+    "must_remain_unchanged": true
+  },
+  "cache": {
+    "path": "local-artifacts/m28b-encoded-cache-v1",
+    "manifest_sha256": "f549549ea0a44c552e0114dddde13a5e8385aa0a04d5cc96b3a0c8a62b827e6d",
+    "examples": 31505,
+    "dataset_raw_file_is_not_reread": true
+  },
+  "runtime": {
+    "system_power_policy_mutation": false,
+    "linux_governor_mutation": false,
+    "turbo_mutation": false,
+    "gpu_power_limit_mutation": false,
+    "thread_environment": {
+      "OMP_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2",
+      "OPENBLAS_NUM_THREADS": "2",
+      "NUMEXPR_NUM_THREADS": "2"
+    },
+    "torch_threads": {
+      "intra_op": 2,
+      "inter_op": 1
+    },
+    "batch_size": 128,
+    "dataloader_workers": 0
+  },
+  "protocol": {
+    "models": [
+      "m28b-entity-mixer-h192-b4-control-v1",
+      "m28b-contextual-entity-mixer-h192-b4-i2-v1"
+    ],
+    "shadow_epoch": {
+      "train_batches": 185,
+      "validation_batches": 62,
+      "in_memory_state_copy": true,
+      "discard_after_epoch": true
+    },
+    "cooldown_target_celsius": 65,
+    "telemetry_interval_ms": 250,
+    "torch_profiler_enabled": false,
+    "synchronization_barriers_per_batch": 0,
+    "checkpoint_written": false,
+    "offline_result_written": false
+  },
+  "host_safety": {
+    "preflight_temperature_max_celsius": 65,
+    "warning_temperature_celsius": 82,
+    "cpu_temperature_limit_celsius": 88,
+    "abort_during_qualification": true,
+    "telemetry_required": true
+  }
+}
