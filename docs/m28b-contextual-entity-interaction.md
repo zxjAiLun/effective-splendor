@@ -283,25 +283,53 @@ automatically promotes the candidate or changes M07.
   treated as a scientific CPU bottleneck. Formal training remains `HOLD` and
   Arena remains `NOT_AUTHORIZED`.
 
+### 2026-08-21 — Runtime Qualification 2B natural-path run executed; HOST_ENVELOPE_LIMIT
+
+- Added the contract `benchmarks/m28b-qualification-2b.json` and runner module
+  `splendor_gpu.m28b_qualification` to perform the natural-path shadow epoch test
+  without `torch.profiler`, per-batch CUDA synchronizations, memory/shape tracing,
+  or checkpoint output.
+- Telemetry ran at 250ms intervals capturing per-process user/system CPU, per-thread
+  breakdown, context switches, RSS/swap, individual CPU core/package thermal sensors,
+  core frequencies, and NVML GPU metrics (power, utilization, clocks, temperature).
+- Pre-flight baseline dropped to 64.0°C (below the required < 65.0°C).
+- The natural-path training loop was launched with `batch_size=128`,
+  `torch_threads=2/1`, `workers=0`. Process CPU measured ~200% (2 cores active),
+  and GPU active power quickly climbed to 63.8W / 69% utilization.
+- At sample 9 (~2.43s), CPU package/TCPU temperatures spiked sharply from 58.0°C to
+  93.0°C (TCPU=91.0°C, x86_pkg_temp=93.0°C), triggering the fail-closed hard safety
+  abort limit (88.0°C).
+- Report: `local-artifacts/m28b-qualification-2b-1787317745/qualification-2b-report.json`,
+  SHA-256 `fe62f56785dc0e03485ac9db631e280392fd38ece19ba04251454200bed8aee6`.
+  Telemetry: `local-artifacts/m28b-qualification-2b-1787317745/telemetry-samples.json`,
+  SHA-256 `ba86e32acf95ce4b999d7b8da1dbcf37036489da29b69eecda22a3457b20b894`.
+- Contract SHA-256: `536e91b162f789d2c52ff4ed5a268abf85fd02cb130c97bccadc7351b1952477`.
+- Module SHA-256: `40dc35e98f5f9109a4293ffb601a67ff052af19b355c405bc00c61cccaae2c4b`.
+- Verdict: `HOST_ENVELOPE_LIMIT`.
+- Root cause: input wait is low, GPU is active and drawing power, process CPU is strictly capped to 2 cores, yet the host cooling envelope cannot dissipate combined CPU Turbo + GPU power under load without breaching thermal safety limits.
+
 ## Final implementation
 
 Tracked files for this round:
 
 - `benchmarks/m28b-contextual-entity-interaction-v1.config.json`
 - `benchmarks/m28b-runtime-repair-1.json`
+- `benchmarks/m28b-runtime-investigation-2a.json`
+- `benchmarks/m28b-qualification-2b.json`
 - `training/m17_gpu/splendor_gpu/model.py`
 - `training/m17_gpu/splendor_gpu/interaction_train.py`
 - `training/m17_gpu/splendor_gpu/encoded_cache.py`
 - `training/m17_gpu/splendor_gpu/runtime.py`
 - `training/m17_gpu/splendor_gpu/m28b_runtime_repair.py`
 - `training/m17_gpu/splendor_gpu/m28b_runtime_investigation.py`
+- `training/m17_gpu/splendor_gpu/m28b_qualification.py`
 - `training/m17_gpu/splendor_gpu/__init__.py`
 - `training/m17_gpu/tests/test_interaction_model.py`
 - `training/m17_gpu/tests/test_interaction_train.py`
 - `training/m17_gpu/tests/test_encoded_cache.py`
 - `training/m17_gpu/tests/test_runtime_investigation.py`
+- `training/m17_gpu/tests/test_qualification.py`
 - `crates/splendor-cli/tests/m28b_design.rs`
-- `benchmarks/m28b-runtime-investigation-2a.json`
 - `docs/m28b-contextual-entity-interaction.md`
 
 The future authorized training command is:
@@ -345,6 +373,19 @@ This command exited `0` and wrote a diagnostic report with status
 `HOST_SAFETY_ABORT`; it did not write a checkpoint, training report, offline
 result, or Arena artifact.
 
+The Runtime Qualification 2B natural-path shadow command was:
+
+```text
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 \
+PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python training/m17_gpu/splendor_gpu/m28b_qualification.py \
+  --contract benchmarks/m28b-qualification-2b.json \
+  --config benchmarks/m28b-contextual-entity-interaction-v1.config.json \
+  --encoded-cache local-artifacts/m28b-encoded-cache-v1
+```
+
+This command exited `0` and produced immutable artifacts under
+`local-artifacts/m28b-qualification-2b-1787317745/` with verdict `HOST_ENVELOPE_LIMIT`.
+
 ## Validation and evidence
 
 The implementation and diagnostic checks completed so far are:
@@ -361,6 +402,7 @@ local-artifacts/m24-torch-cu124/bin/python -m json.tool benchmarks/m28b-contextu
 git diff --check — PASS, exit 0
 Runtime Repair diagnostic command — exit 0; exact/cache/thread/model checks passed, but host-safety gate failed and diagnostic is not accepted
 Runtime Investigation 2A command — exit 0; control `4/4`, candidate `1/4`, host-safety abort at `TCPU=90.0°C`; report not accepted as a training/runtime PASS
+Runtime Qualification 2B natural-path shadow run — exit 0; 250ms telemetry captured; hard safety abort triggered at ~2.5s with peak 93.0°C; verdict HOST_ENVELOPE_LIMIT
 ```
 
 The M28B config SHA-256 is
@@ -377,18 +419,18 @@ thermal-safety condition.
 
 M28B remains a controlled representation experiment with no new scientific
 result. The source/prereg is `ACCEPTED / FROZEN`; Runtime Repair 1 remains
-`NOT VERIFIED / HOST-SAFETY HOLD`, and Runtime Investigation 2A is
-`EXECUTED / HOST-SAFETY ABORT`; fresh formal training remains on `HOLD`.
+`NOT VERIFIED / HOST-SAFETY HOLD`, Runtime Investigation 2A is
+`EXECUTED / HOST-SAFETY ABORT`, and Runtime Qualification 2B is
+`EXECUTED / HOST_ENVELOPE_LIMIT`; fresh formal training remains on `HOLD`.
 The first host-interrupted attempt is
-`M28B_RUNTIME_INVALID` rather than a model result. Runtime Repair 1 is
-`IMPLEMENTED` but its real-data diagnostic is not yet `VERIFIED`.
+`M28B_RUNTIME_INVALID` rather than a model result.
 There is no accepted offline result, Arena result, promotion, or champion
 change; Arena remains `NOT_AUTHORIZED`.
 
-The next authorized gate is an independent review of the Runtime Investigation
-2A report and traces, followed by a code-level or host-selection decision. The
-profile does not authorize a fresh CUDA training round and does not authorize
-Arena.
+The decision per the Qualification 2B protocol is:
+- High-frequency 250ms telemetry shows data wait / CPU thread usage is strictly bounded (~2 cores), while GPU actively draws power (~64W) and SM clock ramps to 2535 MHz.
+- Host thermal headroom breaches the 88.0°C safety abort threshold within ~2.5s of combined load.
+- In accordance with the preregistered decision rules, no further code-level Runtime Repairs (3/4) are warranted on this machine; formal training requires host migration.
 
 ## Known limitations
 
