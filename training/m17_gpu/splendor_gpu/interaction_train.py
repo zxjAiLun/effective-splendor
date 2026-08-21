@@ -24,6 +24,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from .data import catalog_semantic_hash, load_catalog
+import threading
 from .encoded_cache import EncodedCache, PackedEncodedDataset, cache_manifest_sha256, collate_packed
 from .model import ModelSpec, build_model
 from .runtime import cpu_temperatures_c
@@ -36,6 +37,102 @@ from .self_play_train import (
     self_play_hash,
     split_examples,
 )
+
+
+TRAINING_THERMAL_LIMIT_C = 85.0
+COOLDOWN_TARGET_C = 65.0
+COOLDOWN_TIMEOUT_SECONDS = 180.0
+TELEMETRY_INTERVAL_SECONDS = 0.250
+
+
+class ThermalSafetyAbort(RuntimeError):
+    """Raised when host CPU temperature reaches or exceeds the safety abort threshold."""
+
+    def __init__(self, stage: str, readings: list[dict[str, Any]], limit_c: float):
+        maximum = max((float(item["celsius"]) for item in readings if "celsius" in item), default=None)
+        self.stage = stage
+        self.readings = list(readings)
+        self.maximum_c = maximum
+        self.limit_c = limit_c
+        super().__init__(
+            f"host thermal safety abort at {stage}: max={maximum!r}°C, limit={limit_c}°C"
+        )
+
+
+class ThermalTelemetryUnavailable(RuntimeError):
+    """Raised when no thermal sensor is available for a fail-closed run."""
+
+
+class BackgroundThermalGuard:
+    """Fail-closed background thermal monitor polling every 250ms during training."""
+
+    def __init__(self, limit_c: float = TRAINING_THERMAL_LIMIT_C, interval_s: float = TELEMETRY_INTERVAL_SECONDS):
+        self.limit_c = limit_c
+        self.interval_s = interval_s
+        self.abort_triggered = False
+        self.abort_exception: Exception | None = None
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self):
+        self._stop_event.clear()
+        self.abort_triggered = False
+        self.abort_exception = None
+        self._thread = threading.Thread(target=self._loop, daemon=True, name="BackgroundThermalGuard")
+        self._thread.start()
+
+    def stop(self):
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+
+    def _loop(self):
+        while not self._stop_event.is_set():
+            temps = cpu_temperatures_c()
+            if not temps:
+                self.abort_triggered = True
+                self.abort_exception = ThermalTelemetryUnavailable("no CPU thermal sensor available during training")
+                break
+            vals = [float(t["celsius"]) for t in temps if "celsius" in t]
+            if not vals:
+                self.abort_triggered = True
+                self.abort_exception = ThermalTelemetryUnavailable("no valid numeric CPU thermal readings available")
+                break
+            max_c = max(vals)
+            if max_c >= self.limit_c:
+                self.abort_triggered = True
+                self.abort_exception = ThermalSafetyAbort("training_loop", temps, self.limit_c)
+                break
+            self._stop_event.wait(self.interval_s)
+
+    def check(self):
+        if self.abort_triggered and self.abort_exception is not None:
+            raise self.abort_exception
+
+
+def require_fail_closed_cooldown(target_c: float = COOLDOWN_TARGET_C, timeout_s: float = COOLDOWN_TIMEOUT_SECONDS) -> float:
+    """Wait until host cools below target_c; fail closed on missing telemetry or timeout."""
+    cooldown_start = time.perf_counter()
+    print(f"Cooling down host between models (target: < {target_c:.1f}°C, timeout: {timeout_s:.0f}s)...")
+    while True:
+        temps = cpu_temperatures_c()
+        if not temps:
+            raise ThermalTelemetryUnavailable("no CPU thermal sensor available for cooldown check")
+        vals = [float(t["celsius"]) for t in temps if "celsius" in t]
+        if not vals:
+            raise ThermalTelemetryUnavailable("no valid numeric CPU thermal readings available during cooldown")
+        max_c = max(vals)
+        if max_c < target_c:
+            elapsed = time.perf_counter() - cooldown_start
+            print(f"Thermal cooldown successful (max: {max_c:.1f}°C, elapsed: {elapsed:.1f}s)")
+            return max_c
+        if time.perf_counter() - cooldown_start > timeout_s:
+            raise ThermalSafetyAbort(
+                f"cooldown_timeout_{timeout_s:.0f}s",
+                temps,
+                target_c,
+            )
+        time.sleep(2.0)
 from .train import (
     CHECKPOINT_FORMAT,
     checkpoint_semantic_hash,
@@ -532,42 +629,49 @@ def train_one(
     best_state: dict[str, torch.Tensor] | None = None
     history: list[dict[str, Any]] = []
     start = time.perf_counter()
-    for epoch in range(int(training["epochs"])):
-        model.train()
-        total_loss = 0.0
-        seen = 0
-        for raw in train_loader:
-            batch = {key: value.to(device, non_blocking=device.type == "cuda") for key, value in raw.items()}
-            optimizer.zero_grad(set_to_none=True)
-            if "action_offsets" in batch:
-                logits, values = model.forward_packed(
-                    batch["entities"], batch["entity_mask"], batch["global_features"],
-                    batch["actions"], batch["action_offsets"],
-                )
-                policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
-                count = int(batch["entities"].shape[0])
-            else:
-                logits, values = model(
-                    batch["entities"], batch["entity_mask"], batch["global_features"],
-                    batch["actions"], batch["action_mask"],
-                )
-                policy = policy_loss(logits, batch["policy_target"])
-                count = int(logits.shape[0])
+    guard = BackgroundThermalGuard(limit_c=TRAINING_THERMAL_LIMIT_C, interval_s=TELEMETRY_INTERVAL_SECONDS)
+    guard.start()
+    try:
+        for epoch in range(int(training["epochs"])):
+            model.train()
+            total_loss = 0.0
+            seen = 0
+            for raw in train_loader:
+                guard.check()
+                batch = {key: value.to(device, non_blocking=device.type == "cuda") for key, value in raw.items()}
+                optimizer.zero_grad(set_to_none=True)
+                if "action_offsets" in batch:
+                    logits, values = model.forward_packed(
+                        batch["entities"], batch["entity_mask"], batch["global_features"],
+                        batch["actions"], batch["action_offsets"],
+                    )
+                    policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+                    count = int(batch["entities"].shape[0])
+                else:
+                    logits, values = model(
+                        batch["entities"], batch["entity_mask"], batch["global_features"],
+                        batch["actions"], batch["action_mask"],
+                    )
+                    policy = policy_loss(logits, batch["policy_target"])
+                    count = int(logits.shape[0])
 
-            value = nn.functional.mse_loss(values, batch["value_target"])
-            loss = policy + float(training["value_loss_weight"]) * value
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), float(training["gradient_clip_norm"]))
-            optimizer.step()
-            total_loss += loss.item() * count
-            seen += count
-        validation_metrics = evaluate(model, validation_loader, device)
-        selection_score = float(validation_metrics["policy_cross_entropy"]) + float(training["value_loss_weight"]) * float(validation_metrics["value_mse"])
-        history.append({"epoch": epoch + 1, "mean_loss": total_loss / seen, "validation": validation_metrics, "selection_score": selection_score})
-        if selection_score < best_score:
-            best_score = selection_score
-            best_epoch = epoch + 1
-            best_state = copy.deepcopy({key: value.detach().cpu() for key, value in model.state_dict().items()})
+                value = nn.functional.mse_loss(values, batch["value_target"])
+                loss = policy + float(training["value_loss_weight"]) * value
+                loss.backward()
+                nn.utils.clip_grad_norm_(model.parameters(), float(training["gradient_clip_norm"]))
+                optimizer.step()
+                total_loss += loss.item() * count
+                seen += count
+            guard.check()
+            validation_metrics = evaluate(model, validation_loader, device)
+            selection_score = float(validation_metrics["policy_cross_entropy"]) + float(training["value_loss_weight"]) * float(validation_metrics["value_mse"])
+            history.append({"epoch": epoch + 1, "mean_loss": total_loss / seen, "validation": validation_metrics, "selection_score": selection_score})
+            if selection_score < best_score:
+                best_score = selection_score
+                best_epoch = epoch + 1
+                best_state = copy.deepcopy({key: value.detach().cpu() for key, value in model.state_dict().items()})
+    finally:
+        guard.stop()
     if best_state is None:
         raise RuntimeError("M28B training produced no checkpoint candidate")
     model.load_state_dict(best_state, strict=True)
@@ -654,15 +758,7 @@ def main() -> None:
         if idx > 0:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            print("Cooling down between models (target: < 65.0°C)...")
-            cooldown_start = time.perf_counter()
-            while True:
-                temps = cpu_temperatures_c()
-                max_c = max((float(t["celsius"]) for t in temps if "celsius" in t), default=0.0)
-                if max_c < 65.0 or (time.perf_counter() - cooldown_start > 180.0):
-                    print(f"Thermal cooldown complete (current max: {max_c:.1f}°C, elapsed: {time.perf_counter() - cooldown_start:.1f}s)")
-                    break
-                time.sleep(2.0)
+            require_fail_closed_cooldown(target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
         report = train_one(
             model_contract,
             train_indices,
