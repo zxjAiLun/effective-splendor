@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = RUNTIME REPAIR 1 DIAGNOSTIC HOST-SAFETY HOLD / FORMAL TRAINING HOLD
+STATUS = RUNTIME INVESTIGATION 2A EXECUTED / HOST-SAFETY ABORT / FORMAL TRAINING HOLD
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = HOLD pending Runtime Repair 1 diagnostic PASS
+TRAINING = HOLD pending runtime-evidence review and host-safe execution decision
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -65,10 +65,14 @@ standard multi-head attention and not a Transformer encoder.
   metadata, and split/provenance bindings.
 - Runtime Repair 1: one packed encoded cache, explicit CPU thread caps, and a
   non-scientific exact-equality/inference diagnostic.
+- Runtime Investigation 2A: bounded CPU/CUDA profiling of the cache-backed
+  forward/backward/optimizer path with read-only telemetry and a 90°C host
+  safety abort.
 
 ### Not in scope / not authorized
 
-- Formal M28B training or checkpoint generation in this Runtime Repair 1 round.
+- Formal M28B training or checkpoint generation in this runtime-investigation
+  round.
 - New self-play, teacher/bootstrap changes, target redesign, or data changes.
 - Width sweep, Transformer, standard multi-head attention, optimizer sweep,
   learning-rate sweep, PUCT tuning, or search-budget scaling.
@@ -116,6 +120,13 @@ standard multi-head attention and not a Transformer encoder.
   `31,505/31,505` online/cache samples compare exactly. CPU runtime is
   fail-closed at Torch intra-op `2`, inter-op `1`, with all four explicit
   environment caps set to `2`.
+- Runtime Investigation 2A is separately specified by
+  `benchmarks/m28b-runtime-investigation-2a.json`. It reuses the accepted cache
+  manifest identity and does not reread the raw dataset or rerun exact
+  equality. It cannot mutate Linux power policy, CPU governor/Turbo, GPU power
+  limits, the scientific config, checkpoints, offline results, or Arena.
+- The investigation's `>=90°C` threshold is a host-safety stop only. A profile
+  below the threshold would not be a scientific PASS or training authorization.
 
 ## Offline and future Arena gates
 
@@ -240,6 +251,38 @@ automatically promotes the candidate or changes M07.
   HOLD`, despite the data/cache correctness checks passing. Formal M28B
   training remains `HOLD`; Arena remains `NOT_AUTHORIZED`.
 
+### 2026-08-21 — Runtime Investigation 2A executed; host-safety abort
+
+- Added the read-only profiler contract
+  `benchmarks/m28b-runtime-investigation-2a.json` and module
+  `splendor_gpu.m28b_runtime_investigation` in commit `3b5e473`. The profiler
+  uses the existing mmap cache, frozen batch size `128`, fresh control/candidate
+  initialization, and the actual forward/loss/backward/gradient-clip/AdamW
+  path. It makes no Linux power-policy mutation and writes no checkpoint,
+  offline result, or Arena artifact.
+- The run used four batches per model. Control completed `4/4`; candidate
+  completed `1/4` and stopped at `TCPU=90.0°C` after candidate batch 1. The
+  post-run telemetry reached `TCPU=93.0°C` and `TCPU_PCI=93.0°C`; the host had
+  returned to about `68°C` TCPU after the process ended.
+- Report:
+  `local-artifacts/m28b-runtime-investigation-2a.json`, SHA-256
+  `a9382bcdba022263b49ec5a39af9eeb88e0828905c7ca0b572ca83dbfc6c0dfa`.
+  Control and candidate traces are local-only; their SHA-256 values are
+  `f3773e8e3e6af05489720319975eb154f15bdde236b0f6182a6beab0945b3a9d` and
+  `917f51bcdee37484a144850ca9b9d658d10a7dcbcf61fb11a7e99772f3750444`.
+- The cached input path is not the dominant measured transfer cost: control
+  data wait/collate averaged `16.52 ms` per batch and host-to-device transfer
+  `1.54 ms`; candidate's single completed batch measured `13.38 ms` and
+  `0.75 ms`. The GPU trace contains `aten::addmm`, `aten::mm`, pinned H2D
+  copies, and AdamW device work, so the GPU was active rather than absent.
+  The first control batch includes CUDA/profiler warm-up; its later batches
+  were materially shorter than the first.
+- The report is `HOST_SAFETY_ABORT`, not a model result and not a training
+  authorization. Raw profiler `Unrecognized` entries are profiler overhead and
+  `cudaDeviceSynchronize` entries are instrumentation barriers; neither is
+  treated as a scientific CPU bottleneck. Formal training remains `HOLD` and
+  Arena remains `NOT_AUTHORIZED`.
+
 ## Final implementation
 
 Tracked files for this round:
@@ -251,11 +294,14 @@ Tracked files for this round:
 - `training/m17_gpu/splendor_gpu/encoded_cache.py`
 - `training/m17_gpu/splendor_gpu/runtime.py`
 - `training/m17_gpu/splendor_gpu/m28b_runtime_repair.py`
+- `training/m17_gpu/splendor_gpu/m28b_runtime_investigation.py`
 - `training/m17_gpu/splendor_gpu/__init__.py`
 - `training/m17_gpu/tests/test_interaction_model.py`
 - `training/m17_gpu/tests/test_interaction_train.py`
 - `training/m17_gpu/tests/test_encoded_cache.py`
+- `training/m17_gpu/tests/test_runtime_investigation.py`
 - `crates/splendor-cli/tests/m28b_design.rs`
+- `benchmarks/m28b-runtime-investigation-2a.json`
 - `docs/m28b-contextual-entity-interaction.md`
 
 The future authorized training command is:
@@ -269,7 +315,7 @@ PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splend
 ```
 
 This command is recorded for the later authorized fresh rerun only. It was not
-run in the Runtime Repair 1 implementation round.
+run in the Runtime Repair 1 or Runtime Investigation 2A round.
 
 The diagnostic command is:
 
@@ -283,6 +329,22 @@ PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splend
   --batches 4
 ```
 
+The Runtime Investigation 2A command was:
+
+```text
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 \
+PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.m28b_runtime_investigation \
+  --config benchmarks/m28b-contextual-entity-interaction-v1.config.json \
+  --contract benchmarks/m28b-runtime-investigation-2a.json \
+  --encoded-cache local-artifacts/m28b-encoded-cache-v1 \
+  --report local-artifacts/m28b-runtime-investigation-2a.json \
+  --batches 4
+```
+
+This command exited `0` and wrote a diagnostic report with status
+`HOST_SAFETY_ABORT`; it did not write a checkpoint, training report, offline
+result, or Arena artifact.
+
 ## Validation and evidence
 
 The implementation and diagnostic checks completed so far are:
@@ -290,17 +352,22 @@ The implementation and diagnostic checks completed so far are:
 ```text
 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 37 passed, exit 0
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 41 passed, exit 0
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 45 passed, exit 0
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests/test_runtime_investigation.py -q — PASS, 4 passed, exit 0
+python3 -m py_compile training/m17_gpu/splendor_gpu/m28b_runtime_investigation.py — PASS, exit 0
 cargo fmt --all -- --check — PASS, exit 0
 cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS, 1 passed, exit 0
 local-artifacts/m24-torch-cu124/bin/python -m json.tool benchmarks/m28b-contextual-entity-interaction-v1.config.json — PASS, exit 0
 git diff --check — PASS, exit 0
 Runtime Repair diagnostic command — exit 0; exact/cache/thread/model checks passed, but host-safety gate failed and diagnostic is not accepted
+Runtime Investigation 2A command — exit 0; control `4/4`, candidate `1/4`, host-safety abort at `TCPU=90.0°C`; report not accepted as a training/runtime PASS
 ```
 
 The M28B config SHA-256 is
 `95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd`.
-The implementation commit is
-`e1b80aa6673865d149ef1e56b9a41f1b384b563d` and is pushed to `origin/main`.
+The original implementation commit is
+`e1b80aa6673865d149ef1e56b9a41f1b384b563d`; the Runtime Investigation 2A
+implementation commit is `3b5e473` and both are pushed to `origin/main`.
 Generated scientific artifacts have no result hash because formal training and
 Arena were not run. The Runtime Repair 1 data correctness checks passed, but
 the diagnostic is not accepted because its own telemetry crossed the host
@@ -309,16 +376,19 @@ thermal-safety condition.
 ## Result and decision
 
 M28B remains a controlled representation experiment with no new scientific
-result. The source/prereg is `ACCEPTED / FROZEN`, but Runtime Repair diagnostic
-is `NOT VERIFIED / HOST-SAFETY HOLD`; fresh formal training remains on `HOLD`.
+result. The source/prereg is `ACCEPTED / FROZEN`; Runtime Repair 1 remains
+`NOT VERIFIED / HOST-SAFETY HOLD`, and Runtime Investigation 2A is
+`EXECUTED / HOST-SAFETY ABORT`; fresh formal training remains on `HOLD`.
 The first host-interrupted attempt is
 `M28B_RUNTIME_INVALID` rather than a model result. Runtime Repair 1 is
 `IMPLEMENTED` but its real-data diagnostic is not yet `VERIFIED`.
 There is no accepted offline result, Arena result, promotion, or champion
 change; Arena remains `NOT_AUTHORIZED`.
 
-The next authorized gate is the Runtime Repair diagnostic. A diagnostic PASS
-may authorize a fresh CUDA training round; it does not itself authorize Arena.
+The next authorized gate is an independent review of the Runtime Investigation
+2A report and traces, followed by a code-level or host-selection decision. The
+profile does not authorize a fresh CUDA training round and does not authorize
+Arena.
 
 ## Known limitations
 
@@ -334,13 +404,21 @@ may authorize a fresh CUDA training round; it does not itself authorize Arena.
 - Offline gates are diagnostic eligibility checks, not playing-strength proof.
 - The future Arena gate is conditional and cannot be inferred from offline
   fit or implementation tests.
+- Runtime Investigation 2A uses profiler instrumentation and explicit CUDA
+  synchronization barriers for stage timing; its wall-clock timings are
+  diagnostic and not a throughput benchmark. Its candidate profile stopped
+  after one batch, so candidate steady-state timing remains unmeasured.
+- The brief profile's aggregate machine-wide CPU utilization was low while
+  package/TCPU sensors rose sharply. This rules out only a simple claim of
+  sustained all-core saturation; it does not identify a safe formal-training
+  envelope or prove the root cause of the thermal response.
 
 ## Next authorized gate
 
-Do not run formal training after this diagnostic. First restore a host cooling
-condition in which the same cache/equality/smoke diagnostic can complete
-without package/core temperatures entering the 90°C range; then obtain a
-short independent runtime-evidence review of the report and cache hashes.
-Only that review may release the frozen fresh M28B training command in a new
-output directory. Do not resume the prior partial checkpoint, materialize
-Arena plans, run Arena, or authorize M25, M26, or downstream M28 work.
+Do not run formal training or change Linux power settings after this profile.
+First obtain a short independent review of the report/traces and decide
+whether the next step is a code-level input/dispatch repair or execution on a
+different host. Only a later explicit runtime-evidence review may release the
+frozen fresh M28B training command in a new output directory. Do not resume the
+prior partial checkpoint, materialize Arena plans, run Arena, or authorize M25,
+M26, or downstream M28 work.
