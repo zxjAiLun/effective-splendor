@@ -1,0 +1,80 @@
+{
+  "format": "effective-splendor-m28b-runtime-investigation",
+  "version": 1,
+  "milestone": "M28B",
+  "investigation": "m28b_runtime_investigation_2a",
+  "status": "AUTHORIZED",
+  "baseline_commit": "6f5c4f2a5f32ded5c1c1ecedee16690f17499306",
+  "purpose": "Read-only profiling of the cached M28B training execution path before any host power-policy change or formal rerun.",
+  "scientific_config": {
+    "path": "benchmarks/m28b-contextual-entity-interaction-v1.config.json",
+    "sha256": "95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd",
+    "must_remain_unchanged": true
+  },
+  "cache": {
+    "path": "local-artifacts/m28b-encoded-cache-v1/",
+    "format": "effective-splendor-m28b-encoded-cache",
+    "manifest_sha256": "f549549ea0a44c552e0114dddde13a5e8385aa0a04d5cc96b3a0c8a62b827e6d",
+    "examples": 31505,
+    "identity_check": "manifest source identities are compared with the frozen scientific config; the prior 31505/31505 exact equality is not rerun",
+    "dataset_raw_file_is_not_reread": true
+  },
+  "runtime": {
+    "system_power_policy_mutation": false,
+    "linux_governor_mutation": false,
+    "turbo_mutation": false,
+    "gpu_power_limit_mutation": false,
+    "data_loader_workers": 0,
+    "batch_size": 128,
+    "thread_environment": {
+      "OMP_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2",
+      "OPENBLAS_NUM_THREADS": "2",
+      "NUMEXPR_NUM_THREADS": "2"
+    },
+    "torch_threads": {
+      "intra_op": 2,
+      "inter_op": 1
+    }
+  },
+  "profile": {
+    "models": [
+      "m28b-entity-mixer-h192-b4-control-v1",
+      "m28b-contextual-entity-mixer-h192-b4-i2-v1"
+    ],
+    "fresh_initialization_seed": 280229,
+    "shuffle_seed": 280229,
+    "forward_backward_optimizer_path": true,
+    "profiler_activities": ["CPU", "CUDA"],
+    "default_batches_per_model": 4,
+    "max_batches_per_model": 6,
+    "stage_timing": [
+      "data_wait_and_collate",
+      "host_to_device",
+      "zero_grad",
+      "forward_and_loss",
+      "backward",
+      "gradient_clip",
+      "optimizer_step"
+    ],
+    "trace_artifacts_are_ignored": true,
+    "checkpoint_written": false,
+    "training_report_written": false,
+    "offline_result_written": false,
+    "arena_artifact_written": false
+  },
+  "host_safety": {
+    "cpu_temperature_limit_celsius": 90.0,
+    "abort_comparison": ">=",
+    "abort_during_profile": true,
+    "telemetry_required": true,
+    "host_safety_only": true,
+    "no_scientific_pass_from_profile": true
+  },
+  "authorization": {
+    "formal_training": "HOLD",
+    "arena": "NOT_AUTHORIZED",
+    "promotion": "NONE",
+    "champion": "M07"
+  }
+}
