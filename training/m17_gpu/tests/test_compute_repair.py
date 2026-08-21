@@ -132,10 +132,49 @@ def test_evaluate_packed_and_padded_exact_agreement():
         assert metrics_padded[k] == pytest.approx(metrics_packed[k], abs=1e-5)
 
 
+def test_evaluate_respects_abort_check():
+    spec = ModelSpec("contextual_entity_mixer", 192, 4, 0.0, 2)
+    model = build_model(spec)
+    model.eval()
+
+    samples = [{
+        "entities": torch.randn(31, ENTITY_FEATURES),
+        "entity_mask": torch.rand(31) > 0.2,
+        "global_features": torch.randn(GLOBAL_FEATURES),
+        "actions": torch.randn(10, ACTION_FEATURES),
+        "policy_target": torch.softmax(torch.randn(10), dim=-1),
+        "value_target": torch.softmax(torch.randn(2), dim=-1),
+    } for _ in range(8)]
+    loader = DataLoader(samples, batch_size=2, shuffle=False, collate_fn=collate_packed)
+
+    calls = [0]
+    def failing_check():
+        calls[0] += 1
+        if calls[0] >= 2:
+            raise RuntimeError("evaluation aborted by thermal check")
+
+    with pytest.raises(RuntimeError, match="evaluation aborted by thermal check"):
+        evaluate(model, loader, torch.device("cpu"), abort_check=failing_check)
+    assert calls[0] == 2
+
+
+def test_thermal_guard_synchronous_startup_rejection(monkeypatch):
+    readings = [{"source": "test", "label": "TCPU", "celsius": 89.0}]
+    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: readings)
+    guard = BackgroundThermalGuard(limit_c=85.0, interval_s=0.01)
+    with pytest.raises(ThermalSafetyAbort, match="guard_startup:max_89.0C"):
+        guard.start()
+
+
 def test_thermal_guard_fail_closed_on_missing_sensors(monkeypatch):
-    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: [])
+    # Pass startup
+    state = {"readings": [{"source": "test", "label": "TCPU", "celsius": 50.0}]}
+    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: state["readings"])
     guard = BackgroundThermalGuard(limit_c=85.0, interval_s=0.01)
     guard.start()
+
+    # Drop sensors during loop
+    state["readings"] = []
     time.sleep(0.05)
     with pytest.raises(ThermalTelemetryUnavailable, match="no CPU thermal sensor available"):
         guard.check()
@@ -143,12 +182,16 @@ def test_thermal_guard_fail_closed_on_missing_sensors(monkeypatch):
 
 
 def test_thermal_guard_aborts_at_or_above_limit(monkeypatch):
-    readings = [{"source": "test", "label": "TCPU", "celsius": 85.0}]
-    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: readings)
+    # Pass startup
+    state = {"readings": [{"source": "test", "label": "TCPU", "celsius": 50.0}]}
+    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: state["readings"])
     guard = BackgroundThermalGuard(limit_c=85.0, interval_s=0.01)
     guard.start()
+
+    # Temperature spike during loop
+    state["readings"] = [{"source": "test", "label": "TCPU", "celsius": 85.0}]
     time.sleep(0.05)
-    with pytest.raises(ThermalSafetyAbort, match="host thermal safety abort at training_loop"):
+    with pytest.raises(ThermalSafetyAbort, match="training_loop"):
         guard.check()
     guard.stop()
 

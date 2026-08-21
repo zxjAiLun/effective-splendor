@@ -74,10 +74,29 @@ class BackgroundThermalGuard:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
+    def _sample_and_check(self, stage: str = "startup"):
+        temps = cpu_temperatures_c()
+        if not temps:
+            self.abort_triggered = True
+            self.abort_exception = ThermalTelemetryUnavailable(f"no CPU thermal sensor available at {stage}")
+            return
+        vals = [float(t["celsius"]) for t in temps if "celsius" in t]
+        if not vals:
+            self.abort_triggered = True
+            self.abort_exception = ThermalTelemetryUnavailable(f"no valid numeric CPU thermal readings available at {stage}")
+            return
+        max_c = max(vals)
+        if max_c >= self.limit_c:
+            self.abort_triggered = True
+            self.abort_exception = ThermalSafetyAbort(f"{stage}:max_{max_c:.1f}C", temps, self.limit_c)
+
     def start(self):
         self._stop_event.clear()
         self.abort_triggered = False
         self.abort_exception = None
+        # Synchronous check before spawning thread: refuse to run from already-overheated state
+        self._sample_and_check("guard_startup")
+        self.check()
         self._thread = threading.Thread(target=self._loop, daemon=True, name="BackgroundThermalGuard")
         self._thread.start()
 
@@ -662,21 +681,22 @@ def train_one(
                 optimizer.step()
                 total_loss += loss.item() * count
                 seen += count
-            guard.check()
-            validation_metrics = evaluate(model, validation_loader, device)
+                guard.check()
+            validation_metrics = evaluate(model, validation_loader, device, abort_check=guard.check)
             selection_score = float(validation_metrics["policy_cross_entropy"]) + float(training["value_loss_weight"]) * float(validation_metrics["value_mse"])
             history.append({"epoch": epoch + 1, "mean_loss": total_loss / seen, "validation": validation_metrics, "selection_score": selection_score})
             if selection_score < best_score:
                 best_score = selection_score
                 best_epoch = epoch + 1
                 best_state = copy.deepcopy({key: value.detach().cpu() for key, value in model.state_dict().items()})
+
+        if best_state is None:
+            raise RuntimeError("M28B training produced no checkpoint candidate")
+        model.load_state_dict(best_state, strict=True)
+        validation_metrics = evaluate(model, validation_loader, device, abort_check=guard.check)
+        reference_metrics = evaluate(model, reference_loader, device, abort_check=guard.check)
     finally:
         guard.stop()
-    if best_state is None:
-        raise RuntimeError("M28B training produced no checkpoint candidate")
-    model.load_state_dict(best_state, strict=True)
-    validation_metrics = evaluate(model, validation_loader, device)
-    reference_metrics = evaluate(model, reference_loader, device)
     role = str(model_contract["role"])
     model_metadata = build_checkpoint_metadata(
         model,

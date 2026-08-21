@@ -11,7 +11,7 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
@@ -159,10 +159,17 @@ def packed_policy_loss(logits: torch.Tensor, targets: torch.Tensor, offsets: tor
 
 
 @torch.no_grad()
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> dict[str, float | int]:
+def evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    abort_check: Callable[[], None] | None = None,
+) -> dict[str, float | int]:
     model.eval()
     cross_entropy = value_mse = visit_top1 = model_top1 = examples = 0.0
     for raw in loader:
+        if abort_check is not None:
+            abort_check()
         batch = move(raw, device)
         if "action_offsets" in batch:
             logits, values = model.forward_packed(
