@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = RUNTIME INVESTIGATION 2A EXECUTED / HOST-SAFETY ABORT / FORMAL TRAINING HOLD
+STATUS = QUALIFICATION 2B EXECUTED / HOST_ENVELOPE_LIMIT / HOST MIGRATION AUTHORIZED
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = HOLD pending runtime-evidence review and host-safe execution decision
+TRAINING = HOLD pending external host qualification 2C
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -457,10 +457,7 @@ The decision per the Qualification 2B protocol is:
 
 ## Next authorized gate
 
-Do not run formal training or change Linux power settings after this profile.
-First obtain a short independent review of the report/traces and decide
-whether the next step is a code-level input/dispatch repair or execution on a
-different host. Only a later explicit runtime-evidence review may release the
-frozen fresh M28B training command in a new output directory. Do not resume the
-prior partial checkpoint, materialize Arena plans, run Arena, or authorize M25,
-M26, or downstream M28 work.
+Current host is unqualified under the thermal envelope limit. Formal training on
+this host is not authorized. Next authorized step is host migration and one
+bounded execution qualification on the destination host (M28B Qualification 2C).
+Formal M28B training will be unlocked only after 2C passes on the new host.
