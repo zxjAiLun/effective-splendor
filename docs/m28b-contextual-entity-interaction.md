@@ -403,6 +403,7 @@ git diff --check — PASS, exit 0
 Runtime Repair diagnostic command — exit 0; exact/cache/thread/model checks passed, but host-safety gate failed and diagnostic is not accepted
 Runtime Investigation 2A command — exit 0; control `4/4`, candidate `1/4`, host-safety abort at `TCPU=90.0°C`; report not accepted as a training/runtime PASS
 Runtime Qualification 2B natural-path shadow run — exit 0; 250ms telemetry captured; hard safety abort triggered at ~2.5s with peak 93.0°C; verdict HOST_ENVELOPE_LIMIT
+Candidate Continuation Run — fail-closed thermal abort on `coretemp:Core 8` (95.0°C); Control verification passed, report remained immutable, output directory cleanly preserved
 ```
 
 The M28B config SHA-256 is
