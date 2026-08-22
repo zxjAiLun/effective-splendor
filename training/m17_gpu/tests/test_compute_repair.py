@@ -176,7 +176,7 @@ def test_thermal_guard_fail_closed_on_missing_sensors(monkeypatch):
     # Drop sensors during loop
     state["readings"] = []
     time.sleep(0.05)
-    with pytest.raises(ThermalTelemetryUnavailable, match="no CPU thermal sensor available"):
+    with pytest.raises(ThermalTelemetryUnavailable, match="no .*thermal sensor available"):
         guard.check()
     guard.stop()
 

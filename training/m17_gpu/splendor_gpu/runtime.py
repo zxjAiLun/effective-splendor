@@ -7,6 +7,7 @@ thread pools so that the host remains thermally stable while the GPU is fed.
 
 from __future__ import annotations
 
+import ctypes
 import glob
 import json
 import os
@@ -66,6 +67,50 @@ def configure_cpu_runtime() -> dict[str, Any]:
     return actual
 
 
+class NvmlCollector:
+    """Lightweight direct NVML wrapper via ctypes without third-party dependencies."""
+
+    def __init__(self):
+        self._available = False
+        self._handle = None
+        self._nvml = None
+        try:
+            self._nvml = ctypes.CDLL("libnvidia-ml.so.1")
+            if self._nvml.nvmlInit_v2() == 0:
+                handle = ctypes.c_void_p()
+                if self._nvml.nvmlDeviceGetHandleByIndex_v2(0, ctypes.byref(handle)) == 0:
+                    self._handle = handle
+                    self._available = True
+        except Exception:
+            self._available = False
+
+    @property
+    def is_available(self) -> bool:
+        return self._available
+
+    def sample_temperature(self) -> float | None:
+        if not self._available or self._handle is None or self._nvml is None:
+            return None
+        try:
+            temp = ctypes.c_uint()
+            ret = self._nvml.nvmlDeviceGetTemperature(self._handle, 0, ctypes.byref(temp))
+            if ret == 0:
+                return float(temp.value)
+            return None
+        except Exception:
+            return None
+
+    def close(self):
+        if self._available and self._nvml is not None:
+            try:
+                self._nvml.nvmlShutdown()
+            except Exception:
+                pass
+            self._available = False
+            self._handle = None
+            self._nvml = None
+
+
 def _read_int(path: Path) -> int | None:
     try:
         return int(path.read_text(encoding="utf-8").strip())
@@ -74,7 +119,7 @@ def _read_int(path: Path) -> int | None:
 
 
 def cpu_temperatures_c() -> list[dict[str, Any]]:
-    """Read available thermal-zone and hwmon temperatures without dependencies."""
+    """Read available thermal-zone and hwmon temperatures with firmware trip points."""
 
     readings: list[dict[str, Any]] = []
     for raw_path in sorted(glob.glob("/sys/class/thermal/thermal_zone*/temp")):
@@ -82,9 +127,34 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
         value = _read_int(path)
         if value is None:
             continue
-        type_path = path.parent / "type"
-        label = type_path.read_text(encoding="utf-8").strip() if type_path.exists() else path.parent.name
-        readings.append({"source": str(path), "label": label, "celsius": value / 1000.0})
+        tz_dir = path.parent
+        type_path = tz_dir / "type"
+        label = type_path.read_text(encoding="utf-8").strip() if type_path.exists() else tz_dir.name
+
+        firmware_crit = None
+        for trip_file in sorted(tz_dir.glob("trip_point_*_type")):
+            try:
+                trip_type = trip_file.read_text(encoding="utf-8").strip()
+                prefix = trip_file.name[:-5]
+                temp_file = tz_dir / f"{prefix}_temp"
+                if temp_file.exists():
+                    t_val = _read_int(temp_file)
+                    if t_val is not None and t_val > 0:
+                        c_val = t_val / 1000.0
+                        if trip_type in ("critical", "hot"):
+                            firmware_crit = min(firmware_crit, c_val) if firmware_crit else c_val
+            except (OSError, ValueError):
+                pass
+
+        sensor_info: dict[str, Any] = {
+            "source": str(path),
+            "label": label,
+            "celsius": value / 1000.0,
+        }
+        if firmware_crit is not None:
+            sensor_info["firmware_crit"] = firmware_crit
+        readings.append(sensor_info)
+
     for raw_path in sorted(glob.glob("/sys/class/hwmon/hwmon*/temp*_input")):
         path = Path(raw_path)
         value = _read_int(path)
@@ -92,11 +162,46 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
             continue
         name_path = path.parent / "name"
         label_path = path.with_name(path.name.replace("_input", "_label"))
+        crit_path = path.with_name(path.name.replace("_input", "_crit"))
+        max_path = path.with_name(path.name.replace("_input", "_max"))
+
         label = label_path.read_text(encoding="utf-8").strip() if label_path.exists() else path.stem
         if name_path.exists():
             label = f"{name_path.read_text(encoding='utf-8').strip()}:{label}"
-        readings.append({"source": str(path), "label": label, "celsius": value / 1000.0})
+
+        firmware_crit = None
+        crit_val = _read_int(crit_path) if crit_path.exists() else None
+        max_val = _read_int(max_path) if max_path.exists() else None
+
+        for v in (crit_val, max_val):
+            if v is not None and 0 < v < 200000:
+                c_val = v / 1000.0
+                firmware_crit = min(firmware_crit, c_val) if firmware_crit else c_val
+
+        sensor_info = {
+            "source": str(path),
+            "label": label,
+            "celsius": value / 1000.0,
+        }
+        if firmware_crit is not None:
+            sensor_info["firmware_crit"] = firmware_crit
+        readings.append(sensor_info)
+
     return readings
+
+
+def gpu_temperatures_c() -> list[dict[str, Any]]:
+    """Read NVIDIA GPU temperature via direct NVML."""
+    collector = NvmlCollector()
+    try:
+        if not collector.is_available:
+            return []
+        temp = collector.sample_temperature()
+        if temp is None:
+            return []
+        return [{"source": "nvml:gpu_0", "label": "NVIDIA GPU", "celsius": temp}]
+    finally:
+        collector.close()
 
 
 def _proc_meminfo() -> dict[str, int]:

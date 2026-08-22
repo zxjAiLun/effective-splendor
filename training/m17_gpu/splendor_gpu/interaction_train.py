@@ -27,7 +27,7 @@ from .data import catalog_semantic_hash, load_catalog
 import threading
 from .encoded_cache import EncodedCache, PackedEncodedDataset, cache_manifest_sha256, collate_packed
 from .model import ModelSpec, build_model
-from .runtime import cpu_temperatures_c
+from .runtime import NvmlCollector, cpu_temperatures_c
 from .self_play_train import (
     collate,
     dataset_contract,
@@ -47,16 +47,29 @@ COOLDOWN_TARGET_C = 65.0
 COOLDOWN_TIMEOUT_SECONDS = 180.0
 TELEMETRY_INTERVAL_SECONDS = 0.250
 
+VERIFIED_CONTROL_REPORT_SHA256 = "af006dc0825da8d687fe9d848a17a1aa5e54770a08e19f801e0256ee9a604f49"
+VERIFIED_CONTROL_CHECKPOINT_SHA256 = "17041a98d2204d44c02a9777713e038e2fa6facccdfa0bf745acef8c0e8758db"
+VERIFIED_CONTROL_SEMANTIC_HASH = "5d83e21634399d6eb1c1b798b496ca5c03f809f7802a575c436b78c9436f0d41"
 
-def sensor_threshold(label: str) -> float:
-    lbl = label.lower()
-    if any(k in lbl for k in ("coretemp", "x86_pkg_temp", "tcpu")) and "pci" not in lbl:
-        return CPU_THERMAL_LIMIT_C
-    if any(k in lbl for k in ("tcpu_pci", "gpu", "nvidia")):
-        return GPU_THERMAL_LIMIT_C
-    if "nvme" in lbl:
-        return NVME_THERMAL_LIMIT_C
-    return PLATFORM_THERMAL_LIMIT_C
+
+def sensor_threshold(sensor_info: dict[str, Any] | str) -> float:
+    if isinstance(sensor_info, dict):
+        label = str(sensor_info.get("label", "")).lower()
+        firmware_crit = sensor_info.get("firmware_crit")
+    else:
+        label = str(sensor_info).lower()
+        firmware_crit = None
+
+    if any(k in label for k in ("coretemp", "x86_pkg_temp", "tcpu")) and "pci" not in label:
+        limit = CPU_THERMAL_LIMIT_C
+    elif "nvme" in label:
+        limit = NVME_THERMAL_LIMIT_C
+    else:
+        limit = PLATFORM_THERMAL_LIMIT_C
+
+    if firmware_crit is not None and isinstance(firmware_crit, (int, float)) and firmware_crit > 0:
+        limit = min(limit, float(firmware_crit) - 2.0)
+    return limit
 
 
 class ThermalSafetyAbort(RuntimeError):
@@ -87,19 +100,26 @@ class ThermalTelemetryUnavailable(RuntimeError):
 class BackgroundThermalGuard:
     """Fail-closed background thermal monitor polling every 250ms during training."""
 
-    def __init__(self, limit_c: float | None = None, interval_s: float = TELEMETRY_INTERVAL_SECONDS):
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        limit_c: float | None = None,
+        interval_s: float = TELEMETRY_INTERVAL_SECONDS,
+    ):
+        self.device = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
         self.limit_c = limit_c
         self.interval_s = interval_s
         self.abort_triggered = False
         self.abort_exception: Exception | None = None
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
+        self._nvml: NvmlCollector | None = NvmlCollector() if self.device.type == "cuda" else None
 
     def _sample_and_check(self, stage: str = "startup"):
         temps = cpu_temperatures_c()
         if not temps:
             self.abort_triggered = True
-            self.abort_exception = ThermalTelemetryUnavailable(f"no CPU thermal sensor available at {stage}")
+            self.abort_exception = ThermalTelemetryUnavailable(f"no host thermal sensor available at {stage}")
             return
         valid_readings = 0
         for s in temps:
@@ -107,7 +127,7 @@ class BackgroundThermalGuard:
                 continue
             c_val = float(s["celsius"])
             valid_readings += 1
-            limit = self.limit_c if self.limit_c is not None else sensor_threshold(str(s.get("label", "")))
+            limit = self.limit_c if self.limit_c is not None else sensor_threshold(s)
             if c_val >= limit:
                 self.abort_triggered = True
                 self.abort_exception = ThermalSafetyAbort(
@@ -121,6 +141,29 @@ class BackgroundThermalGuard:
         if valid_readings == 0:
             self.abort_triggered = True
             self.abort_exception = ThermalTelemetryUnavailable(f"no valid numeric thermal readings available at {stage}")
+            return
+
+        if self.device.type == "cuda":
+            if self._nvml is None or not self._nvml.is_available:
+                self.abort_triggered = True
+                self.abort_exception = ThermalTelemetryUnavailable(f"NVML GPU thermal telemetry unavailable at {stage}")
+                return
+            gpu_temp = self._nvml.sample_temperature()
+            if gpu_temp is None:
+                self.abort_triggered = True
+                self.abort_exception = ThermalTelemetryUnavailable(f"failed to read NVML GPU temperature at {stage}")
+                return
+            gpu_limit = self.limit_c if self.limit_c is not None else GPU_THERMAL_LIMIT_C
+            if gpu_temp >= gpu_limit:
+                self.abort_triggered = True
+                self.abort_exception = ThermalSafetyAbort(
+                    stage,
+                    "nvml:gpu_0",
+                    "NVIDIA GPU",
+                    gpu_temp,
+                    gpu_limit,
+                )
+                return
 
     def start(self):
         self._stop_event.clear()
@@ -136,6 +179,9 @@ class BackgroundThermalGuard:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=2.0)
+        if self._nvml is not None:
+            self._nvml.close()
+            self._nvml = None
 
     def _loop(self):
         while not self._stop_event.is_set():
@@ -149,32 +195,53 @@ class BackgroundThermalGuard:
             raise self.abort_exception
 
 
-def require_fail_closed_cooldown(target_c: float = COOLDOWN_TARGET_C, timeout_s: float = COOLDOWN_TIMEOUT_SECONDS) -> float:
+def require_fail_closed_cooldown(
+    device: torch.device | None = None,
+    target_c: float = COOLDOWN_TARGET_C,
+    timeout_s: float = COOLDOWN_TIMEOUT_SECONDS,
+) -> float:
     """Wait until host cools below target_c; fail closed on missing telemetry or timeout."""
+    dev = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
+    nvml = NvmlCollector() if dev.type == "cuda" else None
+    if dev.type == "cuda" and (nvml is None or not nvml.is_available):
+        raise ThermalTelemetryUnavailable("NVML GPU telemetry unavailable for cooldown check")
+
     cooldown_start = time.perf_counter()
     print(f"Cooling down host between models (target: < {target_c:.1f}°C, timeout: {timeout_s:.0f}s)...")
-    while True:
-        temps = cpu_temperatures_c()
-        if not temps:
-            raise ThermalTelemetryUnavailable("no CPU thermal sensor available for cooldown check")
-        vals = [float(t["celsius"]) for t in temps if "celsius" in t]
-        if not vals:
-            raise ThermalTelemetryUnavailable("no valid numeric CPU thermal readings available during cooldown")
-        max_c = max(vals)
-        if max_c < target_c:
-            elapsed = time.perf_counter() - cooldown_start
-            print(f"Thermal cooldown successful (max: {max_c:.1f}°C, elapsed: {elapsed:.1f}s)")
-            return max_c
-        if time.perf_counter() - cooldown_start > timeout_s:
-            hottest = max(temps, key=lambda s: float(s.get("celsius", -1e9)))
-            raise ThermalSafetyAbort(
-                f"cooldown_timeout_{timeout_s:.0f}s",
-                str(hottest.get("source", "")),
-                str(hottest.get("label", "")),
-                float(hottest.get("celsius", max_c)),
-                target_c,
-            )
-        time.sleep(2.0)
+    try:
+        while True:
+            temps = cpu_temperatures_c()
+            if not temps:
+                raise ThermalTelemetryUnavailable("no host thermal sensor available for cooldown check")
+            vals = [float(t["celsius"]) for t in temps if "celsius" in t]
+            if not vals:
+                raise ThermalTelemetryUnavailable("no valid numeric thermal readings available during cooldown")
+
+            if dev.type == "cuda":
+                assert nvml is not None
+                gpu_temp = nvml.sample_temperature()
+                if gpu_temp is None:
+                    raise ThermalTelemetryUnavailable("failed to read NVML GPU temperature during cooldown")
+                vals.append(gpu_temp)
+
+            max_c = max(vals)
+            if max_c < target_c:
+                elapsed = time.perf_counter() - cooldown_start
+                print(f"Thermal cooldown successful (max: {max_c:.1f}°C, elapsed: {elapsed:.1f}s)")
+                return max_c
+            if time.perf_counter() - cooldown_start > timeout_s:
+                hottest = max(temps, key=lambda s: float(s.get("celsius", -1e9)))
+                raise ThermalSafetyAbort(
+                    f"cooldown_timeout_{timeout_s:.0f}s",
+                    str(hottest.get("source", "")),
+                    str(hottest.get("label", "")),
+                    float(hottest.get("celsius", max_c)),
+                    target_c,
+                )
+            time.sleep(2.0)
+    finally:
+        if nvml is not None:
+            nvml.close()
 from .train import (
     CHECKPOINT_FORMAT,
     checkpoint_semantic_hash,
@@ -692,7 +759,7 @@ def train_one(
     best_state: dict[str, torch.Tensor] | None = None
     history: list[dict[str, Any]] = []
     start = time.perf_counter()
-    guard = BackgroundThermalGuard(interval_s=TELEMETRY_INTERVAL_SECONDS)
+    guard = BackgroundThermalGuard(device=device, interval_s=TELEMETRY_INTERVAL_SECONDS)
     guard.start()
     try:
         for epoch in range(int(training["epochs"])):
@@ -760,7 +827,7 @@ def train_one(
     )
     checkpoint_hash = checkpoint_semantic_hash(model_metadata, best_state_cpu)
     role_dir = out_dir / role
-    role_dir.mkdir(parents=True, exist_ok=True)
+    role_dir.mkdir(parents=True, exist_ok=False)
     checkpoint_path = role_dir / "checkpoint.pt"
     torch.save({"metadata": model_metadata, "state_dict": best_state_cpu}, checkpoint_path)
     report = {
@@ -795,6 +862,127 @@ def train_one(
     return report
 
 
+def verify_and_reevaluate_control(
+    model_contract: dict[str, Any],
+    train_indices: list[int],
+    validation_indices: list[int],
+    reference_indices: list[int],
+    cache: EncodedCache,
+    catalog: dict[str, Any],
+    config: dict[str, Any],
+    self_play_hash_value: str,
+    dataset_file_sha256: str,
+    out_dir: Path,
+    device: torch.device,
+) -> dict[str, Any]:
+    """Fail-closed validation and evaluator re-assessment for verified Control checkpoint."""
+    role = str(model_contract["role"])
+    if role != "control":
+        raise ValueError(f"verify_and_reevaluate_control called for non-control role: {role}")
+
+    role_dir = out_dir / role
+    report_file = role_dir / "training-report.json"
+    ckpt_file = role_dir / "checkpoint.pt"
+    candidate_dir = out_dir / "candidate"
+    summary_file = out_dir / "summary.json"
+
+    # 1. Output directory safety assertions: No candidate or summary should exist yet
+    if candidate_dir.exists():
+        raise RuntimeError(f"fail-closed: candidate directory already exists at {candidate_dir}")
+    if summary_file.exists():
+        raise RuntimeError(f"fail-closed: summary.json already exists at {summary_file}")
+    if not report_file.exists() or not ckpt_file.exists():
+        raise RuntimeError(f"fail-closed: missing control report or checkpoint in {role_dir}")
+
+    # Check for unexpected entries in out_dir
+    allowed_top_entries = {role_dir.name}
+    for entry in out_dir.iterdir():
+        if entry.name not in allowed_top_entries:
+            raise RuntimeError(f"fail-closed: unexpected entry in output directory: {entry}")
+
+    # 2. File SHA256 matches confirmed baseline
+    actual_report_sha = file_sha256(report_file)
+    actual_ckpt_sha = file_sha256(ckpt_file)
+    if actual_report_sha != VERIFIED_CONTROL_REPORT_SHA256:
+        raise RuntimeError(
+            f"fail-closed: control report SHA256 mismatch: {actual_report_sha} != {VERIFIED_CONTROL_REPORT_SHA256}"
+        )
+    if actual_ckpt_sha != VERIFIED_CONTROL_CHECKPOINT_SHA256:
+        raise RuntimeError(
+            f"fail-closed: control checkpoint SHA256 mismatch: {actual_ckpt_sha} != {VERIFIED_CONTROL_CHECKPOINT_SHA256}"
+        )
+
+    # 3. Load checkpoint and verify semantic hash and metadata
+    ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
+    if not isinstance(ckpt, dict) or "metadata" not in ckpt or "state_dict" not in ckpt:
+        raise RuntimeError("fail-closed: checkpoint format corrupt")
+
+    meta = ckpt["metadata"]
+    actual_semantic_hash = checkpoint_semantic_hash(meta, ckpt["state_dict"])
+    if actual_semantic_hash != VERIFIED_CONTROL_SEMANTIC_HASH:
+        raise RuntimeError(
+            f"fail-closed: control checkpoint semantic hash mismatch: {actual_semantic_hash} != {VERIFIED_CONTROL_SEMANTIC_HASH}"
+        )
+
+    _assert_equal(meta.get("model_id"), model_contract["model_id"], "control metadata model_id")
+    _assert_equal(meta.get("model_role"), "control", "control metadata model_role")
+    _assert_equal(meta.get("source_self_play_hash"), self_play_hash_value, "control metadata self_play_hash")
+    _assert_equal(meta.get("source_self_play_file_sha256"), dataset_file_sha256, "control metadata dataset_sha")
+    _assert_equal(meta.get("training_config_hash"), training_config_hash(config), "control metadata config_hash")
+    _assert_equal(meta.get("catalog_hash"), catalog_semantic_hash(catalog), "control metadata catalog_hash")
+    _assert_equal(meta.get("parameter_count"), int(model_contract["expected_parameter_count"]), "control param count")
+    _assert_equal(meta.get("train_examples"), len(train_indices), "control train examples")
+    _assert_equal(meta.get("validation_examples"), len(validation_indices), "control val examples")
+    _assert_equal(meta.get("s1_reference_examples"), len(reference_indices), "control ref examples")
+    _assert_equal(meta.get("encoded_cache_manifest_sha256"), cache_manifest_sha256(cache.root), "control cache manifest sha")
+
+    # 4. Load report and verify history and selection
+    report = json.loads(report_file.read_text(encoding="utf-8"))
+    _assert_equal(report.get("model_id"), model_contract["model_id"], "control report model_id")
+    _assert_equal(report.get("model_role"), "control", "control report model_role")
+    _assert_equal(report.get("checkpoint_file_sha256"), actual_ckpt_sha, "control report ckpt sha")
+    _assert_equal(report.get("checkpoint_hash"), VERIFIED_CONTROL_SEMANTIC_HASH, "control report checkpoint hash")
+
+    epochs = int(config["training"]["epochs"])
+    history = report.get("history", [])
+    if len(history) != epochs:
+        raise RuntimeError(f"fail-closed: control report history length {len(history)} != {epochs}")
+    epoch_numbers = [h.get("epoch") for h in history]
+    if epoch_numbers != list(range(1, epochs + 1)):
+        raise RuntimeError(f"fail-closed: control report history epoch sequence invalid: {epoch_numbers}")
+
+    # 5. Re-evaluate Control using the current evaluator on device
+    print(f"Re-evaluating verified Control checkpoint ({model_contract['model_id']}) with current evaluator on {device}...")
+    spec = ModelSpec(
+        model_contract["architecture"],
+        int(model_contract["hidden_dim"]),
+        int(model_contract["blocks"]),
+        float(model_contract["dropout"]),
+        int(model_contract.get("interaction_blocks", 0)),
+    )
+    model = build_model(spec).to(device)
+    model.load_state_dict(ckpt["state_dict"], strict=True)
+
+    validation_set = PackedEncodedDataset(cache, validation_indices)
+    reference_set = PackedEncodedDataset(cache, reference_indices)
+    validation_loader = _loader(validation_set, int(config["training"]["batch_size"]), False, None, device)
+    reference_loader = _loader(reference_set, int(config["training"]["batch_size"]), False, None, device)
+
+    val_metrics = evaluate(model, validation_loader, device)
+    ref_metrics = evaluate(model, reference_loader, device)
+
+    # Update report with current evaluator metrics
+    updated_report = dict(report)
+    updated_report["validation"] = val_metrics
+    updated_report["s1_reference"] = ref_metrics
+    updated_report["evaluator_reassessed"] = True
+
+    # Write updated report JSON with current evaluator metrics
+    report_file.write_text(json.dumps(updated_report, indent=2) + "\n", encoding="utf-8")
+    print("Control re-evaluation complete and report updated.")
+    return updated_report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the frozen M28B contextual interaction pair.")
     parser.add_argument("--dataset", type=Path, required=True)
@@ -820,31 +1008,44 @@ def main() -> None:
         catalog_hash=actual_catalog_hash,
         examples=len(payload["examples"]),
     )
-    args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    training = config["training"]
+    device = resolve_device(str(training["device"]))
+
+    if not args.out_dir.exists():
+        args.out_dir.mkdir(parents=True, exist_ok=False)
+
     reports = []
     for idx, model_contract in enumerate(config["models"]):
         role = str(model_contract["role"])
         role_dir = args.out_dir / role
-        report_file = role_dir / "training-report.json"
-        ckpt_file = role_dir / "checkpoint.pt"
 
-        # Reuse verified existing completed checkpoint if present
-        if report_file.exists() and ckpt_file.exists():
-            existing_report = json.loads(report_file.read_text(encoding="utf-8"))
-            if (
-                existing_report.get("model_id") == model_contract["model_id"]
-                and existing_report.get("source_self_play_hash") == actual_self_play_hash
-                and existing_report.get("checkpoint_file_sha256") == file_sha256(ckpt_file)
-                and len(existing_report.get("history", [])) == int(config["training"]["epochs"])
-            ):
-                print(f"Reusing verified completed checkpoint for role '{role}' ({model_contract['model_id']}).")
-                reports.append(existing_report)
-                continue
+        # If role is control and control directory exists, verify and re-evaluate
+        if role == "control" and role_dir.exists():
+            report = verify_and_reevaluate_control(
+                model_contract,
+                train_indices,
+                validation_indices,
+                reference_indices,
+                cache,
+                catalog,
+                config,
+                actual_self_play_hash,
+                dataset_file_sha256,
+                args.out_dir,
+                device,
+            )
+            reports.append(report)
+            continue
+
+        # If any other role directory already exists when we are about to train, fail closed!
+        if role_dir.exists():
+            raise RuntimeError(f"fail-closed: role directory already exists: {role_dir}")
 
         if idx > 0 or len(reports) > 0:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        require_fail_closed_cooldown(target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
+            require_fail_closed_cooldown(device=device, target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
 
         report = train_one(
             model_contract,

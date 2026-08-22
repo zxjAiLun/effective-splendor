@@ -419,17 +419,26 @@ thermal-safety condition.
 
 M28B remains a controlled representation experiment. The source/prereg is
 `ACCEPTED / FROZEN`. Following the diagnosis of excessive pair-tensor construction
-memory and padded-action collate churn, the **M28B Compute Repair** was implemented
-and verified without changing scientific weights, parameter counts, or seeds:
-1. **Factored Pair Scorer**: `Linear(3*H, H)` is algebraically factored into
-   `Wq*q + Wk*k + Wp*(q*k) + b`, eliminating pair tensor memory inflation from ~270 MiB
-   to ~90 MiB per block and reducing pair MACs by ~3x.
-2. **Packed Action Evaluation**: Batch padding up to max actions (up to 571) is replaced
-   with continuous 1D action layouts and vectorized GPU segmented cross-entropy loss via
-   `torch.scatter_reduce`.
-3. **Fail-Closed Thermal Safety**: Cold-start cooldown (`< 65.0°C`) before directory
-   creation, inter-model cooldown (`< 65.0°C`), and continuous 250ms `BackgroundThermalGuard`
-   (`< 85.0°C`) with synchronous startup checks are enforced across training and all evaluation batches.
+memory, collate churn, and thermal bounds, the **M28B Compute Repair 1 & 2** were
+implemented and verified without changing scientific weights, parameter counts, or seeds:
+1. **Factored Pair Scorer & BMM Aggregation**: `Linear(3*H, H)` is algebraically factored into
+   `Wq*q + Wk*k + Wp*(q*k) + b`, and pairwise aggregation is implemented via `torch.bmm(interaction, values)`.
+   This is numerically equivalent within frozen floating-point tolerance (`rtol=1e-5, atol=1e-6`)
+   while eliminating ~90 MiB 4D intermediate tensors per block.
+2. **Vectorized Packed Batch Loader**: 128 individual sample dictionary lookups and collations are
+   replaced by 1-shot memory-mapped `index_select` via `EncodedCache.batch(indices)`, achieving 13.5x
+   faster data batch generation (0.12 ms/batch) with bit-for-bit exact tensor output.
+3. **GPU-Only Segmented Evaluation & Delayed Sync**: Python CPU loops and `tensor_split` transfers
+   are eliminated in favor of GPU segmented argmax / top-1 and CE/MSE accumulation, synchronizing D2H
+   only once per evaluation pass.
+4. **Hardware-Specific Fail-Closed Thermal Safety**: Component-specific bounds are enforced:
+   CPU (95.0°C), real NVIDIA GPU via NVML (90.0°C), NVMe (80.0°C), and platform sensors bounded
+   by `min(85.0°C, firmware_crit - 2.0°C)`. Cold-start cooldown (`< 65.0°C`) and continuous
+   250ms polling abort instantly if telemetry is unavailable or any threshold is reached.
+5. **Fail-Closed Control Verification & Unified Re-Assessment**: Completed Control artifacts are
+   verified against immutable file SHA256 (`af006dc...`, `17041a9...`), semantic checkpoint hash
+   (`5d83e21...`), configuration, and metadata, and re-evaluated by the current evaluator so that
+   Candidate and Control metrics reside on the exact same statistical implementation.
 
 Formal training is authorized on the current host subject to strict enforcement of
 these cold-start and thermal-abort safety bounds without opening a new qualification round.
