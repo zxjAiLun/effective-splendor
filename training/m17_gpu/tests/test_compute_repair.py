@@ -162,7 +162,7 @@ def test_thermal_guard_synchronous_startup_rejection(monkeypatch):
     readings = [{"source": "test", "label": "TCPU", "celsius": 89.0}]
     monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: readings)
     guard = BackgroundThermalGuard(limit_c=85.0, interval_s=0.01)
-    with pytest.raises(ThermalSafetyAbort, match="guard_startup:max_89.0C"):
+    with pytest.raises(ThermalSafetyAbort, match="host thermal safety abort at guard_startup"):
         guard.start()
 
 

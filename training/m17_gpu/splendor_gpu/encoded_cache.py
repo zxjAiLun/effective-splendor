@@ -183,6 +183,46 @@ class EncodedCache:
             "value_target": self.arrays["value_targets"][index],
         }
 
+    def batch(self, indices: Sequence[int] | torch.Tensor) -> dict[str, torch.Tensor]:
+        """Vectorized batch extraction directly from memory-mapped tensors."""
+        if isinstance(indices, torch.Tensor):
+            idx_tensor = indices.to(dtype=torch.int64)
+        else:
+            idx_tensor = torch.tensor(indices, dtype=torch.int64)
+
+        entities = self.arrays["entities"].index_select(0, idx_tensor)
+        entity_mask = self.arrays["entity_masks"].index_select(0, idx_tensor)
+        global_features = self.arrays["global_features"].index_select(0, idx_tensor)
+        value_target = self.arrays["value_targets"].index_select(0, idx_tensor)
+
+        starts = self.arrays["action_offsets"].index_select(0, idx_tensor)
+        ends = self.arrays["action_offsets"].index_select(0, idx_tensor + 1)
+        counts = ends - starts
+
+        offsets = torch.zeros(len(idx_tensor) + 1, dtype=torch.int64)
+        offsets[1:] = counts.cumsum(dim=0)
+
+        total_actions = int(offsets[-1].item())
+        if total_actions > 0:
+            segment_starts_in_batch = torch.repeat_interleave(offsets[:-1], counts)
+            relative_in_segment = torch.arange(total_actions, dtype=torch.int64) - segment_starts_in_batch
+            global_action_indices = torch.repeat_interleave(starts, counts) + relative_in_segment
+            actions = self.arrays["actions"].index_select(0, global_action_indices)
+            policy_target = self.arrays["policy_targets"].index_select(0, global_action_indices)
+        else:
+            actions = torch.empty((0, ACTION_FEATURES), dtype=torch.float32)
+            policy_target = torch.empty((0,), dtype=torch.float32)
+
+        return {
+            "entities": entities,
+            "entity_mask": entity_mask,
+            "global_features": global_features,
+            "actions": actions,
+            "action_offsets": offsets,
+            "policy_target": policy_target,
+            "value_target": value_target,
+        }
+
     def validate_identity(
         self,
         *,

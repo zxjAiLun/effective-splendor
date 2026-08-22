@@ -161,12 +161,16 @@ def packed_policy_loss(logits: torch.Tensor, targets: torch.Tensor, offsets: tor
 @torch.no_grad()
 def evaluate(
     model: nn.Module,
-    loader: DataLoader,
+    loader: DataLoader | Iterable[dict[str, torch.Tensor]],
     device: torch.device,
     abort_check: Callable[[], None] | None = None,
 ) -> dict[str, float | int]:
     model.eval()
-    cross_entropy = value_mse = visit_top1 = model_top1 = examples = 0.0
+    total_ce = torch.zeros((), dtype=torch.float64, device=device)
+    total_mse = torch.zeros((), dtype=torch.float64, device=device)
+    total_top1 = torch.zeros((), dtype=torch.float64, device=device)
+    total_count = 0
+
     for raw in loader:
         if abort_check is not None:
             abort_check()
@@ -179,26 +183,38 @@ def evaluate(
             offsets = batch["action_offsets"]
             counts = offsets[1:] - offsets[:-1]
             batch_size = counts.shape[0]
-            segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=logits.device), counts)
-            max_per_seg = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=logits.device)
+            total_actions = logits.shape[0]
+            segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=device), counts)
+
+            # Segmented CE
+            max_per_seg = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=device)
             max_per_seg.scatter_reduce_(0, segment_ids, logits, reduce="amax")
             shifted_exp = torch.exp(logits - max_per_seg[segment_ids])
-            sum_exp_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+            sum_exp_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=device)
             sum_exp_per_seg.scatter_add_(0, segment_ids, shifted_exp)
             lse_per_seg = max_per_seg + torch.log(sum_exp_per_seg)
             log_probs = logits - lse_per_seg[segment_ids]
             prod = batch["policy_target"] * log_probs
-            loss_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=logits.device)
+            loss_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=device)
             loss_per_seg.scatter_add_(0, segment_ids, -prod)
-            cross_entropy += loss_per_seg.sum().item()
+            total_ce += loss_per_seg.sum(dtype=torch.float64)
 
-            # Top 1 computation
-            splits_l = torch.tensor_split(logits.cpu(), offsets[1:-1].cpu())
-            splits_t = torch.tensor_split(batch["policy_target"].cpu(), offsets[1:-1].cpu())
-            for sl, st in zip(splits_l, splits_t):
-                if sl.argmax(dim=-1).item() == st.argmax(dim=-1).item():
-                    visit_top1 += 1.0
+            # Segmented GPU Top 1 with first-tie-break agreement
+            action_indices = torch.arange(total_actions, dtype=torch.int64, device=device)
+            is_max_logit = (logits == max_per_seg[segment_ids])
+            logit_cand = torch.where(is_max_logit, action_indices, torch.full_like(action_indices, total_actions + 1))
+            first_max_logit_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
+            first_max_logit_idx.scatter_reduce_(0, segment_ids, logit_cand, reduce="amin")
 
+            max_targets = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=device)
+            max_targets.scatter_reduce_(0, segment_ids, batch["policy_target"], reduce="amax")
+            is_max_target = (batch["policy_target"] == max_targets[segment_ids])
+            target_cand = torch.where(is_max_target, action_indices, torch.full_like(action_indices, total_actions + 1))
+            first_max_target_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
+            first_max_target_idx.scatter_reduce_(0, segment_ids, target_cand, reduce="amin")
+
+            matches = (first_max_logit_idx == first_max_target_idx)
+            total_top1 += matches.sum(dtype=torch.float64)
             count = batch_size
         else:
             logits, values = model(
@@ -206,17 +222,27 @@ def evaluate(
                 batch["actions"], batch["action_mask"],
             )
             count = logits.shape[0]
-            cross_entropy += (-(batch["policy_target"] * torch.log_softmax(logits, dim=-1)).sum(dim=-1)).sum().item()
-            visit_top1 += batch["policy_target"].argmax(dim=-1).eq(logits.argmax(dim=-1)).sum().item()
+            ce = -(batch["policy_target"] * torch.log_softmax(logits, dim=-1)).sum(dim=-1)
+            total_ce += ce.sum(dtype=torch.float64)
+            matches = batch["policy_target"].argmax(dim=-1).eq(logits.argmax(dim=-1))
+            total_top1 += matches.sum(dtype=torch.float64)
 
-        value_mse += nn.functional.mse_loss(values, batch["value_target"], reduction="sum").item()
-        model_top1 += count
-        examples += count
+        mse = nn.functional.mse_loss(values, batch["value_target"], reduction="sum")
+        total_mse += mse.to(dtype=torch.float64)
+        total_count += count
+
+    examples = total_count
+    if examples == 0:
+        return {"examples": 0, "policy_cross_entropy": 0.0, "visit_top1": 0.0, "value_mse": 0.0}
+
+    ce_val = total_ce.item() / examples
+    top1_val = total_top1.item() / examples
+    mse_val = total_mse.item() / (examples * 2.0)
     return {
         "examples": int(examples),
-        "policy_cross_entropy": cross_entropy / examples,
-        "visit_top1": visit_top1 / model_top1,
-        "value_mse": value_mse / (examples * 2.0),
+        "policy_cross_entropy": float(ce_val),
+        "visit_top1": float(top1_val),
+        "value_mse": float(mse_val),
     }
 
 

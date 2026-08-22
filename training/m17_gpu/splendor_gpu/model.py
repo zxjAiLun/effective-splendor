@@ -146,6 +146,11 @@ class ContextualInteractionBlock(nn.Module):
             nn.Linear(width, width),
             nn.Dropout(dropout),
         )
+        self.register_buffer(
+            "not_self_mask",
+            ~torch.eye(ENTITY_SLOTS, dtype=torch.bool).unsqueeze(0),
+            persistent=False,
+        )
 
     def forward(
         self,
@@ -170,11 +175,17 @@ class ContextualInteractionBlock(nn.Module):
         interaction = torch.sigmoid(self.pair[2](self.pair[1](h_pair)).squeeze(-1))
 
         entity_count = entities.shape[1]
-        not_self = ~torch.eye(entity_count, dtype=torch.bool, device=entities.device).unsqueeze(0)
+        if entity_count == self.not_self_mask.shape[1]:
+            not_self = self.not_self_mask
+        else:
+            not_self = ~torch.eye(entity_count, dtype=torch.bool, device=entities.device).unsqueeze(0)
+
         pair_mask = mask.unsqueeze(1) & mask.unsqueeze(2) & not_self
         interaction = interaction.masked_fill(~pair_mask, 0.0)
         denominator = interaction.sum(dim=-1, keepdim=True).clamp_min(1e-6)
-        context = (interaction.unsqueeze(-1) * values.unsqueeze(1)).sum(dim=2) / denominator
+
+        # BMM aggregation avoids 4D (B, N, N, H) tensor allocation
+        context = torch.bmm(interaction, values) / denominator
         context = context.masked_fill(~mask.unsqueeze(-1), 0.0)
 
         expanded_global = global_context.unsqueeze(1).expand(-1, entity_count, -1)
@@ -204,12 +215,11 @@ class ContextualEntityMixerPolicyValue(PolicyValueBase):
         self,
         entities: torch.Tensor,
         mask: torch.Tensor,
-        global_features: torch.Tensor,
+        global_context: torch.Tensor,
         collect_contexts: bool = False,
     ) -> tuple[torch.Tensor, list[torch.Tensor]]:
         encoded = self.entity_encoder(entities)
         encoded = encoded.masked_fill(~mask.unsqueeze(-1), 0.0)
-        global_context = self.global_encoder(global_features)
         contexts: list[torch.Tensor] = []
         for block in self.interactions:
             encoded, context = block(encoded, mask, global_context)
@@ -223,7 +233,8 @@ class ContextualEntityMixerPolicyValue(PolicyValueBase):
         mask: torch.Tensor,
         global_features: torch.Tensor,
     ) -> torch.Tensor:
-        return self._contextual_entities(entities, mask, global_features)[0]
+        global_context = self.global_encoder(global_features)
+        return self._contextual_entities(entities, mask, global_context)[0]
 
     def contextual_interaction_contexts(
         self,
@@ -231,14 +242,16 @@ class ContextualEntityMixerPolicyValue(PolicyValueBase):
         mask: torch.Tensor,
         global_features: torch.Tensor,
     ) -> list[torch.Tensor]:
-        return self._contextual_entities(entities, mask, global_features, collect_contexts=True)[1]
+        global_context = self.global_encoder(global_features)
+        return self._contextual_entities(entities, mask, global_context, collect_contexts=True)[1]
 
     def state_embedding(self, entities: torch.Tensor, mask: torch.Tensor, global_features: torch.Tensor) -> torch.Tensor:
-        encoded, _ = self._contextual_entities(entities, mask, global_features)
+        global_context = self.global_encoder(global_features)
+        encoded, _ = self._contextual_entities(entities, mask, global_context)
         gate = self.entity_gate(encoded).squeeze(-1).masked_fill(~mask, torch.finfo(encoded.dtype).min)
         weights = torch.softmax(gate, dim=-1).unsqueeze(-1)
         pooled = (encoded * weights).sum(dim=1)
-        state = self.mix(torch.cat([pooled, self.global_encoder(global_features)], dim=-1))
+        state = self.mix(torch.cat([pooled, global_context], dim=-1))
         return self.norm(self.blocks(state))
 
 
