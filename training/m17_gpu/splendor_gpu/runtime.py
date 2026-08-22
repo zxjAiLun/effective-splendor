@@ -132,6 +132,7 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
         label = type_path.read_text(encoding="utf-8").strip() if type_path.exists() else tz_dir.name
 
         firmware_crit = None
+        firmware_hot = None
         for trip_file in sorted(tz_dir.glob("trip_point_*_type")):
             try:
                 trip_type = trip_file.read_text(encoding="utf-8").strip()
@@ -141,8 +142,10 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
                     t_val = _read_int(temp_file)
                     if t_val is not None and t_val > 0:
                         c_val = t_val / 1000.0
-                        if trip_type in ("critical", "hot"):
+                        if trip_type == "critical":
                             firmware_crit = min(firmware_crit, c_val) if firmware_crit else c_val
+                        elif trip_type == "hot":
+                            firmware_hot = min(firmware_hot, c_val) if firmware_hot else c_val
             except (OSError, ValueError):
                 pass
 
@@ -153,6 +156,8 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
         }
         if firmware_crit is not None:
             sensor_info["firmware_crit"] = firmware_crit
+        if firmware_hot is not None:
+            sensor_info["firmware_hot"] = firmware_hot
         readings.append(sensor_info)
 
     for raw_path in sorted(glob.glob("/sys/class/hwmon/hwmon*/temp*_input")):
@@ -171,12 +176,13 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
 
         firmware_crit = None
         crit_val = _read_int(crit_path) if crit_path.exists() else None
-        max_val = _read_int(max_path) if max_path.exists() else None
+        if crit_val is not None and 0 < crit_val < 200000:
+            firmware_crit = crit_val / 1000.0
 
-        for v in (crit_val, max_val):
-            if v is not None and 0 < v < 200000:
-                c_val = v / 1000.0
-                firmware_crit = min(firmware_crit, c_val) if firmware_crit else c_val
+        firmware_hot = None
+        max_val = _read_int(max_path) if max_path.exists() else None
+        if max_val is not None and 0 < max_val < 200000:
+            firmware_hot = max_val / 1000.0
 
         sensor_info = {
             "source": str(path),
@@ -185,6 +191,8 @@ def cpu_temperatures_c() -> list[dict[str, Any]]:
         }
         if firmware_crit is not None:
             sensor_info["firmware_crit"] = firmware_crit
+        if firmware_hot is not None:
+            sensor_info["firmware_hot"] = firmware_hot
         readings.append(sensor_info)
 
     return readings

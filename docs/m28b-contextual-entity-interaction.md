@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = QUALIFICATION 2B EXECUTED / HOST_ENVELOPE_LIMIT / HOST MIGRATION AUTHORIZED
+STATUS = COMPUTE REPAIR 2 PASS / REVIEW FIXES APPLIED / CANDIDATE CONTINUATION AUTHORIZED
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = HOLD pending external host qualification 2C
+TRAINING = CANDIDATE CONTINUATION AUTHORIZED (Control verified immutable and re-assessed; Candidate continuation authorized under fail-closed thermal safety guards)
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -463,5 +463,6 @@ Arena evaluation remains `NOT_AUTHORIZED`.
 
 ## Next authorized gate
 
-Fresh formal training rerun with Compute Repair and fail-closed thermal safety
-controls. Offline G1/G2 application will be evaluated upon training completion.
+Formal Candidate continuation with Compute Repair 2 optimizations and fail-closed
+thermal safety controls, reusing the immutable verified Control artifact.
+Offline G1/G2 comparison will be evaluated upon Candidate training completion.

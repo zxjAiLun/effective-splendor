@@ -60,7 +60,7 @@ def sensor_threshold(sensor_info: dict[str, Any] | str) -> float:
         label = str(sensor_info).lower()
         firmware_crit = None
 
-    if any(k in label for k in ("coretemp", "x86_pkg_temp", "tcpu")) and "pci" not in label:
+    if any(k in label for k in ("coretemp", "x86_pkg_temp", "tcpu")):
         limit = CPU_THERMAL_LIMIT_C
     elif "nvme" in label:
         limit = NVME_THERMAL_LIMIT_C
@@ -900,7 +900,7 @@ def verify_and_reevaluate_control(
         if entry.name not in allowed_top_entries:
             raise RuntimeError(f"fail-closed: unexpected entry in output directory: {entry}")
 
-    # 2. File SHA256 matches confirmed baseline
+    # 2. File SHA256 matches confirmed immutable baseline
     actual_report_sha = file_sha256(report_file)
     actual_ckpt_sha = file_sha256(ckpt_file)
     if actual_report_sha != VERIFIED_CONTROL_REPORT_SHA256:
@@ -951,7 +951,8 @@ def verify_and_reevaluate_control(
     if epoch_numbers != list(range(1, epochs + 1)):
         raise RuntimeError(f"fail-closed: control report history epoch sequence invalid: {epoch_numbers}")
 
-    # 5. Re-evaluate Control using the current evaluator on device
+    # 5. Cooldown before re-evaluation and run BackgroundThermalGuard during evaluation
+    require_fail_closed_cooldown(device=device, target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
     print(f"Re-evaluating verified Control checkpoint ({model_contract['model_id']}) with current evaluator on {device}...")
     spec = ModelSpec(
         model_contract["architecture"],
@@ -968,18 +969,24 @@ def verify_and_reevaluate_control(
     validation_loader = _loader(validation_set, int(config["training"]["batch_size"]), False, None, device)
     reference_loader = _loader(reference_set, int(config["training"]["batch_size"]), False, None, device)
 
-    val_metrics = evaluate(model, validation_loader, device)
-    ref_metrics = evaluate(model, reference_loader, device)
+    guard = BackgroundThermalGuard(device=device, interval_s=TELEMETRY_INTERVAL_SECONDS)
+    guard.start()
+    try:
+        val_metrics = evaluate(model, validation_loader, device, abort_check=guard.check)
+        ref_metrics = evaluate(model, reference_loader, device, abort_check=guard.check)
+    finally:
+        guard.stop()
 
-    # Update report with current evaluator metrics
+    # DO NOT overwrite training-report.json; preserve original report file immutable
     updated_report = dict(report)
     updated_report["validation"] = val_metrics
     updated_report["s1_reference"] = ref_metrics
+    updated_report["original_report_sha256"] = VERIFIED_CONTROL_REPORT_SHA256
+    updated_report["checkpoint_file_sha256"] = VERIFIED_CONTROL_CHECKPOINT_SHA256
+    updated_report["checkpoint_hash"] = VERIFIED_CONTROL_SEMANTIC_HASH
     updated_report["evaluator_reassessed"] = True
 
-    # Write updated report JSON with current evaluator metrics
-    report_file.write_text(json.dumps(updated_report, indent=2) + "\n", encoding="utf-8")
-    print("Control re-evaluation complete and report updated.")
+    print("Control re-evaluation complete; original report preserved immutable.")
     return updated_report
 
 
@@ -1012,16 +1019,41 @@ def main() -> None:
     training = config["training"]
     device = resolve_device(str(training["device"]))
 
+    # M28B continuation requirement: out_dir MUST already exist with verified control
     if not args.out_dir.exists():
-        args.out_dir.mkdir(parents=True, exist_ok=False)
+        raise RuntimeError(
+            f"fail-closed: M28B continuation requires existing output directory with verified control checkpoint: {args.out_dir}"
+        )
+
+    control_dir = args.out_dir / "control"
+    if not control_dir.exists():
+        raise RuntimeError(
+            f"fail-closed: M28B continuation requires existing control directory at {control_dir}"
+        )
+    candidate_dir = args.out_dir / "candidate"
+    if candidate_dir.exists():
+        raise RuntimeError(
+            f"fail-closed: candidate directory already exists at {candidate_dir}; refusing to overwrite"
+        )
+    summary_file = args.out_dir / "summary.json"
+    if summary_file.exists():
+        raise RuntimeError(
+            f"fail-closed: summary.json already exists at {summary_file}; refusing to overwrite"
+        )
+
+    # Check for unexpected entries
+    allowed_entries = {"control"}
+    for entry in args.out_dir.iterdir():
+        if entry.name not in allowed_entries:
+            raise RuntimeError(f"fail-closed: unexpected entry in output directory: {entry}")
 
     reports = []
     for idx, model_contract in enumerate(config["models"]):
         role = str(model_contract["role"])
         role_dir = args.out_dir / role
 
-        # If role is control and control directory exists, verify and re-evaluate
-        if role == "control" and role_dir.exists():
+        # If role is control, verify and re-evaluate
+        if role == "control":
             report = verify_and_reevaluate_control(
                 model_contract,
                 train_indices,
@@ -1038,7 +1070,6 @@ def main() -> None:
             reports.append(report)
             continue
 
-        # If any other role directory already exists when we are about to train, fail closed!
         if role_dir.exists():
             raise RuntimeError(f"fail-closed: role directory already exists: {role_dir}")
 
