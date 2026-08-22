@@ -308,6 +308,28 @@ automatically promotes the candidate or changes M07.
 - Verdict: `HOST_ENVELOPE_LIMIT`.
 - Root cause: input wait is low, GPU is active and drawing power, process CPU is strictly capped to 2 cores, yet the host cooling envelope cannot dissipate combined CPU Turbo + GPU power under load without breaching thermal safety limits.
 
+### 2026-08-22 — Final unpaced retry and thermal-duty delta
+
+- A final unchanged Candidate continuation was started from a cold host at
+  `no_turbo=1` and the `balanced` power profile. Control identity and immutable
+  report/checkpoint hashes passed, and no prior Candidate or summary artifact
+  existed.
+- The Candidate reached sustained GPU load around `79–89 W`. The existing
+  fail-closed guard stopped the process safely when NVML reported exactly
+  `90.0°C`; the host did not shut down, and no partial Candidate artifact was
+  written. This is runtime-invalid evidence, not an M28B model result.
+- The same training path now preserves each logical batch of `128` examples but
+  executes it as four physical microbatches of at most `32`. Per-microbatch
+  losses are weighted by their sample counts, gradients accumulate across the
+  original logical batch, and gradient clipping plus one AdamW step still occur
+  exactly once per logical batch.
+- A runtime-only soft thermal hysteresis check runs at logical-batch and
+  evaluation-batch boundaries. It pauses before the unchanged hard walls
+  (`GPU 85→78°C`; CPU `90→82°C`; firmware-bounded platform sensors at
+  `hard-4→hard-10°C`) and fails closed if cooling cannot recover within 300s.
+  Model architecture, data order, seed, epoch count, optimizer step count,
+  selection rule, offline gates, and hard thermal limits remain unchanged.
+
 ## Final implementation
 
 Tracked files for this round:
@@ -405,6 +427,9 @@ Runtime Investigation 2A command — exit 0; control `4/4`, candidate `1/4`, hos
 Runtime Qualification 2B natural-path shadow run — exit 0; 250ms telemetry captured; hard safety abort triggered at ~2.5s with peak 93.0°C; verdict HOST_ENVELOPE_LIMIT
 Candidate Continuation Run (no_turbo=0) — fail-closed thermal abort on `coretemp:Core 8` (95.0°C); Control verification passed, report remained immutable
 Candidate Continuation Run (no_turbo=1) — CPU package peak lowered to 78.0°C; fail-closed thermal abort on chassis `SEN3` (78.05°C); output directory cleanly preserved
+Final Unpaced Candidate Retry (no_turbo=1) — fail-closed thermal abort on NVML GPU `90.0°C`; host remained running; no Candidate/summary artifact
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 65 passed in 65.50s, exit 0
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests/test_compute_repair_2.py training/m17_gpu/tests/test_compute_repair.py -q — PASS, 18 passed in 18.72s, exit 0
 ```
 
 The M28B config SHA-256 is
@@ -441,6 +466,10 @@ implemented and verified without changing scientific weights, parameter counts, 
    verified against immutable file SHA256 (`af006dc...`, `17041a9...`), semantic checkpoint hash
    (`5d83e21...`), configuration, and metadata, and re-evaluated by the current evaluator so that
    Candidate and Control metrics reside on the exact same statistical implementation.
+6. **Logical-Batch-Preserving Thermal Duty Control**: Candidate training keeps logical batch 128
+   and one clip/AdamW step per logical batch while accumulating four physical microbatches of at
+   most 32 examples. Adaptive soft hysteresis pauses at batch boundaries below the unchanged hard
+   safety walls and records pause count and duration in the training report.
 
 Formal training is authorized on the current host subject to strict enforcement of
 these cold-start and thermal-abort safety bounds without opening a new qualification round.

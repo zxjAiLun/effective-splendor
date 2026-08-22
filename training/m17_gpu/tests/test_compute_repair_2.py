@@ -15,11 +15,15 @@ from splendor_gpu.model import ContextualInteractionBlock, ContextualEntityMixer
 from splendor_gpu.self_play_train import evaluate
 from splendor_gpu.interaction_train import (
     BackgroundThermalGuard,
+    PHYSICAL_MICROBATCH_SIZE,
     ThermalSafetyAbort,
     ThermalTelemetryUnavailable,
     _loader,
+    iter_physical_microbatches,
     sensor_threshold,
+    thermal_pacing_bounds,
     verify_and_reevaluate_control,
+    wait_for_soft_thermal_envelope,
     CPU_THERMAL_LIMIT_C,
     GPU_THERMAL_LIMIT_C,
     NVME_THERMAL_LIMIT_C,
@@ -85,6 +89,92 @@ def test_fast_loader_shuffle_order_exact_match():
     for b_idx, (br, bf) in enumerate(zip(batches_ref, batches_fast)):
         for k in br:
             assert torch.equal(br[k], bf[k]), f"Batch {b_idx} key {k} mismatch"
+
+
+def test_physical_microbatch_gradient_matches_logical_batch():
+    torch.manual_seed(280229)
+    samples = []
+    for index in range(7):
+        action_count = 3 + index
+        samples.append({
+            "entities": torch.randn(ENTITY_SLOTS, ENTITY_FEATURES),
+            "entity_mask": torch.rand(ENTITY_SLOTS) > 0.2,
+            "global_features": torch.randn(GLOBAL_FEATURES),
+            "actions": torch.randn(action_count, ACTION_FEATURES),
+            "policy_target": torch.softmax(torch.randn(action_count), dim=-1),
+            "value_target": torch.softmax(torch.randn(2), dim=-1),
+        })
+    logical_batch = collate_packed(samples)
+    spec = ModelSpec("contextual_entity_mixer", 32, 1, 0.0, 1)
+    full_model = build_model(spec)
+    micro_model = copy.deepcopy(full_model)
+
+    def loss_for(model, batch):
+        logits, values = model.forward_packed(
+            batch["entities"], batch["entity_mask"], batch["global_features"],
+            batch["actions"], batch["action_offsets"],
+        )
+        from splendor_gpu.self_play_train import packed_policy_loss
+        policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+        value = F.mse_loss(values, batch["value_target"])
+        return policy + 0.5 * value
+
+    loss_for(full_model, logical_batch).backward()
+    logical_count = len(samples)
+    reconstructed = []
+    for microbatch in iter_physical_microbatches(logical_batch, 3):
+        micro_count = int(microbatch["entities"].shape[0])
+        (loss_for(micro_model, microbatch) * (micro_count / logical_count)).backward()
+        reconstructed.append(microbatch)
+
+    assert [int(batch["entities"].shape[0]) for batch in reconstructed] == [3, 3, 1]
+    for (name_full, param_full), (name_micro, param_micro) in zip(
+        full_model.named_parameters(), micro_model.named_parameters(), strict=True
+    ):
+        assert name_full == name_micro
+        assert param_full.grad is not None and param_micro.grad is not None
+        assert torch.allclose(param_full.grad, param_micro.grad, rtol=2e-5, atol=2e-6), name_full
+
+
+def test_soft_thermal_pacing_hysteresis():
+    gpu = {"source": "nvml:gpu_0", "label": "NVIDIA GPU", "celsius": 86.0, "hard_limit_c": 90.0}
+    assert thermal_pacing_bounds(gpu) == (85.0, 78.0)
+    sen3 = {"source": "thermal_zone2", "label": "SEN3", "celsius": 75.0, "firmware_crit": 80.05}
+    trigger, resume = thermal_pacing_bounds(sen3)
+    assert trigger == pytest.approx(74.05)
+    assert resume == pytest.approx(68.05)
+
+    class FakeGuard:
+        device = torch.device("cpu")
+
+        @staticmethod
+        def check():
+            return None
+
+    samples = iter([
+        [gpu],
+        [{**gpu, "celsius": 82.0}],
+        [{**gpu, "celsius": 77.0}],
+    ])
+    sleeps = []
+    stats = {"pause_count": 0, "total_pause_seconds": 0.0, "max_pause_seconds": 0.0}
+    wait_for_soft_thermal_envelope(
+        FakeGuard(),  # type: ignore[arg-type]
+        stats,
+        sample_fn=lambda: next(samples),
+        sleep_fn=sleeps.append,
+    )
+    assert stats["pause_count"] == 1
+    assert sleeps == [1.0]
+    assert PHYSICAL_MICROBATCH_SIZE == 32
+
+    with pytest.raises(ThermalSafetyAbort, match="NVIDIA GPU.*90.0°C >= limit 90.0°C"):
+        wait_for_soft_thermal_envelope(
+            FakeGuard(),  # type: ignore[arg-type]
+            {},
+            sample_fn=lambda: [{**gpu, "celsius": 90.0}],
+            sleep_fn=lambda _: None,
+        )
 
 
 def test_bmm_aggregation_numerical_equivalence_and_parameter_gradients():

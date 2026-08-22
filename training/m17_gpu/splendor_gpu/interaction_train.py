@@ -15,7 +15,7 @@ import math
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator
 
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
@@ -46,6 +46,9 @@ PLATFORM_THERMAL_LIMIT_C = 85.0
 COOLDOWN_TARGET_C = 65.0
 COOLDOWN_TIMEOUT_SECONDS = 180.0
 TELEMETRY_INTERVAL_SECONDS = 0.250
+PHYSICAL_MICROBATCH_SIZE = 32
+THERMAL_PACING_TIMEOUT_SECONDS = 300.0
+THERMAL_PACING_POLL_SECONDS = 1.0
 
 VERIFIED_CONTROL_REPORT_SHA256 = "af006dc0825da8d687fe9d848a17a1aa5e54770a08e19f801e0256ee9a604f49"
 VERIFIED_CONTROL_CHECKPOINT_SHA256 = "17041a98d2204d44c02a9777713e038e2fa6facccdfa0bf745acef8c0e8758db"
@@ -97,6 +100,31 @@ class ThermalTelemetryUnavailable(RuntimeError):
     """Raised when no thermal sensor is available for a fail-closed run."""
 
 
+def require_below_hard_thermal_limits(
+    readings: list[dict[str, Any]],
+    stage: str,
+    limit_override_c: float | None = None,
+) -> None:
+    """Raise immediately when any sampled sensor is at its unchanged hard wall."""
+
+    for sensor in readings:
+        measured = float(sensor["celsius"])
+        limit = float(
+            sensor.get(
+                "hard_limit_c",
+                limit_override_c if limit_override_c is not None else sensor_threshold(sensor),
+            )
+        )
+        if measured >= limit:
+            raise ThermalSafetyAbort(
+                stage,
+                str(sensor.get("source", "")),
+                str(sensor.get("label", "")),
+                measured,
+                limit,
+            )
+
+
 class BackgroundThermalGuard:
     """Fail-closed background thermal monitor polling every 250ms during training."""
 
@@ -114,56 +142,45 @@ class BackgroundThermalGuard:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._nvml: NvmlCollector | None = NvmlCollector() if self.device.type == "cuda" else None
+        self._sample_lock = threading.Lock()
+
+    def sample_temperatures(self, stage: str) -> list[dict[str, Any]]:
+        """Return one fail-closed host/GPU sample using the guard's NVML handle."""
+
+        with self._sample_lock:
+            temps = cpu_temperatures_c()
+            valid = [dict(sensor) for sensor in temps if "celsius" in sensor]
+            if not valid:
+                raise ThermalTelemetryUnavailable(f"no valid host thermal sensor available at {stage}")
+
+            if self.device.type == "cuda":
+                if self._nvml is None or not self._nvml.is_available:
+                    raise ThermalTelemetryUnavailable(f"NVML GPU thermal telemetry unavailable at {stage}")
+                gpu_temp = self._nvml.sample_temperature()
+                if gpu_temp is None:
+                    raise ThermalTelemetryUnavailable(f"failed to read NVML GPU temperature at {stage}")
+                valid.append(
+                    {
+                        "source": "nvml:gpu_0",
+                        "label": "NVIDIA GPU",
+                        "celsius": gpu_temp,
+                        "hard_limit_c": self.limit_c if self.limit_c is not None else GPU_THERMAL_LIMIT_C,
+                    }
+                )
+            return valid
 
     def _sample_and_check(self, stage: str = "startup"):
-        temps = cpu_temperatures_c()
-        if not temps:
+        try:
+            temps = self.sample_temperatures(stage)
+        except ThermalTelemetryUnavailable as exc:
             self.abort_triggered = True
-            self.abort_exception = ThermalTelemetryUnavailable(f"no host thermal sensor available at {stage}")
+            self.abort_exception = exc
             return
-        valid_readings = 0
-        for s in temps:
-            if "celsius" not in s:
-                continue
-            c_val = float(s["celsius"])
-            valid_readings += 1
-            limit = self.limit_c if self.limit_c is not None else sensor_threshold(s)
-            if c_val >= limit:
-                self.abort_triggered = True
-                self.abort_exception = ThermalSafetyAbort(
-                    stage,
-                    str(s.get("source", "")),
-                    str(s.get("label", "")),
-                    c_val,
-                    limit,
-                )
-                return
-        if valid_readings == 0:
+        try:
+            require_below_hard_thermal_limits(temps, stage, self.limit_c)
+        except ThermalSafetyAbort as exc:
             self.abort_triggered = True
-            self.abort_exception = ThermalTelemetryUnavailable(f"no valid numeric thermal readings available at {stage}")
-            return
-
-        if self.device.type == "cuda":
-            if self._nvml is None or not self._nvml.is_available:
-                self.abort_triggered = True
-                self.abort_exception = ThermalTelemetryUnavailable(f"NVML GPU thermal telemetry unavailable at {stage}")
-                return
-            gpu_temp = self._nvml.sample_temperature()
-            if gpu_temp is None:
-                self.abort_triggered = True
-                self.abort_exception = ThermalTelemetryUnavailable(f"failed to read NVML GPU temperature at {stage}")
-                return
-            gpu_limit = self.limit_c if self.limit_c is not None else GPU_THERMAL_LIMIT_C
-            if gpu_temp >= gpu_limit:
-                self.abort_triggered = True
-                self.abort_exception = ThermalSafetyAbort(
-                    stage,
-                    "nvml:gpu_0",
-                    "NVIDIA GPU",
-                    gpu_temp,
-                    gpu_limit,
-                )
-                return
+            self.abort_exception = exc
 
     def start(self):
         self._stop_event.clear()
@@ -193,6 +210,100 @@ class BackgroundThermalGuard:
     def check(self):
         if self.abort_triggered and self.abort_exception is not None:
             raise self.abort_exception
+
+
+def thermal_pacing_bounds(sensor: dict[str, Any]) -> tuple[float, float]:
+    """Return soft trigger/resume temperatures below the unchanged hard wall."""
+
+    label = str(sensor.get("label", "")).lower()
+    hard_limit = float(sensor.get("hard_limit_c", sensor_threshold(sensor)))
+    if "nvidia gpu" in label:
+        return min(85.0, hard_limit - 5.0), min(78.0, hard_limit - 12.0)
+    if any(key in label for key in ("coretemp", "x86_pkg_temp", "tcpu")):
+        return min(90.0, hard_limit - 5.0), min(82.0, hard_limit - 13.0)
+    if "nvme" in label:
+        return min(75.0, hard_limit - 5.0), min(70.0, hard_limit - 10.0)
+    return hard_limit - 4.0, hard_limit - 10.0
+
+
+def wait_for_soft_thermal_envelope(
+    guard: BackgroundThermalGuard,
+    stats: dict[str, float | int],
+    *,
+    sample_fn: Callable[[], list[dict[str, Any]]] | None = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    monotonic_fn: Callable[[], float] = time.perf_counter,
+) -> None:
+    """Pause at a logical-batch boundary when a soft thermal trigger is reached."""
+
+    guard.check()
+    if guard.device.type == "cuda":
+        torch.cuda.synchronize(guard.device)
+    read = sample_fn or (lambda: guard.sample_temperatures("thermal_pacing"))
+    readings = read()
+    require_below_hard_thermal_limits(readings, "thermal_pacing")
+    offenders = [sensor for sensor in readings if float(sensor["celsius"]) >= thermal_pacing_bounds(sensor)[0]]
+    if not offenders:
+        return
+
+    started = monotonic_fn()
+    stats["pause_count"] = int(stats.get("pause_count", 0)) + 1
+    hottest = max(offenders, key=lambda sensor: float(sensor["celsius"]))
+    print(
+        "Thermal pacing pause: "
+        f"{hottest.get('label')}={float(hottest['celsius']):.1f}°C; waiting for resume envelope...",
+        flush=True,
+    )
+    while True:
+        guard.check()
+        readings = read()
+        require_below_hard_thermal_limits(readings, "thermal_pacing")
+        still_hot = [sensor for sensor in readings if float(sensor["celsius"]) >= thermal_pacing_bounds(sensor)[1]]
+        if not still_hot:
+            elapsed = monotonic_fn() - started
+            stats["total_pause_seconds"] = float(stats.get("total_pause_seconds", 0.0)) + elapsed
+            stats["max_pause_seconds"] = max(float(stats.get("max_pause_seconds", 0.0)), elapsed)
+            print(f"Thermal pacing resumed after {elapsed:.1f}s", flush=True)
+            return
+        if monotonic_fn() - started > THERMAL_PACING_TIMEOUT_SECONDS:
+            hottest = max(still_hot, key=lambda sensor: float(sensor["celsius"]))
+            _, resume_c = thermal_pacing_bounds(hottest)
+            raise ThermalSafetyAbort(
+                "thermal_pacing_timeout",
+                str(hottest.get("source", "")),
+                str(hottest.get("label", "")),
+                float(hottest["celsius"]),
+                resume_c,
+            )
+        sleep_fn(THERMAL_PACING_POLL_SECONDS)
+
+
+def iter_physical_microbatches(batch: dict[str, torch.Tensor], size: int) -> Iterator[dict[str, torch.Tensor]]:
+    """Split one logical batch without changing packed-action sample boundaries."""
+
+    examples = int(batch["entities"].shape[0])
+    if size <= 0:
+        raise ValueError("physical microbatch size must be positive")
+    if "action_offsets" not in batch:
+        for start in range(0, examples, size):
+            stop = min(start + size, examples)
+            yield {key: value[start:stop] for key, value in batch.items()}
+        return
+
+    sample_keys = {"entities", "entity_mask", "global_features", "value_target"}
+    action_keys = {"actions", "policy_target"}
+    expected = sample_keys | action_keys | {"action_offsets"}
+    if set(batch) != expected:
+        raise RuntimeError(f"unexpected packed batch keys: {sorted(set(batch) - expected)}")
+    offsets = batch["action_offsets"]
+    for start in range(0, examples, size):
+        stop = min(start + size, examples)
+        action_start = int(offsets[start].item())
+        action_stop = int(offsets[stop].item())
+        out = {key: batch[key][start:stop] for key in sample_keys}
+        out.update({key: batch[key][action_start:action_stop] for key in action_keys})
+        out["action_offsets"] = offsets[start : stop + 1] - action_start
+        yield out
 
 
 def require_fail_closed_cooldown(
@@ -758,9 +869,21 @@ def train_one(
     best_epoch = 0
     best_state: dict[str, torch.Tensor] | None = None
     history: list[dict[str, Any]] = []
+    thermal_pacing: dict[str, float | int] = {
+        "physical_microbatch_size": PHYSICAL_MICROBATCH_SIZE,
+        "logical_batch_size": int(training["batch_size"]),
+        "pause_count": 0,
+        "total_pause_seconds": 0.0,
+        "max_pause_seconds": 0.0,
+    }
     start = time.perf_counter()
     guard = BackgroundThermalGuard(device=device, interval_s=TELEMETRY_INTERVAL_SECONDS)
     guard.start()
+
+    def runtime_abort_check() -> None:
+        guard.check()
+        wait_for_soft_thermal_envelope(guard, thermal_pacing)
+
     try:
         for epoch in range(int(training["epochs"])):
             model.train()
@@ -768,33 +891,48 @@ def train_one(
             seen = 0
             for raw in train_loader:
                 guard.check()
-                batch = {key: value.to(device, non_blocking=device.type == "cuda") for key, value in raw.items()}
                 optimizer.zero_grad(set_to_none=True)
-                if "action_offsets" in batch:
-                    logits, values = model.forward_packed(
-                        batch["entities"], batch["entity_mask"], batch["global_features"],
-                        batch["actions"], batch["action_offsets"],
-                    )
-                    policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
-                    count = int(batch["entities"].shape[0])
-                else:
-                    logits, values = model(
-                        batch["entities"], batch["entity_mask"], batch["global_features"],
-                        batch["actions"], batch["action_mask"],
-                    )
-                    policy = policy_loss(logits, batch["policy_target"])
-                    count = int(logits.shape[0])
+                logical_count = int(raw["entities"].shape[0])
+                logical_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
+                for micro_raw in iter_physical_microbatches(raw, PHYSICAL_MICROBATCH_SIZE):
+                    guard.check()
+                    batch = {
+                        key: value.to(device, non_blocking=device.type == "cuda")
+                        for key, value in micro_raw.items()
+                    }
+                    if "action_offsets" in batch:
+                        logits, values = model.forward_packed(
+                            batch["entities"], batch["entity_mask"], batch["global_features"],
+                            batch["actions"], batch["action_offsets"],
+                        )
+                        policy = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+                        count = int(batch["entities"].shape[0])
+                    else:
+                        logits, values = model(
+                            batch["entities"], batch["entity_mask"], batch["global_features"],
+                            batch["actions"], batch["action_mask"],
+                        )
+                        policy = policy_loss(logits, batch["policy_target"])
+                        count = int(logits.shape[0])
 
-                value = nn.functional.mse_loss(values, batch["value_target"])
-                loss = policy + float(training["value_loss_weight"]) * value
-                loss.backward()
+                    value = nn.functional.mse_loss(values, batch["value_target"])
+                    loss = policy + float(training["value_loss_weight"]) * value
+                    (loss * (count / logical_count)).backward()
+                    logical_loss_sum += (loss.detach() * count).to(dtype=torch.float64)
+                    guard.check()
                 nn.utils.clip_grad_norm_(model.parameters(), float(training["gradient_clip_norm"]))
                 optimizer.step()
-                epoch_loss_sum += (loss.detach() * count).to(dtype=torch.float64)
-                seen += count
+                epoch_loss_sum += logical_loss_sum
+                seen += logical_count
                 guard.check()
+                wait_for_soft_thermal_envelope(guard, thermal_pacing)
 
-            validation_metrics = evaluate(model, validation_loader, device, abort_check=guard.check)
+            validation_metrics = evaluate(
+                model,
+                validation_loader,
+                device,
+                abort_check=runtime_abort_check,
+            )
             selection_score = float(validation_metrics["policy_cross_entropy"]) + float(training["value_loss_weight"]) * float(validation_metrics["value_mse"])
             mean_loss_val = float((epoch_loss_sum / seen).item())
             history.append({"epoch": epoch + 1, "mean_loss": mean_loss_val, "validation": validation_metrics, "selection_score": selection_score})
@@ -806,8 +944,18 @@ def train_one(
         if best_state is None:
             raise RuntimeError("M28B training produced no checkpoint candidate")
         model.load_state_dict(best_state, strict=True)
-        validation_metrics = evaluate(model, validation_loader, device, abort_check=guard.check)
-        reference_metrics = evaluate(model, reference_loader, device, abort_check=guard.check)
+        validation_metrics = evaluate(
+            model,
+            validation_loader,
+            device,
+            abort_check=runtime_abort_check,
+        )
+        reference_metrics = evaluate(
+            model,
+            reference_loader,
+            device,
+            abort_check=runtime_abort_check,
+        )
     finally:
         guard.stop()
 
@@ -847,6 +995,7 @@ def train_one(
         "source_self_play_hash": self_play_hash_value,
         "source_self_play_file_sha256": dataset_file_sha256,
         "runtime_repair": "m28b_runtime_repair_1",
+        "runtime_compute_pacing": thermal_pacing,
         "cpu_runtime": dict(EXPECTED_CPU_THREADS),
         "encoded_cache_manifest_sha256": model_metadata["encoded_cache_manifest_sha256"],
         "training_config_hash": model_metadata["training_config_hash"],
