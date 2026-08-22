@@ -6,6 +6,17 @@ fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+fn relative_improvement_bps(control: &Value, candidate: &Value, split: &str, metric: &str) -> i64 {
+    let control_value = control[split][metric].as_f64().unwrap();
+    let candidate_value = candidate[split][metric].as_f64().unwrap();
+    (10000.0 * (control_value - candidate_value) / control_value).floor() as i64
+}
+
+fn top1_delta(control: &Value, candidate: &Value, split: &str) -> f64 {
+    candidate[split]["visit_top1"].as_f64().unwrap()
+        - control[split]["visit_top1"].as_f64().unwrap()
+}
+
 #[test]
 fn m28b_contextual_interaction_prereg_is_single_variable_and_not_authorized() {
     let config: Value = serde_json::from_slice(
@@ -266,4 +277,114 @@ fn m28b_contextual_interaction_prereg_is_single_variable_and_not_authorized() {
         config["decision_outputs"]["downstream_continuation"],
         "NOT_AUTHORIZED"
     );
+}
+
+#[test]
+fn m28b_result_recomputes_frozen_offline_stop() {
+    let config: Value = serde_json::from_slice(
+        &fs::read(root().join("benchmarks/m28b-contextual-entity-interaction-v1.config.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let result: Value = serde_json::from_slice(
+        &fs::read(root().join("benchmarks/m28b-contextual-entity-interaction-v1.result.json"))
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        result["format"],
+        "effective-splendor-m28b-contextual-entity-interaction-result"
+    );
+    assert_eq!(result["status"], "ACCEPTED");
+    assert_eq!(result["lifecycle"], "CLOSED");
+    assert_eq!(
+        result["review"]["findings"],
+        serde_json::json!({"P0": 0, "P1": 0, "P2": 0})
+    );
+    assert_eq!(result["training"]["status"], "VERIFIED");
+    assert_eq!(result["training"]["exit_code"], 0);
+    assert_eq!(result["training"]["logical_batch_size"], 128);
+    assert_eq!(result["training"]["physical_microbatch_size"], 32);
+    assert_eq!(result["training"]["epochs"], 32);
+    assert_eq!(
+        result["training"]["host_runtime"]["hard_thermal_abort_triggered"],
+        false
+    );
+    assert_eq!(result["training"]["host_runtime"]["soft_pause_count"], 1);
+
+    let models = result["training"]["models"].as_array().unwrap();
+    assert_eq!(models.len(), 2);
+    let control = &models[0];
+    let candidate = &models[1];
+    assert_eq!(control["role"], "control");
+    assert_eq!(control["evaluator_reassessed"], true);
+    assert_eq!(candidate["role"], "candidate");
+    assert_eq!(candidate["history_epochs"], 32);
+
+    let full_policy =
+        relative_improvement_bps(control, candidate, "validation", "policy_cross_entropy");
+    let full_value = relative_improvement_bps(control, candidate, "validation", "value_mse");
+    let full_top1 = top1_delta(control, candidate, "validation");
+    let reference_policy =
+        relative_improvement_bps(control, candidate, "s1_reference", "policy_cross_entropy");
+    let reference_value = relative_improvement_bps(control, candidate, "s1_reference", "value_mse");
+    let reference_top1 = top1_delta(control, candidate, "s1_reference");
+
+    let g1 = &config["offline_gates"]["G1_full_s2_validation"];
+    let g2 = &config["offline_gates"]["G2_s1_reference_non_regression"];
+    let g1_pass = (full_policy >= g1["policy_ce_improvement_min_bps"].as_i64().unwrap()
+        || full_value >= g1["value_mse_improvement_min_bps"].as_i64().unwrap())
+        && full_policy >= g1["policy_ce_non_regression_min_bps"].as_i64().unwrap()
+        && full_value >= g1["value_mse_non_regression_min_bps"].as_i64().unwrap()
+        && full_top1 >= g1["top1_delta_min"].as_f64().unwrap();
+    let g2_pass = reference_policy >= g2["policy_ce_improvement_min_bps"].as_i64().unwrap()
+        && reference_value >= g2["value_mse_improvement_min_bps"].as_i64().unwrap()
+        && reference_top1 >= g2["top1_delta_min"].as_f64().unwrap();
+
+    let offline = &result["offline"];
+    assert_eq!(offline["G1_full_s2_validation"]["pass"], g1_pass);
+    assert_eq!(
+        offline["G1_full_s2_validation"]["policy_ce_improvement_bps"],
+        full_policy
+    );
+    assert_eq!(
+        offline["G1_full_s2_validation"]["value_mse_improvement_bps"],
+        full_value
+    );
+    assert!(
+        (offline["G1_full_s2_validation"]["top1_delta"]
+            .as_f64()
+            .unwrap()
+            - full_top1)
+            .abs()
+            < 1e-12
+    );
+    assert_eq!(offline["G2_s1_reference_non_regression"]["pass"], g2_pass);
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["policy_ce_improvement_bps"],
+        reference_policy
+    );
+    assert_eq!(
+        offline["G2_s1_reference_non_regression"]["value_mse_improvement_bps"],
+        reference_value
+    );
+    assert!(
+        (offline["G2_s1_reference_non_regression"]["top1_delta"]
+            .as_f64()
+            .unwrap()
+            - reference_top1)
+            .abs()
+            < 1e-12
+    );
+    assert!(!g1_pass && !g2_pass);
+    assert_eq!(
+        offline["decision"],
+        config["offline_gates"]["fail_decision"]
+    );
+    assert_eq!(offline["fail_action"], "STOP_NO_ARENA");
+    assert_eq!(result["arena"]["authorization"], "NOT_AUTHORIZED");
+    assert_eq!(result["arena"]["not_run"], true);
+    assert_eq!(result["promotion"], "NONE");
+    assert_eq!(result["champion"], "M07");
 }

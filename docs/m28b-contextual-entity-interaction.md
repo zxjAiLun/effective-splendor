@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M28B
-STATUS = COMPUTE REPAIR 2 PASS / REVIEW FIXES APPLIED / CANDIDATE CONTINUATION AUTHORIZED
+STATUS = ACCEPTED / CLOSED / M28B_OFFLINE_NO_INTERACTION_SIGNAL
 BASE_COMMIT = c0caa883e47cadce1ae85c78b85ba7c4e69ac007
 IMPLEMENTATION_COMMIT = e1b80aa6673865d149ef1e56b9a41f1b384b563d
 SCOPE = One fresh-init contextual entity interaction candidate versus one historical Entity Mixer control on the accepted M24-S2 corpus.
-TRAINING = CANDIDATE CONTINUATION AUTHORIZED (Control verified immutable and re-assessed; Candidate continuation authorized under fail-closed thermal safety guards)
+TRAINING = ACCEPTED (32/32 epochs; Control immutable and re-assessed; Candidate completed under logical-batch-preserving thermal pacing)
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -430,6 +430,7 @@ Candidate Continuation Run (no_turbo=1) — CPU package peak lowered to 78.0°C;
 Final Unpaced Candidate Retry (no_turbo=1) — fail-closed thermal abort on NVML GPU `90.0°C`; host remained running; no Candidate/summary artifact
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests -q — PASS, 65 passed in 65.50s, exit 0
 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m pytest training/m17_gpu/tests/test_compute_repair_2.py training/m17_gpu/tests/test_compute_repair.py -q — PASS, 18 passed in 18.72s, exit 0
+cargo test --locked -p splendor-cli --test m28b_design -- --test-threads=1 — PASS, 2 passed, exit 0; compact result recomputed G1/G2 and frozen decision
 ```
 
 The M28B config SHA-256 is
@@ -471,15 +472,22 @@ implemented and verified without changing scientific weights, parameter counts, 
    most 32 examples. Adaptive soft hysteresis pauses at batch boundaries below the unchanged hard
    safety walls and records pause count and duration in the training report.
 
-Formal training is authorized on the current host subject to strict enforcement of
-these cold-start and thermal-abort safety bounds without opening a new qualification round.
-Arena evaluation remains `NOT_AUTHORIZED`.
+The committed runtime delta `1523ff4` completed formal Candidate training with
+`32/32` epochs and one 5.74s soft NVMe pause. No hard thermal abort occurred.
+The Candidate checkpoint semantic hash is `9b09880b...1ad9`; the local summary
+SHA-256 is `10a5eaf0...4931`.
+
+Independent recomputation accepted the training evidence with P0/P1/P2 =
+`0/0/0`. G1 failed (`policy/value = -106/-11 bps`, Top-1 delta
+`-0.0105719`) and G2 failed (`policy/value = -104/-727 bps`, Top-1 delta
+`-0.0020481`). The frozen decision is therefore
+`M28B_OFFLINE_NO_INTERACTION_SIGNAL`; `STOP_NO_ARENA` applies. The compact
+tracked result is `benchmarks/m28b-contextual-entity-interaction-v1.result.json`.
 
 ## Known limitations
 
-- M28B has no accepted training evidence yet; all scientific claims remain
-  prospective. The preserved partial control artifact is excluded from
-  scientific evidence.
+- Earlier thermal shutdowns and guard-aborted attempts remain excluded runtime
+  evidence. Only the completed run on `1523ff4` is scientific training evidence.
 - The candidate changes both the interaction architecture and parameter count
   relative to the historical control, so a later positive result identifies
   the frozen intervention as a package rather than isolating every additional
@@ -487,13 +495,12 @@ Arena evaluation remains `NOT_AUTHORIZED`.
 - The contextual mixer uses one deterministic seed, as did the preceding
   controlled training round; any later result is bounded by that protocol.
 - Offline gates are diagnostic eligibility checks, not playing-strength proof.
-- The future Arena gate is conditional and cannot be inferred from offline
-  fit or implementation tests.
+- Arena was not run because both frozen offline gates failed.
 - Execution on laptops remains tightly thermal-envelope bounded; runs are protected
   by automated fail-closed aborts.
 
 ## Next authorized gate
 
-Formal Candidate continuation with Compute Repair 2 optimizations and fail-closed
-thermal safety controls, reusing the immutable verified Control artifact.
-Offline G1/G2 comparison will be evaluated upon Candidate training completion.
+None within M28B. M28B is `ACCEPTED / CLOSED`; Arena, promotion, M25, M26,
+and downstream M28 continuation remain `NOT_AUTHORIZED`. Any new representation
+or objective intervention requires a separately designed milestone.

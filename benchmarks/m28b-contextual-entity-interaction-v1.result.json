@@ -1,0 +1,155 @@
+{
+  "format": "effective-splendor-m28b-contextual-entity-interaction-result",
+  "version": 1,
+  "status": "ACCEPTED",
+  "milestone": "M28B",
+  "lifecycle": "CLOSED",
+  "generated_on": "2026-08-22",
+  "review": {
+    "scope": "formal training evidence and frozen offline gates",
+    "execution_basis_commit": "1523ff426d4ea320680b61f23020a9e8d9b30bc3",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0
+    },
+    "training_evidence_status": "ACCEPTED",
+    "arena_authorization": "NOT_AUTHORIZED"
+  },
+  "preregistration": {
+    "path": "benchmarks/m28b-contextual-entity-interaction-v1.config.json",
+    "revision": "contextual-interaction-v1",
+    "status": "ACCEPTED / FROZEN",
+    "sha256": "95d8911c78e10e1fccdf2d9fd9f551a3324f91f0f18c1c4f9163b14ab2c039fd",
+    "scientific_fields_unchanged": true
+  },
+  "dataset": {
+    "path": "local-artifacts/m24-self-play-s2-v1/self-play.json",
+    "format": "effective-splendor-neural-self-play-v2",
+    "version": 2,
+    "games": 512,
+    "examples": 31505,
+    "train_examples": 23654,
+    "validation_examples": 7851,
+    "s1_reference_examples": 1953,
+    "self_play_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+    "file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
+    "encoded_cache_manifest_sha256": "f549549ea0a44c552e0114dddde13a5e8385aa0a04d5cc96b3a0c8a62b827e6d"
+  },
+  "training": {
+    "status": "VERIFIED",
+    "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 NUMEXPR_NUM_THREADS=2 PYTHONPATH=training/m17_gpu local-artifacts/m24-torch-cu124/bin/python -m splendor_gpu.interaction_train --dataset local-artifacts/m24-self-play-s2-v1/self-play.json --config benchmarks/m28b-contextual-entity-interaction-v1.config.json --encoded-cache local-artifacts/m28b-encoded-cache-v1 --out-dir local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair",
+    "exit_code": 0,
+    "device": "cuda",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch_version": "2.6.0+cu124",
+    "cuda_version": "12.4",
+    "training_config_hash": "dd4cb2190e3d1c8fc8cb3320c99e7c834c38d27cbbb5cb6c09264c1b1a549ee2",
+    "initialization": "fresh",
+    "initialization_seed": 280229,
+    "shuffle_seed": 280229,
+    "logical_batch_size": 128,
+    "physical_microbatch_size": 32,
+    "epochs": 32,
+    "deterministic_algorithms_enabled": true,
+    "cublas_workspace_config": ":4096:8",
+    "host_runtime": {
+      "cpu_turbo_disabled": true,
+      "power_profile": "balanced",
+      "hard_thermal_abort_triggered": false,
+      "soft_pause_count": 1,
+      "soft_pause_total_seconds": 5.7421399369995925,
+      "soft_pause_sensor": "nvme:Sensor 1"
+    },
+    "summary_path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/summary.json",
+    "summary_file_sha256": "10a5eaf066cb0ee988087c889cdf095ce7a05f4abd2699ba21fb652411aa4931",
+    "models": [
+      {
+        "role": "control",
+        "model_id": "m28b-entity-mixer-h192-b4-control-v1",
+        "parameter_count": 949060,
+        "best_epoch": 15,
+        "elapsed_seconds": 124.67710894399897,
+        "checkpoint_path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/control/checkpoint.pt",
+        "checkpoint_semantic_hash": "5d83e21634399d6eb1c1b798b496ca5c03f809f7802a575c436b78c9436f0d41",
+        "checkpoint_file_sha256": "17041a98d2204d44c02a9777713e038e2fa6facccdfa0bf745acef8c0e8758db",
+        "training_report_path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/control/training-report.json",
+        "training_report_file_sha256": "af006dc0825da8d687fe9d848a17a1aa5e54770a08e19f801e0256ee9a604f49",
+        "evaluator_reassessed": true,
+        "validation": {
+          "examples": 7851,
+          "policy_cross_entropy": 1.1888007375711453,
+          "value_mse": 0.24561391334110969,
+          "visit_top1": 0.92306712520698
+        },
+        "s1_reference": {
+          "examples": 1953,
+          "policy_cross_entropy": 1.2076135580959653,
+          "value_mse": 0.24440783204265698,
+          "visit_top1": 0.9144905273937532
+        }
+      },
+      {
+        "role": "candidate",
+        "model_id": "m28b-contextual-entity-mixer-h192-b4-i2-v1",
+        "parameter_count": 1689798,
+        "best_epoch": 9,
+        "elapsed_seconds": 1344.2054185839988,
+        "checkpoint_path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/candidate/checkpoint.pt",
+        "checkpoint_semantic_hash": "9b09880bc04ed0cd3bdd6d59714e65958d7b4f488f690e3bb29de7f69ac91ad9",
+        "checkpoint_file_sha256": "46f68b20d863c450f375999713f869e5c71c6abeb4e025c45f6b42a004b47b6b",
+        "training_report_path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/candidate/training-report.json",
+        "training_report_file_sha256": "b41c4fe29a2d59725c6db7a3558e74f860e44c250a6db5b9795f054a930f0c8b",
+        "history_epochs": 32,
+        "validation": {
+          "examples": 7851,
+          "policy_cross_entropy": 1.201352289054458,
+          "value_mse": 0.24587012072184058,
+          "visit_top1": 0.9124952235384027
+        },
+        "s1_reference": {
+          "examples": 1953,
+          "policy_cross_entropy": 1.2200985209977266,
+          "value_mse": 0.26217359795792555,
+          "visit_top1": 0.9124423963133641
+        }
+      }
+    ],
+    "invalid_attempts_excluded": [
+      "pre-compute-repair thermal shutdown",
+      "thermal-guard aborts before Candidate completion",
+      "final unpaced retry aborted at NVML GPU 90.0C"
+    ]
+  },
+  "offline": {
+    "status": "APPLIED",
+    "G1_full_s2_validation": {
+      "pass": false,
+      "policy_ce_improvement_bps": -106,
+      "value_mse_improvement_bps": -11,
+      "top1_delta": -0.010571901668577244
+    },
+    "G2_s1_reference_non_regression": {
+      "pass": false,
+      "policy_ce_improvement_bps": -104,
+      "value_mse_improvement_bps": -727,
+      "top1_delta": -0.0020481310803891484
+    },
+    "decision": "M28B_OFFLINE_NO_INTERACTION_SIGNAL",
+    "fail_action": "STOP_NO_ARENA"
+  },
+  "arena": {
+    "authorization": "NOT_AUTHORIZED",
+    "not_run": true,
+    "planned_matches": 192,
+    "reason": "Both frozen offline gates failed; STOP_NO_ARENA applies."
+  },
+  "promotion": "NONE",
+  "champion": "M07",
+  "downstream_authorization": {
+    "m25": "NOT_AUTHORIZED",
+    "m26": "NOT_AUTHORIZED",
+    "m28_continuation": "NOT_AUTHORIZED"
+  },
+  "artifact_policy": "Dataset, cache, checkpoints, reports, and summary remain ignored local artifacts; this compact result manifest is the tracked evidence record."
+}
