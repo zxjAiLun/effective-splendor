@@ -7,11 +7,12 @@ import json
 import math
 import subprocess
 import hashlib
+import tempfile
 from pathlib import Path
 from collections import defaultdict, Counter
 import numpy as np
 
-from splendor_gpu.data import dataset_hash
+from splendor_gpu.self_play_train import self_play_hash
 from splendor_gpu.train import file_sha256
 
 
@@ -49,21 +50,22 @@ def run_cluster_audit(num_games=32, bootstrap_rounds=10000, seed=20260822):
         data = json.load(f)
 
     ds_file_sha = file_sha256(ds_path)
-    ds_sem_hash = dataset_hash(data)
+    ds_sem_hash = self_play_hash(data)
+    assert ds_sem_hash == "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46"
 
     games = data["games"][:num_games]
-    tmp_dir = Path("/tmp/m07_cluster_audit")
-    tmp_dir.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="m07_cluster_audit_fresh_") as temp_dir_str:
+        tmp_dir = Path(temp_dir_str)
 
-    game_positions = []
-    all_positions = []
-    game_metadata = []
+        game_positions = []
+        all_positions = []
+        game_metadata = []
 
-    for g_idx, g in enumerate(games):
-        replay_file = tmp_dir / f"game_{g_idx}.replay.json"
-        replay_file.write_text(json.dumps(g["replay"]), encoding="utf-8")
-        out_file = tmp_dir / f"game_{g_idx}.analysis.json"
-        if not out_file.exists():
+        for g_idx, g in enumerate(games):
+            replay_file = tmp_dir / f"game_{g_idx}.replay.json"
+            replay_file.write_text(json.dumps(g["replay"]), encoding="utf-8")
+            out_file = tmp_dir / f"game_{g_idx}.analysis.json"
+            
             cmd = [
                 "target/release/splendor",
                 "analyze-replay-determinization",
@@ -76,77 +78,77 @@ def run_cluster_audit(num_games=32, bootstrap_rounds=10000, seed=20260822):
             ]
             res = subprocess.run(cmd, capture_output=True, text=True)
             assert res.returncode == 0, f"Error running M07 on game {g_idx}: {res.stderr}"
-        
-        analysis = json.loads(out_file.read_text(encoding="utf-8"))
-        frames = analysis["frames"]
-        
-        game_examples = [ex for ex in data["examples"] if ex["game_index"] == g["game_index"]]
-        assert len(game_examples) == len(frames)
+            
+            analysis = json.loads(out_file.read_text(encoding="utf-8"))
+            frames = analysis["frames"]
+            
+            game_examples = [ex for ex in data["examples"] if ex["game_index"] == g["game_index"]]
+            assert len(game_examples) == len(frames)
 
-        game_metadata.append({
-            "game_index": g_idx,
-            "game_seed": g["game_seed"],
-            "replay_document_hash": g["replay_document_hash"],
-            "positions_count": len(frames),
-        })
-
-        this_game_positions = []
-
-        for p_idx, (ex, fr) in enumerate(zip(game_examples, frames)):
-            stats = ex["action_stats"]
-            legal_actions = [s["action"] for s in stats]
-            legal_keys = [action_key(a) for a in legal_actions]
-            
-            priors = [s["prior_micros"] for s in stats]
-            prior_sum = sum(priors)
-            p_m22 = [p / prior_sum for p in priors]
-            m22_top1_idx = int(np.argmax(p_m22))
-            m22_top1_key = legal_keys[m22_top1_idx]
-            
-            visits = [s["visits"] for s in stats]
-            visit_sum = sum(visits)
-            p_search = [v / visit_sum for v in visits]
-            search_top1_idx = int(np.argmax(p_search))
-            search_top1_key = legal_keys[search_top1_idx]
-            
-            m07_rec = fr["review_result"]["recommended_action"]
-            m07_top1_key = action_key(m07_rec)
-            m07_idx = legal_keys.index(m07_top1_key) if m07_top1_key in legal_keys else -1
-            
-            ply = ex["ply"]
-            actor = ex["actor"]
-            final_ranks = ex["final_ranks"]
-            win = 1.0 if final_ranks[actor] == 0 else 0.0
-            
-            act_category = classify_m07_action(m07_rec)
-
-            pos_record = {
+            game_metadata.append({
                 "game_index": g_idx,
-                "ply": ply,
-                "actor": actor,
-                "observation_hash": ex["observation_hash"],
-                "information_set_hash": ex["information_set_hash"],
-                "legal_count": len(legal_actions),
-                "m22_top1": m22_top1_key,
-                "search_top1": search_top1_key,
-                "m07_top1": m07_top1_key,
-                "m22_probs": p_m22,
-                "search_probs": p_search,
-                "m07_idx": m07_idx,
-                "m22_entropy": entropy(p_m22),
-                "search_entropy": entropy(p_search),
-                "kl_search_m22": kl_divergence(p_search, p_m22),
-                "m22_m07_prob": p_m22[m07_idx] if m07_idx >= 0 else 0.0,
-                "search_m07_prob": p_search[m07_idx] if m07_idx >= 0 else 0.0,
-                "m22_m07_rank": int(np.sum(np.array(p_m22) > p_m22[m07_idx])) + 1 if m07_idx >= 0 else 999,
-                "search_m07_rank": int(np.sum(np.array(p_search) > p_search[m07_idx])) + 1 if m07_idx >= 0 else 999,
-                "m07_action_category": act_category,
-                "win": win,
-            }
-            this_game_positions.append(pos_record)
-            all_positions.append(pos_record)
+                "game_seed": g["game_seed"],
+                "replay_document_hash": g["replay_document_hash"],
+                "positions_count": len(frames),
+            })
 
-        game_positions.append(this_game_positions)
+            this_game_positions = []
+
+            for p_idx, (ex, fr) in enumerate(zip(game_examples, frames)):
+                stats = ex["action_stats"]
+                legal_actions = [s["action"] for s in stats]
+                legal_keys = [action_key(a) for a in legal_actions]
+                
+                priors = [s["prior_micros"] for s in stats]
+                prior_sum = sum(priors)
+                p_m22 = [p / prior_sum for p in priors]
+                m22_top1_idx = int(np.argmax(p_m22))
+                m22_top1_key = legal_keys[m22_top1_idx]
+                
+                visits = [s["visits"] for s in stats]
+                visit_sum = sum(visits)
+                p_search = [v / visit_sum for v in visits]
+                search_top1_idx = int(np.argmax(p_search))
+                search_top1_key = legal_keys[search_top1_idx]
+                
+                m07_rec = fr["review_result"]["recommended_action"]
+                m07_top1_key = action_key(m07_rec)
+                m07_idx = legal_keys.index(m07_top1_key) if m07_top1_key in legal_keys else -1
+                
+                ply = ex["ply"]
+                actor = ex["actor"]
+                final_ranks = ex["final_ranks"]
+                win = 1.0 if final_ranks[actor] == 0 else 0.0
+                
+                act_category = classify_m07_action(m07_rec)
+
+                pos_record = {
+                    "game_index": g_idx,
+                    "ply": ply,
+                    "actor": actor,
+                    "observation_hash": ex["observation_hash"],
+                    "information_set_hash": ex["information_set_hash"],
+                    "legal_count": len(legal_actions),
+                    "m22_top1": m22_top1_key,
+                    "search_top1": search_top1_key,
+                    "m07_top1": m07_top1_key,
+                    "m22_probs": p_m22,
+                    "search_probs": p_search,
+                    "m07_idx": m07_idx,
+                    "m22_entropy": entropy(p_m22),
+                    "search_entropy": entropy(p_search),
+                    "kl_search_m22": kl_divergence(p_search, p_m22),
+                    "m22_m07_prob": p_m22[m07_idx] if m07_idx >= 0 else 0.0,
+                    "search_m07_prob": p_search[m07_idx] if m07_idx >= 0 else 0.0,
+                    "m22_m07_rank": int(np.sum(np.array(p_m22) > p_m22[m07_idx])) + 1 if m07_idx >= 0 else 999,
+                    "search_m07_rank": int(np.sum(np.array(p_search) > p_search[m07_idx])) + 1 if m07_idx >= 0 else 999,
+                    "m07_action_category": act_category,
+                    "win": win,
+                }
+                this_game_positions.append(pos_record)
+                all_positions.append(pos_record)
+
+            game_positions.append(this_game_positions)
 
     assert len(all_positions) == 2002
     print(f"Aggregated {len(all_positions)} positions across {len(game_positions)} games.")

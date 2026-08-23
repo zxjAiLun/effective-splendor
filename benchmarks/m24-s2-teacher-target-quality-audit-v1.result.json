@@ -3,7 +3,7 @@
   "version": 1,
   "source_dataset_id": "m24-self-play-s2-v1",
   "source_dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
-  "source_dataset_semantic_hash": "b035d4959e78b8e661d0f13ed4384d67a1fdefa8b5d6ed24eb5d67622594b90b",
+  "source_dataset_semantic_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
   "generator_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
   "generator_search_identity": "neural-ismcts-s16-d1-c1500-v1",
   "strong_reference_reviewer_id": "m07-determinization-champion",

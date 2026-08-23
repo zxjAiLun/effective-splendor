@@ -365,7 +365,7 @@
     "fixture_file": "benchmarks/m24-s2-2002-audit-holdout.json",
     "fixture_sha256": "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8",
     "source_dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
-    "source_dataset_semantic_hash": "b035d4959e78b8e661d0f13ed4384d67a1fdefa8b5d6ed24eb5d67622594b90b",
+    "source_dataset_semantic_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
     "positions_count": 2002,
     "baseline_m22_agreement": 0.2807192807192807,
     "baseline_search_agreement": 0.2867132867132867

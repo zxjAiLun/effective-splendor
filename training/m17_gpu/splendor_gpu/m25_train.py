@@ -6,6 +6,7 @@ import argparse
 import copy
 import json
 import math
+import os
 import time
 from pathlib import Path
 from typing import Any, Sequence
@@ -18,14 +19,13 @@ from torch.utils.data import DataLoader, Dataset
 from splendor_gpu.data import (
     catalog_semantic_hash,
     collate,
-    dataset_hash,
     load_catalog,
 )
-from splendor_gpu.encoded_cache import EncodedCache, PackedEncodedDataset, collate_packed
+from splendor_gpu.encoded_cache import EncodedCache, PackedEncodedDataset
 from splendor_gpu.encoding import encode_action, encode_observation
 from splendor_gpu.model import ModelSpec, build_model
 from splendor_gpu.runtime import configure_cpu_runtime
-from splendor_gpu.self_play_train import evaluate
+from splendor_gpu.self_play_train import evaluate, self_play_hash
 from splendor_gpu.train import (
     checkpoint_semantic_hash,
     file_sha256,
@@ -33,16 +33,29 @@ from splendor_gpu.train import (
     seed_everything,
 )
 from splendor_gpu.interaction_train import (
-    training_config_hash,
     BackgroundThermalGuard,
     require_fail_closed_cooldown,
+    wait_for_soft_thermal_envelope,
+    iter_physical_microbatches,
+    packed_policy_loss,
+    policy_loss,
     COOLDOWN_TARGET_C,
     COOLDOWN_TIMEOUT_SECONDS,
     TELEMETRY_INTERVAL_SECONDS,
+    PHYSICAL_MICROBATCH_SIZE,
     EXPECTED_CPU_THREADS,
     EXPECTED_CATALOG_HASH,
     _IndexDataset,
     _loader,
+    training_config_hash,
+)
+from splendor_gpu.m25_dataset import (
+    M25_DATASET_FORMAT,
+    M25_DATASET_VERSION,
+    M25_UNIFORM_FLOOR_MICROS,
+    M25Dataset,
+    build_m25_encoded_cache,
+    m25_dataset_hash,
 )
 
 EXPECTED_M25_FORMAT = "effective-splendor-m25-m07-search-teacher-bootstrap"
@@ -52,13 +65,17 @@ EXPECTED_M25_TRAIN_GAMES = 192
 EXPECTED_M25_VAL_GAMES = 64
 EXPECTED_UNIFORM_FLOOR_MICROS = 100000
 
+EXPECTED_HOLDOUT_FIXTURE_SHA256 = "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8"
+EXPECTED_M24_DATASET_FILE_SHA256 = "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f"
+EXPECTED_M24_DATASET_SEMANTIC_HASH = "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46"
+
 
 def _assert_equal(actual: Any, expected: Any, label: str) -> None:
     if actual != expected:
         raise ValueError(f"{label} mismatch: expected {expected!r}, got {actual!r}")
 
 
-def validate_m25_config(config: dict[str, Any]) -> None:
+def validate_m25_config(config: dict[str, Any], *, allow_cpu: bool = False) -> None:
     """Perform exhaustive machine-freezing assertions on the M25 config."""
     _assert_equal(config.get("format"), EXPECTED_M25_FORMAT, "M25 config format")
     _assert_equal(config.get("version"), 1, "M25 config version")
@@ -112,10 +129,16 @@ def validate_m25_config(config: dict[str, Any]) -> None:
 
     # Training recipe
     tr = config["training"]
-    _assert_equal(tr.get("device"), "cuda", "training device")
+    if not allow_cpu:
+        _assert_equal(tr.get("device"), "cuda", "training device")
+        _assert_equal(int(tr.get("epochs", 0)), 32, "training epochs")
+    else:
+        if tr.get("device") not in ("cuda", "cpu"):
+            raise ValueError(f"training device mismatch: {tr.get('device')}")
+        if int(tr.get("epochs", 0)) < 1:
+            raise ValueError("epochs must be at least 1")
     _assert_equal(int(tr.get("seed", 0)), 280229, "training seed")
     _assert_equal(int(tr.get("shuffle_seed", 0)), 280229, "training shuffle_seed")
-    _assert_equal(int(tr.get("epochs", 0)), 32, "training epochs")
     _assert_equal(int(tr.get("batch_size", 0)), 128, "training batch_size")
     _assert_equal(float(tr.get("learning_rate", 0)), 0.0001, "training learning_rate")
     _assert_equal(float(tr.get("weight_decay", 0)), 0.0001, "training weight_decay")
@@ -134,9 +157,9 @@ def validate_m25_config(config: dict[str, Any]) -> None:
     ho = config["external_holdout"]
     _assert_equal(int(ho.get("positions_count", 0)), 2002, "holdout positions_count")
     _assert_equal(ho.get("fixture_file"), "benchmarks/m24-s2-2002-audit-holdout.json", "holdout fixture_file")
-    _assert_equal(ho.get("fixture_sha256"), "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8", "holdout fixture_sha256")
-    _assert_equal(ho.get("source_dataset_file_sha256"), "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f", "holdout source dataset sha")
-    _assert_equal(ho.get("source_dataset_semantic_hash"), "b035d4959e78b8e661d0f13ed4384d67a1fdefa8b5d6ed24eb5d67622594b90b", "holdout source dataset sem hash")
+    _assert_equal(ho.get("fixture_sha256"), EXPECTED_HOLDOUT_FIXTURE_SHA256, "holdout fixture_sha256")
+    _assert_equal(ho.get("source_dataset_file_sha256"), EXPECTED_M24_DATASET_FILE_SHA256, "holdout source dataset sha")
+    _assert_equal(ho.get("source_dataset_semantic_hash"), EXPECTED_M24_DATASET_SEMANTIC_HASH, "holdout source dataset sem hash")
 
     # Offline gates
     og = config["offline_gates"]
@@ -144,6 +167,43 @@ def validate_m25_config(config: dict[str, Any]) -> None:
     _assert_equal(int(og["g1_heldout_teacher_fit"]["min_policy_ce_improvement_bps_vs_uniform"]), 1000, "G1 min CE bps")
     _assert_equal(float(og["g2_cross_distribution_transfer"]["min_cross_distribution_m07_top1"]), 0.3800, "G2 min top1")
     _assert_equal(float(og["g3_value_non_collapse"]["max_value_mse_multiplier_vs_baseline"]), 1.02, "G3 max multiplier")
+
+
+def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, Any]) -> str:
+    """Perform deep runtime provenance verification on the actual materialized M25 dataset."""
+    _assert_equal(payload.get("format"), M25_DATASET_FORMAT, "dataset format")
+    _assert_equal(payload.get("version"), M25_DATASET_VERSION, "dataset version")
+    _assert_equal(payload.get("generator_agent"), "m07-determinization-champion", "dataset generator_agent")
+    _assert_equal(payload.get("ruleset"), "base_v1", "dataset ruleset")
+    _assert_equal(int(payload.get("player_count", 0)), 2, "dataset player_count")
+    
+    games = payload.get("games", [])
+    expected_games = int(config["dataset"]["games"])
+    _assert_equal(len(games), expected_games, "dataset games count")
+
+    # Check seeds schedule
+    expected_seeds = config["dataset"]["game_seeds"]
+    actual_seeds = [int(g["game_seed"]) for g in games]
+    _assert_equal(actual_seeds, expected_seeds, "game seeds sequence")
+
+    examples = payload.get("examples", [])
+    if not examples:
+        raise ValueError("fail-closed: empty examples in dataset")
+
+    # Verify every example has valid policy target micros and viewer-relative value target
+    for idx, ex in enumerate(examples):
+        micros = ex.get("policy_target_micros", [])
+        legal_acts = ex.get("legal_actions", [])
+        if len(micros) != len(legal_acts) or len(legal_acts) == 0:
+            raise ValueError(f"fail-closed: example {idx} policy_target_micros / legal_actions mismatch")
+        if sum(micros) != 1_000_000:
+            raise ValueError(f"fail-closed: example {idx} policy_target_micros sum {sum(micros)} != 1000000")
+        
+        v = ex.get("value_target", [])
+        if len(v) != 2 or not all(x in (0.0, 1.0) for x in v) or sum(v) != 1.0:
+            raise ValueError(f"fail-closed: example {idx} invalid terminal viewer value_target: {v}")
+
+    return m25_dataset_hash(payload)
 
 
 def build_m25_model(config: dict[str, Any], seed: int) -> nn.Module:
@@ -209,6 +269,7 @@ def evaluate_cross_distribution_holdout(
     holdout_fixture: dict[str, Any],
     catalog: dict[str, Any],
     device: torch.device,
+    abort_check: Any = None,
 ) -> dict[str, Any]:
     """Exact-join and raw zero-shot evaluate 2,002 holdout positions against M07 ground truth."""
     model.eval()
@@ -242,8 +303,10 @@ def evaluate_cross_distribution_holdout(
 
     with torch.no_grad():
         for pos in positions:
-            key = (int(pos["game_index"]), int(pos["ply"]), int(pos["actor"]))
+            if abort_check is not None:
+                abort_check()
 
+            key = (int(pos["game_index"]), int(pos["ply"]), int(pos["actor"]))
             if key not in m24_index:
                 missing_positions += 1
                 continue
@@ -265,7 +328,6 @@ def evaluate_cross_distribution_holdout(
             
             # Encode single sample
             obs_enc = encode_observation(ex["observation"], catalog)
-
             act_encs = [encode_action(a) for a in legal_acts]
             entities = obs_enc.entities.unsqueeze(0).to(device)
             mask = obs_enc.mask.unsqueeze(0).to(device)
@@ -370,73 +432,6 @@ def evaluate_m25_gates(
     }
 
 
-def _train_one_epoch(
-    model: nn.Module,
-    loader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    device: torch.device,
-    value_loss_weight: float,
-    clip_norm: float,
-    abort_check: Any = None,
-) -> dict[str, float]:
-    model.train()
-    total_loss = 0.0
-    total_policy_loss = 0.0
-    total_value_loss = 0.0
-    examples = 0
-
-    for batch in loader:
-        if abort_check is not None:
-            abort_check()
-
-        optimizer.zero_grad(set_to_none=True)
-        entities = batch["entities"].to(device)
-        mask = batch["entity_mask"].to(device)
-        global_f = batch["global_features"].to(device)
-        actions = batch["actions"].to(device)
-        offsets = batch["action_offsets"].to(device)
-        p_target = batch["policy_target"].to(device)
-        v_target = batch["value_target"].to(device)
-
-        logits, values = model.forward_packed(entities, mask, global_f, actions, offsets)
-        
-        # Segmented policy loss
-        counts = offsets[1:] - offsets[:-1]
-        batch_size = counts.shape[0]
-        segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=device), counts)
-        max_per_seg = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=device)
-        max_per_seg.scatter_reduce_(0, segment_ids, logits, reduce="amax")
-        shifted_exp = torch.exp(logits - max_per_seg[segment_ids])
-        sum_exp_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=device)
-        sum_exp_per_seg.scatter_add_(0, segment_ids, shifted_exp)
-        lse_per_seg = max_per_seg + torch.log(sum_exp_per_seg)
-        log_probs = logits - lse_per_seg[segment_ids]
-        
-        prod = p_target * log_probs
-        loss_per_seg = torch.zeros(batch_size, dtype=logits.dtype, device=device)
-        loss_per_seg.scatter_add_(0, segment_ids, -prod)
-        policy_loss = loss_per_seg.sum() / batch_size
-
-        value_loss = F.mse_loss(values, v_target, reduction="mean")
-        loss = policy_loss + value_loss_weight * value_loss
-
-        loss.backward()
-        if clip_norm > 0:
-            nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
-        optimizer.step()
-
-        total_loss += loss.item() * batch_size
-        total_policy_loss += policy_loss.item() * batch_size
-        total_value_loss += value_loss.item() * batch_size
-        examples += batch_size
-
-    return {
-        "loss": total_loss / examples,
-        "policy_loss": total_policy_loss / examples,
-        "value_loss": total_value_loss / examples,
-    }
-
-
 def train_m25(
     config: dict[str, Any],
     dataset_path: Path,
@@ -444,9 +439,12 @@ def train_m25(
     holdout_dataset_path: Path,
     holdout_fixture_path: Path,
     out_dir: Path,
+    *,
+    skip_cooldown: bool = False,
+    allow_cpu: bool = False,
 ) -> dict[str, Any]:
-    """Execute full M25 training under fail-closed thermal safety guards."""
-    validate_m25_config(config)
+    """Execute full M25 training under fail-closed thermal safety guards and microbatching."""
+    validate_m25_config(config, allow_cpu=allow_cpu)
 
     # 1. Output directory safety assertions: Must NOT exist yet
     if out_dir.exists():
@@ -458,17 +456,29 @@ def train_m25(
     actual_cat_hash = catalog_semantic_hash(catalog)
     _assert_equal(actual_cat_hash, EXPECTED_CATALOG_HASH, "catalog semantic hash")
 
-    # 3. Load dataset and perform provenance checks
+    # 3. Load dataset and perform deep provenance checks
     ds_raw = dataset_path.read_text(encoding="utf-8")
+    ds_file_sha = file_sha256(dataset_path)
     ds_payload = json.loads(ds_raw)
-    _assert_equal(ds_payload.get("format"), "effective-splendor-search-teacher-dataset-v1", "dataset format")
-    _assert_equal(ds_payload.get("generator_agent"), "m07-determinization-champion", "dataset generator_agent")
-    _assert_equal(len(ds_payload.get("games", [])), EXPECTED_M25_GAMES, "dataset games count")
+    ds_sem_hash = validate_m25_dataset_provenance(ds_payload, config)
 
     train_indices, val_indices = split_m25_indices(ds_payload, config)
     _assert_equal(len(train_indices) + len(val_indices), len(ds_payload["examples"]), "split partition sum")
 
-    # 4. Compute theoretical uniform CE & train-value prior baseline MSE
+    # 4. Validate G2 external holdout provenance before starting training
+    ho_file_sha = file_sha256(holdout_fixture_path)
+    _assert_equal(ho_file_sha, EXPECTED_HOLDOUT_FIXTURE_SHA256, "holdout fixture file sha256")
+    
+    m24_file_sha = file_sha256(holdout_dataset_path)
+    _assert_equal(m24_file_sha, EXPECTED_M24_DATASET_FILE_SHA256, "M24 holdout dataset file sha256")
+    
+    m24_payload = json.loads(holdout_dataset_path.read_text(encoding="utf-8"))
+    m24_sem_hash = self_play_hash(m24_payload)
+    _assert_equal(m24_sem_hash, EXPECTED_M24_DATASET_SEMANTIC_HASH, "M24 holdout dataset semantic hash")
+    
+    holdout_fixture = json.loads(holdout_fixture_path.read_text(encoding="utf-8"))
+
+    # 5. Compute theoretical uniform CE & train-value prior baseline MSE
     val_examples = [ds_payload["examples"][i] for i in val_indices]
     uniform_ce = compute_uniform_policy_ce(val_examples)
     
@@ -476,17 +486,27 @@ def train_m25(
     val_value_targets = torch.tensor([ex["value_target"] for ex in val_examples], dtype=torch.float32)
     baseline_value_mse = compute_training_value_prior_baseline_mse(train_value_targets, val_value_targets)
 
-    # 5. Build EncodedCache
+    # 6. Build EncodedCache via adapter and load
     cache_dir = out_dir / "encoded_cache"
-    cache = EncodedCache.build(
-        dataset_path=dataset_path,
-        catalog_path=catalog_path,
-        cache_dir=cache_dir,
+    build_m25_encoded_cache(
+        examples=ds_payload["examples"],
+        catalog=catalog,
+        output_dir=cache_dir,
+        dataset_file_sha256=ds_file_sha,
+        dataset_semantic_hash=ds_sem_hash,
+        catalog_hash=actual_cat_hash,
+    )
+    cache = EncodedCache.load(cache_dir)
+    cache.validate_identity(
+        dataset_file_sha256=ds_file_sha,
+        self_play_hash=ds_sem_hash,
+        catalog_hash=actual_cat_hash,
+        examples=len(ds_payload["examples"]),
     )
 
     training_cfg = config["training"]
     device = resolve_device(str(training_cfg["device"]))
-    batch_size = int(training_cfg["batch_size"])
+    logical_batch_size = int(training_cfg["batch_size"])
     epochs = int(training_cfg["epochs"])
     lr = float(training_cfg["learning_rate"])
     wd = float(training_cfg["weight_decay"])
@@ -497,19 +517,32 @@ def train_m25(
     train_dataset = PackedEncodedDataset(cache, train_indices)
     val_dataset = PackedEncodedDataset(cache, val_indices)
     
-    train_loader = _loader(train_dataset, batch_size, True, seed, device)
-    val_loader = _loader(val_dataset, batch_size, False, None, device)
+    train_loader = _loader(train_dataset, logical_batch_size, True, seed, device)
+    val_loader = _loader(val_dataset, logical_batch_size, False, None, device)
 
-    # 6. Initialize Model & Optimizer
+    # 7. Initialize Model & Optimizer
     model = build_m25_model(config, seed=seed).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 
-    # 7. Pre-cooldown
-    require_fail_closed_cooldown(device=device, target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
+    # 8. Pre-cooldown (unless skip_cooldown in CPU tests)
+    if not skip_cooldown:
+        require_fail_closed_cooldown(device=device, target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
 
-    # 8. Training loop under BackgroundThermalGuard
+    # 9. Training loop under BackgroundThermalGuard with microbatching and pacing
     guard = BackgroundThermalGuard(device=device, interval_s=TELEMETRY_INTERVAL_SECONDS)
     guard.start()
+
+    thermal_pacing: dict[str, float | int] = {
+        "physical_microbatch_size": PHYSICAL_MICROBATCH_SIZE,
+        "logical_batch_size": logical_batch_size,
+        "pause_count": 0,
+        "total_pause_seconds": 0.0,
+        "max_pause_seconds": 0.0,
+    }
+
+    def runtime_abort_check() -> None:
+        guard.check()
+        wait_for_soft_thermal_envelope(guard, thermal_pacing)
 
     best_score = float("inf")
     best_epoch = 0
@@ -520,16 +553,43 @@ def train_m25(
     try:
         for ep in range(1, epochs + 1):
             t0 = time.time()
-            train_metrics = _train_one_epoch(
-                model=model,
-                loader=train_loader,
-                optimizer=optimizer,
-                device=device,
-                value_loss_weight=val_weight,
-                clip_norm=clip_norm,
-                abort_check=guard.check,
-            )
-            val_metrics = evaluate(model, val_loader, device, abort_check=guard.check)
+            model.train()
+            epoch_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
+            seen = 0
+
+            for raw in train_loader:
+                guard.check()
+                optimizer.zero_grad(set_to_none=True)
+                logical_count = int(raw["entities"].shape[0])
+                logical_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
+
+                for micro_raw in iter_physical_microbatches(raw, PHYSICAL_MICROBATCH_SIZE):
+                    guard.check()
+                    batch = {
+                        key: value.to(device, non_blocking=device.type == "cuda")
+                        for key, value in micro_raw.items()
+                    }
+                    logits, values = model.forward_packed(
+                        batch["entities"], batch["entity_mask"], batch["global_features"],
+                        batch["actions"], batch["action_offsets"],
+                    )
+                    p_loss = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+                    v_loss = F.mse_loss(values, batch["value_target"], reduction="mean")
+                    count = int(batch["entities"].shape[0])
+                    loss = p_loss + val_weight * v_loss
+                    (loss * (count / logical_count)).backward()
+                    logical_loss_sum += (loss.detach() * count).to(dtype=torch.float64)
+                    guard.check()
+
+                if clip_norm > 0:
+                    nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
+                optimizer.step()
+                epoch_loss_sum += logical_loss_sum
+                seen += logical_count
+                guard.check()
+                wait_for_soft_thermal_envelope(guard, thermal_pacing)
+
+            val_metrics = evaluate(model, val_loader, device, abort_check=runtime_abort_check)
             elapsed = time.time() - t0
 
             # Selection score = CE + 0.5 * MSE
@@ -542,32 +602,31 @@ def train_m25(
 
             ep_record = {
                 "epoch": ep,
-                "train": train_metrics,
+                "train_mean_loss": float((epoch_loss_sum / max(seen, 1)).item()),
                 "validation": val_metrics,
                 "selection_score": score,
                 "elapsed_s": elapsed,
             }
             history.append(ep_record)
             print(f"Epoch {ep:2d}/{epochs}: score={score:.4f} (best={best_score:.4f} @ ep {best_epoch}), val_top1={val_metrics['visit_top1']*100:.2f}%, val_ce={val_metrics['policy_cross_entropy']:.4f}, val_mse={val_metrics['value_mse']:.4f} ({elapsed:.1f}s)")
+
+        # 10. Evaluate external holdout (2,002 positions) under thermal guard
+        assert best_state_dict is not None
+        model.load_state_dict(best_state_dict)
+
+        holdout_result = evaluate_cross_distribution_holdout(
+            model=model,
+            m24_payload=m24_payload,
+            holdout_fixture=holdout_fixture,
+            catalog=catalog,
+            device=device,
+            abort_check=runtime_abort_check,
+        )
+        print(f"External Cross-Distribution Holdout (2002 pos): M07 Agreement = {holdout_result['m07_top1_agreement']*100:.2f}%")
     finally:
         guard.stop()
 
-    assert best_state_dict is not None
-    model.load_state_dict(best_state_dict)
-
-    # 9. Evaluate external holdout (2,002 positions)
-    m24_payload = json.loads(holdout_dataset_path.read_text(encoding="utf-8"))
-    holdout_fixture = json.loads(holdout_fixture_path.read_text(encoding="utf-8"))
-    holdout_result = evaluate_cross_distribution_holdout(
-        model=model,
-        m24_payload=m24_payload,
-        holdout_fixture=holdout_fixture,
-        catalog=catalog,
-        device=device,
-    )
-    print(f"External Cross-Distribution Holdout (2002 pos): M07 Agreement = {holdout_result['m07_top1_agreement']*100:.2f}%")
-
-    # 10. Evaluate offline gates & decision tree
+    # 11. Evaluate offline gates & decision tree
     gates_eval = evaluate_m25_gates(
         val_metrics=best_val_metrics,
         holdout_result=holdout_result,
@@ -577,7 +636,7 @@ def train_m25(
     )
     print(f"M25 Offline Gates Decision: {gates_eval['decision']} (Arena Auth: {gates_eval['arena_authorization']})")
 
-    # 11. Serialize outputs
+    # 12. Serialize outputs
     ckpt_meta = {
         "format": "effective-splendor-gpu-checkpoint",
         "version": 1,

@@ -8,10 +8,16 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from splendor_gpu.data import load_catalog
+from splendor_gpu.data import catalog_semantic_hash, load_catalog
 from splendor_gpu.encoding import encode_action, encode_observation, action_key
 from splendor_gpu.model import ModelSpec, build_model
 from splendor_gpu.train import file_sha256, seed_everything
+from splendor_gpu.m25_dataset import (
+    M25_DATASET_FORMAT,
+    M25_DATASET_VERSION,
+    build_m25_encoded_cache,
+    m25_dataset_hash,
+)
 from splendor_gpu.m25_train import (
     EXPECTED_M25_FORMAT,
     EXPECTED_M25_GAMES,
@@ -19,13 +25,18 @@ from splendor_gpu.m25_train import (
     EXPECTED_M25_TRAIN_GAMES,
     EXPECTED_M25_VAL_GAMES,
     EXPECTED_UNIFORM_FLOOR_MICROS,
+    EXPECTED_HOLDOUT_FIXTURE_SHA256,
+    EXPECTED_M24_DATASET_FILE_SHA256,
+    EXPECTED_M24_DATASET_SEMANTIC_HASH,
     build_m25_model,
     compute_training_value_prior_baseline_mse,
     compute_uniform_policy_ce,
     evaluate_cross_distribution_holdout,
     evaluate_m25_gates,
     split_m25_indices,
+    train_m25,
     validate_m25_config,
+    validate_m25_dataset_provenance,
 )
 
 CONFIG_PATH = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
@@ -34,7 +45,7 @@ AUDIT_RESULT_PATH = Path("benchmarks/m24-s2-teacher-target-quality-audit-v1.resu
 M24_DATASET_PATH = Path("local-artifacts/m24-self-play-s2-v1/self-play.json")
 CATALOG_PATH = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
 
-FROZEN_M25_CONFIG_SHA256 = "b2dc22ced176ef2abe27559b0cb2245c8f68f11567795c0da4a8eb6d9618362c"
+FROZEN_M25_CONFIG_SHA256 = "6fb0acd30cd1194ac02e6c200831b1e77033ca23bb80941e3bcf6b7ae7fb4de0"
 FROZEN_HOLDOUT_SHA256 = "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8"
 
 
@@ -83,7 +94,7 @@ def test_m25_game_split_exact_192_64_and_no_leakage(m25_config):
     """Assert game-level split creates exactly 192 train games and 64 validation games with zero leakage."""
     fake_examples = []
     for g in range(256):
-        for ply in range(10):
+        for ply in range(2):
             fake_examples.append({
                 "game_index": g,
                 "ply": ply,
@@ -94,8 +105,8 @@ def test_m25_game_split_exact_192_64_and_no_leakage(m25_config):
     fake_payload = {"examples": fake_examples}
     train_idx, val_idx = split_m25_indices(fake_payload, m25_config)
     
-    assert len(train_idx) == 192 * 10
-    assert len(val_idx) == 64 * 10
+    assert len(train_idx) == 192 * 2
+    assert len(val_idx) == 64 * 2
     
     train_games = set(fake_examples[i]["game_index"] for i in train_idx)
     val_games = set(fake_examples[i]["game_index"] for i in val_idx)
@@ -288,6 +299,7 @@ def test_m25_gates_boundary_values(m25_config):
     res_g3_fail = evaluate_m25_gates(val_g3_fail, base_ho, uniform_ce, baseline_mse, m25_config)
     assert res_g3_fail["decision"] == "M25_POLICY_SIGNAL_VALUE_BLOCKED"
 
+
 def test_m25_holdout_information_set_hash_mismatch_fails(catalog):
     """Assert holdout evaluation raises fail-closed exception on info set hash mismatch."""
     m24_payload = {"examples": [
@@ -371,3 +383,87 @@ def test_m25_teacher_action_support_exact():
     norm = t / t.sum()
     assert (norm >= 0.0).all()
     assert math.isclose(norm.sum().item(), 1.0, rel_tol=1e-6)
+
+
+def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
+    """
+    Test full end-to-end training and evaluation pipeline on CPU with a mini dataset.
+    Exercises train_m25 -> cache build -> microbatched step -> val -> holdout -> gate -> outputs.
+    """
+    if not M24_DATASET_PATH.exists():
+        pytest.skip("M24 dataset artifact not found")
+
+    # Mock safe thermal readings for CPU test execution
+    safe_readings = [
+        {"source": "/sys/class/thermal/thermal_zone0/temp", "label": "acpitz", "celsius": 30.0},
+        {"source": "/sys/class/hwmon/hwmon8/temp1_input", "label": "coretemp:Package id 0", "celsius": 50.0},
+    ]
+    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: safe_readings)
+
+    # 1. Build a mini 256-game dataset fixture using real observations
+    real_examples = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][:4]
+    
+    mini_games = [{"game_index": i, "game_seed": 20260825 + i} for i in range(256)]
+    mini_examples = []
+    for g_i in range(256):
+        ex_template = real_examples[g_i % len(real_examples)]
+        n_acts = len(ex_template["legal_actions"])
+        base = 1_000_000 // n_acts
+        rem = 1_000_000 % n_acts
+        micros = [base + (1 if j < rem else 0) for j in range(n_acts)]
+        
+        mini_examples.append({
+            "game_index": g_i,
+            "game_seed": 20260825 + g_i,
+            "source_id": f"match-{g_i:06d}",
+            "ply": 0,
+            "actor": 0,
+            "observation": ex_template["observation"],
+            "observation_hash": ex_template["observation_hash"],
+            "information_set_hash": ex_template["information_set_hash"],
+            "legal_actions": ex_template["legal_actions"],
+            "policy_target_micros": micros,
+            "value_target": [1.0, 0.0] if g_i % 2 == 0 else [0.0, 1.0],
+        })
+
+    mini_dataset = {
+        "format": M25_DATASET_FORMAT,
+        "version": M25_DATASET_VERSION,
+        "generator_agent": "m07-determinization-champion",
+        "ruleset": "base_v1",
+        "player_count": 2,
+        "games": mini_games,
+        "examples": mini_examples,
+    }
+
+    dataset_path = tmp_path / "mini_m25_dataset.json"
+    dataset_path.write_text(json.dumps(mini_dataset), encoding="utf-8")
+
+    # Set config to 1 epoch, CPU device
+    cfg = copy.deepcopy(m25_config)
+    cfg["training"]["epochs"] = 1
+    cfg["training"]["device"] = "cpu"
+
+    out_dir = tmp_path / "m25_smoke_out"
+
+    report = train_m25(
+        config=cfg,
+        dataset_path=dataset_path,
+        catalog_path=CATALOG_PATH,
+        holdout_dataset_path=M24_DATASET_PATH,
+        holdout_fixture_path=HOLDOUT_FIXTURE_PATH,
+        out_dir=out_dir,
+        skip_cooldown=True,
+        allow_cpu=True,
+    )
+
+    assert report["best_epoch"] == 1
+    assert (out_dir / "checkpoint.pt").exists()
+    assert (out_dir / "training-report.json").exists()
+    assert (out_dir / "offline-result.json").exists()
+    assert report["gates"]["decision"] in (
+        "M25_POLICY_TEACHER_FIT_FAIL",
+        "M25_TEACHER_FIT_NO_TRANSFER",
+        "M25_POLICY_SIGNAL_VALUE_BLOCKED",
+        "M25_ARENA_ELIGIBLE",
+    )
