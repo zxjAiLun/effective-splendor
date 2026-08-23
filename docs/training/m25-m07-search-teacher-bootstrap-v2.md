@@ -124,3 +124,20 @@ G1 PASS and G2 PASS and G3 PASS
 - **P2-1 (True Bridge E2E Smoke Test)**: Updated smoke test to exercise raw replays + TrainingDatasetV1 + SearchTeacherTargetSetV1 $\to$ `materialize_m25_dataset` $\to$ cache $\to$ training $\to$ holdout $\to$ gate decision.
 - **P2-2 (Materialization CLI)**: Added CLI entry point to `training/m17_gpu/splendor_gpu/m25_dataset.py`.
 
+### Repair 3A (2026-08-22)
+- **P1-1 (Mandatory game_index & Consistency)**: Enforced required `game_index` in materializer with fail-closed rejection on missing or inconsistent values.
+- **P1-2 (Mandatory Provenance & M07 Seat Assertion)**: Made `provenance` and `provenance.teacher_config` unconditionally required in `validate_m25_dataset_provenance`, asserting both player seats are `m07-determinization-champion`.
+- **P1-3 (Checkpoint & Report Metadata Binding)**: Bound `source_dataset_file_sha256`, `source_dataset_semantic_hash`, `encoded_cache_manifest_sha256`, and `training_config_hash` into `checkpoint.pt` and `training-report.json`.
+- **P2-1 (Raw File SHA256 Recording)**: Recorded `source_training_dataset_file_sha256` and `source_search_targets_file_sha256` in dataset metadata.
+- **P2-2 (Value Target Documentation)**: Documented exact tie value target $[1.0, 1.0]$.
+
+### Repair 3B (2026-08-22)
+- **P1 (Canonical TrainingDatasetV1 Schema Alignment)**:
+  - Aligned M25 Materializer to take Rust `TrainingDatasetV1` (`replays[]` + `examples[]`) directly as the replay provenance authority, eliminating synthetic hybrid schemas.
+  - Removed requirement for upstream `TrainingExampleV1` to carry synthetic `game_index` (which does not exist in Rust `TrainingExampleV1`).
+  - Derived `game_index` strictly from `example.replay_document_hash -> replay.seed_index` and derived `game_seed` from `config.dataset.game_seeds[seed_index]`.
+  - Strictly asserted `seed_index` set equals $\{0..255\}$ with exactly 256 games.
+  - Validated both seats from canonical `TrainingReplayV1.agents_by_seat[*].league_agent_id == "m07-determinization-champion"`.
+  - Updated Materializer CLI to take `--training-dataset`, `--search-targets`, `--config`, and `--out`.
+  - Updated unit and E2E smoke tests with canonical `TrainingDatasetV1` fixtures and seed_index / agents_by_seat tamper checks.
+

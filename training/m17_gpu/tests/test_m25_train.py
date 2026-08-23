@@ -394,11 +394,14 @@ def test_m25_tampered_materialized_provenance_fails(m25_config):
         "replay_document_hash": f"doc_{i:04d}",
         "result": {"scores": [15, 10], "ranks": [0, 1]},
         "replay": {
-            "header": {
-                "game_seed": 20260825 + i,
-                "players": ["m07-determinization-champion", "m07-determinization-champion"],
-            },
+            "source_id": f"match-{i:06d}",
+            "seed_index": i,
+            "replay_document_hash": f"doc_{i:04d}",
             "result": {"scores": [15, 10], "ranks": [0, 1]},
+            "agents_by_seat": [
+                {"seat": 0, "league_agent_id": "m07-determinization-champion", "policy_version": "m07-v1", "model_version": None, "runtime_name": "splendor", "runtime_version": "0.1.0"},
+                {"seat": 1, "league_agent_id": "m07-determinization-champion", "policy_version": "m07-v1", "model_version": None, "runtime_name": "splendor", "runtime_version": "0.1.0"},
+            ],
         },
     } for i in range(256)]
     
@@ -477,20 +480,22 @@ def test_m25_tampered_materialized_provenance_fails(m25_config):
 
     # 8. Non-M07 player seat in embedded replay fails
     tampered_seat = copy.deepcopy(base_ds)
-    tampered_seat["games"][0]["replay"]["header"]["players"] = ["m07-determinization-champion", "heuristic-v1"]
+    tampered_seat["games"][0]["replay"]["agents_by_seat"][1]["league_agent_id"] = "heuristic-v1"
     with pytest.raises(ValueError, match="replay players.*must both be 'm07-determinization-champion'"):
         validate_m25_dataset_provenance(tampered_seat, m25_config)
 
 
 def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     """
-    P2-1 Check 10: True Bridge E2E Test.
-    Constructs raw Replays + TrainingDatasetV1 + SearchTeacherTargetSetV1 ->
+    P2-1 Check 10: True Bridge E2E Test against canonical TrainingDatasetV1 schema.
+    Constructs canonical TrainingDatasetV1 (with embedded TrainingReplayV1 replays and TrainingExampleV1 examples with NO game_index)
+    + SearchTeacherTargetSetV1 ->
     Materializes via materialize_m25_dataset ->
+    Asserts derived game_index equals seed_index ->
     Builds EncodedCache ->
     Runs train_m25 on CPU ->
     Evaluates G1/G2/G3 ->
-    Verifies full artifacts.
+    Verifies full artifacts and checkpoint/report hash bindings.
     """
     if not M24_DATASET_PATH.exists():
         pytest.skip("M24 dataset artifact not found")
@@ -502,7 +507,7 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     ]
     monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: safe_readings)
 
-    # 1. Build input fixtures: 256 Replays, TrainingDatasetV1, and SearchTeacherTargetSetV1
+    # 1. Build canonical TrainingDatasetV1 and SearchTeacherTargetSetV1 fixtures (256 games)
     real_examples = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][:4]
     
     replays = []
@@ -516,17 +521,43 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
         ranks = [0, 1] if g_i % 2 == 0 else [1, 0]
 
         replays.append({
+            "source_id": source_id,
+            "evaluation_match_index": g_i,
+            "seed_index": g_i,
+            "rotation": 0,
+            "arena_game_id": f"game-{g_i:06d}",
+            "arena_report_hash": "a" * 64,
             "replay_document_hash": doc_hash,
-            "header": {
-                "game_seed": seed,
-                "players": ["m07-determinization-champion", "m07-determinization-champion"],
-            },
+            "engine_version": "0.1.0",
+            "ruleset_id": "splendor-base-v1",
+            "ruleset_fingerprint": "f" * 64,
+            "player_count": 2,
+            "steps": 10,
+            "final_state_hash": "s" * 64,
             "result": {
                 "scores": [15, 10] if ranks == [0, 1] else [10, 15],
                 "ranks": ranks,
                 "winners": [0] if ranks == [0, 1] else [1],
-                "reason": "points_threshold",
+                "reason": "prestige_threshold",
             },
+            "agents_by_seat": [
+                {
+                    "seat": 0,
+                    "league_agent_id": "m07-determinization-champion",
+                    "policy_version": "m07-v1",
+                    "model_version": None,
+                    "runtime_name": "splendor",
+                    "runtime_version": "0.1.0",
+                },
+                {
+                    "seat": 1,
+                    "league_agent_id": "m07-determinization-champion",
+                    "policy_version": "m07-v1",
+                    "model_version": None,
+                    "runtime_name": "splendor",
+                    "runtime_version": "0.1.0",
+                },
+            ],
         })
 
         ex_template = real_examples[g_i % len(real_examples)]
@@ -538,17 +569,19 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
             for j, a in enumerate(ex_template["legal_actions"])
         ]
 
+        # Canonical TrainingExampleV1: has NO game_index
         training_examples.append({
             "source_id": source_id,
             "replay_document_hash": doc_hash,
-            "game_index": g_i,
             "ply": 0,
             "actor": 0,
             "observation": ex_template["observation"],
             "observation_hash": ex_template["observation_hash"],
+            "visible_history_hash": "vis_h",
             "information_set_hash": ex_template["information_set_hash"],
             "legal_actions": ex_template["legal_actions"],
             "chosen_action": ex_template["legal_actions"][0],
+            "final_scores": [15, 10] if ranks == [0, 1] else [10, 15],
             "final_ranks": ranks,
         })
 
@@ -563,9 +596,14 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
         })
 
     training_ds = {
-        "format": "effective-splendor-training-dataset-v1",
+        "format": "effective-splendor-training-dataset",
         "version": 1,
         "dataset_id": "m25-test-bridge-tds",
+        "league_manifest_hash": "m" * 64,
+        "evaluation_id": "m25-test-eval",
+        "evaluation_plan_hash": "p" * 64,
+        "evaluation_report_hash": "r" * 64,
+        "replays": replays,
         "examples": training_examples,
     }
 
@@ -591,11 +629,15 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
 
     # 2. Materialize through materialize_m25_dataset bridge
     materialized = materialize_m25_dataset(
-        replays=replays,
         training_dataset=training_ds,
         search_targets=search_targets_payload,
         config=m25_config,
     )
+
+    # Verify derived game_index strictly equals seed_index
+    for g_i, ex in enumerate(materialized["examples"]):
+        assert ex["game_index"] == g_i
+        assert ex["game_seed"] == 20260825 + g_i
 
     dataset_path = tmp_path / "bridge_m25_dataset.json"
     dataset_path.write_text(json.dumps(materialized), encoding="utf-8")
