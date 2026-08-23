@@ -101,3 +101,26 @@ G1 PASS and G2 PASS and G3 PASS
 - **Total**: 128 games.
 - **Practical Signal Threshold**: Score (\ge 40\%) vs M07 to consider neural self-play continuation in M26.
 - **Promotion**: `NONE` (M07 remains champion until formal promotion gate).
+
+## Implementation and Review Iterations
+
+### Repair 1 (2026-08-22)
+- Fixed G1 theoretical uniform cross-entropy baseline formula ($\frac{1}{N}\sum \ln |A_i|$).
+- Fixed G2 cross-distribution holdout evaluation to join on exact (game_index, ply, actor, observation_hash, information_set_hash) and execute fail-closed.
+- Fixed G3 baseline MSE to compute training-mean outcome vector against validation targets.
+- Created frozen M25 configuration and production trainer.
+
+### Repair 2 (2026-08-22)
+- Replaced non-existent cache build method with `build_m25_encoded_cache` adapter writing to mapped tensors.
+- Implemented M25 dataset materializer and semantic hash domain `effective-splendor-m25-search-teacher-dataset-v1\0`.
+- Restored microbatched execution (batch 128 / microbatch 32), gradient accumulation, and soft thermal pacing.
+- Corrected M24-S2 dataset hash to authoritative `self_play_hash` domain.
+
+### Repair 3 (2026-08-22)
+- **P1-1 (Authoritative Splendor Dense Rank Values)**: Fixed terminal value target computation to directly read authoritative `replay.result.ranks` instead of recomputing scores/card counts in Python, properly handling exact ties ($[0,0] \to [1.0, 1.0]$) and engine tiebreak dense ranks.
+- **P1-2 (Fail-Closed Provenance Join)**: Removed all fallback defaults in `materialize_m25_dataset`; strictly enforced `replay_document_hash`, `game_index`, `source_id`, `ply`, `actor`, rejecting unmatched or duplicate records.
+- **P1-3 (Teacher Artifact Strict Config Binding)**: Bound input SearchTeacherTargetSet config (`sample_seed`, `sample_count`, `max_depth_turns`, `max_nodes`, `uniform_floor_micros`) against frozen preregistration.
+- **P1-4 (Trainer Provenance Validator)**: Bound `train_m25` to verify full internal game/example linkage, replay ranks, and teacher configuration.
+- **P2-1 (True Bridge E2E Smoke Test)**: Updated smoke test to exercise raw replays + TrainingDatasetV1 + SearchTeacherTargetSetV1 $\to$ `materialize_m25_dataset` $\to$ cache $\to$ training $\to$ holdout $\to$ gate decision.
+- **P2-2 (Materialization CLI)**: Added CLI entry point to `training/m17_gpu/splendor_gpu/m25_dataset.py`.
+

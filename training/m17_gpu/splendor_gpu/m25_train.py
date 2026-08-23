@@ -181,17 +181,78 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
     expected_games = int(config["dataset"]["games"])
     _assert_equal(len(games), expected_games, "dataset games count")
 
-    # Check seeds schedule
+    # 1. Check seeds schedule & embedded game metadata
     expected_seeds = config["dataset"]["game_seeds"]
     actual_seeds = [int(g["game_seed"]) for g in games]
     _assert_equal(actual_seeds, expected_seeds, "game seeds sequence")
+
+    game_by_idx: dict[int, dict[str, Any]] = {}
+    game_by_doc_hash: dict[str, dict[str, Any]] = {}
+
+    for g_i, g in enumerate(games):
+        g_idx = int(g.get("game_index", -1))
+        _assert_equal(g_idx, g_i, f"game {g_i} game_index")
+        
+        doc_hash = g.get("replay_document_hash")
+        if not doc_hash:
+            raise ValueError(f"fail-closed: game {g_i} missing replay_document_hash")
+        if doc_hash in game_by_doc_hash:
+            raise ValueError(f"fail-closed: duplicate game replay_document_hash: {doc_hash}")
+            
+        result = g.get("result", {})
+        ranks = result.get("ranks")
+        if ranks is None or len(ranks) != 2:
+            raise ValueError(f"fail-closed: game {g_i} missing or invalid result.ranks")
+
+        game_by_idx[g_idx] = g
+        game_by_doc_hash[doc_hash] = g
+
+    # 2. Check provenance section if present
+    provenance = payload.get("provenance", {})
+    t_cfg = provenance.get("teacher_config")
+    if t_cfg:
+        expected_t = config["dataset"]["teacher_config"]
+        if "search" in t_cfg:
+            search = t_cfg["search"]
+            cont = search.get("continuation_search", {})
+            actual_seed = int(search.get("sample_seed", -1))
+            actual_count = int(search.get("sample_count", -1))
+            actual_depth = int(cont.get("max_depth_turns", -1))
+            actual_nodes = int(cont.get("max_nodes", -1))
+            actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
+        else:
+            actual_seed = int(t_cfg.get("sample_seed", -1))
+            actual_count = int(t_cfg.get("sample_count", -1))
+            actual_depth = int(t_cfg.get("max_depth_turns", -1))
+            actual_nodes = int(t_cfg.get("max_nodes", -1))
+            actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
+
+        _assert_equal(actual_seed, int(expected_t["sample_seed"]), "provenance teacher sample_seed")
+        _assert_equal(actual_count, int(expected_t["sample_count"]), "provenance teacher sample_count")
+        _assert_equal(actual_depth, int(expected_t["max_depth_turns"]), "provenance teacher max_depth_turns")
+        _assert_equal(actual_nodes, int(expected_t["max_nodes"]), "provenance teacher max_nodes")
+        _assert_equal(actual_floor, EXPECTED_UNIFORM_FLOOR_MICROS, "provenance teacher uniform_floor_micros")
 
     examples = payload.get("examples", [])
     if not examples:
         raise ValueError("fail-closed: empty examples in dataset")
 
-    # Verify every example has valid policy target micros and viewer-relative value target
+    # 3. Verify every example's internal linkage to games and verified ranks
     for idx, ex in enumerate(examples):
+        g_idx = int(ex.get("game_index", -1))
+        if g_idx not in game_by_idx:
+            raise ValueError(f"fail-closed: example {idx} references unknown game_index {g_idx}")
+        g = game_by_idx[g_idx]
+
+        if int(ex.get("game_seed", -1)) != int(g["game_seed"]):
+            raise ValueError(f"fail-closed: example {idx} game_seed mismatch with game {g_idx}")
+        if ex.get("replay_document_hash") != g["replay_document_hash"]:
+            raise ValueError(f"fail-closed: example {idx} replay_document_hash mismatch with game {g_idx}")
+
+        actor = int(ex.get("actor", -1))
+        if actor not in (0, 1):
+            raise ValueError(f"fail-closed: example {idx} invalid actor {actor}")
+
         micros = ex.get("policy_target_micros", [])
         legal_acts = ex.get("legal_actions", [])
         if len(micros) != len(legal_acts) or len(legal_acts) == 0:
@@ -199,9 +260,14 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
         if sum(micros) != 1_000_000:
             raise ValueError(f"fail-closed: example {idx} policy_target_micros sum {sum(micros)} != 1000000")
         
-        v = ex.get("value_target", [])
-        if len(v) != 2 or not all(x in (0.0, 1.0) for x in v) or sum(v) != 1.0:
-            raise ValueError(f"fail-closed: example {idx} invalid terminal viewer value_target: {v}")
+        # Verify terminal viewer value target matches authoritative game result.ranks
+        ranks = g["result"]["ranks"]
+        expected_viewer_val = [1.0 - float(ranks[actor]), 1.0 - float(ranks[1 - actor])]
+        actual_val = ex.get("value_target", [])
+        if len(actual_val) != 2:
+            raise ValueError(f"fail-closed: example {idx} value_target must have length 2")
+        if actual_val != expected_viewer_val:
+            raise ValueError(f"fail-closed: example {idx} value_target {actual_val} != expected {expected_viewer_val} from ranks {ranks}")
 
     return m25_dataset_hash(payload)
 

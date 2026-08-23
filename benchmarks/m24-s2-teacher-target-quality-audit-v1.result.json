@@ -1,6 +1,7 @@
 {
   "format": "effective-splendor-m24-s2-teacher-target-quality-audit",
   "version": 1,
+  "status": "ACCEPTED / CLOSED",
   "source_dataset_id": "m24-self-play-s2-v1",
   "source_dataset_file_sha256": "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f",
   "source_dataset_semantic_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",

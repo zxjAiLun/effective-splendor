@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M24-S2 TEACHER / TARGET QUALITY AUDIT
-STATUS = PENDING_INDEPENDENT_REVIEW
+STATUS = ACCEPTED / CLOSED
 BASELINE_COMMIT = 140ef8248df029a32bcf6d34db436351563fa28c
 RESULT_ARTIFACT = benchmarks/m24-s2-teacher-target-quality-audit-v1.result.json
 HOLDOUT_FIXTURE = benchmarks/m24-s2-2002-audit-holdout.json

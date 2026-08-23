@@ -17,6 +17,7 @@ from splendor_gpu.m25_dataset import (
     M25_DATASET_VERSION,
     build_m25_encoded_cache,
     m25_dataset_hash,
+    materialize_m25_dataset,
 )
 from splendor_gpu.m25_train import (
     EXPECTED_M25_FORMAT,
@@ -385,10 +386,86 @@ def test_m25_teacher_action_support_exact():
     assert math.isclose(norm.sum().item(), 1.0, rel_tol=1e-6)
 
 
+def test_m25_tampered_materialized_provenance_fails(m25_config):
+    """P1-4 Check 9: Tampered provenance fields in materialized dataset fail closed in train_m25 validation."""
+    games = [{
+        "game_index": i,
+        "game_seed": 20260825 + i,
+        "replay_document_hash": f"doc_{i:04d}",
+        "result": {"scores": [15, 10], "ranks": [0, 1]},
+    } for i in range(256)]
+    
+    examples = [{
+        "game_index": i,
+        "game_seed": 20260825 + i,
+        "source_id": f"match-{i:06d}",
+        "replay_document_hash": f"doc_{i:04d}",
+        "ply": 0,
+        "actor": 0,
+        "observation": {},
+        "observation_hash": "obs_h",
+        "information_set_hash": "info_h",
+        "legal_actions": [{"type": "pass"}],
+        "policy_target_micros": [1_000_000],
+        "value_target": [1.0, 0.0],
+    } for i in range(256)]
+    
+    base_ds = {
+        "format": M25_DATASET_FORMAT,
+        "version": M25_DATASET_VERSION,
+        "generator_agent": "m07-determinization-champion",
+        "ruleset": "base_v1",
+        "player_count": 2,
+        "provenance": {
+            "teacher_config": {
+                "sample_seed": 20260810,
+                "sample_count": 4,
+                "max_depth_turns": 1,
+                "max_nodes": 2000,
+                "uniform_floor_micros": 100000,
+            }
+        },
+        "games": games,
+        "examples": examples,
+    }
+
+    # 1. Valid dataset passes
+    validate_m25_dataset_provenance(base_ds, m25_config)
+
+    # 2. Tampered game_seed in example fails
+    tampered_seed = copy.deepcopy(base_ds)
+    tampered_seed["examples"][0]["game_seed"] = 99999999
+    with pytest.raises(ValueError, match="game_seed mismatch"):
+        validate_m25_dataset_provenance(tampered_seed, m25_config)
+
+    # 3. Tampered replay_document_hash in example fails
+    tampered_doc = copy.deepcopy(base_ds)
+    tampered_doc["examples"][0]["replay_document_hash"] = "wrong_doc_hash"
+    with pytest.raises(ValueError, match="replay_document_hash mismatch"):
+        validate_m25_dataset_provenance(tampered_doc, m25_config)
+
+    # 4. Tampered value_target (disagreeing with game ranks) fails
+    tampered_val = copy.deepcopy(base_ds)
+    tampered_val["examples"][0]["value_target"] = [0.0, 1.0]  # actor 0 won, so expected [1.0, 0.0]
+    with pytest.raises(ValueError, match="value_target.*!= expected"):
+        validate_m25_dataset_provenance(tampered_val, m25_config)
+
+    # 5. Tampered teacher_config in provenance fails
+    tampered_t = copy.deepcopy(base_ds)
+    tampered_t["provenance"]["teacher_config"]["sample_count"] = 16
+    with pytest.raises(ValueError, match="provenance teacher sample_count"):
+        validate_m25_dataset_provenance(tampered_t, m25_config)
+
+
 def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     """
-    Test full end-to-end training and evaluation pipeline on CPU with a mini dataset.
-    Exercises train_m25 -> cache build -> microbatched step -> val -> holdout -> gate -> outputs.
+    P2-1 Check 10: True Bridge E2E Test.
+    Constructs raw Replays + TrainingDatasetV1 + SearchTeacherTargetSetV1 ->
+    Materializes via materialize_m25_dataset ->
+    Builds EncodedCache ->
+    Runs train_m25 on CPU ->
+    Evaluates G1/G2/G3 ->
+    Verifies full artifacts.
     """
     if not M24_DATASET_PATH.exists():
         pytest.skip("M24 dataset artifact not found")
@@ -400,51 +477,110 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     ]
     monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: safe_readings)
 
-    # 1. Build a mini 256-game dataset fixture using real observations
+    # 1. Build input fixtures: 256 Replays, TrainingDatasetV1, and SearchTeacherTargetSetV1
     real_examples = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][:4]
     
-    mini_games = [{"game_index": i, "game_seed": 20260825 + i} for i in range(256)]
-    mini_examples = []
+    replays = []
+    training_examples = []
+    search_targets_list = []
+
     for g_i in range(256):
+        seed = 20260825 + g_i
+        doc_hash = f"doc_{seed:08d}"
+        source_id = f"match-{g_i:06d}"
+        ranks = [0, 1] if g_i % 2 == 0 else [1, 0]
+
+        replays.append({
+            "replay_document_hash": doc_hash,
+            "header": {
+                "game_seed": seed,
+                "players": ["m07-1", "m07-2"],
+            },
+            "result": {
+                "scores": [15, 10] if ranks == [0, 1] else [10, 15],
+                "ranks": ranks,
+                "winners": [0] if ranks == [0, 1] else [1],
+                "reason": "points_threshold",
+            },
+        })
+
         ex_template = real_examples[g_i % len(real_examples)]
         n_acts = len(ex_template["legal_actions"])
         base = 1_000_000 // n_acts
         rem = 1_000_000 % n_acts
-        micros = [base + (1 if j < rem else 0) for j in range(n_acts)]
-        
-        mini_examples.append({
+        action_targets = [
+            {"action": a, "policy_target_micros": base + (1 if j < rem else 0)}
+            for j, a in enumerate(ex_template["legal_actions"])
+        ]
+
+        training_examples.append({
+            "source_id": source_id,
+            "replay_document_hash": doc_hash,
             "game_index": g_i,
-            "game_seed": 20260825 + g_i,
-            "source_id": f"match-{g_i:06d}",
             "ply": 0,
             "actor": 0,
             "observation": ex_template["observation"],
             "observation_hash": ex_template["observation_hash"],
             "information_set_hash": ex_template["information_set_hash"],
             "legal_actions": ex_template["legal_actions"],
-            "policy_target_micros": micros,
-            "value_target": [1.0, 0.0] if g_i % 2 == 0 else [0.0, 1.0],
+            "chosen_action": ex_template["legal_actions"][0],
+            "final_ranks": ranks,
         })
 
-    mini_dataset = {
-        "format": M25_DATASET_FORMAT,
-        "version": M25_DATASET_VERSION,
-        "generator_agent": "m07-determinization-champion",
-        "ruleset": "base_v1",
-        "player_count": 2,
-        "games": mini_games,
-        "examples": mini_examples,
+        search_targets_list.append({
+            "source_id": source_id,
+            "ply": 0,
+            "actor": 0,
+            "observation_hash": ex_template["observation_hash"],
+            "information_set_hash": ex_template["information_set_hash"],
+            "action_targets": action_targets,
+            "value_target_by_player_micros": [750000, 250000],
+        })
+
+    training_ds = {
+        "format": "effective-splendor-training-dataset-v1",
+        "version": 1,
+        "dataset_id": "m25-test-bridge-tds",
+        "examples": training_examples,
     }
 
-    dataset_path = tmp_path / "mini_m25_dataset.json"
-    dataset_path.write_text(json.dumps(mini_dataset), encoding="utf-8")
+    search_targets_payload = {
+        "format": "effective-splendor-search-teacher-targets",
+        "version": 1,
+        "dataset_id": "m25-test-bridge-targets",
+        "dataset_hash": "b" * 64,
+        "config": {
+            "search": {
+                "sample_seed": 20260810,
+                "sample_count": 4,
+                "continuation_search": {
+                    "max_depth_turns": 1,
+                    "max_nodes": 2000,
+                },
+            },
+            "uniform_floor_micros": 100000,
+            "value_utility_scale": 15,
+        },
+        "targets": search_targets_list,
+    }
 
-    # Set config to 1 epoch, CPU device
+    # 2. Materialize through materialize_m25_dataset bridge
+    materialized = materialize_m25_dataset(
+        replays=replays,
+        training_dataset=training_ds,
+        search_targets=search_targets_payload,
+        config=m25_config,
+    )
+
+    dataset_path = tmp_path / "bridge_m25_dataset.json"
+    dataset_path.write_text(json.dumps(materialized), encoding="utf-8")
+
+    # 3. Train and evaluate
     cfg = copy.deepcopy(m25_config)
     cfg["training"]["epochs"] = 1
     cfg["training"]["device"] = "cpu"
 
-    out_dir = tmp_path / "m25_smoke_out"
+    out_dir = tmp_path / "m25_bridge_smoke_out"
 
     report = train_m25(
         config=cfg,

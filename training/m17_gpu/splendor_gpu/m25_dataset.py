@@ -1,7 +1,8 @@
-"""M25 M07 Search-Teacher Bootstrap Dataset Materializer, Validator, and Encoder Adapter."""
+"""M25 M07 Search-Teacher Bootstrap Dataset Materializer, Validator, CLI, and Encoder Adapter."""
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -12,6 +13,7 @@ import torch
 from torch.utils.data import Dataset
 
 from splendor_gpu.data import (
+    canonical_json,
     catalog_semantic_hash,
     load_catalog,
 )
@@ -42,6 +44,14 @@ M25_DATASET_DOMAIN = b"effective-splendor-m25-search-teacher-dataset-v1\0"
 M25_TEACHER_TARGETS_FORMAT = "effective-splendor-search-teacher-targets"
 M25_TEACHER_TARGETS_VERSION = 1
 M25_UNIFORM_FLOOR_MICROS = 100000
+
+EXPECTED_TEACHER_CONFIG = {
+    "sample_seed": 20260810,
+    "sample_count": 4,
+    "max_depth_turns": 1,
+    "max_nodes": 2000,
+    "uniform_floor_micros": 100000,
+}
 
 
 def m25_dataset_hash(payload: dict[str, Any]) -> str:
@@ -185,6 +195,29 @@ def build_m25_encoded_cache(
     return manifest
 
 
+def validate_teacher_targets_config(targets_config: dict[str, Any]) -> None:
+    """Validate exact frozen M07 determinization search teacher configuration in target set."""
+    search = targets_config.get("search", {})
+    cont = search.get("continuation_search", {})
+    
+    seed = int(search.get("sample_seed", -1))
+    count = int(search.get("sample_count", -1))
+    depth = int(cont.get("max_depth_turns", -1))
+    nodes = int(cont.get("max_nodes", -1))
+    floor = int(targets_config.get("uniform_floor_micros", -1))
+    
+    if seed != EXPECTED_TEACHER_CONFIG["sample_seed"]:
+        raise ValueError(f"teacher sample_seed {seed} != expected {EXPECTED_TEACHER_CONFIG['sample_seed']}")
+    if count != EXPECTED_TEACHER_CONFIG["sample_count"]:
+        raise ValueError(f"teacher sample_count {count} != expected {EXPECTED_TEACHER_CONFIG['sample_count']}")
+    if depth != EXPECTED_TEACHER_CONFIG["max_depth_turns"]:
+        raise ValueError(f"teacher max_depth_turns {depth} != expected {EXPECTED_TEACHER_CONFIG['max_depth_turns']}")
+    if nodes != EXPECTED_TEACHER_CONFIG["max_nodes"]:
+        raise ValueError(f"teacher max_nodes {nodes} != expected {EXPECTED_TEACHER_CONFIG['max_nodes']}")
+    if floor != EXPECTED_TEACHER_CONFIG["uniform_floor_micros"]:
+        raise ValueError(f"teacher uniform_floor_micros {floor} != expected {EXPECTED_TEACHER_CONFIG['uniform_floor_micros']}")
+
+
 def materialize_m25_dataset(
     replays: list[dict[str, Any]],
     training_dataset: dict[str, Any],
@@ -192,113 +225,142 @@ def materialize_m25_dataset(
     config: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Materialize M25 dataset by joining verified M07 replays, TrainingDatasetV1 player-view
-    observations, and M15C SearchTeacherTargetSetV1 policy targets.
+    Materialize M25 dataset by strictly joining verified M07 replays, TrainingDatasetV1
+    player-view observations, and M15C SearchTeacherTargetSetV1 policy targets.
     
-    Value targets are computed strictly from verified replay final terminal ranks, NOT M15C search values.
+    Value targets are computed strictly from verified replay final terminal ranks (result.ranks),
+    NOT M15C search values or Python recomputed score tie-breaks.
     """
-    # 1. Validate search targets header
+    # 1. Validate search targets format & exact teacher config
     if search_targets.get("format") != M25_TEACHER_TARGETS_FORMAT:
-        raise ValueError(f"unexpected search targets format: {search_targets.get('format')}")
+        raise ValueError(f"fail-closed: unexpected search targets format: {search_targets.get('format')}")
     if int(search_targets.get("version", 0)) != M25_TEACHER_TARGETS_VERSION:
-        raise ValueError(f"unexpected search targets version: {search_targets.get('version')}")
+        raise ValueError(f"fail-closed: unexpected search targets version: {search_targets.get('version')}")
     
     t_cfg = search_targets.get("config", {})
-    floor = int(t_cfg.get("uniform_floor_micros", -1))
-    if floor != M25_UNIFORM_FLOOR_MICROS:
-        raise ValueError(f"search targets uniform_floor_micros {floor} != expected {M25_UNIFORM_FLOOR_MICROS}")
+    validate_teacher_targets_config(t_cfg)
 
-    # 2. Index replays and final ranks
-    replay_by_doc_hash = {}
-    replay_by_game_idx = {}
+    # 2. Strict index of replays by replay_document_hash
+    replay_by_doc_hash: dict[str, dict[str, Any]] = {}
+    seen_seeds = set()
+    
     for g_idx, r in enumerate(replays):
         doc_hash = r.get("replay_document_hash") or r.get("document_hash")
-        # Calculate terminal ranks from final state/events
-        players = r["header"]["players"]
-        if len(players) != 2:
-            raise ValueError("M25 requires 2-player games")
-        final_scores = r["result"]["scores"]
-        # Winner is rank 0, loser rank 1
-        p0_score, p1_score = final_scores[0], final_scores[1]
-        if p0_score > p1_score:
-            ranks = [0, 1]
-        elif p1_score > p0_score:
-            ranks = [1, 0]
-        else:
-            # tie break on card count
-            p0_cards = r["result"].get("card_counts", [0, 0])[0]
-            p1_cards = r["result"].get("card_counts", [0, 0])[1]
-            ranks = [0, 1] if p0_cards <= p1_cards else [1, 0]
+        if not doc_hash:
+            raise ValueError(f"fail-closed: replay index {g_idx} missing replay_document_hash")
+        if doc_hash in replay_by_doc_hash:
+            raise ValueError(f"fail-closed: duplicate replay_document_hash: {doc_hash}")
         
-        info = {"replay": r, "ranks": ranks, "game_index": g_idx, "seed": r["header"].get("game_seed")}
-        if doc_hash:
-            replay_by_doc_hash[doc_hash] = info
-        replay_by_game_idx[g_idx] = info
+        header = r.get("header", {})
+        seed = header.get("game_seed")
+        if seed is None:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing game_seed")
+        if seed in seen_seeds:
+            raise ValueError(f"fail-closed: duplicate game_seed across replays: {seed}")
+        seen_seeds.add(seed)
 
-    # 3. Index search targets by (source_id, ply, actor)
-    target_index = {}
+        players = header.get("players", [])
+        if len(players) != 2:
+            raise ValueError(f"fail-closed: replay {doc_hash} player count {len(players)} != 2")
+
+        result = r.get("result", {})
+        ranks = result.get("ranks")
+        if ranks is None or len(ranks) != 2:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid result.ranks: {ranks}")
+
+        replay_by_doc_hash[doc_hash] = {
+            "game_index": g_idx,
+            "game_seed": int(seed),
+            "replay_document_hash": doc_hash,
+            "ranks": [int(ranks[0]), int(ranks[1])],
+            "replay": r,
+        }
+
+    # 3. Strict index of search targets by (source_id, ply, actor)
+    target_index: dict[tuple[str, int, int], dict[str, Any]] = {}
     for tgt in search_targets.get("targets", []):
-        key = (str(tgt["source_id"]), int(tgt["ply"]), int(tgt["actor"]))
+        source_id = tgt.get("source_id")
+        if not source_id:
+            raise ValueError("fail-closed: search target missing source_id")
+        ply = tgt.get("ply")
+        actor = tgt.get("actor")
+        if ply is None or actor is None:
+            raise ValueError(f"fail-closed: search target {source_id} missing ply or actor")
+            
+        key = (str(source_id), int(ply), int(actor))
         if key in target_index:
-            raise ValueError(f"duplicate target key: {key}")
+            raise ValueError(f"fail-closed: duplicate search target key: {key}")
         target_index[key] = tgt
 
-    # 4. Materialize examples
+    # 4. Materialize examples strictly
     examples_out = []
     seen_examples = set()
-    
-    for ex in training_dataset.get("examples", []):
-        source_id = str(ex["source_id"])
-        ply = int(ex["ply"])
-        actor = int(ex["actor"])
-        key = (source_id, ply, actor)
+    matched_target_keys = set()
+
+    for ex_idx, ex in enumerate(training_dataset.get("examples", [])):
+        source_id = ex.get("source_id")
+        doc_hash = ex.get("replay_document_hash")
+        ply = ex.get("ply")
+        actor = ex.get("actor")
+        
+        if not source_id or not doc_hash or ply is None or actor is None:
+            raise ValueError(f"fail-closed: example {ex_idx} missing core provenance fields (source_id={source_id}, doc_hash={doc_hash}, ply={ply}, actor={actor})")
+
+        key = (str(source_id), int(ply), int(actor))
         if key in seen_examples:
-            raise ValueError(f"duplicate training example key: {key}")
+            raise ValueError(f"fail-closed: duplicate training example key: {key}")
         seen_examples.add(key)
 
+        # Exact replay join
+        if doc_hash not in replay_by_doc_hash:
+            raise ValueError(f"fail-closed: example {key} references unknown replay_document_hash: {doc_hash}")
+        r_info = replay_by_doc_hash[doc_hash]
+
+        ex_game_idx = ex.get("game_index")
+        if ex_game_idx is not None and int(ex_game_idx) != r_info["game_index"]:
+            raise ValueError(f"fail-closed: example {key} game_index {ex_game_idx} disagrees with replay game_index {r_info['game_index']}")
+
+        # Exact search target join
         if key not in target_index:
-            raise ValueError(f"missing search target for example: {key}")
+            raise ValueError(f"fail-closed: missing search target for example: {key}")
         tgt = target_index[key]
+        matched_target_keys.add(key)
 
         # Verify observation / info hashes match
         if ex.get("observation_hash") != tgt.get("observation_hash"):
-            raise ValueError(f"observation_hash mismatch for example {key}")
+            raise ValueError(f"fail-closed: observation_hash mismatch for example {key}: {ex.get('observation_hash')} != {tgt.get('observation_hash')}")
         if ex.get("information_set_hash") != tgt.get("information_set_hash"):
-            raise ValueError(f"information_set_hash mismatch for example {key}")
+            raise ValueError(f"fail-closed: information_set_hash mismatch for example {key}: {ex.get('information_set_hash')} != {tgt.get('information_set_hash')}")
 
         # Verify legal actions match action_targets
-        legal_acts = ex["legal_actions"]
-        act_targets = tgt["action_targets"]
-        if len(legal_acts) != len(act_targets):
-            raise ValueError(f"legal_actions count {len(legal_acts)} != action_targets count {len(act_targets)} for {key}")
+        legal_acts = ex.get("legal_actions", [])
+        act_targets = tgt.get("action_targets", [])
+        if len(legal_acts) != len(act_targets) or len(legal_acts) == 0:
+            raise ValueError(f"fail-closed: legal_actions count {len(legal_acts)} != action_targets count {len(act_targets)} for {key}")
 
         legal_keys = [action_key(a) for a in legal_acts]
         target_keys = [action_key(at["action"]) for at in act_targets]
         if legal_keys != target_keys:
-            raise ValueError(f"legal_actions order mismatch for {key}")
+            raise ValueError(f"fail-closed: legal_actions exact order/content mismatch for {key}")
 
         policy_micros = [int(at["policy_target_micros"]) for at in act_targets]
         if sum(policy_micros) != 1_000_000:
-            raise ValueError(f"policy_target_micros sum {sum(policy_micros)} != 1000000 for {key}")
+            raise ValueError(f"fail-closed: policy_target_micros sum {sum(policy_micros)} != 1000000 for {key}")
 
-        # Find terminal outcome from replay
-        doc_hash = ex.get("replay_document_hash")
-        if doc_hash and doc_hash in replay_by_doc_hash:
-            r_info = replay_by_doc_hash[doc_hash]
-        else:
-            game_idx = int(ex.get("game_index", 0))
-            r_info = replay_by_game_idx[game_idx]
-            
+        # Compute viewer-relative terminal outcome value directly from authoritative replay result.ranks
         ranks = r_info["ranks"]
-        # Viewer-relative terminal value target: [1.0, 0.0] if actor won, [0.0, 1.0] if actor lost
+        if ex.get("final_ranks") is not None and list(ex["final_ranks"]) != ranks:
+            raise ValueError(f"fail-closed: example {key} final_ranks {ex['final_ranks']} != replay ranks {ranks}")
+            
         viewer_value = [1.0 - float(ranks[actor]), 1.0 - float(ranks[1 - actor])]
 
         examples_out.append({
             "game_index": r_info["game_index"],
-            "game_seed": r_info["seed"],
-            "source_id": source_id,
-            "ply": ply,
-            "actor": actor,
+            "game_seed": r_info["game_seed"],
+            "source_id": str(source_id),
+            "replay_document_hash": doc_hash,
+            "ply": int(ply),
+            "actor": int(actor),
             "observation": ex["observation"],
             "observation_hash": ex["observation_hash"],
             "information_set_hash": ex["information_set_hash"],
@@ -307,11 +369,30 @@ def materialize_m25_dataset(
             "value_target": viewer_value,
         })
 
+    # Ensure no unmatched search targets exist
+    if len(matched_target_keys) != len(target_index):
+        unmatched = set(target_index.keys()) - matched_target_keys
+        raise ValueError(f"fail-closed: {len(unmatched)} unmatched search targets in input artifact (e.g. {next(iter(unmatched))})")
+
     games_out = [{
         "game_index": info["game_index"],
-        "game_seed": info["seed"],
+        "game_seed": info["game_seed"],
+        "replay_document_hash": info["replay_document_hash"],
+        "result": info["replay"]["result"],
         "replay": info["replay"],
-    } for info in replay_by_game_idx.values()]
+    } for info in replay_by_doc_hash.values()]
+
+    # Sort games by game_index
+    games_out.sort(key=lambda g: g["game_index"])
+
+    provenance_meta = {
+        "source_replays_count": len(replays),
+        "source_training_dataset_format": training_dataset.get("format"),
+        "source_training_dataset_id": training_dataset.get("dataset_id"),
+        "source_search_targets_format": search_targets.get("format"),
+        "source_search_targets_dataset_hash": search_targets.get("dataset_hash"),
+        "teacher_config": t_cfg,
+    }
 
     return {
         "format": M25_DATASET_FORMAT,
@@ -320,6 +401,55 @@ def materialize_m25_dataset(
         "generator_agent": config["dataset"]["generator_agent"],
         "ruleset": config["dataset"]["ruleset"],
         "player_count": int(config["dataset"]["player_count"]),
+        "provenance": provenance_meta,
         "games": games_out,
         "examples": examples_out,
     }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Materialize M25 Search-Teacher Dataset.")
+    parser.add_argument("--replays-dir", type=Path, help="Directory containing replay JSON files.")
+    parser.add_argument("--training-dataset", type=Path, required=True, help="Path to TrainingDatasetV1 JSON.")
+    parser.add_argument("--search-targets", type=Path, required=True, help="Path to SearchTeacherTargetSetV1 JSON.")
+    parser.add_argument("--config", type=Path, required=True, help="Path to M25 config JSON.")
+    parser.add_argument("--out", type=Path, required=True, help="Output path for materialized M25 dataset JSON.")
+    args = parser.parse_args()
+
+    if args.out.exists():
+        raise FileExistsError(f"fail-closed: output dataset file already exists: {args.out}")
+
+    config = json.loads(args.config.read_text(encoding="utf-8"))
+    training_ds = json.loads(args.training_dataset.read_text(encoding="utf-8"))
+    search_tgts = json.loads(args.search_targets.read_text(encoding="utf-8"))
+
+    replays = []
+    if args.replays_dir:
+        for rf in sorted(args.replays_dir.glob("*.replay.json")):
+            replays.append(json.loads(rf.read_text(encoding="utf-8")))
+    elif "replays" in training_ds:
+        replays = training_ds["replays"]
+    else:
+        raise ValueError("fail-closed: must provide --replays-dir or training-dataset with embedded replays")
+
+    materialized = materialize_m25_dataset(
+        replays=replays,
+        training_dataset=training_ds,
+        search_targets=search_tgts,
+        config=config,
+    )
+
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(materialized, indent=2) + "\n", encoding="utf-8")
+    
+    out_sha = file_sha256(args.out)
+    out_sem_hash = m25_dataset_hash(materialized)
+    print(f"Materialized M25 dataset to {args.out}")
+    print(f"  Examples: {len(materialized['examples'])}")
+    print(f"  Games:    {len(materialized['games'])}")
+    print(f"  File SHA256:     {out_sha}")
+    print(f"  Semantic Hash:   {out_sem_hash}")
+
+
+if __name__ == "__main__":
+    main()
