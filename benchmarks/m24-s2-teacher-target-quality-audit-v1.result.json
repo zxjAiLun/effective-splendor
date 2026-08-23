@@ -1,0 +1,364 @@
+{
+  "format": "effective-splendor-m24-s2-teacher-target-quality-audit",
+  "version": 1,
+  "source_dataset_id": "m24-self-play-s2-v1",
+  "generator_checkpoint_hash": "dc611f3d575f87e2b24221d633f8af55c98055357b05ccb822ef46ec0cb98c04",
+  "generator_search_identity": "neural-ismcts-s16-d1-c1500-v1",
+  "strong_reference_reviewer_id": "m07-determinization-champion",
+  "strong_reference_config": {
+    "sample_seed": 20260810,
+    "sample_count": 4,
+    "max_depth_turns": 1,
+    "max_nodes": 2000
+  },
+  "sample_games_count": 32,
+  "sample_positions_count": 2002,
+  "games_metadata": [
+    {
+      "game_index": 0,
+      "game_seed": 260001,
+      "replay_document_hash": "28b6838065839242c2c580f32d484a389bd4d7a88e34f0b2b4797f8228f2eec7",
+      "positions_count": 60
+    },
+    {
+      "game_index": 1,
+      "game_seed": 260002,
+      "replay_document_hash": "be3bac56999b4a829971768c1adf860ea74dde8e2c5364ef8a7abc0df45cf9e1",
+      "positions_count": 56
+    },
+    {
+      "game_index": 2,
+      "game_seed": 260003,
+      "replay_document_hash": "3ce3d447229198d626c8ffbea28c18452eae564bc9cd4e51cbe9349507f7efbe",
+      "positions_count": 64
+    },
+    {
+      "game_index": 3,
+      "game_seed": 260004,
+      "replay_document_hash": "6b42316ab608f9636fd4832c91bd7c259c09abe2842d7ca191ebffc9e9dd9461",
+      "positions_count": 64
+    },
+    {
+      "game_index": 4,
+      "game_seed": 260005,
+      "replay_document_hash": "d7cc895cb3f9845f42b24d8e37b02c7fd751609f57dc3c26d2e62619e675f744",
+      "positions_count": 66
+    },
+    {
+      "game_index": 5,
+      "game_seed": 260006,
+      "replay_document_hash": "436638bea2bfa2b5e85c765e7c9b621abdadd945de6ec20522700d6ce7c0b5a0",
+      "positions_count": 60
+    },
+    {
+      "game_index": 6,
+      "game_seed": 260007,
+      "replay_document_hash": "320bfacc6d5e66594b63f1f6a4ff302dd219a4e7e97b1c6ffad74fd1e20f1c91",
+      "positions_count": 67
+    },
+    {
+      "game_index": 7,
+      "game_seed": 260008,
+      "replay_document_hash": "64c93449dddd098c5f79989ff6189c87283a2981cea6c223a471c4cf57bf447d",
+      "positions_count": 58
+    },
+    {
+      "game_index": 8,
+      "game_seed": 260009,
+      "replay_document_hash": "4e2248acf45fbad347d123096bb590834478874dfca272db9ebb63092eecbe37",
+      "positions_count": 62
+    },
+    {
+      "game_index": 9,
+      "game_seed": 260010,
+      "replay_document_hash": "ebcb74edcb254837b22019b7209f286be6eb4f3152e84a3f18d85fc240e372b0",
+      "positions_count": 60
+    },
+    {
+      "game_index": 10,
+      "game_seed": 260011,
+      "replay_document_hash": "eafc4a57fc915b6876a8ab3eb94ed9559aa451d2fce6d82454d32de030553d88",
+      "positions_count": 66
+    },
+    {
+      "game_index": 11,
+      "game_seed": 260012,
+      "replay_document_hash": "2fb347d39131f114e7f0d5907c8118fc66cafb0ae2dd6045fdf541ea71171f4c",
+      "positions_count": 66
+    },
+    {
+      "game_index": 12,
+      "game_seed": 260013,
+      "replay_document_hash": "43975755b009f69d07400b3cc9cb3f08c04b63c1e737e3d3db56ddd521255054",
+      "positions_count": 58
+    },
+    {
+      "game_index": 13,
+      "game_seed": 260014,
+      "replay_document_hash": "2bf339f0e7db209a612b7f6bfb53dd59c5c2f021573140dd2ed689566d576616",
+      "positions_count": 70
+    },
+    {
+      "game_index": 14,
+      "game_seed": 260015,
+      "replay_document_hash": "6b9a8cc01193b3aef0d0e0ecadee2b70055f87b9329f9463778e76fcbbcfde30",
+      "positions_count": 64
+    },
+    {
+      "game_index": 15,
+      "game_seed": 260016,
+      "replay_document_hash": "8170c1985dd4c0cc8b532bb903c5d3e32df1d8598483dcf99e2515243dba2ea2",
+      "positions_count": 62
+    },
+    {
+      "game_index": 16,
+      "game_seed": 260017,
+      "replay_document_hash": "b838174f64fff0f4a1e543e4bc6964658978e5d7a85f22b044879807d4a1290e",
+      "positions_count": 62
+    },
+    {
+      "game_index": 17,
+      "game_seed": 260018,
+      "replay_document_hash": "eb56f5b058c214a906bb294db62371d281c4aca41c9c58bb777be52ae2cb5d66",
+      "positions_count": 60
+    },
+    {
+      "game_index": 18,
+      "game_seed": 260019,
+      "replay_document_hash": "2bceeea6bcdefbd08dc84a5e6694f61d51add1e1712dd75efec53760365d5775",
+      "positions_count": 68
+    },
+    {
+      "game_index": 19,
+      "game_seed": 260020,
+      "replay_document_hash": "9c4523838a2ff8e5bf9ee229cdd5c4373d40035152075eb1167026b067c54c1b",
+      "positions_count": 64
+    },
+    {
+      "game_index": 20,
+      "game_seed": 260021,
+      "replay_document_hash": "e26034cce3633f2aa98d97edfd3a872bd423a73c7288f3d69c24baec63a2ddbb",
+      "positions_count": 60
+    },
+    {
+      "game_index": 21,
+      "game_seed": 260022,
+      "replay_document_hash": "4ea8cddefe91932c561f506be5efc6856ff171c65a8f7acac187819d2f44cb40",
+      "positions_count": 71
+    },
+    {
+      "game_index": 22,
+      "game_seed": 260023,
+      "replay_document_hash": "df3678bf1406d47806c217566d5cf127a46a5b95110dfd10aaead35d453f001f",
+      "positions_count": 64
+    },
+    {
+      "game_index": 23,
+      "game_seed": 260024,
+      "replay_document_hash": "368c6f24001332323c1013ca531f88b1936278183c7cae13c6ffdb569c6f66d5",
+      "positions_count": 58
+    },
+    {
+      "game_index": 24,
+      "game_seed": 260025,
+      "replay_document_hash": "779479c7a3e0befbb10c25c19b30e5fb79a508f4150d22164be4321062cca38f",
+      "positions_count": 62
+    },
+    {
+      "game_index": 25,
+      "game_seed": 260026,
+      "replay_document_hash": "f94367e7bb6476952715c8aa0de8ab28d12daa9c60f584f9c81b9f9cfaa066ca",
+      "positions_count": 62
+    },
+    {
+      "game_index": 26,
+      "game_seed": 260027,
+      "replay_document_hash": "12feefc236c3072c1d5f0b3fafe6a4eb364fcd623dd0b5ac20edc9a3510d7aea",
+      "positions_count": 62
+    },
+    {
+      "game_index": 27,
+      "game_seed": 260028,
+      "replay_document_hash": "67cb64df2e24bd9b5d6fe74386c2152c330cd29c11c12f6522df211462a5867b",
+      "positions_count": 63
+    },
+    {
+      "game_index": 28,
+      "game_seed": 260029,
+      "replay_document_hash": "c7edbf2b22ca2747c3d3a008a97b862a27b773c50ac6cb032131faf50d5c05c1",
+      "positions_count": 64
+    },
+    {
+      "game_index": 29,
+      "game_seed": 260030,
+      "replay_document_hash": "f78dbe1ca358ff35e0637311267f88f9a364bf418353f32c097c893a9ca5609b",
+      "positions_count": 56
+    },
+    {
+      "game_index": 30,
+      "game_seed": 260031,
+      "replay_document_hash": "79a7a5d512e8f9590a7f886d0efb387891010ee14073b235c248222d8ae3075c",
+      "positions_count": 62
+    },
+    {
+      "game_index": 31,
+      "game_seed": 260032,
+      "replay_document_hash": "11853426ed68cbfaeb1b61e23c7cedb75a1be0d86019af22872a4cd4119d49ae",
+      "positions_count": 61
+    }
+  ],
+  "overall_estimates_with_95_bootstrap_ci": {
+    "m22_search_agreement": {
+      "point": 0.9200799200799201,
+      "ci_95_low": 0.907153368121334,
+      "ci_95_high": 0.9326732673267327,
+      "std_error": 0.006520378812523486
+    },
+    "search_correction_rate": {
+      "point": 0.07992007992007988,
+      "ci_95_low": 0.06732673267326728,
+      "ci_95_high": 0.09284663187866607,
+      "std_error": 0.006520378812523485
+    },
+    "m22_m07_agreement": {
+      "point": 0.2807192807192807,
+      "ci_95_low": 0.26474998811112527,
+      "ci_95_high": 0.29668812467916783,
+      "std_error": 0.00817134041729557
+    },
+    "search_m07_agreement": {
+      "point": 0.2867132867132867,
+      "ci_95_low": 0.2700539262483651,
+      "ci_95_high": 0.30341082833328276,
+      "std_error": 0.008442681431036696
+    },
+    "useful_correction_rate": {
+      "point": 0.013486513486513486,
+      "ci_95_low": 0.009528466351435259,
+      "ci_95_high": 0.017517517517517518,
+      "std_error": 0.002005721156988455
+    },
+    "harmful_correction_rate": {
+      "point": 0.007492507492507493,
+      "ci_95_low": 0.003996003996003996,
+      "ci_95_high": 0.011386138613861386,
+      "std_error": 0.0018656674353825166
+    },
+    "net_improvement": {
+      "point": 0.005994005994005993,
+      "ci_95_low": 0.0004990019960079851,
+      "ci_95_high": 0.011460033203826487,
+      "std_error": 0.002774151529288497
+    },
+    "mean_m22_m07_prob": {
+      "point": 0.24513841036592438,
+      "ci_95_low": 0.2315243957410695,
+      "ci_95_high": 0.2586701572316384,
+      "std_error": 0.006939486553181617
+    },
+    "mean_search_m07_prob": {
+      "point": 0.2571178821178821,
+      "ci_95_low": 0.24305512773123047,
+      "ci_95_high": 0.2710541295334162,
+      "std_error": 0.007151998208417383
+    },
+    "mean_m22_m07_rank": {
+      "point": 7.172827172827173,
+      "ci_95_low": 6.540441234172917,
+      "ci_95_high": 7.963761600177607,
+      "std_error": 0.35980264684175783
+    },
+    "mean_search_m07_rank": {
+      "point": 3.667832167832168,
+      "ci_95_low": 3.5359982035928144,
+      "ci_95_high": 3.8001015196003114,
+      "std_error": 0.06773645162460686
+    }
+  },
+  "strata_estimates": {
+    "early_game": {
+      "m22_search_agreement": 0.939453125,
+      "search_correction_rate": 0.060546875,
+      "m22_m07_agreement": 0.228515625,
+      "search_m07_agreement": 0.23046875,
+      "useful_correction_rate": 0.009765625,
+      "harmful_correction_rate": 0.0078125,
+      "net_improvement": 0.001953125,
+      "mean_m22_m07_prob": 0.17903481347698164,
+      "mean_search_m07_prob": 0.1937255859375,
+      "mean_m22_m07_rank": 8.095703125,
+      "mean_search_m07_rank": 3.86328125,
+      "n": 512,
+      "label": "Early Game (Ply 0-15)"
+    },
+    "mid_game": {
+      "m22_search_agreement": 0.9171875,
+      "search_correction_rate": 0.08281249999999996,
+      "m22_m07_agreement": 0.275,
+      "search_m07_agreement": 0.284375,
+      "useful_correction_rate": 0.0171875,
+      "harmful_correction_rate": 0.0078125,
+      "net_improvement": 0.009375000000000001,
+      "mean_m22_m07_prob": 0.2387264019994823,
+      "mean_search_m07_prob": 0.246875,
+      "mean_m22_m07_rank": 6.528125,
+      "mean_search_m07_rank": 3.565625,
+      "n": 640,
+      "label": "Mid Game (Ply 16-35)"
+    },
+    "late_game": {
+      "m22_search_agreement": 0.9105882352941177,
+      "search_correction_rate": 0.0894117647058823,
+      "m22_m07_agreement": 0.3164705882352941,
+      "search_m07_agreement": 0.32235294117647056,
+      "useful_correction_rate": 0.012941176470588235,
+      "harmful_correction_rate": 0.007058823529411765,
+      "net_improvement": 0.0058823529411764705,
+      "mean_m22_m07_prob": 0.28978397149729096,
+      "mean_search_m07_prob": 0.30301470588235296,
+      "mean_m22_m07_rank": 7.102352941176471,
+      "mean_search_m07_rank": 3.6270588235294117,
+      "n": 850,
+      "label": "Late Game (Ply 36+)"
+    },
+    "take_tokens": {
+      "m22_search_agreement": 0.9173098125689085,
+      "search_correction_rate": 0.08269018743109147,
+      "m22_m07_agreement": 0.13009922822491732,
+      "search_m07_agreement": 0.1345093715545755,
+      "useful_correction_rate": 0.011025358324145534,
+      "harmful_correction_rate": 0.006615214994487321,
+      "net_improvement": 0.004410143329658213,
+      "mean_m22_m07_prob": 0.10966331192748642,
+      "mean_search_m07_prob": 0.11252756339581037,
+      "mean_m22_m07_rank": 8.63947078280044,
+      "mean_search_m07_rank": 4.41896361631753,
+      "n": 907,
+      "label": "M07 Selected: Take Tokens"
+    },
+    "purchase": {
+      "n": 0,
+      "label": "M07 Selected: Purchase Card"
+    },
+    "reserve": {
+      "m22_search_agreement": 0.8981132075471698,
+      "search_correction_rate": 0.10188679245283017,
+      "m22_m07_agreement": 0.20566037735849058,
+      "search_m07_agreement": 0.19811320754716982,
+      "useful_correction_rate": 0.005660377358490566,
+      "harmful_correction_rate": 0.013207547169811321,
+      "net_improvement": -0.007547169811320756,
+      "mean_m22_m07_prob": 0.21071289622465178,
+      "mean_search_m07_prob": 0.21403301886792453,
+      "mean_m22_m07_rank": 10.29811320754717,
+      "mean_search_m07_rank": 4.628301886792453,
+      "n": 530,
+      "label": "M07 Selected: Reserve Card"
+    }
+  },
+  "scientific_verdict": {
+    "verdict": "WEAK_TEACHER_INHERITANCE_CONFIRMED",
+    "interpretation": "M24-S2 16-simulation search exhibits 92.0% top-1 inertia relative to M22 and improves top-1 agreement with the stronger M07 reference by only 0.6 percentage points on the audited sample (95% cluster CI: [+0.2%, +1.1%]). This supports weak-teacher inheritance as a major policy-target bottleneck and stops further M24-S2 architecture scaling.",
+    "next_step": "M25_M07_SEARCH_TEACHER_BOOTSTRAP_V2"
+  }
+}

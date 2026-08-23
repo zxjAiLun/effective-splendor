@@ -420,6 +420,14 @@ def test_control_verification_immutability_and_fail_closed(tmp_path):
     )
     train_indices, validation_indices, reference_indices = split_m28b_indices(payload, config)
 
+    # Set up clean test directory with only control/ present
+    clean_test_dir = tmp_path / "clean_test_out"
+    clean_test_dir.mkdir()
+    test_control_dir = clean_test_dir / "control"
+    test_control_dir.mkdir()
+    (test_control_dir / "training-report.json").write_text(report_orig_file.read_text(encoding="utf-8"), encoding="utf-8")
+    (test_control_dir / "checkpoint.pt").write_bytes(ckpt_orig_file.read_bytes())
+
     report = verify_and_reevaluate_control(
         config["models"][0],
         train_indices,
@@ -430,7 +438,7 @@ def test_control_verification_immutability_and_fail_closed(tmp_path):
         config,
         actual_self_play_hash,
         dataset_file_sha256,
-        Path("local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair"),
+        clean_test_dir,
         torch.device("cpu"),
     )
 

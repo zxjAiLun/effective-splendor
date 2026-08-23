@@ -1,0 +1,123 @@
+{
+  "format": "effective-splendor-m25-m07-search-teacher-bootstrap",
+  "version": 1,
+  "milestone": "M25",
+  "revision": "m07-search-teacher-bootstrap-v2",
+  "status": "DESIGNED",
+  "baseline_commit": "140ef8248df029a32bcf6d34db436351563fa28c",
+  "parent": {
+    "milestone": "M24-S2 TEACHER / TARGET QUALITY AUDIT",
+    "status": "ACCEPTED / PERSISTED",
+    "result_artifact": "benchmarks/m24-s2-teacher-target-quality-audit-v1.result.json",
+    "outcome": "WEAK_TEACHER_INHERITANCE_CONFIRMED"
+  },
+  "question": "With strong M07-vs-M07 self-play trajectories and soft M07 search-distribution supervision replacing weak M22 self-play targets, does the frozen Entity Mixer (h192/b4) learn a strong policy function that transfers across state distributions and unlocks competitive strength?",
+  "single_experimental_variable": "supervision_source_and_trajectory",
+  "training_authorization": "NOT_YET_AUTHORIZED",
+  "arena_authorization": "NOT_AUTHORIZED",
+  "promotion": "NONE",
+  "champion": "M07",
+  "authorization": {
+    "prereg_and_tooling": "AUTHORIZED",
+    "dataset_generation": "HOLD",
+    "training": "HOLD",
+    "arena": "NOT_AUTHORIZED",
+    "m26": false
+  },
+  "scope": {
+    "fixed_architecture": true,
+    "fixed_optimizer_recipe": true,
+    "m07_vs_m07_trajectories_only": true,
+    "soft_search_targets_only": true,
+    "no_architecture_mutation": true,
+    "no_m22_checkpoint_inheritance": true,
+    "no_learning_rate_sweep": true,
+    "no_puct_tuning": true,
+    "no_arena_before_offline_gates": true
+  },
+  "dataset": {
+    "format": "effective-splendor-search-teacher-dataset-v1",
+    "version": 1,
+    "generator_agent": "m07-determinization-champion",
+    "games": 256,
+    "game_seed_base": 20260825,
+    "player_count": 2,
+    "ruleset": "base_v1",
+    "teacher_config": {
+      "sample_seed": 20260810,
+      "sample_count": 4,
+      "max_depth_turns": 1,
+      "max_nodes": 2000
+    },
+    "targets": {
+      "type": "soft_search_distribution",
+      "uniform_floor_micros": 0
+    },
+    "value_target": "terminal_outcome_viewer_relative",
+    "catalog": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "split": {
+      "total_games": 256,
+      "validation": {
+        "game_index_modulus": 4,
+        "game_index_remainder": 0,
+        "games": 64
+      },
+      "train": {
+        "games": 192
+      },
+      "leakage_rule": "game-level split; validation games never enter gradient updates"
+    }
+  },
+  "model": {
+    "role": "candidate",
+    "model_id": "m25-entity-mixer-h192-b4-m07-bootstrap-v2",
+    "architecture": "entity_mixer",
+    "hidden_dim": 192,
+    "blocks": 4,
+    "dropout": 0,
+    "interaction_blocks": 0,
+    "expected_parameter_count": 949060,
+    "initialization": "fresh_seed"
+  },
+  "training": {
+    "device": "cuda",
+    "seed": 280229,
+    "epochs": 32,
+    "batch_size": 128,
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 1,
+    "optimizer": "AdamW",
+    "value_loss_weight": 0.5,
+    "evaluation_interval_epochs": 1,
+    "deterministic_cuda": true
+  },
+  "external_holdout": {
+    "description": "Cross-distribution M24-S2 2,002 audited positions reference benchmark",
+    "fixture_file": "benchmarks/m24-s2-2002-audit-holdout.json",
+    "positions_count": 2002,
+    "baseline_m22_agreement": 0.2807,
+    "baseline_search_agreement": 0.2867
+  },
+  "offline_gates": {
+    "g1_heldout_teacher_fit": {
+      "description": "Validation policy top-1 >= 45.0% and policy CE relative improvement vs legal uniform >= 1000 bps",
+      "min_validation_policy_top1": 0.45,
+      "min_policy_ce_improvement_bps_vs_uniform": 1000
+    },
+    "g2_cross_distribution_transfer": {
+      "description": "Top-1 agreement on M24-S2 2,002-position holdout benchmark >= 38.0%",
+      "min_cross_distribution_m07_top1": 0.38
+    },
+    "g3_value_non_collapse": {
+      "description": "Held-out validation value MSE <= 1.02 * empirical outcome prior baseline MSE",
+      "max_value_mse_multiplier_vs_baseline": 1.02
+    },
+    "decision_tree": {
+      "G1_FAIL": "M25_POLICY_TEACHER_FIT_FAIL",
+      "G1_PASS_G2_FAIL": "M25_TEACHER_FIT_NO_TRANSFER",
+      "G1_PASS_G2_PASS_G3_FAIL": "M25_POLICY_SIGNAL_VALUE_BLOCKED",
+      "G1_PASS_G2_PASS_G3_PASS": "M25_ARENA_ELIGIBLE"
+    }
+  }
+}

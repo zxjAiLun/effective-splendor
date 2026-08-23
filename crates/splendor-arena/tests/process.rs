@@ -268,10 +268,16 @@ fn stderr_flood_is_drained_and_tail_is_bounded() {
 
 #[test]
 fn shutdown_reaps_child() {
+    #[cfg(unix)]
+    use std::os::unix::process::ExitStatusExt;
+
     let (tx, rx) = mpsc::channel();
     let mut proc = spawn_agent(PlayerId(0), &agent("sleep"), tx).expect("spawn");
     // Child is still alive (sleeping); shutdown must reap it.
     let status = proc.shutdown(Duration::from_millis(200)).expect("shutdown");
+    #[cfg(unix)]
+    assert!(status.success() || status.code().is_some() || status.signal().is_some());
+    #[cfg(not(unix))]
     assert!(status.success() || status.code().is_some());
     drop(rx);
 }
