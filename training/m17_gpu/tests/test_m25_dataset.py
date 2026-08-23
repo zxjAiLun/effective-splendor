@@ -354,7 +354,7 @@ def test_m25_missing_replay_document_hash_fails(dummy_training_dataset, dummy_se
 def test_m25_unknown_replay_document_hash_fails(dummy_training_dataset, dummy_search_targets, dummy_config):
     """Example references unknown replay_document_hash fails closed."""
     dummy_training_dataset["examples"][0]["replay_document_hash"] = "unknown_doc_hash"
-    with pytest.raises(ValueError, match="references unknown replay_document_hash"):
+    with pytest.raises(ValueError, match="replay_document_hash unknown_doc_hash does not match replay"):
         materialize_m25_dataset(
             training_dataset=dummy_training_dataset,
             search_targets=dummy_search_targets,

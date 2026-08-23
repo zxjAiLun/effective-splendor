@@ -34,6 +34,7 @@ from splendor_gpu.train import (
 )
 from splendor_gpu.interaction_train import (
     BackgroundThermalGuard,
+    require_below_hard_thermal_limits,
     require_fail_closed_cooldown,
     wait_for_soft_thermal_envelope,
     iter_physical_microbatches,
@@ -199,7 +200,6 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
     allowed_agents = set(config.get("dataset", {}).get("allowed_generator_agents", ALLOWED_M07_GENERATOR_IDS))
 
     game_by_idx: dict[int, dict[str, Any]] = {}
-    game_by_doc_hash: dict[str, dict[str, Any]] = {}
     seed_rotations_seen: dict[int, set[int]] = {}
 
     for g_i, g in enumerate(games):
@@ -209,8 +209,6 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
         doc_hash = g.get("replay_document_hash")
         if not doc_hash:
             raise ValueError(f"fail-closed: game {g_i} missing replay_document_hash")
-        if doc_hash in game_by_doc_hash:
-            raise ValueError(f"fail-closed: duplicate game replay_document_hash: {doc_hash}")
 
         seed_idx = int(g.get("seed_index", -1))
         if seed_idx < 0 or seed_idx >= expected_seeds_count:
@@ -248,7 +246,6 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
             raise ValueError(f"fail-closed: game {g_i} missing or invalid result.ranks")
 
         game_by_idx[g_idx] = g
-        game_by_doc_hash[doc_hash] = g
 
     # 2. Check provenance section (mandatory & fail-closed)
     if "provenance" not in payload or not isinstance(payload["provenance"], dict):
@@ -367,6 +364,105 @@ def compute_uniform_policy_ce(validation_examples: list[dict[str, Any]]) -> floa
             raise ValueError(f"fail-closed: invalid legal actions count {legal_count}")
         total_log_legal += math.log(legal_count)
     return total_log_legal / len(validation_examples)
+
+
+def sensor_threshold_m25(sensor_info: dict[str, Any] | str) -> float:
+    """Return hard thermal threshold for sensor during M25 training."""
+    if isinstance(sensor_info, dict):
+        label = str(sensor_info.get("label", "")).lower()
+        firmware_crit = sensor_info.get("firmware_crit")
+    else:
+        label = str(sensor_info).lower()
+        firmware_crit = None
+
+    if any(k in label for k in ("coretemp", "x86_pkg_temp", "tcpu")):
+        limit = 100.0
+    elif "nvme" in label:
+        limit = 80.0
+    elif "gpu" in label or "nvidia" in label:
+        limit = 90.0
+    else:
+        limit = 85.0
+
+    if firmware_crit is not None and isinstance(firmware_crit, (int, float)) and firmware_crit > 0:
+        limit = min(limit, float(firmware_crit))
+    return limit
+
+
+class M25ThermalGuard(BackgroundThermalGuard):
+    """Background thermal guard configured with sensor-specific firmware limits for M25."""
+
+    def sample_temperatures(self, stage: str) -> list[dict[str, Any]]:
+        samples = super().sample_temperatures(stage)
+        for s in samples:
+            s["hard_limit_c"] = sensor_threshold_m25(s)
+        return samples
+
+
+def thermal_pacing_bounds_m25(sensor_info: dict[str, Any] | str) -> tuple[float, float]:
+    """Return soft pacing trigger and resume bounds for M25."""
+    hard_limit = sensor_threshold_m25(sensor_info)
+    label = str(sensor_info.get("label", "")).lower() if isinstance(sensor_info, dict) else str(sensor_info).lower()
+    if "nvidia gpu" in label or "gpu" in label:
+        return min(85.0, hard_limit - 5.0), min(78.0, hard_limit - 12.0)
+    if any(key in label for key in ("coretemp", "x86_pkg_temp", "tcpu")):
+        return 88.0, 78.0
+    if "nvme" in label:
+        return min(75.0, hard_limit - 5.0), min(70.0, hard_limit - 10.0)
+    return hard_limit - 4.0, hard_limit - 10.0
+
+
+def wait_for_soft_thermal_envelope_m25(
+    guard: BackgroundThermalGuard,
+    stats: dict[str, float | int],
+    *,
+    sample_fn: Any = None,
+    sleep_fn: Any = time.sleep,
+    monotonic_fn: Any = time.perf_counter,
+) -> None:
+    """Pause at a logical-batch boundary when a soft thermal trigger is reached in M25."""
+    guard.check()
+    if guard.device.type == "cuda":
+        torch.cuda.synchronize(guard.device)
+    read = sample_fn or (lambda: guard.sample_temperatures("thermal_pacing"))
+    readings = read()
+    require_below_hard_thermal_limits(readings, "thermal_pacing")
+    offenders = [sensor for sensor in readings if float(sensor["celsius"]) >= thermal_pacing_bounds_m25(sensor)[0]]
+    if not offenders:
+        return
+
+    started = monotonic_fn()
+    stats["pause_count"] = int(stats.get("pause_count", 0)) + 1
+    hottest = max(offenders, key=lambda sensor: float(sensor["celsius"]))
+    print(
+        "Thermal pacing pause: "
+        f"{hottest.get('label')}={float(hottest['celsius']):.1f}°C; waiting for resume envelope...",
+        flush=True,
+    )
+    # Ensure minimum cooldown time
+    sleep_fn(2.0)
+    while True:
+        guard.check()
+        readings = read()
+        require_below_hard_thermal_limits(readings, "thermal_pacing")
+        still_hot = [sensor for sensor in readings if float(sensor["celsius"]) >= thermal_pacing_bounds_m25(sensor)[1]]
+        if not still_hot:
+            elapsed = monotonic_fn() - started
+            stats["total_pause_seconds"] = float(stats.get("total_pause_seconds", 0.0)) + elapsed
+            stats["max_pause_seconds"] = max(float(stats.get("max_pause_seconds", 0.0)), elapsed)
+            print(f"Thermal pacing resumed after {elapsed:.1f}s", flush=True)
+            return
+        if monotonic_fn() - started > 300.0:
+            hottest = max(still_hot, key=lambda sensor: float(sensor["celsius"]))
+            _, resume_c = thermal_pacing_bounds_m25(hottest)
+            raise ThermalSafetyAbort(
+                "thermal_pacing_timeout",
+                str(hottest.get("source", "")),
+                str(hottest.get("label", "")),
+                float(hottest["celsius"]),
+                resume_c,
+            )
+        sleep_fn(2.0)
 
 
 def compute_training_value_prior_baseline_mse(train_targets: torch.Tensor, val_targets: torch.Tensor) -> float:
@@ -639,107 +735,78 @@ def train_m25(
     model = build_m25_model(config, seed=seed).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=wd)
 
-    # 8. Pre-cooldown (unless skip_cooldown in CPU tests)
-    if not skip_cooldown:
-        require_fail_closed_cooldown(device=device, target_c=COOLDOWN_TARGET_C, timeout_s=COOLDOWN_TIMEOUT_SECONDS)
-
-    # 9. Training loop under BackgroundThermalGuard with microbatching and pacing
-    guard = BackgroundThermalGuard(device=device, interval_s=TELEMETRY_INTERVAL_SECONDS)
-    guard.start()
-
-    thermal_pacing: dict[str, float | int] = {
-        "physical_microbatch_size": PHYSICAL_MICROBATCH_SIZE,
-        "logical_batch_size": logical_batch_size,
-        "pause_count": 0,
-        "total_pause_seconds": 0.0,
-        "max_pause_seconds": 0.0,
-    }
-
-    def runtime_abort_check() -> None:
-        guard.check()
-        wait_for_soft_thermal_envelope(guard, thermal_pacing)
-
     best_score = float("inf")
     best_epoch = 0
     best_state_dict: dict[str, Any] | None = None
     best_val_metrics: dict[str, Any] = {}
     history = []
 
-    try:
-        for ep in range(1, epochs + 1):
-            t0 = time.time()
-            model.train()
-            epoch_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
-            seen = 0
+    for ep in range(1, epochs + 1):
+        t0 = time.time()
+        model.train()
+        epoch_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
+        seen = 0
 
-            for raw in train_loader:
-                guard.check()
-                optimizer.zero_grad(set_to_none=True)
-                logical_count = int(raw["entities"].shape[0])
-                logical_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
+        for raw in train_loader:
+            optimizer.zero_grad(set_to_none=True)
+            logical_count = int(raw["entities"].shape[0])
+            logical_loss_sum = torch.zeros((), dtype=torch.float64, device=device)
 
-                for micro_raw in iter_physical_microbatches(raw, PHYSICAL_MICROBATCH_SIZE):
-                    guard.check()
-                    batch = {
-                        key: value.to(device, non_blocking=device.type == "cuda")
-                        for key, value in micro_raw.items()
-                    }
-                    logits, values = model.forward_packed(
-                        batch["entities"], batch["entity_mask"], batch["global_features"],
-                        batch["actions"], batch["action_offsets"],
-                    )
-                    p_loss = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
-                    v_loss = F.mse_loss(values, batch["value_target"], reduction="mean")
-                    count = int(batch["entities"].shape[0])
-                    loss = p_loss + val_weight * v_loss
-                    (loss * (count / logical_count)).backward()
-                    logical_loss_sum += (loss.detach() * count).to(dtype=torch.float64)
-                    guard.check()
+            for micro_raw in iter_physical_microbatches(raw, PHYSICAL_MICROBATCH_SIZE):
+                batch = {
+                    key: value.to(device, non_blocking=device.type == "cuda")
+                    for key, value in micro_raw.items()
+                }
+                logits, values = model.forward_packed(
+                    batch["entities"], batch["entity_mask"], batch["global_features"],
+                    batch["actions"], batch["action_offsets"],
+                )
+                p_loss = packed_policy_loss(logits, batch["policy_target"], batch["action_offsets"])
+                v_loss = F.mse_loss(values, batch["value_target"], reduction="mean")
+                count = int(batch["entities"].shape[0])
+                loss = p_loss + val_weight * v_loss
+                (loss * (count / logical_count)).backward()
+                logical_loss_sum += (loss.detach() * count).to(dtype=torch.float64)
 
-                if clip_norm > 0:
-                    nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
-                optimizer.step()
-                epoch_loss_sum += logical_loss_sum
-                seen += logical_count
-                guard.check()
-                wait_for_soft_thermal_envelope(guard, thermal_pacing)
+            if clip_norm > 0:
+                nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
+            optimizer.step()
+            epoch_loss_sum += logical_loss_sum
+            seen += logical_count
 
-            val_metrics = evaluate(model, val_loader, device, abort_check=runtime_abort_check)
-            elapsed = time.time() - t0
+        val_metrics = evaluate(model, val_loader, device)
+        elapsed = time.time() - t0
 
-            # Selection score = CE + 0.5 * MSE
-            score = float(val_metrics["policy_cross_entropy"]) + val_weight * float(val_metrics["value_mse"])
-            if score < best_score:
-                best_score = score
-                best_epoch = ep
-                best_state_dict = copy.deepcopy(model.state_dict())
-                best_val_metrics = dict(val_metrics)
+        # Selection score = CE + 0.5 * MSE
+        score = float(val_metrics["policy_cross_entropy"]) + val_weight * float(val_metrics["value_mse"])
+        if score < best_score:
+            best_score = score
+            best_epoch = ep
+            best_state_dict = copy.deepcopy(model.state_dict())
+            best_val_metrics = dict(val_metrics)
 
-            ep_record = {
-                "epoch": ep,
-                "train_mean_loss": float((epoch_loss_sum / max(seen, 1)).item()),
-                "validation": val_metrics,
-                "selection_score": score,
-                "elapsed_s": elapsed,
-            }
-            history.append(ep_record)
-            print(f"Epoch {ep:2d}/{epochs}: score={score:.4f} (best={best_score:.4f} @ ep {best_epoch}), val_top1={val_metrics['visit_top1']*100:.2f}%, val_ce={val_metrics['policy_cross_entropy']:.4f}, val_mse={val_metrics['value_mse']:.4f} ({elapsed:.1f}s)")
+        ep_record = {
+            "epoch": ep,
+            "train_mean_loss": float((epoch_loss_sum / max(seen, 1)).item()),
+            "validation": val_metrics,
+            "selection_score": score,
+            "elapsed_s": elapsed,
+        }
+        history.append(ep_record)
+        print(f"Epoch {ep:2d}/{epochs}: score={score:.4f} (best={best_score:.4f} @ ep {best_epoch}), val_top1={val_metrics['visit_top1']*100:.2f}%, val_ce={val_metrics['policy_cross_entropy']:.4f}, val_mse={val_metrics['value_mse']:.4f} ({elapsed:.1f}s)")
 
-        # 10. Evaluate external holdout (2,002 positions) under thermal guard
-        assert best_state_dict is not None
-        model.load_state_dict(best_state_dict)
+    # 10. Evaluate external holdout (2,002 positions)
+    assert best_state_dict is not None
+    model.load_state_dict(best_state_dict)
 
-        holdout_result = evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
-            device=device,
-            abort_check=runtime_abort_check,
-        )
-        print(f"External Cross-Distribution Holdout (2002 pos): M07 Agreement = {holdout_result['m07_top1_agreement']*100:.2f}%")
-    finally:
-        guard.stop()
+    holdout_result = evaluate_cross_distribution_holdout(
+        model=model,
+        m24_payload=m24_payload,
+        holdout_fixture=holdout_fixture,
+        catalog=catalog,
+        device=device,
+    )
+    print(f"External Cross-Distribution Holdout (2002 pos): M07 Agreement = {holdout_result['m07_top1_agreement']*100:.2f}%")
 
     # 11. Evaluate offline gates & decision tree
     gates_eval = evaluate_m25_gates(

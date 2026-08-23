@@ -277,40 +277,46 @@ def materialize_m25_dataset(
     if len(raw_replays) != expected_games:
         raise ValueError(f"fail-closed: replays count {len(raw_replays)} != expected {expected_games}")
 
-    replay_by_doc_hash: dict[str, dict[str, Any]] = {}
+    replay_by_source_id: dict[str, dict[str, Any]] = {}
+    seen_source_ids = set()
     seen_match_indices = set()
     seed_rotations_seen: dict[int, set[int]] = {}
 
     for idx, r in enumerate(raw_replays):
+        source_id = r.get("source_id")
+        if not source_id:
+            raise ValueError(f"fail-closed: replay index {idx} missing source_id")
+        if source_id in seen_source_ids:
+            raise ValueError(f"fail-closed: duplicate source_id across replays: {source_id}")
+        seen_source_ids.add(source_id)
+
         doc_hash = r.get("replay_document_hash")
         if not doc_hash:
-            raise ValueError(f"fail-closed: replay index {idx} missing replay_document_hash")
-        if doc_hash in replay_by_doc_hash:
-            raise ValueError(f"fail-closed: duplicate replay_document_hash: {doc_hash}")
+            raise ValueError(f"fail-closed: replay {source_id} missing replay_document_hash")
 
         match_idx = r.get("evaluation_match_index")
         if match_idx is None:
-            raise ValueError(f"fail-closed: replay {doc_hash} missing evaluation_match_index")
+            raise ValueError(f"fail-closed: replay {source_id} missing evaluation_match_index")
         match_idx = int(match_idx)
         if match_idx < 0 or match_idx >= expected_games:
-            raise ValueError(f"fail-closed: replay {doc_hash} evaluation_match_index {match_idx} out of range 0..{expected_games-1}")
+            raise ValueError(f"fail-closed: replay {source_id} evaluation_match_index {match_idx} out of range 0..{expected_games-1}")
         if match_idx in seen_match_indices:
             raise ValueError(f"fail-closed: duplicate evaluation_match_index across replays: {match_idx}")
         seen_match_indices.add(match_idx)
 
         seed_idx = r.get("seed_index")
         if seed_idx is None:
-            raise ValueError(f"fail-closed: replay {doc_hash} missing seed_index")
+            raise ValueError(f"fail-closed: replay {source_id} missing seed_index")
         seed_idx = int(seed_idx)
         if seed_idx < 0 or seed_idx >= expected_seeds_count:
-            raise ValueError(f"fail-closed: replay {doc_hash} seed_index {seed_idx} out of range 0..{expected_seeds_count-1}")
+            raise ValueError(f"fail-closed: replay {source_id} seed_index {seed_idx} out of range 0..{expected_seeds_count-1}")
         
         rotation = r.get("rotation")
         if rotation is None:
-            raise ValueError(f"fail-closed: replay {doc_hash} missing rotation")
+            raise ValueError(f"fail-closed: replay {source_id} missing rotation")
         rotation = int(rotation)
         if rotation not in (0, 1):
-            raise ValueError(f"fail-closed: replay {doc_hash} rotation {rotation} not in {{0, 1}}")
+            raise ValueError(f"fail-closed: replay {source_id} rotation {rotation} not in {{0, 1}}")
 
         if seed_idx not in seed_rotations_seen:
             seed_rotations_seen[seed_idx] = set()
@@ -323,23 +329,24 @@ def materialize_m25_dataset(
         # Check players / agents_by_seat
         agents_by_seat = r.get("agents_by_seat")
         if agents_by_seat is None or len(agents_by_seat) != 2:
-            raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid agents_by_seat: {agents_by_seat}")
+            raise ValueError(f"fail-closed: replay {source_id} missing or invalid agents_by_seat: {agents_by_seat}")
         
         for s_idx, a_info in enumerate(agents_by_seat):
             a_id = a_info.get("league_agent_id")
             if a_id not in allowed_agents:
-                raise ValueError(f"fail-closed: replay {doc_hash} seat {s_idx} agent {a_id!r} not in allowed generators {allowed_agents}")
+                raise ValueError(f"fail-closed: replay {source_id} seat {s_idx} agent {a_id!r} not in allowed generators {allowed_agents}")
             pol_ver = a_info.get("policy_version")
             if pol_ver != "m07-v1":
-                raise ValueError(f"fail-closed: replay {doc_hash} seat {s_idx} policy_version {pol_ver!r} != 'm07-v1'")
+                raise ValueError(f"fail-closed: replay {source_id} seat {s_idx} policy_version {pol_ver!r} != 'm07-v1'")
 
         # Check result ranks
         result = r.get("result", {})
         ranks = result.get("ranks")
         if ranks is None or len(ranks) != 2:
-            raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid result.ranks: {ranks}")
+            raise ValueError(f"fail-closed: replay {source_id} missing or invalid result.ranks: {ranks}")
 
-        replay_by_doc_hash[doc_hash] = {
+        replay_by_source_id[source_id] = {
+            "source_id": source_id,
             "game_index": match_idx,
             "evaluation_match_index": match_idx,
             "seed_index": seed_idx,
@@ -395,9 +402,11 @@ def materialize_m25_dataset(
         seen_examples.add(key)
 
         # Exact replay join
-        if doc_hash not in replay_by_doc_hash:
-            raise ValueError(f"fail-closed: example {key} references unknown replay_document_hash: {doc_hash}")
-        r_info = replay_by_doc_hash[doc_hash]
+        if source_id not in replay_by_source_id:
+            raise ValueError(f"fail-closed: example {key} references unknown source_id: {source_id}")
+        r_info = replay_by_source_id[source_id]
+        if r_info["replay_document_hash"] != doc_hash:
+            raise ValueError(f"fail-closed: example {key} replay_document_hash {doc_hash} does not match replay {r_info['replay_document_hash']}")
 
         # Exact search target join
         if key not in target_index:
@@ -465,7 +474,7 @@ def materialize_m25_dataset(
         "replay_document_hash": info["replay_document_hash"],
         "result": info["replay"]["result"],
         "replay": info["replay"],
-    } for info in replay_by_doc_hash.values()]
+    } for info in replay_by_source_id.values()]
 
     # Sort games strictly by game_index (0..255)
     games_out.sort(key=lambda g: g["game_index"])
