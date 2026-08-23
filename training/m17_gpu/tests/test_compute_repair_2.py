@@ -396,7 +396,13 @@ def test_thermal_guard_sensor_specific_abort(monkeypatch):
         guard_sen3.start()
 
 
-def test_control_verification_immutability_and_fail_closed(tmp_path):
+def test_control_verification_immutability_and_fail_closed(tmp_path, monkeypatch):
+    # Mock thermal readings during CPU test evaluation to avoid live host ambient spikes
+    safe_readings = [
+        {"source": "/sys/class/thermal/thermal_zone0/temp", "label": "acpitz", "celsius": 30.0},
+        {"source": "/sys/class/hwmon/hwmon8/temp1_input", "label": "coretemp:Package id 0", "celsius": 50.0},
+    ]
+    monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: safe_readings)
     control_orig_dir = Path("local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/control")
     if not control_orig_dir.exists():
         pytest.skip("local control artifact not found")
