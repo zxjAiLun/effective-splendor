@@ -44,7 +44,7 @@ $$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets (10% floor)} + 
 - **Split**: Disjoint by game: `game_index % 4 == 0` (64 validation games), remaining (192 train games).
 - **Supervision Target**:
   - **Policy**: Soft search distribution computed by frozen M07 determinization search (`sample_seed=20260810, sample_count=4, max_depth_turns=1, max_nodes=2000, uniform_floor_micros=100000`).
-  - **Value**: Viewer-relative terminal game outcome ([1.0, 0.0]) or ([0.0, 1.0]).
+  - **Value**: Viewer-relative terminal rank outcome ($[1.0 - \text{rank}_{\text{actor}}, 1.0 - \text{rank}_{1-\text{actor}}]$); 2P matches are typically $[1.0, 0.0]$ / $[0.0, 1.0]$, and an exact tie is legally $[1.0, 1.0]$.
 
 ### 2. Model contract
 - **Architecture**: `entity_mixer`

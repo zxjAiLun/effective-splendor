@@ -393,6 +393,13 @@ def test_m25_tampered_materialized_provenance_fails(m25_config):
         "game_seed": 20260825 + i,
         "replay_document_hash": f"doc_{i:04d}",
         "result": {"scores": [15, 10], "ranks": [0, 1]},
+        "replay": {
+            "header": {
+                "game_seed": 20260825 + i,
+                "players": ["m07-determinization-champion", "m07-determinization-champion"],
+            },
+            "result": {"scores": [15, 10], "ranks": [0, 1]},
+        },
     } for i in range(256)]
     
     examples = [{
@@ -456,6 +463,24 @@ def test_m25_tampered_materialized_provenance_fails(m25_config):
     with pytest.raises(ValueError, match="provenance teacher sample_count"):
         validate_m25_dataset_provenance(tampered_t, m25_config)
 
+    # 6. Missing provenance section fails
+    tampered_no_prov = copy.deepcopy(base_ds)
+    tampered_no_prov.pop("provenance")
+    with pytest.raises(ValueError, match="missing required provenance section"):
+        validate_m25_dataset_provenance(tampered_no_prov, m25_config)
+
+    # 7. Missing teacher_config in provenance fails
+    tampered_no_tc = copy.deepcopy(base_ds)
+    tampered_no_tc["provenance"].pop("teacher_config")
+    with pytest.raises(ValueError, match="missing required teacher_config"):
+        validate_m25_dataset_provenance(tampered_no_tc, m25_config)
+
+    # 8. Non-M07 player seat in embedded replay fails
+    tampered_seat = copy.deepcopy(base_ds)
+    tampered_seat["games"][0]["replay"]["header"]["players"] = ["m07-determinization-champion", "heuristic-v1"]
+    with pytest.raises(ValueError, match="replay players.*must both be 'm07-determinization-champion'"):
+        validate_m25_dataset_provenance(tampered_seat, m25_config)
+
 
 def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     """
@@ -494,7 +519,7 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
             "replay_document_hash": doc_hash,
             "header": {
                 "game_seed": seed,
-                "players": ["m07-1", "m07-2"],
+                "players": ["m07-determinization-champion", "m07-determinization-champion"],
             },
             "result": {
                 "scores": [15, 10] if ranks == [0, 1] else [10, 15],
@@ -597,6 +622,24 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     assert (out_dir / "checkpoint.pt").exists()
     assert (out_dir / "training-report.json").exists()
     assert (out_dir / "offline-result.json").exists()
+
+    # Verify checkpoint metadata binds full M25 dataset and config hashes
+    ckpt = torch.load(out_dir / "checkpoint.pt", map_location="cpu", weights_only=False)
+    meta = ckpt["metadata"]
+    assert meta["source_dataset_file_sha256"] == file_sha256(dataset_path)
+    assert len(meta["source_dataset_semantic_hash"]) == 64
+    assert len(meta["encoded_cache_manifest_sha256"]) == 64
+    assert len(meta["training_config_hash"]) == 64
+    assert meta["m25_config_revision"] == "m07-search-teacher-bootstrap-v2"
+
+    # Verify training report binds full M25 dataset and config hashes
+    rep = json.loads((out_dir / "training-report.json").read_text(encoding="utf-8"))
+    assert rep["source_dataset_file_sha256"] == file_sha256(dataset_path)
+    assert rep["source_dataset_semantic_hash"] == meta["source_dataset_semantic_hash"]
+    assert rep["encoded_cache_manifest_sha256"] == meta["encoded_cache_manifest_sha256"]
+    assert rep["training_config_hash"] == meta["training_config_hash"]
+    assert rep["m25_config_revision"] == "m07-search-teacher-bootstrap-v2"
+
     assert report["gates"]["decision"] in (
         "M25_POLICY_TEACHER_FIT_FAIL",
         "M25_TEACHER_FIT_NO_TRANSFER",

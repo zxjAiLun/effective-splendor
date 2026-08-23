@@ -181,6 +181,8 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
     expected_games = int(config["dataset"]["games"])
     _assert_equal(len(games), expected_games, "dataset games count")
 
+    expected_generator = config.get("dataset", {}).get("generator_agent", "m07-determinization-champion")
+
     # 1. Check seeds schedule & embedded game metadata
     expected_seeds = config["dataset"]["game_seeds"]
     actual_seeds = [int(g["game_seed"]) for g in games]
@@ -199,6 +201,14 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
         if doc_hash in game_by_doc_hash:
             raise ValueError(f"fail-closed: duplicate game replay_document_hash: {doc_hash}")
             
+        replay = g.get("replay", {})
+        header = replay.get("header", {})
+        players = header.get("players")
+        if players is None and "agents_by_seat" in replay:
+            players = [a.get("league_agent_id") for a in replay["agents_by_seat"]]
+        if players is None or len(players) != 2 or players[0] != expected_generator or players[1] != expected_generator:
+            raise ValueError(f"fail-closed: game {g_i} replay players {players} must both be {expected_generator!r}")
+
         result = g.get("result", {})
         ranks = result.get("ranks")
         if ranks is None or len(ranks) != 2:
@@ -207,31 +217,36 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
         game_by_idx[g_idx] = g
         game_by_doc_hash[doc_hash] = g
 
-    # 2. Check provenance section if present
-    provenance = payload.get("provenance", {})
-    t_cfg = provenance.get("teacher_config")
-    if t_cfg:
-        expected_t = config["dataset"]["teacher_config"]
-        if "search" in t_cfg:
-            search = t_cfg["search"]
-            cont = search.get("continuation_search", {})
-            actual_seed = int(search.get("sample_seed", -1))
-            actual_count = int(search.get("sample_count", -1))
-            actual_depth = int(cont.get("max_depth_turns", -1))
-            actual_nodes = int(cont.get("max_nodes", -1))
-            actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
-        else:
-            actual_seed = int(t_cfg.get("sample_seed", -1))
-            actual_count = int(t_cfg.get("sample_count", -1))
-            actual_depth = int(t_cfg.get("max_depth_turns", -1))
-            actual_nodes = int(t_cfg.get("max_nodes", -1))
-            actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
+    # 2. Check provenance section (mandatory & fail-closed)
+    if "provenance" not in payload or not isinstance(payload["provenance"], dict):
+        raise ValueError("fail-closed: dataset missing required provenance section")
+    provenance = payload["provenance"]
+    
+    if "teacher_config" not in provenance or not isinstance(provenance["teacher_config"], dict):
+        raise ValueError("fail-closed: dataset provenance missing required teacher_config")
+    t_cfg = provenance["teacher_config"]
+    
+    expected_t = config["dataset"]["teacher_config"]
+    if "search" in t_cfg:
+        search = t_cfg["search"]
+        cont = search.get("continuation_search", {})
+        actual_seed = int(search.get("sample_seed", -1))
+        actual_count = int(search.get("sample_count", -1))
+        actual_depth = int(cont.get("max_depth_turns", -1))
+        actual_nodes = int(cont.get("max_nodes", -1))
+        actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
+    else:
+        actual_seed = int(t_cfg.get("sample_seed", -1))
+        actual_count = int(t_cfg.get("sample_count", -1))
+        actual_depth = int(t_cfg.get("max_depth_turns", -1))
+        actual_nodes = int(t_cfg.get("max_nodes", -1))
+        actual_floor = int(t_cfg.get("uniform_floor_micros", -1))
 
-        _assert_equal(actual_seed, int(expected_t["sample_seed"]), "provenance teacher sample_seed")
-        _assert_equal(actual_count, int(expected_t["sample_count"]), "provenance teacher sample_count")
-        _assert_equal(actual_depth, int(expected_t["max_depth_turns"]), "provenance teacher max_depth_turns")
-        _assert_equal(actual_nodes, int(expected_t["max_nodes"]), "provenance teacher max_nodes")
-        _assert_equal(actual_floor, EXPECTED_UNIFORM_FLOOR_MICROS, "provenance teacher uniform_floor_micros")
+    _assert_equal(actual_seed, int(expected_t["sample_seed"]), "provenance teacher sample_seed")
+    _assert_equal(actual_count, int(expected_t["sample_count"]), "provenance teacher sample_count")
+    _assert_equal(actual_depth, int(expected_t["max_depth_turns"]), "provenance teacher max_depth_turns")
+    _assert_equal(actual_nodes, int(expected_t["max_nodes"]), "provenance teacher max_nodes")
+    _assert_equal(actual_floor, EXPECTED_UNIFORM_FLOOR_MICROS, "provenance teacher uniform_floor_micros")
 
     examples = payload.get("examples", [])
     if not examples:
@@ -703,13 +718,21 @@ def train_m25(
     print(f"M25 Offline Gates Decision: {gates_eval['decision']} (Arena Auth: {gates_eval['arena_authorization']})")
 
     # 12. Serialize outputs
+    manifest_sha = cache.manifest.get("manifest_sha256")
+    cfg_hash = training_config_hash(config)
+    cfg_rev = config.get("revision", "m07-search-teacher-bootstrap-v2")
+
     ckpt_meta = {
         "format": "effective-splendor-gpu-checkpoint",
         "version": 1,
         "model_id": config["model"]["model_id"],
         "model_role": "candidate",
         "milestone": "M25",
-        "training_config_hash": training_config_hash(config),
+        "m25_config_revision": cfg_rev,
+        "training_config_hash": cfg_hash,
+        "source_dataset_file_sha256": ds_file_sha,
+        "source_dataset_semantic_hash": ds_sem_hash,
+        "encoded_cache_manifest_sha256": manifest_sha,
         "catalog_hash": actual_cat_hash,
         "parameter_count": EXPECTED_M25_PARAMETER_COUNT,
         "best_epoch": best_epoch,
@@ -729,6 +752,11 @@ def train_m25(
         "version": 1,
         "milestone": "M25",
         "model_id": config["model"]["model_id"],
+        "m25_config_revision": cfg_rev,
+        "training_config_hash": cfg_hash,
+        "source_dataset_file_sha256": ds_file_sha,
+        "source_dataset_semantic_hash": ds_sem_hash,
+        "encoded_cache_manifest_sha256": manifest_sha,
         "checkpoint_file_sha256": ckpt_sha,
         "checkpoint_hash": sem_hash,
         "best_epoch": best_epoch,

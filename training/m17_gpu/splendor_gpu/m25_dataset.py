@@ -223,6 +223,9 @@ def materialize_m25_dataset(
     training_dataset: dict[str, Any],
     search_targets: dict[str, Any],
     config: dict[str, Any],
+    *,
+    training_dataset_file_sha256: str | None = None,
+    search_targets_file_sha256: str | None = None,
 ) -> dict[str, Any]:
     """
     Materialize M25 dataset by strictly joining verified M07 replays, TrainingDatasetV1
@@ -231,6 +234,8 @@ def materialize_m25_dataset(
     Value targets are computed strictly from verified replay final terminal ranks (result.ranks),
     NOT M15C search values or Python recomputed score tie-breaks.
     """
+    expected_generator = config.get("dataset", {}).get("generator_agent", "m07-determinization-champion")
+
     # 1. Validate search targets format & exact teacher config
     if search_targets.get("format") != M25_TEACHER_TARGETS_FORMAT:
         raise ValueError(f"fail-closed: unexpected search targets format: {search_targets.get('format')}")
@@ -252,16 +257,20 @@ def materialize_m25_dataset(
             raise ValueError(f"fail-closed: duplicate replay_document_hash: {doc_hash}")
         
         header = r.get("header", {})
-        seed = header.get("game_seed")
+        seed = header.get("game_seed") if "game_seed" in header else r.get("seed")
         if seed is None:
             raise ValueError(f"fail-closed: replay {doc_hash} missing game_seed")
         if seed in seen_seeds:
             raise ValueError(f"fail-closed: duplicate game_seed across replays: {seed}")
         seen_seeds.add(seed)
 
-        players = header.get("players", [])
-        if len(players) != 2:
-            raise ValueError(f"fail-closed: replay {doc_hash} player count {len(players)} != 2")
+        players = header.get("players")
+        if players is None and "agents_by_seat" in r:
+            players = [a.get("league_agent_id") for a in r["agents_by_seat"]]
+        if players is None or len(players) != 2:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid players: {players}")
+        if players[0] != expected_generator or players[1] != expected_generator:
+            raise ValueError(f"fail-closed: replay {doc_hash} players {players} must both be {expected_generator!r}")
 
         result = r.get("result", {})
         ranks = result.get("ranks")
@@ -300,11 +309,12 @@ def materialize_m25_dataset(
     for ex_idx, ex in enumerate(training_dataset.get("examples", [])):
         source_id = ex.get("source_id")
         doc_hash = ex.get("replay_document_hash")
+        ex_game_idx = ex.get("game_index")
         ply = ex.get("ply")
         actor = ex.get("actor")
         
-        if not source_id or not doc_hash or ply is None or actor is None:
-            raise ValueError(f"fail-closed: example {ex_idx} missing core provenance fields (source_id={source_id}, doc_hash={doc_hash}, ply={ply}, actor={actor})")
+        if not source_id or not doc_hash or ex_game_idx is None or ply is None or actor is None:
+            raise ValueError(f"fail-closed: example {ex_idx} missing core provenance fields (source_id={source_id}, doc_hash={doc_hash}, game_index={ex_game_idx}, ply={ply}, actor={actor})")
 
         key = (str(source_id), int(ply), int(actor))
         if key in seen_examples:
@@ -316,8 +326,7 @@ def materialize_m25_dataset(
             raise ValueError(f"fail-closed: example {key} references unknown replay_document_hash: {doc_hash}")
         r_info = replay_by_doc_hash[doc_hash]
 
-        ex_game_idx = ex.get("game_index")
-        if ex_game_idx is not None and int(ex_game_idx) != r_info["game_index"]:
+        if int(ex_game_idx) != r_info["game_index"]:
             raise ValueError(f"fail-closed: example {key} game_index {ex_game_idx} disagrees with replay game_index {r_info['game_index']}")
 
         # Exact search target join
@@ -393,6 +402,10 @@ def materialize_m25_dataset(
         "source_search_targets_dataset_hash": search_targets.get("dataset_hash"),
         "teacher_config": t_cfg,
     }
+    if training_dataset_file_sha256:
+        provenance_meta["source_training_dataset_file_sha256"] = training_dataset_file_sha256
+    if search_targets_file_sha256:
+        provenance_meta["source_search_targets_file_sha256"] = search_targets_file_sha256
 
     return {
         "format": M25_DATASET_FORMAT,
@@ -420,8 +433,14 @@ def main() -> None:
         raise FileExistsError(f"fail-closed: output dataset file already exists: {args.out}")
 
     config = json.loads(args.config.read_text(encoding="utf-8"))
-    training_ds = json.loads(args.training_dataset.read_text(encoding="utf-8"))
-    search_tgts = json.loads(args.search_targets.read_text(encoding="utf-8"))
+    training_ds_raw = args.training_dataset.read_text(encoding="utf-8")
+    search_tgts_raw = args.search_targets.read_text(encoding="utf-8")
+    
+    training_ds = json.loads(training_ds_raw)
+    search_tgts = json.loads(search_tgts_raw)
+
+    td_sha = file_sha256(args.training_dataset)
+    st_sha = file_sha256(args.search_targets)
 
     replays = []
     if args.replays_dir:
@@ -437,6 +456,8 @@ def main() -> None:
         training_dataset=training_ds,
         search_targets=search_tgts,
         config=config,
+        training_dataset_file_sha256=td_sha,
+        search_targets_file_sha256=st_sha,
     )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -36,7 +36,7 @@ def dummy_replay():
         "replay_document_hash": "doc_hash_1",
         "header": {
             "game_seed": 20260825,
-            "players": ["m07-1", "m07-2"],
+            "players": ["m07-determinization-champion", "m07-determinization-champion"],
         },
         "result": {
             "scores": [15, 12],
@@ -172,6 +172,30 @@ def test_m25_missing_replay_document_hash_fails(dummy_replay, dummy_training_dat
     """P1-2 Check 3: Missing replay_document_hash in example fails closed."""
     dummy_training_dataset["examples"][0].pop("replay_document_hash")
     with pytest.raises(ValueError, match="fail-closed: example 0 missing core provenance fields"):
+        materialize_m25_dataset(
+            replays=[dummy_replay],
+            training_dataset=dummy_training_dataset,
+            search_targets=dummy_search_targets,
+            config=dummy_config,
+        )
+
+
+def test_m25_missing_game_index_fails(dummy_replay, dummy_training_dataset, dummy_search_targets, dummy_config):
+    """Repair 3A: Missing game_index in example fails closed."""
+    dummy_training_dataset["examples"][0].pop("game_index")
+    with pytest.raises(ValueError, match="missing core provenance fields.*game_index"):
+        materialize_m25_dataset(
+            replays=[dummy_replay],
+            training_dataset=dummy_training_dataset,
+            search_targets=dummy_search_targets,
+            config=dummy_config,
+        )
+
+
+def test_m25_non_m07_replay_seat_fails(dummy_replay, dummy_training_dataset, dummy_search_targets, dummy_config):
+    """Repair 3A: Replay with non-M07 player seat fails closed."""
+    dummy_replay["header"]["players"] = ["m07-determinization-champion", "heuristic-v1"]
+    with pytest.raises(ValueError, match="must both be 'm07-determinization-champion'"):
         materialize_m25_dataset(
             replays=[dummy_replay],
             training_dataset=dummy_training_dataset,
