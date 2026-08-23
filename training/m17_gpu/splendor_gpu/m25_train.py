@@ -61,9 +61,15 @@ from splendor_gpu.m25_dataset import (
 EXPECTED_M25_FORMAT = "effective-splendor-m25-m07-search-teacher-bootstrap"
 EXPECTED_M25_PARAMETER_COUNT = 949060
 EXPECTED_M25_GAMES = 256
+EXPECTED_M25_SEEDS = 128
 EXPECTED_M25_TRAIN_GAMES = 192
 EXPECTED_M25_VAL_GAMES = 64
 EXPECTED_UNIFORM_FLOOR_MICROS = 100000
+ALLOWED_M07_GENERATOR_IDS = {
+    "m07-bootstrap-a",
+    "m07-bootstrap-b",
+    "m07-determinization-champion",
+}
 
 EXPECTED_HOLDOUT_FIXTURE_SHA256 = "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8"
 EXPECTED_M24_DATASET_FILE_SHA256 = "ddf8575af6ad14032a448488cda5868e82096bde1f511587f8077b3bd0eaa07f"
@@ -94,8 +100,8 @@ def validate_m25_config(config: dict[str, Any], *, allow_cpu: bool = False) -> N
     _assert_equal(ds.get("ruleset"), "base_v1", "dataset ruleset")
     
     seeds = ds.get("game_seeds", [])
-    _assert_equal(len(seeds), EXPECTED_M25_GAMES, "game seeds count")
-    expected_seeds = [20260825 + i for i in range(EXPECTED_M25_GAMES)]
+    _assert_equal(len(seeds), EXPECTED_M25_SEEDS, "game seeds count")
+    expected_seeds = [20260825 + i for i in range(EXPECTED_M25_SEEDS)]
     _assert_equal(seeds, expected_seeds, "game seeds sequence")
 
     t_cfg = ds["teacher_config"]
@@ -109,9 +115,13 @@ def validate_m25_config(config: dict[str, Any], *, allow_cpu: bool = False) -> N
 
     split = ds["split"]
     _assert_equal(int(split["total_games"]), EXPECTED_M25_GAMES, "split total_games")
-    _assert_equal(int(split["validation"]["game_index_modulus"]), 4, "split val modulus")
-    _assert_equal(int(split["validation"]["game_index_remainder"]), 0, "split val remainder")
+    _assert_equal(int(split["total_seeds"]), EXPECTED_M25_SEEDS, "split total_seeds")
+    _assert_equal(int(split["rotations_per_seed"]), 2, "split rotations_per_seed")
+    _assert_equal(int(split["validation"]["seed_index_modulus"]), 4, "split val seed modulus")
+    _assert_equal(int(split["validation"]["seed_index_remainder"]), 0, "split val seed remainder")
+    _assert_equal(int(split["validation"]["seeds"]), 32, "split val seeds")
     _assert_equal(int(split["validation"]["games"]), EXPECTED_M25_VAL_GAMES, "split val games")
+    _assert_equal(int(split["train"]["seeds"]), 96, "split train seeds")
     _assert_equal(int(split["train"]["games"]), EXPECTED_M25_TRAIN_GAMES, "split train games")
 
     # Model architecture
@@ -185,11 +195,12 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
 
     # 1. Check seeds schedule & embedded game metadata
     expected_seeds = config["dataset"]["game_seeds"]
-    actual_seeds = [int(g["game_seed"]) for g in games]
-    _assert_equal(actual_seeds, expected_seeds, "game seeds sequence")
+    expected_seeds_count = len(expected_seeds)
+    allowed_agents = set(config.get("dataset", {}).get("allowed_generator_agents", ALLOWED_M07_GENERATOR_IDS))
 
     game_by_idx: dict[int, dict[str, Any]] = {}
     game_by_doc_hash: dict[str, dict[str, Any]] = {}
+    seed_rotations_seen: dict[int, set[int]] = {}
 
     for g_i, g in enumerate(games):
         g_idx = int(g.get("game_index", -1))
@@ -200,14 +211,36 @@ def validate_m25_dataset_provenance(payload: dict[str, Any], config: dict[str, A
             raise ValueError(f"fail-closed: game {g_i} missing replay_document_hash")
         if doc_hash in game_by_doc_hash:
             raise ValueError(f"fail-closed: duplicate game replay_document_hash: {doc_hash}")
+
+        seed_idx = int(g.get("seed_index", -1))
+        if seed_idx < 0 or seed_idx >= expected_seeds_count:
+            raise ValueError(f"fail-closed: game {g_i} seed_index {seed_idx} out of range 0..{expected_seeds_count-1}")
+        
+        rotation = int(g.get("rotation", -1))
+        if rotation not in (0, 1):
+            raise ValueError(f"fail-closed: game {g_i} rotation {rotation} not in {{0, 1}}")
+
+        if seed_idx not in seed_rotations_seen:
+            seed_rotations_seen[seed_idx] = set()
+        seed_rotations_seen[seed_idx].add(rotation)
+
+        expected_seed = expected_seeds[seed_idx]
+        _assert_equal(int(g["game_seed"]), expected_seed, f"game {g_i} game_seed")
             
         replay = g.get("replay", {})
-        header = replay.get("header", {})
-        players = header.get("players")
-        if players is None and "agents_by_seat" in replay:
-            players = [a.get("league_agent_id") for a in replay["agents_by_seat"]]
-        if players is None or len(players) != 2 or players[0] != expected_generator or players[1] != expected_generator:
-            raise ValueError(f"fail-closed: game {g_i} replay players {players} must both be {expected_generator!r}")
+        agents_by_seat = replay.get("agents_by_seat")
+        if agents_by_seat is not None:
+            if len(agents_by_seat) != 2:
+                raise ValueError(f"fail-closed: game {g_i} replay agents_by_seat length {len(agents_by_seat)} != 2")
+            p0 = agents_by_seat[0].get("league_agent_id")
+            p1 = agents_by_seat[1].get("league_agent_id")
+            if p0 not in allowed_agents or p1 not in allowed_agents:
+                raise ValueError(f"fail-closed: game {g_i} replay agents {p0}, {p1} must both be in {allowed_agents}")
+        else:
+            header = replay.get("header", {})
+            players = header.get("players", [])
+            if len(players) != 2 or players[0] not in allowed_agents or players[1] not in allowed_agents:
+                raise ValueError(f"fail-closed: game {g_i} replay players {players} must both be in {allowed_agents}")
 
         result = g.get("result", {})
         ranks = result.get("ranks")
@@ -304,15 +337,16 @@ def build_m25_model(config: dict[str, Any], seed: int) -> nn.Module:
 
 
 def split_m25_indices(payload: dict[str, Any], config: dict[str, Any]) -> tuple[list[int], list[int]]:
-    """Split dataset examples by game_index without trajectory leakage."""
+    """Split dataset examples by seed_index (seed-group split) without trajectory leakage."""
     split_cfg = config["dataset"]["split"]
-    modulus = int(split_cfg["validation"]["game_index_modulus"])
-    remainder = int(split_cfg["validation"]["game_index_remainder"])
+    val_cfg = split_cfg["validation"]
+    modulus = int(val_cfg.get("seed_index_modulus", val_cfg.get("game_index_modulus", 4)))
+    remainder = int(val_cfg.get("seed_index_remainder", val_cfg.get("game_index_remainder", 0)))
     
     train_indices, validation_indices = [], []
     for idx, ex in enumerate(payload["examples"]):
-        game_idx = int(ex["game_index"])
-        if game_idx % modulus == remainder:
+        seed_idx = int(ex.get("seed_index", ex["game_index"] // 2 if "game_index" in ex else 0))
+        if seed_idx % modulus == remainder:
             validation_indices.append(idx)
         else:
             train_indices.append(idx)

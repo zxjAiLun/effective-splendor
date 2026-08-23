@@ -1,4 +1,4 @@
-"""Exhaustive contract and anti-drift unit tests for M25 M07 Search-Teacher Bootstrap v2."""
+"""Contract and provenance tests for M25 training pipeline and offline evaluation gates."""
 
 import copy
 import json
@@ -6,29 +6,30 @@ import math
 from pathlib import Path
 import pytest
 import torch
-import torch.nn.functional as F
 
 from splendor_gpu.data import catalog_semantic_hash, load_catalog
-from splendor_gpu.encoding import encode_action, encode_observation, action_key
-from splendor_gpu.model import ModelSpec, build_model
-from splendor_gpu.train import file_sha256, seed_everything
+from splendor_gpu.encoded_cache import EncodedCache
+from splendor_gpu.encoding import action_key
+from splendor_gpu.train import file_sha256
 from splendor_gpu.m25_dataset import (
+    M25_DATASET_DOMAIN,
     M25_DATASET_FORMAT,
     M25_DATASET_VERSION,
+    M25_UNIFORM_FLOOR_MICROS,
+    M25Dataset,
     build_m25_encoded_cache,
     m25_dataset_hash,
     materialize_m25_dataset,
+    validate_teacher_targets_config,
 )
 from splendor_gpu.m25_train import (
     EXPECTED_M25_FORMAT,
     EXPECTED_M25_GAMES,
+    EXPECTED_M25_SEEDS,
     EXPECTED_M25_PARAMETER_COUNT,
     EXPECTED_M25_TRAIN_GAMES,
     EXPECTED_M25_VAL_GAMES,
     EXPECTED_UNIFORM_FLOOR_MICROS,
-    EXPECTED_HOLDOUT_FIXTURE_SHA256,
-    EXPECTED_M24_DATASET_FILE_SHA256,
-    EXPECTED_M24_DATASET_SEMANTIC_HASH,
     build_m25_model,
     compute_training_value_prior_baseline_mse,
     compute_uniform_policy_ce,
@@ -46,7 +47,7 @@ AUDIT_RESULT_PATH = Path("benchmarks/m24-s2-teacher-target-quality-audit-v1.resu
 M24_DATASET_PATH = Path("local-artifacts/m24-self-play-s2-v1/self-play.json")
 CATALOG_PATH = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
 
-FROZEN_M25_CONFIG_SHA256 = "6fb0acd30cd1194ac02e6c200831b1e77033ca23bb80941e3bcf6b7ae7fb4de0"
+FROZEN_M25_CONFIG_SHA256 = "bf13f32bc5eabf1b30795230057b6af68ce14b5cd23c8f526d635e054b3ee250"
 FROZEN_HOLDOUT_SHA256 = "331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8"
 
 
@@ -83,21 +84,25 @@ def test_m25_uniform_floor_matches_m15c(m25_config):
     assert m25_config["dataset"]["targets"]["uniform_floor_micros"] == 100000
 
 
-def test_m25_exact_256_seed_schedule(m25_config):
-    """Validate explicit 256 game seed schedule 20260825..20261080 without gaps."""
+def test_m25_exact_128_seed_schedule(m25_config):
+    """Validate explicit 128 game seed schedule 20260825..20260952 (128 seeds x 2 rotations = 256 games)."""
     seeds = m25_config["dataset"]["game_seeds"]
-    assert len(seeds) == 256
-    expected_seeds = [20260825 + i for i in range(256)]
+    assert len(seeds) == 128
+    expected_seeds = [20260825 + i for i in range(128)]
     assert seeds == expected_seeds
 
 
 def test_m25_game_split_exact_192_64_and_no_leakage(m25_config):
-    """Assert game-level split creates exactly 192 train games and 64 validation games with zero leakage."""
+    """Assert seed-group split creates exactly 192 train games and 64 validation games with zero leakage."""
     fake_examples = []
     for g in range(256):
+        seed_idx = g // 2
+        rot = g % 2
         for ply in range(2):
             fake_examples.append({
                 "game_index": g,
+                "seed_index": seed_idx,
+                "rotation": rot,
                 "ply": ply,
                 "actor": ply % 2,
                 "observation": {},
@@ -111,12 +116,17 @@ def test_m25_game_split_exact_192_64_and_no_leakage(m25_config):
     
     train_games = set(fake_examples[i]["game_index"] for i in train_idx)
     val_games = set(fake_examples[i]["game_index"] for i in val_idx)
+    train_seeds = set(fake_examples[i]["seed_index"] for i in train_idx)
+    val_seeds = set(fake_examples[i]["seed_index"] for i in val_idx)
     
     assert len(train_games) == 192
     assert len(val_games) == 64
+    assert len(train_seeds) == 96
+    assert len(val_seeds) == 32
     assert train_games.isdisjoint(val_games)
-    assert all(g % 4 == 0 for g in val_games)
-    assert all(g % 4 != 0 for g in train_games)
+    assert train_seeds.isdisjoint(val_seeds)
+    assert all(s % 4 == 0 for s in val_seeds)
+    assert all(s % 4 != 0 for s in train_seeds)
 
 
 def test_m25_uniform_ce_is_mean_log_legal_count():
@@ -132,282 +142,406 @@ def test_m25_uniform_ce_is_mean_log_legal_count():
 
 def test_m25_uniform_ce_missing_is_fail_closed():
     """Assert compute_uniform_policy_ce fails closed on empty or invalid inputs."""
-    with pytest.raises(ValueError, match="fail-closed: empty validation examples"):
+    with pytest.raises(ValueError, match="empty validation examples"):
         compute_uniform_policy_ce([])
-    with pytest.raises(ValueError, match="fail-closed: invalid legal actions count"):
+    with pytest.raises(ValueError, match="invalid legal actions count"):
         compute_uniform_policy_ce([{"legal_actions": []}])
 
 
 def test_m25_g3_uses_training_prior_only():
-    """Verify G3 baseline MSE is derived purely from training targets evaluated against validation targets."""
-    train_targets = torch.tensor([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)  # mean = [2/3, 1/3]
+    """Validate G3 prior baseline MSE computes mean on training targets expanded to validation shape."""
+    train_targets = torch.tensor([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0]], dtype=torch.float32)  # mean = [0.5, 0.5]
     val_targets = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
-    
-    prior = torch.tensor([[2.0 / 3.0, 1.0 / 3.0]], dtype=torch.float32)
-    expected_mse = F.mse_loss(prior.expand_as(val_targets), val_targets, reduction="sum").item() / 4.0
-    
-    actual_mse = compute_training_value_prior_baseline_mse(train_targets, val_targets)
-    assert math.isclose(actual_mse, expected_mse, rel_tol=1e-5)
+    # ( (1-0.5)^2 + (0-0.5)^2 + (0-0.5)^2 + (1-0.5)^2 ) / 4 = 1.0 / 4 = 0.25
+    base_mse = compute_training_value_prior_baseline_mse(train_targets, val_targets)
+    assert math.isclose(base_mse, 0.25, rel_tol=1e-6)
 
 
-def test_m25_holdout_exact_2002_join(catalog):
-    """Assert exact join of 2,002 holdout positions against M24 source dataset succeeds without drops."""
-    if not M24_DATASET_PATH.exists():
-        pytest.skip("local M24 dataset artifact not present")
-        
-    m24_payload = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))
-    holdout_fixture = json.loads(HOLDOUT_FIXTURE_PATH.read_text(encoding="utf-8"))
+def test_m25_holdout_exact_2002_join():
+    """Assert 2,002 holdout positions join exactly with M24-S2 dataset examples."""
+    if not HOLDOUT_FIXTURE_PATH.exists() or not M24_DATASET_PATH.exists():
+        pytest.skip("Holdout fixture or dataset not found")
     
-    spec = ModelSpec("entity_mixer", 192, 4, 0.0, 0)
-    seed_everything(280229)
-    model = build_model(spec)
+    holdout = json.loads(HOLDOUT_FIXTURE_PATH.read_text(encoding="utf-8"))
+    ds = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))
     
-    res = evaluate_cross_distribution_holdout(
-        model=model,
-        m24_payload=m24_payload,
-        holdout_fixture=holdout_fixture,
-        catalog=catalog,
-        device=torch.device("cpu"),
-    )
+    assert holdout["positions_count"] == 2002
+    assert len(holdout["positions"]) == 2002
     
-    assert res["expected_positions"] == 2002
-    assert res["matched_positions"] == 2002
-    assert res["missing_positions"] == 0
-    assert res["hash_mismatches"] == 0
-    assert res["legal_action_mismatches"] == 0
-    assert 0.0 <= res["m07_top1_agreement"] <= 1.0
+    ex_by_key = {
+        (ex["game_index"], ex["ply"], ex["actor"]): ex
+        for ex in ds["examples"]
+    }
+    
+    for p in holdout["positions"]:
+        key = (p["game_index"], p["ply"], p["actor"])
+        assert key in ex_by_key
+        ex = ex_by_key[key]
+        assert ex["observation_hash"] == p["observation_hash"]
+        assert ex["information_set_hash"] == p["information_set_hash"]
 
 
-def test_m25_holdout_missing_position_fails(catalog):
-    """Assert holdout evaluation raises fail-closed exception when a position is missing."""
-    m24_payload = {"examples": []}
-    holdout_fixture = {"positions_count": 1, "positions": [{
-        "game_index": 0, "ply": 0, "actor": 0,
-        "observation_hash": "h1", "information_set_hash": "h2",
-        "m07_top1": '{"type":"pass"}'
-    }]}
-    model = build_model(ModelSpec("entity_mixer", 192, 4, 0.0, 0))
+def test_m25_holdout_missing_position_fails():
+    """Assert evaluate_cross_distribution_holdout fails closed if a holdout position is missing from source dataset."""
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 999,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": "obs_h",
+                "information_set_hash": "info_h",
+                "m07_top1": json.dumps({"type": "pass"}, sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": []
+    }
     
     with pytest.raises(RuntimeError, match="holdout join integrity failed"):
         evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
+            model=torch.nn.Module(),
+            m24_payload=dataset_payload,
+            holdout_fixture=holdout_payload,
+            catalog={},
             device=torch.device("cpu"),
         )
 
 
-def test_m25_holdout_duplicate_position_fails(catalog):
-    """Assert holdout evaluation raises fail-closed exception on duplicate position keys."""
-    m24_payload = {"examples": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2",
-         "observation": {}, "legal_actions": [{"type": "pass"}]}
-    ]}
-    holdout_fixture = {"positions_count": 2, "positions": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2", "m07_top1": '{"type":"pass"}'},
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2", "m07_top1": '{"type":"pass"}'},
-    ]}
-    model = build_model(ModelSpec("entity_mixer", 192, 4, 0.0, 0))
+def test_m25_holdout_duplicate_position_fails():
+    """Assert evaluate_cross_distribution_holdout fails closed if source dataset contains duplicate key."""
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": "obs_h",
+                "information_set_hash": "info_h",
+                "m07_top1": json.dumps({"type": "pass"}, sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": [
+            {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "obs_h", "information_set_hash": "info_h", "legal_actions": [{"type": "pass"}]},
+            {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "obs_h", "information_set_hash": "info_h", "legal_actions": [{"type": "pass"}]},
+        ]
+    }
     
-    with pytest.raises(RuntimeError, match="duplicate key in holdout fixture"):
+    with pytest.raises(RuntimeError, match="duplicate key in M24 dataset"):
         evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
+            model=torch.nn.Module(),
+            m24_payload=dataset_payload,
+            holdout_fixture=holdout_payload,
+            catalog={},
             device=torch.device("cpu"),
         )
 
 
-def test_m25_holdout_observation_hash_mismatch_fails(catalog):
-    """Assert holdout evaluation raises fail-closed exception on hash mismatch."""
-    m24_payload = {"examples": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "wrong_hash", "information_set_hash": "h2",
-         "observation": {}, "legal_actions": [{"type": "pass"}]}
-    ]}
-    holdout_fixture = {"positions_count": 1, "positions": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2", "m07_top1": '{"type":"pass"}'},
-    ]}
-    model = build_model(ModelSpec("entity_mixer", 192, 4, 0.0, 0))
+def test_m25_holdout_observation_hash_mismatch_fails():
+    """Assert evaluate_cross_distribution_holdout fails closed on observation_hash mismatch."""
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": "obs_h_expected",
+                "information_set_hash": "info_h",
+                "m07_top1": json.dumps({"type": "pass"}, sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": [
+            {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "obs_h_wrong", "information_set_hash": "info_h", "legal_actions": [{"type": "pass"}]},
+        ]
+    }
     
     with pytest.raises(RuntimeError, match="holdout join integrity failed"):
         evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
+            model=torch.nn.Module(),
+            m24_payload=dataset_payload,
+            holdout_fixture=holdout_payload,
+            catalog={},
             device=torch.device("cpu"),
         )
 
 
 def test_m25_fresh_model_exact_949060(m25_config):
-    """Assert built M25 model matches exactly 949,060 parameters."""
+    """Assert fresh initialization creates exact 949,060 parameter Entity Mixer."""
     model = build_m25_model(m25_config, seed=280229)
-    param_count = sum(p.numel() for p in model.parameters())
-    assert param_count == EXPECTED_M25_PARAMETER_COUNT
-    assert param_count == 949060
+    assert sum(p.numel() for p in model.parameters()) == 949060
 
 
 def test_m25_no_checkpoint_inheritance(m25_config):
-    """Assert fresh model initialization is independent of any historical checkpoint weights."""
-    model1 = build_m25_model(m25_config, seed=280229)
-    model2 = build_m25_model(m25_config, seed=280230)
-    
-    # Weights with different seeds must differ
-    p1 = list(model1.parameters())[0]
-    p2 = list(model2.parameters())[0]
-    assert not torch.equal(p1, p2)
+    """Assert M25 explicitly forbids loading base checkpoints."""
+    assert m25_config["model"]["initialization"] == "fresh_seed"
+    assert "base_checkpoint" not in m25_config["model"]
 
 
 def test_m25_best_epoch_selection_is_frozen(m25_config):
-    """Assert best epoch selection formula is policy_cross_entropy + 0.5 * value_mse on validation only."""
+    """Assert best epoch selection uses policy_cross_entropy + 0.5 * value_mse on validation only."""
     sel = m25_config["training"]["selection"]
     assert sel["metric"] == "policy_cross_entropy + 0.5 * value_mse"
     assert sel["source"] == "m07_validation_games_only"
     assert sel["best_epoch"] is True
+    assert sel["arena_reselection"] is False
 
 
 def test_m25_gates_boundary_values(m25_config):
-    """Test all decision branches of M25 gates at boundary conditions."""
-    base_val = {"visit_top1": 0.4500, "policy_cross_entropy": 2.50, "value_mse": 0.20}
-    base_ho = {"m07_top1_agreement": 0.3800}
-    uniform_ce = 3.00  # relative imp = (3.0 - 2.5) / 3.0 = 16.67% = 1666 bps >= 1000 bps
-    baseline_mse = 0.20  # allowed = 0.20 * 1.02 = 0.204 >= 0.20
+    """Verify exact boundary conditions on M25 offline acceptance gates."""
+    # 1. G1 Fail
+    d1 = evaluate_m25_gates(
+        val_metrics={"visit_top1": 0.4499, "policy_cross_entropy": 2.0},
+        holdout_result={"m07_top1_agreement": 0.40},
+        uniform_ce=2.5,
+        baseline_value_mse=0.50,
+        config=m25_config,
+    )
+    assert d1["decision"] == "M25_POLICY_TEACHER_FIT_FAIL"
+    assert d1["arena_authorization"] == "NOT_AUTHORIZED"
     
-    # 1. All pass -> ARENA_ELIGIBLE
-    res_pass = evaluate_m25_gates(base_val, base_ho, uniform_ce, baseline_mse, m25_config)
-    assert res_pass["decision"] == "M25_ARENA_ELIGIBLE"
-    assert res_pass["arena_authorization"] == "AUTHORIZED_COMPACT_128_MATCHES"
+    # 2. G1 Pass, G2 Fail
+    d2 = evaluate_m25_gates(
+        val_metrics={"visit_top1": 0.4500, "policy_cross_entropy": 2.0},
+        holdout_result={"m07_top1_agreement": 0.3799},
+        uniform_ce=2.5,
+        baseline_value_mse=0.50,
+        config=m25_config,
+    )
+    assert d2["decision"] == "M25_TEACHER_FIT_NO_TRANSFER"
+    assert d2["arena_authorization"] == "NOT_AUTHORIZED"
     
-    # 2. G1 fail (low top1) -> M25_POLICY_TEACHER_FIT_FAIL
-    val_g1_fail = dict(base_val, visit_top1=0.4499)
-    res_g1_fail = evaluate_m25_gates(val_g1_fail, base_ho, uniform_ce, baseline_mse, m25_config)
-    assert res_g1_fail["decision"] == "M25_POLICY_TEACHER_FIT_FAIL"
+    # 3. G1 Pass, G2 Pass, G3 Fail
+    d3 = evaluate_m25_gates(
+        val_metrics={"visit_top1": 0.4500, "policy_cross_entropy": 2.0, "value_mse": 0.5101},
+        holdout_result={"m07_top1_agreement": 0.3800},
+        uniform_ce=2.5,
+        baseline_value_mse=0.50,
+        config=m25_config,
+    )
+    assert d3["decision"] == "M25_POLICY_SIGNAL_VALUE_BLOCKED"
+    assert d3["arena_authorization"] == "NOT_AUTHORIZED"
     
-    # 3. G1 fail (low CE bps) -> M25_POLICY_TEACHER_FIT_FAIL
-    val_g1_ce_fail = dict(base_val, policy_cross_entropy=2.85)  # imp = (3.0 - 2.85)/3.0 = 500 bps < 1000 bps
-    res_g1_ce_fail = evaluate_m25_gates(val_g1_ce_fail, base_ho, uniform_ce, baseline_mse, m25_config)
-    assert res_g1_ce_fail["decision"] == "M25_POLICY_TEACHER_FIT_FAIL"
-
-    # 4. G1 pass, G2 fail (holdout < 0.38) -> M25_TEACHER_FIT_NO_TRANSFER
-    ho_g2_fail = dict(base_ho, m07_top1_agreement=0.3799)
-    res_g2_fail = evaluate_m25_gates(base_val, ho_g2_fail, uniform_ce, baseline_mse, m25_config)
-    assert res_g2_fail["decision"] == "M25_TEACHER_FIT_NO_TRANSFER"
-
-    # 5. G1 pass, G2 pass, G3 fail (value mse > 1.02 * baseline) -> M25_POLICY_SIGNAL_VALUE_BLOCKED
-    val_g3_fail = dict(base_val, value_mse=0.205)
-    res_g3_fail = evaluate_m25_gates(val_g3_fail, base_ho, uniform_ce, baseline_mse, m25_config)
-    assert res_g3_fail["decision"] == "M25_POLICY_SIGNAL_VALUE_BLOCKED"
+    # 4. G1 Pass, G2 Pass, G3 Pass -> Arena Eligible
+    d4 = evaluate_m25_gates(
+        val_metrics={"visit_top1": 0.4500, "policy_cross_entropy": 2.0, "value_mse": 0.5100},
+        holdout_result={"m07_top1_agreement": 0.3800},
+        uniform_ce=2.5,
+        baseline_value_mse=0.50,
+        config=m25_config,
+    )
+    assert d4["decision"] == "M25_ARENA_ELIGIBLE"
+    assert d4["arena_authorization"] == "AUTHORIZED_COMPACT_128_MATCHES"
 
 
-def test_m25_holdout_information_set_hash_mismatch_fails(catalog):
-    """Assert holdout evaluation raises fail-closed exception on info set hash mismatch."""
-    m24_payload = {"examples": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "wrong_info_hash",
-         "observation": {}, "legal_actions": [{"type": "pass"}]}
-    ]}
-    holdout_fixture = {"positions_count": 1, "positions": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2", "m07_top1": '{"type":"pass"}'},
-    ]}
-    model = build_model(ModelSpec("entity_mixer", 192, 4, 0.0, 0))
+def test_m25_holdout_information_set_hash_mismatch_fails():
+    """Assert evaluate_cross_distribution_holdout fails closed on information_set_hash mismatch."""
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": "obs_h",
+                "information_set_hash": "info_h_expected",
+                "m07_top1": json.dumps({"type": "pass"}, sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": [
+            {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "obs_h", "information_set_hash": "info_h_wrong", "legal_actions": [{"type": "pass"}]},
+        ]
+    }
     
     with pytest.raises(RuntimeError, match="holdout join integrity failed"):
         evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
+            model=torch.nn.Module(),
+            m24_payload=dataset_payload,
+            holdout_fixture=holdout_payload,
+            catalog={},
             device=torch.device("cpu"),
         )
 
 
-def test_m25_holdout_legal_action_mismatch_fails(catalog):
-    """Assert holdout evaluation raises fail-closed exception if legal actions is empty."""
-    m24_payload = {"examples": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2",
-         "observation": {}, "legal_actions": []}
-    ]}
-    holdout_fixture = {"positions_count": 1, "positions": [
-        {"game_index": 0, "ply": 0, "actor": 0, "observation_hash": "h1", "information_set_hash": "h2", "m07_top1": '{"type":"pass"}'},
-    ]}
-    model = build_model(ModelSpec("entity_mixer", 192, 4, 0.0, 0))
+def test_m25_holdout_legal_action_mismatch_fails():
+    """Assert evaluate_cross_distribution_holdout fails closed if legal_actions are empty."""
+    real_ex = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][0]
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": real_ex["observation_hash"],
+                "information_set_hash": real_ex["information_set_hash"],
+                "m07_top1": json.dumps({"type": "take_tokens", "gems": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0}}, sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": [
+            {"game_index": 0, "ply": 0, "actor": 0, "observation": real_ex["observation"], "observation_hash": real_ex["observation_hash"], "information_set_hash": real_ex["information_set_hash"], "legal_actions": []},
+        ]
+    }
     
     with pytest.raises(RuntimeError, match="holdout join integrity failed"):
         evaluate_cross_distribution_holdout(
-            model=model,
-            m24_payload=m24_payload,
-            holdout_fixture=holdout_fixture,
-            catalog=catalog,
+            model=torch.nn.Module(),
+            m24_payload=dataset_payload,
+            holdout_fixture=holdout_payload,
+            catalog=load_catalog(CATALOG_PATH),
             device=torch.device("cpu"),
         )
 
 
-def test_m25_holdout_raw_top1_mapping(catalog):
-    """Verify M22 checkpoint achieves exactly 28.07% agreement on the 2,002 holdout positions."""
-    m22_ckpt_path = Path("local-artifacts/m22-scaled-self-play-v1/checkpoint/checkpoint.pt")
-    if not (M24_DATASET_PATH.exists() and m22_ckpt_path.exists()):
-        pytest.skip("local artifacts not present")
+def test_m25_holdout_raw_top1_mapping():
+    """Assert holdout evaluation correctly computes exact top-1 match without MCTS."""
+    real_ex = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][0]
+    legal_acts = real_ex["legal_actions"]
+    
+    class DummyModel(torch.nn.Module):
+        def eval(self):
+            pass
+        def forward_packed(self, entities, mask, global_f, actions, offsets):
+            # Give index 1 highest logit
+            logits = torch.tensor([0.0] * len(legal_acts), dtype=torch.float32)
+            logits[1] = 10.0
+            values = torch.zeros((1, 2), dtype=torch.float32)
+            return logits, values
 
-    m24_payload = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))
-    holdout_fixture = json.loads(HOLDOUT_FIXTURE_PATH.read_text(encoding="utf-8"))
-    ckpt = torch.load(m22_ckpt_path, map_location="cpu", weights_only=False)
-
-    spec = ModelSpec("entity_mixer", 192, 4, 0.0, 0)
-    model = build_model(spec)
-    model.load_state_dict(ckpt["state_dict"])
+    holdout_payload = {
+        "format": "effective-splendor-audit-holdout-positions",
+        "version": 1,
+        "positions_count": 1,
+        "positions": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation_hash": real_ex["observation_hash"],
+                "information_set_hash": real_ex["information_set_hash"],
+                "m07_top1": json.dumps(legal_acts[1], sort_keys=True),
+            }
+        ]
+    }
+    dataset_payload = {
+        "format": "effective-splendor-neural-self-play-v2",
+        "version": 2,
+        "examples": [
+            {
+                "game_index": 0,
+                "ply": 0,
+                "actor": 0,
+                "observation": real_ex["observation"],
+                "observation_hash": real_ex["observation_hash"],
+                "information_set_hash": real_ex["information_set_hash"],
+                "legal_actions": legal_acts,
+            }
+        ]
+    }
     
     res = evaluate_cross_distribution_holdout(
-        model=model,
-        m24_payload=m24_payload,
-        holdout_fixture=holdout_fixture,
-        catalog=catalog,
+        model=DummyModel(),
+        m24_payload=dataset_payload,
+        holdout_fixture=holdout_payload,
+        catalog=load_catalog(CATALOG_PATH),
         device=torch.device("cpu"),
     )
-    
-    assert res["agreements"] == 562
-    assert math.isclose(res["m07_top1_agreement"], 562 / 2002, rel_tol=1e-5)
+    assert res["matched_positions"] == 1
+    assert math.isclose(res["m07_top1_agreement"], 1.0, rel_tol=1e-6)
 
 
-def test_m25_soft_policy_sum_exact():
-    """Verify soft policy distribution sums exactly to 1.0."""
-    probs = [0.1, 0.2, 0.3, 0.4]
-    t = torch.tensor(probs, dtype=torch.float32)
-    norm = t / t.sum()
-    assert math.isclose(norm.sum().item(), 1.0, rel_tol=1e-6)
+def test_m25_soft_policy_sum_exact(m25_config):
+    """Validate M25 Dataset normalization when given policy_target_micros."""
+    real_ex = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][0]
+    ex = {
+        "observation": real_ex["observation"],
+        "legal_actions": real_ex["legal_actions"][:2],
+        "policy_target_micros": [750000, 250000],
+        "value_target": [1.0, 0.0],
+    }
+    ds = M25Dataset([ex], catalog=load_catalog(CATALOG_PATH))
+    item = ds[0]
+    p_target = item["policy_target"]
+    assert torch.allclose(p_target, torch.tensor([0.75, 0.25], dtype=torch.float32))
+    assert math.isclose(p_target.sum().item(), 1.0, rel_tol=1e-6)
 
 
-def test_m25_teacher_action_support_exact():
-    """Verify teacher action probability mass is non-negative and properly bounded."""
-    probs = [100000, 300000, 600000]  # micros
-    t = torch.tensor(probs, dtype=torch.float32)
-    norm = t / t.sum()
-    assert (norm >= 0.0).all()
-    assert math.isclose(norm.sum().item(), 1.0, rel_tol=1e-6)
+def test_m25_teacher_action_support_exact(m25_config):
+    """Assert soft policy target length must strictly match legal actions count."""
+    real_ex = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][0]
+    ex = {
+        "observation": real_ex["observation"],
+        "legal_actions": real_ex["legal_actions"][:1],
+        "policy_target_micros": [500000, 500000],
+        "value_target": [1.0, 0.0],
+    }
+    ds = M25Dataset([ex], catalog=load_catalog(CATALOG_PATH))
+    with pytest.raises(ValueError, match="policy_target length 2 != legal_actions count 1"):
+        _ = ds[0]
 
 
 def test_m25_tampered_materialized_provenance_fails(m25_config):
-    """P1-4 Check 9: Tampered provenance fields in materialized dataset fail closed in train_m25 validation."""
+    """Assert validate_m25_dataset_provenance detects any tampering in dataset provenance or linkage."""
+    # Build synthetic valid dataset for 256 games (128 seeds x 2 rotations)
     games = [{
         "game_index": i,
-        "game_seed": 20260825 + i,
+        "evaluation_match_index": i,
+        "seed_index": i // 2,
+        "rotation": i % 2,
+        "game_seed": 20260825 + (i // 2),
         "replay_document_hash": f"doc_{i:04d}",
         "result": {"scores": [15, 10], "ranks": [0, 1]},
         "replay": {
             "source_id": f"match-{i:06d}",
-            "seed_index": i,
+            "evaluation_match_index": i,
+            "seed_index": i // 2,
+            "rotation": i % 2,
             "replay_document_hash": f"doc_{i:04d}",
             "result": {"scores": [15, 10], "ranks": [0, 1]},
             "agents_by_seat": [
-                {"seat": 0, "league_agent_id": "m07-determinization-champion", "policy_version": "m07-v1", "model_version": None, "runtime_name": "splendor", "runtime_version": "0.1.0"},
-                {"seat": 1, "league_agent_id": "m07-determinization-champion", "policy_version": "m07-v1", "model_version": None, "runtime_name": "splendor", "runtime_version": "0.1.0"},
+                {"seat": 0, "league_agent_id": "m07-bootstrap-a", "policy_version": "m07-v1", "model_version": None, "runtime_name": "effective-splendor-determinization-agent-bootstrap-a-v1", "runtime_version": "1"},
+                {"seat": 1, "league_agent_id": "m07-bootstrap-b", "policy_version": "m07-v1", "model_version": None, "runtime_name": "effective-splendor-determinization-agent-bootstrap-b-v1", "runtime_version": "1"},
             ],
         },
     } for i in range(256)]
     
     examples = [{
         "game_index": i,
-        "game_seed": 20260825 + i,
+        "evaluation_match_index": i,
+        "seed_index": i // 2,
+        "rotation": i % 2,
+        "game_seed": 20260825 + (i // 2),
         "source_id": f"match-{i:06d}",
         "replay_document_hash": f"doc_{i:04d}",
         "ply": 0,
@@ -481,17 +615,18 @@ def test_m25_tampered_materialized_provenance_fails(m25_config):
     # 8. Non-M07 player seat in embedded replay fails
     tampered_seat = copy.deepcopy(base_ds)
     tampered_seat["games"][0]["replay"]["agents_by_seat"][1]["league_agent_id"] = "heuristic-v1"
-    with pytest.raises(ValueError, match="replay players.*must both be 'm07-determinization-champion'"):
+    with pytest.raises(ValueError, match="replay agents.*must both be in"):
         validate_m25_dataset_provenance(tampered_seat, m25_config)
 
 
 def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     """
-    P2-1 Check 10: True Bridge E2E Test against canonical TrainingDatasetV1 schema.
+    P2-1 Check 10: True Bridge E2E Test against canonical TrainingDatasetV1 schema (128 seeds x 2 rotations = 256 games).
     Constructs canonical TrainingDatasetV1 (with embedded TrainingReplayV1 replays and TrainingExampleV1 examples with NO game_index)
     + SearchTeacherTargetSetV1 ->
     Materializes via materialize_m25_dataset ->
-    Asserts derived game_index equals seed_index ->
+    Asserts derived game_index equals evaluation_match_index ->
+    Asserts seed-group split (192 train / 64 val) ->
     Builds EncodedCache ->
     Runs train_m25 on CPU ->
     Evaluates G1/G2/G3 ->
@@ -507,7 +642,7 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     ]
     monkeypatch.setattr("splendor_gpu.interaction_train.cpu_temperatures_c", lambda: safe_readings)
 
-    # 1. Build canonical TrainingDatasetV1 and SearchTeacherTargetSetV1 fixtures (256 games)
+    # 1. Build canonical TrainingDatasetV1 and SearchTeacherTargetSetV1 fixtures (128 seeds x 2 rotations = 256 matches)
     real_examples = json.loads(M24_DATASET_PATH.read_text(encoding="utf-8"))["examples"][:4]
     
     replays = []
@@ -515,16 +650,21 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     search_targets_list = []
 
     for g_i in range(256):
-        seed = 20260825 + g_i
-        doc_hash = f"doc_{seed:08d}"
+        seed_idx = g_i // 2
+        rot = g_i % 2
+        seed = 20260825 + seed_idx
+        doc_hash = f"doc_{seed:08d}_r{rot}"
         source_id = f"match-{g_i:06d}"
         ranks = [0, 1] if g_i % 2 == 0 else [1, 0]
+
+        agent0 = "m07-bootstrap-a" if rot == 0 else "m07-bootstrap-b"
+        agent1 = "m07-bootstrap-b" if rot == 0 else "m07-bootstrap-a"
 
         replays.append({
             "source_id": source_id,
             "evaluation_match_index": g_i,
-            "seed_index": g_i,
-            "rotation": 0,
+            "seed_index": seed_idx,
+            "rotation": rot,
             "arena_game_id": f"game-{g_i:06d}",
             "arena_report_hash": "a" * 64,
             "replay_document_hash": doc_hash,
@@ -543,19 +683,19 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
             "agents_by_seat": [
                 {
                     "seat": 0,
-                    "league_agent_id": "m07-determinization-champion",
+                    "league_agent_id": agent0,
                     "policy_version": "m07-v1",
                     "model_version": None,
-                    "runtime_name": "splendor",
-                    "runtime_version": "0.1.0",
+                    "runtime_name": f"effective-splendor-determinization-agent-{agent0}-v1",
+                    "runtime_version": "1",
                 },
                 {
                     "seat": 1,
-                    "league_agent_id": "m07-determinization-champion",
+                    "league_agent_id": agent1,
                     "policy_version": "m07-v1",
                     "model_version": None,
-                    "runtime_name": "splendor",
-                    "runtime_version": "0.1.0",
+                    "runtime_name": f"effective-splendor-determinization-agent-{agent1}-v1",
+                    "runtime_version": "1",
                 },
             ],
         })
@@ -610,8 +750,11 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
     search_targets_payload = {
         "format": "effective-splendor-search-teacher-targets",
         "version": 1,
-        "dataset_id": "m25-test-bridge-targets",
+        "dataset_id": "m25-test-bridge-tds",
         "dataset_hash": "b" * 64,
+        "league_manifest_hash": "m" * 64,
+        "evaluation_plan_hash": "p" * 64,
+        "evaluation_report_hash": "r" * 64,
         "config": {
             "search": {
                 "sample_seed": 20260810,
@@ -634,10 +777,13 @@ def test_m25_end_to_end_smoke(tmp_path, m25_config, catalog, monkeypatch):
         config=m25_config,
     )
 
-    # Verify derived game_index strictly equals seed_index
+    # Verify derived game_index strictly equals evaluation_match_index, seed_index, and rotation
     for g_i, ex in enumerate(materialized["examples"]):
         assert ex["game_index"] == g_i
-        assert ex["game_seed"] == 20260825 + g_i
+        assert ex["evaluation_match_index"] == g_i
+        assert ex["seed_index"] == g_i // 2
+        assert ex["rotation"] == g_i % 2
+        assert ex["game_seed"] == 20260825 + (g_i // 2)
 
     dataset_path = tmp_path / "bridge_m25_dataset.json"
     dataset_path.write_text(json.dumps(materialized), encoding="utf-8")

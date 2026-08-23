@@ -55,6 +55,12 @@ EXPECTED_TEACHER_CONFIG = {
     "uniform_floor_micros": 100000,
 }
 
+ALLOWED_M07_GENERATOR_IDS = {
+    "m07-bootstrap-a",
+    "m07-bootstrap-b",
+    "m07-determinization-champion",
+}
+
 
 def m25_dataset_hash(payload: dict[str, Any]) -> str:
     """Authoritative semantic hash for M25 search-teacher dataset."""
@@ -225,7 +231,6 @@ def materialize_m25_dataset(
     search_targets: dict[str, Any],
     config: dict[str, Any],
     *,
-    replays: list[dict[str, Any]] | None = None,
     training_dataset_file_sha256: str | None = None,
     search_targets_file_sha256: str | None = None,
 ) -> dict[str, Any]:
@@ -233,13 +238,14 @@ def materialize_m25_dataset(
     Materialize M25 dataset by strictly joining canonical TrainingDatasetV1 (with embedded replays),
     and M15C SearchTeacherTargetSetV1 policy targets.
     
-    Replay provenance, seed indices, and authoritative terminal ranks are extracted directly
+    Replay provenance, seed indices, rotations, and authoritative terminal ranks are extracted directly
     from TrainingDatasetV1.replays. Example game_index and game_seed are derived strictly from
     replay_document_hash -> seed_index -> config game_seeds.
     """
-    expected_generator = config.get("dataset", {}).get("generator_agent", "m07-determinization-champion")
     expected_games = int(config.get("dataset", {}).get("games", 256))
     expected_seeds = config.get("dataset", {}).get("game_seeds", [])
+    expected_seeds_count = len(expected_seeds)
+    allowed_agents = set(config.get("dataset", {}).get("allowed_generator_agents", ALLOWED_M07_GENERATOR_IDS))
 
     # 1. Validate training dataset format & version
     td_fmt = training_dataset.get("format")
@@ -257,55 +263,75 @@ def materialize_m25_dataset(
     t_cfg = search_targets.get("config", {})
     validate_teacher_targets_config(t_cfg)
 
-    # 3. Extract replays source (from training_dataset.replays or passed replays)
-    raw_replays = replays if replays is not None else training_dataset.get("replays", [])
+    # 3. Cross-bind SearchTeacherTargetSetV1 with TrainingDatasetV1
+    for bind_field in ("dataset_id", "league_manifest_hash", "evaluation_plan_hash", "evaluation_report_hash"):
+        td_val = training_dataset.get(bind_field)
+        st_val = search_targets.get(bind_field)
+        if td_val is not None and st_val is not None and td_val != st_val:
+            raise ValueError(f"fail-closed: provenance mismatch on {bind_field}: training_dataset has {td_val!r}, search_targets has {st_val!r}")
+
+    # 4. Extract replays directly from training_dataset.replays
+    raw_replays = training_dataset.get("replays")
+    if raw_replays is None:
+        raise ValueError("fail-closed: training_dataset missing replays section")
     if len(raw_replays) != expected_games:
         raise ValueError(f"fail-closed: replays count {len(raw_replays)} != expected {expected_games}")
 
     replay_by_doc_hash: dict[str, dict[str, Any]] = {}
-    seen_seed_indices = set()
+    seen_match_indices = set()
+    seed_rotations_seen: dict[int, set[int]] = {}
 
     for idx, r in enumerate(raw_replays):
-        doc_hash = r.get("replay_document_hash") or r.get("document_hash")
+        doc_hash = r.get("replay_document_hash")
         if not doc_hash:
             raise ValueError(f"fail-closed: replay index {idx} missing replay_document_hash")
         if doc_hash in replay_by_doc_hash:
             raise ValueError(f"fail-closed: duplicate replay_document_hash: {doc_hash}")
 
-        # Extract seed_index
+        match_idx = r.get("evaluation_match_index")
+        if match_idx is None:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing evaluation_match_index")
+        match_idx = int(match_idx)
+        if match_idx < 0 or match_idx >= expected_games:
+            raise ValueError(f"fail-closed: replay {doc_hash} evaluation_match_index {match_idx} out of range 0..{expected_games-1}")
+        if match_idx in seen_match_indices:
+            raise ValueError(f"fail-closed: duplicate evaluation_match_index across replays: {match_idx}")
+        seen_match_indices.add(match_idx)
+
         seed_idx = r.get("seed_index")
         if seed_idx is None:
-            # Fallback if raw replay header has game_seed matching config sequence
-            header_seed = r.get("header", {}).get("game_seed") or r.get("seed")
-            if header_seed is not None and header_seed in expected_seeds:
-                seed_idx = expected_seeds.index(header_seed)
-            else:
-                raise ValueError(f"fail-closed: replay {doc_hash} missing seed_index")
-        
+            raise ValueError(f"fail-closed: replay {doc_hash} missing seed_index")
         seed_idx = int(seed_idx)
-        if seed_idx < 0 or seed_idx >= expected_games:
-            raise ValueError(f"fail-closed: replay {doc_hash} seed_index {seed_idx} out of range 0..{expected_games-1}")
-        if seed_idx in seen_seed_indices:
-            raise ValueError(f"fail-closed: duplicate seed_index across replays: {seed_idx}")
-        seen_seed_indices.add(seed_idx)
+        if seed_idx < 0 or seed_idx >= expected_seeds_count:
+            raise ValueError(f"fail-closed: replay {doc_hash} seed_index {seed_idx} out of range 0..{expected_seeds_count-1}")
+        
+        rotation = r.get("rotation")
+        if rotation is None:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing rotation")
+        rotation = int(rotation)
+        if rotation not in (0, 1):
+            raise ValueError(f"fail-closed: replay {doc_hash} rotation {rotation} not in {{0, 1}}")
 
-        game_seed = expected_seeds[seed_idx] if seed_idx < len(expected_seeds) else None
-        if game_seed is None:
-            raise ValueError(f"fail-closed: seed_index {seed_idx} not found in config game_seeds schedule")
+        if seed_idx not in seed_rotations_seen:
+            seed_rotations_seen[seed_idx] = set()
+        if rotation in seed_rotations_seen[seed_idx]:
+            raise ValueError(f"fail-closed: duplicate rotation {rotation} for seed_index {seed_idx}")
+        seed_rotations_seen[seed_idx].add(rotation)
+
+        game_seed = expected_seeds[seed_idx]
 
         # Check players / agents_by_seat
         agents_by_seat = r.get("agents_by_seat")
-        if agents_by_seat is not None:
-            if len(agents_by_seat) != 2:
-                raise ValueError(f"fail-closed: replay {doc_hash} agents_by_seat length {len(agents_by_seat)} != 2")
-            p0 = agents_by_seat[0].get("league_agent_id")
-            p1 = agents_by_seat[1].get("league_agent_id")
-            if p0 != expected_generator or p1 != expected_generator:
-                raise ValueError(f"fail-closed: replay {doc_hash} agents {p0}, {p1} must both be {expected_generator!r}")
-        else:
-            header_players = r.get("header", {}).get("players", [])
-            if len(header_players) != 2 or header_players[0] != expected_generator or header_players[1] != expected_generator:
-                raise ValueError(f"fail-closed: replay {doc_hash} header players {header_players} must both be {expected_generator!r}")
+        if agents_by_seat is None or len(agents_by_seat) != 2:
+            raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid agents_by_seat: {agents_by_seat}")
+        
+        for s_idx, a_info in enumerate(agents_by_seat):
+            a_id = a_info.get("league_agent_id")
+            if a_id not in allowed_agents:
+                raise ValueError(f"fail-closed: replay {doc_hash} seat {s_idx} agent {a_id!r} not in allowed generators {allowed_agents}")
+            pol_ver = a_info.get("policy_version")
+            if pol_ver != "m07-v1":
+                raise ValueError(f"fail-closed: replay {doc_hash} seat {s_idx} policy_version {pol_ver!r} != 'm07-v1'")
 
         # Check result ranks
         result = r.get("result", {})
@@ -314,18 +340,26 @@ def materialize_m25_dataset(
             raise ValueError(f"fail-closed: replay {doc_hash} missing or invalid result.ranks: {ranks}")
 
         replay_by_doc_hash[doc_hash] = {
-            "game_index": seed_idx,
+            "game_index": match_idx,
+            "evaluation_match_index": match_idx,
+            "seed_index": seed_idx,
+            "rotation": rotation,
             "game_seed": game_seed,
             "replay_document_hash": doc_hash,
             "ranks": [int(ranks[0]), int(ranks[1])],
             "replay": r,
         }
 
-    if len(seen_seed_indices) != expected_games:
-        missing = set(range(expected_games)) - seen_seed_indices
-        raise ValueError(f"fail-closed: missing {len(missing)} seed_indices (e.g. {sorted(list(missing))[:5]})")
+    if len(seen_match_indices) != expected_games:
+        missing = set(range(expected_games)) - seen_match_indices
+        raise ValueError(f"fail-closed: missing {len(missing)} evaluation_match_indices")
 
-    # 4. Strict index of search targets by (source_id, ply, actor)
+    for s_idx in range(expected_seeds_count):
+        rots = seed_rotations_seen.get(s_idx, set())
+        if rots != {0, 1}:
+            raise ValueError(f"fail-closed: seed_index {s_idx} rotations {rots} != {{0, 1}}")
+
+    # 5. Strict index of search targets by (source_id, ply, actor)
     target_index: dict[tuple[str, int, int], dict[str, Any]] = {}
     for tgt in search_targets.get("targets", []):
         source_id = tgt.get("source_id")
@@ -341,7 +375,7 @@ def materialize_m25_dataset(
             raise ValueError(f"fail-closed: duplicate search target key: {key}")
         target_index[key] = tgt
 
-    # 5. Materialize examples strictly
+    # 6. Materialize examples strictly
     examples_out = []
     seen_examples = set()
     matched_target_keys = set()
@@ -401,6 +435,9 @@ def materialize_m25_dataset(
 
         examples_out.append({
             "game_index": r_info["game_index"],
+            "evaluation_match_index": r_info["evaluation_match_index"],
+            "seed_index": r_info["seed_index"],
+            "rotation": r_info["rotation"],
             "game_seed": r_info["game_seed"],
             "source_id": str(source_id),
             "replay_document_hash": doc_hash,
@@ -421,6 +458,9 @@ def materialize_m25_dataset(
 
     games_out = [{
         "game_index": info["game_index"],
+        "evaluation_match_index": info["evaluation_match_index"],
+        "seed_index": info["seed_index"],
+        "rotation": info["rotation"],
         "game_seed": info["game_seed"],
         "replay_document_hash": info["replay_document_hash"],
         "result": info["replay"]["result"],

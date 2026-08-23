@@ -29,8 +29,11 @@ use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner};
 use splendor_replay::verify_replay;
 
 use crate::atomic_output;
-use splendor_agent::{run_heuristic_agent, run_random_agent};
-use splendor_determinization_agent::run_determinization_agent_v1;
+use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
+use splendor_determinization_agent::{
+    run_determinization_agent_with_identity_v1, DETERMINIZATION_AGENT_NAME,
+    DETERMINIZATION_AGENT_VERSION,
+};
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
@@ -99,6 +102,8 @@ Options:
   --sample-count <u16>     Number of determinizations, 1..=64 (required).
   --max-depth-turns <u8>   MaxN continuation depth, 1..=12 (required).
   --max-nodes <u64>        MaxN node budget, 1..=10000000 (required).
+  --runtime-name <str>     Optional custom runtime name reported in handshake.
+  --runtime-version <str>  Optional custom runtime version reported in handshake.
   -h, --help               Print this help and exit 0.";
 
 const AGENT_ISMCTS_USAGE: &str = "\
@@ -517,8 +522,8 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let config = match parse_agent_determinization_args(args) {
-        Ok(config) => config,
+    let (config, runtime_name, runtime_version) = match parse_agent_determinization_args(args) {
+        Ok(parsed) => parsed,
         Err(msg) => {
             let mut stderr = io::stderr().lock();
             let _ = writeln!(stderr, "error: {msg}");
@@ -534,7 +539,16 @@ pub fn agent_determinization(args: &[String]) -> i32 {
     let stderr = io::stderr();
     let diagnostics = stderr.lock();
 
-    match run_determinization_agent_v1(input, output, diagnostics, config) {
+    match run_determinization_agent_with_identity_v1(
+        input,
+        output,
+        diagnostics,
+        config,
+        AgentIdentity {
+            name: &runtime_name,
+            version: &runtime_version,
+        },
+    ) {
         Ok(()) => 0,
         Err(_) => 1,
     }
@@ -744,11 +758,13 @@ fn parse_agent_random_args(args: &[String]) -> Result<u64, String> {
 
 fn parse_agent_determinization_args(
     args: &[String],
-) -> Result<RootDeterminizationConfigV1, String> {
+) -> Result<(RootDeterminizationConfigV1, String, String), String> {
     let mut sample_seed: Option<String> = None;
     let mut sample_count: Option<String> = None;
     let mut max_depth_turns: Option<String> = None;
     let mut max_nodes: Option<String> = None;
+    let mut runtime_name: Option<String> = None;
+    let mut runtime_version: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -757,6 +773,8 @@ fn parse_agent_determinization_args(
             "--sample-count" => set_flag(&mut sample_count, arg, args.get(i + 1))?,
             "--max-depth-turns" => set_flag(&mut max_depth_turns, arg, args.get(i + 1))?,
             "--max-nodes" => set_flag(&mut max_nodes, arg, args.get(i + 1))?,
+            "--runtime-name" => set_flag(&mut runtime_name, arg, args.get(i + 1))?,
+            "--runtime-version" => set_flag(&mut runtime_version, arg, args.get(i + 1))?,
             other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         }
@@ -767,15 +785,21 @@ fn parse_agent_determinization_args(
     let sample_count = parse_required_number::<u16>(sample_count, "--sample-count", "u16")?;
     let max_depth_turns = parse_required_number::<u8>(max_depth_turns, "--max-depth-turns", "u8")?;
     let max_nodes = parse_required_number::<u64>(max_nodes, "--max-nodes", "u64")?;
+    let runtime_name = runtime_name.unwrap_or_else(|| DETERMINIZATION_AGENT_NAME.to_string());
+    let runtime_version = runtime_version.unwrap_or_else(|| DETERMINIZATION_AGENT_VERSION.to_string());
 
-    Ok(RootDeterminizationConfigV1 {
-        sample_seed,
-        sample_count,
-        continuation_search: SearchConfigV1 {
-            max_depth_turns,
-            max_nodes,
+    Ok((
+        RootDeterminizationConfigV1 {
+            sample_seed,
+            sample_count,
+            continuation_search: SearchConfigV1 {
+                max_depth_turns,
+                max_nodes,
+            },
         },
-    })
+        runtime_name,
+        runtime_version,
+    ))
 }
 
 fn parse_agent_ismcts_args(args: &[String]) -> Result<IsmctsConfigV1, String> {

@@ -6,7 +6,7 @@ REVISION = m07-search-teacher-bootstrap-v2
 STATUS = PREREGISTERED / WAITING_REVIEW
 BASELINE_COMMIT = 140ef8248df029a32bcf6d34db436351563fa28c
 CONFIG = benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json
-CONFIG_SHA256 = 6fb0acd30cd1194ac02e6c200831b1e77033ca23bb80941e3bcf6b7ae7fb4de0
+CONFIG_SHA256 = bf13f32bc5eabf1b30795230057b6af68ce14b5cd23c8f526d635e054b3ee250
 HOLDOUT = benchmarks/m24-s2-2002-audit-holdout.json
 HOLDOUT_SHA256 = 331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8
 SINGLE_VARIABLE = supervision_source_and_trajectory
@@ -39,9 +39,9 @@ $$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets (10% floor)} + 
 ## Pre-registered experimental design
 
 ### 1. Dataset generation
-- **Generator**: `m07-determinization-champion` playing self-play matches in 2-player base rules.
-- **Volume**: Exactly 256 games (`20260825..20261080`, `~15,000 - 16,000` decision plies).
-- **Split**: Disjoint by game: `game_index % 4 == 0` (64 validation games), remaining (192 train games).
+- **Generator**: `m07-determinization-champion` playing self-play matches in 2-player base rules via two canonical identity aliases (`m07-bootstrap-a` vs `m07-bootstrap-b`, sharing the identical `DeterminizationAgentPolicyV1` / search configuration).
+- **Volume**: Exactly 256 games (128 distinct seeds `20260825..20260952` $\times$ 2 seat rotations, `~15,000 - 16,000` decision plies).
+- **Split**: Disjoint by seed group: `seed_index % 4 == 0` (32 seeds $\times$ 2 rotations = 64 validation games), remaining (96 seeds $\times$ 2 rotations = 192 train games). Both rotations of each seed remain in the same split to eliminate trajectory leakage.
 - **Supervision Target**:
   - **Policy**: Soft search distribution computed by frozen M07 determinization search (`sample_seed=20260810, sample_count=4, max_depth_turns=1, max_nodes=2000, uniform_floor_micros=100000`).
   - **Value**: Viewer-relative terminal rank outcome ($[1.0 - \text{rank}_{\text{actor}}, 1.0 - \text{rank}_{1-\text{actor}}]$); 2P matches are typically $[1.0, 0.0]$ / $[0.0, 1.0]$, and an exact tie is legally $[1.0, 1.0]$.
@@ -132,12 +132,12 @@ G1 PASS and G2 PASS and G3 PASS
 - **P2-2 (Value Target Documentation)**: Documented exact tie value target $[1.0, 1.0]$.
 
 ### Repair 3B (2026-08-22)
-- **P1 (Canonical TrainingDatasetV1 Schema Alignment)**:
-  - Aligned M25 Materializer to take Rust `TrainingDatasetV1` (`replays[]` + `examples[]`) directly as the replay provenance authority, eliminating synthetic hybrid schemas.
-  - Removed requirement for upstream `TrainingExampleV1` to carry synthetic `game_index` (which does not exist in Rust `TrainingExampleV1`).
-  - Derived `game_index` strictly from `example.replay_document_hash -> replay.seed_index` and derived `game_seed` from `config.dataset.game_seeds[seed_index]`.
-  - Strictly asserted `seed_index` set equals $\{0..255\}$ with exactly 256 games.
-  - Validated both seats from canonical `TrainingReplayV1.agents_by_seat[*].league_agent_id == "m07-determinization-champion"`.
-  - Updated Materializer CLI to take `--training-dataset`, `--search-targets`, `--config`, and `--out`.
-  - Updated unit and E2E smoke tests with canonical `TrainingDatasetV1` fixtures and seed_index / agents_by_seat tamper checks.
+- **P1 (Canonical TrainingDatasetV1 Schema Alignment)**: Aligned M25 Materializer to take Rust `TrainingDatasetV1` (`replays[]` + `examples[]`) directly as the replay provenance authority, eliminating synthetic hybrid schemas; derived `game_index` from `replay_document_hash -> replay.evaluation_match_index`.
+
+### Canonical Generation Binding (2026-08-22)
+- **1. Determinization Agent Runtime Identity Aliasing**: Added `--runtime-name` and `--runtime-version` CLI flags and `run_determinization_agent_with_identity_v1` to allow executing M07 self-play matches between `m07-bootstrap-a` and `m07-bootstrap-b` under a valid `LeagueManifestV1` without violating agent ID / runtime identity uniqueness invariants. Both aliases share the exact immutable `DeterminizationAgentPolicyV1` / M07 search mathematics.
+- **2. 128 Seeds $\times$ 2 Rotations Schedule**: Pre-registered 128 distinct seeds (`20260825..20260952`) with 2 seat rotations per seed, producing exactly 256 games.
+- **3. Seed-Group Split (96/32 Seeds = 192/64 Games)**: Split assigned by `seed_index % 4 == 0` (32 validation seeds $\times$ 2 rotations = 64 validation games; 96 train seeds $\times$ 2 rotations = 192 train games). Both seat rotations of every seed remain together in the same split to strictly eliminate trajectory leakage.
+- **4. Strict Cross-Binding & Provenance**: Materializer strictly validates cross-binding of `dataset_id`, `league_manifest_hash`, `evaluation_plan_hash`, and `evaluation_report_hash` between `TrainingDatasetV1` and `SearchTeacherTargetSetV1`, and deleted all legacy raw-replays fallback entries.
+- **5. Canonical E2E Smoke & Integration**: Full integration test exercises canonical 128 seeds $\times$ 2 rotations `TrainingDatasetV1` $\to$ `materialize_m25_dataset` $\to$ cache $\to$ trainer $\to$ holdout.
 

@@ -79,12 +79,13 @@ impl AgentPolicy for DeterminizationAgentPolicyV1 {
     }
 }
 
-/// Run the v1 policy over the standard NDJSON Agent SDK runtime.
-pub fn run_determinization_agent_v1<R, W, E>(
+/// Run the v1 policy over the standard NDJSON Agent SDK runtime with custom identity.
+pub fn run_determinization_agent_with_identity_v1<R, W, E>(
     input: R,
     output: W,
     mut diagnostics: E,
     config: RootDeterminizationConfigV1,
+    identity: AgentIdentity<'_>,
 ) -> Result<(), AgentError>
 where
     R: std::io::BufRead,
@@ -100,16 +101,30 @@ where
             return Err(agent_error);
         }
     };
-    run_agent(
+    run_agent(input, output, diagnostics, identity, 0, policy)
+}
+
+/// Run the v1 policy over the standard NDJSON Agent SDK runtime with default identity.
+pub fn run_determinization_agent_v1<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    config: RootDeterminizationConfigV1,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    run_determinization_agent_with_identity_v1(
         input,
         output,
         diagnostics,
+        config,
         AgentIdentity {
             name: DETERMINIZATION_AGENT_NAME,
             version: DETERMINIZATION_AGENT_VERSION,
         },
-        0,
-        policy,
     )
 }
 
