@@ -3,10 +3,12 @@
 ```ini
 MILESTONE = M25
 REVISION = m07-search-teacher-bootstrap-v2
-STATUS = PREREGISTERED / IMPLEMENTATION COMPLETE / WAITING FOR REVIEW
+STATUS = PREREGISTERED / WAITING_REVIEW
 BASELINE_COMMIT = 140ef8248df029a32bcf6d34db436351563fa28c
 CONFIG = benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json
+CONFIG_SHA256 = b2dc22ced176ef2abe27559b0cb2245c8f68f11567795c0da4a8eb6d9618362c
 HOLDOUT = benchmarks/m24-s2-2002-audit-holdout.json
+HOLDOUT_SHA256 = 331654ba370a489053bcf6cd0452d7aa4883b6c64d5db0be757c4a42860f05f8
 SINGLE_VARIABLE = supervision_source_and_trajectory
 TRAINING = HOLD pending source review
 ARENA = NOT_AUTHORIZED
@@ -28,7 +30,7 @@ Historical milestones previously evaluated individual elements in isolation:
 3. **M24 / M28**: Used large datasets (31,505 examples) and modern Entity Mixer (h192/b4, 949k params) with mature GPU training -> corrupted by weak M22 teacher targets.
 
 **M25 synthesizes the valid components together for the first time**:
-$$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets} + \text{Modern Entity Mixer (h192/b4)} + \text{M28 GPU Optimizer Recipe}$$
+$$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets (10% floor)} + \text{Modern Entity Mixer (h192/b4)} + \text{M28 GPU Optimizer Recipe}$$
 
 ## Core research question
 
@@ -38,10 +40,10 @@ $$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets} + \text{Modern
 
 ### 1. Dataset generation
 - **Generator**: `m07-determinization-champion` playing self-play matches in 2-player base rules.
-- **Volume**: 256 games (`~15,000 - 16,000` decision plies).
+- **Volume**: Exactly 256 games (`20260825..20261080`, `~15,000 - 16,000` decision plies).
 - **Split**: Disjoint by game: `game_index % 4 == 0` (64 validation games), remaining (192 train games).
 - **Supervision Target**:
-  - **Policy**: Soft search distribution computed by frozen M07 determinization search (`sample_seed=20260810, sample_count=4, max_depth_turns=1, max_nodes=2000`).
+  - **Policy**: Soft search distribution computed by frozen M07 determinization search (`sample_seed=20260810, sample_count=4, max_depth_turns=1, max_nodes=2000, uniform_floor_micros=100000`).
   - **Value**: Viewer-relative terminal game outcome ([1.0, 0.0]) or ([0.0, 1.0]).
 
 ### 2. Model contract
@@ -51,13 +53,14 @@ $$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets} + \text{Modern
 - **Dropout**: 0.0
 - **Interaction Blocks**: 0 (no contextual block mutations)
 - **Parameters**: Exactly 949,060 parameters
-- **Initialization**: Fresh random seed (no checkpoint inheritance)
+- **Initialization**: Fresh random seed `280229` (no checkpoint inheritance)
 
 ### 3. Training contract
 - **Optimizer**: AdamW (learning rate `1e-4`, weight decay `1e-4`, gradient clip norm `1.0`)
 - **Batch Size**: 128
 - **Epochs**: 32
 - **Value Loss Weight**: 0.5
+- **Best Epoch Selection**: `policy_cross_entropy + 0.5 * value_mse` on M07 validation games only.
 - **Deterministic Flags**: `CUBLAS_WORKSPACE_CONFIG=:4096:8`, `torch.use_deterministic_algorithms(True)`
 - **Thermal Safety**: Sensor-specific bounds with fail-closed background polling.
 
@@ -66,14 +69,14 @@ $$\text{Strong M07 Trajectories} + \text{Soft M07 Search Targets} + \text{Modern
 ### G1 — Held-out M07 Teacher Fit
 - **Requirement**: On the 64 unobserved validation games:
   - Validation Policy Top-1 (\ge 45.00\%) (exceeding historical M17 baseline 36.91%).
-  - Policy Cross-Entropy relative improvement vs legal uniform (\ge 1000) bps (10.00%).
+  - Policy Cross-Entropy relative improvement vs legal uniform (\ge 1000) bps (10.00%), where (CE_{uniform} = \frac{1}{N}\sum_i \log |A_i|).
 
 ### G2 — Cross-Distribution M07 Agreement
-- **Requirement**: Evaluated in zero-shot raw forward inference over the frozen 2,002-position audit holdout (`benchmarks/m24-s2-2002-audit-holdout.json`):
+- **Requirement**: Evaluated in zero-shot raw forward inference over the frozen 2,002-position audit holdout (`benchmarks/m24-s2-2002-audit-holdout.json`, SHA256 `331654ba370a...`):
   - Top-1 Agreement with M07 (\ge 38.00\%) (an absolute gain of (\ge +10\%) over M22's baseline 28.07%).
 
 ### G3 — Value Non-Collapse
-- **Requirement**: Held-out validation Value MSE (\le 1.02 \times \text{empirical outcome baseline MSE}).
+- **Requirement**: Held-out validation Value MSE (\le 1.02 \times \text{empirical training outcome prior baseline MSE}), where the baseline MSE is computed by evaluating the constant training-mean outcome vector against validation targets.
 
 ### Decision tree
 

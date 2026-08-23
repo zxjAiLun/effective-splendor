@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M24-S2 TEACHER / TARGET QUALITY AUDIT
-STATUS = AUDIT COMPLETED / SCIENTIFIC DIRECTION ACCEPTED / PERSISTED
+STATUS = PENDING_INDEPENDENT_REVIEW
 BASELINE_COMMIT = 140ef8248df029a32bcf6d34db436351563fa28c
 RESULT_ARTIFACT = benchmarks/m24-s2-teacher-target-quality-audit-v1.result.json
 HOLDOUT_FIXTURE = benchmarks/m24-s2-2002-audit-holdout.json
@@ -22,15 +22,15 @@ This diagnostic audit evaluates the hypothesis that the 16-simulation search vis
 
 ## Audit methodology
 
-- **Sample**: 32 complete games (2,002 decision plies) sampled from the M24-S2 dataset.
+- **Sample**: Deterministic first-32-game audit sample (2,002 decision plies) from the M24-S2 dataset (`ddf8575af6ad...`).
 - **Evaluator**: Frozen M07 determinization champion (`sample_seed=20260810, sample_count=4, max_depth_turns=1, max_nodes=2000`), executed over the exact player-view information sets via `analyze-replay-determinization`.
 - **Metrics**:
-  - Top-1 agreement between M22 prior and 16-sim search target: P(M22 = Search)
-  - Agreement with strong M07 reference: P(M22 = M07) vs P(Search = M07)
-  - Useful correction rate: P(Search = M07 and M22 != M07)
-  - Harmful correction rate: P(M22 = M07 and Search != M07)
-  - Net improvement rate: Useful - Harmful
-  - 95% Confidence Intervals computed via 10,000 game-cluster block-bootstrap iterations.
+  - Top-1 agreement between M22 prior and 16-sim search target: \(P(\text{M22} = \text{Search})\)
+  - Agreement with strong M07 reference: \(P(\text{M22} = \text{M07})\) vs \(P(\text{Search} = \text{M07})\)
+  - Useful correction rate: \(P(\text{Search} = \text{M07} \land \text{M22} \neq \text{M07})\)
+  - Harmful correction rate: \(P(\text{M22} = \text{M07} \land \text{Search} \neq \text{M07})\)
+  - Net improvement rate: \(\text{Useful} - \text{Harmful}\)
+  - 95% Confidence Intervals computed via 10,000 game-cluster block-bootstrap iterations (seed `20260822`).
 
 ## Empirical results
 
@@ -52,19 +52,35 @@ M07 Probability Mass (Search)    25.71%              [24.31%, 27.11%]           
 
 ### Strata breakdown
 
-- **Early Game (Ply 0–15, N=512)**: M22/Search agreement is **93.9%**. M22/M07 agreement is **22.9%**; Search/M07 agreement is **23.0%** (Net improvement +0.2%).
-- **Mid Game (Ply 16–35, N=640)**: M22/Search agreement is **91.7%**. M22/M07 agreement is **27.5%**; Search/M07 agreement is **28.4%** (Net improvement +0.9%).
-- **Late Game (Ply 36+, N=850)**: M22/Search agreement is **91.1%**. M22/M07 agreement is **31.6%**; Search/M07 agreement is **32.2%** (Net improvement +0.6%).
-- **High-Entropy Decisions (H >= 1.0 nats, N=1174)**: M22/M07 agreement is only **14.5%**; Search/M07 is **15.3%** (Net +0.9%).
+1. **Game Phase**:
+   - **Early Game (Ply 0–15, N=512)**: M22/Search agreement is **93.9%**. M22/M07 agreement is **22.9%**; Search/M07 agreement is **23.0%** (Net improvement +0.2%).
+   - **Mid Game (Ply 16–35, N=640)**: M22/Search agreement is **91.7%**. M22/M07 agreement is **27.5%**; Search/M07 agreement is **28.4%** (Net improvement +0.9%).
+   - **Late Game (Ply 36+, N=850)**: M22/Search agreement is **91.1%**. M22/M07 agreement is **31.6%**; Search/M07 agreement is **32.2%** (Net improvement +0.6%).
+
+2. **Branching Factor (Legal Actions Count)**:
+   - **Low (<= 15 legal actions, N=805)**: M22/Search 93.3%, M22/M07 34.3%, Search/M07 35.2% (Net +0.9%).
+   - **Medium (16–30 legal actions, N=947)**: M22/Search 91.2%, M22/M07 20.9%, Search/M07 21.4% (Net +0.5%).
+   - **High (> 30 legal actions, N=250)**: M22/Search 90.8%, M22/M07 35.2%, Search/M07 35.2% (Net +0.0%).
+
+3. **Search Uncertainty (Entropy)**:
+   - **Low Entropy (< 1.0 nats, N=828)**: M22/Search 98.8%, M22/M07 47.3%, Search/M07 47.6% (Net +0.2%).
+   - **High Entropy (>= 1.0 nats, N=1174)**: M22/Search 87.2%, M22/M07 14.5%, Search/M07 15.3% (Net +0.9%).
+
+4. **Action Category (Mutually Exclusive by M07 Recommended Action)**:
+   - **Take Tokens (N=907)**: M22/Search 90.7%, M22/M07 20.0%, Search/M07 21.0% (Net +1.0%).
+   - **Purchase Card (N=680)**: M22/Search 93.6%, M22/M07 38.4%, Search/M07 39.0% (Net +0.6%).
+   - **Reserve Card (N=409)**: M22/Search 92.7%, M22/M07 23.3%, Search/M07 23.1% (Net -0.2%).
+   - **Choose Noble (N=6)**: M22/Search 100.0%, M22/M07 100.0%, Search/M07 100.0% (Net +0.0%).
+   - Total action strata count = 907 + 680 + 409 + 6 = 2,002.
 
 ## Key findings and diagnosis
 
-1. **Weak Prior Inertia (92.0% Top-1 Pass-through)**: In 92% of positions, 16-simulation search does not overturn M22's argmax choice.
-2. **Negligible Strong-Reference Alignment (+0.6% Net Gain)**: Search modifies M22 in 8% of positions, but only 1.35% are useful corrections towards M07 while 0.75% are harmful regressions.
+1. **Weak Prior Inertia (92.01% Top-1 Pass-through)**: In 92.01% of positions [90.72%, 93.27%], 16-simulation search does not overturn M22's argmax choice.
+2. **Negligible Strong-Reference Alignment (+0.60% Net Gain)**: Search modifies M22 in 7.99% of positions, but only 1.35% are useful corrections towards M07 while 0.75% are harmful regressions.
 3. **Consistency with Prior Milestone Outcomes**: The audit is highly consistent with the hypothesis that weak priors limit search improvement and provides a unified explanation for M27A's lack of stable search-budget rescue, without claiming a proven causal mechanism.
 
 ## Scientific decision
 
 - **M24-S2 Architecture Scaling**: `STOP`. Further capacity or interaction modifications on the M24-S2 dataset are terminated.
 - **Next Authorized Step**: `M25 M07-Search-Teacher Bootstrap v2` is authorized for specification and tooling integration.
-- **External Holdout**: The 2,002 audited positions are frozen in `benchmarks/m24-s2-2002-audit-holdout.json` as an external cross-distribution benchmark for M25 evaluation.
+- **External Holdout**: The 2,002 audited positions are frozen in `benchmarks/m24-s2-2002-audit-holdout.json` (`SHA256: 331654ba370a...`) as an external cross-distribution benchmark for M25 evaluation.
