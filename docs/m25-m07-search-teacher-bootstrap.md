@@ -78,6 +78,7 @@ M25 established a 6-phase end-to-end pipeline:
 - **2026-08-23 Recovery Exp C (Contextual Interaction Probe)**: Val CE = 2.8866, Top-1 = 32.22% (+0.4137 nats excess CE), ruling out generic pairwise observation interaction.
 - **2026-08-23 Recovery Exp D2 (Exact Transition Delta Probe)**: Fixed reserve gold/token return rules and noble VP triggers. Achieved Val CE = 2.8177 (-0.0702 nats vs Exp A), Top-1 = 38.42% (+6.54 pp vs Exp A), confirming action-conditioned transition coupling as a strong signal.
 - **2026-08-23 Recovery Exp E (h320 + Exact Transition Delta)**: Completed the 2x2 matrix. Achieved Val CE = 2.8157, Top-1 = 38.47% (869 bps CE impr). Since G1 (45.0% / 1000 bps) was not reached and width scaling delivered no meaningful gain over h192 (+0.0020 nats / +0.05 pp), formal decision concluded: `STOP_WIDTH_SCALING_TRANSITION_TO_OBJECTIVE_V2`.
+- **2026-08-23 Recovery Exp F (De-floored Advantage Distillation)**: Trained h192+D2 on exact de-floored advantage distribution (100,000 micros floor subtracted and re-normalized) while evaluating against original frozen soft targets. Achieved Best Epoch 11, Val CE = 2.8232 (Exc +0.3503 nats), Top-1 = 38.66% (845 bps CE impr), Train CE = 2.7872 (Top-1 39.39%). G1 (45.0% / 1000 bps) not reached; de-floored training slightly sharpens predictions (+0.25 pp Top-1) but slightly increases cross-entropy (+0.0054 nats) on the uniform floor tail.
 
 ## Final implementation
 
@@ -93,6 +94,8 @@ M25 established a 6-phase end-to-end pipeline:
 | Recovery Exp C Result | `benchmarks/m25-recovery-exp-c.result.json` | Full data contextual interaction probe |
 | Recovery Exp D2 Result | `benchmarks/m25-recovery-exp-d2.result.json` | Exact action-delta probe (h192) |
 | Recovery Exp E Result | `benchmarks/m25-recovery-exp-e.result.json` | Exact action-delta probe (h320) |
+| Recovery Exp F Result | `benchmarks/m25-recovery-exp-f.result.json` | De-floored advantage distillation (h192) |
+| Checkpoint Exp F | `local-artifacts/m25-recovery-exp-f/checkpoint.pt` | `0246ff99140060f8e81f108ed33efa726c2a54c9302db8804dcbc8b340e7bc06` |
 | Checkpoint Exp D2 | `local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt` | `113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17` |
 | Checkpoint Exp E | `local-artifacts/m25-recovery-exp-e/checkpoint.pt` | `b81c95f6260137d4686f2ec0c9d7ca505c8dd452052dcf1cbb867332128b9f53` |
 | Materialized Dataset | `local-artifacts/m25-generation/m25-materialized-dataset.json` | File SHA: `2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5f171f1e1f05907`<br>Semantic Hash: `1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419` |
