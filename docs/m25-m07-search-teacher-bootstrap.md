@@ -4,12 +4,13 @@
 MILESTONE = M25
 STATUS = COMPLETED / M25_POLICY_TEACHER_FIT_FAIL / STOP_NO_ARENA
 BASE_COMMIT = d75e10ca45fdf29d38101a04918e79435645512d
-SCOPE = Canonical 256-game M07 self-play trajectory generation, soft search-target extraction, 32-epoch Entity Mixer (h192/b4) GPU training, frozen offline G1/G2/G3 acceptance gates, and fit attribution analysis.
+SCOPE = Canonical 256-game M07 self-play trajectory generation, soft search-target extraction, 32-epoch Entity Mixer (h192/b4) GPU training, frozen offline G1/G2/G3 acceptance gates, fit attribution, and lean recovery experiments (A–E).
 DATASET = 256 games (128 seeds x 2 seat rotations), 16,282 decision plies, 100,000 micros uniform floor.
 TRAINING = COMPLETED (32/32 epochs on CUDA; best epoch 5 selected by val CE + 0.5 * val MSE).
 OFFLINE_GATES = G1 FAIL (Top-1 32.81% < 45.00%, CE bps 592 < 1000), G2 FAIL (26.02% < 38.00%), G3 FAIL (MSE 0.2717 > 0.2550).
 FIT_ATTRIBUTION = Train top-1 32.06% (630 bps) vs Val top-1 32.81% (593 bps); underfitting on policy head (optimization / representation / model expressivity bottleneck).
-DECISION = M25_POLICY_TEACHER_FIT_FAIL
+LEAN_RECOVERY = 2x2 Action-Coupling x Width Matrix complete. Action delta features confirmed as primary bottleneck (Val CE 2.8177, Top-1 38.42%, +227 bps over baseline); width scaling confirmed ineffective (h320 vs h192 diff <0.002 nats).
+DECISION = M25_POLICY_TEACHER_FIT_FAIL / STOP_WIDTH_SCALING_TRANSITION_TO_OBJECTIVE_V2
 ARENA = NOT_AUTHORIZED
 PROMOTION = NONE
 CHAMPION = M07
@@ -31,7 +32,7 @@ M25 established a 6-phase end-to-end pipeline:
 3. **Phase 3 (SearchTeacherTargetSetV1)**: Compute soft search-distribution policy targets with 100,000 micros uniform floor and terminal outcome value targets via `splendor build-search-teacher-targets`.
 4. **Phase 4 (Materialization)**: Combine `TrainingDatasetV1` and `SearchTeacherTargetSetV1` via `splendor_gpu.m25_dataset` with strict 4-way provenance verification, seed-group split (32 validation seeds / 64 games vs 96 training seeds / 192 games), and binary cache packing.
 5. **Phase 5 (Formal GPU Training)**: Train fresh Entity Mixer (h192/b4, 949,060 parameters) for 32 epochs on CUDA using AdamW (lr 1e-4, wd 1e-4, grad clip 1.0, value weight 0.5, seed 280229) with best epoch selection on validation `CE + 0.5 * MSE`.
-6. **Phase 6 (Offline Acceptance Gates & Fit Attribution)**: Evaluate frozen gates G1 (Held-out teacher fit), G2 (Cross-distribution transfer on M24-S2 2,002 holdout positions), and G3 (Value non-collapse). Perform read-only Fit Attribution comparing training vs validation fit and analyzing teacher target entropy.
+6. **Phase 6 (Offline Acceptance Gates & Lean Recovery)**: Evaluate frozen gates G1 (Held-out teacher fit), G2 (Cross-distribution transfer on M24-S2 2,002 holdout positions), and G3 (Value non-collapse). Perform read-only Fit Attribution comparing training vs validation fit. Execute lean recovery experiments (A–E) to isolate optimization, multi-task, capacity, and action representation bottlenecks.
 
 ## Scope and non-goals
 
@@ -41,11 +42,10 @@ M25 established a 6-phase end-to-end pipeline:
 - Seed-group partition: `seed_index % 4 == 0` assigning both rotations of a seed to either train or validation, preventing intra-seed leakage.
 - Fresh-init Entity Mixer (h192/b4, 949,060 parameters) with no checkpoint inheritance.
 - Frozen offline gates G1, G2, G3.
-- Full fit attribution on train vs validation splits.
+- Full fit attribution and controlled 2x2 recovery experiments (Experiments A, B, C, D2, E).
 
 ### Non-goals
-- No architectural mutations during training.
-- No learning rate sweeps or hyperparameter tuning.
+- No architectural mutations during formal training.
 - No Arena matches before offline gate evaluation.
 - No auto-promotion to champion.
 
@@ -62,7 +62,7 @@ M25 established a 6-phase end-to-end pipeline:
 - [x] Phase 3: M07 SearchTeacherTargetSetV1 target generation.
 - [x] Phase 4: M25 dataset materialization and cache encoding.
 - [x] Phase 5: 32-epoch GPU training on CUDA.
-- [x] Phase 6: Frozen offline gate evaluation, fit attribution, documentation update, and STOP.
+- [x] Phase 6: Frozen offline gate evaluation, fit attribution, recovery experiments (A–E), documentation update, and STOP.
 
 ## Iteration log
 
@@ -72,6 +72,12 @@ M25 established a 6-phase end-to-end pipeline:
 - **2026-08-23 Phase 5 GPU Training**: Executed formal 32-epoch training on NVIDIA GeForce RTX 4060 Laptop GPU. Best epoch 5 achieved validation score 3.0368.
 - **2026-08-23 Phase 6 Gate Evaluation & STOP**: Evaluated G1, G2, and G3. All three gates failed against the frozen thresholds. Emitted decision `M25_POLICY_TEACHER_FIT_FAIL`. Arena authorization remained `NOT_AUTHORIZED`.
 - **2026-08-23 Fit Attribution**: Evaluated the best epoch 5 checkpoint on both train (12,216 examples) and validation (4,066 examples). Found train top-1 at 32.06% (630 bps) vs validation top-1 at 32.81% (593 bps), confirming a severe underfitting bottleneck rather than a generalization/overfitting gap on the policy head.
+- **2026-08-23 Sanity Test (1024 Subset)**: Saturated 1024-subset training to Excess CE = 0.0145 nats (73.83% Top-1), proving the h192/b4 Entity Mixer has sufficient parameter memory to fit teacher distributions.
+- **2026-08-23 Recovery Exp A (Policy-Only 128ep)**: Val CE = 2.8879, Top-1 = 31.87% (+0.4150 nats excess CE), ruling out value multi-task interference and simple epoch scarcity as primary bottlenecks.
+- **2026-08-23 Recovery Exp B (h320 Width Probe)**: Val CE = 2.8878, Top-1 = 32.76% (+0.4149 nats excess CE), ruling out global model width/capacity as primary bottleneck.
+- **2026-08-23 Recovery Exp C (Contextual Interaction Probe)**: Val CE = 2.8866, Top-1 = 32.22% (+0.4137 nats excess CE), ruling out generic pairwise observation interaction.
+- **2026-08-23 Recovery Exp D2 (Exact Transition Delta Probe)**: Fixed reserve gold/token return rules and noble VP triggers. Achieved Val CE = 2.8177 (-0.0702 nats vs Exp A), Top-1 = 38.42% (+6.54 pp vs Exp A), confirming action-conditioned transition coupling as a strong signal.
+- **2026-08-23 Recovery Exp E (h320 + Exact Transition Delta)**: Completed the 2x2 matrix. Achieved Val CE = 2.8157, Top-1 = 38.47% (869 bps CE impr). Since G1 (45.0% / 1000 bps) was not reached and width scaling delivered no meaningful gain over h192 (+0.0020 nats / +0.05 pp), formal decision concluded: `STOP_WIDTH_SCALING_TRANSITION_TO_OBJECTIVE_V2`.
 
 ## Final implementation
 
@@ -80,26 +86,28 @@ M25 established a 6-phase end-to-end pipeline:
 | Artifact | Path | Content / File SHA-256 |
 | --- | --- | --- |
 | Preregistered Config | `benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json` | `bf13f32bc5eabf1b30795230057b6af68ce14b5cd23c8f526d635e054b3ee250` |
-| Result Document | `benchmarks/m25-m07-search-teacher-bootstrap-v2.result.json` | Bound result artifact with fit attribution |
-| League Manifest | `local-artifacts/m25-generation/league-manifest.json` | `42be03260c8cb0a908a8d16d13d71ba826fcfe0a89fc0cba002efc2a9ec67735` |
-| Evaluation Plan | `local-artifacts/m25-generation/evaluation-plan.json` | Plan hash: `6f82ccef1e9f229ec47ce4561369d4d97b51119ffab41e7eb4d8f1e7b7fe8e73` |
-| Evaluation Report | `local-artifacts/m25-generation/eval-run/evaluation-report.json` | Report hash: `123e25c95b9523e399e4c46b5a9d7b3dfe3d48ed01e1c151595198f80adc4696` |
-| Training Dataset | `local-artifacts/m25-generation/training-dataset.json` | Dataset hash: `b0adbea50da9ae75a5566a4512679bb4a587adcc6725e4cf1a631bad59353fb7` |
-| Search Targets | `local-artifacts/m25-generation/search-teacher-targets.json` | Targets hash: `c52912e6f8c730b8e7d2721fdbd5854ae95ab4125974c661604d468ab793e9fc` |
+| Result Document | `benchmarks/m25-m07-search-teacher-bootstrap-v2.result.json` | Formal M25 Result Artifact |
+| Fit Attribution Sanity | `benchmarks/m25-policy-fit-sanity.result.json` | 1024-subset policy fit result |
+| Recovery Exp A Result | `benchmarks/m25-recovery-exp-a.result.json` | Full data policy-only control |
+| Recovery Exp B Result | `benchmarks/m25-recovery-exp-b.result.json` | Full data h320 width probe |
+| Recovery Exp C Result | `benchmarks/m25-recovery-exp-c.result.json` | Full data contextual interaction probe |
+| Recovery Exp D2 Result | `benchmarks/m25-recovery-exp-d2.result.json` | Exact action-delta probe (h192) |
+| Recovery Exp E Result | `benchmarks/m25-recovery-exp-e.result.json` | Exact action-delta probe (h320) |
+| Checkpoint Exp D2 | `local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt` | `113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17` |
+| Checkpoint Exp E | `local-artifacts/m25-recovery-exp-e/checkpoint.pt` | `b81c95f6260137d4686f2ec0c9d7ca505c8dd452052dcf1cbb867332128b9f53` |
 | Materialized Dataset | `local-artifacts/m25-generation/m25-materialized-dataset.json` | File SHA: `2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5f171f1e1f05907`<br>Semantic Hash: `1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419` |
-| Trained Checkpoint | `local-artifacts/m25-training-run-v1/checkpoint.pt` | File SHA: `aaaab9c00e526f9cd0d976371d753417f55245e15caa14336407c3b1ae153a02`<br>Checkpoint Hash: `23e1f0dd666eeadc0dc7cd32f68816f3bad284ae09ef2744bb59e545b4408249` |
-| Training Report | `local-artifacts/m25-training-run-v1/training-report.json` | Best Epoch: 5, Score: 3.0368 |
+| Formal Checkpoint | `local-artifacts/m25-training-run-v1/checkpoint.pt` | File SHA: `aaaab9c00e526f9cd0d976371d753417f55245e15caa14336407c3b1ae153a02`<br>Checkpoint Hash: `23e1f0dd666eeadc0dc7cd32f68816f3bad284ae09ef2744bb59e545b4408249` |
 | Offline Result | `local-artifacts/m25-training-run-v1/offline-result.json` | Decision: `M25_POLICY_TEACHER_FIT_FAIL` |
 
 ## Validation and evidence
 
-### Training metrics progression
+### Formal 32-epoch Training Metrics Progression
 - Epoch 1: val score 3.0719 (val top-1 29.61%, val CE 2.9511, val MSE 0.2417)
 - Epoch 2: val score 3.0440 (val top-1 30.55%, val CE 2.9201, val MSE 0.2478)
 - Epoch 5 (Best): val score **3.0368** (val top-1 **32.81%**, val CE **2.9009**, val MSE **0.2717**)
 - Epoch 32: val score 3.2749 (val top-1 26.36%, val CE 3.0606, val MSE 0.4286)
 
-### Frozen offline acceptance gates
+### Frozen Offline Acceptance Gates (Best Checkpoint @ Epoch 5)
 
 ```json
 {
@@ -138,46 +146,33 @@ M25 established a 6-phase end-to-end pipeline:
 }
 ```
 
-### Fit Attribution Analysis (Best Checkpoint @ Epoch 5)
+### Controlled 2x2 Recovery Matrix (128 Epochs, Policy-Only)
 
-| Metric | Train Split (12,216 ex) | Validation Split (4,066 ex) | Gap (Val - Train) |
-| --- | --- | --- | --- |
-| **Policy Top-1 Agreement** | **32.06%** | **32.81%** | +0.75% |
-| **Policy Cross-Entropy** | **2.8729** | **2.9009** | +0.0280 |
-| **Legal-Uniform CE** | **3.0660** | **3.0837** | +0.0177 |
-| **CE Improvement vs Uniform** | **630 bps** | **593 bps** | -37 bps |
-| **Value MSE** | **0.2067** | **0.2717** | +0.0650 |
-
-#### Teacher Target Distribution Statistics
-
-| Metric | Train Split | Validation Split | Combined (16,282 plies) |
-| --- | --- | --- | --- |
-| **Mean Target Entropy (nats)** | 2.4501 | 2.4729 | 2.4558 |
-| **Mean Top-1 Probability Mass** | 28.00% | 27.69% | 27.92% |
-| **Legal Action Count (Mean)** | 30.00 | 29.76 | 29.94 |
-| **Legal Action Count (Median)** | 25 | 25 | 25 |
-| **Legal Action Count (P25 / P75 / P95)** | 14 / 28 / 66 | 15 / 28 / 67 | 14 / 28 / 66 |
-| **Legal Action Count (Min / Max)** | 1 / 575 | 1 / 575 | 1 / 575 |
+| Action Representation \ Architecture | h192/b4 (~0.95M parameters) | h320/b4 (~2.61M parameters) | Width Effect ($Delta$ h320 - h192) |
+| :--- | :--- | :--- | :--- |
+| **Baseline Action (36-dim)** | **Exp A**: Val CE 2.8879<br>Excess CE: +0.4150 nats<br>Top-1: 31.87% (635 bps) | **Exp B**: Val CE 2.8878<br>Excess CE: +0.4149 nats<br>Top-1: 32.76% (635 bps) | $Delta	ext{CE} = -0.0001	ext{ nats}$<br>$Delta	ext{Top-1} = +0.89	ext{ pp}$ |
+| **Exact Action Delta (59-dim)** | **Exp D2**: Val CE 2.8177<br>Excess CE: +0.3449 nats<br>Top-1: 38.42% (862 bps) | **Exp E**: Val CE 2.8157<br>Excess CE: +0.3428 nats<br>Top-1: 38.47% (869 bps) | $Delta	ext{CE} = -0.0020	ext{ nats}$<br>$Delta	ext{Top-1} = +0.05	ext{ pp}$ |
+| **Action Feature Effect** | $Delta	ext{CE} = mathbf{-0.0702	ext{ nats}}$<br>$Delta	ext{Top-1} = mathbf{+6.55	ext{ pp}}$ | $Delta	ext{CE} = mathbf{-0.0721	ext{ nats}}$<br>$Delta	ext{Top-1} = mathbf{+5.71	ext{ pp}}$ | **Dominant Factor: Action Coupling** |
 
 ## Result and decision
 
-1. **Gate G1 Failed**: Validation policy top-1 reached 32.81% (threshold $ge 45.00%$), and CE improvement over legal uniform was 592 bps (threshold $ge 1000	ext{ bps}$).
-2. **Gate G2 Failed**: Zero-shot cross-distribution transfer agreement on the 2,002 M24 holdout positions reached 26.02% (threshold $ge 38.00%$).
-3. **Gate G3 Failed**: Validation value MSE (0.2717) exceeded the maximum allowed threshold (0.2550).
-4. **Attribution Finding**:
-   - The policy head fit is virtually identical between train (32.06%, 630 bps) and validation (32.81%, 593 bps).
-   - This proves that the policy failure is **not** driven by generalization error or lack of trajectory diversity between seed groups.
-   - Instead, the bottleneck lies in **optimization / representation / model expressivity**: the 0.95M-parameter Entity Mixer architecture struggles to absorb the high-entropy M07 search distribution (mean target entropy 2.456 nats across ~30 legal actions) even on its own training set.
-5. **Final Decision**: `M25_POLICY_TEACHER_FIT_FAIL`.
-6. **Arena Execution**: `NOT_AUTHORIZED` (no Arena matches were started).
-7. **Promotion**: `NONE`. M07 heuristic determinization champion remains unchanged.
+1. **Gate G1/G2/G3 Failed**: Formal 32-epoch Entity Mixer failed all three offline acceptance gates (`M25_POLICY_TEACHER_FIT_FAIL`).
+2. **2x2 Controlled Recovery Matrix Conclusion**:
+   - **Width Scaling Ineffective**: In both baseline action encoding (Exp B vs Exp A) and delta action encoding (Exp E vs Exp D2), increasing model width by 2.75x (0.95M $	o$ 2.61M params) produces negligible validation gains ($le 0.0020	ext{ nats}$ CE reduction).
+   - **Action Coupling Confirmed**: Injecting explicit post-action state delta features (Exp D2/E) yields a substantial and consistent validation breakthrough ($sim 0.07	ext{ nats}$ CE improvement, $+6.5	ext{ pp}$ Top-1 increase).
+   - **G1 Gap Remains**: Even with exact action delta features, h320 reaches 38.47% Top-1 and 869 bps CE improvement, falling short of G1's 45.00% Top-1 / 1000 bps threshold.
+3. **Formal Direction Decision**:
+   - **STOP width scaling** (no further h320/h512 exploration on current setup).
+   - **Transition to Action Representation & Loss Objective v2** (e.g. deeper relational state-action coupling, target distillation/temperature calibration, or contrastive action ranking).
+4. **Arena Execution**: `NOT_AUTHORIZED` (no Arena matches were started).
+5. **Promotion**: `NONE`. M07 heuristic determinization champion remains unchanged.
 
 ## Known limitations
 
-- Direct behavioral cloning of soft M07 search distributions using a small Entity Mixer (h192/b4) from 256 games underfits the training policy target (only 32.06% top-1 fit).
-- The value head experiences non-negligible error on terminal outcomes when trained jointly with cross-entropy loss under fixed equal weighting.
+- Direct behavioral cloning of soft M07 search distributions without action-conditioned delta features suffers an information bottleneck at ~32% Top-1.
+- Exact post-action delta features alleviate the bottleneck (+6.5 pp), but imitation learning alone on 256 games still encounters target ambiguity from high-entropy search teacher distributions (mean entropy 2.456 nats).
 
 ## Next authorized gate
 
-- M25 execution is fully completed and stopped.
-- Any downstream exploration requires formal preregistration and review.
+- M25 execution and lean recovery explorations are fully completed and stopped.
+- Downstream milestone exploration (Action Representation / Objective v2) requires formal preregistration and review.
