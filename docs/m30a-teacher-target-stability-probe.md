@@ -68,7 +68,7 @@ For every position $i \in [0..255]$:
 
 | Artifact | Path | Content / File SHA-256 |
 | --- | --- | --- |
-| Probe Runner | `crates/splendor-cli/src/bin/m30a_probe.rs` | `29f6f1e0887a931ea7e2a44d8df5e509daf5c4529e96f8c7a9578f5c51b0572f` |
+| Probe Runner | `crates/splendor-cli/src/bin/m30a_probe.rs` | `64d9c5c2d3edcd0896dc1099378b93de35ae6a75267a9bc7d8465fb2f25b6920` |
 | Canonical Result Document | `benchmarks/m30a-canonical-teacher-target-stability-probe.result.json` | Full per-position and aggregate results with provenance |
 | Materialized Dataset Reference | `local-artifacts/m25-generation/m25-materialized-dataset.json` | `2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5f171f1e1f05907` |
 | Replay Bundle Digest (256 Matches) | 256 Replays in `local-artifacts/m25-generation/eval-run/matches/` | `0b94f1fe7652807a927c7a5962f192b8d45101164e7107b45802b7549f59e4fb` |
