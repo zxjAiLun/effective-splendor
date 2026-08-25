@@ -497,6 +497,5 @@ if __name__ == "__main__":
     }
 
     out_path = Path("benchmarks/m33a-factorized-policy.result.json")
-    out_path.write_text(json.dumps(out_payload, indent=2) + "
-", encoding="utf-8")
+    out_path.write_text(json.dumps(out_payload, indent=2) + "\n", encoding="utf-8")
     print(f"COMPLETE M33A: Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f}, Val Top1 {final_val['top1']*100:.2f}%, Take Top1 {final_val['take']['exact_top1']*100:.1f}%, Decision: {decision}", flush=True)

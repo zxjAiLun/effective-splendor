@@ -10,15 +10,19 @@ Verifies:
    - Hand-verified Take (3 distinct, 2 same, 1 distinct, gold return), Buy (market & reserved), Reserve (market & deck), Noble, Pass.
 5. Action Decomposition Rules & BuyReserved Entity Alignment:
    - Uses real encode_observation() and verifies BuyReserved maps strictly to active private reserved slots 25..27.
-6. Multi-Batch Multi-Action Diagnostic Evaluator Reference Verification:
-   - Tests evaluate_m33a_diagnostics() over variable-length legal actions, first-max ties, and asserts fail-closed cursor.
+6. Multi-Batch Multi-Action Diagnostic Evaluator Reference Verification & Fail-Closed:
+   - Tests evaluate_m33a_diagnostics() over variable-length legal actions, first-max ties, and hand-calculated metrics.
+   - Tests evaluate_m33a_vectorized_fast() from m33a_train.py matching evaluate_m33a_diagnostics().
+   - Tests fail-closed assertion on length mismatch.
 7. Real Provenance Preflight enforces fail-closed execution.
 """
 import json
+import math
 import tempfile
 from pathlib import Path
 import pytest
 import torch
+import torch.nn as nn
 
 from splendor_gpu.data import load_catalog, catalog_semantic_hash
 from splendor_gpu.encoding import encode_observation, encode_action, ENTITY_SLOTS, ENTITY_FEATURES, GLOBAL_FEATURES
@@ -29,6 +33,7 @@ from splendor_gpu.self_play_train import packed_policy_loss
 from splendor_gpu.m33a_model import FactorizedDeltaEntityMixer, ENHANCED_ACTION_FEATURES
 from splendor_gpu.m33a_encoding import decompose_legal_action
 from splendor_gpu.m33a_eval import evaluate_m33a_diagnostics
+from splendor_gpu.m33a_train import evaluate_m33a_vectorized_fast
 from splendor_gpu.m33a_preflight import (
     preflight_m33a,
     FROZEN_CONFIG_SHA256,
@@ -295,14 +300,34 @@ def test_action_decomposition_rules_and_real_observation_entity_alignment():
     assert d_deck["family_idx"] == 2
     assert d_deck["target_deck_tier"] == 1
 
+class ControlledMockModel(nn.Module):
+    """Deterministic mock model that emits preset logits to rigorously test evaluator arithmetic."""
+    def __init__(self, preset_logits_list):
+        super().__init__()
+        self.preset_logits_list = preset_logits_list
+        self.call_count = 0
+
+    def forward_packed(self, entities, entity_mask, global_features, actions, action_offsets, *args):
+        # Return exact preset slice
+        batch_size = len(action_offsets) - 1
+        sub_logits = self.preset_logits_list[self.call_count:self.call_count + batch_size]
+        self.call_count += batch_size
+        flattened = torch.cat(sub_logits, dim=0)
+        dummy_val = torch.zeros(batch_size, 2, dtype=torch.float32, device=entities.device)
+        return flattened, dummy_val
+
 def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
-    """Verify evaluate_m33a_diagnostics against reference Python calculations across multiple batches."""
+    """Verify evaluate_m33a_diagnostics and evaluate_m33a_vectorized_fast with exact hand-calculated reference values."""
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     catalog = load_catalog(catalog_path)
 
-    # Construct a synthetic multi-sample scenario with variable legal actions and intentional ties
+    # 4 distinct samples covering:
+    # Ex 0 (Take): 3 actions. Target=[0.8, 0.1, 0.1] (idx 0). Pred logits=[5.0, 1.0, 2.0] -> Pred idx 0. Match!
+    # Ex 1 (Buy):  2 actions. Target=[0.5, 0.5] (tied -> first-max idx 0). Pred logits=[3.0, 3.0] (tied -> first-max idx 0). Match!
+    # Ex 2 (Take with Return): 2 actions. Target=[0.9, 0.1] (idx 0, return gold=1). Pred logits=[1.0, 4.0] -> Pred idx 1 (return white=1). Mismatch!
+    # Ex 3 (Reserve Deck): 2 actions. Target=[0.7, 0.3] (idx 0). Pred logits=[2.0, 6.0] -> Pred idx 1 (BuyMarket). Family Mismatch!
     sample_exs = [
-        # Sample 0: Take Tokens (target = Take 3 distinct, pred will choose Take 3 distinct) -> Top-1 match
+        # Ex 0: Take Tokens
         {
             "observation": {
                 "viewer": 0,
@@ -311,8 +336,7 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                     "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
                     "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
                     "consecutive_forced_passes": 0,
-                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
-                    "nobles": [1, 0, 8],
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
                     "players": [
                         {"id": 0, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
                         {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
@@ -321,14 +345,14 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                 "private": {"reserved": []}
             },
             "legal_actions": [
-                {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}},
-                {"type": "take_tokens", "take": {"white": 0, "blue": 0, "green": 0, "red": 2, "black": 0, "gold": 0}},
+                {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}}, # idx 0: white, blue, green
+                {"type": "take_tokens", "take": {"white": 0, "blue": 0, "green": 0, "red": 2, "black": 0, "gold": 0}}, # idx 1: red
                 {"type": "buy_market", "tier": "One", "slot": 0},
             ],
             "policy_target_micros": [800000, 100000, 100000],
             "value_target": [0.5, 0.5],
         },
-        # Sample 1: Buy Market with intentional tie in target (first-max should pick index 0)
+        # Ex 1: Buy Market (Tied Target & Tied Pred Logits)
         {
             "observation": {
                 "viewer": 0,
@@ -337,8 +361,7 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                     "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
                     "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
                     "consecutive_forced_passes": 0,
-                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
-                    "nobles": [1, 0, 8],
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
                     "players": [
                         {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
                         {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
@@ -350,10 +373,10 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                 {"type": "buy_market", "tier": "One", "slot": 0},
                 {"type": "buy_market", "tier": "One", "slot": 1},
             ],
-            "policy_target_micros": [500000, 500000],  # Tied target
+            "policy_target_micros": [500000, 500000],
             "value_target": [0.6, 0.4],
         },
-        # Sample 2: Take with Gold Return
+        # Ex 2: Take with Return Choice
         {
             "observation": {
                 "viewer": 0,
@@ -362,8 +385,7 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                     "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
                     "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
                     "consecutive_forced_passes": 0,
-                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
-                    "nobles": [1, 0, 8],
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
                     "players": [
                         {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 1}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
                         {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
@@ -372,15 +394,43 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
                 "private": {"reserved": []}
             },
             "legal_actions": [
+                # Target: idx 0 (take W/U/G, return gold)
                 {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 1}},
+                # Pred: idx 1 (take W/U/G, return white) -> Same Take colors {W, U, G}, but different return
                 {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 1, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}},
             ],
             "policy_target_micros": [900000, 100000],
             "value_target": [0.5, 0.5],
         },
+        # Ex 3: Reserve Deck Target vs Buy Market Pred
+        {
+            "observation": {
+                "viewer": 0,
+                "public": {
+                    "player_count": 2, "current_player": 0, "phase": "main",
+                    "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+                    "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
+                    "consecutive_forced_passes": 0,
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
+                    "players": [
+                        {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                        {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                    ],
+                },
+                "private": {"reserved": []}
+            },
+            "legal_actions": [
+                # Target: idx 0 (Reserve Deck Tier 2)
+                {"type": "reserve_deck", "tier": "Two"},
+                # Pred: idx 1 (Buy Market Tier 1 slot 0)
+                {"type": "buy_market", "tier": "One", "slot": 0},
+            ],
+            "policy_target_micros": [700000, 300000],
+            "value_target": [0.5, 0.5],
+        },
     ]
 
-    # Pre-encode batch items
+    # Pre-encode all items
     items = []
     for ex in sample_exs:
         obs_raw = ex["observation"]
@@ -433,27 +483,146 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
             "value_target": torch.stack([it["value_target"] for it in batch_items]),
         }
 
-    # Split into 2 batches (batch_size=2 and batch_size=1)
+    # Split into 2 batches: batch 0 (items 0, 1), batch 1 (items 2, 3)
     loader = [collate_fn(items[:2]), collate_fn(items[2:])]
 
-    model = FactorizedDeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
+    # Preset Logits for the 4 samples:
+    # Ex 0: [5.0, 1.0, 2.0]
+    # Ex 1: [3.0, 3.0]
+    # Ex 2: [1.0, 4.0]
+    # Ex 3: [2.0, 6.0]
+    preset_logits = [
+        torch.tensor([5.0, 1.0, 2.0], dtype=torch.float32),
+        torch.tensor([3.0, 3.0], dtype=torch.float32),
+        torch.tensor([1.0, 4.0], dtype=torch.float32),
+        torch.tensor([2.0, 6.0], dtype=torch.float32),
+    ]
+
+    # Hand-calculate expected metrics:
+    # Total examples = 4
+    # Full Top-1 matches:
+    # Ex 0: Pred=0, Target=0 -> MATCH (1)
+    # Ex 1: Pred=0 (tied), Target=0 (tied) -> MATCH (1)
+    # Ex 2: Pred=1, Target=0 -> MISMATCH (0)
+    # Ex 3: Pred=1, Target=0 -> MISMATCH (0)
+    # Total Top-1 matches = 2 / 4 = 0.50 (50.0%)
+
+    # Family matches:
+    # Ex 0: Pred=Take, Target=Take -> MATCH (1)
+    # Ex 1: Pred=Buy, Target=Buy -> MATCH (1)
+    # Ex 2: Pred=Take, Target=Take -> MATCH (1)
+    # Ex 3: Pred=Buy, Target=Reserve -> MISMATCH (0)
+    # Family Top-1 = 3 / 4 = 0.75 (75.0%)
+
+    # Breakdown:
+    # Take (Ex 0, Ex 2): total=2
+    # - family recall = 2/2 = 1.0 (100.0%)
+    # - exact Top-1 = 1/2 = 0.5 (50.0%)
+    # - Ex 0 colors: target {W, U, G}, pred {W, U, G} -> exact match=1, Jaccard=1.0
+    # - Ex 2 colors: target {W, U, G}, pred {W, U, G} -> exact match=1, Jaccard=1.0
+    # - color exact match = 2/2 = 1.0 (100.0%)
+    # - color Jaccard = 2.0 / 2 = 1.0
+
+    # Buy (Ex 1): total=1
+    # - family recall = 1/1 = 1.0 (100.0%)
+    # - exact Top-1 = 1/1 = 1.0 (100.0%)
+
+    # Reserve (Ex 3): total=1
+    # - family recall = 0/1 = 0.0 (0.0%)
+    # - exact Top-1 = 0/1 = 0.0 (0.0%)
+
+    # Return choice (Ex 2): total_return_positions=1
+    # - target return: {gold: 1}, pred return: {white: 1} -> return match = 0
+    # - return_choice_accuracy = 0/1 = 0.0 (0.0%)
+
+    # Cross-Entropy per sample:
+    # Ex 0: logits=[5, 1, 2], target=[0.8, 0.1, 0.1]
+    # log_sum_exp = log(e^5 + e^1 + e^2) = log(148.413159 + 2.718282 + 7.389056) = log(158.520497) = 5.065886
+    # log_p = [5 - 5.065886, 1 - 5.065886, 2 - 5.065886] = [-0.065886, -4.065886, -3.065886]
+    # ce_0 = -(0.8 * -0.065886 + 0.1 * -4.065886 + 0.1 * -3.065886) = 0.052709 + 0.406589 + 0.306589 = 0.765887
+
+    # Ex 1: logits=[3, 3], target=[0.5, 0.5]
+    # ce_1 = log(2) = 0.693147
+
+    # Ex 2: logits=[1, 4], target=[0.9, 0.1]
+    # log_sum_exp = log(e^1 + e^4) = log(2.718282 + 54.598150) = log(57.316432) = 4.048592
+    # log_p = [1 - 4.048592, 4 - 4.048592] = [-3.048592, -0.048592]
+    # ce_2 = -(0.9 * -3.048592 + 0.1 * -0.048592) = 2.743733 + 0.004859 = 2.748592
+
+    # Ex 3: logits=[2, 6], target=[0.7, 0.3]
+    # log_sum_exp = log(e^2 + e^6) = log(7.389056 + 403.428793) = log(410.817849) = 6.018150
+    # log_p = [2 - 6.018150, 6 - 6.018150] = [-4.018150, -0.018150]
+    # ce_3 = -(0.7 * -4.018150 + 0.3 * -0.018150) = 2.812705 + 0.005445 = 2.818150
+
+    # Total Expected CE = (0.765887 + 0.693147 + 2.748592 + 2.818150) / 4 = 7.025776 / 4 = 1.756444
+    H_val = 0.60
+    u_ce = 2.50
+    expected_ce = (0.765887 + 0.693147 + 2.748592 + 2.818150) / 4.0
+    expected_excess_ce = expected_ce - H_val
+    expected_impr_bps = int(round((u_ce - expected_ce) / u_ce * 10000))
+
     device = torch.device("cpu")
 
-    res = evaluate_m33a_diagnostics(
-        model=model,
+    # 1. Run evaluate_m33a_diagnostics
+    mock_diag = ControlledMockModel(preset_logits)
+    diag_res = evaluate_m33a_diagnostics(
+        model=mock_diag,
         loader=loader,
         raw_examples=sample_exs,
-        H_val=0.5,
-        u_ce=1.0,
+        H_val=H_val,
+        u_ce=u_ce,
         device=device,
     )
 
-    assert "ce" in res and res["ce"] > 0.0
-    assert "top1" in res and 0.0 <= res["top1"] <= 1.0
-    assert "family_top1" in res and 0.0 <= res["family_top1"] <= 1.0
-    assert res["take"]["total"] == 2
-    assert res["buy"]["total"] == 1
-    assert res["return"]["total_return_positions"] == 1
+    assert pytest.approx(diag_res["ce"], abs=1e-4) == expected_ce
+    assert pytest.approx(diag_res["excess_ce"], abs=1e-4) == expected_excess_ce
+    assert diag_res["impr_bps"] == expected_impr_bps
+    assert pytest.approx(diag_res["top1"], abs=1e-4) == 0.50
+    assert pytest.approx(diag_res["family_top1"], abs=1e-4) == 0.75
+
+    assert diag_res["take"]["total"] == 2
+    assert pytest.approx(diag_res["take"]["family_recall"], abs=1e-4) == 1.00
+    assert pytest.approx(diag_res["take"]["exact_top1"], abs=1e-4) == 0.50
+    assert pytest.approx(diag_res["take"]["color_exact_match"], abs=1e-4) == 1.00
+    assert pytest.approx(diag_res["take"]["color_jaccard"], abs=1e-4) == 1.00
+
+    assert diag_res["buy"]["total"] == 1
+    assert pytest.approx(diag_res["buy"]["family_recall"], abs=1e-4) == 1.00
+    assert pytest.approx(diag_res["buy"]["exact_top1"], abs=1e-4) == 1.00
+
+    assert diag_res["reserve"]["total"] == 1
+    assert pytest.approx(diag_res["reserve"]["family_recall"], abs=1e-4) == 0.00
+    assert pytest.approx(diag_res["reserve"]["exact_top1"], abs=1e-4) == 0.00
+
+    assert diag_res["return"]["total_return_positions"] == 1
+    assert pytest.approx(diag_res["return"]["return_choice_accuracy"], abs=1e-4) == 0.00
+
+    # 2. Run evaluate_m33a_vectorized_fast directly from training runner and compare parity
+    mock_fast = ControlledMockModel(preset_logits)
+    fast_res = evaluate_m33a_vectorized_fast(
+        model=mock_fast,
+        loader=loader,
+        H_val=H_val,
+        u_ce=u_ce,
+        device=device,
+    )
+
+    assert pytest.approx(fast_res["ce"], abs=1e-5) == diag_res["ce"]
+    assert pytest.approx(fast_res["excess_ce"], abs=1e-5) == diag_res["excess_ce"]
+    assert pytest.approx(fast_res["top1"], abs=1e-5) == diag_res["top1"]
+    assert fast_res["impr_bps"] == diag_res["impr_bps"]
+
+    # 3. Test Fail-Closed Assertion when sample count mismatches
+    mock_err = ControlledMockModel(preset_logits)
+    with pytest.raises(AssertionError, match="Evaluator sample count mismatch"):
+        evaluate_m33a_diagnostics(
+            model=mock_err,
+            loader=loader,
+            raw_examples=sample_exs[:2],  # Only 2 examples passed instead of 4
+            H_val=H_val,
+            u_ce=u_ce,
+            device=device,
+        )
 
 def test_real_provenance_preflight_for_m33a():
     config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")

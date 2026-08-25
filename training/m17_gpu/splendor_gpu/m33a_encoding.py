@@ -7,7 +7,7 @@ Extracts dense structured action-decomposition tensors from legal actions:
 4. Returned Colors Count (6 dims): counts for [white, blue, green, red, black, gold].
 5. Target Entity Slot (0..30):
    - Market cards: tier 0..2, slot 0..3 -> slot = tier * 4 + slot (0..11)
-   - Own private reserved: slot 0..2 -> 28 + slot (28..30)
+   - Own private reserved: slot 0..2 -> 25 + slot (25..27)
    - Nobles: noble_id matches obs["public"]["nobles"] index -> 12 + idx (12..16)
    - None / Other -> -1
 6. Target Deck Tier (0..2): Tier 1 (0), Tier 2 (1), Tier 3 (2). None / Other -> -1.

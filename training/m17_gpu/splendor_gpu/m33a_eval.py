@@ -57,6 +57,13 @@ def evaluate_m33a_diagnostics(
     example_cursor = 0
 
     for batch in loader:
+        offsets = batch["action_offsets"].cpu().tolist()
+        batch_size = len(offsets) - 1
+        if example_cursor + batch_size > len(raw_examples):
+            raise AssertionError(
+                f"Evaluator sample count mismatch! Attempting to evaluate {example_cursor + batch_size} samples, "
+                f"but raw_examples only has {len(raw_examples)}"
+            )
         batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
         logits, _ = model.forward_packed(
             batch_dev["entities"],
