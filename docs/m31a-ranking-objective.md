@@ -2,13 +2,13 @@
 
 ```ini
 MILESTONE = M31A
-STATUS = COMPLETED / STOP_WEIGHTED_PAIRWISE_LOGISTIC_RANKING_ROUTE / NO_ARENA / NO_MODEL_TRAINING
+STATUS = ACCEPTED / CLOSED / STOP_WEIGHTED_PAIRWISE_LOGISTIC_RANKING_ROUTE / NO_ARENA / NO_FURTHER_MODEL_TRAINING
 BASE_COMMIT = 489592ef65306ea64e320f86915222955feebda7
 SCOPE = Evaluate composite policy loss objective L = L_canonical_CE + 0.5 * L_weighted_pairwise_logistic on top of canonical D2 architecture (h192/b4, 59-dim exact action deltas, 953,476 parameters, 128 epochs) to test whether explicit pairwise teacher ranking margin breaks the student fit ceiling without sacrificing soft-target cross-entropy calibration.
 DATASET = Canonical M25 dataset (256 games, 16,282 examples: 12,216 train / 4,066 val), 100,000 micros uniform floor.
 TRAINING = COMPLETED (128 epochs in 110.3s, lr=3e-4 cosine, wd=1e-4, best epoch 13 selected strictly by validation canonical policy CE = 2.8375, excess CE = +0.3646, val Top-1 = 35.91%, impr = 798 bps).
 OFFLINE_GATES = G1 Primary Gate FAIL (Val Top-1 35.91% < 45.00%, Val CE impr 798 bps < 1000 bps); Objective Signal Gate FAIL (Relative to Exp D2 baseline: Top-1 delta -2.51 pp < +3.0 pp, CE delta +0.0197 nats > +0.005 nats degradation ceiling).
-FIT_ATTRIBUTION = Adding an uncalibrated pairwise logistic ranking penalty on top of canonical soft CE directly distorted policy probability calibration: Val CE degraded by +0.0197 nats vs Exp D2 (2.8177 -> 2.8375) and Val Top-1 dropped by -2.51 pp (38.42% -> 35.91%). The network overfit to the binary margin objective early (best epoch 13), leading to severe late-epoch probability entropy collapse.
+FIT_ATTRIBUTION = Adding the weighted pairwise logistic ranking objective on top of canonical soft CE yielded strictly inferior results compared to the pure soft-CE D2 baseline: Val CE degraded by +0.0197 nats (2.8177 -> 2.8375) and Val Top-1 dropped by -2.51 pp (38.42% -> 35.91%). The model peaked early (best epoch 13) and showed continuous validation CE degradation in later epochs under this formulation.
 DECISION = STOP_WEIGHTED_PAIRWISE_LOGISTIC_RANKING_ROUTE
 ARENA = NOT_AUTHORIZED
 MODEL_TRAINING = NOT_AUTHORIZED
@@ -100,21 +100,20 @@ The remaining high-value hypothesis in **M31A** was:
 | **Validation Excess CE (nats)** | **+0.3449** | +0.3646 | +0.0197 nats | — | (Degraded) |
 | **Validation Top-1 Agreement** | **38.42%** | 35.91% | **-2.51 pp** | $\ge +3.00\text{ pp}$ | **FAIL** (Degraded) |
 | **Uniform CE Improvement (bps)** | 862 bps | 798 bps | -64 bps | $\ge 1000\text{ bps}$ | **FAIL** |
-| **Training Policy CE (nats)** | 2.7562 | 2.7962 | +0.0400 nats | — | — |
-| **Training Top-1 Agreement** | 40.54% | 38.52% | -2.02 pp | — | — |
+| **Training Policy CE (nats)** | 2.7839 | 2.7962 | +0.0123 nats | — | — |
+| **Training Top-1 Agreement** | 39.52% | 38.52% | -1.00 pp | — | — |
 
 ## Result and decision
 
 1. **Gate Evaluation**:
    - **G1 Primary Gate**: Validation Top-1 was **35.91%** (threshold $\ge 45.00\%$) and CE improvement was **798 bps** (threshold $\ge 1000\text{ bps}$), **FAIL**.
    - **Objective Signal Gate**: Validation Top-1 dropped by **-2.51 pp** vs D2 (threshold $\ge +3.0\text{ pp}$) and Validation CE degraded by **+0.0197 nats** (ceiling $\le +0.005\text{ nats}$), **FAIL**.
-2. **Scientific Conclusion & Attribution**:
-   - Directly imposing an uncalibrated pairwise logistic ranking penalty on the top-1 vs runner-up logits disrupts the global softmax normalization across all legal actions.
-   - The extra gradient pushes top-1 logit aggressively while ignoring the remaining legal actions, causing severe probability miscalibration across the non-top action distribution.
-   - The network peaks very early (epoch 13) and deteriorates rapidly in later epochs (epoch 128 Val CE drifts to 3.0258), showing that pairwise margin ranking conflicts with soft-target density distillation.
-   - This negative finding is strictly bounded: it specifically rules out **weighted pairwise logistic ranking** on top of soft-CE, without disproving other potential multi-objective or ranking loss formulations.
+2. **Scientific Conclusion & Bounded Finding**:
+   - In this controlled experiment, adding the weighted pairwise logistic ranking objective proved significantly inferior to the pure soft-CE D2 baseline across all validation and training fit metrics (Val CE +0.0197 nats, Val Top-1 -2.51 pp).
+   - Training peaked early (epoch 13) and exhibited continuous validation CE degradation throughout later epochs (drifting to 3.0258 at epoch 128).
+   - This negative finding is strictly bounded: it specifically rules out the **weighted pairwise logistic ranking** formulation on top of soft-CE, without disproving other potential multi-objective or policy restructuring approaches.
 3. **Formal Decision**:
    - **`STOP_WEIGHTED_PAIRWISE_LOGISTIC_RANKING_ROUTE`**: Do not proceed with further pairwise logistic ranking training.
-   - **Model Training**: `NOT_AUTHORIZED`.
+   - **Model Training**: `NO_FURTHER_MODEL_TRAINING` (M31A closed).
    - **Arena Execution**: `NOT_AUTHORIZED`.
    - **Promotion**: `NONE`. M07 champion remains unchanged.
