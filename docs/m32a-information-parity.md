@@ -93,6 +93,7 @@ The core question tested in **M32A** is:
 | Baseline D2 Result | `benchmarks/m25-recovery-exp-d2.result.json` | `403e4903044dfec929c6e92713b2bb9f3e120469ab872271dc82e78f752efc38` |
 | Exporter Source SHA-256 | `crates/splendor-cli/src/bin/m32a_export_sidecar.rs` | `6651a6478d168c4d27291e54679c9a79815b6330b4129561d1f02a90c4b44e35` |
 | 256 Replay Bundle Digest | Ordered hash of 256 match replays | `0b94f1fe7652807a927c7a5962f192b8d45101164e7107b45802b7549f59e4fb` |
+| Sidecar File Artifact | `local-artifacts/m32a-belief-sidecar/m32a-belief-sidecar.json` | `975bf6d14360984e13598ea7ce624e8b1a19544ffd27ef00263eb28fe185c900` |
 | Preflight Guard | `training/m17_gpu/splendor_gpu/m32a_preflight.py` | Strict fail-closed sidecar & provenance validator |
 | Training Script | `training/m17_gpu/splendor_gpu/m32a_train.py` | M32A GPU Training Runner (128 epochs) |
 | Rust Unit Tests | `crates/splendor-cli/tests/m32a_belief_features.rs` | Belief projection unit tests (passed) |
