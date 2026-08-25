@@ -53,7 +53,7 @@ The core question tested in **M33A** is:
      - 6-color return penalty ($d_{\text{keep}} \in \mathbb{R}^6$, explicitly covering Gold tokens).
    - **Buy Card**:
      - Market card: mapped to entity slot $0..11$ ($\text{tier} \times 4 + \text{slot}$);
-     - Own reserved card: mapped to entity slot $28..30$ ($28 + \text{slot}$).
+     - Own reserved card: mapped to entity slot $25..27$ ($25 + \text{slot}$).
    - **Reserve Card**:
      - Market card: mapped to entity slot $0..11$ (channel 1);
      - Deck reserve: mapped to deck tier $0..2$ ($L_{\text{reserve\_deck}} + V_{\text{deck\_tier}}$);

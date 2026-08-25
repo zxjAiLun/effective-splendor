@@ -75,9 +75,9 @@ def decompose_legal_action(obs_raw: dict[str, Any], action: dict[str, Any]) -> d
         slot_idx = int(action["slot"])
         target_entity_slot = tier_idx * 4 + slot_idx  # 0..11
     elif atype == "buy_reserved":
-        # Own private reserved card slots 0..2 map to entity slots 28..30
+        # Own private reserved card slots 0..2 map to entity slots 25..27
         res_slot = int(action["slot"])
-        target_entity_slot = 28 + res_slot  # 28..30
+        target_entity_slot = 25 + res_slot  # 25..27
     elif atype == "choose_noble":
         noble_id = int(action["noble"])
         public_nobles = obs_raw["public"]["nobles"]

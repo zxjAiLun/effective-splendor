@@ -1,9 +1,7 @@
 """M33A Preflight and Provenance Verification for Factorized Legal-Action Policy."""
 import hashlib
-import json
 from pathlib import Path
 import torch
-from splendor_gpu.m33a_model import FactorizedDeltaEntityMixer
 
 FROZEN_CONFIG_SHA256 = "bf13f32bc5eabf1b30795230057b6af68ce14b5cd23c8f526d635e054b3ee250"
 FROZEN_DATASET_FILE_SHA256 = "2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5f171f1e1f05907"
@@ -12,16 +10,16 @@ FROZEN_CATALOG_HASH = "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d5
 FROZEN_D2_RESULT_SHA256 = "403e4903044dfec929c6e92713b2bb9f3e120469ab872271dc82e78f752efc38"
 
 # Model parameter calculation:
-# D2 Base Parameters = 953,476
-# Structured Branch:
-# - intent_head: Linear(192, 192) + Linear(192, 5) = 192*193 + 192*5 + 5 = 37,056 + 965 = 38,021
-# - take_mode_head: Linear(192, 192) + Linear(192, 4) = 37,056 + 192*4 + 4 = 37,828
-# - color_desirability_head: Linear(192, 192) + Linear(192, 5) = 38,021
-# - keep_penalty_head: Linear(192, 192) + Linear(192, 6) = 37,056 + 192*6 + 6 = 38,214
-# - entity_conditioned_scorer: Linear(192*3=576, 192) + Linear(192, 3) = 576*192 + 192 + 192*3 + 3 = 110,784 + 192 + 576 + 3 = 111,555
-# - deck_tier_head: Linear(192, 192) + Linear(192, 3) = 37,056 + 192*3 + 3 = 37,635
-# Total Structured Parameters = 38,021 + 37,828 + 38,021 + 38,214 + 111,555 + 37,635 = 311,274
-# Total Model Parameters = 953,476 + 311,274 = 1,264,750
+# D2 Base Parameters: 953,476
+# Structured Branch Parameters:
+# - intent_head: Linear(192, 192) + Linear(192, 5) = 37,056 + 965 = 38,021
+# - take_mode_head: Linear(192, 192) + Linear(192, 4) = 37,056 + 772 = 37,828
+# - color_desirability_head: Linear(192, 192) + Linear(192, 5) = 37,056 + 965 = 38,021
+# - keep_penalty_head: Linear(192, 192) + Linear(192, 6) = 37,056 + 1,158 = 38,214
+# - entity_conditioned_scorer: Linear(576, 192) + Linear(192, 3) = 110,784 + 579 = 111,363
+# - deck_tier_head: Linear(192, 192) + Linear(192, 3) = 37,056 + 579 = 37,635
+# Total Structured Parameters = 38,021 + 37,828 + 38,021 + 38,214 + 111,363 + 37,635 = 301,082
+# Total Model Parameters = 953,476 + 301,082 = 1,254,558
 FROZEN_M33A_PARAMETER_COUNT = 1254558
 
 def compute_file_sha256(path: Path) -> str:

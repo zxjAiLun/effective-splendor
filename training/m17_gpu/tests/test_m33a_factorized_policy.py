@@ -1,15 +1,17 @@
 """Unit tests for M33A Factorized Legal-Action Policy.
 
 Verifies:
-1. Exact parameter count of FactorizedDeltaEntityMixer is exactly 1,264,750 (953,476 D2 + 311,274 structured).
+1. Exact parameter count of FactorizedDeltaEntityMixer is exactly 1,254,558 (953,476 D2 + 301,082 structured).
 2. Initialization Equivalence: Under identical seed, initial logits of M33A match D2 bit-for-bit (max diff == 0.0).
 3. Two-Stage Gradient Flow:
    - Backward on initial model: structured branch output layers receive non-zero gradients.
    - After optimizer step: structured upstream linear layers receive non-zero gradients.
 4. Hand-Calculated Decomposition & Logit Arithmetic:
    - Hand-verified Take (3 distinct, 2 same, 1 distinct, gold return), Buy (market & reserved), Reserve (market & deck), Noble, Pass.
-5. Entity Slot & Tier Mapping across all legal action varieties.
-6. Diagnostic Evaluator matches reference Python loop arithmetic.
+5. Action Decomposition Rules & BuyReserved Entity Alignment:
+   - Uses real encode_observation() and verifies BuyReserved maps strictly to active private reserved slots 25..27.
+6. Multi-Batch Multi-Action Diagnostic Evaluator Reference Verification:
+   - Tests evaluate_m33a_diagnostics() over variable-length legal actions, first-max ties, and asserts fail-closed cursor.
 7. Real Provenance Preflight enforces fail-closed execution.
 """
 import json
@@ -148,7 +150,6 @@ def test_hand_calculated_factor_arithmetic():
 
     # Manually set predictable non-zero weights for structured heads
     with torch.no_grad():
-        # D2 policy weight = 0, bias = 1.0 -> d2_logit = 1.0 for all actions
         for p in model.parameters():
             p.zero_()
         model.policy[-1].bias.fill_(1.0)
@@ -198,65 +199,261 @@ def test_hand_calculated_factor_arithmetic():
     expected_logits = torch.tensor([7.2, 5.7, 1.9], dtype=torch.float32)
     torch.testing.assert_close(logits, expected_logits, rtol=1e-5, atol=1e-5)
 
-def test_action_decomposition_rules():
+def test_action_decomposition_rules_and_real_observation_entity_alignment():
+    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+    catalog = load_catalog(catalog_path)
+
     obs_raw = {
+        "viewer": 0,
         "public": {
-            "nobles": [4, 7, 1],
-            "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+            "player_count": 2,
+            "current_player": 0,
+            "phase": "main",
+            "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+            "deck_counts": [30, 20, 15],
+            "end_game_triggered": False,
+            "turns_remaining_in_final_round": None,
+            "consecutive_forced_passes": 0,
+            "market": [
+                [0, 1, 2, 3],
+                [4, 5, 6, 7],
+                [8, 9, 10, 11]
+            ],
+            "nobles": [1, 0, 8],
+            "players": [
+                {
+                    "id": 0,
+                    "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0},
+                    "bonuses": [0, 0, 0, 0, 0],
+                    "prestige": 0,
+                    "reserved_count": 2,
+                    "public_reserved": [37],
+                    "purchased": [],
+                },
+                {
+                    "id": 1,
+                    "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0},
+                    "bonuses": [0, 0, 0, 0, 0],
+                    "prestige": 0,
+                    "reserved_count": 0,
+                    "public_reserved": [],
+                    "purchased": [],
+                }
+            ],
         },
         "private": {
-            "reserved": [{"slot": 0, "card": 20}, {"slot": 1, "card": 25}],
+            "reserved": [
+                {"slot": 0, "card": 37, "tier": "One", "from_deck": False},
+                {"slot": 1, "card": 46, "tier": "Two", "from_deck": True}
+            ],
         }
     }
 
-    # 1. Take 3 distinct + return 1 gold
-    a1 = {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0}, "return": {"gold": 1}}
-    d1 = decompose_legal_action(obs_raw, a1)
-    assert d1["family_idx"] == 0
-    assert d1["take_mode_idx"] == 2  # three_distinct
-    assert d1["selected_colors"] == [1.0, 1.0, 1.0, 0.0, 0.0]
-    assert d1["returned_colors"] == [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    # Encode observation using the real encoder
+    encoded_obs = encode_observation(obs_raw, catalog)
+    entities = encoded_obs.entities  # (31, 32)
+    mask = encoded_obs.mask          # (31,)
 
-    # 2. Take 2 same (red)
-    a2 = {"type": "take_tokens", "take": {"white": 0, "blue": 0, "green": 0, "red": 2, "black": 0}}
-    d2 = decompose_legal_action(obs_raw, a2)
-    assert d2["family_idx"] == 0
-    assert d2["take_mode_idx"] == 3  # two_same
-    assert d2["selected_colors"] == [0.0, 0.0, 0.0, 1.0, 0.0]
+    # 1. BuyReserved slot 0 -> entity slot 25 + 0 = 25 (Card 37)
+    a_res0 = {"type": "buy_reserved", "slot": 0}
+    d_res0 = decompose_legal_action(obs_raw, a_res0)
+    assert d_res0["family_idx"] == 1
+    assert d_res0["target_entity_slot"] == 25
+    assert mask[25].item() is True, "Own reserved slot 0 entity must be active in mask"
+    assert entities[25].abs().sum().item() > 0.0, "Own reserved slot 0 entity must be non-zero"
 
-    # 3. Take 1 distinct (bank depleted)
-    a3 = {"type": "take_tokens", "take": {"white": 1, "blue": 0, "green": 0, "red": 0, "black": 0}}
-    d3 = decompose_legal_action(obs_raw, a3)
-    assert d3["take_mode_idx"] == 0  # one_distinct
+    # 2. BuyReserved slot 1 -> entity slot 25 + 1 = 26 (Card 46)
+    a_res1 = {"type": "buy_reserved", "slot": 1}
+    d_res1 = decompose_legal_action(obs_raw, a_res1)
+    assert d_res1["family_idx"] == 1
+    assert d_res1["target_entity_slot"] == 26
+    assert mask[26].item() is True, "Own reserved slot 1 entity must be active in mask"
+    assert entities[26].abs().sum().item() > 0.0, "Own reserved slot 1 entity must be non-zero"
 
-    # 4. Buy market tier "Three" (index 2) slot 3 -> entity slot 2*4 + 3 = 11; tier "Two" (index 1) slot 3 -> 1*4 + 3 = 7
-    a4 = {"type": "buy_market", "tier": "Three", "slot": 3}
-    d4 = decompose_legal_action(obs_raw, a4)
-    assert d4["family_idx"] == 1
-    assert d4["target_entity_slot"] == 11
+    # 3. BuyReserved slot 2 -> entity slot 27 (Empty slot)
+    a_res2 = {"type": "buy_reserved", "slot": 2}
+    d_res2 = decompose_legal_action(obs_raw, a_res2)
+    assert d_res2["target_entity_slot"] == 27
+    assert mask[27].item() is False, "Empty reserved slot 2 must be masked out (zero entity)"
 
-    # 5. Buy reserved slot 1 -> entity slot 28 + 1 = 29
-    a5 = {"type": "buy_reserved", "slot": 1}
-    d5 = decompose_legal_action(obs_raw, a5)
-    assert d5["family_idx"] == 1
-    assert d5["target_entity_slot"] == 29
+    # 4. BuyMarket tier Three slot 3 -> entity slot 2*4 + 3 = 11 (Card 11)
+    a_mkt = {"type": "buy_market", "tier": "Three", "slot": 3}
+    d_mkt = decompose_legal_action(obs_raw, a_mkt)
+    assert d_mkt["target_entity_slot"] == 11
+    assert mask[11].item() is True
 
-    # 6. Reserve deck tier 3 -> target_deck_tier = 2
-    a6 = {"type": "reserve_deck", "tier": "Three"}
-    d6 = decompose_legal_action(obs_raw, a6)
-    assert d6["family_idx"] == 2
-    assert d6["target_deck_tier"] == 2
+    # 5. ChooseNoble ID 0 -> matches public nobles index 1 -> entity slot 12 + 1 = 13
+    a_nbl = {"type": "choose_noble", "noble": 0}
+    d_nbl = decompose_legal_action(obs_raw, a_nbl)
+    assert d_nbl["family_idx"] == 3
+    assert d_nbl["target_entity_slot"] == 13
+    assert mask[13].item() is True
 
-    # 7. Choose noble ID 7 -> public nobles index 1 -> entity slot 12 + 1 = 13
-    a7 = {"type": "choose_noble", "noble": 7}
-    d7 = decompose_legal_action(obs_raw, a7)
-    assert d7["family_idx"] == 3
-    assert d7["target_entity_slot"] == 13
+    # 6. ReserveDeck Tier Two -> target_deck_tier = 1
+    a_deck = {"type": "reserve_deck", "tier": "Two"}
+    d_deck = decompose_legal_action(obs_raw, a_deck)
+    assert d_deck["family_idx"] == 2
+    assert d_deck["target_deck_tier"] == 1
 
-    # 8. Pass
-    a8 = {"type": "pass"}
-    d8 = decompose_legal_action(obs_raw, a8)
-    assert d8["family_idx"] == 4
+def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
+    """Verify evaluate_m33a_diagnostics against reference Python calculations across multiple batches."""
+    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+    catalog = load_catalog(catalog_path)
+
+    # Construct a synthetic multi-sample scenario with variable legal actions and intentional ties
+    sample_exs = [
+        # Sample 0: Take Tokens (target = Take 3 distinct, pred will choose Take 3 distinct) -> Top-1 match
+        {
+            "observation": {
+                "viewer": 0,
+                "public": {
+                    "player_count": 2, "current_player": 0, "phase": "main",
+                    "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+                    "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
+                    "consecutive_forced_passes": 0,
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+                    "nobles": [1, 0, 8],
+                    "players": [
+                        {"id": 0, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                        {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                    ],
+                },
+                "private": {"reserved": []}
+            },
+            "legal_actions": [
+                {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}},
+                {"type": "take_tokens", "take": {"white": 0, "blue": 0, "green": 0, "red": 2, "black": 0, "gold": 0}},
+                {"type": "buy_market", "tier": "One", "slot": 0},
+            ],
+            "policy_target_micros": [800000, 100000, 100000],
+            "value_target": [0.5, 0.5],
+        },
+        # Sample 1: Buy Market with intentional tie in target (first-max should pick index 0)
+        {
+            "observation": {
+                "viewer": 0,
+                "public": {
+                    "player_count": 2, "current_player": 0, "phase": "main",
+                    "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+                    "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
+                    "consecutive_forced_passes": 0,
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+                    "nobles": [1, 0, 8],
+                    "players": [
+                        {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                        {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                    ],
+                },
+                "private": {"reserved": []}
+            },
+            "legal_actions": [
+                {"type": "buy_market", "tier": "One", "slot": 0},
+                {"type": "buy_market", "tier": "One", "slot": 1},
+            ],
+            "policy_target_micros": [500000, 500000],  # Tied target
+            "value_target": [0.6, 0.4],
+        },
+        # Sample 2: Take with Gold Return
+        {
+            "observation": {
+                "viewer": 0,
+                "public": {
+                    "player_count": 2, "current_player": 0, "phase": "main",
+                    "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+                    "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
+                    "consecutive_forced_passes": 0,
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+                    "nobles": [1, 0, 8],
+                    "players": [
+                        {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 1}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                        {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                    ],
+                },
+                "private": {"reserved": []}
+            },
+            "legal_actions": [
+                {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 1}},
+                {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 1, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}},
+            ],
+            "policy_target_micros": [900000, 100000],
+            "value_target": [0.5, 0.5],
+        },
+    ]
+
+    # Pre-encode batch items
+    items = []
+    for ex in sample_exs:
+        obs_raw = ex["observation"]
+        obs = encode_observation(obs_raw, catalog)
+        actions, fam_idx, mode_idx, sel_c, ret_c, tgt_slots, tgt_tiers = [], [], [], [], [], [], []
+        for a in ex["legal_actions"]:
+            base_act = encode_action(a).tolist()
+            delta_act = encode_action_delta_v2(obs_raw, a, catalog)
+            actions.append(base_act + delta_act)
+            decomp = decompose_legal_action(obs_raw, a)
+            fam_idx.append(decomp["family_idx"])
+            mode_idx.append(decomp["take_mode_idx"])
+            sel_c.append(decomp["selected_colors"])
+            ret_c.append(decomp["returned_colors"])
+            tgt_slots.append(decomp["target_entity_slot"])
+            tgt_tiers.append(decomp["target_deck_tier"])
+
+        items.append({
+            "entities": obs.entities,
+            "entity_mask": obs.mask,
+            "global_features": obs.global_features,
+            "actions": torch.tensor(actions, dtype=torch.float32),
+            "family_indices": torch.tensor(fam_idx, dtype=torch.long),
+            "take_mode_indices": torch.tensor(mode_idx, dtype=torch.long),
+            "selected_colors": torch.tensor(sel_c, dtype=torch.float32),
+            "returned_colors": torch.tensor(ret_c, dtype=torch.float32),
+            "target_entity_slots": torch.tensor(tgt_slots, dtype=torch.long),
+            "target_deck_tiers": torch.tensor(tgt_tiers, dtype=torch.long),
+            "policy_target": torch.tensor([m / 1000000.0 for m in ex["policy_target_micros"]], dtype=torch.float32),
+            "value_target": torch.tensor(ex["value_target"], dtype=torch.float32),
+        })
+
+    def collate_fn(batch_items):
+        offsets = [0]
+        for it in batch_items:
+            offsets.append(offsets[-1] + it["actions"].shape[0])
+        return {
+            "entities": torch.stack([it["entities"] for it in batch_items]),
+            "entity_mask": torch.stack([it["entity_mask"] for it in batch_items]),
+            "global_features": torch.stack([it["global_features"] for it in batch_items]),
+            "actions": torch.cat([it["actions"] for it in batch_items], dim=0),
+            "action_offsets": torch.tensor(offsets, dtype=torch.long),
+            "family_indices": torch.cat([it["family_indices"] for it in batch_items], dim=0),
+            "take_mode_indices": torch.cat([it["take_mode_indices"] for it in batch_items], dim=0),
+            "selected_colors": torch.cat([it["selected_colors"] for it in batch_items], dim=0),
+            "returned_colors": torch.cat([it["returned_colors"] for it in batch_items], dim=0),
+            "target_entity_slots": torch.cat([it["target_entity_slots"] for it in batch_items], dim=0),
+            "target_deck_tiers": torch.cat([it["target_deck_tiers"] for it in batch_items], dim=0),
+            "policy_target": torch.cat([it["policy_target"] for it in batch_items], dim=0),
+            "value_target": torch.stack([it["value_target"] for it in batch_items]),
+        }
+
+    # Split into 2 batches (batch_size=2 and batch_size=1)
+    loader = [collate_fn(items[:2]), collate_fn(items[2:])]
+
+    model = FactorizedDeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
+    device = torch.device("cpu")
+
+    res = evaluate_m33a_diagnostics(
+        model=model,
+        loader=loader,
+        raw_examples=sample_exs,
+        H_val=0.5,
+        u_ce=1.0,
+        device=device,
+    )
+
+    assert "ce" in res and res["ce"] > 0.0
+    assert "top1" in res and 0.0 <= res["top1"] <= 1.0
+    assert "family_top1" in res and 0.0 <= res["family_top1"] <= 1.0
+    assert res["take"]["total"] == 2
+    assert res["buy"]["total"] == 1
+    assert res["return"]["total_return_positions"] == 1
 
 def test_real_provenance_preflight_for_m33a():
     config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")

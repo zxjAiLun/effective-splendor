@@ -17,6 +17,71 @@ from splendor_gpu.m33a_encoding import decompose_legal_action
 from splendor_gpu.m33a_eval import evaluate_m33a_diagnostics
 from splendor_gpu.m33a_preflight import preflight_m33a, compute_file_sha256
 
+@torch.no_grad()
+def evaluate_m33a_vectorized_fast(model: nn.Module, loader, H_val: float, u_ce: float, device: torch.device):
+    """Vectorized core evaluation during training loop with zero CPU synchronization."""
+    model.eval()
+    total_ce = torch.zeros((), dtype=torch.float64, device=device)
+    total_top1 = torch.zeros((), dtype=torch.float64, device=device)
+    total_examples = 0
+
+    for batch in loader:
+        batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
+        logits, _ = model.forward_packed(
+            batch_dev["entities"],
+            batch_dev["entity_mask"],
+            batch_dev["global_features"],
+            batch_dev["actions"],
+            batch_dev["action_offsets"],
+            batch_dev["family_indices"],
+            batch_dev["take_mode_indices"],
+            batch_dev["selected_colors"],
+            batch_dev["returned_colors"],
+            batch_dev["target_entity_slots"],
+            batch_dev["target_deck_tiers"],
+        )
+        offsets = batch_dev["action_offsets"]
+        counts = offsets[1:] - offsets[:-1]
+        batch_size = counts.shape[0]
+        total_actions = logits.shape[0]
+        segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=device), counts)
+
+        p_ce = packed_policy_loss(logits, batch_dev["policy_target"], offsets)
+        total_ce += p_ce.to(torch.float64) * batch_size
+
+        # Segmented First-Max Argmax Top-1 on GPU
+        max_logits = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=device)
+        max_logits.scatter_reduce_(0, segment_ids, logits, reduce="amax")
+        action_indices = torch.arange(total_actions, dtype=torch.int64, device=device)
+        is_max_logit = (logits == max_logits[segment_ids])
+        logit_cand = torch.where(is_max_logit, action_indices, torch.full_like(action_indices, total_actions + 1))
+        first_max_logit_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
+        first_max_logit_idx.scatter_reduce_(0, segment_ids, logit_cand, reduce="amin")
+
+        targets = batch_dev["policy_target"]
+        max_targets = torch.full((batch_size,), -torch.inf, dtype=targets.dtype, device=device)
+        max_targets.scatter_reduce_(0, segment_ids, targets, reduce="amax")
+        is_max_target = (targets == max_targets[segment_ids])
+        target_cand = torch.where(is_max_target, action_indices, torch.full_like(action_indices, total_actions + 1))
+        first_max_target_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
+        first_max_target_idx.scatter_reduce_(0, segment_ids, target_cand, reduce="amin")
+
+        matches = (first_max_logit_idx == first_max_target_idx)
+        total_top1 += matches.sum(dtype=torch.float64)
+        total_examples += batch_size
+
+    ce = total_ce.item() / total_examples
+    top1 = total_top1.item() / total_examples
+    excess_ce = ce - H_val
+    impr_bps = int(round((u_ce - ce) / u_ce * 10000))
+
+    return {
+        "ce": ce,
+        "excess_ce": excess_ce,
+        "top1": top1,
+        "impr_bps": impr_bps,
+    }
+
 if __name__ == "__main__":
     runner_path = Path(__file__)
     model_path = Path("training/m17_gpu/splendor_gpu/m33a_model.py")
@@ -233,7 +298,8 @@ if __name__ == "__main__":
             optimizer.step()
         scheduler.step()
 
-        val_res = evaluate_m33a_diagnostics(model, val_loader, val_examples, val_H, val_u_ce, device)
+        # Fast vectorized GPU evaluation per-epoch (no host sync overhead)
+        val_res = evaluate_m33a_vectorized_fast(model, val_loader, val_H, val_u_ce, device)
         is_best = val_res["ce"] < best_val_ce
         if is_best:
             best_val_ce = val_res["ce"]
@@ -243,15 +309,13 @@ if __name__ == "__main__":
         if ep % 8 == 0 or ep in (1, 5, epochs) or is_best:
             print(
                 f"Ep {ep:3d}/{epochs}: "
-                f"Val [CE={val_res['ce']:.4f}, Exc={val_res['excess_ce']:+.4f}, Top1={val_res['top1']*100:.2f}%, FamTop1={val_res['family_top1']*100:.2f}%] "
-                f"Take [Recall={val_res['take']['family_recall']*100:.1f}%, Top1={val_res['take']['exact_top1']*100:.1f}%] "
-                f"Buy [Top1={val_res['buy']['exact_top1']*100:.1f}%] "
-                f"Reserve [Recall={val_res['reserve']['family_recall']*100:.1f}%, Top1={val_res['reserve']['exact_top1']*100:.1f}%] "
+                f"Val [CE={val_res['ce']:.4f}, Exc={val_res['excess_ce']:+.4f}, Top1={val_res['top1']*100:.2f}%, Impr={val_res['impr_bps']}bps] "
                 f"(Best Val CE={best_val_ce:.4f} @ ep {best_epoch}) [{time.time()-t0:.1f}s]",
                 flush=True,
             )
         history.append({"epoch": ep, "lr": optimizer.param_groups[0]["lr"], "val": val_res})
 
+    # Load best checkpoint and run full granular diagnostic evaluation
     model.load_state_dict(best_state)
     final_val = evaluate_m33a_diagnostics(model, val_loader, val_examples, val_H, val_u_ce, device)
     final_train = evaluate_m33a_diagnostics(model, eval_train_loader, train_examples, train_H, train_u_ce, device)
@@ -433,5 +497,6 @@ if __name__ == "__main__":
     }
 
     out_path = Path("benchmarks/m33a-factorized-policy.result.json")
-    out_path.write_text(json.dumps(out_payload, indent=2) + "\n", encoding="utf-8")
+    out_path.write_text(json.dumps(out_payload, indent=2) + "
+", encoding="utf-8")
     print(f"COMPLETE M33A: Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f}, Val Top1 {final_val['top1']*100:.2f}%, Take Top1 {final_val['take']['exact_top1']*100:.1f}%, Decision: {decision}", flush=True)

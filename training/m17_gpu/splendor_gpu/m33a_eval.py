@@ -2,15 +2,14 @@
 
 Evaluates exact policy metrics and fine-grained action decomposition accuracies:
 1. Full Legal-Action Validation Policy CE & Excess CE
-2. Full Legal-Action Top-1 Agreement
+2. Full Legal-Action Top-1 Agreement (First-max tie breaking)
 3. Action Family Top-1 Accuracy (Take / Buy / Reserve / Noble / Pass)
 4. Take Family Recall & Exact Top-1
 5. Take Color-Set Exact Match & Jaccard Similarity
 6. Buy Exact Top-1
 7. Reserve Family Recall & Exact Top-1
-8. Return Accuracy
+8. Return Choice Accuracy (over positions with non-empty token returns)
 """
-import math
 from typing import Any
 import torch
 import torch.nn as nn
@@ -25,7 +24,7 @@ def evaluate_m33a_diagnostics(
     u_ce: float,
     device: torch.device,
 ) -> dict[str, Any]:
-    """Computes full evaluation and granular breakdown metrics."""
+    """Computes full evaluation and granular breakdown metrics with fail-closed alignment checks."""
     model.eval()
 
     total_ce = 0.0
@@ -51,6 +50,9 @@ def evaluate_m33a_diagnostics(
 
     noble_total = 0
     noble_full_matches = 0
+
+    return_positions_total = 0
+    return_matches = 0
 
     example_cursor = 0
 
@@ -85,8 +87,14 @@ def evaluate_m33a_diagnostics(
             sample_logits = logits_cpu[start:end]
             sample_targets = targets_cpu[start:end]
 
-            pred_idx = int(torch.argmax(sample_logits).item())
-            target_idx = int(torch.argmax(sample_targets).item())
+            # Exact first-max tie resolution matching specification
+            max_logit = sample_logits.max()
+            pred_candidates = torch.where(sample_logits == max_logit)[0]
+            pred_idx = int(pred_candidates[0].item())
+
+            max_target = sample_targets.max()
+            target_candidates = torch.where(sample_targets == max_target)[0]
+            target_idx = int(target_candidates[0].item())
 
             is_full_top1 = (pred_idx == target_idx)
             if is_full_top1:
@@ -117,13 +125,21 @@ def evaluate_m33a_diagnostics(
             if pred_fam == target_fam:
                 family_matches += 1
 
+            # Return choice tracking
+            t_ret = target_action.get("return", {})
+            if any(v > 0 for v in t_ret.values()):
+                return_positions_total += 1
+                p_ret = pred_action.get("return", {}) if pred_fam in ("take", "reserve") else {}
+                if t_ret == p_ret:
+                    return_matches += 1
+
             if target_fam == "take":
                 take_total += 1
                 if pred_fam == "take":
                     take_family_recalled += 1
                 if is_full_top1:
                     take_full_matches += 1
-                
+
                 # Color Jaccard & Exact Match
                 t_take = target_action.get("take", {})
                 p_take = pred_action.get("take", {}) if pred_type == "take_tokens" else {}
@@ -133,7 +149,7 @@ def evaluate_m33a_diagnostics(
 
                 if t_colors == p_colors:
                     take_color_exact_matches += 1
-                
+
                 union_len = len(t_colors | p_colors)
                 if union_len > 0:
                     jaccard = len(t_colors & p_colors) / float(union_len)
@@ -160,6 +176,12 @@ def evaluate_m33a_diagnostics(
                 if is_full_top1:
                     noble_full_matches += 1
 
+    # Strict Fail-Closed Assertion: exactly all raw examples must be consumed
+    assert example_cursor == total_examples == len(raw_examples), (
+        f"Evaluator sample count mismatch! Cursor={example_cursor}, "
+        f"Total={total_examples}, RawExamples={len(raw_examples)}"
+    )
+
     ce = total_ce / total_examples
     excess_ce = ce - H_val
     impr_bps = int(round((u_ce - ce) / u_ce * 10000))
@@ -176,6 +198,8 @@ def evaluate_m33a_diagnostics(
 
     reserve_fam_recall = (reserve_family_recalled / float(reserve_total)) if reserve_total > 0 else 0.0
     reserve_exact_top1 = (reserve_full_matches / float(reserve_total)) if reserve_total > 0 else 0.0
+
+    return_acc = (return_matches / float(return_positions_total)) if return_positions_total > 0 else 1.0
 
     return {
         "ce": ce,
@@ -199,5 +223,9 @@ def evaluate_m33a_diagnostics(
             "total": reserve_total,
             "family_recall": reserve_fam_recall,
             "exact_top1": reserve_exact_top1,
+        },
+        "return": {
+            "total_return_positions": return_positions_total,
+            "return_choice_accuracy": return_acc,
         },
     }
