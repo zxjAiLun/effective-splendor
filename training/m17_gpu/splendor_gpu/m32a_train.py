@@ -122,6 +122,7 @@ if __name__ == "__main__":
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
+    exporter_path = Path("crates/splendor-cli/src/bin/m32a_export_sidecar.rs")
     sidecar_path = Path("local-artifacts/m32a-belief-sidecar/m32a-belief-sidecar.json")
     ckpt_dir = Path("local-artifacts/m32a-information-parity")
 
@@ -160,6 +161,7 @@ if __name__ == "__main__":
         dataset_path=dataset_path,
         catalog_path=catalog_path,
         d2_result_path=d2_result_path,
+        exporter_path=exporter_path,
         sidecar_path=sidecar_path,
         output_dir=ckpt_dir,
         actual_dataset_semantic_hash=actual_dataset_hash,

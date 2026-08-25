@@ -23,7 +23,7 @@ Across M25, M29, M30, and M31 series:
 1. **Experiment D2** proved that injecting 23-dim exact post-action state transition deltas into action embeddings yielded a major fit improvement (Val CE 2.8879 $\to$ 2.8177, Top-1 31.87% $\to$ 38.42%).
 2. **Experiment B & E** ruled out model width scaling (0.95M $\to$ 2.61M parameters yielded $\le 0.0020\text{ nats}$ CE reduction).
 3. **M29A-v1/v2** ruled out dynamic action-to-entity cross-attention pooling (gain $\le 0.0043\text{ nats}$).
-4. **M30A** proved that 4-sample teacher search targets already have 76.56% repeat agreement (median JSD 0.0019 nats), ruling out teacher sampling variance.
+4. **M30A** proved that 4-sample teacher search targets already have 76.56% repeat agreement (median JSD 0.0019 nats), and 4-to-16 sample scaling increased agreement by only +3.12 pp, ruling out teacher sampling variance as the dominant ceiling cause.
 5. **M31A** proved that uncalibrated pairwise ranking objectives distort global softmax calibration (Val CE 2.8375, Top-1 35.91%).
 
 Source trace into `crates/splendor-imperfect-search` and `crates/splendor-belief` revealed a fundamental information asymmetry:
@@ -79,7 +79,8 @@ The core question tested in **M32A** is:
 - **Rust Belief Projection Verification**: `crates/splendor-cli/tests/m32a_belief_features.rs` verifies 212-dim structure, non-zero HiddenDeck status with strictly zero card attributes, and empty slot encodings.
 - **Python Model Parameters**: `test_model_parameter_count` asserts parameter count equals 994,180.
 - **Sidecar Integrity & Non-Leakage**: `test_sidecar_validator_integrity_and_leakage_detection` validates completeness, root metadata, feature bounds, and fail-closed detection of leaked attributes in HiddenDeck slots.
-- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m32a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, root metadata, and metadata matching across all 16,282 examples via real `preflight_m32a` invocation.
+- **Provenance Tamper Rejection**: `test_tamper_rejection_for_sidecar_provenance` asserts that tampering with either `exporter_file_sha256` or `ordered_256_replay_bundle_digest` is rejected fail-closed.
+- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m32a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, exporter source SHA (`6651a647...`), replay bundle digest (`0b94f1fe...`), and metadata matching across all 16,282 examples via real `preflight_m32a` invocation.
 
 ## Artifact hashes and evidence
 
@@ -90,9 +91,10 @@ The core question tested in **M32A** is:
 | Dataset Semantic Hash | Exact semantic identity across 16,282 examples | `1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419` |
 | Catalog Semantic Hash | Exact card & noble entity catalog hash | `4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26` |
 | Baseline D2 Result | `benchmarks/m25-recovery-exp-d2.result.json` | `403e4903044dfec929c6e92713b2bb9f3e120469ab872271dc82e78f752efc38` |
-| Sidecar Exporter | `crates/splendor-cli/src/bin/m32a_export_sidecar.rs` | Verified Rust InformationSetV1 Exporter |
+| Exporter Source SHA-256 | `crates/splendor-cli/src/bin/m32a_export_sidecar.rs` | `6651a6478d168c4d27291e54679c9a79815b6330b4129561d1f02a90c4b44e35` |
+| 256 Replay Bundle Digest | Ordered hash of 256 match replays | `0b94f1fe7652807a927c7a5962f192b8d45101164e7107b45802b7549f59e4fb` |
 | Preflight Guard | `training/m17_gpu/splendor_gpu/m32a_preflight.py` | Strict fail-closed sidecar & provenance validator |
 | Training Script | `training/m17_gpu/splendor_gpu/m32a_train.py` | M32A GPU Training Runner (128 epochs) |
 | Rust Unit Tests | `crates/splendor-cli/tests/m32a_belief_features.rs` | Belief projection unit tests (passed) |
-| Python Unit Tests | `training/m17_gpu/tests/test_m32a_information_parity.py` | Model, sidecar, and preflight unit tests (passed) |
+| Python Unit Tests | `training/m17_gpu/tests/test_m32a_information_parity.py` | Model, sidecar, tamper rejection, and preflight unit tests (passed) |
 | Milestone Document | `docs/m32a-information-parity.md` | M32A Design & Contract Document |
