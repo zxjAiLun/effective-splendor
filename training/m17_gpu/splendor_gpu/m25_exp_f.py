@@ -18,200 +18,242 @@ from splendor_gpu.m25_train import split_m25_indices, compute_uniform_policy_ce,
 from splendor_gpu.model import ResidualBlock
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Running Experiment F (De-floored Advantage Distillation) on {device}...", flush=True)
 
-# Fail-closed output directory check BEFORE burning compute
-ckpt_dir = Path("local-artifacts/m25-recovery-exp-f")
-if ckpt_dir.exists():
-    raise RuntimeError(f"Output directory {ckpt_dir} already exists — fail-closed protection")
-ckpt_dir.mkdir(parents=True, exist_ok=False)
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Running Experiment F (De-floored Advantage Distillation) on {device}...", flush=True)
 
-config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
-config_text = config_path.read_text(encoding="utf-8")
-config = json.loads(config_text)
-config_file_sha256 = hashlib.sha256(config_text.encode("utf-8")).hexdigest()
+    # Fail-closed output directory check BEFORE burning compute
+    ckpt_dir = Path("local-artifacts/m25-recovery-exp-f")
+    if ckpt_dir.exists():
+        raise RuntimeError(f"Output directory {ckpt_dir} already exists — fail-closed protection")
+    ckpt_dir.mkdir(parents=True, exist_ok=False)
 
-dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
-dataset_text = dataset_path.read_text(encoding="utf-8")
-ds_payload = json.loads(dataset_text)
-dataset_file_sha256 = hashlib.sha256(dataset_text.encode("utf-8")).hexdigest()
+    config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
+    config_text = config_path.read_text(encoding="utf-8")
+    config = json.loads(config_text)
+    config_file_sha256 = hashlib.sha256(config_text.encode("utf-8")).hexdigest()
 
-actual_dataset_hash = validate_m25_dataset_provenance(ds_payload, config)
-print(f"Validated Dataset Semantic Hash: {actual_dataset_hash}", flush=True)
+    dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
+    dataset_text = dataset_path.read_text(encoding="utf-8")
+    ds_payload = json.loads(dataset_text)
+    dataset_file_sha256 = hashlib.sha256(dataset_text.encode("utf-8")).hexdigest()
 
-catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
-catalog = load_catalog(catalog_path)
-catalog_hash = catalog_semantic_hash(catalog)
+    actual_dataset_hash = validate_m25_dataset_provenance(ds_payload, config)
+    print(f"Validated Dataset Semantic Hash: {actual_dataset_hash}", flush=True)
 
-train_indices, val_indices = split_m25_indices(ds_payload, config)
-train_examples = [ds_payload["examples"][i] for i in train_indices]
-val_examples = [ds_payload["examples"][i] for i in val_indices]
+    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+    catalog = load_catalog(catalog_path)
+    catalog_hash = catalog_semantic_hash(catalog)
 
-def get_entropy_and_top1(examples):
-    ents = []
-    top1s = []
-    for ex in examples:
-        micros = ex["policy_target_micros"]
-        probs = [m / 1000000.0 for m in micros]
-        top1s.append(max(probs))
-        ents.append(-sum(p * math.log(p) for p in probs if p > 0))
-    return sum(ents) / len(ents), sum(top1s) / len(top1s)
+    train_indices, val_indices = split_m25_indices(ds_payload, config)
+    train_examples = [ds_payload["examples"][i] for i in train_indices]
+    val_examples = [ds_payload["examples"][i] for i in val_indices]
 
-train_H, _ = get_entropy_and_top1(train_examples)
-val_H, _ = get_entropy_and_top1(val_examples)
-train_u_ce = compute_uniform_policy_ce(train_examples)
-val_u_ce = compute_uniform_policy_ce(val_examples)
-
-def even_allocation(total, count):
-    base = total // count
-    remainder = total % count
-    return [base + (1 if i < remainder else 0) for i in range(count)]
-
-print("Pre-encoding dataset with exact action deltas and de-floored training targets...", flush=True)
-t_enc = time.time()
-
-class DeltaDataset(Dataset):
-    def __init__(self, examples, catalog, defloor_training=False):
-        self.items = []
+    def get_entropy_and_top1(examples):
+        ents = []
+        top1s = []
         for ex in examples:
-            obs = encode_observation(ex["observation"], catalog)
-            actions = []
-            for a in ex["legal_actions"]:
-                base_act = encode_action(a).tolist()
-                delta_act = encode_action_delta_v2(ex["observation"], a, catalog)
-                actions.append(base_act + delta_act)
-
             micros = ex["policy_target_micros"]
-            count = len(micros)
-            if defloor_training:
-                floor = even_allocation(100000, count)
-                # Exact integer subtraction: remaining sum is exactly 900,000
-                train_policy = [(m - f) / 900000.0 for m, f in zip(micros, floor)]
-            else:
-                train_policy = [m / 1000000.0 for m in micros]
+            probs = [m / 1000000.0 for m in micros]
+            top1s.append(max(probs))
+            ents.append(-sum(p * math.log(p) for p in probs if p > 0))
+        return sum(ents) / len(ents), sum(top1s) / len(top1s)
 
-            orig_policy = [m / 1000000.0 for m in micros]
+    train_H, _ = get_entropy_and_top1(train_examples)
+    val_H, _ = get_entropy_and_top1(val_examples)
+    train_u_ce = compute_uniform_policy_ce(train_examples)
+    val_u_ce = compute_uniform_policy_ce(val_examples)
 
-            self.items.append({
-                "entities": obs.entities,
-                "entity_mask": obs.mask,
-                "global_features": obs.global_features,
-                "actions": torch.tensor(actions, dtype=torch.float32),
-                "policy_target": torch.tensor(train_policy, dtype=torch.float32),
-                "original_target": torch.tensor(orig_policy, dtype=torch.float32),
-                "value_target": torch.tensor(ex["value_target"], dtype=torch.float32),
-            })
-    def __len__(self):
-        return len(self.items)
-    def __getitem__(self, idx):
-        return self.items[idx]
+    def even_allocation(total, count):
+        base = total // count
+        remainder = total % count
+        return [base + (1 if i < remainder else 0) for i in range(count)]
 
-def packed_delta_collate(items):
-    entities = torch.stack([it["entities"] for it in items])
-    entity_mask = torch.stack([it["entity_mask"] for it in items])
-    global_features = torch.stack([it["global_features"] for it in items])
-    value_target = torch.stack([it["value_target"] for it in items])
+    print("Pre-encoding dataset with exact action deltas and de-floored training targets...", flush=True)
+    t_enc = time.time()
 
-    action_list = [it["actions"] for it in items]
-    policy_list = [it["policy_target"] for it in items]
-    original_list = [it["original_target"] for it in items]
+    class DeltaDataset(Dataset):
+        def __init__(self, examples, catalog, defloor_training=False):
+            self.items = []
+            for ex in examples:
+                obs = encode_observation(ex["observation"], catalog)
+                actions = []
+                for a in ex["legal_actions"]:
+                    base_act = encode_action(a).tolist()
+                    delta_act = encode_action_delta_v2(ex["observation"], a, catalog)
+                    actions.append(base_act + delta_act)
 
-    offsets = [0]
-    for acts in action_list:
-        offsets.append(offsets[-1] + acts.shape[0])
+                micros = ex["policy_target_micros"]
+                count = len(micros)
+                if defloor_training:
+                    floor = even_allocation(100000, count)
+                    # Exact integer subtraction: remaining sum is exactly 900,000
+                    train_policy = [(m - f) / 900000.0 for m, f in zip(micros, floor)]
+                else:
+                    train_policy = [m / 1000000.0 for m in micros]
 
-    return {
-        "entities": entities,
-        "entity_mask": entity_mask,
-        "global_features": global_features,
-        "actions": torch.cat(action_list, dim=0),
-        "action_offsets": torch.tensor(offsets, dtype=torch.long),
-        "policy_target": torch.cat(policy_list, dim=0),
-        "original_target": torch.cat(original_list, dim=0),
-        "value_target": value_target,
-    }
+                orig_policy = [m / 1000000.0 for m in micros]
 
-train_dataset = DeltaDataset(train_examples, catalog, defloor_training=True)
-eval_train_dataset = DeltaDataset(train_examples, catalog, defloor_training=False)
-val_dataset = DeltaDataset(val_examples, catalog, defloor_training=False)
-print(f"Pre-encoding complete in {time.time()-t_enc:.1f}s", flush=True)
+                self.items.append({
+                    "entities": obs.entities,
+                    "entity_mask": obs.mask,
+                    "global_features": obs.global_features,
+                    "actions": torch.tensor(actions, dtype=torch.float32),
+                    "policy_target": torch.tensor(train_policy, dtype=torch.float32),
+                    "original_target": torch.tensor(orig_policy, dtype=torch.float32),
+                    "value_target": torch.tensor(ex["value_target"], dtype=torch.float32),
+                })
+        def __len__(self):
+            return len(self.items)
+        def __getitem__(self, idx):
+            return self.items[idx]
 
-SHUFFLE_SEED = 20260823
-train_generator = torch.Generator().manual_seed(SHUFFLE_SEED)
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, generator=train_generator, collate_fn=packed_delta_collate)
-eval_train_loader = DataLoader(eval_train_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
-val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
+    def packed_delta_collate(items):
+        entities = torch.stack([it["entities"] for it in items])
+        entity_mask = torch.stack([it["entity_mask"] for it in items])
+        global_features = torch.stack([it["global_features"] for it in items])
+        value_target = torch.stack([it["value_target"] for it in items])
 
-ENHANCED_ACTION_FEATURES = 36 + 23  # 59
+        action_list = [it["actions"] for it in items]
+        policy_list = [it["policy_target"] for it in items]
+        original_list = [it["original_target"] for it in items]
 
-class DeltaEntityMixer(nn.Module):
-    def __init__(self, hidden_dim=192, blocks=4, dropout=0.0):
-        super().__init__()
-        h = hidden_dim
-        self.entity_encoder = nn.Sequential(nn.Linear(ENTITY_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-        self.entity_gate = nn.Linear(h, 1)
-        self.global_encoder = nn.Sequential(nn.Linear(GLOBAL_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-        self.mix = nn.Linear(h * 2, h)
-        self.blocks = nn.Sequential(*(ResidualBlock(h, dropout) for _ in range(blocks)))
-        self.norm = nn.LayerNorm(h)
+        offsets = [0]
+        for acts in action_list:
+            offsets.append(offsets[-1] + acts.shape[0])
 
-        self.action_encoder = nn.Sequential(nn.Linear(ENHANCED_ACTION_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-        self.policy = nn.Sequential(nn.Linear(h * 3, h), nn.GELU(), nn.Linear(h, 1))
-        self.value = nn.Sequential(nn.Linear(h, h), nn.GELU(), nn.Linear(h, 2), nn.Sigmoid())
+        return {
+            "entities": entities,
+            "entity_mask": entity_mask,
+            "global_features": global_features,
+            "actions": torch.cat(action_list, dim=0),
+            "action_offsets": torch.tensor(offsets, dtype=torch.long),
+            "policy_target": torch.cat(policy_list, dim=0),
+            "original_target": torch.cat(original_list, dim=0),
+            "value_target": value_target,
+        }
 
-    def state_embedding(self, entities, mask, global_features):
-        encoded = self.entity_encoder(entities)
-        gate = self.entity_gate(encoded).squeeze(-1).masked_fill(~mask, torch.finfo(encoded.dtype).min)
-        weights = torch.softmax(gate, dim=-1).unsqueeze(-1)
-        pooled = (encoded * weights).sum(dim=1)
-        state = self.mix(torch.cat([pooled, self.global_encoder(global_features)], dim=-1))
-        return self.norm(self.blocks(state))
+    train_dataset = DeltaDataset(train_examples, catalog, defloor_training=True)
+    eval_train_dataset = DeltaDataset(train_examples, catalog, defloor_training=False)
+    val_dataset = DeltaDataset(val_examples, catalog, defloor_training=False)
+    print(f"Pre-encoding complete in {time.time()-t_enc:.1f}s", flush=True)
 
-    def forward_packed(self, entities, mask, global_features, actions, action_offsets):
-        state = self.state_embedding(entities, mask, global_features)
-        action = self.action_encoder(actions)
-        counts = action_offsets[1:] - action_offsets[:-1]
-        expanded = torch.repeat_interleave(state, counts, dim=0)
-        logits = self.policy(torch.cat([expanded, action, expanded * action], dim=-1)).squeeze(-1)
-        return logits, self.value(state)
+    SHUFFLE_SEED = 20260823
+    train_generator = torch.Generator().manual_seed(SHUFFLE_SEED)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, generator=train_generator, collate_fn=packed_delta_collate)
+    eval_train_loader = DataLoader(eval_train_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
+    val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
 
-def packed_policy_loss(logits, targets, offsets):
-    losses = []
-    for i in range(len(offsets) - 1):
-        s, e = offsets[i], offsets[i + 1]
-        l = logits[s:e]
-        t = targets[s:e]
-        log_p = F.log_softmax(l, dim=0)
-        losses.append(-(t * log_p).sum())
-    return torch.stack(losses).mean()
+    ENHANCED_ACTION_FEATURES = 36 + 23  # 59
 
-INIT_SEED = int(config["model"]["initialization_seed"])
-torch.manual_seed(INIT_SEED)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(INIT_SEED)
+    class DeltaEntityMixer(nn.Module):
+        def __init__(self, hidden_dim=192, blocks=4, dropout=0.0):
+            super().__init__()
+            h = hidden_dim
+            self.entity_encoder = nn.Sequential(nn.Linear(ENTITY_FEATURES, h), nn.GELU(), nn.Linear(h, h))
+            self.entity_gate = nn.Linear(h, 1)
+            self.global_encoder = nn.Sequential(nn.Linear(GLOBAL_FEATURES, h), nn.GELU(), nn.Linear(h, h))
+            self.mix = nn.Linear(h * 2, h)
+            self.blocks = nn.Sequential(*(ResidualBlock(h, dropout) for _ in range(blocks)))
+            self.norm = nn.LayerNorm(h)
 
-model = DeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0).to(device)
-param_count = sum(p.numel() for p in model.parameters())
-print(f"Built DeltaEntityMixer (Experiment F): {param_count:,} parameters", flush=True)
+            self.action_encoder = nn.Sequential(nn.Linear(ENHANCED_ACTION_FEATURES, h), nn.GELU(), nn.Linear(h, h))
+            self.policy = nn.Sequential(nn.Linear(h * 3, h), nn.GELU(), nn.Linear(h, 1))
+            self.value = nn.Sequential(nn.Linear(h, h), nn.GELU(), nn.Linear(h, 2), nn.Sigmoid())
 
-epochs = 128
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=3e-4,
-    weight_decay=1e-4,
-)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
+        def state_embedding(self, entities, mask, global_features):
+            encoded = self.entity_encoder(entities)
+            gate = self.entity_gate(encoded).squeeze(-1).masked_fill(~mask, torch.finfo(encoded.dtype).min)
+            weights = torch.softmax(gate, dim=-1).unsqueeze(-1)
+            pooled = (encoded * weights).sum(dim=1)
+            state = self.mix(torch.cat([pooled, self.global_encoder(global_features)], dim=-1))
+            return self.norm(self.blocks(state))
 
-def evaluate_split_on_original_targets(loader, H_val, u_ce):
-    """Evaluate against original frozen soft targets (with uniform floor) for canonical G1/CE comparison."""
-    model.eval()
-    total_examples = 0
-    total_ce = 0.0
-    total_top1_matches = 0
-    with torch.no_grad():
-        for batch in loader:
+        def forward_packed(self, entities, mask, global_features, actions, action_offsets):
+            state = self.state_embedding(entities, mask, global_features)
+            action = self.action_encoder(actions)
+            counts = action_offsets[1:] - action_offsets[:-1]
+            expanded = torch.repeat_interleave(state, counts, dim=0)
+            logits = self.policy(torch.cat([expanded, action, expanded * action], dim=-1)).squeeze(-1)
+            return logits, self.value(state)
+
+    def packed_policy_loss(logits, targets, offsets):
+        losses = []
+        for i in range(len(offsets) - 1):
+            s, e = offsets[i], offsets[i + 1]
+            l = logits[s:e]
+            t = targets[s:e]
+            log_p = F.log_softmax(l, dim=0)
+            losses.append(-(t * log_p).sum())
+        return torch.stack(losses).mean()
+
+    INIT_SEED = int(config["model"]["initialization_seed"])
+    torch.manual_seed(INIT_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(INIT_SEED)
+
+    model = DeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0).to(device)
+    param_count = sum(p.numel() for p in model.parameters())
+    print(f"Built DeltaEntityMixer (Experiment F): {param_count:,} parameters", flush=True)
+
+    epochs = 128
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=3e-4,
+        weight_decay=1e-4,
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
+
+    def evaluate_split_on_original_targets(loader, H_val, u_ce):
+        """Evaluate against original frozen soft targets (with uniform floor) for canonical G1/CE comparison."""
+        model.eval()
+        total_examples = 0
+        total_ce = 0.0
+        total_top1_matches = 0
+        with torch.no_grad():
+            for batch in loader:
+                batch_dev = {k: v.to(device) for k, v in batch.items()}
+                logits, _ = model.forward_packed(
+                    batch_dev["entities"],
+                    batch_dev["entity_mask"],
+                    batch_dev["global_features"],
+                    batch_dev["actions"],
+                    batch_dev["action_offsets"],
+                )
+                # Evaluate against original_target (frozen soft targets with floor)
+                p_loss = packed_policy_loss(logits, batch_dev["original_target"], batch_dev["action_offsets"])
+                n = int(batch_dev["entities"].shape[0])
+                total_examples += n
+                total_ce += p_loss.item() * n
+
+                offsets = batch_dev["action_offsets"].tolist()
+                original_target = batch_dev["original_target"]
+                for i in range(len(offsets) - 1):
+                    start = offsets[i]
+                    end = offsets[i + 1]
+                    pred_act = torch.argmax(logits[start:end]).item()
+                    teacher_top1 = torch.argmax(original_target[start:end]).item()
+                    if pred_act == teacher_top1:
+                        total_top1_matches += 1
+        ce = total_ce / total_examples
+        top1 = total_top1_matches / total_examples
+        excess_ce = ce - H_val
+        impr_bps = int(round((u_ce - ce) / u_ce * 10000))
+        return {"ce": ce, "excess_ce": excess_ce, "top1": top1, "impr_bps": impr_bps}
+
+    print(f"Starting Experiment F: {epochs} epochs of De-floored Advantage Distillation (evaluated on original soft targets)...", flush=True)
+    best_val_ce = float("inf")
+    best_epoch = 0
+    best_state = None
+    history = []
+    t0 = time.time()
+
+    for ep in range(1, epochs + 1):
+        model.train()
+        for batch in train_loader:
             batch_dev = {k: v.to(device) for k, v in batch.items()}
+            optimizer.zero_grad(set_to_none=True)
             logits, _ = model.forward_packed(
                 batch_dev["entities"],
                 batch_dev["entity_mask"],
@@ -219,166 +261,126 @@ def evaluate_split_on_original_targets(loader, H_val, u_ce):
                 batch_dev["actions"],
                 batch_dev["action_offsets"],
             )
-            # Evaluate against original_target (frozen soft targets with floor)
-            p_loss = packed_policy_loss(logits, batch_dev["original_target"], batch_dev["action_offsets"])
-            n = int(batch_dev["entities"].shape[0])
-            total_examples += n
-            total_ce += p_loss.item() * n
+            # Training loss: de-floored advantage target
+            p_loss = packed_policy_loss(logits, batch_dev["policy_target"], batch_dev["action_offsets"])
+            p_loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+        scheduler.step()
 
-            offsets = batch_dev["action_offsets"].tolist()
-            original_target = batch_dev["original_target"]
-            for i in range(len(offsets) - 1):
-                start = offsets[i]
-                end = offsets[i + 1]
-                pred_act = torch.argmax(logits[start:end]).item()
-                teacher_top1 = torch.argmax(original_target[start:end]).item()
-                if pred_act == teacher_top1:
-                    total_top1_matches += 1
-    ce = total_ce / total_examples
-    top1 = total_top1_matches / total_examples
-    excess_ce = ce - H_val
-    impr_bps = int(round((u_ce - ce) / u_ce * 10000))
-    return {"ce": ce, "excess_ce": excess_ce, "top1": top1, "impr_bps": impr_bps}
+        # Validation evaluation on original frozen soft targets
+        val_res = evaluate_split_on_original_targets(val_loader, val_H, val_u_ce)
+        is_best = val_res["ce"] < best_val_ce
+        if is_best:
+            best_val_ce = val_res["ce"]
+            best_epoch = ep
+            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
-print(f"Starting Experiment F: {epochs} epochs of De-floored Advantage Distillation (evaluated on original soft targets)...", flush=True)
-best_val_ce = float("inf")
-best_epoch = 0
-best_state = None
-history = []
-t0 = time.time()
+        if ep % 8 == 0 or ep in (1, 5, epochs) or is_best:
+            print(
+                f"Ep {ep:3d}/{epochs}: "
+                f"Val [CE={val_res['ce']:.4f}, Exc={val_res['excess_ce']:+.4f}, Top1={val_res['top1']*100:.2f}%, Impr={val_res['impr_bps']}bps] "
+                f"(Best Val CE={best_val_ce:.4f} @ ep {best_epoch}) [{time.time()-t0:.1f}s]",
+                flush=True,
+            )
+        history.append({"epoch": ep, "lr": optimizer.param_groups[0]["lr"], "val": val_res})
 
-for ep in range(1, epochs + 1):
-    model.train()
-    for batch in train_loader:
-        batch_dev = {k: v.to(device) for k, v in batch.items()}
-        optimizer.zero_grad(set_to_none=True)
-        logits, _ = model.forward_packed(
-            batch_dev["entities"],
-            batch_dev["entity_mask"],
-            batch_dev["global_features"],
-            batch_dev["actions"],
-            batch_dev["action_offsets"],
-        )
-        # Training loss: de-floored advantage target
-        p_loss = packed_policy_loss(logits, batch_dev["policy_target"], batch_dev["action_offsets"])
-        p_loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        optimizer.step()
-    scheduler.step()
+    model.load_state_dict(best_state)
+    final_val = evaluate_split_on_original_targets(val_loader, val_H, val_u_ce)
+    final_train = evaluate_split_on_original_targets(eval_train_loader, train_H, train_u_ce)
 
-    # Validation evaluation on original frozen soft targets
-    val_res = evaluate_split_on_original_targets(val_loader, val_H, val_u_ce)
-    is_best = val_res["ce"] < best_val_ce
-    if is_best:
-        best_val_ce = val_res["ce"]
-        best_epoch = ep
-        best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+    ckpt_path = ckpt_dir / "checkpoint.pt"
+    torch.save({
+        "metadata": {
+            "experiment": "M25_RECOVERY_EXP_F_DEFLOORED_ADVANTAGE_DISTILLATION",
+            "best_epoch": best_epoch,
+            "best_val_ce": best_val_ce,
+            "best_val_top1": final_val["top1"],
+            "parameter_count": param_count,
+            "config_file_sha256": config_file_sha256,
+            "dataset_file_sha256": dataset_file_sha256,
+            "dataset_semantic_hash": actual_dataset_hash,
+            "catalog_hash": catalog_hash,
+            "initialization_seed": INIT_SEED,
+            "shuffle_seed": SHUFFLE_SEED,
+        },
+        "state_dict": best_state,
+    }, ckpt_path)
 
-    if ep % 8 == 0 or ep in (1, 5, epochs) or is_best:
-        print(
-            f"Ep {ep:3d}/{epochs}: "
-            f"Val [CE={val_res['ce']:.4f}, Exc={val_res['excess_ce']:+.4f}, Top1={val_res['top1']*100:.2f}%, Impr={val_res['impr_bps']}bps] "
-            f"(Best Val CE={best_val_ce:.4f} @ ep {best_epoch}) [{time.time()-t0:.1f}s]",
-            flush=True,
-        )
-    history.append({"epoch": ep, "lr": optimizer.param_groups[0]["lr"], "val": val_res})
+    ckpt_bytes = ckpt_path.read_bytes()
+    ckpt_file_sha256 = hashlib.sha256(ckpt_bytes).hexdigest()
 
-model.load_state_dict(best_state)
-final_val = evaluate_split_on_original_targets(val_loader, val_H, val_u_ce)
-final_train = evaluate_split_on_original_targets(eval_train_loader, train_H, train_u_ce)
+    exp_d2_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
+    exp_d2_data = json.loads(exp_d2_path.read_text(encoding="utf-8")) if exp_d2_path.exists() else {}
 
-ckpt_path = ckpt_dir / "checkpoint.pt"
-torch.save({
-    "metadata": {
+    g1_top1_pass = final_val["top1"] >= 0.45
+    g1_ce_bps_pass = final_val["impr_bps"] >= 1000
+
+    out_payload = {
         "experiment": "M25_RECOVERY_EXP_F_DEFLOORED_ADVANTAGE_DISTILLATION",
+        "provenance": {
+            "config_file": str(config_path),
+            "config_file_sha256": config_file_sha256,
+            "dataset_file": str(dataset_path),
+            "dataset_file_sha256": dataset_file_sha256,
+            "dataset_semantic_hash": actual_dataset_hash,
+            "catalog_file": str(catalog_path),
+            "catalog_hash": catalog_hash,
+            "checkpoint_path": str(ckpt_path),
+            "checkpoint_file_sha256": ckpt_file_sha256,
+            "initialization_seed": INIT_SEED,
+            "shuffle_seed": SHUFFLE_SEED,
+        },
+        "model": {
+            "architecture": "delta_entity_mixer_v2",
+            "action_features": ENHANCED_ACTION_FEATURES,
+            "hidden_dim": 192,
+            "blocks": 4,
+            "parameter_count": param_count,
+        },
+        "training_loss": {
+            "objective": "de_floored_advantage_cross_entropy",
+            "uniform_floor_micros_deducted": 100000,
+            "loss_normalization": "proportional_advantages_sum_900000",
+        },
+        "evaluation_standard": {
+            "reference": "original_frozen_soft_targets",
+            "uniform_floor_micros": 100000,
+        },
+        "epochs": epochs,
+        "initial_lr": 3e-4,
+        "schedule": "cosine_annealing",
+        "weight_decay": 1e-4,
+        "value_loss_weight": 0.0,
         "best_epoch": best_epoch,
         "best_val_ce": best_val_ce,
-        "best_val_top1": final_val["top1"],
-        "parameter_count": param_count,
-        "config_file_sha256": config_file_sha256,
-        "dataset_file_sha256": dataset_file_sha256,
-        "dataset_semantic_hash": actual_dataset_hash,
-        "catalog_hash": catalog_hash,
-        "initialization_seed": INIT_SEED,
-        "shuffle_seed": SHUFFLE_SEED,
-    },
-    "state_dict": best_state,
-}, ckpt_path)
+        "best_checkpoint_train": final_train,
+        "best_checkpoint_val": final_val,
+        "comparison_vs_exp_d2_floored": {
+            "d2_best_epoch": exp_d2_data.get("best_epoch"),
+            "d2_val_ce": exp_d2_data.get("best_checkpoint_val", {}).get("ce"),
+            "d2_val_excess_ce": exp_d2_data.get("best_checkpoint_val", {}).get("excess_ce"),
+            "d2_val_top1": exp_d2_data.get("best_checkpoint_val", {}).get("top1"),
+            "d2_val_impr_bps": exp_d2_data.get("best_checkpoint_val", {}).get("impr_bps"),
+            "f_val_ce": final_val["ce"],
+            "f_val_excess_ce": final_val["excess_ce"],
+            "f_val_top1": final_val["top1"],
+            "f_val_impr_bps": final_val["impr_bps"],
+            "delta_val_ce_vs_d2": final_val["ce"] - exp_d2_data.get("best_checkpoint_val", {}).get("ce", 0.0),
+            "delta_val_top1_vs_d2": final_val["top1"] - exp_d2_data.get("best_checkpoint_val", {}).get("top1", 0.0),
+        },
+        "g1_threshold_evaluation": {
+            "target_top1": ">= 0.45 (45.00%)",
+            "achieved_top1": final_val["top1"],
+            "top1_pass": g1_top1_pass,
+            "target_ce_impr_bps": ">= 1000 bps",
+            "achieved_ce_impr_bps": final_val["impr_bps"],
+            "ce_impr_bps_pass": g1_ce_bps_pass,
+            "decision": "M25_G1_RECOVERY_PASS" if (g1_top1_pass and g1_ce_bps_pass) else "M25_G1_RECOVERY_FAIL",
+        },
+        "history": history,
+    }
 
-ckpt_bytes = ckpt_path.read_bytes()
-ckpt_file_sha256 = hashlib.sha256(ckpt_bytes).hexdigest()
-
-exp_d2_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
-exp_d2_data = json.loads(exp_d2_path.read_text(encoding="utf-8")) if exp_d2_path.exists() else {}
-
-g1_top1_pass = final_val["top1"] >= 0.45
-g1_ce_bps_pass = final_val["impr_bps"] >= 1000
-
-out_payload = {
-    "experiment": "M25_RECOVERY_EXP_F_DEFLOORED_ADVANTAGE_DISTILLATION",
-    "provenance": {
-        "config_file": str(config_path),
-        "config_file_sha256": config_file_sha256,
-        "dataset_file": str(dataset_path),
-        "dataset_file_sha256": dataset_file_sha256,
-        "dataset_semantic_hash": actual_dataset_hash,
-        "catalog_file": str(catalog_path),
-        "catalog_hash": catalog_hash,
-        "checkpoint_path": str(ckpt_path),
-        "checkpoint_file_sha256": ckpt_file_sha256,
-        "initialization_seed": INIT_SEED,
-        "shuffle_seed": SHUFFLE_SEED,
-    },
-    "model": {
-        "architecture": "delta_entity_mixer_v2",
-        "action_features": ENHANCED_ACTION_FEATURES,
-        "hidden_dim": 192,
-        "blocks": 4,
-        "parameter_count": param_count,
-    },
-    "training_loss": {
-        "objective": "de_floored_advantage_cross_entropy",
-        "uniform_floor_micros_deducted": 100000,
-        "loss_normalization": "proportional_advantages_sum_900000",
-    },
-    "evaluation_standard": {
-        "reference": "original_frozen_soft_targets",
-        "uniform_floor_micros": 100000,
-    },
-    "epochs": epochs,
-    "initial_lr": 3e-4,
-    "schedule": "cosine_annealing",
-    "weight_decay": 1e-4,
-    "value_loss_weight": 0.0,
-    "best_epoch": best_epoch,
-    "best_val_ce": best_val_ce,
-    "best_checkpoint_train": final_train,
-    "best_checkpoint_val": final_val,
-    "comparison_vs_exp_d2_floored": {
-        "d2_best_epoch": exp_d2_data.get("best_epoch"),
-        "d2_val_ce": exp_d2_data.get("best_checkpoint_val", {}).get("ce"),
-        "d2_val_excess_ce": exp_d2_data.get("best_checkpoint_val", {}).get("excess_ce"),
-        "d2_val_top1": exp_d2_data.get("best_checkpoint_val", {}).get("top1"),
-        "d2_val_impr_bps": exp_d2_data.get("best_checkpoint_val", {}).get("impr_bps"),
-        "f_val_ce": final_val["ce"],
-        "f_val_excess_ce": final_val["excess_ce"],
-        "f_val_top1": final_val["top1"],
-        "f_val_impr_bps": final_val["impr_bps"],
-        "delta_val_ce_vs_d2": final_val["ce"] - exp_d2_data.get("best_checkpoint_val", {}).get("ce", 0.0),
-        "delta_val_top1_vs_d2": final_val["top1"] - exp_d2_data.get("best_checkpoint_val", {}).get("top1", 0.0),
-    },
-    "g1_threshold_evaluation": {
-        "target_top1": ">= 0.45 (45.00%)",
-        "achieved_top1": final_val["top1"],
-        "top1_pass": g1_top1_pass,
-        "target_ce_impr_bps": ">= 1000 bps",
-        "achieved_ce_impr_bps": final_val["impr_bps"],
-        "ce_impr_bps_pass": g1_ce_bps_pass,
-        "decision": "M25_G1_RECOVERY_PASS" if (g1_top1_pass and g1_ce_bps_pass) else "M25_G1_RECOVERY_FAIL",
-    },
-    "history": history,
-}
-
-out_path = Path("benchmarks/m25-recovery-exp-f.result.json")
-out_path.write_text(json.dumps(out_payload, indent=2) + "\n", encoding="utf-8")
-print(f"COMPLETE: F Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f} (Exc {final_val['excess_ce']:+.4f}), Val Top1 {final_val['top1']*100:.2f}%, Train CE {final_train['ce']:.4f}, Train Top1 {final_train['top1']*100:.2f}%", flush=True)
+    out_path = Path("benchmarks/m25-recovery-exp-f.result.json")
+    out_path.write_text(json.dumps(out_payload, indent=2) + "\n", encoding="utf-8")
+    print(f"COMPLETE: F Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f} (Exc {final_val['excess_ce']:+.4f}), Val Top1 {final_val['top1']*100:.2f}%, Train CE {final_train['ce']:.4f}, Train Top1 {final_train['top1']*100:.2f}%", flush=True)

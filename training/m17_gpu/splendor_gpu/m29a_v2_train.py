@@ -1,4 +1,4 @@
-"""M25 Optimization Recovery - Experiment E: h320/b4 + D2 Exact Action Delta Features (128 epochs)."""
+"""M29A-v2 Milestone: Nested Residual Action-Conditioned Entity Attention Training (128 epochs)."""
 import time
 import json
 import math
@@ -15,13 +15,18 @@ from splendor_gpu.encoding import (
     encode_observation, encode_action, GEMS, COLORS, TIERS
 )
 from splendor_gpu.m25_train import split_m25_indices, compute_uniform_policy_ce, validate_m25_dataset_provenance
-from splendor_gpu.model import ResidualBlock
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
-
+from splendor_gpu.m29a_v2_model import NestedResidualActionEntityMixer, ENHANCED_ACTION_FEATURES
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Running Experiment E (h320/b4 + D2 exact action features) on {device}...", flush=True)
+    print(f"Running M29A-v2 (Nested Residual Attention) on {device}...", flush=True)
+
+    # Fail-closed output directory check BEFORE burning compute
+    ckpt_dir = Path("local-artifacts/m29a-v2-nested-residual-attention")
+    if ckpt_dir.exists():
+        raise RuntimeError(f"Output directory {ckpt_dir} already exists — fail-closed protection")
+    ckpt_dir.mkdir(parents=True, exist_ok=False)
 
     config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
     config_text = config_path.read_text(encoding="utf-8")
@@ -59,10 +64,10 @@ if __name__ == "__main__":
     train_u_ce = compute_uniform_policy_ce(train_examples)
     val_u_ce = compute_uniform_policy_ce(val_examples)
 
-    print("Pre-encoding examples with exact action-delta features...", flush=True)
+    print("Pre-encoding dataset with exact action deltas (floored soft targets)...", flush=True)
     t_enc = time.time()
 
-    class DeltaEncodedDataset(Dataset):
+    class DeltaDataset(Dataset):
         def __init__(self, examples, catalog):
             self.items = []
             for ex in examples:
@@ -72,7 +77,10 @@ if __name__ == "__main__":
                     base_act = encode_action(a).tolist()
                     delta_act = encode_action_delta_v2(ex["observation"], a, catalog)
                     actions.append(base_act + delta_act)
-                policy_target = [m / 1000000.0 for m in ex["policy_target_micros"]]
+
+                micros = ex["policy_target_micros"]
+                policy_target = [m / 1000000.0 for m in micros]
+
                 self.items.append({
                     "entities": obs.entities,
                     "entity_mask": obs.mask,
@@ -81,8 +89,10 @@ if __name__ == "__main__":
                     "policy_target": torch.tensor(policy_target, dtype=torch.float32),
                     "value_target": torch.tensor(ex["value_target"], dtype=torch.float32),
                 })
+
         def __len__(self):
             return len(self.items)
+
         def __getitem__(self, idx):
             return self.items[idx]
 
@@ -109,48 +119,16 @@ if __name__ == "__main__":
             "value_target": value_target,
         }
 
-    train_dataset = DeltaEncodedDataset(train_examples, catalog)
-    val_dataset = DeltaEncodedDataset(val_examples, catalog)
+    train_dataset = DeltaDataset(train_examples, catalog)
+    eval_train_dataset = DeltaDataset(train_examples, catalog)
+    val_dataset = DeltaDataset(val_examples, catalog)
     print(f"Pre-encoding complete in {time.time()-t_enc:.1f}s", flush=True)
 
     SHUFFLE_SEED = 20260823
     train_generator = torch.Generator().manual_seed(SHUFFLE_SEED)
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, generator=train_generator, collate_fn=packed_delta_collate)
-    eval_train_loader = DataLoader(train_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
+    eval_train_loader = DataLoader(eval_train_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
     val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_collate)
-
-    ENHANCED_ACTION_FEATURES = 36 + 23  # 59
-
-    class DeltaEntityMixer(nn.Module):
-        def __init__(self, hidden_dim=320, blocks=4, dropout=0.0):
-            super().__init__()
-            h = hidden_dim
-            self.entity_encoder = nn.Sequential(nn.Linear(ENTITY_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-            self.entity_gate = nn.Linear(h, 1)
-            self.global_encoder = nn.Sequential(nn.Linear(GLOBAL_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-            self.mix = nn.Linear(h * 2, h)
-            self.blocks = nn.Sequential(*(ResidualBlock(h, dropout) for _ in range(blocks)))
-            self.norm = nn.LayerNorm(h)
-
-            self.action_encoder = nn.Sequential(nn.Linear(ENHANCED_ACTION_FEATURES, h), nn.GELU(), nn.Linear(h, h))
-            self.policy = nn.Sequential(nn.Linear(h * 3, h), nn.GELU(), nn.Linear(h, 1))
-            self.value = nn.Sequential(nn.Linear(h, h), nn.GELU(), nn.Linear(h, 2), nn.Sigmoid())
-
-        def state_embedding(self, entities, mask, global_features):
-            encoded = self.entity_encoder(entities)
-            gate = self.entity_gate(encoded).squeeze(-1).masked_fill(~mask, torch.finfo(encoded.dtype).min)
-            weights = torch.softmax(gate, dim=-1).unsqueeze(-1)
-            pooled = (encoded * weights).sum(dim=1)
-            state = self.mix(torch.cat([pooled, self.global_encoder(global_features)], dim=-1))
-            return self.norm(self.blocks(state))
-
-        def forward_packed(self, entities, mask, global_features, actions, action_offsets):
-            state = self.state_embedding(entities, mask, global_features)
-            action = self.action_encoder(actions)
-            counts = action_offsets[1:] - action_offsets[:-1]
-            expanded = torch.repeat_interleave(state, counts, dim=0)
-            logits = self.policy(torch.cat([expanded, action, expanded * action], dim=-1)).squeeze(-1)
-            return logits, self.value(state)
 
     def packed_policy_loss(logits, targets, offsets):
         losses = []
@@ -167,9 +145,9 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(INIT_SEED)
 
-    model = DeltaEntityMixer(hidden_dim=320, blocks=4, dropout=0.0).to(device)
+    model = NestedResidualActionEntityMixer(hidden_dim=192, blocks=4, dropout=0.0).to(device)
     param_count = sum(p.numel() for p in model.parameters())
-    print(f"Built DeltaEntityMixer (h320, Experiment E): {param_count:,} parameters", flush=True)
+    print(f"Built NestedResidualActionEntityMixer (M29A-v2): {param_count:,} parameters", flush=True)
 
     epochs = 128
     optimizer = torch.optim.AdamW(
@@ -214,7 +192,7 @@ if __name__ == "__main__":
         impr_bps = int(round((u_ce - ce) / u_ce * 10000))
         return {"ce": ce, "excess_ce": excess_ce, "top1": top1, "impr_bps": impr_bps}
 
-    print(f"Starting Experiment E: {epochs} epochs of h320 Exact Transition Policy-Only...", flush=True)
+    print(f"Starting M29A-v2: {epochs} epochs of Nested Residual Action Attention (lr=3e-4 cosine, wd=1e-4)...", flush=True)
     best_val_ce = float("inf")
     best_epoch = 0
     best_state = None
@@ -259,14 +237,11 @@ if __name__ == "__main__":
     final_val = evaluate_split(val_loader, val_H, val_u_ce)
     final_train = evaluate_split(eval_train_loader, train_H, train_u_ce)
 
-    ckpt_dir = Path("local-artifacts/m25-recovery-exp-e")
-    if ckpt_dir.exists():
-        raise RuntimeError(f"Output directory {ckpt_dir} already exists — fail-closed protection")
-    ckpt_dir.mkdir(parents=True, exist_ok=False)
     ckpt_path = ckpt_dir / "checkpoint.pt"
     torch.save({
         "metadata": {
-            "experiment": "M25_RECOVERY_EXP_E_H320_EXACT_TRANSITION_DELTA",
+            "milestone": "M29A-v2",
+            "architecture": "nested_residual_action_entity_mixer_v2",
             "best_epoch": best_epoch,
             "best_val_ce": best_val_ce,
             "best_val_top1": final_val["top1"],
@@ -284,20 +259,31 @@ if __name__ == "__main__":
     ckpt_bytes = ckpt_path.read_bytes()
     ckpt_file_sha256 = hashlib.sha256(ckpt_bytes).hexdigest()
 
-    exp_a_path = Path("benchmarks/m25-recovery-exp-a.result.json")
-    exp_a_data = json.loads(exp_a_path.read_text(encoding="utf-8")) if exp_a_path.exists() else {}
-
-    exp_b_path = Path("benchmarks/m25-recovery-exp-b.result.json")
-    exp_b_data = json.loads(exp_b_path.read_text(encoding="utf-8")) if exp_b_path.exists() else {}
-
     exp_d2_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
     exp_d2_data = json.loads(exp_d2_path.read_text(encoding="utf-8")) if exp_d2_path.exists() else {}
+
+    d2_val_ce = exp_d2_data.get("best_checkpoint_val", {}).get("ce", 0.0)
+    d2_val_excess = exp_d2_data.get("best_checkpoint_val", {}).get("excess_ce", 0.0)
+    d2_val_top1 = exp_d2_data.get("best_checkpoint_val", {}).get("top1", 0.0)
+
+    delta_ce_vs_d2 = final_val["ce"] - d2_val_ce
+    delta_top1_vs_d2 = final_val["top1"] - d2_val_top1
 
     g1_top1_pass = final_val["top1"] >= 0.45
     g1_ce_bps_pass = final_val["impr_bps"] >= 1000
 
+    representation_signal_pass = (delta_ce_vs_d2 <= -0.03) or (delta_top1_vs_d2 >= 0.03)
+
+    if g1_top1_pass and g1_ce_bps_pass:
+        decision = "M29A_V2_G1_PASS_AUTHORIZE_G2_TRANSFER"
+    elif representation_signal_pass:
+        decision = "M29A_V2_REPRESENTATION_SIGNAL_CONFIRMED_G1_FAIL"
+    else:
+        decision = "STOP_ACTION_ENTITY_REPRESENTATION_ROUTE"
+
     out_payload = {
-        "experiment": "M25_RECOVERY_EXP_E_H320_EXACT_TRANSITION_DELTA",
+        "milestone": "M29A-v2",
+        "experiment": "M29A_V2_NESTED_RESIDUAL_ACTION_ENTITY_ATTENTION",
         "provenance": {
             "config_file": str(config_path),
             "config_file_sha256": config_file_sha256,
@@ -312,11 +298,12 @@ if __name__ == "__main__":
             "shuffle_seed": SHUFFLE_SEED,
         },
         "model": {
-            "architecture": "delta_entity_mixer_v2",
+            "architecture": "nested_residual_action_entity_mixer_v2",
             "action_features": ENHANCED_ACTION_FEATURES,
-            "hidden_dim": 320,
+            "hidden_dim": 192,
             "blocks": 4,
             "parameter_count": param_count,
+            "residual_attention_zero_init": True,
         },
         "epochs": epochs,
         "initial_lr": 3e-4,
@@ -327,44 +314,42 @@ if __name__ == "__main__":
         "best_val_ce": best_val_ce,
         "best_checkpoint_train": final_train,
         "best_checkpoint_val": final_val,
-        "two_by_two_matrix": {
-            "cell_h192_baseline_action (Exp A)": {
-                "val_ce": exp_a_data.get("best_checkpoint_val", {}).get("ce"),
-                "val_excess_ce": exp_a_data.get("best_checkpoint_val", {}).get("excess_ce"),
-                "val_top1": exp_a_data.get("best_checkpoint_val", {}).get("top1"),
-                "val_impr_bps": exp_a_data.get("best_checkpoint_val", {}).get("impr_bps"),
-            },
-            "cell_h320_baseline_action (Exp B)": {
-                "val_ce": exp_b_data.get("best_checkpoint_val", {}).get("ce"),
-                "val_excess_ce": exp_b_data.get("best_checkpoint_val", {}).get("excess_ce"),
-                "val_top1": exp_b_data.get("best_checkpoint_val", {}).get("top1"),
-                "val_impr_bps": exp_b_data.get("best_checkpoint_val", {}).get("impr_bps"),
-            },
-            "cell_h192_delta_action (Exp D2)": {
-                "val_ce": exp_d2_data.get("best_checkpoint_val", {}).get("ce"),
-                "val_excess_ce": exp_d2_data.get("best_checkpoint_val", {}).get("excess_ce"),
-                "val_top1": exp_d2_data.get("best_checkpoint_val", {}).get("top1"),
-                "val_impr_bps": exp_d2_data.get("best_checkpoint_val", {}).get("impr_bps"),
-            },
-            "cell_h320_delta_action (Exp E)": {
-                "val_ce": final_val["ce"],
-                "val_excess_ce": final_val["excess_ce"],
-                "val_top1": final_val["top1"],
-                "val_impr_bps": final_val["impr_bps"],
-            },
+        "comparison_vs_exp_d2_baseline": {
+            "d2_best_epoch": exp_d2_data.get("best_epoch"),
+            "d2_val_ce": d2_val_ce,
+            "d2_val_excess_ce": d2_val_excess,
+            "d2_val_top1": d2_val_top1,
+            "d2_val_impr_bps": exp_d2_data.get("best_checkpoint_val", {}).get("impr_bps"),
+            "m29a_v2_val_ce": final_val["ce"],
+            "m29a_v2_val_excess_ce": final_val["excess_ce"],
+            "m29a_v2_val_top1": final_val["top1"],
+            "m29a_v2_val_impr_bps": final_val["impr_bps"],
+            "delta_val_ce_vs_d2": delta_ce_vs_d2,
+            "delta_val_top1_vs_d2": delta_top1_vs_d2,
         },
-        "g1_threshold_evaluation": {
-            "target_top1": ">= 0.45 (45.00%)",
-            "achieved_top1": final_val["top1"],
-            "top1_pass": g1_top1_pass,
-            "target_ce_impr_bps": ">= 1000 bps",
-            "achieved_ce_impr_bps": final_val["impr_bps"],
-            "ce_impr_bps_pass": g1_ce_bps_pass,
-            "decision": "M25_G1_RECOVERY_PASS" if (g1_top1_pass and g1_ce_bps_pass) else "STOP_WIDTH_SCALING_TRANSITION_TO_OBJECTIVE_V2",
+        "gate_evaluations": {
+            "g1_heldout_teacher_fit": {
+                "target_top1": ">= 0.45 (45.00%)",
+                "achieved_top1": final_val["top1"],
+                "top1_pass": g1_top1_pass,
+                "target_ce_impr_bps": ">= 1000 bps",
+                "achieved_ce_impr_bps": final_val["impr_bps"],
+                "ce_impr_bps_pass": g1_ce_bps_pass,
+                "g1_pass": g1_top1_pass and g1_ce_bps_pass,
+            },
+            "representation_delta_gate": {
+                "target_ce_delta_vs_d2": "<= -0.03 nats",
+                "achieved_ce_delta_vs_d2": delta_ce_vs_d2,
+                "target_top1_delta_vs_d2": ">= +0.03 (+3pp)",
+                "achieved_top1_delta_vs_d2": delta_top1_vs_d2,
+                "representation_signal_pass": representation_signal_pass,
+            },
+            "decision": decision,
+            "arena_authorized": False,
         },
         "history": history,
     }
 
-    out_path = Path("benchmarks/m25-recovery-exp-e.result.json")
+    out_path = Path("benchmarks/m29a-v2-nested-residual-attention.result.json")
     out_path.write_text(json.dumps(out_payload, indent=2) + "\n", encoding="utf-8")
-    print(f"COMPLETE: E Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f} (Exc {final_val['excess_ce']:+.4f}), Val Top1 {final_val['top1']*100:.2f}%, Train CE {final_train['ce']:.4f}, Train Top1 {final_train['top1']*100:.2f}%", flush=True)
+    print(f"COMPLETE M29A-v2: Best Epoch {best_epoch}, Val CE {final_val['ce']:.4f} (Exc {final_val['excess_ce']:+.4f}), Val Top1 {final_val['top1']*100:.2f}%, Train CE {final_train['ce']:.4f}, Train Top1 {final_train['top1']*100:.2f}%, Decision: {decision}", flush=True)
