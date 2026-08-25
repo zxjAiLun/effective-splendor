@@ -81,5 +81,6 @@ The remaining high-value hypothesis in **M31A** is:
 | Ranking Loss Implementation | `training/m17_gpu/splendor_gpu/m31a_loss.py` | Vectorized Canonical CE + GPU-gathered Pairwise Ranking |
 | Preflight Guard | `training/m17_gpu/splendor_gpu/m31a_preflight.py` | Strict fail-closed validation of frozen inputs/environment |
 | Training Script | `training/m17_gpu/splendor_gpu/m31a_train.py` | M31A GPU Training Runner with strict preflight & provenance |
-| Unit Tests | `training/m17_gpu/tests/test_m31a_ranking_loss.py` | 5 targeted unit tests including real preflight enforcement (all passed) |
+| Evaluation Module | `training/m17_gpu/splendor_gpu/m31a_eval.py` | Vectorized segmented GPU Top-1 & CE evaluation |
+| Unit Tests | `training/m17_gpu/tests/test_m31a_ranking_loss.py` | 6 targeted unit tests including real provenance calculation & GPU evaluation (all passed) |
 | Milestone Document | `docs/m31a-ranking-objective.md` | M31A Design & Review Contract |

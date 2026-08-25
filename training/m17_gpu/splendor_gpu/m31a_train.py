@@ -17,6 +17,7 @@ from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
 from splendor_gpu.model import ResidualBlock
 from splendor_gpu.m31a_loss import extract_ranking_pair_info, compute_m31a_loss
 from splendor_gpu.m31a_preflight import preflight_m31a, compute_file_sha256
+from splendor_gpu.m31a_eval import evaluate_split_vectorized
 
 ENHANCED_ACTION_FEATURES = 36 + 23  # 59
 
@@ -55,8 +56,10 @@ class DeltaEntityMixer(nn.Module):
 if __name__ == "__main__":
     runner_path = Path(__file__)
     loss_path = Path("training/m17_gpu/splendor_gpu/m31a_loss.py")
+    eval_path = Path("training/m17_gpu/splendor_gpu/m31a_eval.py")
     runner_file_sha256 = compute_file_sha256(runner_path)
     loss_file_sha256 = compute_file_sha256(loss_path)
+    eval_file_sha256 = compute_file_sha256(eval_path)
 
     config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
@@ -71,10 +74,17 @@ if __name__ == "__main__":
     catalog = load_catalog(catalog_path)
     actual_catalog_hash = catalog_semantic_hash(catalog)
 
+    # 1. Set seed BEFORE constructing the official model
+    INIT_SEED = int(config["model"]["initialization_seed"])
+    torch.manual_seed(INIT_SEED)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(INIT_SEED)
+
+    # 2. Construct official model
     model = DeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
     param_count = sum(p.numel() for p in model.parameters())
 
-    # Strict fail-closed preflight check BEFORE creating output directory
+    # 3. Strict fail-closed preflight check BEFORE creating output directory
     provenance_hashes = preflight_m31a(
         config_path=config_path,
         dataset_path=dataset_path,
@@ -88,12 +98,12 @@ if __name__ == "__main__":
     )
     print("Preflight validation passed: all frozen hashes match exactly.", flush=True)
 
-    # Create output directory only after all preflights succeed
+    # 4. Create output directory only after all preflights succeed
     ckpt_dir.mkdir(parents=True, exist_ok=False)
 
     device = torch.device("cuda")
     model = model.to(device)
-    print(f"Running M31A Objective-v2 on {device} with {param_count:,} parameters...", flush=True)
+    print(f"Running M31A Objective-v2 on {device} with {param_count:,} parameters (Init seed={INIT_SEED})...", flush=True)
 
     train_indices, val_indices = split_m25_indices(ds_payload, config)
     train_examples = [ds_payload["examples"][i] for i in train_indices]
@@ -178,7 +188,6 @@ if __name__ == "__main__":
                 global_runner_up_idx.append(start + ru)
                 ranking_weights.append(w)
             else:
-                # Safe zero-weight dummy indices
                 global_top1_idx.append(start)
                 global_runner_up_idx.append(start)
                 ranking_weights.append(0.0)
@@ -207,10 +216,6 @@ if __name__ == "__main__":
     eval_train_loader = DataLoader(eval_train_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_ranking_collate)
     val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False, collate_fn=packed_delta_ranking_collate)
 
-    INIT_SEED = int(config["model"]["initialization_seed"])
-    torch.manual_seed(INIT_SEED)
-    torch.cuda.manual_seed_all(INIT_SEED)
-
     epochs = 128
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -218,58 +223,6 @@ if __name__ == "__main__":
         weight_decay=1e-4,
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
-
-    def evaluate_split(loader, H_val, u_ce):
-        model.eval()
-        total_examples = 0
-        total_ce = 0.0
-        total_composite = 0.0
-        total_top1_matches = 0
-        with torch.no_grad():
-            for batch in loader:
-                batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
-                logits, _ = model.forward_packed(
-                    batch_dev["entities"],
-                    batch_dev["entity_mask"],
-                    batch_dev["global_features"],
-                    batch_dev["actions"],
-                    batch_dev["action_offsets"],
-                )
-                tot_loss, p_ce, _ = compute_m31a_loss(
-                    logits,
-                    batch_dev["policy_target"],
-                    batch_dev["action_offsets"],
-                    batch_dev["global_top1_idx"],
-                    batch_dev["global_runner_up_idx"],
-                    batch_dev["ranking_weights"],
-                    ranking_lambda=0.5,
-                )
-                n = int(batch_dev["entities"].shape[0])
-                total_examples += n
-                total_ce += p_ce.item() * n
-                total_composite += tot_loss.item() * n
-
-                offsets = batch_dev["action_offsets"].tolist()
-                policy_target = batch_dev["policy_target"]
-                for i in range(len(offsets) - 1):
-                    start = offsets[i]
-                    end = offsets[i + 1]
-                    pred_act = torch.argmax(logits[start:end]).item()
-                    teacher_top1 = torch.argmax(policy_target[start:end]).item()
-                    if pred_act == teacher_top1:
-                        total_top1_matches += 1
-        ce = total_ce / total_examples
-        composite_loss = total_composite / total_examples
-        top1 = total_top1_matches / total_examples
-        excess_ce = ce - H_val
-        impr_bps = int(round((u_ce - ce) / u_ce * 10000))
-        return {
-            "ce": ce,
-            "composite_loss": composite_loss,
-            "excess_ce": excess_ce,
-            "top1": top1,
-            "impr_bps": impr_bps,
-        }
 
     print(f"Starting M31A: {epochs} epochs of Canonical Soft-CE + 0.5 * Ranking Loss...", flush=True)
     best_val_ce = float("inf")
@@ -304,7 +257,7 @@ if __name__ == "__main__":
             optimizer.step()
         scheduler.step()
 
-        val_res = evaluate_split(val_loader, val_H, val_u_ce)
+        val_res = evaluate_split_vectorized(model, val_loader, val_H, val_u_ce, device)
         is_best = val_res["ce"] < best_val_ce
         if is_best:
             best_val_ce = val_res["ce"]
@@ -321,8 +274,8 @@ if __name__ == "__main__":
         history.append({"epoch": ep, "lr": optimizer.param_groups[0]["lr"], "val": val_res})
 
     model.load_state_dict(best_state)
-    final_val = evaluate_split(val_loader, val_H, val_u_ce)
-    final_train = evaluate_split(eval_train_loader, train_H, train_u_ce)
+    final_val = evaluate_split_vectorized(model, val_loader, val_H, val_u_ce, device)
+    final_train = evaluate_split_vectorized(model, eval_train_loader, train_H, train_u_ce, device)
 
     ckpt_path = ckpt_dir / "checkpoint.pt"
     torch.save({
@@ -342,6 +295,7 @@ if __name__ == "__main__":
             "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
             "runner_file_sha256": runner_file_sha256,
             "loss_file_sha256": loss_file_sha256,
+            "eval_file_sha256": eval_file_sha256,
             "initialization_seed": INIT_SEED,
             "shuffle_seed": SHUFFLE_SEED,
         },
@@ -387,6 +341,8 @@ if __name__ == "__main__":
             "runner_file_sha256": runner_file_sha256,
             "loss_file": str(loss_path),
             "loss_file_sha256": loss_file_sha256,
+            "eval_file": str(eval_path),
+            "eval_file_sha256": eval_file_sha256,
             "checkpoint_path": str(ckpt_path),
             "checkpoint_file_sha256": ckpt_file_sha256,
             "initialization_seed": INIT_SEED,
