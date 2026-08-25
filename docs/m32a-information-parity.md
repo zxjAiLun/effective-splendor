@@ -36,7 +36,7 @@ The core question tested in **M32A** is:
 
 ## Frozen experimental design
 
-1. **Deterministic Belief Projection (212 Dimensions)**:
+1. **Deterministic Belief Projection (212 Dimensions, Contract `m32a_information_set_projection_v1`)**:
    - **Part A: `unseen_card_mask` (90 dims, CardId 0..89)**:
      - Binary indicator: `1.0` if card is in `info_set.unseen_cards(tier)`, `0.0` otherwise.
    - **Part B: `reserved_knowledge` (2 players $\times$ 3 slots $\times$ 20 dims = 120 dims)**:
@@ -54,7 +54,8 @@ The core question tested in **M32A** is:
 
 3. **Dataset & Partition**:
    - Canonical M25 materialized dataset (`12,216` train / `4,066` val, `init_seed = 280229`, `shuffle_seed = 20260823`).
-   - Sidecar features exported from verified Rust runtime and validated 1-to-1 against dataset `information_set_hash`.
+   - Strict 1-to-1 join by `example_index` (0..16,281) with row-level validation of `example_index`, `source_id`, `evaluation_match_index`, `ply`, `actor`, and `information_set_hash`.
+   - Sidecar root metadata binds `exporter_file_sha256`, `ordered_256_replay_bundle_digest`, and `feature_contract_version = m32a_information_set_projection_v1`.
 
 4. **Training & Checkpoint Selection**:
    - Canonical Soft-Target Cross-Entropy (10% floor, 1,000,000 micros).
@@ -77,8 +78,8 @@ The core question tested in **M32A** is:
 
 - **Rust Belief Projection Verification**: `crates/splendor-cli/tests/m32a_belief_features.rs` verifies 212-dim structure, non-zero HiddenDeck status with strictly zero card attributes, and empty slot encodings.
 - **Python Model Parameters**: `test_model_parameter_count` asserts parameter count equals 994,180.
-- **Sidecar Integrity & Non-Leakage**: `test_sidecar_validator_integrity_and_leakage_detection` validates completeness, feature bounds, and fail-closed detection of leaked attributes in HiddenDeck slots.
-- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m32a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, and metadata matching across all 16,282 examples.
+- **Sidecar Integrity & Non-Leakage**: `test_sidecar_validator_integrity_and_leakage_detection` validates completeness, root metadata, feature bounds, and fail-closed detection of leaked attributes in HiddenDeck slots.
+- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m32a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, root metadata, and metadata matching across all 16,282 examples via real `preflight_m32a` invocation.
 
 ## Artifact hashes and evidence
 

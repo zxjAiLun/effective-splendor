@@ -11,6 +11,7 @@ FROZEN_CATALOG_HASH = "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d5
 FROZEN_D2_RESULT_SHA256 = "403e4903044dfec929c6e92713b2bb9f3e120469ab872271dc82e78f752efc38"
 FROZEN_M32A_PARAMETER_COUNT = 994180
 BELIEF_FEATURE_DIM = 212
+FEATURE_CONTRACT_VERSION = "m32a_information_set_projection_v1"
 
 def compute_file_sha256(path: Path) -> str:
     if not path.exists():
@@ -19,16 +20,32 @@ def compute_file_sha256(path: Path) -> str:
 
 def validate_sidecar_integrity(
     sidecar_path: Path,
-    expected_tuples: list[tuple[int, int, int, str]],
+    expected_tuples: list[tuple[int, str, int, int, int, str]],
     expected_total: int = 16282,
 ) -> dict[str, str | int]:
-    """Strictly validate sidecar completeness, feature bounds, non-leakage, and 1-to-1 matching."""
+    """Strictly validate sidecar root metadata, completeness, feature bounds, non-leakage, and 1-to-1 index matching."""
     if not sidecar_path.exists():
         raise FileNotFoundError(f"Sidecar file does not exist: {sidecar_path}")
 
     sidecar_bytes = sidecar_path.read_bytes()
     sidecar_sha256 = hashlib.sha256(sidecar_bytes).hexdigest()
     data = json.loads(sidecar_bytes.decode("utf-8"))
+
+    # 1. Validate root metadata
+    if data.get("milestone") != "M32A":
+        raise ValueError(f"Sidecar milestone mismatch: expected 'M32A', got {data.get('milestone')}")
+    if data.get("feature_contract_version") != FEATURE_CONTRACT_VERSION:
+        raise ValueError(f"Feature contract version mismatch: expected {FEATURE_CONTRACT_VERSION}, got {data.get('feature_contract_version')}")
+    if data.get("dataset_file_sha256") != FROZEN_DATASET_FILE_SHA256:
+        raise ValueError(f"Sidecar dataset_file_sha256 mismatch: expected {FROZEN_DATASET_FILE_SHA256}, got {data.get('dataset_file_sha256')}")
+    if data.get("total_examples") != expected_total:
+        raise ValueError(f"Sidecar total_examples mismatch: expected {expected_total}, got {data.get('total_examples')}")
+    if data.get("feature_dim") != BELIEF_FEATURE_DIM:
+        raise ValueError(f"Sidecar feature_dim mismatch: expected {BELIEF_FEATURE_DIM}, got {data.get('feature_dim')}")
+    if not data.get("exporter_file_sha256"):
+        raise ValueError("Sidecar root metadata missing exporter_file_sha256")
+    if not data.get("ordered_256_replay_bundle_digest"):
+        raise ValueError("Sidecar root metadata missing ordered_256_replay_bundle_digest")
 
     entries = data.get("entries", [])
     if len(entries) != expected_total:
@@ -39,15 +56,20 @@ def validate_sidecar_integrity(
         if ex_idx != i:
             raise ValueError(f"Entry index mismatch at row {i}: got {ex_idx}")
 
+        sid = entry["source_id"]
         m_idx = entry["match_index"]
         ply = entry["ply"]
         actor = entry["actor"]
         info_hash = entry["information_set_hash"]
 
         if expected_tuples:
-            exp_m, exp_ply, exp_actor, exp_hash = expected_tuples[i]
-            if (m_idx, ply, actor, info_hash) != (exp_m, exp_ply, exp_actor, exp_hash):
-                raise ValueError(f"Entry {i} metadata mismatch with dataset: got ({m_idx}, {ply}, {actor}, {info_hash}), expected ({exp_m}, {exp_ply}, {exp_actor}, {exp_hash})")
+            exp_idx, exp_sid, exp_m, exp_ply, exp_actor, exp_hash = expected_tuples[i]
+            if (ex_idx, sid, m_idx, ply, actor, info_hash) != (exp_idx, exp_sid, exp_m, exp_ply, exp_actor, exp_hash):
+                raise ValueError(
+                    f"Entry {i} metadata mismatch with dataset: "
+                    f"got ({ex_idx}, {sid}, {m_idx}, {ply}, {actor}, {info_hash}), "
+                    f"expected ({exp_idx}, {exp_sid}, {exp_m}, {exp_ply}, {exp_actor}, {exp_hash})"
+                )
 
         feats = entry["belief_features"]
         if len(feats) != BELIEF_FEATURE_DIM:
@@ -77,6 +99,9 @@ def validate_sidecar_integrity(
 
     return {
         "sidecar_file_sha256": sidecar_sha256,
+        "exporter_file_sha256": data["exporter_file_sha256"],
+        "ordered_256_replay_bundle_digest": data["ordered_256_replay_bundle_digest"],
+        "feature_contract_version": data["feature_contract_version"],
         "total_entries": len(entries),
         "feature_dim": BELIEF_FEATURE_DIM,
     }
@@ -91,7 +116,7 @@ def preflight_m32a(
     actual_dataset_semantic_hash: str,
     actual_catalog_hash: str,
     actual_param_count: int,
-    expected_tuples: list[tuple[int, int, int, str]],
+    expected_tuples: list[tuple[int, str, int, int, int, str]],
     require_cuda: bool = True,
 ) -> dict[str, str | int]:
     """Strict fail-closed validation of all frozen inputs, sidecar, and output directory BEFORE training."""
@@ -131,4 +156,7 @@ def preflight_m32a(
         "catalog_hash": actual_catalog_hash,
         "d2_result_file_sha256": actual_d2_sha,
         "sidecar_file_sha256": str(sidecar_info["sidecar_file_sha256"]),
+        "exporter_file_sha256": str(sidecar_info["exporter_file_sha256"]),
+        "ordered_256_replay_bundle_digest": str(sidecar_info["ordered_256_replay_bundle_digest"]),
+        "feature_contract_version": str(sidecar_info["feature_contract_version"]),
     }

@@ -12,9 +12,10 @@ use sha2::{Digest, Sha256};
 use splendor_belief::{build_information_set_v1, InformationSetV1, ReservedKnowledgeV1};
 use splendor_catalog::{card, Tier, CARD_COUNT};
 use splendor_core::{visible_events, Audience, FullState, GameConfig, PlayerId, Ruleset};
-use splendor_replay::{verify_replay_position, ReplayV1};
+use splendor_replay::{replay_document_hash_v1, verify_replay_position, ReplayV1};
 
 pub const BELIEF_FEATURES: usize = 212; // 90 (unseen mask) + 120 (reserved knowledge) + 2 (purchased count)
+pub const FEATURE_CONTRACT_VERSION: &str = "m32a_information_set_projection_v1";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SidecarEntry {
@@ -30,6 +31,9 @@ pub struct SidecarEntry {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SidecarArtifact {
     pub milestone: String,
+    pub feature_contract_version: String,
+    pub exporter_file_sha256: String,
+    pub ordered_256_replay_bundle_digest: String,
     pub dataset_file: String,
     pub dataset_file_sha256: String,
     pub total_examples: usize,
@@ -159,6 +163,16 @@ fn reconstruct_visible_history(
 fn main() {
     println!("M32A: Exporting 212-dim Belief Sidecar Features...");
 
+    // Compute exporter source SHA-256
+    let exporter_path = PathBuf::from("crates/splendor-cli/src/bin/m32a_export_sidecar.rs");
+    let exporter_bytes = std::fs::read(&exporter_path).expect("read exporter source bytes");
+    let exporter_sha256 = {
+        let mut hasher = Sha256::new();
+        hasher.update(&exporter_bytes);
+        hex::encode(hasher.finalize())
+    };
+    println!("Exporter source SHA-256: {}", exporter_sha256);
+
     let ds_path = PathBuf::from("local-artifacts/m25-generation/m25-materialized-dataset.json");
     let ds_bytes = std::fs::read(&ds_path).expect("read dataset bytes");
     let ds_hash = {
@@ -184,6 +198,7 @@ fn main() {
     }
 
     let mut sidecar_entries: Vec<Option<SidecarEntry>> = vec![None; total_examples];
+    let mut replay_hashes = Vec::with_capacity(256);
 
     for match_idx in 0..256 {
         let match_examples = by_match.get(&match_idx).expect("missing match examples");
@@ -192,6 +207,8 @@ fn main() {
             match_idx
         );
         let replay = read_replay(Path::new(&replay_path));
+        let r_hash = replay_document_hash_v1(&replay).expect("replay hash");
+        replay_hashes.push((match_idx, r_hash));
 
         for &(ex_idx, ex) in match_examples {
             let source_id = ex["source_id"].as_str().unwrap().to_string();
@@ -230,6 +247,26 @@ fn main() {
         }
     }
 
+    // Compute ordered 256 replay bundle digest
+    let replay_bundle_digest = {
+        let mut hasher = Sha256::new();
+        for (m_idx, h) in &replay_hashes {
+            hasher.update(
+                format!(
+                    "{}:{}
+",
+                    m_idx, h
+                )
+                .as_bytes(),
+            );
+        }
+        hex::encode(hasher.finalize())
+    };
+    println!(
+        "Replay bundle digest (256 matches): {}",
+        replay_bundle_digest
+    );
+
     let unwrapped_entries: Vec<SidecarEntry> = sidecar_entries
         .into_iter()
         .map(|e| e.expect("unpopulated entry"))
@@ -238,6 +275,9 @@ fn main() {
 
     let artifact = SidecarArtifact {
         milestone: "M32A".to_string(),
+        feature_contract_version: FEATURE_CONTRACT_VERSION.to_string(),
+        exporter_file_sha256: exporter_sha256,
+        ordered_256_replay_bundle_digest: replay_bundle_digest,
         dataset_file: "local-artifacts/m25-generation/m25-materialized-dataset.json".to_string(),
         dataset_file_sha256: ds_hash,
         total_examples,
@@ -245,9 +285,18 @@ fn main() {
         entries: unwrapped_entries,
     };
 
+    // Strict Fail-Closed Output Protection: output directory and file MUST NOT exist
     let out_dir = PathBuf::from("local-artifacts/m32a-belief-sidecar");
-    std::fs::create_dir_all(&out_dir).expect("create sidecar dir");
     let out_path = out_dir.join("m32a-belief-sidecar.json");
+    if out_dir.exists() || out_path.exists() {
+        panic!(
+            "Sidecar output directory ({}) or file ({}) already exists — fail-closed protection",
+            out_dir.display(),
+            out_path.display()
+        );
+    }
+
+    std::fs::create_dir(&out_dir).expect("create sidecar dir");
 
     let out_bytes = serde_json::to_vec_pretty(&artifact).expect("serialize artifact");
     let sidecar_sha256 = {

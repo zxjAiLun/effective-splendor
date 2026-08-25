@@ -16,7 +16,7 @@ from splendor_gpu.m25_train import split_m25_indices, compute_uniform_policy_ce,
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
 from splendor_gpu.model import ResidualBlock
 from splendor_gpu.self_play_train import packed_policy_loss
-from splendor_gpu.m32a_preflight import preflight_m32a, compute_file_sha256, BELIEF_FEATURE_DIM
+from splendor_gpu.m32a_preflight import preflight_m32a, compute_file_sha256, BELIEF_FEATURE_DIM, FEATURE_CONTRACT_VERSION
 
 ENHANCED_ACTION_FEATURES = 36 + 23  # 59
 M32A_GLOBAL_FEATURES = GLOBAL_FEATURES + BELIEF_FEATURE_DIM  # 40 + 212 = 252
@@ -132,7 +132,17 @@ if __name__ == "__main__":
     catalog = load_catalog(catalog_path)
     actual_catalog_hash = catalog_semantic_hash(catalog)
 
-    expected_source_ids = {ex["source_id"] for ex in ds_payload["examples"]}
+    expected_tuples = [
+        (
+            i,
+            ex["source_id"],
+            ex["evaluation_match_index"],
+            ex["ply"],
+            ex["actor"],
+            ex["information_set_hash"],
+        )
+        for i, ex in enumerate(ds_payload["examples"])
+    ]
 
     # 1. Set seed BEFORE constructing official model
     INIT_SEED = int(config["model"]["initialization_seed"])
@@ -155,7 +165,7 @@ if __name__ == "__main__":
         actual_dataset_semantic_hash=actual_dataset_hash,
         actual_catalog_hash=actual_catalog_hash,
         actual_param_count=param_count,
-        expected_source_ids=expected_source_ids,
+        expected_tuples=expected_tuples,
         require_cuda=True,
     )
     print("Preflight validation passed: all frozen hashes & sidecar integrity match exactly.", flush=True)
@@ -168,37 +178,46 @@ if __name__ == "__main__":
     print(f"Running M32A Information-Parity on {device} with {param_count:,} parameters (Init seed={INIT_SEED})...", flush=True)
 
     train_indices, val_indices = split_m25_indices(ds_payload, config)
-    train_examples = [ds_payload["examples"][i] for i in train_indices]
-    val_examples = [ds_payload["examples"][i] for i in val_indices]
+    train_examples_with_idx = [(i, ds_payload["examples"][i]) for i in train_indices]
+    val_examples_with_idx = [(i, ds_payload["examples"][i]) for i in val_indices]
 
-    def get_entropy_and_top1(examples):
+    def get_entropy_and_top1(examples_with_idx):
         ents = []
         top1s = []
-        for ex in examples:
+        for _, ex in examples_with_idx:
             micros = ex["policy_target_micros"]
             probs = [m / 1000000.0 for m in micros]
             top1s.append(max(probs))
             ents.append(-sum(p * math.log(p) for p in probs if p > 0))
         return sum(ents) / len(ents), sum(top1s) / len(top1s)
 
-    train_H, _ = get_entropy_and_top1(train_examples)
-    val_H, _ = get_entropy_and_top1(val_examples)
-    train_u_ce = compute_uniform_policy_ce(train_examples)
-    val_u_ce = compute_uniform_policy_ce(val_examples)
+    train_H, _ = get_entropy_and_top1(train_examples_with_idx)
+    val_H, _ = get_entropy_and_top1(val_examples_with_idx)
+    train_u_ce = compute_uniform_policy_ce([ex for _, ex in train_examples_with_idx])
+    val_u_ce = compute_uniform_policy_ce([ex for _, ex in val_examples_with_idx])
 
     print("Loading sidecar features and pre-encoding dataset...", flush=True)
     t_enc = time.time()
 
     sidecar_data = json.loads(sidecar_path.read_text(encoding="utf-8"))
-    sidecar_map = {entry["source_id"]: entry["belief_features"] for entry in sidecar_data["entries"]}
+    sidecar_entries = sidecar_data["entries"]
 
     class BeliefDeltaDataset(Dataset):
-        def __init__(self, examples, catalog, sidecar_map):
+        def __init__(self, examples_with_idx, catalog, sidecar_entries):
             self.items = []
-            for ex in examples:
+            for ex_idx, ex in examples_with_idx:
                 obs = encode_observation(ex["observation"], catalog)
-                sid = ex["source_id"]
-                belief_feats = sidecar_map[sid]
+                sidecar_entry = sidecar_entries[ex_idx]
+
+                # Row-level strict assertion ensuring 100% 1-to-1 index matching
+                assert sidecar_entry["example_index"] == ex_idx, f"Row example_index mismatch at {ex_idx}"
+                assert sidecar_entry["source_id"] == ex["source_id"], f"Row source_id mismatch at {ex_idx}"
+                assert sidecar_entry["match_index"] == ex["evaluation_match_index"], f"Row match_index mismatch at {ex_idx}"
+                assert sidecar_entry["ply"] == ex["ply"], f"Row ply mismatch at {ex_idx}"
+                assert sidecar_entry["actor"] == ex["actor"], f"Row actor mismatch at {ex_idx}"
+                assert sidecar_entry["information_set_hash"] == ex["information_set_hash"], f"Row info_hash mismatch at {ex_idx}"
+
+                belief_feats = sidecar_entry["belief_features"]
                 # Concatenate 40-dim observation global features with 212-dim belief features = 252 dims
                 extended_global = torch.cat([obs.global_features, torch.tensor(belief_feats, dtype=torch.float32)], dim=0)
 
@@ -226,6 +245,11 @@ if __name__ == "__main__":
         def __getitem__(self, idx):
             return self.items[idx]
 
+    train_dataset = BeliefDeltaDataset(train_examples_with_idx, catalog, sidecar_entries)
+    eval_train_dataset = BeliefDeltaDataset(train_examples_with_idx, catalog, sidecar_entries)
+    val_dataset = BeliefDeltaDataset(val_examples_with_idx, catalog, sidecar_entries)
+    print(f"Pre-encoding complete in {time.time()-t_enc:.1f}s", flush=True)
+
     def packed_belief_delta_collate(items):
         entities = torch.stack([it["entities"] for it in items])
         entity_mask = torch.stack([it["entity_mask"] for it in items])
@@ -248,11 +272,6 @@ if __name__ == "__main__":
             "policy_target": torch.cat(policy_list, dim=0),
             "value_target": value_target,
         }
-
-    train_dataset = BeliefDeltaDataset(train_examples, catalog, sidecar_map)
-    eval_train_dataset = BeliefDeltaDataset(train_examples, catalog, sidecar_map)
-    val_dataset = BeliefDeltaDataset(val_examples, catalog, sidecar_map)
-    print(f"Pre-encoding complete in {time.time()-t_enc:.1f}s", flush=True)
 
     SHUFFLE_SEED = 20260823
     train_generator = torch.Generator().manual_seed(SHUFFLE_SEED)
@@ -319,6 +338,7 @@ if __name__ == "__main__":
             "milestone": "M32A",
             "loss_objective": "canonical_soft_ce",
             "architecture": "belief_delta_entity_mixer_h192_b4",
+            "feature_contract_version": FEATURE_CONTRACT_VERSION,
             "belief_feature_dim": BELIEF_FEATURE_DIM,
             "global_features_dim": M32A_GLOBAL_FEATURES,
             "best_epoch": best_epoch,
@@ -331,6 +351,8 @@ if __name__ == "__main__":
             "catalog_hash": actual_catalog_hash,
             "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
             "sidecar_file_sha256": provenance_hashes["sidecar_file_sha256"],
+            "exporter_file_sha256": provenance_hashes["exporter_file_sha256"],
+            "ordered_256_replay_bundle_digest": provenance_hashes["ordered_256_replay_bundle_digest"],
             "runner_file_sha256": runner_file_sha256,
             "preflight_file_sha256": preflight_file_sha256,
             "initialization_seed": INIT_SEED,
@@ -364,6 +386,7 @@ if __name__ == "__main__":
     out_payload = {
         "milestone": "M32A",
         "objective": "TEACHER_STUDENT_INFORMATION_PARITY_BELIEF_PROJECTION",
+        "feature_contract_version": FEATURE_CONTRACT_VERSION,
         "provenance": {
             "config_file": str(config_path),
             "config_file_sha256": provenance_hashes["config_file_sha256"],
@@ -376,6 +399,8 @@ if __name__ == "__main__":
             "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
             "sidecar_file": str(sidecar_path),
             "sidecar_file_sha256": provenance_hashes["sidecar_file_sha256"],
+            "exporter_file_sha256": provenance_hashes["exporter_file_sha256"],
+            "ordered_256_replay_bundle_digest": provenance_hashes["ordered_256_replay_bundle_digest"],
             "runner_file": str(runner_path),
             "runner_file_sha256": runner_file_sha256,
             "preflight_file": str(preflight_path),
