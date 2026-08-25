@@ -2,17 +2,17 @@
 
 ```ini
 MILESTONE = M32A
-STATUS = PROPOSED / DESIGNED / UNIT_TESTED / PENDING_REVIEW
+STATUS = REJECTED / STOP_EXACT_INFORMATION_SET_PROJECTION_ROUTE / NO_ARENA / NO_FURTHER_MODEL_TRAINING
 BASE_COMMIT = bda55bae30d6350bf22923da82d56a3106da09a2
 SCOPE = Evaluate whether providing D2 Student with a fixed 212-dim deterministic InformationSetV1 belief projection (unseen card mask + opponent reserve slot visibility + purchased counts) closes the teacher-student information gap and breaks the 38.4% policy fit ceiling under canonical soft CE.
 DATASET = Canonical M25 dataset (256 games, 16,282 examples: 12,216 train / 4,066 val), 100,000 micros uniform floor.
 SIDECAR = Deterministic 212-dim belief features exported via verified Rust InformationSetV1 reconstruction from matches 0..255 (local-artifacts/m32a-belief-sidecar/m32a-belief-sidecar.json).
-TRAINING = PLANNED (128 epochs, lr=3e-4 cosine, wd=1e-4, checkpoint selected strictly by validation canonical policy CE).
-OFFLINE_GATES = G1 Primary Gate (Val Top-1 >= 45.00%, Val CE improvement >= 1000 bps) -> Authorize G2 only; Information Parity Signal Gate (Relative to D2 baseline: Val CE <= -0.030 nats and Top-1 delta >= +3.0 pp).
-FIT_ATTRIBUTION = Tests the Information Asymmetry Hypothesis: whether M07 search teacher's root determinization relies on visible-history belief constraints that were previously omitted from the Student observation encoder.
-DECISION = PENDING_REVIEW
+TRAINING = EXECUTED (128 epochs, 152.6s, best epoch 6, selected strictly by validation canonical policy CE).
+OFFLINE_GATES = G1 Primary Gate FAIL (Val Top-1 36.40% < 45.00%, Val CE impr 769 bps < 1000 bps); Information Parity Signal Gate FAIL (Val CE degraded by +0.0287 nats vs D2, Val Top-1 dropped by -2.02 pp vs D2).
+FIT_ATTRIBUTION = Directly feeding the exact 212-dim InformationSetV1 projection into the Student global encoder did not break the ~38.4% ceiling; instead, it degraded validation performance (Val CE 2.8465 vs D2 2.8177, Val Top-1 36.40% vs D2 38.42%). The model overfitted rapidly from epoch 6 onward as 212 additional global dense features diluted entity/action delta representations.
+DECISION = STOP_EXACT_INFORMATION_SET_PROJECTION_ROUTE
 ARENA = NOT_AUTHORIZED
-MODEL_TRAINING = NOT_STARTED_PENDING_REVIEW
+MODEL_TRAINING = NO_FURTHER_MODEL_TRAINING
 PROMOTION = NONE
 CHAMPION = M07
 ```
@@ -26,11 +26,11 @@ Across M25, M29, M30, and M31 series:
 4. **M30A** proved that 4-sample teacher search targets already have 76.56% repeat agreement (median JSD 0.0019 nats), and 4-to-16 sample scaling increased agreement by only +3.12 pp, ruling out teacher sampling variance as the dominant ceiling cause.
 5. **M31A** proved that uncalibrated pairwise ranking objectives distort global softmax calibration (Val CE 2.8375, Top-1 35.91%).
 
-Source trace into `crates/splendor-imperfect-search` and `crates/splendor-belief` revealed a fundamental information asymmetry:
+Source trace into `crates/splendor-imperfect-search` and `crates/splendor-belief` revealed an information asymmetry:
 - **M07 Teacher**: Takes `current_observation + visible_history` $\to$ constructs `InformationSetV1` $\to$ tracks exact card flows, opponent reserve visibility (public vs blind deck), and the canonical `unseen_cards_by_tier` partition $\to$ samples root determinizations.
 - **D2 Student**: Only saw a cross-sectional 40-dim observation summary and entity slots, discarding card purchase history and opponent blind-reserve slot classifications.
 
-The core question tested in **M32A** is:
+The core question tested in **M32A** was:
 
 > Does providing Student with a deterministic, non-leaking 212-dim projection of the exact `InformationSetV1` used by M07 Teacher break the student policy fitting bottleneck?
 
@@ -94,8 +94,39 @@ The core question tested in **M32A** is:
 | Exporter Source SHA-256 | `crates/splendor-cli/src/bin/m32a_export_sidecar.rs` | `6651a6478d168c4d27291e54679c9a79815b6330b4129561d1f02a90c4b44e35` |
 | 256 Replay Bundle Digest | Ordered hash of 256 match replays | `0b94f1fe7652807a927c7a5962f192b8d45101164e7107b45802b7549f59e4fb` |
 | Sidecar File Artifact | `local-artifacts/m32a-belief-sidecar/m32a-belief-sidecar.json` | `975bf6d14360984e13598ea7ce624e8b1a19544ffd27ef00263eb28fe185c900` |
+| Probe Result Document | `benchmarks/m32a-information-parity.result.json` | Fully verified experiment results and metrics |
+| Checkpoint Artifact | `local-artifacts/m32a-information-parity/checkpoint.pt` | `3653045b5d50be3d11a00b6f7a960658bd1e1b4bf9efed6141ea28aae51582be` |
 | Preflight Guard | `training/m17_gpu/splendor_gpu/m32a_preflight.py` | Strict fail-closed sidecar & provenance validator |
 | Training Script | `training/m17_gpu/splendor_gpu/m32a_train.py` | M32A GPU Training Runner (128 epochs) |
 | Rust Unit Tests | `crates/splendor-cli/tests/m32a_belief_features.rs` | Belief projection unit tests (passed) |
 | Python Unit Tests | `training/m17_gpu/tests/test_m32a_information_parity.py` | Model, sidecar, tamper rejection, and preflight unit tests (passed) |
 | Milestone Document | `docs/m32a-information-parity.md` | M32A Design & Contract Document |
+
+## Validation and evidence
+
+### M32A vs D2 Baseline Performance Comparison
+
+| Metric | Exp D2 Baseline (Base Global 40) | M32A (Belief-Extended Global 252) | Delta (M32A vs D2) | Gate Target | Gate Status |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Best Epoch** | 11 | 6 | -5 | — | — |
+| **Validation Policy CE (nats)** | **2.8177** | 2.8465 | **+0.0287 nats** | $\le -0.0300\text{ nats}$ | **FAIL** (Degraded) |
+| **Validation Excess CE (nats)** | **+0.3449** | +0.3736 | +0.0287 nats | — | (Degraded) |
+| **Validation Top-1 Agreement** | **38.42%** | 36.40% | **-2.02 pp** | $\ge +3.00\text{ pp}$ | **FAIL** (Degraded) |
+| **Uniform CE Improvement (bps)** | 862 bps | 769 bps | -93 bps | $\ge 1000\text{ bps}$ | **FAIL** |
+| **Training Policy CE (nats)** | 2.7839 | 2.7996 | +0.0157 nats | — | — |
+| **Training Top-1 Agreement** | 39.52% | 37.30% | -2.22 pp | — | — |
+
+## Result and decision
+
+1. **Gate Evaluation**:
+   - **G1 Primary Gate**: Validation Top-1 was **36.40%** (threshold $\ge 45.00\%$) and CE improvement was **769 bps** (threshold $\ge 1000\text{ bps}$), **FAIL**.
+   - **Information Parity Signal Gate**: Validation Top-1 dropped by **-2.02 pp** vs D2 (threshold $\ge +3.0\text{ pp}$) and Validation CE degraded by **+0.0287 nats** (threshold $\le -0.030\text{ nats}$), **FAIL**.
+2. **Scientific Conclusion & Bounded Finding**:
+   - Feeding the exact 212-dim `InformationSetV1` projection (unseen card pool, opponent blind-reserve slot categorization, and purchased counts) as static dense global features did **not** break the ~38.4% policy fit ceiling.
+   - The network peaked early (epoch 6) and exhibited continuous generalization degradation in later epochs (val CE drifting from 2.8465 to 3.0039 at epoch 128), indicating that appending 212 unpooled global dimensions introduced substantial optimization noise and over-parameterized global state mixing at the expense of entity-action delta alignment.
+   - This negative finding is strictly bounded: it specifically rules out the **exact 212-dim static dense projection of InformationSetV1 into global MLP features** under this architecture, without ruling out structured graph/attention-based card-flow representations or recurrent history encoders.
+3. **Formal Decision**:
+   - **`STOP_EXACT_INFORMATION_SET_PROJECTION_ROUTE`**: Do not proceed with this static InformationSetV1 projection route.
+   - **Model Training**: `NO_FURTHER_MODEL_TRAINING` (M32A closed).
+   - **Arena Execution**: `NOT_AUTHORIZED`.
+   - **Promotion**: `NONE`. M07 champion remains unchanged.
