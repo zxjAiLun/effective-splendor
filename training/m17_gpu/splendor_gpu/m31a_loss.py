@@ -1,9 +1,10 @@
-"""M31A Objective-v2: Canonical Soft-Target Cross-Entropy + Weighted Pairwise Logistic Ranking Loss."""
+"""M31A Objective-v2: Canonical Soft-Target Cross-Entropy + Vectorized Weighted Pairwise Logistic Ranking Loss."""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from splendor_gpu.self_play_train import packed_policy_loss
 
-def extract_ranking_pair_info(micros: list[int]):
+def extract_ranking_pair_info(micros: list[int]) -> tuple[int, int, float]:
     """Extract top-1 and runner-up action indices and normalized margin weight from policy target micros.
 
     Rules:
@@ -32,60 +33,53 @@ def extract_ranking_pair_info(micros: list[int]):
     weight = (max_val - runner_up_val) / 900000.0
     return top1_idx, runner_up_idx, float(weight)
 
-def compute_canonical_ce_and_ranking_loss(
+def compute_vectorized_ranking_loss(
     logits: torch.Tensor,
-    policy_targets: torch.Tensor,
-    action_offsets: torch.Tensor,
-    ranking_pairs: torch.Tensor,  # Shape (B, 3): [top1_local_idx, runner_up_local_idx, weight]
-    ranking_weight: float = 0.5,
-):
-    """Compute canonical soft-CE loss and batch-normalized weighted pairwise logistic ranking loss.
+    global_top1_idx: torch.Tensor,
+    global_runner_up_idx: torch.Tensor,
+    ranking_weights: torch.Tensor,
+) -> torch.Tensor:
+    """Vectorized, exact GPU pairwise logistic ranking loss across global indices with zero CPU-GPU sync."""
+    top1_logits = logits[global_top1_idx]
+    runner_up_logits = logits[global_runner_up_idx]
+    diff = top1_logits - runner_up_logits
+    pair_losses = F.softplus(-diff) * ranking_weights
+    total_weight = ranking_weights.sum()
+    return torch.where(
+        total_weight > 0,
+        pair_losses.sum() / total_weight.clamp(min=1e-8),
+        logits.new_zeros(()),
+    )
+
+def compute_m31a_loss(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    offsets: torch.Tensor,
+    global_top1_idx: torch.Tensor,
+    global_runner_up_idx: torch.Tensor,
+    ranking_weights: torch.Tensor,
+    ranking_lambda: float = 0.5,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Fully vectorized on-GPU M31A composite loss with zero CPU-GPU synchronization.
 
     Args:
-        logits: Flat (total_actions,) logits tensor.
-        policy_targets: Flat (total_actions,) canonical floored soft target probabilities.
-        action_offsets: (B + 1,) offsets marking start/end of actions for each sample in batch.
-        ranking_pairs: (B, 3) float tensor [top1_idx, runner_up_idx, weight].
-        ranking_weight: Scaling factor lambda for ranking loss (default 0.5).
+        logits: Flat (total_actions,) logits tensor on device.
+        targets: Flat (total_actions,) canonical floored soft target probabilities on device.
+        offsets: (B + 1,) action offsets on device.
+        global_top1_idx: (B,) global indices for positive top-1 actions on device.
+        global_runner_up_idx: (B,) global indices for negative runner-up actions on device.
+        ranking_weights: (B,) margin weights on device.
+        ranking_lambda: Composite loss scaling factor (default 0.5).
 
     Returns:
         total_loss, ce_loss, ranking_loss
     """
-    num_samples = len(action_offsets) - 1
-    ce_losses = []
-    ranking_loss_terms = []
-    weight_terms = []
-
-    for i in range(num_samples):
-        s, e = action_offsets[i].item(), action_offsets[i + 1].item()
-        l = logits[s:e]
-        t = policy_targets[s:e]
-
-        # Canonical Soft Cross-Entropy
-        log_p = F.log_softmax(l, dim=0)
-        ce_losses.append(-(t * log_p).sum())
-
-        # Pairwise Ranking
-        top1_idx = int(ranking_pairs[i, 0].item())
-        runner_up_idx = int(ranking_pairs[i, 1].item())
-        w = ranking_pairs[i, 2]
-
-        if top1_idx >= 0 and runner_up_idx >= 0 and w > 0:
-            logit_diff = l[top1_idx] - l[runner_up_idx]
-            pair_loss = w * F.softplus(-logit_diff)
-            ranking_loss_terms.append(pair_loss)
-            weight_terms.append(w)
-
-    mean_ce = torch.stack(ce_losses).mean()
-
-    if len(ranking_loss_terms) > 0:
-        total_weight = torch.stack(weight_terms).sum()
-        if total_weight > 0:
-            mean_ranking = torch.stack(ranking_loss_terms).sum() / total_weight
-        else:
-            mean_ranking = logits.new_zeros(())
+    ce_loss = packed_policy_loss(logits, targets, offsets)
+    if ranking_lambda > 0:
+        ranking_loss = compute_vectorized_ranking_loss(
+            logits, global_top1_idx, global_runner_up_idx, ranking_weights
+        )
     else:
-        mean_ranking = logits.new_zeros(())
-
-    total_loss = mean_ce + ranking_weight * mean_ranking
-    return total_loss, mean_ce, mean_ranking
+        ranking_loss = logits.new_zeros(())
+    total_loss = ce_loss + ranking_lambda * ranking_loss
+    return total_loss, ce_loss, ranking_loss

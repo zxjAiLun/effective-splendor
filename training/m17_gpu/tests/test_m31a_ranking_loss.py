@@ -1,11 +1,11 @@
-"""Unit tests for M31A Objective-v2: Weighted Pairwise Logistic Ranking Loss.
+"""Unit tests for M31A Objective-v2: Vectorized Weighted Pairwise Logistic Ranking Loss.
 
 Verifies:
 1. Hand-calculated pairwise loss matches exact mathematical expectation.
-2. Top-1 ties are strictly excluded from ranking loss.
-3. Packed vs per-sample forward loss and parameter gradients are numerically equivalent.
+2. Top-1 ties are strictly excluded from ranking loss (zero weight).
+3. Packed vectorized GPU loss vs per-sample loss and parameter gradients are numerically equivalent.
 4. Lambda = 0 path produces loss and gradients strictly matching canonical D2 soft-CE.
-5. Fail-closed output directory check prevents overwriting existing artifacts.
+5. Real preflight function fail-closed enforcement (output directory, file hashes, parameter count, CUDA requirement).
 """
 import math
 import tempfile
@@ -18,7 +18,20 @@ import torch.nn.functional as F
 from splendor_gpu.m29a_v2_model import ENHANCED_ACTION_FEATURES
 from splendor_gpu.model import ResidualBlock
 from splendor_gpu.encoding import ENTITY_FEATURES, GLOBAL_FEATURES
-from splendor_gpu.m31a_loss import extract_ranking_pair_info, compute_canonical_ce_and_ranking_loss
+from splendor_gpu.m31a_loss import (
+    extract_ranking_pair_info,
+    compute_vectorized_ranking_loss,
+    compute_m31a_loss,
+)
+from splendor_gpu.m31a_preflight import (
+    preflight_m31a,
+    FROZEN_CONFIG_SHA256,
+    FROZEN_DATASET_FILE_SHA256,
+    FROZEN_DATASET_SEMANTIC_HASH,
+    FROZEN_CATALOG_HASH,
+    FROZEN_D2_RESULT_SHA256,
+    FROZEN_PARAMETER_COUNT,
+)
 
 class D2EntityMixer(nn.Module):
     """Reference D2 architecture matching canonical h192/b4 Delta baseline."""
@@ -67,10 +80,12 @@ def test_hand_calculated_pairwise_ranking_loss():
     logits = torch.tensor([2.5, 1.0, 0.5], dtype=torch.float32)
     targets = torch.tensor([0.6, 0.3, 0.1], dtype=torch.float32)
     offsets = torch.tensor([0, 3], dtype=torch.long)
-    pairs = torch.tensor([[0.0, 1.0, w]], dtype=torch.float32)
+    t1_idx = torch.tensor([0], dtype=torch.long)
+    ru_idx = torch.tensor([1], dtype=torch.long)
+    weights = torch.tensor([w], dtype=torch.float32)
 
-    total_loss, ce_loss, rank_loss = compute_canonical_ce_and_ranking_loss(
-        logits, targets, offsets, pairs, ranking_weight=0.5
+    total_loss, ce_loss, rank_loss = compute_m31a_loss(
+        logits, targets, offsets, t1_idx, ru_idx, weights, ranking_lambda=0.5
     )
 
     # Hand calculation:
@@ -95,15 +110,17 @@ def test_top1_tie_strictly_excluded():
     logits = torch.tensor([1.0, 2.0, 0.5], dtype=torch.float32)
     targets = torch.tensor([0.45, 0.45, 0.10], dtype=torch.float32)
     offsets = torch.tensor([0, 3], dtype=torch.long)
-    pairs = torch.tensor([[-1.0, -1.0, 0.0]], dtype=torch.float32)
+    t1_idx = torch.tensor([0], dtype=torch.long)
+    ru_idx = torch.tensor([0], dtype=torch.long)
+    weights = torch.tensor([0.0], dtype=torch.float32)
 
-    total_loss, ce_loss, rank_loss = compute_canonical_ce_and_ranking_loss(
-        logits, targets, offsets, pairs, ranking_weight=0.5
+    total_loss, ce_loss, rank_loss = compute_m31a_loss(
+        logits, targets, offsets, t1_idx, ru_idx, weights, ranking_lambda=0.5
     )
     assert rank_loss.item() == 0.0
     assert math.isclose(total_loss.item(), ce_loss.item(), rel_tol=1e-6)
 
-def test_packed_vs_per_sample_equivalence():
+def test_packed_vectorized_vs_per_sample_equivalence():
     torch.manual_seed(280229)
     model = D2EntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
     model.train()
@@ -124,32 +141,30 @@ def test_packed_vs_per_sample_equivalence():
     tgt_1 = torch.softmax(torch.randn(30), dim=0)
     targets = torch.cat([tgt_0, tgt_1], dim=0)
 
-    # Pairs for sample 0 and 1
-    pairs = torch.tensor([
-        [2.0, 5.0, 0.25],
-        [7.0, 1.0, 0.50],
-    ], dtype=torch.float32)
+    # Pairs for sample 0 (local 2, 5) and sample 1 (local 7, 1)
+    # Global indices: sample 0 -> 2, 5; sample 1 -> 20+7=27, 20+1=21
+    t1_idx = torch.tensor([2, 27], dtype=torch.long)
+    ru_idx = torch.tensor([5, 21], dtype=torch.long)
+    weights = torch.tensor([0.25, 0.50], dtype=torch.float32)
 
-    # 1. Packed computation
+    # 1. Packed vectorized computation
     model.zero_grad()
     packed_logits, _ = model.forward_packed(entities, mask, global_f, actions, offsets)
-    loss_packed, ce_packed, rank_packed = compute_canonical_ce_and_ranking_loss(
-        packed_logits, targets, offsets, pairs, ranking_weight=0.5
+    loss_packed, ce_packed, rank_packed = compute_m31a_loss(
+        packed_logits, targets, offsets, t1_idx, ru_idx, weights, ranking_lambda=0.5
     )
     loss_packed.backward()
     grads_packed = {k: v.grad.clone() for k, v in model.named_parameters() if v.grad is not None}
 
-    # 2. Per-sample computation
+    # 2. Per-sample manual computation
     model.zero_grad()
     logits_0, _ = model.forward_packed(entities[0:1], mask[0:1], global_f[0:1], act_0, torch.tensor([0, 20], dtype=torch.long))
     logits_1, _ = model.forward_packed(entities[1:2], mask[1:2], global_f[1:2], act_1, torch.tensor([0, 30], dtype=torch.long))
 
-    # CE per sample
     ce_0 = -(tgt_0 * F.log_softmax(logits_0, dim=0)).sum()
     ce_1 = -(tgt_1 * F.log_softmax(logits_1, dim=0)).sum()
     ce_manual = (ce_0 + ce_1) / 2.0
 
-    # Rank per sample
     r_0 = 0.25 * F.softplus(-(logits_0[2] - logits_0[5]))
     r_1 = 0.50 * F.softplus(-(logits_1[7] - logits_1[1]))
     rank_manual = (r_0 + r_1) / (0.25 + 0.50)
@@ -177,13 +192,15 @@ def test_lambda_zero_matches_canonical_d2():
     actions = torch.randn(40, 59)
     offsets = torch.tensor([0, 20, 40], dtype=torch.long)
     targets = torch.softmax(torch.randn(40), dim=0)
-    pairs = torch.tensor([[1.0, 3.0, 0.4], [5.0, 8.0, 0.6]], dtype=torch.float32)
+    t1_idx = torch.tensor([1, 25], dtype=torch.long)
+    ru_idx = torch.tensor([3, 28], dtype=torch.long)
+    weights = torch.tensor([0.4, 0.6], dtype=torch.float32)
 
-    # Run with ranking_weight = 0.0
+    # Run with ranking_lambda = 0.0
     model.zero_grad()
     logits, _ = model.forward_packed(entities, mask, global_f, actions, offsets)
-    total_loss, ce_loss, _ = compute_canonical_ce_and_ranking_loss(
-        logits, targets, offsets, pairs, ranking_weight=0.0
+    total_loss, ce_loss, _ = compute_m31a_loss(
+        logits, targets, offsets, t1_idx, ru_idx, weights, ranking_lambda=0.0
     )
     total_loss.backward()
     grads_zero_lambda = {k: v.grad.clone() for k, v in model.named_parameters() if v.grad is not None}
@@ -204,12 +221,70 @@ def test_lambda_zero_matches_canonical_d2():
     for k in grads_zero_lambda:
         assert torch.allclose(grads_zero_lambda[k], grads_pure_d2[k], atol=1e-6)
 
-def test_fail_closed_output_directory():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        existing_dir = Path(tmpdir) / "already_exists"
-        existing_dir.mkdir(parents=True)
+def test_real_preflight_enforcement():
+    config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
+    dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
+    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+    d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
 
-        # Fail-closed guard check
+    with tempfile.TemporaryDirectory() as tmpdir:
+        non_existent_output_dir = Path(tmpdir) / "output"
+
+        # 1. Correct preflight succeeds
+        res = preflight_m31a(
+            config_path=config_path,
+            dataset_path=dataset_path,
+            catalog_path=catalog_path,
+            d2_result_path=d2_result_path,
+            output_dir=non_existent_output_dir,
+            actual_dataset_semantic_hash=FROZEN_DATASET_SEMANTIC_HASH,
+            actual_catalog_hash=FROZEN_CATALOG_HASH,
+            actual_param_count=FROZEN_PARAMETER_COUNT,
+            require_cuda=False,
+        )
+        assert res["config_file_sha256"] == FROZEN_CONFIG_SHA256
+        assert res["d2_result_file_sha256"] == FROZEN_D2_RESULT_SHA256
+
+        # 2. Output directory exists -> fails closed
+        existing_dir = Path(tmpdir) / "already_exists"
+        existing_dir.mkdir()
         with pytest.raises(RuntimeError, match="already exists — fail-closed protection"):
-            if existing_dir.exists():
-                raise RuntimeError(f"Output directory {existing_dir} already exists — fail-closed protection")
+            preflight_m31a(
+                config_path=config_path,
+                dataset_path=dataset_path,
+                catalog_path=catalog_path,
+                d2_result_path=d2_result_path,
+                output_dir=existing_dir,
+                actual_dataset_semantic_hash=FROZEN_DATASET_SEMANTIC_HASH,
+                actual_catalog_hash=FROZEN_CATALOG_HASH,
+                actual_param_count=FROZEN_PARAMETER_COUNT,
+                require_cuda=False,
+            )
+
+        # 3. Corrupt parameter count -> fails closed
+        with pytest.raises(ValueError, match="Model parameter count mismatch"):
+            preflight_m31a(
+                config_path=config_path,
+                dataset_path=dataset_path,
+                catalog_path=catalog_path,
+                d2_result_path=d2_result_path,
+                output_dir=non_existent_output_dir,
+                actual_dataset_semantic_hash=FROZEN_DATASET_SEMANTIC_HASH,
+                actual_catalog_hash=FROZEN_CATALOG_HASH,
+                actual_param_count=123456,
+                require_cuda=False,
+            )
+
+        # 4. Corrupt dataset semantic hash -> fails closed
+        with pytest.raises(ValueError, match="Dataset semantic hash mismatch"):
+            preflight_m31a(
+                config_path=config_path,
+                dataset_path=dataset_path,
+                catalog_path=catalog_path,
+                d2_result_path=d2_result_path,
+                output_dir=non_existent_output_dir,
+                actual_dataset_semantic_hash="corrupted_hash",
+                actual_catalog_hash=FROZEN_CATALOG_HASH,
+                actual_param_count=FROZEN_PARAMETER_COUNT,
+                require_cuda=False,
+            )

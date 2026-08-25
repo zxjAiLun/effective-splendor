@@ -78,7 +78,8 @@ The remaining high-value hypothesis in **M31A** is:
 | --- | --- | --- |
 | Benchmark Config | `benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json` | `bf13f32bc5eabf1b30795230057b6af68ce14b5cd23c8f526d635e054b3ee250` |
 | Dataset Reference | `local-artifacts/m25-generation/m25-materialized-dataset.json` | `2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5f171f1e1f05907` |
-| Ranking Loss Implementation | `training/m17_gpu/splendor_gpu/m31a_loss.py` | Canonical CE + Weighted Logistic Ranking |
-| Training Script | `training/m17_gpu/splendor_gpu/m31a_train.py` | M31A GPU Training Runner |
-| Unit Tests | `training/m17_gpu/tests/test_m31a_ranking_loss.py` | 5 targeted unit tests (all passed) |
+| Ranking Loss Implementation | `training/m17_gpu/splendor_gpu/m31a_loss.py` | Vectorized Canonical CE + GPU-gathered Pairwise Ranking |
+| Preflight Guard | `training/m17_gpu/splendor_gpu/m31a_preflight.py` | Strict fail-closed validation of frozen inputs/environment |
+| Training Script | `training/m17_gpu/splendor_gpu/m31a_train.py` | M31A GPU Training Runner with strict preflight & provenance |
+| Unit Tests | `training/m17_gpu/tests/test_m31a_ranking_loss.py` | 5 targeted unit tests including real preflight enforcement (all passed) |
 | Milestone Document | `docs/m31a-ranking-objective.md` | M31A Design & Review Contract |

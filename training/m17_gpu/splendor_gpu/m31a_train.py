@@ -2,11 +2,9 @@
 import time
 import json
 import math
-import hashlib
 from pathlib import Path
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 from splendor_gpu.data import load_catalog, catalog_semantic_hash
@@ -17,7 +15,8 @@ from splendor_gpu.encoding import (
 from splendor_gpu.m25_train import split_m25_indices, compute_uniform_policy_ce, validate_m25_dataset_provenance
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
 from splendor_gpu.model import ResidualBlock
-from splendor_gpu.m31a_loss import extract_ranking_pair_info, compute_canonical_ce_and_ranking_loss
+from splendor_gpu.m31a_loss import extract_ranking_pair_info, compute_m31a_loss
+from splendor_gpu.m31a_preflight import preflight_m31a, compute_file_sha256
 
 ENHANCED_ACTION_FEATURES = 36 + 23  # 59
 
@@ -54,31 +53,47 @@ class DeltaEntityMixer(nn.Module):
         return logits, self.value(state)
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Running M31A Objective-v2 (Canonical Soft-CE + 0.5 * Weighted Ranking) on {device}...", flush=True)
-
-    # Fail-closed output directory check BEFORE burning compute
-    ckpt_dir = Path("local-artifacts/m31a-ranking-objective")
-    if ckpt_dir.exists():
-        raise RuntimeError(f"Output directory {ckpt_dir} already exists — fail-closed protection")
-    ckpt_dir.mkdir(parents=True, exist_ok=False)
+    runner_path = Path(__file__)
+    loss_path = Path("training/m17_gpu/splendor_gpu/m31a_loss.py")
+    runner_file_sha256 = compute_file_sha256(runner_path)
+    loss_file_sha256 = compute_file_sha256(loss_path)
 
     config_path = Path("benchmarks/m25-m07-search-teacher-bootstrap-v2.config.json")
+    dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
+    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+    d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
+    ckpt_dir = Path("local-artifacts/m31a-ranking-objective")
+
     config_text = config_path.read_text(encoding="utf-8")
     config = json.loads(config_text)
-    config_file_sha256 = hashlib.sha256(config_text.encode("utf-8")).hexdigest()
-
-    dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
-    dataset_text = dataset_path.read_text(encoding="utf-8")
-    ds_payload = json.loads(dataset_text)
-    dataset_file_sha256 = hashlib.sha256(dataset_text.encode("utf-8")).hexdigest()
-
+    ds_payload = json.loads(dataset_path.read_text(encoding="utf-8"))
     actual_dataset_hash = validate_m25_dataset_provenance(ds_payload, config)
-    print(f"Validated Dataset Semantic Hash: {actual_dataset_hash}", flush=True)
-
-    catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     catalog = load_catalog(catalog_path)
-    catalog_hash = catalog_semantic_hash(catalog)
+    actual_catalog_hash = catalog_semantic_hash(catalog)
+
+    model = DeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
+    param_count = sum(p.numel() for p in model.parameters())
+
+    # Strict fail-closed preflight check BEFORE creating output directory
+    provenance_hashes = preflight_m31a(
+        config_path=config_path,
+        dataset_path=dataset_path,
+        catalog_path=catalog_path,
+        d2_result_path=d2_result_path,
+        output_dir=ckpt_dir,
+        actual_dataset_semantic_hash=actual_dataset_hash,
+        actual_catalog_hash=actual_catalog_hash,
+        actual_param_count=param_count,
+        require_cuda=True,
+    )
+    print("Preflight validation passed: all frozen hashes match exactly.", flush=True)
+
+    # Create output directory only after all preflights succeed
+    ckpt_dir.mkdir(parents=True, exist_ok=False)
+
+    device = torch.device("cuda")
+    model = model.to(device)
+    print(f"Running M31A Objective-v2 on {device} with {param_count:,} parameters...", flush=True)
 
     train_indices, val_indices = split_m25_indices(ds_payload, config)
     train_examples = [ds_payload["examples"][i] for i in train_indices]
@@ -115,8 +130,6 @@ if __name__ == "__main__":
 
                 micros = ex["policy_target_micros"]
                 policy_target = [m / 1000000.0 for m in micros]
-
-                # Extract ranking pair info: (top1_idx, runner_up_idx, weight)
                 top1_idx, runner_up_idx, weight = extract_ranking_pair_info(micros)
 
                 self.items.append({
@@ -125,7 +138,9 @@ if __name__ == "__main__":
                     "global_features": obs.global_features,
                     "actions": torch.tensor(actions, dtype=torch.float32),
                     "policy_target": torch.tensor(policy_target, dtype=torch.float32),
-                    "ranking_pair": torch.tensor([top1_idx, runner_up_idx, weight], dtype=torch.float32),
+                    "top1_idx": top1_idx,
+                    "runner_up_idx": runner_up_idx,
+                    "weight": weight,
                     "value_target": torch.tensor(ex["value_target"], dtype=torch.float32),
                 })
 
@@ -139,15 +154,34 @@ if __name__ == "__main__":
         entities = torch.stack([it["entities"] for it in items])
         entity_mask = torch.stack([it["entity_mask"] for it in items])
         global_features = torch.stack([it["global_features"] for it in items])
-        ranking_pairs = torch.stack([it["ranking_pair"] for it in items])
         value_target = torch.stack([it["value_target"] for it in items])
 
         action_list = [it["actions"] for it in items]
         policy_list = [it["policy_target"] for it in items]
 
         offsets = [0]
-        for acts in action_list:
-            offsets.append(offsets[-1] + acts.shape[0])
+        global_top1_idx = []
+        global_runner_up_idx = []
+        ranking_weights = []
+
+        for i, it in enumerate(items):
+            start = offsets[-1]
+            act_len = it["actions"].shape[0]
+            offsets.append(start + act_len)
+
+            t1 = it["top1_idx"]
+            ru = it["runner_up_idx"]
+            w = it["weight"]
+
+            if t1 >= 0 and ru >= 0 and w > 0:
+                global_top1_idx.append(start + t1)
+                global_runner_up_idx.append(start + ru)
+                ranking_weights.append(w)
+            else:
+                # Safe zero-weight dummy indices
+                global_top1_idx.append(start)
+                global_runner_up_idx.append(start)
+                ranking_weights.append(0.0)
 
         return {
             "entities": entities,
@@ -156,7 +190,9 @@ if __name__ == "__main__":
             "actions": torch.cat(action_list, dim=0),
             "action_offsets": torch.tensor(offsets, dtype=torch.long),
             "policy_target": torch.cat(policy_list, dim=0),
-            "ranking_pairs": ranking_pairs,
+            "global_top1_idx": torch.tensor(global_top1_idx, dtype=torch.long),
+            "global_runner_up_idx": torch.tensor(global_runner_up_idx, dtype=torch.long),
+            "ranking_weights": torch.tensor(ranking_weights, dtype=torch.float32),
             "value_target": value_target,
         }
 
@@ -173,12 +209,7 @@ if __name__ == "__main__":
 
     INIT_SEED = int(config["model"]["initialization_seed"])
     torch.manual_seed(INIT_SEED)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(INIT_SEED)
-
-    model = DeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0).to(device)
-    param_count = sum(p.numel() for p in model.parameters())
-    print(f"Built DeltaEntityMixer (M31A): {param_count:,} parameters", flush=True)
+    torch.cuda.manual_seed_all(INIT_SEED)
 
     epochs = 128
     optimizer = torch.optim.AdamW(
@@ -196,7 +227,7 @@ if __name__ == "__main__":
         total_top1_matches = 0
         with torch.no_grad():
             for batch in loader:
-                batch_dev = {k: v.to(device) for k, v in batch.items()}
+                batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
                 logits, _ = model.forward_packed(
                     batch_dev["entities"],
                     batch_dev["entity_mask"],
@@ -204,12 +235,14 @@ if __name__ == "__main__":
                     batch_dev["actions"],
                     batch_dev["action_offsets"],
                 )
-                tot_loss, p_ce, _ = compute_canonical_ce_and_ranking_loss(
+                tot_loss, p_ce, _ = compute_m31a_loss(
                     logits,
                     batch_dev["policy_target"],
                     batch_dev["action_offsets"],
-                    batch_dev["ranking_pairs"],
-                    ranking_weight=0.5,
+                    batch_dev["global_top1_idx"],
+                    batch_dev["global_runner_up_idx"],
+                    batch_dev["ranking_weights"],
+                    ranking_lambda=0.5,
                 )
                 n = int(batch_dev["entities"].shape[0])
                 total_examples += n
@@ -248,7 +281,7 @@ if __name__ == "__main__":
     for ep in range(1, epochs + 1):
         model.train()
         for batch in train_loader:
-            batch_dev = {k: v.to(device) for k, v in batch.items()}
+            batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
             optimizer.zero_grad(set_to_none=True)
             logits, _ = model.forward_packed(
                 batch_dev["entities"],
@@ -257,12 +290,14 @@ if __name__ == "__main__":
                 batch_dev["actions"],
                 batch_dev["action_offsets"],
             )
-            total_loss, ce_loss, rank_loss = compute_canonical_ce_and_ranking_loss(
+            total_loss, ce_loss, rank_loss = compute_m31a_loss(
                 logits,
                 batch_dev["policy_target"],
                 batch_dev["action_offsets"],
-                batch_dev["ranking_pairs"],
-                ranking_weight=0.5,
+                batch_dev["global_top1_idx"],
+                batch_dev["global_runner_up_idx"],
+                batch_dev["ranking_weights"],
+                ranking_lambda=0.5,
             )
             total_loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -270,7 +305,6 @@ if __name__ == "__main__":
         scheduler.step()
 
         val_res = evaluate_split(val_loader, val_H, val_u_ce)
-        # Checkpoint is strictly selected by validation canonical policy CE
         is_best = val_res["ce"] < best_val_ce
         if is_best:
             best_val_ce = val_res["ce"]
@@ -301,25 +335,25 @@ if __name__ == "__main__":
             "best_val_ce": best_val_ce,
             "best_val_top1": final_val["top1"],
             "parameter_count": param_count,
-            "config_file_sha256": config_file_sha256,
-            "dataset_file_sha256": dataset_file_sha256,
+            "config_file_sha256": provenance_hashes["config_file_sha256"],
+            "dataset_file_sha256": provenance_hashes["dataset_file_sha256"],
             "dataset_semantic_hash": actual_dataset_hash,
-            "catalog_hash": catalog_hash,
+            "catalog_hash": actual_catalog_hash,
+            "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
+            "runner_file_sha256": runner_file_sha256,
+            "loss_file_sha256": loss_file_sha256,
             "initialization_seed": INIT_SEED,
             "shuffle_seed": SHUFFLE_SEED,
         },
         "state_dict": best_state,
     }, ckpt_path)
 
-    ckpt_bytes = ckpt_path.read_bytes()
-    ckpt_file_sha256 = hashlib.sha256(ckpt_bytes).hexdigest()
+    ckpt_file_sha256 = compute_file_sha256(ckpt_path)
 
-    exp_d2_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
-    exp_d2_data = json.loads(exp_d2_path.read_text(encoding="utf-8")) if exp_d2_path.exists() else {}
-
-    d2_val_ce = exp_d2_data.get("best_checkpoint_val", {}).get("ce", 0.0)
-    d2_val_excess = exp_d2_data.get("best_checkpoint_val", {}).get("excess_ce", 0.0)
-    d2_val_top1 = exp_d2_data.get("best_checkpoint_val", {}).get("top1", 0.0)
+    exp_d2_data = json.loads(d2_result_path.read_text(encoding="utf-8"))
+    d2_val_ce = exp_d2_data["best_checkpoint_val"]["ce"]
+    d2_val_excess = exp_d2_data["best_checkpoint_val"]["excess_ce"]
+    d2_val_top1 = exp_d2_data["best_checkpoint_val"]["top1"]
 
     delta_ce_vs_d2 = final_val["ce"] - d2_val_ce
     delta_top1_vs_d2 = final_val["top1"] - d2_val_top1
@@ -341,12 +375,18 @@ if __name__ == "__main__":
         "objective": "OBJECTIVE_V2_WEIGHTED_PAIRWISE_LOGISTIC_RANKING",
         "provenance": {
             "config_file": str(config_path),
-            "config_file_sha256": config_file_sha256,
+            "config_file_sha256": provenance_hashes["config_file_sha256"],
             "dataset_file": str(dataset_path),
-            "dataset_file_sha256": dataset_file_sha256,
+            "dataset_file_sha256": provenance_hashes["dataset_file_sha256"],
             "dataset_semantic_hash": actual_dataset_hash,
             "catalog_file": str(catalog_path),
-            "catalog_hash": catalog_hash,
+            "catalog_hash": actual_catalog_hash,
+            "d2_result_file": str(d2_result_path),
+            "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
+            "runner_file": str(runner_path),
+            "runner_file_sha256": runner_file_sha256,
+            "loss_file": str(loss_path),
+            "loss_file_sha256": loss_file_sha256,
             "checkpoint_path": str(ckpt_path),
             "checkpoint_file_sha256": ckpt_file_sha256,
             "initialization_seed": INIT_SEED,
@@ -377,11 +417,11 @@ if __name__ == "__main__":
         "best_checkpoint_train": final_train,
         "best_checkpoint_val": final_val,
         "comparison_vs_exp_d2_baseline": {
-            "d2_best_epoch": exp_d2_data.get("best_epoch"),
+            "d2_best_epoch": exp_d2_data["best_epoch"],
             "d2_val_ce": d2_val_ce,
             "d2_val_excess_ce": d2_val_excess,
             "d2_val_top1": d2_val_top1,
-            "d2_val_impr_bps": exp_d2_data.get("best_checkpoint_val", {}).get("impr_bps"),
+            "d2_val_impr_bps": exp_d2_data["best_checkpoint_val"]["impr_bps"],
             "m31a_val_ce": final_val["ce"],
             "m31a_val_excess_ce": final_val["excess_ce"],
             "m31a_val_top1": final_val["top1"],
