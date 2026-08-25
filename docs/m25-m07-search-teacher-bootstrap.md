@@ -4,7 +4,7 @@
 MILESTONE = M25
 STATUS = COMPLETED / M25_POLICY_TEACHER_FIT_FAIL / STOP_NO_ARENA
 BASE_COMMIT = d75e10ca45fdf29d38101a04918e79435645512d
-SCOPE = Canonical 256-game M07 self-play trajectory generation, soft search-target extraction, 32-epoch Entity Mixer (h192/b4) GPU training, frozen offline G1/G2/G3 acceptance gates, fit attribution, and lean recovery experiments (A–E).
+SCOPE = Canonical 256-game M07 self-play trajectory generation, soft search-target extraction, 32-epoch Entity Mixer (h192/b4) GPU training, frozen offline G1/G2/G3 acceptance gates, fit attribution, and lean recovery experiments (A–F).
 DATASET = 256 games (128 seeds x 2 seat rotations), 16,282 decision plies, 100,000 micros uniform floor.
 TRAINING = COMPLETED (32/32 epochs on CUDA; best epoch 5 selected by val CE + 0.5 * val MSE).
 OFFLINE_GATES = G1 FAIL (Top-1 32.81% < 45.00%, CE bps 592 < 1000), G2 FAIL (26.02% < 38.00%), G3 FAIL (MSE 0.2717 > 0.2550).
@@ -62,7 +62,7 @@ M25 established a 6-phase end-to-end pipeline:
 - [x] Phase 3: M07 SearchTeacherTargetSetV1 target generation.
 - [x] Phase 4: M25 dataset materialization and cache encoding.
 - [x] Phase 5: 32-epoch GPU training on CUDA.
-- [x] Phase 6: Frozen offline gate evaluation, fit attribution, recovery experiments (A–E), documentation update, and STOP.
+- [x] Phase 6: Frozen offline gate evaluation, fit attribution, recovery experiments (A–F), documentation update, and STOP.
 
 ## Iteration log
 
@@ -151,18 +151,18 @@ M25 established a 6-phase end-to-end pipeline:
 
 ### Controlled 2x2 Recovery Matrix (128 Epochs, Policy-Only)
 
-| Action Representation \ Architecture | h192/b4 (~0.95M parameters) | h320/b4 (~2.61M parameters) | Width Effect ($Delta$ h320 - h192) |
+| Action Representation \ Architecture | h192/b4 (~0.95M parameters) | h320/b4 (~2.61M parameters) | Width Effect ($\Delta$ h320 - h192) |
 | :--- | :--- | :--- | :--- |
-| **Baseline Action (36-dim)** | **Exp A**: Val CE 2.8879<br>Excess CE: +0.4150 nats<br>Top-1: 31.87% (635 bps) | **Exp B**: Val CE 2.8878<br>Excess CE: +0.4149 nats<br>Top-1: 32.76% (635 bps) | $Delta	ext{CE} = -0.0001	ext{ nats}$<br>$Delta	ext{Top-1} = +0.89	ext{ pp}$ |
-| **Exact Action Delta (59-dim)** | **Exp D2**: Val CE 2.8177<br>Excess CE: +0.3449 nats<br>Top-1: 38.42% (862 bps) | **Exp E**: Val CE 2.8157<br>Excess CE: +0.3428 nats<br>Top-1: 38.47% (869 bps) | $Delta	ext{CE} = -0.0020	ext{ nats}$<br>$Delta	ext{Top-1} = +0.05	ext{ pp}$ |
-| **Action Feature Effect** | $Delta	ext{CE} = mathbf{-0.0702	ext{ nats}}$<br>$Delta	ext{Top-1} = mathbf{+6.55	ext{ pp}}$ | $Delta	ext{CE} = mathbf{-0.0721	ext{ nats}}$<br>$Delta	ext{Top-1} = mathbf{+5.71	ext{ pp}}$ | **Dominant Factor: Action Coupling** |
+| **Baseline Action (36-dim)** | **Exp A**: Val CE 2.8879<br>Excess CE: +0.4150 nats<br>Top-1: 31.87% (635 bps) | **Exp B**: Val CE 2.8878<br>Excess CE: +0.4149 nats<br>Top-1: 32.76% (635 bps) | $\Delta\text{CE} = -0.0001	ext{ nats}$<br>$\Delta\text{Top-1} = +0.89	ext{ pp}$ |
+| **Exact Action Delta (59-dim)** | **Exp D2**: Val CE 2.8177<br>Excess CE: +0.3449 nats<br>Top-1: 38.42% (862 bps) | **Exp E**: Val CE 2.8157<br>Excess CE: +0.3428 nats<br>Top-1: 38.47% (869 bps) | $\Delta\text{CE} = -0.0020	ext{ nats}$<br>$\Delta\text{Top-1} = +0.05	ext{ pp}$ |
+| **Action Feature Effect** | $\Delta\text{CE} = \mathbf{-0.0702\text{ nats}}$<br>$\Delta\text{Top-1} = \mathbf{+6.55\text{ pp}}$ | $\Delta\text{CE} = \mathbf{-0.0721\text{ nats}}$<br>$\Delta\text{Top-1} = \mathbf{+5.71\text{ pp}}$ | **Dominant Factor: Action Coupling** |
 
 ## Result and decision
 
 1. **Gate G1/G2/G3 Failed**: Formal 32-epoch Entity Mixer failed all three offline acceptance gates (`M25_POLICY_TEACHER_FIT_FAIL`).
 2. **2x2 Controlled Recovery Matrix Conclusion**:
-   - **Width Scaling Ineffective**: In both baseline action encoding (Exp B vs Exp A) and delta action encoding (Exp E vs Exp D2), increasing model width by 2.75x (0.95M $	o$ 2.61M params) produces negligible validation gains ($le 0.0020	ext{ nats}$ CE reduction).
-   - **Action Coupling Confirmed**: Injecting explicit post-action state delta features (Exp D2/E) yields a substantial and consistent validation breakthrough ($sim 0.07	ext{ nats}$ CE improvement, $+6.5	ext{ pp}$ Top-1 increase).
+   - **Width Scaling Ineffective**: In both baseline action encoding (Exp B vs Exp A) and delta action encoding (Exp E vs Exp D2), increasing model width by 2.75x (0.95M $\to$ 2.61M params) produces negligible validation gains ($\le 0.0020\text{ nats}$ CE reduction).
+   - **Action Coupling Confirmed**: Injecting explicit post-action state delta features (Exp D2/E) yields a substantial and consistent validation breakthrough ($\sim 0.07\text{ nats}$ CE improvement, $+6.5\text{ pp}$ Top-1 increase).
    - **G1 Gap Remains**: Even with exact action delta features, h320 reaches 38.47% Top-1 and 869 bps CE improvement, falling short of G1's 45.00% Top-1 / 1000 bps threshold.
 3. **Formal Direction Decision**:
    - **STOP width scaling** (no further h320/h512 exploration on current setup).

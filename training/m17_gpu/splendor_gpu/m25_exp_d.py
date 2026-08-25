@@ -53,7 +53,7 @@ def encode_action_delta(observation, action, catalog):
     tokens = {k: int(player["tokens"][k]) for k in GEMS}
     bonuses = list(player["bonuses"])
     prestige = int(player["prestige"])
-    
+
     delta_vp = 0.0
     delta_bonuses = [0.0] * 5
     delta_tokens = [0.0] * 6
@@ -61,7 +61,7 @@ def encode_action_delta(observation, action, catalog):
     card_prestige = 0.0
     gold_spent = 0.0
     noble_delta = 0.0
-    
+
     kind = action.get("type")
     if kind == "take_tokens":
         take = action.get("take", {})
@@ -98,7 +98,7 @@ def encode_action_delta(observation, action, catalog):
                 delta_tokens[i] = -paid / 10.0
             delta_tokens[5] = -total_gold_paid / 10.0
             gold_spent = total_gold_paid / 5.0
-            
+
             visible_nobles = [catalog["nobles"][int(nid)] for nid in public["nobles"] if int(nid) in catalog["nobles"]]
             if visible_nobles:
                 cur_dist = min(sum(max(0, n["requirements"][c] - bonuses[c]) for c in range(5)) for n in visible_nobles)
@@ -129,11 +129,11 @@ def encode_action_delta(observation, action, catalog):
     elif kind == "choose_noble":
         delta_vp = 3.0 / 5.0
         noble_delta = 1.0
-        
+
     post_vp = (prestige + delta_vp * 5.0) / 15.0
     dist_15 = max(0.0, 15.0 - (prestige + delta_vp * 5.0)) / 15.0
     post_tokens = (sum(tokens.values()) + sum(delta_tokens) * 10.0) / 10.0
-    
+
     delta_vec = [
         delta_vp, post_vp, dist_15,
         *delta_bonuses,
@@ -178,14 +178,14 @@ def packed_delta_collate(items):
     entity_mask = torch.stack([it["entity_mask"] for it in items])
     global_features = torch.stack([it["global_features"] for it in items])
     value_target = torch.stack([it["value_target"] for it in items])
-    
+
     action_list = [it["actions"] for it in items]
     policy_list = [it["policy_target"] for it in items]
-    
+
     offsets = [0]
     for acts in action_list:
         offsets.append(offsets[-1] + acts.shape[0])
-        
+
     return {
         "entities": entities,
         "entity_mask": entity_mask,
@@ -217,7 +217,7 @@ class DeltaEntityMixer(nn.Module):
         self.mix = nn.Linear(h * 2, h)
         self.blocks = nn.Sequential(*(ResidualBlock(h, dropout) for _ in range(blocks)))
         self.norm = nn.LayerNorm(h)
-        
+
         self.action_encoder = nn.Sequential(nn.Linear(ENHANCED_ACTION_FEATURES, h), nn.GELU(), nn.Linear(h, h))
         self.policy = nn.Sequential(nn.Linear(h * 3, h), nn.GELU(), nn.Linear(h, 1))
         self.value = nn.Sequential(nn.Linear(h, h), nn.GELU(), nn.Linear(h, 2), nn.Sigmoid())
@@ -284,7 +284,7 @@ def evaluate_split(loader, H_val, u_ce):
             n = int(batch_dev["entities"].shape[0])
             total_examples += n
             total_ce += p_loss.item() * n
-            
+
             offsets = batch_dev["action_offsets"].tolist()
             policy_target = batch_dev["policy_target"]
             for i in range(len(offsets) - 1):
@@ -324,14 +324,14 @@ for ep in range(1, epochs + 1):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
     scheduler.step()
-    
+
     val_res = evaluate_split(val_loader, val_H, val_u_ce)
     is_best = val_res["ce"] < best_val_ce
     if is_best:
         best_val_ce = val_res["ce"]
         best_epoch = ep
         best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
-        
+
     if ep % 8 == 0 or ep in (1, 5, epochs) or is_best:
         print(
             f"Ep {ep:3d}/{epochs}: "
