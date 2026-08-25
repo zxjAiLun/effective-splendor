@@ -129,6 +129,12 @@ def test_mask_invariance():
     assert torch.allclose(val_orig, val_mod, atol=1e-5)
 
 def test_residual_gradient_flow():
+    """Two-step gradient test:
+    Step 1: On the initial zero-initialized state, backward pass computes non-zero gradient on the zero-initialized
+            output layer (attn_residual_head[2]), while upstream projection layers (Q/K/V) receive zero gradient.
+    Step 2: After updating attn_residual_head[2] with a non-zero gradient step, backward pass computes non-zero
+            gradients across all upstream Q/K/V attention projections.
+    """
     torch.manual_seed(280229)
     model = NestedResidualActionEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
     model.train()
@@ -142,13 +148,35 @@ def test_residual_gradient_flow():
     offsets = torch.tensor([0, 20, 40], dtype=torch.long)
     targets = torch.softmax(torch.randn(40), dim=0)
 
+    # --- Step 1: Initial backward pass on zero-initialized output layer ---
     logits, _ = model.forward_packed(entities, mask, global_f, actions, offsets)
-    loss = -(targets[:20] * torch.log_softmax(logits[:20], dim=0)).sum() - (targets[20:] * torch.log_softmax(logits[20:], dim=0)).sum()
-    loss.backward()
+    loss1 = -(targets[:20] * torch.log_softmax(logits[:20], dim=0)).sum() - (targets[20:] * torch.log_softmax(logits[20:], dim=0)).sum()
+    loss1.backward()
 
-    # Verify gradients flow into residual attention weights
-    assert model.action_query_proj.weight.grad is not None
-    assert model.entity_key_proj.weight.grad is not None
-    assert model.entity_val_proj.weight.grad is not None
+    # Final zero-init projection layer gets non-zero gradient
     assert model.attn_residual_head[2].weight.grad is not None
+    assert model.attn_residual_head[2].weight.grad.abs().sum() > 0
+
+    # Upstream Q/K/V projections get exactly zero gradient because final linear weight is 0
+    assert model.action_query_proj.weight.grad is not None
+    assert torch.all(model.action_query_proj.weight.grad == 0)
+    assert model.entity_key_proj.weight.grad is not None
+    assert torch.all(model.entity_key_proj.weight.grad == 0)
+    assert model.entity_val_proj.weight.grad is not None
+    assert torch.all(model.entity_val_proj.weight.grad == 0)
+
+    # --- Step 2: Unfreeze upstream path with an optimization step ---
+    opt = torch.optim.SGD(model.parameters(), lr=0.1)
+    opt.step()
+    opt.zero_grad()
+
+    # Forward & backward again on un-zeroed state
+    logits2, _ = model.forward_packed(entities, mask, global_f, actions, offsets)
+    loss2 = -(targets[:20] * torch.log_softmax(logits2[:20], dim=0)).sum() - (targets[20:] * torch.log_softmax(logits2[20:], dim=0)).sum()
+    loss2.backward()
+
+    # Now all Q/K/V projections receive non-zero gradients
+    assert model.action_query_proj.weight.grad.abs().sum() > 0
+    assert model.entity_key_proj.weight.grad.abs().sum() > 0
+    assert model.entity_val_proj.weight.grad.abs().sum() > 0
     assert model.attn_residual_head[2].weight.grad.abs().sum() > 0

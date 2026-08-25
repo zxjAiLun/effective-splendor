@@ -153,8 +153,8 @@ M25 established a 6-phase end-to-end pipeline:
 
 | Action Representation \ Architecture | h192/b4 (~0.95M parameters) | h320/b4 (~2.61M parameters) | Width Effect ($\Delta$ h320 - h192) |
 | :--- | :--- | :--- | :--- |
-| **Baseline Action (36-dim)** | **Exp A**: Val CE 2.8879<br>Excess CE: +0.4150 nats<br>Top-1: 31.87% (635 bps) | **Exp B**: Val CE 2.8878<br>Excess CE: +0.4149 nats<br>Top-1: 32.76% (635 bps) | $\Delta\text{CE} = -0.0001	ext{ nats}$<br>$\Delta\text{Top-1} = +0.89	ext{ pp}$ |
-| **Exact Action Delta (59-dim)** | **Exp D2**: Val CE 2.8177<br>Excess CE: +0.3449 nats<br>Top-1: 38.42% (862 bps) | **Exp E**: Val CE 2.8157<br>Excess CE: +0.3428 nats<br>Top-1: 38.47% (869 bps) | $\Delta\text{CE} = -0.0020	ext{ nats}$<br>$\Delta\text{Top-1} = +0.05	ext{ pp}$ |
+| **Baseline Action (36-dim)** | **Exp A**: Val CE 2.8879<br>Excess CE: +0.4150 nats<br>Top-1: 31.87% (635 bps) | **Exp B**: Val CE 2.8878<br>Excess CE: +0.4149 nats<br>Top-1: 32.76% (635 bps) | $\Delta\text{CE} = -0.0001\text{ nats}$<br>$\Delta\text{Top-1} = +0.89\text{ pp}$ |
+| **Exact Action Delta (59-dim)** | **Exp D2**: Val CE 2.8177<br>Excess CE: +0.3449 nats<br>Top-1: 38.42% (862 bps) | **Exp E**: Val CE 2.8157<br>Excess CE: +0.3428 nats<br>Top-1: 38.47% (869 bps) | $\Delta\text{CE} = -0.0020\text{ nats}$<br>$\Delta\text{Top-1} = +0.05\text{ pp}$ |
 | **Action Feature Effect** | $\Delta\text{CE} = \mathbf{-0.0702\text{ nats}}$<br>$\Delta\text{Top-1} = \mathbf{+6.55\text{ pp}}$ | $\Delta\text{CE} = \mathbf{-0.0721\text{ nats}}$<br>$\Delta\text{Top-1} = \mathbf{+5.71\text{ pp}}$ | **Dominant Factor: Action Coupling** |
 
 ## Result and decision

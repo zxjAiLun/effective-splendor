@@ -786,7 +786,8 @@ fn parse_agent_determinization_args(
     let max_depth_turns = parse_required_number::<u8>(max_depth_turns, "--max-depth-turns", "u8")?;
     let max_nodes = parse_required_number::<u64>(max_nodes, "--max-nodes", "u64")?;
     let runtime_name = runtime_name.unwrap_or_else(|| DETERMINIZATION_AGENT_NAME.to_string());
-    let runtime_version = runtime_version.unwrap_or_else(|| DETERMINIZATION_AGENT_VERSION.to_string());
+    let runtime_version =
+        runtime_version.unwrap_or_else(|| DETERMINIZATION_AGENT_VERSION.to_string());
 
     Ok((
         RootDeterminizationConfigV1 {
