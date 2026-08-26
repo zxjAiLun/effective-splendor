@@ -21,7 +21,7 @@ CHAMPION = M07
 
 M33A experimental results confirmed that additive structured residual logit factorization ($L_{\text{final}} = L_{\text{D2}} + L_{\text{factor}}$) failed to repair the token acquisition bottleneck (Take exact Top-1 remained frozen at 3.17% vs D2 3.32%).
 
-**D2 Baseline Frozen Diagnostics (Validation Set, 4,066 samples, 1,326 Take target samples, Checkpoint SHA `a00c783a4a...`)**:
+**D2-v2 Baseline Frozen Diagnostics (Validation Set, 4,066 samples, 1,326 Take target samples, Checkpoint SHA `113372fc10...`)**:
 - **Overall Top-1**: 38.4161% (1,562 / 4,066)
 - **Take Family Recall**: 29.1101% (386 / 1,326)
 - **Take Exact Full-Action Top-1**: 3.3183% (44 / 1,326)
@@ -56,10 +56,10 @@ Where:
    - $\log P(\text{family} \mid s) = \text{log\_softmax}_{f \in \text{active}}(B_f + r_f)$
    - $\log P(\text{pattern} \mid \text{take}, s) = \text{log\_softmax}_{p \in \text{active}}(B_p - B_{\text{take}} + r_p)$
    - $\log P(a \mid \text{pattern}, s) = \text{log\_softmax}_{a \in p}(z(a) - B_p + r_{\text{return}})$
-   - Total $\log P(a \mid s)$ is composed and guarantees $\sum_a P(a \mid s) \equiv 1.0$ identically for every sample.
+   - Total $\log P(a \mid s)$ is composed via fully vectorized CUDA scatter-reduce operations and guarantees $\sum_a P(a \mid s) \equiv 1.0$ identically for every sample.
 5. **Exact Target Conservation & Loss Function**:
    - Canonical soft-CE is computed directly on reconstructed $\log P(a \mid s)$:
-     $$\mathcal{L} = -\sum_{a \in \mathcal{A}_{\text{legal}}(s)} q(a) \log P(a \mid s)$$
+     $$\mathcal{L} = -\frac{1}{B} \sum_{b=1}^B \sum_{a \in \mathcal{A}_{\text{legal}}(s_b)} q(a) \log P(a \mid s_b)$$
    - At zero initialization of hierarchical heads, $\log P(a \mid s) \equiv \text{log\_softmax}(z(a))$ bit-for-bit, exactly matching D2 loss and probabilities.
 
 ## Frozen experimental design
@@ -103,5 +103,6 @@ Where:
 - **Parameter Count Match**: `test_model_parameter_count` asserts parameter count equals exactly 1,072,557.
 - **Probability Sum & D2 Equivalence**: `test_initialization_equivalence_to_d2_and_probability_sum_one` asserts initial $\log P(a \mid s)$ matches D2 within `1e-5` and $\sum_a P(a \mid s) \equiv 1.0$ identically.
 - **Two-Stage Gradient Flow**: `test_two_stage_hierarchical_gradient_flow` verifies output projections receive non-zero gradients on step 1, and upstream layers receive non-zero gradients on step 2 under `hierarchical_policy_loss`.
+- **Hand-Calculated Ground Truth**: `test_non_zero_residual_hand_calculated_ground_truth` verifies exact step-by-step intermediate and final conditional log-probabilities against manual analytical formulas for non-zero residuals.
 - **Diagnostic Evaluator Reference Parity & Fail-Closed**: `test_diagnostic_evaluator_multi_batch_and_first_max_reference` validates exact hand-calculated metric parity between Python diagnostics and GPU vectorized evaluator, and tests fail-closed exception on dataset mismatch.
-- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m34a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, D2 checkpoint SHA (`a00c783a4a...`), and fail-closed output directory protection.
+- **Real Provenance Preflight**: `test_real_provenance_preflight_for_m34a` validates 64-char dataset/catalog semantic hashes, config SHA, D2 baseline SHA, D2-v2 checkpoint SHA (`113372fc10...`), checkpoint internal metadata, and counter-example rejection of old invalid D2 checkpoint.

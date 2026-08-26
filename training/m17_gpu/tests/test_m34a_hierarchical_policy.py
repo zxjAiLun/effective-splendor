@@ -2,19 +2,20 @@
 
 Verifies:
 1. Exact parameter count of HierarchicalDeltaEntityMixer is exactly 1,072,557 (953,476 D2 + 119,081 hierarchical).
-2. Initialization Equivalence: Under zero residuals, log P(a|s) strictly matches log_softmax(z_D2) within 1e-6.
-3. Probability Sum Conservation: sum_{a} P(a|s) == 1.0 identically for every sample.
-4. Production Loss & Gradient Flow:
-   - Evaluates hierarchical_policy_loss() across multi-batch data.
-   - Backward on initial model: hierarchical branch output layers receive non-zero gradients.
-   - After optimizer step: hierarchical upstream linear layers receive non-zero gradients.
-5. Marginal Target Conservation on Production Model:
-   - Evaluates that marginal target probabilities q(family), q(pattern|take), q(return|pattern) match exact cross-entropy decomposition.
+2. Initialization Equivalence: Under zero residuals, vectorized log P(a|s) strictly matches log_softmax(z_D2) within 1e-6.
+3. Probability Sum Conservation: sum_{a} P(a|s) == 1.0 identically for every sample under vectorized engine.
+4. Two-Stage Hierarchical Gradient Flow:
+   - Output projection layers receive non-zero gradients on step 1.
+   - Upstream linear layers receive non-zero gradients on step 2 under hierarchical_policy_loss.
+5. Hand-Calculated Reference Ground Truth:
+   - Evaluates a non-zero residual batch against hand-calculated expected values for:
+     P(family), P(pattern|take), P(return|pattern), and final P(a|s).
 6. Multi-Batch Multi-Action Diagnostic Evaluator Reference Verification & Fail-Closed:
    - Tests evaluate_m34a_diagnostics() over variable-length legal actions, first-max ties, and hand-calculated metrics.
-   - Tests evaluate_m34a_vectorized_fast() from m34a_train.py matching evaluate_m34a_diagnostics().
+   - Tests evaluate_m34a_vectorized_fast() matching evaluate_m34a_diagnostics().
    - Tests fail-closed assertion on length mismatch.
-7. Real Provenance Preflight enforces fail-closed execution with D2 checkpoint SHA binding.
+7. Real Provenance Preflight enforces fail-closed execution with D2-v2 checkpoint SHA and metadata binding.
+   - Asserts that old D2 checkpoint SHA fails preflight immediately.
 """
 import json
 import math
@@ -34,6 +35,7 @@ from splendor_gpu.m34a_model import (
     HierarchicalDeltaEntityMixer,
     ENHANCED_ACTION_FEATURES,
     hierarchical_policy_loss,
+    compute_hierarchical_log_probs,
 )
 from splendor_gpu.m34a_encoding import (
     get_action_family,
@@ -167,48 +169,86 @@ def test_two_stage_hierarchical_gradient_flow():
     assert model.take_pattern_head[0].weight.grad.abs().sum().item() > 0.0
     assert model.return_penalty_head[0].weight.grad.abs().sum().item() > 0.0
 
-def test_marginal_target_conservation_and_exact_ce_arithmetic():
-    """Verify that hierarchical marginalization on production batch data matches canonical policy CE."""
-    torch.manual_seed(42)
-    B = 2
-    # Sample 0: 3 actions (2 Take with different patterns, 1 Buy)
-    # Sample 1: 3 actions (2 Take with same pattern different return, 1 Reserve)
-    offsets = torch.tensor([0, 3, 6], dtype=torch.long)
-    targets = torch.tensor([0.5, 0.3, 0.2, 0.4, 0.2, 0.4], dtype=torch.float32)
-
-    family_idx = torch.tensor([0, 0, 1, 0, 0, 2], dtype=torch.long)
-    take_patterns = torch.tensor([0, 1, -1, 5, 5, -1], dtype=torch.long)
-    return_vecs = torch.tensor([
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
-        [1.0, 0, 0, 0, 0, 0], [0, 1.0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]
+def test_non_zero_residual_hand_calculated_ground_truth():
+    """Explicit hand-calculated ground truth test for non-zero hierarchical residuals."""
+    # 1 sample with 3 actions:
+    # act 0: Take, pattern 0, no return. z0 = 1.0
+    # act 1: Take, pattern 0, return gold (1.0). z1 = 2.0
+    # act 2: Buy, no pattern, no return. z2 = 1.5
+    offsets = torch.tensor([0, 3], dtype=torch.long)
+    z = torch.tensor([1.0, 2.0, 1.5], dtype=torch.float32)
+    fam = torch.tensor([0, 0, 1], dtype=torch.long)
+    pats = torch.tensor([0, 0, -1], dtype=torch.long)
+    rets = torch.tensor([
+        [0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1.0],
+        [0, 0, 0, 0, 0, 0],
     ], dtype=torch.float32)
 
-    entities = torch.randn(B, ENTITY_SLOTS, ENTITY_FEATURES)
-    mask = torch.ones(B, ENTITY_SLOTS, dtype=torch.bool)
-    global_f = torch.randn(B, GLOBAL_FEATURES)
-    actions = torch.randn(6, ENHANCED_ACTION_FEATURES)
+    # Residuals
+    r_fam = torch.zeros(1, 5, dtype=torch.float32)
+    r_fam[0, 0] = 0.5   # Family Take residual = +0.5
+    r_fam[0, 1] = -0.2  # Family Buy residual = -0.2
 
-    model = HierarchicalDeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
-    model.eval()
+    r_pat = torch.zeros(1, 30, dtype=torch.float32)
+    r_pat[0, 0] = 0.8   # Pattern 0 residual = +0.8
 
-    with torch.no_grad():
-        log_probs, _ = model.forward_packed(
-            entities, mask, global_f, actions, offsets,
-            family_idx, take_patterns, return_vecs
-        )
+    w_ret = torch.zeros(1, 6, dtype=torch.float32)
+    w_ret[0, 5] = 1.2   # Gold return penalty = 1.2
 
-    # 1. Total CE computed via production loss
-    loss = hierarchical_policy_loss(log_probs, targets, offsets)
+    log_probs = compute_hierarchical_log_probs(
+        z_actions=z,
+        action_offsets=offsets,
+        family_indices=fam,
+        take_pattern_indices=pats,
+        return_vectors_6d=rets,
+        family_residuals=r_fam,
+        take_pattern_residuals=r_pat,
+        return_penalty_weights=w_ret,
+    )
 
-    # 2. Sample 0 manual decomposition:
-    # q(Take) = 0.5 + 0.3 = 0.8, q(Buy) = 0.2
-    # q(pat0 | take) = 0.5 / 0.8 = 0.625, q(pat1 | take) = 0.3 / 0.8 = 0.375
-    # q(act0 | pat0) = 1.0, q(act1 | pat1) = 1.0, q(buy | Buy) = 1.0
-    ce_sample0_manual = - (0.5 * log_probs[0] + 0.3 * log_probs[1] + 0.2 * log_probs[2])
-    ce_sample1_manual = - (0.4 * log_probs[3] + 0.2 * log_probs[4] + 0.4 * log_probs[5])
-    expected_mean_ce = (ce_sample0_manual + ce_sample1_manual) / 2.0
+    # Hand calculation:
+    # 1. Base masses:
+    # B_Take = log(exp(1.0) + exp(2.0)) = log(2.7182818 + 7.389056) = log(10.107338) = 2.3132617
+    # B_Buy = 1.5
+    B_take_hand = math.log(math.exp(1.0) + math.exp(2.0))
+    B_buy_hand = 1.5
 
-    torch.testing.assert_close(loss, expected_mean_ce, rtol=1e-6, atol=1e-6)
+    # 2. Family logits:
+    # L_take = B_Take + r_fam[0] = 2.3132617 + 0.5 = 2.8132617
+    # L_buy = B_Buy + r_fam[1] = 1.5 - 0.2 = 1.3000000
+    # log P(Take) = L_take - log(exp(2.8132617) + exp(1.3)) = 2.8132617 - log(16.66398 + 3.669297) = 2.8132617 - 3.012282 = -0.199020
+    # log P(Buy) = 1.3 - 3.012282 = -1.712282
+    denom_fam = math.log(math.exp(B_take_hand + 0.5) + math.exp(B_buy_hand - 0.2))
+    log_P_take_hand = (B_take_hand + 0.5) - denom_fam
+    log_P_buy_hand = (B_buy_hand - 0.2) - denom_fam
+
+    # 3. Take Pattern logits (only pattern 0 is active):
+    # log P(pat 0 | Take) = 0.0 (since only 1 active pattern)
+    log_P_pat0_hand = 0.0
+
+    # 4. Action logits within pattern 0:
+    # act 0: z0 - B_pat0 + r_ret = 1.0 - B_take_hand + 0.0
+    # act 1: z1 - B_pat0 + r_ret = 2.0 - B_take_hand - 1.2 * 1.0 = 0.8 - B_take_hand
+    # log_softmax over [1.0, 0.8] -> denom = log(exp(1.0) + exp(0.8)) = log(2.7182818 + 2.2255409) = 1.598165
+    # log P(act 0 | pat 0) = 1.0 - 1.598165 = -0.598165
+    # log P(act 1 | pat 0) = 0.8 - 1.598165 = -0.798165
+    denom_act_in_pat = math.log(math.exp(1.0) + math.exp(0.8))
+    log_P_act0_hand = 1.0 - denom_act_in_pat
+    log_P_act1_hand = 0.8 - denom_act_in_pat
+
+    # 5. Non-take action logits within Buy (only 1 action):
+    # log P(act 2 | Buy) = 0.0
+    log_P_act2_hand = 0.0
+
+    # 6. Final composite log-probabilities:
+    expected_log_p0 = log_P_take_hand + log_P_pat0_hand + log_P_act0_hand
+    expected_log_p1 = log_P_take_hand + log_P_pat0_hand + log_P_act1_hand
+    expected_log_p2 = log_P_buy_hand + log_P_act2_hand
+
+    expected_log_probs = torch.tensor([expected_log_p0, expected_log_p1, expected_log_p2], dtype=torch.float32)
+    torch.testing.assert_close(log_probs, expected_log_probs, rtol=1e-5, atol=1e-5)
+    assert torch.allclose(log_probs.exp().sum(), torch.tensor(1.0), atol=1e-6)
 
 class ControlledMockModel(nn.Module):
     """Deterministic mock model that emits preset log_probs to test evaluator arithmetic."""
@@ -221,7 +261,6 @@ class ControlledMockModel(nn.Module):
         batch_size = len(action_offsets) - 1
         sub_logits = self.preset_logits_list[self.call_count:self.call_count + batch_size]
         self.call_count += batch_size
-        # Apply log_softmax to simulate true normalized log_probs
         normalized_log_probs = [F.log_softmax(z, dim=0) for z in sub_logits]
         flattened = torch.cat(normalized_log_probs, dim=0)
         dummy_val = torch.zeros(batch_size, 2, dtype=torch.float32, device=entities.device)
@@ -455,7 +494,8 @@ def test_real_provenance_preflight_for_m34a():
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
-    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2/checkpoint.pt")
+    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt")
+    old_d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2/checkpoint.pt")
 
     config = json.loads(config_path.read_text(encoding="utf-8"))
     ds_payload = json.loads(dataset_path.read_text(encoding="utf-8"))
@@ -483,3 +523,22 @@ def test_real_provenance_preflight_for_m34a():
         )
         assert res["parameter_count"] == 1072557
         assert res["d2_ckpt_file_sha256"] == FROZEN_D2_CKPT_SHA256
+        assert res["d2_ckpt_file_sha256"] == "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17"
+
+    # Counter-example: old invalid D2 checkpoint must fail preflight immediately
+    if old_d2_ckpt_path.exists():
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir2 = Path(tmpdir) / "m34a_output2"
+            with pytest.raises(ValueError, match="D2-v2 checkpoint SHA mismatch"):
+                preflight_m34a(
+                    config_path=config_path,
+                    dataset_path=dataset_path,
+                    catalog_path=catalog_path,
+                    d2_result_path=d2_result_path,
+                    d2_ckpt_path=old_d2_ckpt_path,
+                    output_dir=output_dir2,
+                    actual_dataset_semantic_hash=real_dataset_semantic_hash,
+                    actual_catalog_hash=real_catalog_semantic_hash,
+                    actual_param_count=FROZEN_M34A_PARAMETER_COUNT,
+                    require_cuda=False,
+                )

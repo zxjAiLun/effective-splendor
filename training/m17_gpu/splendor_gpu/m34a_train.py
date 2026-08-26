@@ -22,7 +22,7 @@ from splendor_gpu.m34a_preflight import preflight_m34a, compute_file_sha256
 
 @torch.no_grad()
 def evaluate_m34a_vectorized_fast(model: nn.Module, loader, H_val: float, u_ce: float, device: torch.device):
-    """Vectorized core evaluation using exact hierarchical policy cross-entropy."""
+    """Vectorized core evaluation using GPU segmented first-max and unified loss."""
     model.eval()
     total_ce = 0.0
     total_top1 = 0
@@ -40,31 +40,40 @@ def evaluate_m34a_vectorized_fast(model: nn.Module, loader, H_val: float, u_ce: 
             batch_dev["take_pattern_indices"],
             batch_dev["return_vectors_6d"],
         )
-        offsets = batch_dev["action_offsets"].cpu().tolist()
-        log_probs_cpu = log_probs.cpu()
-        targets_cpu = batch_dev["policy_target"].cpu()
+        n = int(batch_dev["entities"].shape[0])
+        total_examples += n
+        total_ce += -(batch_dev["policy_target"] * log_probs).sum().item()
 
-        batch_size = len(offsets) - 1
-        total_examples += batch_size
+        # Vectorized segmented first-max matching on device
+        offsets = batch_dev["action_offsets"]
+        counts = offsets[1:] - offsets[:-1]
+        sample_ids = torch.repeat_interleave(torch.arange(n, device=device), counts)
 
-        for b in range(batch_size):
-            start = offsets[b]
-            end = offsets[b + 1]
-            lp = log_probs_cpu[start:end]
-            q = targets_cpu[start:end]
+        # 1. Segment max for predictions
+        pred_seg_max = torch.full((n,), -float("inf"), dtype=log_probs.dtype, device=device)
+        pred_seg_max.scatter_reduce_(0, sample_ids, log_probs, reduce="amax", include_self=False)
 
-            sample_ce = -torch.sum(q * lp).item()
-            total_ce += sample_ce
+        # 2. Segment max for targets
+        target_seg_max = torch.full((n,), -float("inf"), dtype=batch_dev["policy_target"].dtype, device=device)
+        target_seg_max.scatter_reduce_(0, sample_ids, batch_dev["policy_target"], reduce="amax", include_self=False)
 
-            # Exact first-max top1
-            pred_max = lp.max()
-            pred_idx = int(torch.where(lp == pred_max)[0][0].item())
+        # 3. First-max indices per segment
+        is_pred_max = (log_probs == pred_seg_max[sample_ids])
+        is_target_max = (batch_dev["policy_target"] == target_seg_max[sample_ids])
 
-            target_max = q.max()
-            target_idx = int(torch.where(q == target_max)[0][0].item())
+        # Local action indices within segment
+        act_idx = torch.arange(log_probs.shape[0], device=device)
+        # Large value for non-max
+        pred_idx_for_min = torch.where(is_pred_max, act_idx, torch.full_like(act_idx, 10**9))
+        target_idx_for_min = torch.where(is_target_max, act_idx, torch.full_like(act_idx, 10**9))
 
-            if pred_idx == target_idx:
-                total_top1 += 1
+        pred_first_idx = torch.full((n,), 10**9, dtype=torch.long, device=device)
+        pred_first_idx.scatter_reduce_(0, sample_ids, pred_idx_for_min, reduce="amin", include_self=False)
+
+        target_first_idx = torch.full((n,), 10**9, dtype=torch.long, device=device)
+        target_first_idx.scatter_reduce_(0, sample_ids, target_idx_for_min, reduce="amin", include_self=False)
+
+        total_top1 += (pred_first_idx == target_first_idx).sum().item()
 
     ce = total_ce / total_examples
     top1 = total_top1 / float(total_examples)
@@ -95,7 +104,7 @@ if __name__ == "__main__":
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
-    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2/checkpoint.pt")
+    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt")
     ckpt_dir = Path("local-artifacts/m34a-hierarchical-policy")
 
     config_text = config_path.read_text(encoding="utf-8")
@@ -415,12 +424,11 @@ if __name__ == "__main__":
             "d2_val_top1": d2_val_top1,
             "d2_val_impr_bps": exp_d2_data["best_checkpoint_val"]["impr_bps"],
             "d2_diagnostics": {
-                "family_top1": 0.6803,
+                "overall_top1": 0.384161,
                 "take_family_recall": 0.291101,
                 "take_exact_top1": 0.033183,
                 "take_pattern_exact_top1": 0.033183,
                 "buy_exact_top1": 0.7615,
-                "reserve_family_recall": 0.6871,
                 "reserve_exact_top1": 0.1422,
             },
             "m34a_val_ce": final_val["ce"],

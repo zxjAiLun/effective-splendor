@@ -1,5 +1,6 @@
 """M34A Preflight and Provenance Verification for Hierarchical Policy."""
 import hashlib
+import json
 from pathlib import Path
 import torch
 
@@ -8,16 +9,11 @@ FROZEN_DATASET_FILE_SHA256 = "2e15cc9d3f96c0993e3746f45c4eb24d3e1bf92f80c2b515d5
 FROZEN_DATASET_SEMANTIC_HASH = "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419"
 FROZEN_CATALOG_HASH = "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26"
 FROZEN_D2_RESULT_SHA256 = "403e4903044dfec929c6e92713b2bb9f3e120469ab872271dc82e78f752efc38"
-FROZEN_D2_CKPT_SHA256 = "a00c783a4af5e61b753b8ba12bd84176f3b47ffce7331e10c478fcc91b0f82ca"
+FROZEN_D2_CKPT_SHA256 = "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17"
+FROZEN_D2_CKPT_BEST_EPOCH = 11
+FROZEN_D2_CKPT_BEST_VAL_CE = 2.817744227154643
+FROZEN_D2_CKPT_BEST_VAL_TOP1 = 0.3841613379242499
 
-# Model parameter calculation:
-# D2 Base Parameters: 953,476
-# Hierarchical Heads:
-# - family_head: Linear(192, 192) + Linear(192, 5) = 37,056 + 965 = 38,021
-# - take_pattern_head: Linear(192, 192) + Linear(192, 30) = 37,056 + 5,790 = 42,846
-# - return_penalty_head: Linear(192, 192) + Linear(192, 6) = 37,056 + 1,158 = 38,214
-# Total Hierarchical Parameters = 38,021 + 42,846 + 38,214 = 119,081
-# Total Model Parameters = 953,476 + 119,081 = 1,072,557
 FROZEN_M34A_PARAMETER_COUNT = 1072557
 
 def compute_file_sha256(path: Path) -> str:
@@ -64,7 +60,19 @@ def preflight_m34a(
 
     actual_d2_ckpt_sha = compute_file_sha256(d2_ckpt_path)
     if actual_d2_ckpt_sha != FROZEN_D2_CKPT_SHA256:
-        raise ValueError(f"D2 checkpoint SHA mismatch! Expected {FROZEN_D2_CKPT_SHA256}, got {actual_d2_ckpt_sha}")
+        raise ValueError(f"D2-v2 checkpoint SHA mismatch! Expected {FROZEN_D2_CKPT_SHA256}, got {actual_d2_ckpt_sha}")
+
+    # Checkpoint internal metadata validation
+    d2_payload = torch.load(d2_ckpt_path, map_location="cpu", weights_only=False)
+    d2_meta = d2_payload.get("metadata", {})
+    if d2_meta.get("dataset_semantic_hash") != FROZEN_DATASET_SEMANTIC_HASH:
+        raise ValueError(f"D2 checkpoint metadata dataset semantic hash mismatch! Expected {FROZEN_DATASET_SEMANTIC_HASH}, got {d2_meta.get('dataset_semantic_hash')}")
+    if d2_meta.get("best_epoch") != FROZEN_D2_CKPT_BEST_EPOCH:
+        raise ValueError(f"D2 checkpoint metadata best epoch mismatch! Expected {FROZEN_D2_CKPT_BEST_EPOCH}, got {d2_meta.get('best_epoch')}")
+    if abs(float(d2_meta.get("best_val_ce", 0.0)) - FROZEN_D2_CKPT_BEST_VAL_CE) > 1e-6:
+        raise ValueError(f"D2 checkpoint metadata best_val_ce mismatch! Expected {FROZEN_D2_CKPT_BEST_VAL_CE}, got {d2_meta.get('best_val_ce')}")
+    if abs(float(d2_meta.get("best_val_top1", 0.0)) - FROZEN_D2_CKPT_BEST_VAL_TOP1) > 1e-6:
+        raise ValueError(f"D2 checkpoint metadata best_val_top1 mismatch! Expected {FROZEN_D2_CKPT_BEST_VAL_TOP1}, got {d2_meta.get('best_val_top1')}")
 
     if actual_param_count != FROZEN_M34A_PARAMETER_COUNT:
         raise ValueError(f"Model parameter count mismatch! Expected {FROZEN_M34A_PARAMETER_COUNT}, got {actual_param_count}")
