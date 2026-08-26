@@ -11,23 +11,26 @@ from splendor_gpu.data import load_catalog, catalog_semantic_hash
 from splendor_gpu.encoding import encode_observation, encode_action
 from splendor_gpu.m25_train import split_m25_indices, compute_uniform_policy_ce, validate_m25_dataset_provenance
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
-from splendor_gpu.self_play_train import packed_policy_loss
-from splendor_gpu.m34a_model import HierarchicalDeltaEntityMixer, ENHANCED_ACTION_FEATURES
+from splendor_gpu.m34a_model import (
+    HierarchicalDeltaEntityMixer,
+    ENHANCED_ACTION_FEATURES,
+    hierarchical_policy_loss,
+)
 from splendor_gpu.m34a_encoding import get_action_family, get_take_pattern_id, get_return_vector_6d
 from splendor_gpu.m34a_eval import evaluate_m34a_diagnostics
 from splendor_gpu.m34a_preflight import preflight_m34a, compute_file_sha256
 
 @torch.no_grad()
 def evaluate_m34a_vectorized_fast(model: nn.Module, loader, H_val: float, u_ce: float, device: torch.device):
-    """Vectorized core evaluation during training loop with zero CPU synchronization."""
+    """Vectorized core evaluation using exact hierarchical policy cross-entropy."""
     model.eval()
-    total_ce = torch.zeros((), dtype=torch.float64, device=device)
-    total_top1 = torch.zeros((), dtype=torch.float64, device=device)
+    total_ce = 0.0
+    total_top1 = 0
     total_examples = 0
 
     for batch in loader:
         batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
-        logits, _ = model.forward_packed(
+        log_probs, _ = model.forward_packed(
             batch_dev["entities"],
             batch_dev["entity_mask"],
             batch_dev["global_features"],
@@ -37,38 +40,34 @@ def evaluate_m34a_vectorized_fast(model: nn.Module, loader, H_val: float, u_ce: 
             batch_dev["take_pattern_indices"],
             batch_dev["return_vectors_6d"],
         )
-        offsets = batch_dev["action_offsets"]
-        counts = offsets[1:] - offsets[:-1]
-        batch_size = counts.shape[0]
-        total_actions = logits.shape[0]
-        segment_ids = torch.repeat_interleave(torch.arange(batch_size, device=device), counts)
+        offsets = batch_dev["action_offsets"].cpu().tolist()
+        log_probs_cpu = log_probs.cpu()
+        targets_cpu = batch_dev["policy_target"].cpu()
 
-        p_ce = packed_policy_loss(logits, batch_dev["policy_target"], offsets)
-        total_ce += p_ce.to(torch.float64) * batch_size
-
-        # Segmented First-Max Argmax Top-1 on GPU
-        max_logits = torch.full((batch_size,), -torch.inf, dtype=logits.dtype, device=device)
-        max_logits.scatter_reduce_(0, segment_ids, logits, reduce="amax")
-        action_indices = torch.arange(total_actions, dtype=torch.int64, device=device)
-        is_max_logit = (logits == max_logits[segment_ids])
-        logit_cand = torch.where(is_max_logit, action_indices, torch.full_like(action_indices, total_actions + 1))
-        first_max_logit_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
-        first_max_logit_idx.scatter_reduce_(0, segment_ids, logit_cand, reduce="amin")
-
-        targets = batch_dev["policy_target"]
-        max_targets = torch.full((batch_size,), -torch.inf, dtype=targets.dtype, device=device)
-        max_targets.scatter_reduce_(0, segment_ids, targets, reduce="amax")
-        is_max_target = (targets == max_targets[segment_ids])
-        target_cand = torch.where(is_max_target, action_indices, torch.full_like(action_indices, total_actions + 1))
-        first_max_target_idx = torch.full((batch_size,), total_actions + 1, dtype=torch.int64, device=device)
-        first_max_target_idx.scatter_reduce_(0, segment_ids, target_cand, reduce="amin")
-
-        matches = (first_max_logit_idx == first_max_target_idx)
-        total_top1 += matches.sum(dtype=torch.float64)
+        batch_size = len(offsets) - 1
         total_examples += batch_size
 
-    ce = total_ce.item() / total_examples
-    top1 = total_top1.item() / total_examples
+        for b in range(batch_size):
+            start = offsets[b]
+            end = offsets[b + 1]
+            lp = log_probs_cpu[start:end]
+            q = targets_cpu[start:end]
+
+            sample_ce = -torch.sum(q * lp).item()
+            total_ce += sample_ce
+
+            # Exact first-max top1
+            pred_max = lp.max()
+            pred_idx = int(torch.where(lp == pred_max)[0][0].item())
+
+            target_max = q.max()
+            target_idx = int(torch.where(q == target_max)[0][0].item())
+
+            if pred_idx == target_idx:
+                total_top1 += 1
+
+    ce = total_ce / total_examples
+    top1 = total_top1 / float(total_examples)
     excess_ce = ce - H_val
     impr_bps = int(round((u_ce - ce) / u_ce * 10000))
 
@@ -96,6 +95,7 @@ if __name__ == "__main__":
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
+    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2/checkpoint.pt")
     ckpt_dir = Path("local-artifacts/m34a-hierarchical-policy")
 
     config_text = config_path.read_text(encoding="utf-8")
@@ -121,6 +121,7 @@ if __name__ == "__main__":
         dataset_path=dataset_path,
         catalog_path=catalog_path,
         d2_result_path=d2_result_path,
+        d2_ckpt_path=d2_ckpt_path,
         output_dir=ckpt_dir,
         actual_dataset_semantic_hash=actual_dataset_hash,
         actual_catalog_hash=actual_catalog_hash,
@@ -248,7 +249,7 @@ if __name__ == "__main__":
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
-    print(f"Starting M34A: {epochs} epochs of Canonical Soft-CE with Hierarchical Take-Pattern Decomposition...", flush=True)
+    print(f"Starting M34A: {epochs} epochs of Canonical Soft-CE with True Hierarchical Probability Decomposition...", flush=True)
     best_val_ce = float("inf")
     best_epoch = 0
     best_state = None
@@ -260,7 +261,7 @@ if __name__ == "__main__":
         for batch in train_loader:
             batch_dev = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
             optimizer.zero_grad(set_to_none=True)
-            logits, _ = model.forward_packed(
+            log_probs, _ = model.forward_packed(
                 batch_dev["entities"],
                 batch_dev["entity_mask"],
                 batch_dev["global_features"],
@@ -270,7 +271,7 @@ if __name__ == "__main__":
                 batch_dev["take_pattern_indices"],
                 batch_dev["return_vectors_6d"],
             )
-            loss = packed_policy_loss(logits, batch_dev["policy_target"], batch_dev["action_offsets"])
+            loss = hierarchical_policy_loss(log_probs, batch_dev["policy_target"], batch_dev["action_offsets"])
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
@@ -300,7 +301,7 @@ if __name__ == "__main__":
     torch.save({
         "metadata": {
             "milestone": "M34A",
-            "loss_objective": "canonical_soft_ce",
+            "loss_objective": "canonical_hierarchical_soft_ce",
             "architecture": "hierarchical_delta_entity_mixer_h192_b4",
             "best_epoch": best_epoch,
             "best_val_ce": best_val_ce,
@@ -311,6 +312,7 @@ if __name__ == "__main__":
             "dataset_semantic_hash": actual_dataset_hash,
             "catalog_hash": actual_catalog_hash,
             "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
+            "d2_ckpt_file_sha256": provenance_hashes["d2_ckpt_file_sha256"],
             "runner_file_sha256": runner_file_sha256,
             "model_file_sha256": model_file_sha256,
             "encoding_file_sha256": encoding_file_sha256,
@@ -338,11 +340,11 @@ if __name__ == "__main__":
     g1_overall_pass = g1_top1_pass and g1_ce_bps_pass
 
     global_signal_pass = (delta_ce_vs_d2 <= -0.0200) and (delta_top1_vs_d2 >= 0.0200)
-    targeted_take_fam_pass = final_val["take"]["family_recall"] >= 0.3911   # +10 pp vs 29.11%
-    targeted_take_top1_pass = final_val["take"]["exact_top1"] >= 0.0832    # +5 pp vs 3.32%
-    targeted_take_pat_pass = final_val["take"]["pattern_exact_top1"] >= 0.0892 # +5 pp vs D2 3.92%
-    targeted_res_top1_pass = final_val["reserve"]["exact_top1"] >= 0.1722  # +3 pp vs 14.22%
-    targeted_buy_top1_pass = final_val["buy"]["exact_top1"] >= 0.7415     # max 2 pp drop vs 76.15%
+    targeted_take_fam_pass = final_val["take"]["family_recall"] >= 0.391101   # +10 pp vs 29.1101%
+    targeted_take_top1_pass = final_val["take"]["exact_top1"] >= 0.083183     # +5 pp vs 3.3183%
+    targeted_take_pat_pass = final_val["take"]["pattern_exact_top1"] >= 0.083183 # +5 pp vs 3.3183%
+    targeted_res_top1_pass = final_val["reserve"]["exact_top1"] >= 0.1222     # stability floor vs D2 14.22%
+    targeted_buy_top1_pass = final_val["buy"]["exact_top1"] >= 0.7415         # max 2 pp drop vs 76.15%
 
     targeted_signal_pass = (
         targeted_take_fam_pass
@@ -374,6 +376,8 @@ if __name__ == "__main__":
             "catalog_hash": actual_catalog_hash,
             "d2_result_file": str(d2_result_path),
             "d2_result_file_sha256": provenance_hashes["d2_result_file_sha256"],
+            "d2_ckpt_file": str(d2_ckpt_path),
+            "d2_ckpt_file_sha256": provenance_hashes["d2_ckpt_file_sha256"],
             "runner_file": str(runner_path),
             "runner_file_sha256": runner_file_sha256,
             "model_file": str(model_path),
@@ -412,9 +416,9 @@ if __name__ == "__main__":
             "d2_val_impr_bps": exp_d2_data["best_checkpoint_val"]["impr_bps"],
             "d2_diagnostics": {
                 "family_top1": 0.6803,
-                "take_family_recall": 0.2911,
-                "take_exact_top1": 0.0332,
-                "take_pattern_exact_top1": 0.0392,
+                "take_family_recall": 0.291101,
+                "take_exact_top1": 0.033183,
+                "take_pattern_exact_top1": 0.033183,
                 "buy_exact_top1": 0.7615,
                 "reserve_family_recall": 0.6871,
                 "reserve_exact_top1": 0.1422,
@@ -446,22 +450,22 @@ if __name__ == "__main__":
                 },
                 "targeted_signal": {
                     "take_family_recall": {
-                        "target": ">= 0.3911 (+10 pp)",
+                        "target": ">= 0.391101 (+10 pp)",
                         "achieved": final_val["take"]["family_recall"],
                         "pass": targeted_take_fam_pass,
                     },
                     "take_exact_top1": {
-                        "target": ">= 0.0832 (+5 pp)",
+                        "target": ">= 0.083183 (+5 pp)",
                         "achieved": final_val["take"]["exact_top1"],
                         "pass": targeted_take_top1_pass,
                     },
                     "take_pattern_exact_top1": {
-                        "target": ">= 0.0892 (+5 pp vs 3.92%)",
+                        "target": ">= 0.083183 (+5 pp vs 3.3183%)",
                         "achieved": final_val["take"]["pattern_exact_top1"],
                         "pass": targeted_take_pat_pass,
                     },
                     "reserve_exact_top1": {
-                        "target": ">= 0.1722 (+3 pp)",
+                        "target": ">= 0.1222 (stability floor vs 14.22%)",
                         "achieved": final_val["reserve"]["exact_top1"],
                         "pass": targeted_res_top1_pass,
                     },

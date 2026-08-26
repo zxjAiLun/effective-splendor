@@ -1,21 +1,31 @@
 """M34A Hierarchical Take-Pattern Policy Model Architecture.
 
-Implements exact hierarchical probability decomposition:
+Implements exact hierarchical conditional probability decomposition:
 P(a|s) = P(family|s) * P(take_pattern|take, s) * P(return|pattern, s) [for Take actions]
 P(a|s) = P(family|s) * P(a|family, s)                                [for Buy, Reserve, Noble, Pass]
 
-Logit computation:
-1. Family Logits: L_family(s) in R^5 from state embedding.
-2. Take Pattern Logits: L_pattern(s) in R^30 from state embedding.
-3. Return Logits: L_return(s, a) = - sum_{k=0..5} returned_gems[k] * w_return[k](s)
-4. Non-Take Action Logits: L_non_take(s, a) from D2 Action Scorer MLP(s, a).
+Formulation:
+1. Baseline D2 policy scorer computes unnormalized action potentials z(a).
+2. Base masses at each level are computed via LogSumExp over active subsets:
+   - B_f = logsumexp_{a in family f} z(a)
+   - B_p = logsumexp_{a in pattern p} z(a)  (for Take actions)
+3. Structured residuals are added at each level:
+   - Family logits: B_f + family_head(s)[f]
+   - Take pattern logits: (B_p - B_0) + take_pattern_head(s)[p]
+   - Return / action logits: (z(a) - B_p) - sum_{k=0..5} return_gems[k] * return_penalty_head(s)[k]
+   - Non-take action logits within family: z(a) - B_f
+4. Normalized conditional log-probabilities are composed:
+   - For Take: log P(a|s) = log P(take|s) + log P(pattern|take, s) + log P(a|pattern, s)
+   - For Non-take: log P(a|s) = log P(family|s) + log P(a|family, s)
 
-Zero-Initialization Guarantee:
-- Structured hierarchical heads are zero-initialized after D2 backbone construction,
-  ensuring perfect initial bit-for-bit equivalence with D2.
+Zero-Residual Invariant:
+- When all hierarchical heads are zero-initialized, log P(a|s) strictly equals log_softmax(z(a))
+  up to floating-point precision, ensuring bit-for-bit equivalence with D2.
+- sum_{a} P(a|s) == 1.0 identically for every sample.
 """
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from splendor_gpu.encoding import (
     ENTITY_SLOTS,
     ENTITY_FEATURES,
@@ -24,6 +34,93 @@ from splendor_gpu.encoding import (
 from splendor_gpu.model import ResidualBlock
 
 ENHANCED_ACTION_FEATURES = 36 + 23  # 59
+
+def compute_hierarchical_log_probs(
+    z_actions: torch.Tensor,
+    action_offsets: torch.Tensor,
+    family_indices: torch.Tensor,
+    take_pattern_indices: torch.Tensor,
+    return_vectors_6d: torch.Tensor,
+    family_residuals: torch.Tensor,
+    take_pattern_residuals: torch.Tensor,
+    return_penalty_weights: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Computes exact normalized hierarchical log-probabilities log P(a|s).
+    """
+    batch_size = len(action_offsets) - 1
+    log_probs = torch.empty_like(z_actions)
+
+    for b in range(batch_size):
+        start = action_offsets[b].item()
+        end = action_offsets[b + 1].item()
+        z_b = z_actions[start:end]
+        fam_b = family_indices[start:end]
+        pat_b = take_pattern_indices[start:end]
+        ret_vec_b = return_vectors_6d[start:end]
+
+        r_fam_b = family_residuals[b]       # (5,)
+        r_pat_b = take_pattern_residuals[b] # (30,)
+        w_ret_b = return_penalty_weights[b] # (6,)
+
+        # 1. Group by active families in this sample
+        unique_fams = torch.unique(fam_b)
+        B_f = {}
+        r_f = {}
+        for f in unique_fams:
+            f_item = f.item()
+            mask_f = (fam_b == f)
+            B_f[f_item] = torch.logsumexp(z_b[mask_f], dim=0)
+            r_f[f_item] = r_fam_b[f_item]
+
+        # Normalized log P(family | s)
+        logits_fam = torch.stack([B_f[f.item()] + r_f[f.item()] for f in unique_fams])
+        log_P_fam_all = F.log_softmax(logits_fam, dim=0)
+        log_P_f = {f.item(): log_P_fam_all[i] for i, f in enumerate(unique_fams)}
+
+        # 2. For each active family:
+        for f in unique_fams:
+            f_item = f.item()
+            mask_f = (fam_b == f)
+            indices_f = torch.where(mask_f)[0]
+
+            if f_item == 0:  # Take family
+                pats_in_take = pat_b[mask_f]
+                unique_pats = torch.unique(pats_in_take)
+                B_p = {}
+                r_p = {}
+                for p in unique_pats:
+                    p_item = p.item()
+                    mask_p = (pat_b == p) & mask_f
+                    B_p[p_item] = torch.logsumexp(z_b[mask_p], dim=0)
+                    r_p[p_item] = r_pat_b[p_item]
+
+                # Normalized log P(pattern | take, s)
+                logits_pat = torch.stack([B_p[p.item()] - B_f[0] + r_p[p.item()] for p in unique_pats])
+                log_P_pat_all = F.log_softmax(logits_pat, dim=0)
+                log_P_p = {p.item(): log_P_pat_all[i] for i, p in enumerate(unique_pats)}
+
+                # Normalized log P(action | pattern, s)
+                for p in unique_pats:
+                    p_item = p.item()
+                    mask_p = (pat_b == p) & mask_f
+                    indices_p = torch.where(mask_p)[0]
+                    z_p = z_b[indices_p]
+                    ret_vec_p = ret_vec_b[indices_p]
+                    r_ret_p = - (ret_vec_p * w_ret_b.unsqueeze(0)).sum(dim=-1)
+                    logits_act_p = z_p - B_p[p_item] + r_ret_p
+                    log_P_act_p = F.log_softmax(logits_act_p, dim=0)
+
+                    for local_idx, global_local_idx in enumerate(indices_p):
+                        log_probs[start + global_local_idx] = log_P_f[0] + log_P_p[p_item] + log_P_act_p[local_idx]
+            else:
+                # Non-take family (Buy, Reserve, Noble, Pass)
+                z_non_take = z_b[indices_f]
+                log_P_act_f = F.log_softmax(z_non_take, dim=0)
+                for local_idx, global_local_idx in enumerate(indices_f):
+                    log_probs[start + global_local_idx] = log_P_f[f_item] + log_P_act_f[local_idx]
+
+    return log_probs
 
 class HierarchicalDeltaEntityMixer(nn.Module):
     def __init__(self, hidden_dim: int = 192, blocks: int = 4, dropout: float = 0.0):
@@ -102,30 +199,44 @@ class HierarchicalDeltaEntityMixer(nn.Module):
         counts = action_offsets[1:] - action_offsets[:-1]
         state_rep = torch.repeat_interleave(state, counts, dim=0)
 
-        # 1. Baseline D2 action features and logits
+        # Baseline D2 unnormalized action potentials z(a)
         act_enc = self.action_encoder(actions)
         inter = torch.cat([state_rep, act_enc, state_rep * act_enc], dim=-1)
-        d2_logits = self.policy(inter).squeeze(-1)
+        z_actions = self.policy(inter).squeeze(-1)
 
-        # 2. Hierarchical component logits
-        fam_logits = self.family_head(state)           # (B, 5)
-        pat_logits = self.take_pattern_head(state)     # (B, 30)
+        # Hierarchical residuals from state
+        fam_res = self.family_head(state)           # (B, 5)
+        pat_res = self.take_pattern_head(state)     # (B, 30)
         ret_weights = self.return_penalty_head(state)  # (B, 6)
 
-        fam_logits_rep = torch.repeat_interleave(fam_logits, counts, dim=0)     # (total_actions, 5)
-        pat_logits_rep = torch.repeat_interleave(pat_logits, counts, dim=0)     # (total_actions, 30)
-        ret_weights_rep = torch.repeat_interleave(ret_weights, counts, dim=0)   # (total_actions, 6)
+        # Compute exact normalized hierarchical log-probabilities
+        log_probs = compute_hierarchical_log_probs(
+            z_actions=z_actions,
+            action_offsets=action_offsets,
+            family_indices=family_indices,
+            take_pattern_indices=take_pattern_indices,
+            return_vectors_6d=return_vectors_6d,
+            family_residuals=fam_res,
+            take_pattern_residuals=pat_res,
+            return_penalty_weights=ret_weights,
+        )
 
-        # 3. Assemble Hierarchical Log-Probabilities per sample
-        is_take = (family_indices == 0)
-        take_pat_clamped = take_pattern_indices.clamp(min=0)
-        pat_scores = pat_logits_rep.gather(dim=1, index=take_pat_clamped.unsqueeze(1)).squeeze(1)
-        ret_penalties = (return_vectors_6d * ret_weights_rep).sum(dim=1)
+        return log_probs, val
 
-        # Gather family score
-        fam_scores = fam_logits_rep.gather(dim=1, index=family_indices.unsqueeze(1)).squeeze(1)
-
-        hierarchical_take_scores = pat_scores - ret_penalties
-        final_logits = d2_logits + fam_scores + torch.where(is_take, hierarchical_take_scores, torch.zeros_like(d2_logits))
-
-        return final_logits, val
+def hierarchical_policy_loss(
+    log_probs: torch.Tensor,
+    targets: torch.Tensor,
+    action_offsets: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Computes exact Cross-Entropy Loss: -sum_{a} q(a) * log P(a|s) averaged over batch.
+    """
+    batch_size = len(action_offsets) - 1
+    sample_losses = []
+    for b in range(batch_size):
+        start = action_offsets[b].item()
+        end = action_offsets[b + 1].item()
+        lp = log_probs[start:end]
+        q = targets[start:end]
+        sample_losses.append(-torch.sum(q * lp))
+    return torch.stack(sample_losses).mean()

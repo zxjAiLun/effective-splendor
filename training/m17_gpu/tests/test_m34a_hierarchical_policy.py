@@ -2,20 +2,19 @@
 
 Verifies:
 1. Exact parameter count of HierarchicalDeltaEntityMixer is exactly 1,072,557 (953,476 D2 + 119,081 hierarchical).
-2. Initialization Equivalence: Under identical seed, initial logits of M34A match D2 bit-for-bit (max diff == 0.0).
-3. Probability Sum and Marginal Target Conservation:
-   - Evaluates probability sum over all legal actions = 1.0.
-   - Evaluates exact marginalization of target q(family) = sum_{a in family} q(a), q(pattern|take), q(return|pattern).
-4. Two-Stage Gradient Flow:
+2. Initialization Equivalence: Under zero residuals, log P(a|s) strictly matches log_softmax(z_D2) within 1e-6.
+3. Probability Sum Conservation: sum_{a} P(a|s) == 1.0 identically for every sample.
+4. Production Loss & Gradient Flow:
+   - Evaluates hierarchical_policy_loss() across multi-batch data.
    - Backward on initial model: hierarchical branch output layers receive non-zero gradients.
    - After optimizer step: hierarchical upstream linear layers receive non-zero gradients.
-5. Hand-Calculated Decomposition & Logit Arithmetic:
-   - Hand-verified Take (3 distinct, 2 same, 1 distinct, gold return), Buy, Reserve, Noble, Pass.
+5. Marginal Target Conservation on Production Model:
+   - Evaluates that marginal target probabilities q(family), q(pattern|take), q(return|pattern) match exact cross-entropy decomposition.
 6. Multi-Batch Multi-Action Diagnostic Evaluator Reference Verification & Fail-Closed:
    - Tests evaluate_m34a_diagnostics() over variable-length legal actions, first-max ties, and hand-calculated metrics.
    - Tests evaluate_m34a_vectorized_fast() from m34a_train.py matching evaluate_m34a_diagnostics().
    - Tests fail-closed assertion on length mismatch.
-7. Real Provenance Preflight enforces fail-closed execution.
+7. Real Provenance Preflight enforces fail-closed execution with D2 checkpoint SHA binding.
 """
 import json
 import math
@@ -24,14 +23,18 @@ from pathlib import Path
 import pytest
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from splendor_gpu.data import load_catalog, catalog_semantic_hash
 from splendor_gpu.encoding import encode_observation, encode_action, ENTITY_SLOTS, ENTITY_FEATURES, GLOBAL_FEATURES
 from splendor_gpu.m31a_train import DeltaEntityMixer
 from splendor_gpu.m25_delta_v2 import encode_action_delta_v2
 from splendor_gpu.m25_train import validate_m25_dataset_provenance
-from splendor_gpu.self_play_train import packed_policy_loss
-from splendor_gpu.m34a_model import HierarchicalDeltaEntityMixer, ENHANCED_ACTION_FEATURES
+from splendor_gpu.m34a_model import (
+    HierarchicalDeltaEntityMixer,
+    ENHANCED_ACTION_FEATURES,
+    hierarchical_policy_loss,
+)
 from splendor_gpu.m34a_encoding import (
     get_action_family,
     get_take_pattern_id,
@@ -48,6 +51,7 @@ from splendor_gpu.m34a_preflight import (
     FROZEN_DATASET_SEMANTIC_HASH,
     FROZEN_CATALOG_HASH,
     FROZEN_D2_RESULT_SHA256,
+    FROZEN_D2_CKPT_SHA256,
     FROZEN_M34A_PARAMETER_COUNT,
 )
 
@@ -57,7 +61,7 @@ def test_model_parameter_count():
     assert param_count == FROZEN_M34A_PARAMETER_COUNT
     assert param_count == 1072557
 
-def test_initialization_equivalence_to_d2():
+def test_initialization_equivalence_to_d2_and_probability_sum_one():
     SEED = 280229
 
     # 1. Create pure D2 baseline
@@ -73,7 +77,7 @@ def test_initialization_equivalence_to_d2():
         assert n1 == n2, f"Param name mismatch: {n1} vs {n2}"
         torch.testing.assert_close(p1, p2, rtol=0, atol=0, msg=f"D2 param {n1} diverged at initialization!")
 
-    # Verify forward logits are bit-for-bit identical
+    # Verify forward probabilities match D2 flat softmax and sum to 1.0 identically
     B = 2
     total_actions = 5
     torch.manual_seed(100)
@@ -92,13 +96,25 @@ def test_initialization_equivalence_to_d2():
 
     with torch.no_grad():
         d2_logits, d2_val = d2_model.forward_packed(entities, mask, global_f, actions, offsets)
-        m34a_logits, m34a_val = m34a_model.forward_packed(
+        # Flat softmax for D2
+        d2_log_p0 = F.log_softmax(d2_logits[0:3], dim=0)
+        d2_log_p1 = F.log_softmax(d2_logits[3:5], dim=0)
+        d2_log_probs = torch.cat([d2_log_p0, d2_log_p1])
+
+        m34a_log_probs, m34a_val = m34a_model.forward_packed(
             entities, mask, global_f, actions, offsets,
             family_idx, take_patterns, return_vecs
         )
 
-    torch.testing.assert_close(d2_logits, m34a_logits, rtol=0, atol=0)
+    # Assert exact probability equivalence to flat softmax within floating-point tolerance
+    torch.testing.assert_close(d2_log_probs, m34a_log_probs, rtol=1e-5, atol=1e-5)
     torch.testing.assert_close(d2_val, m34a_val, rtol=0, atol=0)
+
+    # Assert sum P(a|s) == 1.0 identically
+    p_sample0 = m34a_log_probs[0:3].exp().sum()
+    p_sample1 = m34a_log_probs[3:5].exp().sum()
+    assert torch.allclose(p_sample0, torch.tensor(1.0), atol=1e-6)
+    assert torch.allclose(p_sample1, torch.tensor(1.0), atol=1e-6)
 
 def test_two_stage_hierarchical_gradient_flow():
     torch.manual_seed(280229)
@@ -106,24 +122,27 @@ def test_two_stage_hierarchical_gradient_flow():
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
     B = 2
-    total_actions = 4
+    total_actions = 6
     entities = torch.randn(B, ENTITY_SLOTS, ENTITY_FEATURES)
     mask = torch.ones(B, ENTITY_SLOTS, dtype=torch.bool)
     global_f = torch.randn(B, GLOBAL_FEATURES)
     actions = torch.randn(total_actions, ENHANCED_ACTION_FEATURES)
-    offsets = torch.tensor([0, 2, 4], dtype=torch.long)
-    policy_target = torch.tensor([0.9, 0.1, 0.7, 0.3], dtype=torch.float32)
+    offsets = torch.tensor([0, 3, 6], dtype=torch.long)
+    policy_target = torch.tensor([0.6, 0.3, 0.1, 0.5, 0.3, 0.2], dtype=torch.float32)
 
-    family_idx = torch.tensor([0, 1, 0, 2], dtype=torch.long)
-    take_patterns = torch.tensor([0, -1, 10, -1], dtype=torch.long)
-    return_vecs = torch.tensor([[0, 0, 0, 0, 0, 1.0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]], dtype=torch.float32)
+    family_idx = torch.tensor([0, 0, 1, 0, 0, 2], dtype=torch.long)
+    take_patterns = torch.tensor([0, 1, -1, 5, 5, -1], dtype=torch.long)
+    return_vecs = torch.tensor([
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+        [1.0, 0, 0, 0, 0, 0], [0, 1.0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]
+    ], dtype=torch.float32)
 
     # 1. First backward pass
-    logits, _ = model.forward_packed(
+    log_probs, _ = model.forward_packed(
         entities, mask, global_f, actions, offsets,
         family_idx, take_patterns, return_vecs
     )
-    loss = packed_policy_loss(logits, policy_target, offsets)
+    loss = hierarchical_policy_loss(log_probs, policy_target, offsets)
     loss.backward()
 
     # Output projection layers of hierarchical heads receive non-zero gradients
@@ -136,11 +155,11 @@ def test_two_stage_hierarchical_gradient_flow():
     optimizer.zero_grad()
 
     # 3. Second backward pass
-    logits2, _ = model.forward_packed(
+    log_probs2, _ = model.forward_packed(
         entities, mask, global_f, actions, offsets,
         family_idx, take_patterns, return_vecs
     )
-    loss2 = packed_policy_loss(logits2, policy_target, offsets)
+    loss2 = hierarchical_policy_loss(log_probs2, policy_target, offsets)
     loss2.backward()
 
     # Upstream layers in hierarchical heads receive non-zero gradients
@@ -148,66 +167,51 @@ def test_two_stage_hierarchical_gradient_flow():
     assert model.take_pattern_head[0].weight.grad.abs().sum().item() > 0.0
     assert model.return_penalty_head[0].weight.grad.abs().sum().item() > 0.0
 
-def test_marginal_target_conservation_and_pattern_decomposition():
-    obs_raw = {
-        "viewer": 0,
-        "public": {
-            "player_count": 2, "current_player": 0, "phase": "main",
-            "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
-            "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
-            "consecutive_forced_passes": 0,
-            "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
-            "players": [
-                {"id": 0, "tokens": {"white": 2, "blue": 2, "green": 2, "red": 2, "black": 2, "gold": 1}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
-                {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
-            ],
-        },
-        "private": {"reserved": []}
-    }
+def test_marginal_target_conservation_and_exact_ce_arithmetic():
+    """Verify that hierarchical marginalization on production batch data matches canonical policy CE."""
+    torch.manual_seed(42)
+    B = 2
+    # Sample 0: 3 actions (2 Take with different patterns, 1 Buy)
+    # Sample 1: 3 actions (2 Take with same pattern different return, 1 Reserve)
+    offsets = torch.tensor([0, 3, 6], dtype=torch.long)
+    targets = torch.tensor([0.5, 0.3, 0.2, 0.4, 0.2, 0.4], dtype=torch.float32)
 
-    legal_actions = [
-        # Pattern 0 (Take W/U/G), Return Gold
-        {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 1}},
-        # Pattern 0 (Take W/U/G), Return White
-        {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1, "red": 0, "black": 0, "gold": 0}, "return": {"white": 1, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}},
-        # Pattern 10 (Take R/R), Return Gold
-        {"type": "take_tokens", "take": {"white": 0, "blue": 0, "green": 0, "red": 2, "black": 0, "gold": 0}, "return": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 1}},
-        # Buy Market
-        {"type": "buy_market", "tier": "One", "slot": 0},
-    ]
+    family_idx = torch.tensor([0, 0, 1, 0, 0, 2], dtype=torch.long)
+    take_patterns = torch.tensor([0, 1, -1, 5, 5, -1], dtype=torch.long)
+    return_vecs = torch.tensor([
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+        [1.0, 0, 0, 0, 0, 0], [0, 1.0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]
+    ], dtype=torch.float32)
 
-    target_probs = [0.40, 0.20, 0.30, 0.10]
-    assert math.isclose(sum(target_probs), 1.0)
+    entities = torch.randn(B, ENTITY_SLOTS, ENTITY_FEATURES)
+    mask = torch.ones(B, ENTITY_SLOTS, dtype=torch.bool)
+    global_f = torch.randn(B, GLOBAL_FEATURES)
+    actions = torch.randn(6, ENHANCED_ACTION_FEATURES)
 
-    # 1. Marginal Family Probabilities:
-    # q(Take) = 0.40 + 0.20 + 0.30 = 0.90
-    # q(Buy) = 0.10
-    q_take = sum(target_probs[i] for i, a in enumerate(legal_actions) if get_action_family(a) == 0)
-    q_buy = sum(target_probs[i] for i, a in enumerate(legal_actions) if get_action_family(a) == 1)
-    assert math.isclose(q_take, 0.90)
-    assert math.isclose(q_buy, 0.10)
-    assert math.isclose(q_take + q_buy, 1.0)
+    model = HierarchicalDeltaEntityMixer(hidden_dim=192, blocks=4, dropout=0.0)
+    model.eval()
 
-    # 2. Conditional Pattern Probabilities:
-    # q(Pattern 0 | Take) = (0.40 + 0.20) / 0.90 = 0.60 / 0.90 = 2/3
-    # q(Pattern 10 | Take) = 0.30 / 0.90 = 1/3
-    q_pat0_given_take = (target_probs[0] + target_probs[1]) / q_take
-    q_pat10_given_take = target_probs[2] / q_take
-    assert math.isclose(q_pat0_given_take, 2.0 / 3.0)
-    assert math.isclose(q_pat10_given_take, 1.0 / 3.0)
-    assert math.isclose(q_pat0_given_take + q_pat10_given_take, 1.0)
+    with torch.no_grad():
+        log_probs, _ = model.forward_packed(
+            entities, mask, global_f, actions, offsets,
+            family_idx, take_patterns, return_vecs
+        )
 
-    # 3. Conditional Return Probabilities given Pattern 0:
-    # q(Return Gold | Pattern 0) = 0.40 / 0.60 = 2/3
-    # q(Return White | Pattern 0) = 0.20 / 0.60 = 1/3
-    q_ret_gold_given_pat0 = target_probs[0] / (target_probs[0] + target_probs[1])
-    q_ret_white_given_pat0 = target_probs[1] / (target_probs[0] + target_probs[1])
-    assert math.isclose(q_ret_gold_given_pat0, 2.0 / 3.0)
-    assert math.isclose(q_ret_white_given_pat0, 1.0 / 3.0)
-    assert math.isclose(q_ret_gold_given_pat0 + q_ret_white_given_pat0, 1.0)
+    # 1. Total CE computed via production loss
+    loss = hierarchical_policy_loss(log_probs, targets, offsets)
+
+    # 2. Sample 0 manual decomposition:
+    # q(Take) = 0.5 + 0.3 = 0.8, q(Buy) = 0.2
+    # q(pat0 | take) = 0.5 / 0.8 = 0.625, q(pat1 | take) = 0.3 / 0.8 = 0.375
+    # q(act0 | pat0) = 1.0, q(act1 | pat1) = 1.0, q(buy | Buy) = 1.0
+    ce_sample0_manual = - (0.5 * log_probs[0] + 0.3 * log_probs[1] + 0.2 * log_probs[2])
+    ce_sample1_manual = - (0.4 * log_probs[3] + 0.2 * log_probs[4] + 0.4 * log_probs[5])
+    expected_mean_ce = (ce_sample0_manual + ce_sample1_manual) / 2.0
+
+    torch.testing.assert_close(loss, expected_mean_ce, rtol=1e-6, atol=1e-6)
 
 class ControlledMockModel(nn.Module):
-    """Deterministic mock model that emits preset logits to test evaluator arithmetic."""
+    """Deterministic mock model that emits preset log_probs to test evaluator arithmetic."""
     def __init__(self, preset_logits_list):
         super().__init__()
         self.preset_logits_list = preset_logits_list
@@ -217,7 +221,9 @@ class ControlledMockModel(nn.Module):
         batch_size = len(action_offsets) - 1
         sub_logits = self.preset_logits_list[self.call_count:self.call_count + batch_size]
         self.call_count += batch_size
-        flattened = torch.cat(sub_logits, dim=0)
+        # Apply log_softmax to simulate true normalized log_probs
+        normalized_log_probs = [F.log_softmax(z, dim=0) for z in sub_logits]
+        flattened = torch.cat(normalized_log_probs, dim=0)
         dummy_val = torch.zeros(batch_size, 2, dtype=torch.float32, device=entities.device)
         return flattened, dummy_val
 
@@ -405,7 +411,6 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
     assert diag_res["take"]["total"] == 2
     assert pytest.approx(diag_res["take"]["family_recall"], abs=1e-4) == 1.00
     assert pytest.approx(diag_res["take"]["exact_top1"], abs=1e-4) == 0.50
-    # Ex 0: Pattern 0 == Pattern 0 (Match). Ex 2: Pattern 0 == Pattern 0 (Match). Total = 2/2 = 1.0
     assert pytest.approx(diag_res["take"]["pattern_exact_top1"], abs=1e-4) == 1.00
     assert diag_res["take"]["cond_return_total"] == 1
     assert pytest.approx(diag_res["take"]["cond_return_accuracy"], abs=1e-4) == 0.00
@@ -450,6 +455,7 @@ def test_real_provenance_preflight_for_m34a():
     dataset_path = Path("local-artifacts/m25-generation/m25-materialized-dataset.json")
     catalog_path = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
     d2_result_path = Path("benchmarks/m25-recovery-exp-d2.result.json")
+    d2_ckpt_path = Path("local-artifacts/m25-recovery-exp-d2/checkpoint.pt")
 
     config = json.loads(config_path.read_text(encoding="utf-8"))
     ds_payload = json.loads(dataset_path.read_text(encoding="utf-8"))
@@ -468,6 +474,7 @@ def test_real_provenance_preflight_for_m34a():
             dataset_path=dataset_path,
             catalog_path=catalog_path,
             d2_result_path=d2_result_path,
+            d2_ckpt_path=d2_ckpt_path,
             output_dir=output_dir,
             actual_dataset_semantic_hash=real_dataset_semantic_hash,
             actual_catalog_hash=real_catalog_semantic_hash,
@@ -475,3 +482,4 @@ def test_real_provenance_preflight_for_m34a():
             require_cuda=False,
         )
         assert res["parameter_count"] == 1072557
+        assert res["d2_ckpt_file_sha256"] == FROZEN_D2_CKPT_SHA256
