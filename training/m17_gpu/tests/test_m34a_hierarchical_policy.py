@@ -369,6 +369,30 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
             "policy_target_micros": [700000, 300000],
             "value_target": [0.5, 0.5],
         },
+        # Ex 4: Choose Noble Match
+        {
+            "observation": {
+                "viewer": 0,
+                "public": {
+                    "player_count": 2, "current_player": 0, "phase": "main",
+                    "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
+                    "deck_counts": [30, 20, 15], "end_game_triggered": False, "turns_remaining_in_final_round": None,
+                    "consecutive_forced_passes": 0,
+                    "market": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], "nobles": [1, 0, 8],
+                    "players": [
+                        {"id": 0, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [3, 3, 3, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                        {"id": 1, "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0}, "bonuses": [0, 0, 0, 0, 0], "prestige": 0, "reserved_count": 0, "public_reserved": [], "purchased": []},
+                    ],
+                },
+                "private": {"reserved": []}
+            },
+            "legal_actions": [
+                {"type": "choose_noble", "noble_id": 1},
+                {"type": "choose_noble", "noble_id": 0},
+            ],
+            "policy_target_micros": [800000, 200000],
+            "value_target": [0.7, 0.3],
+        },
     ]
 
     items = []
@@ -420,11 +444,13 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
         torch.tensor([3.0, 3.0], dtype=torch.float32),
         torch.tensor([1.0, 4.0], dtype=torch.float32),
         torch.tensor([2.0, 6.0], dtype=torch.float32),
+        torch.tensor([4.0, 1.0], dtype=torch.float32),
     ]
 
     H_val = 0.60
     u_ce = 2.50
-    expected_ce = (0.765887 + 0.693147 + 2.748592 + 2.818150) / 4.0
+    # Sample 4 CE: - (0.8 * log(exp(4)/(exp(4)+exp(1))) + 0.2 * log(exp(1)/(exp(4)+exp(1)))) = - (0.8 * -0.048587 + 0.2 * -3.048587) = 0.038870 + 0.609717 = 0.648587
+    expected_ce = (0.765887 + 0.693147 + 2.748592 + 2.818150 + 0.648587) / 5.0
     expected_excess_ce = expected_ce - H_val
     expected_impr_bps = int(round((u_ce - expected_ce) / u_ce * 10000))
 
@@ -444,8 +470,8 @@ def test_diagnostic_evaluator_multi_batch_and_first_max_reference():
     assert pytest.approx(diag_res["ce"], abs=1e-4) == expected_ce
     assert pytest.approx(diag_res["excess_ce"], abs=1e-4) == expected_excess_ce
     assert diag_res["impr_bps"] == expected_impr_bps
-    assert pytest.approx(diag_res["top1"], abs=1e-4) == 0.50
-    assert pytest.approx(diag_res["family_top1"], abs=1e-4) == 0.75
+    assert pytest.approx(diag_res["top1"], abs=1e-4) == 0.60
+    assert pytest.approx(diag_res["family_top1"], abs=1e-4) == 0.80
 
     assert diag_res["take"]["total"] == 2
     assert pytest.approx(diag_res["take"]["family_recall"], abs=1e-4) == 1.00

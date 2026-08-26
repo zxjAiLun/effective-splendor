@@ -104,7 +104,7 @@ def evaluate_m34a_diagnostics(
                 (target_type == "take_tokens" and pred_type == "take_tokens")
                 or (target_type in ("buy_market", "buy_reserved") and pred_type in ("buy_market", "buy_reserved"))
                 or (target_type in ("reserve_market", "reserve_deck") and pred_type in ("reserve_market", "reserve_deck"))
-                or (target_type == "claim_noble" and pred_type == "claim_noble")
+                or (target_type == "choose_noble" and pred_type == "choose_noble")
                 or (target_type == "pass" and pred_type == "pass")
             )
             if is_family_match:
