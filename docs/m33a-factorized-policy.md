@@ -3,13 +3,13 @@
 ```ini
 MILESTONE = M33A
 STATUS = ACCEPTED / CLOSED (NEGATIVE RESULT)
-BASE_COMMIT = 0b632f7823f66870020f5ce252a129f12d2fb4fa
+BASE_COMMIT = 0b632f7154473247bbfafe2fbbf39a39fa852936
 SCOPE = Evaluate whether decomposing the flat legal-action Softmax logit into an end-to-end factorized sum of semantic components (Action Family Intent + Take Mode + 5-Color Desirability + 6-Color Return Penalty + State-Conditioned Entity Scorer + Deck Tier Scorer + Zero-Initialized D2 Residual Scorer) repairs the severe action-structure bottleneck (Take Top-1 3.32%, Reserve Top-1 14.22%) and achieves offline gates on canonical M25 dataset.
 DATASET = Canonical M25 dataset (256 games, 16,282 examples: 12,216 train / 4,066 val), 100,000 micros uniform floor.
 ARCHITECTURE = FactorizedDeltaEntityMixer (192 hidden, 4 blocks, 59-dim exact action deltas, 301,082 structured factor parameters, total 1,254,558 parameters).
 TRAINING = COMPLETED (128 epochs, best epoch 11, lr=3e-4 cosine, wd=1e-4, checkpoint selected strictly by validation canonical policy CE).
 OFFLINE_GATES = G1 Primary Gate (Val Top-1 >= 45.00%, Val CE improvement >= 1000 bps) -> FAIL (Val Top-1 = 38.86%, Impr = 890 bps); Factorization Signal Gate -> FAIL (Global: Val CE = 2.8093 vs 2.8177 [-0.0084 nats, target <= -0.0200], Val Top-1 = 38.86% vs 38.42% [+0.44 pp, target >= +2.00 pp]; Targeted: Take family recall = 32.73% [target >= 39.11%], Take exact Top-1 = 3.17% [target >= 8.32%], Reserve exact Top-1 = 17.51% [PASS, target >= 17.22%], Buy exact Top-1 = 75.49% [PASS, target >= 74.15%]).
-FIT_ATTRIBUTION = Definitively rules out naive additive semantic factorization under uniform soft-CE as a standalone solution for the token acquisition bottleneck. While Reserve exact Top-1 improved (+3.29 pp to 17.51%) and family Top-1 rose (+1.57 pp to 69.60%), Take Tokens exact Top-1 remained frozen at 3.17% (vs D2 3.32%), proving that flat cross-entropy over combinatorial action sets cannot isolate token desires without explicit loss re-weighting or hierarchical action modeling.
+FIT_ATTRIBUTION = Evaluated whether additive structured residual logit factorization over a single-stage legal-action Softmax could resolve the token acquisition bottleneck. While Reserve exact Top-1 improved (+3.29 pp to 17.51%) and family Top-1 rose (+1.57 pp to 69.60%), Take Tokens exact Top-1 remained unchanged at 3.17% (vs D2 3.32%). This specific additive recipe under canonical soft-CE did not improve Take accuracy, motivating the investigation of explicit hierarchical conditional probability decomposition.
 DECISION = STOP_FACTORIZED_LEGAL_ACTION_POLICY_ROUTE
 ARENA = NOT_AUTHORIZED
 MODEL_TRAINING = COMPLETED
