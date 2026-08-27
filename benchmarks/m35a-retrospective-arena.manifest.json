@@ -1,0 +1,306 @@
+{
+  "format": "effective-splendor-m35a-retrospective-arena-manifest",
+  "version": 1,
+  "milestone": "M35A",
+  "evaluation_mode": "direct_policy_argmax_cpu",
+  "total_pairings": 17,
+  "total_scheduled_matches": 1088,
+  "seeds_count": 32,
+  "seeds": [
+    300001,
+    300002,
+    300003,
+    300004,
+    300005,
+    300006,
+    300007,
+    300008,
+    300009,
+    300010,
+    300011,
+    300012,
+    300013,
+    300014,
+    300015,
+    300016,
+    300017,
+    300018,
+    300019,
+    300020,
+    300021,
+    300022,
+    300023,
+    300024,
+    300025,
+    300026,
+    300027,
+    300028,
+    300029,
+    300030,
+    300031,
+    300032
+  ],
+  "seat_rotations_per_seed": 2,
+  "handshake_timeout_ms": 5000,
+  "move_timeout_ms": 10000,
+  "shutdown_grace_ms": 2000,
+  "champion_command": {
+    "program": "target/release/splendor",
+    "args": [
+      "agent-determinization",
+      "--sample-seed",
+      "20260810",
+      "--sample-count",
+      "4",
+      "--max-depth-turns",
+      "1",
+      "--max-nodes",
+      "2000"
+    ]
+  },
+  "source_shas": {
+    "registry_py": "cb157a603e05f80a0318d85b2cda19bd982014bbea5ce11ef40dd861a188544d",
+    "belief_py": "485d2bdeb7ad205cf61a931f1d6e54ae50d7f04032dd91792405f69d71e03ffe",
+    "adapters_py": "78fb649639b5143f83097d0c72358555aeb63bcd55b3bd51a9e345192263863b",
+    "agent_py": "e8478d01cb5c972bd78d40c62cb073daea995b4659d091332f375d48f0394fbe",
+    "agent_entry_py": "68781eb4368b5f34bd47657cea08146d9e3dd55eda5b637ab94c52a0deb5e458",
+    "parity_test_py": "218931a7557f9e61ab4099459faa81d039a5c3ff4eb67e5dd41f57025744d0eb"
+  },
+  "checkpoint_shas": {
+    "M24-S2": {
+      "path": "local-artifacts/m24-self-play-s2-v1/trained/checkpoint.pt",
+      "file_sha256": "0ba19302a5cd0fe618fc5246a3d5bc9c562460d558cff2a128d1c25b6fe0543e",
+      "param_count": 949060,
+      "dataset_hash": "3f8adcd4e8e6ec224a029085a817f87a06fb450d08dbd37cca05d488f1d29c24",
+      "output_semantics": "flat_logits"
+    },
+    "M25-D2-v2": {
+      "path": "local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt",
+      "file_sha256": "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17",
+      "param_count": 953476,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "flat_logits"
+    },
+    "M28A": {
+      "path": "local-artifacts/m28a-entity-mixer-width-v1/candidate/checkpoint.pt",
+      "file_sha256": "b0a7947c2c1af003f99e72970867f73cb0d40e7c75e9c966b4e8895e5fef868f",
+      "param_count": 2605764,
+      "dataset_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+      "output_semantics": "flat_logits"
+    },
+    "M28B": {
+      "path": "local-artifacts/m28b-contextual-entity-interaction-v1-rerun-compute-repair/candidate/checkpoint.pt",
+      "file_sha256": "46f68b20d863c450f375999713f869e5c71c6abeb4e025c45f6b42a004b47b6b",
+      "param_count": 1689798,
+      "dataset_hash": "b8a67f5fd41dde0ee3c1c5194c12e7b0886813039c8ccde9660b211f26838e46",
+      "output_semantics": "flat_logits"
+    },
+    "M29A-v2": {
+      "path": "local-artifacts/m29a-v2-nested-residual-attention/checkpoint.pt",
+      "file_sha256": "f3bd8104b1d8177843d9eb919c00aa2923d7fb513f21f6960c662a5e16198873",
+      "param_count": 1212484,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "flat_logits"
+    },
+    "M31A": {
+      "path": "local-artifacts/m31a-ranking-objective/checkpoint.pt",
+      "file_sha256": "1225ec99c0a09b875a3ef8f9724ebbc271d7f224ceadcd79a9af49aca6ea13f5",
+      "param_count": 953476,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "flat_logits"
+    },
+    "M32A": {
+      "path": "local-artifacts/m32a-information-parity/checkpoint.pt",
+      "file_sha256": "3653045b5d50be3d11a00b6f7a960658bd1e1b4bf9efed6141ea28aae51582be",
+      "param_count": 994180,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "flat_logits"
+    },
+    "M33A": {
+      "path": "local-artifacts/m33a-factorized-policy/checkpoint.pt",
+      "file_sha256": "f636de570b196cd9bff0ec2705f1d3dea18a186b402923bc34031eebe728d5f5",
+      "param_count": 1254558,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "composite_residual_logits"
+    },
+    "M34A": {
+      "path": "local-artifacts/m34a-hierarchical-policy/checkpoint.pt",
+      "file_sha256": "a958aefb6aadd2caeeb717b15dfb6386c4cbff23113a256bdae2963b1da68b9c",
+      "param_count": 1072557,
+      "dataset_hash": "1aa7212ff070e637d0f0aeabf6eddd16e0d00fc1d5a6aa9da93e75be69975419",
+      "output_semantics": "hierarchical_log_probs"
+    }
+  },
+  "realized_plans": [
+    {
+      "series": "vs_m07",
+      "pairing": "M24-S2_vs_m07",
+      "evaluation_id": "m35a-m24-s2-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m24-s2-vs-m07-v1.plan.json",
+      "plan_file_sha256": "103a60f902a79f8ed248c43b14bca3640013d267124893b06f663e9eec7fe6ed",
+      "candidate_model_id": "M24-S2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M25-D2-v2_vs_m07",
+      "evaluation_id": "m35a-m25-d2-v2-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m25-d2-v2-vs-m07-v1.plan.json",
+      "plan_file_sha256": "9295d5ba0da4232abf20d7038ff4447d06c6306640084fb5e69ca7f82d765a9e",
+      "candidate_model_id": "M25-D2-v2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M28A_vs_m07",
+      "evaluation_id": "m35a-m28a-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m28a-vs-m07-v1.plan.json",
+      "plan_file_sha256": "d6702ee063e4bbe60d8a70c4df54e2a23ba357037e9f1e9f3351839c4220604c",
+      "candidate_model_id": "M28A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M28B_vs_m07",
+      "evaluation_id": "m35a-m28b-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m28b-vs-m07-v1.plan.json",
+      "plan_file_sha256": "1d8dd6c5deaee738550e725e66e4886d5f125678f3f34856b1ebd7801c0e90e8",
+      "candidate_model_id": "M28B",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M29A-v2_vs_m07",
+      "evaluation_id": "m35a-m29a-v2-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m29a-v2-vs-m07-v1.plan.json",
+      "plan_file_sha256": "b858a7a6cd290276c9f34f7259809d53ed6bf69d9f832c66b2a5929b63aba987",
+      "candidate_model_id": "M29A-v2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M31A_vs_m07",
+      "evaluation_id": "m35a-m31a-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m31a-vs-m07-v1.plan.json",
+      "plan_file_sha256": "2a2c7d3d5b1013e175ae52a5eca42bf33fea02669eb8df7127d4aa972ce191b8",
+      "candidate_model_id": "M31A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M32A_vs_m07",
+      "evaluation_id": "m35a-m32a-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m32a-vs-m07-v1.plan.json",
+      "plan_file_sha256": "00f57d31481f5644eecbf1d4e24d9b4ee2debed642ce6b7652b855ef164d99ce",
+      "candidate_model_id": "M32A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M33A_vs_m07",
+      "evaluation_id": "m35a-m33a-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m33a-vs-m07-v1.plan.json",
+      "plan_file_sha256": "7e5759f10c6adbf4f6680ef6525237667c7fc8f77658496cfc422abe822f11e6",
+      "candidate_model_id": "M33A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_m07",
+      "pairing": "M34A_vs_m07",
+      "evaluation_id": "m35a-m34a-vs-m07-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m34a-vs-m07-v1.plan.json",
+      "plan_file_sha256": "3f198ff8b0d9f21f105719c11695ff155ed7739ecd4e557ffd34d0178497350b",
+      "candidate_model_id": "M34A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M24-S2_vs_d2v2",
+      "evaluation_id": "m35a-m24-s2-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m24-s2-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "36e51279fb0b72f3abcb5e9efb8699f367a189f3823643daf242bb4e7a795222",
+      "candidate_model_id": "M24-S2",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M28A_vs_d2v2",
+      "evaluation_id": "m35a-m28a-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m28a-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "f1b070f416ff10545bdccd071603172d4e47c26f995c18c456036cfeefc6d147",
+      "candidate_model_id": "M28A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M28B_vs_d2v2",
+      "evaluation_id": "m35a-m28b-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m28b-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "786f43a3ebf6346f1464835af785efa2be4f3ea8250697ddd028067ccd7eda00",
+      "candidate_model_id": "M28B",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M29A-v2_vs_d2v2",
+      "evaluation_id": "m35a-m29a-v2-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m29a-v2-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "3a0960526ac5d35fbf74b98ba345b6b66f1042fde17d9ee35a18736962706cc0",
+      "candidate_model_id": "M29A-v2",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M31A_vs_d2v2",
+      "evaluation_id": "m35a-m31a-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m31a-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "f33811b8a9c56284409d7566807f96eae55e3bfa42f8097a2951cda0970e4180",
+      "candidate_model_id": "M31A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M32A_vs_d2v2",
+      "evaluation_id": "m35a-m32a-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m32a-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "a5394a2b882160b610a52dac87997b679b9d2ddcc97fcb3927aaad8f298faf6f",
+      "candidate_model_id": "M32A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M33A_vs_d2v2",
+      "evaluation_id": "m35a-m33a-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m33a-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "aa1a5b4feaa35621384747ee39ca3878743ed7af2de52c19ea961bdb955115ef",
+      "candidate_model_id": "M33A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    },
+    {
+      "series": "vs_d2v2",
+      "pairing": "M34A_vs_d2v2",
+      "evaluation_id": "m35a-m34a-vs-d2v2-v1",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/plans/m35a-m34a-vs-d2v2-v1.plan.json",
+      "plan_file_sha256": "3352f0dd95bb2ab80f6752070c4700b58ce0241fc187d09215f3d1f1e052db37",
+      "candidate_model_id": "M34A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64
+    }
+  ]
+}
