@@ -16,10 +16,10 @@ import {
 import {
   STATUS_LABEL,
   buildExperimentsQuery,
+  createDeepLinkHydration,
   filterMatches,
   filterPairings,
   isBrowsableAvailability,
-  parseExperimentsQuery,
   stepCandidateDecision,
   validateExperimentBundle,
 } from "../experiment-runtime.mjs";
@@ -142,6 +142,16 @@ export default function ExperimentsPage() {
   const [candidateOnly, setCandidateOnly] = useState(false);
   const [filterText, setFilterText] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Availability>("all");
+  // Deep-link hydration: the initial query is captured once at first
+  // render and applied after the experiment index loads; URL sync stays
+  // disabled until the initial deep link has been fully applied so it
+  // cannot clobber it (the sync effect would otherwise rewrite the URL
+  // from the still-empty selection state during the async bootstrap).
+  const [deepLinkReady, setDeepLinkReady] = useState(false);
+  const capturedQuery = useMemo(
+    () => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search)),
+    [],
+  );
 
   // ---- bootstrap: index + catalog ----
   useEffect(() => {
@@ -159,7 +169,7 @@ export default function ExperimentsPage() {
         if (cancelled) return;
         setIndex(indexData);
         setCatalog(catalogData);
-        const params = new URLSearchParams(window.location.search);
+        const params = capturedQuery ?? new URLSearchParams(window.location.search);
         const experiment = params.get("experiment") ?? indexData.experiments[0]?.id ?? "";
         setSelectedExperiment(experiment);
       } catch (cause) {
@@ -169,7 +179,7 @@ export default function ExperimentsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [capturedQuery]);
 
   const currentExperiment = useMemo(
     () => index?.experiments.find((experiment) => experiment.id === selectedExperiment) ?? null,
@@ -177,18 +187,21 @@ export default function ExperimentsPage() {
   );
 
   // ---- deep link: ?experiment=..&pairing=..&match=N ----
+  // Uses the query captured at first render (the bootstrap's async
+  // fetches give the URL-sync effect a window in which the live query may
+  // already have been rewritten), and marks hydration complete so the sync
+  // effect below takes over only afterwards.
   useEffect(() => {
     if (!currentExperiment) return;
-    const selection = parseExperimentsQuery(new URLSearchParams(window.location.search));
-    if (!selection) return;
-    if (!currentExperiment.pairings.some((entry) => entry.evaluation_id === selection.pairing)) {
-      return;
+    const selection = createDeepLinkHydration(capturedQuery).apply(index);
+    if (selection) {
+      queueMicrotask(() => {
+        setSelectedPairing(selection.pairing);
+        if (selection.match != null) setSelectedMatch(selection.match);
+      });
     }
-    queueMicrotask(() => {
-      setSelectedPairing(selection.pairing);
-      if (selection.match != null) setSelectedMatch(selection.match);
-    });
-  }, [currentExperiment]);
+    queueMicrotask(() => setDeepLinkReady(true));
+  }, [currentExperiment, capturedQuery, index]);
 
   // ---- load pairing matches ----
   useEffect(() => {
@@ -262,15 +275,16 @@ export default function ExperimentsPage() {
     }
   }, [selectedMatch]);
 
-  // ---- deep-link sync ----
+  // ---- deep-link sync (only after the initial deep link has hydrated) ----
   useEffect(() => {
+    if (!deepLinkReady) return;
     const url = buildExperimentsQuery({
       experiment: selectedExperiment,
       pairing: selectedPairing,
       match: selectedMatch,
     });
     window.history.replaceState(null, "", url);
-  }, [selectedExperiment, selectedPairing, selectedMatch]);
+  }, [deepLinkReady, selectedExperiment, selectedPairing, selectedMatch]);
 
   // ---- navigation ----
   const frame = bundle?.frames[frameIndex] ?? null;
@@ -495,8 +509,8 @@ export default function ExperimentsPage() {
                   {bundle.candidate_model_id} decisions only
                 </label>
                 <div className="decision-nav">
-                  <button className="icon-button" onClick={() => stepButton(-1)} disabled={frameIndex === 0} aria-label="Previous ply">←</button>
-                  <button className="icon-button" onClick={() => stepButton(1)} disabled={frameIndex === bundle.frames.length - 1} aria-label="Next ply">→</button>
+                  <button className="icon-button" onClick={() => stepButton(-1)} disabled={frameIndex === 0 && (!candidateOnly || !bundle.frames.some((f, i) => i < frameIndex && f.candidate_acted))} aria-label="Previous ply">←</button>
+                  <button className="icon-button" onClick={() => stepButton(1)} disabled={frameIndex === bundle.frames.length - 1 && (!candidateOnly || !bundle.frames.some((f, i) => i > frameIndex && f.candidate_acted))} aria-label="Next ply">→</button>
                 </div>
                 {bundle.result && (
                   <div className="final-score">

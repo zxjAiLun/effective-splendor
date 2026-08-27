@@ -49,10 +49,11 @@ http_ok() { curl -sf -o /dev/null --max-time 2 "$1"; }
 host_healthy() {
   http_ok "http://127.0.0.1:$HOST_PORT/health" || return 1
   curl -sf --max-time 2 "http://127.0.0.1:$HOST_PORT/health" | grep -q '"mode":"studio_host"' || return 1
-  curl -sf --max-time 3 "http://127.0.0.1:$HOST_PORT/experiment-replays" \
-    | grep -q '"format":"effective-splendor-experiment-replay-index"' || return 1
-  curl -sf --max-time 3 "http://127.0.0.1:$HOST_PORT/experiment-replays" \
-    | grep -q '"id":"m35a"' || return 1
+  local index
+  index="$(curl -sf --max-time 3 "http://127.0.0.1:$HOST_PORT/experiment-replays")" || return 1
+  printf '%s' "$index" | grep -q '"format":"effective-splendor-experiment-replay-index"' || return 1
+  printf '%s' "$index" | grep -q '"version":1' || return 1
+  printf '%s' "$index" | grep -q '"id":"m35a"' || return 1
 }
 
 ui_healthy() { http_ok "http://127.0.0.1:$UI_PORT/play"; }

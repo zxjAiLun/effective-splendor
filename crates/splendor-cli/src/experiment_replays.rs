@@ -370,9 +370,11 @@ fn resolve_run_dir(
 }
 
 /// Verify the match report's recorded agent identities against the pairing's
-/// expected lineup: exactly two seats (0 and 1), the candidate seat occupied
-/// by the candidate's agent identity, the opponent seat by the opponent's.
-/// A wrong-lineup report must never be displayed as this pairing's replay.
+/// expected lineup. The seat set must be exactly {0, 1} with no duplicates;
+/// the candidate seat is occupied by the candidate's agent identity and the
+/// opponent seat by the opponent's. A wrong-lineup report (including two
+/// records sharing one seat) must never be displayed as this pairing's
+/// replay.
 fn verify_agent_lineup(
     report: &MatchReport,
     evaluation_id: &str,
@@ -387,10 +389,32 @@ fn verify_agent_lineup(
             report.agents.len()
         ));
     }
+    // Seat set must be exactly {0, 1}: two distinct records covering both
+    // seats. Duplicated seats (e.g. two candidate-seat records) are a
+    // lineup violation even when each record's identity matches.
+    let seat0 = report.agents.iter().find(|agent| agent.seat == 0);
+    let seat1 = report.agents.iter().find(|agent| agent.seat == 1);
+    let (Some(seat0), Some(seat1)) = (seat0, seat1) else {
+        return Err(format!(
+            "pairing {} match report does not cover both seats 0 and 1 exactly once (seats: {:?})",
+            evaluation_id,
+            report.agents.iter().map(|a| a.seat).collect::<Vec<_>>()
+        ));
+    };
+    if report.agents.iter().filter(|a| a.seat == 0).count() != 1
+        || report.agents.iter().filter(|a| a.seat == 1).count() != 1
+    {
+        return Err(format!(
+            "pairing {} match report has duplicate seat records (seats: {:?})",
+            evaluation_id,
+            report.agents.iter().map(|a| a.seat).collect::<Vec<_>>()
+        ));
+    }
+
     let (cand_name, cand_version) = expected_agent_identity(candidate_model_id)?;
     let (opp_name, opp_version) = expected_agent_identity(opponent_model_id)?;
     let opponent_seat = 1 - candidate_seat;
-    for agent in &report.agents {
+    for agent in [seat0, seat1] {
         let (expected_name, expected_version) = if agent.seat == candidate_seat {
             (cand_name, &cand_version)
         } else if agent.seat == opponent_seat {
@@ -456,10 +480,41 @@ struct MatchResult {
     reason: String,
 }
 
+/// Read bytes from a file under the (already canonicalized) run directory
+/// with symlink-escape protection: the target file itself is canonicalized
+/// and must still resolve inside the canonical run dir (and therefore inside
+/// the canonical `local-artifacts` root). A match report or replay file
+/// replaced by a symlink pointing elsewhere is rejected.
+fn read_contained_file(
+    run_dir_canonical: &Path,
+    index: u32,
+    kind: &str,
+) -> Result<(PathBuf, Vec<u8>), String> {
+    let path = if kind == "report" {
+        match_report_path(run_dir_canonical, index)
+    } else {
+        match_replay_path(run_dir_canonical, index)
+    };
+    let resolved = path
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve {kind} file {}: {error}", path.display()))?;
+    if !resolved.starts_with(run_dir_canonical) {
+        return Err(format!(
+            "{kind} file {} resolves outside its run directory (resolved to {})",
+            path.display(),
+            resolved.display()
+        ));
+    }
+    // Belt and braces: the resolved file must also stay inside
+    // local-artifacts (the run dir itself is already verified to be inside
+    // it, so this holds trivially unless the run dir moved).
+    let bytes = fs::read(&resolved)
+        .map_err(|error| format!("cannot read {kind} file {}: {error}", resolved.display()))?;
+    Ok((resolved, bytes))
+}
+
 fn read_match_report(run_dir: &Path, index: u32) -> Result<MatchReport, String> {
-    let path = match_report_path(run_dir, index);
-    let bytes = fs::read(&path)
-        .map_err(|error| format!("cannot read match report {}: {error}", path.display()))?;
+    let (path, bytes) = read_contained_file(run_dir, index, "report")?;
     // The arena report carries additional fields (format, version, engine
     // metadata); select only the identity-relevant subset strictly.
     let value: serde_json::Value = serde_json::from_slice(&bytes)
@@ -520,9 +575,7 @@ fn read_match_report(run_dir: &Path, index: u32) -> Result<MatchReport, String> 
 }
 
 fn read_replay(run_dir: &Path, index: u32) -> Result<ReplayV1, String> {
-    let path = match_replay_path(run_dir, index);
-    let bytes = fs::read(&path)
-        .map_err(|error| format!("cannot read replay {}: {error}", path.display()))?;
+    let (path, bytes) = read_contained_file(run_dir, index, "replay")?;
     serde_json::from_slice(&bytes)
         .map_err(|error| format!("invalid replay {}: {error}", path.display()))
 }
@@ -890,8 +943,15 @@ impl ExperimentReplayLibrary {
         let run_dir = resolve_run_dir(&self.repo_root, &self.artifacts_root, &pairing.run_dir)?;
         let game_id = expected_game_id(&pairing.evaluation_id, pairing.scheduled_matches, index)?;
 
-        let report = read_match_report(&run_dir, index).map_err(|_| {
-            format!(
+        // Distinguish a genuinely absent report (nontermination/not-started
+        // slot) from a present-but-unreadable file: containment violations
+        // (e.g. a symlink escaping the run dir) must surface as their own
+        // error, never be masked as a missing slot.
+        let report_path = match_report_path(&run_dir, index);
+        let report = if report_path.exists() {
+            read_match_report(&run_dir, index)?
+        } else {
+            return Err(format!(
                 "match {index} has no replay: it is a {} slot",
                 if pairing.status == "VALID" {
                     "missing"
@@ -900,8 +960,8 @@ impl ExperimentReplayLibrary {
                 } else {
                     "NOT_STARTED"
                 }
-            )
-        })?;
+            ));
+        };
         if report.game_id != game_id {
             return Err(format!(
                 "match report game id `{}` does not match expected `{game_id}`",

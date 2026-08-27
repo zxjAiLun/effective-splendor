@@ -729,3 +729,141 @@ fn real_m35a_library_loads_with_verified_provenance() {
     // tracked result SHA, all 15 eval-report SHAs, and symlink containment.
     let _library = load_library();
 }
+
+// ---------------------------------------------------------------------------
+// Review repair 2: duplicate seats, file-level symlink escape, deep link.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn duplicate_seat_agent_records_are_rejected() {
+    let base = temp_tree("dupseat");
+    let registry_path = write_synthetic_experiment(&base);
+    let library = ExperimentReplayLibrary::load(&registry_path, &base).unwrap();
+
+    // Two identical candidate-seat records: seat set is {0, 0}, not {0, 1}.
+    let report_path = base
+        .join("local-artifacts/m36a-synth/runs/synth-pairing-v1/matches/match-000000.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["agents"] = serde_json::json!([
+        {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M28A"},
+        {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M28A"}
+    ]);
+    fs::write(&report_path, serde_json::to_vec(&report).unwrap()).unwrap();
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("does not cover both seats") || error.contains("duplicate seat"),
+        "error was: {error}"
+    );
+    let error = library
+        .pairing_matches("synth", "synth-pairing-v1")
+        .unwrap_err();
+    assert!(
+        error.contains("does not cover both seats") || error.contains("duplicate seat"),
+        "error was: {error}"
+    );
+
+    // Two identical opponent-seat records: seat set is {1, 1}.
+    let mut report: serde_json::Value =
+        serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["agents"] = serde_json::json!([
+        {"seat": 1, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"},
+        {"seat": 1, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"}
+    ]);
+    fs::write(&report_path, serde_json::to_vec(&report).unwrap()).unwrap();
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("does not cover both seats") || error.contains("duplicate seat"),
+        "error was: {error}"
+    );
+
+    // Out-of-range seat (2) with correct identities elsewhere.
+    let mut report: serde_json::Value =
+        serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["agents"] = serde_json::json!([
+        {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M28A"},
+        {"seat": 2, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"}
+    ]);
+    fs::write(&report_path, serde_json::to_vec(&report).unwrap()).unwrap();
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("does not cover both seats") || error.contains("out-of-range"),
+        "error was: {error}"
+    );
+
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn file_level_symlink_escape_of_report_and_replay_is_rejected() {
+    let base = temp_tree("filesymlink");
+    let registry_path = write_synthetic_experiment(&base);
+    let library = ExperimentReplayLibrary::load(&registry_path, &base).unwrap();
+    let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
+
+    // Replace the match REPORT with a symlink to a copy outside the run dir
+    // (but still inside local-artifacts is not possible for "escape", so
+    // point it fully outside).
+    let report_path = run_dir.join("matches/match-000000.report.json");
+    let outside_dir = base.join("outside");
+    fs::create_dir_all(&outside_dir).unwrap();
+    let outside_report = outside_dir.join("stolen-report.json");
+    fs::rename(&report_path, &outside_report).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside_report, &report_path).unwrap();
+
+    // The library was loaded BEFORE the swap: mid-flight access must reject.
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("resolves outside its run directory"),
+        "report-symlink error was: {error}"
+    );
+    let error = library
+        .pairing_matches("synth", "synth-pairing-v1")
+        .unwrap_err();
+    assert!(
+        error.contains("resolves outside its run directory"),
+        "report-symlink error was: {error}"
+    );
+
+    // Restore the report and repeat with the REPLAY file symlinked out.
+    fs::remove_file(&report_path).unwrap();
+    fs::rename(&outside_report, &report_path).unwrap();
+    let replay_path = run_dir.join("matches/match-000000.replay.json");
+    let outside_replay = outside_dir.join("stolen-replay.json");
+    fs::rename(&replay_path, &outside_replay).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside_replay, &replay_path).unwrap();
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("resolves outside its run directory"),
+        "replay-symlink error was: {error}"
+    );
+
+    // Restore and confirm the bundle serves again.
+    fs::remove_file(&replay_path).unwrap();
+    fs::rename(&outside_replay, &replay_path).unwrap();
+    let bundle = library.bundle("synth", "synth-pairing-v1", 0).unwrap();
+    assert!(!bundle.frames.is_empty());
+
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn file_level_symlink_inside_run_dir_still_serves() {
+    let base = temp_tree("filesymlink-ok");
+    let registry_path = write_synthetic_experiment(&base);
+    let library = ExperimentReplayLibrary::load(&registry_path, &base).unwrap();
+    let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
+
+    // Alias the report via a symlink that stays INSIDE the run dir.
+    let report_path = run_dir.join("matches/match-000000.report.json");
+    let alias = run_dir.join("matches/alias-report.json");
+    fs::rename(&report_path, &alias).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&alias, &report_path).unwrap();
+    let bundle = library.bundle("synth", "synth-pairing-v1", 0).unwrap();
+    assert!(!bundle.frames.is_empty());
+
+    let _ = fs::remove_dir_all(&base);
+}

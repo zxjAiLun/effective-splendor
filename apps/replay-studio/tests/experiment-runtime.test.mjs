@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   STATUS_LABEL,
   buildExperimentsQuery,
+  createDeepLinkHydration,
   filterMatches,
   filterPairings,
   isBrowsableAvailability,
@@ -179,4 +180,77 @@ test("plain ply navigation clamps at the first and last frame", () => {
   assert.equal(clamp(frames.length, 2, 1), 3);
   assert.equal(clamp(frames.length, 4, 5), 4);
   assert.equal(clamp(frames.length, 0, -5), 0);
+});
+
+test("deep link survives a full page reload through the hydration gate", () => {
+  // Simulate the real reload sequence: the initial query is captured at
+  // first render; the URL-sync effect would immediately rewrite the URL
+  // from the (still empty) selection state unless gated. The hydration
+  // machine must (a) return the full selection from the CAPTURED query,
+  // and (b) only report applied=true after that, so sync starts from the
+  // full deep link rather than clobbering it.
+  const initial = new URLSearchParams("experiment=m35a&pairing=m35a-m28a-vs-d2v2-v1&match=1");
+  const hydration = createDeepLinkHydration(initial);
+  assert.equal(hydration.isApplied(), false, "sync must be disabled before hydration");
+
+  // Simulate the sync effect firing early (before bootstrap finished):
+  // the live selection state is still empty, so the URL it would write is
+  // /experiments?experiment= (or with a bare experiment). The gate means
+  // this rewrite never happens while isApplied() is false.
+  const earlyUrl = buildExperimentsQuery({ experiment: "", pairing: "", match: null });
+  assert.equal(earlyUrl, "/experiments");
+  assert.equal(hydration.isApplied(), false, "gate still closed during bootstrap");
+
+  // Bootstrap completes: the index arrives and the deep link applies.
+  const index = {
+    experiments: [
+      {
+        id: "m35a",
+        pairings: [
+          { evaluation_id: "m35a-m28a-vs-d2v2-v1" },
+          { evaluation_id: "m35a-m32a-vs-m07-v1" },
+        ],
+      },
+    ],
+  };
+  const selection = hydration.apply(index);
+  assert.deepEqual(selection, {
+    experiment: "m35a",
+    pairing: "m35a-m28a-vs-d2v2-v1",
+    match: 1,
+  });
+  assert.equal(hydration.isApplied(), true, "sync may start after the deep link applied");
+
+  // The first sync after hydration reproduces the ORIGINAL deep link URL
+  // (state now reflects the deep link), not the truncated form.
+  const syncedUrl = buildExperimentsQuery({
+    experiment: selection.experiment,
+    pairing: selection.pairing,
+    match: selection.match,
+  });
+  assert.equal(syncedUrl, "/experiments?experiment=m35a&pairing=m35a-m28a-vs-d2v2-v1&match=1");
+  assert.notEqual(syncedUrl, "/experiments?experiment=m35a");
+});
+
+test("hydration gate closes benignly when no deep link or unknown pairing", () => {
+  // No query at all.
+  const none = createDeepLinkHydration(new URLSearchParams(""));
+  assert.equal(none.apply({ experiments: [{ id: "m35a", pairings: [{ evaluation_id: "p" }] }] }), null);
+  assert.equal(none.isApplied(), true);
+
+  // Deep link referencing an unknown pairing: nothing selected, gate still
+  // closes so normal browsing sync works.
+  const unknown = createDeepLinkHydration(
+    new URLSearchParams("experiment=m35a&pairing=does-not-exist&match=3"),
+  );
+  assert.equal(
+    unknown.apply({ experiments: [{ id: "m35a", pairings: [{ evaluation_id: "p" }] }] }),
+    null,
+  );
+  assert.equal(unknown.isApplied(), true);
+
+  // Null initial query (SSR) behaves like no deep link.
+  const ssr = createDeepLinkHydration(null);
+  assert.equal(ssr.captured, null);
+  assert.equal(ssr.apply({ experiments: [] }), null);
 });

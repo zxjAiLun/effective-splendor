@@ -112,6 +112,42 @@ export function validateExperimentBundle(value) {
 }
 
 /**
+ * Deep-link hydration state machine (mirrors the page's gating logic):
+ * the initial query is captured BEFORE any URL sync runs, and sync stays
+ * disabled until `apply` marks hydration complete. This prevents the sync
+ * effect from rewriting
+ * `/experiments?experiment=m35a&pairing=..&match=N` down to
+ * `?experiment=m35a` during the async bootstrap window when the
+ * pairing/match state has not been installed yet.
+ */
+export function createDeepLinkHydration(initialQuery) {
+  const captured = initialQuery instanceof URLSearchParams ? initialQuery : null;
+  let applied = false;
+  return {
+    /** The query captured at first render (never re-read from the live URL). */
+    captured,
+    /** Whether the initial deep link has been fully applied. */
+    isApplied() {
+      return applied;
+    },
+    /**
+     * Apply the captured deep link against the loaded experiment index.
+     * Returns the selection to install (or null) and marks hydration done.
+     */
+    apply(experimentIndex) {
+      applied = true;
+      const selection = captured ? parseExperimentsQuery(captured) : null;
+      if (!selection || !experimentIndex) return null;
+      const exists = experimentIndex.experiments
+        ?.find((experiment) => experiment.id === selection.experiment)
+        ?.pairings.some((entry) => entry.evaluation_id === selection.pairing);
+      if (!exists) return null;
+      return selection;
+    },
+  };
+}
+
+/**
  * Next/previous candidate-decision index (skips non-candidate plies).
  * Boundary-safe in both directions:
  * - forward from any ply lands on the first candidate decision at or after

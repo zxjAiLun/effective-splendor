@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M36A
-STATUS = IMPLEMENTED / VERIFIED / REVIEW_REPAIR_1_APPLIED / PENDING_ACCEPTANCE
+STATUS = IMPLEMENTED / VERIFIED / REVIEW_REPAIR_1_APPLIED + REPAIR_2 / PENDING_ACCEPTANCE
 BASE_COMMIT = 85bb62a
 SCOPE = GUI/research tooling milestone: browse and replay M35A experiment matches (960 formal + 75 excluded-prefix replays) through the Studio Host and Replay Studio. No new analysis, no Arena re-run, no modification of M35A results, replay files, arena rules, or checkpoints.
 SOURCES = M35A tracked result (benchmarks/m35a-retrospective-arena.result.json) + run directories under local-artifacts/m35a-retrospective-arena/
@@ -72,16 +72,21 @@ scores) without re-running any experiment.
    and (c) every run directory, **after canonicalization (symlinks
    followed)**, stays inside the canonical `local-artifacts` root — a
    symlinked run dir pointing outside is rejected at load and again at
-   every access.
+   every access. **Every served file** (match report and replay) is
+   likewise canonicalized before reading and must resolve inside the
+   canonical run directory — file-level symlinks escaping the run dir are
+   rejected with their own error, never masked as a missing slot.
 2. **Identity binding incl. agent lineup**: a bundle is served only if the
    match report's `game_id` equals the pairing's expected game id, the
    replay's final hash equals the report's `replay_final_hash`, the step
    count equals `completed_plies`, `verify_replay_trace()` accepts the
    whole replay, and **the report's per-seat agent identities match the
-   pairing's expected lineup** (M35A neural agents report
-   `effective-splendor-m35a-direct-agent-v1` with the model id as
-   version; the M07 champion reports
-   `effective-splendor-determinization-agent-v1` v1). A wrong-lineup run
+   pairing's expected lineup** — with the seat set proven to be exactly
+   `{0, 1}` (two distinct records, no duplicates; duplicated
+   candidate-seat or opponent-seat records are rejected). M35A neural
+   agents report `effective-splendor-m35a-direct-agent-v1` with the model
+   id as version; the M07 champion reports
+   `effective-splendor-determinization-agent-v1` v1. A wrong-lineup run
    directory is rejected for both match listing and bundles.
 3. **Verification before display**: the full replay is re-executed and
    verified on every bundle load; the returned frames are projected from
@@ -126,6 +131,12 @@ scores) without re-running any experiment.
   - **Candidate-only boundary fix**: `stepCandidateDecision` rewritten — stepping past the last candidate decision now stays on the last candidate frame (previously fell through to the opponent's final ply; live-repro on M28A ply 64 → 65), backward past the first stays on ply 0, and stepping from an opponent ply lands on the nearest candidate decision. Plain keyboard navigation now clamps at both ends instead of producing out-of-range frame indices.
   - **Launcher readiness hardened**: `host_healthy` now probes `/experiment-replays` for the M36A index format and the expected experiment id, so an old Host without the replay registry is no longer accepted as ready; the script refuses (with an explicit message) when the port is held by such a Host, and the undefined `LOGHOST` in the failure message was fixed to `LOGROOT`. Verified live: a Host started without `--replay-sources` answers `/health` 200 but is rejected by the probe.
   - Tests extended from 7 to 15 backend (wrong tracked-result SHA, wrong eval-report SHA, fake hashes, missing files, wrong lineup for matches+bundles, symlink escape at load and mid-flight access, inside-artifacts symlink acceptance, real-registry provenance load) and 22 to 24 frontend (both candidate-only boundary directions with the real 66-ply M28A shape, plain-navigation clamping).
+- **2026-08-27 Review repair 2 (three remaining blockers fixed in the same Repair 1)**:
+  - **Deep-link reload fix**: the initial query is captured at first render and URL sync is gated behind a hydration flag; the sync effect previously rewrote `?experiment=m35a&pairing=..&match=N` down to `?experiment=m35a` during the async bootstrap window, losing the pairing/match. The hydration state machine (`createDeepLinkHydration`) is unit-tested with the real reload sequence and verified live against the running Host (full link survives; the referenced bundle loads).
+  - **Duplicate-seat lineup rejection**: `verify_agent_lineup` now proves the seat set is exactly `{0, 1}` with no duplicates before checking identities — two identical candidate-seat (or opponent-seat, or out-of-range seat) records are rejected for both match lists and bundles.
+  - **File-level symlink containment**: match report and replay files are canonicalized before every read and must resolve inside the canonical run directory; a mid-flight swap of either file for an outside-pointing symlink is rejected with an explicit containment error (previously masked as a missing slot), while in-run-dir symlinks still serve.
+  - Launcher hardening follow-up: the readiness probe now checks the index version exactly (`"version":1`); candidate-only navigation disables the boundary step buttons when no further candidate decision exists in that direction.
+  - Tests: backend 15 → 18 (duplicate seats ×3 shapes, file-symlink escape for report+replay incl. mid-flight swap, in-dir file symlink acceptance); frontend 24 → 26 (deep-link reload survival through the hydration gate, benign no-link/unknown-pairing/SSR cases).
 
 ## Validation and evidence
 
@@ -134,9 +145,12 @@ Command:
 ```bash
 cargo test --locked -p splendor-cli --test m36a_experiment_replays -- --test-threads=1
 ```
-Output (2026-08-27, after review repair 1):
+Output (2026-08-27, after review repair 2):
 ```
 test bundle_reverifies_and_projects_player_view ... ok
+test duplicate_seat_agent_records_are_rejected ... ok
+test file_level_symlink_escape_of_report_and_replay_is_rejected ... ok
+test file_level_symlink_inside_run_dir_still_serves ... ok
 test index_reports_17_pairings_1035_replays ... ok
 test library_load_rejects_fake_all_zero_hashes ... ok
 test library_load_rejects_missing_tracked_result_and_eval_report ... ok
@@ -151,7 +165,7 @@ test symlinked_run_dir_inside_local_artifacts_still_serves ... ok
 test synthetic_bundle_serves_then_tampered_replay_is_rejected ... ok
 test unknown_ids_and_out_of_range_indexes_fail_closed ... ok
 test wrong_agent_lineup_is_rejected_for_matches_and_bundles ... ok
-test result: ok. 15 passed; 0 failed
+test result: ok. 18 passed; 0 failed
 ```
 Covers: M35A index has 17 pairings; total browsable replays = 1,035
 (formal 960 + excluded 75); per-slot seed/rotation/seat/agent-version
@@ -175,15 +189,18 @@ Command:
 ```bash
 cd apps/replay-studio && npm test && npm run lint && npm run build
 ```
-Output (2026-08-27, after review repair 1): 24 tests pass (9 new/updated:
+Output (2026-08-27, after review repair 2): 26 tests pass (11 new/updated:
 pairing search/filter, status labels, match filtering, deep-link
 parse/build round-trip, bundle contract validation, candidate-only
 stepping with interior jumps, **candidate-only boundary behavior in both
 directions using the real 66-ply M28A shape (last candidate ply 64 stays
 64; opponent final ply 65 falls back to 64; first candidate stays 0)**,
-plain-navigation clamping at first/last ply; 15 existing tests unchanged
-and passing). `npm run lint` and `npm run build` clean; `/experiments`
-route in the build output.
+plain-navigation clamping at first/last ply, **deep-link reload survival
+through the hydration gate (captured query → gated sync → full link
+reproduced, old truncation repro included), and benign hydration cases
+(no query, unknown pairing, SSR null)**; 15 existing tests unchanged and
+passing). `npm run lint` and `npm run build` clean; `/experiments` route
+in the build output.
 
 ### 3. End-to-end acceptance (Studio Host + UI, Linux launcher)
 Command:
