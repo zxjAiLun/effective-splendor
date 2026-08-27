@@ -2,9 +2,11 @@
 
 ```ini
 MILESTONE = M35A
-STATUS = EXECUTED (15/17 pairings complete; 2 pairings blocked by deterministic engine ply-limit aborts) / PENDING_REVIEW
+STATUS = PARTIAL_VALID / PENDING_FINAL_REVIEW
+STATUS_DETAIL = 15 complete pairings = VALID; M29A-v2 vs M07 = NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION; M31A vs M07 = NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION; promotion = NONE; champion = M07
 BASE_COMMIT = f46147c0b82f0fa5653457a419ebf8fbc0df7325
 EXECUTION_COMMIT = 709fcca (review repair 1, PASS / FORMAL M35A ARENA AUTHORIZED)
+CLOSURE_DELTA_COMMIT = (this commit; closure review findings)
 SCOPE = Evaluate the true game-playing strength of 9 historical neural network checkpoints via direct legal-action policy scoring (argmax over server-certified legal actions, without search) in paired-seed Arena matches against M07 Champion and D2-v2 Benchmark.
 DATASET / MATCHES = 32 paired seeds (300001..300032) x 2 seat rotations = 64 games per pairing; 9 vs M07 (576 games) + 8 vs D2-v2 (512 games) = 1,088 total matches scheduled.
 CHAMPION = M07 (Determinization Search, sample-seed=20260810, sample-count=4, depth=1, max-nodes=2000)
@@ -13,7 +15,8 @@ CHECKPOINTS = M24-S2, M25-D2-v2, M28A, M28B, M29A-v2, M31A, M32A, M33A, M34A
 ARENA_PROTOCOL = NDJSON Protocol v0.5 over stdio (splendor eval / run-match)
 EXECUTION_DEVICE = CPU (single/dual-thread bounded, zero CUDA initialization overhead)
 PROMOTION = NONE (Exploratory retrospective diagnostic; does not retroactively alter offline gate verdicts or promote checkpoints.)
-DECISION = PENDING_REVIEW (formal execution complete with 2 deterministic engine-abort pairings preserved as invalid attempts)
+DECISION = PENDING_FINAL_REVIEW
+TRACKED_RESULT = benchmarks/m35a-retrospective-arena.result.json
 ```
 
 ## Frozen analysis scope (review repair 1)
@@ -86,7 +89,8 @@ An explicit registry binds all 9 candidate models to their exact checkpoint path
 - [x] Review repair 1: fix entry point, M32A color order + real transcript parity, manifest test hardening, cohort freeze, 9-model subprocess smoke.
 - [x] Formal execution authorized (`PASS / FORMAL M35A ARENA AUTHORIZED`, basis `709fcca`).
 - [x] Execute 17 pairings serially; 15 completed fully, 2 aborted deterministically (see execution result).
-- [ ] Review of execution results.
+- [x] Closure delta: corrected M31A offline Top-1 (35.91%), added tracked result JSON with full ledger, persisted deterministic-nontermination diagnostics with SHAs.
+- [ ] Final review of execution results.
 
 ## Formal execution result (2026-08-27)
 
@@ -94,9 +98,21 @@ Execution basis: commit `709fcca`, serial per-pairing
 `target/release/splendor eval --plan <plan> --out-dir runs/<name>`,
 seeds 300001..300032, 2 rotations each, 64 games per pairing.
 
-### Outcome totals
+### Outcome totals (ledger)
 
-- **Scheduled**: 1,088 matches across 17 pairings.
+```text
+scheduled                     = 1088
+scored_complete               = 960
+completed_but_excluded_prefix = 75
+ply_limit_failures            = 2
+not_started_after_abort       = 51
+total                         = 1088
+formal eval reports           = 15
+```
+
+Arithmetic check: 960 + 75 + 2 + 51 = 1,088. Per aborted pairing:
+M29A-v2-vs-M07 60 + 1 + 3 = 64; M31A-vs-M07 15 + 1 + 48 = 64.
+
 - **Completed & scored**: 960 matches across 15 pairings
   (960/960 in those pairings, **0 aborts, 0 agent faults**, every replay
   verified by the arena runner).
@@ -108,16 +124,34 @@ seeds 300001..300032, 2 rotations each, 64 games per pairing.
   - `M31A vs M07`: abort at match 16 (seed 300008, rotation 1) — same
     engine ply-limit error. 15 matches completed before abort, preserved
     under `runs/invalid-attempt-1-m35a-m31a-vs-m07-v1/`.
-  - Both aborts were reproduced deterministically in isolated single-seed
-    reruns (fresh subprocesses, identical commands): seed 300031
-    (M29A-v2-vs-M07) and seed 300008 (M31A-vs-M07) each hit the 10,000-ply
-    limit again. The games are genuine endless take/pass loops (neither
-    player reaches 15 prestige and the stalemate rule never triggers
-    because the bank retains tokens). Per the no-post-hoc-seed-change rule
-    these pairings are NOT re-seeded; their completed prefixes are retained
-    as evidence but not scored.
-- Result payload (local): `local-artifacts/m35a-retrospective-arena/m35a-retrospective-arena.result.json`
-  SHA256 `1072e855627e42b966d14ad3cdeff54b2fc4203214080f814a66b89d27371e9d`.
+  - The games are genuine endless take/pass loops (neither player reaches
+    15 prestige and the stalemate rule never triggers because the bank
+    retains tokens). Per the no-post-hoc-seed-change rule these pairings
+    are NOT re-seeded; their completed prefixes are retained as evidence
+    but not scored. Arena termination rules were NOT modified.
+- **Tracked result ledger**: `benchmarks/m35a-retrospective-arena.result.json`
+  (full per-pairing records, 15 eval-report SHA256s, ledger, and
+  deterministic-nontermination evidence bindings).
+- Local-only result payload (same data, git-ignored):
+  `local-artifacts/m35a-retrospective-arena/m35a-retrospective-arena.result.json`.
+
+### Deterministic nontermination evidence (persisted)
+
+Both ply-limit failures were re-executed as isolated single-seed diagnostics
+using the original pairing's exact agent commands and evaluation_id (hence
+identical game_ids), with full stdout/stderr/exit-status capture persisted
+under `local-artifacts/m35a-retrospective-arena/diagnostics/` and bound by
+SHA256 in the tracked result JSON:
+
+| Diagnostic | Seed | Exit code | stderr | plan SHA256 (16) | stderr SHA256 (16) |
+| --- | --- | --- | --- | --- | --- |
+| `m29a-vs-m07-s300031-rerun` | 300031 | 1 | `error: engine internal error: match exceeded ply safety limit` | `2e85bf2845eba6b9` | `287fd6c5c2560235` |
+| `m31a-vs-m07-s300008-rerun` | 300008 | 1 | `error: engine internal error: match exceeded ply safety limit` | `737f5d5cbc563ec2` | `287fd6c5c2560235` |
+
+(The two stderr logs are byte-identical — same engine error line — hence
+the same SHA256. Full 64-char values and stdout SHA256s are in the tracked
+result JSON. The M31A diagnostic's r00 completed 60 plies before r01
+aborted; the M29A diagnostic aborted at r00 with no committed matches.)
 
 ### Per-pairing results (candidate perspective, 64 games each)
 
@@ -127,8 +161,8 @@ seeds 300001..300032, 2 rotations each, 64 games per pairing.
 | M25-D2-v2 | M07 | 11–0–53 | 17.2% | 6/32, 5/32 | 10.0–15.6 | `bd6aa756685491f1` |
 | M28A | M07 | 21–0–43 | 32.8% | 13/32, 8/32 | 11.8–14.6 | `d666e963b8b12fd5` |
 | M28B | M07 | 16–0–48 | 25.0% | 8/32, 8/32 | 10.9–15.4 | `abe66fd7a76cd297` |
-| M29A-v2 | M07 | INVALID | — | — | — | aborted (ply limit) |
-| M31A | M07 | INVALID | — | — | — | aborted (ply limit) |
+| M29A-v2 | M07 | NO RESULT | — | — | — | deterministic nontermination (ply limit) |
+| M31A | M07 | NO RESULT | — | — | — | deterministic nontermination (ply limit) |
 | M32A | M07 | 18–0–46 | 28.1% | 8/32, 10/32 | 10.7–14.8 | `9d1566f1d4623228` |
 | M33A | M07 | 16–0–48 | 25.0% | 10/32, 6/32 | 11.6–14.8 | `cda9bd0bdca9b1d8` |
 | M34A | M07 | 13–0–51 | 20.3% | 8/32, 5/32 | 10.4–15.5 | `e105093bcf5d7fc2` |
@@ -152,7 +186,7 @@ each below 50% with 64 games): M07 champion remains strictly stronger than
 every direct-policy neural checkpoint under test. Ordering by win rate:
 M28A (32.8%) > M32A (28.1%) > M24-S2 (26.6%) = M28B (25.0%) = M33A (25.0%)
 > M34A (20.3%) > M25-D2-v2 (17.2%). M29A-v2 and M31A are unscored against
-M07 (invalid attempts).
+M07 (deterministic nontermination; no 64-game result).
 
 ### vs D2-v2 series summary
 
@@ -166,27 +200,37 @@ the non-canonical-cohort models (M24-S2, M28A, M28B) all lose to it.
 ### Cohort A descriptive relationship (frozen scope)
 
 Within Cohort A only (M25-canonical data contract), offline validation
-Top-1 vs Arena outcome:
+Top-1 (authoritative values from tracked benchmark result files) vs Arena
+outcome:
 
-| Model | Offline Val Top-1 | Arena vs M07 | Arena vs D2-v2 |
-| --- | --- | --- | --- |
-| M25-D2-v2 | 38.42% | 17.2% | (benchmark) |
-| M29A-v2 | 38.66% | invalid attempt | 65.6% |
-| M31A | ≈38.7% | invalid attempt | 57.8% |
-| M32A | 36.40% | 28.1% | 50.0% |
-| M33A | 38.86% | 25.0% | 57.8% |
-| M34A | 37.14% | 20.3% | 48.4% |
+| Model | Offline Val Top-1 | Source (tracked result JSON) | Arena vs M07 | Arena vs D2-v2 |
+| --- | --- | --- | --- | --- |
+| M33A | 38.86% | `m33a-factorized-policy.result.json` | 25.0% | 57.8% |
+| M29A-v2 | 38.66% | `m29a-v2-nested-residual-attention.result.json` | NO RESULT (nontermination) | 65.6% |
+| M25-D2-v2 | 38.42% | D2 baseline recorded in `m29a-v2...result.json` | 17.2% | (benchmark) |
+| M34A | 37.14% | `m34a-hierarchical-policy.result.json` | 20.3% | 48.4% |
+| M32A | 36.40% | `m32a-information-parity.result.json` | 28.1% | 50.0% |
+| M31A | 35.91% | `m31a-ranking-objective.result.json` | NO RESULT (nontermination) | 57.8% |
 
 Descriptive finding: offline imitation Top-1 does **not** monotonically
-track direct-play strength. M32A has the *lowest* offline Top-1 (36.40%)
-yet the *best* scored vs-M07 win rate (28.1%), while M25-D2-v2 (38.42%)
-is the weakest vs M07 (17.2%). The vs-D2-v2 ordering
-(M29A-v2 > M31A = M33A > M32A > M34A) also does not follow the offline
-Top-1 ordering. Small offline-CE/Top-1 differences are not reliable
-predictors of game-playing strength — consistent with the milestone's
-original motivation. No pooled cross-cohort ranking is reported (frozen
-cohort scope; M24-S2/M28A/M28B offline metrics come from different data
+track direct-play strength. M31A has the *lowest* offline Top-1 (35.91%)
+yet posts the second-best vs-D2-v2 rate (57.8%, +10 net); M32A, the
+second-lowest offline (36.40%), has the *best* scored vs-M07 win rate
+(28.1%); while M25-D2-v2 — near the top offline (38.42%) — is the weakest
+vs M07 (17.2%). The vs-D2-v2 ordering
+(M29A-v2 > M31A = M33A > M32A > M34A) does not follow the offline Top-1
+ordering. Small offline-CE/Top-1 differences are not reliable predictors
+of game-playing strength — consistent with the milestone's original
+motivation. No pooled cross-cohort ranking is reported (frozen cohort
+scope; M24-S2/M28A/M28B offline metrics come from different data
 contracts).
+
+Correction (2026-08-27, closure review): an earlier revision of this
+document misstated M31A's offline Val Top-1 as ≈38.7%; the authoritative
+value in `benchmarks/m31a-ranking-objective.result.json` is 35.91%
+(0.35907525823905556). The corrected ordering makes the non-monotonicity
+finding *stronger*, not weaker: the lowest-offline model (M31A) is among
+the strongest direct players in its cohort.
 
 Seat effects are modest overall; the largest seat splits are M24-S2 and
 M33A vs D2-v2 (18–7 and 23–14 in candidate-seat wins), worth noting as a
@@ -213,6 +257,31 @@ possible first-move/interaction effect but with no action taken.
   - 2 pairings aborted on the engine's frozen `MAX_MATCH_PLIES = 10,000` safety limit: M29A-v2-vs-M07 at seed 300031 r0 (60 matches completed first) and M31A-vs-M07 at seed 300008 r1 (15 matches completed first). Both aborts reproduced deterministically in isolated single-seed reruns; the games are endless take/pass loops in which neither player reaches 15 prestige and the stalemate rule (both forced to pass) never triggers because the bank still holds tokens. No seeds were changed post hoc; both directories preserved as `invalid-attempt-1-*` and their completed prefixes are not scored.
   - Recorded full per-pairing results, seat splits, scores, eval-report SHA256s, series summaries, and the Cohort A descriptive relationship (see Formal execution result above).
   - Result payload written to `local-artifacts/m35a-retrospective-arena/m35a-retrospective-arena.result.json` (SHA256 `1072e855...71e9d`).
+- **2026-08-27 Closure delta (closure review `HOLD` findings, one commit)**:
+  - **Metric correction**: M31A offline Val Top-1 was misstated as ≈38.7%;
+    the authoritative tracked value in
+    `benchmarks/m31a-ranking-objective.result.json` is **35.91%**
+    (0.35907525823905556). Cohort A table corrected (M31A is now the
+    lowest-offline model); the non-monotonicity finding is stronger under
+    the correction.
+  - **Tracked result ledger**: added
+    `benchmarks/m35a-retrospective-arena.result.json` (version 2) with the
+    full 1,088-match ledger (scored 960 / excluded prefixes 75 / ply-limit
+    failures 2 / not-started 51), 15 VALID pairing records with full
+    eval-report SHA256s, 2 nontermination pairing records, authoritative
+    Cohort A offline Top-1 sources, and the persisted diagnostic evidence
+    bindings.
+  - **Persisted deterministic-nontermination evidence**: re-executed both
+    failing games as isolated single-seed diagnostics (original agent
+    commands and evaluation_id) with full capture under
+    `local-artifacts/m35a-retrospective-arena/diagnostics/`:
+    `m29a-vs-m07-s300031-rerun` and `m31a-vs-m07-s300008-rerun` each exit 1
+    with `error: engine internal error: match exceeded ply safety limit`.
+    Plans, stdout, stderr, exit-status files, and SHAs bound in the tracked
+    result JSON.
+  - Status set to `PARTIAL_VALID / PENDING_FINAL_REVIEW`: 15 complete
+    pairings VALID; M29A-v2 vs M07 and M31A vs M07 = NO 64-GAME RESULT /
+    DETERMINISTIC NONTERMINATION; promotion NONE; champion M07.
 
 ## Validation and evidence
 
@@ -278,13 +347,17 @@ Both pass on 2026-08-27.
   scored. No re-seeding was performed (frozen-seed rule).
 - Core findings: M07 champion is strictly stronger than every scored
   direct-policy checkpoint (all win rates 17.2%–32.8%); within Cohort A,
-  offline Top-1 does not monotonically predict Arena strength; four
-  M25-canonical models beat or tie D2-v2 in direct play while all
+  offline Top-1 does not monotonically predict Arena strength (corrected
+  ordering: lowest-offline M31A 35.91% is second-best vs D2-v2 at 57.8%);
+  four M25-canonical models beat or tie D2-v2 in direct play while all
   non-canonical-cohort models lose to it.
 - PROMOTION: NONE, as pre-declared. The 2 aborted pairings are reported as
   a genuine engine/engine-policy interaction failure (endless take/pass
   loop), not hidden.
-- Current status: `EXECUTED / PENDING_REVIEW` of execution results.
+- Current status: `PARTIAL_VALID / PENDING_FINAL_REVIEW`. The 15 complete
+  pairings are VALID; M29A-v2 vs M07 and M31A vs M07 carry
+  `NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION`. No Arena termination
+  rule change and no re-execution of the full schedule was performed.
 
 ## Known limitations
 
@@ -305,16 +378,18 @@ Both pass on 2026-08-27.
   and must not be reported as Arena results.
 - Checkpoint files live under `local-artifacts/` (git-ignored); the Rust
   manifest test validates on-disk SHAs only when the files are present.
-- Arena runs and the result payload are local-only artifacts; only the
-  manifest, tests, docs, and result summaries are tracked in Git.
+- Arena runs, diagnostics, and the local result payload are git-ignored;
+  tracked evidence consists of the manifest, the Rust/Python tests, this
+  document, and `benchmarks/m35a-retrospective-arena.result.json` (which
+  binds the local artifacts by SHA256).
 
 ## Next authorized gate
 
-- Independent review of the formal execution results (15 complete pairings
-  + 2 deterministic engine-abort invalid attempts). No promotion is
-  authorized from this milestone; M07 remains champion. Follow-up options
-  for the reviewer to consider: (a) accept the 960-match result as final
-  for M35A and close the milestone; (b) authorize a separately-scoped
-  amendment (e.g. an engine-side iteration/termination rule change under a
-  new milestone) before retrying the two aborted pairings — explicitly NOT
-  a seed change.
+- Final review of the closure delta (M31A metric correction, tracked result
+  ledger, persisted nontermination evidence). If accepted, M35A closes as
+  `PARTIAL_VALID`: 15 complete pairings VALID, 2 pairings
+  `NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION`, promotion NONE,
+  champion M07. Any future retry of the two aborted pairings requires a
+  separately authorized milestone (engine-side termination semantics);
+  seed changes and post-hoc rescoring of the 1,088-match schedule remain
+  forbidden.

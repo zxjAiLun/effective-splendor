@@ -1,0 +1,535 @@
+{
+  "format": "effective-splendor-m35a-retrospective-arena-result",
+  "version": 2,
+  "milestone": "M35A",
+  "status": "PARTIAL_VALID / PENDING_FINAL_REVIEW",
+  "status_detail": {
+    "complete_pairings": "15 complete pairings = VALID",
+    "m29a_vs_m07": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
+    "m31a_vs_m07": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
+    "promotion": "NONE",
+    "champion": "M07"
+  },
+  "execution_basis": "commit 709fcca (review repair 1; PASS / FORMAL M35A ARENA AUTHORIZED); executed 2026-08-27",
+  "ledger": {
+    "scheduled": 1088,
+    "scored_complete": 960,
+    "completed_but_excluded_prefix": 75,
+    "ply_limit_failures": 2,
+    "not_started_after_abort": 51,
+    "total": 1088,
+    "formal_eval_reports": 15,
+    "ledger_check": "960 + 75 + 2 + 51 = 1088; M29A pairing 60+1+3=64; M31A pairing 15+1+48=64"
+  },
+  "pairings": [
+    {
+      "evaluation_id": "m35a-m24-s2-vs-m07-v1",
+      "candidate_model_id": "M24-S2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 17,
+      "candidate_d": 0,
+      "candidate_l": 47,
+      "candidate_seat0_wins_of_games": [
+        8,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        9,
+        32
+      ],
+      "avg_score_candidate": 10.77,
+      "avg_score_opponent": 15.03,
+      "avg_plies": 62.0,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "76163270560484e3eb60b1180d2e73e470485a98cca473e334e599121fb6dea4",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m24-s2-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m25-d2-v2-vs-m07-v1",
+      "candidate_model_id": "M25-D2-v2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 11,
+      "candidate_d": 0,
+      "candidate_l": 53,
+      "candidate_seat0_wins_of_games": [
+        6,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        5,
+        32
+      ],
+      "avg_score_candidate": 9.98,
+      "avg_score_opponent": 15.61,
+      "avg_plies": 61.5,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "bd6aa756685491f1d89e6933225988087da75c5c828c99be2e6a4fcd7147306e",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m25-d2-v2-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m28a-vs-m07-v1",
+      "candidate_model_id": "M28A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 21,
+      "candidate_d": 0,
+      "candidate_l": 43,
+      "candidate_seat0_wins_of_games": [
+        13,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        8,
+        32
+      ],
+      "avg_score_candidate": 11.78,
+      "avg_score_opponent": 14.62,
+      "avg_plies": 62.9,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "d666e963b8b12fd514e3b400467658ca393cf7147d14be74b41378826f528c90",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28a-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m28b-vs-m07-v1",
+      "candidate_model_id": "M28B",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 16,
+      "candidate_d": 0,
+      "candidate_l": 48,
+      "candidate_seat0_wins_of_games": [
+        8,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        8,
+        32
+      ],
+      "avg_score_candidate": 10.92,
+      "avg_score_opponent": 15.38,
+      "avg_plies": 61.9,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "abe66fd7a76cd2976a512ed561340523120da465c5c68bf877977c12542a73d9",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28b-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m29a-v2-vs-m07-v1",
+      "candidate_model_id": "M29A-v2",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
+      "completed_before_abort": 60,
+      "ply_limit_failure_match": "s000030-r00 (seed 300031)",
+      "not_started_after_abort": 3,
+      "last_completed_game_id": "m35a-m29a-v2-vs-m07-v1-s000029-r01",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/invalid-attempt-1-m35a-m29a-v2-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m31a-vs-m07-v1",
+      "candidate_model_id": "M31A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
+      "completed_before_abort": 15,
+      "ply_limit_failure_match": "s000007-r01 (seed 300008)",
+      "not_started_after_abort": 48,
+      "last_completed_game_id": "m35a-m31a-vs-m07-v1-s000007-r00",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/invalid-attempt-1-m35a-m31a-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m32a-vs-m07-v1",
+      "candidate_model_id": "M32A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 18,
+      "candidate_d": 0,
+      "candidate_l": 46,
+      "candidate_seat0_wins_of_games": [
+        8,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        10,
+        32
+      ],
+      "avg_score_candidate": 10.73,
+      "avg_score_opponent": 14.83,
+      "avg_plies": 61.1,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "9d1566f1d4623228dd96f4171889621acf9538a96fdc9c2000b3e1045d3b9af2",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m32a-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m33a-vs-m07-v1",
+      "candidate_model_id": "M33A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 16,
+      "candidate_d": 0,
+      "candidate_l": 48,
+      "candidate_seat0_wins_of_games": [
+        10,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        6,
+        32
+      ],
+      "avg_score_candidate": 11.59,
+      "avg_score_opponent": 14.75,
+      "avg_plies": 62.2,
+      "end_reasons": {
+        "prestige_threshold": 63,
+        "stalemate": 1
+      },
+      "eval_report_sha256": "cda9bd0bdca9b1d816ba51efe4633edb3fdca063045d8f2d20657b9e56990ac3",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m33a-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m34a-vs-m07-v1",
+      "candidate_model_id": "M34A",
+      "opponent_model_id": "M07",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 13,
+      "candidate_d": 0,
+      "candidate_l": 51,
+      "candidate_seat0_wins_of_games": [
+        8,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        5,
+        32
+      ],
+      "avg_score_candidate": 10.36,
+      "avg_score_opponent": 15.47,
+      "avg_plies": 62.1,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "e105093bcf5d7fc25f9a502de655a10afb6221986136d11918e831b5af4f6228",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m34a-vs-m07-v1"
+    },
+    {
+      "evaluation_id": "m35a-m24-s2-vs-d2v2-v1",
+      "candidate_model_id": "M24-S2",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 25,
+      "candidate_d": 0,
+      "candidate_l": 39,
+      "candidate_seat0_wins_of_games": [
+        18,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        7,
+        32
+      ],
+      "avg_score_candidate": 12.78,
+      "avg_score_opponent": 13.88,
+      "avg_plies": 61.1,
+      "end_reasons": {
+        "prestige_threshold": 63,
+        "stalemate": 1
+      },
+      "eval_report_sha256": "833254590e1e35d3cf7ea9fc82437de8873fae38dc3a65d30e295cea5feb4eb6",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m24-s2-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m28a-vs-d2v2-v1",
+      "candidate_model_id": "M28A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 27,
+      "candidate_d": 0,
+      "candidate_l": 37,
+      "candidate_seat0_wins_of_games": [
+        16,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        11,
+        32
+      ],
+      "avg_score_candidate": 13.16,
+      "avg_score_opponent": 13.91,
+      "avg_plies": 61.5,
+      "end_reasons": {
+        "prestige_threshold": 63,
+        "stalemate": 1
+      },
+      "eval_report_sha256": "146dbef46d4be8af3fe0cf48f159095ce9acc29c7709b4da816f321f15db41ca",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28a-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m28b-vs-d2v2-v1",
+      "candidate_model_id": "M28B",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 30,
+      "candidate_d": 0,
+      "candidate_l": 34,
+      "candidate_seat0_wins_of_games": [
+        15,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        15,
+        32
+      ],
+      "avg_score_candidate": 13.11,
+      "avg_score_opponent": 13.67,
+      "avg_plies": 61.2,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "2a78a577cecafed061124634e61e51c529a40c2c100b00ae55e1eec2b8df8dba",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28b-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m29a-v2-vs-d2v2-v1",
+      "candidate_model_id": "M29A-v2",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 42,
+      "candidate_d": 0,
+      "candidate_l": 22,
+      "candidate_seat0_wins_of_games": [
+        21,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        21,
+        32
+      ],
+      "avg_score_candidate": 14.08,
+      "avg_score_opponent": 12.66,
+      "avg_plies": 61.0,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "e2468a140f7d02784a9a5967f8a913b4f3727ed055d9a730e60bab60e881c756",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m29a-v2-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m31a-vs-d2v2-v1",
+      "candidate_model_id": "M31A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 37,
+      "candidate_d": 0,
+      "candidate_l": 27,
+      "candidate_seat0_wins_of_games": [
+        20,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        17,
+        32
+      ],
+      "avg_score_candidate": 14.05,
+      "avg_score_opponent": 12.95,
+      "avg_plies": 61.0,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "0225ba61633d807a7d639e6e0c1c3780f6cbdf7743be2b76ec0a9fa60f71871c",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m31a-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m32a-vs-d2v2-v1",
+      "candidate_model_id": "M32A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 32,
+      "candidate_d": 0,
+      "candidate_l": 32,
+      "candidate_seat0_wins_of_games": [
+        17,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        15,
+        32
+      ],
+      "avg_score_candidate": 13.38,
+      "avg_score_opponent": 12.72,
+      "avg_plies": 60.8,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "04c95b815ae243a9cab6ad49657959f73f71f7962d0b9d69da4ee3cac858dfef",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m32a-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m33a-vs-d2v2-v1",
+      "candidate_model_id": "M33A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 37,
+      "candidate_d": 0,
+      "candidate_l": 27,
+      "candidate_seat0_wins_of_games": [
+        23,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        14,
+        32
+      ],
+      "avg_score_candidate": 14.11,
+      "avg_score_opponent": 12.97,
+      "avg_plies": 61.0,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "a1974931b9e43dfd76ece949f4d26a35ddecc6c1d6c25556b8e1fa5c66228000",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m33a-vs-d2v2-v1"
+    },
+    {
+      "evaluation_id": "m35a-m34a-vs-d2v2-v1",
+      "candidate_model_id": "M34A",
+      "opponent_model_id": "M25-D2-v2",
+      "scheduled_matches": 64,
+      "status": "VALID",
+      "completed": 64,
+      "aborted": 0,
+      "candidate_w": 31,
+      "candidate_d": 0,
+      "candidate_l": 33,
+      "candidate_seat0_wins_of_games": [
+        16,
+        32
+      ],
+      "candidate_seat1_wins_of_games": [
+        15,
+        32
+      ],
+      "avg_score_candidate": 13.3,
+      "avg_score_opponent": 13.59,
+      "avg_plies": 61.4,
+      "end_reasons": {
+        "prestige_threshold": 64
+      },
+      "eval_report_sha256": "c7403576a0ba64ab914b28ece522252289b73cd7fdac74eb199620ce58bbe3c6",
+      "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m34a-vs-d2v2-v1"
+    }
+  ],
+  "deterministic_nontermination_evidence": [
+    {
+      "pairing_candidate": "M29A-v2",
+      "opponent": "M07",
+      "game_seed": 300031,
+      "description": "Isolated single-seed rerun of the exact ply-limit-failing game using the original pairing's agent commands and evaluation_id; aborts deterministically with exit code 1 and engine error 'match exceeded ply safety limit' (MAX_MATCH_PLIES=10000).",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m29a-vs-m07-s300031-rerun.plan.json",
+      "plan_file_sha256": "2e85bf2845eba6b94c5a1623b4fb1e5abfeb321aa999efba9c3ddd6e3bfda28e",
+      "agents_identical_to_original_pairing_plan": true,
+      "stdout_log": "local-artifacts/m35a-retrospective-arena/diagnostics/m29a-vs-m07-s300031-rerun.stdout.log",
+      "stdout_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_log": "local-artifacts/m35a-retrospective-arena/diagnostics/m29a-vs-m07-s300031-rerun.stderr.log",
+      "stderr_log_sha256": "287fd6c5c256023571b0e57363690ef31d7b185034dc4e19e03174e7833e6a7f",
+      "stderr_content": "error: engine internal error: match exceeded ply safety limit",
+      "exit_status_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m29a-vs-m07-s300031-rerun.exit-status.txt",
+      "exit_code": 1,
+      "matches_completed_before_abort": 0
+    },
+    {
+      "pairing_candidate": "M31A",
+      "opponent": "M07",
+      "game_seed": 300008,
+      "description": "Isolated single-seed rerun of the exact ply-limit-failing game using the original pairing's agent commands and evaluation_id; aborts deterministically with exit code 1 and engine error 'match exceeded ply safety limit' (MAX_MATCH_PLIES=10000).",
+      "plan_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m31a-vs-m07-s300008-rerun.plan.json",
+      "plan_file_sha256": "737f5d5cbc563ec203a25db14dd195d43a70e13ff4868279c1a021bf460301d8",
+      "agents_identical_to_original_pairing_plan": true,
+      "stdout_log": "local-artifacts/m35a-retrospective-arena/diagnostics/m31a-vs-m07-s300008-rerun.stdout.log",
+      "stdout_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_log": "local-artifacts/m35a-retrospective-arena/diagnostics/m31a-vs-m07-s300008-rerun.stderr.log",
+      "stderr_log_sha256": "287fd6c5c256023571b0e57363690ef31d7b185034dc4e19e03174e7833e6a7f",
+      "stderr_content": "error: engine internal error: match exceeded ply safety limit",
+      "exit_status_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m31a-vs-m07-s300008-rerun.exit-status.txt",
+      "exit_code": 1,
+      "matches_completed_before_abort": 1
+    }
+  ],
+  "cohort_a_offline_top1_sources": {
+    "M25-D2-v2": {
+      "val_top1": 0.3841613379242499,
+      "source": "benchmarks/m29a-v2-nested-residual-attention.result.json comparison_vs_exp_d2_baseline.d2_val_top1"
+    },
+    "M29A-v2": {
+      "val_top1": 0.3866207575012297,
+      "source": "benchmarks/m29a-v2-nested-residual-attention.result.json best_checkpoint_val.top1"
+    },
+    "M31A": {
+      "val_top1": 0.35907525823905556,
+      "source": "benchmarks/m31a-ranking-objective.result.json m31a_val_top1"
+    },
+    "M32A": {
+      "val_top1": 0.36399409739301525,
+      "source": "benchmarks/m32a-information-parity.result.json best_checkpoint_val.top1"
+    },
+    "M33A": {
+      "val_top1": 0.38858829316281357,
+      "source": "benchmarks/m33a-factorized-policy.result.json best_checkpoint_val.top1"
+    },
+    "M34A": {
+      "val_top1": 0.37137235612395475,
+      "source": "benchmarks/m34a-hierarchical-policy.result.json best_checkpoint_val.top1"
+    }
+  }
+}
