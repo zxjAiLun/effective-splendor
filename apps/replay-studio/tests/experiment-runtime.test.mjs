@@ -7,6 +7,7 @@ import {
   filterMatches,
   filterPairings,
   isBrowsableAvailability,
+  isStepDisabled,
   parseExperimentsQuery,
   stepCandidateDecision,
   validateExperimentBundle,
@@ -253,4 +254,25 @@ test("hydration gate closes benignly when no deep link or unknown pairing", () =
   const ssr = createDeepLinkHydration(null);
   assert.equal(ssr.captured, null);
   assert.equal(ssr.apply({ experiments: [] }), null);
+});
+
+test("step buttons disable exactly when the position would not change", () => {
+  // Real M28A shape: candidate on even plies 0..64, opponent final ply 65.
+  const frames = Array.from({ length: 66 }, (_, index) => ({
+    candidate_acted: index % 2 === 0,
+  }));
+  // Candidate-only: "next" disabled on the LAST candidate decision (64),
+  // enabled one before it (62); "prev" disabled on the first (0).
+  assert.equal(isStepDisabled(frames, 64, 1, true), true, "next disabled at last candidate");
+  assert.equal(isStepDisabled(frames, 62, 1, true), false, "next enabled before last candidate");
+  assert.equal(isStepDisabled(frames, 0, -1, true), true, "prev disabled at first candidate");
+  assert.equal(isStepDisabled(frames, 2, -1, true), false, "prev enabled after first candidate");
+  // Plain mode: disabled exactly at the first/last ply.
+  assert.equal(isStepDisabled(frames, 0, -1, false), true);
+  assert.equal(isStepDisabled(frames, 65, 1, false), true);
+  assert.equal(isStepDisabled(frames, 30, 1, false), false);
+  assert.equal(isStepDisabled(frames, 30, -1, false), false);
+  // Degenerate inputs.
+  assert.equal(isStepDisabled([], 0, 1, true), true);
+  assert.equal(isStepDisabled([], 0, 1, false), true);
 });

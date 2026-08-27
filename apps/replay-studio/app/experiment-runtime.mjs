@@ -112,6 +112,21 @@ export function validateExperimentBundle(value) {
 }
 
 /**
+ * Whether a step button in the given direction should be disabled: the
+ * button is disabled exactly when stepping would not change the position
+ * (the boundary case in candidate-only mode, or the first/last ply in
+ * plain mode).
+ */
+export function isStepDisabled(frames, current, delta, candidateOnly) {
+  if (!Array.isArray(frames) || frames.length === 0) return true;
+  const clamped = Math.max(0, Math.min(frames.length - 1, current));
+  const target = candidateOnly
+    ? stepCandidateDecision(frames, clamped, delta)
+    : Math.max(0, Math.min(frames.length - 1, clamped + delta));
+  return target === clamped;
+}
+
+/**
  * Deep-link hydration state machine (mirrors the page's gating logic):
  * the initial query is captured BEFORE any URL sync runs, and sync stays
  * disabled until `apply` marks hydration complete. This prevents the sync

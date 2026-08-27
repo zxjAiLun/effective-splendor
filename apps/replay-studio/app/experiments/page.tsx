@@ -20,6 +20,7 @@ import {
   filterMatches,
   filterPairings,
   isBrowsableAvailability,
+  isStepDisabled,
   stepCandidateDecision,
   validateExperimentBundle,
 } from "../experiment-runtime.mjs";
@@ -308,6 +309,12 @@ export default function ExperimentsPage() {
   );
   usePlyNavigation(bundle?.frames.length ?? 0, stepPly);
 
+  // Step buttons disable exactly when stepping would not change the
+  // position (boundary case in candidate-only mode; first/last ply in
+  // plain mode) — shared logic with the runtime tests.
+  const stepDisabled = (delta: number): boolean =>
+    isStepDisabled(bundle?.frames ?? [], frameIndex, delta, candidateOnly);
+
   const stepButton = stepPly;
 
   // ---- filters ----
@@ -509,8 +516,22 @@ export default function ExperimentsPage() {
                   {bundle.candidate_model_id} decisions only
                 </label>
                 <div className="decision-nav">
-                  <button className="icon-button" onClick={() => stepButton(-1)} disabled={frameIndex === 0 && (!candidateOnly || !bundle.frames.some((f, i) => i < frameIndex && f.candidate_acted))} aria-label="Previous ply">←</button>
-                  <button className="icon-button" onClick={() => stepButton(1)} disabled={frameIndex === bundle.frames.length - 1 && (!candidateOnly || !bundle.frames.some((f, i) => i > frameIndex && f.candidate_acted))} aria-label="Next ply">→</button>
+                  <button
+                    className="icon-button"
+                    onClick={() => stepButton(-1)}
+                    disabled={stepDisabled(-1)}
+                    aria-label="Previous ply"
+                  >
+                    ←
+                  </button>
+                  <button
+                    className="icon-button"
+                    onClick={() => stepButton(1)}
+                    disabled={stepDisabled(1)}
+                    aria-label="Next ply"
+                  >
+                    →
+                  </button>
                 </div>
                 {bundle.result && (
                   <div className="final-score">

@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M36A
-STATUS = IMPLEMENTED / VERIFIED / REVIEW_REPAIR_1_APPLIED + REPAIR_2 / PENDING_ACCEPTANCE
+STATUS = ACCEPTED / CLOSED
 BASE_COMMIT = 85bb62a
 SCOPE = GUI/research tooling milestone: browse and replay M35A experiment matches (960 formal + 75 excluded-prefix replays) through the Studio Host and Replay Studio. No new analysis, no Arena re-run, no modification of M35A results, replay files, arena rules, or checkpoints.
 SOURCES = M35A tracked result (benchmarks/m35a-retrospective-arena.result.json) + run directories under local-artifacts/m35a-retrospective-arena/
@@ -10,7 +10,7 @@ REGISTRY = benchmarks/studio-replay-sources.registry.json (read-only source regi
 API = GET /experiment-replays, GET /experiment-replays/{experiment}/pairings/{pairing}/matches, GET /experiment-replays/{experiment}/pairings/{pairing}/matches/{index}/bundle
 UI = /experiments page in apps/replay-studio
 PROMOTION = N/A (tooling milestone; does not alter M35A verdicts)
-DECISION = PENDING_ACCEPTANCE
+DECISION = ACCEPTED / CLOSED (final review PASS; closure commit includes the step-button disable cleanup)
 ```
 
 ## Problem and evidence
@@ -117,6 +117,7 @@ scores) without re-running any experiment.
 - [x] Backend targeted tests (`crates/splendor-cli/tests/m36a_experiment_replays.rs`).
 - [x] Frontend tests + lint + build.
 - [x] Human GUI acceptance (M28A vs D2-v2, M32A vs M07, M29A-v2 excluded prefix, M29A-v2 nontermination) — see Validation below.
+- [x] Final review PASS — M36A ACCEPTED / CLOSED (basis `1405251`).
 
 ## Iteration log
 
@@ -230,11 +231,18 @@ Verified live on 2026-08-27 (Host 127.0.0.1:43120 with
 
 ## Result and decision
 
-- Implemented and verified; M35A verdicts untouched (read-only sources;
-  no Arena re-run, no writes into run directories). Status:
-  `IMPLEMENTED / VERIFIED / PENDING_ACCEPTANCE` — delivered for code+GUI
-  review, after which the library is directly usable via
-  `./Start Splendor Studio.sh`.
+- **Final review verdict (2026-08-27): `PASS — M36A ACCEPTED / CLOSED`**
+  (review basis `1405251`): all blockers resolved across the two repair
+  rounds; independently confirmed deep-link reload survival, candidate-only
+  boundary behavior, duplicate-seat and file-symlink fail-closed paths,
+  and the full test matrix (18/18 backend, 26/26 frontend, lint/build,
+  `bash -n`, `git diff --check`).
+- M35A verdicts untouched (read-only sources; no Arena re-run, no writes
+  into run directories).
+- Closure commit cleanup: step buttons now disable exactly when stepping
+  would not change the position (`isStepDisabled` shared with tests —
+  27th frontend test), so "next" no longer appears clickable at the last
+  candidate decision.
 
 ## Known limitations
 
@@ -246,7 +254,19 @@ Verified live on 2026-08-27 (Host 127.0.0.1:43120 with
 
 ## Next authorized gate
 
-- Human code + GUI acceptance of the delivered implementation (the four
-  scenarios above plus general browsing), then closure as a tooling
-  milestone. Any future experiment sources (e.g. other milestones' runs)
-  extend the registry, not the API.
+- None. M36A is closed as `ACCEPTED / CLOSED`; the experiment replay
+  library is directly usable via `./Start Splendor Studio.sh` (opens
+  `/experiments`). Any future experiment sources (e.g. other milestones'
+  runs) extend the registry, not the API.
+
+- **2026-08-27 Final review PASS — milestone closed**:
+  - Verdict: `PASS — M36A ACCEPTED / CLOSED` (review basis `1405251`);
+    zero blocking findings.
+  - Independently confirmed: 18/18 backend targeted tests, 26/26 frontend
+    tests, lint/build, `bash -n`, `git diff --check`; complete deep-link
+    reload retains pairing/match/bundle; candidate-only navigation no
+    longer jumps to the opponent ply; duplicate seats and file-level
+    symlink escapes fail closed.
+  - Closure cleanup: step buttons disable exactly when stepping would not
+    change the position (previously "next" appeared clickable at the last
+    candidate decision though the position stayed put).
