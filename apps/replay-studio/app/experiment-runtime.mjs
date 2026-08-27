@@ -111,12 +111,66 @@ export function validateExperimentBundle(value) {
   return value;
 }
 
-/** Next/previous candidate-decision index (skips non-candidate plies). */
+/**
+ * Next/previous candidate-decision index (skips non-candidate plies).
+ * Boundary-safe in both directions:
+ * - forward from any ply lands on the first candidate decision at or after
+ *   the current ply (strictly after it when the current ply is itself a
+ *   candidate decision);
+ * - backward lands on the last candidate decision at or before the current
+ *   ply (strictly before it when the current ply is a candidate decision);
+ * - when no further candidate decision exists in the step direction, the
+ *   nearest candidate frame in that direction is kept — never an opponent
+ *   ply at the edge.
+ */
 export function stepCandidateDecision(frames, current, delta) {
   if (!Array.isArray(frames) || frames.length === 0) return 0;
-  let next = current + delta;
-  while (next >= 0 && next < frames.length && !frames[next].candidate_acted) {
-    next += delta;
+  const clamped = Math.max(0, Math.min(frames.length - 1, current));
+  if (delta === 0) return clamped;
+  const forward = delta > 0;
+
+  const candidateAt = (index) =>
+    index >= 0 && index < frames.length && frames[index].candidate_acted;
+
+  // Step window: forward considers [clamped, end]; backward considers
+  // [0, clamped]. The current ply is included only when it is NOT itself a
+  // candidate decision (stepping from a candidate always moves past it).
+  let start = clamped;
+  let end = forward ? frames.length - 1 : 0;
+  if (candidateAt(clamped)) {
+    start = forward ? clamped + 1 : clamped - 1;
   }
-  return Math.max(0, Math.min(frames.length - 1, next));
+
+  // Scan for the nearest candidate decision within the window.
+  let found = -1;
+  if (forward) {
+    for (let index = start; index <= end; index += 1) {
+      if (candidateAt(index)) {
+        found = index;
+        break;
+      }
+    }
+  } else {
+    for (let index = start; index >= end; index -= 1) {
+      if (candidateAt(index)) {
+        found = index;
+        break;
+      }
+    }
+  }
+  if (found >= 0) return found;
+
+  // No candidate decision in the step direction: keep the nearest candidate
+  // frame on the OTHER side (the boundary edge), or the clamped position
+  // when the game has no candidate decisions at all.
+  if (forward) {
+    for (let index = clamped; index >= 0; index -= 1) {
+      if (candidateAt(index)) return index;
+    }
+  } else {
+    for (let index = clamped; index < frames.length; index += 1) {
+      if (candidateAt(index)) return index;
+    }
+  }
+  return clamped;
 }

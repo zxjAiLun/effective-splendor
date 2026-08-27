@@ -34,6 +34,26 @@ pub const BUNDLE_VERSION: u32 = 1;
 
 const MAX_MATCHES_PER_PAIRING: u32 = 4096;
 
+/// Agent identity contract for M35A run reports:
+/// - every M35A neural checkpoint reports
+///   `agent_name = "effective-splendor-m35a-direct-agent-v1"` with
+///   `agent_version = <model id>` (see `m35a_agent.py`);
+/// - the M07 champion reports
+///   `agent_name = "effective-splendor-determinization-agent-v1"` with
+///   `agent_version = "1"`.
+const M35A_NEURAL_AGENT_NAME: &str = "effective-splendor-m35a-direct-agent-v1";
+const M07_AGENT_NAME: &str = "effective-splendor-determinization-agent-v1";
+const M07_AGENT_VERSION: &str = "1";
+
+/// Expected (agent_name, agent_version) for a pairing's candidate and
+/// opponent identities.
+pub fn expected_agent_identity(model_id: &str) -> Result<(&'static str, String), String> {
+    match model_id {
+        "M07" => Ok((M07_AGENT_NAME, M07_AGENT_VERSION.to_string())),
+        other => Ok((M35A_NEURAL_AGENT_NAME, other.to_string())),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Registry model
 // ---------------------------------------------------------------------------
@@ -187,6 +207,109 @@ impl ReplaySourceRegistry {
         Ok(())
     }
 
+    /// Fail-closed provenance + path binding, evaluated against the
+    /// repository root. Enforces, for every experiment:
+    /// 1. the bound tracked result file exists and its SHA-256 matches
+    ///    `tracked_result_sha256`;
+    /// 2. every run directory resolves (following symlinks) to a path that
+    ///    stays inside the canonical `local-artifacts` tree — symlinks
+    ///    cannot escape;
+    /// 3. for VALID pairings, the bound `eval-report.json` exists and its
+    ///    SHA-256 matches `eval_report_sha256`.
+    ///
+    /// This is called by `ExperimentReplayLibrary::load`; the structural
+    /// `validate()` above remains available for offline checks.
+    pub fn validate_against_root(&self, repo_root: &Path) -> Result<(), String> {
+        // Canonical local-artifacts root: the only allowed physical parent.
+        let artifacts_root = repo_root.join("local-artifacts");
+        let artifacts_canon = artifacts_root
+            .canonicalize()
+            .map_err(|error| format!("cannot resolve {}: {error}", artifacts_root.display()))?;
+
+        for experiment in &self.experiments {
+            validate_identifier("experiment id", &experiment.id)?;
+
+            // 1. tracked result provenance.
+            let tracked_path = repo_root.join(&experiment.tracked_result);
+            let tracked_bytes = fs::read(&tracked_path).map_err(|error| {
+                format!(
+                    "experiment {} cannot read tracked result {}: {error}",
+                    experiment.id,
+                    tracked_path.display()
+                )
+            })?;
+            let tracked_sha = {
+                let mut hasher = Sha256::new();
+                hasher.update(&tracked_bytes);
+                hex::encode(hasher.finalize())
+            };
+            if tracked_sha != experiment.tracked_result_sha256 {
+                return Err(format!(
+                    "experiment {} tracked result SHA mismatch: registry binds {} but {} hashes to {}",
+                    experiment.id,
+                    experiment.tracked_result_sha256,
+                    tracked_path.display(),
+                    tracked_sha
+                ));
+            }
+
+            for pairing in &experiment.pairings {
+                validate_identifier("evaluation id", &pairing.evaluation_id)?;
+
+                // 2. symlink-escape-proof run directory containment.
+                let run_dir = repo_root.join(&pairing.run_dir);
+                let run_dir_canon = run_dir.canonicalize().map_err(|error| {
+                    format!(
+                        "pairing {} run dir {} cannot be resolved: {error}",
+                        pairing.evaluation_id,
+                        run_dir.display()
+                    )
+                })?;
+                if !run_dir_canon.starts_with(&artifacts_canon) {
+                    return Err(format!(
+                        "pairing {} run dir {} resolves outside local-artifacts (resolved to {})",
+                        pairing.evaluation_id,
+                        run_dir.display(),
+                        run_dir_canon.display()
+                    ));
+                }
+
+                // 3. VALID pairing eval-report provenance.
+                if pairing.status == "VALID" {
+                    let bound_sha = pairing.eval_report_sha256.as_deref().ok_or_else(|| {
+                        format!(
+                            "VALID pairing {} must bind an eval report SHA",
+                            pairing.evaluation_id
+                        )
+                    })?;
+                    let report_path = run_dir_canon.join("eval-report.json");
+                    let report_bytes = fs::read(&report_path).map_err(|error| {
+                        format!(
+                            "pairing {} cannot read eval report {}: {error}",
+                            pairing.evaluation_id,
+                            report_path.display()
+                        )
+                    })?;
+                    let report_sha = {
+                        let mut hasher = Sha256::new();
+                        hasher.update(&report_bytes);
+                        hex::encode(hasher.finalize())
+                    };
+                    if report_sha != bound_sha {
+                        return Err(format!(
+                            "pairing {} eval report SHA mismatch: registry binds {} but {} hashes to {}",
+                            pairing.evaluation_id,
+                            bound_sha,
+                            report_path.display(),
+                            report_sha
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn experiment(&self, experiment_id: &str) -> Result<&ExperimentSource, String> {
         validate_identifier("experiment id", experiment_id)?;
         self.experiments
@@ -222,6 +345,75 @@ fn validate_identifier(kind: &str, value: &str) -> Result<(), String> {
     } else {
         Err(format!("invalid {kind}: `{value}`"))
     }
+}
+
+/// Resolve a registry run dir against the repo root with symlink-proof
+/// containment: the canonicalized directory must stay inside the canonical
+/// `local-artifacts` root.
+fn resolve_run_dir(
+    repo_root: &Path,
+    artifacts_root: &Path,
+    run_dir: &str,
+) -> Result<PathBuf, String> {
+    let joined = repo_root.join(run_dir);
+    let resolved = joined
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve run dir {}: {error}", joined.display()))?;
+    if !resolved.starts_with(artifacts_root) {
+        return Err(format!(
+            "run dir {} resolves outside local-artifacts (resolved to {})",
+            joined.display(),
+            resolved.display()
+        ));
+    }
+    Ok(resolved)
+}
+
+/// Verify the match report's recorded agent identities against the pairing's
+/// expected lineup: exactly two seats (0 and 1), the candidate seat occupied
+/// by the candidate's agent identity, the opponent seat by the opponent's.
+/// A wrong-lineup report must never be displayed as this pairing's replay.
+fn verify_agent_lineup(
+    report: &MatchReport,
+    evaluation_id: &str,
+    candidate_model_id: &str,
+    opponent_model_id: &str,
+    candidate_seat: u8,
+) -> Result<(), String> {
+    if report.agents.len() != 2 {
+        return Err(format!(
+            "pairing {} match report must list exactly two agents, found {}",
+            evaluation_id,
+            report.agents.len()
+        ));
+    }
+    let (cand_name, cand_version) = expected_agent_identity(candidate_model_id)?;
+    let (opp_name, opp_version) = expected_agent_identity(opponent_model_id)?;
+    let opponent_seat = 1 - candidate_seat;
+    for agent in &report.agents {
+        let (expected_name, expected_version) = if agent.seat == candidate_seat {
+            (cand_name, &cand_version)
+        } else if agent.seat == opponent_seat {
+            (opp_name, &opp_version)
+        } else {
+            return Err(format!(
+                "pairing {} match report has an out-of-range seat {}",
+                evaluation_id, agent.seat
+            ));
+        };
+        if agent.agent_name != expected_name || agent.agent_version != *expected_version {
+            return Err(format!(
+                "pairing {} agent lineup mismatch at seat {}: expected {} v{}, found {} v{}",
+                evaluation_id,
+                agent.seat,
+                expected_name,
+                expected_version,
+                agent.agent_name,
+                agent.agent_version
+            ));
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -487,17 +679,30 @@ pub struct BundleFrame {
 // Library service
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct ExperimentReplayLibrary {
     registry: ReplaySourceRegistry,
     repo_root: PathBuf,
+    /// Canonical `local-artifacts` root; every served file must resolve
+    /// inside it (symlink-proof containment).
+    artifacts_root: PathBuf,
 }
 
 impl ExperimentReplayLibrary {
     pub fn load(registry_path: &Path, repo_root: &Path) -> Result<Self, String> {
         let registry = ReplaySourceRegistry::load(registry_path)?;
+        // Fail-closed provenance and path binding: tracked-result SHA,
+        // eval-report SHAs, and symlink-proof containment all verified at
+        // load time.
+        registry.validate_against_root(repo_root)?;
+        let artifacts_root = repo_root
+            .join("local-artifacts")
+            .canonicalize()
+            .map_err(|error| format!("cannot resolve local-artifacts root: {error}"))?;
         Ok(Self {
             registry,
             repo_root: repo_root.to_path_buf(),
+            artifacts_root,
         })
     }
 
@@ -552,7 +757,7 @@ impl ExperimentReplayLibrary {
         evaluation_id: &str,
     ) -> Result<PairingMatches, String> {
         let (experiment, pairing) = self.registry.pairing(experiment_id, evaluation_id)?;
-        let run_dir = self.repo_root.join(&pairing.run_dir);
+        let run_dir = resolve_run_dir(&self.repo_root, &self.artifacts_root, &pairing.run_dir)?;
         let mut matches = Vec::new();
         for index in 0..pairing.scheduled_matches {
             let game_id =
@@ -574,10 +779,18 @@ impl ExperimentReplayLibrary {
                 candidate_won: None,
                 replay_document_hash: None,
             };
-            if let Some(report) = availability.1 {
-                // Seat mapping: r00 -> candidate seat 0; r01 -> candidate seat 1
-                // (arena right-rotation with 2 agents).
+            if let Some(report) = &availability.1 {
+                // Seat mapping: r00 -> candidate seat 0; r01 -> candidate
+                // seat 1 (arena right-rotation with 2 agents). The report's
+                // own agent identities must agree with the pairing lineup.
                 let candidate_seat = (index % 2) as u8;
+                verify_agent_lineup(
+                    report,
+                    &pairing.evaluation_id,
+                    &pairing.candidate_model_id,
+                    &pairing.opponent_model_id,
+                    candidate_seat,
+                )?;
                 slot.seed = Some(seed_from_game_id(
                     &report.game_id,
                     &pairing.evaluation_id,
@@ -586,7 +799,7 @@ impl ExperimentReplayLibrary {
                 slot.candidate_seat = Some(candidate_seat);
                 slot.opponent_seat = Some(1 - candidate_seat);
                 slot.completed_plies = report.outcome.completed_plies;
-                if let Some(result) = report.outcome.result {
+                if let Some(result) = &report.outcome.result {
                     slot.scores = Some(result.scores.clone());
                     slot.winner_seats = Some(result.winners.iter().map(|w| w.0).collect());
                     slot.end_reason = Some(result.reason.clone());
@@ -674,7 +887,7 @@ impl ExperimentReplayLibrary {
                 pairing.scheduled_matches
             ));
         }
-        let run_dir = self.repo_root.join(&pairing.run_dir);
+        let run_dir = resolve_run_dir(&self.repo_root, &self.artifacts_root, &pairing.run_dir)?;
         let game_id = expected_game_id(&pairing.evaluation_id, pairing.scheduled_matches, index)?;
 
         let report = read_match_report(&run_dir, index).map_err(|_| {
@@ -698,6 +911,18 @@ impl ExperimentReplayLibrary {
         if report.outcome.status != "completed" {
             return Err("match did not complete; no replay bundle".into());
         }
+
+        // Seat mapping: r00 -> candidate seat 0; r01 -> candidate seat 1.
+        // The report's own agent identities must agree before any model
+        // labeling is emitted.
+        let candidate_seat = (index % 2) as u8;
+        verify_agent_lineup(
+            &report,
+            &pairing.evaluation_id,
+            &pairing.candidate_model_id,
+            &pairing.opponent_model_id,
+            candidate_seat,
+        )?;
 
         let replay = read_replay(&run_dir, index)?;
         // Identity binding: replay final hash must equal the report's hash.
@@ -725,8 +950,7 @@ impl ExperimentReplayLibrary {
 
         let document_hash = replay_document_hash_v1(&replay).map_err(|error| error.to_string())?;
 
-        // Seat mapping: r00 -> candidate seat 0; r01 -> candidate seat 1.
-        let candidate_seat = (index % 2) as u8;
+        // Model labels follow the lineup verified above.
         let model_for_seat = |seat: u8| -> String {
             if seat == candidate_seat {
                 pairing.candidate_model_id.clone()

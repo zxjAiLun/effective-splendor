@@ -2,7 +2,7 @@
 
 ```ini
 MILESTONE = M36A
-STATUS = IMPLEMENTED / VERIFIED / PENDING_ACCEPTANCE
+STATUS = IMPLEMENTED / VERIFIED / REVIEW_REPAIR_1_APPLIED / PENDING_ACCEPTANCE
 BASE_COMMIT = 85bb62a
 SCOPE = GUI/research tooling milestone: browse and replay M35A experiment matches (960 formal + 75 excluded-prefix replays) through the Studio Host and Replay Studio. No new analysis, no Arena re-run, no modification of M35A results, replay files, arena rules, or checkpoints.
 SOURCES = M35A tracked result (benchmarks/m35a-retrospective-arena.result.json) + run directories under local-artifacts/m35a-retrospective-arena/
@@ -60,16 +60,29 @@ scores) without re-running any experiment.
 
 ## Contracts and invariants
 
-1. **Read-only sources**: every served replay path is derived from the
-   registry's run roots joined with a `runs/<eval-id>` or
-   `invalid-attempt-1-<eval-id>` directory and a
+1. **Read-only sources with verified provenance**: every served replay path
+   is derived from the registry's run roots joined with a
+   `runs/<eval-id>` or `invalid-attempt-1-<eval-id>` directory and a
    `matches/match-%06d.report.json` / `.replay.json` filename built from a
    checked u32 match index. Client input cannot influence path components
-   beyond validated identifiers.
-2. **Identity binding**: a bundle is served only if the match report's
-   `game_id` equals the pairing's expected game id for that index, the
-   replay's final hash equals the report's `replay_final_hash`, and
-   `verify_replay_trace()` accepts the whole replay.
+   beyond validated identifiers. The library **fail-closed-verifies at
+   load time** that (a) the bound tracked result file exists and its
+   SHA-256 equals `tracked_result_sha256`, (b) for every VALID pairing the
+   `eval-report.json` exists and its SHA-256 equals `eval_report_sha256`,
+   and (c) every run directory, **after canonicalization (symlinks
+   followed)**, stays inside the canonical `local-artifacts` root — a
+   symlinked run dir pointing outside is rejected at load and again at
+   every access.
+2. **Identity binding incl. agent lineup**: a bundle is served only if the
+   match report's `game_id` equals the pairing's expected game id, the
+   replay's final hash equals the report's `replay_final_hash`, the step
+   count equals `completed_plies`, `verify_replay_trace()` accepts the
+   whole replay, and **the report's per-seat agent identities match the
+   pairing's expected lineup** (M35A neural agents report
+   `effective-splendor-m35a-direct-agent-v1` with the model id as
+   version; the M07 champion reports
+   `effective-splendor-determinization-agent-v1` v1). A wrong-lineup run
+   directory is rejected for both match listing and bundles.
 3. **Verification before display**: the full replay is re-executed and
    verified on every bundle load; the returned frames are projected from
    the verified referee states (`position.state.observation(actor)`), so
@@ -83,6 +96,10 @@ scores) without re-running any experiment.
    must display a warning and must never be aggregated as formal results.
 5. **No mutation**: the Host opens source files read-only and performs no
    writes inside `local-artifacts/m35a-retrospective-arena/`.
+6. **Candidate-only navigation is boundary-safe**: stepping past the
+   first/last candidate decision keeps the nearest candidate frame — it
+   never falls through to an opponent ply (review-repaired), and plain
+   keyboard navigation clamps at ply 0 and the last ply.
 
 ## Implementation plan
 
@@ -102,24 +119,39 @@ scores) without re-running any experiment.
 - **2026-08-27**: Implemented the source registry, the `/experiment-replays` API (17 pairings / 1,035 replays / 2 nontermination entries), the shared board+timeline components, the `/experiments` page, and the Linux launcher. Backend tests cover pairing counts, replay totals, formal/prefix classification, report-replay identity binding, tamper rejection, and path-escape rejection.
 - **2026-08-27**: Extracted the shared board/timeline from `app/page.tsx` into `app/components/replay-board.tsx` (single board implementation, reused by `/` and `/experiments`); existing 15 frontend tests still pass unchanged. Added `splendor-cli` lib target so integration tests can exercise `experiment_replays` directly. Fixed a seat-rotation assertion error caught by the new identity test (r01 candidate sits at seat 1 and the opponent acts first — verified against on-disk reports).
 - **2026-08-27**: End-to-end acceptance on Linux via `Start Splendor Studio.sh`: all four required scenarios verified live (M28A vs D2-v2, M32A vs M07, M29A-v2 excluded prefix, both nontermination entries); `/experiments` server-rendering and deep links confirmed.
+- **2026-08-27 Review repair 1 (five blocking findings fixed in one round)**:
+  - **Provenance verification enforced**: `ExperimentReplayLibrary::load` now fail-closed-verifies the tracked result SHA-256 and every VALID pairing's `eval-report.json` SHA-256, and rejects fake all-zero/all-one hashes (previously only read, never checked).
+  - **Agent lineup verification**: match reports' per-seat `agent_name`/`agent_version` must match the pairing's expected lineup (candidate model at the rotation-derived seat, opponent at the other) before any model labeling is emitted — for both match listing and bundles. Wrong-lineup runs are rejected with an explicit `agent lineup mismatch` error.
+  - **Symlink-escape defense**: run directories are canonicalized and must resolve inside the canonical `local-artifacts` root — checked at load time and again on every access (`resolve_run_dir`). A symlinked run dir pointing outside is rejected; one pointing inside `local-artifacts` still serves.
+  - **Candidate-only boundary fix**: `stepCandidateDecision` rewritten — stepping past the last candidate decision now stays on the last candidate frame (previously fell through to the opponent's final ply; live-repro on M28A ply 64 → 65), backward past the first stays on ply 0, and stepping from an opponent ply lands on the nearest candidate decision. Plain keyboard navigation now clamps at both ends instead of producing out-of-range frame indices.
+  - **Launcher readiness hardened**: `host_healthy` now probes `/experiment-replays` for the M36A index format and the expected experiment id, so an old Host without the replay registry is no longer accepted as ready; the script refuses (with an explicit message) when the port is held by such a Host, and the undefined `LOGHOST` in the failure message was fixed to `LOGROOT`. Verified live: a Host started without `--replay-sources` answers `/health` 200 but is rejected by the probe.
+  - Tests extended from 7 to 15 backend (wrong tracked-result SHA, wrong eval-report SHA, fake hashes, missing files, wrong lineup for matches+bundles, symlink escape at load and mid-flight access, inside-artifacts symlink acceptance, real-registry provenance load) and 22 to 24 frontend (both candidate-only boundary directions with the real 66-ply M28A shape, plain-navigation clamping).
 
 ## Validation and evidence
 
 ### 1. Backend targeted tests (Rust)
 Command:
 ```bash
-cargo test -p splendor-cli --test m36a_experiment_replays
+cargo test --locked -p splendor-cli --test m36a_experiment_replays -- --test-threads=1
 ```
-Output (2026-08-27):
+Output (2026-08-27, after review repair 1):
 ```
-test registry_loads_and_declares_m35a ... ok
-test index_reports_17_pairings_1035_replays ... ok
-test pairing_matches_classify_slots_and_bind_identity ... ok
 test bundle_reverifies_and_projects_player_view ... ok
-test unknown_ids_and_out_of_range_indexes_fail_closed ... ok
-test synthetic_bundle_serves_then_tampered_replay_is_rejected ... ok
+test index_reports_17_pairings_1035_replays ... ok
+test library_load_rejects_fake_all_zero_hashes ... ok
+test library_load_rejects_missing_tracked_result_and_eval_report ... ok
+test library_load_rejects_wrong_eval_report_sha ... ok
+test library_load_rejects_wrong_tracked_result_sha ... ok
+test pairing_matches_classify_slots_and_bind_identity ... ok
+test real_m35a_library_loads_with_verified_provenance ... ok
+test registry_loads_and_declares_m35a ... ok
 test registry_rejects_escaping_run_dirs_and_bad_statuses ... ok
-test result: ok. 7 passed; 0 failed
+test symlink_escape_from_run_dir_is_rejected_at_load_and_access ... ok
+test symlinked_run_dir_inside_local_artifacts_still_serves ... ok
+test synthetic_bundle_serves_then_tampered_replay_is_rejected ... ok
+test unknown_ids_and_out_of_range_indexes_fail_closed ... ok
+test wrong_agent_lineup_is_rejected_for_matches_and_bundles ... ok
+test result: ok. 15 passed; 0 failed
 ```
 Covers: M35A index has 17 pairings; total browsable replays = 1,035
 (formal 960 + excluded 75); per-slot seed/rotation/seat/agent-version
@@ -127,10 +159,15 @@ identity against on-disk reports (r00 candidate seat 0, r01 candidate seat
 1, seeds 300001..300032, steps count == completed_plies, ply-0 actor seat
 0); EXCLUDED_PREFIX slot classification (M29A-v2: 60+1+3, M31A:
 15+1+48); tampered replay (mutated ply) and report-hash mismatch both
-rejected via full `verify_replay_trace()` re-execution; run_dir escape
-and out-of-`local-artifacts` registry paths rejected at load; unknown
-experiment/pairing/malformed identifiers and out-of-range match indexes
-fail closed; NONTERMINATION and NOT_STARTED slots return explicit
+rejected via full `verify_replay_trace()` re-execution; **wrong
+tracked-result SHA, wrong eval-report SHA, fake all-zero hashes, and
+missing bound files all rejected at library load; wrong agent lineup
+(swapped model versions, unknown agent name) rejected for match lists and
+bundles; symlinked run dirs escaping `local-artifacts` rejected at load
+and at mid-flight access while inside-artifacts symlinks still serve**;
+run_dir escape and out-of-`local-artifacts` registry paths rejected;
+unknown experiment/pairing/malformed identifiers and out-of-range match
+indexes fail closed; NONTERMINATION and NOT_STARTED slots return explicit
 errors, never a bundle.
 
 ### 2. Frontend tests
@@ -138,12 +175,15 @@ Command:
 ```bash
 cd apps/replay-studio && npm test && npm run lint && npm run build
 ```
-Output (2026-08-27): 22 tests pass (7 new: pairing search/filter, status
-labels, match filtering, deep-link parse/build round-trip, bundle contract
-validation, candidate-only stepping; 15 existing tests unchanged and
-passing — the shared board extraction did not alter existing pages).
-`npm run lint` and `npm run build` clean; `/experiments` route in the
-build output.
+Output (2026-08-27, after review repair 1): 24 tests pass (9 new/updated:
+pairing search/filter, status labels, match filtering, deep-link
+parse/build round-trip, bundle contract validation, candidate-only
+stepping with interior jumps, **candidate-only boundary behavior in both
+directions using the real 66-ply M28A shape (last candidate ply 64 stays
+64; opponent final ply 65 falls back to 64; first candidate stays 0)**,
+plain-navigation clamping at first/last ply; 15 existing tests unchanged
+and passing). `npm run lint` and `npm run build` clean; `/experiments`
+route in the build output.
 
 ### 3. End-to-end acceptance (Studio Host + UI, Linux launcher)
 Command:

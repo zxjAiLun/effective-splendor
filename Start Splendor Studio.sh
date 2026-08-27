@@ -43,9 +43,16 @@ mkdir -p "$LOGROOT"
 
 http_ok() { curl -sf -o /dev/null --max-time 2 "$1"; }
 
+# A healthy Host is not enough: it must be THIS stack's Host, i.e. one that
+# actually loaded the M36A experiment replay sources registry. Probe the
+# experiment replay index for its format/version and the expected experiment.
 host_healthy() {
-  http_ok "http://127.0.0.1:$HOST_PORT/health" && \
-  curl -sf --max-time 2 "http://127.0.0.1:$HOST_PORT/health" | grep -q '"mode":"studio_host"'
+  http_ok "http://127.0.0.1:$HOST_PORT/health" || return 1
+  curl -sf --max-time 2 "http://127.0.0.1:$HOST_PORT/health" | grep -q '"mode":"studio_host"' || return 1
+  curl -sf --max-time 3 "http://127.0.0.1:$HOST_PORT/experiment-replays" \
+    | grep -q '"format":"effective-splendor-experiment-replay-index"' || return 1
+  curl -sf --max-time 3 "http://127.0.0.1:$HOST_PORT/experiment-replays" \
+    | grep -q '"id":"m35a"' || return 1
 }
 
 ui_healthy() { http_ok "http://127.0.0.1:$UI_PORT/play"; }
@@ -57,8 +64,15 @@ if ! cargo build -p splendor-cli; then
 fi
 
 if host_healthy; then
-  echo "Studio Host already running on port $HOST_PORT."
+  echo "Studio Host (with experiment replays) already running on port $HOST_PORT."
 else
+  # A port that answers /health but not the experiment-replay probe is an
+  # OLD Host without the M36A replay registry — refuse rather than reuse it.
+  if http_ok "http://127.0.0.1:$HOST_PORT/health"; then
+    echo "Port $HOST_PORT is held by a Host WITHOUT experiment replay sources."
+    echo "Stop it first (see $LOGROOT/host.pid) and rerun this script."
+    exit 1
+  fi
   echo "Starting Studio Host on port $HOST_PORT…"
   nohup "$PWD/target/debug/splendor" studio-host \
     --registry "$REGISTRY" \
@@ -93,7 +107,7 @@ for _ in $(seq 1 120); do
 done
 
 if [ "$READY" -ne 1 ]; then
-  echo "Studio did not become ready. Inspect $LOGHOST (host.stdout.log / host.stderr.log / ui.*.log)."
+  echo "Studio did not become ready. Inspect $LOGROOT (host.stdout.log / host.stderr.log / ui.*.log)."
   exit 1
 fi
 

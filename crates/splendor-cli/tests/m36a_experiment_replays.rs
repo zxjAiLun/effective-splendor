@@ -317,6 +317,13 @@ fn temp_tree(tag: &str) -> PathBuf {
     dir
 }
 
+fn sha256_of(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    hex::encode(hasher.finalize())
+}
+
 fn write_synthetic_experiment(base: &Path) -> PathBuf {
     // Build a minimal but legitimate run directory using a real engine replay.
     let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1/matches");
@@ -325,13 +332,14 @@ fn write_synthetic_experiment(base: &Path) -> PathBuf {
     let (_state, replay) = splendor_replay::record_random_game(2, 7, 11).unwrap();
     let replay_json = serde_json::to_vec(&replay).unwrap();
     fs::write(run_dir.join("match-000000.replay.json"), &replay_json).unwrap();
-    // Report with the true final hash and result.
+    // Report with the true final hash, result, and the REAL M35A agent
+    // identities (candidate M28A at seat 0, D2-v2 at seat 1).
     let report = serde_json::json!({
         "format": "effective-splendor-arena-report",
         "game_id": "synth-pairing-v1-s000000-r00",
         "agents": [
-            {"seat": 0, "agent_name": "synthetic-candidate", "agent_version": "1"},
-            {"seat": 1, "agent_name": "synthetic-opponent", "agent_version": "1"}
+            {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M28A"},
+            {"seat": 1, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"}
         ],
         "outcome": {
             "status": "completed",
@@ -350,7 +358,18 @@ fn write_synthetic_experiment(base: &Path) -> PathBuf {
         serde_json::to_vec(&report).unwrap(),
     )
     .unwrap();
-    // Registry pointing at the synthetic tree.
+    // Tracked result + eval report with REAL, verified SHA-256 bindings.
+    fs::create_dir_all(base.join("benchmarks")).unwrap();
+    let tracked_path = base.join("benchmarks/synth.json");
+    let tracked_bytes = br#"{"synthetic":"tracked-result"}"#;
+    fs::write(&tracked_path, tracked_bytes).unwrap();
+    let eval_report = serde_json::json!({
+        "format": "effective-splendor-evaluation-report",
+        "records": [{"match_index": 0, "outcome": {"status": "completed"}}]
+    });
+    let eval_path = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1/eval-report.json");
+    fs::write(&eval_path, serde_json::to_vec_pretty(&eval_report).unwrap()).unwrap();
+    // Registry pointing at the synthetic tree with real hashes.
     let registry = serde_json::json!({
         "format": REGISTRY_FORMAT,
         "version": REGISTRY_VERSION,
@@ -359,16 +378,16 @@ fn write_synthetic_experiment(base: &Path) -> PathBuf {
             "display_name": "Synthetic",
             "description": "test",
             "tracked_result": "benchmarks/synth.json",
-            "tracked_result_sha256": "0".repeat(64),
+            "tracked_result_sha256": sha256_of(tracked_bytes),
             "runs_root": "local-artifacts/m36a-synth/runs",
             "pairings": [{
                 "evaluation_id": "synth-pairing-v1",
-                "candidate_model_id": "SYN-A",
-                "opponent_model_id": "SYN-B",
+                "candidate_model_id": "M28A",
+                "opponent_model_id": "M25-D2-v2",
                 "status": "VALID",
                 "scheduled_matches": 1,
                 "run_dir": "local-artifacts/m36a-synth/runs/synth-pairing-v1",
-                "eval_report_sha256": "1".repeat(64)
+                "eval_report_sha256": sha256_of(&fs::read(&eval_path).unwrap())
             }]
         }]
     });
@@ -502,4 +521,211 @@ fn registry_rejects_escaping_run_dirs_and_bad_statuses() {
     assert!(error.contains("unsupported status"), "error was: {error}");
 
     let _ = fs::remove_dir_all(&base);
+}
+
+// ---------------------------------------------------------------------------
+// Review repair: fail-closed provenance, agent lineup, symlink escape.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn library_load_rejects_wrong_tracked_result_sha() {
+    let base = temp_tree("trackedsha");
+    let registry_path = write_synthetic_experiment(&base);
+    // Tamper with the tracked result bytes after the registry was written.
+    let tracked_path = base.join("benchmarks/synth.json");
+    fs::write(&tracked_path, br#"{"synthetic":"tampered"}"#).unwrap();
+    let error = ExperimentReplayLibrary::load(&registry_path, &base).unwrap_err();
+    assert!(
+        error.contains("tracked result SHA mismatch"),
+        "error was: {error}"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn library_load_rejects_wrong_eval_report_sha() {
+    let base = temp_tree("evalsha");
+    let registry_path = write_synthetic_experiment(&base);
+    // Tamper with the eval report after the registry was written.
+    let eval_path = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1/eval-report.json");
+    fs::write(&eval_path, br#"{"tampered":true}"#).unwrap();
+    let error = ExperimentReplayLibrary::load(&registry_path, &base).unwrap_err();
+    assert!(
+        error.contains("eval report SHA mismatch"),
+        "error was: {error}"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn library_load_rejects_fake_all_zero_hashes() {
+    let base = temp_tree("fakehash");
+    let registry_path = write_synthetic_experiment(&base);
+    // Registry with the old-style fake hashes must now fail at load.
+    let mut registry: serde_json::Value =
+        serde_json::from_slice(&fs::read(&registry_path).unwrap()).unwrap();
+    registry["experiments"][0]["tracked_result_sha256"] = serde_json::json!("0".repeat(64));
+    registry["experiments"][0]["pairings"][0]["eval_report_sha256"] =
+        serde_json::json!("1".repeat(64));
+    fs::write(&registry_path, serde_json::to_vec(&registry).unwrap()).unwrap();
+    let error = ExperimentReplayLibrary::load(&registry_path, &base).unwrap_err();
+    assert!(
+        error.contains("tracked result SHA mismatch") || error.contains("eval report SHA mismatch"),
+        "error was: {error}"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn library_load_rejects_missing_tracked_result_and_eval_report() {
+    let base = temp_tree("missingfiles");
+    let registry_path = write_synthetic_experiment(&base);
+    fs::remove_file(base.join("benchmarks/synth.json")).unwrap();
+    let error = ExperimentReplayLibrary::load(&registry_path, &base).unwrap_err();
+    assert!(
+        error.contains("cannot read tracked result"),
+        "error was: {error}"
+    );
+
+    let base2 = temp_tree("missingeval");
+    let registry_path2 = write_synthetic_experiment(&base2);
+    fs::remove_file(
+        base2.join("local-artifacts/m36a-synth/runs/synth-pairing-v1/eval-report.json"),
+    )
+    .unwrap();
+    let error = ExperimentReplayLibrary::load(&registry_path2, &base2).unwrap_err();
+    assert!(
+        error.contains("cannot read eval report"),
+        "error was: {error}"
+    );
+    let _ = fs::remove_dir_all(&base);
+    let _ = fs::remove_dir_all(&base2);
+}
+
+#[test]
+fn wrong_agent_lineup_is_rejected_for_matches_and_bundles() {
+    let base = temp_tree("lineup");
+    let registry_path = write_synthetic_experiment(&base);
+    let library = ExperimentReplayLibrary::load(&registry_path, &base).unwrap();
+
+    // Swap the two agents' versions in the match report (wrong lineup).
+    let report_path = base
+        .join("local-artifacts/m36a-synth/runs/synth-pairing-v1/matches/match-000000.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["agents"][0]["agent_version"] = serde_json::json!("M25-D2-v2");
+    report["agents"][1]["agent_version"] = serde_json::json!("M28A");
+    fs::write(&report_path, serde_json::to_vec(&report).unwrap()).unwrap();
+
+    let error = library
+        .pairing_matches("synth", "synth-pairing-v1")
+        .unwrap_err();
+    assert!(
+        error.contains("agent lineup mismatch"),
+        "error was: {error}"
+    );
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("agent lineup mismatch"),
+        "error was: {error}"
+    );
+
+    // Unknown agent name is also a lineup violation.
+    let mut report: serde_json::Value =
+        serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["agents"][0]["agent_version"] = serde_json::json!("M28A");
+    report["agents"][1]["agent_version"] = serde_json::json!("M25-D2-v2");
+    report["agents"][0]["agent_name"] = serde_json::json!("some-other-agent");
+    fs::write(&report_path, serde_json::to_vec(&report).unwrap()).unwrap();
+    let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+    assert!(
+        error.contains("agent lineup mismatch"),
+        "error was: {error}"
+    );
+
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn symlink_escape_from_run_dir_is_rejected_at_load_and_access() {
+    let base = temp_tree("symlink");
+    let registry_path = write_synthetic_experiment(&base);
+    // Replace the run directory with a symlink pointing OUTSIDE
+    // local-artifacts (but keep a real, valid tree behind it so only the
+    // escape is wrong).
+    let real_outside = base.join("outside-tree/synth-pairing-v1");
+    fs::create_dir_all(&real_outside).unwrap();
+    let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
+    let stash = base.join("local-artifacts/m36a-synth/runs/stashed-real");
+    fs::rename(&run_dir, &stash).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&real_outside, &run_dir).unwrap();
+
+    // Load-time containment check rejects the symlinked run dir.
+    let error = ExperimentReplayLibrary::load(&registry_path, &base).unwrap_err();
+    assert!(
+        error.contains("resolves outside local-artifacts"),
+        "error was: {error}"
+    );
+
+    // Even a registry that passes structural validation cannot serve data
+    // through a symlinked run dir: build a library from a stashed,
+    // non-symlinked copy and then swap in the symlink before access.
+    #[cfg(unix)]
+    {
+        let _ = fs::remove_file(&run_dir);
+        fs::rename(&stash, &run_dir).unwrap();
+        let library = ExperimentReplayLibrary::load(&registry_path, &base).unwrap();
+        // Now replace with a symlink mid-flight.
+        let _ = fs::rename(&run_dir, &stash);
+        std::os::unix::fs::symlink(&real_outside, &run_dir).unwrap();
+        let error = library
+            .pairing_matches("synth", "synth-pairing-v1")
+            .unwrap_err();
+        assert!(
+            error.contains("resolves outside local-artifacts"),
+            "error was: {error}"
+        );
+        let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
+        assert!(
+            error.contains("resolves outside local-artifacts"),
+            "error was: {error}"
+        );
+    }
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn symlinked_run_dir_inside_local_artifacts_still_serves() {
+    // A symlink that stays INSIDE local-artifacts is legitimate.
+    let base = temp_tree("symlink-ok");
+    let registry_path = write_synthetic_experiment(&base);
+    let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
+    let alias = base.join("local-artifacts/m36a-synth/runs/alias-target");
+    fs::rename(&run_dir, &alias).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&alias, &run_dir).unwrap();
+    // Rebind the eval report SHA (same bytes, new path) and reload.
+    let eval_path = alias.join("eval-report.json");
+    let mut registry: serde_json::Value =
+        serde_json::from_slice(&fs::read(&registry_path).unwrap()).unwrap();
+    registry["experiments"][0]["pairings"][0]["eval_report_sha256"] =
+        serde_json::json!(sha256_of(&fs::read(&eval_path).unwrap()));
+    fs::write(&registry_path, serde_json::to_vec(&registry).unwrap()).unwrap();
+    let library = ExperimentReplayLibrary::load(&registry_path, &base)
+        .expect("inside-artifacts symlink must be accepted");
+    let bundle = library.bundle("synth", "synth-pairing-v1", 0).unwrap();
+    assert!(!bundle.frames.is_empty());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn real_m35a_library_loads_with_verified_provenance() {
+    if !m35a_artifacts_present() {
+        eprintln!("M35A artifacts not present; skipping");
+        return;
+    }
+    // The tracked registry must load fail-closed: this now verifies the
+    // tracked result SHA, all 15 eval-report SHAs, and symlink containment.
+    let _library = load_library();
 }

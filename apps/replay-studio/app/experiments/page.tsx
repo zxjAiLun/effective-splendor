@@ -281,17 +281,20 @@ export default function ExperimentsPage() {
     },
     [bundle],
   );
-  usePlyNavigation(bundle?.frames.length ?? 0, (delta) => {
-    if (!bundle) return;
-    setFrameIndex((current) =>
-      candidateOnly ? stepCandidateDecision(bundle.frames, current, delta) : current + delta,
-    );
-  });
+  const stepPly = useCallback(
+    (delta: number) => {
+      if (!bundle) return;
+      setFrameIndex((current) =>
+        candidateOnly
+          ? stepCandidateDecision(bundle.frames, current, delta)
+          : Math.max(0, Math.min(bundle.frames.length - 1, current + delta)),
+      );
+    },
+    [bundle, candidateOnly],
+  );
+  usePlyNavigation(bundle?.frames.length ?? 0, stepPly);
 
-  const stepButton = (delta: number) => {
-    if (!bundle) return;
-    changeFrame(candidateOnly ? stepCandidateDecision(bundle.frames, frameIndex, delta) : frameIndex + delta);
-  };
+  const stepButton = stepPly;
 
   // ---- filters ----
   const visiblePairings = useMemo(
