@@ -2,11 +2,11 @@
 
 ```ini
 MILESTONE = M35A
-STATUS = PARTIAL_VALID / PENDING_FINAL_REVIEW
+STATUS = PARTIAL_VALID / ACCEPTED / CLOSED
 STATUS_DETAIL = 15 complete pairings = VALID; M29A-v2 vs M07 = NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION; M31A vs M07 = NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION; promotion = NONE; champion = M07
 BASE_COMMIT = f46147c0b82f0fa5653457a419ebf8fbc0df7325
 EXECUTION_COMMIT = 709fcca (review repair 1, PASS / FORMAL M35A ARENA AUTHORIZED)
-CLOSURE_DELTA_COMMIT = (this commit; closure review findings)
+CLOSURE_DELTA_COMMIT = 3deea43 (closure review PASS — M35A PARTIAL_VALID / ACCEPTED / CLOSED)
 SCOPE = Evaluate the true game-playing strength of 9 historical neural network checkpoints via direct legal-action policy scoring (argmax over server-certified legal actions, without search) in paired-seed Arena matches against M07 Champion and D2-v2 Benchmark.
 DATASET / MATCHES = 32 paired seeds (300001..300032) x 2 seat rotations = 64 games per pairing; 9 vs M07 (576 games) + 8 vs D2-v2 (512 games) = 1,088 total matches scheduled.
 CHAMPION = M07 (Determinization Search, sample-seed=20260810, sample-count=4, depth=1, max-nodes=2000)
@@ -15,7 +15,7 @@ CHECKPOINTS = M24-S2, M25-D2-v2, M28A, M28B, M29A-v2, M31A, M32A, M33A, M34A
 ARENA_PROTOCOL = NDJSON Protocol v0.5 over stdio (splendor eval / run-match)
 EXECUTION_DEVICE = CPU (single/dual-thread bounded, zero CUDA initialization overhead)
 PROMOTION = NONE (Exploratory retrospective diagnostic; does not retroactively alter offline gate verdicts or promote checkpoints.)
-DECISION = PENDING_FINAL_REVIEW
+DECISION = CLOSED (final review PASS: 15 complete pairings valid; ledger closes 960+75+2+51=1088; M29A-v2/M31A vs M07 produce no 64-game results)
 TRACKED_RESULT = benchmarks/m35a-retrospective-arena.result.json
 ```
 
@@ -90,7 +90,7 @@ An explicit registry binds all 9 candidate models to their exact checkpoint path
 - [x] Formal execution authorized (`PASS / FORMAL M35A ARENA AUTHORIZED`, basis `709fcca`).
 - [x] Execute 17 pairings serially; 15 completed fully, 2 aborted deterministically (see execution result).
 - [x] Closure delta: corrected M31A offline Top-1 (35.91%), added tracked result JSON with full ledger, persisted deterministic-nontermination diagnostics with SHAs.
-- [ ] Final review of execution results.
+- [x] Final review PASS: `M35A PARTIAL_VALID / ACCEPTED / CLOSED` (basis `3deea43`).
 
 ## Formal execution result (2026-08-27)
 
@@ -143,15 +143,16 @@ identical game_ids), with full stdout/stderr/exit-status capture persisted
 under `local-artifacts/m35a-retrospective-arena/diagnostics/` and bound by
 SHA256 in the tracked result JSON:
 
-| Diagnostic | Seed | Exit code | stderr | plan SHA256 (16) | stderr SHA256 (16) |
-| --- | --- | --- | --- | --- | --- |
-| `m29a-vs-m07-s300031-rerun` | 300031 | 1 | `error: engine internal error: match exceeded ply safety limit` | `2e85bf2845eba6b9` | `287fd6c5c2560235` |
-| `m31a-vs-m07-s300008-rerun` | 300008 | 1 | `error: engine internal error: match exceeded ply safety limit` | `737f5d5cbc563ec2` | `287fd6c5c2560235` |
+| Diagnostic | Seed | Exit code | stderr | plan SHA256 (16) | stderr SHA256 (16) | exit-status SHA256 (16) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `m29a-vs-m07-s300031-rerun` | 300031 | 1 | `error: engine internal error: match exceeded ply safety limit` | `2e85bf2845eba6b9` | `287fd6c5c2560235` | `cf205dbb8cea8489` |
+| `m31a-vs-m07-s300008-rerun` | 300008 | 1 | `error: engine internal error: match exceeded ply safety limit` | `737f5d5cbc563ec2` | `287fd6c5c2560235` | `cf205dbb8cea8489` |
 
-(The two stderr logs are byte-identical — same engine error line — hence
-the same SHA256. Full 64-char values and stdout SHA256s are in the tracked
-result JSON. The M31A diagnostic's r00 completed 60 plies before r01
-aborted; the M29A diagnostic aborted at r00 with no committed matches.)
+(The two stderr logs are byte-identical — same engine error line — and both
+exit-status files read `exit=1`, hence identical SHA256s. Full 64-char values
+and stdout SHA256s are in the tracked result JSON. The M31A diagnostic's r00
+completed 60 plies before r01 aborted; the M29A diagnostic aborted at r00
+with no committed matches.)
 
 ### Per-pairing results (candidate perspective, 64 games each)
 
@@ -282,6 +283,22 @@ possible first-move/interaction effect but with no action taken.
   - Status set to `PARTIAL_VALID / PENDING_FINAL_REVIEW`: 15 complete
     pairings VALID; M29A-v2 vs M07 and M31A vs M07 = NO 64-GAME RESULT /
     DETERMINISTIC NONTERMINATION; promotion NONE; champion M07.
+- **2026-08-27 Final review PASS — milestone closed**:
+  - Verdict: `PASS — M35A PARTIAL_VALID / ACCEPTED / CLOSED` (review basis
+    `3deea43`); zero blocking findings.
+  - Independently confirmed by the reviewer: 15 complete pairings / 960
+    matches with correct report SHAs; ledger `960 + 75 + 2 + 51 = 1088`
+    closes; M31A authoritative Top-1 = 35.91%; both nonterminations
+    reproduce stably at the original seed, agents, and evaluation IDs;
+    M29A-v2/M31A produce no 64-game results vs M07; promotion NONE; M07
+    remains champion.
+  - Bookkeeping commit (this commit): status flipped to
+    `PARTIAL_VALID / ACCEPTED / CLOSED` in this document and the tracked
+    result JSON; the previously missing exit-status file SHA256
+    (`cf205dbb8cea84897b488abcc281bf96698d5e94b1096b16657b4caba9082a22`,
+    identical for both diagnostics since both read `exit=1`) added to the
+    diagnostic evidence bindings. No Arena re-run; no termination or
+    scoring rule changes.
 
 ## Validation and evidence
 
@@ -354,10 +371,14 @@ Both pass on 2026-08-27.
 - PROMOTION: NONE, as pre-declared. The 2 aborted pairings are reported as
   a genuine engine/engine-policy interaction failure (endless take/pass
   loop), not hidden.
-- Current status: `PARTIAL_VALID / PENDING_FINAL_REVIEW`. The 15 complete
-  pairings are VALID; M29A-v2 vs M07 and M31A vs M07 carry
-  `NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION`. No Arena termination
-  rule change and no re-execution of the full schedule was performed.
+- **Final review verdict (2026-08-27): `PASS — M35A PARTIAL_VALID /
+  ACCEPTED / CLOSED`** (review basis `3deea43`). Independently confirmed:
+  15 complete pairings / 960 matches with correct report SHAs; ledger
+  960 + 75 + 2 + 51 = 1,088 closes; M31A authoritative Top-1 = 35.91%;
+  both nonterminations reproduce stably at the original seed, agents, and
+  evaluation IDs; M29A-v2/M31A produce no 64-game results vs M07 while all
+  other results stand; promotion NONE; M07 remains champion.
+- Milestone CLOSED. No Arena re-run, no termination/scoring rule change.
 
 ## Known limitations
 
@@ -385,11 +406,9 @@ Both pass on 2026-08-27.
 
 ## Next authorized gate
 
-- Final review of the closure delta (M31A metric correction, tracked result
-  ledger, persisted nontermination evidence). If accepted, M35A closes as
-  `PARTIAL_VALID`: 15 complete pairings VALID, 2 pairings
-  `NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION`, promotion NONE,
-  champion M07. Any future retry of the two aborted pairings requires a
-  separately authorized milestone (engine-side termination semantics);
-  seed changes and post-hoc rescoring of the 1,088-match schedule remain
-  forbidden.
+- None. M35A is closed as `PARTIAL_VALID / ACCEPTED / CLOSED`: 15 complete
+  pairings VALID, 2 pairings `NO 64-GAME RESULT / DETERMINISTIC
+  NONTERMINATION`, promotion NONE, champion M07. Any future retry of the
+  two aborted pairings requires a separately authorized milestone
+  (engine-side termination semantics); seed changes and post-hoc rescoring
+  of the 1,088-match schedule remain forbidden.

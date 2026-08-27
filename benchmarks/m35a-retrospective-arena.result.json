@@ -2,13 +2,14 @@
   "format": "effective-splendor-m35a-retrospective-arena-result",
   "version": 2,
   "milestone": "M35A",
-  "status": "PARTIAL_VALID / PENDING_FINAL_REVIEW",
+  "status": "PARTIAL_VALID / ACCEPTED / CLOSED",
   "status_detail": {
     "complete_pairings": "15 complete pairings = VALID",
     "m29a_vs_m07": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
     "m31a_vs_m07": "NO 64-GAME RESULT / DETERMINISTIC NONTERMINATION",
     "promotion": "NONE",
-    "champion": "M07"
+    "champion": "M07",
+    "closure": "Final review PASS (2026-08-27): 15 complete pairings VALID; ledger closes 960+75+2+51=1088; M29A-v2/M31A vs M07 produce no 64-game results; promotion NONE; champion M07."
   },
   "execution_basis": "commit 709fcca (review repair 1; PASS / FORMAL M35A ARENA AUTHORIZED); executed 2026-08-27",
   "ledger": {
@@ -486,7 +487,8 @@
       "stderr_content": "error: engine internal error: match exceeded ply safety limit",
       "exit_status_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m29a-vs-m07-s300031-rerun.exit-status.txt",
       "exit_code": 1,
-      "matches_completed_before_abort": 0
+      "matches_completed_before_abort": 0,
+      "exit_status_sha256": "cf205dbb8cea84897b488abcc281bf96698d5e94b1096b16657b4caba9082a22"
     },
     {
       "pairing_candidate": "M31A",
@@ -503,7 +505,8 @@
       "stderr_content": "error: engine internal error: match exceeded ply safety limit",
       "exit_status_file": "local-artifacts/m35a-retrospective-arena/diagnostics/m31a-vs-m07-s300008-rerun.exit-status.txt",
       "exit_code": 1,
-      "matches_completed_before_abort": 1
+      "matches_completed_before_abort": 1,
+      "exit_status_sha256": "cf205dbb8cea84897b488abcc281bf96698d5e94b1096b16657b4caba9082a22"
     }
   ],
   "cohort_a_offline_top1_sources": {
