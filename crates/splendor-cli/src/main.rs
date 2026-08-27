@@ -9,6 +9,7 @@ mod atomic_output;
 mod determinization_analysis_command;
 mod eval_command;
 mod evaluation_analysis_command;
+pub mod experiment_replays;
 mod human_play_command;
 mod imperfect_search_command;
 mod league_command;

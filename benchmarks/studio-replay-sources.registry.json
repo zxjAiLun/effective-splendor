@@ -1,0 +1,173 @@
+{
+  "format": "effective-splendor-studio-replay-sources",
+  "version": 1,
+  "experiments": [
+    {
+      "id": "m35a",
+      "display_name": "M35A Retrospective Arena",
+      "description": "Historical neural checkpoint direct-policy retrospective arena (commit 709fcca execution basis; closed PARTIAL_VALID)",
+      "tracked_result": "benchmarks/m35a-retrospective-arena.result.json",
+      "tracked_result_sha256": "8b7428fdd8b7b493f73eda628f5358bcdf3c3392e722f383161742ff11590d5a",
+      "runs_root": "local-artifacts/m35a-retrospective-arena/runs",
+      "pairings": [
+        {
+          "evaluation_id": "m35a-m24-s2-vs-m07-v1",
+          "candidate_model_id": "M24-S2",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m24-s2-vs-m07-v1",
+          "eval_report_sha256": "76163270560484e3eb60b1180d2e73e470485a98cca473e334e599121fb6dea4"
+        },
+        {
+          "evaluation_id": "m35a-m25-d2-v2-vs-m07-v1",
+          "candidate_model_id": "M25-D2-v2",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m25-d2-v2-vs-m07-v1",
+          "eval_report_sha256": "bd6aa756685491f1d89e6933225988087da75c5c828c99be2e6a4fcd7147306e"
+        },
+        {
+          "evaluation_id": "m35a-m28a-vs-m07-v1",
+          "candidate_model_id": "M28A",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28a-vs-m07-v1",
+          "eval_report_sha256": "d666e963b8b12fd514e3b400467658ca393cf7147d14be74b41378826f528c90"
+        },
+        {
+          "evaluation_id": "m35a-m28b-vs-m07-v1",
+          "candidate_model_id": "M28B",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28b-vs-m07-v1",
+          "eval_report_sha256": "abe66fd7a76cd2976a512ed561340523120da465c5c68bf877977c12542a73d9"
+        },
+        {
+          "evaluation_id": "m35a-m29a-v2-vs-m07-v1",
+          "candidate_model_id": "M29A-v2",
+          "opponent_model_id": "M07",
+          "status": "EXCLUDED_PREFIX",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/invalid-attempt-1-m35a-m29a-v2-vs-m07-v1",
+          "completed_before_abort": 60,
+          "nontermination_match_slot": "s000030-r00 (seed 300031)",
+          "not_started_after_abort": 3
+        },
+        {
+          "evaluation_id": "m35a-m31a-vs-m07-v1",
+          "candidate_model_id": "M31A",
+          "opponent_model_id": "M07",
+          "status": "EXCLUDED_PREFIX",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/invalid-attempt-1-m35a-m31a-vs-m07-v1",
+          "completed_before_abort": 15,
+          "nontermination_match_slot": "s000007-r01 (seed 300008)",
+          "not_started_after_abort": 48
+        },
+        {
+          "evaluation_id": "m35a-m32a-vs-m07-v1",
+          "candidate_model_id": "M32A",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m32a-vs-m07-v1",
+          "eval_report_sha256": "9d1566f1d4623228dd96f4171889621acf9538a96fdc9c2000b3e1045d3b9af2"
+        },
+        {
+          "evaluation_id": "m35a-m33a-vs-m07-v1",
+          "candidate_model_id": "M33A",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m33a-vs-m07-v1",
+          "eval_report_sha256": "cda9bd0bdca9b1d816ba51efe4633edb3fdca063045d8f2d20657b9e56990ac3"
+        },
+        {
+          "evaluation_id": "m35a-m34a-vs-m07-v1",
+          "candidate_model_id": "M34A",
+          "opponent_model_id": "M07",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m34a-vs-m07-v1",
+          "eval_report_sha256": "e105093bcf5d7fc25f9a502de655a10afb6221986136d11918e831b5af4f6228"
+        },
+        {
+          "evaluation_id": "m35a-m24-s2-vs-d2v2-v1",
+          "candidate_model_id": "M24-S2",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m24-s2-vs-d2v2-v1",
+          "eval_report_sha256": "833254590e1e35d3cf7ea9fc82437de8873fae38dc3a65d30e295cea5feb4eb6"
+        },
+        {
+          "evaluation_id": "m35a-m28a-vs-d2v2-v1",
+          "candidate_model_id": "M28A",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28a-vs-d2v2-v1",
+          "eval_report_sha256": "146dbef46d4be8af3fe0cf48f159095ce9acc29c7709b4da816f321f15db41ca"
+        },
+        {
+          "evaluation_id": "m35a-m28b-vs-d2v2-v1",
+          "candidate_model_id": "M28B",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m28b-vs-d2v2-v1",
+          "eval_report_sha256": "2a78a577cecafed061124634e61e51c529a40c2c100b00ae55e1eec2b8df8dba"
+        },
+        {
+          "evaluation_id": "m35a-m29a-v2-vs-d2v2-v1",
+          "candidate_model_id": "M29A-v2",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m29a-v2-vs-d2v2-v1",
+          "eval_report_sha256": "e2468a140f7d02784a9a5967f8a913b4f3727ed055d9a730e60bab60e881c756"
+        },
+        {
+          "evaluation_id": "m35a-m31a-vs-d2v2-v1",
+          "candidate_model_id": "M31A",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m31a-vs-d2v2-v1",
+          "eval_report_sha256": "0225ba61633d807a7d639e6e0c1c3780f6cbdf7743be2b76ec0a9fa60f71871c"
+        },
+        {
+          "evaluation_id": "m35a-m32a-vs-d2v2-v1",
+          "candidate_model_id": "M32A",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m32a-vs-d2v2-v1",
+          "eval_report_sha256": "04c95b815ae243a9cab6ad49657959f73f71f7962d0b9d69da4ee3cac858dfef"
+        },
+        {
+          "evaluation_id": "m35a-m33a-vs-d2v2-v1",
+          "candidate_model_id": "M33A",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m33a-vs-d2v2-v1",
+          "eval_report_sha256": "a1974931b9e43dfd76ece949f4d26a35ddecc6c1d6c25556b8e1fa5c66228000"
+        },
+        {
+          "evaluation_id": "m35a-m34a-vs-d2v2-v1",
+          "candidate_model_id": "M34A",
+          "opponent_model_id": "M25-D2-v2",
+          "status": "VALID",
+          "scheduled_matches": 64,
+          "run_dir": "local-artifacts/m35a-retrospective-arena/runs/m35a-m34a-vs-d2v2-v1",
+          "eval_report_sha256": "c7403576a0ba64ab914b28ece522252289b73cd7fdac74eb199620ce58bbe3c6"
+        }
+      ]
+    }
+  ]
+}

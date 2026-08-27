@@ -63,3 +63,16 @@ test("server-renders the M23 one-click review route", async () => {
   assert.match(html, /ONE-CLICK REVIEW/);
   assert.match(html, /Advanced import/);
 });
+
+test("server-renders the M36A experiments route shell", async () => {
+  const response = await render("/experiments");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Experiment Replay Library · Effective Splendor<\/title>/i);
+  assert.match(html, /Experiment Replay Library/);
+  assert.match(html, /EXPERIMENTS/);
+  assert.match(html, /MATCHES/);
+  assert.match(html, /No match selected/);
+  assert.match(html, /Filter pairings/);
+  assert.match(html, /Play vs AI/);
+});

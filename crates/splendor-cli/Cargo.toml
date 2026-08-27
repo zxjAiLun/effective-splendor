@@ -6,6 +6,10 @@ license.workspace = true
 rust-version.workspace = true
 description = "CLI for Splendor self-play, replay record/verify, and benchmarks"
 
+[lib]
+name = "splendor_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "splendor"
 path = "src/main.rs"

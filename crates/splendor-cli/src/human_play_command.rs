@@ -33,7 +33,7 @@ use splendor_search::SearchConfigV1;
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> (--opponent <heuristic|m07> | --registry <registry.json> --agent-id <id>) --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
-    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>]";
+    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
@@ -635,6 +635,7 @@ struct HostArgs {
     reviewer_registry: PathBuf,
     port: u16,
     move_timeout_ms: u64,
+    replay_sources: Option<PathBuf>,
 }
 
 #[derive(serde::Deserialize)]
@@ -743,6 +744,7 @@ struct StudioHost {
     next_session_number: u64,
     session: Option<Session>,
     jobs: ReviewJobManager,
+    experiment_library: Option<crate::experiment_replays::ExperimentReplayLibrary>,
 }
 
 impl StudioHost {
@@ -961,6 +963,42 @@ impl StudioHost {
         drop(state);
         validate_cached_review_artifact(&path, &cache_key, &record.reviewer_id, "")?;
         fs::read_to_string(&path).map_err(|error| format!("cannot read review artifact: {error}"))
+    }
+
+    fn experiment_library(
+        &self,
+    ) -> Result<&crate::experiment_replays::ExperimentReplayLibrary, String> {
+        self.experiment_library
+            .as_ref()
+            .ok_or_else(|| "experiment replay sources are not configured on this host".to_string())
+    }
+
+    fn experiment_replays_index(&self) -> Result<String, String> {
+        let index = self.experiment_library()?.index()?;
+        serde_json::to_string(&index).map_err(|error| error.to_string())
+    }
+
+    fn experiment_replays_pairing(
+        &self,
+        experiment_id: &str,
+        evaluation_id: &str,
+    ) -> Result<String, String> {
+        let matches = self
+            .experiment_library()?
+            .pairing_matches(experiment_id, evaluation_id)?;
+        serde_json::to_string(&matches).map_err(|error| error.to_string())
+    }
+
+    fn experiment_replays_bundle(
+        &self,
+        experiment_id: &str,
+        evaluation_id: &str,
+        index: u32,
+    ) -> Result<String, String> {
+        let bundle = self
+            .experiment_library()?
+            .bundle(experiment_id, evaluation_id, index)?;
+        serde_json::to_string(&bundle).map_err(|error| error.to_string())
     }
 
     fn recent_games(&self) -> Result<String, String> {
@@ -1480,6 +1518,13 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
     reviewer_registry
         .validate()
         .map_err(|error| error.to_string())?;
+    let experiment_library = match &args.replay_sources {
+        Some(path) => Some(crate::experiment_replays::ExperimentReplayLibrary::load(
+            path,
+            Path::new("."),
+        )?),
+        None => None,
+    };
     let mut host = StudioHost {
         registry_path: args.registry,
         registry,
@@ -1488,6 +1533,7 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
         next_session_number: 1,
         session: None,
         jobs: ReviewJobManager::default(),
+        experiment_library,
     };
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port)).map_err(|error| {
         format!(
@@ -1555,6 +1601,58 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         }
         "GET" if request.path == "/recent-games" => {
             return respond_result(&mut stream, host.recent_games());
+        }
+        "GET" if request.path == "/experiment-replays" => {
+            return respond_result(&mut stream, host.experiment_replays_index());
+        }
+        "GET" if request.path.starts_with("/experiment-replays/") => {
+            // /experiment-replays/{experiment}/pairings/{pairing}/matches[/{index}/bundle]
+            let rest = &request.path["/experiment-replays/".len()..];
+            let segments: Vec<&str> = rest.split('/').collect();
+            match (segments.as_slice(), rest.strip_suffix("/bundle")) {
+                ([_experiment, "pairings", _pairing, "matches", index, "bundle"], _) => {
+                    let index: u32 = index
+                        .parse()
+                        .map_err(|_| format!("invalid match index `{index}`"))?;
+                    return respond_result(
+                        &mut stream,
+                        host.experiment_replays_bundle(segments[0], segments[2], index),
+                    );
+                }
+                (_, Some(bundle_path)) => {
+                    // Handles the /bundle suffix case in one string.
+                    let parts: Vec<&str> = bundle_path.split('/').collect();
+                    if parts.len() == 5 && parts[1] == "pairings" && parts[3] == "matches" {
+                        let index: u32 = parts[4]
+                            .parse()
+                            .map_err(|_| format!("invalid match index `{}`", parts[4]))?;
+                        return respond_result(
+                            &mut stream,
+                            host.experiment_replays_bundle(parts[0], parts[2], index),
+                        );
+                    }
+                    return respond(
+                        &mut stream,
+                        404,
+                        "application/json",
+                        "{\"error\":\"not found\"}",
+                    );
+                }
+                ([experiment, "pairings", pairing, "matches"], _) => {
+                    return respond_result(
+                        &mut stream,
+                        host.experiment_replays_pairing(experiment, pairing),
+                    );
+                }
+                _ => {
+                    return respond(
+                        &mut stream,
+                        404,
+                        "application/json",
+                        "{\"error\":\"not found\"}",
+                    );
+                }
+            }
         }
         "GET" if request.path.starts_with("/reviews/") => {
             let rest = &request.path["/reviews/".len()..];
@@ -1741,6 +1839,7 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     let mut reviewer_registry = None;
     let mut port = None;
     let mut move_timeout_ms = None;
+    let mut replay_sources = None;
     let mut index = 0;
     while index < args.len() {
         let value = args
@@ -1756,6 +1855,11 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
             )?,
             "--port" => set_once(&mut port, value, "--port")?,
             "--move-timeout-ms" => set_once(&mut move_timeout_ms, value, "--move-timeout-ms")?,
+            "--replay-sources" => set_once(
+                &mut replay_sources,
+                PathBuf::from(value),
+                "--replay-sources",
+            )?,
             other => return Err(format!("unknown argument `{other}`; {HOST_USAGE}")),
         }
         index += 2;
@@ -1780,6 +1884,7 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
             .unwrap_or_else(|| PathBuf::from("benchmarks/studio-reviewers.registry.json")),
         port,
         move_timeout_ms,
+        replay_sources,
     })
 }
 
@@ -1928,6 +2033,7 @@ mod tests {
             next_session_number: 1,
             session: None,
             jobs: ReviewJobManager::default(),
+            experiment_library: None,
         };
         let value: serde_json::Value = serde_json::from_str(&host.agents_json().unwrap()).unwrap();
         assert_eq!(value["agents"][0]["id"], "gpu-agent");
