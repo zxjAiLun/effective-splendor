@@ -282,8 +282,9 @@ export function BoardSurface({
  *                    market, which is public information in Splendor. Blind
  *                    reserves stay face-down as `HiddenDevelopmentCard`.
  *
- * `player.bonuses` is public for every seat, so resolving the net cost against
- * the owner's own discounts leaks nothing either.
+ * Reserve cards render the printed cost, not the net cost after discounts:
+ * the reserve strip is too compact for the owed/printed pair, and the player
+ * can read the full market card or hover/click the reserve for details.
  */
 function ReservedCards({
   frame,
@@ -321,7 +322,6 @@ function ReservedCards({
             <DevelopmentCard
               card={cards.get(item.card)!}
               variant="mini"
-              discount={player.bonuses}
               slotLabel={item.fromDeck ? "blind ◉" : "reserved"}
               key={`${item.card}-${index}`}
             />
