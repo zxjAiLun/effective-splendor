@@ -10,7 +10,8 @@ import {
   reviewRecommendedAction,
   validateReviewTrace,
 } from "../trace-runtime.mjs";
-import { DevelopmentCard, EmptyDevelopmentCard, type DevelopmentCardData } from "../development-card";
+import { type DevelopmentCardData } from "../development-card";
+import { BoardSurface } from "../components/replay-board";
 
 type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
@@ -112,19 +113,9 @@ type Job = {
 };
 
 const API = "http://127.0.0.1:43120";
-const GEM_KEYS: GemName[] = ["white", "blue", "green", "red", "black", "gold"];
-const COST_COLORS = ["white", "blue", "green", "red", "black"];
 
 function shortHash(hash: string) {
   return `${hash.slice(0, 8)}…${hash.slice(-6)}`;
-}
-
-function gemCode(key: GemName) {
-  return { white: "W", blue: "U", green: "G", red: "R", black: "K", gold: "★" }[key];
-}
-
-function GemSet({ gems, compact = false }: { gems: Gems; compact?: boolean }) {
-  return <div className={`gem-set ${compact ? "compact" : ""}`}>{GEM_KEYS.map((key) => <span className={`token token-${key}`} key={key}><i>{gemCode(key)}</i><strong>{gems[key]}</strong></span>)}</div>;
 }
 
 export default function ReviewPage() {
@@ -141,6 +132,7 @@ export default function ReviewPage() {
   const requestGeneration = useRef(0);
 
   const cards = useMemo(() => new Map((trace?.catalog.cards ?? []).map((card) => [card.id, card])), [trace]);
+  const nobles = useMemo(() => new Map((trace?.catalog.nobles ?? []).map((noble) => [noble.id, noble])), [trace]);
 
   const startReview = async (session: string, id: string, seat = humanSeat) => {
     const generation = ++requestGeneration.current;
@@ -310,7 +302,7 @@ export default function ReviewPage() {
                   Hidden reserves and future deck order are visible. Do not use this view to judge what P{frame?.actor} knew.
                 </div>
               )}
-              <BoardView frame={frame} cards={cards} reveal={reveal} />
+              {frame && <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={reveal} />}
             </div>
             <aside className="analysis-panel">
               <AnalysisPanel trace={trace} frame={frame} cards={cards} />
@@ -369,55 +361,6 @@ function ReviewSummaryBar({ trace, reviewer, summary, job }: { trace: ReviewTrac
         </div>
       )}
     </section>
-  );
-}
-
-function BoardView({ frame, cards, reveal }: { frame: ReviewFrame | null; cards: Map<number, DevelopmentCardData>; reveal: boolean }) {
-  if (!frame) return null;
-  const view = frame.player_view.public;
-  return (
-    <div>
-      <div className="noble-row">
-        <div className="row-label"><span>Nobles</span><small>{view.nobles.length} available</small></div>
-        <div className="noble-list">
-          {view.nobles.map((id) => <div className="noble" key={id}><strong>{cards.get(id) ? undefined : 3}</strong><span>#{id}</span></div>)}
-        </div>
-      </div>
-      <div className="market-grid">
-        {[2, 1, 0].map((tier) => (
-          <div className="market-row" key={tier}>
-            <div className="row-label"><span>Tier {tier + 1}</span><small>{view.deck_counts[tier]} in deck</small></div>
-            <div className="deck-card"><span>T{tier + 1}</span><strong>{view.deck_counts[tier]}</strong>{reveal && <small>next #{frame.referee_reveal.decks[tier]?.at(-1) ?? "—"}</small>}</div>
-            {view.market[tier].map((id, slot) => id == null ? <EmptyDevelopmentCard key={slot} /> : cards.has(id) ? <DevelopmentCard card={cards.get(id)!} slotLabel={`slot ${slot + 1}`} key={slot} /> : <div className="development-card development-card-empty" key={slot}>#{id}</div>)}
-          </div>
-        ))}
-      </div>
-      <div className="bank-row">
-        <div className="row-label"><span>Bank</span><small>available tokens</small></div>
-        <GemSet gems={view.bank} />
-      </div>
-      <div className="players-grid">
-        {view.players.map((player) => {
-          const full = frame.referee_reveal.players.find((item) => item.id === player.id);
-          const own = player.id === frame.actor;
-          return (
-            <article className={`player-card ${own ? "actor-card" : ""}`} key={player.id}>
-              <div className="player-title"><div><span>P{player.id}</span>{own && <em>ACTOR</em>}</div><strong>{player.prestige}<small> VP</small></strong></div>
-              <GemSet gems={player.tokens} compact />
-              <div className="bonus-line">{player.bonuses.map((amount, index) => <span className={`bonus bonus-${COST_COLORS[index]}`} key={index}>{amount}</span>)}</div>
-              <div className="reserved-line">
-                <small>Reserved {player.reserved_count}</small>
-                {reveal
-                  ? full?.reserved.map((card, index) => <span className={card.from_deck ? "hidden-card revealed" : "public-card"} key={index}>#{card.card}{card.from_deck ? " ◉" : ""}</span>)
-                  : own
-                    ? frame.player_view.private.reserved.map((card) => <span className="private-card" key={card.slot}>#{card.card}</span>)
-                    : <><span className="public-card">{player.public_reserved.map((id) => `#${id}`).join(" ") || "—"}</span>{player.reserved_count > player.public_reserved.length && <span className="hidden-card">{player.reserved_count - player.public_reserved.length} hidden</span>}</>}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

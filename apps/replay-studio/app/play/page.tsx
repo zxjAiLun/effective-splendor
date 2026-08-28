@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { DevelopmentCard, EmptyDevelopmentCard, type DevelopmentCardData } from "../development-card";
+import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
+import { TokenTotal } from "../components/token-total";
 
 type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
@@ -45,11 +46,28 @@ function GemChip({gem,count,onClick,selected=false,disabled=false,source="token"
 }
 
 function PlayerResources({player}:{player:Player}) {
-  const tokenTotal=GEM_NAMES.reduce((sum,gem)=>sum+player.tokens[gem],0);
   const bonusTotal=player.bonuses.reduce((sum,amount)=>sum+amount,0);
   return <div className="player-resource-table">
-    <div className="player-resource-row"><span>TOKENS <b>{tokenTotal}/10</b></span><div>{GEM_NAMES.map(gem=><GemChip gem={gem} count={player.tokens[gem]} key={gem}/>)}</div></div>
+    <div className="player-resource-row"><span>TOKENS <b><TokenTotal tokens={player.tokens}/></b></span><div>{GEM_NAMES.map(gem=><GemChip gem={gem} count={player.tokens[gem]} key={gem}/>)}</div></div>
     <div className="player-resource-row bonuses"><span>CARD BONUSES <b>{bonusTotal}</b></span><div>{TAKE_GEMS.map((gem,index)=><GemChip gem={gem} count={player.bonuses[index]??0} source="bonus" key={gem}/>)}</div></div>
+  </div>;
+}
+
+/**
+ * Cards an opponent reserved face-up from the market. These identities are
+ * public in Splendor, but the table previously showed only a count, hiding
+ * information the player is entitled to. Blind reserves taken from a deck stay
+ * face-down.
+ */
+function OpponentReserve({player,cards}:{player:Player;cards:Map<number,DevelopmentCardData>}) {
+  const hidden=Math.max(0,player.reserved_count-player.public_reserved.length);
+  if(!player.reserved_count) return null;
+  return <div className="opponent-reserve">
+    <div className="reserved-heading"><small>THEIR RESERVE {player.reserved_count}</small>{hidden>0?<em>{hidden} blind-reserved · identity hidden</em>:null}</div>
+    <div className="reserved-cards">
+      {player.public_reserved.map(id=>cards.has(id)?<DevelopmentCard card={cards.get(id)!} variant="mini" discount={player.bonuses} slotLabel="reserved" key={id}/>:null)}
+      {hidden>0?<HiddenDevelopmentCard count={hidden}/>:null}
+    </div>
   </div>;
 }
 
@@ -131,6 +149,7 @@ export default function HumanPlayPage() {
     setSelectedCard({tier:-1,slot,cardId}); setContextActions((state?.legal_actions??[]).filter(action=>action.type==="buy_reserved"&&action.slot===slot)); setPendingTake(EMPTY_GEMS);
   }
 
+  const humanBonuses = state?.observation.public.players.find(item=>item.id===state.human_seat)?.bonuses;
   const confirmTake = exactTakeActions.length===1 ? exactTakeActions[0] : null;
   const pendingCount=TAKE_GEMS.reduce((sum,gem)=>sum+pendingTake[gem],0);
   const defaultReviewerId=reviewers.find(reviewer=>reviewer.is_default)?.id??reviewers[0]?.id??"";
@@ -139,18 +158,18 @@ export default function HumanPlayPage() {
     {error?<div className="error-banner" role="alert">{error}</div>:null}
     {state?<section className="human-workspace">
       <article className="human-board">
-        <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><PlayerResources player={item}/>{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>)}</div>
+        <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><PlayerResources player={item}/>{item.id!==state.human_seat?<OpponentReserve player={item} cards={cards}/>:null}{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>)}</div>
         <div className="human-bank"><span><b>BANK</b><small>Click gems to build a legal take</small></span>{GEM_NAMES.map(gem=><GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={busy||gem==="gold"||state.result!==null} onClick={()=>changePendingGem(gem,1)} key={gem}/>)}</div>
         <section className="table-nobles"><div><b>NOBLES</b><small>{state.observation.public.nobles.length} available · requirements use permanent bonuses</small></div>{state.observation.public.nobles.map(id=>{const noble=nobles.get(id);const action=state.legal_actions.find(candidate=>candidate.type==="choose_noble"&&candidate.noble===id);return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||busy} onClick={()=>{if(action)void play(action);}} key={id}/>:null;})}</section>
-        {state.observation.private.reserved.length?<section className="reserved-tray"><span>YOUR RESERVE</span>{state.observation.private.reserved.map(reserved=>cards.has(reserved.card)?<DevelopmentCard card={cards.get(reserved.card)!} interactive affordable={(state.legal_actions).some(action=>action.type==="buy_reserved"&&action.slot===reserved.slot)} disabled={busy} onClick={()=>openReserved(reserved.slot,reserved.card)} slotLabel={`reserve ${reserved.slot+1}`} key={reserved.slot}/>:null)}</section>:null}
-        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><button type="button" className="tier-deck" disabled={busy||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)}><span>TIER {tier+1}</span><b>{state.observation.public.deck_counts[tier]}</b><small>click to blind reserve</small></button>{state.observation.public.market[tier].map((cardId,slot)=>{const card=cardId==null?null:cards.get(cardId);return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={busy} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;})}</div>)}</div>
+        {state.observation.private.reserved.length?<section className="reserved-tray"><span>YOUR RESERVE</span>{state.observation.private.reserved.map(reserved=>cards.has(reserved.card)?<DevelopmentCard card={cards.get(reserved.card)!} interactive affordable={(state.legal_actions).some(action=>action.type==="buy_reserved"&&action.slot===reserved.slot)} disabled={busy} onClick={()=>openReserved(reserved.slot,reserved.card)} slotLabel={`reserve ${reserved.slot+1}`} discount={humanBonuses} key={reserved.slot}/>:null)}</section>:null}
+        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><button type="button" className="tier-deck" disabled={busy||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)}><span>TIER {tier+1}</span><b>{state.observation.public.deck_counts[tier]}</b><small>click to blind reserve</small></button>{state.observation.public.market[tier].map((cardId,slot)=>{const card=cardId==null?null:cards.get(cardId);return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={busy} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} discount={humanBonuses} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;})}</div>)}</div>
         <div className="human-private"><span>PLAYER-VIEW ONLY</span><p>Actions and token holdings are public. Blind-reserved card identities and deck order remain hidden.</p></div>
       </article>
       <aside className="human-actions">
         {state.result?<div className="human-result"><strong>{state.result.winners.includes(state.human_seat)?"VICTORY":"DEFEAT"}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=><button key={reviewer.id} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}&seat=${state.human_seat}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.is_default?" · recommended default":""}</small></button>)}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}</div>:<>
           <section className="pending-panel"><span className="section-kicker">PENDING MOVE</span><h2>{pendingCount?"Take gems":selectedCard?`Card #${selectedCard.cardId}`:contextActions.some(action=>action.type==="reserve_deck")?"Blind reserve":"Select on the table"}</h2>
             {pendingCount?<><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div><p>{confirmTake?"Legal selection. Confirm to end your turn.":exactTakeActions.length>1?"Choose which gems to return below.":"Keep selecting a legal combination, or click a selected gem to return it."}</p></>:null}
-            {selectedCard&&cards.has(selectedCard.cardId)?<div className="selected-card-preview"><DevelopmentCard card={cards.get(selectedCard.cardId)!}/></div>:null}
+            {selectedCard&&cards.has(selectedCard.cardId)?<div className="selected-card-preview"><DevelopmentCard card={cards.get(selectedCard.cardId)!} discount={humanBonuses}/></div>:null}
             {contextActions.length?<div className="context-actions">{contextActions.map((action,index)=><button disabled={busy} onClick={()=>void play(action)} key={index}><strong>{action.type==="buy_market"||action.type==="buy_reserved"?"Buy card":action.type==="reserve_market"?"Reserve card":"Blind reserve"}</strong>{GEM_NAMES.some(gem=>actionReturns(action)[gem]>0)?<span>Return <GemStrip gems={actionReturns(action)}/></span>:<small>{action.type.startsWith("reserve")?"Gain gold if available":"Pay with tokens and bonuses"}</small>}</button>)}</div>:null}
             {exactTakeActions.length>1?<div className="context-actions">{exactTakeActions.map((action,index)=><button disabled={busy} onClick={()=>void play(action)} key={index}><strong>Confirm take</strong><span>Return <GemStrip gems={actionReturns(action)}/></span></button>)}</div>:null}
             {confirmTake?<button className="confirm-move" disabled={busy} onClick={()=>void play(confirmTake)}>Confirm take</button>:null}

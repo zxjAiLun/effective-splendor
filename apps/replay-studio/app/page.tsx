@@ -10,13 +10,13 @@ import {
 } from "./trace-runtime.mjs";
 import { DevelopmentCard, EmptyDevelopmentCard, type DevelopmentCardData } from "./development-card";
 import {
-  BoardPanel,
+  BoardSurface,
   ReplayTimeline,
   gemCode,
   simpleActionLabel,
   type Action,
   type CardId,
-  type Frame as BoardFrameLike,
+  type BoardFrame as BoardFrameLike,
   type Gems,
   type NobleId,
   type PlayerId,
@@ -193,7 +193,10 @@ function demoFrame(ply: number, actor: number, mismatch: boolean): Frame {
         ],
         pending_nobles: [],
       },
-      private: { reserved: [{ slot: 0, card: actor === 0 ? 82 : 65, tier: actor === 0 ? "Three" : "Two", from_deck: true }] },
+      private: { reserved: [
+        { slot: 0, card: actor === 0 ? 37 : 52, tier: "Two", from_deck: false },
+        { slot: 1, card: actor === 0 ? 82 : 65, tier: actor === 0 ? "Three" : "Two", from_deck: true },
+      ] },
     },
     referee_reveal: {
       seed: 930008,
@@ -350,7 +353,7 @@ export default function ReplayStudio() {
             </div>
           </div>
 
-          <BoardPanel frame={frame} cards={cards} nobles={nobles} reveal={reveal} />
+          <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={reveal} />
         </div>
 
         <aside className="analysis-panel">
