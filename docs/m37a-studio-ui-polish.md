@@ -4,7 +4,7 @@
 MILESTONE = M37A
 STATUS = ACCEPTED / FROZEN
 BASE_COMMIT = 6d0c37a
-ROUND_COMMIT = <filled by the follow-up documentation commit — see 提交记录 below>
+ROUND_COMMIT = f1467ea
 SCOPE = GUI-only polish round on Replay Studio: font-size token system, token/cost
         visual hierarchy, BoardView consolidation, reserve-card rendering, net-cost
         card geometry, dead-code cleanup, responsive breakpoint fixes, tsbuildinfo ignore.
@@ -25,8 +25,8 @@ DECISION = ACCEPTED / FROZEN — gate passed; user closed the round on 2026-08-2
 
 | 提交 | SHA | 内容 |
 |---|---|---|
-| 实现提交 | 见下（文档提交回填） | 7 modified + 1 新增组件 + 本文件 |
-| 文档提交 | 见下（随后一次提交自身不记录） | 仅回填 SHA |
+| 实现提交 | `f1467ea` | 7 modified + 1 新增组件 + 本文件 |
+| 文档提交 | （本提交） | 仅回填 `ROUND_COMMIT` |
 
 `handoff.md` 按仓库发布规则保持 local-only（`.gitignore:12:/handoff.md`），
 两个提交均未包含它。
@@ -210,7 +210,8 @@ Net: 7 files modified, 1 file added; `+360 / −240`.
 
 ## Validation and evidence
 
-All commands run from `apps/replay-studio/` on the uncommitted M37A working tree.
+All commands run from `apps/replay-studio/`, against the M37A working tree as
+committed at `f1467ea`.
 
 | Check | Command | Result |
 |---|---|---|
