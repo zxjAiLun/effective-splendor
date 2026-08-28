@@ -335,6 +335,74 @@ When reopened, the decision still owed by the user is *placement and persistence
    M07 review for session `human-1786554356-0-25816-1`, and on ad-hoc headless
    Chrome invocations with no committed script. See Next authorized gate.
 
+## Post-freeze correction (2026-08-29)
+
+**Commit `a042f9b`** — `fix(replay-studio): reserve cards show printed cost, not net cost`
+
+This section is appended after the round was frozen. It does **not** revise the
+acceptance record: the gate table, the `ACCEPTED / FROZEN` verdict and the
+validation evidence in Result and decision stand as recorded at closure. The
+status is unchanged; this is a correction to the implementation, not a reopening
+of the round.
+
+### Defect
+
+M37A passed `discount={owner.bonuses}` to `DevelopmentCard` for reserve cards.
+With `discount` set, `CostGems` renders the *owed* amount as the primary number
+and the printed cost as a struck-through secondary badge. On the compact `mini`
+variant used inside reserve strips that produced a crowded second column of
+numbers in the lower-left of every reserved card. The user reported it as
+"reserve 的牌在手里，左下角还多了一列".
+
+The net-cost display was not wrong in itself — it was the right feature in the
+wrong place. The reserve strip is the narrowest card surface in the UI, and the
+owed/printed pair that reads well on a full-size market card does not fit there.
+
+### Fix scope
+
+`discount` removed from the three reserve render sites:
+
+| Site | File | Was |
+|---|---|---|
+| shared `ReservedCards` (used by `/`, `/review`, `/experiments`) | `apps/replay-studio/app/components/replay-board.tsx` | `discount={player.bonuses}` |
+| `/play` own reserve tray | `apps/replay-studio/app/play/page.tsx` | `discount={humanBonuses}` |
+| `/play` `OpponentReserve` | `apps/replay-studio/app/play/page.tsx` | `discount={player.bonuses}` |
+
+Deliberately **unchanged**: market cards in `/play` and the selected-card preview
+in the pending-move panel still pass `discount` and render net cost. Net cost is
+most useful at the moment of judging whether a card is affordable, which is the
+market — not the reserve strip, where the card is already held.
+
+The `ReservedCards` JSDoc was updated to record why no discount is applied.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `npm test` | 27 / 27 pass |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` | 9 errors — unchanged (baseline 10) |
+| `git diff --check` | clean |
+| Screenshot | `/` demo — reserve strips on both seats show printed cost only |
+
+Screenshots: `local-artifacts/m37a-studio-ui-polish/root-demo-1600.png` (before)
+and `root-demo-fixed-1600.png` (after). Same caveat as Known limitation 6 —
+gitignored, local evidence, not a committed fixture.
+
+### Why the round's gate did not catch it
+
+The gate passed because this is not a test failure. It is a judgement about
+density on one card variant, and no check in the suite encodes it. Two recorded
+limitations explain the gap: the `/play` opponent-reserve path was never
+exercised against a live game (limitation 2), and visual verification is
+human-eye rather than automated (limitation 5). The user found the defect within
+minutes of opening the page.
+
+This is the same class of gap as the 900 px breakpoint bug found earlier in the
+round — both were invisible to a green suite and obvious on first real use — and
+it is further evidence for the deterministic layout fixture proposed under Next
+authorized gate.
+
 ## Next authorized gate
 
 The round is closed. Two follow-ups are proposed; **neither is authorized yet and
