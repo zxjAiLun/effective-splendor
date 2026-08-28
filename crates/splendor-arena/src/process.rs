@@ -12,6 +12,7 @@
 //! signals and no shell are used.
 
 use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -209,6 +210,39 @@ impl Drop for AgentProcess {
     }
 }
 
+/// Resolve a registry program path to a binary that exists on this host.
+///
+/// Registries are checked in as one cross-platform source of truth, but they
+/// name the agent binary with a Windows-style `.exe` suffix. Rather than fork
+/// every registry per platform, resolve at spawn time: use the path exactly as
+/// written when it exists, otherwise try this platform's own spelling.
+///
+///   non-Windows : `target/debug/splendor.exe` -> `target/debug/splendor`
+///   Windows     : `target/debug/splendor`     -> `target/debug/splendor.exe`
+///
+/// A program that exists under neither spelling is returned unchanged, so it
+/// still surfaces as the usual spawn error rather than being silently rewritten.
+fn resolve_program(program: &Path) -> PathBuf {
+    if program.exists() {
+        return program.to_path_buf();
+    }
+    let Some(file_name) = program.file_name().and_then(|name| name.to_str()) else {
+        return program.to_path_buf();
+    };
+    if cfg!(windows) {
+        let with_exe = program.with_file_name(format!("{file_name}.exe"));
+        if with_exe.exists() {
+            return with_exe;
+        }
+    } else if let Some(stem) = file_name.strip_suffix(".exe") {
+        let without_exe = program.with_file_name(stem);
+        if without_exe.exists() {
+            return without_exe;
+        }
+    }
+    program.to_path_buf()
+}
+
 /// Spawn an agent and start its stdout/stderr reader threads. Emitted
 /// [`InboundEvent`]s are sent to `inbound_tx`, tagged with `seat`.
 pub fn spawn_agent(
@@ -216,7 +250,7 @@ pub fn spawn_agent(
     command: &AgentCommand,
     inbound_tx: Sender<InboundEvent>,
 ) -> Result<AgentProcess, ProcessError> {
-    let mut cmd = Command::new(&command.program);
+    let mut cmd = Command::new(resolve_program(&command.program));
     cmd.args(&command.args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -444,5 +478,63 @@ mod tests {
             vec!["fault", "ok", "eof"],
             "unexpected event sequence after boundary overflow: {seq:?}"
         );
+    }
+
+    /// Scratch dir unique to this test process so parallel tests never collide.
+    fn scratch(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("splendor-resolve-{}-{}", std::process::id(), name));
+        std::fs::create_dir_all(&dir).expect("scratch dir");
+        dir
+    }
+
+    /// A registry path that already exists is used verbatim — resolution must
+    /// never rewrite a path the host can already execute.
+    #[test]
+    fn resolve_program_prefers_the_path_as_written() {
+        let dir = scratch("as-written");
+        let plain = dir.join("splendor");
+        std::fs::write(&plain, b"").expect("write plain");
+
+        assert_eq!(resolve_program(&plain), plain);
+
+        std::fs::remove_file(&plain).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// Registries are checked in naming the agent binary with a Windows-style
+    /// `.exe` suffix. On non-Windows hosts the suffix must be dropped when only
+    /// the unsuffixed binary exists; otherwise spawning any registered agent
+    /// fails with ENOENT and the Studio cannot start a game.
+    #[test]
+    fn resolve_program_drops_exe_suffix_when_only_plain_binary_exists() {
+        let dir = scratch("exe-suffix");
+        let plain = dir.join("splendor");
+        std::fs::write(&plain, b"").expect("write plain");
+
+        let resolved = resolve_program(&dir.join("splendor.exe"));
+        if cfg!(windows) {
+            // Nothing was created with the suffix here, so on Windows the path
+            // is passed through and surfaces as an ordinary spawn error.
+            assert_eq!(resolved, dir.join("splendor.exe"));
+        } else {
+            assert_eq!(resolved, plain, "expected the .exe suffix to be dropped");
+        }
+
+        std::fs::remove_file(&plain).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// A program missing under both spellings is returned unchanged, so the
+    /// caller still gets a real spawn error instead of a silently rewritten path.
+    #[test]
+    fn resolve_program_returns_missing_path_unchanged() {
+        let dir = scratch("missing");
+        let missing = dir.join("absent.exe");
+        assert!(!missing.exists(), "test fixture must not exist");
+
+        assert_eq!(resolve_program(&missing), missing);
+
+        std::fs::remove_dir(&dir).ok();
     }
 }
