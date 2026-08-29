@@ -643,6 +643,10 @@ fn wrong_agent_lineup_is_rejected_for_matches_and_bundles() {
     let _ = fs::remove_dir_all(&base);
 }
 
+// Unix-only: the whole premise is a real symlink, created with
+// `std::os::unix::fs::symlink`. On Windows no link is created, so the test
+// would run against a tree that does not contain what it claims to test.
+#[cfg(unix)]
 #[test]
 fn symlink_escape_from_run_dir_is_rejected_at_load_and_access() {
     let base = temp_tree("symlink");
@@ -655,7 +659,6 @@ fn symlink_escape_from_run_dir_is_rejected_at_load_and_access() {
     let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
     let stash = base.join("local-artifacts/m36a-synth/runs/stashed-real");
     fs::rename(&run_dir, &stash).unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&real_outside, &run_dir).unwrap();
 
     // Load-time containment check rejects the symlinked run dir.
@@ -668,7 +671,6 @@ fn symlink_escape_from_run_dir_is_rejected_at_load_and_access() {
     // Even a registry that passes structural validation cannot serve data
     // through a symlinked run dir: build a library from a stashed,
     // non-symlinked copy and then swap in the symlink before access.
-    #[cfg(unix)]
     {
         let _ = fs::remove_file(&run_dir);
         fs::rename(&stash, &run_dir).unwrap();
@@ -692,6 +694,7 @@ fn symlink_escape_from_run_dir_is_rejected_at_load_and_access() {
     let _ = fs::remove_dir_all(&base);
 }
 
+#[cfg(unix)]
 #[test]
 fn symlinked_run_dir_inside_local_artifacts_still_serves() {
     // A symlink that stays INSIDE local-artifacts is legitimate.
@@ -700,7 +703,6 @@ fn symlinked_run_dir_inside_local_artifacts_still_serves() {
     let run_dir = base.join("local-artifacts/m36a-synth/runs/synth-pairing-v1");
     let alias = base.join("local-artifacts/m36a-synth/runs/alias-target");
     fs::rename(&run_dir, &alias).unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&alias, &run_dir).unwrap();
     // Rebind the eval report SHA (same bytes, new path) and reload.
     let eval_path = alias.join("eval-report.json");
@@ -791,6 +793,7 @@ fn duplicate_seat_agent_records_are_rejected() {
     let _ = fs::remove_dir_all(&base);
 }
 
+#[cfg(unix)]
 #[test]
 fn file_level_symlink_escape_of_report_and_replay_is_rejected() {
     let base = temp_tree("filesymlink");
@@ -806,7 +809,6 @@ fn file_level_symlink_escape_of_report_and_replay_is_rejected() {
     fs::create_dir_all(&outside_dir).unwrap();
     let outside_report = outside_dir.join("stolen-report.json");
     fs::rename(&report_path, &outside_report).unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&outside_report, &report_path).unwrap();
 
     // The library was loaded BEFORE the swap: mid-flight access must reject.
@@ -829,7 +831,6 @@ fn file_level_symlink_escape_of_report_and_replay_is_rejected() {
     let replay_path = run_dir.join("matches/match-000000.replay.json");
     let outside_replay = outside_dir.join("stolen-replay.json");
     fs::rename(&replay_path, &outside_replay).unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&outside_replay, &replay_path).unwrap();
     let error = library.bundle("synth", "synth-pairing-v1", 0).unwrap_err();
     assert!(
@@ -846,6 +847,7 @@ fn file_level_symlink_escape_of_report_and_replay_is_rejected() {
     let _ = fs::remove_dir_all(&base);
 }
 
+#[cfg(unix)]
 #[test]
 fn file_level_symlink_inside_run_dir_still_serves() {
     let base = temp_tree("filesymlink-ok");
@@ -857,7 +859,6 @@ fn file_level_symlink_inside_run_dir_still_serves() {
     let report_path = run_dir.join("matches/match-000000.report.json");
     let alias = run_dir.join("matches/alias-report.json");
     fs::rename(&report_path, &alias).unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&alias, &report_path).unwrap();
     let bundle = library.bundle("synth", "synth-pairing-v1", 0).unwrap();
     assert!(!bundle.frames.is_empty());
