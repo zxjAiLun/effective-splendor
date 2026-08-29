@@ -210,34 +210,50 @@ impl Drop for AgentProcess {
     }
 }
 
-/// Resolve a registry program path to a binary that exists on this host.
+/// This platform's own spelling of `program`, or `None` when it already has it.
+///
+/// Every platform has exactly one *native* and one *foreign* spelling:
+///
+///   non-Windows : native `splendor`,      foreign `splendor.exe`
+///   Windows     : native `splendor.exe`,  foreign `splendor`
+fn native_spelling(program: &Path) -> Option<PathBuf> {
+    let file_name = program.file_name().and_then(|name| name.to_str())?;
+    let exe_suffixed = file_name.strip_suffix(".exe");
+    if cfg!(windows) {
+        // Windows binaries carry `.exe`; anything else is the foreign spelling.
+        match exe_suffixed {
+            Some(_) => None,
+            None => Some(program.with_file_name(format!("{file_name}.exe"))),
+        }
+    } else {
+        // Unix binaries carry no suffix, so a `.exe` path is the foreign one.
+        exe_suffixed.map(|stem| program.with_file_name(stem))
+    }
+}
+
+/// Resolve a registry program path to a binary this host can execute.
 ///
 /// Registries are checked in as one cross-platform source of truth, but they
 /// name the agent binary with a Windows-style `.exe` suffix. Rather than fork
-/// every registry per platform, resolve at spawn time: use the path exactly as
-/// written when it exists, otherwise try this platform's own spelling.
+/// every registry per platform, resolve at spawn time, in this order:
 ///
-///   non-Windows : `target/debug/splendor.exe` -> `target/debug/splendor`
-///   Windows     : `target/debug/splendor`     -> `target/debug/splendor.exe`
+///   1. A *foreign*-spelled path is bridged to the native spelling whenever the
+///      native binary exists — **even when the foreign spelling also exists**.
+///      A build tree shared between OSes routinely holds a stale binary for the
+///      other platform at exactly the foreign path; preferring "whatever exists"
+///      selects it, and it then fails to execute.
+///   2. Otherwise the path is used as written, so a program this host really
+///      has is never rewritten (a Unix binary genuinely named `foo` on Unix, or
+///      a `.bat`/`.cmd` launcher on Windows).
+///   3. Otherwise the path is returned unchanged: a genuinely missing program
+///      still surfaces as the usual spawn error instead of a silent rewrite.
 ///
-/// A program that exists under neither spelling is returned unchanged, so it
-/// still surfaces as the usual spawn error rather than being silently rewritten.
+/// Resolution therefore only ever bridges foreign -> native, never the reverse,
+/// so a stale foreign binary is unreachable while a native one exists.
 fn resolve_program(program: &Path) -> PathBuf {
-    if program.exists() {
-        return program.to_path_buf();
-    }
-    let Some(file_name) = program.file_name().and_then(|name| name.to_str()) else {
-        return program.to_path_buf();
-    };
-    if cfg!(windows) {
-        let with_exe = program.with_file_name(format!("{file_name}.exe"));
-        if with_exe.exists() {
-            return with_exe;
-        }
-    } else if let Some(stem) = file_name.strip_suffix(".exe") {
-        let without_exe = program.with_file_name(stem);
-        if without_exe.exists() {
-            return without_exe;
+    if let Some(native) = native_spelling(program) {
+        if native.exists() {
+            return native;
         }
     }
     program.to_path_buf()
@@ -506,6 +522,10 @@ mod tests {
     /// `.exe` suffix. On non-Windows hosts the suffix must be dropped when only
     /// the unsuffixed binary exists; otherwise spawning any registered agent
     /// fails with ENOENT and the Studio cannot start a game.
+    ///
+    /// The Windows branch pins the converse: a path requested in this platform's
+    /// own spelling is returned as written even though a foreign-spelled file
+    /// exists. Resolution bridges foreign -> native only, never the reverse.
     #[test]
     fn resolve_program_drops_exe_suffix_when_only_plain_binary_exists() {
         let dir = scratch("exe-suffix");
@@ -522,6 +542,31 @@ mod tests {
         }
 
         std::fs::remove_file(&plain).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// Both spellings exist, which is the hazard a build tree shared between
+    /// OSes actually produces: a stale binary for the other platform sits at the
+    /// foreign path. The native binary must win even though the path that was
+    /// asked for also exists, because only the native one can execute here.
+    #[test]
+    fn resolve_program_prefers_native_spelling_when_both_exist() {
+        let dir = scratch("both-spellings");
+        let plain = dir.join("splendor");
+        let exe = dir.join("splendor.exe");
+        std::fs::write(&plain, b"").expect("write plain");
+        std::fs::write(&exe, b"").expect("write exe");
+
+        if cfg!(windows) {
+            // Foreign spelling is the bare name; the suffixed binary is native.
+            assert_eq!(resolve_program(&plain), exe);
+        } else {
+            // Registries carry the `.exe` spelling; the bare binary is native.
+            assert_eq!(resolve_program(&exe), plain);
+        }
+
+        std::fs::remove_file(&plain).ok();
+        std::fs::remove_file(&exe).ok();
         std::fs::remove_dir(&dir).ok();
     }
 

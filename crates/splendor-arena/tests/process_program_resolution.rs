@@ -25,6 +25,13 @@
 //! directory is what makes "the foreign spelling does not exist" a fact the
 //! test controls rather than a fact it assumes about the build tree, so both
 //! spellings are exercised on both hosts.
+//!
+//! The last case inverts that setup on purpose: both spellings exist and the
+//! foreign one is a decoy that cannot be executed here. That is the production
+//! shape of the same hazard, and it is why resolution prefers this platform's
+//! own spelling over a foreign path that merely happens to exist. Note that
+//! this host may mask the mistake at the OS level, so the test's doc states
+//! exactly what it does and does not prove on each platform.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -198,6 +205,68 @@ fn registry_spelled_path_spawns_and_echoes() {
 fn bare_spelled_path_spawns_and_echoes() {
     let (_registry, bare) = staged_spellings("bare-echo");
     assert_echoes_ping(&bare, PlayerId(1));
+}
+
+/// Stage the real fixture at this host's native spelling, then plant a decoy at
+/// the **foreign** spelling: a file that exists but cannot be executed here.
+/// Returns the foreign spelling, i.e. the path most likely to be requested.
+///
+/// This is the production shape of the hazard: a build tree shared between OSes
+/// holds a stale binary for the other platform at the foreign path. A resolver
+/// that merely preferred "whatever exists" would select the decoy and then fail
+/// to spawn it, even though the correct native binary sits right beside it.
+fn staged_with_unusable_foreign_spelling(tag: &str) -> PathBuf {
+    let native = fixture_path();
+    assert!(
+        native.exists(),
+        "fixture binary must be built before this test: {native:?}"
+    );
+
+    let dir = std::env::temp_dir().join(format!("arena-resolve-{}-{tag}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("create scratch dir");
+
+    let stem = "league-agent";
+    let (native_name, foreign_name) = if cfg!(windows) {
+        (format!("{stem}.exe"), stem.to_string())
+    } else {
+        (stem.to_string(), format!("{stem}.exe"))
+    };
+
+    std::fs::copy(&native, dir.join(&native_name)).expect("stage fixture copy");
+    std::fs::write(
+        dir.join(&foreign_name),
+        b"stale binary from another platform; present but not executable here\n",
+    )
+    .expect("plant unusable decoy");
+
+    let foreign = dir.join(foreign_name);
+    assert!(
+        foreign.exists(),
+        "precondition: the foreign spelling must exist for this test to mean anything"
+    );
+    foreign
+}
+
+/// Both spellings exist and the foreign one is unusable: resolution must still
+/// reach the real native binary, not the decoy sitting at the requested path.
+///
+/// **What this test can and cannot prove, per host.** On Unix the foreign
+/// spelling carries the suffix, the kernel execs the named file directly, and a
+/// decoy there fails to spawn — so this is the regression test for native
+/// preference. On Windows the foreign spelling is the *extensionless* name and
+/// `CreateProcess` appends `.exe` to extensionless names itself, so the OS masks
+/// the mistake: the decoy is never opened even when it is selected, and this
+/// test passes either way. The discriminating evidence on every host is
+/// therefore the unit test `resolve_program_prefers_native_spelling_when_both_
+/// exist`, which compares paths rather than spawn outcomes.
+///
+/// The production hazard being modelled is the Linux one: a registry names
+/// `splendor.exe`, a stale Windows build of that name is still on disk, and the
+/// real `splendor` sits beside it.
+#[test]
+fn unusable_foreign_spelling_loses_to_the_native_binary() {
+    let foreign = staged_with_unusable_foreign_spelling("stale-foreign");
+    assert_echoes_ping(&foreign, PlayerId(2));
 }
 
 /// A program that exists under neither spelling must still surface as a spawn
