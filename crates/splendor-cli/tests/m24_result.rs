@@ -672,13 +672,10 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     // D24.5 branches and precedence are frozen.
     let gate = &config["decision_gate"];
     assert_eq!(gate["id"], "D24.5");
-    assert_eq!(
-        gate["precedence"]
-            .as_str()
-            .unwrap()
-            .contains("INCONCLUSIVE"),
-        true
-    );
+    assert!(gate["precedence"]
+        .as_str()
+        .unwrap()
+        .contains("INCONCLUSIVE"));
     let branches = gate["branches"].as_array().unwrap();
     assert_eq!(branches.len(), 4);
     let expected_predicates = [
@@ -689,7 +686,7 @@ fn m24_scale_failure_diagnosis_v1_is_authorized_and_pre_registered() {
     ];
     for (i, branch) in branches.iter().enumerate() {
         assert_eq!(branch["predicate"], expected_predicates[i]);
-        assert!(branch["action"].as_str().unwrap().len() > 0);
+        assert!(!branch["action"].as_str().unwrap().is_empty());
     }
 
     // Governance constraints are explicit.
@@ -1124,7 +1121,7 @@ fn m24_scale_gate_v1_is_frozen_and_machine_checkable() {
         let actual_agents: Vec<&str> = plan.agents.iter().map(|agent| agent.id.as_str()).collect();
         for expected in expected_agents {
             assert!(
-                actual_agents.contains(&expected),
+                actual_agents.contains(expected),
                 "pair {expected_pair} missing agent {expected}"
             );
         }

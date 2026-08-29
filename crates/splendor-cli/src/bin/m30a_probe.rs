@@ -385,7 +385,7 @@ fn main() {
     let shared_selected = Arc::new(selected_positions);
     let results = Arc::new(Mutex::new(Vec::new()));
 
-    let chunk_size = (256 + num_threads - 1) / num_threads;
+    let chunk_size = 256_usize.div_ceil(num_threads);
     let mut handles = Vec::new();
 
     for t_idx in 0..num_threads {

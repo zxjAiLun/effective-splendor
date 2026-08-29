@@ -252,10 +252,7 @@ fn bundle_reverifies_and_projects_player_view() {
         }
         // Legal actions are non-empty and include the recorded action.
         assert!(!frame.legal_actions.is_empty());
-        assert!(frame
-            .legal_actions
-            .iter()
-            .any(|action| *action == frame.recorded_action));
+        assert!(frame.legal_actions.contains(&frame.recorded_action));
         // Referee reveal carries deck order for the confirm-gated view.
         assert_eq!(frame.referee_reveal.decks.len(), 3);
     }

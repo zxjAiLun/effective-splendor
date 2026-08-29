@@ -11,6 +11,9 @@ use splendor_core::{
     visible_events, Action, Audience, FullState, GameConfig, Gems, PlayerId, Ruleset,
 };
 
+// The sidecar exporter is a binary; only the feature projection is used here,
+// so the rest of it (including `main`) is dead in this context.
+#[allow(dead_code)]
 #[path = "../src/bin/m32a_export_sidecar.rs"]
 mod m32a_export_sidecar;
 use m32a_export_sidecar::{project_information_set_to_features, BELIEF_FEATURES};
@@ -68,8 +71,8 @@ fn test_belief_features_dimension_and_structure() {
     for slot_idx in 0..3 {
         let slot = &features[90 + slot_idx * 20..90 + (slot_idx + 1) * 20];
         assert_eq!(slot[0], 1.0); // empty
-        for i in 1..20 {
-            assert_eq!(slot[i], 0.0);
+        for value in &slot[1..20] {
+            assert_eq!(*value, 0.0);
         }
     }
 
@@ -82,10 +85,12 @@ fn test_belief_features_dimension_and_structure() {
     assert_eq!(opp_slot_0[4], 0.0); // hidden_tier_2 == 0.0
     assert_eq!(opp_slot_0[5], 0.0); // hidden_tier_3 == 0.0
                                     // CRITICAL: Card attributes (dims 6..20) MUST be strictly zero for HiddenDeck
-    for i in 6..20 {
+    for (offset, value) in opp_slot_0[6..20].iter().enumerate() {
         assert_eq!(
-            opp_slot_0[i], 0.0,
-            "HiddenDeck slot attribute at index {i} must be zero"
+            *value,
+            0.0,
+            "HiddenDeck slot attribute at index {} must be zero",
+            6 + offset
         );
     }
 
@@ -93,8 +98,8 @@ fn test_belief_features_dimension_and_structure() {
     for slot_idx in 1..3 {
         let slot = &features[150 + slot_idx * 20..150 + (slot_idx + 1) * 20];
         assert_eq!(slot[0], 1.0); // empty
-        for i in 1..20 {
-            assert_eq!(slot[i], 0.0);
+        for value in &slot[1..20] {
+            assert_eq!(*value, 0.0);
         }
     }
 

@@ -7,7 +7,10 @@
 use splendor_core::{Action, Gems, Tier};
 use splendor_imperfect_search::RootActionAggregateV1;
 
-// Import allocation functions from probe binary module
+// Import allocation functions from probe binary module. The probe is a binary:
+// only the four allocation helpers are used here, so everything else in it
+// (including `main`) is dead in this context and must not be linted as such.
+#[allow(dead_code)]
 #[path = "../src/bin/m30a_probe.rs"]
 mod m30a_probe;
 use m30a_probe::{
@@ -47,7 +50,7 @@ fn test_proportional_allocation_with_ties_and_remainders() {
 
 #[test]
 fn test_first_max_selection_on_ties() {
-    let dummy_actions = vec![
+    let dummy_actions = [
         Action::ReserveMarket {
             tier: Tier::One,
             slot: 0,
@@ -73,7 +76,7 @@ fn test_first_max_selection_on_ties() {
 
 #[test]
 fn test_canonical_policy_targets_exact_sum_and_floor() {
-    let dummy_actions = vec![
+    let dummy_actions = [
         Action::ReserveMarket {
             tier: Tier::One,
             slot: 0,
