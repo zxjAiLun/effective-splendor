@@ -216,18 +216,33 @@ impl Drop for AgentProcess {
 ///
 ///   non-Windows : native `splendor`,      foreign `splendor.exe`
 ///   Windows     : native `splendor.exe`,  foreign `splendor`
+///
+/// The Windows side is narrower than "does not end in `.exe`". Foreign means
+/// *extensionless* specifically:
+///
+///   `agent`      -> `agent.exe`   (extensionless, so bridge)
+///   `agent.EXE`  -> as written    (already native; the suffix is matched
+///                                  case-insensitively, as the filesystem is)
+///   `agent.cmd`  -> as written    (a deliberate registry choice, never
+///                                  bridged even when `agent.cmd.exe` exists)
 fn native_spelling(program: &Path) -> Option<PathBuf> {
     let file_name = program.file_name().and_then(|name| name.to_str())?;
-    let exe_suffixed = file_name.strip_suffix(".exe");
     if cfg!(windows) {
-        // Windows binaries carry `.exe`; anything else is the foreign spelling.
-        match exe_suffixed {
-            Some(_) => None,
+        match Path::new(file_name)
+            .extension()
+            .and_then(|ext| ext.to_str())
+        {
             None => Some(program.with_file_name(format!("{file_name}.exe"))),
+            Some(ext) if ext.eq_ignore_ascii_case("exe") => None,
+            Some(_) => None,
         }
     } else {
         // Unix binaries carry no suffix, so a `.exe` path is the foreign one.
-        exe_suffixed.map(|stem| program.with_file_name(stem))
+        // Matching stays case-sensitive: here `agent.exe` and `agent.EXE` are
+        // just two different files.
+        file_name
+            .strip_suffix(".exe")
+            .map(|stem| program.with_file_name(stem))
     }
 }
 
@@ -567,6 +582,63 @@ mod tests {
 
         std::fs::remove_file(&plain).ok();
         std::fs::remove_file(&exe).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// On Windows, foreign means *extensionless* — not merely "lacking a
+    /// lowercase `.exe`". Only the bare name may gain a suffix, so a registry
+    /// that names a `.cmd` launcher keeps it.
+    #[test]
+    fn resolve_program_bridges_only_extensionless_paths_on_windows() {
+        let dir = scratch("extensionless");
+        let bare = dir.join("agent");
+        let exe = dir.join("agent.exe");
+        std::fs::write(&exe, b"").expect("write exe");
+
+        if cfg!(windows) {
+            assert_eq!(resolve_program(&bare), exe);
+        } else {
+            // The bare name is native here, so it never gains a suffix.
+            assert_eq!(resolve_program(&bare), bare);
+        }
+
+        std::fs::remove_file(&exe).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// An explicit extension other than `.exe` is a deliberate registry choice,
+    /// and must survive even with a bridgeable `.exe` sitting beside it. A
+    /// resolver that bridged it would silently swap a launcher for a binary.
+    #[test]
+    fn resolve_program_does_not_bridge_other_extensions_onto_exe() {
+        let dir = scratch("other-extension");
+        let cmd = dir.join("agent.cmd");
+        let bridged = dir.join("agent.cmd.exe");
+        std::fs::write(&cmd, b"").expect("write cmd");
+        std::fs::write(&bridged, b"").expect("write cmd.exe");
+
+        assert_eq!(resolve_program(&cmd), cmd);
+
+        std::fs::remove_file(&cmd).ok();
+        std::fs::remove_file(&bridged).ok();
+        std::fs::remove_dir(&dir).ok();
+    }
+
+    /// The suffix is matched case-insensitively on Windows, so `agent.EXE` is
+    /// already native and must not gain a second one. `agent.EXE.exe` exists
+    /// precisely so that a case-sensitive read would visibly pick it.
+    #[test]
+    fn resolve_program_treats_uppercase_exe_suffix_as_native() {
+        let dir = scratch("uppercase-exe");
+        let upper = dir.join("agent.EXE");
+        let double = dir.join("agent.EXE.exe");
+        std::fs::write(&upper, b"").expect("write upper");
+        std::fs::write(&double, b"").expect("write double");
+
+        assert_eq!(resolve_program(&upper), upper);
+
+        std::fs::remove_file(&upper).ok();
+        std::fs::remove_file(&double).ok();
         std::fs::remove_dir(&dir).ok();
     }
 
