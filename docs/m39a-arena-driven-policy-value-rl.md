@@ -1987,6 +1987,18 @@ The first formal execution uses a Windows release build from the current
 the later 4,096-game collector if G0/G0b pass; changing the executable requires
 a new Phase 0 output directory and a new probe.
 
+The first `workers = 4` attempt is retained as an **invalid infrastructure
+attempt**, not a G0/G0b result. Its run-contract SHA-256 is
+`77d0fc5825575df07e61f0402b241db73eb24c83f33a3766853e09c58dd2c5cf`;
+94 games completed, while 11 learner agents exceeded the frozen 10-second
+handshake deadline under concurrent CUDA startup. The executor also exposed a
+fail-fast defect: after the first future failed, the executor context waited for
+already queued work instead of cancelling work that had not started. The
+bounded scheduler now keeps at most `workers` games in flight and cancels
+unstarted work on the first failure. The valid retry uses a new output directory
+and `workers = 2`, with the same plan, checkpoint, executable, seed schedule,
+timeouts, and gates. No partial artifact from the invalid attempt is reused.
+
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PENDING`.
 
 The next operational gate is the frozen **384-game Phase 0** probe. Formal

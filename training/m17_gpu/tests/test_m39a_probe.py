@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from splendor_gpu.m39a_contract import LEAGUE_ORDER
+import threading
+import time
 from pathlib import Path
 
 from splendor_gpu.m39a_probe import (
@@ -10,6 +12,8 @@ from splendor_gpu.m39a_probe import (
     ensure_phase0_run_contract,
     frozen_probe_schedule,
     phase0_run_contract,
+    probe_game,
+    run_probe_schedule,
     summarize,
 )
 
@@ -103,3 +107,25 @@ def test_phase0_run_contract_binds_executable_and_resume(tmp_path: Path) -> None
     )
     with pytest.raises(RuntimeError, match="resume contract mismatch"):
         ensure_phase0_run_contract(tmp_path / "run", changed_binary)
+
+
+def test_probe_schedule_stops_queueing_after_first_failure() -> None:
+    tasks = [probe_game("diversified", ordinal) for ordinal in range(8)]
+    second_started = threading.Event()
+    started: list[int] = []
+    lock = threading.Lock()
+
+    def runner(game):
+        with lock:
+            started.append(game.ordinal)
+        if game.ordinal == 0:
+            assert second_started.wait(timeout=1.0)
+            raise ValueError("deliberate failure")
+        if game.ordinal == 1:
+            second_started.set()
+            time.sleep(0.05)
+        return {"ordinal": game.ordinal}
+
+    with pytest.raises(RuntimeError, match="diversified/0"):
+        run_probe_schedule(tasks, workers=2, runner=runner)
+    assert sorted(started) == [0, 1]

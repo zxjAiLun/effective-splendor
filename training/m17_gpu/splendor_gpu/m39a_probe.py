@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -111,6 +112,59 @@ def ensure_phase0_run_contract(out_dir: Path, contract: dict[str, Any]) -> Path:
         out_dir.mkdir(parents=True, exist_ok=True)
         _write_new_json(path, contract)
     return path
+
+
+def run_probe_schedule(
+    tasks: list[ProbeGame],
+    *,
+    workers: int,
+    runner: Callable[[ProbeGame], dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Run a bounded schedule and stop queuing work as soon as one game fails."""
+    rows: list[dict[str, Any]] = []
+    task_iter = iter(tasks)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+    pending: dict[concurrent.futures.Future[dict[str, Any]], ProbeGame] = {}
+
+    def submit_next() -> bool:
+        try:
+            game = next(task_iter)
+        except StopIteration:
+            return False
+        pending[executor.submit(runner, game)] = game
+        return True
+
+    for _ in range(workers):
+        if not submit_next():
+            break
+    try:
+        while pending:
+            done, _ = concurrent.futures.wait(
+                pending, return_when=concurrent.futures.FIRST_COMPLETED
+            )
+            failures = [future for future in done if future.exception() is not None]
+            if failures:
+                failed = failures[0]
+                game = pending[failed]
+                try:
+                    failed.result()
+                except Exception as error:
+                    raise RuntimeError(
+                        f"Phase 0 failed at {game.bucket}/{game.ordinal}"
+                    ) from error
+            for future in done:
+                pending.pop(future)
+                row = future.result()
+                rows.append(row)
+                print(json.dumps(row, separators=(",", ":")), flush=True)
+                submit_next()
+    except BaseException:
+        for future in pending:
+            future.cancel()
+        executor.shutdown(wait=True, cancel_futures=True)
+        raise
+    executor.shutdown(wait=True)
+    return rows
 
 
 def _run_one(
@@ -338,27 +392,21 @@ def main() -> None:
     run_contract_path = ensure_phase0_run_contract(out_dir, run_contract)
     splendor_file_sha256 = str(run_contract["splendor_file_sha256"])
     tasks = frozen_probe_schedule()
-    rows = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = {
-            executor.submit(
-                _run_one,
-                game,
-                checkpoint=checkpoint,
-                checkpoint_sha256=args.checkpoint_sha256,
-                digest=digest,
-                catalog=catalog,
-                splendor=splendor,
-                splendor_file_sha256=splendor_file_sha256,
-                out_dir=out_dir,
-                device=args.device,
-            ): game
-            for game in tasks
-        }
-        for future in concurrent.futures.as_completed(futures):
-            row = future.result()
-            rows.append(row)
-            print(json.dumps(row, separators=(",", ":")), flush=True)
+    rows = run_probe_schedule(
+        tasks,
+        workers=args.workers,
+        runner=lambda game: _run_one(
+            game,
+            checkpoint=checkpoint,
+            checkpoint_sha256=args.checkpoint_sha256,
+            digest=digest,
+            catalog=catalog,
+            splendor=splendor,
+            splendor_file_sha256=splendor_file_sha256,
+            out_dir=out_dir,
+            device=args.device,
+        ),
+    )
     rows.sort(key=lambda row: (BUCKETS.index(row["bucket"]), row["ordinal"]))
     summary = summarize(rows, args.workers)
     report = {
