@@ -478,6 +478,7 @@ def train_cycle(
         "parent_checkpoint_hash": parent_payload["checkpoint_hash"],
         "checkpoint_hash": checkpoint_hash,
         "catalog_hash": catalog_hash,
+        "ply_cap": int(batch.get("ply_cap", 0)),
         "device": str(device),
         "torch_version": torch.__version__,
         "cuda_version": torch.version.cuda,

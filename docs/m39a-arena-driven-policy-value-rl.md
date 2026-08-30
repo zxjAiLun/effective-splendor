@@ -2266,8 +2266,44 @@ Follow-up hardening (review `e592d63 = NEEDS_FIX`, all closed):
   result fields) → Rust materializer → 75-record batch with
   `source_terminal_result = null` on every record, learner seat present,
   and truncation returns `[-0.7310585786…, -0.2689414214…]` =
-  `−0.5 ± 0.5·tanh(2/4)` exactly. The game is a confirmed deterministic
+  `−0.5 ± 0.5·tanh(2/4)` exactly. The game (league bucket, opponent M33A,
+  learner seat 1, seed 4,001,392) is a confirmed deterministic
   non-terminator under the cycle-5 policy (the cap fired as designed).
+
+Second follow-up hardening (review `11fdc4e = NEEDS_FIX`, both blockers
+closed):
+
+- **Lock without liveness probes**: `acquire_lock` is now exclusively
+  `O_CREAT|O_EXCL` — an existing lock fails closed, period. The previous
+  `os.kill(pid, 0)` probe was removed entirely: the review measured it
+  terminating the target process on this Windows/Python environment (exit
+  3221225794), which would have let a second driver kill a running training
+  driver. Stale locks after a crash are cleared manually (verify no driver
+  process, then delete). A regression test holds the lock from an isolated
+  subprocess, asserts the competing driver is rejected, and asserts the
+  holder is still alive afterwards.
+- **Legacy attestation instead of a prose note**: the formal execution
+  contract (now v2) carries a `legacy_cycles` array binding each of cycles
+  1–5 by content hash — batch SHA-256, materialization-manifest SHA-256,
+  train-report SHA-256, checkpoint file SHA-256 + semantic hash, 512
+  completed games, manifest `ply_cap = 150`, observed max plies (all
+  strictly below the cap: 104/98/90/88/88), and the legacy runner SHA
+  `e49562e3…`. Attestations are computed from the actual on-disk artifacts
+  at contract creation; any post-hoc modification of legacy data fails
+  resume (test-covered with a forged attestation).
+- **`cycle_state` era split**: cycles 1–5 validate against their
+  attestation (legacy reports legitimately predate the `ply_cap` field —
+  that regression, which stopped resume at cycle 1, is now guarded by a
+  test that resumes the real artifacts 0→5); cycles 6–8 require the train
+  report's `ply_cap = 150`. All cycles additionally verify the report's
+  plan/catalog identity and the parent chain (file SHA + semantic hash in
+  both the report and the checkpoint metadata) against the previously
+  verified checkpoint.
+- **New train reports carry `ply_cap`** (from the authoritative batch), so
+  capped-era cycles cannot hit the missing-field failure.
+- Verified end-to-end: full resume recognition from cycle 0 through
+  cycles 1–5 against the real run root (all five attested and chained);
+  cycle-6 correctly reports as partial/pending re-collection.
 
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PASS
 (G0 PASS, G0b PASS) / CYCLES_1_5_TRAINED / CYCLE_6_IN_PROGRESS`.

@@ -43,7 +43,10 @@ CONTRACT = ROOT / "formal-execution-contract.json"
 CKPT0 = Path("local-artifacts/m39a-implementation-smoke/cycle-0.pt").resolve()
 
 CONTRACT_FORMAT = "effective-splendor-m39a-formal-execution-contract"
-CONTRACT_VERSION = 1
+CONTRACT_VERSION = 2
+LEGACY_RUNNER_SHA256 = (
+    "e49562e36eb19c6ab3d79ebbe5e0e891a289dfbc1b0780cadc0ea2097bc63563"
+)
 
 
 def log(event: dict[str, Any]) -> None:
@@ -54,41 +57,80 @@ def log(event: dict[str, Any]) -> None:
 
 
 def acquire_lock() -> None:
-    """Atomically create the lock file; fail closed on any existing lock.
+    """Acquire the lock exclusively via O_CREAT|O_EXCL; fail closed always.
 
-    Uses exclusive creation (O_CREAT|O_EXCL) so two drivers can never both
-    pass a check-then-write race. A pre-existing lock is only overridden when
-    it names a PID that is provably dead — and even then the acquisition is
-    still atomic.
+    There is deliberately **no** liveness probe and **no** automatic stale
+    lock recovery: on this platform `os.kill(pid, 0)` is not a documented
+    harmless check (a review measured it terminating the target process on
+    Windows), and any probe-then-unlink logic reintroduces a race. If the
+    lock file exists for any reason — live driver or crash residue — this
+    driver refuses to start. Clearing a stale lock after a crash is a
+    human-confirmed step (verify no driver process, then delete the file).
     """
-    if LOCK.exists():
-        try:
-            pid = int(LOCK.read_text(encoding="utf-8").strip())
-            os.kill(pid, 0)
-        except (ProcessLookupError, ValueError, PermissionError, OSError):
-            # The recorded PID is provably not alive (or not a PID at all).
-            # Still do NOT trust unlink-then-create blindly: another driver
-            # may be mid-write. Atomically rename the stale lock away; if the
-            # rename fails, someone else owns the directory.
-            stale = LOCK.with_name(LOCK.name + ".stale")
-            try:
-                os.replace(LOCK, stale)
-            except OSError as error:
-                raise SystemExit(f"cannot clear stale lock {LOCK}: {error}") from error
-        else:
-            raise SystemExit(
-                f"another driver (pid {pid}) holds {LOCK}; refusing to start"
-            )
     try:
         descriptor = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError as error:
-        raise SystemExit(f"lost the lock race on {LOCK}; refusing to start") from error
+        raise SystemExit(
+            f"lock {LOCK} already exists; another driver may be running, or "
+            "the lock is stale after a crash — verify no driver process "
+            "exists, then remove the file manually"
+        ) from error
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(str(os.getpid()))
 
 
 def release_lock() -> None:
     LOCK.unlink(missing_ok=True)
+
+
+def legacy_cycle_attestation(cycle: int) -> dict[str, Any]:
+    """Content-hash attestation of one legacy (run-match era) cycle.
+
+    Cycles 1–5 were collected with the pre-capped binary (SHA
+    `e49562e3…`) before the capped rollout correction. Every one of their
+    2,560 games terminated below the 150-ply cap (max observed 104), which
+    is byte-identical under either runner mode; their batches passed full
+    Rust-referee verification. Per the 2026-08-30 review verdict they are
+    retained as-is. This attestation binds their actual on-disk artifacts —
+    batch, materialization manifest, train report, checkpoint — so any
+    post-hoc modification of the legacy data fails resume.
+    """
+    cycle_dir = ROOT / f"cycle-{cycle}"
+    batch = cycle_dir / "batch.json"
+    manifest = cycle_dir / "materialization-manifest.json"
+    report_path = ROOT / f"cycle-{cycle}-train-report.json"
+    checkpoint = ROOT / f"cycle-{cycle}.pt"
+    for path in (batch, manifest, report_path, checkpoint):
+        if not path.is_file():
+            raise SystemExit(f"legacy cycle-{cycle} artifact missing: {path}")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    manifest_doc = json.loads(manifest.read_text(encoding="utf-8"))
+    batch_doc = json.loads(batch.read_text(encoding="utf-8"))
+    games = len(batch_doc.get("games", []))
+    if games != 512:
+        raise SystemExit(f"legacy cycle-{cycle} batch binds {games} games, expected 512")
+    if int(manifest_doc.get("ply_cap", -1)) != 150:
+        raise SystemExit(f"legacy cycle-{cycle} manifest ply cap is not 150")
+    max_plies = max(int(game["completed_plies"]) for game in batch_doc["games"])
+    if max_plies >= 150:
+        raise SystemExit(
+            f"legacy cycle-{cycle} contains a game at or above the cap "
+            f"({max_plies} plies); the identical-under-either-runner claim "
+            "does not hold — do not resume this run root"
+        )
+    return {
+        "cycle": cycle,
+        "batch_sha256": file_sha256(batch),
+        "manifest_sha256": file_sha256(manifest),
+        "report_sha256": file_sha256(report_path),
+        "checkpoint_file_sha256": file_sha256(checkpoint),
+        "checkpoint_hash": report["checkpoint_hash"],
+        "games": games,
+        "manifest_ply_cap": int(manifest_doc["ply_cap"]),
+        "observed_max_plies": max_plies,
+        "runner_mode": "run-match",
+        "runner_sha256": LEGACY_RUNNER_SHA256,
+    }
 
 
 def execution_contract(
@@ -102,15 +144,11 @@ def execution_contract(
 ) -> dict[str, Any]:
     """The binding this run directory commits to exactly once.
 
-    Note on cycles 1–5: they were collected with the pre-capped run-match
-    binary (SHA e49562e3…) and every one of their 2,560 games terminated
-    below the 150-ply cap (max observed 104), which is byte-identical under
-    either runner mode; their batches passed full Rust-referee verification.
-    Per the 2026-08-30 review verdict they are retained as-is. The
-    `splendor_file_sha256` field below therefore binds all collection
-    performed by *this* driver instance (cycles 6–8 onwards, run-rollout
-    capped mode); the legacy-binary prefix is recorded in
-    `legacy_collection_note`.
+    `splendor_file_sha256` / `runner_mode` bind all collection performed by
+    this driver (capped run-rollout, cycles 6–8). Cycles 1–5 are legacy
+    (run-match era) and are bound by the per-cycle content-hash
+    attestations in `legacy_cycles` — computed from their actual on-disk
+    artifacts at contract creation, so any later modification breaks resume.
     """
     source_root = Path(__file__).resolve().parent
     return {
@@ -130,13 +168,9 @@ def execution_contract(
         "server_source_sha256": file_sha256(source_root / "splendor_gpu" / "m39a_server.py"),
         "trainer_source_sha256": file_sha256(source_root / "splendor_gpu" / "m39a_train.py"),
         "cycle_0_seed_sha256": file_sha256(CKPT0),
-        "legacy_collection_note": (
-            "cycles 1-5 were collected with run-match binary "
-            "e49562e36eb19c6ab3d79ebbe5e0e891a289dfbc1b0780cadc0ea2097bc63563 "
-            "before the capped rollout correction; all 2560 games terminated "
-            "below the ply cap and are identical under either runner mode "
-            "(review-accepted 2026-08-30)"
-        ),
+        "legacy_cycles": [
+            legacy_cycle_attestation(cycle) for cycle in range(1, 6)
+        ],
     }
 
 
@@ -167,10 +201,14 @@ def cycle_state(
 ) -> tuple[Path, str, str] | None:
     """Verify a completed cycle end-to-end before trusting it on resume.
 
-    Checks (all fail-closed): checkpoint + report exist; file SHA matches the
-    report; semantic hash matches the report; metadata cycle equals the
-    requested cycle; plan/catalog identity matches the contract; the parent
-    chain matches the expected parent checkpoint; ply cap matches.
+    Cycles 1–5 (legacy, run-match era) are validated against their
+    per-cycle content-hash attestation in the contract: batch, manifest,
+    report, and checkpoint hashes; 512 games; manifest ply cap 150; every
+    observed game below the cap; plus the report's plan/catalog/parent
+    identity and the checkpoint metadata chain.
+
+    Cycles 6–8 (capped era) additionally require the train report to carry
+    `ply_cap == 150` and the full checkpoint/report agreement.
     """
     checkpoint = ROOT / f"cycle-{cycle}.pt"
     report_path = ROOT / f"cycle-{cycle}-train-report.json"
@@ -180,6 +218,12 @@ def cycle_state(
     report = json.loads(report_path.read_text(encoding="utf-8"))
     digest = file_sha256(checkpoint)
 
+    legacy = next(
+        (entry for entry in contract["legacy_cycles"] if entry["cycle"] == cycle),
+        None,
+    )
+
+    # --- Common checks: checkpoint <-> report agreement + metadata chain. ---
     if report.get("checkpoint_file_sha256") != digest:
         raise SystemExit(f"cycle-{cycle} checkpoint file hash mismatch")
     if payload["checkpoint_hash"] != report.get("checkpoint_hash"):
@@ -196,8 +240,10 @@ def cycle_state(
         raise SystemExit(f"cycle-{cycle} checkpoint catalog hash does not match the contract")
     if int(report.get("cycle", -1)) != cycle:
         raise SystemExit(f"cycle-{cycle} train report cycle mismatch")
-    if int(report.get("ply_cap", -1)) != int(contract["ply_cap"]):
-        raise SystemExit(f"cycle-{cycle} train report ply cap does not match the contract")
+    if report.get("plan_hash") != contract["plan_hash"]:
+        raise SystemExit(f"cycle-{cycle} train report plan hash does not match the contract")
+    if report.get("catalog_hash") != contract["catalog_hash"]:
+        raise SystemExit(f"cycle-{cycle} train report catalog hash does not match the contract")
 
     if expected_parent is not None:
         parent_path, parent_sha, parent_hash = expected_parent
@@ -206,10 +252,50 @@ def cycle_state(
                 raise SystemExit(
                     f"cycle-{cycle} parent checkpoint file changed under us: {parent_path}"
                 )
+        if report.get("parent_checkpoint_sha256") is not None and (
+            report["parent_checkpoint_sha256"] != parent_sha
+        ):
+            raise SystemExit(
+                f"cycle-{cycle} report parent file hash mismatch: expected "
+                f"{parent_sha!r}, report has {report['parent_checkpoint_sha256']!r}"
+            )
+        if report.get("parent_checkpoint_hash") != parent_hash:
+            raise SystemExit(
+                f"cycle-{cycle} report parent chain mismatch: report records "
+                f"{report.get('parent_checkpoint_hash')!r}, expected {parent_hash!r}"
+            )
         if metadata.get("parent_checkpoint_hash") != parent_hash:
             raise SystemExit(
-                f"cycle-{cycle} parent chain mismatch: checkpoint records "
+                f"cycle-{cycle} checkpoint parent chain mismatch: checkpoint records "
                 f"{metadata.get('parent_checkpoint_hash')!r}, expected {parent_hash!r}"
+            )
+
+    # --- Era-specific checks. ---
+    if legacy is not None:
+        cycle_dir = ROOT / f"cycle-{cycle}"
+        attestation_checks = (
+            ("batch_sha256", cycle_dir / "batch.json"),
+            ("manifest_sha256", cycle_dir / "materialization-manifest.json"),
+            ("report_sha256", report_path),
+            ("checkpoint_file_sha256", checkpoint),
+        )
+        for field, path in attestation_checks:
+            actual = file_sha256(path)
+            if actual != legacy[field]:
+                raise SystemExit(
+                    f"legacy cycle-{cycle} {field} mismatch: attestation "
+                    f"{legacy[field][:16]}…, actual {actual[:16]}… ({path})"
+                )
+        if report.get("checkpoint_hash") != legacy["checkpoint_hash"]:
+            raise SystemExit(f"legacy cycle-{cycle} report semantic hash mismatch")
+        # Legacy reports predate the ply_cap field by design; their cap
+        # binding is the manifest attestation checked above.
+    else:
+        # Capped-era cycles must carry the ply cap in the report.
+        if int(report.get("ply_cap", -1)) != int(contract["ply_cap"]):
+            raise SystemExit(
+                f"cycle-{cycle} train report ply cap does not match the contract "
+                f"(report has {report.get('ply_cap')!r})"
             )
     return checkpoint, digest, payload["checkpoint_hash"]
 
