@@ -3,7 +3,7 @@
 ```text
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
-Status:         IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PENDING
+Status:         IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_BLOCKED_INFRASTRUCTURE
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -11,7 +11,7 @@ Rev 3 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
 Rev 4 revision:  2026-08-30, document-only; baseline unchanged 573434f
 Rev 4 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
 Training:       ONE-GAME CPU+CUDA IMPLEMENTATION SMOKE ONLY; no formal cycle
-Arena:          CPU+CUDA implementation smoke only; Phase 0 not started
+Arena:          Phase 0 attempted; no valid result (CUDA handshake timeouts)
 Baseline:       573434f (pushed HEAD; local main == origin/main)
 Baseline moved: 733401c -> 573434f on 2026-08-29, five engineering-only
                  commits (see "Not addressed by this revision"). No frozen
@@ -1999,7 +1999,23 @@ unstarted work on the first failure. The valid retry uses a new output directory
 and `workers = 2`, with the same plan, checkpoint, executable, seed schedule,
 timeouts, and gates. No partial artifact from the invalid attempt is reused.
 
-M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PENDING`.
+The `workers = 2` retry is also retained as invalid: run-contract SHA-256
+`2d17bfe578796aac4b706296867ff815f2fd34d708d03eb181d127d10c40d405`,
+115 completed outcomes and one learner `handshake_timeout` at M07 ordinal 18.
+The bounded scheduler stopped immediately and did not queue the remaining 268
+games. A `workers = 1` diagnostic retry (run-contract SHA-256
+`4d9a63631f15a194cdf93da0491c632ab6bc56f29e88af6af41fd45dfacbca73`)
+likewise produced two completed games and a learner `handshake_timeout` at
+diversified ordinal 2. At that time the host was not quiescent: an unrelated
+long-running Python audit process was active. The evidence establishes that no
+worker count is currently eligible for a formal verdict; it does not prove
+that the unrelated process alone caused the timeout. Phase 0 is blocked until
+the host is quiescent, then must restart in another new directory with the same
+binary, timeout, checkpoint, seeds, schedule, and gate rules. No timeout or
+gate is changed after observing these failures.
+
+M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS /
+PHASE_0_BLOCKED_INFRASTRUCTURE`.
 
 The next operational gate is the frozen **384-game Phase 0** probe. Formal
 cycle collection remains blocked until both G0 and G0b pass:
