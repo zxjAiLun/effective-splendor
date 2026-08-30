@@ -1,0 +1,152 @@
+{
+  "format": "effective-splendor-m39a-plan",
+  "version": 1,
+  "milestone": "M39A",
+  "baseline_commit": "573434f527ab07bffad005ed785e1fe6d45c18a3",
+  "catalog": {
+    "path": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26"
+  },
+  "initialization": {
+    "model_id": "M25-D2-v2",
+    "checkpoint_path": "local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt",
+    "checkpoint_file_sha256": "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17",
+    "load_prefixes": [
+      "entity_encoder.",
+      "entity_gate.",
+      "global_encoder.",
+      "mix.",
+      "blocks.",
+      "norm.",
+      "action_encoder.",
+      "policy."
+    ],
+    "discard_prefixes": [
+      "value."
+    ]
+  },
+  "round": {
+    "player_count": 2,
+    "cycles": 8,
+    "games_per_cycle": 512,
+    "training_game_seed_base": 4000000,
+    "decision_seed_base": 7000000,
+    "ply_cap": 150
+  },
+  "schedule": {
+    "cycle_bucket_counts": {
+      "random": 16,
+      "heuristic": 48,
+      "m07": 128,
+      "league": 128,
+      "self_play": 192
+    },
+    "league_order": [
+      "M24-S2",
+      "M25-D2-v2",
+      "M28A",
+      "M28B",
+      "M29A-v2",
+      "M31A",
+      "M32A",
+      "M33A",
+      "M34A"
+    ]
+  },
+  "trainer": {
+    "trainer_seed": 40260830,
+    "head_init_seed": 20260829,
+    "epochs_per_cycle": 4,
+    "minibatch_size": 512,
+    "gamma": 1.0,
+    "gae_lambda": 0.95,
+    "advantage_variance": "population",
+    "advantage_epsilon": 1e-8,
+    "ppo_clip": 0.2,
+    "entropy_coefficient": 0.01,
+    "value_coefficient": 0.5,
+    "aux_coefficient": 0.25,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 1.0,
+    "adamw_betas": [
+      0.9,
+      0.999
+    ],
+    "adamw_eps": 1e-8,
+    "adamw_amsgrad": false,
+    "adamw_maximize": false,
+    "adamw_foreach": false,
+    "adamw_fused": false,
+    "adamw_capturable": false,
+    "adamw_differentiable": false,
+    "lr_waypoints": [
+      0.0001,
+      0.0000955435990556,
+      0.00008305704108364,
+      0.00006501344202804,
+      0.00004498655797196,
+      0.00002694295891636,
+      0.0000144564009444,
+      0.00001
+    ]
+  },
+  "runtime": {
+    "torch_version": "2.6.0+cu124",
+    "dtype": "float32",
+    "device": "cuda",
+    "cublas_workspace_config": ":4096:8",
+    "deterministic_algorithms": true,
+    "cudnn_deterministic": true,
+    "cudnn_benchmark": false,
+    "torch_compile": false,
+    "inference_batch_size": 1
+  },
+  "join": {
+    "log_probability_drift_threshold": 0.000001,
+    "value_drift_threshold": 0.00001,
+    "authoritative_values": "checkpoint_recomputed",
+    "non_finite": "abort_batch"
+  },
+  "phase0": {
+    "probe_games_per_bucket": 96,
+    "warmup_ordinals": 32,
+    "probe_seed_ranges": {
+      "diversified": [
+        5200000,
+        5200095
+      ],
+      "m07": [
+        5200096,
+        5200191
+      ],
+      "league": [
+        5200192,
+        5200287
+      ],
+      "self_play": [
+        5200288,
+        5200383
+      ]
+    },
+    "bucket_truncation_fail_count": 4,
+    "aggregate_truncation_fail_count": 9,
+    "projected_parallel_hours_max": 72
+  },
+  "formal_gates": {
+    "g2": {
+      "seed_start": 5000000,
+      "seed_blocks": 128,
+      "rotations": 2,
+      "critical_value_df127": 1.656940343542,
+      "pass": "paired_lower_95_bps_gt_0"
+    },
+    "g3": {
+      "seed_start": 5100000,
+      "seed_blocks": 32,
+      "rotations": 2,
+      "league_pairings": 9,
+      "diagnostic_critical_value_df31": 1.695518782546,
+      "pass": "cycle8_aggregate_score_gte_baseline"
+    }
+  }
+}

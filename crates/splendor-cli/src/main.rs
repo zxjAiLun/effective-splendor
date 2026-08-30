@@ -15,6 +15,7 @@ mod imperfect_search_command;
 mod league_command;
 mod learning_command;
 mod m18a_command;
+mod m39a_command;
 mod promotion_command;
 mod rating_command;
 mod search_command;
@@ -117,6 +118,7 @@ fn main() {
         Some("collect-gpu-self-play-v2") => std::process::exit(
             self_play_v2_command::run_collect_gpu_self_play_v2(&argv[2..]),
         ),
+        Some("m39a-materialize") => std::process::exit(m39a_command::run_materialize(&argv[2..])),
         Some("diagnose-gpu-self-play-v2") => std::process::exit(
             self_play_v2_command::run_diagnose_gpu_self_play_v2(&argv[2..]),
         ),
