@@ -1972,6 +1972,21 @@ gradient source.
 
 ## Next authorized gate
 
+### Phase 0 launch provenance amendment (2026-08-30)
+
+The Phase 0 executor now writes `phase0-run-contract.json` before spawning the
+first game. The contract fail-closed binds a resumable output directory to the
+canonical plan hash, cycle-0 checkpoint path/file hash/semantic hash, catalog
+path/file hash, device, worker count, and the exact `splendor` executable path
+and file SHA-256. Every per-game timing artifact repeats the executable binding,
+and completed games are rejected on resume if it differs. The final report
+records the run-contract path/hash and executable path/hash.
+
+The first formal execution uses a Windows release build from the current
+`main` and `workers = 4`. The same executable identity is the required input for
+the later 4,096-game collector if G0/G0b pass; changing the executable requires
+a new Phase 0 output directory and a new probe.
+
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PENDING`.
 
 The next operational gate is the frozen **384-game Phase 0** probe. Formal

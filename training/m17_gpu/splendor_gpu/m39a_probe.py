@@ -21,6 +21,8 @@ from .m39a_model import load_m39a_checkpoint
 
 REPORT_FORMAT = "effective-splendor-m39a-phase0-report"
 REPORT_VERSION = 1
+RUN_CONTRACT_FORMAT = "effective-splendor-m39a-phase0-run-contract"
+RUN_CONTRACT_VERSION = 1
 BUCKETS = ("diversified", "m07", "league", "self_play")
 BASES = {
     "diversified": 5_200_000,
@@ -68,6 +70,49 @@ def frozen_probe_schedule() -> list[ProbeGame]:
     return [probe_game(bucket, ordinal) for bucket in BUCKETS for ordinal in range(96)]
 
 
+def phase0_run_contract(
+    *,
+    plan_hash_value: str,
+    checkpoint: Path,
+    checkpoint_sha256: str,
+    checkpoint_hash: str,
+    catalog: Path,
+    splendor: Path,
+    device: str,
+    workers: int,
+) -> dict[str, Any]:
+    """Bind a resumable Phase-0 directory to one exact execution environment."""
+    return {
+        "format": RUN_CONTRACT_FORMAT,
+        "version": RUN_CONTRACT_VERSION,
+        "plan_hash": plan_hash_value,
+        "checkpoint_path": str(checkpoint),
+        "checkpoint_sha256": checkpoint_sha256,
+        "checkpoint_hash": checkpoint_hash,
+        "catalog_path": str(catalog),
+        "catalog_file_sha256": file_sha256(catalog),
+        "splendor_program": str(splendor),
+        "splendor_file_sha256": file_sha256(splendor),
+        "device": device,
+        "workers": workers,
+    }
+
+
+def ensure_phase0_run_contract(out_dir: Path, contract: dict[str, Any]) -> Path:
+    path = out_dir / "phase0-run-contract.json"
+    if path.exists():
+        observed = json.loads(path.read_text(encoding="utf-8"))
+        if observed != contract:
+            raise RuntimeError(
+                "Phase 0 resume contract mismatch; use the original executable, "
+                "checkpoint, catalog, device, and worker count or choose a new out-dir"
+            )
+    else:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        _write_new_json(path, contract)
+    return path
+
+
 def _run_one(
     game: ProbeGame,
     *,
@@ -76,6 +121,7 @@ def _run_one(
     digest: str,
     catalog: Path,
     splendor: Path,
+    splendor_file_sha256: str,
     out_dir: Path,
     device: str,
 ) -> dict[str, Any]:
@@ -93,6 +139,10 @@ def _run_one(
         if not timing_path.is_file():
             raise RuntimeError(f"completed probe lacks timing artifact at {game_dir}")
         timing = json.loads(timing_path.read_text(encoding="utf-8"))
+        if timing.get("splendor_program") != str(splendor) or timing.get(
+            "splendor_file_sha256"
+        ) != splendor_file_sha256:
+            raise RuntimeError(f"probe executable binding mismatch at {game_dir}")
         elapsed_seconds = float(timing["elapsed_seconds"])
     else:
         game_dir.mkdir(parents=True, exist_ok=True)
@@ -155,7 +205,14 @@ def _run_one(
                 f"probe {game.bucket}/{game.ordinal} failed rc={completed.returncode}: "
                 f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
             )
-        _write_new_json(timing_path, {"elapsed_seconds": elapsed_seconds})
+        _write_new_json(
+            timing_path,
+            {
+                "elapsed_seconds": elapsed_seconds,
+                "splendor_program": str(splendor),
+                "splendor_file_sha256": splendor_file_sha256,
+            },
+        )
     replay = json.loads(replay_path.read_text(encoding="utf-8"))
     completed_plies = len(replay["steps"])
     return {
@@ -264,6 +321,22 @@ def main() -> None:
     checkpoint = args.checkpoint.resolve()
     catalog = args.catalog.resolve()
     splendor = args.splendor.resolve()
+    if not catalog.is_file():
+        raise ValueError(f"catalog does not exist: {catalog}")
+    if not splendor.is_file():
+        raise ValueError(f"splendor executable does not exist: {splendor}")
+    run_contract = phase0_run_contract(
+        plan_hash_value=digest,
+        checkpoint=checkpoint,
+        checkpoint_sha256=args.checkpoint_sha256,
+        checkpoint_hash=args.checkpoint_hash,
+        catalog=catalog,
+        splendor=splendor,
+        device=args.device,
+        workers=args.workers,
+    )
+    run_contract_path = ensure_phase0_run_contract(out_dir, run_contract)
+    splendor_file_sha256 = str(run_contract["splendor_file_sha256"])
     tasks = frozen_probe_schedule()
     rows = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as executor:
@@ -276,6 +349,7 @@ def main() -> None:
                 digest=digest,
                 catalog=catalog,
                 splendor=splendor,
+                splendor_file_sha256=splendor_file_sha256,
                 out_dir=out_dir,
                 device=args.device,
             ): game
@@ -293,6 +367,10 @@ def main() -> None:
         "plan_hash": digest,
         "checkpoint_sha256": args.checkpoint_sha256,
         "checkpoint_hash": args.checkpoint_hash,
+        "run_contract": str(run_contract_path),
+        "run_contract_sha256": file_sha256(run_contract_path),
+        "splendor_program": str(splendor),
+        "splendor_file_sha256": splendor_file_sha256,
         "device": args.device,
         "rows": rows,
         **summary,

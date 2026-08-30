@@ -3,7 +3,15 @@ from __future__ import annotations
 import pytest
 
 from splendor_gpu.m39a_contract import LEAGUE_ORDER
-from splendor_gpu.m39a_probe import BUCKETS, frozen_probe_schedule, summarize
+from pathlib import Path
+
+from splendor_gpu.m39a_probe import (
+    BUCKETS,
+    ensure_phase0_run_contract,
+    frozen_probe_schedule,
+    phase0_run_contract,
+    summarize,
+)
 
 
 def test_frozen_probe_schedule_has_exact_assignments() -> None:
@@ -54,3 +62,44 @@ def test_phase0_summary_applies_frozen_gates_and_projection() -> None:
     assert not failed["g0b_pass"]
     assert failed["bucket_reports"]["diversified"]["bucket_fail"]
     assert failed["verdict"] == "fail"
+
+
+def test_phase0_run_contract_binds_executable_and_resume(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "cycle-0.pt"
+    catalog = tmp_path / "catalog.json"
+    splendor = tmp_path / "splendor.exe"
+    checkpoint.write_bytes(b"checkpoint")
+    catalog.write_bytes(b"catalog")
+    splendor.write_bytes(b"release-binary")
+    contract = phase0_run_contract(
+        plan_hash_value="plan",
+        checkpoint=checkpoint.resolve(),
+        checkpoint_sha256="checkpoint-file",
+        checkpoint_hash="checkpoint-semantic",
+        catalog=catalog.resolve(),
+        splendor=splendor.resolve(),
+        device="cuda",
+        workers=4,
+    )
+    path = ensure_phase0_run_contract(tmp_path / "run", contract)
+    assert ensure_phase0_run_contract(tmp_path / "run", contract) == path
+    assert contract["splendor_program"] == str(splendor.resolve())
+
+    changed = dict(contract)
+    changed["workers"] = 2
+    with pytest.raises(RuntimeError, match="resume contract mismatch"):
+        ensure_phase0_run_contract(tmp_path / "run", changed)
+
+    splendor.write_bytes(b"different-binary")
+    changed_binary = phase0_run_contract(
+        plan_hash_value="plan",
+        checkpoint=checkpoint.resolve(),
+        checkpoint_sha256="checkpoint-file",
+        checkpoint_hash="checkpoint-semantic",
+        catalog=catalog.resolve(),
+        splendor=splendor.resolve(),
+        device="cuda",
+        workers=4,
+    )
+    with pytest.raises(RuntimeError, match="resume contract mismatch"):
+        ensure_phase0_run_contract(tmp_path / "run", changed_binary)
