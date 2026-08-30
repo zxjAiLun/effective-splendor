@@ -259,6 +259,7 @@ fn seq_of(msg: &ServerMessage) -> u64 {
         | ServerMessage::ActionApplied { meta, .. }
         | ServerMessage::Event { meta, .. }
         | ServerMessage::GameEnd { meta, .. }
+        | ServerMessage::GameTruncated { meta, .. }
         | ServerMessage::Error { meta, .. }
         | ServerMessage::Ping { meta } => meta.server.server_seq,
         ServerMessage::Observation { meta, .. } => meta.recipient.server.server_seq,
@@ -273,6 +274,7 @@ fn recipient_of(msg: &ServerMessage) -> Option<u8> {
         | ServerMessage::ActionApplied { meta, .. }
         | ServerMessage::Event { meta, .. }
         | ServerMessage::GameEnd { meta, .. }
+        | ServerMessage::GameTruncated { meta, .. }
         | ServerMessage::Error { meta, .. }
         | ServerMessage::Ping { meta } => Some(meta.recipient_player_id),
         ServerMessage::Observation { meta, .. } => Some(meta.recipient.recipient_player_id),

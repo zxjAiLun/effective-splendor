@@ -25,14 +25,16 @@ mod format;
 mod recorder;
 mod verify;
 
-pub use document_hash::replay_document_hash_v1;
+pub use document_hash::{replay_document_hash_v1, rollout_prefix_document_hash_v1};
 pub use error::{ReplayError, ReplayResult};
 pub use format::{
     ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayTerminalReason, ReplayV1,
-    REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID,
+    RolloutPrefixV1, REPLAY_FORMAT, REPLAY_VERSION, ROLLOUT_PREFIX_FORMAT, ROLLOUT_PREFIX_VERSION,
+    SUPPORTED_RULESET_ID,
 };
 pub use recorder::{record_random_game, ReplayRecorder, MAX_RANDOM_REPLAY_PLIES};
 pub use verify::{
-    verify_replay, verify_replay_position, verify_replay_trace, VerifiedReplay,
-    VerifiedReplayPosition, VerifiedReplayTrace, VerifiedReplayTraceStep,
+    verify_replay, verify_replay_position, verify_replay_trace, verify_rollout_prefix,
+    VerifiedReplay, VerifiedReplayPosition, VerifiedReplayTrace, VerifiedReplayTraceStep,
+    VerifiedRolloutPrefix,
 };

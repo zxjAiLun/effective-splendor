@@ -22,7 +22,7 @@ from splendor_gpu.m39a_contract import (
 )
 
 
-PLAN_PATH = Path("benchmarks/m39a-arena-driven-policy-value-rl.plan.json")
+PLAN_PATH = Path(__file__).resolve().parent.parent.parent.parent / "benchmarks/m39a-arena-driven-policy-value-rl.plan.json"
 
 
 def test_plan_and_rng_goldens():

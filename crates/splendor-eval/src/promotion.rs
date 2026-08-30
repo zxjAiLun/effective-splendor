@@ -251,6 +251,14 @@ pub fn evaluate_promotion_v1(
                 aborted_matches = aborted_matches.saturating_add(1);
                 block.complete = false;
             }
+            ArenaOutcomeV1::Truncated { .. } => {
+                // A promotion gate scores terminal games only; a truncated
+                // (ply-capped) game has no result and cannot count.
+                return Err(EvaluationError::InvalidPromotionGate(format!(
+                    "match {} is truncated; promotion gates score terminal games only",
+                    record.match_index
+                )));
+            }
         }
     }
 

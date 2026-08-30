@@ -182,3 +182,40 @@ pub struct ReplayV1 {
     pub final_state_hash: ReplayHash,
     pub result: ReplayGameResultV1,
 }
+
+/// Format tag of the capped rollout prefix document.
+pub const ROLLOUT_PREFIX_FORMAT: &str = "splendor-rollout-prefix";
+/// Version of the capped rollout prefix document.
+pub const ROLLOUT_PREFIX_VERSION: u32 = 1;
+
+/// A capped rollout prefix: the exact first `steps.len()` plies of one game
+/// that had **not** reached a terminal state when the ply cap hit.
+///
+/// This is deliberately *not* a [`ReplayV1`]: it carries no `result`, no
+/// ranks, no winners, and no terminal reason, so a truncated game can never
+/// be mistaken for a completed one or fabricate a `GameResult`. The
+/// authoritative truncation semantics (cap-instant VP differential) live in
+/// the consumers of this document, not in the document itself.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RolloutPrefixV1 {
+    pub format: String,
+    pub version: u32,
+    pub engine_version: String,
+
+    pub ruleset: ReplayRulesetV1,
+    pub ruleset_fingerprint: ReplayHash,
+
+    pub player_count: u8,
+    pub seed: u64,
+
+    /// The ply cap that produced this prefix; `steps.len() == ply_cap`.
+    pub ply_cap: u32,
+
+    pub initial_state_hash: ReplayHash,
+    pub steps: Vec<ReplayStepV1>,
+
+    /// Hash of the referee state after the final recorded step. The state
+    /// at this point is non-terminal by construction.
+    pub cap_state_hash: ReplayHash,
+}

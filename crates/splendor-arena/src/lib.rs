@@ -34,7 +34,7 @@ pub use report::{
     AgentFault, AgentIdentity, ArenaOutcomeV1, ArenaPhase, ArenaReportV1, ARENA_REPORT_FORMAT,
     ARENA_REPORT_VERSION,
 };
-pub use runner::{ArenaRun, ArenaRunner};
+pub use runner::{ArenaRun, ArenaRunner, CappedRun};
 pub use seed_commitment::{seed_commitment_v1, SeedCommitment};
 
 // Re-export a few core types the schema references, for convenience.

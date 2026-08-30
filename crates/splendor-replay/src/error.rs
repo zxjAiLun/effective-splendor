@@ -93,6 +93,18 @@ pub enum ReplayError {
     #[error("random recording exceeded the {limit}-ply safety limit")]
     PlyLimitExceeded { limit: u32 },
 
+    #[error("rollout prefix step count {steps} does not equal the ply cap {ply_cap}")]
+    PrefixStepCountMismatch { steps: u32, ply_cap: u32 },
+
+    #[error("rollout prefix cap state hash mismatch: prefix {expected:?}, rebuilt {actual:?}")]
+    CapHashMismatch { expected: String, actual: String },
+
+    #[error("rollout prefix is terminal at ply {plies}; a prefix must be non-terminal")]
+    PrefixTerminal { plies: u32 },
+
+    #[error("rollout prefix must contain at least one step")]
+    EmptyPrefix,
+
     #[error("replay ply {requested} is out of range: replay has {steps} steps (valid plies are 0..{steps})")]
     PlyOutOfRange { requested: u32, steps: u32 },
 

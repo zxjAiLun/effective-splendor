@@ -19,7 +19,10 @@ use splendor_arena::{
 };
 use splendor_core::{observation_hash, Action, Observation, PlayerId, RulesetFingerprint};
 use splendor_league::arena_report_document_hash_v1;
-use splendor_replay::{replay_document_hash_v1, verify_replay_trace, ReplayGameResultV1, ReplayV1};
+use splendor_replay::{
+    replay_document_hash_v1, rollout_prefix_document_hash_v1, verify_replay_trace,
+    verify_rollout_prefix, ReplayGameResultV1, ReplayV1, RolloutPrefixV1,
+};
 
 use crate::atomic_output::commit_single;
 
@@ -80,7 +83,12 @@ enum MaterializationMode {
 struct GameSource {
     game_index: u32,
     report_path: PathBuf,
+    /// Terminal games: the full `ReplayV1`.
     replay_path: PathBuf,
+    /// Truncated (ply-capped) games: the `RolloutPrefixV1`. One of
+    /// `replay_path` / `prefix_path` must exist on disk; which one is
+    /// authoritative is decided by the report's outcome, fail-closed.
+    prefix_path: Option<PathBuf>,
     sidecar_paths: Vec<PathBuf>,
 }
 
@@ -98,7 +106,26 @@ struct TrajectorySidecar {
     game_index: u32,
     seat: u8,
     records: Vec<SidecarRecord>,
-    result: ReplayGameResultV1,
+    /// Terminal games: the engine result seen at `game_end`. Truncated
+    /// (ply-capped) games: the no-result cap envelope seen at
+    /// `game_truncated`.
+    result: SidecarResult,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+enum SidecarResult {
+    Terminal(ReplayGameResultV1),
+    Truncated(SidecarTruncatedResult),
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct SidecarTruncatedResult {
+    truncated: bool,
+    completed_plies: u32,
+    cap_state_hash: String,
+    cap_scores: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -126,7 +153,12 @@ struct AuthoritativeResult {
     scores: Vec<u8>,
     centered_returns: Vec<f64>,
     truncated: bool,
-    source_terminal_result: ReplayGameResultV1,
+    /// `Some` for games with a real terminal result (including completed
+    /// games longer than the cap, where the terminal result exists but the
+    /// training prefix uses the cap state). `None` for capped rollout
+    /// prefix games, which never reached a terminal state and never
+    /// fabricate one.
+    source_terminal_result: Option<ReplayGameResultV1>,
 }
 
 #[derive(Debug, Serialize)]
@@ -262,20 +294,48 @@ fn materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Result<Str
         }
         let report: ArenaReportV1 =
             read_json(&resolve(parent, &source.report_path), "arena report")?;
-        let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
         let sidecars = source
             .sidecar_paths
             .iter()
             .map(|path| read_json(&resolve(parent, path), "trajectory sidecar"))
             .collect::<Result<Vec<TrajectorySidecar>, String>>()?;
-        let (binding, mut game_records) = materialize_game(
-            &manifest,
-            catalog_hash,
-            source.game_index,
-            &report,
-            &replay,
-            &sidecars,
-        )?;
+        let (binding, mut game_records) = match &report.outcome {
+            ArenaOutcomeV1::Completed { .. } => {
+                let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
+                materialize_game(
+                    &manifest,
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &replay,
+                    &sidecars,
+                )?
+            }
+            ArenaOutcomeV1::Truncated { .. } => {
+                let prefix_path = source.prefix_path.as_ref().ok_or_else(|| {
+                    format!(
+                        "game {}: truncated report has no prefix_path in the manifest",
+                        source.game_index
+                    )
+                })?;
+                let prefix: RolloutPrefixV1 =
+                    read_json(&resolve(parent, prefix_path), "rollout prefix")?;
+                materialize_game_truncated(
+                    &manifest,
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &prefix,
+                    &sidecars,
+                )?
+            }
+            ArenaOutcomeV1::Aborted { .. } => {
+                return Err(format!(
+                    "game {}: aborted arena report cannot enter training",
+                    source.game_index
+                ))
+            }
+        };
         bindings.push(binding);
         records.append(&mut game_records);
     }
@@ -378,12 +438,16 @@ fn materialize_game(
     } else {
         trace.verified.result.scores.clone()
     };
-    let centered = centered_returns(&training_scores, &trace.verified.result, truncated)?;
+    let centered = centered_returns(
+        &training_scores,
+        &Some(trace.verified.result.clone()),
+        truncated,
+    )?;
     let result = AuthoritativeResult {
         scores: training_scores,
         centered_returns: centered,
         truncated,
-        source_terminal_result: trace.verified.result.clone(),
+        source_terminal_result: Some(trace.verified.result.clone()),
     };
 
     let expected_seats = learner_seats(game_index);
@@ -516,6 +580,255 @@ fn materialize_game(
     ))
 }
 
+/// Materialize one truncated (ply-capped) game from its rollout prefix.
+///
+/// Mirrors [`materialize_game`]'s checks, but the authoritative document is
+/// the [`RolloutPrefixV1`]: every step is re-executed, the cap state hash is
+/// verified, and the pre-registered truncation return is computed from the
+/// cap-instant VP differential. There is no terminal result and none is
+/// fabricated.
+#[allow(clippy::too_many_arguments)]
+fn materialize_game_truncated(
+    manifest: &MaterializationManifest,
+    catalog_hash: &str,
+    game_index: u32,
+    report: &ArenaReportV1,
+    prefix: &RolloutPrefixV1,
+    sidecars: &[TrajectorySidecar],
+) -> Result<(GameBinding, Vec<AuthoritativeRecord>), String> {
+    if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
+        return Err(format!("game {game_index}: outside manifest cycle"));
+    }
+    let expected_seed = TRAINING_GAME_SEED_BASE + u64::from(game_index / 2);
+    if prefix.seed != expected_seed {
+        return Err(format!(
+            "game {game_index}: prefix seed {} does not match frozen schedule {expected_seed}",
+            prefix.seed
+        ));
+    }
+    if prefix.player_count != 2 {
+        return Err(format!("game {game_index}: prefix is not 1v1"));
+    }
+    let (report_cap_hash, report_plies, report_cap_scores) = match &report.outcome {
+        ArenaOutcomeV1::Truncated {
+            completed_plies,
+            cap_state_hash,
+            cap_scores,
+        } => (cap_state_hash.clone(), *completed_plies, cap_scores.clone()),
+        _ => {
+            return Err(format!(
+                "game {game_index}: prefix materialization requires a truncated report"
+            ))
+        }
+    };
+    if report_plies != manifest.ply_cap || prefix.ply_cap != manifest.ply_cap {
+        return Err(format!(
+            "game {game_index}: truncated plies do not equal the manifest ply cap"
+        ));
+    }
+    if report_cap_hash != prefix.cap_state_hash.as_str() {
+        return Err(format!(
+            "game {game_index}: report cap hash does not bind the prefix"
+        ));
+    }
+    if report.format != ARENA_REPORT_FORMAT || report.version != ARENA_REPORT_VERSION {
+        return Err("invalid arena report format/version".into());
+    }
+    if report.player_count != 2
+        || report.ruleset != prefix.ruleset.id
+        || report.ruleset_fingerprint != prefix.ruleset_fingerprint.as_str()
+        || report.engine_version != prefix.engine_version
+    {
+        return Err("arena compatibility metadata does not match prefix".into());
+    }
+    let fingerprint = RulesetFingerprint::from_str(&report.ruleset_fingerprint)
+        .map_err(|error| format!("invalid ruleset fingerprint: {error}"))?;
+    if report.seed_commitment
+        != seed_commitment_v1(
+            &report.game_id,
+            prefix.player_count,
+            prefix.seed,
+            &fingerprint,
+        )
+    {
+        return Err("seed commitment does not bind prefix".into());
+    }
+    bind_scheduled_agents(report, manifest, game_index)?;
+
+    let verified = verify_rollout_prefix(prefix)
+        .map_err(|error| format!("game {game_index}: prefix verification failed: {error}"))?;
+    let report_hash = arena_report_document_hash_v1(report).map_err(|error| error.to_string())?;
+    let prefix_hash = rollout_prefix_document_hash_v1(prefix).map_err(|error| error.to_string())?;
+
+    // Cap-instant VP from the rebuilt state; cross-check against the report.
+    let cap_state = verified
+        .positions
+        .last()
+        .map(|position| &position.state)
+        .ok_or_else(|| format!("game {game_index}: empty prefix trace"))?;
+    let _ = cap_state; // positions[0..n-1] are pre-action states; cap state is rebuilt below.
+    let cap_scores: Vec<u8> = {
+        // The verifier's positions are pre-action states; rebuild the cap
+        // state by re-applying the recorded steps (verify already confirmed
+        // the terminal cap hash, so this reconstruction is exact).
+        let mut state = verified
+            .positions
+            .first()
+            .map(|position| position.state.clone())
+            .ok_or_else(|| format!("game {game_index}: empty prefix trace"))?;
+        for step in &prefix.steps {
+            state
+                .apply(step.action)
+                .map_err(|error| format!("game {game_index}: prefix replay failed: {error}"))?;
+        }
+        state.players.iter().map(|player| player.prestige).collect()
+    };
+    if cap_scores != report_cap_scores {
+        return Err(format!(
+            "game {game_index}: rebuilt cap scores do not match the report"
+        ));
+    }
+
+    let training_plies = prefix.ply_cap;
+    let completed_plies = report_plies;
+    let centered = centered_returns(&cap_scores, &None, true)?;
+    let result = AuthoritativeResult {
+        scores: cap_scores,
+        centered_returns: centered,
+        truncated: true,
+        source_terminal_result: None,
+    };
+
+    let expected_seats = learner_seats(game_index);
+    let actual_seats = sidecars
+        .iter()
+        .map(|sidecar| sidecar.seat)
+        .collect::<BTreeSet<_>>();
+    if actual_seats != expected_seats {
+        return Err(format!(
+            "game {game_index}: learner sidecars {:?} do not match schedule {:?}",
+            actual_seats, expected_seats
+        ));
+    }
+    let mut output = Vec::new();
+    for sidecar in sidecars {
+        validate_sidecar_prefix(sidecar, manifest, catalog_hash, game_index, report, prefix)?;
+        let mut seen_plies = BTreeSet::new();
+        for record in &sidecar.records {
+            if record.ply_index >= training_plies {
+                continue;
+            }
+            if !seen_plies.insert(record.ply_index) {
+                return Err(format!(
+                    "game {game_index}: duplicate sidecar ply {}",
+                    record.ply_index
+                ));
+            }
+            let position = verified
+                .positions
+                .get(record.ply_index as usize)
+                .ok_or_else(|| format!("game {game_index}: sidecar ply outside prefix"))?;
+            if position.recorded_actor != PlayerId(sidecar.seat)
+                || position.recorded_action != record.action
+            {
+                return Err(format!(
+                    "game {game_index}: actor/action mismatch at ply {}",
+                    record.ply_index
+                ));
+            }
+            let observation = position.state.observation(position.recorded_actor);
+            let observation_digest = observation_hash(&observation).as_str().to_string();
+            if observation != record.observation || observation_digest != record.observation_hash {
+                return Err(format!(
+                    "game {game_index}: observation mismatch at ply {}",
+                    record.ply_index
+                ));
+            }
+            let legal_actions = position.state.legal_actions();
+            if legal_actions != record.legal_actions {
+                return Err(format!(
+                    "game {game_index}: ordered legal actions mismatch at ply {}",
+                    record.ply_index
+                ));
+            }
+            if record.request_id != u64::from(record.ply_index) + 1
+                || record.decision_seed
+                    != decision_seed(game_index, sidecar.seat, record.request_id)
+            {
+                return Err(format!(
+                    "game {game_index}: request/decision seed mismatch at ply {}",
+                    record.ply_index
+                ));
+            }
+            if !record.old_log_probability.is_finite()
+                || !record.old_value.is_finite()
+                || !record.old_auxiliary_score.is_finite()
+                || record.old_value_by_player.len() != 2
+                || record
+                    .old_value_by_player
+                    .iter()
+                    .any(|value| !value.is_finite())
+            {
+                return Err(format!(
+                    "game {game_index}: non-finite or malformed model output at ply {}",
+                    record.ply_index
+                ));
+            }
+            if !record.legal_actions.contains(&record.action) {
+                return Err(format!(
+                    "game {game_index}: chosen action not legal at ply {}",
+                    record.ply_index
+                ));
+            }
+            output.push(AuthoritativeRecord {
+                game_index,
+                game_id: report.game_id.clone(),
+                seat: sidecar.seat,
+                ply_index: record.ply_index,
+                request_id: record.request_id,
+                observation_hash: observation_digest,
+                observation,
+                legal_actions,
+                action: record.action,
+                decision_seed: record.decision_seed,
+                old_log_probability: record.old_log_probability,
+                old_value: record.old_value,
+                old_value_by_player: record.old_value_by_player.clone(),
+                old_auxiliary_score: record.old_auxiliary_score,
+                result: result.clone(),
+                arena_report_hash: report_hash.clone(),
+                replay_document_hash: prefix_hash.clone(),
+            });
+        }
+        let expected_plies = verified
+            .positions
+            .iter()
+            .take(training_plies as usize)
+            .filter(|position| position.recorded_actor == PlayerId(sidecar.seat))
+            .map(|position| position.ply)
+            .collect::<BTreeSet<_>>();
+        if seen_plies != expected_plies {
+            return Err(format!(
+                "game {game_index}: sidecar is missing or adds learner decisions before the cap"
+            ));
+        }
+    }
+    Ok((
+        GameBinding {
+            game_index,
+            game_id: report.game_id.clone(),
+            seed: prefix.seed,
+            completed_plies,
+            training_plies,
+            truncated: true,
+            learner_seats: expected_seats.into_iter().collect(),
+            arena_report_hash: report_hash,
+            replay_document_hash: prefix_hash,
+        },
+        output,
+    ))
+}
+
 fn bind_scheduled_agents(
     report: &ArenaReportV1,
     manifest: &MaterializationManifest,
@@ -586,10 +899,63 @@ fn validate_sidecar(
         || sidecar.catalog_hash != catalog_hash
         || sidecar.game_id != report.game_id
         || sidecar.game_index != game_index
-        || sidecar.result != replay.result
+        || sidecar.result != SidecarResult::Terminal(replay.result.clone())
     {
         return Err(format!(
             "game {game_index}: sidecar provenance/result mismatch"
+        ));
+    }
+    if sidecar.seat > 1 {
+        return Err(format!("game {game_index}: invalid sidecar seat"));
+    }
+    for record in &sidecar.records {
+        if record.game_index != game_index
+            || record.game_id != report.game_id
+            || record.seat != sidecar.seat
+        {
+            return Err(format!("game {game_index}: record envelope mismatch"));
+        }
+    }
+    Ok(())
+}
+
+/// Terminal-game sidecar validation counterpart for truncated games: the
+/// sidecar's result must be the no-result cap envelope matching the report
+/// and the prefix exactly.
+#[allow(clippy::too_many_arguments)]
+fn validate_sidecar_prefix(
+    sidecar: &TrajectorySidecar,
+    manifest: &MaterializationManifest,
+    catalog_hash: &str,
+    game_index: u32,
+    report: &ArenaReportV1,
+    prefix: &RolloutPrefixV1,
+) -> Result<(), String> {
+    if sidecar.format != SIDECAR_FORMAT || sidecar.version != SIDECAR_VERSION {
+        return Err(format!(
+            "game {game_index}: unsupported sidecar format/version"
+        ));
+    }
+    let expected = SidecarResult::Truncated(SidecarTruncatedResult {
+        truncated: true,
+        completed_plies: prefix.ply_cap,
+        cap_state_hash: prefix.cap_state_hash.as_str().to_string(),
+        cap_scores: match &report.outcome {
+            ArenaOutcomeV1::Truncated { cap_scores, .. } => cap_scores.clone(),
+            _ => return Err(format!("game {game_index}: report is not truncated")),
+        },
+    });
+    if sidecar.plan_hash != manifest.plan_hash
+        || sidecar.checkpoint_sha256 != manifest.checkpoint_sha256
+        || sidecar.checkpoint_hash != manifest.checkpoint_hash
+        || sidecar.checkpoint_cycle != manifest.checkpoint_cycle
+        || sidecar.catalog_hash != catalog_hash
+        || sidecar.game_id != report.game_id
+        || sidecar.game_index != game_index
+        || sidecar.result != expected
+    {
+        return Err(format!(
+            "game {game_index}: sidecar provenance/truncation mismatch"
         ));
     }
     if sidecar.seat > 1 {
@@ -645,6 +1011,9 @@ fn bind_report_replay(report: &ArenaReportV1, replay: &ReplayV1) -> Result<(), S
         ArenaOutcomeV1::Aborted { .. } => {
             return Err("aborted arena report cannot enter training".into())
         }
+        ArenaOutcomeV1::Truncated { .. } => {
+            return Err("truncated arena report binds a rollout prefix, not a replay".into())
+        }
     }
     if report.agents.len() != 2
         || report
@@ -661,7 +1030,7 @@ fn bind_report_replay(report: &ArenaReportV1, replay: &ReplayV1) -> Result<(), S
 
 fn centered_returns(
     scores: &[u8],
-    terminal: &ReplayGameResultV1,
+    terminal: &Option<ReplayGameResultV1>,
     truncated: bool,
 ) -> Result<Vec<f64>, String> {
     if scores.len() != 2 {
@@ -671,6 +1040,9 @@ fn centered_returns(
         let delta = (f64::from(scores[0]) - f64::from(scores[1])) / 4.0;
         return Ok(vec![-0.5 + 0.5 * delta.tanh(), -0.5 - 0.5 * delta.tanh()]);
     }
+    let terminal = terminal
+        .as_ref()
+        .ok_or_else(|| "non-truncated result requires a terminal result".to_string())?;
     if terminal.ranks.len() != 2 {
         return Err("terminal result must contain two ranks".into());
     }
@@ -920,7 +1292,7 @@ mod tests {
             game_index: 0,
             seat: 0,
             records,
-            result: replay.result.clone(),
+            result: SidecarResult::Terminal(replay.result.clone()),
         };
         let manifest = MaterializationManifest {
             format: MANIFEST_FORMAT.into(),
@@ -956,5 +1328,147 @@ mod tests {
             };
         assert!(error.contains("observation mismatch"));
         fs::remove_dir_all(directory).ok();
+    }
+
+    #[test]
+    fn truncated_prefix_join_produces_truncated_returns_and_rejects_mismatch() {
+        // Build a 5-ply prefix from a recorded random game by replaying the
+        // first five steps through a fresh recorder.
+        let (_, replay) = record_random_game(2, 4_000_000, 99).unwrap();
+        let cap = 5u32;
+        let mut recorder = splendor_replay::ReplayRecorder::new(splendor_core::GameConfig {
+            player_count: 2,
+            seed: replay.seed,
+            ..Default::default()
+        })
+        .unwrap();
+        for step in replay.steps.iter().take(cap as usize) {
+            recorder.apply(step.action).unwrap();
+        }
+        assert!(!recorder.is_terminal());
+        let (state, prefix) = recorder.finish_prefix(cap).unwrap();
+        let cap_scores: Vec<u8> = state.players.iter().map(|p| p.prestige).collect();
+        let verified_prefix = verify_rollout_prefix(&prefix).unwrap();
+
+        let game_id = "m39a-unit-truncated";
+        let fingerprint =
+            RulesetFingerprint::from_str(prefix.ruleset_fingerprint.as_str()).unwrap();
+        let report = ArenaReportV1::new(
+            game_id,
+            prefix.engine_version.clone(),
+            "0.5",
+            prefix.ruleset.id.clone(),
+            prefix.ruleset_fingerprint.as_str(),
+            2,
+            seed_commitment_v1(game_id, 2, prefix.seed, &fingerprint),
+            vec![
+                AgentIdentity {
+                    seat: PlayerId(0),
+                    agent_name: Some("effective-splendor-m39a-policy-value-agent-v1".into()),
+                    agent_version: Some("b".repeat(64)),
+                },
+                AgentIdentity {
+                    seat: PlayerId(1),
+                    agent_name: Some("splendor-cli-random".into()),
+                    agent_version: Some("0.4.0".into()),
+                },
+            ],
+            ArenaOutcomeV1::truncated(
+                cap,
+                prefix.cap_state_hash.as_str().to_string(),
+                cap_scores.clone(),
+            ),
+        );
+
+        let records = verified_prefix
+            .positions
+            .iter()
+            .filter(|position| position.recorded_actor == PlayerId(0))
+            .map(|position| {
+                let observation = position.state.observation(PlayerId(0));
+                SidecarRecord {
+                    game_index: 0,
+                    game_id: game_id.into(),
+                    seat: 0,
+                    ply_index: position.ply,
+                    request_id: u64::from(position.ply) + 1,
+                    observation_hash: observation_hash(&observation).as_str().into(),
+                    observation,
+                    legal_actions: position.state.legal_actions(),
+                    action: position.recorded_action,
+                    decision_seed: decision_seed(0, 0, u64::from(position.ply) + 1),
+                    old_log_probability: -1.0,
+                    old_value: 0.0,
+                    old_value_by_player: vec![0.0, 0.0],
+                    old_auxiliary_score: 0.0,
+                }
+            })
+            .collect::<Vec<_>>();
+        let sidecar = TrajectorySidecar {
+            format: SIDECAR_FORMAT.into(),
+            version: SIDECAR_VERSION,
+            plan_hash: "06cbd7b2413b7e640402799ff25c25ae57985ab3ea25b113b3eddf053f2841d6".into(),
+            checkpoint_sha256: "a".repeat(64),
+            checkpoint_hash: "b".repeat(64),
+            checkpoint_cycle: 0,
+            catalog_hash: "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26".into(),
+            game_id: game_id.into(),
+            game_index: 0,
+            seat: 0,
+            records,
+            result: SidecarResult::Truncated(SidecarTruncatedResult {
+                truncated: true,
+                completed_plies: cap,
+                cap_state_hash: prefix.cap_state_hash.as_str().to_string(),
+                cap_scores: cap_scores.clone(),
+            }),
+        };
+        let manifest = MaterializationManifest {
+            format: MANIFEST_FORMAT.into(),
+            version: MANIFEST_VERSION,
+            mode: MaterializationMode::Smoke,
+            plan_hash: sidecar.plan_hash.clone(),
+            checkpoint_sha256: sidecar.checkpoint_sha256.clone(),
+            checkpoint_hash: sidecar.checkpoint_hash.clone(),
+            checkpoint_cycle: 0,
+            cycle: 1,
+            ply_cap: cap,
+            games: Vec::new(),
+        };
+        let (binding, output) = materialize_game_truncated(
+            &manifest,
+            &sidecar.catalog_hash,
+            0,
+            &report,
+            &prefix,
+            std::slice::from_ref(&sidecar),
+        )
+        .unwrap();
+        assert_eq!(binding.completed_plies, cap);
+        assert_eq!(binding.training_plies, cap);
+        assert!(binding.truncated);
+        assert!(!output.is_empty());
+        let delta = (f64::from(cap_scores[0]) - f64::from(cap_scores[1])) / 4.0;
+        let expected_first = -0.5 + 0.5 * delta.tanh();
+        assert!((output[0].result.centered_returns[0] - expected_first).abs() < 1e-12);
+        assert!(output[0].result.truncated);
+        assert!(output[0].result.source_terminal_result.is_none());
+
+        // A sidecar claiming the wrong cap scores must be rejected.
+        let mut wrong = sidecar;
+        if let SidecarResult::Truncated(ref mut envelope) = wrong.result {
+            envelope.cap_scores[0] = envelope.cap_scores[0].saturating_add(1);
+        }
+        let catalog_hash = wrong.catalog_hash.clone();
+        let error = materialize_game_truncated(
+            &manifest,
+            &catalog_hash,
+            0,
+            &report,
+            &prefix,
+            std::slice::from_ref(&wrong),
+        )
+        .unwrap_err();
+        assert!(error.contains("truncation mismatch"), "got: {error}");
     }
 }

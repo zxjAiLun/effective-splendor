@@ -19,8 +19,8 @@ from splendor_gpu.m39a_model import build_initial_checkpoint, infer_decision
 from splendor_gpu.m39a_train import train_cycle, validate_authoritative_batch
 
 
-PLAN_PATH = Path("benchmarks/m39a-arena-driven-policy-value-rl.plan.json")
-FIXTURE = Path("apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json")
+PLAN_PATH = Path(__file__).resolve().parent.parent.parent.parent / "benchmarks/m39a-arena-driven-policy-value-rl.plan.json"
+FIXTURE = Path(__file__).resolve().parent.parent.parent.parent / "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
 
 
 def _real_batch(tmp_path: Path):

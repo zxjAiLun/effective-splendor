@@ -437,6 +437,7 @@ fn blind_reserve_full_server_transcript_is_identical_for_opponent_worlds() {
             | ServerMessage::ActionApplied { meta, .. }
             | ServerMessage::Event { meta, .. }
             | ServerMessage::GameEnd { meta, .. }
+            | ServerMessage::GameTruncated { meta, .. }
             | ServerMessage::Error { meta, .. }
             | ServerMessage::Ping { meta } => {
                 assert_eq!(meta.recipient_player_id, 1)

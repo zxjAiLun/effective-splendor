@@ -359,6 +359,11 @@ fn bind_arena_report(
         ArenaOutcomeV1::Aborted { .. } => {
             return Err(fail("aborted arena reports cannot enter a dataset".into()));
         }
+        ArenaOutcomeV1::Truncated { .. } => {
+            return Err(fail(
+                "truncated arena reports cannot enter a dataset".into(),
+            ));
+        }
     }
 
     if report.agents.len() != replay.player_count as usize

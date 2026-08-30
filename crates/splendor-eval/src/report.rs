@@ -308,6 +308,15 @@ fn aggregate_canonical(
                 agents[ai].faults_caused += 1;
                 agents[ai].by_seat[*seat as usize].faults_caused += 1;
             }
+            ArenaOutcomeV1::Truncated { .. } => {
+                // Evaluation reports aggregate terminal games; a truncated
+                // (ply-capped) game has no result to aggregate.
+                return Err(EvaluationError::OutcomeLengthMismatch {
+                    match_index: record.match_index,
+                    expected: n,
+                    found: 0,
+                });
+            }
         }
     }
 

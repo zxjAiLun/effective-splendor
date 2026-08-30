@@ -456,6 +456,14 @@ pub fn build_rating_report_v1(
                     aborted[ia] += 1;
                     aborted[ib] += 1;
                 }
+                ArenaOutcomeV1::Truncated { .. } => {
+                    // Ratings score terminal games only; a truncated
+                    // (ply-capped) game has no winner to rate.
+                    return Err(format!(
+                        "match {} is truncated; ratings score terminal games only",
+                        record.match_index
+                    ));
+                }
                 ArenaOutcomeV1::Completed { result, .. } => {
                     h.completed += 1;
                     completed[ia] += 1;

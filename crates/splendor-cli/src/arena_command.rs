@@ -25,8 +25,8 @@ use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
-use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner};
-use splendor_replay::verify_replay;
+use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner, CappedRun};
+use splendor_replay::{verify_replay, verify_rollout_prefix};
 
 use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
@@ -206,6 +206,240 @@ enum MatchExit {
     Aborted(i32),
 }
 
+const RUN_ROLLOUT_USAGE: &str = "\
+Usage: splendor run-rollout --config <arena-config.json> --max-plies <n> \
+--report-out <arena-report.json> --replay-out <replay.json> --prefix-out <prefix.json>
+
+Run exactly one arena match under a training ply cap.
+
+A game that terminates before or at the cap is identical to `run-match`:
+a completed report and a verified replay are published (--prefix-out is not
+created). A game still non-terminal at the cap is truncated: the report
+carries `status: truncated` with the cap-instant facts (completed_plies,
+cap_state_hash, cap_scores; never a fabricated result), the capped rollout
+prefix (exactly the first n plies, step hashes, and the cap state hash) is
+published to --prefix-out, and --replay-out is not created.
+
+Options:
+  --config <path>      Path to the arena config JSON (UTF-8, <= 1 MiB).
+  --max-plies <n>      Training ply cap; must be in 1..10000.
+  --report-out <path>  Path to write the arena report JSON. Must not exist.
+  --replay-out <path>  Path for the replay JSON (terminal games only).
+                       Must not exist and must differ from --report-out.
+  --prefix-out <path>  Path for the capped rollout prefix JSON (truncated
+                       games only). Must not exist and must differ from the
+                       other outputs.
+  -h, --help           Print this help and exit 0.
+
+Exit codes: 0 completed or truncated, 2 aborted, 1 CLI/config/I/O/internal
+error. Relative paths resolve against the current working directory. No shell
+interpretation is performed.";
+
+/// Parsed `run-rollout` arguments.
+struct RunRolloutArgs {
+    config: PathBuf,
+    max_plies: u32,
+    report_out: PathBuf,
+    replay_out: PathBuf,
+    prefix_out: PathBuf,
+}
+
+fn parse_run_rollout_args(args: &[String]) -> Result<RunRolloutArgs, String> {
+    let mut config: Option<String> = None;
+    let mut max_plies: Option<String> = None;
+    let mut report_out: Option<String> = None;
+    let mut replay_out: Option<String> = None;
+    let mut prefix_out: Option<String> = None;
+
+    let mut i = 0;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        match arg {
+            "--config" => set_flag(&mut config, "--config", args.get(i + 1))?,
+            "--max-plies" => set_flag(&mut max_plies, "--max-plies", args.get(i + 1))?,
+            "--report-out" => set_flag(&mut report_out, "--report-out", args.get(i + 1))?,
+            "--replay-out" => set_flag(&mut replay_out, "--replay-out", args.get(i + 1))?,
+            "--prefix-out" => set_flag(&mut prefix_out, "--prefix-out", args.get(i + 1))?,
+            other if other.starts_with('-') => {
+                return Err(format!("unknown flag `{other}`"));
+            }
+            other => {
+                return Err(format!("unexpected positional argument `{other}`"));
+            }
+        }
+        i += 2;
+    }
+
+    let config = config.ok_or_else(|| "missing required --config".to_string())?;
+    let max_plies = max_plies.ok_or_else(|| "missing required --max-plies".to_string())?;
+    let report_out = report_out.ok_or_else(|| "missing required --report-out".to_string())?;
+    let replay_out = replay_out.ok_or_else(|| "missing required --replay-out".to_string())?;
+    let prefix_out = prefix_out.ok_or_else(|| "missing required --prefix-out".to_string())?;
+    let max_plies = max_plies
+        .parse::<u32>()
+        .map_err(|_| format!("--max-plies must be a u32 (got `{max_plies}`)"))?;
+
+    Ok(RunRolloutArgs {
+        config: PathBuf::from(config),
+        max_plies,
+        report_out: PathBuf::from(report_out),
+        replay_out: PathBuf::from(replay_out),
+        prefix_out: PathBuf::from(prefix_out),
+    })
+}
+
+/// Entry point for `splendor run-rollout ...`. Returns the process exit code.
+pub fn run_rollout(args: &[String]) -> i32 {
+    match run_rollout_inner(args) {
+        Ok(MatchExit::Completed(code)) | Ok(MatchExit::Aborted(code)) => code,
+        Err(err) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {err}");
+            let _ = stderr.flush();
+            1
+        }
+    }
+}
+
+fn run_rollout_inner(args: &[String]) -> Result<MatchExit, RunMatchError> {
+    if wants_help(args) {
+        print_stdout(RUN_ROLLOUT_USAGE);
+        return Ok(MatchExit::Completed(0));
+    }
+
+    let parsed = parse_run_rollout_args(args).map_err(RunMatchError::Cli)?;
+
+    // Output-path invariants, before touching the runner.
+    let distinct = [
+        ("--report-out", &parsed.report_out),
+        ("--replay-out", &parsed.replay_out),
+        ("--prefix-out", &parsed.prefix_out),
+    ];
+    for (index, (name, path)) in distinct.iter().enumerate() {
+        if path.exists() {
+            return Err(RunMatchError::Cli(format!(
+                "{name} output already exists: {}",
+                path.display()
+            )));
+        }
+        if !parent_dir_exists(path) {
+            return Err(RunMatchError::Cli(format!(
+                "{name} parent directory does not exist: {}",
+                path.display()
+            )));
+        }
+        for (other_name, other_path) in distinct.iter().skip(index + 1) {
+            if path == other_path {
+                return Err(RunMatchError::Cli(format!(
+                    "{name} and {other_name} must differ"
+                )));
+            }
+        }
+    }
+
+    let config = read_config(&parsed.config)?;
+
+    let capped: CappedRun = ArenaRunner::run_capped(config, parsed.max_plies)
+        .map_err(|e| RunMatchError::Internal(e.to_string()))?;
+
+    match capped {
+        CappedRun::Terminal(run) => match run.replay {
+            Some(replay) => commit_completed(
+                &RunMatchArgs {
+                    config: parsed.config,
+                    report_out: parsed.report_out.clone(),
+                    replay_out: parsed.replay_out.clone(),
+                },
+                &run.report,
+                &replay,
+            ),
+            None => commit_aborted(
+                &RunMatchArgs {
+                    config: parsed.config,
+                    report_out: parsed.report_out.clone(),
+                    replay_out: parsed.replay_out.clone(),
+                },
+                &run.report,
+            ),
+        },
+        CappedRun::Truncated { report, prefix } => commit_truncated(&parsed, &report, &prefix),
+    }
+}
+
+/// Serialize and atomically publish a truncated match's report + prefix.
+///
+/// The prefix is strictly verified before anything is published. On any
+/// stdout failure after the artifacts landed, both artifacts are removed —
+/// the same discipline as [`commit_completed`].
+fn commit_truncated(
+    parsed: &RunRolloutArgs,
+    report: &splendor_arena::ArenaReportV1,
+    prefix: &splendor_replay::RolloutPrefixV1,
+) -> Result<MatchExit, RunMatchError> {
+    // Cross-check the report/prefix binding before publishing anything.
+    let (report_cap_hash, report_plies) = match &report.outcome {
+        splendor_arena::ArenaOutcomeV1::Truncated {
+            cap_state_hash,
+            completed_plies,
+            ..
+        } => (cap_state_hash.clone(), *completed_plies),
+        _ => {
+            return Err(RunMatchError::Internal(
+                "runner returned a prefix for a non-truncated outcome".to_string(),
+            ));
+        }
+    };
+    if report_cap_hash != prefix.cap_state_hash.as_str()
+        || report_plies != prefix.ply_cap
+        || report_plies != prefix.steps.len() as u32
+    {
+        return Err(RunMatchError::Artifact(
+            "truncated report does not bind the rollout prefix".to_string(),
+        ));
+    }
+    verify_rollout_prefix(prefix)
+        .map_err(|e| RunMatchError::Artifact(format!("rollout prefix failed verification: {e}")))?;
+
+    let report_json = to_pretty_line(report)
+        .map_err(|e| RunMatchError::Internal(format!("serialize report failed: {e}")))?;
+    let prefix_json = to_pretty_line(prefix)
+        .map_err(|e| RunMatchError::Internal(format!("serialize prefix failed: {e}")))?;
+
+    let line = compact_outcome_line(&report.outcome)?;
+    let temp_report = parsed.report_out.with_extension("tmp-report");
+    let temp_prefix = parsed.prefix_out.with_extension("tmp-prefix");
+    let report_bytes = report_json.as_bytes();
+    let prefix_bytes = prefix_json.as_bytes();
+    std::fs::write(&temp_report, report_bytes)
+        .and_then(|_| std::fs::write(&temp_prefix, prefix_bytes))
+        .map_err(|e| RunMatchError::Io(format!("temp write failed: {e}")))?;
+    let publish = |temp: &Path, target: &Path| -> io::Result<()> {
+        std::fs::rename(temp, target)
+            .or_else(|_| std::fs::copy(temp, target).and_then(|_| std::fs::remove_file(temp)))
+    };
+    if let Err(e) = publish(&temp_report, &parsed.report_out) {
+        let _ = std::fs::remove_file(&temp_report);
+        let _ = std::fs::remove_file(&temp_prefix);
+        return Err(RunMatchError::Io(format!(
+            "publish truncated report failed: {e}"
+        )));
+    }
+    if let Err(e) = publish(&temp_prefix, &parsed.prefix_out) {
+        let _ = std::fs::remove_file(&parsed.prefix_out);
+        let _ = std::fs::remove_file(&temp_prefix);
+        return Err(RunMatchError::Io(format!(
+            "publish truncated prefix failed: {e}"
+        )));
+    }
+    let mut stdout = io::stdout().lock();
+    if let Err(e) = write_outcome_line(&mut stdout, &line) {
+        let _ = std::fs::remove_file(&parsed.report_out);
+        let _ = std::fs::remove_file(&parsed.prefix_out);
+        return Err(RunMatchError::Io(e));
+    }
+    Ok(MatchExit::Completed(0))
+}
+
 /// Entry point for `splendor run-match ...`. Returns the process exit code.
 pub fn run_match(args: &[String]) -> i32 {
     match run_match_inner(args) {
@@ -319,6 +553,11 @@ fn commit_completed(
         splendor_arena::ArenaOutcomeV1::Aborted { .. } => {
             return Err(RunMatchError::Internal(
                 "runner returned a replay for an aborted outcome".to_string(),
+            ));
+        }
+        splendor_arena::ArenaOutcomeV1::Truncated { .. } => {
+            return Err(RunMatchError::Internal(
+                "runner returned a replay for a truncated outcome".to_string(),
             ));
         }
     };

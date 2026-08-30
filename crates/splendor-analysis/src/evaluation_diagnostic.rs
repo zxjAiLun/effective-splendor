@@ -349,6 +349,10 @@ fn bind_match(
             "match {} is aborted and cannot be analyzed",
             spec.match_index
         ))),
+        ArenaOutcomeV1::Truncated { .. } => Err(evaluation(format!(
+            "match {} is truncated and cannot be analyzed",
+            spec.match_index
+        ))),
     }
 }
 

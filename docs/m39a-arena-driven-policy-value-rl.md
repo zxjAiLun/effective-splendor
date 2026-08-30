@@ -2176,8 +2176,67 @@ completed with zero handshake timeouts and zero truncations.
 **Phase 0 has passed. The formal 4,096-game collection is the next
 operational gate.**
 
+### Capped rollout implementation correction (2026-08-30, mid-cycle-6)
+
+The formal run's per-game executor initially used `run-match` (run to
+terminal). At cycle 6, game 2785 (self-play bucket) hit the engine's
+10,000-ply safety limit — the deterministic take/pass non-termination M35A
+documented — and exited with no artifacts, stopping the run. The frozen
+Phase 1 contract had always specified a **capped rollout entry**; this was
+an implementation deviation from the pre-registered design, now corrected.
+**No seed, schedule, ply cap, return formula, or gate changed.**
+
+The correction (review verdict: option A; cycles 1–5 and cycle 6's first
+225 games are unaffected — all ≤ 150 plies and therefore identical under
+either entry):
+
+- **`splendor run-rollout --config <> --max-plies <n> --report-out <>
+  --replay-out <> --prefix-out <>`** (additive; `run-match` and `ReplayV1`
+  are unchanged). A game terminating before or at the cap produces exactly
+  the `run-match` artifacts (completed report + verified replay, no
+  prefix). A game still non-terminal at the cap produces a **truncated
+  report** (`status: truncated`, `completed_plies`, `cap_state_hash`,
+  `cap_scores`; never a fabricated result, winners, or ranks) plus a
+  **capped rollout prefix artifact** — exactly the first n plies with
+  per-step state hashes and the cap-state hash, no result fields. The
+  engine's 10,000-ply safety limit cannot fire because the cap is checked
+  first. A new `game_truncated` protocol message (no `GameResult`) notifies
+  agents; the agent records the truncation envelope in its sidecar.
+- **Prefix verification** (`splendor-replay`): `RolloutPrefixV1` +
+  `verify_rollout_prefix` rebuild the game from seed + ruleset, re-execute
+  every step, check every before/after hash, require non-terminality at
+  the cap, and verify the cap-state hash; plus a domain-separated prefix
+  document hash.
+- **Materializer**: completed games take the existing ReplayV1 path; a
+  truncated report routes to the prefix path, which verifies the prefix,
+  rebuilds the cap-instant VP, cross-checks the report's cap facts, and
+  emits the pre-registered truncation return (`−0.5 ± 0.5·tanh(ΔVP/4)`).
+  `source_terminal_result` becomes `Some/None` accordingly — prefix games
+  never carry a terminal result. The batch schema otherwise is unchanged.
+- **Collector**: formal collection now invokes `run-rollout --max-plies
+  150`. Config-only game directories (run died between writing the config
+  and starting the match — no game data exists) are safely rewritable;
+  any partial report/replay/prefix/sidecar combination still fails closed;
+  replay+prefix coexistence is rejected. The materialization manifest
+  gained an optional per-game `prefix_path`.
+- **Cycle driver** (`training/m17_gpu/m39a_cycle_driver.py`, tracked):
+  checkpoint file+semantic hash chain verification at every hop, batch
+  reuse only when the full artifact exists, single-instance lock,
+  append-only JSONL progress log, and cycle-complete-before-next ordering.
+- **Incident record**: the original cycle-6 `game-002785` config is
+  preserved under `local-artifacts/m39a-formal-run/incidents/` (SHA-256
+  `a28851a5f9f0b92f82af8ee3ef5beb6d67a9c763aa364db57c8cde5603faf54b`);
+  the game is re-run from the same frozen seed under the capped entry.
+
+Evidence: run-rollout smoke (terminal: completed report + replay, no
+prefix; cap 5: truncated report + 5-step prefix, no result fields, no
+replay); Rust M39A tests 5/5 including the truncated-prefix join
+(truncation returns exact; tampered cap envelope rejected); replay 22,
+arena 111, and full workspace tests pass; fmt/clippy clean; Python 27
+tests pass including 4 new collector recovery/_mutex tests.
+
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PASS
-(G0 PASS, G0b PASS)`.
+(G0 PASS, G0b PASS) / CYCLES_1_5_TRAINED / CYCLE_6_IN_PROGRESS`.
 
 The next operational gate is the frozen **4,096-game collection** (eight
 cycles). Collection now has authorization to proceed gate-by-gate; each

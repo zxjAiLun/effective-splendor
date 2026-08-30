@@ -395,6 +395,16 @@ def run_agent_loop(
                     raise ValueError("game_end game_id mismatch")
                 final_result = message["result"]
                 break
+            elif kind == "game_truncated":
+                if message.get("game_id") != game_id:
+                    raise ValueError("game_truncated game_id mismatch")
+                final_result = {
+                    "truncated": True,
+                    "completed_plies": int(message["completed_plies"]),
+                    "cap_state_hash": str(message["cap_state_hash"]),
+                    "cap_scores": [int(score) for score in message["cap_scores"]],
+                }
+                break
             elif kind == "error":
                 raise ValueError(f"server error: {message.get('message')}")
             else:

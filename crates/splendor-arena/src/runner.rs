@@ -24,7 +24,7 @@ use splendor_protocol::{
     parse_client_line, ClientMessage, ObservationMeta, RecipientMeta, RequestMeta, ServerMessage,
     ServerMeta, PROTOCOL_VERSION,
 };
-use splendor_replay::{verify_replay, ReplayRecorder, ReplayV1};
+use splendor_replay::{verify_replay, ReplayRecorder, ReplayV1, RolloutPrefixV1};
 
 use crate::config::{AgentCommand, ArenaConfig};
 use crate::controller::{validate_action, validate_hello, MatchCounters, SeatState};
@@ -151,6 +151,22 @@ pub struct ArenaRun {
     pub replay: Option<ReplayV1>,
 }
 
+/// The result of running one **capped** match via [`ArenaRunner::run_capped`].
+///
+/// A game that terminates before or exactly at the cap is reported exactly as
+/// [`ArenaRunner::run`] would (`Completed` outcome + verified replay, no
+/// prefix). A game still non-terminal at the cap yields a `Truncated`
+/// outcome (cap facts only, no fabricated result), the capped rollout
+/// prefix, and no replay.
+#[derive(Debug)]
+pub enum CappedRun {
+    Terminal(ArenaRun),
+    Truncated {
+        report: ArenaReportV1,
+        prefix: RolloutPrefixV1,
+    },
+}
+
 impl ArenaRunner {
     /// Run a full match against real agent subprocesses.
     pub fn run(config: ArenaConfig) -> Result<ArenaRun, ArenaInternalError> {
@@ -166,11 +182,71 @@ impl ArenaRunner {
         })
     }
 
-    /// Core match driver, transport-injectable for tests.
-    pub(crate) fn run_with<F>(
+    /// Run one match under a training ply cap against real agent subprocesses.
+    ///
+    /// Terminal at or before the cap: identical outcome to
+    /// [`ArenaRunner::run`]. Non-terminal at the cap: a `Truncated` report
+    /// (cap facts only, no fabricated result) plus the capped rollout
+    /// prefix. The engine's 10,000-ply safety limit cannot fire because the
+    /// cap is strictly below it and checked first.
+    pub fn run_capped(config: ArenaConfig, ply_cap: u32) -> Result<CappedRun, ArenaInternalError> {
+        let grace = Duration::from_millis(config.shutdown_grace_ms);
+        Self::run_capped_with(config, ply_cap, move |cmd, seat, tx| {
+            let proc = spawn_agent(seat, cmd, tx)
+                .map_err(|e| ArenaInternalError::Transport(e.to_string()))?;
+            let transport: Box<dyn AgentTransport> = Box::new(SubprocessTransport {
+                proc: Some(proc),
+                grace,
+            });
+            Ok(transport)
+        })
+    }
+
+    /// Capped match driver, transport-injectable for tests.
+    fn run_capped_with<F>(
         config: ArenaConfig,
+        ply_cap: u32,
+        make: F,
+    ) -> Result<CappedRun, ArenaInternalError>
+    where
+        F: FnMut(
+            &AgentCommand,
+            PlayerId,
+            Sender<InboundEvent>,
+        ) -> Result<Box<dyn AgentTransport>, ArenaInternalError>,
+    {
+        if ply_cap == 0 || ply_cap >= MAX_MATCH_PLIES {
+            return Err(ArenaInternalError::Engine(format!(
+                "ply cap {ply_cap} must be in 1..{MAX_MATCH_PLIES}"
+            )));
+        }
+        Self::run_with_inner(config, Some(ply_cap), make)
+    }
+
+    /// Core match driver, transport-injectable for tests.
+    pub(crate) fn run_with<F>(config: ArenaConfig, make: F) -> Result<ArenaRun, ArenaInternalError>
+    where
+        F: FnMut(
+            &AgentCommand,
+            PlayerId,
+            Sender<InboundEvent>,
+        ) -> Result<Box<dyn AgentTransport>, ArenaInternalError>,
+    {
+        match Self::run_with_inner(config, None, make)? {
+            CappedRun::Terminal(run) => Ok(run),
+            CappedRun::Truncated { .. } => Err(ArenaInternalError::Engine(
+                "uncapped run cannot produce a truncated outcome".into(),
+            )),
+        }
+    }
+
+    /// The single shared match driver: `cap == None` is the legacy
+    /// run-to-terminal behaviour; `cap == Some(n)` truncates at n plies.
+    fn run_with_inner<F>(
+        config: ArenaConfig,
+        cap: Option<u32>,
         mut make: F,
-    ) -> Result<ArenaRun, ArenaInternalError>
+    ) -> Result<CappedRun, ArenaInternalError>
     where
         F: FnMut(
             &AgentCommand,
@@ -225,7 +301,7 @@ impl ArenaRunner {
         }
 
         if let Some(failed) = spawn_failed {
-            return Ok(finish_aborted(
+            return Ok(CappedRun::Terminal(finish_aborted(
                 &mut transports,
                 &ctx,
                 &seats,
@@ -234,7 +310,7 @@ impl ArenaRunner {
                 AgentFault::AgentIo,
                 None,
                 0,
-            ));
+            )));
         }
 
         let mut counters = MatchCounters::default();
@@ -258,7 +334,7 @@ impl ArenaRunner {
             }
         }
         if let Some(seat) = hello_failed {
-            return Ok(finish_aborted(
+            return Ok(CappedRun::Terminal(finish_aborted(
                 &mut transports,
                 &ctx,
                 &seats,
@@ -267,7 +343,7 @@ impl ArenaRunner {
                 AgentFault::AgentIo,
                 None,
                 0,
-            ));
+            )));
         }
         let handshake_deadline =
             Instant::now() + Duration::from_millis(config.handshake_timeout_ms);
@@ -363,7 +439,7 @@ impl ArenaRunner {
         }
 
         if let Some(run) = aborted {
-            return Ok(run);
+            return Ok(CappedRun::Terminal(run));
         }
 
         // ---- GameStart to every seat, in order. A send failure is the
@@ -382,7 +458,7 @@ impl ArenaRunner {
             }
         }
         if let Some(seat) = game_start_failed {
-            return Ok(finish_aborted(
+            return Ok(CappedRun::Terminal(finish_aborted(
                 &mut transports,
                 &ctx,
                 &seats,
@@ -391,7 +467,7 @@ impl ArenaRunner {
                 AgentFault::AgentIo,
                 None,
                 0,
-            ));
+            )));
         }
 
         // Every live player-view policy needs the same cumulative transcript
@@ -405,7 +481,7 @@ impl ArenaRunner {
             &setup.events,
             BroadcastMode::Strict,
         )? {
-            return Ok(finish_aborted(
+            return Ok(CappedRun::Terminal(finish_aborted(
                 &mut transports,
                 &ctx,
                 &seats,
@@ -414,7 +490,7 @@ impl ArenaRunner {
                 AgentFault::AgentIo,
                 None,
                 0,
-            ));
+            )));
         }
 
         // ---- Per-turn loop. ----
@@ -444,7 +520,7 @@ impl ArenaRunner {
                     observation: obs,
                 };
                 if let Err(seat) = send_or_seat(transports[current.index()].as_mut(), &msg) {
-                    return Ok(finish_aborted(
+                    return Ok(CappedRun::Terminal(finish_aborted(
                         &mut transports,
                         &ctx,
                         &seats,
@@ -453,7 +529,7 @@ impl ArenaRunner {
                         AgentFault::AgentIo,
                         None,
                         counters.completed_plies(),
-                    ));
+                    )));
                 }
             }
 
@@ -470,7 +546,7 @@ impl ArenaRunner {
                 // a failed RequestAction send is AgentIo with this request's
                 // id and must never be misreported as ActionTimeout.
                 if let Err(seat) = send_or_seat(transports[current.index()].as_mut(), &msg) {
-                    return Ok(finish_aborted(
+                    return Ok(CappedRun::Terminal(finish_aborted(
                         &mut transports,
                         &ctx,
                         &seats,
@@ -479,7 +555,7 @@ impl ArenaRunner {
                         AgentFault::AgentIo,
                         Some(request_id),
                         counters.completed_plies(),
-                    ));
+                    )));
                 }
             }
 
@@ -499,7 +575,7 @@ impl ArenaRunner {
                 &mut transports,
                 &ctx,
             )? {
-                WaitOutcome::Aborted(run) => return Ok(run),
+                WaitOutcome::Aborted(run) => return Ok(CappedRun::Terminal(run)),
                 WaitOutcome::Action(action) => {
                     let step = recorder
                         .apply(action)
@@ -530,7 +606,7 @@ impl ArenaRunner {
                         // Non-terminal event delivery failed: the failing
                         // recipient seat is at fault, and completed_plies
                         // already reflects the applied action.
-                        return Ok(finish_aborted(
+                        return Ok(CappedRun::Terminal(finish_aborted(
                             &mut transports,
                             &ctx,
                             &seats,
@@ -539,7 +615,58 @@ impl ArenaRunner {
                             AgentFault::AgentIo,
                             Some(request_id),
                             counters.completed_plies(),
-                        ));
+                        )));
+                    }
+
+                    // ---- Cap check: stop before requesting the next ply. ----
+                    // All agents have received this ply's events; the game is
+                    // non-terminal. If the cap is reached, notify both seats
+                    // with the no-result truncation message (best-effort, the
+                    // prefix is already formed), finish the recorder as a
+                    // prefix, record the cap facts, and never fabricate a
+                    // terminal result.
+                    if cap == Some(counters.completed_plies()) && !recorder.is_terminal() {
+                        let cap_plies = counters.completed_plies();
+                        let (state, prefix) = recorder
+                            .finish_prefix(cap_plies)
+                            .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+                        let cap_scores = state
+                            .players
+                            .iter()
+                            .map(|player| player.prestige)
+                            .collect::<Vec<_>>();
+                        // Best-effort notification: the authoritative
+                        // artifacts are the report and the prefix, and a
+                        // recipient that already hung up must not lose them.
+                        for t in transports.iter_mut() {
+                            let seq = counters.next_server_seq();
+                            if seq.is_err() {
+                                break;
+                            }
+                            let msg = ServerMessage::GameTruncated {
+                                meta: RecipientMeta::new(
+                                    ctx.game_id.clone(),
+                                    seq.expect("checked above"),
+                                    t.seat(),
+                                ),
+                                completed_plies: cap_plies,
+                                cap_state_hash: prefix.cap_state_hash.as_str().to_string(),
+                                cap_scores: cap_scores.clone(),
+                            };
+                            let _ = t.send(&msg);
+                        }
+                        let outcome = ArenaOutcomeV1::truncated(
+                            cap_plies,
+                            prefix.cap_state_hash.as_str().to_string(),
+                            cap_scores,
+                        );
+                        for t in transports.iter_mut() {
+                            t.shutdown();
+                        }
+                        return Ok(CappedRun::Truncated {
+                            report: build_report(&ctx, &seats, outcome),
+                            prefix,
+                        });
                     }
                 }
             }
@@ -563,10 +690,10 @@ impl ArenaRunner {
         for t in transports.iter_mut() {
             t.shutdown();
         }
-        Ok(ArenaRun {
+        Ok(CappedRun::Terminal(ArenaRun {
             report: build_report(&ctx, &seats, outcome),
             replay: Some(replay),
-        })
+        }))
     }
 }
 

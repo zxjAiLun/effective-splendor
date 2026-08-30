@@ -10,10 +10,14 @@
 use sha2::{Digest, Sha256};
 
 use crate::error::{ReplayError, ReplayResult};
-use crate::format::ReplayV1;
+use crate::format::{ReplayV1, RolloutPrefixV1};
 
 /// Frozen domain-separation prefix for the v1 replay document hash.
 const REPLAY_DOCUMENT_HASH_DOMAIN_V1: &[u8] = b"effective-splendor-replay-document-v1\0";
+
+/// Frozen domain-separation prefix for the v1 rollout-prefix document hash.
+const ROLLOUT_PREFIX_DOCUMENT_HASH_DOMAIN_V1: &[u8] =
+    b"effective-splendor-rollout-prefix-document-v1\0";
 
 /// Compute the frozen v1 document hash of a parsed replay.
 ///
@@ -39,6 +43,18 @@ pub fn replay_document_hash_v1(replay: &ReplayV1) -> ReplayResult<String> {
     let json = serde_json::to_string(replay).map_err(|e| ReplayError::Json(e.to_string()))?;
     let mut hasher = Sha256::new();
     hasher.update(REPLAY_DOCUMENT_HASH_DOMAIN_V1);
+    hasher.update(json.as_bytes());
+    Ok(lower_hex(&hasher.finalize()))
+}
+
+/// Compute the frozen v1 document hash of a parsed rollout prefix.
+///
+/// Same discipline as [`replay_document_hash_v1`]: a content-only identity
+/// over the canonical compact serialization, domain-separated from replays.
+pub fn rollout_prefix_document_hash_v1(prefix: &RolloutPrefixV1) -> ReplayResult<String> {
+    let json = serde_json::to_string(prefix).map_err(|e| ReplayError::Json(e.to_string()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(ROLLOUT_PREFIX_DOCUMENT_HASH_DOMAIN_V1);
     hasher.update(json.as_bytes());
     Ok(lower_hex(&hasher.finalize()))
 }

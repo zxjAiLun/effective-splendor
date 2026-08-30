@@ -286,22 +286,44 @@ def _collect_games(
     sources: list[dict[str, Any]],
     elapsed: list[float],
 ) -> None:
+    ply_cap = int(plan["round"]["ply_cap"])
     for game_index in range(start, start + count):
         game = scheduled_game(game_index)
         game_dir = out_dir / "games" / f"game-{game_index:06d}"
         config_path = game_dir / "arena-config.json"
         report_path = game_dir / "arena-report.json"
         replay_path = game_dir / "replay.json"
+        prefix_path = game_dir / "rollout-prefix.json"
         sidecars = {
             seat: game_dir / f"seat-{seat}.sidecar.json" for seat in game.learner_seats
         }
-        expected_outputs = [config_path, report_path, replay_path, *sidecars.values()]
-        present = [path.exists() for path in expected_outputs]
-        if any(present) and not all(present):
+        # A completed game has its authoritative document (replay for
+        # terminal games, prefix for truncated ones) plus report and sidecars.
+        # Any partial combination of report/replay/prefix/sidecars is
+        # preserved evidence of an interrupted run and fails closed.
+        report_exists = report_path.exists()
+        replay_exists = replay_path.exists()
+        prefix_exists = prefix_path.exists()
+        sidecars_exist = [path.exists() for path in sidecars.values()]
+        if report_exists and (replay_exists or prefix_exists) and all(sidecars_exist):
+            # Complete (resumed) game: validate the artifact shape.
+            if replay_exists and prefix_exists:
+                raise RuntimeError(
+                    f"game {game_index} has both replay and prefix: {game_dir}"
+                )
+        elif not (report_exists or replay_exists or prefix_exists or any(sidecars_exist)):
+            # Nothing exists yet (a stale config-only directory is also fine:
+            # the game never started, so there is no data to preserve; the
+            # stale config embedding the previous server URL is rewritten).
+            pass
+        else:
             raise RuntimeError(
                 f"game {game_index} has partial artifacts; preserve and diagnose them: {game_dir}"
             )
-        if not all(present):
+        if not report_exists:
+            if config_path.exists() and not (replay_exists or prefix_exists):
+                # config-only from an interrupted run: safe to rewrite.
+                config_path.unlink()
             game_dir.mkdir(parents=True, exist_ok=True)
             agents = []
             for seat in (0, 1):
@@ -342,13 +364,17 @@ def _collect_games(
             completed = subprocess.run(
                 [
                     str(splendor),
-                    "run-match",
+                    "run-rollout",
+                    "--max-plies",
+                    str(ply_cap),
                     "--config",
                     str(config_path),
                     "--report-out",
                     str(report_path),
                     "--replay-out",
                     str(replay_path),
+                    "--prefix-out",
+                    str(prefix_path),
                 ],
                 cwd=Path.cwd(),
                 text=True,
@@ -363,10 +389,22 @@ def _collect_games(
                     f"Arena game {game_index} failed rc={completed.returncode}: "
                     f"stdout={completed.stdout!r} stderr={completed.stderr!r}"
                 )
-            if not report_path.is_file() or not replay_path.is_file() or any(
-                not path.is_file() for path in sidecars.values()
+            replay_exists = replay_path.is_file()
+            prefix_exists = prefix_path.is_file()
+            if (
+                not report_path.is_file()
+                or (replay_exists == prefix_exists)  # exactly one must exist
+                or any(not path.is_file() for path in sidecars.values())
             ):
                 raise RuntimeError(f"Arena game {game_index} did not publish every artifact")
+            outcome_status = None
+            if report_path.is_file():
+                outcome = json.loads(report_path.read_text(encoding="utf-8")).get("outcome", {})
+                outcome_status = outcome.get("status")
+            if outcome_status not in ("completed", "truncated"):
+                raise RuntimeError(
+                    f"Arena game {game_index} produced unexpected outcome {outcome_status!r}"
+                )
             print(
                 json.dumps(
                     {
@@ -374,16 +412,21 @@ def _collect_games(
                         "bucket": game.bucket,
                         "opponent": game.opponent,
                         "seconds": duration,
-                        "status": "completed",
+                        "status": outcome_status,
                     },
                     separators=(",", ":"),
                 ),
                 flush=True,
             )
         else:
+            outcome = json.loads(report_path.read_text(encoding="utf-8")).get("outcome", {})
             print(
                 json.dumps(
-                    {"game_index": game_index, "status": "resumed"},
+                    {
+                        "game_index": game_index,
+                        "status": "resumed",
+                        "outcome": outcome.get("status"),
+                    },
                     separators=(",", ":"),
                 ),
                 flush=True,
@@ -393,6 +436,7 @@ def _collect_games(
                 "game_index": game_index,
                 "report_path": "",
                 "replay_path": "",
+                "prefix_path": "",
                 "sidecar_paths": [],
             }
         )
@@ -488,9 +532,13 @@ def collect(
         source["report_path"] = _relative_to_manifest(
             game_dir / "arena-report.json", manifest_path
         )
-        source["replay_path"] = _relative_to_manifest(
-            game_dir / "replay.json", manifest_path
-        )
+        replay_path = game_dir / "replay.json"
+        prefix_path = game_dir / "rollout-prefix.json"
+        if replay_path.is_file() and prefix_path.is_file():
+            raise RuntimeError(f"game {game_index} has both replay and prefix")
+        source["replay_path"] = _relative_to_manifest(replay_path, manifest_path)
+        if prefix_path.is_file():
+            source["prefix_path"] = _relative_to_manifest(prefix_path, manifest_path)
         source["sidecar_paths"] = [
             _relative_to_manifest(game_dir / f"seat-{seat}.sidecar.json", manifest_path)
             for seat in game.learner_seats

@@ -5,7 +5,10 @@ use splendor_core::{
 
 use crate::compat::check_ruleset_params;
 use crate::error::{ReplayError, ReplayResult};
-use crate::format::{ReplayV1, REPLAY_FORMAT, REPLAY_VERSION, SUPPORTED_RULESET_ID};
+use crate::format::{
+    ReplayV1, RolloutPrefixV1, REPLAY_FORMAT, REPLAY_VERSION, ROLLOUT_PREFIX_FORMAT,
+    ROLLOUT_PREFIX_VERSION, SUPPORTED_RULESET_ID,
+};
 
 /// A replay that has been fully re-executed and confirmed against the engine.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,6 +141,189 @@ pub fn verify_replay_trace(replay: &ReplayV1) -> ReplayResult<VerifiedReplayTrac
         .collect();
     Ok(VerifiedReplayTrace {
         verified,
+        positions,
+    })
+}
+
+/// A capped rollout prefix that has been fully re-executed and confirmed
+/// against the engine, with every pre-action referee state captured.
+///
+/// This is the truncated-game counterpart of [`VerifiedReplayTrace`]: same
+/// per-ply strictness, but the final state is the non-terminal cap state
+/// instead of a terminal result. There is deliberately no `result` field.
+#[derive(Debug, Clone)]
+pub struct VerifiedRolloutPrefix {
+    pub player_count: u8,
+    pub steps: u32,
+    pub cap_state_hash: String,
+    pub positions: Vec<VerifiedReplayTraceStep>,
+}
+
+/// Strictly verify a capped rollout prefix: rebuild from seed + ruleset,
+/// re-execute every step against the engine, check every before/after hash,
+/// and require the rebuilt cap-state hash to match. The rebuilt state after
+/// the last step must be non-terminal — a terminal prefix is a completed
+/// game and must be represented as a [`ReplayV1`] instead.
+pub fn verify_rollout_prefix(prefix: &RolloutPrefixV1) -> ReplayResult<VerifiedRolloutPrefix> {
+    if prefix.format != ROLLOUT_PREFIX_FORMAT {
+        return Err(ReplayError::WrongFormat {
+            expected: ROLLOUT_PREFIX_FORMAT.to_string(),
+            found: prefix.format.clone(),
+        });
+    }
+    if prefix.version != ROLLOUT_PREFIX_VERSION {
+        return Err(ReplayError::UnsupportedVersion {
+            supported: ROLLOUT_PREFIX_VERSION,
+            found: prefix.version,
+        });
+    }
+    if prefix.engine_version != ENGINE_VERSION {
+        return Err(ReplayError::EngineVersionMismatch {
+            current: ENGINE_VERSION.to_string(),
+            recorded: prefix.engine_version.clone(),
+        });
+    }
+    if prefix.ruleset.catalog_version != CATALOG_VERSION {
+        return Err(ReplayError::CatalogVersionMismatch {
+            current: CATALOG_VERSION.to_string(),
+            recorded: prefix.ruleset.catalog_version.clone(),
+        });
+    }
+    if prefix.ruleset.id != SUPPORTED_RULESET_ID {
+        return Err(ReplayError::UnsupportedRuleset(prefix.ruleset.id.clone()));
+    }
+
+    let engine_ruleset = Ruleset::base_v1();
+    check_ruleset_params(&prefix.ruleset, &engine_ruleset)?;
+    let engine_fingerprint = ruleset_fingerprint(&engine_ruleset);
+    if prefix.ruleset_fingerprint.as_str() != engine_fingerprint.as_str() {
+        return Err(ReplayError::RulesetFingerprintMismatch {
+            current: engine_fingerprint.as_str().to_string(),
+            recorded: prefix.ruleset_fingerprint.as_str().to_string(),
+        });
+    }
+
+    if prefix.player_count < engine_ruleset.min_players
+        || prefix.player_count > engine_ruleset.max_players
+    {
+        return Err(ReplayError::InvalidPlayerCount {
+            recorded: prefix.player_count,
+            min: engine_ruleset.min_players,
+            max: engine_ruleset.max_players,
+        });
+    }
+
+    if prefix.steps.is_empty() {
+        return Err(ReplayError::EmptyPrefix);
+    }
+    if prefix.steps.len() as u32 != prefix.ply_cap {
+        return Err(ReplayError::PrefixStepCountMismatch {
+            steps: prefix.steps.len() as u32,
+            ply_cap: prefix.ply_cap,
+        });
+    }
+
+    let (mut state, _) = FullState::new(GameConfig {
+        player_count: prefix.player_count,
+        seed: prefix.seed,
+        ruleset: engine_ruleset,
+    })?;
+    if state.player_count() != prefix.player_count {
+        return Err(ReplayError::PlayerCountMismatch {
+            recorded: prefix.player_count,
+            rebuilt: state.player_count(),
+        });
+    }
+
+    let initial = full_state_hash(&state);
+    if initial.as_str() != prefix.initial_state_hash.as_str() {
+        return Err(ReplayError::InitialHashMismatch {
+            expected: prefix.initial_state_hash.as_str().to_string(),
+            actual: initial.as_str().to_string(),
+        });
+    }
+
+    let mut positions = Vec::with_capacity(prefix.steps.len());
+    for (index, step) in prefix.steps.iter().enumerate() {
+        let expected_ply = index as u32;
+        if step.ply != expected_ply {
+            return Err(ReplayError::NonContiguousPly {
+                ply: step.ply,
+                expected: expected_ply,
+            });
+        }
+        if state.is_terminal() {
+            return Err(ReplayError::StepAfterTerminal { ply: step.ply });
+        }
+        if state.current_player != step.actor {
+            return Err(ReplayError::ActorMismatch {
+                ply: step.ply,
+                expected: state.current_player,
+                recorded: step.actor,
+            });
+        }
+        let before = full_state_hash(&state);
+        if before.as_str() != step.state_hash_before.as_str() {
+            return Err(ReplayError::BeforeHashMismatch {
+                ply: step.ply,
+                expected: step.state_hash_before.as_str().to_string(),
+                actual: before.as_str().to_string(),
+            });
+        }
+        positions.push(VerifiedReplayTraceStep {
+            ply: step.ply,
+            state_hash: before.as_str().to_string(),
+            state: state.clone(),
+            recorded_actor: step.actor,
+            recorded_action: step.action,
+        });
+        if !state.legal_actions().contains(&step.action) {
+            return Err(ReplayError::IllegalAction {
+                ply: step.ply,
+                action: step.action,
+                source: splendor_core::EngineError::IllegalAction(format!("{:?}", step.action)),
+            });
+        }
+        state
+            .apply(step.action)
+            .map_err(|source| ReplayError::IllegalAction {
+                ply: step.ply,
+                action: step.action,
+                source,
+            })?;
+        state
+            .assert_invariants()
+            .map_err(|source| ReplayError::InvariantBroken {
+                ply: step.ply,
+                source,
+            })?;
+        let after = full_state_hash(&state);
+        if after.as_str() != step.state_hash_after.as_str() {
+            return Err(ReplayError::AfterHashMismatch {
+                ply: step.ply,
+                expected: step.state_hash_after.as_str().to_string(),
+                actual: after.as_str().to_string(),
+            });
+        }
+    }
+
+    if state.is_terminal() {
+        return Err(ReplayError::PrefixTerminal {
+            plies: prefix.steps.len() as u32,
+        });
+    }
+    let cap_hash = full_state_hash(&state);
+    if cap_hash.as_str() != prefix.cap_state_hash.as_str() {
+        return Err(ReplayError::CapHashMismatch {
+            expected: prefix.cap_state_hash.as_str().to_string(),
+            actual: cap_hash.as_str().to_string(),
+        });
+    }
+
+    Ok(VerifiedRolloutPrefix {
+        player_count: prefix.player_count,
+        steps: prefix.steps.len() as u32,
+        cap_state_hash: cap_hash.as_str().to_string(),
         positions,
     })
 }

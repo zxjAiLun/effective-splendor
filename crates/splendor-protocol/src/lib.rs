@@ -217,6 +217,19 @@ pub enum ServerMessage {
         meta: RecipientMeta,
         result: GameResult,
     },
+    /// The match hit a training ply cap without reaching a terminal state.
+    ///
+    /// Deliberately carries no `GameResult` — a truncated game has no
+    /// winners, ranks, or terminal reason to fabricate. The cap-instant
+    /// facts (plies, state hash, per-player prestige) let agents finalize
+    /// their trajectory records.
+    GameTruncated {
+        #[serde(flatten)]
+        meta: RecipientMeta,
+        completed_plies: u32,
+        cap_state_hash: String,
+        cap_scores: Vec<u8>,
+    },
     Error {
         #[serde(flatten)]
         meta: RecipientMeta,
@@ -281,6 +294,7 @@ impl ServerMessage {
             | ServerMessage::ActionApplied { meta, .. }
             | ServerMessage::Event { meta, .. }
             | ServerMessage::GameEnd { meta, .. }
+            | ServerMessage::GameTruncated { meta, .. }
             | ServerMessage::Error { meta, .. }
             | ServerMessage::Ping { meta } => &meta.server.protocol_version,
             ServerMessage::Observation { meta, .. } => &meta.recipient.server.protocol_version,
@@ -310,6 +324,7 @@ impl ServerMessage {
         "action_applied",
         "event",
         "game_end",
+        "game_truncated",
         "error",
         "ping",
     ];

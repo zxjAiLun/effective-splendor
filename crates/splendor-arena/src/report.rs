@@ -112,6 +112,21 @@ pub enum ArenaOutcomeV1 {
         /// Number of plies played before the abort.
         completed_plies: u32,
     },
+    /// The match reached the rollout ply cap without a terminal state.
+    ///
+    /// Like `Aborted`, this outcome never carries a fabricated `GameResult`,
+    /// winners, or ranks. The cap-instant facts are recorded instead: the
+    /// number of plies (= the cap), the referee state hash at the cap, and
+    /// each player's prestige (VP) at that instant, which downstream
+    /// consumers turn into the pre-registered truncation return.
+    Truncated {
+        /// Number of plies played; equals the cap that stopped the match.
+        completed_plies: u32,
+        /// Hash of the referee state at the cap instant.
+        cap_state_hash: String,
+        /// Each player's prestige (VP) at the cap instant, in seat order.
+        cap_scores: Vec<u8>,
+    },
 }
 
 impl ArenaOutcomeV1 {
@@ -138,6 +153,15 @@ impl ArenaOutcomeV1 {
             reason,
             request_id,
             completed_plies,
+        }
+    }
+
+    /// Build a truncated outcome (no result, no winners; cap facts only).
+    pub fn truncated(completed_plies: u32, cap_state_hash: String, cap_scores: Vec<u8>) -> Self {
+        ArenaOutcomeV1::Truncated {
+            completed_plies,
+            cap_state_hash,
+            cap_scores,
         }
     }
 }

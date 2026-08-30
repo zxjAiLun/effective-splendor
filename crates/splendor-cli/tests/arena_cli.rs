@@ -161,6 +161,7 @@ fn normal_match_completes_with_verified_artifacts() {
             replay_final_hash, ..
         } => replay_final_hash.clone(),
         ArenaOutcomeV1::Aborted { .. } => panic!("completed match reported aborted"),
+        ArenaOutcomeV1::Truncated { .. } => panic!("completed match reported truncated"),
     };
     assert_eq!(report_hash, replay.final_state_hash.as_str());
     assert_eq!(report_hash, verified.final_state_hash);
@@ -223,6 +224,7 @@ fn assert_completed_match(config: &Path, dir: &Path) -> ArenaReportV1 {
             replay_final_hash, ..
         } => replay_final_hash.clone(),
         ArenaOutcomeV1::Aborted { .. } => panic!("completed match reported aborted"),
+        ArenaOutcomeV1::Truncated { .. } => panic!("completed match reported truncated"),
     };
     assert_eq!(report_hash, replay.final_state_hash.as_str());
     assert_eq!(report_hash, verified.final_state_hash);
@@ -615,6 +617,7 @@ fn aborted_match_writes_report_but_no_replay() {
             assert_eq!(completed_plies, 0);
         }
         ArenaOutcomeV1::Completed { .. } => panic!("expected aborted outcome"),
+        ArenaOutcomeV1::Truncated { .. } => panic!("expected aborted outcome"),
     }
 
     // Report exists; replay must NOT.

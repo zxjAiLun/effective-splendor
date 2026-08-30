@@ -6,8 +6,8 @@ use splendor_core::{
 use crate::compat::ensure_supported_runtime_ruleset;
 use crate::error::{ReplayError, ReplayResult};
 use crate::format::{
-    ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayV1, REPLAY_FORMAT,
-    REPLAY_VERSION,
+    ReplayGameResultV1, ReplayHash, ReplayRulesetV1, ReplayStepV1, ReplayV1, RolloutPrefixV1,
+    REPLAY_FORMAT, REPLAY_VERSION, ROLLOUT_PREFIX_FORMAT, ROLLOUT_PREFIX_VERSION,
 };
 
 /// Upper bound on plies recorded by [`record_random_game`].
@@ -131,6 +131,45 @@ impl ReplayRecorder {
             result: ReplayGameResultV1::from_result(result),
         };
         Ok((self.state, replay))
+    }
+
+    /// Finish recording as a capped rollout prefix.
+    ///
+    /// Only valid when the game is **not** terminal: a terminal game has a
+    /// real result and must be finished with [`Self::finish`], never
+    /// represented as a prefix. The returned document carries exactly the
+    /// recorded steps and the cap-instant state hash; it deliberately has no
+    /// result, ranks, winners, or terminal reason.
+    pub fn finish_prefix(self, ply_cap: u32) -> ReplayResult<(FullState, RolloutPrefixV1)> {
+        if self.state.is_terminal() {
+            return Err(ReplayError::PrefixTerminal {
+                plies: self.steps.len() as u32,
+            });
+        }
+        if ply_cap == 0 {
+            return Err(ReplayError::EmptyPrefix);
+        }
+        if self.steps.len() as u32 != ply_cap {
+            return Err(ReplayError::PrefixStepCountMismatch {
+                steps: self.steps.len() as u32,
+                ply_cap,
+            });
+        }
+        let cap_state_hash = hash_of(&self.state);
+        let prefix = RolloutPrefixV1 {
+            format: ROLLOUT_PREFIX_FORMAT.to_string(),
+            version: ROLLOUT_PREFIX_VERSION,
+            engine_version: ENGINE_VERSION.to_string(),
+            ruleset: self.ruleset,
+            ruleset_fingerprint: self.ruleset_fingerprint,
+            player_count: self.player_count,
+            seed: self.seed,
+            ply_cap,
+            initial_state_hash: self.initial_state_hash,
+            steps: self.steps,
+            cap_state_hash,
+        };
+        Ok((self.state, prefix))
     }
 }
 

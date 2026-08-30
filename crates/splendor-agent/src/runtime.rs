@@ -300,6 +300,13 @@ where
             expect_game_id(state, &meta.server.game_id)?;
             Ok(true)
         }
+        ServerMessage::GameTruncated { meta, .. } => {
+            // A ply-capped match end: for the generic agent runtime this is
+            // also a terminal stream condition (no further requests will
+            // arrive). Specialized rollout agents capture the cap facts.
+            expect_game_id(state, &meta.server.game_id)?;
+            Ok(true)
+        }
         ServerMessage::Error { message, .. } => Err(AgentError::Protocol(format!(
             "server reported an error: {message}"
         ))),

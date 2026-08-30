@@ -508,6 +508,7 @@ fn extract_game_id(msg: &ServerMessage) -> Option<String> {
         ServerMessage::ActionApplied { meta, .. } => Some(meta.server.game_id.clone()),
         ServerMessage::Event { meta, .. } => Some(meta.server.game_id.clone()),
         ServerMessage::GameEnd { meta, .. } => Some(meta.server.game_id.clone()),
+        ServerMessage::GameTruncated { meta, .. } => Some(meta.server.game_id.clone()),
         ServerMessage::Error { meta, .. } => Some(meta.server.game_id.clone()),
         ServerMessage::Ping { meta } => Some(meta.server.game_id.clone()),
     }

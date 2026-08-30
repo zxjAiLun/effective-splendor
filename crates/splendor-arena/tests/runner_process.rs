@@ -690,6 +690,9 @@ fn check_transcript_isolation(text: &str, seat: u8) {
             ServerMessage::GameEnd { meta, .. } => {
                 assert_eq!(meta.recipient_player_id, seat, "game_end recipient")
             }
+            ServerMessage::GameTruncated { meta, .. } => {
+                assert_eq!(meta.recipient_player_id, seat, "game_truncated recipient")
+            }
             ServerMessage::Error { meta, .. } => {
                 assert_eq!(meta.recipient_player_id, seat, "error recipient")
             }
