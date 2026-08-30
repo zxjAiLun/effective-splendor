@@ -2014,6 +2014,117 @@ the host is quiescent, then must restart in another new directory with the same
 binary, timeout, checkpoint, seeds, schedule, and gate rules. No timeout or
 gate is changed after observing these failures.
 
+### Throughput architecture amendment (2026-08-30, pre-Phase-0)
+
+Diagnosis of the blocked attempts, confirmed by measurement:
+
+```text
+THROUGHPUT_ARCHITECTURE = PROCESS_PER_GAME_IS_THE_BOTTLENECK
+primary bottleneck   = per-game Python/Torch/CUDA cold start (~1.9s even on
+                       an idle host) racing the frozen 10s handshake under
+                       concurrent CPU load; batch=1 inference per decision
+secondary cost       = M07's CPU determinization search (structural, ~2-3x
+                       longer games, not a defect)
+not the bottleneck   = GPU memory (1.2-1.3GB / 8.2GB used), GPU compute
+                       (6-33% utilization), system RAM, model size
+```
+
+The frozen Phase 0 schedule, seeds, count rules, thresholds, and the 10s
+handshake are unchanged. What changed is the agent execution architecture,
+recorded here as an implementation amendment before any valid Phase 0 run:
+
+- **Resident inference server** (`m39a_server.py`): one process loads the
+  plan-hash-bound checkpoint, catalog, and CUDA context once, then serves
+  newline-delimited JSON inference requests on a local TCP socket for any
+  number of games. Startup cost is paid once per collection run (~1.8s),
+  not once per game.
+- **Proxy agent mode** (`m39a_agent.py --server-url`): the per-game learner
+  process becomes a stdlib-only lightweight stub — no torch import, no
+  CUDA context, no checkpoint load. It verifies the server's identity from
+  its ready file (checkpoint file/semantic hash, plan hash, catalog hash)
+  before the first inference, the server echoes that binding on every
+  response, and the stub re-validates it on every response. Categorical
+  sampling, decision-seed derivation, sidecar writing, and every protocol
+  check remain in the stub and are byte-identical to resident mode.
+- **Numerical fidelity**: the server returns f32 `log_softmax`
+  log-probabilities **and their f32 `exp()` probabilities** computed by the
+  same torch calls as resident mode. The stub's categorical walk uses the
+  torch-computed probabilities (bit-identical to the original frozen
+  implementation `torch.log_softmax(...).exp().cpu().tolist()` + Python
+  cumulative sum) and writes the corresponding log-probability to the
+  sidecar. A review of the first repair iteration caught that re-
+  exponentiating log-probabilities with Python's f64 `math.exp` diverges
+  from the frozen torch f32 `exp` at the draw boundary — the discriminating
+  vector `seed = 2058960467996672`, `logits = [-9.10033082897735, 0.0]`
+  selects action 0 under the frozen pipeline but action 1 under f64
+  re-exponentiation — so the server-response probabilities are the only
+  sanctioned sampling path, pinned by a fixed-vector regression test
+  (`test_frozen_draw_reviewer_boundary_vector`).
+- **Provenance unchanged**: sidecars still bind plan hash, checkpoint
+  file/semantic hash, cycle, catalog hash, per-record observation, ordered
+  legal actions, action, decision seed, and behaviour values; the Rust
+  materializer still rebuilds everything from the authoritative replay and
+  validates the join fail-closed.
+- **Resident mode retained**: `m39a_agent.py` without `--server-url`
+  behaves exactly as before (full per-process model), so evaluation gates
+  and audits that want process isolation are unaffected. The collector and
+  Phase 0 executor start one resident server per run and tear it down on
+  exit; server identity is recorded in the collection result and the
+  Phase 0 report.
+- **M07 opponents still run per-game as frozen Rust subprocesses**; their
+  CPU search is structural cost that G0's projection measures honestly.
+  Isolating them into a separate worker pool (recommendation 6 of the
+  throughput review) is deferred until a valid Phase 0 shows it is needed.
+
+Smoke verification of the repaired architecture (host still carrying the
+unrelated `--jobs 8` audit, i.e. pessimistic conditions; local artifacts
+under `local-artifacts/m39a-server-smoke/`, `m39a-collect-server-smoke/`,
+`m39a-probe-timing-smoke/`, not published):
+
+- 3 consecutive CUDA games through the resident server: **zero handshake
+  timeouts** (previous architecture: timeout within 2 games at `J=1`);
+- per-game wall-clock: diversified/heuristic 2.2–3.6s (was 4–6s and
+  timeout-prone), M07 6.4s (was 8–21s), league 2.9s;
+- full provenance chain re-verified: 121 records materialized by the Rust
+  referee from the authoritative replays; CUDA recompute of behaviour
+  values against the bound checkpoint: 69 bit-exact + 52 benign drift,
+  max log-probability deviation `4.77e-07` (< the frozen `1e-6` gate),
+  max value deviation `2.78e-17`;
+- a CPU recompute against CUDA-recorded values deviates by up to
+  `1.9e-06` in log-probability — one f32 ulp of device-dependent
+  `log_softmax` — which is exactly why the frozen runtime contract
+  requires rollout and recompute on the same device class; the CPU probe
+  is recorded as confirming the contract, not as a gate result;
+- post-review regression (frozen draw over server probabilities + v2 run
+  contract): 2 CUDA games through the resident server, 69 records
+  materialized, CUDA recompute 41 bit-exact + 28 benign drift, max
+  log-probability deviation `4.77e-07` — the sampling trajectory and
+  provenance chain are unchanged by the repair
+  (`local-artifacts/m39a-server-smoke-r2/`, not published);
+- Python M39A tests: 23 passed (13 existing + 10 new/extended covering
+  server/proxy round-trip, identity verification, in-flight binding
+  changes, the reviewer's boundary vector, frozen-draw equivalence with
+  the original implementation, v2 run-contract fields, and v1-directory
+  rejection); Rust workspace untouched.
+
+- **Run-contract v2.** The Phase 0 run contract is upgraded to version 2
+  and additionally binds the inference architecture:
+  `inference_mode = resident_server_v1`, the server wire protocol
+  (`m39a-inference-server-v1`, format `effective-splendor-m39a-inference-
+  server` v1), and the SHA-256 of the `m39a_agent.py` and `m39a_server.py`
+  source files (the agent/server implementation identity). Every per-game
+  `timing.json` records the same inference identity, resume validates it
+  fail-closed, and a v1 directory (process-per-game era, which recorded no
+  inference identity) is rejected outright — resuming across architectures
+  would mix timing regimes and pollute G0. The final Phase 0 report repeats
+  the inference identity next to the resident-server binding.
+
+Phase 0 remains blocked on a quiescent host. When restarted, the run must
+use the resident-server architecture (the collector/probe default), the
+same frozen 384-game schedule, the same binary (`e49562e3…`), a fresh
+output directory with a v2 run contract, and `J=1`; the run contract
+records the server mode and implementation identity.
+
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS /
 PHASE_0_BLOCKED_INFRASTRUCTURE`.
 

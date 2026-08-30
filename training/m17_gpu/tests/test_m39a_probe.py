@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from splendor_gpu.m39a_contract import LEAGUE_ORDER
@@ -85,6 +87,11 @@ def test_phase0_run_contract_binds_executable_and_resume(tmp_path: Path) -> None
         device="cuda",
         workers=4,
     )
+    assert contract["version"] == 2
+    assert contract["inference_mode"] == "resident_server_v1"
+    assert contract["server_protocol"] == "m39a-inference-server-v1"
+    assert len(contract["agent_source_sha256"]) == 64
+    assert len(contract["server_source_sha256"]) == 64
     path = ensure_phase0_run_contract(tmp_path / "run", contract)
     assert ensure_phase0_run_contract(tmp_path / "run", contract) == path
     assert contract["splendor_program"] == str(splendor.resolve())
@@ -93,6 +100,11 @@ def test_phase0_run_contract_binds_executable_and_resume(tmp_path: Path) -> None
     changed["workers"] = 2
     with pytest.raises(RuntimeError, match="resume contract mismatch"):
         ensure_phase0_run_contract(tmp_path / "run", changed)
+
+    changed_mode = dict(contract)
+    changed_mode["inference_mode"] = "process_per_game"
+    with pytest.raises(RuntimeError, match="resume contract mismatch"):
+        ensure_phase0_run_contract(tmp_path / "run", changed_mode)
 
     splendor.write_bytes(b"different-binary")
     changed_binary = phase0_run_contract(
@@ -105,8 +117,54 @@ def test_phase0_run_contract_binds_executable_and_resume(tmp_path: Path) -> None
         device="cuda",
         workers=4,
     )
+    assert (
+        changed_binary["agent_source_sha256"] == contract["agent_source_sha256"]
+    )
     with pytest.raises(RuntimeError, match="resume contract mismatch"):
         ensure_phase0_run_contract(tmp_path / "run", changed_binary)
+
+
+def test_phase0_run_contract_rejects_v1_directories(tmp_path: Path) -> None:
+    """A v1 (process-per-game era) directory must not be resumed into v2."""
+    from splendor_gpu.m39a_probe import RUN_CONTRACT_FORMAT
+
+    run_dir = tmp_path / "v1-run"
+    run_dir.mkdir()
+    v1_contract = {
+        "format": RUN_CONTRACT_FORMAT,
+        "version": 1,
+        "plan_hash": "plan",
+        "checkpoint_path": "old",
+        "checkpoint_sha256": "checkpoint-file",
+        "checkpoint_hash": "checkpoint-semantic",
+        "catalog_path": "old",
+        "catalog_file_sha256": "catalog-file",
+        "splendor_program": "old",
+        "splendor_file_sha256": "old-binary",
+        "device": "cuda",
+        "workers": 2,
+    }
+    (run_dir / "phase0-run-contract.json").write_text(
+        json.dumps(v1_contract), encoding="utf-8"
+    )
+    checkpoint = tmp_path / "cycle-0.pt"
+    catalog = tmp_path / "catalog.json"
+    splendor = tmp_path / "splendor.exe"
+    checkpoint.write_bytes(b"checkpoint")
+    catalog.write_bytes(b"catalog")
+    splendor.write_bytes(b"release-binary")
+    v2_contract = phase0_run_contract(
+        plan_hash_value="plan",
+        checkpoint=checkpoint.resolve(),
+        checkpoint_sha256="checkpoint-file",
+        checkpoint_hash="checkpoint-semantic",
+        catalog=catalog.resolve(),
+        splendor=splendor.resolve(),
+        device="cuda",
+        workers=2,
+    )
+    with pytest.raises(RuntimeError, match="contract version"):
+        ensure_phase0_run_contract(run_dir, v2_contract)
 
 
 def test_probe_schedule_stops_queueing_after_first_failure() -> None:

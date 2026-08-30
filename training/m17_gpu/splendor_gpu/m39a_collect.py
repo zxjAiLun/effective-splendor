@@ -28,6 +28,18 @@ MANIFEST_FORMAT = "effective-splendor-m39a-materialization-manifest"
 MANIFEST_VERSION = 1
 M39A_AGENT_NAME = "effective-splendor-m39a-policy-value-agent-v1"
 
+# Arena-spawned agent processes inherit this process's environment, and both
+# the resident and proxy agent entry points import the splendor_gpu package.
+# Propagate the module root this driver was imported from so collection works
+# regardless of how the driver itself was launched.
+_MODULE_ROOT = str(Path(__file__).resolve().parent.parent)
+if _MODULE_ROOT not in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+    os.environ["PYTHONPATH"] = (
+        _MODULE_ROOT + os.pathsep + os.environ["PYTHONPATH"]
+        if os.environ.get("PYTHONPATH")
+        else _MODULE_ROOT
+    )
+
 
 def _write_new_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,29 +67,40 @@ def _m39a_agent(
     catalog: Path,
     device: str,
     action_selection: str = "categorical",
+    server_url: str | None = None,
+    server_ready: Path | None = None,
 ) -> dict[str, Any]:
+    args = [
+        "-m",
+        "splendor_gpu.m39a_agent",
+        "--checkpoint-sha256",
+        checkpoint_sha256,
+        "--plan-hash",
+        digest,
+        "--game-index",
+        str(game_index),
+        "--sidecar-out",
+        str(sidecar),
+    ]
+    if server_url is not None:
+        if server_ready is None:
+            raise ValueError("server_url requires server_ready")
+        args.extend(["--server-url", server_url, "--server-ready", str(server_ready)])
+    else:
+        args.extend(
+            [
+                "--checkpoint",
+                str(checkpoint),
+                "--catalog",
+                str(catalog),
+                "--device",
+                device,
+            ]
+        )
+    args.extend(["--action-selection", action_selection])
     return {
         "program": str(Path(sys.executable).resolve()),
-        "args": [
-            "-m",
-            "splendor_gpu.m39a_agent",
-            "--checkpoint",
-            str(checkpoint),
-            "--checkpoint-sha256",
-            checkpoint_sha256,
-            "--plan-hash",
-            digest,
-            "--game-index",
-            str(game_index),
-            "--sidecar-out",
-            str(sidecar),
-            "--catalog",
-            str(catalog),
-            "--device",
-            device,
-            "--action-selection",
-            action_selection,
-        ],
+        "args": args,
     }
 
 
@@ -149,56 +172,120 @@ def _relative_to_manifest(path: Path, manifest_path: Path) -> str:
     return os.path.relpath(path, manifest_path.parent).replace("\\", "/")
 
 
-def collect(
+class ResidentServer:
+    """Lifecycle wrapper around one resident m39a_server process.
+
+    Spawns the server once, waits for its ready file (which carries the
+    verified checkpoint/plan/catalog identity), and exposes the URL plus
+    ready-file path that per-game proxy agents need. On exit the server
+    process is terminated.
+    """
+
+    def __init__(
+        self,
+        *,
+        checkpoint: Path,
+        checkpoint_sha256: str,
+        plan_hash: str,
+        catalog: Path,
+        device: str,
+        ready_file: Path,
+        startup_timeout_seconds: float = 120.0,
+    ) -> None:
+        self._ready_file = ready_file
+        if ready_file.exists():
+            # A ready file from a previous collection run refers to a server
+            # that is no longer alive. Validate its identity, then replace it
+            # by starting a fresh server for this run.
+            previous = json.loads(ready_file.read_text(encoding="utf-8"))
+            for field, expected in (
+                ("checkpoint_sha256", checkpoint_sha256),
+                ("plan_hash", plan_hash),
+            ):
+                if previous.get(field) != expected:
+                    raise ValueError(
+                        f"previous server ready file {field} mismatch: "
+                        f"expected {expected!r}, got {previous.get(field)!r}"
+                    )
+            ready_file.unlink()
+        environment = dict(os.environ)
+        module_root = str(Path(__file__).resolve().parent.parent)
+        existing = environment.get("PYTHONPATH")
+        if existing:
+            environment["PYTHONPATH"] = os.pathsep.join([module_root, existing])
+        else:
+            environment["PYTHONPATH"] = module_root
+        self._process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "splendor_gpu.m39a_server",
+                "--checkpoint",
+                str(checkpoint),
+                "--checkpoint-sha256",
+                checkpoint_sha256,
+                "--plan-hash",
+                plan_hash,
+                "--catalog",
+                str(catalog),
+                "--device",
+                device,
+                "--ready-file",
+                str(ready_file),
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=environment,
+        )
+        deadline = time.time() + startup_timeout_seconds
+        while not ready_file.is_file():
+            if self._process.poll() is not None:
+                stderr = self._process.stderr.read() if self._process.stderr else ""
+                raise RuntimeError(f"resident server exited during startup: {stderr}")
+            if time.time() > deadline:
+                self._process.terminate()
+                raise TimeoutError(
+                    f"resident server did not become ready within {startup_timeout_seconds}s"
+                )
+            time.sleep(0.1)
+        ready = json.loads(ready_file.read_text(encoding="utf-8"))
+        self.url = f"{ready['host']}:{ready['port']}"
+        self.ready_file = ready_file
+        self.identity = {
+            "checkpoint_sha256": ready["checkpoint_sha256"],
+            "checkpoint_hash": ready["checkpoint_hash"],
+            "checkpoint_cycle": int(ready["checkpoint_cycle"]),
+            "catalog_hash": ready["catalog_hash"],
+        }
+
+    def close(self) -> None:
+        if self._process is not None and self._process.poll() is None:
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.wait(timeout=10)
+
+
+def _collect_games(
     *,
-    plan_path: Path,
+    server: "ResidentServer | None",
+    plan: dict[str, Any],
+    digest: str,
     checkpoint: Path,
     checkpoint_sha256: str,
-    checkpoint_hash: str,
     cycle: int,
+    count: int,
+    start: int,
     catalog_path: Path,
     splendor: Path,
     out_dir: Path,
-    mode: str,
-    smoke_games: int,
     device: str,
-    materialize: bool,
-    batch_out: Path | None,
-) -> dict[str, Any]:
-    plan = load_plan(plan_path)
-    digest = plan_hash(plan)
-    if plan["catalog"]["semantic_hash"] != catalog_semantic_hash(load_catalog(catalog_path)):
-        raise ValueError("catalog does not match plan")
-    model, payload = load_m39a_checkpoint(
-        checkpoint,
-        expected_file_sha256=checkpoint_sha256,
-        expected_plan_hash=digest,
-        device="cpu",
-    )
-    del model
-    metadata = payload["metadata"]
-    if int(metadata["cycle"]) != cycle - 1 or payload["checkpoint_hash"] != checkpoint_hash:
-        raise ValueError("checkpoint cycle/semantic hash does not match collection request")
-    if mode == "complete_cycle" and device != "cuda":
-        raise ValueError("complete_cycle collection requires the frozen cuda runtime")
-    if mode == "complete_cycle":
-        preflight_league()
-        count = 512
-    else:
-        if not 1 <= smoke_games <= 512:
-            raise ValueError("smoke_games must be in 1..=512")
-        count = smoke_games
-
-    plan_path = plan_path.resolve()
-    checkpoint = checkpoint.resolve()
-    catalog_path = catalog_path.resolve()
-    splendor = splendor.resolve()
-    out_dir = out_dir.resolve()
-    if not splendor.is_file():
-        raise FileNotFoundError(f"splendor binary not found: {splendor}")
-    start = (cycle - 1) * 512
-    sources: list[dict[str, Any]] = []
-    elapsed: list[float] = []
+    sources: list[dict[str, Any]],
+    elapsed: list[float],
+) -> None:
     for game_index in range(start, start + count):
         game = scheduled_game(game_index)
         game_dir = out_dir / "games" / f"game-{game_index:06d}"
@@ -228,6 +315,8 @@ def collect(
                             sidecar=sidecars[seat],
                             catalog=catalog_path,
                             device=device,
+                            server_url=server.url if server is not None else None,
+                            server_ready=server.ready_file if server is not None else None,
                         )
                     )
                 else:
@@ -308,6 +397,90 @@ def collect(
             }
         )
 
+
+def collect(
+    *,
+    plan_path: Path,
+    checkpoint: Path,
+    checkpoint_sha256: str,
+    checkpoint_hash: str,
+    cycle: int,
+    catalog_path: Path,
+    splendor: Path,
+    out_dir: Path,
+    mode: str,
+    smoke_games: int,
+    device: str,
+    materialize: bool,
+    batch_out: Path | None,
+    resident_server: bool = True,
+) -> dict[str, Any]:
+    plan = load_plan(plan_path)
+    digest = plan_hash(plan)
+    if plan["catalog"]["semantic_hash"] != catalog_semantic_hash(load_catalog(catalog_path)):
+        raise ValueError("catalog does not match plan")
+    model, payload = load_m39a_checkpoint(
+        checkpoint,
+        expected_file_sha256=checkpoint_sha256,
+        expected_plan_hash=digest,
+        device="cpu",
+    )
+    del model
+    metadata = payload["metadata"]
+    if int(metadata["cycle"]) != cycle - 1 or payload["checkpoint_hash"] != checkpoint_hash:
+        raise ValueError("checkpoint cycle/semantic hash does not match collection request")
+    if mode == "complete_cycle" and device != "cuda":
+        raise ValueError("complete_cycle collection requires the frozen cuda runtime")
+    if mode == "complete_cycle":
+        preflight_league()
+        count = 512
+    else:
+        if not 1 <= smoke_games <= 512:
+            raise ValueError("smoke_games must be in 1..=512")
+        count = smoke_games
+
+    plan_path = plan_path.resolve()
+    checkpoint = checkpoint.resolve()
+    catalog_path = catalog_path.resolve()
+    splendor = splendor.resolve()
+    out_dir = out_dir.resolve()
+    if not splendor.is_file():
+        raise FileNotFoundError(f"splendor binary not found: {splendor}")
+    start = (cycle - 1) * 512
+    sources: list[dict[str, Any]] = []
+    elapsed: list[float] = []
+    server: ResidentServer | None = None
+    if resident_server:
+        ready_file = out_dir / "server-ready.json"
+        server = ResidentServer(
+            checkpoint=checkpoint,
+            checkpoint_sha256=checkpoint_sha256,
+            plan_hash=digest,
+            catalog=catalog_path,
+            device=device,
+            ready_file=ready_file,
+        )
+    try:
+        _collect_games(
+            server=server,
+            plan=plan,
+            digest=digest,
+            checkpoint=checkpoint,
+            checkpoint_sha256=checkpoint_sha256,
+            cycle=cycle,
+            count=count,
+            start=start,
+            catalog_path=catalog_path,
+            splendor=splendor,
+            out_dir=out_dir,
+            device=device,
+            sources=sources,
+            elapsed=elapsed,
+        )
+    finally:
+        if server is not None:
+            server.close()
+
     manifest_path = out_dir / "materialization-manifest.json"
     for source, game_index in zip(sources, range(start, start + count)):
         game_dir = out_dir / "games" / f"game-{game_index:06d}"
@@ -371,6 +544,13 @@ def collect(
         "cycle": cycle,
         "games": count,
         "new_game_seconds": elapsed,
+        "resident_server": {
+            "url": server.url,
+            "ready_file": str(server.ready_file),
+            **server.identity,
+        }
+        if server is not None
+        else None,
         "manifest": str(manifest_path),
         "manifest_sha256": file_sha256(manifest_path),
         "batch": str(batch_out.resolve()) if materialize and batch_out else None,
@@ -395,6 +575,11 @@ def main() -> None:
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
     parser.add_argument("--no-materialize", action="store_true")
     parser.add_argument("--batch-out", type=Path)
+    parser.add_argument(
+        "--no-resident-server",
+        action="store_true",
+        help="spawn a full model per game (legacy mode) instead of one resident server",
+    )
     args = parser.parse_args()
     result = collect(
         plan_path=args.plan,
@@ -410,6 +595,7 @@ def main() -> None:
         device=args.device,
         materialize=not args.no_materialize,
         batch_out=args.batch_out,
+        resident_server=not args.no_resident_server,
     )
     print(json.dumps(result, separators=(",", ":")), flush=True)
 

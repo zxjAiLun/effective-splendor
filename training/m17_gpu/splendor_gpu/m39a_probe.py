@@ -15,7 +15,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .m39a_collect import _m39a_agent, _opponent_agent, _write_new_json, preflight_league
+from .m39a_collect import (
+    ResidentServer,
+    _m39a_agent,
+    _opponent_agent,
+    _write_new_json,
+    preflight_league,
+)
 from .m39a_contract import LEAGUE_ORDER, file_sha256, load_plan, plan_hash
 from .m39a_model import load_m39a_checkpoint
 
@@ -23,7 +29,34 @@ from .m39a_model import load_m39a_checkpoint
 REPORT_FORMAT = "effective-splendor-m39a-phase0-report"
 REPORT_VERSION = 1
 RUN_CONTRACT_FORMAT = "effective-splendor-m39a-phase0-run-contract"
-RUN_CONTRACT_VERSION = 1
+RUN_CONTRACT_VERSION = 2
+# v2: adds inference_mode + agent/server implementation identity. A v1
+# directory recorded neither, so resuming across the process-per-game ->
+# resident-server architecture change (which alters per-game timing and
+# therefore G0) was possible; v2 directories reject v1 contracts outright.
+SERVER_PROTOCOL = "m39a-inference-server-v1"
+
+
+def _agent_source_sha256() -> str:
+    return file_sha256(Path(__file__).resolve().parent / "m39a_agent.py")
+
+
+def _server_source_sha256() -> str:
+    return file_sha256(Path(__file__).resolve().parent / "m39a_server.py")
+
+
+def inference_mode_identity() -> dict[str, Any]:
+    """The resident-server inference identity that v2 run contracts bind."""
+    return {
+        "inference_mode": "resident_server_v1",
+        "server_protocol": SERVER_PROTOCOL,
+        "server_format": "effective-splendor-m39a-inference-server",
+        "server_version": 1,
+        "agent_source_path": "splendor_gpu/m39a_agent.py",
+        "agent_source_sha256": _agent_source_sha256(),
+        "server_source_path": "splendor_gpu/m39a_server.py",
+        "server_source_sha256": _server_source_sha256(),
+    }
 BUCKETS = ("diversified", "m07", "league", "self_play")
 BASES = {
     "diversified": 5_200_000,
@@ -82,7 +115,14 @@ def phase0_run_contract(
     device: str,
     workers: int,
 ) -> dict[str, Any]:
-    """Bind a resumable Phase-0 directory to one exact execution environment."""
+    """Bind a resumable Phase-0 directory to one exact execution environment.
+
+    v2 additionally binds the inference architecture: the resident-server
+    mode, its wire protocol, and the source hashes of the agent and server
+    implementations, so a resumed run cannot mix process-per-game timing
+    with resident-server timing (or a modified sampling implementation)
+    within one G0 measurement.
+    """
     return {
         "format": RUN_CONTRACT_FORMAT,
         "version": RUN_CONTRACT_VERSION,
@@ -96,6 +136,7 @@ def phase0_run_contract(
         "splendor_file_sha256": file_sha256(splendor),
         "device": device,
         "workers": workers,
+        **inference_mode_identity(),
     }
 
 
@@ -104,9 +145,17 @@ def ensure_phase0_run_contract(out_dir: Path, contract: dict[str, Any]) -> Path:
     if path.exists():
         observed = json.loads(path.read_text(encoding="utf-8"))
         if observed != contract:
+            if int(observed.get("version", 0)) != RUN_CONTRACT_VERSION:
+                raise RuntimeError(
+                    "Phase 0 run contract version "
+                    f"{observed.get('version')} is not the current v{RUN_CONTRACT_VERSION}; "
+                    "resume across contract versions (e.g. process-per-game -> "
+                    "resident-server) is forbidden — use a new out-dir"
+                )
             raise RuntimeError(
                 "Phase 0 resume contract mismatch; use the original executable, "
-                "checkpoint, catalog, device, and worker count or choose a new out-dir"
+                "checkpoint, catalog, device, worker count, and inference "
+                "implementation or choose a new out-dir"
             )
     else:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -176,8 +225,10 @@ def _run_one(
     catalog: Path,
     splendor: Path,
     splendor_file_sha256: str,
+    inference_identity: dict[str, Any],
     out_dir: Path,
     device: str,
+    server: ResidentServer | None,
 ) -> dict[str, Any]:
     game_dir = out_dir / game.bucket / f"game-{game.ordinal:03d}"
     config_path = game_dir / "arena-config.json"
@@ -197,6 +248,11 @@ def _run_one(
             "splendor_file_sha256"
         ) != splendor_file_sha256:
             raise RuntimeError(f"probe executable binding mismatch at {game_dir}")
+        for field, expected_value in inference_identity.items():
+            if timing.get(field) != expected_value:
+                raise RuntimeError(
+                    f"probe inference-identity mismatch ({field}) at {game_dir}"
+                )
         elapsed_seconds = float(timing["elapsed_seconds"])
     else:
         game_dir.mkdir(parents=True, exist_ok=True)
@@ -212,6 +268,8 @@ def _run_one(
                         sidecar=sidecars[seat],
                         catalog=catalog,
                         device=device,
+                        server_url=server.url if server is not None else None,
+                        server_ready=server.ready_file if server is not None else None,
                     )
                 )
             else:
@@ -265,6 +323,7 @@ def _run_one(
                 "elapsed_seconds": elapsed_seconds,
                 "splendor_program": str(splendor),
                 "splendor_file_sha256": splendor_file_sha256,
+                **inference_identity,
             },
         )
     replay = json.loads(replay_path.read_text(encoding="utf-8"))
@@ -391,22 +450,39 @@ def main() -> None:
     )
     run_contract_path = ensure_phase0_run_contract(out_dir, run_contract)
     splendor_file_sha256 = str(run_contract["splendor_file_sha256"])
-    tasks = frozen_probe_schedule()
-    rows = run_probe_schedule(
-        tasks,
-        workers=args.workers,
-        runner=lambda game: _run_one(
-            game,
-            checkpoint=checkpoint,
-            checkpoint_sha256=args.checkpoint_sha256,
-            digest=digest,
-            catalog=catalog,
-            splendor=splendor,
-            splendor_file_sha256=splendor_file_sha256,
-            out_dir=out_dir,
-            device=args.device,
-        ),
+    inference_identity = inference_mode_identity()
+    server = ResidentServer(
+        checkpoint=checkpoint,
+        checkpoint_sha256=args.checkpoint_sha256,
+        plan_hash=digest,
+        catalog=catalog,
+        device=args.device,
+        ready_file=out_dir / "server-ready.json",
     )
+    if server.identity["checkpoint_hash"] != args.checkpoint_hash:
+        server.close()
+        raise ValueError("resident server checkpoint binding mismatch")
+    try:
+        tasks = frozen_probe_schedule()
+        rows = run_probe_schedule(
+            tasks,
+            workers=args.workers,
+            runner=lambda game: _run_one(
+                game,
+                checkpoint=checkpoint,
+                checkpoint_sha256=args.checkpoint_sha256,
+                digest=digest,
+                catalog=catalog,
+                splendor=splendor,
+                splendor_file_sha256=splendor_file_sha256,
+                inference_identity=inference_identity,
+                out_dir=out_dir,
+                device=args.device,
+                server=server,
+            ),
+        )
+    finally:
+        server.close()
     rows.sort(key=lambda row: (BUCKETS.index(row["bucket"]), row["ordinal"]))
     summary = summarize(rows, args.workers)
     report = {
@@ -419,6 +495,12 @@ def main() -> None:
         "run_contract_sha256": file_sha256(run_contract_path),
         "splendor_program": str(splendor),
         "splendor_file_sha256": splendor_file_sha256,
+        **inference_identity,
+        "resident_server": {
+            "url": server.url,
+            "ready_file": str(server.ready_file),
+            **server.identity,
+        },
         "device": args.device,
         "rows": rows,
         **summary,
