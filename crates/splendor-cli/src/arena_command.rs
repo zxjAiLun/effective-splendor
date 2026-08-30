@@ -425,6 +425,9 @@ fn commit_truncated(
         )));
     }
     if let Err(e) = publish(&temp_prefix, &parsed.prefix_out) {
+        // The report was already published; an error exit must never leave a
+        // data-bearing partial pair, so roll the report back too.
+        let _ = std::fs::remove_file(&parsed.report_out);
         let _ = std::fs::remove_file(&parsed.prefix_out);
         let _ = std::fs::remove_file(&temp_prefix);
         return Err(RunMatchError::Io(format!(

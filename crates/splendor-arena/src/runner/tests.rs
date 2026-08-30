@@ -203,6 +203,35 @@ fn run_scripted(
     run_scripted_failing(config, scripts, queue, fails)
 }
 
+/// Capped variant of [`run_scripted`] driving `ArenaRunner::run_capped_with`.
+fn run_scripted_capped(
+    config: ArenaConfig,
+    scripts: Vec<Script>,
+    queue: VecDeque<Action>,
+    ply_cap: u32,
+) -> (Result<CappedRun, ArenaInternalError>, SharedLog) {
+    let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
+    let queue = Arc::new(Mutex::new(queue));
+    let game_id = config.game_id.clone();
+    let mut remaining: Vec<Option<Script>> = scripts.into_iter().map(Some).collect();
+    let log_for_make = Arc::clone(&log);
+    let result = ArenaRunner::run_capped_with_for_tests(config, ply_cap, move |_, seat, tx| {
+        let idx = seat.index();
+        let agent = ScriptedAgent {
+            seat,
+            tx,
+            script: remaining[idx].take().expect("one transport per seat"),
+            game_id: game_id.clone(),
+            queue: Arc::clone(&queue),
+            log: Arc::clone(&log_for_make),
+            shutdown_flag: Arc::new(AtomicBool::new(false)),
+            fail_on: None,
+        };
+        Ok(Box::new(agent) as Box<dyn AgentTransport>)
+    });
+    (result, log)
+}
+
 /// Like [`run_scripted`], with one optional injected send failure per seat.
 fn run_scripted_failing(
     config: ArenaConfig,
@@ -891,5 +920,125 @@ fn outbound_failure_shuts_down_every_transport() {
             flag.load(Ordering::SeqCst),
             "transport {i} must be shut down after an outbound failure"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Capped rollout (run_capped) tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn capped_run_truncates_at_cap_and_emits_game_truncated() {
+    // A cap below the recorded game's length guarantees truncation.
+    let (actions, _) = recorded_actions();
+    let cap = 5u32;
+    let (result, log) = run_scripted_capped(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        cap,
+    );
+    let capped = result.expect("no internal error");
+    let (report, prefix) = match capped {
+        CappedRun::Truncated { report, prefix } => (report, prefix),
+        CappedRun::Terminal(_) => panic!("cap 5 on a ~60-ply game must truncate"),
+    };
+    match &report.outcome {
+        ArenaOutcomeV1::Truncated {
+            completed_plies,
+            cap_state_hash,
+            cap_scores,
+        } => {
+            assert_eq!(*completed_plies, cap);
+            assert_eq!(cap_state_hash, prefix.cap_state_hash.as_str());
+            assert_eq!(cap_scores.len(), 2);
+        }
+        other => panic!("expected truncated outcome, got {other:?}"),
+    }
+    assert_eq!(prefix.steps.len() as u32, cap);
+    assert_eq!(prefix.ply_cap, cap);
+    // The prefix must strictly verify (non-terminal at cap, hashes intact).
+    splendor_replay::verify_rollout_prefix(&prefix).expect("prefix verifies");
+
+    // Both seats received the no-result game_truncated notification.
+    let log = log.lock().unwrap();
+    let truncations: Vec<&(PlayerId, ServerMessage)> = log
+        .iter()
+        .filter(|(_, msg)| matches!(msg, ServerMessage::GameTruncated { .. }))
+        .collect();
+    assert_eq!(truncations.len(), 2, "both seats must be notified");
+    let mut recipients = truncations
+        .iter()
+        .filter_map(|(_, msg)| recipient_of(msg))
+        .collect::<Vec<_>>();
+    recipients.sort_unstable();
+    assert_eq!(recipients, vec![0, 1]);
+}
+
+#[test]
+fn capped_run_terminal_before_cap_is_identical_to_run_match() {
+    // Cap above the game length: the capped run must produce exactly the
+    // same completed report and replay as the uncapped runner.
+    let (actions, replay) = recorded_actions();
+    let plies = replay.steps.len() as u32;
+    let (uncapped, _, _) = run_scripted(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions.clone(),
+    );
+    let (capped, _) = run_scripted_capped(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions,
+        plies + 10,
+    );
+    let uncapped = uncapped.expect("no internal error");
+    let capped_run = match capped.expect("no internal error") {
+        CappedRun::Terminal(run) => run,
+        CappedRun::Truncated { .. } => panic!("cap above game length must not truncate"),
+    };
+    assert_eq!(uncapped.report, capped_run.report);
+    assert_eq!(uncapped.replay, capped_run.replay);
+}
+
+#[test]
+fn capped_run_rejects_invalid_cap_and_aborts_still_fail_closed() {
+    let (actions, _) = recorded_actions();
+    // Zero cap is rejected before any transport is built.
+    let (result, _) = run_scripted_capped(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions.clone(),
+        0,
+    );
+    assert!(
+        matches!(result, Err(ArenaInternalError::Engine(_))),
+        "zero cap must be rejected"
+    );
+    // A cap at or above the 10,000-ply safety limit is rejected too.
+    let (result, _) = run_scripted_capped(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Play],
+        actions.clone(),
+        10_000,
+    );
+    assert!(
+        matches!(result, Err(ArenaInternalError::Engine(_))),
+        "safety-limit cap must be rejected"
+    );
+    // An agent failure still aborts fail-closed under a cap: a seat that
+    // never answers the handshake times out with the usual abort outcome.
+    let (result, _) = run_scripted_capped(
+        test_config(2, 5_000, 5_000),
+        vec![Script::Play, Script::Mute],
+        actions,
+        150,
+    );
+    match result.expect("no internal error") {
+        CappedRun::Terminal(run) => match &run.report.outcome {
+            ArenaOutcomeV1::Aborted { .. } => {}
+            other => panic!("expected handshake-timeout abort, got {other:?}"),
+        },
+        CappedRun::Truncated { .. } => panic!("a faulty agent must abort, not truncate"),
     }
 }

@@ -203,10 +203,10 @@ impl ArenaRunner {
     }
 
     /// Capped match driver, transport-injectable for tests.
-    fn run_capped_with<F>(
+    pub(crate) fn run_capped_with<F>(
         config: ArenaConfig,
         ply_cap: u32,
-        make: F,
+        mut make: F,
     ) -> Result<CappedRun, ArenaInternalError>
     where
         F: FnMut(
@@ -220,7 +220,28 @@ impl ArenaRunner {
                 "ply cap {ply_cap} must be in 1..{MAX_MATCH_PLIES}"
             )));
         }
-        Self::run_with_inner(config, Some(ply_cap), make)
+        match Self::run_with_inner(config, Some(ply_cap), &mut make)? {
+            CappedRun::Terminal(run) => Ok(CappedRun::Terminal(run)),
+            CappedRun::Truncated { report, prefix } => Ok(CappedRun::Truncated { report, prefix }),
+        }
+    }
+
+    /// Test-only alias so `runner::tests` (a sibling module, not a child)
+    /// can drive the capped runner with scripted transports.
+    #[cfg(test)]
+    pub(crate) fn run_capped_with_for_tests<F>(
+        config: ArenaConfig,
+        ply_cap: u32,
+        make: F,
+    ) -> Result<CappedRun, ArenaInternalError>
+    where
+        F: FnMut(
+            &AgentCommand,
+            PlayerId,
+            Sender<InboundEvent>,
+        ) -> Result<Box<dyn AgentTransport>, ArenaInternalError>,
+    {
+        Self::run_capped_with(config, ply_cap, make)
     }
 
     /// Core match driver, transport-injectable for tests.

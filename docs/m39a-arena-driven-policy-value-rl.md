@@ -2235,6 +2235,40 @@ replay); Rust M39A tests 5/5 including the truncated-prefix join
 arena 111, and full workspace tests pass; fmt/clippy clean; Python 27
 tests pass including 4 new collector recovery/_mutex tests.
 
+Follow-up hardening (review `e592d63 = NEEDS_FIX`, all closed):
+
+- **Atomic driver lock**: exclusive creation (`O_CREAT|O_EXCL`); a live
+  competing PID fails closed; a stale lock is atomically renamed away and
+  reacquired exclusively — no check-then-write race remains.
+- **Formal execution contract** (`formal-execution-contract.json`, written
+  once, exact-match on resume): plan path+hash, catalog path+hash, splendor
+  executable path+SHA-256, `runner_mode = run-rollout`, `ply_cap = 150`,
+  driver/collector/agent/server/trainer source SHA-256s, and the cycle-0
+  seed checkpoint hash. Cycles 1–5's legacy-binary collection is recorded
+  in an explicit `legacy_collection_note` (all 2,560 games terminated below
+  the cap — identical under either runner mode — review-accepted).
+- **Strict resume validation**: `cycle_state` now verifies report vs.
+  checkpoint (file SHA, semantic hash), metadata cycle, plan/catalog
+  identity, ply cap, and the **parent chain** against the previously
+  verified checkpoint before treating a cycle as complete.
+- **Truncated publication rollback**: if prefix publication fails after
+  the report landed, the report is removed too — an error exit can never
+  leave a data-bearing partial pair.
+- **Direct `run_capped` tests** (arena suite, 3 new): cap hit produces
+  `Truncated` + prefix + `game_truncated` notification to both seats;
+  terminal-before-cap is byte-identical to the uncapped runner (report and
+  replay equality); zero/over-limit caps are rejected and a faulty agent
+  still aborts fail-closed under a cap.
+- **Full-chain game-2785 smoke** (cycle-5 checkpoint, fresh smoke
+  directory `local-artifacts/m39a-game2785-capped-smoke/`, not published):
+  runner → `game_truncated` → Python sidecar (75 records, truncation
+  envelope) → truncated report (cap_scores `[0, 2]`) + 150-step prefix (no
+  result fields) → Rust materializer → 75-record batch with
+  `source_terminal_result = null` on every record, learner seat present,
+  and truncation returns `[-0.7310585786…, -0.2689414214…]` =
+  `−0.5 ± 0.5·tanh(2/4)` exactly. The game is a confirmed deterministic
+  non-terminator under the cycle-5 policy (the cap fired as designed).
+
 M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PASS
 (G0 PASS, G0b PASS) / CYCLES_1_5_TRAINED / CYCLE_6_IN_PROGRESS`.
 
