@@ -3,19 +3,22 @@
 ```text
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
-Status:         IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_BLOCKED_INFRASTRUCTURE
+Status:         IMPLEMENTED / PHASE_0_PASS (G0 PASS, G0b PASS)
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
 Rev 3 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
 Rev 4 revision:  2026-08-30, document-only; baseline unchanged 573434f
 Rev 4 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
-Training:       ONE-GAME CPU+CUDA IMPLEMENTATION SMOKE ONLY; no formal cycle
-Arena:          Phase 0 attempted; no valid result (CUDA handshake timeouts)
-Baseline:       573434f (pushed HEAD; local main == origin/main)
-Baseline moved: 733401c -> 573434f on 2026-08-29, five engineering-only
-                 commits (see "Not addressed by this revision"). No frozen
-                 constant, seed, or gate in this document changed.
+Throughput fix:  2026-08-30 resident inference server; review APPROVED (80a5ace)
+Phase 0:         PASS — G0 projected 4.188 h <= 72 h; G0b 0/384 truncations
+Training:       formal 4,096-game collection is the next authorized gate
+Arena:          Phase 0 executed 2026-08-30 (384 games, 0 timeouts); no formal
+                 evaluation yet
+Baseline:       573434f (design) / 80a5ace (implementation HEAD)
+Baseline moved: 733401c -> 573434f on 2026-08-29 (engineering-only); the
+                 implementation commit chain 7d647ec..80a5ace is recorded in
+                 the implementation checkpoint; no frozen constant changed.
 Revision date:  2026-08-30 (Asia/Shanghai)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round does not seek promotion)
@@ -1409,6 +1412,27 @@ the truncation score from the referee state before ply 150.
 
 ## Validation and evidence
 
+Phase 0 formal evidence (2026-08-30, local artifacts under
+`local-artifacts/m39a-phase0-resident-j1-2026-08-30/`, not published):
+
+- run contract v2 (SHA-256 `80f91f64ac57c4f3…`) binding plan hash
+  `06cbd7b2…`, cycle-0 checkpoint (file `4e88a7d4…`, semantic
+  `963f644e…`), catalog, device cuda, workers 1, the release executable
+  (`e49562e3…`), and the resident-server inference identity
+  (`inference_mode = resident_server_v1`, agent/server source hashes);
+- `phase0-report.json` (SHA-256
+  `8914594b48b6306537849cb1ca85ffa47f858c91f88fa791abbf62633cbe5085`):
+  **G0 PASS** — projected parallel hours 4.188 ≤ 72 (per-bucket means over
+  64 timed games: diversified 4.606s, m07 4.447s, league 2.861s, self-play
+  3.408s, independently recomputed from the 384 rows and agreeing exactly);
+  **G0b PASS** — 0 truncated of 384, no bucket rule, no aggregate rule, max
+  completed plies 100 (< cap 150), per-bucket Clopper–Pearson 95% upper
+  bounds 0.0307; sub-stratum counts reported per the frozen requirement
+  (diversified 72/24; league 11×6 + 10×3; all zero truncations);
+- 384/384 games completed, zero handshake timeouts, one shell-timeout
+  interruption recovered by resume (config-only directory, no game data
+  affected; mid-game partial artifacts would still fail closed).
+
 Implementation smoke evidence (local-only artifacts, not formal evidence):
 
 - Python contract/model/trainer/probe/gate tests: 13 passed;
@@ -2119,21 +2143,51 @@ under `local-artifacts/m39a-server-smoke/`, `m39a-collect-server-smoke/`,
   would mix timing regimes and pollute G0. The final Phase 0 report repeats
   the inference identity next to the resident-server binding.
 
-Phase 0 remains blocked on a quiescent host. When restarted, the run must
-use the resident-server architecture (the collector/probe default), the
-same frozen 384-game schedule, the same binary (`e49562e3…`), a fresh
-output directory with a v2 run contract, and `J=1`; the run contract
-records the server mode and implementation identity.
-
-M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS /
-PHASE_0_BLOCKED_INFRASTRUCTURE`.
-
-The next operational gate is the frozen **384-game Phase 0** probe. Formal
-cycle collection remains blocked until both G0 and G0b pass:
+Phase 0 was executed on 2026-08-30 after the host went quiescent, with the
+resident-server architecture, the frozen 384-game schedule, the bound binary
+(`e49562e3…`), a fresh v2 run-contract directory
+(`local-artifacts/m39a-phase0-resident-j1-2026-08-30/`, not published), and
+`J=1`:
 
 ```text
-PHASE_0_AUTHORIZATION_REQUIRED
-NO FORMAL 4096-GAME COLLECTION BEFORE G0/G0b PASS
+Phase 0 verdict (phase0-report.json, SHA-256
+8914594b48b6306537849cb1ca85ffa47f858c91f88fa791abbf62633cbe5085):
+
+G0  PASS   projected_parallel_hours = 4.188  (limit 72, J=1)
+            mean_t per bucket (64 timed games each):
+              diversified 4.606s   m07 4.447s
+              league      2.861s   self_play 3.408s
+G0b PASS   truncated = 0 / 384 (no bucket rule, no aggregate rule)
+            max completed plies = 100 (cap 150 never reached)
+            per-bucket Clopper-Pearson 95% upper bound 0.0307 each
+sub-strata (all zero truncations): diversified 72 heuristic + 24 random;
+            league 11x6 + 10x3 over LEAGUE_ORDER; self-play 96
+```
+
+The run was interrupted once by a shell timeout after 208 games (the
+process died between writing the config and starting the match of
+league/016). Resume validation treated the config-only game directory as
+recoverable — no report/replay/sidecar existed, so no game data was
+affected; the stale config (embedding the dead server's URL) was deleted
+and rewritten against the live server. Games with any report/replay/sidecar
+present but incomplete would still fail closed. All 384 games then
+completed with zero handshake timeouts and zero truncations.
+
+**Phase 0 has passed. The formal 4,096-game collection is the next
+operational gate.**
+
+M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PASS
+(G0 PASS, G0b PASS)`.
+
+The next operational gate is the frozen **4,096-game collection** (eight
+cycles). Collection now has authorization to proceed gate-by-gate; each
+cycle's collection → materialization → PPO update runs under the frozen
+contract, and G2/G3 evaluation follows cycle 8. Promotion remains out of
+scope:
+
+```text
+PHASE_0 = PASS (G0 PASS, G0b PASS)
+FORMAL 4096-GAME COLLECTION: NEXT AUTHORIZED GATE
 NO PROMOTION
 ```
 

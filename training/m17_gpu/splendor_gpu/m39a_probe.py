@@ -237,8 +237,18 @@ def _run_one(
     sidecars = {seat: game_dir / f"seat-{seat}.sidecar.json" for seat in game.learner_seats}
     expected = [config_path, report_path, replay_path, *sidecars.values()]
     present = [path.exists() for path in expected]
-    if any(present) and not all(present):
+    if any(present[1:]) and not all(present):
+        # report/replay/sidecar partially present: the game was interrupted
+        # mid-flight; its artifacts are evidence and must not be overwritten.
         raise RuntimeError(f"partial probe artifacts at {game_dir}")
+    if present[0] and not all(present):
+        # config-only: the game never started (the run died between writing
+        # the config and spawning the match). The config embeds the previous
+        # server's URL, which is dead after a restart, so it is stale —
+        # delete it and rewrite against the live server. No game data is
+        # affected because none exists.
+        config_path.unlink()
+        present[0] = False
     timing_path = game_dir / "timing.json"
     if all(present):
         if not timing_path.is_file():
