@@ -3,7 +3,7 @@
 ```text
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
-Status:         IMPLEMENTED / PHASE_0_PASS (G0 PASS, G0b PASS)
+Status:         IMPLEMENTED / PHASE_0_PASS / FORMAL_RUN_TRAINING_COMPLETE
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -12,14 +12,17 @@ Rev 4 revision:  2026-08-30, document-only; baseline unchanged 573434f
 Rev 4 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
 Throughput fix:  2026-08-30 resident inference server; review APPROVED (80a5ace)
 Phase 0:         PASS — G0 projected 4.188 h <= 72 h; G0b 0/384 truncations
-Training:       formal 4,096-game collection is the next authorized gate
-Arena:          Phase 0 executed 2026-08-30 (384 games, 0 timeouts); no formal
-                 evaluation yet
-Baseline:       573434f (design) / 80a5ace (implementation HEAD)
+Capped rollout:  2026-08-30 run-rollout entry; reviews NEEDS_FIX -> APPROVED
+                 (e592d63 -> 11fdc4e -> de36357)
+Formal run:      COMPLETE 2026-08-31 — 4,096 games, 8 cycles trained,
+                 checkpoint chain 0..8 verified; next gate G1 + G2/G3
+Training:       formal collection and training complete; evaluation pending
+Arena:          G2/G3 evaluation of the cycle-8 checkpoint is the next gate
+Baseline:       573434f (design) / 24f6d74 (implementation HEAD)
 Baseline moved: 733401c -> 573434f on 2026-08-29 (engineering-only); the
-                 implementation commit chain 7d647ec..80a5ace is recorded in
+                 implementation commit chain 7d647ec..24f6d74 is recorded in
                  the implementation checkpoint; no frozen constant changed.
-Revision date:  2026-08-30 (Asia/Shanghai)
+Revision date:  2026-08-31 (Asia/Shanghai)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round does not seek promotion)
 ```
@@ -2305,8 +2308,44 @@ closed):
   cycles 1–5 against the real run root (all five attested and chained);
   cycle-6 correctly reports as partial/pending re-collection.
 
-M39A is `IMPLEMENTED / IMPLEMENTATION_SMOKE_PASS / PHASE_0_PASS
-(G0 PASS, G0b PASS) / CYCLES_1_5_TRAINED / CYCLE_6_IN_PROGRESS`.
+## Formal run completion (2026-08-31)
+
+The 4,096-game formal collection and all eight PPO cycles completed on
+2026-08-31 (`local-artifacts/m39a-formal-run/`, not published). Final
+acceptance checks:
+
+```text
+checkpoint chain   cycle-0 .. cycle-8, parent chain verified at every hop
+                   (file SHA-256 + semantic hash + parent linkage; contract
+                   v3 with per-cycle legacy attestations for cycles 1-5)
+cycle checkpoints  0: 963f644e…  1: 9826b3d9…  2: e8091535…  3: 7de530a4…
+                   4: d3f3fe22…  5: c73eef06…  6: 56dbf937…  7: c9e5b11f…
+                   8: 5fea7da5…
+records per cycle  23,725 / 23,340 / 23,078 / 22,897 / 22,562 / 22,550 /
+                   22,012 / 21,993  (total ≈ 182k learner decisions)
+LR waypoints       1.00e-4 → 1.00e-5 exactly as frozen (cosine, 8 cycles)
+recomputation      every cycle bit-exact + benign drift only;
+                   max logp deviation ≤ 9.54e-07 (< frozen 1e-6 gate)
+truncated games    cycle-6: 1 (game 2785, the deterministic non-terminator,
+                   capped as designed, truncation return materialized);
+                   cycles 7–8: 0 (max 78 plies)
+incidents          pre-capped cycle-6 partial (225 games) and the cycle-7
+                   game-3335 agent_eof abort are preserved under
+                   incidents/ with SHA-bound configs and reports
+```
+
+Two mid-run recoveries, both evidence-preserved: the cycle-7 collection
+aborted once at game 3335 when the learner proxy stub's connection to the
+resident inference server broke mid-flight (aborted report preserved to
+incidents/, game re-collected from the same frozen seed; a reviewed
+transport-layer retry — commit d9ca5cc — plus contract v3 resume semantics
+— commit 24f6d74 — followed). No seed, schedule, cap, return, or gate
+changed at any point.
+
+M39A is `IMPLEMENTED / PHASE_0_PASS (G0 PASS, G0b PASS) / FORMAL_RUN_
+COLLECTION_AND_TRAINING_COMPLETE`. The next operational gate is the frozen
+G1 behaviour report and the G2/G3 Arena evaluations against the cycle-8
+checkpoint.
 
 The next operational gate is the frozen **4,096-game collection** (eight
 cycles). Collection now has authorization to proceed gate-by-gate; each
