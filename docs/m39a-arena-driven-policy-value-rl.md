@@ -4,7 +4,7 @@
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
 Status:         IMPLEMENTED / PHASE_0_PASS / FORMAL_RUN_TRAINING_COMPLETE
-                 / PROVENANCE_LEDGER_VALID
+                 / PROVENANCE_LEDGER_IMPLEMENTED / PENDING_REVIEW
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -2371,18 +2371,39 @@ their closures:
   with per-cycle content attestations for **all eight cycles** (batch /
   materialization-manifest / train-report / checkpoint file SHA-256 +
   checkpoint semantic hash + games/truncated/max-plies/records/LR).
-- **Validator** (`…_provenance_ledger.py validate`): re-hashes every
-  attested artifact from disk, requires the successful-game index to cover
-  0..4095 exactly once, requires both incident directories and their
-  evidence files to exist, checks result-block arithmetic, and verifies the
-  accepted segments tile the index space with no double coverage. Current
-  verdict: `valid — cycles=8, accepted_games=4096, attempts=4097,
-  records=182157`.
+- **Validator** (`…_provenance_ledger.py validate`, adversarial): the
+  validator does **not** trust the ledger's self-reported lists or counts.
+  Segments and incidents are compared field-for-field against a frozen
+  expected table embedded in the script; every cycle attestation field —
+  including checkpoint semantic hash, terminal/truncated counts, max
+  plies, records, and plan/catalog identity — is **recomputed from the
+  on-disk artifacts**; incident evidence files are hash-checked against
+  frozen SHA-256 values; top-level bindings (plan hash, catalog SHA,
+  executable SHA, on-disk execution-contract SHA + version) are recomputed
+  from the run root; and result-block arithmetic is cross-checked against
+  the recomputed aggregates. Ten negative tests (`test_m39a_ledger.py`)
+  pin the reviewer's tamper classes: forged source identities, emptied
+  incident lists, forged semantic hashes, forged truncation stats, lying
+  result blocks, dropped bindings, tampered incident evidence, dropped
+  cycles, and hidden abort segments — all rejected.
+- **Segment source identities are canonical and exact**: each segment
+  records its source commit, the agent/collector/server/driver file paths,
+  and their **canonical source SHA-256** (SHA-256 over the LF-normalized
+  content as committed — the pre-retry agent value `82ff5ec3…` matches the
+  review's independent derivation). Cycles 1–5 were executed by an
+  **uncommitted temporary driver script**, so their driver identity is
+  explicitly `NOT_PRESERVED` with a note saying exactly that — never a
+  claimed commit. The agent/collector/server that served cycles 1–5 are
+  bound to commit `80a5ace` (hashes extracted from Git history), the
+  pre-retry capped era to `de36357`, and the retry/post-retry era to
+  `d9ca5cc` (agent) + `24f6d74` (driver).
 - **Original-contract honesty**: the ledger records that the original v2
   contract bytes were overwritten in place by the v3 rewrite and were not
   preserved; the pre-rewrite execution identity is a reconstruction from
   Git history, artifact mtimes, and the driver progress log — labelled as
-  such, never presented as original bytes.
+  such, never presented as original bytes. The on-disk v3 contract (the
+  one the final driver invocation wrote, including its CRLF-working-tree
+  source hashes) is itself SHA-bound in the ledger's top-level bindings.
 - **Corrections**: the cycle-7 game-3335 incident README seed is corrected
   to the scheduled `4,001,667` (seed formula `4_000_000 + game_index // 2`
   re-derived, not transcribed); the stale "4,096-game collection is the
@@ -2390,6 +2411,11 @@ their closures:
 - **G1 accounting**: the behaviour report must state **4,097 attempts /
   4,095 terminal / 1 truncated / 1 infrastructure abort** — the abort
   count is never reported as zero.
+
+Ledger status: `IMPLEMENTED / PENDING_REVIEW` — the local validate command
+passes (`valid — cycles=8, accepted_games=4096, attempts=4097,
+records=182157`), but the `VALID` label is only granted by the next
+independent review.
 
 ```text
 PHASE_0 = PASS (G0 PASS, G0b PASS)
