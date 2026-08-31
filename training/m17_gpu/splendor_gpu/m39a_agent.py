@@ -177,9 +177,16 @@ class ServerProxy:
         payload = json.dumps(request, separators=(",", ":")).encode("utf-8")
         if len(payload) > MAX_MESSAGE_BYTES:
             raise ValueError("inference request exceeds size bound")
-        connection = self._connect()
-        connection.sendall(payload + b"\n")
-        response = json.loads(self._recv_line().decode("utf-8"))
+        # One retry on a transient connection break. Inference is a pure
+        # function of (observation, legal_actions); a request whose
+        # connection died mid-flight produced no state on the server, so a
+        # single reconnect-and-resend cannot change semantics. A dead
+        # server still fails after the retry, exactly as before.
+        try:
+            response = self._request(payload)
+        except (ConnectionError, OSError):
+            self.close()
+            response = self._request(payload)
         if response.get("status") != "ok":
             raise RuntimeError(f"server inference failed: {response.get('message')}")
         for field, expected in self.identity.items():
@@ -192,6 +199,11 @@ class ServerProxy:
             response["log_probabilities"],
             response["probabilities"],
         )
+
+    def _request(self, payload: bytes) -> dict[str, Any]:
+        connection = self._connect()
+        connection.sendall(payload + b"\n")
+        return json.loads(self._recv_line().decode("utf-8"))
 
     def close(self) -> None:
         if self._socket is not None:

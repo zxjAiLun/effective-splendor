@@ -147,6 +147,103 @@ def test_server_proxy_rejects_in_flight_binding_change(fake_server) -> None:
     proxy.close()
 
 
+class _DroppingServer(_FakeServer):
+    """Server that breaks the first connection mid-response, then recovers."""
+
+    def __init__(self, identity: dict) -> None:
+        super().__init__(identity)
+        self.first_connection = True
+
+    def _serve(self) -> None:
+        import socket as socket_module
+
+        while True:
+            try:
+                connection, _ = self._socket.accept()
+            except OSError:
+                return
+            with connection:
+                if self.first_connection:
+                    # Accept the request, then drop the connection without
+                    # answering (simulates a transient mid-flight break).
+                    data = b""
+                    while b"\n" not in data:
+                        chunk = connection.recv(65536)
+                        if not chunk:
+                            return
+                        data += chunk
+                    connection.setsockopt(
+                        socket_module.SOL_SOCKET, socket_module.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00"
+                    )
+                    connection.close()
+                    self.first_connection = False
+                    self.requests.append(json.loads(data.split(b"\n", 1)[0].decode("utf-8")))
+                    continue
+                while True:
+                    data = b""
+                    while b"\n" not in data:
+                        chunk = connection.recv(65536)
+                        if not chunk:
+                            return
+                        data += chunk
+                    request = json.loads(data.split(b"\n", 1)[0].decode("utf-8"))
+                    self.requests.append(request)
+                    response = {
+                        "status": "ok",
+                        "logits": [0.25, -1.5, 2.0],
+                        "log_probabilities": _log_softmax([0.25, -1.5, 2.0], f32=True),
+                        "probabilities": [
+                            math.exp(lp)
+                            for lp in _log_softmax([0.25, -1.5, 2.0], f32=True)
+                        ],
+                        "values": [0.1, -0.1],
+                        "auxiliary": 0.05,
+                        **self.identity,
+                    }
+                    connection.sendall(
+                        json.dumps(response, separators=(",", ":")).encode("utf-8") + b"\n"
+                    )
+
+
+def test_server_proxy_retries_once_on_transient_break(tmp_path: Path) -> None:
+    identity = {
+        "checkpoint_sha256": "abc123",
+        "checkpoint_hash": "semantic-abc",
+        "checkpoint_cycle": 0,
+        "catalog_hash": "catalog-hash",
+    }
+    server = _DroppingServer(identity)
+    ready = tmp_path / "server-ready.json"
+    ready.write_text(
+        json.dumps(
+            {
+                "format": "effective-splendor-m39a-inference-server",
+                "version": 1,
+                "host": "127.0.0.1",
+                "port": server.port,
+                **identity,
+                "plan_hash": "plan-hash",
+            }
+        ),
+        encoding="utf-8",
+    )
+    proxy = ServerProxy(
+        f"127.0.0.1:{server.port}",
+        ready,
+        expected_plan_hash="plan-hash",
+        expected_checkpoint_sha256="abc123",
+    )
+    try:
+        logits, values, auxiliary, log_probs, probabilities = proxy.infer(
+            {"tokens": {}}, [{"type": "pass"}]
+        )
+    finally:
+        proxy.close()
+        server.close()
+    assert logits == [0.25, -1.5, 2.0]
+    assert len(server.requests) == 2  # dropped request + retried request
+
+
 def test_categorical_index_matches_torch_f32() -> None:
     torch = pytest.importorskip("torch")
     torch.manual_seed(7)
