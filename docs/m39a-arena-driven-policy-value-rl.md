@@ -3,8 +3,8 @@
 ```text
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
-Status:         IMPLEMENTED / PHASE_0_PASS / FORMAL_RUN_TRAINING_COMPLETE
-                 / PROVENANCE_LEDGER_IMPLEMENTED / PENDING_REVIEW
+Status:         COMPLETED_NEGATIVE / GATES_FAILED / M39A_NO_IMPROVEMENT
+                 (provenance ledger VALID; no promotion sought)
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -16,10 +16,12 @@ Phase 0:         PASS — G0 projected 4.188 h <= 72 h; G0b 0/384 truncations
 Capped rollout:  2026-08-30 run-rollout entry; reviews NEEDS_FIX -> APPROVED
                  (e592d63 -> 11fdc4e -> de36357)
 Formal run:      COMPLETE 2026-08-31 — 4,096 games, 8 cycles trained,
-                 checkpoint chain 0..8 verified; next gate G1 + G2/G3
-Training:       formal collection and training complete; evaluation pending
-Arena:          G2/G3 evaluation of the cycle-8 checkpoint is the next gate
-Baseline:       573434f (design) / 24f6d74 (implementation HEAD)
+                 checkpoint chain 0..8 verified (provenance VALID)
+Training:        COMPLETE — 182,157 records; recomputation all within gates
+Arena:           G1 FAIL / G2 FAIL / G3 FAIL — decision M39A_NO_IMPROVEMENT
+Evaluation:      G2 512 matches (ledger 7686e842…), G3 1,152 matches
+                 (ledger fd79b80a…), 2026-08-31, local-only artifacts
+Baseline:        573434f (design) / 24f6d74 (implementation HEAD)
 Baseline moved: 733401c -> 573434f on 2026-08-29 (engineering-only); the
                  implementation commit chain 7d647ec..24f6d74 is recorded in
                  the implementation checkpoint; no frozen constant changed.
@@ -1471,17 +1473,65 @@ Formal execution evidence still to be recorded:
 
 ## Result and decision
 
-*Empty until execution. The decision vocabulary is fixed by `AGENTS.md`:*
+**Executed 2026-08-31. The decision vocabulary is fixed by `AGENTS.md`:**
 
 | G2 | G3 | decision |
 |---|---|---|
 | PASS | PASS | `M39A_RL_IMPROVEMENT_CONFIRMED` — Arena authorized for the next round |
 | PASS | FAIL | `M39A_IMPROVES_VS_M07_ONLY` — M07 gain real, league transfer weak |
 | FAIL | PASS | `M39A_LEAGUE_ONLY` — improvement not detectable against M07 |
-| FAIL | FAIL | `M39A_NO_IMPROVEMENT` — negative result, route reconsideration |
+| **FAIL** | **FAIL** | **`M39A_NO_IMPROVEMENT` — negative result, route reconsideration** |
 
-A `FAIL` on G2 is a valid result and must not trigger a seed, gate,
-threshold, or opponent-mix change followed by a result-oriented rerun.
+### Final results (2026-08-31)
+
+```text
+G1 (blocking clause)   FAIL — formal Arena non-termination is 1/1,664,
+                       not 0: deterministic non-termination in the G2
+                       baseline arm (D2-v2 vs M07, seed 5_000_029 r0 —
+                       the M35A-documented engine property).
+                       Training-side accounting (frozen): 4,097 attempts /
+                       4,095 terminal / 1 truncated / 1 infrastructure
+                       abort; mean training length 64.0 plies; learner VP
+                       mean 10.21, 36.4% of records reach 15 VP.
+G2                     FAIL — 1 deterministic non-termination (baseline
+                       arm) + the affected seed block incomplete:
+                       completed_matches 511/512, completed_seed_blocks
+                       127/128 → the fail-closed contract does not compute
+                       lower_95. Diagnostic (127 complete blocks, excluding
+                       the broken one): candidate vs M07 score 0.2422
+                       (62W 0D 194L) vs baseline 0.1895 (48W 1D 206L).
+G3                     FAIL — candidate aggregate 4,869.79 bps < baseline
+                       4,956.60 bps (Δ −86.81 bps; diagnostic one-sided
+                       lower 95% −708.93 bps; 3 of 9 pairings positive:
+                       M28A +1,250 / M34A +937.5 / M24-S2 +312.5; largest
+                       deficits M33A −1,093.75 / M25-D2-v2 −937.5).
+                       Zero aborts / faults / non-terminations in G3.
+
+DECISION               M39A_NO_IMPROVEMENT
+```
+
+Interpretation (recorded, not acted on): the cycle-8 policy gained
+against M07 relative to its D2-v2 initialization (+5.3 pp raw score on the
+complete blocks) but lost aggregate ground against the league it trained
+on (−87 bps). The round's primary hypothesis — environment reward alone
+closes part of the gap to M07 — is **not confirmed at the formal gates**.
+The M07-relative gain is diagnostic only (G2 failed on the baseline arm's
+non-termination, and the paired statistic was never computed per the
+fail-closed contract).
+
+Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`,
+`local-artifacts/m39a-eval-g2/` (ledger SHA
+`7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9`,
+report + 512 per-match artifacts),
+`local-artifacts/m39a-eval-g3/` (ledger SHA
+`fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3`,
+report + 1,152 per-match artifacts) — all local-only, not published.
+Provenance ledger: `VALID` (review `42cbdd6 = APPROVED`,
+`FORMAL_RUN_TRAINING = VALID_WITH_RECORDED_INFRASTRUCTURE_RETRY`).
+
+A `FAIL` on G2 is a valid result and did not trigger any seed, gate,
+threshold, or opponent-mix change; no result-oriented rerun was performed.
+Per the frozen non-goals, no promotion is sought; M07 remains champion.
 
 ---
 
