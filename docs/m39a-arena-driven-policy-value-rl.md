@@ -1482,29 +1482,39 @@ Formal execution evidence still to be recorded:
 | FAIL | PASS | `M39A_LEAGUE_ONLY` — improvement not detectable against M07 |
 | **FAIL** | **FAIL** | **`M39A_NO_IMPROVEMENT` — negative result, route reconsideration** |
 
-### Final results (2026-08-31)
+### Final results (2026-08-31; corrected 2026-09-01 per evaluation-provenance review)
 
 ```text
 G1 (blocking clause)   FAIL — formal Arena non-termination is 1/1,664,
                        not 0: deterministic non-termination in the G2
-                       baseline arm (D2-v2 vs M07, seed 5_000_029 r0 —
-                       the M35A-documented engine property).
+                       baseline arm (D2-v2 vs M07, seed 5_000_029 r0).
+                       This is a NEW observation this round — distinct from
+                       the two M35A-recorded cases (M29A-v2 seed 300031 r0,
+                       M31A seed 300008 r1); the same engine property, a
+                       previously unseen (model, seed, rotation) instance.
                        Training-side accounting (frozen): 4,097 attempts /
                        4,095 terminal / 1 truncated / 1 infrastructure
-                       abort; mean training length 64.0 plies; learner VP
-                       mean 10.21, 36.4% of records reach 15 VP.
+                       abort. Per-game behaviour: mean training length
+                       64.0 plies (26–150); learner VP differential
+                       (learner − opponent) −3.51 per seat-game over 5,632
+                       learner seat-games; 35.4% of learner seat-games
+                       reach 15 VP; tokens+reserves paid per learner VP
+                       5.06 (method: take-token color count + reserves /
+                       total learner VP; purchase costs excluded — see the
+                       G1 report for the reason).
 G2                     FAIL — 1 deterministic non-termination (baseline
                        arm) + the affected seed block incomplete:
                        completed_matches 511/512, completed_seed_blocks
                        127/128 → the fail-closed contract does not compute
                        lower_95. Diagnostic (127 complete blocks, excluding
-                       the broken one): candidate vs M07 score 0.2422
-                       (62W 0D 194L) vs baseline 0.1895 (48W 1D 206L).
+                       the broken one): candidate vs M07 score 0.2441
+                       (62W 0D 192L) vs baseline 0.1909 (48W 1D 205L).
 G3                     FAIL — candidate aggregate 4,869.79 bps < baseline
                        4,956.60 bps (Δ −86.81 bps; diagnostic one-sided
-                       lower 95% −708.93 bps; 3 of 9 pairings positive:
-                       M28A +1,250 / M34A +937.5 / M24-S2 +312.5; largest
-                       deficits M33A −1,093.75 / M25-D2-v2 −937.5).
+                       lower 95% −708.93 bps; 4 of 9 pairings positive:
+                       M28A +1,250 / M34A +937.5 / M24-S2 +312.5 /
+                       M29A-v2 +312.5; largest deficits M33A −1,093.75 /
+                       M25-D2-v2 −937.5).
                        Zero aborts / faults / non-terminations in G3.
 
 DECISION               M39A_NO_IMPROVEMENT
@@ -1519,14 +1529,49 @@ The M07-relative gain is diagnostic only (G2 failed on the baseline arm's
 non-termination, and the paired statistic was never computed per the
 fail-closed contract).
 
-Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`,
-`local-artifacts/m39a-eval-g2/` (ledger SHA
-`7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9`,
-report + 512 per-match artifacts),
-`local-artifacts/m39a-eval-g3/` (ledger SHA
-`fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3`,
-report + 1,152 per-match artifacts) — all local-only, not published.
-Provenance ledger: `VALID` (review `42cbdd6 = APPROVED`,
+### Evaluation provenance (2026-09-01, post-result repair)
+
+Review `aa98237 = NEEDS_EVALUATION_PROVENANCE_REPAIR` (science direction
+upheld; G2's 127 complete blocks independently recomputed at mean
++531.50 bps, one-sided 95% lower bound −3.84 bps — still FAIL; G3
+independently confirmed at −86.81 bps). The provenance closures:
+
+- **Evaluation provenance ledgers** (`m39a_eval_provenance.py`, tracked):
+  `rebuild` re-derives every ledger row from the on-disk per-match
+  artifacts — config game_id/seed/agent lineup (role- and model-checked),
+  Arena report identity, replay seed/result binding, and a **full Rust
+  referee re-verification of every completed replay** — and cross-checks
+  the rebuilt rows against the evaluation ledger before writing the
+  provenance ledger with per-match config/report/replay SHA-256 plus
+  top-level bindings (plan hash, catalog SHA, executable SHA, candidate
+  checkpoint SHA, agent source identity).
+- **Adversarial validator**: frozen slot envelopes (G2 512, G3 1,152),
+  full row rebuild on validation (no trust in the ledger's self-reported
+  rows), binding re-computation, and non-termination evidence hash
+  checks. Nine negative tests pin the tamper classes (forged
+  report/replay hashes, forged outcomes, swapped slot seeds, hidden
+  non-termination, forged bindings, dropped evidence, tampered evidence).
+- **Durable non-termination evidence**: the `baseline/M07/5_000_029/r0`
+  slot was reproduced in isolation with config, stdout, stderr, and exit
+  status captured and hash-bound into the G2 provenance ledger
+  (`nontermination-baseline-M07-5000029-r0/`, exit_code=1, stderr =
+  `error: engine internal error: match exceeded ply safety limit`).
+- **Runner resume hardened**: an existing report is only reused after the
+  complete artifact chain validates via the provenance rebuild — a stale,
+  misplaced, or tampered report fails closed.
+- Current validator verdicts: G2 `valid (512 rows)`, G3 `valid
+  (1,152 rows)`; all 1,663 completed replays re-verified by the referee
+  with zero mismatches.
+
+Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`
+(v2, per-game statistics),
+`local-artifacts/m39a-eval-g2/` (evaluation ledger SHA
+`7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9` +
+provenance ledger), `local-artifacts/m39a-eval-g3/` (evaluation ledger
+SHA
+`fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3` +
+provenance ledger) — all local-only, not published.
+Formal-run provenance ledger: `VALID` (review `42cbdd6 = APPROVED`,
 `FORMAL_RUN_TRAINING = VALID_WITH_RECORDED_INFRASTRUCTURE_RETRY`).
 
 A `FAIL` on G2 is a valid result and did not trigger any seed, gate,

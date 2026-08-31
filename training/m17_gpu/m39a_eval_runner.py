@@ -141,8 +141,15 @@ def _run_match(
         # non-terminator re-triggers the limit and is re-recorded as such.
         config_path.unlink()
     if report_path.is_file():
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-        return _row_from_report(arm, pairing, seed, rotation, report)
+        # Resume is NOT a blind trust of the on-disk report: the complete
+        # artifact chain (config game_id/seed/agent lineup, report identity,
+        # replay seed/result binding, and the replay's strict referee
+        # verification) is validated via the provenance module's row
+        # rebuild, which re-derives the row from the artifacts. A stale,
+        # misplaced, or tampered report fails closed here.
+        from m39a_eval_provenance import _rebuild_row
+
+        return _rebuild_row(out_dir, arm, pairing, seed, rotation)
 
     match_dir.mkdir(parents=True, exist_ok=True)
     arm_agent = _agent_for(
@@ -192,6 +199,20 @@ def _run_match(
             # non-termination flag, and the schedule continues. The frozen
             # gates require zero non-terminations, so this fails the gate —
             # but the full schedule must still be recorded.
+            # Durable evidence: config, stdout, stderr, and exit status are
+            # preserved next to the slot and hash-bound into the evaluation
+            # provenance ledger.
+            evidence_dir = match_dir / "nontermination-evidence"
+            evidence_dir.mkdir(parents=True, exist_ok=True)
+            (evidence_dir / "stdout.txt").write_text(
+                completed.stdout or "", encoding="utf-8"
+            )
+            (evidence_dir / "stderr.txt").write_text(
+                stderr_text, encoding="utf-8"
+            )
+            (evidence_dir / "exit-status.txt").write_text(
+                f"exit_code={completed.returncode}\n", encoding="utf-8"
+            )
             return {
                 "arm": arm,
                 "pairing": pairing,
