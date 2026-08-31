@@ -43,35 +43,10 @@ CONTRACT = ROOT / "formal-execution-contract.json"
 CKPT0 = Path("local-artifacts/m39a-implementation-smoke/cycle-0.pt").resolve()
 
 CONTRACT_FORMAT = "effective-splendor-m39a-formal-execution-contract"
-CONTRACT_VERSION = 3
+CONTRACT_VERSION = 4
 LEGACY_RUNNER_SHA256 = (
     "e49562e36eb19c6ab3d79ebbe5e0e891a289dfbc1b0780cadc0ea2097bc63563"
 )
-
-
-def _approved_agent_hashes() -> set[str]:
-    """Agent source hashes allowed to resume this run.
-
-    The agent source may only drift across *reviewed transport-layer
-    hardening* commits; sampling, seeds, sidecar content, and training
-    semantics are frozen by the plan and verified per-cycle through the
-    batch/manifest/report/checkpoint hashes regardless. The approved set is
-    the hash recorded in the on-disk contract (the revision that actually
-    served this run root so far) plus the currently checked-out agent
-    source (the reviewed revision now taking over). Anything else fails the
-    v2-upgrade rule or the exact-match check.
-    """
-    hashes: set[str] = set()
-    if CONTRACT.exists():
-        observed = json.loads(CONTRACT.read_text(encoding="utf-8"))
-        recorded = observed.get("agent_source_sha256")
-        if isinstance(recorded, str):
-            hashes.add(recorded)
-    current = file_sha256(
-        Path(__file__).resolve().parent / "splendor_gpu" / "m39a_agent.py"
-    )
-    hashes.add(current)
-    return hashes
 
 
 def log(event: dict[str, Any]) -> None:
@@ -200,54 +175,28 @@ def execution_contract(
 
 
 def ensure_contract(contract: dict[str, Any]) -> None:
-    """Write the contract once; on resume, require an exact match.
+    """Write the contract once; on resume, require an **exact** match.
 
-    v3 upgrade rule: a v2 contract on disk may resume when its
-    `agent_source_sha256` is one of the approved agent revisions (the
-    recorded one plus the currently checked-out reviewed hardening) and the
-    only other drift is the driver's own source hash (this upgrade). The
-    contract is then rewritten at v3 with both current hashes so the next
-    resume is exact again. Any other difference fails closed.
+    There is deliberately no migration path and no self-approval: any
+    difference in any field — including agent or driver source hashes —
+    fails closed. Source drift across a review is not handled here at all;
+    it is handled by the *provenance ledger* (see
+    `m39a_provenance_ledger.py`), which records execution segments and is
+    validated separately. The contract binds the execution identity the
+    driver itself enforces: plan, catalog, executable, runner mode, ply
+    cap, and source identities of the code that is *about to run*.
     """
     if CONTRACT.exists():
         observed = json.loads(CONTRACT.read_text(encoding="utf-8"))
-        if observed.get("version") == 2:
-            approved = _approved_agent_hashes()
-            if observed.get("agent_source_sha256") not in approved:
-                raise SystemExit(
-                    "v2 contract agent source is not an approved revision "
-                    f"({observed.get('agent_source_sha256')!r}); refusing to resume"
-                )
-            differing = sorted(
-                key
-                for key in set(observed) | set(contract)
-                if observed.get(key) != contract.get(key)
-            )
-            allowed_drift = {
-                "version",
-                "agent_source_sha256",
-                "driver_source_sha256",
-            }
-            if not set(differing) <= allowed_drift:
-                raise SystemExit(
-                    "formal execution contract mismatch on resume "
-                    f"(differing fields: {', '.join(differing)}); use the original "
-                    "plan/catalog/checkpoint/executable/sources or a new run root"
-                )
-            # Rewrite at v3 with the current hashes; every other field is
-            # unchanged, which the allowed-drift check above just proved.
-            temporary = CONTRACT.with_name(CONTRACT.name + ".tmp")
-            temporary.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
-            os.replace(temporary, CONTRACT)
-            return
         if observed != contract:
             differing = sorted(
                 key for key in set(observed) | set(contract) if observed.get(key) != contract.get(key)
             )
             raise SystemExit(
                 "formal execution contract mismatch on resume "
-                f"(differing fields: {', '.join(differing)}); use the original "
-                "plan/catalog/checkpoint/executable/sources or a new run root"
+                f"(differing fields: {', '.join(differing)}); source drift "
+                "cannot self-approve — record it in the provenance ledger "
+                "or use a new run root"
             )
     else:
         temporary = CONTRACT.with_name(CONTRACT.name + ".tmp")

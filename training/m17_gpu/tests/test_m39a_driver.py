@@ -46,6 +46,48 @@ def lock_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     lock.unlink(missing_ok=True)
 
 
+def test_contract_drift_cannot_self_approve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Any source drift — including the current checkout's own hashes —
+    must fail the exact-match contract check. This is the discriminating
+    guard against the removed v2->v3 self-approving migration, which added
+    the currently checked-out agent hash to its own allow-list.
+    """
+    module = _driver_module()
+    monkeypatch.setattr(module, "CONTRACT", tmp_path / "formal-execution-contract.json")
+
+    base = {
+        "format": module.CONTRACT_FORMAT,
+        "version": module.CONTRACT_VERSION,
+        "plan_hash": "plan",
+        "agent_source_sha256": "a" * 64,
+        "driver_source_sha256": "d" * 64,
+        "ply_cap": 150,
+    }
+    module.ensure_contract(base)
+
+    # A different agent hash — even though it claims to be "the current
+    # checkout" — must fail. There is no migration path.
+    drifted = dict(base)
+    drifted["agent_source_sha256"] = "b" * 64
+    with pytest.raises(SystemExit, match="agent_source_sha256"):
+        module.ensure_contract(drifted)
+
+    # Driver-source drift must fail the same way.
+    drifted = dict(base)
+    drifted["driver_source_sha256"] = "e" * 64
+    with pytest.raises(SystemExit, match="driver_source_sha256"):
+        module.ensure_contract(drifted)
+
+    # Any other field drift fails too.
+    drifted = dict(base)
+    drifted["ply_cap"] = 149
+    with pytest.raises(SystemExit, match="ply_cap"):
+        module.ensure_contract(drifted)
+
+    # The exact original still matches.
+    module.ensure_contract(base)
+
+
 def test_second_driver_is_rejected_and_holder_survives(lock_root: Path) -> None:
     """A competing acquire must fail closed and never terminate the holder.
 

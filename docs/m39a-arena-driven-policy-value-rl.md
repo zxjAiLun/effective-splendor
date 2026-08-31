@@ -4,6 +4,7 @@
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
 Status:         IMPLEMENTED / PHASE_0_PASS / FORMAL_RUN_TRAINING_COMPLETE
+                 / PROVENANCE_LEDGER_VALID
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -2347,15 +2348,54 @@ COLLECTION_AND_TRAINING_COMPLETE`. The next operational gate is the frozen
 G1 behaviour report and the G2/G3 Arena evaluations against the cycle-8
 checkpoint.
 
-The next operational gate is the frozen **4,096-game collection** (eight
-cycles). Collection now has authorization to proceed gate-by-gate; each
-cycle's collection → materialization → PPO update runs under the frozen
-contract, and G2/G3 evaluation follows cycle 8. Promotion remains out of
-scope:
+### Provenance repair (2026-08-31, post-completion)
+
+Review `db3ab0c = NEEDS_PROVENANCE_REPAIR` (training results accepted as
+`VALID_WITH_RECORDED_INFRASTRUCTURE_RETRY`; no re-run). The findings and
+their closures:
+
+- **Self-approving contract migration removed.** The v2→v3 upgrade rule
+  added the *currently checked-out* agent hash to its own allow-list, so
+  an arbitrary source change could authorize itself. The driver's
+  `ensure_contract` is now **exact-only** (contract v4): any field drift —
+  agent, driver, or otherwise — fails closed, and a discriminating test
+  (`test_contract_drift_cannot_self_approve`) pins agent-hash,
+  driver-hash, and arbitrary-field drift plus exact-match acceptance.
+- **Provenance ledger** (`training/m17_gpu/m39a_provenance_ledger.py`,
+  tracked; ledger at `local-artifacts/m39a-formal-run/
+  provenance-ledger.json`, not published): records the segmented execution
+  truth — cycles 1–5 (legacy run-match agent/driver), cycle 6 re-collection
+  (capped runner, pre-retry agent), cycle 7 games 3072–3334 (pre-retry
+  agent), game 3335 attempt 1 (aborted, excluded from the accepted 4,096),
+  game 3335 retry + 3336–3583 (retry agent, commit d9ca5cc), cycle 8 —
+  with per-cycle content attestations for **all eight cycles** (batch /
+  materialization-manifest / train-report / checkpoint file SHA-256 +
+  checkpoint semantic hash + games/truncated/max-plies/records/LR).
+- **Validator** (`…_provenance_ledger.py validate`): re-hashes every
+  attested artifact from disk, requires the successful-game index to cover
+  0..4095 exactly once, requires both incident directories and their
+  evidence files to exist, checks result-block arithmetic, and verifies the
+  accepted segments tile the index space with no double coverage. Current
+  verdict: `valid — cycles=8, accepted_games=4096, attempts=4097,
+  records=182157`.
+- **Original-contract honesty**: the ledger records that the original v2
+  contract bytes were overwritten in place by the v3 rewrite and were not
+  preserved; the pre-rewrite execution identity is a reconstruction from
+  Git history, artifact mtimes, and the driver progress log — labelled as
+  such, never presented as original bytes.
+- **Corrections**: the cycle-7 game-3335 incident README seed is corrected
+  to the scheduled `4,001,667` (seed formula `4_000_000 + game_index // 2`
+  re-derived, not transcribed); the stale "4,096-game collection is the
+  next gate" paragraph is removed.
+- **G1 accounting**: the behaviour report must state **4,097 attempts /
+  4,095 terminal / 1 truncated / 1 infrastructure abort** — the abort
+  count is never reported as zero.
 
 ```text
 PHASE_0 = PASS (G0 PASS, G0b PASS)
-FORMAL 4096-GAME COLLECTION: NEXT AUTHORIZED GATE
+FORMAL RUN = COMPLETE — 4096 accepted games, 4097 attempts,
+             1 infrastructure abort (recorded), 182,157 records
+NEXT GATES: G1 behaviour report, then G2/G3 Arena evaluation
 NO PROMOTION
 ```
 
