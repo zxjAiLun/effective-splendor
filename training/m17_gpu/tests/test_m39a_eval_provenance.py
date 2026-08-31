@@ -11,13 +11,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 SCRIPT = REPO_ROOT / "training" / "m17_gpu" / "m39a_eval_provenance.py"
-G2_PROV = REPO_ROOT / "local-artifacts" / "m39a-eval-g2" / "g2-provenance.json"
-G3_PROV = REPO_ROOT / "local-artifacts" / "m39a-eval-g3" / "g3-provenance.json"
-
-pytestmark = pytest.mark.skipif(
-    not G2_PROV.is_file(),
-    reason="evaluation provenance ledgers are local-only",
-)
 
 _MODULE = None
 
@@ -35,120 +28,309 @@ def _module():
     return _MODULE
 
 
-def _expect_rejection(module, ledger_path: Path, *fragments: str) -> None:
-    stderr = io.StringIO()
-    with contextlib.redirect_stderr(stderr):
-        try:
-            module.validate(ledger_path)
-        except SystemExit:
-            text = stderr.getvalue()
-            for fragment in fragments:
-                assert fragment in text, f"expected {fragment!r} in:\n{text}"
-            return
-        except Exception as error:  # noqa: BLE001
-            pytest.fail(f"expected SystemExit, got {error!r}")
-    pytest.fail("ledger was accepted but must be rejected")
-
-
-def _copy(tmp_path: Path, source: Path) -> Path:
-    path = tmp_path / source.name
-    path.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    return path
-
-
-def test_valid_g2_provenance_passes(tmp_path: Path) -> None:
+def _make_slot_dir(base: Path, arm: str, pairing: str, seed: int, rotation: int) -> Path:
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    stdout = io.StringIO()
-    with contextlib.redirect_stdout(stdout):
-        module.validate(path)
-    assert '"status": "valid"' in stdout.getvalue()
+    slot_dir = base / f"{arm}-{pairing}-{seed}-r{rotation}"
+    slot_dir.mkdir(parents=True, exist_ok=True)
+    return slot_dir
 
 
-def test_valid_g3_provenance_passes(tmp_path: Path) -> None:
+@pytest.fixture()
+def synthetic_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Redirect the module's repo root so the frozen config contract
+    resolves catalog/exe/python paths inside the synthetic tree."""
     module = _module()
-    path = _copy(tmp_path, G3_PROV)
-    stdout = io.StringIO()
-    with contextlib.redirect_stdout(stdout):
-        module.validate(path)
-    assert '"status": "valid"' in stdout.getvalue()
+    monkeypatch.setattr(module, "REPO", tmp_path)
+    monkeypatch.setattr(module, "sys", type("Sys", (), {"executable": "python.exe"}))
+    return tmp_path
 
 
-def test_tampered_report_hash_is_rejected(tmp_path: Path) -> None:
+def _write_config(slot_dir: Path, *, max_nodes: str = "2000", catalog: str = "catalog.json") -> None:
+    config = {
+        "game_id": "m39a-eval-baseline-M07-5000000-r0",
+        "seed": 5_000_000,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 30_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            {
+                "program": "C:\\Python312\\python.exe",
+                "args": [
+                    "-m", "splendor_gpu.m35a_agent",
+                    "--model-id", "M25-D2-v2",
+                    "--catalog", catalog,
+                    "--device", "cuda",
+                ],
+            },
+            {
+                "program": "splendor.exe",
+                "args": [
+                    "agent-determinization",
+                    "--sample-seed", "20260810",
+                    "--sample-count", "4",
+                    "--max-depth-turns", "1",
+                    "--max-nodes", max_nodes,
+                ],
+            },
+        ],
+    }
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+
+
+def _expect_rebuild_rejection(monkeypatch, reason_fragment: str) -> None:
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    for row in ledger["rows"]:
-        if row["report_sha256"] is not None:
-            row["report_sha256"] = "f" * 64
-            break
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "report_sha256 mismatch")
+    base = Path("synthetic-base")
+    monkeypatch.setattr(module, "_verify_config", module._verify_config)
+    try:
+        module._rebuild_row(base, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert reason_fragment in str(error), f"expected {reason_fragment!r} in {error}"
+        return
+    pytest.fail("rebuild was accepted but must be rejected")
 
 
-def test_forged_outcome_is_rejected(tmp_path: Path) -> None:
-    """An outcome not matching the on-disk replay/result fails."""
+def _frozen_catalog(synthetic_repo: Path) -> str:
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    for row in ledger["rows"]:
-        if row["outcome"] is not None:
-            row["outcome"] = "win" if row["outcome"] != "win" else "loss"
-            break
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "outcome mismatch")
+    return str((synthetic_repo / module.CATALOG_PATH).resolve())
 
 
-def test_swapped_seed_binding_is_rejected(tmp_path: Path) -> None:
-    """A row claiming the wrong slot seed fails the artifact binding."""
+def test_tampered_m07_search_parameter_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """The reviewer's exact tamper: --max-nodes 2000 -> 1 must fail the
+    frozen argv contract, even with a forged report."""
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    ledger["rows"][10]["seed"] = ledger["rows"][10]["seed"] + 1
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "mismatch")
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, max_nodes="1", catalog=_frozen_catalog(synthetic_repo))
+    (slot_dir / "arena-report.json").write_text("{}", encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "argv mismatch" in str(error)
+        assert "--max-nodes" in str(error) or "frozen" in str(error)
+        return
+    pytest.fail("tampered --max-nodes must be rejected")
 
 
-def test_hidden_nontermination_row_is_rejected(tmp_path: Path) -> None:
-    """Claiming the ply-limit slot completed fails: no report/replay exist,
-    so the adversarial rebuild cannot reproduce the claimed outcome."""
+def test_tampered_timeout_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    for row in ledger["rows"]:
-        if row["deterministic_nontermination"]:
-            row["deterministic_nontermination"] = False
-            row["completed"] = True
-            row["outcome"] = "win"
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "mismatch")
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    config = json.loads((slot_dir / "arena-config.json").read_text(encoding="utf-8"))
+    config["move_timeout_ms"] = 60_000
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "move_timeout_ms" in str(error)
+        return
+    pytest.fail("tampered timeout must be rejected")
 
 
-def test_forged_bindings_are_rejected(tmp_path: Path) -> None:
+def test_tampered_seed_commitment_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """A report with a forged seed_commitment must fail even when the
+    other fields are plausible (the reviewer's second tamper)."""
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    ledger["bindings"]["executable_sha256"] = "f" * 64
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "binding executable_sha256 mismatch")
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    report = {
+        "format": "effective-splendor-arena-report",
+        "version": 1,
+        "game_id": "m39a-eval-baseline-M07-5000000-r0",
+        "player_count": 2,
+        "ruleset_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+        "seed_commitment": "f" * 64,
+        "agents": [
+            {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"},
+            {"seat": 1, "agent_name": "effective-splendor-determinization-agent-v1", "agent_version": "1"},
+        ],
+        "outcome": {"status": "completed", "result": {}, "completed_plies": 60, "replay_final_hash": "a" * 64},
+    }
+    (slot_dir / "arena-report.json").write_text(json.dumps(report), encoding="utf-8")
+    # Replay verification is skipped by pointing at a nonexistent replay:
+    # the commitment check fires before the replay is read.
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "seed commitment" in str(error)
+        return
+    pytest.fail("forged seed commitment must be rejected")
 
 
-def test_dropped_nontermination_evidence_is_rejected(tmp_path: Path) -> None:
+def test_nontermination_evidence_semantics_are_enforced(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Evidence with exit_code=0 and unrelated stderr must be rejected even
+    when the ledger's self-reported hashes are synchronized (the
+    reviewer's third tamper)."""
     module = _module()
-    path = _copy(tmp_path, G2_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    ledger["nontermination_evidence"]["files"]["stderr.txt"] = "f" * 64
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "stderr.txt SHA mismatch")
+    evidence_dir = tmp_path / "nontermination-evidence"
+    evidence_dir.mkdir(parents=True)
+    _write_config(evidence_dir, catalog=_frozen_catalog(tmp_path))
+    (evidence_dir / "stdout.txt").write_text("", encoding="utf-8")
+    (evidence_dir / "stderr.txt").write_text("some unrelated error\n", encoding="utf-8")
+    (evidence_dir / "exit-status.txt").write_text("exit_code=0\n", encoding="utf-8")
+
+    ledger = {
+        "gate": "g2",
+        "nontermination_evidence": {
+            "slot": ["baseline", "M07", 5_000_029, 0],
+            "directory": "synthetic",
+            "files": {
+                name: module.file_sha256(evidence_dir / name)
+                for name in module.NONTERMINATION_EVIDENCE_FILES
+            },
+        },
+    }
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "NONTERMINATION_EVIDENCE_DIR", "nontermination-evidence")
+    failures = module._failures_nontermination(ledger)
+    fragments = " ".join(failures)
+    assert "exit status" in fragments
+    assert "ply safety limit" in fragments or "ply" in fragments
 
 
-def test_tampered_replay_hash_is_rejected(tmp_path: Path) -> None:
+def test_frozen_config_contract_rejects_changed_checkpoint(tmp_path: Path, synthetic_repo: Path) -> None:
+    """A candidate slot whose checkpoint hash differs from the frozen
+    cycle-8 identity fails the argv contract."""
     module = _module()
-    path = _copy(tmp_path, G3_PROV)
-    ledger = json.loads(path.read_text(encoding="utf-8"))
-    for row in ledger["rows"]:
-        if row["replay_sha256"] is not None:
-            row["replay_sha256"] = "0" * 64
-            break
-    path.write_text(json.dumps(ledger), encoding="utf-8")
-    _expect_rejection(module, path, "replay_sha256 mismatch")
+    slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    config = {
+        "game_id": "m39a-eval-candidate-M07-5000000-r0",
+        "seed": 5_000_000,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 30_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            {
+                "program": "python.exe",
+                "args": [
+                    "-m", "splendor_gpu.m39a_agent",
+                    "--checkpoint-sha256", "0" * 64,
+                    "--plan-hash", module.PLAN_HASH,
+                    "--game-index", "0",
+                    "--sidecar-out", "sidecar.json",
+                    "--server-url", "127.0.0.1:1",
+                    "--server-ready", "ready.json",
+                    "--action-selection", "argmax",
+                ],
+            },
+            {
+                "program": "splendor.exe",
+                "args": [
+                    "agent-determinization",
+                    "--sample-seed", "20260810",
+                    "--sample-count", "4",
+                    "--max-depth-turns", "1",
+                    "--max-nodes", "2000",
+                ],
+            },
+        ],
+    }
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "candidate", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "argv mismatch" in str(error)
+        return
+    pytest.fail("changed candidate checkpoint must be rejected")
+
+
+def test_frozen_config_contract_rejects_categorical_selection(tmp_path: Path, synthetic_repo: Path) -> None:
+    """A candidate slot run with categorical sampling instead of the frozen
+    argmax fails the argv contract."""
+    module = _module()
+    slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    config = {
+        "game_id": "m39a-eval-candidate-M07-5000000-r0",
+        "seed": 5_000_000,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 30_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            {
+                "program": "python.exe",
+                "args": [
+                    "-m", "splendor_gpu.m39a_agent",
+                    "--checkpoint-sha256", module.CANDIDATE_CHECKPOINT_FILE_SHA256,
+                    "--plan-hash", module.PLAN_HASH,
+                    "--game-index", "0",
+                    "--sidecar-out", "sidecar.json",
+                    "--server-url", "127.0.0.1:1",
+                    "--server-ready", "ready.json",
+                    "--action-selection", "categorical",
+                ],
+            },
+            {
+                "program": "splendor.exe",
+                "args": [
+                    "agent-determinization",
+                    "--sample-seed", "20260810",
+                    "--sample-count", "4",
+                    "--max-depth-turns", "1",
+                    "--max-nodes", "2000",
+                ],
+            },
+        ],
+    }
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "candidate", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "argv mismatch" in str(error)
+        return
+    pytest.fail("categorical action selection must be rejected")
+
+
+def test_replay_final_hash_binding_is_checked(tmp_path: Path, synthetic_repo: Path) -> None:
+    """A report whose replay_final_hash does not equal the replay's final
+    state hash fails (forged report passes commitment but not binding)."""
+    module = _module()
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    fingerprint = "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb"
+    commitment = module._seed_commitment(
+        "m39a-eval-baseline-M07-5000000-r0", 2, 5_000_000, fingerprint
+    )
+    report = {
+        "format": "effective-splendor-arena-report",
+        "version": 1,
+        "game_id": "m39a-eval-baseline-M07-5000000-r0",
+        "player_count": 2,
+        "ruleset_fingerprint": fingerprint,
+        "seed_commitment": commitment,
+        "agents": [
+            {"seat": 0, "agent_name": "effective-splendor-m35a-direct-agent-v1", "agent_version": "M25-D2-v2"},
+            {"seat": 1, "agent_name": "effective-splendor-determinization-agent-v1", "agent_version": "1"},
+        ],
+        "outcome": {
+            "status": "completed",
+            "result": {"scores": [15, 10], "ranks": [0, 1], "winners": [0], "reason": "prestige_threshold"},
+            "completed_plies": 60,
+            "replay_final_hash": "f" * 64,
+        },
+    }
+    (slot_dir / "arena-report.json").write_text(json.dumps(report), encoding="utf-8")
+    replay = {
+        "format": "splendor-replay",
+        "version": 1,
+        "seed": 5_000_000,
+        "final_state_hash": "0" * 64,
+        "result": report["outcome"]["result"],
+        "steps": [],
+    }
+    (slot_dir / "replay.json").write_text(json.dumps(replay), encoding="utf-8")
+    # Mock the referee subprocess (synthetic tree has no splendor.exe):
+    # verification succeeds; the binding check must still catch the forgery.
+    import types
+
+    fake_subprocess = types.SimpleNamespace(
+        run=lambda *a, **k: types.SimpleNamespace(returncode=0, stdout="", stderr="")
+    )
+    original_subprocess = module.subprocess
+    module.subprocess = fake_subprocess
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        text = str(error)
+        assert "replay_final_hash" in text
+        return
+    finally:
+        module.subprocess = original_subprocess
+    pytest.fail("forged replay_final_hash must be rejected")

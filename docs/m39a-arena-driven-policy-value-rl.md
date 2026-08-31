@@ -1498,10 +1498,12 @@ G1 (blocking clause)   FAIL — formal Arena non-termination is 1/1,664,
                        64.0 plies (26–150); learner VP differential
                        (learner − opponent) −3.51 per seat-game over 5,632
                        learner seat-games; 35.4% of learner seat-games
-                       reach 15 VP; tokens+reserves paid per learner VP
-                       5.06 (method: take-token color count + reserves /
-                       total learner VP; purchase costs excluded — see the
-                       G1 report for the reason).
+                       reach 15 VP; tokens+gold paid per learner VP
+                       11.01 (full spend: take-tokens 258,454 colors +
+                       net reserve gold 26,161 + purchase payments 339,284
+                       colors incl. gold, divided by 56,656 learner VP;
+                       purchase costs derived from each buy action's card
+                       cost in the pre-action observation).
 G2                     FAIL — 1 deterministic non-termination (baseline
                        arm) + the affected seed block incomplete:
                        completed_matches 511/512, completed_seed_blocks
@@ -1529,48 +1531,75 @@ The M07-relative gain is diagnostic only (G2 failed on the baseline arm's
 non-termination, and the paired statistic was never computed per the
 fail-closed contract).
 
-### Evaluation provenance (2026-09-01, post-result repair)
+### Evaluation provenance (2026-09-01, post-result repair; hardened same day)
 
 Review `aa98237 = NEEDS_EVALUATION_PROVENANCE_REPAIR` (science direction
 upheld; G2's 127 complete blocks independently recomputed at mean
 +531.50 bps, one-sided 95% lower bound −3.84 bps — still FAIL; G3
-independently confirmed at −86.81 bps). The provenance closures:
+independently confirmed at −86.81 bps), followed by a second review
+(`HOLD — NEEDS_ONE_EVALUATION_PROVENANCE_FIX`) whose three tamper
+experiments (changed M07 `--max-nodes` with forged report, synchronized
+fake non-termination evidence, unbound runtime identities) are all
+closed in provenance ledger v2:
 
-- **Evaluation provenance ledgers** (`m39a_eval_provenance.py`, tracked):
-  `rebuild` re-derives every ledger row from the on-disk per-match
-  artifacts — config game_id/seed/agent lineup (role- and model-checked),
-  Arena report identity, replay seed/result binding, and a **full Rust
-  referee re-verification of every completed replay** — and cross-checks
-  the rebuilt rows against the evaluation ledger before writing the
-  provenance ledger with per-match config/report/replay SHA-256 plus
-  top-level bindings (plan hash, catalog SHA, executable SHA, candidate
-  checkpoint SHA, agent source identity).
-- **Adversarial validator**: frozen slot envelopes (G2 512, G3 1,152),
-  full row rebuild on validation (no trust in the ledger's self-reported
-  rows), binding re-computation, and non-termination evidence hash
-  checks. Nine negative tests pin the tamper classes (forged
-  report/replay hashes, forged outcomes, swapped slot seeds, hidden
-  non-termination, forged bindings, dropped evidence, tampered evidence).
-- **Durable non-termination evidence**: the `baseline/M07/5_000_029/r0`
-  slot was reproduced in isolation with config, stdout, stderr, and exit
-  status captured and hash-bound into the G2 provenance ledger
-  (`nontermination-baseline-M07-5000029-r0/`, exit_code=1, stderr =
-  `error: engine internal error: match exceeded ply safety limit`).
+- **Exact frozen-config contract** (the reviewer's tamper 1): every slot's
+  config is compared against the **complete frozen contract** — game id,
+  seed, all three timeouts, and the full agent argv per seat
+  flag-by-flag: the candidate's checkpoint file SHA, plan hash,
+  `--action-selection argmax`, sidecar/server wiring; the baseline's
+  model id and catalog; M07's **entire search parameter set**
+  (`--sample-seed 20260810 --sample-count 4 --max-depth-turns 1
+  --max-nodes 2000`); each league opponent's model id. A changed
+  `--max-nodes`, checkpoint, plan, action-selection, or timeout fails
+  closed. The single dynamic exception is the ephemeral resident-server
+  port (`--server-url`), normalized before comparison.
+- **Complete report binding** (tamper 1's forged report): the Arena
+  report's **seed commitment is recomputed** from (game_id, player_count,
+  seed, ruleset fingerprint) and must match; the outcome's
+  `replay_final_hash` must equal the replay's `final_state_hash`; and the
+  report's agent lineup (seat, agent_name, agent_version) must match the
+  config's seat assignment — candidate = m39a agent @ cycle-8 semantic
+  hash, M07 = determinization agent v1, league/baseline = m35a direct
+  agent @ model id.
+- **Semantic non-termination evidence** (tamper 2): the evidence's config
+  must equal the frozen slot contract, `exit-status.txt` must read
+  exactly `exit_code=1`, and `stderr.txt` must contain the ply-safety-
+  limit message — synchronized fake hashes with `exit_code=0` or
+  unrelated stderr are rejected on content, not just SHA.
+- **Full runtime binding** (tamper 3): the ledger binds the LF-canonical
+  source SHA-256 of the eval runner, m39a agent (d9ca5cc), m35a agent,
+  resident server, and gates evaluator — validated against the current
+  repository files on every validation — plus the original evaluation
+  ledger and gate report hashes and the candidate checkpoint's file and
+  semantic hashes.
+- **Synthetic negative tests** (CI-runnable, no local artifacts):
+  seven tests on synthetic fixture trees pin the reviewer's exact tampers
+  (changed M07 `--max-nodes`, changed timeout, forged seed commitment,
+  evidence semantics with synchronized hashes, changed candidate
+  checkpoint, categorical instead of argmax, forged `replay_final_hash`
+  with a passing referee mock).
 - **Runner resume hardened**: an existing report is only reused after the
-  complete artifact chain validates via the provenance rebuild — a stale,
-  misplaced, or tampered report fails closed.
+  complete frozen-contract chain validates via the provenance rebuild.
 - Current validator verdicts: G2 `valid (512 rows)`, G3 `valid
   (1,152 rows)`; all 1,663 completed replays re-verified by the referee
   with zero mismatches.
+
+Metric correction (same review): the earlier "5.06 tokens+reserves/VP"
+figure replaced the pre-registered metric with a narrower one. The full
+**tokens+gold paid per VP = 11.01** is now computed as the complete
+learner spend — take-tokens (258,454 colors) + net reserve gold (26,161)
++ **purchase payments (339,284 colors incl. gold, derived from each buy
+action's card cost in the pre-action observation)** — over 56,656 total
+learner VP.
 
 Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`
 (v2, per-game statistics),
 `local-artifacts/m39a-eval-g2/` (evaluation ledger SHA
 `7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9` +
-provenance ledger), `local-artifacts/m39a-eval-g3/` (evaluation ledger
-SHA
+provenance ledger v2), `local-artifacts/m39a-eval-g3/` (evaluation
+ledger SHA
 `fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3` +
-provenance ledger) — all local-only, not published.
+provenance ledger v2) — all local-only, not published.
 Formal-run provenance ledger: `VALID` (review `42cbdd6 = APPROVED`,
 `FORMAL_RUN_TRAINING = VALID_WITH_RECORDED_INFRASTRUCTURE_RETRY`).
 
