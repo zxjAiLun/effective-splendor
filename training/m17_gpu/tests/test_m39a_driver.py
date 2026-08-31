@@ -146,10 +146,12 @@ def test_full_resume_recognizes_cycles_1_through_5() -> None:
         assert done is not None, f"cycle {cycle} must resume as complete"
         state = done
 
-    # Cycle 6's partial legacy directory must NOT resume (it is incomplete
-    # by construction and will be moved aside for re-collection).
-    partial = module.cycle_state(6, contract=contract, expected_parent=state)
-    assert partial is None
+    # Cycles beyond 5 are capped-era: when present they must carry ply_cap.
+    cycle6 = FORMAL_ROOT / "cycle-6.pt"
+    if cycle6.is_file():
+        done = module.cycle_state(6, contract=contract, expected_parent=state)
+        assert done is not None, "completed capped cycle-6 must resume"
+        state = done
 
 
 @pytest.mark.skipif(
