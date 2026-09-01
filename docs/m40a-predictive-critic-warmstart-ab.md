@@ -3,13 +3,16 @@
 ```text
 Milestone:      M40A
 Title:          Player-View Predictive Critic Warm-Start A/B
-Status:         PROPOSED / REVISION_2 / PENDING_RE_REVIEW
+Status:         DESIGN_FROZEN / IMPLEMENTATION_AUTHORIZED
 Prior round:    M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT,
                 final review ACCEPTED 2026-09-01)
 Design review:  NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 3 (2026-09-01);
                 repaired in Revision 1 (772fd4c)
 Rev 1 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-09-01);
-                repaired in Revision 2 (this document)
+                repaired in Revision 2 (09fd8ec)
+Rev 2 final re-review: APPROVED — P0 = 0, P1 = 0, P2 = 0 (2026-09-01);
+                design review CLOSED; implementation authorized
+Design SHA:     09fd8ec
 Baseline:       current main at draft time (7165f71)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round does not seek promotion)
@@ -559,3 +562,31 @@ boundary conditions and two reporting contracts — not a redesign.
 | P2-2 | P2 | The seed table claimed "all disjoint from every M39A range" while the same table intentionally reuses M39A's `40_260_830` (trainer) and `20_260_829` (head init) | Prose corrected: the five **Arena/collection seed ranges** are disjoint from every M39A Arena/collection/sampling range and from each other; the two **RNG-namespace seeds** are intentionally inherited from M39A (shared trainer namespace keeps both arms' shuffles paired; head-init namespace reproduces M39A's initialization semantics) and are labelled as inherited in the table | §Lean iteration protocol (seed table) + §A/B PPO contract |
 
 All prior frozen decisions are retained unchanged.
+
+---
+
+## Revision 2 final re-review — APPROVED (2026-09-01)
+
+Verdict **`APPROVED — P0 = 0, P1 = 0, P2 = 0`**. All four Revision 2
+findings verified closed against `09fd8ec` (singleton truncation, VP
+scale, anchor statistics, seed namespaces). Design review is **CLOSED**;
+implementation is authorized.
+
+One non-blocking arithmetic note (recorded here for the implementer, not
+a document change): the deterministic per-stratum split rule yields
+**823** completed validation games (7 cycles × 103 + cycle-6's 102, the
+league stratum of cycle 6 having lost game 2785 from the completed pool),
+hence 3,272 completed training games + the 1 forced truncated training
+game = 3,273 training games; 3,273 + 823 = 4,096. Earlier delivery-report
+approximations (`~3,276 / 819`) are not part of this document and must
+not be used as implementation assertions — the frozen algorithm is the
+sole authority, and the implementation tests pin the exact cardinalities.
+
+Implementation scope, gates, and provenance requirements are as specified
+in the authorizing review (recorded in the project handoff): predictive
+heads, replay/materializer label extension with mandatory timing and
+fail-closed tests, the frozen split with exact cardinality assertions,
+B-only pretraining, the CRN PPO path, the four evaluation statistics, and
+provenance binding design SHA `09fd8ec`. No frozen experimental constant
+changes. Formal pretraining/PPO/Arena execution remains gated on
+implementation review.
