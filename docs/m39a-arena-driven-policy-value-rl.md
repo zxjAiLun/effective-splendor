@@ -3,8 +3,8 @@
 ```text
 Milestone:      M39A
 Title:          Arena-Driven Policy-Value RL (Environment-Reward Self-Play)
-Status:         COMPLETED_NEGATIVE / GATES_FAILED / M39A_NO_IMPROVEMENT
-                 (provenance ledger VALID; no promotion sought)
+Status:         COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT
+                  (final review APPROVED f70b642; no promotion sought)
 Review R1:      NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 0 (2026-08-29)
 Review R2:      NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 2 (2026-08-29)
 Rev 2 re-review: NEEDS_REVISION — P0 = 0, P1 = 3, P2 = 2 (2026-08-29)
@@ -14,18 +14,21 @@ Rev 4 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-08-30)
 Throughput fix:  2026-08-30 resident inference server; review APPROVED (80a5ace)
 Phase 0:         PASS — G0 projected 4.188 h <= 72 h; G0b 0/384 truncations
 Capped rollout:  2026-08-30 run-rollout entry; reviews NEEDS_FIX -> APPROVED
-                 (e592d63 -> 11fdc4e -> de36357)
+                  (e592d63 -> 11fdc4e -> de36357)
 Formal run:      COMPLETE 2026-08-31 — 4,096 games, 8 cycles trained,
-                 checkpoint chain 0..8 verified (provenance VALID)
+                  checkpoint chain 0..8 verified (provenance VALID)
 Training:        COMPLETE — 182,157 records; recomputation all within gates
 Arena:           G1 FAIL / G2 FAIL / G3 FAIL — decision M39A_NO_IMPROVEMENT
 Evaluation:      G2 512 matches (ledger 7686e842…), G3 1,152 matches
-                 (ledger fd79b80a…), 2026-08-31, local-only artifacts
-Baseline:        573434f (design) / 24f6d74 (implementation HEAD)
+                  (ledger fd79b80a…), 2026-08-31, local-only artifacts
+Provenance:      formal-run ledger VALID (42cbdd6 APPROVED);
+                  evaluation provenance v4 ACCEPTED (f70b642, P0/P1/P2 = 0)
+Baseline:        573434f (design) / f70b642 (final HEAD)
 Baseline moved: 733401c -> 573434f on 2026-08-29 (engineering-only); the
-                 implementation commit chain 7d647ec..24f6d74 is recorded in
-                 the implementation checkpoint; no frozen constant changed.
-Revision date:  2026-08-31 (Asia/Shanghai)
+                  implementation commit chain 7d647ec..f70b642 is recorded
+                  in the implementation checkpoint and provenance sections;
+                  no frozen constant changed.
+Revision date:  2026-09-01 (Asia/Shanghai)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round does not seek promotion)
 ```
@@ -2645,3 +2648,59 @@ to a mismatch, never the values PPO trains on. The Revision 1–3 re-review
 scopes (return/critic contract, G2 Student-t contract, G3 schedule,
 cycle-local formula, trajectory schema, G0/G0b freeze, auxiliary head,
 Rev 3 repairs) remain in scope by inheritance.
+
+---
+
+## Milestone closure (2026-09-01)
+
+Final review: **`f70b642 = APPROVED`** — `M39A_EVALUATION_PROVENANCE_V4 =
+ACCEPTED` (P0 = 0, P1 = 0, P2 = 0). All provenance layers are closed: the
+formal-run ledger (42cbdd6), the evaluation provenance v4 (executable
+frozen at `d8c2ee52…`, loopback-only server binding, adversarial
+rebuild-based validation with 14 targeted tests).
+
+```text
+DECISION               M39A_NO_IMPROVEMENT (final, review-confirmed)
+Gates                  G1 FAIL / G2 FAIL / G3 FAIL
+Formal run             4,096 accepted games / 4,097 attempts /
+                       182,157 records; checkpoint chain 0..8 verified
+Provenance             formal-run ledger VALID; evaluation v4 ACCEPTED
+Champion               M07 — unchanged
+Promotion              NONE
+```
+
+M39A is **CLOSED**. The environment-reward self-play direction produced a
+valid negative result at the formal gates; no re-run is authorized from
+this round's artifacts.
+
+### Findings carried forward (input to the next round's design)
+
+The headline pattern — **local improvement against M07, aggregate
+regression against the league** — decomposes into recorded observations:
+
+1. **M07-relative gain (diagnostic)**: on G2's 127 complete seed blocks,
+   the cycle-8 policy scored 0.2441 vs M07 against the D2-v2 baseline's
+   0.1909 (+5.3 pp raw). This is the first M39A-generation signal that
+   environment reward moved play against the champion at all. It is
+   diagnostic only: G2 failed on the baseline arm's deterministic
+   non-termination (D2-v2 vs M07, seed 5_000_029 r0 — a NEW observation
+   this round, same engine property as M35A's two recorded cases), so the
+   paired statistic was never computed per the fail-closed contract.
+2. **League regression (formal)**: G3's candidate aggregate 4,869.79 bps
+   fell below the baseline's 4,956.60 bps (Δ −86.81). Only 4 of 9
+   pairings improved (M28A +1,250 / M34A +937.5 / M24-S2 +312.5 /
+   M29A-v2 +312.5); the largest deficits were against M33A (−1,093.75)
+   and the initialization itself, D2-v2 (−937.5). A policy that loses to
+   its own starting point on the league distribution has, in PPO terms,
+   drifted out of the initialization's basin without finding a better
+   one — consistent with outcome-only credit assignment over ~8 cycles.
+3. **Engine property**: one deterministic non-termination in 1,664 formal
+   evaluation matches (and one in training collection, game 2785, capped
+   as designed). The engine-level fix remains out of scope for RL rounds.
+
+The next round's pre-registration must confront this decomposition
+directly — candidate directions (to be designed and reviewed there, not
+decided here): per-opponent credit assignment or curriculum weighting;
+longer schedules / KL anchoring to the initialization to prevent league
+regression while pursuing the M07 gain; and exploiting the auxiliary VP
+head's signal more aggressively given the label-sparse outcome signal.
