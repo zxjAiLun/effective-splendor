@@ -181,6 +181,26 @@ struct AuthoritativeRecord {
     result: AuthoritativeResult,
     arena_report_hash: String,
     replay_document_hash: String,
+    /// M40A predictive-label payload, derived from the referee trace.
+    /// `prestige_after_ply[i]` = [self, opp] prestige immediately after
+    /// the ply `record.ply_index + i` executed (i = 0 is the record's own
+    /// action). Length = total_plies − ply_index. The final entry is the
+    /// end-of-training-window prestige (terminal result for completed
+    /// games; cap state for truncated ones).
+    m40a_labels: M40aLabels,
+}
+
+/// Per-record predictive-label payload (M40A).
+#[derive(Debug, Clone, Serialize)]
+#[serde(deny_unknown_fields)]
+struct M40aLabels {
+    /// Seat-indexed [self, opp] prestige after each subsequent ply.
+    prestige_after_ply: Vec<[u8; 2]>,
+    /// Number of plies in the training window (== result is over the
+    /// same window; completed: full game; truncated: the 150-ply prefix).
+    window_plies: u32,
+    /// Whether the game is truncated in the training window.
+    truncated: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -444,11 +464,17 @@ fn materialize_game(
         truncated,
     )?;
     let result = AuthoritativeResult {
-        scores: training_scores,
+        scores: training_scores.clone(),
         centered_returns: centered,
         truncated,
         source_terminal_result: Some(trace.verified.result.clone()),
     };
+    // M40A label window finality: for a completed game the window ends at
+    // the terminal state, whose prestige IS the terminal result's scores;
+    // for a truncated game the window ends at the ply cap, whose prestige
+    // is the cap-instant training_scores. In both cases `training_scores`
+    // is the per-seat prestige at the end of the training window.
+    let window_final_prestige = [training_scores[0], training_scores[1]];
 
     let expected_seats = learner_seats(game_index);
     let actual_seats = sidecars
@@ -531,6 +557,14 @@ fn materialize_game(
                     record.ply_index
                 ));
             }
+            let labels = m40a_labels_for_record(
+                sidecar.seat,
+                record.ply_index,
+                &trace.positions,
+                training_plies,
+                window_final_prestige,
+                truncated,
+            );
             output.push(AuthoritativeRecord {
                 game_index,
                 game_id: report.game_id.clone(),
@@ -549,6 +583,7 @@ fn materialize_game(
                 result: result.clone(),
                 arena_report_hash: report_hash.clone(),
                 replay_document_hash: replay_hash.clone(),
+                m40a_labels: labels,
             });
         }
         let expected_plies = trace
@@ -693,11 +728,16 @@ fn materialize_game_truncated(
     let completed_plies = report_plies;
     let centered = centered_returns(&cap_scores, &None, true)?;
     let result = AuthoritativeResult {
-        scores: cap_scores,
+        scores: cap_scores.clone(),
         centered_returns: centered,
         truncated: true,
         source_terminal_result: None,
     };
+    // M40A: the truncated window ends at the ply cap; the window-final
+    // prestige is the cap-instant scores. `verified.positions` are
+    // pre-action states, so prestige-after-ply falls back to the cap
+    // scores at the last ply of the window.
+    let window_final_prestige = [cap_scores[0], cap_scores[1]];
 
     let expected_seats = learner_seats(game_index);
     let actual_seats = sidecars
@@ -780,6 +820,14 @@ fn materialize_game_truncated(
                     record.ply_index
                 ));
             }
+            let labels = m40a_labels_for_record(
+                sidecar.seat,
+                record.ply_index,
+                &verified.positions,
+                training_plies,
+                window_final_prestige,
+                true,
+            );
             output.push(AuthoritativeRecord {
                 game_index,
                 game_id: report.game_id.clone(),
@@ -798,6 +846,7 @@ fn materialize_game_truncated(
                 result: result.clone(),
                 arena_report_hash: report_hash.clone(),
                 replay_document_hash: prefix_hash.clone(),
+                m40a_labels: labels,
             });
         }
         let expected_plies = verified
@@ -827,6 +876,42 @@ fn materialize_game_truncated(
         },
         output,
     ))
+}
+
+/// Compute the M40A predictive-label payload for one retained record.
+///
+/// `positions[p]` is the referee state BEFORE ply `p` (the shared shape
+/// of `VerifiedReplayTrace::positions` and
+/// `VerifiedRolloutPrefix::positions`). The prestige AFTER ply `p` is
+/// taken from `positions[p + 1]` when it exists; for the final ply of
+/// the training window the caller supplies the terminal (completed game)
+/// or cap-instant (truncated game) per-seat prestige, which the
+/// authoritative result already carries.
+fn m40a_labels_for_record(
+    seat: u8,
+    ply_index: u32,
+    positions: &[splendor_replay::VerifiedReplayTraceStep],
+    total_plies: u32,
+    window_final_prestige: [u8; 2],
+    truncated: bool,
+) -> M40aLabels {
+    let viewer = usize::from(seat);
+    let mut prestige_after_ply = Vec::with_capacity((total_plies - ply_index) as usize);
+    for ply in ply_index..total_plies {
+        let entry = match positions.get(ply as usize + 1) {
+            Some(position) => {
+                let players = &position.state.players;
+                [players[viewer].prestige, players[1 - viewer].prestige]
+            }
+            None => window_final_prestige,
+        };
+        prestige_after_ply.push(entry);
+    }
+    M40aLabels {
+        prestige_after_ply,
+        window_plies: total_plies,
+        truncated,
+    }
 }
 
 fn bind_scheduled_agents(
