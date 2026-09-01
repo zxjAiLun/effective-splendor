@@ -48,22 +48,6 @@ REPORT_FORMAT = "effective-splendor-m40a-training-report"
 REPORT_VERSION = 1
 
 
-def _splitmix64_permutation(length: int, key: int) -> list[int]:
-    def splitmix64(z: int) -> int:
-        z = (z + 0x9E3779B97F4A7C15) & 0xFFFFFFFFFFFFFFFF
-        z ^= z >> 30
-        z = (z * 0xBF58476D1CE4E5B9) & 0xFFFFFFFFFFFFFFFF
-        z ^= z >> 27
-        z = (z * 0x94D049BB133111EB) & 0xFFFFFFFFFFFFFFFF
-        z ^= z >> 31
-        return z
-
-    return sorted(
-        range(length),
-        key=lambda index: splitmix64((key << 32) ^ index) ^ (index << 1),
-    )
-
-
 def _forward_state(model: M40AModel, records, catalog, device):
     from .m39a_model import encode_decisions, move_encoded
 
@@ -104,6 +88,25 @@ def _selected_log_probabilities_and_entropies(
     return torch.stack(selected), torch.stack(entropies)
 
 
+def _selected_log_probabilities_and_entropies(
+    logits: torch.Tensor,
+    offsets: torch.Tensor,
+    chosen_indices: list[int],
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Per-decision selected log-probability and entropy, segmenting the
+    flattened action logits by the packed offsets (M39A semantics)."""
+    selected = []
+    entropies = []
+    boundaries = offsets.detach().cpu().tolist()
+    for batch_index, chosen in enumerate(chosen_indices):
+        start, end = boundaries[batch_index], boundaries[batch_index + 1]
+        log_probs = torch.log_softmax(logits[start:end], dim=0)
+        probabilities = log_probs.exp()
+        selected.append(log_probs[int(chosen)])
+        entropies.append(-(probabilities * log_probs).sum())
+    return torch.stack(selected), torch.stack(entropies)
+
+
 def _action_index(record: dict[str, Any]) -> int:
     return next(
         index
@@ -120,8 +123,19 @@ def gae_advantages(
     gae_lambda: float = GAE_LAMBDA,
     epsilon: float = ADVANTAGE_EPSILON,
 ) -> list[float]:
-    """M39A GAE semantics, per (game, seat) trajectory, terminal-return
-    bootstrap-free, batch-standardized by the caller."""
+    """M40A advantages = the accepted M39A GAE, applied per
+    (game_index, seat) trajectory, then population-standardized.
+
+    The recurrence is EXACTLY `m39a_contract.gae_for_trajectory`:
+    intermediate rewards are zero (`delta = gamma*V_{t+1} - V_t`); the
+    LAST learner decision gets `delta = terminal_or_cap_return - V_t`.
+    No terminal return is ever injected at an intermediate decision.
+    """
+    from .m39a_contract import (
+        gae_for_trajectory,
+        standardize_advantages,
+    )
+
     by_trajectory: dict[tuple[int, int], list[int]] = {}
     for index, record in enumerate(records):
         by_trajectory.setdefault(
@@ -129,30 +143,16 @@ def gae_advantages(
         ).append(index)
     raw = [0.0] * len(records)
     for trajectory_indices in by_trajectory.values():
-        # Trajectories arrive in ply order (records are batch-ordered by
-        # (game, ply, seat) from the materializer).
-        last = len(trajectory_indices) - 1
-        gae = 0.0
-        for position in range(last, -1, -1):
-            index = trajectory_indices[position]
-            record = records[index]
-            value = values[index]
-            if position == last:
-                delta = record["result"]["centered_returns"][int(record["seat"])] - value
-                gae = delta
-            else:
-                next_value = values[trajectory_indices[position + 1]]
-                delta = (
-                    record["result"]["centered_returns"][int(record["seat"])]
-                    - value
-                    + gamma * next_value
-                )
-                gae = delta + gamma * gae_lambda * gae
-            raw[index] = gae
-    mean = sum(raw) / len(raw)
-    variance = sum((value - mean) ** 2 for value in raw) / len(raw)
-    deviation = math.sqrt(variance) + epsilon
-    return [(value - mean) / deviation for value in raw]
+        trajectory_values = [values[index] for index in trajectory_indices]
+        terminal_return = records[trajectory_indices[-1]]["result"][
+            "centered_returns"
+        ][int(records[trajectory_indices[-1]]["seat"])]
+        trajectory_advantages = gae_for_trajectory(
+            trajectory_values, terminal_return, gamma=gamma, gae_lambda=gae_lambda
+        )
+        for index, advantage in zip(trajectory_indices, trajectory_advantages):
+            raw[index] = advantage
+    return standardize_advantages(raw, epsilon=epsilon)
 
 
 def train_cycle(
@@ -165,6 +165,7 @@ def train_cycle(
     plan_hash: str,
     arm: str,
     value_check: bool = True,
+    parent_optimizer_state: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """One frozen PPO cycle over the arm's collected batch.
 
@@ -191,12 +192,49 @@ def train_cycle(
         for start in range(0, len(records), PPO_MINIBATCH):
             batch_records = records[start : start + PPO_MINIBATCH]
             logits, heads, offsets = _forward_state(model, batch_records, catalog, device)
-            chosen = [_action_index(record) for record in batch_records]
+            # Behaviour reproduction, M39A fail-closed semantics: the
+            # recorded action must occur EXACTLY ONCE in the ordered
+            # legal set, and the frozen categorical draw (recomputed
+            # decision seed + cumulative walk over the checkpoint's
+            # masked softmax) must reproduce it.
+            from .m39a_contract import action_index, decision_seed
+
+            chosen = []
+            for record in batch_records:
+                chosen.append(
+                    action_index(record["legal_actions"], record["action"])
+                )
             selected, _ = _selected_log_probabilities_and_entropies(
                 logits, offsets, chosen
             )
             values = outcome_value(heads["outcome"]).to(dtype=torch.float32)
+            boundaries = offsets.detach().cpu().tolist()
             for row, record in enumerate(batch_records):
+                # Frozen categorical draw reproduction: re-derive the
+                # decision seed and walk the checkpoint's probabilities.
+                seed = decision_seed(
+                    int(record["game_index"]),
+                    int(record["seat"]),
+                    int(record["request_id"]),
+                )
+                start_ply, end_ply = boundaries[row], boundaries[row + 1]
+                segment_logits = logits[start_ply:end_ply].to(dtype=torch.float32)
+                segment_log_probs = torch.log_softmax(segment_logits, dim=0)
+                probabilities = segment_log_probs.exp().cpu().tolist()
+                unit = (int(seed) >> 11) * (2.0 ** -53)
+                cumulative = 0.0
+                reproduced = len(probabilities) - 1
+                for index, probability in enumerate(probabilities):
+                    cumulative += probability
+                    if unit < cumulative:
+                        reproduced = index
+                        break
+                if reproduced != chosen[row]:
+                    raise ValueError(
+                        f"game {record['game_index']} ply {record['ply_index']}: "
+                        f"checkpoint categorical draw selected {reproduced} but the "
+                        f"recorded action is at index {chosen[row]}"
+                    )
                 recomputed_log_probabilities.append(float(selected[row].item()))
                 recomputed_values.append(float(values[row].item()))
                 logp_deviation = abs(
@@ -240,13 +278,23 @@ def train_cycle(
         capturable=False,
         differentiable=False,
     )
+    if parent_optimizer_state is not None:
+        # M39A progression semantics: restore the parent cycle's AdamW
+        # state and overwrite ONLY the learning rate with this cycle's
+        # frozen waypoint. Cycle 1 (parent None) starts fresh — for BOTH
+        # arms: B's offline-pretrain AdamW state is never carried in.
+        optimizer.load_state_dict(parent_optimizer_state)
+        for group in optimizer.param_groups:
+            group["lr"] = learning_rate
 
     model.train()
     history: list[dict[str, float]] = []
     started = time.perf_counter()
     count = len(records)
     for epoch in range(1, PPO_EPOCHS_PER_CYCLE + 1):
-        order = _splitmix64_permutation(count, ((40_260_830 + cycle) << 8) ^ epoch)
+        from .m39a_contract import shuffled_indices
+
+        order = shuffled_indices(count, cycle, epoch)
         totals = {
             "loss": 0.0,
             "policy": 0.0,
@@ -278,7 +326,12 @@ def train_cycle(
             logits, heads, offsets = _forward_state(
                 model, batch_records, catalog, device
             )
-            chosen = [_action_index(record) for record in batch_records]
+            from .m39a_contract import action_index as _strict_action_index
+
+            chosen = [
+                _strict_action_index(record["legal_actions"], record["action"])
+                for record in batch_records
+            ]
             selected_logp, entropies = _selected_log_probabilities_and_entropies(
                 logits, offsets, chosen
             )
@@ -418,5 +471,36 @@ def train_cycle(
         "learning_rate": learning_rate,
         "elapsed_seconds": time.perf_counter() - started,
         "history": history,
+        "optimizer_state_dict": optimizer.state_dict(),
     }
     return {}, report
+
+def online_train_cycle(
+    *,
+    model: M40AModel,
+    records: list[dict[str, Any]],
+    catalog: dict[str, Any],
+    device: torch.device,
+    cycle: int,
+    plan_hash: str,
+    arm: str,
+    parent_optimizer_state: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The FORMAL M40A online PPO cycle.
+
+    `value_check` is hardwired True — the formal online runner cannot
+    bypass behaviour-reproduction checks. (The `value_check=False`
+    escape exists solely for offline M39A-source enrichment smoke, which
+    carries the D2 two-way value readout in its sidecars.)
+    """
+    return train_cycle(
+        model=model,
+        records=records,
+        catalog=catalog,
+        device=device,
+        cycle=cycle,
+        plan_hash=plan_hash,
+        arm=arm,
+        value_check=True,
+        parent_optimizer_state=parent_optimizer_state,
+    )

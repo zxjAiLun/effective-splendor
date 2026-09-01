@@ -154,16 +154,38 @@ def serve(
     torch.set_num_threads(1)
 
     if checkpoint is not None:
+        # The CLI-provided SHA is NEVER trusted: the actual file hash is
+        # recomputed from disk and must match before anything proceeds.
+        actual_file_sha = file_sha256(checkpoint)
+        if actual_file_sha != checkpoint_sha256:
+            raise ValueError(
+                f"M40A checkpoint file SHA mismatch: expected {checkpoint_sha256}, "
+                f"got {actual_file_sha}"
+            )
         payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        # The semantic hash is a TOP-LEVEL payload field per the M40A
+        # checkpoint convention — not metadata.
+        semantic_hash = payload.get("checkpoint_hash")
+        if not isinstance(semantic_hash, str):
+            raise ValueError("M40A checkpoint lacks a top-level checkpoint_hash")
         model = M40AModel()
         model.load_state_dict(payload["state_dict"], strict=True)
         if payload["metadata"].get("plan_hash") != plan_hash:
             raise ValueError("M40A checkpoint plan hash mismatch")
+        if payload["metadata"].get("arm") not in ("A", "B"):
+            raise ValueError("M40A checkpoint metadata lacks a valid arm")
     else:
+        actual_file_sha = file_sha256(d2_checkpoint)
+        if actual_file_sha != M40A_PLAN_CHECKPOINT_FILE_SHA256:
+            raise ValueError(
+                f"D2-v2 checkpoint file SHA mismatch: expected "
+                f"{M40A_PLAN_CHECKPOINT_FILE_SHA256}, got {actual_file_sha}"
+            )
         model = M40AModel()
         load_d2_actor(model, d2_checkpoint, M40A_PLAN_CHECKPOINT_FILE_SHA256)
         initialize_predictive_heads(model, HEAD_INIT_SEED)
-        payload = {"metadata": {"cycle": 0, "checkpoint_hash": None}}
+        semantic_hash = None
+        payload = {"metadata": {"cycle": 0, "arm": None}}
     model.to(device)
 
     catalog_data = load_catalog(catalog)
@@ -178,9 +200,10 @@ def serve(
     bound_host, bound_port = server.getsockname()
     identity = {
         "server_format": SERVER_FORMAT,
-        "checkpoint_sha256": checkpoint_sha256,
-        "checkpoint_hash": payload["metadata"].get("checkpoint_hash"),
+        "checkpoint_sha256": checkpoint_sha256,  # verified above, not echoed
+        "checkpoint_hash": semantic_hash,  # top-level payload field
         "checkpoint_cycle": int(payload["metadata"].get("cycle", 0)),
+        "checkpoint_arm": payload["metadata"].get("arm"),
         "catalog_hash": cat_hash,
         "design_sha": DESIGN_SHA,
     }

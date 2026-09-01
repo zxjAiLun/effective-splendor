@@ -234,6 +234,11 @@ const M40A_BATCH_FORMAT: &str = "effective-splendor-m40a-authoritative-batch";
 const M40A_BATCH_VERSION: u32 = 1;
 const M40A_MANIFEST_FORMAT: &str = "effective-splendor-m40a-materialization-manifest";
 const M40A_MANIFEST_VERSION: u32 = 1;
+const M40A_ONLINE_MANIFEST_FORMAT: &str = "effective-splendor-m40a-online-materialization-manifest";
+const M40A_ONLINE_TRAINING_SEED_BASE: u64 = 8_000_000;
+const M40A_ONLINE_GAMES_PER_CYCLE: u32 = 512;
+const M40A_ONLINE_CYCLES: u32 = 4;
+const M40A_AGENT_NAME: &str = "effective-splendor-m40a-predictive-agent-v1";
 
 /// One M40A enriched record: the M39A v1 authoritative record plus the
 /// referee-derived predictive-label payload. Serialized ONLY under the
@@ -296,6 +301,174 @@ struct M40aManifest {
     games: Vec<GameSource>,
 }
 
+/// The ONLINE M40A manifest: the formal PPO collection's 8M schedule and
+/// M40A learner runtime, distinct from the offline M39A-source
+/// enrichment manifest above.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct M40aOnlineManifest {
+    format: String,
+    version: u32,
+    plan_hash: String,
+    design_sha: String,
+    arm: String,
+    checkpoint_sha256: String,
+    checkpoint_hash: String,
+    checkpoint_cycle: u32,
+    cycle: u32,
+    ply_cap: u32,
+    games: Vec<GameSource>,
+}
+
+pub(crate) fn run_m40a_online_materialize(args: &[String]) -> i32 {
+    match parse_args(args)
+        .and_then(|(plan, manifest, out)| m40a_materialize_online(&plan, &manifest, &out))
+    {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            2
+        }
+    }
+}
+
+fn m40a_materialize_online(
+    plan_path: &Path,
+    manifest_path: &Path,
+    out: &Path,
+) -> Result<String, String> {
+    if out.exists() {
+        return Err(format!("output already exists: {}", out.display()));
+    }
+    let plan: Value = read_json(plan_path, "plan")?;
+    let digest = plan_hash(&plan)?;
+    let manifest: M40aOnlineManifest = read_json(manifest_path, "manifest")?;
+    if manifest.format != M40A_ONLINE_MANIFEST_FORMAT || manifest.version != 1 {
+        return Err("unsupported M40A online materialization manifest format/version".into());
+    }
+    if manifest.plan_hash != digest {
+        return Err(format!(
+            "manifest plan_hash {} does not match computed plan hash {digest}",
+            manifest.plan_hash
+        ));
+    }
+    if manifest.design_sha != "09fd8ec" {
+        return Err("manifest design_sha != frozen M40A design SHA 09fd8ec".into());
+    }
+    if manifest.arm != "A" && manifest.arm != "B" {
+        return Err("online manifest arm must be A or B".into());
+    }
+    if manifest.ply_cap != 150 {
+        return Err("manifest ply_cap must equal 150".into());
+    }
+    if !(1..=M40A_ONLINE_CYCLES).contains(&manifest.cycle) {
+        return Err("online manifest cycle must be in 1..=4".into());
+    }
+    if manifest.checkpoint_cycle + 1 != manifest.cycle {
+        return Err("online manifest checkpoint_cycle must be cycle - 1".into());
+    }
+    let parent = manifest_path.parent().unwrap_or_else(|| Path::new("."));
+
+    let mut game_indices = BTreeSet::new();
+    for source in &manifest.games {
+        if !game_indices.insert(source.game_index) {
+            return Err(format!("duplicate game_index {}", source.game_index));
+        }
+        let report: ArenaReportV1 =
+            read_json(&resolve(parent, &source.report_path), "arena report")?;
+        // 8M seed validation.
+        let replay: ReplayV1 = match &report.outcome {
+            ArenaOutcomeV1::Completed { .. } => {
+                read_json(&resolve(parent, &source.replay_path), "replay")?
+            }
+            ArenaOutcomeV1::Truncated { .. } => {
+                let prefix_path = source.prefix_path.as_ref().ok_or_else(|| {
+                    format!("game {}: truncated without prefix_path", source.game_index)
+                })?;
+                let prefix: RolloutPrefixV1 =
+                    read_json(&resolve(parent, prefix_path), "rollout prefix")?;
+                let replay_seed = prefix.seed;
+                let expected = M40A_ONLINE_TRAINING_SEED_BASE + u64::from(source.game_index / 2);
+                if replay_seed != expected {
+                    return Err(format!(
+                        "game {}: online seed {} != frozen 8M schedule {}",
+                        source.game_index, replay_seed, expected
+                    ));
+                }
+                continue;
+            }
+            ArenaOutcomeV1::Aborted { .. } => {
+                return Err(format!(
+                    "game {}: aborted report cannot enter training",
+                    source.game_index
+                ))
+            }
+        };
+        let expected = M40A_ONLINE_TRAINING_SEED_BASE + u64::from(source.game_index / 2);
+        if replay.seed != expected {
+            return Err(format!(
+                "game {}: online seed {} != frozen 8M schedule {}",
+                source.game_index, replay.seed, expected
+            ));
+        }
+        // M40A learner runtime identity: the learner seats must carry
+        // the M40A agent name + the manifest's checkpoint semantic hash.
+        let learner = learner_seats(source.game_index);
+        for identity in &report.agents {
+            if learner.contains(&identity.seat.0) {
+                if identity.agent_name.as_deref() != Some(M40A_AGENT_NAME) {
+                    return Err(format!(
+                        "game {}: learner runtime {} != M40A agent {}",
+                        source.game_index,
+                        identity.agent_name.as_deref().unwrap_or("?"),
+                        M40A_AGENT_NAME
+                    ));
+                }
+                if identity.agent_version.as_deref() != Some(manifest.checkpoint_hash.as_str()) {
+                    return Err(format!(
+                        "game {}: learner runtime version {} != manifest checkpoint_hash {}",
+                        source.game_index,
+                        identity.agent_version.as_deref().unwrap_or("?"),
+                        manifest.checkpoint_hash
+                    ));
+                }
+            }
+        }
+    }
+    // Complete-cycle enforcement: exactly this cycle's 512 indices.
+    let cycle_start = (manifest.cycle - 1) * M40A_ONLINE_GAMES_PER_CYCLE;
+    let expected: BTreeSet<u32> =
+        (cycle_start..cycle_start + M40A_ONLINE_GAMES_PER_CYCLE).collect();
+    if game_indices != expected {
+        return Err(
+            "online complete-cycle manifest must contain exactly the cycle's 512 game indices"
+                .into(),
+        );
+    }
+
+    // Reuse the enriched-record join. The per-game seed and runtime
+    // checks are performed above against the 8M schedule and the M40A
+    // agent identity; the join's observation/action/replay checks are
+    // schedule-agnostic.
+    let internal = M40aManifest {
+        format: M40A_MANIFEST_FORMAT.into(),
+        version: 1,
+        mode: MaterializationMode::CompleteCycle,
+        plan_hash: manifest.plan_hash,
+        checkpoint_sha256: manifest.checkpoint_sha256,
+        checkpoint_hash: manifest.checkpoint_hash,
+        checkpoint_cycle: manifest.checkpoint_cycle,
+        cycle: manifest.cycle,
+        ply_cap: manifest.ply_cap,
+        design_sha: manifest.design_sha,
+        games: manifest.games,
+    };
+    m40a_materialize_inner(plan_path, &internal, out, M40A_ONLINE_TRAINING_SEED_BASE)
+}
+
 pub(crate) fn run_m40a_materialize(args: &[String]) -> i32 {
     match parse_args(args)
         .and_then(|(plan, manifest, out)| m40a_materialize(&plan, &manifest, &out))
@@ -315,6 +488,24 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
     if out.exists() {
         return Err(format!("output already exists: {}", out.display()));
     }
+    let manifest: M40aManifest = read_json(manifest_path, "manifest")?;
+    if manifest.format != M40A_MANIFEST_FORMAT || manifest.version != M40A_MANIFEST_VERSION {
+        return Err("unsupported M40A materialization manifest format/version".into());
+    }
+    // The offline source-enrichment domain: the historical M39A 4M
+    // schedule, validated by the shared join.
+    m40a_materialize_inner(plan_path, &manifest, out, TRAINING_GAME_SEED_BASE)
+}
+
+fn m40a_materialize_inner(
+    plan_path: &Path,
+    manifest: &M40aManifest,
+    out: &Path,
+    seed_base: u64,
+) -> Result<String, String> {
+    if out.exists() {
+        return Err(format!("output already exists: {}", out.display()));
+    }
     let plan: Value = read_json(plan_path, "plan")?;
     let digest = plan_hash(&plan)?;
     let catalog_hash = plan
@@ -322,10 +513,6 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
         .and_then(|value| value.get("semantic_hash"))
         .and_then(Value::as_str)
         .ok_or_else(|| "plan.catalog.semantic_hash must be a string".to_string())?;
-    let manifest: M40aManifest = read_json(manifest_path, "manifest")?;
-    if manifest.format != M40A_MANIFEST_FORMAT || manifest.version != M40A_MANIFEST_VERSION {
-        return Err("unsupported M40A materialization manifest format/version".into());
-    }
     if manifest.plan_hash != digest {
         return Err(format!(
             "manifest plan_hash {} does not match computed plan hash {digest}",
@@ -341,7 +528,7 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
     if manifest.ply_cap != 150 {
         return Err("manifest ply_cap must equal 150".into());
     }
-    let parent = manifest_path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = Path::new(".");
 
     let mut game_indices = BTreeSet::new();
     let mut bindings = Vec::with_capacity(manifest.games.len());
@@ -378,6 +565,7 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
                     &report,
                     &replay,
                     &sidecars,
+                    seed_base,
                 )?
             }
             ArenaOutcomeV1::Truncated { .. } => {
@@ -407,6 +595,7 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
                     &report,
                     &prefix,
                     &sidecars,
+                    seed_base,
                 )?
             }
             ArenaOutcomeV1::Aborted { .. } => {
@@ -455,8 +644,8 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
         version: M40A_BATCH_VERSION,
         mode: manifest.mode,
         plan_hash: digest,
-        checkpoint_sha256: manifest.checkpoint_sha256,
-        checkpoint_hash: manifest.checkpoint_hash,
+        checkpoint_sha256: manifest.checkpoint_sha256.clone(),
+        checkpoint_hash: manifest.checkpoint_hash.clone(),
         checkpoint_cycle: manifest.checkpoint_cycle,
         cycle: manifest.cycle,
         ply_cap: manifest.ply_cap,
@@ -570,6 +759,7 @@ fn materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Result<Str
                     &report,
                     &replay,
                     &sidecars,
+                    TRAINING_GAME_SEED_BASE,
                 )?
             }
             ArenaOutcomeV1::Truncated { .. } => {
@@ -588,6 +778,7 @@ fn materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Result<Str
                     &report,
                     &prefix,
                     &sidecars,
+                    TRAINING_GAME_SEED_BASE,
                 )?
             }
             ArenaOutcomeV1::Aborted { .. } => {
@@ -666,11 +857,12 @@ fn materialize_game(
     report: &ArenaReportV1,
     replay: &ReplayV1,
     sidecars: &[TrajectorySidecar],
+    seed_base: u64,
 ) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
-    let expected_seed = TRAINING_GAME_SEED_BASE + u64::from(game_index / 2);
+    let expected_seed = seed_base + u64::from(game_index / 2);
     if replay.seed != expected_seed {
         return Err(format!(
             "game {game_index}: replay seed {} does not match frozen schedule {expected_seed}",
@@ -872,11 +1064,12 @@ fn materialize_game_truncated(
     report: &ArenaReportV1,
     prefix: &RolloutPrefixV1,
     sidecars: &[TrajectorySidecar],
+    seed_base: u64,
 ) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
-    let expected_seed = TRAINING_GAME_SEED_BASE + u64::from(game_index / 2);
+    let expected_seed = seed_base + u64::from(game_index / 2);
     if prefix.seed != expected_seed {
         return Err(format!(
             "game {game_index}: prefix seed {} does not match frozen schedule {expected_seed}",
@@ -1649,6 +1842,7 @@ mod tests {
             &report,
             &replay,
             std::slice::from_ref(&sidecar),
+            TRAINING_GAME_SEED_BASE,
         )
         .unwrap();
         assert_eq!(binding.completed_plies, replay.steps.len() as u32);
@@ -1657,11 +1851,18 @@ mod tests {
         let mut tampered = sidecar;
         tampered.records[0].observation.public.bank.gold ^= 1;
         let catalog_hash = tampered.catalog_hash.clone();
-        let error =
-            match materialize_game(&manifest, &catalog_hash, 0, &report, &replay, &[tampered]) {
-                Ok(_) => panic!("tampered observation must be rejected"),
-                Err(error) => error,
-            };
+        let error = match materialize_game(
+            &manifest,
+            &catalog_hash,
+            0,
+            &report,
+            &replay,
+            &[tampered],
+            TRAINING_GAME_SEED_BASE,
+        ) {
+            Ok(_) => panic!("tampered observation must be rejected"),
+            Err(error) => error,
+        };
         assert!(error.contains("observation mismatch"));
         fs::remove_dir_all(directory).ok();
     }
@@ -1778,6 +1979,7 @@ mod tests {
             &report,
             &prefix,
             std::slice::from_ref(&sidecar),
+            TRAINING_GAME_SEED_BASE,
         )
         .unwrap();
         assert_eq!(binding.completed_plies, cap);
@@ -1803,6 +2005,7 @@ mod tests {
             &report,
             &prefix,
             std::slice::from_ref(&wrong),
+            TRAINING_GAME_SEED_BASE,
         )
         .unwrap_err();
         assert!(error.contains("truncation mismatch"), "got: {error}");

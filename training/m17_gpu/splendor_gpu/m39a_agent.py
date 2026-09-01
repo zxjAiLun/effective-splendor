@@ -300,7 +300,7 @@ def run_agent_loop(
                         "type": "hello",
                         "protocol_version": PROTOCOL_VERSION,
                         "game_id": game_id,
-                        "agent_name": AGENT_NAME,
+                        "agent_name": agent_name,
                         "agent_version": checkpoint_hash,
                     }
                 )
