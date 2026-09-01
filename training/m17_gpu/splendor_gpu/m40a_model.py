@@ -11,6 +11,7 @@ design: the outcome head is the PPO value source (V = p_win − p_loss).
 from __future__ import annotations
 
 import copy
+import hashlib
 import math
 from pathlib import Path
 from typing import Any
@@ -57,13 +58,19 @@ class M40APredictiveHeads(nn.Module):
 class M40AModel(DeltaEntityMixer):
     """D2-v2 actor/trunk with the M40A predictive heads.
 
-    NOTE: this class REPLACES the M39A value/auxiliary heads; it is a
-    distinct model (M40A), not an M39A checkpoint variant. Actor weights
-    load from D2-v2 exactly as M39A does.
+    The inherited D2 sigmoid `.value` head is REMOVED at construction
+    (P2-1 of the implementation review): leaving it in place would
+    pollute the state_dict, the parameter count, and the checkpoint
+    identity with dead parameters that forward never reads. Actor
+    weights load from D2-v2 exactly as M39A does — the loader below
+    asserts the exact missing/unexpected key sets.
     """
 
     def __init__(self) -> None:
         super().__init__(hidden_dim=HIDDEN_DIM, blocks=4, dropout=0.0)
+        # Remove the inherited legacy sigmoid value head: delete the
+        # submodule so it disappears from parameters AND state_dict.
+        delattr(self, "value")
         self.heads = M40APredictiveHeads()
 
     def forward_packed(
@@ -82,6 +89,93 @@ class M40AModel(DeltaEntityMixer):
             torch.cat([expanded, action, expanded * action], dim=-1)
         ).squeeze(-1)
         return logits, self.heads(state)
+
+
+# The frozen expected key sets of the M40A head block (in state_dict
+# naming), used by the strict D2 loader below.
+_HEAD_KEYS = {
+    "heads.outcome.weight",
+    "heads.outcome.bias",
+    "heads.final_vp_self.weight",
+    "heads.final_vp_self.bias",
+    "heads.final_vp_opp.weight",
+    "heads.final_vp_opp.bias",
+    "heads.vp_difference.weight",
+    "heads.vp_difference.bias",
+    "heads.timing.weight",
+    "heads.timing.bias",
+}
+
+
+def load_d2_actor(
+    model: M40AModel,
+    base_checkpoint: Path,
+    expected_file_sha256: str,
+) -> None:
+    """Load ONLY the D2-v2 actor (trunk/action_encoder/policy) into the
+    model, with strict key-set assertions.
+
+    - verifies the D2-v2 checkpoint file SHA first;
+    - requires exactly the legacy `value.*` keys to be unexpected (the
+      M40A model deliberately has no `.value` head);
+    - requires exactly the M40A predictive-head keys to be missing;
+    - leaves the heads at whatever state they carry (the caller
+      initializes them from the frozen seed separately).
+    """
+    from .m39a_contract import file_sha256 as _file_sha256
+
+    actual_sha = _file_sha256(base_checkpoint)
+    if actual_sha != expected_file_sha256:
+        raise ValueError(
+            f"D2-v2 checkpoint SHA mismatch: expected {expected_file_sha256}, "
+            f"got {actual_sha}"
+        )
+    payload = torch.load(base_checkpoint, map_location="cpu", weights_only=False)
+    state = payload.get("state_dict")
+    if not isinstance(state, dict):
+        raise ValueError("invalid D2-v2 checkpoint payload")
+
+    # The D2-v2 checkpoint's value head is a Sequential of
+    # Linear/GELU/Linear/Sigmoid — the Sigmoid contributes no parameters,
+    # so exactly four value.* parameter keys must exist and be dropped.
+    value_keys = {
+        key for key in state if key.startswith("value.")
+    }
+    expected_value_keys = {
+        "value.0.weight",
+        "value.0.bias",
+        "value.2.weight",
+        "value.2.bias",
+    }
+    if value_keys != expected_value_keys:
+        raise ValueError(
+            f"D2-v2 checkpoint value head keys {sorted(value_keys)} != "
+            f"expected {sorted(expected_value_keys)}"
+        )
+    actor_state = {
+        key: value for key, value in state.items() if not key.startswith("value.")
+    }
+    result = model.load_state_dict(actor_state, strict=False)
+    if result.unexpected_keys:
+        raise ValueError(
+            f"D2-v2 actor load produced unexpected keys {sorted(result.unexpected_keys)}"
+        )
+    if set(result.missing_keys) != _HEAD_KEYS:
+        raise ValueError(
+            f"D2-v2 actor load missing keys {sorted(result.missing_keys)} "
+            f"(expected the M40A predictive heads {sorted(_HEAD_KEYS)})"
+        )
+
+
+def head_state_semantic_hash(model: M40AModel) -> str:
+    """A canonical SHA-256 over the ordered head parameter tensors — the
+    identity of the head state, used to prove the A/B fork and to bind
+    the pretrain input/output states into provenance."""
+    hasher = hashlib.sha256()
+    for name, tensor in sorted(model.heads.state_dict().items()):
+        hasher.update(name.encode("utf-8"))
+        hasher.update(tensor.detach().cpu().contiguous().numpy().tobytes())
+    return hasher.hexdigest()
 
 
 def _init_linear(linear: nn.Linear, generator: torch.Generator) -> None:

@@ -18,13 +18,7 @@ import torch
 from torch import nn
 
 from .m39a_contract import file_sha256
-from .m40a_dataset import (
-    final_vp_labels,
-    outcome_label,
-    timing_labels,
-    value_target,
-    vp_difference_label,
-)
+from .m40a_dataset import _labels_for_batch
 from .m40a_constants import (
     AUX_FAMILY_COEFFICIENT,
     DESIGN_SHA,
@@ -62,37 +56,6 @@ def _splitmix64_permutation(length: int, key: int) -> list[int]:
         key=lambda index: splitmix64((key << 32) ^ index) ^ (index << 1),
     )
     return keyed
-
-
-def _labels_for_batch(records: list[dict[str, Any]]) -> dict[str, Any]:
-    """Derive the per-family label tensors for a batch of records."""
-    outcomes: list[int | None] = []
-    vp_self: list[int | None] = []
-    vp_opp: list[int | None] = []
-    vp_diff: list[float | None] = []
-    timings: list[list[bool] | None] = []
-    values: list[float] = []
-    for record in records:
-        outcome = outcome_label(record)
-        outcomes.append({"win": 2, "draw": 1, "loss": 0}.get(outcome) if outcome else None)
-        labels = final_vp_labels(record)
-        if labels is None:
-            vp_self.append(None)
-            vp_opp.append(None)
-        else:
-            vp_self.append(labels[0])
-            vp_opp.append(labels[1])
-        vp_diff.append(vp_difference_label(record))
-        timings.append(timing_labels(record))
-        values.append(value_target(record))
-    return {
-        "outcome": outcomes,
-        "vp_self": vp_self,
-        "vp_opp": vp_opp,
-        "vp_diff": vp_diff,
-        "timing": timings,
-        "value": values,
-    }
 
 
 def _forward_heads(

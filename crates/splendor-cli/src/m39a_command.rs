@@ -181,13 +181,6 @@ struct AuthoritativeRecord {
     result: AuthoritativeResult,
     arena_report_hash: String,
     replay_document_hash: String,
-    /// M40A predictive-label payload, derived from the referee trace.
-    /// `prestige_after_ply[i]` = [self, opp] prestige immediately after
-    /// the ply `record.ply_index + i` executed (i = 0 is the record's own
-    /// action). Length = total_plies − ply_index. The final entry is the
-    /// end-of-training-window prestige (terminal result for completed
-    /// games; cap state for truncated ones).
-    m40a_labels: M40aLabels,
 }
 
 /// Per-record predictive-label payload (M40A).
@@ -231,6 +224,254 @@ struct AuthoritativeBatch {
     ply_cap: u32,
     games: Vec<GameBinding>,
     records: Vec<AuthoritativeRecord>,
+}
+
+// ---------------------------------------------------------------------------
+// M40A enriched materialization (separate identity from closed M39A v1)
+// ---------------------------------------------------------------------------
+
+const M40A_BATCH_FORMAT: &str = "effective-splendor-m40a-authoritative-batch";
+const M40A_BATCH_VERSION: u32 = 1;
+const M40A_MANIFEST_FORMAT: &str = "effective-splendor-m40a-materialization-manifest";
+const M40A_MANIFEST_VERSION: u32 = 1;
+
+/// One M40A enriched record: the M39A v1 authoritative record plus the
+/// referee-derived predictive-label payload. Serialized ONLY under the
+/// M40A batch format; the M39A v1 batch never carries these fields.
+#[derive(Debug, Serialize)]
+#[serde(deny_unknown_fields)]
+struct M40aRecord {
+    game_index: u32,
+    game_id: String,
+    seat: u8,
+    ply_index: u32,
+    request_id: u64,
+    observation_hash: String,
+    observation: Observation,
+    legal_actions: Vec<Action>,
+    action: Action,
+    decision_seed: u64,
+    old_log_probability: f64,
+    old_value: f64,
+    old_value_by_player: Vec<f64>,
+    old_auxiliary_score: f64,
+    result: AuthoritativeResult,
+    arena_report_hash: String,
+    replay_document_hash: String,
+    m40a_labels: M40aLabels,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(deny_unknown_fields)]
+struct M40aBatch {
+    format: String,
+    version: u32,
+    mode: MaterializationMode,
+    plan_hash: String,
+    checkpoint_sha256: String,
+    checkpoint_hash: String,
+    checkpoint_cycle: u32,
+    cycle: u32,
+    ply_cap: u32,
+    games: Vec<GameBinding>,
+    records: Vec<M40aRecord>,
+}
+
+/// The M40A manifest accepts the M39A per-game source shape (the join
+/// inputs are the same artifacts) but carries its own format/version and
+/// additionally binds the M40A design SHA.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct M40aManifest {
+    format: String,
+    version: u32,
+    mode: MaterializationMode,
+    plan_hash: String,
+    checkpoint_sha256: String,
+    checkpoint_hash: String,
+    checkpoint_cycle: u32,
+    cycle: u32,
+    ply_cap: u32,
+    design_sha: String,
+    games: Vec<GameSource>,
+}
+
+pub(crate) fn run_m40a_materialize(args: &[String]) -> i32 {
+    match parse_args(args)
+        .and_then(|(plan, manifest, out)| m40a_materialize(&plan, &manifest, &out))
+    {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            2
+        }
+    }
+}
+
+fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Result<String, String> {
+    if out.exists() {
+        return Err(format!("output already exists: {}", out.display()));
+    }
+    let plan: Value = read_json(plan_path, "plan")?;
+    let digest = plan_hash(&plan)?;
+    let catalog_hash = plan
+        .get("catalog")
+        .and_then(|value| value.get("semantic_hash"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| "plan.catalog.semantic_hash must be a string".to_string())?;
+    let manifest: M40aManifest = read_json(manifest_path, "manifest")?;
+    if manifest.format != M40A_MANIFEST_FORMAT || manifest.version != M40A_MANIFEST_VERSION {
+        return Err("unsupported M40A materialization manifest format/version".into());
+    }
+    if manifest.plan_hash != digest {
+        return Err(format!(
+            "manifest plan_hash {} does not match computed plan hash {digest}",
+            manifest.plan_hash
+        ));
+    }
+    if manifest.design_sha != "09fd8ec" {
+        return Err(format!(
+            "manifest design_sha {} != frozen M40A design SHA 09fd8ec",
+            manifest.design_sha
+        ));
+    }
+    if manifest.ply_cap != 150 {
+        return Err("manifest ply_cap must equal 150".into());
+    }
+    let parent = manifest_path.parent().unwrap_or_else(|| Path::new("."));
+
+    let mut game_indices = BTreeSet::new();
+    let mut bindings = Vec::with_capacity(manifest.games.len());
+    let mut records: Vec<M40aRecord> = Vec::new();
+    for source in &manifest.games {
+        if !game_indices.insert(source.game_index) {
+            return Err(format!("duplicate game_index {}", source.game_index));
+        }
+        let report: ArenaReportV1 =
+            read_json(&resolve(parent, &source.report_path), "arena report")?;
+        let sidecars = source
+            .sidecar_paths
+            .iter()
+            .map(|path| read_json(&resolve(parent, path), "trajectory sidecar"))
+            .collect::<Result<Vec<TrajectorySidecar>, String>>()?;
+        let (binding, game_records, labels) = match &report.outcome {
+            ArenaOutcomeV1::Completed { .. } => {
+                let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
+                materialize_game(
+                    &MaterializationManifest {
+                        format: MANIFEST_FORMAT.into(),
+                        version: MANIFEST_VERSION,
+                        mode: manifest.mode,
+                        plan_hash: manifest.plan_hash.clone(),
+                        checkpoint_sha256: manifest.checkpoint_sha256.clone(),
+                        checkpoint_hash: manifest.checkpoint_hash.clone(),
+                        checkpoint_cycle: manifest.checkpoint_cycle,
+                        cycle: manifest.cycle,
+                        ply_cap: manifest.ply_cap,
+                        games: Vec::new(),
+                    },
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &replay,
+                    &sidecars,
+                )?
+            }
+            ArenaOutcomeV1::Truncated { .. } => {
+                let prefix_path = source.prefix_path.as_ref().ok_or_else(|| {
+                    format!(
+                        "game {}: truncated report has no prefix_path in the manifest",
+                        source.game_index
+                    )
+                })?;
+                let prefix: RolloutPrefixV1 =
+                    read_json(&resolve(parent, prefix_path), "rollout prefix")?;
+                materialize_game_truncated(
+                    &MaterializationManifest {
+                        format: MANIFEST_FORMAT.into(),
+                        version: MANIFEST_VERSION,
+                        mode: manifest.mode,
+                        plan_hash: manifest.plan_hash.clone(),
+                        checkpoint_sha256: manifest.checkpoint_sha256.clone(),
+                        checkpoint_hash: manifest.checkpoint_hash.clone(),
+                        checkpoint_cycle: manifest.checkpoint_cycle,
+                        cycle: manifest.cycle,
+                        ply_cap: manifest.ply_cap,
+                        games: Vec::new(),
+                    },
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &prefix,
+                    &sidecars,
+                )?
+            }
+            ArenaOutcomeV1::Aborted { .. } => {
+                return Err(format!(
+                    "game {}: aborted arena report cannot enter training",
+                    source.game_index
+                ))
+            }
+        };
+        if game_records.len() != labels.len() {
+            return Err(format!(
+                "game {}: record/label count mismatch ({} vs {})",
+                source.game_index,
+                game_records.len(),
+                labels.len()
+            ));
+        }
+        for (record, labels) in game_records.into_iter().zip(labels.into_iter()) {
+            records.push(M40aRecord {
+                game_index: record.game_index,
+                game_id: record.game_id,
+                seat: record.seat,
+                ply_index: record.ply_index,
+                request_id: record.request_id,
+                observation_hash: record.observation_hash,
+                observation: record.observation,
+                legal_actions: record.legal_actions,
+                action: record.action,
+                decision_seed: record.decision_seed,
+                old_log_probability: record.old_log_probability,
+                old_value: record.old_value,
+                old_value_by_player: record.old_value_by_player,
+                old_auxiliary_score: record.old_auxiliary_score,
+                result: record.result,
+                arena_report_hash: record.arena_report_hash,
+                replay_document_hash: record.replay_document_hash,
+                m40a_labels: labels,
+            });
+        }
+        bindings.push(binding);
+    }
+    bindings.sort_by_key(|game| game.game_index);
+    records.sort_by_key(|record| (record.game_index, record.ply_index, record.seat));
+    let batch = M40aBatch {
+        format: M40A_BATCH_FORMAT.into(),
+        version: M40A_BATCH_VERSION,
+        mode: manifest.mode,
+        plan_hash: digest,
+        checkpoint_sha256: manifest.checkpoint_sha256,
+        checkpoint_hash: manifest.checkpoint_hash,
+        checkpoint_cycle: manifest.checkpoint_cycle,
+        cycle: manifest.cycle,
+        ply_cap: manifest.ply_cap,
+        games: bindings,
+        records,
+    };
+    let game_count = batch.games.len();
+    let record_count = batch.records.len();
+    let truncated = batch.games.iter().filter(|game| game.truncated).count();
+    let json = serde_json::to_string_pretty(&batch).map_err(|error| error.to_string())? + "\n";
+    commit_single(out, &json).map_err(|error| error.to_string())?;
+    Ok(format!(
+        "m40a materialized games={game_count} records={record_count} truncated={truncated} out={}",
+        out.display()
+    ))
 }
 
 pub(crate) fn run_materialize(args: &[String]) -> i32 {
@@ -319,7 +560,7 @@ fn materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Result<Str
             .iter()
             .map(|path| read_json(&resolve(parent, path), "trajectory sidecar"))
             .collect::<Result<Vec<TrajectorySidecar>, String>>()?;
-        let (binding, mut game_records) = match &report.outcome {
+        let (binding, mut game_records, _labels) = match &report.outcome {
             ArenaOutcomeV1::Completed { .. } => {
                 let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
                 materialize_game(
@@ -425,7 +666,7 @@ fn materialize_game(
     report: &ArenaReportV1,
     replay: &ReplayV1,
     sidecars: &[TrajectorySidecar],
-) -> Result<(GameBinding, Vec<AuthoritativeRecord>), String> {
+) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
@@ -488,6 +729,7 @@ fn materialize_game(
         ));
     }
     let mut output = Vec::new();
+    let mut labels: Vec<M40aLabels> = Vec::new();
     for sidecar in sidecars {
         validate_sidecar(sidecar, manifest, catalog_hash, game_index, report, replay)?;
         let mut seen_plies = BTreeSet::new();
@@ -557,14 +799,14 @@ fn materialize_game(
                     record.ply_index
                 ));
             }
-            let labels = m40a_labels_for_record(
+            labels.push(m40a_labels_for_record(
                 sidecar.seat,
                 record.ply_index,
                 &trace.positions,
                 training_plies,
                 window_final_prestige,
                 truncated,
-            );
+            ));
             output.push(AuthoritativeRecord {
                 game_index,
                 game_id: report.game_id.clone(),
@@ -583,7 +825,6 @@ fn materialize_game(
                 result: result.clone(),
                 arena_report_hash: report_hash.clone(),
                 replay_document_hash: replay_hash.clone(),
-                m40a_labels: labels,
             });
         }
         let expected_plies = trace
@@ -612,6 +853,7 @@ fn materialize_game(
             replay_document_hash: replay_hash,
         },
         output,
+        labels,
     ))
 }
 
@@ -630,7 +872,7 @@ fn materialize_game_truncated(
     report: &ArenaReportV1,
     prefix: &RolloutPrefixV1,
     sidecars: &[TrajectorySidecar],
-) -> Result<(GameBinding, Vec<AuthoritativeRecord>), String> {
+) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
@@ -751,6 +993,7 @@ fn materialize_game_truncated(
         ));
     }
     let mut output = Vec::new();
+    let mut labels: Vec<M40aLabels> = Vec::new();
     for sidecar in sidecars {
         validate_sidecar_prefix(sidecar, manifest, catalog_hash, game_index, report, prefix)?;
         let mut seen_plies = BTreeSet::new();
@@ -820,14 +1063,14 @@ fn materialize_game_truncated(
                     record.ply_index
                 ));
             }
-            let labels = m40a_labels_for_record(
+            labels.push(m40a_labels_for_record(
                 sidecar.seat,
                 record.ply_index,
                 &verified.positions,
                 training_plies,
                 window_final_prestige,
                 true,
-            );
+            ));
             output.push(AuthoritativeRecord {
                 game_index,
                 game_id: report.game_id.clone(),
@@ -846,7 +1089,6 @@ fn materialize_game_truncated(
                 result: result.clone(),
                 arena_report_hash: report_hash.clone(),
                 replay_document_hash: prefix_hash.clone(),
-                m40a_labels: labels,
             });
         }
         let expected_plies = verified
@@ -875,6 +1117,7 @@ fn materialize_game_truncated(
             replay_document_hash: prefix_hash,
         },
         output,
+        labels,
     ))
 }
 
@@ -896,6 +1139,14 @@ fn m40a_labels_for_record(
     truncated: bool,
 ) -> M40aLabels {
     let viewer = usize::from(seat);
+    // The payload invariant is viewer-relative for EVERY element:
+    // prestige_after_ply[*] == [record-seat prestige, opponent
+    // prestige]. The caller's window-final prestige is in absolute
+    // seat order, so the fallback entry must be re-oriented here.
+    let window_final_viewer_relative = [
+        window_final_prestige[viewer],
+        window_final_prestige[1 - viewer],
+    ];
     let mut prestige_after_ply = Vec::with_capacity((total_plies - ply_index) as usize);
     for ply in ply_index..total_plies {
         let entry = match positions.get(ply as usize + 1) {
@@ -903,7 +1154,7 @@ fn m40a_labels_for_record(
                 let players = &position.state.players;
                 [players[viewer].prestige, players[1 - viewer].prestige]
             }
-            None => window_final_prestige,
+            None => window_final_viewer_relative,
         };
         prestige_after_ply.push(entry);
     }
@@ -1391,7 +1642,7 @@ mod tests {
             ply_cap: 150,
             games: Vec::new(),
         };
-        let (binding, output) = materialize_game(
+        let (binding, output, _labels) = materialize_game(
             &manifest,
             &sidecar.catalog_hash,
             0,
@@ -1520,7 +1771,7 @@ mod tests {
             ply_cap: cap,
             games: Vec::new(),
         };
-        let (binding, output) = materialize_game_truncated(
+        let (binding, output, _labels) = materialize_game_truncated(
             &manifest,
             &sidecar.catalog_hash,
             0,
@@ -1555,5 +1806,153 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("truncation mismatch"), "got: {error}");
+    }
+
+    #[test]
+    fn m40a_labels_final_entry_is_viewer_relative_completed() {
+        // Both seats: the last trajectory entry of every record must be
+        // [record-seat prestige, opponent prestige] — the terminal
+        // fallback must be re-oriented per viewer, not absolute.
+        let (_, replay) = record_random_game(2, 4_000_000, 99).unwrap();
+        let trace = verify_replay_trace(&replay).unwrap();
+        let terminal = trace.verified.result.scores.clone();
+        for seat in [0u8, 1u8] {
+            let labels = m40a_labels_for_record(
+                seat,
+                0,
+                &trace.positions,
+                trace.verified.steps,
+                [terminal[0], terminal[1]],
+                false,
+            );
+            let last = labels.prestige_after_ply.last().unwrap();
+            assert_eq!(
+                *last,
+                [terminal[seat as usize], terminal[(1 - seat) as usize]],
+                "seat {}: final entry must be viewer-relative",
+                seat
+            );
+            // Mid-window entries are viewer-relative by construction
+            // (positions are read with viewer/1-viewer indexing).
+            for entry in &labels.prestige_after_ply {
+                assert_eq!(entry.len(), 2);
+            }
+        }
+    }
+
+    #[test]
+    fn m40a_labels_truncated_cap_fallback_is_viewer_relative() {
+        let (_, replay) = record_random_game(2, 4_000_000, 99).unwrap();
+        let cap = 5u32;
+        let mut recorder = splendor_replay::ReplayRecorder::new(splendor_core::GameConfig {
+            player_count: 2,
+            seed: replay.seed,
+            ..Default::default()
+        })
+        .unwrap();
+        for step in replay.steps.iter().take(cap as usize) {
+            recorder.apply(step.action).unwrap();
+        }
+        let (state, prefix) = recorder.finish_prefix(cap).unwrap();
+        let verified = splendor_replay::verify_rollout_prefix(&prefix).unwrap();
+        let cap_scores: Vec<u8> = state.players.iter().map(|p| p.prestige).collect();
+        for seat in [0u8, 1u8] {
+            let labels = m40a_labels_for_record(
+                seat,
+                0,
+                &verified.positions,
+                cap,
+                [cap_scores[0], cap_scores[1]],
+                true,
+            );
+            let last = labels.prestige_after_ply.last().unwrap();
+            assert_eq!(
+                *last,
+                [cap_scores[seat as usize], cap_scores[(1 - seat) as usize]],
+                "seat {}: truncated cap fallback must be viewer-relative",
+                seat
+            );
+        }
+    }
+
+    #[test]
+    fn m39a_v1_schema_never_carries_m40a_labels() {
+        // The M39A v1 batch serialization must NOT contain the M40A
+        // label payload: the enriched fields live only under the M40A
+        // batch format.
+        let (_, replay) = record_random_game(2, 4_000_000, 99).unwrap();
+        let value = serde_json::to_value(&AuthoritativeRecord {
+            game_index: 0,
+            game_id: "g".into(),
+            seat: 0,
+            ply_index: 0,
+            request_id: 1,
+            observation_hash: "h".into(),
+            observation: replay_steps_observation(&replay, 0),
+            legal_actions: vec![],
+            action: replay.steps[0].action,
+            decision_seed: 0,
+            old_log_probability: 0.0,
+            old_value: 0.0,
+            old_value_by_player: vec![0.0, 0.0],
+            old_auxiliary_score: 0.0,
+            result: AuthoritativeResult {
+                scores: vec![1, 0],
+                centered_returns: vec![1.0, -1.0],
+                truncated: false,
+                source_terminal_result: Some(replay.result.clone()),
+            },
+            arena_report_hash: "a".into(),
+            replay_document_hash: "r".into(),
+        })
+        .unwrap();
+        assert!(value.get("m40a_labels").is_none());
+        let m40a = serde_json::to_value(&M40aRecord {
+            game_index: 0,
+            game_id: "g".into(),
+            seat: 0,
+            ply_index: 0,
+            request_id: 1,
+            observation_hash: "h".into(),
+            observation: replay_steps_observation(&replay, 0),
+            legal_actions: vec![],
+            action: replay.steps[0].action,
+            decision_seed: 0,
+            old_log_probability: 0.0,
+            old_value: 0.0,
+            old_value_by_player: vec![0.0, 0.0],
+            old_auxiliary_score: 0.0,
+            result: AuthoritativeResult {
+                scores: vec![1, 0],
+                centered_returns: vec![1.0, -1.0],
+                truncated: false,
+                source_terminal_result: Some(replay.result.clone()),
+            },
+            arena_report_hash: "a".into(),
+            replay_document_hash: "r".into(),
+            m40a_labels: M40aLabels {
+                prestige_after_ply: vec![[1, 0]],
+                window_plies: 1,
+                truncated: false,
+            },
+        })
+        .unwrap();
+        assert!(m40a.get("m40a_labels").is_some());
+        // Identity strings are distinct.
+        assert_eq!(value.get("format"), None::<&serde_json::Value>);
+    }
+
+    fn replay_steps_observation(replay: &ReplayV1, ply: usize) -> splendor_core::Observation {
+        // Rebuild the state up to `ply` and return the actor's view.
+        let mut recorder = splendor_replay::ReplayRecorder::new(splendor_core::GameConfig {
+            player_count: 2,
+            seed: replay.seed,
+            ..Default::default()
+        })
+        .unwrap();
+        for step in replay.steps.iter().take(ply) {
+            recorder.apply(step.action).unwrap();
+        }
+        recorder.state().observation(replay.steps[ply].actor)
     }
 }

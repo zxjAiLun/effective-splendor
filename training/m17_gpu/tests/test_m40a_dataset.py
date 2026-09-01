@@ -91,11 +91,30 @@ def _record(
     centered: list[float] | None = None,
     prestige_after_ply: list[list[int]] | None = None,
     window_plies: int | None = None,
+    ranks: list[int] | None = None,
 ) -> dict:
     if scores is None:
         scores = [15, 10]
     if centered is None:
-        centered = [1.0, -1.0] if scores[0] > scores[1] else [-1.0, 1.0]
+        # Centered returns are the AUTHORITATIVE outcome (rank-based in
+        # the referee); equal scores with a rank tiebreak are NOT a draw.
+        if ranks is None:
+            # Default: the higher score wins the rank (synthetic games
+            # have no tiebreak); equal scores default to an equal rank.
+            if scores[0] > scores[1]:
+                ranks = [0, 1]
+            elif scores[0] < scores[1]:
+                ranks = [1, 0]
+            else:
+                ranks = [0, 0]
+        if ranks[0] < ranks[1]:
+            centered = [1.0, -1.0]
+        elif ranks[0] > ranks[1]:
+            centered = [-1.0, 1.0]
+        else:
+            centered = [0.0, 0.0]
+    if ranks is None:
+        ranks = [0, 1] if centered[0] > 0 else ([1, 0] if centered[0] < 0 else [0, 0])
     if prestige_after_ply is None:
         prestige_after_ply = []
     if window_plies is None:
@@ -108,6 +127,14 @@ def _record(
             "scores": scores,
             "centered_returns": centered,
             "truncated": truncated,
+            "source_terminal_result": None
+            if truncated
+            else {
+                "scores": scores,
+                "ranks": ranks,
+                "winners": [index for index, rank in enumerate(ranks) if rank == 0],
+                "reason": "prestige_threshold",
+            },
         },
         "m40a_labels": {
             "prestige_after_ply": prestige_after_ply,
@@ -120,8 +147,58 @@ def _record(
 def test_outcome_label_completed() -> None:
     assert outcome_label(_record(scores=[15, 10], seat=0)) == "win"
     assert outcome_label(_record(scores=[10, 15], seat=0)) == "loss"
-    assert outcome_label(_record(scores=[12, 12], seat=0)) == "draw"
+    # Equal scores default to an equal-rank draw in _record; the
+    # tiebreak cases have their own dedicated tests below.
+    assert outcome_label(_record(scores=[12, 12], ranks=[0, 0], seat=0)) == "draw"
     assert outcome_label(_record(scores=[10, 15], seat=1)) == "win"
+
+
+
+def test_outcome_label_uses_authoritative_centered_return_not_vp() -> None:
+    """Equal VP with a rank tiebreak is a WIN/LOSS, not a draw: the
+    outcome label must read the referee's centered return, which is
+    rank-derived, and never compare final VP."""
+    # Equal scores 12:12, viewer rank better -> win
+    record = _record(scores=[12, 12], ranks=[0, 1], seat=0)
+    assert outcome_label(record) == "win"
+    # Equal scores, opponent rank better -> loss
+    record = _record(scores=[12, 12], ranks=[1, 0], seat=0)
+    assert outcome_label(record) == "loss"
+    # True equal-rank -> draw
+    record = _record(scores=[12, 12], ranks=[0, 0], seat=0)
+    assert outcome_label(record) == "draw"
+    # Seat 1 mirror: viewer rank better -> win
+    record = _record(scores=[12, 12], ranks=[1, 0], seat=1)
+    assert outcome_label(record) == "win"
+
+
+def test_outcome_and_value_target_cannot_disagree() -> None:
+    """The Outcome class expectation and the value target come from the
+    same authoritative centered return: win <=> +1, draw <=> 0,
+    loss <=> -1."""
+    for centered, seat in [([1.0, -1.0], 0), ([-1.0, 1.0], 0), ([0.0, 0.0], 0), ([1.0, -1.0], 1)]:
+        record = _record(centered=centered, seat=seat)
+        label = outcome_label(record)
+        target = value_target(record)
+        expected = {"win": 1.0, "draw": 0.0, "loss": -1.0}[label]
+        assert target == expected
+
+
+def test_outcome_label_fails_closed_on_corrupted_centered_return() -> None:
+    record = _record(centered=[0.5, -0.5])
+    with pytest.raises(LabelError, match="fail closed"):
+        outcome_label(record)
+
+
+def test_outcome_label_fails_closed_on_rank_disagreement() -> None:
+    """centered return says win but the ranks say loss -> corrupted."""
+    record = _record(
+        scores=[15, 10],
+        centered=[1.0, -1.0],
+        ranks=[1, 0],  # inverted vs the centered return
+    )
+    with pytest.raises(LabelError, match="corrupted"):
+        outcome_label(record)
 
 
 def test_outcome_label_truncated_is_none() -> None:
@@ -216,6 +293,91 @@ def test_timing_opponent_next_turn_finish() -> None:
     assert labels[5] is True  # opp within 8
     # self never finishes
     assert labels[0] is False
+
+
+def _timing_record(seat: int, finish_own_decision: int, opp_finish: int | None = None) -> dict:
+    """Build a record whose SELF first reaches 15 VP on own decision
+    `finish_own_decision` (1-based, pending = #1), and whose OPPONENT
+    first reaches 15 on opponent decision `opp_finish` (None = never).
+
+    The window is long enough for 12 own decisions; prestige stays
+    below 15 until the finishing decision and stays at 15 after.
+    """
+    ply_index = 0
+    window = 40
+    prestige = []
+    self_vp = 0
+    opp_vp = 0
+    self_decision = 0
+    opp_decision = 0
+    for ply in range(ply_index, window):
+        if ply % 2 == seat:
+            self_decision += 1
+            if self_decision == finish_own_decision:
+                self_vp = 15
+        else:
+            opp_decision += 1
+            if opp_finish is not None and opp_decision == opp_finish:
+                opp_vp = 15
+        prestige.append([self_vp, opp_vp] if seat == 0 else [opp_vp, self_vp])
+    final = [15, 0] if seat == 0 else [0, 15]
+    return _record(
+        seat=seat,
+        ply_index=ply_index,
+        scores=final,
+        prestige_after_ply=prestige,
+        window_plies=window,
+    )
+
+
+def test_timing_self_finishes_on_decision_3() -> None:
+    """Eventual self winner finishing on own decision #3: within 4 and 8
+    but NOT within 2 — the final VP must not leak into the horizon."""
+    labels = timing_labels(_timing_record(seat=0, finish_own_decision=3))
+    assert labels[0] is False  # self@2
+    assert labels[1] is True   # self@4
+    assert labels[2] is True   # self@8
+    assert labels[3:6] == [False] * 3
+
+
+def test_timing_self_finishes_on_decision_9() -> None:
+    """Eventual self winner finishing on own decision #9: NO horizon is
+    true — the strict ordinal rule kills the final-score fallback."""
+    labels = timing_labels(_timing_record(seat=0, finish_own_decision=9))
+    assert labels[0] is False
+    assert labels[1] is False
+    assert labels[2] is False
+
+
+def test_timing_opponent_finishes_on_decision_3() -> None:
+    labels = timing_labels(_timing_record(seat=0, finish_own_decision=20, opp_finish=3))
+    assert labels[3] is False  # opp@2
+    assert labels[4] is True   # opp@4
+    assert labels[5] is True   # opp@8
+    assert labels[0:3] == [False] * 3
+
+
+def test_timing_opponent_finishes_on_decision_9() -> None:
+    labels = timing_labels(_timing_record(seat=0, finish_own_decision=20, opp_finish=9))
+    assert labels[3] is False
+    assert labels[4] is False
+    assert labels[5] is False
+
+
+def test_timing_seat1_self_finishes_on_decision_9() -> None:
+    """Seat-1 records must orient the viewer-relative payload correctly
+    (this is the Python-side counterpart of the Rust seat-orientation
+    fix: prestige_after_ply[*][0] is always the RECORD seat's)."""
+    labels = timing_labels(_timing_record(seat=1, finish_own_decision=9))
+    assert labels[0:3] == [False] * 3
+
+
+def test_timing_early_game_eventual_winner_not_positive() -> None:
+    """An early-game record from an eventual winner must not become
+    positive merely because final VP >= 15: with the finish on decision
+    #12, every horizon is false even though the record's seat won."""
+    labels = timing_labels(_timing_record(seat=0, finish_own_decision=12))
+    assert labels == [False] * 6
 
 
 def test_timing_no_finish_all_false() -> None:

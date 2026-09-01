@@ -53,19 +53,54 @@ def _bankers_round(value: float) -> int:
 
 def outcome_label(record: dict[str, Any]) -> str | None:
     """'win' | 'draw' | 'loss' for the record's seat, or None if the
-    game is truncated (no W/D/L label is ever fabricated)."""
+    game is truncated (no W/D/L label is ever fabricated).
+
+    The label is the AUTHORITATIVE realized outcome, read from the
+    referee-computed `centered_returns[seat]` — NOT derived from final VP
+    comparison. Splendor can split equal-VP games by tiebreak rank, so
+    VP comparison would mislabel tiebreak wins as draws and disagree
+    with the value target (which is the same centered return).
+    """
     result = record["result"]
     if result["truncated"]:
         return None
-    scores = result["scores"]
     seat = int(record["seat"])
-    self_score = int(scores[seat])
-    opp_score = int(scores[1 - seat])
-    if self_score > opp_score:
-        return "win"
-    if self_score < opp_score:
-        return "loss"
-    return "draw"
+    centered = result["centered_returns"][seat]
+    if centered == 1.0:
+        label = "win"
+    elif centered == 0.0:
+        label = "draw"
+    elif centered == -1.0:
+        label = "loss"
+    else:
+        raise LabelError(
+            f"game {record['game_index']} seat {seat}: completed "
+            f"centered_returns entry {centered!r} is not one of "
+            "{-1.0, 0.0, +1.0} — fail closed"
+        )
+    # Consistency check against the authoritative terminal ranks when
+    # present: the rank-derived outcome must agree with the centered
+    # return (both come from the referee, so disagreement means a
+    # corrupted record).
+    terminal = result.get("source_terminal_result")
+    if terminal is not None:
+        ranks = terminal.get("ranks")
+        if isinstance(ranks, list) and len(ranks) == 2:
+            own_rank = int(ranks[seat])
+            opp_rank = int(ranks[1 - seat])
+            if own_rank < opp_rank:
+                expected = "win"
+            elif own_rank > opp_rank:
+                expected = "loss"
+            else:
+                expected = "draw"
+            if expected != label:
+                raise LabelError(
+                    f"game {record['game_index']} seat {seat}: centered "
+                    f"return says {label!r} but terminal ranks say "
+                    f"{expected!r} — corrupted record, fail closed"
+                )
+    return label
 
 
 def final_vp_labels(record: dict[str, Any]) -> tuple[int, int] | None:
@@ -102,138 +137,107 @@ def value_target(record: dict[str, Any]) -> float:
     return float(centered[seat])
 
 
-def _own_decision_prestige_trajectory(record: dict[str, Any]) -> list[int]:
-    """Indices (relative to prestige_after_ply) of the SUBSEQUENT own
-    decision plies, including the tagged pending decision itself.
+def _decision_indices(record: dict[str, Any], seat: int) -> list[int]:
+    """Payload-relative indices of `seat`'s subsequent decision plies,
+    including the tagged pending decision itself at relative index 0.
 
     `prestige_after_ply[i]` is the prestige after ply
-    `record.ply_index + i`. The tagged decision is ply_index (index 0 in
-    the payload); the player's next own decision is the next ply whose
-    actor is the record's seat. Actors alternate in 1v1, so own decisions
-    occur every 2 plies — but the implementation derives them from the
-    payload's seat ordering rather than assuming alternation: the
-    relative index of the k-th subsequent own decision is recovered from
-    the actors implicit in the ply arithmetic (seat parity of
-    ply_index + i must equal the seat's parity only if actors strictly
-    alternate, which the engine guarantees in 1v1).
+    `record.ply_index + i`; ply p has actor p % 2 in 1v1 (the engine
+    guarantees strict alternation from seat 0), so a ply belongs to
+    `seat` iff `(ply_index + relative) % 2 == seat`.
     """
-    labels = record.get("m40a_labels")
-    if labels is None:
-        raise LabelError(
-            f"game {record['game_index']} ply {record['ply_index']}: "
-            "record lacks the m40a_labels payload"
-        )
+    labels = record["m40a_labels"]
     window = int(labels["window_plies"])
     ply_index = int(record["ply_index"])
-    seat = int(record["seat"])
-    trajectory: list[int] = []
-    # ply p has actor p % 2 in 1v1 (seat 0 acts on even plies). The
-    # engine guarantees strict alternation from seat 0.
-    for relative in range(0, window - ply_index):
-        ply = ply_index + relative
-        if ply % 2 == seat:
-            trajectory.append(relative)
-    return trajectory
+    return [
+        relative
+        for relative in range(0, window - ply_index)
+        if (ply_index + relative) % 2 == seat
+    ]
+
+
+def _first_finish_ordinal(
+    decision_indices: list[int],
+    prestige_after_ply: list[list[int]],
+    prestige_slot: int,
+) -> int | None:
+    """The 1-based ordinal of the first decision whose POST-action
+    prestige reaches 15, or None if no such decision exists in the
+    window.
+
+    Horizon membership is judged STRICTLY from this ordinal — never from
+    the final score. An eventual winner whose finish falls beyond the
+    horizon must NOT be labelled positive.
+    """
+    for ordinal, relative in enumerate(decision_indices, start=1):
+        if relative < len(prestige_after_ply):
+            if prestige_after_ply[relative][prestige_slot] >= 15:
+                return ordinal
+    return None
 
 
 def timing_labels(record: dict[str, Any]) -> list[bool] | None:
     """Six booleans: [self@2, self@4, self@8, opp@2, opp@4, opp@8].
 
-    The tagged pending decision IS own-turn #1. A horizon k is true iff
-    the player reaches 15 VP on or before their k-th decision from the
-    tagged state (inclusive of the tagged decision itself). None for
-    truncated games.
+    The tagged pending decision IS own-turn #1 (the opponent's pending
+    decision, one ply later, is their turn #1). A horizon h is true iff
+    the player's first finish decision ordinal satisfies
+    `first_finish_ordinal <= h`. There is NO final-score fallback: an
+    eventual winner that finishes on decision #9 is self@2=false,
+    self@4=false, self@8=false. None for truncated games.
     """
     if record["result"]["truncated"]:
         return None
     labels = record["m40a_labels"]
     prestige = labels["prestige_after_ply"]
     seat = int(record["seat"])
-    window = int(labels["window_plies"])
-    ply_index = int(record["ply_index"])
-    final_scores = record["result"]["scores"]
-    final_self = int(final_scores[seat])
-    final_opp = int(final_scores[1 - seat])
 
-    # Own-decision relative indices (including the tagged one at 0).
-    own_indices = _own_decision_prestige_trajectory(record)
-    opp_indices = [
-        relative
-        for relative in range(0, window - ply_index)
-        if (ply_index + relative) % 2 == (1 - seat)
+    own_indices = _decision_indices(record, seat)
+    opp_indices = _decision_indices(record, 1 - seat)
+
+    self_finish = _first_finish_ordinal(own_indices, prestige, 0)
+    opp_finish = _first_finish_ordinal(opp_indices, prestige, 1)
+
+    self_flags = [
+        self_finish is not None and self_finish <= horizon
+        for horizon in TIMING_HORIZONS
     ]
-
-    def finishes_within(indices: list[int], final_vp: int) -> list[bool]:
-        result_flags = []
-        for horizon in TIMING_HORIZONS:
-            # The k-th own decision (1-based) corresponds to indices[k-1].
-            if len(indices) >= horizon:
-                relative = indices[horizon - 1]
-                # Prestige AFTER that decision = payload[relative].
-                # But a finish ON decision k also occurs if an earlier
-                # decision already crossed 15: check all decisions up to k.
-                reached = False
-                for k in range(horizon):
-                    idx = indices[k]
-                    entry = prestige[idx] if idx < len(prestige) else None
-                    if entry is not None:
-                        vp = entry[0]  # prestige_after_ply is [self, opp]
-                        # NOTE: entry[0] is SELF prestige only when the
-                        # trajectory was built for this seat; it is.
-                        if vp >= 15:
-                            reached = True
-                            break
-                # The game ended: if the player finished at any point and
-                # the final VP is >= 15 and the finish happened at or
-                # before the horizon's decision, flag true. The exact
-                # finish decision is the first own decision where the
-                # prestige-after crossed 15; if none crossed within the
-                # payload but the final VP >= 15, the finish occurred on
-                # the terminal ply — attributed to the last own decision.
-                if not reached and final_vp >= 15:
-                    # Terminal finish: attribute to the last available
-                    # own decision within the window (the payload's final
-                    # entries carry the terminal prestige).
-                    reached = True
-                result_flags.append(reached if len(indices) >= horizon else False)
-            else:
-                # Fewer than k own decisions remain; the finish cannot be
-                # within k unless the game already ended before them —
-                # which the final_vp check below handles via the caller.
-                result_flags.append(final_vp >= 15)
-        return result_flags
-
-    # NOTE: prestige_after_ply entries are [self, opp] relative to the
-    # RECORD's seat. For the opponent timing we need OPPONENT prestige
-    # after OPPONENT decisions — entry[1] gives opponent prestige after
-    # each ply, and opponent decisions are at opp_indices.
-    self_flags: list[bool] = []
-    for horizon in TIMING_HORIZONS:
-        flag = False
-        if len(own_indices) >= horizon:
-            for k in range(horizon):
-                idx = own_indices[k]
-                if idx < len(prestige) and prestige[idx][0] >= 15:
-                    flag = True
-                    break
-        if not flag and final_self >= 15:
-            flag = True
-        self_flags.append(flag)
-
-    opp_flags: list[bool] = []
-    for horizon in TIMING_HORIZONS:
-        flag = False
-        if len(opp_indices) >= horizon:
-            for k in range(horizon):
-                idx = opp_indices[k]
-                if idx < len(prestige) and prestige[idx][1] >= 15:
-                    flag = True
-                    break
-        if not flag and final_opp >= 15:
-            flag = True
-        opp_flags.append(flag)
-
+    opp_flags = [
+        opp_finish is not None and opp_finish <= horizon
+        for horizon in TIMING_HORIZONS
+    ]
     return self_flags + opp_flags
+
+
+def _labels_for_batch(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Derive the per-family label tensors for a batch of records."""
+    outcomes: list[int | None] = []
+    vp_self: list[int | None] = []
+    vp_opp: list[int | None] = []
+    vp_diff: list[float | None] = []
+    timings: list[list[bool] | None] = []
+    values: list[float] = []
+    for record in records:
+        outcome = outcome_label(record)
+        outcomes.append({"win": 2, "draw": 1, "loss": 0}.get(outcome) if outcome else None)
+        labels = final_vp_labels(record)
+        if labels is None:
+            vp_self.append(None)
+            vp_opp.append(None)
+        else:
+            vp_self.append(labels[0])
+            vp_opp.append(labels[1])
+        vp_diff.append(vp_difference_label(record))
+        timings.append(timing_labels(record))
+        values.append(value_target(record))
+    return {
+        "outcome": outcomes,
+        "vp_self": vp_self,
+        "vp_opp": vp_opp,
+        "vp_diff": vp_diff,
+        "timing": timings,
+        "value": values,
+    }
 
 
 def _bucket_of(game_index: int) -> str:

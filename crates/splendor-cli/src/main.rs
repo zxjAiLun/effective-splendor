@@ -120,6 +120,9 @@ fn main() {
             self_play_v2_command::run_collect_gpu_self_play_v2(&argv[2..]),
         ),
         Some("m39a-materialize") => std::process::exit(m39a_command::run_materialize(&argv[2..])),
+        Some("m40a-materialize") => {
+            std::process::exit(m39a_command::run_m40a_materialize(&argv[2..]))
+        }
         Some("diagnose-gpu-self-play-v2") => std::process::exit(
             self_play_v2_command::run_diagnose_gpu_self_play_v2(&argv[2..]),
         ),
