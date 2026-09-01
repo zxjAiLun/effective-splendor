@@ -47,7 +47,7 @@ ROOT = Path("local-artifacts").resolve()
 REPO = Path(__file__).resolve().parent.parent.parent
 
 PROV_FORMAT = "effective-splendor-m39a-evaluation-provenance-ledger"
-PROV_VERSION = 3
+PROV_VERSION = 4
 
 SCORES = {"win": 1.0, "draw": 0.5, "loss": 0.0}
 
@@ -109,6 +109,9 @@ FROZEN_GATE_REPORT_SHA256 = {
 }
 FROZEN_PLAN_SHA256 = None  # plan is hash-bound via PLAN_HASH (canonical JSON)
 FROZEN_CATALOG_SHA256 = "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4"
+FROZEN_EXECUTABLE_SHA256 = (
+    "d8c2ee524e4a58b221986025d77ce5857527e2ca0db79292c9160d3a449a5828"
+)
 FROZEN_RULESET_FINGERPRINT = (
     "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb"
 )
@@ -269,12 +272,27 @@ def _verify_config(actual: dict[str, Any], expected: dict[str, Any], slot: str) 
             )
         got_args = [str(a) for a in got.get("args", [])]
         want_args = want["args"]
-        # Normalize the dynamic server URL.
+        # Normalize ONLY the dynamic port of --server-url. The host is
+        # frozen: the resident inference server always bound the loopback
+        # interface, so anything other than 127.0.0.1 is a tamper. A valid
+        # dynamic port is 1024..65535; anything else fails.
         got_norm = list(got_args)
         if "--server-url" in got_norm:
             index = got_norm.index("--server-url")
             if index + 1 >= len(got_norm):
                 raise SystemExit(f"slot {slot}: agent {seat} has a valueless --server-url")
+            value = got_norm[index + 1]
+            host, _, port_text = value.rpartition(":")
+            if host != "127.0.0.1":
+                raise SystemExit(
+                    f"slot {slot}: agent seat {seat} --server-url host "
+                    f"{host!r} != frozen loopback 127.0.0.1"
+                )
+            if not port_text.isdigit() or not (1024 <= int(port_text) <= 65535):
+                raise SystemExit(
+                    f"slot {slot}: agent seat {seat} --server-url port "
+                    f"{port_text!r} is not a valid dynamic port"
+                )
             got_norm[index + 1] = "SERVER_URL"
         if got_norm != want_args:
             raise SystemExit(
@@ -461,7 +479,7 @@ def _runtime_bindings(gate: str) -> dict[str, Any]:
         "catalog_path": str(catalog_path),
         "catalog_file_sha256": FROZEN_CATALOG_SHA256,
         "executable_path": str(exe_path),
-        "executable_sha256": file_sha256(exe_path),
+        "executable_sha256": FROZEN_EXECUTABLE_SHA256,
         "candidate_checkpoint_path": str(ROOT / "m39a-formal-run/cycle-8.pt"),
         "candidate_checkpoint_file_sha256": CANDIDATE_CHECKPOINT_FILE_SHA256,
         "candidate_checkpoint_semantic_hash": CANDIDATE_CHECKPOINT_SEMANTIC_HASH,
@@ -555,6 +573,7 @@ def _failures_bindings(ledger: dict[str, Any]) -> list[str]:
     # evaluation ledger, or gate report fails against the frozen value
     # (a rebuild alone cannot re-bless it).
     disk_checks = (
+        ("executable_sha256", REPO / EXE_REL, FROZEN_EXECUTABLE_SHA256),
         ("catalog_file_sha256", REPO / CATALOG_PATH, FROZEN_CATALOG_SHA256),
         (
             "candidate_checkpoint_file_sha256",

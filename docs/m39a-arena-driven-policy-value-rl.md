@@ -1541,7 +1541,7 @@ independently confirmed at −86.81 bps), followed by a second review
 (`HOLD — NEEDS_ONE_EVALUATION_PROVENANCE_FIX`) whose three tamper
 experiments (changed M07 `--max-nodes` with forged report, synchronized
 fake non-termination evidence, unbound runtime identities) are all
-closed in provenance ledger v2:
+closed in provenance ledger v2/v3:
 
 - **Exact frozen-config contract** (the reviewer's tamper 1): every slot's
   config is compared against the **complete frozen contract** — game id,
@@ -1628,10 +1628,10 @@ Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`
 (v2, per-game statistics),
 `local-artifacts/m39a-eval-g2/` (evaluation ledger SHA
 `7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9` +
-provenance ledger v2), `local-artifacts/m39a-eval-g3/` (evaluation
+provenance ledger v4), `local-artifacts/m39a-eval-g3/` (evaluation
 ledger SHA
 `fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3` +
-provenance ledger v2) — all local-only, not published.
+provenance ledger v4) — all local-only, not published.
 Formal-run provenance ledger: `VALID` (review `42cbdd6 = APPROVED`,
 `FORMAL_RUN_TRAINING = VALID_WITH_RECORDED_INFRASTRUCTURE_RETRY`).
 

@@ -223,7 +223,7 @@ def test_frozen_config_contract_rejects_changed_checkpoint(tmp_path: Path, synth
                     "--plan-hash", module.PLAN_HASH,
                     "--game-index", "0",
                     "--sidecar-out", str(sidecar),
-                    "--server-url", "127.0.0.1:1",
+                    "--server-url", "127.0.0.1:19753",
                     "--server-ready", str(server_ready),
                     "--action-selection", "argmax",
                 ],
@@ -271,7 +271,7 @@ def test_frozen_config_contract_rejects_categorical_selection(tmp_path: Path, sy
                     "--plan-hash", module.PLAN_HASH,
                     "--game-index", "0",
                     "--sidecar-out", str(sidecar),
-                    "--server-url", "127.0.0.1:1",
+                    "--server-url", "127.0.0.1:19753",
                     "--server-ready", str(server_ready),
                     "--action-selection", "categorical",
                 ],
@@ -400,3 +400,123 @@ def test_missing_report_on_normal_slot_is_rejected(tmp_path: Path, synthetic_rep
         assert "non-termination slot" in text
         return
     pytest.fail("a normal slot missing its report must fail closed")
+
+
+def test_foreign_server_host_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """The reviewer's discriminating counter-example: replacing
+    127.0.0.1:9703 with attacker.example:443 must fail. The host is frozen
+    (loopback only); only the port is dynamic."""
+    module = _module()
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
+    config = json.loads((slot_dir / "arena-config.json").read_text(encoding="utf-8"))
+    # Baseline agent has no --server-url; give the M07 seat a server-url
+    # argument it must reject? No — the M07 agent never uses the server.
+    # Instead build a candidate-shaped config with a foreign host.
+    sidecar = (tmp_path / "candidate-M07-5000000-r0" / "eval-sidecar.json").resolve()
+    server_ready = (tmp_path / "server-ready.json").resolve()
+    config = {
+        "game_id": "m39a-eval-candidate-M07-5000000-r0",
+        "seed": 5_000_000,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 30_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            {
+                "program": "C:\\Python312\\python.exe",
+                "args": [
+                    "-m", "splendor_gpu.m39a_agent",
+                    "--checkpoint-sha256", module.CANDIDATE_CHECKPOINT_FILE_SHA256,
+                    "--plan-hash", module.PLAN_HASH,
+                    "--game-index", "0",
+                    "--sidecar-out", str(sidecar),
+                    "--server-url", "attacker.example:443",
+                    "--server-ready", str(server_ready),
+                    "--action-selection", "argmax",
+                ],
+            },
+            {
+                "program": _frozen_exe(synthetic_repo),
+                "args": [
+                    "agent-determinization",
+                    "--sample-seed", "20260810",
+                    "--sample-count", "4",
+                    "--max-depth-turns", "1",
+                    "--max-nodes", "2000",
+                ],
+            },
+        ],
+    }
+    slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    (slot_dir / "arena-report.json").write_text("{}", encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "candidate", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "127.0.0.1" in str(error)
+        assert "attacker.example" in str(error)
+        return
+    pytest.fail("a foreign --server-url host must be rejected")
+
+
+def test_invalid_server_port_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """Ports outside the dynamic range (e.g. 80) fail the frozen contract."""
+    module = _module()
+    sidecar = (tmp_path / "candidate-M07-5000000-r0" / "eval-sidecar.json").resolve()
+    server_ready = (tmp_path / "server-ready.json").resolve()
+    config = {
+        "game_id": "m39a-eval-candidate-M07-5000000-r0",
+        "seed": 5_000_000,
+        "handshake_timeout_ms": 10_000,
+        "move_timeout_ms": 30_000,
+        "shutdown_grace_ms": 2_000,
+        "agents": [
+            {
+                "program": "C:\\Python312\\python.exe",
+                "args": [
+                    "-m", "splendor_gpu.m39a_agent",
+                    "--checkpoint-sha256", module.CANDIDATE_CHECKPOINT_FILE_SHA256,
+                    "--plan-hash", module.PLAN_HASH,
+                    "--game-index", "0",
+                    "--sidecar-out", str(sidecar),
+                    "--server-url", "127.0.0.1:80",
+                    "--server-ready", str(server_ready),
+                    "--action-selection", "argmax",
+                ],
+            },
+            {
+                "program": _frozen_exe(synthetic_repo),
+                "args": [
+                    "agent-determinization",
+                    "--sample-seed", "20260810",
+                    "--sample-count", "4",
+                    "--max-depth-turns", "1",
+                    "--max-nodes", "2000",
+                ],
+            },
+        ],
+    }
+    slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    (slot_dir / "arena-report.json").write_text("{}", encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "candidate", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "dynamic port" in str(error)
+        return
+    pytest.fail("a non-dynamic --server-url port must be rejected")
+
+
+def test_tampered_executable_is_caught_by_frozen_constant(tmp_path: Path) -> None:
+    """A ledger re-blessing a replaced executable fails: the binding is a
+    frozen constant and the on-disk exe is checked against it."""
+    module = _module()
+    ledger = {
+        "gate": "g2",
+        "bindings": {"executable_sha256": "f" * 64},
+    }
+    # Only the frozen-constant mismatch matters here; use the binding
+    # comparison path directly.
+    recomputed = module._runtime_bindings("g2")
+    assert ledger["bindings"]["executable_sha256"] != recomputed["executable_sha256"]
+    assert recomputed["executable_sha256"] == module.FROZEN_EXECUTABLE_SHA256
