@@ -11,7 +11,7 @@ import {
   validateReviewTrace,
 } from "../trace-runtime.mjs";
 import { type DevelopmentCardData } from "../development-card";
-import { BoardSurface } from "../components/replay-board";
+import { BoardSurface, usePlyNavigation } from "../components/replay-board";
 
 type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
@@ -239,6 +239,19 @@ export default function ReviewPage() {
   const activeReviewer = reviewers.find((r) => r.id === reviewerId) ?? null;
 
   const changeFrame = (next: number) => setFrameIndex(Math.max(0, Math.min(frames.length - 1, next)));
+
+  usePlyNavigation(frames.length, (delta) => {
+    setFrameIndex((current) => Math.max(0, Math.min(frames.length - 1, current + delta)));
+  });
+
+  useEffect(() => {
+    const timeline = document.querySelector<HTMLElement>(".timeline");
+    const activeBtn = document.querySelector<HTMLElement>(".timeline button.current");
+    if (timeline && activeBtn) {
+      const targetLeft = activeBtn.offsetLeft - timeline.clientWidth / 2 + activeBtn.clientWidth / 2;
+      timeline.scrollTo({ left: targetLeft, behavior: "smooth" });
+    }
+  }, [frameIndex]);
 
   return (
     <main className="studio">
