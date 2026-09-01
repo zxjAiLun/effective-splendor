@@ -8,16 +8,15 @@ import {
   isAnalysisTraceEnvelope,
   validateAnalysisTrace,
 } from "./trace-runtime.mjs";
-import { DevelopmentCard, EmptyDevelopmentCard, type DevelopmentCardData } from "./development-card";
+import { type DevelopmentCardData } from "./development-card";
 import {
   BoardSurface,
   ReplayTimeline,
-  gemCode,
   simpleActionLabel,
+  usePlyNavigation,
   type Action,
   type CardId,
   type BoardFrame as BoardFrameLike,
-  type Gems,
   type NobleId,
   type PlayerId,
   type PlayerView,
@@ -106,15 +105,6 @@ type HumanReplayArchive = {
     recorded_action: Action;
   }>;
 };
-
-const GEM_KEYS: Array<keyof Gems> = [
-  "white",
-  "blue",
-  "green",
-  "red",
-  "black",
-  "gold",
-];
 
 const DEMO_TRACE: Trace = {
   format: "effective-splendor-analysis-trace",
@@ -251,14 +241,18 @@ export default function ReplayStudio() {
     setFrameIndex(Math.max(0, Math.min(trace.frames.length - 1, next)));
   };
 
+  usePlyNavigation(trace.frames.length, (delta) => {
+    setFrameIndex((current) => Math.max(0, Math.min(trace.frames.length - 1, current + delta)));
+  });
+
   useEffect(() => {
-    const navigate = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "ArrowLeft") setFrameIndex((current) => Math.max(0, current - 1));
-      if (event.key === "ArrowRight") setFrameIndex((current) => Math.min(trace.frames.length - 1, current + 1));
-    };
-    window.addEventListener("keydown", navigate);
-    return () => window.removeEventListener("keydown", navigate);
-  }, [trace.frames.length]);
+    const timeline = document.querySelector<HTMLElement>(".timeline");
+    const activeBtn = document.querySelector<HTMLElement>(".timeline button.current");
+    if (timeline && activeBtn) {
+      const targetLeft = activeBtn.offsetLeft - timeline.clientWidth / 2 + activeBtn.clientWidth / 2;
+      timeline.scrollTo({ left: targetLeft, behavior: "smooth" });
+    }
+  }, [frameIndex]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("humanReplay") !== "1") return;
@@ -405,28 +399,98 @@ export default function ReplayStudio() {
 
 function HumanReplayAudit({ archive }: { archive: HumanReplayArchive }) {
   const [index, setIndex] = useState(0);
+  const [reveal, setReveal] = useState(false);
   const frame = archive.frames[index];
-  const view = frame.player_view.public;
-  const cards = useMemo(() => new Map((archive.catalog?.cards ?? []).map(card=>[card.id,card])), [archive.catalog]);
+  const cards = useMemo(() => new Map((archive.catalog?.cards ?? []).map((card) => [card.id, card])), [archive.catalog]);
+  const nobles = useMemo(() => new Map((archive.catalog?.nobles ?? []).map((noble) => [noble.id, noble])), [archive.catalog]);
   const change = (next: number) => setIndex(Math.max(0, Math.min(archive.frames.length - 1, next)));
-  return <main className="studio human-replay-audit">
-    <header className="topbar">
-      <div className="brand-block"><span className="eyebrow">M20 · VERIFIED HUMAN MATCH</span><h1>Replay Studio</h1></div>
-      <div className="match-meta"><span className="status-dot"/><span>{archive.opponent}</span><span className="meta-separator">/</span><span>Ply {frame.ply}</span><span className="meta-separator">/</span><span>Actor P{frame.actor}</span></div>
-      <div className="header-actions"><a className="studio-link" href="/play">Back to Human Play</a><button className="icon-button" onClick={()=>change(index-1)} disabled={index===0} aria-label="Previous ply">←</button><button className="icon-button" onClick={()=>change(index+1)} disabled={index===archive.frames.length-1} aria-label="Next ply">→</button></div>
-    </header>
-    <section className="human-audit-summary"><div><span className="section-kicker">REPLAY V1 VERIFIED</span><h2>{archive.session_id}</h2></div><dl><div><dt>Document hash</dt><dd>{archive.replay_document_hash}</dd></div><div><dt>Final score</dt><dd>{archive.replay.result?.scores.join(" – ")??"—"}</dd></div><div><dt>Frames</dt><dd>{archive.frames.length}</dd></div></dl></section>
-    <section className="human-audit-grid">
-      <article className="human-board">
-        <div className="human-score">{view.players.map(player=><div className={player.id===frame.actor?"you":""} key={player.id}><span>{player.id===frame.actor?"ACTOR":`PLAYER ${player.id}`}</span><strong>{player.prestige}<small> VP</small></strong><small>{player.reserved_count} reserved</small></div>)}</div>
-        <div className="human-bank"><span>BANK</span>{GEM_KEYS.map(gem=><i className={`token-${gem}`} key={gem}>{gemCode(gem)} <b>{view.bank[gem]}</b></i>)}</div>
-        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}><span>TIER {tier+1}<small>{view.deck_counts[tier]} deck</small></span>{view.market[tier].map((cardId,slot)=>cardId==null?<EmptyDevelopmentCard key={slot}/>:cards.has(cardId)?<DevelopmentCard card={cards.get(cardId)!} slotLabel={`slot ${slot+1}`} key={slot}/>:<div className="development-card development-card-empty" key={slot}>#{cardId}</div>)}</div>)}</div>
-        <div className="human-private"><span>ACTOR PLAYER VIEW</span><p>Each frame shows only the Observation that the acting player received at that decision. Hidden deck order and opponent blind reserves remain unavailable.</p></div>
-      </article>
-      <aside className="human-actions"><span className="section-kicker">RECORDED DECISION</span><h2>{simpleActionLabel(frame.recorded_action)}</h2><div className="human-audit-action"><small>Chosen from {frame.legal_actions.length} server-certified legal actions</small><code>{JSON.stringify(frame.recorded_action,null,2)}</code></div></aside>
-    </section>
-    <footer className="timeline-panel"><div className="timeline-title"><div><span className="section-kicker">HUMAN MATCH TIMELINE</span><strong>{index+1} / {archive.frames.length}</strong></div><span>player-view audit · no analysis sidecar</span></div><div className="timeline">{archive.frames.map((item,itemIndex)=><button key={item.ply} onClick={()=>change(itemIndex)} className={itemIndex===index?"current agreed":"agreed"} aria-label={`Ply ${item.ply}, actor P${item.actor}`}><span>{item.ply}</span><i/></button>)}</div></footer>
-  </main>;
+
+  usePlyNavigation(archive.frames.length, (delta) => {
+    setIndex((current) => Math.max(0, Math.min(archive.frames.length - 1, current + delta)));
+  });
+
+  useEffect(() => {
+    const timeline = document.querySelector<HTMLElement>(".timeline");
+    const activeBtn = document.querySelector<HTMLElement>(".timeline button.current");
+    if (timeline && activeBtn) {
+      const targetLeft = activeBtn.offsetLeft - timeline.clientWidth / 2 + activeBtn.clientWidth / 2;
+      timeline.scrollTo({ left: targetLeft, behavior: "smooth" });
+    }
+  }, [index]);
+
+  return (
+    <main className="studio human-replay-audit">
+      <header className="topbar">
+        <div className="brand-block">
+          <span className="eyebrow">M20 · VERIFIED HUMAN MATCH</span>
+          <h1>Replay Studio</h1>
+        </div>
+        <div className="match-meta">
+          <span className="status-dot" />
+          <span>{archive.opponent}</span>
+          <span className="meta-separator">/</span>
+          <span>Ply {frame.ply}</span>
+          <span className="meta-separator">/</span>
+          <span>Actor P{frame.actor}</span>
+        </div>
+        <div className="header-actions">
+          <a className="studio-link" href="/play">Back to Human Play</a>
+          <button className="icon-button" onClick={() => change(index - 1)} disabled={index === 0} aria-label="Previous ply">←</button>
+          <button className="icon-button" onClick={() => change(index + 1)} disabled={index === archive.frames.length - 1} aria-label="Next ply">→</button>
+        </div>
+      </header>
+      <section className="human-audit-summary">
+        <div>
+          <span className="section-kicker">REPLAY V1 VERIFIED</span>
+          <h2>{archive.session_id}</h2>
+        </div>
+        <dl>
+          <div><dt>Document hash</dt><dd>{archive.replay_document_hash}</dd></div>
+          <div><dt>Final score</dt><dd>{archive.replay.result?.scores.join(" – ") ?? "—"}</dd></div>
+          <div><dt>Frames</dt><dd>{archive.frames.length}</dd></div>
+        </dl>
+      </section>
+      <section className="workspace">
+        <div className="board-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">POSITION</span>
+              <h2>Decision board</h2>
+            </div>
+            <div className="view-switch" role="group" aria-label="Information perspective">
+              <button className={!reveal ? "active" : ""} onClick={() => setReveal(false)}>Player view</button>
+              <button className={reveal ? "active reveal-active" : ""} disabled={true} title="Referee reveal unavailable in player audit">Referee reveal (N/A)</button>
+            </div>
+          </div>
+          <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={false} />
+        </div>
+        <aside className="analysis-panel">
+          <div className="analysis-header">
+            <div>
+              <span className="section-kicker">RECORDED ACTION</span>
+              <h2>{simpleActionLabel(frame.recorded_action)}</h2>
+            </div>
+          </div>
+          <div className="decision-summary">
+            <span>PLAYER VIEW AUDIT</span>
+            <p>Actor <strong>Player {frame.actor}</strong></p>
+            <p>Action <strong>{simpleActionLabel(frame.recorded_action)}</strong></p>
+          </div>
+          <div className="human-audit-action" style={{ marginTop: "14px" }}>
+            <small>Chosen from {frame.legal_actions.length} server-certified legal actions</small>
+            <code>{JSON.stringify(frame.recorded_action, null, 2)}</code>
+          </div>
+        </aside>
+      </section>
+      <ReplayTimeline
+        frames={archive.frames}
+        frameIndex={index}
+        onSeek={change}
+        title="← → keyboard navigation"
+        footnote="player-view replay"
+      />
+    </main>
+  );
 }
 
 function MetricBar({ value, tone }: { value: number; tone: "prior" | "visit" }) {

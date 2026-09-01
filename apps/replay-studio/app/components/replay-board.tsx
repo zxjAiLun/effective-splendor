@@ -70,7 +70,7 @@ export type BoardFrame = {
   actor: PlayerId;
   recorded_action: Action;
   player_view: PlayerView;
-  referee_reveal: RefereeReveal;
+  referee_reveal?: RefereeReveal;
 };
 
 const GEM_KEYS: Array<keyof Gems> = ["white", "blue", "green", "red", "black", "gold"];
@@ -194,7 +194,7 @@ export function BoardSurface({
             <div className="deck-card">
               <span>T{tier + 1}</span>
               <strong>{view.deck_counts[tier]}</strong>
-              {reveal && <small>next #{frame.referee_reveal.decks[tier]?.at(-1) ?? "—"}</small>}
+              {reveal && <small>next #{frame.referee_reveal?.decks[tier]?.at(-1) ?? "—"}</small>}
             </div>
             {view.market[tier].map((id, slot) =>
               id == null ? (
@@ -299,7 +299,7 @@ function ReservedCards({
   reveal: boolean;
   cards: Map<number, DevelopmentCardData & { id: CardId }>;
 }) {
-  const known: Array<{ card: CardId; fromDeck: boolean }> = reveal
+  const known: Array<{ card: CardId; fromDeck: boolean }> = reveal && frame.referee_reveal
     ? (frame.referee_reveal.players.find((item) => item.id === player.id)?.reserved ?? []).map((item) => ({
         card: item.card,
         fromDeck: item.from_deck,
@@ -372,7 +372,7 @@ export function ReplayTimeline({
             key={`${item.ply}-${index}`}
             onClick={() => onSeek(index)}
             className={`${index === frameIndex ? "current" : ""} ${
-              isCandidatePly ? (isCandidatePly(item, index) ? "agreed" : "disagreed") : "agreed"
+              isCandidatePly ? (isCandidatePly(item, index) ? "agreed" : "disagreed") : "neutral"
             }`}
             aria-label={`Ply ${item.ply}, actor P${item.actor}`}
           >
