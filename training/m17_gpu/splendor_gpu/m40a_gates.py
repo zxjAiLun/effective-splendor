@@ -61,10 +61,47 @@ def _block_score(
     return 10_000.0 * sum(SCORES[str(row["outcome"])] for row in selected) / 2.0
 
 
+COMPLEMENTARY = {("win", "loss"), ("loss", "win"), ("draw", "draw")}
+
+
+def _require_perspective_pairs(rows: list[dict[str, Any]], label: str) -> None:
+    """The frozen evaluation-ledger row schema: every PHYSICAL B-vs-A
+    match yields exactly TWO perspective rows (candidate/B and baseline/A)
+    carrying the same (pairing, seed, rotation) with COMPLEMENTARY
+    outcomes. H1 = 256 physical matches = 512 perspective rows."""
+    if len(rows) % 2 != 0:
+        raise ValueError(f"{label}: odd perspective-row count {len(rows)}")
+    seen: dict[tuple[str, int, int], dict[str, str]] = {}
+    for row in rows:
+        _require_complete([row], 1, f"{label} row")
+        key = (str(row["pairing"]), int(row["seed"]), int(row["rotation"]))
+        arm = str(row["arm"])
+        if key not in seen:
+            seen[key] = {}
+        if arm in seen[key]:
+            raise ValueError(f"{label}: duplicate {arm} row for {key}")
+        seen[key][arm] = str(row["outcome"])
+    for key, by_arm in seen.items():
+        if set(by_arm) != {"candidate", "baseline"}:
+            raise ValueError(f"{label}: {key} lacks a candidate/baseline pair")
+        if (by_arm["candidate"], by_arm["baseline"]) not in COMPLEMENTARY:
+            raise ValueError(
+                f"{label}: non-complementary outcomes at {key}: "
+                f"{by_arm['candidate']}/{by_arm['baseline']}"
+            )
+
+
 def evaluate_h1(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """H1: B vs A, 128 paired blocks, one-sided 95% Student-t."""
+    """H1: B vs A, 128 paired blocks, one-sided 95% Student-t.
+
+    Ledger schema (frozen): 256 physical B-vs-A matches, each expanded to
+    exactly two perspective rows (candidate + baseline) with complementary
+    outcomes; 512 rows total; completed_matches counts PHYSICAL matches.
+    """
     seeds = range(8_100_000, 8_100_127 + 1)
-    _require_complete(rows, 512, "H1")
+    _require_perspective_pairs(rows, "H1")
+    if len(rows) != 512:
+        raise ValueError(f"H1: expected 512 perspective rows (256 matches), got {len(rows)}")
     deltas = []
     for seed in seeds:
         candidate = _block_score(rows, arm="candidate", pairing="H1", seed=seed)
@@ -76,6 +113,7 @@ def evaluate_h1(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "gate": "h1",
         "completed_matches": 256,
+        "perspective_rows": 512,
         "mean_delta_bps": mean,
         "sample_sd_bps": sample_sd,
         "lower_95_bps": lower,
@@ -103,7 +141,7 @@ def evaluate_league(rows: list[dict[str, Any]]) -> dict[str, Any]:
     failed = upper < 0.0
     return {
         "gate": "league",
-        "completed_matches": 9 * 32 * 2 * 2,
+        "completed_matches": 9 * 32 * 2 * 2,  # physical matches (1152 across both arms)
         "mean_delta_bps": mean,
         "sample_sd_bps": sample_sd,
         "upper_95_bps": upper,

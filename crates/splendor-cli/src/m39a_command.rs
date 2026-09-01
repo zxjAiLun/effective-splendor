@@ -56,7 +56,90 @@ const LEAGUE_ORDER: [&str; 9] = [
     "M34A",
 ];
 
+/// The M40A online sidecar: same record/result shapes as the M39A
+/// sidecar, but its own format/version identity plus the mandatory
+/// `arm` field. Serialized ONLY under the M40A online materialization.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct M40aSidecar {
+    format: String,
+    version: u32,
+    arm: String,
+    plan_hash: String,
+    checkpoint_sha256: String,
+    checkpoint_hash: String,
+    checkpoint_cycle: u32,
+    catalog_hash: String,
+    game_id: String,
+    game_index: u32,
+    seat: u8,
+    records: Vec<SidecarRecord>,
+    result: SidecarResult,
+}
+
+impl M40aSidecar {
+    /// Validate the M40A identity envelope and convert to the shared
+    /// internal sidecar view for the join (format tags checked here,
+    /// not re-checked downstream).
+    fn validate_and_convert(
+        &self,
+        manifest: &M40aOnlineManifest,
+        catalog_hash: &str,
+        game_index: u32,
+        report: &ArenaReportV1,
+    ) -> Result<TrajectorySidecar, String> {
+        if self.format != "effective-splendor-m40a-sidecar" || self.version != 1 {
+            return Err(format!(
+                "game {game_index}: unsupported M40A sidecar format/version"
+            ));
+        }
+        if self.arm != manifest.arm {
+            return Err(format!(
+                "game {game_index}: sidecar arm {} != manifest arm {}",
+                self.arm, manifest.arm
+            ));
+        }
+        if self.plan_hash != manifest.plan_hash
+            || self.checkpoint_sha256 != manifest.checkpoint_sha256
+            || self.checkpoint_hash != manifest.checkpoint_hash
+            || self.checkpoint_cycle != manifest.checkpoint_cycle
+            || self.catalog_hash != catalog_hash
+            || self.game_id != report.game_id
+            || self.game_index != game_index
+        {
+            return Err(format!(
+                "game {game_index}: M40A sidecar provenance mismatch"
+            ));
+        }
+        if self.seat > 1 {
+            return Err(format!("game {game_index}: invalid M40A sidecar seat"));
+        }
+        for record in &self.records {
+            if record.game_index != game_index
+                || record.game_id != report.game_id
+                || record.seat != self.seat
+            {
+                return Err(format!("game {game_index}: M40A record envelope mismatch"));
+            }
+        }
+        Ok(TrajectorySidecar {
+            format: SIDECAR_FORMAT.into(),
+            version: SIDECAR_VERSION,
+            plan_hash: self.plan_hash.clone(),
+            checkpoint_sha256: self.checkpoint_sha256.clone(),
+            checkpoint_hash: self.checkpoint_hash.clone(),
+            checkpoint_cycle: self.checkpoint_cycle,
+            catalog_hash: self.catalog_hash.clone(),
+            game_id: self.game_id.clone(),
+            game_index: self.game_index,
+            seat: self.seat,
+            records: self.records.clone(),
+            result: self.result.clone(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MaterializationManifest {
     format: String,
@@ -78,7 +161,7 @@ enum MaterializationMode {
     CompleteCycle,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct GameSource {
     game_index: u32,
@@ -112,14 +195,14 @@ struct TrajectorySidecar {
     result: SidecarResult,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 enum SidecarResult {
     Terminal(ReplayGameResultV1),
     Truncated(SidecarTruncatedResult),
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct SidecarTruncatedResult {
     truncated: bool,
@@ -312,6 +395,10 @@ struct M40aOnlineManifest {
     plan_hash: String,
     design_sha: String,
     arm: String,
+    /// "complete" (the formal 512-game cycle) or "smoke" (a bounded
+    /// pipeline check; skips the 512-index enforcement only — every
+    /// per-game identity check still applies).
+    mode: String,
     checkpoint_sha256: String,
     checkpoint_hash: String,
     checkpoint_cycle: u32,
@@ -343,15 +430,23 @@ fn m40a_materialize_online(
     if out.exists() {
         return Err(format!("output already exists: {}", out.display()));
     }
+    // The ONLINE domain consumes the canonical M40A plan and its hash —
+    // never the M39A plan/hash domain.
     let plan: Value = read_json(plan_path, "plan")?;
-    let digest = plan_hash(&plan)?;
+    let digest = m40a_plan_hash(&plan)?;
+    let catalog_hash = plan
+        .get("catalog")
+        .and_then(|value| value.get("semantic_hash"))
+        .or_else(|| plan.get("catalog").and_then(|value| value.get("sha256")))
+        .and_then(Value::as_str)
+        .ok_or_else(|| "plan.catalog.semantic_hash must be a string".to_string())?;
     let manifest: M40aOnlineManifest = read_json(manifest_path, "manifest")?;
     if manifest.format != M40A_ONLINE_MANIFEST_FORMAT || manifest.version != 1 {
         return Err("unsupported M40A online materialization manifest format/version".into());
     }
     if manifest.plan_hash != digest {
         return Err(format!(
-            "manifest plan_hash {} does not match computed plan hash {digest}",
+            "manifest plan_hash {} does not match computed M40A plan hash {digest}",
             manifest.plan_hash
         ));
     }
@@ -377,12 +472,20 @@ fn m40a_materialize_online(
         if !game_indices.insert(source.game_index) {
             return Err(format!("duplicate game_index {}", source.game_index));
         }
+        let expected_seed = M40A_ONLINE_TRAINING_SEED_BASE + u64::from(source.game_index / 2);
         let report: ArenaReportV1 =
             read_json(&resolve(parent, &source.report_path), "arena report")?;
-        // 8M seed validation.
-        let replay: ReplayV1 = match &report.outcome {
+        // Seed validation on the authoritative document, completed and
+        // truncated alike.
+        match &report.outcome {
             ArenaOutcomeV1::Completed { .. } => {
-                read_json(&resolve(parent, &source.replay_path), "replay")?
+                let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
+                if replay.seed != expected_seed {
+                    return Err(format!(
+                        "game {}: online seed {} != frozen 8M schedule {}",
+                        source.game_index, replay.seed, expected_seed
+                    ));
+                }
             }
             ArenaOutcomeV1::Truncated { .. } => {
                 let prefix_path = source.prefix_path.as_ref().ok_or_else(|| {
@@ -390,15 +493,12 @@ fn m40a_materialize_online(
                 })?;
                 let prefix: RolloutPrefixV1 =
                     read_json(&resolve(parent, prefix_path), "rollout prefix")?;
-                let replay_seed = prefix.seed;
-                let expected = M40A_ONLINE_TRAINING_SEED_BASE + u64::from(source.game_index / 2);
-                if replay_seed != expected {
+                if prefix.seed != expected_seed {
                     return Err(format!(
                         "game {}: online seed {} != frozen 8M schedule {}",
-                        source.game_index, replay_seed, expected
+                        source.game_index, prefix.seed, expected_seed
                     ));
                 }
-                continue;
             }
             ArenaOutcomeV1::Aborted { .. } => {
                 return Err(format!(
@@ -406,16 +506,9 @@ fn m40a_materialize_online(
                     source.game_index
                 ))
             }
-        };
-        let expected = M40A_ONLINE_TRAINING_SEED_BASE + u64::from(source.game_index / 2);
-        if replay.seed != expected {
-            return Err(format!(
-                "game {}: online seed {} != frozen 8M schedule {}",
-                source.game_index, replay.seed, expected
-            ));
         }
-        // M40A learner runtime identity: the learner seats must carry
-        // the M40A agent name + the manifest's checkpoint semantic hash.
+        // M40A learner runtime identity — enforced for completed AND
+        // truncated games (no early `continue`).
         let learner = learner_seats(source.game_index);
         for identity in &report.agents {
             if learner.contains(&identity.seat.0) {
@@ -439,34 +532,174 @@ fn m40a_materialize_online(
         }
     }
     // Complete-cycle enforcement: exactly this cycle's 512 indices.
-    let cycle_start = (manifest.cycle - 1) * M40A_ONLINE_GAMES_PER_CYCLE;
-    let expected: BTreeSet<u32> =
-        (cycle_start..cycle_start + M40A_ONLINE_GAMES_PER_CYCLE).collect();
-    if game_indices != expected {
-        return Err(
-            "online complete-cycle manifest must contain exactly the cycle's 512 game indices"
-                .into(),
-        );
+    // Smoke manifests (bounded pipeline checks) are exempt from the
+    // cardinality rule only — all per-game identity checks above apply.
+    if manifest.mode != "smoke" {
+        let cycle_start = (manifest.cycle - 1) * M40A_ONLINE_GAMES_PER_CYCLE;
+        let expected: BTreeSet<u32> =
+            (cycle_start..cycle_start + M40A_ONLINE_GAMES_PER_CYCLE).collect();
+        if game_indices != expected {
+            return Err(
+                "online complete-cycle manifest must contain exactly the cycle's 512 game indices"
+                    .into(),
+            );
+        }
+        if manifest.mode != "complete" {
+            return Err("online manifest mode must be complete or smoke".into());
+        }
+        for source in &manifest.games {
+            let cycle_start = (manifest.cycle - 1) * M40A_ONLINE_GAMES_PER_CYCLE;
+            if source.game_index < cycle_start
+                || source.game_index >= cycle_start + M40A_ONLINE_GAMES_PER_CYCLE
+            {
+                return Err(format!(
+                    "game {}: outside manifest cycle {}",
+                    source.game_index, manifest.cycle
+                ));
+            }
+        }
     }
 
-    // Reuse the enriched-record join. The per-game seed and runtime
-    // checks are performed above against the 8M schedule and the M40A
-    // agent identity; the join's observation/action/replay checks are
-    // schedule-agnostic.
-    let internal = M40aManifest {
-        format: M40A_MANIFEST_FORMAT.into(),
-        version: 1,
-        mode: MaterializationMode::CompleteCycle,
-        plan_hash: manifest.plan_hash,
+    // Join: M40A sidecars are validated as M40A DTOs (format/version/arm
+    // + provenance) and converted to the shared internal view; the join's
+    // observation/action/replay checks are schedule-agnostic.
+    let mut bindings = Vec::with_capacity(manifest.games.len());
+    let mut records: Vec<M40aRecord> = Vec::new();
+    for source in &manifest.games {
+        let report: ArenaReportV1 =
+            read_json(&resolve(parent, &source.report_path), "arena report")?;
+        let mut sidecars = Vec::with_capacity(source.sidecar_paths.len());
+        for path in &source.sidecar_paths {
+            let m40a_sidecar: M40aSidecar =
+                read_json(&resolve(parent, path), "M40A trajectory sidecar")?;
+            sidecars.push(m40a_sidecar.validate_and_convert(
+                &manifest,
+                catalog_hash,
+                source.game_index,
+                &report,
+            )?);
+        }
+        let (binding, game_records, labels) = match &report.outcome {
+            ArenaOutcomeV1::Completed { .. } => {
+                let replay: ReplayV1 = read_json(&resolve(parent, &source.replay_path), "replay")?;
+                materialize_game_with_learner(
+                    &MaterializationManifest {
+                        format: MANIFEST_FORMAT.into(),
+                        version: MANIFEST_VERSION,
+                        mode: MaterializationMode::CompleteCycle,
+                        plan_hash: manifest.plan_hash.clone(),
+                        checkpoint_sha256: manifest.checkpoint_sha256.clone(),
+                        checkpoint_hash: manifest.checkpoint_hash.clone(),
+                        checkpoint_cycle: manifest.checkpoint_cycle,
+                        cycle: manifest.cycle,
+                        ply_cap: manifest.ply_cap,
+                        games: Vec::new(),
+                    },
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &replay,
+                    &sidecars,
+                    M40A_ONLINE_TRAINING_SEED_BASE,
+                    Some((M40A_AGENT_NAME, manifest.checkpoint_hash.as_str())),
+                )?
+            }
+            ArenaOutcomeV1::Truncated { .. } => {
+                let prefix_path = source.prefix_path.as_ref().ok_or_else(|| {
+                    format!("game {}: truncated without prefix_path", source.game_index)
+                })?;
+                let prefix: RolloutPrefixV1 =
+                    read_json(&resolve(parent, prefix_path), "rollout prefix")?;
+                materialize_game_truncated_with_learner(
+                    &MaterializationManifest {
+                        format: MANIFEST_FORMAT.into(),
+                        version: MANIFEST_VERSION,
+                        mode: MaterializationMode::CompleteCycle,
+                        plan_hash: manifest.plan_hash.clone(),
+                        checkpoint_sha256: manifest.checkpoint_sha256.clone(),
+                        checkpoint_hash: manifest.checkpoint_hash.clone(),
+                        checkpoint_cycle: manifest.checkpoint_cycle,
+                        cycle: manifest.cycle,
+                        ply_cap: manifest.ply_cap,
+                        games: Vec::new(),
+                    },
+                    catalog_hash,
+                    source.game_index,
+                    &report,
+                    &prefix,
+                    &sidecars,
+                    M40A_ONLINE_TRAINING_SEED_BASE,
+                    Some((M40A_AGENT_NAME, manifest.checkpoint_hash.as_str())),
+                )?
+            }
+            ArenaOutcomeV1::Aborted { .. } => {
+                return Err(format!(
+                    "game {}: aborted report cannot enter training",
+                    source.game_index
+                ))
+            }
+        };
+        if game_records.len() != labels.len() {
+            return Err(format!(
+                "game {}: record/label count mismatch ({} vs {})",
+                source.game_index,
+                game_records.len(),
+                labels.len()
+            ));
+        }
+        for (record, labels) in game_records.into_iter().zip(labels.into_iter()) {
+            records.push(M40aRecord {
+                game_index: record.game_index,
+                game_id: record.game_id,
+                seat: record.seat,
+                ply_index: record.ply_index,
+                request_id: record.request_id,
+                observation_hash: record.observation_hash,
+                observation: record.observation,
+                legal_actions: record.legal_actions,
+                action: record.action,
+                decision_seed: record.decision_seed,
+                old_log_probability: record.old_log_probability,
+                old_value: record.old_value,
+                old_value_by_player: record.old_value_by_player,
+                old_auxiliary_score: record.old_auxiliary_score,
+                result: record.result,
+                arena_report_hash: record.arena_report_hash,
+                replay_document_hash: record.replay_document_hash,
+                m40a_labels: labels,
+            });
+        }
+        bindings.push(binding);
+    }
+    bindings.sort_by_key(|game| game.game_index);
+    records.sort_by_key(|record| (record.game_index, record.ply_index, record.seat));
+    let batch = M40aBatch {
+        format: M40A_BATCH_FORMAT.into(),
+        version: M40A_BATCH_VERSION,
+        mode: if manifest.mode == "smoke" {
+            MaterializationMode::Smoke
+        } else {
+            MaterializationMode::CompleteCycle
+        },
+        plan_hash: digest,
         checkpoint_sha256: manifest.checkpoint_sha256,
         checkpoint_hash: manifest.checkpoint_hash,
         checkpoint_cycle: manifest.checkpoint_cycle,
         cycle: manifest.cycle,
         ply_cap: manifest.ply_cap,
-        design_sha: manifest.design_sha,
-        games: manifest.games,
+        games: bindings,
+        records,
     };
-    m40a_materialize_inner(plan_path, &internal, out, M40A_ONLINE_TRAINING_SEED_BASE)
+    let game_count = batch.games.len();
+    let record_count = batch.records.len();
+    let truncated = batch.games.iter().filter(|game| game.truncated).count();
+    let json = serde_json::to_string_pretty(&batch).map_err(|error| error.to_string())? + "\n";
+    commit_single(out, &json).map_err(|error| error.to_string())?;
+    Ok(format!(
+        "m40a online materialized games={game_count} records={record_count} truncated={truncated} arm={} out={}",
+        manifest.arm,
+        out.display()
+    ))
 }
 
 pub(crate) fn run_m40a_materialize(args: &[String]) -> i32 {
@@ -494,11 +727,18 @@ fn m40a_materialize(plan_path: &Path, manifest_path: &Path, out: &Path) -> Resul
     }
     // The offline source-enrichment domain: the historical M39A 4M
     // schedule, validated by the shared join.
-    m40a_materialize_inner(plan_path, &manifest, out, TRAINING_GAME_SEED_BASE)
+    m40a_materialize_inner(
+        plan_path,
+        manifest_path,
+        &manifest,
+        out,
+        TRAINING_GAME_SEED_BASE,
+    )
 }
 
 fn m40a_materialize_inner(
     plan_path: &Path,
+    manifest_path: &Path,
     manifest: &M40aManifest,
     out: &Path,
     seed_base: u64,
@@ -528,7 +768,9 @@ fn m40a_materialize_inner(
     if manifest.ply_cap != 150 {
         return Err("manifest ply_cap must equal 150".into());
     }
-    let parent = Path::new(".");
+    // Manifest-relative path resolution: every GameSource path resolves
+    // against the manifest file's directory (cwd-independent).
+    let parent = manifest_path.parent().unwrap_or_else(|| Path::new("."));
 
     let mut game_indices = BTreeSet::new();
     let mut bindings = Vec::with_capacity(manifest.games.len());
@@ -859,6 +1101,29 @@ fn materialize_game(
     sidecars: &[TrajectorySidecar],
     seed_base: u64,
 ) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
+    materialize_game_with_learner(
+        manifest,
+        catalog_hash,
+        game_index,
+        report,
+        replay,
+        sidecars,
+        seed_base,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn materialize_game_with_learner(
+    manifest: &MaterializationManifest,
+    catalog_hash: &str,
+    game_index: u32,
+    report: &ArenaReportV1,
+    replay: &ReplayV1,
+    sidecars: &[TrajectorySidecar],
+    seed_base: u64,
+    learner_override: Option<(&str, &str)>,
+) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
@@ -870,7 +1135,12 @@ fn materialize_game(
         ));
     }
     bind_report_replay(report, replay).map_err(|error| format!("game {game_index}: {error}"))?;
-    bind_scheduled_agents(report, manifest, game_index)?;
+    match learner_override {
+        Some((name, version)) => {
+            bind_scheduled_agents_with_learner(report, manifest, game_index, name, version)?
+        }
+        None => bind_scheduled_agents(report, manifest, game_index)?,
+    }
     let trace = verify_replay_trace(replay)
         .map_err(|error| format!("game {game_index}: replay verification failed: {error}"))?;
     let report_hash = arena_report_document_hash_v1(report).map_err(|error| error.to_string())?;
@@ -971,10 +1241,15 @@ fn materialize_game(
                     record.ply_index
                 ));
             }
+            // old_value_by_player: the M39A critic emits a 2-way pair; the
+            // M40A outcome readout emits a single viewer-relative V. Both
+            // lengths are accepted (1 = M40A, 2 = M39A); all entries must
+            // be finite. The authoritative PPO value is recomputed from
+            // the bound checkpoint either way.
             if !record.old_log_probability.is_finite()
                 || !record.old_value.is_finite()
                 || !record.old_auxiliary_score.is_finite()
-                || record.old_value_by_player.len() != 2
+                || (record.old_value_by_player.len() != 1 && record.old_value_by_player.len() != 2)
                 || record
                     .old_value_by_player
                     .iter()
@@ -1066,6 +1341,29 @@ fn materialize_game_truncated(
     sidecars: &[TrajectorySidecar],
     seed_base: u64,
 ) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
+    materialize_game_truncated_with_learner(
+        manifest,
+        catalog_hash,
+        game_index,
+        report,
+        prefix,
+        sidecars,
+        seed_base,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn materialize_game_truncated_with_learner(
+    manifest: &MaterializationManifest,
+    catalog_hash: &str,
+    game_index: u32,
+    report: &ArenaReportV1,
+    prefix: &RolloutPrefixV1,
+    sidecars: &[TrajectorySidecar],
+    seed_base: u64,
+    learner_override: Option<(&str, &str)>,
+) -> Result<(GameBinding, Vec<AuthoritativeRecord>, Vec<M40aLabels>), String> {
     if game_index / GAMES_PER_CYCLE + 1 != manifest.cycle {
         return Err(format!("game {game_index}: outside manifest cycle"));
     }
@@ -1123,7 +1421,12 @@ fn materialize_game_truncated(
     {
         return Err("seed commitment does not bind prefix".into());
     }
-    bind_scheduled_agents(report, manifest, game_index)?;
+    match learner_override {
+        Some((name, version)) => {
+            bind_scheduled_agents_with_learner(report, manifest, game_index, name, version)?
+        }
+        None => bind_scheduled_agents(report, manifest, game_index)?,
+    }
 
     let verified = verify_rollout_prefix(prefix)
         .map_err(|error| format!("game {game_index}: prefix verification failed: {error}"))?;
@@ -1236,10 +1539,15 @@ fn materialize_game_truncated(
                     record.ply_index
                 ));
             }
+            // old_value_by_player: the M39A critic emits a 2-way pair; the
+            // M40A outcome readout emits a single viewer-relative V. Both
+            // lengths are accepted (1 = M40A, 2 = M39A); all entries must
+            // be finite. The authoritative PPO value is recomputed from
+            // the bound checkpoint either way.
             if !record.old_log_probability.is_finite()
                 || !record.old_value.is_finite()
                 || !record.old_auxiliary_score.is_finite()
-                || record.old_value_by_player.len() != 2
+                || (record.old_value_by_player.len() != 1 && record.old_value_by_player.len() != 2)
                 || record
                     .old_value_by_player
                     .iter()
@@ -1363,6 +1671,27 @@ fn bind_scheduled_agents(
     manifest: &MaterializationManifest,
     game_index: u32,
 ) -> Result<(), String> {
+    bind_scheduled_agents_with_learner(
+        report,
+        manifest,
+        game_index,
+        M39A_AGENT_NAME,
+        &manifest.checkpoint_hash,
+    )
+}
+
+/// The shared runtime-identity check, parameterized on the learner agent
+/// name: the M39A v1 path always passes the M39A name; the M40A online
+/// path passes the M40A name (the semantic-hash version is the same
+/// field for both).
+#[allow(clippy::too_many_arguments)]
+fn bind_scheduled_agents_with_learner(
+    report: &ArenaReportV1,
+    manifest: &MaterializationManifest,
+    game_index: u32,
+    learner_agent_name: &str,
+    learner_version: &str,
+) -> Result<(), String> {
     let learner = learner_seats(game_index);
     let ordinal = game_index % GAMES_PER_CYCLE;
     let cycle_zero = game_index / GAMES_PER_CYCLE;
@@ -1384,7 +1713,7 @@ fn bind_scheduled_agents(
             .as_deref()
             .ok_or_else(|| format!("game {game_index}: seat {seat} has no runtime version"))?;
         let (expected_name, expected_version) = if learner.contains(&seat) {
-            (M39A_AGENT_NAME, manifest.checkpoint_hash.as_str())
+            (learner_agent_name, learner_version)
         } else if ordinal < 16 {
             ("splendor-cli-random", splendor_core::ENGINE_VERSION)
         } else if ordinal < 64 {
@@ -1672,6 +2001,21 @@ fn python_canonical_json(value: &Value) -> Result<String, String> {
             Ok(format!("{{{}}}", rendered.join(",")))
         }
     }
+}
+
+/// The canonical M40A plan hash: plain SHA-256 over the Python
+/// `m40a_contract.canonical_json` bytes (sorted keys, compact separators,
+/// ASCII-escaped strings) — NO domain prefix, unlike the M39A plan hash.
+fn m40a_plan_hash(plan: &Value) -> Result<String, String> {
+    if plan.get("format").and_then(Value::as_str) != Some("effective-splendor-m40a-plan")
+        || plan.get("version").and_then(Value::as_u64) != Some(1)
+    {
+        return Err("unsupported M40A plan format/version".into());
+    }
+    let json = python_canonical_json(plan)?.into_bytes();
+    let mut hasher = Sha256::new();
+    hasher.update(json);
+    Ok(hex::encode(hasher.finalize()))
 }
 
 fn validate_hash(label: &str, value: &str) -> Result<(), String> {

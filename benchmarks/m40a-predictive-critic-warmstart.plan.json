@@ -1,0 +1,113 @@
+{
+  "format": "effective-splendor-m40a-plan",
+  "version": 1,
+  "milestone": "M40A",
+  "design_sha": "09fd8ec",
+  "approval_sha": "dacb527",
+  "round": {
+    "cycles": 4,
+    "games_per_cycle": 512,
+    "training_seed_base": 8000000,
+    "training_seed_blocks": 1024,
+    "ply_cap": 150
+  },
+  "initialization": {
+    "d2_checkpoint": "local-artifacts/m25-recovery-exp-d2-v2/checkpoint.pt",
+    "d2_checkpoint_sha256": "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17",
+    "head_init_seed": 20260829,
+    "load_prefixes": [
+      "entity_encoder.",
+      "entity_gate.",
+      "global_encoder.",
+      "mix.",
+      "blocks.",
+      "norm.",
+      "action_encoder.",
+      "policy."
+    ],
+    "discard_prefixes": [
+      "value."
+    ]
+  },
+  "catalog": {
+    "path": "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json",
+    "sha256": "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4",
+    "semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26"
+  },
+  "trainer": {
+    "trainer_seed": 40260830,
+    "epochs_per_cycle": 4,
+    "minibatch_size": 512,
+    "gamma": 1.0,
+    "gae_lambda": 0.95,
+    "ppo_clip": 0.2,
+    "entropy_coefficient": 0.01,
+    "value_coefficient": 0.5,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 1.0,
+    "lr_waypoints": [
+      0.0001,
+      7.75e-05,
+      3.25e-05,
+      1e-05
+    ],
+    "aux_family_coefficient": 0.08333333333333333,
+    "aux_coefficient_budget": 0.25
+  },
+  "pretrain": {
+    "source_plan": "benchmarks/m39a-arena-driven-policy-value-rl.plan.json",
+    "source_plan_hash": "06cbd7b2413b7e640402799ff25c25ae57985ab3ea25b113b3eddf053f2841d6",
+    "epochs": 16,
+    "batch": 512,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "shuffle_seed": 40260902,
+    "split_identity_seed": 40260901,
+    "expected_split_manifest_hash": "265edc3923d28a15238e89a52926634e20ce157bd65c674336224bcde3ae3946",
+    "forced_train_game": 2785
+  },
+  "heads": {
+    "outcome": 3,
+    "vp_bins": 31,
+    "vp_difference_normalizer": 15.0,
+    "timing_horizons": [
+      2,
+      4,
+      8
+    ]
+  },
+  "evaluation": {
+    "h1": {
+      "seed_base": 8100000,
+      "seed_blocks": 128,
+      "critical_value": 1.656940343542
+    },
+    "league": {
+      "seed_base": 8200000,
+      "seed_blocks": 32,
+      "critical_value": 1.695518782546,
+      "league_order": [
+        "M24-S2",
+        "M25-D2-v2",
+        "M28A",
+        "M28B",
+        "M29A-v2",
+        "M31A",
+        "M32A",
+        "M33A",
+        "M34A"
+      ]
+    },
+    "m07_anchor": {
+      "seed_base": 8300000,
+      "seed_blocks": 64,
+      "critical_value": 1.998340542521
+    },
+    "d2_anchor": {
+      "seed_base": 8400000,
+      "seed_blocks": 64,
+      "critical_value": 1.998340542521
+    },
+    "formal_checkpoint": "cycle-4-final-only"
+  }
+}

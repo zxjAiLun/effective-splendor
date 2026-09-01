@@ -541,3 +541,43 @@ def test_fork_from_single_state() -> None:
     a_trunk = {k: v for k, v in arm_a.state_dict().items() if not k.startswith("heads.")}
     b_trunk = {k: v for k, v in arm_b.state_dict().items() if not k.startswith("heads.")}
     assert all(torch.equal(a_trunk[k], b_trunk[k]) for k in a_trunk)
+
+def test_h1_rejects_non_complementary_outcomes() -> None:
+    rows = _h1_rows(candidate_wins=True)
+    # break one pair: both sides win
+    for row in rows:
+        if row["seed"] == 8_100_000 and row["arm"] == "baseline":
+            row["outcome"] = "win"
+    with pytest.raises(ValueError, match="non-complementary"):
+        evaluate_h1(rows)
+
+
+def test_h1_rejects_duplicate_perspective_row() -> None:
+    # Replace the LAST baseline row with a duplicate of its candidate twin:
+    # 512 rows (even), the last pair now has two candidate rows.
+    rows = _h1_rows(candidate_wins=True)
+    rows[-1]["arm"] = "candidate"
+    with pytest.raises(ValueError, match="duplicate|lacks"):
+        evaluate_h1(rows)
+
+
+def test_h1_rejects_odd_row_count() -> None:
+    rows = _h1_rows(candidate_wins=True)
+    with pytest.raises(ValueError, match="odd"):
+        evaluate_h1(rows[:-1])
+
+
+def test_h1_rejects_wrong_row_count() -> None:
+    rows = _h1_rows(candidate_wins=True)
+    # an extra complementary pair beyond 512 (a 257th match)
+    extra_seed = 8_100_128
+    rows.append(_row("candidate", "H1", extra_seed, 0, "win"))
+    rows.append(_row("baseline", "H1", extra_seed, 0, "loss"))
+    with pytest.raises(ValueError, match="512 perspective rows"):
+        evaluate_h1(rows)
+
+
+def test_h1_counts_physical_matches() -> None:
+    result = evaluate_h1(_h1_rows(candidate_wins=True))
+    assert result["completed_matches"] == 256
+    assert result["perspective_rows"] == 512

@@ -132,7 +132,11 @@ def build_plan() -> dict[str, Any]:
             ],
             "discard_prefixes": ["value."],
         },
-        "catalog": {"path": CATALOG_REL, "sha256": FROZEN_CATALOG_SHA256},
+        "catalog": {
+            "path": CATALOG_REL,
+            "sha256": FROZEN_CATALOG_SHA256,
+            "semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26",
+        },
         "trainer": {
             "trainer_seed": PPO_TRAINER_SEED,
             "epochs_per_cycle": PPO_EPOCHS_PER_CYCLE,

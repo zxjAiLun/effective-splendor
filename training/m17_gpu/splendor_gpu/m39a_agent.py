@@ -28,6 +28,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from .m39a_contract import SIDECAR_FORMAT, SIDECAR_VERSION, validate_sidecar
+
 PROTOCOL_VERSION = "0.5"
 MAX_MESSAGE_BYTES = 64 * 1024 * 1024
 AGENT_NAME = "effective-splendor-m39a-policy-value-agent-v1"
@@ -265,6 +267,10 @@ def run_agent_loop(
     action_selection: str = "categorical",
     input_lines: Sequence[str] | None = None,
     close: Callable[[], None] | None = None,
+    agent_name: str = "effective-splendor-m39a-policy-value-agent-v1",
+    sidecar_format: str = SIDECAR_FORMAT,
+    sidecar_version: int = SIDECAR_VERSION,
+    extra_sidecar_fields: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Drive one full Arena game and write the trajectory sidecar.
 
@@ -427,11 +433,11 @@ def run_agent_loop(
 
     if game_id is None or seat is None or final_result is None:
         raise ValueError("agent stream ended before a completed game_end")
-    from .m39a_contract import SIDECAR_FORMAT, SIDECAR_VERSION, validate_sidecar
 
     sidecar = {
-        "format": SIDECAR_FORMAT,
-        "version": SIDECAR_VERSION,
+        "format": sidecar_format,
+        "version": sidecar_version,
+        **(extra_sidecar_fields or {}),
         "plan_hash": plan_hash,
         "checkpoint_sha256": checkpoint_sha256,
         "checkpoint_hash": checkpoint_hash,
@@ -443,7 +449,11 @@ def run_agent_loop(
         "records": records,
         "result": final_result,
     }
-    validate_sidecar(sidecar)
+    if sidecar["format"] == SIDECAR_FORMAT:
+        # The M39A self-check; M40A sidecars (different format identity,
+        # extra fields like `arm`) are validated by the authoritative Rust
+        # materializer instead.
+        validate_sidecar(sidecar)
     _atomic_json(sidecar_out, sidecar)
     return sidecar
 

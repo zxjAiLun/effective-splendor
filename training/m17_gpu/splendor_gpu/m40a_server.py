@@ -27,6 +27,7 @@ import torch
 
 from .data import catalog_semantic_hash, load_catalog
 from .m39a_contract import file_sha256
+from .m40a_contract import MODEL_ID
 from .m40a_constants import DESIGN_SHA, HEAD_INIT_SEED
 from .m40a_model import (
     M40AModel,
@@ -164,16 +165,46 @@ def serve(
             )
         payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
         # The semantic hash is a TOP-LEVEL payload field per the M40A
-        # checkpoint convention — not metadata.
+        # checkpoint convention — not metadata — and is RE-COMPUTED from
+        # the actual metadata + state_dict, never trusted from the file.
+        from .m40a_contract import checkpoint_semantic_hash
+
+        metadata = payload.get("metadata")
+        state_dict = payload.get("state_dict")
+        if not isinstance(metadata, dict) or not isinstance(state_dict, dict):
+            raise ValueError("invalid M40A checkpoint payload")
         semantic_hash = payload.get("checkpoint_hash")
         if not isinstance(semantic_hash, str):
             raise ValueError("M40A checkpoint lacks a top-level checkpoint_hash")
+        actual_semantic = checkpoint_semantic_hash(metadata, state_dict)
+        if actual_semantic != semantic_hash:
+            raise ValueError(
+                f"M40A checkpoint semantic hash mismatch: payload says {semantic_hash}, "
+                f"recomputed {actual_semantic} — tampered or corrupted"
+            )
         model = M40AModel()
-        model.load_state_dict(payload["state_dict"], strict=True)
-        if payload["metadata"].get("plan_hash") != plan_hash:
+        model.load_state_dict(state_dict, strict=True)
+        if metadata.get("format") != "effective-splendor-m40a-checkpoint" or int(
+            metadata.get("version", 0)
+        ) != 1:
+            raise ValueError("unsupported M40A checkpoint metadata format/version")
+        if metadata.get("model_id") != MODEL_ID:
+            raise ValueError("M40A checkpoint model_id mismatch")
+        if metadata.get("design_sha") != DESIGN_SHA:
+            raise ValueError("M40A checkpoint design_sha mismatch")
+        if metadata.get("plan_hash") != plan_hash:
             raise ValueError("M40A checkpoint plan hash mismatch")
-        if payload["metadata"].get("arm") not in ("A", "B"):
+        if metadata.get("arm") not in ("A", "B"):
             raise ValueError("M40A checkpoint metadata lacks a valid arm")
+        if int(metadata.get("cycle", -1)) != int(
+            payload.get("metadata", {}).get("cycle", -1)
+        ):
+            raise ValueError("M40A checkpoint cycle unreadable")
+        declared = metadata.get("parameter_count")
+        if declared is not None and int(declared) != sum(
+            parameter.numel() for parameter in model.parameters()
+        ):
+            raise ValueError("M40A checkpoint parameter_count mismatch")
     else:
         actual_file_sha = file_sha256(d2_checkpoint)
         if actual_file_sha != M40A_PLAN_CHECKPOINT_FILE_SHA256:
