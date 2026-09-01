@@ -23,6 +23,7 @@ import torch
 
 from splendor_gpu.data import catalog_semantic_hash, load_catalog
 from splendor_gpu.m39a_contract import file_sha256
+from splendor_gpu.m40a_constants import LEAGUE_ORDER
 from splendor_gpu.m40a_contract import (
     CATALOG_REL,
     D2_CHECKPOINT_REL,
@@ -283,18 +284,90 @@ def _manifest_entry(game_dir: Path, game_index: int) -> dict[str, Any]:
     }
 
 
+def ppo_parent_checkpoint(arm: str, cycle: int) -> Path:
+    """The ONE canonical PPO parent resolution — shared by collect-cycle
+    and train-cycle, with no fallback path.
+
+    A cycle 1 -> A-cycle0.pt
+    B cycle 1 -> B-cycle0-pretrained.pt  (REQUIRED; never B-cycle0.pt)
+    A/B cycle N>1 -> {arm}-cycle{N-1}.pt
+    """
+    if arm not in ("A", "B"):
+        raise ValueError(f"invalid arm {arm!r}")
+    if cycle not in (1, 2, 3, 4):
+        raise ValueError(f"invalid cycle {cycle}")
+    if cycle == 1:
+        if arm == "A":
+            path = RUN_ROOT / "A-cycle0.pt"
+        else:
+            path = RUN_ROOT / "B-cycle0-pretrained.pt"
+        if not path.is_file():
+            if arm == "B":
+                raise FileNotFoundError(
+                    f"B cycle-1 requires the pretrained parent {path} — "
+                    "run pretrain-b first; falling back to B-cycle0.pt is "
+                    "forbidden (it would erase the warm-start treatment)"
+                )
+            raise FileNotFoundError(f"parent checkpoint missing: {path}")
+        return path
+    path = RUN_ROOT / f"{arm}-cycle{cycle - 1}.pt"
+    if not path.is_file():
+        raise FileNotFoundError(f"parent checkpoint missing: {path}")
+    return path
+
+
+def _verify_b_pretrain_provenance(digest: str, cat_hash: str) -> None:
+    """Full treatment-entry provenance for B cycle 1, checked before any
+    Arena work begins."""
+    report_path = RUN_ROOT / "b-pretrain-report.json"
+    if not report_path.is_file():
+        raise FileNotFoundError(
+            f"formal B pretrain report missing: {report_path}"
+        )
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    ckpt = RUN_ROOT / "B-cycle0-pretrained.pt"
+    if not ckpt.is_file():
+        raise FileNotFoundError(f"{ckpt} missing")
+    _, payload = _load_checkpoint(ckpt)
+    metadata = payload["metadata"]
+    info = report["b_pretrain_checkpoint"]
+    if info["checkpoint_hash"] != payload["checkpoint_hash"]:
+        raise ValueError("report checkpoint semantic hash != actual B-pretrained")
+    if info["checkpoint_file_sha256"] != file_sha256(ckpt):
+        raise ValueError("report checkpoint file SHA != actual B-pretrained")
+    if metadata["arm"] != "B":
+        raise ValueError("B-pretrained metadata arm mismatch")
+    if int(metadata["cycle"]) != 0:
+        raise ValueError("B-pretrained metadata cycle mismatch")
+    if metadata["plan_hash"] != digest:
+        raise ValueError("B-pretrained plan hash mismatch")
+    if metadata["catalog_hash"] != cat_hash:
+        raise ValueError("B-pretrained catalog hash mismatch")
+    b0, b0_payload = _load_checkpoint(RUN_ROOT / "B-cycle0.pt")
+    del b0
+    if metadata["parent_checkpoint_hash"] != b0_payload["checkpoint_hash"]:
+        raise ValueError(
+            "B-pretrained parent hash != B-cycle0 semantic hash — "
+            "the shared-init chain is broken"
+        )
+
+
 def cmd_collect_cycle(args: argparse.Namespace) -> None:
     arm = args.arm
     cycle = args.cycle
     plan = build_plan()
     digest = validate_plan(plan)
+    catalog = load_catalog(Path(CATALOG_REL))
+    cat_hash = catalog_semantic_hash(catalog)
     parent_cycle = cycle - 1
-    ckpt = RUN_ROOT / f"{arm}-cycle{parent_cycle}.pt"
-    if not ckpt.is_file():
-        raise FileNotFoundError(f"parent checkpoint missing: {ckpt}")
+    ckpt = ppo_parent_checkpoint(arm, cycle)
+    if arm == "B" and cycle == 1:
+        _verify_b_pretrain_provenance(digest, cat_hash)
     _, payload = _load_checkpoint(ckpt)
     if payload["metadata"]["arm"] != arm:
         raise ValueError("checkpoint arm mismatch")
+    # cycle-1 parents are metadata-cycle 0 (A) or 0 (B-pretrained);
+    # cycles N>1 parents are cycle N-1.
     if int(payload["metadata"]["cycle"]) != parent_cycle:
         raise ValueError("checkpoint cycle mismatch")
 
@@ -349,27 +422,51 @@ def cmd_pretrain_b(args: argparse.Namespace) -> None:
     catalog = load_catalog(Path(CATALOG_REL))
     cat_hash = catalog_semantic_hash(catalog)
 
-    a0, _ = _load_checkpoint(RUN_ROOT / "A-cycle0.pt")
-    b0, _ = _load_checkpoint(RUN_ROOT / "B-cycle0.pt")
-    if head_state_semantic_hash(a0) != head_state_semantic_hash(b0):
-        raise ValueError("A/B cycle-0 head states differ — fork was not shared")
+    a0, a0_payload = _load_checkpoint(RUN_ROOT / "A-cycle0.pt")
+    b0, b0_payload = _load_checkpoint(RUN_ROOT / "B-cycle0.pt")
+    # FULL fork proof (not just head hash): complete state_dicts equal.
+    def _dicts_equal(x, y):
+        if set(x) != set(y):
+            return False
+        return all(torch.equal(x[k], y[k]) for k in x)
+    if not _dicts_equal(a0_payload["state_dict"], b0_payload["state_dict"]):
+        raise ValueError("A/B cycle-0 full state_dicts differ — fork was not shared")
+    b0_parent_semantic = b0_payload["checkpoint_hash"]
 
     from splendor_gpu.m40a_pretrain import pretrain, sanity_metrics
 
-    # Load the enriched offline dataset (built by m40a-materialize over the
-    # historical M39A batches; expected at the frozen location).
+    # Load the enriched offline dataset: ALL EIGHT batch files are REQUIRED
+    # (fail-closed on any missing file); each file's SHA is recorded.
     records = []
+    batch_identities = []
     for cycle in range(1, 9):
         batch_path = RUN_ROOT / "offline-source" / f"cycle-{cycle}-enriched.json"
         if not batch_path.is_file():
-            continue  # the formal run builds these first; pretrain requires all 8
+            raise FileNotFoundError(
+                f"offline source incomplete: {batch_path} missing — all 8 "
+                "enriched batches are required before formal pretraining"
+            )
         batch = json.loads(batch_path.read_text(encoding="utf-8"))
         records.extend(batch["records"])
+        batch_identities.append({
+            "cycle": cycle,
+            "path": str(batch_path),
+            "file_sha256": file_sha256(batch_path),
+            "games": len(batch["games"]),
+            "records": len(batch["records"]),
+        })
     if len(records) != 182_157:
         raise ValueError(
-            f"offline source incomplete: {len(records)} records (expected 182,157); "
-            "run the offline enrichment first"
+            f"offline source record count {len(records)} != 182,157"
         )
+    # Ordered dataset identity: SHA-256 over the canonical ordered list of
+    # the 8 batch file hashes.
+    identity_input = json.dumps(
+        [entry["file_sha256"] for entry in batch_identities],
+        separators=(",", ":"),
+    ).encode("utf-8")
+    offline_dataset_identity = hashlib.sha256(identity_input).hexdigest()
+
     split = frozen_split(sorted({int(r["game_index"]) for r in records}), {2785})
     if split_manifest_hash(split) != plan["pretrain"]["expected_split_manifest_hash"]:
         raise ValueError("split manifest hash mismatch")
@@ -378,6 +475,7 @@ def cmd_pretrain_b(args: argparse.Namespace) -> None:
     validation_records = [r for r in records if int(r["game_index"]) not in train_ids]
 
     input_head_hash = head_state_semantic_hash(b0)
+    input_state = {k: v.clone() for k, v in b0.state_dict().items()}
     device = torch.device(args.device)
     b0.to(device)
     started = time.perf_counter()
@@ -387,9 +485,23 @@ def cmd_pretrain_b(args: argparse.Namespace) -> None:
     )
     metrics = sanity_metrics(model=b0, validation_records=validation_records, device=device)
     b0.to("cpu")
+    # Post-pretraining proofs: actor/trunk/policy unchanged; heads changed.
+    output_state = b0.state_dict()
+    trunk_keys = [k for k in input_state if not k.startswith("heads.")]
+    trunk_unchanged = all(
+        torch.equal(input_state[k], output_state[k]) for k in trunk_keys
+    )
+    if not trunk_unchanged:
+        raise ValueError("B pretraining modified actor/trunk/policy tensors")
+    head_keys = [k for k in input_state if k.startswith("heads.")]
+    heads_changed = any(
+        not torch.equal(input_state[k], output_state[k]) for k in head_keys
+    )
+    if not heads_changed:
+        raise ValueError("B pretraining changed no predictive-head tensor")
     info = _save_checkpoint(
         RUN_ROOT / "B-cycle0-pretrained.pt", b0,
-        arm="B", cycle=0, parent_hash=None,
+        arm="B", cycle=0, parent_hash=b0_parent_semantic,
         plan_digest=digest, catalog_hash=cat_hash, optimizer_state=None,
     )
     report = {
@@ -400,9 +512,14 @@ def cmd_pretrain_b(args: argparse.Namespace) -> None:
         "source_records": len(records),
         "train_records": len(train_records),
         "validation_records": len(validation_records),
+        "offline_source_batches": batch_identities,
+        "offline_dataset_identity": offline_dataset_identity,
         "split_manifest_hash": split_manifest_hash(split),
         "input_head_hash": input_head_hash,
         "output_head_hash": head_state_semantic_hash(b0),
+        "parent_checkpoint_hash": b0_parent_semantic,
+        "trunk_actor_policy_unchanged": True,
+        "predictive_heads_changed": True,
         "b_pretrain_checkpoint": info,
         "sanity_metrics": metrics,
         "elapsed_seconds": time.perf_counter() - started,
@@ -416,6 +533,7 @@ def cmd_pretrain_b(args: argparse.Namespace) -> None:
         "value_rmse_completed": metrics["value_rmse_completed"],
         "value_mse_truncated": metrics["value_mse_truncated"],
         "validation_truncated_games": metrics["validation_truncated_games"],
+        "offline_dataset_identity": offline_dataset_identity,
         "checkpoint": info,
     }))
 
@@ -441,17 +559,15 @@ def cmd_train_cycle(args: argparse.Namespace) -> None:
     if manifest["arm"] != arm:
         raise ValueError("manifest arm mismatch")
 
-    parent_path = RUN_ROOT / f"{arm}-cycle{cycle - 1}.pt"
-    if cycle > 1:
-        parent_path = RUN_ROOT / f"{arm}-cycle{cycle - 1}.pt"
-    if not parent_path.is_file():
-        # cycle 1: arm A uses A-cycle0; arm B uses B-cycle0-pretrained
-        candidate = (
-            RUN_ROOT / f"{arm}-cycle0-pretrained.pt"
-            if arm == "B" and (RUN_ROOT / "B-cycle0-pretrained.pt").is_file()
-            else RUN_ROOT / f"{arm}-cycle0.pt"
+    plan_for_parent = build_plan()
+    digest_for_parent = validate_plan(plan_for_parent)
+    catalog_for_parent = load_catalog(Path(CATALOG_REL))
+    if arm == "B" and cycle == 1:
+        _verify_b_pretrain_provenance(
+            digest_for_parent,
+            catalog_semantic_hash(catalog_for_parent),
         )
-        parent_path = candidate
+    parent_path = ppo_parent_checkpoint(arm, cycle)
     model, parent_payload = _load_checkpoint(parent_path)
     if parent_payload["metadata"]["arm"] != arm:
         raise ValueError("parent checkpoint arm mismatch")
@@ -494,28 +610,452 @@ def cmd_train_cycle(args: argparse.Namespace) -> None:
                       "checkpoint": info, "records": report["records"]}))
 
 
+H1_SEEDS = list(range(8_100_000, 8_100_127 + 1))
+LEAGUE_SEEDS = list(range(8_200_000, 8_200_031 + 1))
+M07_SEEDS = list(range(8_300_000, 8_300_063 + 1))
+D2_SEEDS = list(range(8_400_000, 8_400_063 + 1))
+
+
+def _evaluation_schedules() -> dict[str, list[dict[str, Any]]]:
+    """The four frozen formal evaluation schedules as physical match specs.
+
+    Each spec is one physical Arena match: (pairing, seed, rotation, arms).
+    H1 pairs B-vs-A; league pairs both arms against the 9 frozen opponents;
+    the anchors pair B only against M07 / D2-v2. 1,664 physical matches.
+    """
+    h1 = [
+        {"gate": "h1", "pairing": "H1", "seed": seed, "rotation": rotation,
+         "arms": ("candidate", "baseline")}
+        for seed in H1_SEEDS for rotation in (0, 1)
+    ]
+    league = [
+        {"gate": "league", "pairing": opponent, "seed": seed,
+         "rotation": rotation, "arms": ("candidate", "baseline")}
+        for seed in LEAGUE_SEEDS
+        for opponent in LEAGUE_ORDER
+        for rotation in (0, 1)
+    ]
+    m07 = [
+        {"gate": "m07", "pairing": "M07", "seed": seed, "rotation": rotation,
+         "arms": ("candidate",)}
+        for seed in M07_SEEDS for rotation in (0, 1)
+    ]
+    d2 = [
+        {"gate": "d2", "pairing": "D2-v2", "seed": seed, "rotation": rotation,
+         "arms": ("candidate",)}
+        for seed in D2_SEEDS for rotation in (0, 1)
+    ]
+    return {"h1": h1, "league": league, "m07": m07, "d2": d2}
+
+
+def _validate_schedules(schedules: dict[str, list[dict[str, Any]]]) -> str:
+    h1, league, m07, d2 = (
+        schedules["h1"], schedules["league"], schedules["m07"], schedules["d2"]
+    )
+    assert len(h1) == 256, f"H1 {len(h1)} != 256"
+    # League schedule entries are (opponent, seed, rotation); each entry is
+    # TWO physical matches (candidate arm + baseline arm vs the opponent),
+    # so 576 entries = 1,152 physical matches.
+    assert len(league) == 576, f"league {len(league)} != 576"
+    assert len(m07) == 128, f"m07 {len(m07)} != 128"
+    assert len(d2) == 128, f"d2 {len(d2)} != 128"
+    total = len(h1) + 2 * len(league) + len(m07) + len(d2)
+    assert total == 1664, f"total {total} != 1664"
+    # Exact frozen seed ranges and no duplicate identities.
+    assert [s["seed"] for s in h1] == H1_SEEDS * 2 or sorted({s["seed"] for s in h1}) == H1_SEEDS
+    assert sorted({s["seed"] for s in league}) == LEAGUE_SEEDS
+    assert sorted({s["seed"] for s in m07}) == M07_SEEDS
+    assert sorted({s["seed"] for s in d2}) == D2_SEEDS
+    for gate_schedule in schedules.values():
+        identities = {(s["pairing"], s["seed"], s["rotation"]) for s in gate_schedule}
+        assert len(identities) == len(gate_schedule), "duplicate schedule identity"
+    canonical = json.dumps(
+        {gate: [sorted(s.items(), key=lambda kv: kv[0]) for s in sched]
+         for gate, sched in schedules.items()},
+        sort_keys=True, separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _run_match_spec(spec: dict[str, Any], a4: Path, b4: Path,
+                    a4_info: dict, b4_info: dict, out_root: Path) -> list[dict[str, Any]]:
+    """Execute ONE physical match via the accepted M39A run-match machinery
+    (argmax both sides, no cap) and emit its perspective rows per the
+    frozen ledger schema."""
+    from .m39a_collect import _opponent_agent
+    from splendor_gpu.m40a_gates import SCORES
+
+    gate = spec["gate"]
+    match_dir = out_root / gate / f"{spec['pairing']}-{spec['seed']}-r{spec['rotation']}"
+    report_path = match_dir / "arena-report.json"
+    arm_specs = {
+        "candidate": (b4, b4_info),  # candidate arm = B (the warm-start)
+        "baseline": (a4, a4_info),
+    }
+    opponent_pairings = {"H1": None, "M07": "M07", "D2-v2": "D2-v2"}
+
+    if report_path.is_file():
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    else:
+        match_dir.mkdir(parents=True, exist_ok=True)
+        agents = []
+        for seat in (0, 1):
+            arm = spec["arms"][seat] if seat < len(spec["arms"]) else None
+            if arm is not None and spec["gate"] == "h1":
+                path, info = arm_specs[arm]
+                agents.append({
+                    "program": sys.executable,
+                    "args": [
+                        "-m", "splendor_gpu.m40a_agent",
+                        "--checkpoint-sha256", info["checkpoint_file_sha256"],
+                        "--plan-hash", info["plan_hash"],
+                        "--arm", arm,
+                        "--game-index", str(spec["seed"]),
+                        "--sidecar-out", str(match_dir / f"seat-{seat}.sidecar.json"),
+                        "--server-url", info["server_url"],
+                        "--server-ready", info["server_ready"],
+                        "--action-selection", "argmax",
+                    ],
+                })
+            else:
+                # Anchor gates (m07, d2): candidate seat via the server;
+                # the frozen opponent via the accepted helper.
+                if spec["gate"] in ("m07", "d2"):
+                    if seat == 0:
+                        path, info = arm_specs["candidate"]
+                        agents.append({
+                            "program": sys.executable,
+                            "args": [
+                                "-m", "splendor_gpu.m40a_agent",
+                                "--checkpoint-sha256", info["checkpoint_file_sha256"],
+                                "--plan-hash", info["plan_hash"],
+                                "--arm", "B",
+                                "--game-index", str(spec["seed"]),
+                                "--sidecar-out", str(match_dir / "seat-0.sidecar.json"),
+                                "--server-url", info["server_url"],
+                                "--server-ready", info["server_ready"],
+                                "--action-selection", "argmax",
+                            ],
+                        })
+                    else:
+                        agents.append(_opponent_agent(
+                            spec["pairing"],
+                            splendor=SPLENDOR,
+                            catalog=Path(CATALOG_REL),
+                            action_seed=20_261_000 + spec["seed"],
+                            device="cuda",
+                        ))
+        config = {
+            "game_id": f"m40a-eval-{gate}-{spec['pairing']}-{spec['seed']}-r{spec['rotation']}",
+            "seed": spec["seed"],
+            "handshake_timeout_ms": 10_000,
+            "move_timeout_ms": 30_000,
+            "shutdown_grace_ms": 2_000,
+            "agents": agents,
+        }
+        _atomic_json(match_dir / "arena-config.json", config)
+        completed = subprocess.run(
+            [str(SPLENDOR), "run-match",
+             "--config", str(match_dir / "arena-config.json"),
+             "--report-out", str(report_path),
+             "--replay-out", str(match_dir / "replay.json")],
+            capture_output=True, text=True, timeout=60 * 60, check=False)
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"eval {gate}/{spec['pairing']}/{spec['seed']}/r{spec['rotation']} "
+                f"rc={completed.returncode}: {completed.stderr[:200]}"
+            )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    outcome = report.get("outcome", {})
+    if outcome.get("status") != "completed":
+        raise ValueError(
+            f"eval {gate}/{spec['pairing']}/{spec['seed']}/r{spec['rotation']} "
+            f"is not completed ({outcome.get('status')}) — fail closed"
+        )
+    result = outcome["result"]
+    winners = [int(seat) for seat in result.get("winners", [])]
+
+    rows = []
+    for arm in spec["arms"]:
+        arm_seat = 0 if arm == "candidate" else 1
+        if len(spec["arms"]) == 1:
+            arm_seat = 0
+        if len(winners) == 2:
+            arm_outcome = "draw"
+        elif arm_seat in winners:
+            arm_outcome = "win"
+        else:
+            arm_outcome = "loss"
+        rows.append({
+            "arm": arm,
+            "pairing": spec["pairing"],
+            "seed": spec["seed"],
+            "rotation": spec["rotation"],
+            "completed": True,
+            "candidate_fault": False,
+            "deterministic_nontermination": False,
+            "outcome": arm_outcome,
+        })
+    return rows
+
+
+def _start_arm_server(arm: str, checkpoint: Path, digest: str, device: str) -> dict[str, Any]:
+    ready_dir = RUN_ROOT / "eval-servers"
+    ready_dir.mkdir(parents=True, exist_ok=True)
+    ready = ready_dir / f"{arm}-ready.json"
+    if ready.exists():
+        ready.unlink()
+    file_sha = file_sha256(checkpoint)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "splendor_gpu.m40a_server",
+         "--checkpoint", str(checkpoint), "--checkpoint-sha256", file_sha,
+         "--plan-hash", digest, "--catalog", CATALOG_REL,
+         "--device", device, "--ready-file", str(ready)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        env=dict(os.environ),
+    )
+    deadline = time.time() + 180
+    while not ready.is_file():
+        if proc.poll() is not None:
+            raise RuntimeError(f"{arm} eval server failed: {proc.stderr.read()[:300]}")
+        if time.time() > deadline:
+            raise TimeoutError(f"{arm} eval server startup timeout")
+        time.sleep(0.2)
+    doc = json.loads(ready.read_text(encoding="utf-8"))
+    return {
+        "checkpoint_file_sha256": file_sha,
+        "plan_hash": digest,
+        "server_url": f"127.0.0.1:{doc['port']}",
+        "server_ready": str(ready),
+        "proc": proc,
+    }
+
+
+def _expand_league_spec(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    """A league schedule entry runs BOTH arms against the opponent — two
+    physical matches per (opponent, seed, rotation) pair."""
+    return [
+        {**spec, "arms": ("candidate",), "sub": "candidate"},
+        {**spec, "arms": ("baseline",), "sub": "baseline"},
+    ]
+
+
 def cmd_evaluate(args: argparse.Namespace) -> None:
-    # Formal gates: cycle-4 finals only. The physical Arena execution reuses
-    # the accepted M39A evaluator machinery; this entry validates checkpoints
-    # and runs the frozen statistics over a ledger.
     formal_checkpoint_guard(4)
     plan = build_plan()
     digest = validate_plan(plan)
     a4_path = RUN_ROOT / "A-cycle4.pt"
     b4_path = RUN_ROOT / "B-cycle4.pt"
-    for path in (a4_path, b4_path):
+    infos = {}
+    for arm, path in (("A", a4_path), ("B", b4_path)):
         if not path.is_file():
             raise FileNotFoundError(f"formal checkpoint missing: {path}")
         _, payload = _load_checkpoint(path)
         if int(payload["metadata"]["cycle"]) != 4:
             raise ValueError(f"{path} is not a cycle-4 final")
-    print(json.dumps({
-        "status": "evaluate-ready",
+        if payload["metadata"]["arm"] != arm:
+            raise ValueError(f"{path} arm mismatch")
+        infos[arm] = {
+            "path": str(path),
+            "checkpoint_hash": payload["checkpoint_hash"],
+            "checkpoint_file_sha256": file_sha256(path),
+        }
+
+    schedules = _evaluation_schedules()
+    schedule_hash = _validate_schedules(schedules)
+
+    if args.dry_run:
+        spec_out = {
+            "format": "effective-splendor-m40a-evaluation-dry-run",
+            "version": 1,
+            "design_sha": "09fd8ec",
+            "plan_hash": digest,
+            "schedule_hash": schedule_hash,
+            "counts": {
+                "h1_matches": 256,
+                "league_schedule_entries": 576,
+                "league_physical_matches": 1152,
+                "m07_matches": 128,
+                "d2_matches": 128,
+                "total_physical_matches": 1664,
+            },
+            "a_cycle4": infos["A"],
+            "b_cycle4": infos["B"],
+            "schedules": schedules,
+        }
+        _atomic_json(RUN_ROOT / "m40a-evaluation-dry-run.json", spec_out)
+        print(json.dumps({
+            "status": "evaluate-dry-run",
+            "plan_hash": digest,
+            "schedule_hash": schedule_hash,
+            "h1": 256, "league_physical": 1152, "m07": 128, "d2": 128,
+            "total": 1664,
+            "a_cycle4": infos["A"],
+            "b_cycle4": infos["B"],
+        }))
+        return
+
+    # Formal execution: thin wrapper over the accepted Arena machinery.
+    out_root = RUN_ROOT / "evaluation"
+    device = args.device
+    b4_server = _start_arm_server("B", b4_path, digest, device)
+    a4_server = _start_arm_server("A", a4_path, digest, device)
+    ledgers: dict[str, list[dict[str, Any]]] = {
+        "h1": [], "league": [], "m07": [], "d2": [],
+    }
+    try:
+        # H1: 256 physical matches, B candidate vs A baseline.
+        for spec in schedules["h1"]:
+            rows = _run_match_spec(
+                spec, a4_path, b4_path,
+                {"plan_hash": digest, **a4_server},
+                {"plan_hash": digest, **b4_server},
+                out_root,
+            )
+            ledgers["h1"].extend(rows)
+        # League: both arms, 1,152 physical matches.
+        for spec in schedules["league"]:
+            for sub in _expand_league_spec(spec):
+                # each sub-spec is one arm vs the frozen opponent
+                rows = _run_league_match(
+                    sub, a4_server, b4_server, out_root
+                )
+                ledgers["league"].extend(rows)
+        # Anchors: B only, 128 matches each.
+        for gate in ("m07", "d2"):
+            for spec in schedules[gate]:
+                rows = _run_match_spec(
+                    spec, a4_path, b4_path,
+                    {"plan_hash": digest, **a4_server},
+                    {"plan_hash": digest, **b4_server},
+                    out_root,
+                )
+                ledgers[gate].extend(rows)
+    finally:
+        b4_server["proc"].terminate()
+        a4_server["proc"].terminate()
+
+    from .m40a_gates import evaluate_anchor, evaluate_h1, evaluate_league
+
+    h1_result = evaluate_h1(ledgers["h1"])
+    league_result = evaluate_league(ledgers["league"])
+    m07_result = evaluate_anchor(ledgers["m07"], "m07")
+    d2_result = evaluate_anchor(ledgers["d2"], "d2")
+    final = {
+        "format": "effective-splendor-m40a-final-evaluation",
+        "version": 1,
+        "design_sha": "09fd8ec",
         "plan_hash": digest,
-        "a_cycle4": str(a4_path),
-        "b_cycle4": str(b4_path),
-        "crn_schedule_hash": FROZEN_CRN_SCHEDULE_HASH,
+        "schedule_hash": schedule_hash,
+        "a_cycle4": infos["A"],
+        "b_cycle4": infos["B"],
+        "h1": h1_result,
+        "league": league_result,
+        "m07_anchor": m07_result,
+        "d2_anchor": d2_result,
+    }
+    _atomic_json(RUN_ROOT / "m40a-final-evaluation.json", final)
+    print(json.dumps({
+        "status": "evaluate-complete",
+        "h1": h1_result["verdict"],
+        "h1_lower95": h1_result["lower_95_bps"],
+        "league": league_result["verdict"],
+        "m07_anchor_delta": m07_result["mean_delta_bps"],
+        "d2_anchor_delta": d2_result["mean_delta_bps"],
+        "schedule_hash": schedule_hash,
     }))
+
+
+def _run_league_match(spec: dict[str, Any], a4_server: dict, b4_server: dict,
+                      out_root: Path) -> list[dict[str, Any]]:
+    """One league physical match: one arm vs the frozen opponent."""
+    from .m39a_collect import _opponent_agent
+
+    arm = spec["sub"]
+    match_dir = out_root / "league" / f"{arm}-{spec['pairing']}-{spec['seed']}-r{spec['rotation']}"
+    report_path = match_dir / "arena-report.json"
+    server = b4_server if arm == "candidate" else a4_server
+    if report_path.is_file():
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    else:
+        match_dir.mkdir(parents=True, exist_ok=True)
+        agents = []
+        for seat in (0, 1):
+            if seat == 0:
+                agents.append({
+                    "program": sys.executable,
+                    "args": [
+                        "-m", "splendor_gpu.m40a_agent",
+                        "--checkpoint-sha256", server["checkpoint_file_sha256"],
+                        "--plan-hash", server["plan_hash"],
+                        "--arm", "B" if arm == "candidate" else "A",
+                        "--game-index", str(spec["seed"]),
+                        "--sidecar-out", str(match_dir / "seat-0.sidecar.json"),
+                        "--server-url", server["server_url"],
+                        "--server-ready", server["server_ready"],
+                        "--action-selection", "argmax",
+                    ],
+                })
+            else:
+                agents.append(_opponent_agent(
+                    spec["pairing"],
+                    splendor=SPLENDOR,
+                    catalog=Path(CATALOG_REL),
+                    action_seed=20_261_000 + spec["seed"],
+                    device="cuda",
+                ))
+        config = {
+            "game_id": (
+                f"m40a-eval-league-{arm}-{spec['pairing']}-"
+                f"{spec['seed']}-r{spec['rotation']}"
+            ),
+            "seed": spec["seed"],
+            "handshake_timeout_ms": 10_000,
+            "move_timeout_ms": 30_000,
+            "shutdown_grace_ms": 2_000,
+            "agents": agents,
+        }
+        _atomic_json(match_dir / "arena-config.json", config)
+        completed = subprocess.run(
+            [str(SPLENDOR), "run-match",
+             "--config", str(match_dir / "arena-config.json"),
+             "--report-out", str(report_path),
+             "--replay-out", str(match_dir / "replay.json")],
+            capture_output=True, text=True, timeout=60 * 60, check=False)
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"league eval {arm}/{spec['pairing']}/{spec['seed']}/"
+                f"r{spec['rotation']} rc={completed.returncode}: "
+                f"{completed.stderr[:200]}"
+            )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+
+    outcome = report.get("outcome", {})
+    if outcome.get("status") != "completed":
+        raise ValueError(
+            f"league eval {arm}/{spec['pairing']}/{spec['seed']}/"
+            f"r{spec['rotation']} is not completed — fail closed"
+        )
+    result = outcome["result"]
+    winners = [int(seat) for seat in result.get("winners", [])]
+    if len(winners) == 2:
+        arm_outcome = "draw"
+    elif 0 in winners:
+        arm_outcome = "win"
+    else:
+        arm_outcome = "loss"
+    # perspective row for this arm
+    return [{
+        "arm": arm,
+        "pairing": spec["pairing"],
+        "seed": spec["seed"],
+        "rotation": spec["rotation"],
+        "completed": True,
+        "candidate_fault": False,
+        "deterministic_nontermination": False,
+        "outcome": arm_outcome,
+    }]
 
 
 def main() -> None:
@@ -537,7 +1077,10 @@ def main() -> None:
     train.add_argument("--cycle", type=int, choices=[1, 2, 3, 4], required=True)
     train.add_argument("--device", default="cuda")
 
-    sub.add_parser("evaluate")
+    evaluate_parser = sub.add_parser("evaluate")
+    evaluate_parser.add_argument("--dry-run", action="store_true",
+                               help="emit the 1,664-match schedule without running Arena")
+    evaluate_parser.add_argument("--device", default="cuda")
 
     args = parser.parse_args()
     handlers = {
