@@ -3,11 +3,13 @@
 ```text
 Milestone:      M40A
 Title:          Player-View Predictive Critic Warm-Start A/B
-Status:         PROPOSED / REVISION_1 / PENDING_RE_REVIEW
+Status:         PROPOSED / REVISION_2 / PENDING_RE_REVIEW
 Prior round:    M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT,
                 final review ACCEPTED 2026-09-01)
 Design review:  NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 3 (2026-09-01);
-                findings repaired in Revision 1 (this document)
+                repaired in Revision 1 (772fd4c)
+Rev 1 re-review: NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2 (2026-09-01);
+                repaired in Revision 2 (this document)
 Baseline:       current main at draft time (7165f71)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round does not seek promotion)
@@ -141,14 +143,23 @@ league safeguard   statistical unit = cross-opponent seed aggregate
                    NOTE: this is "no significant evidence B is weaker",
                    a route safeguard — NOT a formal zero-margin
                    non-inferiority claim
-B vs M07           diagnostic report: seeds 8_300_000 .. 8_300_063,
-                   64 blocks × 2 rotations (128 matches), paired
-                   delta interval reported, no threshold (the M39A
-                   diagnostic gain is the comparison anchor)
-B vs D2-v2         diagnostic report: seeds 8_400_000 .. 8_400_063,
-                   64 blocks × 2 rotations, paired delta interval
-                   reported, no threshold — does B drift out of the
-                   initialization basin (M39A's failure signature)?
+B vs M07           anchor diagnostic (report-only): seeds
+                   8_300_000 .. 8_300_063, 64 blocks × 2 rotations
+                   (128 matches; B only — no second arm is run). For
+                   block i: score_i = 10_000 × mean(B's two-rotation
+                   match scores), delta_i = score_i − 5_000 (positive =
+                   B's win direction above the 50% anchor). Report the
+                   mean delta and a TWO-SIDED 95% Student-t interval
+                   over the 64 block deltas, df = 63, frozen critical
+                   value 1.998340542521. No threshold; no decision-table
+                   effect. (The M39A diagnostic gain is the comparison
+                   anchor.)
+B vs D2-v2         anchor diagnostic (report-only): seeds
+                   8_400_000 .. 8_400_063, 64 blocks × 2 rotations,
+                   B only, identical statistic (score_i − 5_000,
+                   two-sided 95% t, df = 63, 1.998340542521). Does B
+                   drift out of the initialization basin (M39A's
+                   failure signature)? Report-only, no threshold.
 ```
 
 Total formal Arena ≈ 1,664 matches — deliberately the same order as
@@ -177,9 +188,11 @@ are player-view-only:
 outcome head       [p_loss, p_draw, p_win]                          (3)
 final-VP heads     P(self final VP = k), P(opp final VP = k),
                    k ∈ 0..30 (two 31-way softmaxes)                 (62)
-VP-difference head E[final VP difference]  (scalar, linear,
-                   trained with MSE against the realized
-                   difference; auxiliary)                             (1)
+VP-difference head E[clamp((VP_self − VP_opp)/15, −1, +1)]
+                   (scalar, linear, trained with MSE; the M39A
+                   normalization — the raw difference is a
+                   presentation-only diagnostic, never the training
+                   target; auxiliary)                        (1)
 timing heads       P(self finishes within 2/4/8 own decision turns),
                    P(opp finishes within 2/4/8 own decision turns)
                    (six Bernoulli probabilities, sigmoid outputs)    (6)
@@ -229,26 +242,55 @@ source data        M39A formal run, cycles 1–8: all learner-seat
 split unit         GAME-level only. No prefix of a game may appear in
                   both train and validation (prefix leakage is the
                   failure mode this rule exists to prevent)
-stratification     split is stratified by cycle (1..8), opponent bucket
-                  (random/heuristic/M07/league/self-play), and
-                  terminal/truncated, so validation tracks the training
-                  distribution
+stratification     COMPLETED games (4,095 of them) are split 80/20 at
+                  game level, stratified by cycle (1..8) and opponent
+                  bucket (random/heuristic/M07/league/self-play). The
+                  terminal/truncated dimension is NOT a stratification
+                  axis: M39A's formal data contains exactly ONE
+                  truncated game (cycle-6 game 2785), which cannot be
+                  split across train and validation without game-level
+                  leakage. See the frozen truncation rule below.
 honest sample size the 182,157 records are correlated prefixes of 4,096
                   games; the effective sample size is ~4,096. Any report
                   of offline metrics must state this; the 182k figure is
                   never to be presented as 182k independent samples
-truncated games    included with §1 semantics (value MSE only)
+truncation rule    game 2785 (the single truncated game) is FORCED into
+                  TRAIN and never appears in validation. Rationale: B
+                  must have actually seen frozen cap-return supervision
+                  at least once — otherwise M40A would claim truncation
+                  pretraining support while never having trained on a
+                  truncated state. Its records contribute VALUE MSE ONLY
+                  (against the frozen cap-return); NO Outcome CE, no
+                  final-VP CE, no VP-difference MSE, no timing BCE is
+                  fabricated from the censored game.
 frozen trunk       only heads update
 ```
+
+**Deterministic stratified split rule (frozen)**: within each
+`(cycle, opponent-bucket)` stratum of completed games, games are sorted
+by ascending `game_index`; the validation quota is `round(0.20 ×
+stratum_size)` computed with banker's rounding; the validation set is
+selected by a deterministic stride — starting at index `floor(stratum_
+size / 2)` and stepping by `ceil(1 / 0.20) = 5` positions in the sorted
+list, wrapping once, until the quota is filled. Two compliant
+implementations therefore select **the same validation games**. The
+split RNG seed `40_260_901` is retained as the contract's identity
+field (the rule above is fully deterministic and needs no draw, but the
+seed pins the contract against silent re-specification).
+
+**Validation truncated metrics**: held-out truncated V MSE/RMSE is
+reported as `N/A` with `validation_truncated_games = 0` — never
+computed from training data, never fabricated. Completed validation
+metrics remain mandatory.
 
 **Pretraining executor contract (frozen)**:
 
 ```text
-split              deterministic game-level stratified split, 80% train /
-                   20% validation, stratified by cycle (1..8), opponent
-                   bucket, and terminal/truncated; split RNG seed
-                   frozen at 40_260_901 (new, disjoint from all other
-                   ranges)
+split              deterministic game-level stratified split per the
+                   frozen rule above: 80% train / 20% validation over the
+                   4,095 completed games, stratified by cycle and
+                   opponent bucket; the single truncated game (2785) is
+                   forced into train; split identity seed 40_260_901
 arm construction   A and B are created from ONE frozen head
                    initialization: a single torch.Generator seeded
                    20_260_829 (the M39A head-init seed) draws the head
@@ -278,13 +320,23 @@ loss reduction     every predictive family is reduced by its INTERNAL
                    MEAN over the batch before summation:
                      outcome CE      — completed records only, mean
                      VP-dist CE      — mean over both heads combined
-                     VP-diff MSE     — mean
+                     VP-diff MSE     — mean, target =
+                                      clamp((VP_self − VP_opp) / 15,
+                                            −1, +1)
+                                      (the M39A normalization, inherited
+                                      verbatim: raw VP-difference error
+                                      reaches 5–15 and would dominate
+                                      CE/BCE by orders of magnitude)
                      timing BCE      — mean over all 6 outputs combined
                      value MSE       — mean (completed: centered return;
                                        truncated: cap-return)
                    family means, not raw head-count sums, so the 6 timing
-                   outputs do not get 6× the weight of the VP-difference
-                   scalar
+                     outputs do not get 6× the weight of the VP-difference
+                     scalar
+truncated masking  truncated records contribute VALUE MSE ONLY. They are
+                   masked from: outcome CE, VP-distribution CE,
+                   VP-difference MSE, and timing BCE — no label is
+                   fabricated from the censored game
 sanity metrics     report-only, never gates, never epoch selectors:
                    headline = held-out multiclass Outcome Brier on the
                    validation games (multiclass Brier = mean over
@@ -293,10 +345,12 @@ sanity metrics     report-only, never gates, never epoch selectors:
                    the one-hot realized outcome; lower is better;
                    computed on completed validation games only)
                    additionally required: held-out MSE and RMSE of
-                   V = p_win − p_loss against the centered target,
-                   reported in TWO columns — completed games (vs the
-                   realized centered return) and truncated games (vs
-                   the frozen cap-return)
+                   V = p_win − p_loss, reported in TWO columns —
+                   completed games (vs the realized centered return)
+                   and truncated games (vs the frozen cap-return); the
+                   truncated column is reported as `N/A` with
+                   `validation_truncated_games = 0` per the frozen
+                   truncation rule (never computed from training data)
 ```
 
 ## A/B PPO contract (both arms identical)
@@ -317,8 +371,8 @@ training seeds     SHARED by A and B: seeds 8_000_000 .. 8_001_023
                   (1,024 two-rotation blocks = 2,048 games per arm;
                   the same block list is replayed by both arms —
                   divergence comes only from policy behaviour)
-                  disjoint from every M39A range and from all M40A
-                  evaluation ranges below
+                  disjoint from every M39A Arena/collection range and
+                  from all M40A evaluation ranges below
 trainer            M39A §5.3 execution contract verbatim (minibatch 512,
                   4 epochs, AdamW, betas (0.9, 0.999), eps 1e-8, wd
                   1e-4, joint grad-norm clip 1.0, entropy coefficient
@@ -341,25 +395,34 @@ evaluation         the four frozen contracts of §3, on the cycle-4
 new to PPO — VP-distribution, VP-difference, timing — are active in
 **both arms** throughout PPO, each family reduced by its internal mean
 (pretraining convention carried over), and sharing the **M39A total
-auxiliary pressure of 0.250** as three equal parts:
+predictive auxiliary coefficient budget of 0.250** as three equal parts:
 
 ```text
 aux coefficient per predictive family = 0.250 / 3 = 1/12 ≈ 0.083333…
-total predictive aux pressure         = 3 × 1/12 = 0.250  (unchanged
-                                         from M39A's single 0.250 aux)
+total predictive aux coefficient budget = 3 × 1/12 = 0.250 (the
+                                          coefficient budget matches
+                                          M39A's single 0.250 aux
+                                          coefficient)
 entropy 0.010 / value 0.500 / grad clip 1.0 / wd 1e-4 — inherited
 ```
 
-This normalization is deliberate: M40A must not silently become "three
-times the auxiliary gradient of M39A".
+The wording is deliberately "coefficient budget", not "gradient
+pressure": equal coefficients do not mathematically guarantee equal
+gradient magnitudes across differently-scaled families. The target
+scales are made comparable by construction instead — the VP-difference
+target uses the M39A normalization `clamp(ΔVP/15, −1, +1)` (identical
+semantics in offline pretraining and online PPO; completed games use
+final VP; truncated games are masked from this family), and the
+VP-distribution and timing targets are probabilistic by construction.
 
 **Outcome CE during PPO**: active in both arms on completed games only,
 folded into the value coefficient's supervision (the value head is the
 outcome head; its PPO loss is value MSE plus Outcome CE with the same
 0.500 coefficient family, CE receiving weight 0.500 and MSE weight
 0.500, both reduced by internal mean). Truncated games contribute value
-MSE against the frozen cap-return only. Nothing about this differs
-between arms.
+MSE against the frozen cap-return only, and are masked from Outcome CE,
+VP-distribution CE, VP-difference MSE, and timing BCE. Nothing about
+this differs between arms.
 
 **Checkpoint selection**: cycle-4 final checkpoints only (see §3); the
 collection reports cycles 1–3 as a diagnostic learning curve with no
@@ -412,9 +475,15 @@ Reuse (already reviewed machinery, re-linked not re-specified): resident
 inference server, capped `run-rollout`, Rust materializer with join
 validation, paired gate evaluator, provenance ledger discipline.
 
-**Complete M40A seed allocation (frozen; all disjoint from every M39A
-range — training `4_000_000..`, G2 `5_000_000..`, G3 `5_100_000..`,
-probe `5_200_000..`, sampling `7_000_000..` — and from each other)**:
+**Complete M40A seed allocation (frozen)**: the five Arena/collection
+seed ranges are disjoint from every M39A Arena/collection/sampling range
+(training `4_000_000..`, G2 `5_000_000..`, G3 `5_100_000..`, probe
+`5_200_000..`, sampling `7_000_000..`) and from each other. The two
+RNG-namespace seeds at the bottom are **intentionally inherited** from
+M39A — they are generator namespaces, not fresh Arena seed ranges, and
+their reuse is part of the contract (the PPO trainer namespace is shared
+so both arms shuffle identically; the head-init namespace reproduces the
+M39A initialization semantics):
 
 ```text
 A/B shared training   8_000_000 .. 8_001_023   (1,024 blocks × 2 rot)
@@ -422,10 +491,12 @@ H1 evaluation         8_100_000 .. 8_100_127   (128 blocks × 2 rot)
 league safeguard      8_200_000 .. 8_200_031   (32 blocks × 2 rot × 9)
 vs-M07 report         8_300_000 .. 8_300_063   (64 blocks × 2 rot)
 vs-D2-v2 report       8_400_000 .. 8_400_063   (64 blocks × 2 rot)
-split RNG             40_260_901  (pretrain 80/20 game split)
-pretrain shuffle      40_260_902
-PPO trainer           40_260_830  (shared M39A value, both arms)
-head initialization   20_260_829  (single draw, state_dict copied to A/B)
+split RNG             40_260_901  (pretrain split identity; new)
+pretrain shuffle      40_260_902  (new)
+PPO trainer           40_260_830  (INTENTIONALLY INHERITED from M39A;
+                                   shared RNG namespace, both arms)
+head initialization   20_260_829  (INTENTIONALLY INHERITED from M39A;
+                                   single draw, state_dict copied to A/B)
 ```
 
 ## Resolved design-review items (2026-09-01, adjudicated by the reviewer)
@@ -468,3 +539,23 @@ repairs below are this revision.
 Delivery-clarification recorded: `handoff.md` is a **local-only, gitignored
 working file** (`.gitignore:12`); statements about "updating handoff" refer
 to the local working copy and never to repository contents.
+
+---
+
+## Revision 2 — findings and disposition
+
+Re-review of Revision 1 (`772fd4c`), 2026-09-01. Verdict
+**`NEEDS_REVISION — P0 = 0, P1 = 2, P2 = 2`**. The previous review's
+P1=4/P2=3 findings are all CLOSED (CRN training, 128-block H1, league
+statistical unit, cycle-4-only, timing off-by-one, VP overflow, pretrain
+executor). This revision is a final contract repair on two executor
+boundary conditions and two reporting contracts — not a redesign.
+
+| # | Severity | Finding | Disposition | Where |
+|---|---|---|---|---|
+| P1-1 | P1 | The 80/20 terminal-stratified split is unsatisfiable on real M39A data: the formal run contains exactly ONE truncated game (cycle-6 game 2785), which cannot be both game-level-leak-free and present in both train and validation; the mandatory truncated validation metric could be undefined | Game 2785 is **forced into TRAIN** (B must have seen frozen cap-return supervision at least once); the 4,095 completed games are split 80/20 stratified by cycle × opponent bucket only; truncated records are masked from every predictive family except value MSE; held-out truncated V MSE/RMSE reports `N/A` with `validation_truncated_games = 0` (never computed from training data); a fully deterministic per-stratum rounding/order rule (banker's-rounded quota, sorted by game_index, stride-5 selection from the midpoint) is frozen so two implementations select the same validation games | §Offline pretraining data contract |
+| P1-2 | P1 | VP-difference loss on the raw difference (error scale 5–15) would dominate CE/BCE by orders of magnitude; `1/12`-per-family coefficients do not make the gradient scales comparable | Target redefined as the M39A normalization **`clamp((VP_self − VP_opp)/15, −1, +1)`** — identical semantics in offline pretraining and online PPO; scalar linear head + MSE; truncated games masked from this family; raw VP-difference is presentation-only, never the training target. Wording changed from "total auxiliary pressure" to **"total predictive auxiliary coefficient budget"** (equal coefficients are not a claim of equal gradient magnitudes) | §Predictive head set + pretrain loss + PPO aux |
+| P2-1 | P2 | "B vs M07 / B vs D2-v2 paired delta interval" is not executable: only B's 64×2 matches are run, with no second arm to define the delta | Both diagnostics redefined as **anchor statistics**: `score_i = 10_000 × mean(B's two-rotation scores)`, `delta_i = score_i − 5_000`; report mean delta and a **two-sided 95% Student-t interval**, df = 63, frozen critical value `1.998340542521`; no threshold, no decision-table effect, no additional matches. The ambiguous "paired delta interval" phrasing is removed | §3 |
+| P2-2 | P2 | The seed table claimed "all disjoint from every M39A range" while the same table intentionally reuses M39A's `40_260_830` (trainer) and `20_260_829` (head init) | Prose corrected: the five **Arena/collection seed ranges** are disjoint from every M39A Arena/collection/sampling range and from each other; the two **RNG-namespace seeds** are intentionally inherited from M39A (shared trainer namespace keeps both arms' shuffles paired; head-init namespace reproduces M39A's initialization semantics) and are labelled as inherited in the table | §Lean iteration protocol (seed table) + §A/B PPO contract |
+
+All prior frozen decisions are retained unchanged.
