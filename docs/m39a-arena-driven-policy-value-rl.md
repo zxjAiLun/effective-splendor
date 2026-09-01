@@ -1499,11 +1499,12 @@ G1 (blocking clause)   FAIL — formal Arena non-termination is 1/1,664,
                        (learner − opponent) −3.51 per seat-game over 5,632
                        learner seat-games; 35.4% of learner seat-games
                        reach 15 VP; tokens+gold paid per learner VP
-                       11.01 (full spend: take-tokens 258,454 colors +
-                       net reserve gold 26,161 + purchase payments 339,284
-                       colors incl. gold, divided by 56,656 learner VP;
-                       purchase costs derived from each buy action's card
-                       cost in the pre-action observation).
+                       5.99 (pre-registered "paid" = purchase payments
+                       only: 339,284 colors incl. gold spent on
+                       buy_market/buy_reserved, each from the bought
+                       card's cost in the pre-action observation, divided
+                       by 56,656 learner VP; token takes and reserve gold
+                       are inflows, not payments, and are excluded).
 G2                     FAIL — 1 deterministic non-termination (baseline
                        arm) + the affected seed block incomplete:
                        completed_matches 511/512, completed_seed_blocks
@@ -1580,17 +1581,48 @@ closed in provenance ledger v2:
   with a passing referee mock).
 - **Runner resume hardened**: an existing report is only reused after the
   complete frozen-contract chain validates via the provenance rebuild.
-- Current validator verdicts: G2 `valid (512 rows)`, G3 `valid
-  (1,152 rows)`; all 1,663 completed replays re-verified by the referee
-  with zero mismatches.
 
-Metric correction (same review): the earlier "5.06 tokens+reserves/VP"
-figure replaced the pre-registered metric with a narrower one. The full
-**tokens+gold paid per VP = 11.01** is now computed as the complete
-learner spend — take-tokens (258,454 colors) + net reserve gold (26,161)
-+ **purchase payments (339,284 colors incl. gold, derived from each buy
-action's card cost in the pre-action observation)** — over 56,656 total
-learner VP.
+A third review (`NEEDS_ONE_NARROW_PROVENANCE_FIX`) found four further
+gaps — a swapped agent `program` with unchanged argv was accepted, any
+slot could lack a report, the ledger bound the post-repair runner instead
+of the execution-era one, and frozen constants were re-read from disk —
+all closed in **provenance ledger v3**:
+
+- **Program identity**: the agent executables themselves (resolved
+  python and splendor paths) are part of the frozen contract; a malicious
+  binary with identical argv fails closed.
+- **Unique missing-report slot**: only the frozen non-termination slot
+  (`baseline/M07/5_000_029/r0`) may lack a report; every other G2/G3
+  slot with a missing report fails immediately (previously it produced an
+  accepted non-completed row).
+- **Execution-era identity separation**: the ledger records
+  `execution_commit = aa98237` with the historical runner SHA
+  `3fb12f61…` (what actually ran the 1,664 matches) separately from the
+  validator-era identities checked against the current tree — the runner
+  has legitimately evolved since, and the results are bound to what
+  executed, not to the validator.
+- **Frozen constants**: the evaluation ledger, gate report, catalog, and
+  candidate checkpoint hashes are recorded as **constants** and the
+  on-disk artifacts are compared against them on validation — a rebuild
+  alone can no longer re-bless modified artifacts. The plan on disk must
+  still hash to the frozen plan hash. The m35a report identity is now
+  version-checked per role (baseline arm = `M25-D2-v2`; each league seat
+  = its own model id), and the ruleset fingerprint of both report and
+  replay must equal the frozen engine fingerprint.
+- Two further synthetic tests pin the new tampers (swapped program,
+  missing report on a normal slot); nine synthetic tests total.
+
+Current validator verdicts: G2 `valid (512 rows)`, G3 `valid
+(1,152 rows)`; all 1,663 completed replays re-verified by the referee
+with zero mismatches.
+
+Metric correction (final, per the second review): the pre-registered
+"tokens + gold paid" is the **purchase payment only** — 339,284 colors
+(incl. gold) spent on buy_market/buy_reserved actions, each derived from
+the bought card's cost in the pre-action observation, divided by 56,656
+total learner VP = **5.99**. The earlier 11.01 figure double-counted
+resource flows (token takes and reserve gold are inflows, not payments);
+both intermediate figures are retained in the G1 report history.
 
 Evidence: `local-artifacts/m39a-formal-run/g1-training-report.json`
 (v2, per-game statistics),

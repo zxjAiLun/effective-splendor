@@ -47,7 +47,7 @@ ROOT = Path("local-artifacts").resolve()
 REPO = Path(__file__).resolve().parent.parent.parent
 
 PROV_FORMAT = "effective-splendor-m39a-evaluation-provenance-ledger"
-PROV_VERSION = 2
+PROV_VERSION = 3
 
 SCORES = {"win": 1.0, "draw": 0.5, "loss": 0.0}
 
@@ -64,12 +64,26 @@ PLAN_HASH = "06cbd7b2413b7e640402799ff25c25ae57985ab3ea25b113b3eddf053f2841d6"
 CATALOG_PATH = "apps/replay-studio/tests/fixtures/rust-analysis-trace-v1.json"
 EXE_REL = "target/release/splendor.exe"
 
-# Canonical (LF-normalized) source SHA-256 of the runtime that executed the
-# evaluations. The candidate agent is the reviewed d9ca5cc revision; the
-# other runtime files are at their current HEAD states (frozen by this
-# table; any drift fails validation).
-RUNTIME_SOURCE_SHA256 = {
-    "eval_runner": "0c4825fa902ca87c3cde16805bda2d37f4a05b4b3465bf8c3415b4afe341d56a",
+# Canonical (LF-normalized) source SHA-256 identities. Two eras are
+# recorded separately:
+#
+# - EXECUTION_*: the identities of the code that **actually executed the
+#   1,664 evaluation matches** (commit aa98237). Historical facts; never
+#   compared against the current checkout.
+# - CURRENT_*: the identities of the runtime files the **validator itself**
+#   depends on at validation time (this provenance module and the gates
+#   evaluator). Drift here changes the validator, not the executed results,
+#   and fails validation so the ledger is regenerated deliberately.
+EXECUTION_COMMIT = "aa98237"
+EXECUTION_SOURCE_SHA256 = {
+    "eval_runner": "3fb12f6175db708ca677c4133b8d0eaddb7da1b2dccb2515d0ec484735e00537",
+    "m39a_agent": "c0af0a47f7ad24169a228f595414b9d5544647e9132ad122a190334026a79dfe",
+    "m35a_agent": "e8478d01cb5c972bd78d40c62cb073daea995b4659d091332f375d48f0394fbe",
+    "m39a_server": "1a12afc739875650d201f7d42dbaede6594b2dda5bc24398cfb05001b2f79234",
+    "m39a_gates": "3a8c3a1534e30ca571ec62f132c7b8cf53aa0bd4fcf2c2220f6261f166668d53",
+}
+# The validator-era identities checked against the working tree.
+VALIDATOR_SOURCE_SHA256 = {
     "m39a_agent": "c0af0a47f7ad24169a228f595414b9d5544647e9132ad122a190334026a79dfe",
     "m35a_agent": "e8478d01cb5c972bd78d40c62cb073daea995b4659d091332f375d48f0394fbe",
     "m39a_server": "1a12afc739875650d201f7d42dbaede6594b2dda5bc24398cfb05001b2f79234",
@@ -83,15 +97,21 @@ RUNTIME_SOURCE_PATHS = {
     "m39a_gates": "training/m17_gpu/splendor_gpu/m39a_gates.py",
 }
 
-# The frozen evaluation-ledger / gate-report hashes recorded at result time.
-ORIGINAL_EVALUATION_LEDGER_SHA256 = {
+# Frozen content hashes of the result artifacts — compared as CONSTANTS,
+# not re-read from mutable disk state at validation time.
+FROZEN_EVALUATION_LEDGER_SHA256 = {
     "g2": "7686e8423d3e52c906e5a3aa875a1d092c204c4dc61a1ab51119c6cc186e42d9",
     "g3": "fd79b80ac00739574f7b081e2d268df7a1c55fcd882dc5c791a63a24149f16f3",
 }
-ORIGINAL_GATE_REPORT_SHA256 = {
-    "g2": None,  # filled at rebuild from disk
-    "g3": None,
+FROZEN_GATE_REPORT_SHA256 = {
+    "g2": "37f8a1115cea8f7fbe1c99c6c4c126650dcd6ded2395cf8a9ae49674c3f30bc3",
+    "g3": "c7409e25df0746d6f5f93b42176753b1e54950444ae17188e1af278486374a2f",
 }
+FROZEN_PLAN_SHA256 = None  # plan is hash-bound via PLAN_HASH (canonical JSON)
+FROZEN_CATALOG_SHA256 = "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4"
+FROZEN_RULESET_FINGERPRINT = (
+    "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb"
+)
 
 M39A_AGENT_NAME = "effective-splendor-m39a-policy-value-agent-v1"
 M35A_AGENT_NAME = "effective-splendor-m35a-direct-agent-v1"
@@ -129,6 +149,14 @@ def _slot_dir(base: Path, arm: str, pairing: str, seed: int, rotation: int) -> P
     return base / f"{arm}-{pairing}-{seed}-r{rotation}"
 
 
+def _python_exe() -> Path:
+    """The interpreter identity that executed the evaluation agents.
+
+    A module-level indirection so tests can pin it to a synthetic path.
+    """
+    return Path(sys.executable).resolve()
+
+
 def _expected_config(arm: str, pairing: str, seed: int, rotation: int, base: Path) -> dict[str, Any]:
     """The complete frozen arena config for a slot, as the runner writes it.
 
@@ -140,7 +168,7 @@ def _expected_config(arm: str, pairing: str, seed: int, rotation: int, base: Pat
     server_ready = (base / "server-ready.json").resolve()
     catalog = (REPO / CATALOG_PATH).resolve()
     exe = (REPO / EXE_REL).resolve()
-    python = Path(sys.executable).resolve()
+    python = _python_exe()
 
     candidate_argv = [
         "-m", "splendor_gpu.m39a_agent",
@@ -228,6 +256,17 @@ def _verify_config(actual: dict[str, Any], expected: dict[str, Any], slot: str) 
     if len(actual_agents) != 2 or len(expected_agents) != 2:
         raise SystemExit(f"slot {slot}: config must have exactly two agents")
     for seat, (got, want) in enumerate(zip(actual_agents, expected_agents)):
+        # Program identity: the executable itself is part of the frozen
+        # contract. Replacing python/splendor with an arbitrary binary
+        # while keeping the argv unchanged is a tamper. The comparison is
+        # on the resolved path, case-normalized for Windows.
+        got_program = str(got.get("program", "")).strip()
+        want_program = want["program"]
+        if Path(got_program).resolve() != Path(want_program).resolve():
+            raise SystemExit(
+                f"slot {slot}: agent seat {seat} program mismatch "
+                f"({got_program!r} != frozen {want_program!r})"
+            )
         got_args = [str(a) for a in got.get("args", [])]
         want_args = want["args"]
         # Normalize the dynamic server URL.
@@ -261,6 +300,14 @@ def _rebuild_row(
     _verify_config(config, expected_config, slot)
 
     if not report_path.is_file():
+        # Only the single frozen non-termination slot may lack a report.
+        # Every other slot failing to produce a report is a data-loss or
+        # tamper condition and fails closed immediately.
+        if (arm, pairing, seed, rotation) != NONTERMINATION_SLOT:
+            raise SystemExit(
+                f"slot {slot}: missing report — only the frozen "
+                f"non-termination slot {NONTERMINATION_SLOT} may lack one"
+            )
         return {
             "arm": arm,
             "pairing": pairing,
@@ -268,9 +315,7 @@ def _rebuild_row(
             "rotation": rotation,
             "completed": False,
             "candidate_fault": False,
-            "deterministic_nontermination": (
-                (arm, pairing, seed, rotation) == NONTERMINATION_SLOT
-            ),
+            "deterministic_nontermination": True,
             "outcome": None,
             "config_sha256": file_sha256(config_path),
             "report_sha256": None,
@@ -288,7 +333,8 @@ def _rebuild_row(
     if report.get("player_count") != 2:
         raise SystemExit(f"slot {slot}: report player_count is not 2")
 
-    # Agent lineup in the report must match the config's seat assignment.
+    # Agent lineup in the report must match the config's seat assignment —
+    # name AND version per role.
     report_agents = sorted(report.get("agents", []), key=lambda a: a.get("seat", -1))
     if len(report_agents) != 2 or [a.get("seat") for a in report_agents] != [0, 1]:
         raise SystemExit(f"slot {slot}: report agent seats are not exactly 0 and 1")
@@ -308,12 +354,27 @@ def _rebuild_row(
                     f"slot {slot}: report seat {seat} M07 identity mismatch "
                     f"({name!r}@{version!r})"
                 )
-        else:
-            if name != M35A_AGENT_NAME:
+        elif kind == "baseline":
+            if name != M35A_AGENT_NAME or version != "M25-D2-v2":
+                raise SystemExit(
+                    f"slot {slot}: report seat {seat} baseline identity mismatch "
+                    f"({name!r}@{version!r})"
+                )
+        else:  # league-<model>
+            expected_model = kind[len("league-"):]
+            if name != M35A_AGENT_NAME or version != expected_model:
                 raise SystemExit(
                     f"slot {slot}: report seat {seat} league identity mismatch "
-                    f"({name!r})"
+                    f"({name!r}@{version!r}, expected model {expected_model!r})"
                 )
+
+    # Ruleset fingerprint must equal the frozen engine fingerprint (and the
+    # replay's fingerprint is checked against the same constant below).
+    fingerprint = report.get("ruleset_fingerprint", "")
+    if fingerprint != FROZEN_RULESET_FINGERPRINT:
+        raise SystemExit(
+            f"slot {slot}: report ruleset fingerprint {fingerprint!r} != frozen"
+        )
 
     # Seed commitment: recompute from (game_id, player_count, seed, fingerprint).
     fingerprint = report.get("ruleset_fingerprint", "")
@@ -358,6 +419,8 @@ def _rebuild_row(
     replay = json.loads(replay_path.read_text(encoding="utf-8"))
     if int(replay.get("seed", -1)) != seed:
         raise SystemExit(f"slot {slot}: replay seed mismatch")
+    if replay.get("ruleset_fingerprint") != FROZEN_RULESET_FINGERPRINT:
+        raise SystemExit(f"slot {slot}: replay ruleset fingerprint != frozen")
     result = outcome.get("result", {})
     if replay.get("result") != result:
         raise SystemExit(f"slot {slot}: report/replay result mismatch")
@@ -380,6 +443,13 @@ def _rebuild_row(
 
 
 def _runtime_bindings(gate: str) -> dict[str, Any]:
+    """Bindings recorded into the ledger.
+
+    Frozen constants are recorded as constants; the on-disk re-hash is
+    done separately in `_failures_bindings` so that tampering with the
+    artifacts after the fact is caught against the frozen value, not
+    silently re-blessed by a rebuild.
+    """
     plan_path = REPO / "benchmarks/m39a-arena-driven-policy-value-rl.plan.json"
     catalog_path = REPO / CATALOG_PATH
     exe_path = REPO / EXE_REL
@@ -389,20 +459,21 @@ def _runtime_bindings(gate: str) -> dict[str, Any]:
         "plan_path": str(plan_path),
         "plan_hash": PLAN_HASH,
         "catalog_path": str(catalog_path),
-        "catalog_file_sha256": file_sha256(catalog_path),
+        "catalog_file_sha256": FROZEN_CATALOG_SHA256,
         "executable_path": str(exe_path),
         "executable_sha256": file_sha256(exe_path),
         "candidate_checkpoint_path": str(ROOT / "m39a-formal-run/cycle-8.pt"),
-        "candidate_checkpoint_file_sha256": file_sha256(
-            ROOT / "m39a-formal-run/cycle-8.pt"
-        ),
+        "candidate_checkpoint_file_sha256": CANDIDATE_CHECKPOINT_FILE_SHA256,
         "candidate_checkpoint_semantic_hash": CANDIDATE_CHECKPOINT_SEMANTIC_HASH,
-        "runtime_source_sha256": dict(RUNTIME_SOURCE_SHA256),
+        "execution_commit": EXECUTION_COMMIT,
+        "execution_source_sha256": dict(EXECUTION_SOURCE_SHA256),
+        "validator_source_sha256": dict(VALIDATOR_SOURCE_SHA256),
         "runtime_source_paths": dict(RUNTIME_SOURCE_PATHS),
+        "ruleset_fingerprint": FROZEN_RULESET_FINGERPRINT,
         "original_evaluation_ledger_path": str(ledger_path),
-        "original_evaluation_ledger_sha256": file_sha256(ledger_path),
+        "original_evaluation_ledger_sha256": FROZEN_EVALUATION_LEDGER_SHA256[gate],
         "original_gate_report_path": str(report_path),
-        "original_gate_report_sha256": file_sha256(report_path),
+        "original_gate_report_sha256": FROZEN_GATE_REPORT_SHA256[gate],
     }
 
 
@@ -478,14 +549,62 @@ def _failures_bindings(ledger: dict[str, Any]) -> list[str]:
     for field, value in recomputed.items():
         if observed.get(field) != value:
             failures.append(f"binding {field} mismatch")
-    # Runtime source identities must also match the current repository
-    # files (LF-normalized), not just the recorded table.
-    for key, path in RUNTIME_SOURCE_PATHS.items():
-        actual = _lf_sha256(REPO / path)
-        if actual != RUNTIME_SOURCE_SHA256[key]:
+
+    # Frozen constants must match the CURRENT on-disk artifacts: any
+    # post-hoc modification of the catalog, candidate checkpoint,
+    # evaluation ledger, or gate report fails against the frozen value
+    # (a rebuild alone cannot re-bless it).
+    disk_checks = (
+        ("catalog_file_sha256", REPO / CATALOG_PATH, FROZEN_CATALOG_SHA256),
+        (
+            "candidate_checkpoint_file_sha256",
+            ROOT / "m39a-formal-run/cycle-8.pt",
+            CANDIDATE_CHECKPOINT_FILE_SHA256,
+        ),
+        (
+            "original_evaluation_ledger_sha256",
+            (G2_DIR if gate == "g2" else G3_DIR) / f"{gate}-ledger.json",
+            FROZEN_EVALUATION_LEDGER_SHA256[gate],
+        ),
+        (
+            "original_gate_report_sha256",
+            (G2_DIR if gate == "g2" else G3_DIR) / f"{gate}-report.json",
+            FROZEN_GATE_REPORT_SHA256[gate],
+        ),
+    )
+    for label, path, frozen in disk_checks:
+        if not path.is_file():
+            failures.append(f"binding {label}: artifact missing ({path})")
+            continue
+        actual = file_sha256(path)
+        if actual != frozen:
             failures.append(
-                f"runtime source {key} drifted from the frozen identity "
-                f"({actual[:16]}… != {RUNTIME_SOURCE_SHA256[key][:16]}…)"
+                f"binding {label}: on-disk artifact {actual[:16]}… != frozen "
+                f"{frozen[:16]}… — post-hoc modification"
+            )
+
+    # The plan on disk must still hash to the frozen plan hash.
+    from splendor_gpu.m39a_contract import load_plan as _load_plan
+    from splendor_gpu.m39a_contract import plan_hash as _plan_hash
+
+    try:
+        if _plan_hash(_load_plan(REPO / "benchmarks/m39a-arena-driven-policy-value-rl.plan.json")) != PLAN_HASH:
+            failures.append("binding plan_hash: on-disk plan drifted from the frozen plan")
+    except Exception as error:  # noqa: BLE001
+        failures.append(f"binding plan_hash: plan unreadable ({error})")
+
+    # Validator-era source identities are checked against the current
+    # repository files (LF-normalized). The execution-era identities are
+    # historical facts recorded above and are NOT compared to the checkout
+    # (the runner has legitimately evolved since aa98237).
+    for key, path in RUNTIME_SOURCE_PATHS.items():
+        if key not in VALIDATOR_SOURCE_SHA256:
+            continue
+        actual = _lf_sha256(REPO / path)
+        if actual != VALIDATOR_SOURCE_SHA256[key]:
+            failures.append(
+                f"validator source {key} drifted from the frozen identity "
+                f"({actual[:16]}… != {VALIDATOR_SOURCE_SHA256[key][:16]}…)"
             )
     return failures
 

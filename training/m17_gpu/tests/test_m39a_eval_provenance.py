@@ -41,11 +41,21 @@ def synthetic_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     resolves catalog/exe/python paths inside the synthetic tree."""
     module = _module()
     monkeypatch.setattr(module, "REPO", tmp_path)
-    monkeypatch.setattr(module, "sys", type("Sys", (), {"executable": "python.exe"}))
+    monkeypatch.setattr(
+        module,
+        "_python_exe",
+        lambda: Path("C:/Python312/python.exe"),
+    )
     return tmp_path
 
 
-def _write_config(slot_dir: Path, *, max_nodes: str = "2000", catalog: str = "catalog.json") -> None:
+def _write_config(
+    slot_dir: Path,
+    *,
+    max_nodes: str = "2000",
+    catalog: str = "catalog.json",
+    exe: str = "splendor.exe",
+) -> None:
     config = {
         "game_id": "m39a-eval-baseline-M07-5000000-r0",
         "seed": 5_000_000,
@@ -63,7 +73,7 @@ def _write_config(slot_dir: Path, *, max_nodes: str = "2000", catalog: str = "ca
                 ],
             },
             {
-                "program": "splendor.exe",
+                "program": exe,
                 "args": [
                     "agent-determinization",
                     "--sample-seed", "20260810",
@@ -94,12 +104,17 @@ def _frozen_catalog(synthetic_repo: Path) -> str:
     return str((synthetic_repo / module.CATALOG_PATH).resolve())
 
 
+def _frozen_exe(synthetic_repo: Path) -> str:
+    module = _module()
+    return str((synthetic_repo / module.EXE_REL).resolve())
+
+
 def test_tampered_m07_search_parameter_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
     """The reviewer's exact tamper: --max-nodes 2000 -> 1 must fail the
     frozen argv contract, even with a forged report."""
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
-    _write_config(slot_dir, max_nodes="1", catalog=_frozen_catalog(synthetic_repo))
+    _write_config(slot_dir, max_nodes="1", catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
     (slot_dir / "arena-report.json").write_text("{}", encoding="utf-8")
     try:
         module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
@@ -113,7 +128,7 @@ def test_tampered_m07_search_parameter_is_rejected(tmp_path: Path, synthetic_rep
 def test_tampered_timeout_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
-    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
     config = json.loads((slot_dir / "arena-config.json").read_text(encoding="utf-8"))
     config["move_timeout_ms"] = 60_000
     (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -130,7 +145,7 @@ def test_tampered_seed_commitment_is_rejected(tmp_path: Path, synthetic_repo: Pa
     other fields are plausible (the reviewer's second tamper)."""
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
-    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
     report = {
         "format": "effective-splendor-arena-report",
         "version": 1,
@@ -162,7 +177,7 @@ def test_nontermination_evidence_semantics_are_enforced(tmp_path: Path, monkeypa
     module = _module()
     evidence_dir = tmp_path / "nontermination-evidence"
     evidence_dir.mkdir(parents=True)
-    _write_config(evidence_dir, catalog=_frozen_catalog(tmp_path))
+    _write_config(evidence_dir, catalog=_frozen_catalog(tmp_path), exe=_frozen_exe(tmp_path))
     (evidence_dir / "stdout.txt").write_text("", encoding="utf-8")
     (evidence_dir / "stderr.txt").write_text("some unrelated error\n", encoding="utf-8")
     (evidence_dir / "exit-status.txt").write_text("exit_code=0\n", encoding="utf-8")
@@ -191,6 +206,8 @@ def test_frozen_config_contract_rejects_changed_checkpoint(tmp_path: Path, synth
     cycle-8 identity fails the argv contract."""
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    sidecar = (tmp_path / "candidate-M07-5000000-r0" / "eval-sidecar.json").resolve()
+    server_ready = (tmp_path / "server-ready.json").resolve()
     config = {
         "game_id": "m39a-eval-candidate-M07-5000000-r0",
         "seed": 5_000_000,
@@ -199,20 +216,20 @@ def test_frozen_config_contract_rejects_changed_checkpoint(tmp_path: Path, synth
         "shutdown_grace_ms": 2_000,
         "agents": [
             {
-                "program": "python.exe",
+                "program": "C:\\Python312\\python.exe",
                 "args": [
                     "-m", "splendor_gpu.m39a_agent",
                     "--checkpoint-sha256", "0" * 64,
                     "--plan-hash", module.PLAN_HASH,
                     "--game-index", "0",
-                    "--sidecar-out", "sidecar.json",
+                    "--sidecar-out", str(sidecar),
                     "--server-url", "127.0.0.1:1",
-                    "--server-ready", "ready.json",
+                    "--server-ready", str(server_ready),
                     "--action-selection", "argmax",
                 ],
             },
             {
-                "program": "splendor.exe",
+                "program": _frozen_exe(synthetic_repo),
                 "args": [
                     "agent-determinization",
                     "--sample-seed", "20260810",
@@ -237,6 +254,8 @@ def test_frozen_config_contract_rejects_categorical_selection(tmp_path: Path, sy
     argmax fails the argv contract."""
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "candidate", "M07", 5_000_000, 0)
+    sidecar = (tmp_path / "candidate-M07-5000000-r0" / "eval-sidecar.json").resolve()
+    server_ready = (tmp_path / "server-ready.json").resolve()
     config = {
         "game_id": "m39a-eval-candidate-M07-5000000-r0",
         "seed": 5_000_000,
@@ -245,20 +264,20 @@ def test_frozen_config_contract_rejects_categorical_selection(tmp_path: Path, sy
         "shutdown_grace_ms": 2_000,
         "agents": [
             {
-                "program": "python.exe",
+                "program": "C:\\Python312\\python.exe",
                 "args": [
                     "-m", "splendor_gpu.m39a_agent",
                     "--checkpoint-sha256", module.CANDIDATE_CHECKPOINT_FILE_SHA256,
                     "--plan-hash", module.PLAN_HASH,
                     "--game-index", "0",
-                    "--sidecar-out", "sidecar.json",
+                    "--sidecar-out", str(sidecar),
                     "--server-url", "127.0.0.1:1",
-                    "--server-ready", "ready.json",
+                    "--server-ready", str(server_ready),
                     "--action-selection", "categorical",
                 ],
             },
             {
-                "program": "splendor.exe",
+                "program": _frozen_exe(synthetic_repo),
                 "args": [
                     "agent-determinization",
                     "--sample-seed", "20260810",
@@ -283,7 +302,7 @@ def test_replay_final_hash_binding_is_checked(tmp_path: Path, synthetic_repo: Pa
     state hash fails (forged report passes commitment but not binding)."""
     module = _module()
     slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
-    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo))
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
     fingerprint = "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb"
     commitment = module._seed_commitment(
         "m39a-eval-baseline-M07-5000000-r0", 2, 5_000_000, fingerprint
@@ -311,6 +330,7 @@ def test_replay_final_hash_binding_is_checked(tmp_path: Path, synthetic_repo: Pa
         "format": "splendor-replay",
         "version": 1,
         "seed": 5_000_000,
+        "ruleset_fingerprint": module.FROZEN_RULESET_FINGERPRINT,
         "final_state_hash": "0" * 64,
         "result": report["outcome"]["result"],
         "steps": [],
@@ -334,3 +354,49 @@ def test_replay_final_hash_binding_is_checked(tmp_path: Path, synthetic_repo: Pa
     finally:
         module.subprocess = original_subprocess
     pytest.fail("forged replay_final_hash must be rejected")
+
+
+def test_tampered_agent_program_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """Replacing an agent executable with an arbitrary path while keeping
+    the argv unchanged must fail the frozen program-identity check (the
+    reviewer's first new tamper)."""
+    module = _module()
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_000, 0)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
+    config = json.loads((slot_dir / "arena-config.json").read_text(encoding="utf-8"))
+    config["agents"][1]["program"] = "C:\\malicious\\evil.exe"
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    (slot_dir / "arena-report.json").write_text("{}", encoding="utf-8")
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_000, 0)
+    except SystemExit as error:
+        assert "program mismatch" in str(error)
+        return
+    pytest.fail("tampered agent program must be rejected")
+
+
+def test_missing_report_on_normal_slot_is_rejected(tmp_path: Path, synthetic_repo: Path) -> None:
+    """A normal slot without a report must fail closed immediately — only
+    the single frozen non-termination slot (baseline/M07/5000029/r0) may
+    lack one. Uses a perfectly valid frozen config with NO report at all,
+    so the failure is exactly the missing-report rule (the reviewer's
+    second new tamper, which succeeded on an arbitrary slot before)."""
+    module = _module()
+    slot_dir = _make_slot_dir(tmp_path, "baseline", "M07", 5_000_030, 1)
+    _write_config(slot_dir, catalog=_frozen_catalog(synthetic_repo), exe=_frozen_exe(synthetic_repo))
+    config = json.loads((slot_dir / "arena-config.json").read_text(encoding="utf-8"))
+    config["game_id"] = "m39a-eval-baseline-M07-5000030-r1"
+    config["seed"] = 5_000_030
+    # _write_config writes the rotation-0 lineup; this slot is rotation 1,
+    # so swap the seats to the frozen r1 arrangement (M07 first).
+    config["agents"] = [config["agents"][1], config["agents"][0]]
+    (slot_dir / "arena-config.json").write_text(json.dumps(config), encoding="utf-8")
+    # No report is written at all.
+    try:
+        module._rebuild_row(tmp_path, "baseline", "M07", 5_000_030, 1)
+    except SystemExit as error:
+        text = str(error)
+        assert "missing report" in text
+        assert "non-termination slot" in text
+        return
+    pytest.fail("a normal slot missing its report must fail closed")
