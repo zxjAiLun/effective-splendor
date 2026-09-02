@@ -88,23 +88,133 @@ def _selected_log_probabilities_and_entropies(
     return torch.stack(selected), torch.stack(entropies)
 
 
-def _selected_log_probabilities_and_entropies(
-    logits: torch.Tensor,
-    offsets: torch.Tensor,
-    chosen_indices: list[int],
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Per-decision selected log-probability and entropy, segmenting the
-    flattened action logits by the packed offsets (M39A semantics)."""
-    selected = []
-    entropies = []
-    boundaries = offsets.detach().cpu().tolist()
-    for batch_index, chosen in enumerate(chosen_indices):
-        start, end = boundaries[batch_index], boundaries[batch_index + 1]
-        log_probs = torch.log_softmax(logits[start:end], dim=0)
-        probabilities = log_probs.exp()
-        selected.append(log_probs[int(chosen)])
-        entropies.append(-(probabilities * log_probs).sum())
-    return torch.stack(selected), torch.stack(entropies)
+# The frozen M39A-inherited behaviour-recomputation drift thresholds.
+# These are CONTRACT constants: the incident repair restored singleton
+# forward semantics WITHOUT touching them.
+LOG_PROBABILITY_DRIFT_THRESHOLD = 1e-6
+VALUE_DRIFT_THRESHOLD = 1e-5
+
+
+def recompute_behaviour(
+    model: M40AModel,
+    records: list[dict[str, Any]],
+    catalog: dict[str, Any],
+    device: torch.device,
+    *,
+    value_check: bool = True,
+) -> tuple[list[float], list[float], dict[str, Any]]:
+    """THE authoritative behaviour recomputation (join check 6 semantics).
+
+    Restores the accepted M39A executor semantics exactly: for every
+    record, IN ORIGINAL AUTHORITATIVE-RECORD ORDER, ONE singleton
+    forward per record (`batch = 1`), matching the resident inference
+    server's batch-of-1 recording of `old_log_probability`/`old_value`.
+
+    Per record:
+    1. `_forward_state(model, [record], catalog, device)` — batch of 1;
+    2. strict action-index validation (exactly one occurrence);
+    3. the frozen categorical draw re-derived from the authoritative
+       decision seed over the checkpoint's masked softmax;
+    4. reproduced action must equal the recorded action (fail closed);
+    5. selected log probability from that same singleton forward;
+    6. M40A value `V = p_win - p_loss`;
+    7. singleton results compared to the recorded behaviour under the
+       FROZEN thresholds (logp <= 1e-6, value <= 1e-5);
+    8. the SAME singleton values appended to the authoritative arrays
+       consumed by GAE and the PPO old-logp — never a packed-512
+       recomputation.
+
+    `value_check=False` (test-only / M39A-source historical enrichment
+    with the D2 two-way readout) skips ONLY the value comparison; the
+    logp check and categorical reproduction remain fail-closed.
+    """
+    from .m39a_contract import action_index, decision_seed
+
+    model.eval()
+    recomputed_log_probabilities: list[float] = []
+    recomputed_values: list[float] = []
+    max_logp_deviation = 0.0
+    max_value_deviation = 0.0
+    bit_exact = 0
+    benign = 0
+    categorical_failures = 0
+    threshold_failures = 0
+    with torch.no_grad():
+        for record in records:
+            # Singleton forward — the M39A accepted executor shape.
+            logits, heads, offsets = _forward_state(
+                model, [record], catalog, device
+            )
+            # Strict action-index validation.
+            chosen = action_index(record["legal_actions"], record["action"])
+            # Frozen categorical draw reproduction.
+            seed = decision_seed(
+                int(record["game_index"]),
+                int(record["seat"]),
+                int(record["request_id"]),
+            )
+            segment_logits = logits[0 : offsets[1].item()].to(dtype=torch.float32)
+            segment_log_probs = torch.log_softmax(segment_logits, dim=0)
+            probabilities = segment_log_probs.exp().cpu().tolist()
+            unit = (int(seed) >> 11) * (2.0 ** -53)
+            cumulative = 0.0
+            reproduced = len(probabilities) - 1
+            for index, probability in enumerate(probabilities):
+                cumulative += probability
+                if unit < cumulative:
+                    reproduced = index
+                    break
+            if reproduced != chosen:
+                categorical_failures += 1
+                raise ValueError(
+                    f"game {record['game_index']} ply {record['ply_index']}: "
+                    f"checkpoint categorical draw selected {reproduced} but the "
+                    f"recorded action is at index {chosen}"
+                )
+            selected, _ = _selected_log_probabilities_and_entropies(
+                logits, offsets, [chosen]
+            )
+            logp = float(selected[0].item())
+            value = float(
+                outcome_value(heads["outcome"]).to(dtype=torch.float32)[0].item()
+            )
+            recomputed_log_probabilities.append(logp)
+            recomputed_values.append(value)
+            logp_deviation = abs(logp - float(record["old_log_probability"]))
+            if value_check:
+                value_deviation = abs(value - float(record["old_value"]))
+            else:
+                value_deviation = float("nan")  # not comparable (foreign readout)
+            max_logp_deviation = max(max_logp_deviation, logp_deviation)
+            if value_check:
+                max_value_deviation = max(max_value_deviation, value_deviation)
+            if not value_check:
+                continue
+            if logp_deviation == 0.0 and value_deviation == 0.0:
+                bit_exact += 1
+            elif (
+                logp_deviation <= LOG_PROBABILITY_DRIFT_THRESHOLD
+                and value_deviation <= VALUE_DRIFT_THRESHOLD
+            ):
+                benign += 1
+            else:
+                threshold_failures += 1
+                raise ValueError(
+                    f"behaviour recomputation exceeds frozen drift thresholds: "
+                    f"logp={logp_deviation}, value={value_deviation}"
+                )
+    statistics = {
+        "bit_exact": bit_exact,
+        "benign_runtime_drift": benign,
+        "max_log_probability_deviation": max_logp_deviation,
+        "max_value_deviation": max_value_deviation if value_check else None,
+        "value_check": value_check,
+        "records": len(records),
+        "categorical_failures": categorical_failures,
+        "threshold_failures": threshold_failures,
+        "batching": "singleton",
+    }
+    return recomputed_log_probabilities, recomputed_values, statistics
 
 
 def _action_index(record: dict[str, Any]) -> int:
@@ -180,86 +290,24 @@ def train_cycle(
 
     # --- Behaviour recomputation (join check 6 semantics, M39A style):
     # the server-recorded values are validated against the checkpoint's
-    # own forward pass; the RECOMPUTED values are authoritative.
-    model.eval()
-    with torch.no_grad():
-        recomputed_log_probabilities = []
-        recomputed_values = []
-        max_logp_deviation = 0.0
-        max_value_deviation = 0.0
-        bit_exact = 0
-        benign = 0
-        for start in range(0, len(records), PPO_MINIBATCH):
-            batch_records = records[start : start + PPO_MINIBATCH]
-            logits, heads, offsets = _forward_state(model, batch_records, catalog, device)
-            # Behaviour reproduction, M39A fail-closed semantics: the
-            # recorded action must occur EXACTLY ONCE in the ordered
-            # legal set, and the frozen categorical draw (recomputed
-            # decision seed + cumulative walk over the checkpoint's
-            # masked softmax) must reproduce it.
-            from .m39a_contract import action_index, decision_seed
-
-            chosen = []
-            for record in batch_records:
-                chosen.append(
-                    action_index(record["legal_actions"], record["action"])
-                )
-            selected, _ = _selected_log_probabilities_and_entropies(
-                logits, offsets, chosen
-            )
-            values = outcome_value(heads["outcome"]).to(dtype=torch.float32)
-            boundaries = offsets.detach().cpu().tolist()
-            for row, record in enumerate(batch_records):
-                # Frozen categorical draw reproduction: re-derive the
-                # decision seed and walk the checkpoint's probabilities.
-                seed = decision_seed(
-                    int(record["game_index"]),
-                    int(record["seat"]),
-                    int(record["request_id"]),
-                )
-                start_ply, end_ply = boundaries[row], boundaries[row + 1]
-                segment_logits = logits[start_ply:end_ply].to(dtype=torch.float32)
-                segment_log_probs = torch.log_softmax(segment_logits, dim=0)
-                probabilities = segment_log_probs.exp().cpu().tolist()
-                unit = (int(seed) >> 11) * (2.0 ** -53)
-                cumulative = 0.0
-                reproduced = len(probabilities) - 1
-                for index, probability in enumerate(probabilities):
-                    cumulative += probability
-                    if unit < cumulative:
-                        reproduced = index
-                        break
-                if reproduced != chosen[row]:
-                    raise ValueError(
-                        f"game {record['game_index']} ply {record['ply_index']}: "
-                        f"checkpoint categorical draw selected {reproduced} but the "
-                        f"recorded action is at index {chosen[row]}"
-                    )
-                recomputed_log_probabilities.append(float(selected[row].item()))
-                recomputed_values.append(float(values[row].item()))
-                logp_deviation = abs(
-                    float(selected[row].item()) - float(record["old_log_probability"])
-                )
-                if value_check:
-                    value_deviation = abs(
-                        float(values[row].item()) - float(record["old_value"])
-                    )
-                else:
-                    value_deviation = float("nan")  # not comparable (foreign readout)
-                max_logp_deviation = max(max_logp_deviation, logp_deviation)
-                if value_check:
-                    max_value_deviation = max(max_value_deviation, value_deviation)
-                if not value_check:
-                    continue
-                if logp_deviation == 0.0 and value_deviation == 0.0:
-                    bit_exact += 1
-                elif logp_deviation <= 1e-6 and value_deviation <= 1e-5:
-                    benign += 1
-                else:
-                    raise ValueError(
-                        f"behaviour recomputation exceeds frozen drift thresholds: "
-                        f"logp={logp_deviation}, value={value_deviation}"
-                    )
+    # own SINGLETON forward pass; the RECOMPUTED values are authoritative
+    # for GAE and the PPO old-logp. (Incident repair 2026-09-02: this
+    # had been incorrectly packed at PPO_MINIBATCH=512, introducing
+    # 1-3 f32 ULP reduction-order noise against the server's batch-1
+    # recordings; the helper restores the inherited M39A singleton
+    # semantics. PPO UPDATE passes below remain batched at the frozen
+    # PPO_MINIBATCH=512.)
+    (
+        recomputed_log_probabilities,
+        recomputed_values,
+        recomputation_statistics,
+    ) = recompute_behaviour(
+        model, records, catalog, device, value_check=value_check
+    )
+    bit_exact = recomputation_statistics["bit_exact"]
+    benign = recomputation_statistics["benign_runtime_drift"]
+    max_logp_deviation = recomputation_statistics["max_log_probability_deviation"]
+    max_value_deviation = recomputation_statistics["max_value_deviation"]
 
     advantages = gae_advantages(records, recomputed_values)
 
@@ -467,6 +515,7 @@ def train_cycle(
             "max_log_probability_deviation": max_logp_deviation,
             "max_value_deviation": max_value_deviation if value_check else None,
             "value_check": value_check,
+            "batching": recomputation_statistics["batching"],
         },
         "learning_rate": learning_rate,
         "elapsed_seconds": time.perf_counter() - started,

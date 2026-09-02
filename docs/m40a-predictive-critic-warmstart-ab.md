@@ -705,3 +705,63 @@ server identity / PPO trainer / CRN schedule / gate statistics and the
 
 The 8 enriched offline batches were NOT regenerated; they remain valid
 inputs (materialization untouched).
+
+---
+
+## Formal-run incident amendment — behaviour recomputation batch shape (2026-09-02)
+
+**Formal execution phase 1** — code SHA `1972d48937d6f1f80dc315b3604b87bd
+0ccf95f9` — produced and verified: fresh init (plan `8ae5c3c4…`; A-cycle0
+`27350658…`, B-cycle0 `7b29d81a…`, full state_dict equality), the full
+16-epoch B pretrain (B-cycle0-pretrained `12fce25a…`, all 11 provenance
+checks), and the A/B cycle-1 collections (512/512 games each, CRN schedule
+`94c1240d…`).
+
+**STOP** — before the first PPO optimizer construction/update of
+`train-cycle --arm A --cycle 1`; no `A-cycle1.pt` was produced; **no model
+parameter update occurred**; no Arena evaluation seed was consumed. The
+frozen join check raised
+`behaviour recomputation exceeds frozen drift thresholds:
+logp=1.1920928955078125e-06` (= exactly 2^-20, one f32 ULP; value
+deviation 2^-24).
+
+**Cause** — the M40A trainer implementation accidentally packed the
+behaviour recomputation forward at the PPO minibatch size (512), while the
+inherited M39A contract requires singleton (batch-of-1) reproduction and
+the resident inference server already used batch-1 inference. GPU batched
+vs singleton reduction ordering differs by 1–3 f32 ULP, so 2,145/23,748
+records (9.03%) breached the frozen 1e-6 logp threshold on the real
+A-cycle1 batch (diagnosis: the 200 worst records recomputed with singleton
+forward gave deviation 0…4.4e-16, 200/200 under threshold — the checkpoint
+and sidecars were fully consistent; the discrepancy was purely kernel
+batch shape).
+
+**Repair** (this commit) — restores the inherited executor semantics via
+one authoritative helper `recompute_behaviour()` in `m40a_train.py`: for
+every record, in original authoritative-record order, ONE singleton
+forward (`batch = 1`), strict action-index validation, frozen categorical
+draw reproduction (fail-closed), selected logp and `V = p_win − p_loss`
+from that same singleton forward, comparison to the recorded behaviour,
+and the FROZEN thresholds (logp ≤ 1e-6, value ≤ 1e-5) **unchanged**. The
+singleton outputs are the authoritative arrays consumed by GAE and the
+PPO old-logp. PPO UPDATE forwards remain packed at the frozen
+`PPO_MINIBATCH = 512` (collection/server: batch 1; behaviour
+reproduction: batch 1; PPO optimization: batch 512). Does NOT alter
+thresholds, server, collection, checkpoints, seeds, PPO update batching,
+loss/GAE/optimizer/LR, model architecture, pretrain, evaluator, or gates.
+`value_check=False` (test-only / M39A-source historical enrichment)
+semantics unchanged.
+
+**Read-only validation on the preserved formal A-cycle1 batch** (no
+optimizer step, no checkpoint write, no recollection): 23,748 records;
+bit-exact 20,744; benign drift 3,004; max logp deviation 8.88e-16; max
+value deviation 5.55e-17; **categorical failures = 0; threshold failures
+= 0**. Preserved artifacts re-hashed byte-identical to the STOP state:
+`B-cycle0-pretrained.pt` (`0c403f19…`), A cycle-1 manifest
+(`a08a9ff1…`) / batch (`8e62f3e8…`), B cycle-1 manifest (`b3a86079…`) /
+batch (`b8dc56ae…`), plus `A-cycle0.pt` / `B-cycle0.pt`.
+
+**Formal execution phase 2** — this repair SHA — covers PPO training
+cycle 1 onward. The remaining schedule (train A cycle 1 → train B cycle 1
+→ cycles 2–4 → the frozen 1,664-match evaluation) proceeds unchanged;
+init, B pretrain, and both cycle-1 collections are NOT rerun.
