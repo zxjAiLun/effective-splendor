@@ -54,6 +54,7 @@ from splendor_gpu.m40a_model import (
 from splendor_gpu.m40a_dataset import frozen_split, split_manifest_hash
 
 RUN_ROOT = Path("local-artifacts/m40a-run")
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SPLENDOR = Path("target/release/splendor.exe")
 PLAN_PATH = Path("benchmarks/m40a-predictive-critic-warmstart.plan.json")
 FROZEN_CRN_SCHEDULE_HASH = crn_schedule_hash()
@@ -677,129 +678,6 @@ def _validate_schedules(schedules: dict[str, list[dict[str, Any]]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _run_match_spec(spec: dict[str, Any], a4: Path, b4: Path,
-                    a4_info: dict, b4_info: dict, out_root: Path) -> list[dict[str, Any]]:
-    """Execute ONE physical match via the accepted M39A run-match machinery
-    (argmax both sides, no cap) and emit its perspective rows per the
-    frozen ledger schema."""
-    from .m39a_collect import _opponent_agent
-    from splendor_gpu.m40a_gates import SCORES
-
-    gate = spec["gate"]
-    match_dir = out_root / gate / f"{spec['pairing']}-{spec['seed']}-r{spec['rotation']}"
-    report_path = match_dir / "arena-report.json"
-    arm_specs = {
-        "candidate": (b4, b4_info),  # candidate arm = B (the warm-start)
-        "baseline": (a4, a4_info),
-    }
-    opponent_pairings = {"H1": None, "M07": "M07", "D2-v2": "D2-v2"}
-
-    if report_path.is_file():
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-    else:
-        match_dir.mkdir(parents=True, exist_ok=True)
-        agents = []
-        for seat in (0, 1):
-            arm = spec["arms"][seat] if seat < len(spec["arms"]) else None
-            if arm is not None and spec["gate"] == "h1":
-                path, info = arm_specs[arm]
-                agents.append({
-                    "program": sys.executable,
-                    "args": [
-                        "-m", "splendor_gpu.m40a_agent",
-                        "--checkpoint-sha256", info["checkpoint_file_sha256"],
-                        "--plan-hash", info["plan_hash"],
-                        "--arm", arm,
-                        "--game-index", str(spec["seed"]),
-                        "--sidecar-out", str(match_dir / f"seat-{seat}.sidecar.json"),
-                        "--server-url", info["server_url"],
-                        "--server-ready", info["server_ready"],
-                        "--action-selection", "argmax",
-                    ],
-                })
-            else:
-                # Anchor gates (m07, d2): candidate seat via the server;
-                # the frozen opponent via the accepted helper.
-                if spec["gate"] in ("m07", "d2"):
-                    if seat == 0:
-                        path, info = arm_specs["candidate"]
-                        agents.append({
-                            "program": sys.executable,
-                            "args": [
-                                "-m", "splendor_gpu.m40a_agent",
-                                "--checkpoint-sha256", info["checkpoint_file_sha256"],
-                                "--plan-hash", info["plan_hash"],
-                                "--arm", "B",
-                                "--game-index", str(spec["seed"]),
-                                "--sidecar-out", str(match_dir / "seat-0.sidecar.json"),
-                                "--server-url", info["server_url"],
-                                "--server-ready", info["server_ready"],
-                                "--action-selection", "argmax",
-                            ],
-                        })
-                    else:
-                        agents.append(_opponent_agent(
-                            spec["pairing"],
-                            splendor=SPLENDOR,
-                            catalog=Path(CATALOG_REL),
-                            action_seed=20_261_000 + spec["seed"],
-                            device="cuda",
-                        ))
-        config = {
-            "game_id": f"m40a-eval-{gate}-{spec['pairing']}-{spec['seed']}-r{spec['rotation']}",
-            "seed": spec["seed"],
-            "handshake_timeout_ms": 10_000,
-            "move_timeout_ms": 30_000,
-            "shutdown_grace_ms": 2_000,
-            "agents": agents,
-        }
-        _atomic_json(match_dir / "arena-config.json", config)
-        completed = subprocess.run(
-            [str(SPLENDOR), "run-match",
-             "--config", str(match_dir / "arena-config.json"),
-             "--report-out", str(report_path),
-             "--replay-out", str(match_dir / "replay.json")],
-            capture_output=True, text=True, timeout=60 * 60, check=False)
-        if completed.returncode != 0:
-            raise RuntimeError(
-                f"eval {gate}/{spec['pairing']}/{spec['seed']}/r{spec['rotation']} "
-                f"rc={completed.returncode}: {completed.stderr[:200]}"
-            )
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-
-    outcome = report.get("outcome", {})
-    if outcome.get("status") != "completed":
-        raise ValueError(
-            f"eval {gate}/{spec['pairing']}/{spec['seed']}/r{spec['rotation']} "
-            f"is not completed ({outcome.get('status')}) — fail closed"
-        )
-    result = outcome["result"]
-    winners = [int(seat) for seat in result.get("winners", [])]
-
-    rows = []
-    for arm in spec["arms"]:
-        arm_seat = 0 if arm == "candidate" else 1
-        if len(spec["arms"]) == 1:
-            arm_seat = 0
-        if len(winners) == 2:
-            arm_outcome = "draw"
-        elif arm_seat in winners:
-            arm_outcome = "win"
-        else:
-            arm_outcome = "loss"
-        rows.append({
-            "arm": arm,
-            "pairing": spec["pairing"],
-            "seed": spec["seed"],
-            "rotation": spec["rotation"],
-            "completed": True,
-            "candidate_fault": False,
-            "deterministic_nontermination": False,
-            "outcome": arm_outcome,
-        })
-    return rows
-
-
 def _start_arm_server(arm: str, checkpoint: Path, digest: str, device: str) -> dict[str, Any]:
     ready_dir = RUN_ROOT / "eval-servers"
     ready_dir.mkdir(parents=True, exist_ok=True)
@@ -830,15 +708,6 @@ def _start_arm_server(arm: str, checkpoint: Path, digest: str, device: str) -> d
         "server_ready": str(ready),
         "proc": proc,
     }
-
-
-def _expand_league_spec(spec: dict[str, Any]) -> list[dict[str, Any]]:
-    """A league schedule entry runs BOTH arms against the opponent — two
-    physical matches per (opponent, seed, rotation) pair."""
-    return [
-        {**spec, "arms": ("candidate",), "sub": "candidate"},
-        {**spec, "arms": ("baseline",), "sub": "baseline"},
-    ]
 
 
 def cmd_evaluate(args: argparse.Namespace) -> None:
@@ -896,47 +765,156 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
         }))
         return
 
-    # Formal execution: thin wrapper over the accepted Arena machinery.
-    out_root = RUN_ROOT / "evaluation"
+    # Formal execution: the M40A evaluator with M39A-grade provenance.
+    from splendor_gpu import m40a_evaluator as evaluator
+
+    smoke = bool(getattr(args, "smoke", False))
+    out_root = RUN_ROOT / ("evaluation-smoke" if smoke else "evaluation")
     device = args.device
+    catalog_path = Path(CATALOG_REL)
+    gate_seeds = {
+        gate: evaluator.seeds_for_gate(gate, smoke=smoke)
+        for gate in ("h1", "league", "m07", "d2")
+    }
+
+    # Run manifest BEFORE any match executes: binds design, plan, schedule,
+    # checkpoint identities, seed families, and executor identity. Resume
+    # with a different identity fails closed here.
+    executor_identity = {
+        "python": sys.version.split()[0],
+        "orchestrator_sha256": file_sha256(Path(__file__).resolve()),
+        "runtime_sources": {
+            key: file_sha256(Path(REPO_ROOT) / rel)
+            for key, rel in evaluator.RUNTIME_SOURCE_PATHS.items()
+        },
+    }
+    manifest = evaluator.run_manifest_identity(
+        design_sha="09fd8ec",
+        plan_hash=digest,
+        schedule_hash=schedule_hash,
+        a_cycle4=infos["A"],
+        b_cycle4=infos["B"],
+        seed_families={gate: list(seeds) for gate, seeds in gate_seeds.items()},
+        executor_identity=executor_identity,
+    )
+    manifest["mode"] = "smoke" if smoke else "formal"
+    evaluator.establish_run_manifest(out_root / "run-manifest.json", manifest)
+
     b4_server = _start_arm_server("B", b4_path, digest, device)
     a4_server = _start_arm_server("A", a4_path, digest, device)
+    servers = {
+        "A": {"plan_hash": digest, "checkpoint_hash": infos["A"]["checkpoint_hash"], **a4_server},
+        "B": {"plan_hash": digest, "checkpoint_hash": infos["B"]["checkpoint_hash"], **b4_server},
+    }
     ledgers: dict[str, list[dict[str, Any]]] = {
         "h1": [], "league": [], "m07": [], "d2": [],
     }
+    ledger_bindings = {
+        "design_sha": "09fd8ec",
+        "plan_hash": digest,
+        "schedule_hash": schedule_hash,
+        "a_cycle4": infos["A"],
+        "b_cycle4": infos["B"],
+        "run_manifest_sha256": file_sha256(out_root / "run-manifest.json"),
+    }
     try:
-        # H1: 256 physical matches, B candidate vs A baseline.
-        for spec in schedules["h1"]:
-            rows = _run_match_spec(
-                spec, a4_path, b4_path,
-                {"plan_hash": digest, **a4_server},
-                {"plan_hash": digest, **b4_server},
-                out_root,
-            )
-            ledgers["h1"].extend(rows)
-        # League: both arms, 1,152 physical matches.
-        for spec in schedules["league"]:
-            for sub in _expand_league_spec(spec):
-                # each sub-spec is one arm vs the frozen opponent
-                rows = _run_league_match(
-                    sub, a4_server, b4_server, out_root
+        if smoke:
+            # Authorized smoke scope: H1 r0 + r1 through the REAL M40A
+            # servers — proving the generated Arena configs physically
+            # swap A/B seats and that result attribution follows the
+            # swapped seats. No league/anchor/formal seed is consumed.
+            for rotation in (0, 1):
+                rebuilt = evaluator._run_physical_match(
+                    gate="h1", label="H1", seed=gate_seeds["h1"][0],
+                    rotation=rotation,
+                    out_root=out_root, servers=servers,
+                    splendor=SPLENDOR, catalog=catalog_path, device=device,
                 )
-                ledgers["league"].extend(rows)
-        # Anchors: B only, 128 matches each.
-        for gate in ("m07", "d2"):
-            for spec in schedules[gate]:
-                rows = _run_match_spec(
-                    spec, a4_path, b4_path,
-                    {"plan_hash": digest, **a4_server},
-                    {"plan_hash": digest, **b4_server},
-                    out_root,
+                ledgers["h1"].extend(
+                    evaluator.ledger_rows_for_slot(
+                        "h1", "H1", gate_seeds["h1"][0], rotation, rebuilt
+                    )
                 )
-                ledgers[gate].extend(rows)
+        else:
+            # H1: 256 physical matches; primary = candidate B,
+            # secondary = baseline A; r0 [B, A], r1 [A, B].
+            for seed in gate_seeds["h1"]:
+                for rotation in (0, 1):
+                    rebuilt = evaluator._run_physical_match(
+                        gate="h1", label="H1", seed=seed, rotation=rotation,
+                        out_root=out_root, servers=servers,
+                        splendor=SPLENDOR, catalog=catalog_path, device=device,
+                    )
+                    ledgers["h1"].extend(
+                        evaluator.ledger_rows_for_slot("h1", "H1", seed, rotation, rebuilt)
+                    )
+            # League: both arms, 1,152 physical matches; primary =
+            # the evaluated arm, secondary = the frozen league opponent.
+            for arm in ("candidate", "baseline"):
+                for opponent in LEAGUE_ORDER:
+                    for seed in gate_seeds["league"]:
+                        for rotation in (0, 1):
+                            label = f"{arm}-{opponent}"
+                            rebuilt = evaluator._run_physical_match(
+                                gate="league", label=label, seed=seed,
+                                rotation=rotation, out_root=out_root,
+                                servers=servers, splendor=SPLENDOR,
+                                catalog=catalog_path, device=device,
+                            )
+                            ledgers["league"].extend(
+                                evaluator.ledger_rows_for_slot(
+                                    "league", label, seed, rotation, rebuilt
+                                )
+                            )
+            # Anchors: B only, 128 matches each; primary = B,
+            # secondary = the frozen opponent.
+            for gate, pairing in (("m07", "M07"), ("d2", "D2-v2")):
+                for seed in gate_seeds[gate]:
+                    for rotation in (0, 1):
+                        rebuilt = evaluator._run_physical_match(
+                            gate=gate, label=pairing, seed=seed, rotation=rotation,
+                            out_root=out_root, servers=servers,
+                            splendor=SPLENDOR, catalog=catalog_path, device=device,
+                        )
+                        ledgers[gate].extend(
+                            evaluator.ledger_rows_for_slot(
+                                gate, pairing, seed, rotation, rebuilt
+                            )
+                        )
     finally:
         b4_server["proc"].terminate()
         a4_server["proc"].terminate()
 
-    from .m40a_gates import evaluate_anchor, evaluate_h1, evaluate_league
+    # EXACT identity-set validation + canonical ledger persistence.
+    # Smoke mode validates only the gates it executed (H1 r0+r1).
+    ledger_hashes = {}
+    validated_gates = ("h1",) if smoke else ("h1", "league", "m07", "d2")
+    for gate in validated_gates:
+        evaluator.validate_ledger(gate, ledgers[gate], smoke=smoke)
+        document = evaluator.ledger_document(gate, ledgers[gate], ledger_bindings)
+        ledger_path = out_root / f"{gate}-ledger.json"
+        if ledger_path.exists():
+            ledger_path.unlink()
+        _atomic_json(ledger_path, document)
+        ledger_hashes[gate] = evaluator.ledger_hash(document)
+
+    if smoke:
+        # Smoke mode exercises the executor, ledgers, and provenance, but
+        # is NOT formal evidence: the frozen gate statistics (which
+        # require the full formal seed families) are not computed.
+        print(json.dumps({
+            "status": "evaluate-smoke-complete",
+            "mode": "smoke",
+            "matches": {
+                "h1": len(ledgers["h1"]) // 2,
+                "league": len(ledgers["league"]),
+                "m07": len(ledgers["m07"]),
+                "d2": len(ledgers["d2"]),
+            },
+            "ledger_hashes": ledger_hashes,
+            "out_root": str(out_root),
+        }))
+        return
 
     h1_result = evaluate_h1(ledgers["h1"])
     league_result = evaluate_league(ledgers["league"])
@@ -950,6 +928,7 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
         "schedule_hash": schedule_hash,
         "a_cycle4": infos["A"],
         "b_cycle4": infos["B"],
+        "ledger_hashes": ledger_hashes,
         "h1": h1_result,
         "league": league_result,
         "m07_anchor": m07_result,
@@ -964,98 +943,8 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
         "m07_anchor_delta": m07_result["mean_delta_bps"],
         "d2_anchor_delta": d2_result["mean_delta_bps"],
         "schedule_hash": schedule_hash,
+        "ledger_hashes": ledger_hashes,
     }))
-
-
-def _run_league_match(spec: dict[str, Any], a4_server: dict, b4_server: dict,
-                      out_root: Path) -> list[dict[str, Any]]:
-    """One league physical match: one arm vs the frozen opponent."""
-    from .m39a_collect import _opponent_agent
-
-    arm = spec["sub"]
-    match_dir = out_root / "league" / f"{arm}-{spec['pairing']}-{spec['seed']}-r{spec['rotation']}"
-    report_path = match_dir / "arena-report.json"
-    server = b4_server if arm == "candidate" else a4_server
-    if report_path.is_file():
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-    else:
-        match_dir.mkdir(parents=True, exist_ok=True)
-        agents = []
-        for seat in (0, 1):
-            if seat == 0:
-                agents.append({
-                    "program": sys.executable,
-                    "args": [
-                        "-m", "splendor_gpu.m40a_agent",
-                        "--checkpoint-sha256", server["checkpoint_file_sha256"],
-                        "--plan-hash", server["plan_hash"],
-                        "--arm", "B" if arm == "candidate" else "A",
-                        "--game-index", str(spec["seed"]),
-                        "--sidecar-out", str(match_dir / "seat-0.sidecar.json"),
-                        "--server-url", server["server_url"],
-                        "--server-ready", server["server_ready"],
-                        "--action-selection", "argmax",
-                    ],
-                })
-            else:
-                agents.append(_opponent_agent(
-                    spec["pairing"],
-                    splendor=SPLENDOR,
-                    catalog=Path(CATALOG_REL),
-                    action_seed=20_261_000 + spec["seed"],
-                    device="cuda",
-                ))
-        config = {
-            "game_id": (
-                f"m40a-eval-league-{arm}-{spec['pairing']}-"
-                f"{spec['seed']}-r{spec['rotation']}"
-            ),
-            "seed": spec["seed"],
-            "handshake_timeout_ms": 10_000,
-            "move_timeout_ms": 30_000,
-            "shutdown_grace_ms": 2_000,
-            "agents": agents,
-        }
-        _atomic_json(match_dir / "arena-config.json", config)
-        completed = subprocess.run(
-            [str(SPLENDOR), "run-match",
-             "--config", str(match_dir / "arena-config.json"),
-             "--report-out", str(report_path),
-             "--replay-out", str(match_dir / "replay.json")],
-            capture_output=True, text=True, timeout=60 * 60, check=False)
-        if completed.returncode != 0:
-            raise RuntimeError(
-                f"league eval {arm}/{spec['pairing']}/{spec['seed']}/"
-                f"r{spec['rotation']} rc={completed.returncode}: "
-                f"{completed.stderr[:200]}"
-            )
-        report = json.loads(report_path.read_text(encoding="utf-8"))
-
-    outcome = report.get("outcome", {})
-    if outcome.get("status") != "completed":
-        raise ValueError(
-            f"league eval {arm}/{spec['pairing']}/{spec['seed']}/"
-            f"r{spec['rotation']} is not completed — fail closed"
-        )
-    result = outcome["result"]
-    winners = [int(seat) for seat in result.get("winners", [])]
-    if len(winners) == 2:
-        arm_outcome = "draw"
-    elif 0 in winners:
-        arm_outcome = "win"
-    else:
-        arm_outcome = "loss"
-    # perspective row for this arm
-    return [{
-        "arm": arm,
-        "pairing": spec["pairing"],
-        "seed": spec["seed"],
-        "rotation": spec["rotation"],
-        "completed": True,
-        "candidate_fault": False,
-        "deterministic_nontermination": False,
-        "outcome": arm_outcome,
-    }]
 
 
 def main() -> None:
@@ -1081,6 +970,12 @@ def main() -> None:
     evaluate_parser.add_argument("--dry-run", action="store_true",
                                help="emit the 1,664-match schedule without running Arena")
     evaluate_parser.add_argument("--device", default="cuda")
+    evaluate_parser.add_argument(
+        "--smoke", action="store_true",
+        help="non-formal smoke: smoke-only seed namespaces (8_9xx), "
+        "separate out-root, no gate statistics — never consumes a "
+        "formal 8_1xx/8_2xx/8_3xx/8_4xx seed",
+    )
 
     args = parser.parse_args()
     handlers = {

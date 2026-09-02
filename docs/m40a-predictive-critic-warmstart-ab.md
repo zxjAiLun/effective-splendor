@@ -590,3 +590,118 @@ B-only pretraining, the CRN PPO path, the four evaluation statistics, and
 provenance binding design SHA `09fd8ec`. No frozen experimental constant
 changes. Formal pretraining/PPO/Arena execution remains gated on
 implementation review.
+
+---
+
+## Implementation iteration log
+
+### 2026-09-02 — implementation preflight re-review verdict
+
+Re-review of HEAD `555e373` (the B warm-start/pretrain/PPO-parent repair
+commit): **`NEEDS_FIX — P0 = 0, P1 = 3, P2 = 1`**, formal run NOT yet
+authorized. The training side (B warm-start entry, offline pretrain
+provenance, PPO parent resolution) was **APPROVED** and frozen for this
+round; the four findings were all in the formal evaluator:
+
+- **P1-1 invalid relative imports** in the non-dry `evaluate` path
+  (`from .m39a_collect ...` / `from .m40a_gates ...` from a top-level
+  orchestrator) — would crash the real executor at the first H1 match
+  while `--dry-run` hid it.
+- **P1-2 no physical seat rotation** — `arm = spec["arms"][seat]` with a
+  constant `("candidate", "baseline")` arms tuple meant r0/r1 were the
+  same deterministic lineup; anchors/league hardcoded the arm at seat 0;
+  result attribution hardcoded candidate=seat0. The ledger labels were
+  legal while the physics was wrong.
+- **P1-3 no M39A-grade resume/provenance** — existing
+  `arena-report.json` was blindly trusted; config-only slots could wedge
+  `_atomic_json`; ledgers existed only in memory; no run-manifest bound
+  checkpoint/plan/schedule identity.
+- **P2-1 `--device` not threaded** through anchor/league opponent
+  construction (hardcoded `cuda`).
+
+### 2026-09-02 — evaluator-only repair (this commit)
+
+Scope fence: model / labels / losses / frozen split / materializer /
+server identity / PPO trainer / CRN schedule / gate statistics and the
+8 enriched offline batches are all untouched. Evaluator-only changes:
+
+- New `training/m17_gpu/splendor_gpu/m40a_evaluator.py`: the single
+  formal evaluation executor.
+  - **Canonical physical rotation**: `rotated_agents(primary, secondary,
+    rotation)` — r0 `[primary, secondary]`, r1 `[secondary, primary]`,
+    `primary_seat = rotation`. H1 primary = B (candidate), secondary =
+    A (baseline); M07/D2 anchors primary = B; league primary = the
+    evaluated arm. Result attribution reads the primary outcome from
+    seat `rotation`. Sidecar filenames follow the ACTUAL seat occupied
+    by the M40A arm. Opponent action seed (`20_261_000 + seed`) is
+    shared across paired rotations and A/B league arms per the CRN
+    contract.
+  - **Run manifest before execution** binding design SHA `09fd8ec`, plan
+    hash, schedule hash, A/B cycle-4 file+semantic hashes, the four
+    exact formal seed families, and executor identity (orchestrator +
+    runtime source SHA-256s). Resume with a different identity fails
+    closed.
+  - **Resume provenance** (`_rebuild_slot`): existing reports are never
+    blindly trusted — exact frozen config comparison (per-seat argv
+    with the dynamic server port normalized to a loopback/dynamic-port
+    contract), report format/game_id/player_count, seed commitment
+    recomputation, per-seat agent identity (M40A arms by semantic hash,
+    M07/m35a by frozen identities), outcome status, strict
+    `verify-replay` referee verification, replay seed/fingerprint/
+    result/`replay_final_hash` binding, and M40A sidecar
+    arm/checkpoint/game_id binding per seat.
+  - **Deterministic config-only recovery**: a config-only interrupted
+    slot's stale config is rewritten and re-executed; replay/sidecar
+    remains without a report fail closed (partial artifacts preserved
+    for diagnosis). Deterministic non-termination fails the measurement
+    closed (M40A has NO exempted slot).
+  - **Persisted canonical ledgers** (`h1/league/m07/d2-ledger.json`)
+    with EXACT identity-set validation (missing / duplicate /
+    out-of-domain / extra rows all rejected; H1 additionally requires
+    complementary perspective pairs), and the four ledger hashes bound
+    into `m40a-final-evaluation.json` before the frozen gate statistics
+    are called (statistics themselves unchanged).
+  - `--device` fully threaded (no hardcoded `cuda` in opponent
+    construction); `--smoke` runs the authorized non-formal scope (H1
+    r0+r1 through the real servers) on smoke-only seed namespace
+    `8_900_000` with a separate out-root and no gate statistics.
+- `training/m17_gpu/m40a_run.py`: the invalid relative imports and the
+  old in-file match builders are gone; `cmd_evaluate` now drives the
+  evaluator; `REPO_ROOT` added for runtime-source hashing. The logical
+  schedule and its hash are UNCHANGED (`a0a38563…`).
+
+**Validation evidence (all executed)**:
+
+- `pytest training/m17_gpu/tests/test_m40a_evaluator.py
+  training/m17_gpu/tests/test_m40a_orchestrator.py` — 39/39 passed
+  (33 new evaluator contract tests: rotation contracts for H1/anchors/
+  league, non-dry path through the real helpers, same-identity resume
+  rebuild, fail-closed on checkpoint/seed/rotation/lineup/sidecar/
+  report tampering and manifest drift, config-only recovery,
+  partial-artifact rejection, ledger identity-set rejections, ledger
+  hash content-addressing, dry-run count re-assertion, schedule-hash
+  stability).
+- Full Python regression from repo root: 286 passed / 7 failed — the 7
+  failures reproduce identically on the unmodified baseline (stash
+  verified): `test_compute_repair*` (hardware sensor environment) and
+  `test_m39a_ledger*` (frozen exe SHA vs locally rebuilt binary);
+  unrelated to this patch.
+- `cargo fmt --all -- --check` exit 0; `cargo clippy --all-targets`
+  exit 0; `cargo test --release` all suites ok, 0 failed.
+- `evaluate --dry-run`: schedule hash `a0a38563
+  ad308053c8068d29c763bb73d43e7274b9ab2898d429ca0bbad75eab` (unchanged),
+  H1 256 / league 1152 / M07 128 / D2 128 / total 1664.
+- Non-formal smoke (`evaluate --smoke --device cuda`, seed `8_900_000`):
+  r0 config seats `[B, A]`, r1 `[A, B]`; report agent identities and
+  sidecar filenames follow the swapped seats; with `winners=[1]`, r0
+  candidate(B)@seat0 = loss and r1 candidate(B)@seat1 = win — the
+  attribution follows the physical seat swap. No formal 8_1xx/8_2xx/
+  8_3xx/8_4xx seed was consumed.
+- Smoke resume: a second `--smoke` run rebuilt both slots through the
+  full provenance chain and reproduced the H1 ledger hash bit-for-bit
+  (`f41192fa…`). Adversarial resume checks: tampered winners rejected
+  (report/replay result mismatch), drifted B checkpoint rejected,
+  modified orchestrator source rejected at the run-manifest gate.
+
+The 8 enriched offline batches were NOT regenerated; they remain valid
+inputs (materialization untouched).
