@@ -125,8 +125,12 @@ def recompute_behaviour(
        recomputation.
 
     `value_check=False` (test-only / M39A-source historical enrichment
-    with the D2 two-way readout) skips ONLY the value comparison; the
-    logp check and categorical reproduction remain fail-closed.
+    with the D2 two-way readout) skips the ENTIRE drift-threshold
+    classification — both the logp and value comparisons, matching the
+    pre-repair semantics. The categorical-draw reproduction remains
+    fail-closed either way. The formal path (`online_train_cycle`)
+    hardwires `value_check=True`, so no formal execution can bypass
+    the threshold checks.
     """
     from .m39a_contract import action_index, decision_seed
 

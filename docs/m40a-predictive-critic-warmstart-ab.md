@@ -3,7 +3,8 @@
 ```text
 Milestone:      M40A
 Title:          Player-View Predictive Critic Warm-Start A/B
-Status:         DESIGN_FROZEN / IMPLEMENTATION_AUTHORIZED
+Status:         COMPLETED_NEGATIVE / CLOSED — M40A_WARM_START_NO_EFFECT
+                (formal result review APPROVED 2026-09-03)
 Prior round:    M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT,
                 final review ACCEPTED 2026-09-01)
 Design review:  NEEDS_REVISION — P0 = 0, P1 = 4, P2 = 3 (2026-09-01);
@@ -15,7 +16,17 @@ Rev 2 final re-review: APPROVED — P0 = 0, P1 = 0, P2 = 0 (2026-09-01);
 Design SHA:     09fd8ec
 Baseline:       current main at draft time (7165f71)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
-Promotion:      NONE (this round does not seek promotion)
+Promotion:      NONE
+
+Licensed conclusion (the strict form):
+  Under the frozen D2-v2 representation, head-only predictive
+  pretraining followed by 4-cycle PPO, there is NO evidence that
+  warm-start provides a positive causal benefit to the final PPO
+  policy. This closes ONLY the head-only warm-start route; it does
+  NOT refute predictive objectives, critic improvement, or TD/Q
+  methods in general. M40B (Q/TD/CQL) is NOT authorized — the frozen
+  decision table requires H1 PASS, which failed. Any future attack on
+  credit assignment requires a new, independent hypothesis.
 ```
 
 ## Problem and motivation
@@ -722,8 +733,15 @@ checks), and the A/B cycle-1 collections (512/512 games each, CRN schedule
 parameter update occurred**; no Arena evaluation seed was consumed. The
 frozen join check raised
 `behaviour recomputation exceeds frozen drift thresholds:
-logp=1.1920928955078125e-06` (= exactly 2^-20, one f32 ULP; value
-deviation 2^-24).
+logp=1.1920928955078125e-06` (an f32-rounding-scale deviation just above
+the 1e-6 threshold; value deviation 5.96e-08). [Correction 2026-09-03,
+per final review: an earlier draft of this log and the incident commit
+message described this number as "exactly 2^-20, one f32 ULP" — that
+arithmetic was wrong (2^-20 ≈ 9.54e-7 ≠ 1.19e-6, and whether it equals
+one ULP depends on the value's exponent range). The root-cause finding
+never relied on that characterization: the decisive evidence was that
+singleton recomputation of the same batch collapses the drift to
+~1e-16 with zero threshold failures.]
 
 **Cause** — the M40A trainer implementation accidentally packed the
 behaviour recomputation forward at the PPO minibatch size (512), while the
@@ -765,3 +783,158 @@ batch (`b8dc56ae…`), plus `A-cycle0.pt` / `B-cycle0.pt`.
 cycle 1 onward. The remaining schedule (train A cycle 1 → train B cycle 1
 → cycles 2–4 → the frozen 1,664-match evaluation) proceeds unchanged;
 init, B pretrain, and both cycle-1 collections are NOT rerun.
+
+---
+
+## Formal result (2026-09-03) — `M40A_WARM_START_NO_EFFECT`
+
+### Execution provenance
+
+- Phase 1 (init + B pretrain + A/B cycle-1 collection, STOP before any
+  PPO update): `1972d48937d6f1f80dc315b3604b87bd0ccf95f9`.
+- Incident repair (singleton behaviour recomputation):
+  `c2ee0bd928983f51cd892dd26ee93537d5a8c585`, reviewed and APPROVED.
+- Phase 2 collection-infrastructure repair (config-only slot recovery in
+  `_collect_arm_cycle`, the accepted M39A rule; needed to resume the
+  interrupted B cycle-4 collection): `7b0b41057559b3a91d5f1581df701f64fe50eaf6`.
+  No match math, seeds, or collection schedule changed.
+- Rust binary frozen at `c72e8d1b…` throughout (never rebuilt).
+- Plan `8ae5c3c4…`; CRN schedule `94c1240d…`; offline dataset identity
+  `35962d09…` (8 batches, 182,157 records); split `265edc39…`.
+
+### Checkpoint chains
+
+- A: `27350658` → `2a1554a6` → `ddc9162e` → `1a04184d` → `627cc29c`
+- B: `7b29d81a` → (`12fce25a` pretrain) → `467bbcd7` → `f8af8c08` →
+  `a794c2d8` → `c27ecaa2`
+- Per-cycle batches: A `8e62f3e8`/`ddd773aa`/`f8ae2692`/`44cd86f8`;
+  B `b8dc56ae`/`436fc0f7`/`d4f19616`/`b5646b41`; all 512/512 games,
+  singleton recomputation with max logp drift ≤ 8.9e-16, zero threshold
+  failures, optimizer step continuity 188/372/556/740 (A) and 736 (B).
+
+### Formal evaluation (1,664 physical matches; all completion checks green)
+
+H1 256 / league 1,152 / M07 128 / D2 128; missing 0, duplicate 0,
+faults 0, deterministic non-termination 0; four ledgers exact-domain
+validated and hash-bound into `m40a-final-evaluation.json`
+(h1 `d6ba47d2…`, league `e27a27b4…`, m07 `7560e364…`, d2 `02c8f132…`);
+run-manifest identity matched across resume boundaries. The evaluation
+was interrupted twice by infrastructure-level process failures
+(command timeout; one Windows `0xC000014A` DLL-init transient on a
+league slot that never started) — both resumed through the reviewed
+config-only deterministic-recovery path with full provenance rebuild of
+every completed slot.
+
+### Results
+
+| Gate | Statistic | Value | Verdict |
+|---|---|---|---|
+| H1 (B4 vs A4, causal primary) | mean Δ / SD / lower95 | −273.44 / 6,377.51 / **−1,207.45** bps | **FAIL** (lower95 ≤ 0) |
+| League safeguard | mean Δ / SD / upper95 | +17.36 / 1,751.06 / **+542.20** bps | PASS (upper95 ≥ 0) |
+| B4 vs M07 (report-only) | mean Δ / two-sided 95% CI | −3,125.00 / [−3,810.89, −2,439.11] | report-only |
+| B4 vs D2-v2 (report-only) | mean Δ / two-sided 95% CI | −585.94 / [−1,494.94, +323.06] | report-only |
+
+Raw: H1 candidate W123 D3 L130 vs baseline W130 D3 L123; league
+candidate W261 D2 L313 vs baseline W260 D2 L314; B4 vs M07 W24 L104;
+B4 vs D2-v2 W56 D1 L71.
+
+### Decision (frozen table)
+
+**H1 FAIL → `M40A_WARM_START_NO_EFFECT`.** Head-only predictive-critic
+warm-start on the frozen D2 representation did not improve PPO under
+this contract. Per the frozen decision table this closes ONLY the
+head-only warm-start route; it does NOT refute predictive objectives in
+general. League safeguard passed (no evidence B is weaker than A — the
+arms are statistically indistinguishable head-to-head on the league,
+261 vs 260 wins), consistent with the warm-start having little net
+effect on PPO rather than causing a regression. The anchors are
+report-only: both A4 and B4 sit far below the M07 champion
+(B4 −3,125 bps vs the 50% anchor; the M39A-era candidate was −269 bps
+diagnostic), and B4 remains statistically overlapping its D2-v2
+initialization basin (CI spans zero).
+
+No promotion. **M07 remains champion.** No result-dependent rerun.
+
+### Known limitations
+
+- 4-cycle schedule (frozen design choice): the M39A learning curve
+  argument means a longer schedule might diverge the arms more; this
+  experiment only measures the frozen 4-cycle horizon.
+- The two arms' near-identical league records (261 vs 260 wins) are
+  CONSISTENT WITH the pretraining signal being washed out by PPO, but
+  M40A cannot distinguish the candidate mechanisms (fast overwrite;
+  calibration-only improvement that never reaches the policy gradient;
+  head-only warm-start leaving the trunk untouched; an effect smaller
+  than this design could detect; the arms landing in nearby basins).
+  "Signal was washed out" is a hypothesis, not a measured fact.
+
+### Closure archive (2026-09-03, docs-only closeout)
+
+Formal-result review verdict: **`APPROVED — M40A COMPLETED_NEGATIVE /
+CLOSED`** (P0=0/P1=0; two P2 documentation notes corrected in this
+commit: the erroneous "exactly 2^-20 / one ULP" arithmetic in the
+incident log, and the `recompute_behaviour` docstring's description of
+`value_check=False`, which skips the entire threshold classification —
+both the logp and value comparisons — matching the pre-repair
+semantics; categorical reproduction stays fail-closed and the formal
+path hardwires `value_check=True`).
+
+Artifact hashes for the closed round (local artifacts under
+`local-artifacts/m40a-run/`):
+
+```text
+run-manifest.json            bcde84f7a3f8e8cbf6a1d672c75f14559d66841fcfc5b92bf2faebe124a74cc0
+m40a-final-evaluation.json   173ac4cc0a808e73bc6448692c444554d2c5f8e981bfdf413e7a8a24af4e9e15
+h1-ledger.json (file)        cfff19add504d42423a38be4ee5e58485e4f891070721e5e9db06ae8281a8b92
+league-ledger.json (file)    a1b55ba763e13fa884e0f93ff0fcadf500a46bfb21b0e5000d3c43ea641dccf7
+m07-ledger.json (file)       2bdea97c7d6c1cc6814096c0342ee1de5dc7176a64438876d55bc8a2c57b881b
+d2-ledger.json (file)        78663531fbadfd79ed75e7d56de36f2bd52ccf15c49d240259d010a1df0ad563
+canonical ledger hashes
+(bound in final report)      h1 d6ba47d240b986e6…  league e27a27b4993715b8…
+                             m07 7560e364623f5876…  d2   02c8f132bd8426c0…
+A-cycle4.pt file             7bd2ed8915eb3ccffd6ba8c2e6aedd7276860823d0cdbc298d70ef6260f05bf6
+B-cycle4.pt file             4858051d2d6c03858a4862efb681a9d99dec1da42a03510f36b7fcc6112a40a5
+```
+
+Execution/incident history (all reviewed and accepted):
+
+```text
+Phase 1  1972d489…  init + B full pretrain + A/B cycle-1 collection;
+                    STOP before any PPO parameter update (behaviour-
+                    recomputation batch-shape incident)
+Repair   c2ee0bd9…  singleton behaviour recomputation (reviewed
+                    APPROVED / FORMAL_RUN_RESUME_AUTHORIZED)
+Phase 2a 7b0b4105…  collect-path config-only slot recovery (the
+                    accepted M39A rule; needed to resume the
+                    interrupted B cycle-4 collection; reviewed and
+                    confirmed NOT a result-dependent measurement change)
+Phase 2b             PPO cycles 1–4 both arms; frozen 1,664-match
+                    formal evaluation (two infrastructure-level
+                    interruptions — a command timeout and one Windows
+                    0xC000014A DLL-init transient on a slot that never
+                    started — both recovered through the reviewed
+                    config-only path with full provenance rebuild;
+                    zero statistical-sample contamination)
+Rust exe c72e8d1b…  frozen throughout; never rebuilt
+```
+
+Final frozen statistics:
+
+```text
+H1 (primary causal gate):   FAIL   mean −273.44 bps, SD 6,377.51,
+                            lower95 = −1,207.45 bps (PASS requires > 0)
+League safeguard:           PASS   mean +17.36 bps, SD 1,751.06,
+                            upper95 = +542.20 bps (FAIL requires < 0)
+M07 anchor (report-only):   −3,125.00 bps, CI [−3,810.89, −2,439.11]
+D2-v2 anchor (report-only): −585.94 bps, CI [−1,494.94, +323.06]
+Promotion: NONE. Champion: M07 unchanged. No result-dependent rerun.
+```
+
+### Next authorized gate
+
+M40A is CLOSED. Track 2 (pretrain host-memory optimization) moves from
+DEFERRED to **eligible post-M40A engineering work** (independent task;
+not mixed into a future research hypothesis). M40B (Q/TD/CQL) is NOT
+authorized by this result (H1 failed; the frozen decision table required
+H1 PASS). Any future attack on credit assignment requires a new,
+independent hypothesis — not an M40A continuation.
