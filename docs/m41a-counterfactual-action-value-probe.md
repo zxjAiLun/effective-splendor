@@ -3,10 +3,13 @@
 ```text
 Milestone:      M41A
 Title:          Player-View Counterfactual Action-Value Probe
-Status:         PROPOSED / DESIGN_DRAFT_PENDING_REVIEW
+Status:         PROPOSED / REVISION_1 / PENDING_FINAL_DESIGN_REVIEW
 Authorization:  DESIGN_DRAFT_AUTHORIZED / CODE_NOT_AUTHORIZED
                 (2026-09-03; no run-branch, no corpus, no training
                 before the design review passes)
+Design review:  NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 2 (2026-09-03,
+                basis 9750bc6); all five P1 and both P2 closed in
+                Revision 1 (this document)
 Prior rounds:   M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT);
                 M40A (COMPLETED_NEGATIVE / CLOSED —
                 M40A_WARM_START_NO_EFFECT)
@@ -40,10 +43,11 @@ supervision and no RL machinery:
 
 This is deliberately a probe, not a training method: no PPO, no TD, no
 target networks, no bootstrapping. If exhaustive counterfactual
-supervision fails here, TD/Q has no excuse to succeed later; if it
-succeeds, we will have the first direct evidence that the network can
-represent action value at all — the prerequisite any future fitted-Q /
-TD round must establish first.
+supervision fails here, that would create a strong negative prior
+against proceeding directly to TD/Q under this architecture/world; if
+it succeeds, we will have the first direct evidence that the network
+can represent action value at all — the prerequisite any future
+fitted-Q / TD round must establish first.
 
 ## Core design (one line)
 
@@ -136,9 +140,10 @@ continuation     = D2-v2 / D2-v2
 
 Rationale: with the continuation frozen to D2/D2, using M07 or league
 visitations as sources would put the branch states in a distribution
-the continuation policy never generates, recreating exactly the
-offline→online mismatch that contaminated M40A's interpretation.
-M07 and league source states are retained ONLY as the Phase 6
+the continuation policy never generates — a potential offline→online
+visitation mismatch of the kind identified as a CANDIDATE mechanism in
+the M40A post-mortem (not a proven contamination). M07 and league
+source states are retained ONLY as the Phase 6
 report-only OOD diagnostic (§10).
 
 Fresh seed namespaces (disjoint from every allocated range — M39A
@@ -171,12 +176,21 @@ The model `f_θ(o, a)` is centered with the same legal set:
 A_θ(o, a) = f_θ(o, a) − (1/|L(o)|) · Σ_{b∈L(o)} f_θ(o, b)
 ```
 
-and the training loss is
+and the training loss is the **hierarchically balanced** objective
+(revision 1: the original flat per-branch sum weighted states by their
+legal-set size, contradicting the game-level statistical unit):
 
 ```text
-L = Huber( A_θ(o, a), A_cf(s, a) )     over all (state, action)
-                                          training branches
+per state:   L_state(s)  = (1/|L(s)|) · Σ_{a∈L(s)} Huber(A_θ(o,a), A_cf(s,a))
+per game:    L_game(g)   = mean over that game's selected states of L_state
+optimizer:   L           = mean of L_game over the games in the batch
 ```
+
+The optimizer's batch unit is the **game** (a batch is a set of whole
+games; every selected state and every legal action of those games
+participates, but each game contributes exactly one `L_game` term).
+Training weight and formal causal unit are therefore the same object:
+states with 30 legal actions do not count 3.75× a state with 8.
 
 This centering is the structural heart of M41A. A degenerate
 state-only model (`f(o,a) = c(o)` for all a) has `A_θ ≡ 0` on every
@@ -208,6 +222,53 @@ ONLY difference is the representation boundary:
   two pre-registered hypotheses with familywise control
   (Bonferroni, one-sided α = 0.025 each, FWER = 0.05; §9.3).
 
+### 4.1 Shared training contract (frozen — revision 1)
+
+To make "ONLY difference is the representation boundary" literally
+true, the ENTIRE training contract below is shared, frozen now, and
+identical for F and U:
+
+```text
+A-head architecture       the one MLP of §4 (same layer sizes for
+                           both arms; exact sizes fixed at P1
+                           implementation review — the REVISION-1
+                           freeze is that both arms use the SAME one)
+A-head initialization     ONE draw from a frozen torch.Generator
+                           (seed namespace 9_2xx, allocated at P1);
+                           the drawn state_dict is COPIED bit-exactly
+                           into both F and U before any training step
+encoders (U only)         initialized from the frozen D2-v2
+                           checkpoint (same file/semantic identity as
+                           the branch teacher)
+optimizer                 AdamW, lr = 1e-4, betas = (0.9, 0.999),
+                           eps = 1e-8, weight_decay = 1e-4,
+                           amsgrad = False, foreach = False,
+                           fused = False
+batch unit                the GAME (per §3): one optimization step
+                           per batch of whole games; batch size
+                           (games per step) = 32
+epochs                    exactly 16 over the training games; the
+                           FINAL epoch's parameters are the arm's
+                           final checkpoint — there is NO
+                           best-checkpoint selection of any kind
+                           (selection would reintroduce a
+                           representation-confounding dimension)
+shuffle                   deterministic per-epoch game order from the
+                           frozen M39A shuffle namespace
+                           (shuffled_indices semantics, trainer seed
+                           family 40_260_xxx allocated at P1)
+gradient clip             global norm 1.0
+loss                      the hierarchically balanced objective of §3
+precision                 FP32 everywhere (no AMP/FP16/BF16)
+device                    cuda (single device, deterministic
+                           algorithms enabled)
+```
+
+Any deviation discovered during implementation (e.g. the A-head size,
+the exact seed integers) is recorded as an amendment to THIS table
+before training starts, identically for both arms — never adjusted
+per-arm after observing validation.
+
 The F/U pair turns the two M40A post-mortem explanations into an
 experimental fork:
 
@@ -235,14 +296,33 @@ implementation:
 4. **F/U architecture boundary**: exactly as the table in §4
    (encoders frozen in F; encoders trained-from-D2-init in U; policy
    scorer frozen/unused in both; single scalar A-head in both).
-5. **Test split**: source-game-level, sealed before training (§8).
-6. **α / FWER**: one-sided α = 0.025 per arm, Bonferroni family
+5. **Shared training contract**: §4.1 — identical for both arms,
+   including the single-draw A-head initialization copied bit-exactly
+   into F and U, and final-epoch checkpoints (NO best-checkpoint
+   selection).
+6. **Hierarchical loss**: state-then-game balanced objective with the
+   game as the optimizer batch unit (§3).
+7. **Splits**: four source-game-level sealed splits
+   (train / validation / power-calibration / formal-test, §8);
+   formal-test labels unread until §9.6 completes; power-calibration
+   labels unread until F/U final checkpoints are sealed.
+8. **α / FWER**: one-sided α = 0.025 per arm, Bonferroni family
    FWER = 0.05, two pre-registered hypotheses.
-7. **Causal delta**: `Δ = G(s, a_model) − G(s, a_D2)` on held-out
+9. **Causal delta**: `Δ = G(s, a_model) − G(s, a_D2)` on held-out
    states, aggregated per source game, tested across games (§9).
-8. **Branch provenance schema**: §6.
-9. **Non-goals**: §14.
-10. **Statistical unit**: the source game, never the branch (§9.2).
+10. **Formal-test N derivation**: post-training power calibration on
+    the independent power-calibration split, formal-test sealed
+    throughout (§9.6).
+11. **Pseudo-Q ablation gate**: exact thresholds and logic of §9.5
+    (both ablations; at least one metric must degrade beyond
+    δ_rank = 10 pp or δ_regret = 0.05 per ablation).
+12. **Branch provenance schema**: §6.
+13. **Branch-teacher correctness invariant**: H0b source-action
+    reproduction (§7).
+14. **Non-goals**: §14.
+15. **Statistical unit**: the source game, never the branch (§9.2).
+16. **Selected seat**: `source_game_ordinal mod 2` (outcome-
+    independent, §8).
 
 ## 6. `run-branch`: the one new infrastructure piece
 
@@ -332,6 +412,31 @@ serialization is canonical; otherwise semantic identity field-by-field)
 if the engine is not deterministic where the code says it should be,
 we explain the nondeterminism first, or the round does not proceed.
 
+### H0b_SOURCE_ACTION_REPRODUCTION (gate — revision 1)
+
+H0 proves run-branch is STABLE, not that it is CORRECT. M41A has a
+free oracle for correctness: the source games are themselves
+D2-v2 vs D2-v2, identical to the continuation policy. Therefore, at
+every pilot selected state, the branch whose forced action IS the
+source replay's own action at that ply must reproduce the source game
+exactly. For every pilot state:
+
+```text
+run-branch with forced action = a_D2(source, ply)
+    → continuation action sequence == source replay suffix actions
+    → terminal/cap status == source game outcome
+    → acting-seat centered return == source game return
+    → final-state hash == source game final-state hash
+```
+
+**Any mismatch: M41A STOPs** (`M41A_BRANCH_TEACHER_INCORRECT`). An
+off-by-one branch ply, a wrong acting seat, or a faulty replay
+reconstruction can be perfectly deterministic (H0 passes) while every
+branch label is wrong — H0b is the gate that catches exactly that
+class, and it is stronger than re-run consistency. H0b runs over ALL
+pilot selected states (one oracle branch per state), before any other
+P0 measurement is trusted.
+
 ### H1a_DISCRIMINATION_DENSITY (gate)
 
 The deterministic teacher may reveal that most states have few
@@ -368,32 +473,29 @@ mean branch wall-time (resident D2-v2 continuation)
 mean branches per state (≈ mean |legal set|)
 projected full-corpus wall-clock (N_source_games × 3 states ×
   |L| branches), and disk
-pilot game-level Δ variance (Δ = best − D2 action per state,
-  averaged per game — the exact statistic of the formal gate)
+pilot oracle-Δ scale (Δ_best = best − D2 action, per state, per game)
+  — reported for SCALE ONLY, never used to set the formal N
 ```
 
-Pre-registered budget stop rules:
+Pre-registered budget stop rules (runtime only; the statistical N is
+NOT set here — see the four-split power calibration, §9.6):
 
 ```text
-formal test N (games) required for 90% power at one-sided α=0.025
-  against the pilot SD, targeting +300 bps game-level improvement:
-      if required N > 512 source games  → STOP / redesign
 if projected full branch-corpus generation > 4 hours on this machine
   → STOP / optimize the EXECUTOR first (never shrink the sample to
      fit the budget)
 ```
 
-The power calculation uses the corrected M40A lesson: the design-time
-SD guess is not trusted; N is derived from pilot-measured game-level
-SD at α = 0.025 (not 0.05), and the MDE at that N is reported before
-any corpus generation begins.
-
 ### P0 exit
 
-P0 exits with frozen numbers for: material-pair τ (§9.4), formal
-N_source_games, per-split game counts, the seed allocation, and the
-confirmed runtime budget. Everything else in this document is already
-frozen.
+P0 exits with frozen numbers for: material-pair τ (§9.4), the exact
+pseudo-Q ablation thresholds (§9.5), per-split game counts, the seed
+allocation, and the confirmed runtime budget. The formal test N is
+deliberately NOT a P0 output (revision 1): the pilot oracle-Δ SD is
+the variance of the WRONG random variable — the formal gate tests
+`Δ_F`/`Δ_U` (model-selected actions), whose variance is
+model-specific and unknowable before the final models exist. The
+formal N is frozen by the post-training power calibration of §9.6.
 
 ## 8. Phase 1–2 — corpus infrastructure and generation
 
@@ -408,19 +510,25 @@ frozen.
 - **State selection (frozen rule)**: at most 3 acting-decision states
   per source game, at the 25% / 50% / 75% quantiles of that game's
   acting decisions for the SELECTED seat, deterministic tie-breaking
-  by ply index. (One seat per game — the acting seat at the branch
-  point; the seat is part of the frozen selection rule: the seat with
-  more acting decisions, tie-broken to seat 0.) If P0 shows the
-  quantile states are pathological (e.g. overwhelmingly tied), a
-  Revision may re-specify the rule — but only via design review,
-  never mid-run.
-- **Splits are source-game-level and SEALED**: train / validation /
-  formal-test games are disjoint from the start. Formal-test branch
-  labels are generated (they must exist for P5) but stored so the
-  trainer cannot read them; only the final evaluator reads them.
-  Model structure, epochs, optimizer, and any checkpoint selection
-  use ONLY train/validation. The pilot games (9_1xx) never appear in
-  any split.
+  by ply index. **The selected seat is outcome-independent (revision
+  1): `selected_seat = source_game_ordinal mod 2`** — fixed before
+  the game starts, exactly 50/50 balanced across the corpus, and
+  independent of who acted more or who triggered the terminal (a
+  "seat with more decisions" rule would condition the sampling
+  corpus on the game's future/outcome). If P0 shows the quantile
+  states are pathological (e.g. overwhelmingly tied), a Revision may
+  re-specify the rule — but only via design review, never mid-run.
+- **Splits are source-game-level and SEALED — four splits (revision
+  1)**: `train / validation / power-calibration / formal-test`,
+  disjoint from the start. Formal-test branch labels are generated
+  (they must exist for P5) but stored so the trainer cannot read
+  them; only the final evaluator reads them. The power-calibration
+  split participates in NO training and NO model selection (§9.6);
+  its branch labels are read only after the F/U final checkpoints
+  are permanently sealed. Model structure, epochs, optimizer, and
+  the (forbidden — §4.1) checkpoint selection use ONLY
+  train/validation. The pilot games (9_1xx) never appear in any
+  split.
 
 ## 9. Phase 5 — the formal causal intervention (primary gate)
 
@@ -464,8 +572,11 @@ family: Bonferroni, FWER = 0.05
 An arm PASSES iff its one-sided **97.5%** lower bound on the
 game-level mean Δ is > 0 AND the domain is complete (every scheduled
 test state executed; zero missing/duplicate; zero provenance
-failures; zero result-dependent reruns). "Pass whichever looks
-better" is pre-registered away by the Bonferroni split.
+failures; zero result-dependent reruns) AND the exact ablation gate
+(§9.5) passes for that arm. The formal test runs on the N_formal
+games frozen by the P4.5 power calibration (§9.6), after the F/U
+checkpoints are sealed. "Pass whichever looks better" is
+pre-registered away by the Bonferroni split.
 
 ### 9.4 Secondary/diagnostic metrics (not gates)
 
@@ -484,21 +595,78 @@ better" is pre-registered away by the Bonferroni split.
 - **Centered-value error**: Huber/MSE on `A_cf` (the training
   objective, reported on validation) — descriptive only.
 
-### 9.5 Action-ablation sanity gates (fail-closed)
+### 9.5 Action-ablation sanity gates (fail-closed, exact — revision 1)
 
-Both arms must degrade materially under:
+Both arms must degrade under:
 
 ```text
 (a) action embedding zeroed
 (b) action assignment shuffled within the legal set
 ```
 
-measured by pairwise ranking / top-1 regret on validation. If an arm
-performs well normally but does NOT degrade under ablation, that arm
-is a **pseudo-Q** (state recognition masquerading as action value)
-and FAILS regardless of its intervention result. The legal-set
-centering makes this near-impossible to pass accidentally — the
-ablation check is the second, independent lock.
+measured on VALIDATION games by the two frozen metrics below. "Degrade
+materially" is now an EXACT, pre-registered condition (no post-hoc
+judgment): for ablation condition `x ∈ {zero, shuffle}`, arm `m ∈
+{F, U}`, with the normal (unablated) validation values as baseline:
+
+```text
+metric 1 — material-pair ranking accuracy:
+    P_x^m < P_normal^m − δ_rank
+metric 2 — top-1 regret:
+    R_x^m > R_normal^m + δ_regret
+```
+
+The arm is a **pseudo-Q** and FAILS the gate iff it escapes BOTH
+conditions for EITHER ablation (i.e. passes only if, for each of zero
+and shuffle, at least one metric degrades beyond its threshold). The
+thresholds:
+
+```text
+δ_rank    = 10.0 percentage points
+δ_regret  = 0.05  (in centered-return units; the return scale is
+            [−1, +1], so 0.05 = 250 bps of regret)
+```
+
+Rationale for the magnitudes (fixed now, before any training): a
+model that genuinely reads the action cannot lose less than a tenth
+of its material-pair accuracy or a quarter-deci-return of regret when
+its action input is destroyed or scrambled; a state-recognition
+model, centered to `A_θ ≡ 0`-adjacent behavior, will barely move. Tie
+handling: material pairs are defined by the frozen τ (§9.4); ranking
+accuracy is over non-tied model predictions of those pairs
+(predicted sign of `A_θ(a) − A_θ(b)` vs the true sign of `A_cf`).
+
+Both thresholds join the P0-exit freeze list (numerically re-affirmed
+or amended by review BEFORE any F/U training — never after seeing
+validation numbers).
+
+### 9.6 Formal-test N: post-training power calibration (revision 1)
+
+The formal N is NOT derived from P0 pilot variance (the pilot's
+oracle-Δ is the wrong random variable: the formal gate tests
+model-selected actions). Instead:
+
+```text
+1. P3 completes; F and U final checkpoints (final-epoch, §4.1) are
+   PERMANENTLY SEALED — no further training of any kind.
+2. The power-calibration split (§8; never used in training or
+   selection) is unsealed FIRST: compute Δ_game^F and Δ_game^U on
+   every power-calibration game (the same one-step intervention
+   statistic as the formal gate).
+3. For each arm: SD_m = sample SD of Δ_game^m over
+   power-calibration games. Required formal-test N_m for one-sided
+   α = 0.025, power = 0.90, effect +300 bps (0.03 in return units):
+       N_m = ((z_{0.975} + z_{0.90}) · SD_m / 0.03)^2
+4. N_formal = max(N_F, N_U) — both arms are tested on the SAME
+   formal-test games.
+5. If N_formal > available formal-test games (or > 512): STOP /
+   redesign. The formal-test labels remain SEALED throughout this
+   computation; only power-calibration data is read.
+```
+
+This is model-specific variance calibration on an independent split,
+performed after the models are frozen and before the formal test is
+unsealed — with no access to any formal outcome.
 
 ## 10. Phase 6 — OOD diagnostic (report-only)
 
@@ -577,12 +745,18 @@ Offline metrics look good but the formal intervention FAILs
 P0 discrimination density < 25%
     → M41A_INSUFFICIENT_ACTION_DISCRIMINATION (STOP; no shaped-reward
       rescue without a reviewed Revision).
-P0 determinism FAILs
+P0 determinism FAILs (H0)
     → M41A_ENGINE_NONDETERMINISM (STOP; explain or fix the engine
       first, with its own review).
-P0 power/runtime budgets exceeded
-    → STOP / redesign (or executor optimization), never sample
-      shrinking.
+P0 source-action reproduction FAILs (H0b)
+    → M41A_BRANCH_TEACHER_INCORRECT (STOP; the branch teacher is
+      wrong even though it may be deterministic — fix run-branch
+      semantics first, with its own review).
+P0 runtime budget exceeded
+    → STOP / optimize the executor, never sample shrinking.
+Post-training power calibration yields N_formal > available
+formal-test games (or > 512)
+    → STOP / redesign; formal-test labels remain sealed.
 ```
 
 No promotion in any branch. M07 remains champion. No
@@ -613,12 +787,13 @@ result-dependent rerun. No gate change after observing outcomes.
 
 | Phase | Content | Training? | Status |
 |---|---|---|---|
-| P0 | determinism + discrimination + runtime + power pilot (128 pilot states, seed 9_1xx) | NO | design-authorized, blocked on review |
+| P0 | H0 determinism + H0b source-action reproduction + discrimination + runtime pilot (128 pilot states, seed 9_1xx) | NO | design-authorized, blocked on review |
 | P1 | `run-branch` implementation + review; fresh D2/D2 source games (9_0xx) | NO | not authorized |
-| P2 | exhaustive branch corpus + provenance validation + sealed splits | NO | not authorized |
-| P3 | F/U training (sealed game-level split; U encoders init from D2-v2) | YES | not authorized |
-| P4 | offline held-out ranking / regret / ablation sanity | eval only | not authorized |
-| P5 | F/U formal one-step causal intervention (Bonferroni α=.025) | formal gate | not authorized |
+| P2 | exhaustive branch corpus + provenance validation + four sealed splits | NO | not authorized |
+| P3 | F/U training (shared contract §4.1; sealed game-level split; U encoders init from D2-v2; final-epoch checkpoints) | YES | not authorized |
+| P4 | offline held-out ranking / regret / exact ablation sanity (§9.5) | eval only | not authorized |
+| P4.5 | post-training power calibration on the power-calibration split; freeze N_formal (§9.6); formal-test still sealed | eval only | not authorized |
+| P5 | F/U formal one-step causal intervention on N_formal games (Bonferroni α=.025) | formal gate | not authorized |
 | P6 | M07/league OOD diagnostic | report-only | not authorized |
 
 Implementation of ANY phase requires the design review to pass and
@@ -633,6 +808,28 @@ is the current deliverable.
   clean fork on whether the incumbent representation already suffices.
 - **If it fails**: exhaustive counterfactual supervision is
   insufficient for action-value learning in this architecture/world —
-  the strongest possible negative prior against jumping to TD/Q, and a
-  pointer (via P4/P6) at whether expressiveness or distribution is
-  the wall.
+  a strong negative prior against proceeding directly to TD/Q here,
+  and a pointer (via P4/P6) at whether expressiveness or distribution
+  is the wall.
+
+## Revision 1 — findings and disposition (2026-09-03)
+
+Design review of draft `9750bc6`: **`NEEDS_REVISION — P0 = 0, P1 = 5,
+P2 = 2`**. Direction approved (state-level → exhaustive counterfactual
+action-value); this revision is final hardening. All findings closed
+in place:
+
+| # | Severity | Finding | Disposition (revision 1) |
+|---|---|---|---|
+| P1-1 | P1 | F/U training contract not actually frozen (init/optimizer/LR/epochs/batch/selection all open) — representation would not be the only difference | §4.1 shared training contract frozen: single-draw A-head init copied bit-exactly to both arms; AdamW 1e-4/(0.9,0.999)/1e-8/wd 1e-4 flags off; game-batch 32; exactly 16 epochs; FINAL-epoch checkpoints, no best-checkpoint selection; deterministic shuffle from the frozen namespace; grad clip 1.0; FP32; any amendment recorded identically for both arms before training |
+| P1-2 | P1 | Flat per-branch loss weights states by legal-set size (30-action state counts 3.75× an 8-action one), contradicting the game-level statistical unit | §3 hierarchical loss: per-state legal-set mean → per-game state mean → optimizer means over game-balanced batches (batch unit = the game) |
+| P1-3 | P1 | "Degrade materially" in the pseudo-Q ablation gate was undefined — post-hoc freedom | §9.5 exact pre-registered gate: for EACH of {zero, shuffle}, at least one of {material-pair ranking −10 pp, top-1 regret +0.05} must hold; thresholds frozen, added to the P0-exit re-affirmation list |
+| P1-4 | P1 | P0 power SD used the oracle-Δ (wrong random variable) to set the formal N | §9.6 four-split design (train/val/power-calibration/formal-test): P0 no longer sets N; after F/U final checkpoints are sealed, the model-specific Δ SD is measured on the independent power-calibration split; N = max(N_F, N_U) at α=.025/power=.90/+300 bps; STOP if N exceeds availability; formal-test sealed throughout |
+| P1-5 | P1 | H0 only proved run-branch stability, not correctness | §7 H0b_SOURCE_ACTION_REPRODUCTION: at every pilot state, the branch forced to the source's own D2 action must reproduce the source suffix/return/final hash exactly; any mismatch → M41A_BRANCH_TEACHER_INCORRECT, STOP |
+| P2-1 | P2 | Selected seat via "more acting decisions" conditioned sampling on the game's future/outcome | §8: `selected_seat = source_game_ordinal mod 2` — fixed pre-game, 50/50, outcome-independent |
+| P2-2 | P2 | Two over-strong causal claims about M40A (distribution shift as proven contamination; "TD/Q has no excuse") | §2/§10 rewritten: "candidate mechanism identified in the post-mortem, not proven contamination"; "would create a strong negative prior against proceeding directly to TD/Q under this architecture/world" |
+
+The P0-deferred list is now: material-pair τ, the §9.5 ablation
+threshold re-affirmation, per-split game counts, seed allocation, and
+the runtime budget confirmation. The formal N is deliberately NOT in
+it (it is a P4.5 output by design).
