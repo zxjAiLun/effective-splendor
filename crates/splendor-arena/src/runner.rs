@@ -136,6 +136,31 @@ fn finish_aborted(
     }
 }
 
+/// The already-verified branch point for [`ArenaRunner::run_branch`].
+///
+/// Every field comes from the source replay's strict verification:
+/// - `state`: the rebuilt full state at the branch ply (before the branch
+///   ply's action);
+/// - `prefix_steps`: the source replay's steps `[0, branch_ply)` — the
+///   resumed recorder's step chain starts with them;
+/// - `initial_state_hash`: the source replay's initial-state hash;
+/// - `ruleset` / `ruleset_fingerprint`: the source replay's ruleset
+///   identity (re-checked against the engine by the recorder resume path);
+/// - `seed`: the source game's seed (the hidden world being branched);
+/// - `prefix_events`: the per-ply referee events of `[0, branch_ply)`,
+///   replayed to the agents as visible-event history before the first
+///   observation (belief-tracking agents require the complete transcript).
+#[derive(Debug, Clone)]
+pub struct BranchStart {
+    pub state: splendor_core::FullState,
+    pub prefix_steps: Vec<splendor_replay::ReplayStepV1>,
+    pub initial_state_hash: splendor_replay::ReplayHash,
+    pub ruleset: splendor_replay::ReplayRulesetV1,
+    pub ruleset_fingerprint: splendor_replay::ReplayHash,
+    pub seed: u64,
+    pub prefix_events: Vec<Vec<RefereeEvent>>,
+}
+
 /// The seat-bound match runner. Holds no live state; [`ArenaRunner::run`]
 /// owns the whole lifecycle of one match.
 pub struct ArenaRunner;
@@ -182,6 +207,80 @@ impl ArenaRunner {
         })
     }
 
+    /// Run one **counterfactual branch continuation** (M41A `run-branch`).
+    ///
+    /// Semantics (frozen by the M41A design, `docs/
+    /// m41a-counterfactual-action-value-probe.md` §6):
+    /// - `start.state` is the already-verified full state at the branch
+    ///   point (the caller rebuilt + hash-checked it via
+    ///   `verify_replay_position` on the source replay);
+    /// - the **forced action** is applied by the referee FIRST, without
+    ///   any agent involvement, and validated against the rebuilt legal
+    ///   set before application;
+    /// - both seats then play the continuation (normally the frozen
+    ///   D2-v2 agent on both sides) under the ordinary per-turn state
+    ///   machine;
+    /// - before the first observation, every seat receives the complete
+    ///   projected visible-event history (setup + source-game prefix +
+    ///   forced action), so belief-tracking agents see exactly the
+    ///   transcript a live game of this line would have produced;
+    /// - the finished replay contains the full step chain from the
+    ///   source game's initial state (prefix steps + forced action +
+    ///   continuation);
+    /// - `ply_cap` is ABSOLUTE (plies counted from the source game's
+    ///   first ply), matching the M39A/M40A source-rollout cap semantics.
+    pub fn run_branch(
+        config: ArenaConfig,
+        start: BranchStart,
+        forced_action: Action,
+        ply_cap: u32,
+    ) -> Result<CappedRun, ArenaInternalError> {
+        let grace = Duration::from_millis(config.shutdown_grace_ms);
+        Self::run_branch_with(
+            config,
+            start,
+            forced_action,
+            ply_cap,
+            move |cmd, seat, tx| {
+                let proc = spawn_agent(seat, cmd, tx)
+                    .map_err(|e| ArenaInternalError::Transport(e.to_string()))?;
+                let transport: Box<dyn AgentTransport> = Box::new(SubprocessTransport {
+                    proc: Some(proc),
+                    grace,
+                });
+                Ok(transport)
+            },
+        )
+    }
+
+    /// Transport-injectable branch driver for tests.
+    pub(crate) fn run_branch_with<F>(
+        config: ArenaConfig,
+        start: BranchStart,
+        forced_action: Action,
+        ply_cap: u32,
+        make: F,
+    ) -> Result<CappedRun, ArenaInternalError>
+    where
+        F: FnMut(
+            &AgentCommand,
+            PlayerId,
+            Sender<InboundEvent>,
+        ) -> Result<Box<dyn AgentTransport>, ArenaInternalError>,
+    {
+        if ply_cap == 0 || ply_cap >= MAX_MATCH_PLIES {
+            return Err(ArenaInternalError::Engine(format!(
+                "ply cap {ply_cap} must be in 1..{MAX_MATCH_PLIES}"
+            )));
+        }
+        Self::run_with_inner(
+            config,
+            Some(ply_cap),
+            &mut Some((start, forced_action)),
+            make,
+        )
+    }
+
     /// Run one match under a training ply cap against real agent subprocesses.
     ///
     /// Terminal at or before the cap: identical outcome to
@@ -206,7 +305,7 @@ impl ArenaRunner {
     pub(crate) fn run_capped_with<F>(
         config: ArenaConfig,
         ply_cap: u32,
-        mut make: F,
+        make: F,
     ) -> Result<CappedRun, ArenaInternalError>
     where
         F: FnMut(
@@ -220,7 +319,7 @@ impl ArenaRunner {
                 "ply cap {ply_cap} must be in 1..{MAX_MATCH_PLIES}"
             )));
         }
-        match Self::run_with_inner(config, Some(ply_cap), &mut make)? {
+        match Self::run_with_inner(config, Some(ply_cap), &mut None, make)? {
             CappedRun::Terminal(run) => Ok(CappedRun::Terminal(run)),
             CappedRun::Truncated { report, prefix } => Ok(CappedRun::Truncated { report, prefix }),
         }
@@ -253,7 +352,7 @@ impl ArenaRunner {
             Sender<InboundEvent>,
         ) -> Result<Box<dyn AgentTransport>, ArenaInternalError>,
     {
-        match Self::run_with_inner(config, None, make)? {
+        match Self::run_with_inner(config, None, &mut None, make)? {
             CappedRun::Terminal(run) => Ok(run),
             CappedRun::Truncated { .. } => Err(ArenaInternalError::Engine(
                 "uncapped run cannot produce a truncated outcome".into(),
@@ -263,9 +362,14 @@ impl ArenaRunner {
 
     /// The single shared match driver: `cap == None` is the legacy
     /// run-to-terminal behaviour; `cap == Some(n)` truncates at n plies.
+    /// `branch == Some((start, forced))` runs the M41A counterfactual
+    /// branch semantics instead of a fresh game (see
+    /// [`ArenaRunner::run_branch`]); `branch` and `cap == None` is an
+    /// implementation error (branches always cap).
     fn run_with_inner<F>(
         config: ArenaConfig,
         cap: Option<u32>,
+        branch: &mut Option<(BranchStart, Action)>,
         mut make: F,
     ) -> Result<CappedRun, ArenaInternalError>
     where
@@ -280,12 +384,81 @@ impl ArenaRunner {
         let player_count = config.player_count();
         let seed = config.seed;
 
-        let (mut recorder, setup) = ReplayRecorder::new_with_setup(GameConfig {
-            player_count,
-            seed,
-            ruleset: Ruleset::base_v1(),
-        })
-        .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+        // Branch mode: resume the recorder from the verified branch state,
+        // apply the forced action referee-side, and collect the FULL
+        // visible-event history (prefix + forced action) for replay to the
+        // agents before the first observation. Fresh mode: the ordinary
+        // recorder + setup events.
+        enum Bootstrap {
+            Fresh {
+                setup_events: Vec<RefereeEvent>,
+            },
+            Branch {
+                history_events: Vec<Vec<RefereeEvent>>,
+            },
+        }
+
+        let (mut recorder, bootstrap): (ReplayRecorder, Bootstrap) = match branch.take() {
+            None => {
+                let (recorder, setup) = ReplayRecorder::new_with_setup(GameConfig {
+                    player_count,
+                    seed,
+                    ruleset: Ruleset::base_v1(),
+                })
+                .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+                (
+                    recorder,
+                    Bootstrap::Fresh {
+                        setup_events: setup.events,
+                    },
+                )
+            }
+            Some((start, forced_action)) => {
+                let BranchStart {
+                    state,
+                    prefix_steps,
+                    initial_state_hash,
+                    ruleset: replay_ruleset,
+                    ruleset_fingerprint: replay_fingerprint,
+                    seed: source_seed,
+                    prefix_events,
+                } = start;
+                let mut recorder = ReplayRecorder::resume_from_state(
+                    GameConfig {
+                        player_count,
+                        seed: source_seed,
+                        ruleset: Ruleset::base_v1(),
+                    },
+                    state,
+                    prefix_steps,
+                    initial_state_hash,
+                    replay_ruleset,
+                    replay_fingerprint,
+                )
+                .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+                // Forced-action validation against the AUTHORITATIVE rebuilt
+                // legal set: containment, fail-closed (no transports exist
+                // yet, so there is nothing to shut down on this error path).
+                if !recorder.legal_actions().contains(&forced_action) {
+                    return Err(ArenaInternalError::Engine(format!(
+                        "forced action {forced_action:?} is not in the rebuilt legal set"
+                    )));
+                }
+                let step = recorder
+                    .apply(forced_action)
+                    .map_err(|e| ArenaInternalError::Engine(e.to_string()))?;
+                // The forced ply is completed referee-side; the agents will
+                // receive its projected events with the prefix history.
+                let mut history = prefix_events;
+                history.push(step.events);
+                (
+                    recorder,
+                    Bootstrap::Branch {
+                        history_events: history,
+                    },
+                )
+            }
+        };
 
         let ruleset_id = recorder.state().ruleset.id.0.to_string();
         let catalog_version = CATALOG_VERSION.to_string();
@@ -334,7 +507,13 @@ impl ArenaRunner {
             )));
         }
 
-        let mut counters = MatchCounters::default();
+        // Branch mode's prespawned plies (prefix + forced): the cap counter
+        // must start from the recorder's absolute ply position.
+        let prespawned_plies = match &bootstrap {
+            Bootstrap::Fresh { .. } => 0,
+            Bootstrap::Branch { history_events } => history_events.len() as u32,
+        };
+        let mut counters = MatchCounters::with_completed_plies(prespawned_plies);
 
         // ---- Handshake: send Hello to every seat, then start one deadline.
         // The deadline starts only after every Hello flushed successfully; a
@@ -492,32 +671,112 @@ impl ArenaRunner {
         }
 
         // Every live player-view policy needs the same cumulative transcript
-        // used by offline M07 analysis. Deliver the projected setup events
-        // before the first observation/request; this includes GameStarted and
-        // SetupDealt but never exposes the raw seed or hidden deck order.
-        if let Some(failed_seat) = broadcast_events(
-            &mut transports,
-            &ctx,
-            &mut counters,
-            &setup.events,
-            BroadcastMode::Strict,
-        )? {
-            return Ok(CappedRun::Terminal(finish_aborted(
+        // used by offline M07 analysis. Fresh mode: deliver the projected
+        // setup events before the first observation/request (GameStarted and
+        // SetupDealt, never the raw seed or hidden deck order). Branch mode:
+        // deliver the COMPLETE projected history — setup events (rebuilt from
+        // the source seed), every prefix ply's events, and the forced
+        // action's events — so a belief-tracking continuation agent sees
+        // exactly the transcript a live game of this line would have
+        // produced.
+        let history_batches: Vec<Vec<RefereeEvent>> = match &bootstrap {
+            Bootstrap::Fresh { setup_events } => vec![setup_events.clone()],
+            Bootstrap::Branch { history_events } => {
+                // Rebuild the setup events from the source seed: the branch
+                // recorder resumed WITHOUT setup events, but the agents'
+                // transcript must still start with them.
+                let (_, setup) = ReplayRecorder::new_with_setup(GameConfig {
+                    player_count,
+                    seed: recorder.seed(),
+                    ruleset: Ruleset::base_v1(),
+                })
+                .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+                let mut batches = vec![setup.events];
+                batches.extend(history_events.iter().cloned());
+                batches
+            }
+        };
+        for batch in &history_batches {
+            if let Some(failed_seat) = broadcast_events(
                 &mut transports,
                 &ctx,
-                &seats,
-                failed_seat.0,
-                ArenaPhase::Handshake,
-                AgentFault::AgentIo,
-                None,
-                0,
-            )));
+                &mut counters,
+                batch,
+                BroadcastMode::Strict,
+            )? {
+                return Ok(CappedRun::Terminal(finish_aborted(
+                    &mut transports,
+                    &ctx,
+                    &seats,
+                    failed_seat.0,
+                    ArenaPhase::Handshake,
+                    AgentFault::AgentIo,
+                    None,
+                    counters.completed_plies(),
+                )));
+            }
         }
 
         // ---- Per-turn loop. ----
         loop {
             if recorder.is_terminal() {
                 break;
+            }
+            // Pre-request cap check (branch mode): the recorder may already
+            // be at the absolute cap after the forced ply — no agent ply
+            // may run. Fresh mode is unaffected (counters start at 0 < any
+            // valid cap). Being BEYOND the cap is a caller configuration
+            // error and fails closed.
+            if let Some(cap_value) = cap {
+                let completed = counters.completed_plies();
+                if completed > cap_value {
+                    for t in transports.iter_mut() {
+                        t.shutdown();
+                    }
+                    return Err(ArenaInternalError::Engine(format!(
+                        "branch position {completed} is already past the ply cap {cap_value}"
+                    )));
+                }
+                if completed == cap_value {
+                    let cap_plies = counters.completed_plies();
+                    let (state, prefix) = recorder
+                        .finish_prefix(cap_plies)
+                        .map_err(|e| ArenaInternalError::Replay(e.to_string()))?;
+                    let cap_scores = state
+                        .players
+                        .iter()
+                        .map(|player| player.prestige)
+                        .collect::<Vec<_>>();
+                    for t in transports.iter_mut() {
+                        let seq = counters.next_server_seq();
+                        if seq.is_err() {
+                            break;
+                        }
+                        let msg = ServerMessage::GameTruncated {
+                            meta: RecipientMeta::new(
+                                ctx.game_id.clone(),
+                                seq.expect("checked above"),
+                                t.seat(),
+                            ),
+                            completed_plies: cap_plies,
+                            cap_state_hash: prefix.cap_state_hash.as_str().to_string(),
+                            cap_scores: cap_scores.clone(),
+                        };
+                        let _ = t.send(&msg);
+                    }
+                    let outcome = ArenaOutcomeV1::truncated(
+                        cap_plies,
+                        prefix.cap_state_hash.as_str().to_string(),
+                        cap_scores,
+                    );
+                    for t in transports.iter_mut() {
+                        t.shutdown();
+                    }
+                    return Ok(CappedRun::Truncated {
+                        report: build_report(&ctx, &seats, outcome),
+                        prefix,
+                    });
+                }
             }
             if counters.completed_plies() >= MAX_MATCH_PLIES {
                 for t in transports.iter_mut() {

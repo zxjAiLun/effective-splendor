@@ -1042,3 +1042,356 @@ fn capped_run_rejects_invalid_cap_and_aborts_still_fail_closed() {
         CappedRun::Truncated { .. } => panic!("a faulty agent must abort, not truncate"),
     }
 }
+
+// ---------------------------------------------------------------------------
+// M41A branch runner tests
+// ---------------------------------------------------------------------------
+
+mod branch {
+    use super::*;
+
+    /// Build a BranchStart from a source replay at `branch_ply`, replaying
+    /// the prefix under the recorder to collect per-ply referee events (the
+    /// same rebuild `run-branch` will perform in the CLI).
+    fn branch_start_from(replay: &ReplayV1, branch_ply: usize) -> BranchStart {
+        let (state, prefix_events) = {
+            // Rebuild per-ply events by replaying the prefix on a fresh
+            // recorder (matches what the CLI's branch driver does). The
+            // prefix steps' hash chain is verified separately by
+            // verify_replay on the source document.
+            let (mut rec, _setup) = ReplayRecorder::new_with_setup(GameConfig {
+                player_count: replay.player_count,
+                seed: replay.seed,
+                ruleset: Ruleset::base_v1(),
+            })
+            .expect("rebuild recorder");
+            let mut events = Vec::with_capacity(branch_ply);
+            for step in &replay.steps[..branch_ply] {
+                let res = rec.apply(step.action).expect("prefix action applies");
+                events.push(res.events);
+            }
+            (rec.state().clone(), events)
+        };
+        BranchStart {
+            state,
+            prefix_steps: replay.steps[..branch_ply].to_vec(),
+            initial_state_hash: replay.initial_state_hash.clone(),
+            ruleset: replay.ruleset.clone(),
+            ruleset_fingerprint: replay.ruleset_fingerprint.clone(),
+            seed: replay.seed,
+            prefix_events,
+        }
+    }
+
+    fn branch_config(source_seed: u64) -> ArenaConfig {
+        let mut config = test_config(2, 5_000, 5_000);
+        config.seed = source_seed;
+        config
+    }
+
+    /// H0b semantics: branching with the SOURCE's own action at the branch
+    /// ply, with agents scripted to play the source's remaining actions,
+    /// must reproduce the source game exactly (step chain, result, final
+    /// hash) — the run-branch correctness oracle.
+    #[test]
+    fn branch_with_source_action_reproduces_source_game() {
+        let (_, replay) = record_random_game(2, SEED, ACTION_SEED).expect("source game");
+        let branch_ply = replay.steps.len() / 2;
+        let source_action = replay.steps[branch_ply].action;
+        let start = branch_start_from(&replay, branch_ply);
+
+        // Both agents play the source's remaining actions in order.
+        let remaining: VecDeque<Action> = replay.steps[branch_ply + 1..]
+            .iter()
+            .map(|s| s.action)
+            .collect();
+
+        let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
+        let queue = Arc::new(Mutex::new(remaining));
+        let game_id = "m41a-branch-h0b-test".to_string();
+        let config = {
+            let mut c = branch_config(replay.seed);
+            c.game_id = game_id.clone();
+            c
+        };
+        let log_for_make = Arc::clone(&log);
+        let result =
+            ArenaRunner::run_branch_with(config, start, source_action, 150, move |_, seat, tx| {
+                let agent = ScriptedAgent {
+                    seat,
+                    tx,
+                    script: Script::Play,
+                    game_id: game_id.clone(),
+                    queue: Arc::clone(&queue),
+                    log: Arc::clone(&log_for_make),
+                    shutdown_flag: Arc::new(AtomicBool::new(false)),
+                    fail_on: None,
+                };
+                Ok(Box::new(agent) as Box<dyn AgentTransport>)
+            });
+
+        match result.expect("no internal error") {
+            CappedRun::Terminal(run) => {
+                let branch_replay = run.replay.as_ref().expect("terminal branch has replay");
+                // The complete step chain equals the source replay's.
+                assert_eq!(
+                    branch_replay.steps.len(),
+                    replay.steps.len(),
+                    "branch replay must cover the full game"
+                );
+                for (got, want) in branch_replay.steps.iter().zip(replay.steps.iter()) {
+                    assert_eq!(got.ply, want.ply);
+                    assert_eq!(got.actor, want.actor);
+                    assert_eq!(got.action, want.action);
+                    assert_eq!(
+                        got.state_hash_before.as_str(),
+                        want.state_hash_before.as_str()
+                    );
+                    assert_eq!(
+                        got.state_hash_after.as_str(),
+                        want.state_hash_after.as_str()
+                    );
+                }
+                assert_eq!(
+                    branch_replay.final_state_hash.as_str(),
+                    replay.final_state_hash.as_str(),
+                    "H0b: final state hash must match the source game"
+                );
+                assert_eq!(branch_replay.result, replay.result);
+            }
+            CappedRun::Truncated { .. } => {
+                panic!("source game completes well under the cap; branch must terminate")
+            }
+        }
+    }
+
+    /// A forced action that is NOT in the rebuilt legal set is rejected
+    /// fail-closed before any agent is spawned.
+    #[test]
+    fn branch_rejects_illegal_forced_action() {
+        let (_, replay) = record_random_game(2, SEED, ACTION_SEED).expect("source game");
+        let branch_ply = replay.steps.len() / 2;
+        let start = branch_start_from(&replay, branch_ply);
+        // An action that is never legal: a market buy of an out-of-range
+        // slot (the market has 4 slots per tier; slot 200 cannot exist).
+        let illegal = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 200,
+        };
+        let result = ArenaRunner::run_branch_with(
+            branch_config(replay.seed),
+            start,
+            illegal,
+            150,
+            |_, _, _| -> Result<Box<dyn AgentTransport>, ArenaInternalError> {
+                panic!("no transport may be built before forced-action validation")
+            },
+        );
+        assert!(
+            matches!(result, Err(ArenaInternalError::Engine(ref m)) if m.contains("legal set")),
+            "illegal forced action must fail closed, got {result:?}"
+        );
+    }
+
+    /// Determinism: the same branch run twice produces identical replays.
+    /// The continuation is a deterministic "first legal action" policy
+    /// (scripted ahead of time from the branch rebuild), so both runs see
+    /// the same action stream.
+    #[test]
+    fn branch_is_deterministic_across_runs() {
+        let (_, replay) = record_random_game(2, SEED + 1, ACTION_SEED + 1).expect("source game");
+        let branch_ply = replay.steps.len() / 3;
+        // Branch with a DIFFERENT action than the source took: pick another
+        // legal action at the branch point (the first legal action that
+        // differs from the source's).
+        let source_action = replay.steps[branch_ply].action;
+        // Rebuild the branch-point legal set from the same prefix replay.
+        let forced = {
+            let (mut rec, _) = ReplayRecorder::new_with_setup(GameConfig {
+                player_count: replay.player_count,
+                seed: replay.seed,
+                ruleset: Ruleset::base_v1(),
+            })
+            .expect("rebuild");
+            for step in &replay.steps[..branch_ply] {
+                rec.apply(step.action).expect("prefix");
+            }
+            let legal = rec.legal_actions();
+            *legal
+                .iter()
+                .find(|a| **a != source_action)
+                .expect("a mid-game state has multiple legal actions")
+        };
+        // Deterministic continuation: first-legal-action policy, computed
+        // offline from the forced state (capped at 150 total plies).
+        let continuation: VecDeque<Action> = {
+            let (mut rec, _) = ReplayRecorder::new_with_setup(GameConfig {
+                player_count: replay.player_count,
+                seed: replay.seed,
+                ruleset: Ruleset::base_v1(),
+            })
+            .expect("rebuild");
+            for step in &replay.steps[..branch_ply] {
+                rec.apply(step.action).expect("prefix");
+            }
+            rec.apply(forced).expect("forced");
+            let mut actions = VecDeque::new();
+            while !rec.is_terminal() && (branch_ply + 1 + actions.len()) < 150_usize {
+                let next = rec.legal_actions().remove(0);
+                rec.apply(next).expect("continuation applies");
+                actions.push_back(next);
+            }
+            actions
+        };
+
+        let run_once = |queue: VecDeque<Action>| -> ReplayV1 {
+            let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
+            let queue = Arc::new(Mutex::new(queue));
+            let game_id = "m41a-branch-det-test".to_string();
+            let mut config = branch_config(replay.seed);
+            config.game_id = game_id.clone();
+            let log_for_make = Arc::clone(&log);
+            let start = branch_start_from(&replay, branch_ply);
+            match ArenaRunner::run_branch_with(config, start, forced, 150, move |_, seat, tx| {
+                let agent = ScriptedAgent {
+                    seat,
+                    tx,
+                    script: Script::Play,
+                    game_id: game_id.clone(),
+                    queue: Arc::clone(&queue),
+                    log: Arc::clone(&log_for_make),
+                    shutdown_flag: Arc::new(AtomicBool::new(false)),
+                    fail_on: None,
+                };
+                Ok(Box::new(agent) as Box<dyn AgentTransport>)
+            })
+            .expect("no internal error")
+            {
+                CappedRun::Terminal(run) => run.replay.expect("replay"),
+                CappedRun::Truncated { .. } => panic!("expected terminal"),
+            }
+        };
+
+        let first = run_once(continuation.clone());
+        let second = run_once(continuation);
+        assert_eq!(first, second, "same branch twice must be identical");
+        // And the branch point's forced action is really in the chain.
+        assert_eq!(first.steps[branch_ply].action, forced);
+    }
+
+    /// The absolute ply cap counts from the SOURCE game's first ply: a
+    /// branch whose prefix already reaches the cap truncates immediately.
+    #[test]
+    fn branch_cap_is_absolute() {
+        let (_, replay) = record_random_game(2, SEED, ACTION_SEED).expect("source game");
+        let branch_ply = replay.steps.len() / 2;
+        let start = branch_start_from(&replay, branch_ply);
+        let source_action = replay.steps[branch_ply].action;
+        // Cap exactly at prefix + forced: no continuation ply may run.
+        let cap = (branch_ply + 1) as u32;
+        let remaining: VecDeque<Action> = replay.steps[branch_ply + 1..]
+            .iter()
+            .map(|s| s.action)
+            .collect();
+        let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
+        let queue = Arc::new(Mutex::new(remaining));
+        let game_id = "m41a-branch-cap-test".to_string();
+        let mut config = branch_config(replay.seed);
+        config.game_id = game_id.clone();
+        let log_for_make = Arc::clone(&log);
+        match ArenaRunner::run_branch_with(config, start, source_action, cap, move |_, seat, tx| {
+            let agent = ScriptedAgent {
+                seat,
+                tx,
+                script: Script::Play,
+                game_id: game_id.clone(),
+                queue: Arc::clone(&queue),
+                log: Arc::clone(&log_for_make),
+                shutdown_flag: Arc::new(AtomicBool::new(false)),
+                fail_on: None,
+            };
+            Ok(Box::new(agent) as Box<dyn AgentTransport>)
+        })
+        .expect("no internal error")
+        {
+            CappedRun::Truncated { prefix, .. } => {
+                assert_eq!(prefix.steps.len() as u32, cap);
+                assert_eq!(
+                    prefix.cap_state_hash.as_str(),
+                    replay.steps[branch_ply].state_hash_after.as_str(),
+                    "cap state must be exactly the forced action's result state"
+                );
+            }
+            CappedRun::Terminal(_) => {
+                panic!("cap at prefix+forced must truncate before any agent ply")
+            }
+        }
+    }
+
+    /// Belief-tracking transcript: the agents must receive, in order, the
+    /// setup events AND every prefix ply's projected events AND the forced
+    /// action's events, BEFORE the first observation.
+    #[test]
+    fn branch_agents_receive_full_event_history_before_first_observation() {
+        let (_, replay) = record_random_game(2, SEED, ACTION_SEED).expect("source game");
+        let branch_ply = replay.steps.len() / 2;
+        let source_action = replay.steps[branch_ply].action;
+        let start = branch_start_from(&replay, branch_ply);
+        let remaining: VecDeque<Action> = replay.steps[branch_ply + 1..]
+            .iter()
+            .map(|s| s.action)
+            .collect();
+        let log: SharedLog = Arc::new(Mutex::new(Vec::new()));
+        let queue = Arc::new(Mutex::new(remaining));
+        let game_id = "m41a-branch-history-test".to_string();
+        let mut config = branch_config(replay.seed);
+        config.game_id = game_id.clone();
+        let log_for_make = Arc::clone(&log);
+        match ArenaRunner::run_branch_with(config, start, source_action, 150, move |_, seat, tx| {
+            let agent = ScriptedAgent {
+                seat,
+                tx,
+                script: Script::Play,
+                game_id: game_id.clone(),
+                queue: Arc::clone(&queue),
+                log: Arc::clone(&log_for_make),
+                shutdown_flag: Arc::new(AtomicBool::new(false)),
+                fail_on: None,
+            };
+            Ok(Box::new(agent) as Box<dyn AgentTransport>)
+        })
+        .expect("no internal error")
+        {
+            CappedRun::Terminal(run) => {
+                assert!(run.replay.is_some());
+                // Seat 0's transcript: hello, game_start, then the full
+                // history (setup + prefix + forced) BEFORE the first
+                // observation.
+                let entries = log.lock().unwrap();
+                let seat0: Vec<&ServerMessage> = entries
+                    .iter()
+                    .filter(|(seat, _)| seat.0 == 0)
+                    .map(|(_, m)| m)
+                    .collect();
+                let first_observation = seat0
+                    .iter()
+                    .position(|m| matches!(m, ServerMessage::Observation { .. }))
+                    .expect("at least one observation");
+                let action_applied_count = seat0[..first_observation]
+                    .iter()
+                    .filter(|m| matches!(m, ServerMessage::ActionApplied { .. }))
+                    .count();
+                // Every history ply (prefix + forced) projects at least an
+                // ActionApplied to this seat — the count must be at least
+                // branch_ply + 1 (visible to all) and the events must all
+                // precede the first observation.
+                assert!(
+                    action_applied_count > branch_ply,
+                    "agents must see the full projected history (prefix + forced) \
+                     before the first observation; saw {action_applied_count} applied"
+                );
+            }
+            CappedRun::Truncated { .. } => panic!("expected terminal"),
+        }
+    }
+}

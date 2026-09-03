@@ -82,8 +82,72 @@ impl ReplayRecorder {
         &self.state
     }
 
+    /// The recorded game's setup seed (branch drivers need it to rebuild
+    /// the identical setup-event projection for the agents).
+    pub fn seed(&self) -> u64 {
+        self.seed
+    }
+
     pub fn legal_actions(&self) -> Vec<Action> {
         self.state.legal_actions()
+    }
+
+    /// Resume recording from an already-verified mid-game state.
+    ///
+    /// M41A `run-branch` semantics: the caller supplies a state that was
+    /// rebuilt and hash-verified by `verify_replay_position` (or rebuilt
+    /// deterministically under the same guarantees), the recorded prefix
+    /// steps (so the finished document contains the complete hash chain
+    /// from the initial state), and the next ply index (== prefix length).
+    ///
+    /// Fail-closed: the prefix's last `state_hash_after` must equal the
+    /// resumed state's hash (empty prefix requires the initial-state hash
+    /// of a freshly seeded game, which the caller supplies for that case),
+    /// and the state must not be terminal.
+    pub fn resume_from_state(
+        config: GameConfig,
+        state: FullState,
+        prefix_steps: Vec<ReplayStepV1>,
+        initial_state_hash: ReplayHash,
+        ruleset: ReplayRulesetV1,
+        ruleset_fingerprint: ReplayHash,
+    ) -> ReplayResult<Self> {
+        ensure_supported_runtime_ruleset(&config.ruleset)?;
+        if state.is_terminal() {
+            return Err(ReplayError::ReplayNotTerminal);
+        }
+        let next_ply = prefix_steps.len() as u32;
+        // The hash chain must be continuous: the resumed state's hash must
+        // equal the recorded chain's last after-hash (or, for an empty
+        // prefix, the caller-provided initial-state hash).
+        let state_hash = hash_of(&state);
+        let expected = if prefix_steps.is_empty() {
+            initial_state_hash.as_str()
+        } else {
+            prefix_steps
+                .last()
+                .expect("non-empty checked above")
+                .state_hash_after
+                .as_str()
+        };
+        if state_hash.as_str() != expected {
+            return Err(ReplayError::BeforeHashMismatch {
+                // Reuse the verifier's error shape: a discontinuous prefix.
+                ply: next_ply,
+                expected: expected.to_string(),
+                actual: state_hash.as_str().to_string(),
+            });
+        }
+        Ok(Self {
+            state,
+            initial_state_hash,
+            ruleset,
+            ruleset_fingerprint,
+            player_count: config.player_count,
+            seed: config.seed,
+            steps: prefix_steps,
+            next_ply,
+        })
     }
 
     pub fn apply(&mut self, action: Action) -> ReplayResult<StepResult> {

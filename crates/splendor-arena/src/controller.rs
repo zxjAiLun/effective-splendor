@@ -33,6 +33,17 @@ pub struct MatchCounters {
 }
 
 impl MatchCounters {
+    /// Construct with a pre-loaded completed-ply count (M41A branch mode:
+    /// the recorder resumes at `prefix + forced` plies, so the cap check
+    /// must count from there).
+    pub fn with_completed_plies(completed_plies: u32) -> Self {
+        Self {
+            server_seq: 0,
+            request_id: 0,
+            completed_plies,
+        }
+    }
+
     /// Reserve and return the next globally-unique server sequence number.
     pub fn next_server_seq(&mut self) -> Result<u64, ArenaInternalError> {
         let value = self.server_seq;

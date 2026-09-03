@@ -6,6 +6,7 @@ use clap::{Parser, Subcommand};
 mod analysis_command;
 mod arena_command;
 mod atomic_output;
+mod branch_command;
 mod determinization_analysis_command;
 mod eval_command;
 mod evaluation_analysis_command;
@@ -98,6 +99,7 @@ fn main() {
     match argv.get(1).map(String::as_str) {
         Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
         Some("run-rollout") => std::process::exit(arena_command::run_rollout(&argv[2..])),
+        Some("run-branch") => std::process::exit(branch_command::run_branch(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
         Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
         Some("agent-determinization") => {

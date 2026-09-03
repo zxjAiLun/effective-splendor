@@ -172,7 +172,7 @@ All options are required. -h/--help prints this help and exits 0.";
 /// A user-facing error while preparing or committing a `run-match`. `Display`
 /// yields the stable `error:` message body.
 #[derive(Debug)]
-enum RunMatchError {
+pub(crate) enum RunMatchError {
     /// Bad command-line arguments.
     Cli(String),
     /// The config could not be read (missing, too large, non-UTF-8).
@@ -201,7 +201,7 @@ impl std::fmt::Display for RunMatchError {
 }
 
 /// Outcome of a successful `run-match`: which exit code and what to print.
-enum MatchExit {
+pub(crate) enum MatchExit {
     Completed(i32),
     Aborted(i32),
 }
@@ -513,7 +513,7 @@ fn run_match_inner(args: &[String]) -> Result<MatchExit, RunMatchError> {
 /// The read is *bounded by the bytes actually read*, not by an up-front
 /// `metadata.len()` that a growing file could outrun: we read at most
 /// `MAX_ARENA_CONFIG_BYTES + 1` bytes and reject if that overflows the limit.
-fn read_config(path: &Path) -> Result<ArenaConfig, RunMatchError> {
+pub(crate) fn read_config(path: &Path) -> Result<ArenaConfig, RunMatchError> {
     let file = File::open(path).map_err(|e| {
         RunMatchError::ConfigRead(format!("cannot open config {}: {e}", path.display()))
     })?;
@@ -543,7 +543,7 @@ fn read_config(path: &Path) -> Result<ArenaConfig, RunMatchError> {
 }
 
 /// Serialize and atomically publish a completed match's report + replay.
-fn commit_completed(
+pub(crate) fn commit_completed(
     parsed: &RunMatchArgs,
     report: &splendor_arena::ArenaReportV1,
     replay: &splendor_replay::ReplayV1,
@@ -590,7 +590,7 @@ fn commit_completed(
 }
 
 /// Serialize and atomically publish an aborted match's report (only).
-fn commit_aborted(
+pub(crate) fn commit_aborted(
     parsed: &RunMatchArgs,
     report: &splendor_arena::ArenaReportV1,
 ) -> Result<MatchExit, RunMatchError> {
@@ -662,14 +662,16 @@ where
 }
 
 /// Serialize the single compact outcome JSON line (no trailing newline yet).
-fn compact_outcome_line(outcome: &splendor_arena::ArenaOutcomeV1) -> Result<String, RunMatchError> {
+pub(crate) fn compact_outcome_line(
+    outcome: &splendor_arena::ArenaOutcomeV1,
+) -> Result<String, RunMatchError> {
     serde_json::to_string(outcome)
         .map_err(|e| RunMatchError::Internal(format!("serialize outcome failed: {e}")))
 }
 
 /// Write the outcome line + LF to `stdout` and flush, returning a stable error
 /// string on failure (mapped to `RunMatchError::Io` by the caller).
-fn write_outcome_line<W: Write>(stdout: &mut W, line: &str) -> Result<(), String> {
+pub(crate) fn write_outcome_line<W: Write>(stdout: &mut W, line: &str) -> Result<(), String> {
     writeln!(stdout, "{line}").map_err(|e| format!("stdout write failed: {e}"))?;
     stdout
         .flush()
@@ -677,7 +679,7 @@ fn write_outcome_line<W: Write>(stdout: &mut W, line: &str) -> Result<(), String
 }
 
 /// Serialize a value with 2-space pretty formatting and a single trailing LF.
-fn to_pretty_line<T: serde::Serialize>(value: &T) -> serde_json::Result<String> {
+pub(crate) fn to_pretty_line<T: serde::Serialize>(value: &T) -> serde_json::Result<String> {
     let mut s = serde_json::to_string_pretty(value)?;
     s.push('\n');
     Ok(s)
@@ -942,10 +944,10 @@ fn read_neural_checkpoint(path: &Path) -> Result<PolicyValueCheckpointV1, String
 // ---------------------------------------------------------------------------
 
 /// Parsed `run-match` arguments.
-struct RunMatchArgs {
-    config: PathBuf,
-    report_out: PathBuf,
-    replay_out: PathBuf,
+pub(crate) struct RunMatchArgs {
+    pub(crate) config: PathBuf,
+    pub(crate) report_out: PathBuf,
+    pub(crate) replay_out: PathBuf,
 }
 
 fn parse_run_match_args(args: &[String]) -> Result<RunMatchArgs, String> {
@@ -1264,11 +1266,11 @@ fn looks_like_value(token: &str) -> bool {
     !token.starts_with("--")
 }
 
-fn wants_help(args: &[String]) -> bool {
+pub(crate) fn wants_help(args: &[String]) -> bool {
     args.iter().any(|a| a == "--help" || a == "-h")
 }
 
-fn parent_dir_exists(path: &Path) -> bool {
+pub(crate) fn parent_dir_exists(path: &Path) -> bool {
     match path.parent() {
         Some(dir) if dir.as_os_str().is_empty() => true, // implicit current dir
         Some(dir) => dir.is_dir(),
@@ -1276,7 +1278,7 @@ fn parent_dir_exists(path: &Path) -> bool {
     }
 }
 
-fn print_stdout(text: &str) {
+pub(crate) fn print_stdout(text: &str) {
     let mut stdout = io::stdout().lock();
     let _ = writeln!(stdout, "{text}");
     let _ = stdout.flush();
