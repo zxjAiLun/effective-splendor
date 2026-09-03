@@ -158,3 +158,109 @@ def test_evaluate_rejects_missing_cycle4(tmp_path, monkeypatch):
         import argparse as _ap
 
         run.cmd_evaluate(_ap.Namespace(dry_run=True, device="cpu"))
+
+
+# ---------------------------------------------------------------------------
+# Collect-path resume semantics (incident 2026-09-02: the formal B
+# cycle-4 collection was interrupted mid-run; resuming crashed on a
+# config-only slot because _atomic_json refused to overwrite the stale
+# config. The accepted M39A rule: config-only -> deterministic rewrite;
+# partial artifacts without a report -> fail closed.)
+# ---------------------------------------------------------------------------
+
+
+def _make_slot(game_dir, *, config=True, report=False, replay=False, sidecar=False):
+    game_dir.mkdir(parents=True, exist_ok=True)
+    if config:
+        (game_dir / "arena-config.json").write_text("{}", encoding="utf-8")
+    if report:
+        (game_dir / "arena-report.json").write_text("{}", encoding="utf-8")
+    if replay:
+        (game_dir / "replay.json").write_text("{}", encoding="utf-8")
+    if sidecar:
+        (game_dir / "seat-0.sidecar.json").write_text("{}", encoding="utf-8")
+
+
+def test_collect_config_only_slot_is_rewritten(tmp_path, monkeypatch):
+    """A config-only interrupted game directory is unlinked and the
+    frozen slot re-executed (never a FileExistsError wedge)."""
+    run = _import_run_module()
+    out_dir = tmp_path / "arm-B" / "cycle-4"
+    game_dir = out_dir / "games" / "game-001708"
+    _make_slot(game_dir, config=True, report=False)
+
+    executed = []
+
+    def fake_atomic_json(path, payload):
+        assert not path.exists(), "config rewrite must unlink the stale file first"
+        executed.append(path.name)
+
+    monkeypatch.setattr(run, "_atomic_json", fake_atomic_json)
+
+    # Simulate a completed rollout by materializing report/replay/prefix
+    # + sidecars inside the mocked Arena subprocess.
+    import types
+
+    entry = run.online_scheduled_game(1708)
+
+    def fake_run(*args, **kwargs):
+        for name in ("arena-report.json", "replay.json", "rollout-prefix.json"):
+            (game_dir / name).write_text("{}", encoding="utf-8")
+        for seat in entry["learner_seats"]:
+            (game_dir / f"seat-{seat}.sidecar.json").write_text("{}", encoding="utf-8")
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(run.subprocess, "run", fake_run)
+    # Minimal server stub.
+    ready = tmp_path / "ready.json"
+    ready.write_text(json.dumps({"port": 12345}), encoding="utf-8")
+
+    class FakeProc:
+        def terminate(self): ...
+        def wait(self, timeout=None): ...
+
+    monkeypatch.setattr(run, "_start_server", lambda *a, **k: (FakeProc(), ready))
+    # The REAL loop over all 512 cycle-4 entries: 511 games already have
+    # reports (resume skips them); only game 1708 is config-only.
+    for g in range(1536, 2048):
+        if g == 1708:
+            continue
+        d = out_dir / "games" / f"game-{g:06d}"
+        _make_slot(d, config=True, report=True, replay=True, sidecar=(g % 2 == 0))
+    result = run._collect_arm_cycle(
+        arm="B", cycle=4, checkpoint=tmp_path / "ckpt.pt",
+        file_sha="f" * 64, semantic_hash="s" * 64, digest="d" * 64,
+        device="cpu", out_dir=out_dir,
+    )
+    assert executed == ["arena-config.json"], "exactly the stale slot re-executed"
+    assert len(result) == 512
+
+
+def test_collect_partial_artifacts_fail_closed(tmp_path, monkeypatch):
+    """Replay/sidecar remains without a report are preserved and the
+    collection fails closed (never silently overwritten)."""
+    run = _import_run_module()
+    out_dir = tmp_path / "arm-B" / "cycle-4"
+    game_dir = out_dir / "games" / "game-001600"
+    _make_slot(game_dir, config=True, report=False, replay=True)
+
+    for g in range(1536, 2048):
+        if g == 1600:
+            continue
+        d = out_dir / "games" / f"game-{g:06d}"
+        _make_slot(d, config=True, report=True, replay=True)
+
+    ready = tmp_path / "ready.json"
+    ready.write_text(json.dumps({"port": 12345}), encoding="utf-8")
+
+    class FakeProc:
+        def terminate(self): ...
+        def wait(self, timeout=None): ...
+
+    monkeypatch.setattr(run, "_start_server", lambda *a, **k: (FakeProc(), ready))
+    with pytest.raises(RuntimeError, match="partial artifacts"):
+        run._collect_arm_cycle(
+            arm="B", cycle=4, checkpoint=tmp_path / "ckpt.pt",
+            file_sha="f" * 64, semantic_hash="s" * 64, digest="d" * 64,
+            device="cpu", out_dir=out_dir,
+        )

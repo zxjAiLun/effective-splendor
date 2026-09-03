@@ -208,6 +208,30 @@ def _collect_arm_cycle(
                 # resume
                 sources.append(_manifest_entry(game_dir, game_index))
                 continue
+            # No report: the only recoverable state is config-ONLY. A
+            # replay/prefix/sidecar remain without a report is a partial
+            # artifact of an interrupted publish and fails closed
+            # (preserve and diagnose), per the accepted M39A rule.
+            _sidecar_names = [
+                f"seat-{seat}.sidecar.json" for seat in entry["learner_seats"]
+            ]
+            _leftovers = [
+                name
+                for name in ("replay.json", "rollout-prefix.json", *_sidecar_names)
+                if (game_dir / name).is_file()
+            ]
+            if _leftovers:
+                raise RuntimeError(
+                    f"game {game_index} has partial artifacts without a report "
+                    f"({_leftovers}); preserve and diagnose them: {game_dir}"
+                )
+            if (game_dir / "arena-config.json").exists():
+                # config-only interrupted slot: the game never started
+                # (an interrupted Arena run leaves a report). Deterministic
+                # recovery: drop the stale config (it embeds the previous
+                # run's dynamic server port) and re-execute the frozen
+                # slot — the accepted M39A config-only rule.
+                (game_dir / "arena-config.json").unlink()
             game_dir.mkdir(parents=True, exist_ok=True)
             sidecars = {
                 seat: game_dir / f"seat-{seat}.sidecar.json"
