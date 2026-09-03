@@ -3,13 +3,15 @@
 ```text
 Milestone:      M41A
 Title:          Player-View Counterfactual Action-Value Probe
-Status:         PROPOSED / REVISION_1 / PENDING_FINAL_DESIGN_REVIEW
+Status:         PROPOSED / REVISION_2 / PENDING_FINAL_DESIGN_REVIEW
 Authorization:  DESIGN_DRAFT_AUTHORIZED / CODE_NOT_AUTHORIZED
                 (2026-09-03; no run-branch, no corpus, no training
                 before the design review passes)
 Design review:  NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 2 (2026-09-03,
-                basis 9750bc6); all five P1 and both P2 closed in
-                Revision 1 (this document)
+                basis 9750bc6); closed in Revision 1
+                NEEDS_NARROW_REVISION — P0 = 0, P1 = 3, P2 = 2
+                (2026-09-03, basis 766421c); closed in Revision 2
+                (this document)
 Prior rounds:   M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT);
                 M40A (COMPLETED_NEGATIVE / CLOSED —
                 M40A_WARM_START_NO_EFFECT)
@@ -222,19 +224,27 @@ ONLY difference is the representation boundary:
   two pre-registered hypotheses with familywise control
   (Bonferroni, one-sided α = 0.025 each, FWER = 0.05; §9.3).
 
-### 4.1 Shared training contract (frozen — revision 1)
+### 4.1 Shared training contract (frozen — revisions 1 & 2)
 
 To make "ONLY difference is the representation boundary" literally
 true, the ENTIRE training contract below is shared, frozen now, and
 identical for F and U:
 
 ```text
-A-head architecture       the one MLP of §4 (same layer sizes for
-                           both arms; exact sizes fixed at P1
-                           implementation review — the REVISION-1
-                           freeze is that both arms use the SAME one)
-A-head initialization     ONE draw from a frozen torch.Generator
-                           (seed namespace 9_2xx, allocated at P1);
+A-head architecture       EXACTLY (revision 2):
+                           q-head = nn.Sequential(
+                               nn.Linear(576, 192),   # z(o,a) =
+                               nn.GELU(),             #   concat(s_emb,
+                               nn.Linear(192, 1),     #   a_emb, s⊙a),
+                           )                         # s_emb = a_emb = 192
+                           — the D2-v2 policy-scorer topology
+                           (h=3h→h→1 with GELU), instantiated FRESH
+                           (no D2 weights in the A-head). Input 576 =
+                           3 × 192, matching the frozen D2 joint
+                           representation exactly.
+A-head initialization     ONE draw from a frozen torch.Generator with
+                           HEAD_INIT_SEED = 40_261_001 (M41A namespace,
+                           disjoint from every prior seed family);
                            the drawn state_dict is COPIED bit-exactly
                            into both F and U before any training step
 encoders (U only)         initialized from the frozen D2-v2
@@ -253,10 +263,23 @@ epochs                    exactly 16 over the training games; the
                            best-checkpoint selection of any kind
                            (selection would reintroduce a
                            representation-confounding dimension)
-shuffle                   deterministic per-epoch game order from the
-                           frozen M39A shuffle namespace
-                           (shuffled_indices semantics, trainer seed
-                           family 40_260_xxx allocated at P1)
+shuffle                   M41A's OWN 16-epoch deterministic game
+                           shuffle (revision 2 — the M39A
+                           `shuffled_indices` helper is hard-limited to
+                           epochs 1..4 and MUST NOT be claimed as the
+                           mechanism). Contract: for epoch e ∈ 1..16
+                           and game ordinal g, derive a 64-bit key
+                               key(e, g) = SplitMix64_mix(
+                                   TRAINER_SEED ⊕ (e · 0x9E3779B97F4A7C15)
+                                   ⊕ (g · 0xBF58476D1CE4E5B9))
+                           and sort the training games by
+                           (key(e, g), g) ascending; that order is the
+                           epoch's game sequence. TRAINER_SEED =
+                           40_261_002 (M41A namespace). The exact
+                           SplitMix64 mixing function is the one in
+                           `m39a_contract` (shared, already reviewed);
+                           only the key-derivation above is new and it
+                           supports any epoch count by construction.
 gradient clip             global norm 1.0
 loss                      the hierarchically balanced objective of §3
 precision                 FP32 everywhere (no AMP/FP16/BF16)
@@ -264,10 +287,10 @@ device                    cuda (single device, deterministic
                            algorithms enabled)
 ```
 
-Any deviation discovered during implementation (e.g. the A-head size,
-the exact seed integers) is recorded as an amendment to THIS table
-before training starts, identically for both arms — never adjusted
-per-arm after observing validation.
+No element of this table may change after this revision without a
+formal design revision (reviewed like any other); there is no
+"implementation-time amendment" path anymore — every quantity above
+is exact.
 
 The F/U pair turns the two M40A post-mortem explanations into an
 experimental fork:
@@ -314,14 +337,22 @@ implementation:
     the independent power-calibration split, formal-test sealed
     throughout (§9.6).
 11. **Pseudo-Q ablation gate**: exact thresholds and logic of §9.5
-    (both ablations; at least one metric must degrade beyond
-    δ_rank = 10 pp or δ_regret = 0.05 per ablation).
-12. **Branch provenance schema**: §6.
-13. **Branch-teacher correctness invariant**: H0b source-action
+    (both ablations {zero, cyclic-shift-by-1}; at least one metric
+    must degrade beyond δ_rank = 10 pp or δ_regret = 0.05 per
+    ablation). Frozen in this document (revision 2); NOT a P0 output.
+12. **Tie semantics**: material-pair truth sets fixed by the teacher;
+    predicted ties score 0.5 and never leave the denominator; every
+    model argmax breaks ties by earliest authoritative legal-set index
+    (§9.4).
+13. **Branch provenance schema**: §6.
+14. **Branch-teacher correctness invariant**: H0b source-action
     reproduction (§7).
-14. **Non-goals**: §14.
-15. **Statistical unit**: the source game, never the branch (§9.2).
-16. **Selected seat**: `source_game_ordinal mod 2` (outcome-
+15. **Non-goals**: §14.
+16. **Statistical unit**: the source game, never the branch (§9.2).
+17. **Formal-N algorithm and selection**: noncentral-t minimum-N
+    inversion; formal set = first N_formal games by ascending source
+    seed, identity list + hash recorded pre-unseal (§9.6).
+18. **Selected seat**: `source_game_ordinal mod 2` (outcome-
     independent, §8).
 
 ## 6. `run-branch`: the one new infrastructure piece
@@ -488,14 +519,16 @@ if projected full branch-corpus generation > 4 hours on this machine
 
 ### P0 exit
 
-P0 exits with frozen numbers for: material-pair τ (§9.4), the exact
-pseudo-Q ablation thresholds (§9.5), per-split game counts, the seed
-allocation, and the confirmed runtime budget. The formal test N is
-deliberately NOT a P0 output (revision 1): the pilot oracle-Δ SD is
-the variance of the WRONG random variable — the formal gate tests
-`Δ_F`/`Δ_U` (model-selected actions), whose variance is
-model-specific and unknowable before the final models exist. The
+P0 exits with frozen numbers for: material-pair τ (§9.4), per-split
+game counts, the seed allocation, and the confirmed runtime budget.
+The formal test N is deliberately NOT a P0 output (revision 1): the
+pilot oracle-Δ SD is the variance of the WRONG random variable — the
+formal gate tests `Δ_F`/`Δ_U` (model-selected actions), whose variance
+is model-specific and unknowable before the final models exist. The
 formal N is frozen by the post-training power calibration of §9.6.
+The §9.5 ablation thresholds were REMOVED from this list in revision
+2 — they are frozen in this document and change only via formal
+design revision.
 
 ## 8. Phase 1–2 — corpus infrastructure and generation
 
@@ -539,8 +572,10 @@ teacher's exhaustive branch returns already computed:
 
 ```text
 a_D2   = the D2-v2 source action at s (from the source replay)
-a_F    = argmax_a A_F(o, a)     (F arm; argmax over the same legal set)
-a_U    = argmax_a A_U(o, a)     (U arm)
+a_F    = argmax_a A_F(o, a)     (F arm; argmax over the same legal
+                                 set, ties broken by the §9.4
+                                 earliest-index rule)
+a_U    = argmax_a A_U(o, a)     (U arm; same rule)
 
 Δ_F(state) = G(s, a_F) − G(s, a_D2)
 Δ_U(state) = G(s, a_U) − G(s, a_D2)
@@ -581,13 +616,22 @@ pre-registered away by the Bonferroni split.
 ### 9.4 Secondary/diagnostic metrics (not gates)
 
 - **Pairwise ranking** (diagnostic, two views): over all non-tied
-  pairs (`G(a) ≠ G(b)`) and over **material pairs**
+  truth pairs (`G(a) ≠ G(b)`) and over **material pairs**
   (`|G(a) − G(b)| ≥ τ`), where τ is a practical-materiality threshold
   proposed from the P0 target distribution and frozen BEFORE any F/U
   training. τ is NOT a confidence/uncertainty quantity (the branch
   teacher is deterministic; cross-game hidden-world variance is not a
   per-pair uncertainty) — it only separates "differences that matter
   in scale" from ties.
+  **Tie semantics (revision 2)**: the pair set is fixed by the TRUTH
+  (`|G(a) − G(b)| ≥ τ`), never by the model. A model pair
+  `(a, b)` is scored CORRECT iff
+  `sign(A_θ(a) − A_θ(b)) == sign(G(a) − G(b))`, and scores
+  **0.5 (half-credit) iff `A_θ(a) == A_θ(b)`** (predicted tie).
+  Predicted ties can therefore NEVER remove a difficult pair from the
+  denominator — a model that predicts ties everywhere scores exactly
+  0.5, and the ablation gate's −10 pp threshold is measured against
+  that fixed floor.
 - **Top-1 regret**: `G(s, a_oracle) − G(s, a_model)` where
   `a_oracle = argmax_a G(s,a)`; reported against the D2 baseline
   regret `G(s, a_oracle) − G(s, a_D2)`. Regret weights errors by
@@ -595,52 +639,69 @@ pre-registered away by the Bonferroni split.
 - **Centered-value error**: Huber/MSE on `A_cf` (the training
   objective, reported on validation) — descriptive only.
 
-### 9.5 Action-ablation sanity gates (fail-closed, exact — revision 1)
+**Argmax tie-break (revision 2, applies everywhere)**: EVERY model
+argmax in M41A — `a_F`, `a_U` (formal), `a_model` (regret), and all
+ablated variants — selects, among the maximizers of `A_θ(·)`, the
+action at the **earliest index of the authoritative ordered legal
+set**. This is a total, deterministic, pre-registered rule; there is
+no model-side freedom in tie selection. (`a_oracle` uses the same
+earliest-index rule over `G` maximizers; `a_D2` is the source
+action — no rule needed.)
+
+### 9.5 Action-ablation sanity gates (fail-closed, exact — revisions 1 & 2)
 
 Both arms must degrade under:
 
 ```text
-(a) action embedding zeroed
-(b) action assignment shuffled within the legal set
+(a) action embedding zeroed:  a_emb := 0 for every candidate action
+    (z(o,a) = concat(s, 0, 0) for all a — destroys the action input)
+(b) action assignment scrambled (deterministic, revision 2): the
+    action embedding fed for the candidate at legal-set index i is
+    the embedding of the action at index (i + 1) mod |L| — a cyclic
+    shift by 1 within the authoritative ordered legal set. This is a
+    fixed non-identity permutation for every legal set with |L| ≥ 2
+    (legal sets of size 1 have no scramble; such states contribute to
+    neither metric's delta and are excluded from BOTH the normal and
+    ablated metric computation identically, so the comparison stays
+    paired). No random or unspecified "shuffle" exists in M41A.
 ```
 
 measured on VALIDATION games by the two frozen metrics below. "Degrade
-materially" is now an EXACT, pre-registered condition (no post-hoc
-judgment): for ablation condition `x ∈ {zero, shuffle}`, arm `m ∈
+materially" is an EXACT, pre-registered condition (no post-hoc
+judgment): for ablation condition `x ∈ {zero, shift}`, arm `m ∈
 {F, U}`, with the normal (unablated) validation values as baseline:
 
 ```text
-metric 1 — material-pair ranking accuracy:
+metric 1 — material-pair ranking accuracy (§9.4 semantics: fixed
+    truth-pair set, predicted tie = 0.5 credit):
     P_x^m < P_normal^m − δ_rank
-metric 2 — top-1 regret:
+metric 2 — top-1 regret (argmax ties broken by the §9.4
+    earliest-index rule in BOTH normal and ablated conditions):
     R_x^m > R_normal^m + δ_regret
 ```
 
 The arm is a **pseudo-Q** and FAILS the gate iff it escapes BOTH
 conditions for EITHER ablation (i.e. passes only if, for each of zero
-and shuffle, at least one metric degrades beyond its threshold). The
-thresholds:
+and shift, at least one metric degrades beyond its threshold). The
+thresholds, FROZEN NOW (revision 2 — removed from the P0 deferred
+list; any future change requires a formal design revision, not a P0
+output):
 
 ```text
 δ_rank    = 10.0 percentage points
 δ_regret  = 0.05  (in centered-return units; the return scale is
-            [−1, +1], so 0.05 = 250 bps of regret)
+            [−1, +1], so 0.05 = 500 bps of regret at the project's
+            ×10,000 convention)
 ```
 
-Rationale for the magnitudes (fixed now, before any training): a
-model that genuinely reads the action cannot lose less than a tenth
-of its material-pair accuracy or a quarter-deci-return of regret when
-its action input is destroyed or scrambled; a state-recognition
-model, centered to `A_θ ≡ 0`-adjacent behavior, will barely move. Tie
-handling: material pairs are defined by the frozen τ (§9.4); ranking
-accuracy is over non-tied model predictions of those pairs
-(predicted sign of `A_θ(a) − A_θ(b)` vs the true sign of `A_cf`).
+Rationale for the magnitudes: a model that genuinely reads the action
+cannot lose less than a tenth of its material-pair accuracy (measured
+against the fixed 0.5 tie floor) or half-a-deci-return (500 bps) of
+regret when its action input is zeroed or cyclically misassigned; a
+state-recognition model, centered to `A_θ ≡ 0`-adjacent behavior,
+will barely move.
 
-Both thresholds join the P0-exit freeze list (numerically re-affirmed
-or amended by review BEFORE any F/U training — never after seeing
-validation numbers).
-
-### 9.6 Formal-test N: post-training power calibration (revision 1)
+### 9.6 Formal-test N: post-training power calibration (revisions 1 & 2)
 
 The formal N is NOT derived from P0 pilot variance (the pilot's
 oracle-Δ is the wrong random variable: the formal gate tests
@@ -653,13 +714,31 @@ model-selected actions). Instead:
    selection) is unsealed FIRST: compute Δ_game^F and Δ_game^U on
    every power-calibration game (the same one-step intervention
    statistic as the formal gate).
-3. For each arm: SD_m = sample SD of Δ_game^m over
-   power-calibration games. Required formal-test N_m for one-sided
-   α = 0.025, power = 0.90, effect +300 bps (0.03 in return units):
-       N_m = ((z_{0.975} + z_{0.90}) · SD_m / 0.03)^2
+3. For each arm m: SD_m = sample SD of Δ_game^m over
+   power-calibration games. N_m = the MINIMUM integer N such that the
+   one-sample one-sided Student-t test of H0: mean = 0 against
+   effect = +0.03 (i.e. noncentrality λ = 0.03·√N / SD_m), at
+   α = 0.025, has power ≥ 0.90 — computed by NONCENTRAL-t power
+   inversion (revision 2; the formal gate is a t-test, so the
+   planning calculation is the t-test's own power function, not the
+   z approximation). Implementation: exact noncentral-t CDF (the
+   project already carries a reviewed independent incomplete-beta /
+   noncentral-t implementation from the M39A critical-value work);
+   monotone search over N with integer bisection. The z-formula
+   ⌈((z_{0.975}+z_{0.90})·SD/0.03)²⌉ may be used only as a
+   cross-check and starting bracket; the FROZEN N is the noncentral-t
+   minimum.
 4. N_formal = max(N_F, N_U) — both arms are tested on the SAME
    formal-test games.
-5. If N_formal > available formal-test games (or > 512): STOP /
+5. Formal-game SELECTION (revision 2): the formal-test pool is
+   ordered by source seed ascending (equivalently source game ordinal
+   ascending — identical for the contiguous 9_0xx allocation); the
+   formal set is EXACTLY the first N_formal games of that order.
+   N_formal, the resulting identity list (source seed + game id per
+   game), and a SHA-256 hash of the canonical identity list are
+   RECORDED while the formal-test labels are still sealed — the
+   selection cannot depend on any outcome.
+6. If N_formal > available formal-test games (or > 512): STOP /
    redesign. The formal-test labels remain SEALED throughout this
    computation; only power-calibration data is read.
 ```
@@ -829,7 +908,27 @@ in place:
 | P2-1 | P2 | Selected seat via "more acting decisions" conditioned sampling on the game's future/outcome | §8: `selected_seat = source_game_ordinal mod 2` — fixed pre-game, 50/50, outcome-independent |
 | P2-2 | P2 | Two over-strong causal claims about M40A (distribution shift as proven contamination; "TD/Q has no excuse") | §2/§10 rewritten: "candidate mechanism identified in the post-mortem, not proven contamination"; "would create a strong negative prior against proceeding directly to TD/Q under this architecture/world" |
 
-The P0-deferred list is now: material-pair τ, the §9.5 ablation
-threshold re-affirmation, per-split game counts, seed allocation, and
-the runtime budget confirmation. The formal N is deliberately NOT in
-it (it is a P4.5 output by design).
+The P0-deferred list after Revision 1 was: material-pair τ, the §9.5
+ablation threshold re-affirmation, per-split game counts, seed
+allocation, and the runtime budget confirmation. The formal N is
+deliberately NOT in it (it is a P4.5 output by design).
+
+## Revision 2 — findings and disposition (2026-09-03)
+
+Final design re-review of Revision 1 (`766421c`):
+**`NEEDS_NARROW_REVISION — P0 = 0, P1 = 3, P2 = 2`**. The five
+Revision-1 P1 closures were confirmed substantively correct; the
+findings below are specific non-closed points inside the NEW
+Revision-1 contracts. All closed in place (this document, docs-only):
+
+| # | Severity | Finding | Disposition (revision 2) |
+|---|---|---|---|
+| P1-1 | P1 | §4.1 still deferred A-head sizes to "P1 implementation review", and claimed the M39A `shuffled_indices` semantics for a 16-epoch shuffle while the existing helper is hard-limited to epochs 1..4 | §4.1 fully exact: A-head = `Linear(576,192) → GELU → Linear(192,1)` (the D2 policy-scorer topology, instantiated fresh; input 576 = 3×192 joint form verified against the frozen D2-v2 checkpoint); HEAD_INIT_SEED = 40_261_001, TRAINER_SEED = 40_261_002 (new M41A namespace); M41A's OWN 16-epoch deterministic game shuffle — per (epoch, game-ordinal) SplitMix64 key-derivation (constants 0x9E3779B97F4A7C15 / 0xBF58476D1CE4E5B9), key-sort ascending, using the already-reviewed SplitMix64 mixing function; supports any epoch count by construction; M39A `shuffled_indices` explicitly NOT the mechanism. The "implementation-time amendment" escape hatch is deleted |
+| P1-2 | P1 | Ranking "over non-tied model predictions" let the model shrink the denominator by predicting ties (zero-ablation predicts all-ties); argmax tie selection undefined; "shuffle" ablation unspecified | §9.4: material-pair truth set fixed by the teacher (`|G(a)−G(b)| ≥ τ`); predicted tie = 0.5 credit, never removed — all-ties scores exactly 0.5 as the fixed floor the −10 pp threshold is measured against; EVERY model argmax (formal, regret, ablated) breaks ties by earliest authoritative legal-set index; §9.5 ablation (b) is now the deterministic cyclic shift by 1 within the legal set (fixed non-identity permutation; |L|=1 states excluded from both sides identically) |
+| P1-3 | P1 | Formal N was a continuous z-formula without ceil or selection rule; pool-larger-than-N left implementation freedom; power math (z) mismatched the actual t-test | §9.6: N_m = MINIMUM integer N with one-sample one-sided Student-t power ≥ 0.90 at α = 0.025, effect 0.03, via NONCENTRAL-t power inversion (project's reviewed independent incomplete-beta/noncentral-t implementation; monotone integer bisection; z-formula only as cross-check/bracket); N_formal = max(N_F, N_U); formal set = EXACTLY the first N_formal games by ascending source seed; N_formal + identity list + canonical-list SHA-256 recorded while formal labels are still sealed |
+| P2-1 | P2 | `δ_regret = 0.05 = 250 bps` arithmetic error (project convention ×10,000 → 500 bps) | §9.5: corrected to 500 bps; threshold value unchanged (0.05) |
+| P2-2 | P2 | §9.5 said thresholds were "fixed now" but also P0-"re-affirmed or amended" — a frozen gate that still looked P0-mutable | §9.5: thresholds frozen in the document; removed from the P0-deferred list; any change requires a formal design revision. §5 item 11 and the P0-exit section updated |
+
+The P0-deferred list after Revision 2: material-pair τ, per-split
+game counts, seed allocation, runtime budget confirmation. (Formal N
+remains a P4.5 output; ablation thresholds are no longer deferrable.)
