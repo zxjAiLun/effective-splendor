@@ -567,7 +567,7 @@ fn sha256_bytes(data: &[u8]) -> String {
 const RUN_BRANCHES_USAGE: &str = "\
 Usage: splendor run-branches --source-replay <replay.json> \
 --branch-ply <k> --config <arena-config.json> --ply-cap <n> \
---out-dir <branch-state-dir> [--resume]
+--out-dir <branch-state-dir> [--run-contract <run-contract.json>] [--resume]
 
 Verify the source replay and rebuild the branch point ONCE, then run
 EVERY legal action of that state as an independent branch continuation,
@@ -576,9 +576,13 @@ publishing per-action artifacts under out-dir:
   action-<i>/replay.json     the branch replay (or prefix when truncated)
   action-<i>/report.json     the branch arena report
   state-probe.json           branch-point identity + ordered legal set
-  state-manifest.json        per-action provenance sidecar (fail-closed
-                             resume: existing complete action dirs are
-                             skipped; partial dirs are an error)
+  state-manifest.json        per-action provenance sidecar (v2: forced
+                             action, acting-seat return, final/cap hash,
+                             report/replay SHAs — for BOTH fresh and
+                             resumed entries; resume re-validates the
+                             SHAs against the prior manifest and fails
+                             closed on any mismatch; resume without a
+                             manifest is refused)
 
 Options:
   --source-replay <path>  Verified source game replay (JSON).
@@ -586,9 +590,14 @@ Options:
   --config <path>         Arena config naming BOTH continuation agents
                           (resident-proxy agents expected).
   --ply-cap <n>           ABSOLUTE ply cap from the source game's ply 0.
-  --out-dir <path>        Per-state output directory (must exist or be
-                          creatable; must not contain unrelated files).
-  --resume                Skip actions whose artifact pair already exists.
+  --out-dir <path>        Per-state output directory.
+  --run-contract <path>   The corpus run-contract document (identity
+                          content is the corpus driver's; this command
+                          binds its SHA-256 into the manifest and
+                          refuses to resume artifacts produced under a
+                          different contract).
+  --resume                Reuse actions whose artifact pair matches the
+                          prior manifest EXACTLY (SHA re-validation).
 ";
 
 struct RunBranchesArgs {
@@ -597,6 +606,7 @@ struct RunBranchesArgs {
     config: PathBuf,
     ply_cap: u32,
     out_dir: PathBuf,
+    run_contract: Option<PathBuf>,
     resume: bool,
 }
 
@@ -606,6 +616,7 @@ fn parse_run_branches_args(args: &[String]) -> Result<RunBranchesArgs, String> {
     let mut config: Option<String> = None;
     let mut ply_cap: Option<String> = None;
     let mut out_dir: Option<String> = None;
+    let mut run_contract: Option<String> = None;
     let mut resume = false;
 
     let mut index = 0;
@@ -628,6 +639,7 @@ fn parse_run_branches_args(args: &[String]) -> Result<RunBranchesArgs, String> {
             "--config" => &mut config,
             "--ply-cap" => &mut ply_cap,
             "--out-dir" => &mut out_dir,
+            "--run-contract" => &mut run_contract,
             other => return Err(format!("unknown flag `{other}`")),
         };
         if slot.is_some() {
@@ -652,6 +664,7 @@ fn parse_run_branches_args(args: &[String]) -> Result<RunBranchesArgs, String> {
         config: PathBuf::from(need("config", &config)?),
         ply_cap,
         out_dir: PathBuf::from(need("out-dir", &out_dir)?),
+        run_contract: run_contract.map(PathBuf::from),
         resume,
     })
 }
@@ -782,6 +795,75 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
     config.seed = source.seed;
     config.game_id = format!("m41a-branch-{}", sha256_of(&parsed.source_replay));
 
+    // 4b. Run-contract binding (formal provenance): an existing manifest
+    // must have been produced under the SAME run contract; a fresh run
+    // records the contract SHA into the manifest. The contract document
+    // is caller-supplied (the corpus driver writes one canonical
+    // run-contract.json per formal generation run).
+    let run_contract_sha: Option<String> = match &parsed.run_contract {
+        Some(path) => {
+            let text = fs::read_to_string(path)
+                .map_err(|e| format!("cannot read run contract {}: {e}", path.display()))?;
+            // Validate it parses as JSON (identity content is the corpus
+            // driver's contract; this command only binds its SHA).
+            let _: serde_json::Value =
+                serde_json::from_str(&text).map_err(|e| format!("parse run contract: {e}"))?;
+            Some(sha256_of(path))
+        }
+        None => None,
+    };
+
+    // Existing manifest (for resume provenance validation).
+    let manifest_path = out_dir.join("state-manifest.json");
+    let existing_manifest: Option<serde_json::Value> = if manifest_path.is_file() {
+        Some(
+            serde_json::from_str(
+                &fs::read_to_string(&manifest_path).map_err(|e| format!("read manifest: {e}"))?,
+            )
+            .map_err(|e| format!("parse existing manifest: {e}"))?,
+        )
+    } else {
+        None
+    };
+    // An --resume run without a manifest must fail closed (no blind
+    // resume of complete artifacts: their provenance cannot be checked).
+    if parsed.resume && existing_manifest.is_none() {
+        return Err(
+            "--resume requires an existing state-manifest.json (blind resume of \
+             artifacts without provenance is forbidden; clear deliberately)"
+                .to_string(),
+        );
+    }
+    // A resume with a run contract must match the manifest's contract.
+    if let (Some(contract_sha), Some(manifest)) = (&run_contract_sha, &existing_manifest) {
+        if manifest.get("run_contract_sha256").and_then(|v| v.as_str())
+            != Some(contract_sha.as_str())
+        {
+            return Err(
+                "existing state-manifest was produced under a DIFFERENT run \
+                 contract; stale artifacts must be cleared deliberately"
+                    .to_string(),
+            );
+        }
+    }
+    let prior_actions: std::collections::HashMap<u64, &serde_json::Value> = existing_manifest
+        .as_ref()
+        .and_then(|m| m.get("actions"))
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|e| {
+                    (
+                        e.get("action_index")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(u64::MAX),
+                        e,
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     let mut manifest_entries: Vec<serde_json::Value> = Vec::new();
 
     for (action_index, action) in legal.iter().enumerate() {
@@ -789,25 +871,53 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
         let replay_path = adir.join("replay.json");
         let report_path = adir.join("report.json");
 
-        if parsed.resume && replay_path.is_file() && report_path.is_file() {
-            // Resume: validate the artifact pair shape (fail-closed on
-            // partials is handled below; a complete pair is reused).
-            let _report: serde_json::Value = serde_json::from_str(
-                &fs::read_to_string(&report_path).map_err(|e| format!("read report: {e}"))?,
-            )
-            .map_err(|e| format!("parse existing report: {e}"))?;
-            manifest_entries.push(serde_json::json!({
-                "action_index": action_index,
-                "resumed": true,
-            }));
-            continue;
-        }
-        // Partial artifacts without --resume (or with only one file) are
-        // an error: never overwrite evidence.
         if adir.exists() && (replay_path.exists() || report_path.exists()) {
+            // Complete pair under --resume: fail-closed SHA re-validation
+            // against the PRIOR manifest entry (tampered replay/report
+            // is rejected, never silently reused).
+            if parsed.resume && replay_path.is_file() && report_path.is_file() {
+                let prior = prior_actions
+                    .get(&(action_index as u64))
+                    .copied()
+                    .ok_or_else(|| {
+                        format!(
+                            "action {action_index} has artifacts but no prior manifest \
+                         entry; provenance cannot be validated (clear deliberately)"
+                        )
+                    })?;
+                let actual_report_sha = sha256_of(&report_path);
+                let actual_replay_sha = sha256_of(&replay_path);
+                let prior_report = prior
+                    .get("report_sha256")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let prior_replay = prior
+                    .get("replay_sha256")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                if actual_report_sha != prior_report || actual_replay_sha != prior_replay {
+                    return Err(format!(
+                        "action {action_index} artifact SHA mismatch vs the prior \
+                         manifest (report {} != {}, replay {} != {}) — tampered or \
+                         corrupted; fail closed",
+                        &actual_report_sha[..16],
+                        &prior_report[..16],
+                        &actual_replay_sha[..16],
+                        &prior_replay[..16],
+                    ));
+                }
+                // Rebuild the full entry from the prior manifest (identity
+                // preserved; only `resumed` flips).
+                let mut entry = prior.clone();
+                entry["resumed"] = serde_json::json!(true);
+                manifest_entries.push(entry);
+                continue;
+            }
+            // Partial artifacts, or artifacts without --resume: an error.
             return Err(format!(
-                "partial artifacts at {} (replay/report must be complete); \
-                 clear deliberately or use --resume",
+                "partial or pre-existing artifacts at {} (replay/report must be \
+                 a complete pair under --resume with a valid manifest); clear \
+                 deliberately",
                 adir.display()
             ));
         }
@@ -827,13 +937,18 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
         let capped = ArenaRunner::run_branch(config.clone(), start, *action, parsed.ply_cap)
             .map_err(|e| format!("action {action_index} internal error: {e}"))?;
 
-        let (report, replay_doc, truncated) = match capped {
+        let (report, replay_doc, truncated, return_value, final_hash) = match capped {
             CappedRun::Terminal(run) => match run.replay {
-                Some(replay) => (
-                    run.report,
-                    serde_json::to_value(&replay).map_err(|e| e.to_string())?,
-                    false,
-                ),
+                Some(replay) => {
+                    let (ret, hash) = terminal_identity(&run.report, acting_seat);
+                    (
+                        run.report,
+                        serde_json::to_value(&replay).map_err(|e| e.to_string())?,
+                        false,
+                        ret,
+                        hash,
+                    )
+                }
                 None => {
                     return Err(format!(
                         "action {action_index} ABORTED: {:?}",
@@ -841,11 +956,16 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
                     ));
                 }
             },
-            CappedRun::Truncated { report, prefix } => (
-                report,
-                serde_json::to_value(&prefix).map_err(|e| e.to_string())?,
-                true,
-            ),
+            CappedRun::Truncated { report, prefix } => {
+                let (ret, hash) = truncated_identity(&report, acting_seat);
+                (
+                    report,
+                    serde_json::to_value(&prefix).map_err(|e| e.to_string())?,
+                    true,
+                    ret,
+                    hash,
+                )
+            }
         };
         write_pretty(
             &report_path,
@@ -856,16 +976,19 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
         manifest_entries.push(serde_json::json!({
             "action_index": action_index,
             "resumed": false,
+            "forced_action": action,
             "truncated": truncated,
+            "acting_seat_return": return_value,
+            "final_state_hash": final_hash,
             "report_sha256": sha256_of(&report_path),
             "replay_sha256": sha256_of(&replay_path),
         }));
     }
 
     // 5. State manifest (the provenance sidecar).
-    let manifest = serde_json::json!({
+    let mut manifest = serde_json::json!({
         "format": "effective-splendor-m41a-branch-state-manifest",
-        "version": 1,
+        "version": 2,
         "source_replay_sha256": source_sha,
         "seed": source.seed,
         "branch_ply": parsed.branch_ply,
@@ -876,7 +999,9 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
         "ply_cap": parsed.ply_cap,
         "actions": manifest_entries,
     });
-    let manifest_path = out_dir.join("state-manifest.json");
+    if let Some(contract_sha) = &run_contract_sha {
+        manifest["run_contract_sha256"] = serde_json::json!(contract_sha);
+    }
     if manifest_path.exists() {
         fs::remove_file(&manifest_path).map_err(|e| format!("replace manifest: {e}"))?;
     }
@@ -891,6 +1016,48 @@ fn run_branches_inner(args: &[String]) -> Result<(), String> {
         .map_err(|e| e.to_string())?
     );
     Ok(())
+}
+
+/// Acting-seat centered return + final-state hash from a TERMINAL branch
+/// report ({+1, 0, -1} win/draw/loss).
+fn terminal_identity(report: &splendor_arena::ArenaReportV1, acting_seat: u8) -> (f64, String) {
+    match &report.outcome {
+        splendor_arena::ArenaOutcomeV1::Completed {
+            result,
+            replay_final_hash,
+            ..
+        } => {
+            let ret = if result.winners.len() == 2 {
+                0.0
+            } else if result.winners.iter().any(|p| p.0 == acting_seat) {
+                1.0
+            } else {
+                -1.0
+            };
+            (ret, replay_final_hash.clone())
+        }
+        _ => panic!("terminal identity requested for a non-completed outcome"),
+    }
+}
+
+/// Acting-seat cap-return + cap-state hash from a TRUNCATED branch
+/// report (-0.5 + 0.5*tanh(d/4), the frozen M39A/M40A/M41A formula).
+fn truncated_identity(report: &splendor_arena::ArenaReportV1, acting_seat: u8) -> (f64, String) {
+    match &report.outcome {
+        splendor_arena::ArenaOutcomeV1::Truncated {
+            cap_state_hash,
+            cap_scores,
+            ..
+        } => {
+            let seat = acting_seat as usize;
+            let opp = 1 - seat;
+            let d = cap_scores.get(seat).copied().unwrap_or(0) as f64
+                - cap_scores.get(opp).copied().unwrap_or(0) as f64;
+            let ret = -0.5 + 0.5 * (d / 4.0).tanh();
+            (ret, cap_state_hash.clone())
+        }
+        _ => panic!("truncated identity requested for a non-truncated outcome"),
+    }
 }
 
 fn write_pretty(path: &Path, value: &serde_json::Value) -> Result<(), String> {

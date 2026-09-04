@@ -159,7 +159,8 @@ fn run_branches_completes_with_manifest_and_resume() {
     assert_eq!(out.code, 1);
     assert!(out.stderr.contains("already exists"));
 
-    // Re-run with --resume: skips everything, manifest marks resumed.
+    // Re-run with --resume: skips everything (SHA re-validated), manifest
+    // entries keep FULL provenance (v2: only `resumed` flips).
     let out = run(&[
         "run-branches",
         "--source-replay",
@@ -178,9 +179,271 @@ fn run_branches_completes_with_manifest_and_resume() {
     let manifest2: Value =
         serde_json::from_str(&fs::read_to_string(out_dir.join("state-manifest.json")).unwrap())
             .unwrap();
-    for entry in manifest2["actions"].as_array().unwrap() {
-        assert_eq!(entry["resumed"], true);
+    assert_eq!(manifest2["version"], 2);
+    for (a, b) in manifest["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(manifest2["actions"].as_array().unwrap().iter())
+    {
+        assert_eq!(b["resumed"], true);
+        // v2: resume preserves the FULL identity (forced action, SHAs,
+        // return, final hash), not just the index.
+        assert_eq!(a["forced_action"], b["forced_action"]);
+        assert_eq!(a["report_sha256"], b["report_sha256"]);
+        assert_eq!(a["replay_sha256"], b["replay_sha256"]);
+        assert_eq!(a["acting_seat_return"], b["acting_seat_return"]);
+        assert_eq!(a["final_state_hash"], b["final_state_hash"]);
+        assert!(b["report_sha256"].is_string());
+        assert!(b["forced_action"].is_object());
+        assert!(b["final_state_hash"].is_string());
     }
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_branches_tampered_replay_fails_closed_on_resume() {
+    let dir = tmp_dir("tamper-replay");
+    let source = make_source(&dir, 9_150_005);
+    let config = dir.join("branch-config.json");
+    heuristic_config(&config);
+    let out_dir = dir.join("state");
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+    ]);
+    assert_eq!(out.code, 0);
+    // Tamper with one action's replay (report untouched).
+    let replay_path = out_dir.join("action-000").join("replay.json");
+    let mut doc: Value = serde_json::from_str(&fs::read_to_string(&replay_path).unwrap()).unwrap();
+    if let Some(steps) = doc["steps"].as_array_mut() {
+        if let Some(last) = steps.last_mut() {
+            last["action"] = serde_json::json!({"type": "pass"});
+        }
+    }
+    fs::write(&replay_path, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--resume",
+    ]);
+    assert_eq!(out.code, 1, "tampered replay must fail resume");
+    assert!(
+        out.stderr.contains("SHA mismatch"),
+        "stderr: {}",
+        out.stderr
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_branches_tampered_report_fails_closed_on_resume() {
+    let dir = tmp_dir("tamper-report");
+    let source = make_source(&dir, 9_150_006);
+    let config = dir.join("branch-config.json");
+    heuristic_config(&config);
+    let out_dir = dir.join("state");
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+    ]);
+    assert_eq!(out.code, 0);
+    // Tamper with one action's report (replay untouched).
+    let report_path = out_dir.join("action-000").join("report.json");
+    let mut doc: Value = serde_json::from_str(&fs::read_to_string(&report_path).unwrap()).unwrap();
+    doc["game_id"] = serde_json::json!("tampered");
+    fs::write(&report_path, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--resume",
+    ]);
+    assert_eq!(out.code, 1, "tampered report must fail resume");
+    assert!(
+        out.stderr.contains("SHA mismatch"),
+        "stderr: {}",
+        out.stderr
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_branches_resume_without_manifest_refused() {
+    let dir = tmp_dir("no-manifest");
+    let source = make_source(&dir, 9_150_007);
+    let config = dir.join("branch-config.json");
+    heuristic_config(&config);
+    let out_dir = dir.join("state");
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+    ]);
+    assert_eq!(out.code, 0);
+    // Delete the manifest: --resume must refuse (blind resume of
+    // artifacts without provenance is forbidden).
+    fs::remove_file(out_dir.join("state-manifest.json")).unwrap();
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--resume",
+    ]);
+    assert_eq!(out.code, 1);
+    assert!(
+        out.stderr.contains("state-manifest"),
+        "stderr: {}",
+        out.stderr
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_branches_run_contract_binding() {
+    let dir = tmp_dir("contract");
+    let source = make_source(&dir, 9_150_008);
+    let config = dir.join("branch-config.json");
+    heuristic_config(&config);
+    let out_dir = dir.join("state");
+    let contract = dir.join("run-contract.json");
+    fs::write(
+        &contract,
+        serde_json::to_string_pretty(&serde_json::json!({
+            "format": "effective-splendor-m41a-run-contract",
+            "version": 1,
+            "identity": "test-contract-a",
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    // Fresh run with the contract binds its SHA into the manifest.
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--run-contract",
+        contract.to_str().unwrap(),
+    ]);
+    assert_eq!(out.code, 0, "contract run failed: {}", out.stderr);
+    let manifest: Value =
+        serde_json::from_str(&fs::read_to_string(out_dir.join("state-manifest.json")).unwrap())
+            .unwrap();
+    assert!(manifest["run_contract_sha256"].is_string());
+
+    // Resume with the SAME contract passes.
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--run-contract",
+        contract.to_str().unwrap(),
+        "--resume",
+    ]);
+    assert_eq!(out.code, 0, "same-contract resume failed: {}", out.stderr);
+
+    // Resume with a DIFFERENT contract fails closed.
+    let contract_b = dir.join("run-contract-b.json");
+    fs::write(
+        &contract_b,
+        serde_json::to_string_pretty(&serde_json::json!({
+            "format": "effective-splendor-m41a-run-contract",
+            "version": 1,
+            "identity": "test-contract-B",
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let out = run(&[
+        "run-branches",
+        "--source-replay",
+        source.to_str().unwrap(),
+        "--branch-ply",
+        "5",
+        "--config",
+        config.to_str().unwrap(),
+        "--ply-cap",
+        "150",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        "--run-contract",
+        contract_b.to_str().unwrap(),
+        "--resume",
+    ]);
+    assert_eq!(out.code, 1);
+    assert!(
+        out.stderr.contains("DIFFERENT run contract"),
+        "stderr: {}",
+        out.stderr
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -273,7 +536,7 @@ fn run_branches_partial_artifacts_fail_closed() {
     ]);
     assert_eq!(out.code, 1);
     assert!(
-        out.stderr.contains("partial artifacts"),
+        out.stderr.contains("partial or pre-existing artifacts"),
         "stderr: {}",
         out.stderr
     );

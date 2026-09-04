@@ -110,6 +110,22 @@ def handle_connection(
         _send_message(connection, response)
 
 
+def _semantic_hash(model: torch.nn.Module) -> str:
+    """Canonical state_dict hash (the M40A checkpoint_semantic_hash
+    recipe): SHA-256 over the ordered (name, shape, dtype, bytes)."""
+    import hashlib
+
+    hasher = hashlib.sha256()
+    state = model.state_dict()
+    for name in sorted(state):
+        tensor = state[name].detach().cpu().contiguous()
+        hasher.update(name.encode("utf-8"))
+        hasher.update(str(tuple(tensor.shape)).encode("utf-8"))
+        hasher.update(str(tensor.dtype).encode("utf-8"))
+        hasher.update(tensor.numpy().tobytes())
+    return hasher.hexdigest()
+
+
 def serve(
     *,
     model_id: str,
@@ -138,11 +154,14 @@ def serve(
         raise ValueError(
             f"checkpoint SHA mismatch: expected {checkpoint_sha256}, got {actual_sha}"
         )
+    semantic = _semantic_hash(model)
 
     identity = {
         "model_id": model_id,
         "checkpoint_sha256": actual_sha,
+        "checkpoint_semantic_sha256": semantic,
         "catalog_hash": cat_hash,
+        "server_source_sha256": file_sha256(Path(__file__).resolve()),
     }
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

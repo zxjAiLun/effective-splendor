@@ -20,20 +20,39 @@ from typing import Any
 
 PROTOCOL_VERSION = "0.5"
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+SERVER_FORMAT = "effective-splendor-m41a-inference-server"
 
 
 class ResidentClient:
+    """Full-identity-bound resident client: the ready file's identity is
+    checked at construction (including host/port consistency with the
+    CLI url) and EVERY response re-validates the same identity — a
+    response from a different server (or a re-bound ready file) fails
+    closed mid-match rather than silently proceeding."""
+
     def __init__(self, url: str, ready_file: Path, expected_sha: str) -> None:
         ready = json.loads(ready_file.read_text(encoding="utf-8"))
-        if ready.get("format") != "effective-splendor-m41a-inference-server":
+        if ready.get("format") != SERVER_FORMAT:
             raise ValueError("ready file is not an M41A inference server")
-        if ready.get("checkpoint_sha256") != expected_sha:
-            raise ValueError("server checkpoint SHA mismatch")
         host, _, port_text = url.rpartition(":")
         if not host or not port_text.isdigit():
             raise ValueError(f"invalid server url {url!r}")
-        self._address = (host, int(port_text))
-        self._socket = socket.create_connection(self._address, timeout=120)
+        # URL must match the ready file's bound endpoint exactly.
+        if host != ready.get("host") or int(port_text) != int(ready.get("port", -1)):
+            raise ValueError(
+                f"--server-url {url!r} does not match the ready file's "
+                f"endpoint {ready.get('host')}:{ready.get('port')}"
+            )
+        if ready.get("checkpoint_sha256") != expected_sha:
+            raise ValueError("server checkpoint SHA mismatch")
+        self._identity = {
+            "model_id": ready.get("model_id"),
+            "checkpoint_sha256": ready.get("checkpoint_sha256"),
+            "checkpoint_semantic_sha256": ready.get("checkpoint_semantic_sha256"),
+            "catalog_hash": ready.get("catalog_hash"),
+            "server_source_sha256": ready.get("server_source_sha256"),
+        }
+        self._socket = socket.create_connection((host, int(port_text)), timeout=120)
 
     def infer(self, observation: dict, legal_actions: list) -> list[float]:
         request = {"observation": observation, "legal_actions": legal_actions}
@@ -56,6 +75,13 @@ class ResidentClient:
         response = json.loads(line.decode("utf-8"))
         if response.get("status") != "ok":
             raise RuntimeError(f"server error: {response.get('message')}")
+        # EVERY response re-validates the identity (echoed by the server).
+        for field, expected in self._identity.items():
+            if response.get(field) != expected:
+                raise ValueError(
+                    f"server response identity mismatch on {field!r}: "
+                    f"{response.get(field)!r} != {expected!r}"
+                )
         return response["scores"]
 
     def close(self) -> None:
