@@ -195,35 +195,113 @@ def test_train_arm_deep_copies_do_not_leak_across_arms():
 
 
 # ---------------------------------------------------------------------------
-# Hierarchical loss (never flattened)
+# Hierarchical loss (never flattened; prediction ALWAYS legal-set centered)
 # ---------------------------------------------------------------------------
+
+
+def test_state_only_annihilation():
+    """Test A (P3 Repair 1): a state-only model f(o,a)=c(o) must yield
+    A_theta == 0 for EVERY constant — centering annihilates the
+    state-only path exactly, regardless of the constant's value."""
+    targets = torch.tensor([1.5, -0.5, -0.5, -0.5])
+    offsets = torch.tensor([0, 4])
+    boundaries = [(0, 1)]
+    for c in (-100.0, -1.0, 0.0, 7.0, 100.0):
+        raw = torch.full((4,), c)
+        loss = trainer.hierarchical_loss(raw, offsets, boundaries, targets)
+        expected = nn.functional.huber_loss(
+            torch.zeros(4), targets, reduction="mean", delta=1.0
+        )
+        assert torch.allclose(loss, expected, atol=1e-7), (
+            f"constant {c}: centered loss must equal Huber(0, target)"
+        )
+
+
+def test_centering_contract_exact_manual():
+    """Test B (P3 Repair 1): raw = [2, 4, 8] must enter the Huber as the
+    centered [-8/3, -2/3, 10/3] — NOT the raw scores."""
+    raw = torch.tensor([2.0, 4.0, 8.0])
+    targets = torch.tensor([1.0, -1.0, 0.0])
+    offsets = torch.tensor([0, 3])
+    boundaries = [(0, 1)]
+    got = trainer.hierarchical_loss(raw, offsets, boundaries, targets)
+    centered = torch.tensor([-8.0 / 3.0, -2.0 / 3.0, 10.0 / 3.0])
+    want = nn.functional.huber_loss(centered, targets, reduction="mean", delta=1.0)
+    assert torch.allclose(got, want, atol=1e-6)
+    # And it must NOT equal the raw-score Huber (the VOID-2 objective).
+    wrong = nn.functional.huber_loss(raw, targets, reduction="mean", delta=1.0)
+    assert not torch.allclose(got, wrong, atol=1e-3), (
+        "centered objective must differ from the raw objective on this fixture"
+    )
+
+
+def test_regression_centered_vs_raw_objectives_differ():
+    """Test C (P3 Repair 1): the regression that catches VOID-2. With an
+    asymmetric centered target, the state-only scalar that minimizes the
+    RAW Huber is NOT zero — so Huber(raw, target) != Huber(center(raw),
+    target) for the raw-optimal constant, proving this test would have
+    failed against the 601dc61 implementation."""
+    # Asymmetric centered targets: mean != 0.
+    targets = torch.tensor([1.0, -1.0, -1.5, -1.0])
+    mean_target = targets.mean().item()
+    assert abs(mean_target) > 0.05, "fixture must be genuinely asymmetric"
+    offsets = torch.tensor([0, 4])
+    boundaries = [(0, 1)]
+    # The raw-objective state-only optimum: find the constant c that
+    # minimizes Huber(c, targets) (scalar search).
+    best_c, best_loss = None, float("inf")
+    for c in [x * 0.01 for x in range(-300, 301)]:
+        loss = float(nn.functional.huber_loss(
+            torch.full((4,), c), targets, reduction="mean", delta=1.0
+        ))
+        if loss < best_loss:
+            best_loss, best_c = loss, c
+    # At the raw-optimal constant, the CENTERED objective must be the
+    # (higher) zero-prediction loss — the two objectives genuinely
+    # disagree, i.e. the centered objective forbids the bias escape.
+    raw_opt = torch.full((4,), best_c)
+    centered_loss = trainer.hierarchical_loss(raw_opt, offsets, boundaries, targets)
+    zero_loss = nn.functional.huber_loss(
+        torch.zeros(4), targets, reduction="mean", delta=1.0
+    )
+    assert torch.allclose(centered_loss, zero_loss, atol=1e-6), (
+        "centering must annihilate ANY constant, including the raw-objective optimum"
+    )
+    assert best_loss < float(zero_loss) - 1e-4, (
+        "fixture sanity: the raw objective must reward the bias escape "
+        "(this is exactly the VOID-2 escape the design forbids)"
+    )
 
 
 def test_hierarchical_loss_matches_manual_computation():
     """Two games: game 1 has two states (2 and 2 legal actions), game 2
     has one state (1 legal action). The hierarchical mean must equal the
-    manual per-state -> per-game -> batch computation, and MUST differ
-    from the flattened branch mean (different weighting)."""
-    q = torch.tensor([0.1, -0.2, 0.3, 0.4, -0.5], requires_grad=True)
+    manual per-state-centered -> per-game -> batch computation, and MUST
+    differ from the flattened branch mean."""
+    q_raw = torch.tensor([0.1, -0.2, 0.3, 0.4, -0.5], requires_grad=True)
     targets = torch.tensor([1.0, -1.0, 0.5, -0.5, 0.0])
     offsets = torch.tensor([0, 2, 4, 5])
     game_boundaries = [(0, 2), (2, 3)]
 
-    got = trainer.hierarchical_loss(q, offsets, game_boundaries, targets)
+    got = trainer.hierarchical_loss(q_raw, offsets, game_boundaries, targets)
 
     huber = nn.functional.huber_loss
-    # game 1
-    s1 = huber(q[0:2], targets[0:2], reduction="mean", delta=1.0)
-    s2 = huber(q[2:4], targets[2:4], reduction="mean", delta=1.0)
+    # game 1 (state-centered predictions)
+    s1_raw = q_raw[0:2]
+    s2_raw = q_raw[2:4]
+    a1 = s1_raw - s1_raw.mean()
+    a2 = s2_raw - s2_raw.mean()
+    s1 = huber(a1, targets[0:2], reduction="mean", delta=1.0)
+    s2 = huber(a2, targets[2:4], reduction="mean", delta=1.0)
     g1 = (s1 + s2) / 2
-    # game 2
-    g2 = huber(q[4:5], targets[4:5], reduction="mean", delta=1.0)
+    # game 2: a single action centers to exactly 0.
+    g2 = huber(torch.zeros(1), targets[4:5], reduction="mean", delta=1.0)
     want = (g1 + g2) / 2
     assert torch.allclose(got, want, atol=1e-7)
 
     # And the flattened mean over the 5 branches would weight the
     # single-action game differently.
-    flat = huber(q, targets, reduction="mean", delta=1.0)
+    flat = huber(q_raw, targets, reduction="mean", delta=1.0)
     assert not torch.allclose(got, flat), (
         "hierarchical loss must not equal the flattened branch mean"
     )
@@ -242,8 +320,10 @@ def test_hierarchical_loss_legal_set_size_weighting():
     offsets = torch.tensor([0, 30, 32])
     boundaries = [(0, 2)]
     got = trainer.hierarchical_loss(q, offsets, boundaries, t)
-    s_big = nn.functional.huber_loss(q_big, t_big, reduction="mean", delta=1.0)
-    s_small = nn.functional.huber_loss(q_small, t_small, reduction="mean", delta=1.0)
+    a_big = q_big - q_big.mean()
+    a_small = q_small - q_small.mean()
+    s_big = nn.functional.huber_loss(a_big, t_big, reduction="mean", delta=1.0)
+    s_small = nn.functional.huber_loss(a_small, t_small, reduction="mean", delta=1.0)
     want = (s_big + s_small) / 2
     assert torch.allclose(got, want, atol=1e-6)
     # The flattened version would weight the big state 15x.

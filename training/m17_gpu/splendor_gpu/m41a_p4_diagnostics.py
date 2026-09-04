@@ -123,8 +123,12 @@ def metrics(scores, games, source_indices=None):
             src = source_indices[state_index] if source_indices else 0
             state_index += 1
             states += 1
+            # Huber diagnostic on the LEGAL-SET CENTERED prediction (the
+            # frozen §3 objective; identical centering to training).
+            q_mean = sum(q) / len(q)
+            a_theta = [x - q_mean for x in q]
             huber_total += float(F.huber_loss(
-                torch.tensor(q), torch.tensor(a_cf), reduction="mean", delta=1.0
+                torch.tensor(a_theta), torch.tensor(a_cf), reduction="mean", delta=1.0
             ))
             for i in range(len(q)):
                 for j in range(i + 1, len(q)):

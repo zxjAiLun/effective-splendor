@@ -264,19 +264,32 @@ def encode_states(batch_games: list[dict], catalog: dict, device: torch.device):
     return entities, mask, global_features, actions, offsets_t, game_boundaries, targets_t
 
 
-def hierarchical_loss(q: torch.Tensor, offsets: torch.Tensor,
+def hierarchical_loss(q_raw: torch.Tensor, offsets: torch.Tensor,
                       game_boundaries: list[tuple[int, int]],
                       targets: torch.Tensor) -> torch.Tensor:
-    """L = mean_games(mean_states(mean_legal(Huber(q, A_cf)))) — the
-    frozen hierarchical objective, computed exactly (never flattened)."""
+    """The frozen M41A objective (design §3): the model prediction is
+    LEGAL-SET CENTERED inside this function — the caller passes RAW
+    f_theta scores and CANNOT forget the centering.
+
+        A_theta(o,a) = f(o,a) - mean_{b in L(o)} f(o,b)
+        L_state = mean_legal Huber(A_theta, A_cf)
+        L_game  = mean_states(L_state)
+        L       = mean_games(L_game)
+
+    A state-only model f(o,a)=c(o) therefore yields A_theta == 0 on
+    every legal set and can explain NOTHING of the target — the
+    structural core of M41A.
+    """
     boundaries = offsets.detach().cpu().tolist()
     game_losses = []
     for state_start, state_end in game_boundaries:
         state_losses = []
         for s in range(state_start, state_end):
             a0, a1 = boundaries[s], boundaries[s + 1]
+            raw = q_raw[a0:a1]
+            a_theta = raw - raw.mean()
             huber = nn.functional.huber_loss(
-                q[a0:a1], targets[a0:a1], reduction="mean", delta=1.0
+                a_theta, targets[a0:a1], reduction="mean", delta=1.0
             )
             state_losses.append(huber)
         game_losses.append(torch.stack(state_losses).mean())
