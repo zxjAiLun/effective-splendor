@@ -3,7 +3,9 @@
 ```text
 Milestone:      M41A
 Title:          Player-View Counterfactual Action-Value Probe
-Status:         PROPOSED / REVISION_2 / PENDING_FINAL_DESIGN_REVIEW
+Status:         COMPLETED_NEGATIVE / CLOSED —
+                M41A_COUNTERFACTUAL_ACTION_VALUE_NOT_VALIDATED
+                (final review APPROVED 2026-09-05)
 Authorization:  DESIGN_DRAFT_AUTHORIZED / CODE_NOT_AUTHORIZED
                 (2026-09-03; no run-branch, no corpus, no training
                 before the design review passes)
@@ -11,14 +13,36 @@ Design review:  NEEDS_REVISION — P0 = 0, P1 = 5, P2 = 2 (2026-09-03,
                 basis 9750bc6); closed in Revision 1
                 NEEDS_NARROW_REVISION — P0 = 0, P1 = 3, P2 = 2
                 (2026-09-03, basis 766421c); closed in Revision 2
-                (this document)
+                DESIGN_FROZEN / P0+P1 INFRASTRUCTURE_AUTHORIZED
+                (2026-09-03, basis c05d3fb)
 Prior rounds:   M39A (COMPLETED_NEGATIVE / CLOSED — M39A_NO_IMPROVEMENT);
                 M40A (COMPLETED_NEGATIVE / CLOSED —
                 M40A_WARM_START_NO_EFFECT)
-Design SHA:     (assigned at review approval)
+Design SHA:     c05d3fb162c73a7d7127b910f5a10c97f347e0b9
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (this round seeks no promotion; it is a
                 measurement round)
+
+Licensed conclusion (strict):
+  Even with EXHAUSTIVE per-action counterfactual supervision (every
+  legal action of every selected state branched to its true terminal
+  return by a deterministic D2/D2 teacher), the current D2-style
+  state/action factorization with a small joint scorer did NOT learn a
+  reliable specific-action-consequence mapping: material-pair ranking
+  54-59%, and cyclic misassignment of action identities within the
+  legal set does not degrade decisions beyond the frozen thresholds
+  (the pseudo-Q/action-dependence gate FAILS for both arms). This
+  closes the current-architecture action-value probe; it does NOT prove
+  that action values do not exist (the teacher labels demonstrably do),
+  and does NOT authorize TD/fitted-Q/CQL on this architecture.
+
+F/U representation fork (read as evidence, not a gate):
+  F (frozen D2 representation): ranking 59.3% — HIGHER than
+  U (adapted representation): 54.2%. Neither passes the gate. The
+  evidence does not support "unfreezing the representation is
+  sufficient" NOR "the frozen representation is sufficient"; the
+  bottleneck is the representation of specific action consequences
+  itself, not merely frozen-vs-adapted encoders.
 ```
 
 ## Problem and motivation
@@ -932,3 +956,91 @@ Revision-1 contracts. All closed in place (this document, docs-only):
 The P0-deferred list after Revision 2: material-pair τ, per-split
 game counts, seed allocation, runtime budget confirmation. (Formal N
 remains a P4.5 output; ablation thresholds are no longer deferrable.)
+
+---
+
+## Closure (2026-09-05) — `M41A_COUNTERFACTUAL_ACTION_VALUE_NOT_VALIDATED`
+
+Final review (basis `05d5495`): **`APPROVED / CLOSED NEGATIVE`**
+(P0=0/P1=0; one P2 cosmetic: a Test C comment mislabels its fixture as
+"centered" — recorded here, not repaired per the review instruction).
+
+### Execution history (all runs preserved)
+
+```text
+Run 1  VOID — cross-arm shared-module / requires_grad ownership bug
+       (both arms trained q-heads only; identical semantic SHAs exposed
+        it; artifacts kept as *-VOID-*.pt)
+Run 2  VOID — missing legal-set centering of the model prediction
+       (optimized Huber(f_theta, A_cf) instead of Huber(A_theta, A_cf);
+        Huber's saturating gradients open the state-only bias escape
+        the design's centering exists to annihilate; artifacts kept as
+        *-VOID2-uncentered-objective.pt)
+Run 3  VALID — P3 Repair 1 (centering inside hierarchical_loss; three
+       new bug-class tests A/B/C), full 16+16-epoch rerun from the
+       frozen D2 init and frozen seeds
+```
+
+### Valid Run 3 identity
+
+```text
+F seal  file 6af9d23597ade13663748d96c82d43f0e3159ae60c5e7cd7d8a2066553b7dd9a
+        semantic c475f6f20761e1580f8ec39517f940ab81fa848689ccf6c3473fa676f42cc05c
+        encoder-vs-D2 delta: 0 tensors (frozen contract held)
+U seal  file 72c3ca669585c9442c57fe3c374f0fbbf74d23fae5363c2c999ec92416b6ec40
+        semantic aa807ffe1b20bc6a08e25b2bfb6dfd14b29b38841107b24ff269862d25bb0a70
+        encoder-vs-D2 delta: 42 tensors (adaptation real)
+```
+
+### P4 offline result (validation only; power-calibration stayed SEALED)
+
+|                  |      F |      U | D2 baseline |
+|------------------|-------:|-------:|------------:|
+| Material ranking | 59.3% | 54.2% |           — |
+| Mean regret      | 0.875 | 0.847 |       0.875 |
+| Zero ablation    | PASS  | PASS  |           — |
+| Shift ablation   | FAIL  | FAIL  |           — |
+
+Both arms FAIL the frozen §9.5 pseudo-Q/action-dependence gate on the
+shift condition (F −5.5 pp with regret IMPROVING 0.014; U −2.4 pp with
+regret improving 0.007): cyclic misassignment of action identities
+within the legal set does not degrade decisions beyond the frozen
+thresholds — the models exploit coarse action/category/state-action
+correlates rather than a specific action→consequence mapping.
+
+Per the pre-registered decision table:
+
+```text
+M41A_COUNTERFACTUAL_ACTION_VALUE_NOT_VALIDATED
+P4.5 NOT RUN        (power-calibration remains SEALED)
+P5  NOT RUN         (formal reserve 9_000_304..9_000_815 UNTOUCHED)
+TD / fitted-Q / target-network / Double-Q / CQL  NOT AUTHORIZED
+No promotion; champion M07 unchanged; no gate relaxed after outcomes.
+```
+
+### What M41A established (positive and negative)
+
+Positive: the counterfactual supervision itself is real and strong —
+formal-aligned discrimination 82.3%; D2's own action is teacher-suboptimal
+on 43.8% of the selected states; the run-branch teacher is provably
+correct (H0 determinism 16/16, H0b source-action reproduction 128/128
+pilot + 912/912 corpus); after the centering repair BOTH arms pass the
+zero-ablation gate (the models genuinely read the action input).
+
+Negative: even with exhaustive per-action terminal returns, the
+D2-style `[state_emb, action_emb, state*action]` joint scorer learns
+only 54-59% material ranking and fails the action-identity integrity
+gate — the bottleneck is the REPRESENTATION OF SPECIFIC ACTION
+CONSEQUENCES, not merely state-vs-action targets (M40A) or
+frozen-vs-adapted encoders (F scored higher than U; neither passed).
+
+### Next-round pointer (recorded, NOT authorized)
+
+The identified research direction for a future independent hypothesis:
+explicit post-action / transition representation —
+`(o,a) → Δstate → post-action representation → value` — rather than
+black-box Q(o,a) regression on the joint scorer, and rather than TD on
+the current architecture. Any such round requires a new design review.
+
+M41A is now PERMANENTLY CLOSED. No further experiments, no corpus
+regeneration, no threshold changes.
