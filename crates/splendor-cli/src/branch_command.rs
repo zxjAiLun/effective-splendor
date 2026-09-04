@@ -337,7 +337,8 @@ fn run_branch_inner(args: &[String]) -> Result<MatchExit, RunMatchError> {
 // ===========================================================================
 
 const PROBE_LEGAL_USAGE: &str = "\
-Usage: splendor probe-legal --source-replay <replay.json> --branch-ply <k>
+Usage: splendor probe-legal --source-replay <replay.json> \
+--branch-ply <k> [--emit-observation]
 
 Verify the source replay, rebuild the full state at the branch ply, and
 print one JSON object: the acting seat, the branch-point state hash, the
@@ -347,6 +348,9 @@ that state. No game is played; no agents are spawned.
 Options:
   --source-replay <path>  Verified source game replay (JSON).
   --branch-ply <k>        The acting-decision index to probe.
+  --emit-observation      Also emit the branch-point player-view
+                          observation payload (identity-checked: its
+                          hash equals the reported observation_hash).
 ";
 
 /// Entry point for `splendor probe-legal ...`. Returns the process exit code.
@@ -369,9 +373,18 @@ fn probe_legal_inner(args: &[String]) -> Result<(), String> {
     }
     let mut source_replay: Option<String> = None;
     let mut branch_ply: Option<String> = None;
+    let mut emit_observation = false;
     let mut index = 0;
     while index < args.len() {
         let flag = args[index].as_str();
+        if flag == "--emit-observation" {
+            if emit_observation {
+                return Err("duplicate flag --emit-observation".to_string());
+            }
+            emit_observation = true;
+            index += 1;
+            continue;
+        }
         let value = args
             .get(index + 1)
             .ok_or_else(|| format!("{flag} requires a value"))?;
@@ -447,15 +460,28 @@ fn probe_legal_inner(args: &[String]) -> Result<(), String> {
     let observation = state.observation(actor);
     let obs_hash = splendor_core::observation_hash(&observation);
 
-    let payload = serde_json::json!({
-        "source_replay_sha256": sha256_of(&source_replay),
-        "seed": source.seed,
-        "branch_ply": branch_ply,
-        "acting_seat": actor.0,
-        "state_hash": rebuilt_hash.as_str(),
-        "observation_hash": obs_hash.as_str(),
-        "legal_actions": legal,
-    });
+    let payload = if emit_observation {
+        serde_json::json!({
+            "source_replay_sha256": sha256_of(&source_replay),
+            "seed": source.seed,
+            "branch_ply": branch_ply,
+            "acting_seat": actor.0,
+            "state_hash": rebuilt_hash.as_str(),
+            "observation_hash": obs_hash.as_str(),
+            "observation": observation,
+            "legal_actions": legal,
+        })
+    } else {
+        serde_json::json!({
+            "source_replay_sha256": sha256_of(&source_replay),
+            "seed": source.seed,
+            "branch_ply": branch_ply,
+            "acting_seat": actor.0,
+            "state_hash": rebuilt_hash.as_str(),
+            "observation_hash": obs_hash.as_str(),
+            "legal_actions": legal,
+        })
+    };
     println!(
         "{}",
         serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?
