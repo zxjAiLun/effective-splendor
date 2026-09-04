@@ -331,3 +331,224 @@ fn run_branch_inner(args: &[String]) -> Result<MatchExit, RunMatchError> {
         }
     }
 }
+
+// ===========================================================================
+// M41A `probe-legal`: the branch-point legal-set + identity probe.
+// ===========================================================================
+
+const PROBE_LEGAL_USAGE: &str = "\
+Usage: splendor probe-legal --source-replay <replay.json> --branch-ply <k>
+
+Verify the source replay, rebuild the full state at the branch ply, and
+print one JSON object: the acting seat, the branch-point state hash, the
+player-view observation hash, and the FULL ordered legal action set at
+that state. No game is played; no agents are spawned.
+
+Options:
+  --source-replay <path>  Verified source game replay (JSON).
+  --branch-ply <k>        The acting-decision index to probe.
+";
+
+/// Entry point for `splendor probe-legal ...`. Returns the process exit code.
+pub fn probe_legal(args: &[String]) -> i32 {
+    match probe_legal_inner(args) {
+        Ok(()) => 0,
+        Err(err) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {err}");
+            let _ = stderr.flush();
+            1
+        }
+    }
+}
+
+fn probe_legal_inner(args: &[String]) -> Result<(), String> {
+    if wants_help(args) {
+        print_stdout(PROBE_LEGAL_USAGE);
+        return Ok(());
+    }
+    let mut source_replay: Option<String> = None;
+    let mut branch_ply: Option<String> = None;
+    let mut index = 0;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        let value = args
+            .get(index + 1)
+            .ok_or_else(|| format!("{flag} requires a value"))?;
+        match flag {
+            "--source-replay" => {
+                if source_replay.replace(value.clone()).is_some() {
+                    return Err("duplicate flag --source-replay".to_string());
+                }
+            }
+            "--branch-ply" => {
+                if branch_ply.replace(value.clone()).is_some() {
+                    return Err("duplicate flag --branch-ply".to_string());
+                }
+            }
+            other => return Err(format!("unknown flag `{other}`")),
+        }
+        index += 2;
+    }
+    let source_replay = PathBuf::from(
+        source_replay.ok_or_else(|| "missing required flag --source-replay".to_string())?,
+    );
+    let branch_ply: u32 = branch_ply
+        .ok_or_else(|| "missing required flag --branch-ply".to_string())?
+        .parse()
+        .map_err(|_| "--branch-ply must be a u32".to_string())?;
+
+    // Verify + rebuild (same discipline as run-branch).
+    let source: splendor_replay::ReplayV1 = {
+        let text = fs::read_to_string(&source_replay)
+            .map_err(|e| format!("cannot read source replay: {e}"))?;
+        let replay: splendor_replay::ReplayV1 =
+            serde_json::from_str(&text).map_err(|e| format!("parse source replay: {e}"))?;
+        verify_replay(&replay).map_err(|e| format!("source replay failed verification: {e}"))?;
+        replay
+    };
+    if branch_ply >= source.steps.len() as u32 {
+        return Err(format!(
+            "--branch-ply {branch_ply} is out of range (source has {} steps)",
+            source.steps.len()
+        ));
+    }
+
+    use splendor_core::GameConfig;
+    use splendor_replay::ReplayRecorder;
+    let (mut rec, _) = ReplayRecorder::new_with_setup(GameConfig {
+        player_count: source.player_count,
+        seed: source.seed,
+        ruleset: splendor_core::Ruleset::base_v1(),
+    })
+    .map_err(|e| format!("rebuild: {e}"))?;
+    for step in &source.steps[..branch_ply as usize] {
+        rec.apply(step.action).map_err(|e| format!("prefix replay: {e}"))?;
+    }
+    // Cross-check the rebuilt state hash against the source chain.
+    let rebuilt_hash = splendor_core::full_state_hash(rec.state());
+    let expected_hash = if branch_ply == 0 {
+        source.initial_state_hash.as_str()
+    } else {
+        source.steps[branch_ply as usize - 1].state_hash_after.as_str()
+    };
+    if rebuilt_hash.as_str() != expected_hash {
+        return Err(format!(
+            "branch-point rebuild hash mismatch at ply {branch_ply}"
+        ));
+    }
+
+    let state = rec.state();
+    let actor = state.current_player;
+    let legal = state.legal_actions();
+    let observation = state.observation(actor);
+    let obs_hash = splendor_core::observation_hash(&observation);
+
+    let payload = serde_json::json!({
+        "source_replay_sha256": sha256_of(&source_replay),
+        "seed": source.seed,
+        "branch_ply": branch_ply,
+        "acting_seat": actor.0,
+        "state_hash": rebuilt_hash.as_str(),
+        "observation_hash": obs_hash.as_str(),
+        "legal_actions": legal,
+    });
+    println!("{}", serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?);
+    Ok(())
+}
+
+fn sha256_of(path: &Path) -> String {
+    use std::io::Read as _;
+    let mut file = File::open(path).expect("reopen for hashing");
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf).expect("read for hashing");
+    // SHA-256 via a minimal implementation (no external crate): use the
+    // Windows/Unix agnostic approach — hash through the `sha2`-free path
+    // by delegating to the replay document hash? The repo carries no
+    // sha2 crate in splendor-cli; compute via the engine's hash utility?
+    // Simplest correct: read the file bytes and hash with a tiny pure
+    // SHA-256 (FIPS 180-4) below.
+    sha256_bytes(&buf)
+}
+
+fn sha256_bytes(data: &[u8]) -> String {
+    // Minimal FIPS 180-4 SHA-256 (constant tables inlined).
+    const K: [u32; 64] = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+        0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+        0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+        0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+        0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+    let mut h: [u32; 8] = [
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    ];
+    let mut msg = data.to_vec();
+    let bit_len = (data.len() as u64) * 8;
+    msg.push(0x80);
+    while msg.len() % 64 != 56 {
+        msg.push(0);
+    }
+    msg.extend_from_slice(&bit_len.to_be_bytes());
+    for chunk in msg.chunks(64) {
+        let mut w = [0u32; 64];
+        for i in 0..16 {
+            w[i] = u32::from_be_bytes([
+                chunk[i * 4],
+                chunk[i * 4 + 1],
+                chunk[i * 4 + 2],
+                chunk[i * 4 + 3],
+            ]);
+        }
+        for i in 16..64 {
+            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
+            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
+            w[i] = w[i - 16]
+                .wrapping_add(s0)
+                .wrapping_add(w[i - 7])
+                .wrapping_add(s1);
+        }
+        let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh) =
+            (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
+        for i in 0..64 {
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let ch = (e & f) ^ ((!e) & g);
+            let t1 = hh
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(K[i])
+                .wrapping_add(w[i]);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let maj = (a & b) ^ (a & c) ^ (b & c);
+            let t2 = s0.wrapping_add(maj);
+            hh = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(t1);
+            d = c;
+            c = b;
+            b = a;
+            a = t1.wrapping_add(t2);
+        }
+        h[0] = h[0].wrapping_add(a);
+        h[1] = h[1].wrapping_add(b);
+        h[2] = h[2].wrapping_add(c);
+        h[3] = h[3].wrapping_add(d);
+        h[4] = h[4].wrapping_add(e);
+        h[5] = h[5].wrapping_add(f);
+        h[6] = h[6].wrapping_add(g);
+        h[7] = h[7].wrapping_add(hh);
+    }
+    let mut out = String::with_capacity(64);
+    for word in h {
+        out.push_str(&format!("{word:08x}"));
+    }
+    out
+}
