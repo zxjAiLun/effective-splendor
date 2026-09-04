@@ -101,6 +101,7 @@ fn main() {
         Some("run-rollout") => std::process::exit(arena_command::run_rollout(&argv[2..])),
         Some("run-branch") => std::process::exit(branch_command::run_branch(&argv[2..])),
         Some("probe-legal") => std::process::exit(branch_command::probe_legal(&argv[2..])),
+        Some("run-branches") => std::process::exit(branch_command::run_branches(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
         Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
         Some("agent-determinization") => {

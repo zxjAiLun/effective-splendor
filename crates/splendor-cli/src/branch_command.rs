@@ -423,14 +423,17 @@ fn probe_legal_inner(args: &[String]) -> Result<(), String> {
     })
     .map_err(|e| format!("rebuild: {e}"))?;
     for step in &source.steps[..branch_ply as usize] {
-        rec.apply(step.action).map_err(|e| format!("prefix replay: {e}"))?;
+        rec.apply(step.action)
+            .map_err(|e| format!("prefix replay: {e}"))?;
     }
     // Cross-check the rebuilt state hash against the source chain.
     let rebuilt_hash = splendor_core::full_state_hash(rec.state());
     let expected_hash = if branch_ply == 0 {
         source.initial_state_hash.as_str()
     } else {
-        source.steps[branch_ply as usize - 1].state_hash_after.as_str()
+        source.steps[branch_ply as usize - 1]
+            .state_hash_after
+            .as_str()
     };
     if rebuilt_hash.as_str() != expected_hash {
         return Err(format!(
@@ -453,7 +456,10 @@ fn probe_legal_inner(args: &[String]) -> Result<(), String> {
         "observation_hash": obs_hash.as_str(),
         "legal_actions": legal,
     });
-    println!("{}", serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?
+    );
     Ok(())
 }
 
@@ -474,21 +480,20 @@ fn sha256_of(path: &Path) -> String {
 fn sha256_bytes(data: &[u8]) -> String {
     // Minimal FIPS 180-4 SHA-256 (constant tables inlined).
     const K: [u32; 64] = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
-        0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
-        0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
-        0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
-        0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+        0xc67178f2,
     ];
     let mut h: [u32; 8] = [
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
+        0x5be0cd19,
     ];
     let mut msg = data.to_vec();
     let bit_len = (data.len() as u64) * 8;
@@ -551,4 +556,349 @@ fn sha256_bytes(data: &[u8]) -> String {
         out.push_str(&format!("{word:08x}"));
     }
     out
+}
+
+// ===========================================================================
+// M41A `run-branches`: state-batch counterfactual execution + provenance
+// sidecar (executor optimization: verify/rebuild ONCE per state, all
+// legal actions from the cached branch point).
+// ===========================================================================
+
+const RUN_BRANCHES_USAGE: &str = "\
+Usage: splendor run-branches --source-replay <replay.json> \
+--branch-ply <k> --config <arena-config.json> --ply-cap <n> \
+--out-dir <branch-state-dir> [--resume]
+
+Verify the source replay and rebuild the branch point ONCE, then run
+EVERY legal action of that state as an independent branch continuation,
+publishing per-action artifacts under out-dir:
+
+  action-<i>/replay.json     the branch replay (or prefix when truncated)
+  action-<i>/report.json     the branch arena report
+  state-probe.json           branch-point identity + ordered legal set
+  state-manifest.json        per-action provenance sidecar (fail-closed
+                             resume: existing complete action dirs are
+                             skipped; partial dirs are an error)
+
+Options:
+  --source-replay <path>  Verified source game replay (JSON).
+  --branch-ply <k>        The acting-decision index to branch at.
+  --config <path>         Arena config naming BOTH continuation agents
+                          (resident-proxy agents expected).
+  --ply-cap <n>           ABSOLUTE ply cap from the source game's ply 0.
+  --out-dir <path>        Per-state output directory (must exist or be
+                          creatable; must not contain unrelated files).
+  --resume                Skip actions whose artifact pair already exists.
+";
+
+struct RunBranchesArgs {
+    source_replay: PathBuf,
+    branch_ply: u32,
+    config: PathBuf,
+    ply_cap: u32,
+    out_dir: PathBuf,
+    resume: bool,
+}
+
+fn parse_run_branches_args(args: &[String]) -> Result<RunBranchesArgs, String> {
+    let mut source_replay: Option<String> = None;
+    let mut branch_ply: Option<String> = None;
+    let mut config: Option<String> = None;
+    let mut ply_cap: Option<String> = None;
+    let mut out_dir: Option<String> = None;
+    let mut resume = false;
+
+    let mut index = 0;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        if flag == "--resume" {
+            if resume {
+                return Err("duplicate flag --resume".to_string());
+            }
+            resume = true;
+            index += 1;
+            continue;
+        }
+        let value = args
+            .get(index + 1)
+            .ok_or_else(|| format!("{flag} requires a value"))?;
+        let slot = match flag {
+            "--source-replay" => &mut source_replay,
+            "--branch-ply" => &mut branch_ply,
+            "--config" => &mut config,
+            "--ply-cap" => &mut ply_cap,
+            "--out-dir" => &mut out_dir,
+            other => return Err(format!("unknown flag `{other}`")),
+        };
+        if slot.is_some() {
+            return Err(format!("duplicate flag {flag}"));
+        }
+        *slot = Some(value.clone());
+        index += 2;
+    }
+    let need = |name: &str, slot: &Option<String>| -> Result<String, String> {
+        slot.clone()
+            .ok_or_else(|| format!("missing required flag --{name}"))
+    };
+    let branch_ply: u32 = need("branch-ply", &branch_ply)?
+        .parse()
+        .map_err(|_| "--branch-ply must be a u32".to_string())?;
+    let ply_cap: u32 = need("ply-cap", &ply_cap)?
+        .parse()
+        .map_err(|_| "--ply-cap must be a u32".to_string())?;
+    Ok(RunBranchesArgs {
+        source_replay: PathBuf::from(need("source-replay", &source_replay)?),
+        branch_ply,
+        config: PathBuf::from(need("config", &config)?),
+        ply_cap,
+        out_dir: PathBuf::from(need("out-dir", &out_dir)?),
+        resume,
+    })
+}
+
+/// Entry point for `splendor run-branches ...`. Returns the process exit code.
+pub fn run_branches(args: &[String]) -> i32 {
+    match run_branches_inner(args) {
+        Ok(()) => 0,
+        Err(err) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {err}");
+            let _ = stderr.flush();
+            1
+        }
+    }
+}
+
+fn run_branches_inner(args: &[String]) -> Result<(), String> {
+    if wants_help(args) {
+        print_stdout(RUN_BRANCHES_USAGE);
+        return Ok(());
+    }
+    let parsed = parse_run_branches_args(args)?;
+
+    // 1. Verify the source replay once.
+    let source: splendor_replay::ReplayV1 = {
+        let text = fs::read_to_string(&parsed.source_replay)
+            .map_err(|e| format!("cannot read source replay: {e}"))?;
+        let replay: splendor_replay::ReplayV1 =
+            serde_json::from_str(&text).map_err(|e| format!("parse source replay: {e}"))?;
+        verify_replay(&replay).map_err(|e| format!("source replay failed verification: {e}"))?;
+        replay
+    };
+    if parsed.branch_ply >= source.steps.len() as u32 {
+        return Err(format!(
+            "--branch-ply {} is out of range (source has {} steps)",
+            parsed.branch_ply,
+            source.steps.len()
+        ));
+    }
+    if parsed.branch_ply + 1 >= parsed.ply_cap {
+        return Err(format!(
+            "--branch-ply {} + forced ply must be strictly below --ply-cap {}",
+            parsed.branch_ply, parsed.ply_cap
+        ));
+    }
+
+    // 2. Rebuild the branch point ONCE.
+    let (state, prefix_steps, prefix_events) = {
+        use splendor_core::GameConfig;
+        use splendor_replay::ReplayRecorder;
+        let (mut rec, _setup) = ReplayRecorder::new_with_setup(GameConfig {
+            player_count: source.player_count,
+            seed: source.seed,
+            ruleset: splendor_core::Ruleset::base_v1(),
+        })
+        .map_err(|e| format!("branch rebuild: {e}"))?;
+        let mut events = Vec::with_capacity(parsed.branch_ply as usize);
+        for step in &source.steps[..parsed.branch_ply as usize] {
+            let res = rec
+                .apply(step.action)
+                .map_err(|e| format!("prefix replay: {e}"))?;
+            events.push(res.events);
+        }
+        let rebuilt_hash = splendor_core::full_state_hash(rec.state());
+        let expected_hash = if parsed.branch_ply == 0 {
+            source.initial_state_hash.as_str()
+        } else {
+            source.steps[parsed.branch_ply as usize - 1]
+                .state_hash_after
+                .as_str()
+        };
+        if rebuilt_hash.as_str() != expected_hash {
+            return Err(format!(
+                "branch-point rebuild hash mismatch at ply {}",
+                parsed.branch_ply
+            ));
+        }
+        (
+            rec.state().clone(),
+            source.steps[..parsed.branch_ply as usize].to_vec(),
+            events,
+        )
+    };
+
+    let acting_seat = state.current_player.0;
+    let legal = state.legal_actions();
+    let observation = state.observation(state.current_player);
+    let obs_hash = splendor_core::observation_hash(&observation);
+    let state_hash = splendor_core::full_state_hash(&state);
+    let source_sha = sha256_of(&parsed.source_replay);
+
+    // 3. Output layout + resume semantics.
+    let out_dir = &parsed.out_dir;
+    fs::create_dir_all(out_dir).map_err(|e| format!("create out dir: {e}"))?;
+    let probe_path = out_dir.join("state-probe.json");
+    if probe_path.exists() && !parsed.resume {
+        return Err(format!("output already exists: {}", probe_path.display()));
+    }
+    let probe_doc = serde_json::json!({
+        "format": "effective-splendor-m41a-branch-state-probe",
+        "version": 1,
+        "source_replay_sha256": source_sha,
+        "seed": source.seed,
+        "branch_ply": parsed.branch_ply,
+        "acting_seat": acting_seat,
+        "state_hash": state_hash.as_str(),
+        "observation_hash": obs_hash.as_str(),
+        "legal_actions": legal,
+    });
+    // On resume, the existing probe must match EXACTLY (identity gate).
+    if probe_path.exists() {
+        let existing: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(&probe_path).map_err(|e| format!("read probe: {e}"))?,
+        )
+        .map_err(|e| format!("parse existing probe: {e}"))?;
+        if existing != probe_doc {
+            return Err(
+                "existing state-probe.json differs from the rebuilt branch point".to_string(),
+            );
+        }
+    } else {
+        write_pretty(&probe_path, &probe_doc)?;
+    }
+
+    // 4. Arena config (seed overridden to the source's).
+    let mut config = read_config(&parsed.config).map_err(|e| format!("{}", e))?;
+    config.seed = source.seed;
+    config.game_id = format!("m41a-branch-{}", sha256_of(&parsed.source_replay));
+
+    let mut manifest_entries: Vec<serde_json::Value> = Vec::new();
+
+    for (action_index, action) in legal.iter().enumerate() {
+        let adir = out_dir.join(format!("action-{action_index:03}"));
+        let replay_path = adir.join("replay.json");
+        let report_path = adir.join("report.json");
+
+        if parsed.resume && replay_path.is_file() && report_path.is_file() {
+            // Resume: validate the artifact pair shape (fail-closed on
+            // partials is handled below; a complete pair is reused).
+            let _report: serde_json::Value = serde_json::from_str(
+                &fs::read_to_string(&report_path).map_err(|e| format!("read report: {e}"))?,
+            )
+            .map_err(|e| format!("parse existing report: {e}"))?;
+            manifest_entries.push(serde_json::json!({
+                "action_index": action_index,
+                "resumed": true,
+            }));
+            continue;
+        }
+        // Partial artifacts without --resume (or with only one file) are
+        // an error: never overwrite evidence.
+        if adir.exists() && (replay_path.exists() || report_path.exists()) {
+            return Err(format!(
+                "partial artifacts at {} (replay/report must be complete); \
+                 clear deliberately or use --resume",
+                adir.display()
+            ));
+        }
+        fs::create_dir_all(&adir).map_err(|e| format!("create action dir: {e}"))?;
+
+        // Fresh BranchStart per action (the recorder consumes the state).
+        let start = splendor_arena::BranchStart {
+            state: state.clone(),
+            prefix_steps: prefix_steps.clone(),
+            initial_state_hash: source.initial_state_hash.clone(),
+            ruleset: source.ruleset.clone(),
+            ruleset_fingerprint: source.ruleset_fingerprint.clone(),
+            seed: source.seed,
+            prefix_events: prefix_events.clone(),
+        };
+
+        let capped = ArenaRunner::run_branch(config.clone(), start, *action, parsed.ply_cap)
+            .map_err(|e| format!("action {action_index} internal error: {e}"))?;
+
+        let (report, replay_doc, truncated) = match capped {
+            CappedRun::Terminal(run) => match run.replay {
+                Some(replay) => (
+                    run.report,
+                    serde_json::to_value(&replay).map_err(|e| e.to_string())?,
+                    false,
+                ),
+                None => {
+                    return Err(format!(
+                        "action {action_index} ABORTED: {:?}",
+                        run.report.outcome
+                    ));
+                }
+            },
+            CappedRun::Truncated { report, prefix } => (
+                report,
+                serde_json::to_value(&prefix).map_err(|e| e.to_string())?,
+                true,
+            ),
+        };
+        write_pretty(
+            &report_path,
+            &serde_json::to_value(&report).map_err(|e| e.to_string())?,
+        )?;
+        write_pretty(&replay_path, &replay_doc)?;
+
+        manifest_entries.push(serde_json::json!({
+            "action_index": action_index,
+            "resumed": false,
+            "truncated": truncated,
+            "report_sha256": sha256_of(&report_path),
+            "replay_sha256": sha256_of(&replay_path),
+        }));
+    }
+
+    // 5. State manifest (the provenance sidecar).
+    let manifest = serde_json::json!({
+        "format": "effective-splendor-m41a-branch-state-manifest",
+        "version": 1,
+        "source_replay_sha256": source_sha,
+        "seed": source.seed,
+        "branch_ply": parsed.branch_ply,
+        "acting_seat": acting_seat,
+        "state_hash": state_hash.as_str(),
+        "observation_hash": obs_hash.as_str(),
+        "legal_set_size": legal.len(),
+        "ply_cap": parsed.ply_cap,
+        "actions": manifest_entries,
+    });
+    let manifest_path = out_dir.join("state-manifest.json");
+    if manifest_path.exists() {
+        fs::remove_file(&manifest_path).map_err(|e| format!("replace manifest: {e}"))?;
+    }
+    write_pretty(&manifest_path, &manifest)?;
+    println!(
+        "{}",
+        serde_json::to_string(&serde_json::json!({
+            "status": "run-branches-complete",
+            "actions": legal.len(),
+            "out_dir": out_dir.display().to_string(),
+        }))
+        .map_err(|e| e.to_string())?
+    );
+    Ok(())
+}
+
+fn write_pretty(path: &Path, value: &serde_json::Value) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+    let temp = path.with_extension("tmp-write");
+    fs::write(&temp, text.as_bytes()).map_err(|e| format!("write {}: {e}", path.display()))?;
+    fs::rename(&temp, path)
+        .or_else(|_| fs::copy(&temp, path).and_then(|_| fs::remove_file(&temp)))
+        .map_err(|e| format!("publish {}: {e}", path.display()))?;
+    Ok(())
 }
