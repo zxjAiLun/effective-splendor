@@ -100,15 +100,15 @@ Before Arena execution, all 5 semantic properties must pass:
 
 ## Deliverables
 
-1. P0 test suite passing (`crates/splendor-cli/tests/m42s_p0_semantic.rs`, 5/5 passed).
-2. 1,152 completed Arena matches with 0 aborts / 0 faults.
+1. P0 test suite passing (`crates/splendor-cli/tests/m42s_p0_semantic.rs`, 5/5 passed; `imperfect_search_benchmark.rs`, 2/2 passed including M07 12-position reproducibility).
+2. 1,152 completed Arena matches with 0 aborts / 0 faults, exhaustively audited in `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
 3. Strength–compute frontier plot & data table.
 4. D2 crossover evaluation.
-5. Common-state action agreement audit.
+5. Strict common-state action agreement audit with source action reproduction proof.
 
 ## Validation and evidence
 
-Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairings, 0 aborts, 0 candidate faults.
+Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairings, 0 aborts, 0 candidate faults. Exhaustive audit recorded in `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
 - Rust executable SHA-256: `303cb7f77354cc93c83e3f1c53fc50ac158973f4297a69f9140f8ebf0b3cfe0c`
 - D2 checkpoint SHA-256: `113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17`
 - Catalog SHA-256: `4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4`
@@ -116,66 +116,70 @@ Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairin
 
 ### 1. Family A: Search-Gain Comparisons (vs `n1` static-successor baseline)
 
-| Primary Agent | Secondary Agent | Matches | Blocks | W / T / L | Score (bps) | 95% Bootstrap CI (bps) | Seat 0 / 1 (bps) | Mean Plies | Mean Match (s) |
-|---|---|---:|---:|---|---:|---|---|---:|---:|
-| `det-s4-d1-n50` | `det-s4-d1-n1` | 128 | 64 | 68 / 0 / 60 | **5,312.5** | [4,453.1, 6,171.9] | 5156.2 / 5468.8 | 62.3 | 0.91 |
-| `det-s4-d1-n200` | `det-s4-d1-n1` | 128 | 64 | 62 / 1 / 65 | **4,882.8** | [3,984.4, 5,781.2] | 4765.6 / 5000.0 | 62.1 | 1.11 |
-| `det-s4-d1-n500` | `det-s4-d1-n1` | 128 | 64 | 72 / 0 / 56 | **5,625.0** | [4,765.6, 6,484.4] | 5625.0 / 5625.0 | 62.0 | 1.22 |
-| `det-s4-d1-n2000` (M07) | `det-s4-d1-n1` | 128 | 64 | 73 / 0 / 55 | **5,703.1** | [4,843.8, 6,562.5] | 6093.8 / 5312.5 | 61.9 | 1.23 |
+| Primary Agent | Secondary Agent | Matches | Blocks | W / T / L | Score (bps) | 95% Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies | Mean Match (s) |
+|---|---|---:|---:|---|---:|---|---|---|---:|---:|
+| `det-s4-d1-n50` | `det-s4-d1-n1` | 128 | 64 | 68 / 0 / 60 | 5,312.5 | [4,453.1, 6,171.9] | **UNRESOLVED** (CI crosses 5000) | 5156.2 / 5468.8 | 62.3 | 0.91 |
+| `det-s4-d1-n200` | `det-s4-d1-n1` | 128 | 64 | 62 / 1 / 65 | 4,882.8 | [3,984.4, 5,781.2] | **UNRESOLVED** (CI crosses 5000) | 4765.6 / 5000.0 | 62.1 | 1.11 |
+| `det-s4-d1-n500` | `det-s4-d1-n1` | 128 | 64 | 72 / 0 / 56 | 5,625.0 | [4,765.6, 6,484.4] | **UNRESOLVED** (CI crosses 5000) | 5625.0 / 5625.0 | 62.0 | 1.22 |
+| `det-s4-d1-n2000` (M07) | `det-s4-d1-n1` | 128 | 64 | 73 / 0 / 55 | 5,703.1 | [4,843.8, 6,562.5] | **UNRESOLVED** (CI crosses 5000) | 6093.8 / 5312.5 | 61.9 | 1.23 |
 
 ### 2. Family B: Direct-Neural Crossover Comparisons (vs `d2-direct`)
 
-| Primary Agent | Secondary Agent | Matches | Blocks | W / T / L | Score (bps) | 95% Bootstrap CI (bps) | Seat 0 / 1 (bps) | Mean Plies | Mean Match (s) |
-|---|---|---:|---:|---|---:|---|---|---:|---:|
-| `det-s4-d1-n1` | `d2-direct` | 128 | 64 | 105 / 0 / 23 | **8,203.1** | [7,500.0, 8,906.2] | 8750.0 / 7656.2 | 60.4 | 5.66 |
-| `det-s4-d1-n50` | `d2-direct` | 128 | 64 | 90 / 1 / 37 | **7,070.3** | [6,171.9, 7,929.7] | 7031.2 / 7109.4 | 62.0 | 5.82 |
-| `det-s4-d1-n200` | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | 7812.5 / 7265.6 | 61.5 | 6.10 |
-| `det-s4-d1-n500` | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | 7812.5 / 7265.6 | 61.6 | 5.57 |
-| `det-s4-d1-n2000` (M07) | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | 7812.5 / 7265.6 | 61.6 | 5.53 |
+| Primary Agent | Secondary Agent | Matches | Blocks | W / T / L | Score (bps) | 95% Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies | Mean Match (s) |
+|---|---|---:|---:|---|---:|---|---|---|---:|---:|
+| `det-s4-d1-n1` | `d2-direct` | 128 | 64 | 105 / 0 / 23 | **8,203.1** | [7,500.0, 8,906.2] | **STRONGER** (CI > 5000) | 8750.0 / 7656.2 | 60.4 | 5.66 |
+| `det-s4-d1-n50` | `d2-direct` | 128 | 64 | 90 / 1 / 37 | **7,070.3** | [6,171.9, 7,929.7] | **STRONGER** (CI > 5000) | 7031.2 / 7109.4 | 62.0 | 5.82 |
+| `det-s4-d1-n200` | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | **STRONGER** (CI > 5000) | 7812.5 / 7265.6 | 61.5 | 6.10 |
+| `det-s4-d1-n500` | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | **STRONGER** (CI > 5000) | 7812.5 / 7265.6 | 61.6 | 5.57 |
+| `det-s4-d1-n2000` (M07) | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | **STRONGER** (CI > 5000) | 7812.5 / 7265.6 | 61.6 | 5.53 |
 
-### 3. Post-Hoc Common-State Action Audit (95 unique decision contexts)
+### 3. Strict Common-State Action Audit (100 unique contexts, identity-bound)
 
-- **Identical Action Rate Across All 5 Budgets**: **71.58%** (in 68/95 contexts, all budgets from $n=1$ to $n=2000$ pick the exact same action).
+- **Audit Sample Identity Digest**: `37c3548e4d24fb421e7f799519ce294f143253045341ae05fde854ac4d38b917` (100 contexts).
+- **Source Action Reproduction**: **50 / 50 (100.0% PASS)** on all matching search agent contexts.
+- **Identical Action Rate Across All 5 Budgets**: **73.0%** (73 / 100 contexts).
 - **Pairwise Disagreement Rates**:
-  - `n1 vs n50`: **27.37%** (26 / 95 contexts)
-  - `n50 vs n200`: **1.05%** (1 / 95 contexts)
-  - `n200 vs n500`: **1.05%** (1 / 95 contexts)
-  - `n500 vs n2000`: **0.00%** (0 / 95 contexts — bit-exact identical action on 100% of contexts!)
-  - `n1 vs n2000`: **27.37%** (26 / 95 contexts)
+  - `n1 vs n50`: **26.0%** (26 / 100 contexts)
+  - `n50 vs n200`: **1.0%** (1 / 100 contexts)
+  - `n200 vs n500`: **1.0%** (1 / 100 contexts)
+  - `n500 vs n2000`: **0.0%** (0 / 100 contexts — no disagreement observed in audited sample)
+  - `n1 vs n2000`: **26.0%** (26 / 100 contexts)
 
-### 4. Compute and Latency Frontier
+### 4. Compute and Offline Analysis Wall Time Frontier
 
-| Budget | Latency p50 (ms) | Latency Mean (ms) | Nodes Visited Mean | Nodes Visited Max | Continuation Searches Mean | Budget Consumption Ratio |
-|---|---:|---:|---:|---:|---:|---:|
-| `n1` | 61.6 | 62.2 | 105.5 | 792 | 105.5 | 1.0000 |
-| `n50` | 76.3 | 76.0 | 2,325.4 | 9,783 | 105.5 | 0.4556 |
-| `n200` | 76.1 | 76.8 | 2,447.8 | 9,783 | 105.5 | 0.1211 |
-| `n500` | 77.5 | 76.9 | 2,448.9 | 9,783 | 105.5 | 0.0485 |
-| `n2000` (M07) | 73.1 | 76.2 | 2,448.9 | 9,783 | 105.5 | 0.0121 |
+| Budget | Offline Analysis Wall Time p50 (ms) | Mean (ms) | Nodes Visited Mean | Nodes Visited Max | Continuation Searches Mean |
+|---|---:|---:|---:|---:|---:|
+| `n1` | 71.7 | 72.6 | 106.2 | 792 | 106.2 |
+| `n50` | 86.2 | 85.6 | 2,388.2 | 9,783 | 106.2 |
+| `n200` | 85.6 | 87.9 | 2,504.4 | 9,783 | 106.2 |
+| `n500` | 83.7 | 86.6 | 2,505.4 | 9,783 | 106.2 |
+| `n2000` (M07) | 83.8 | 84.8 | 2,505.4 | 9,783 | 106.2 |
+
+*Note: Offline analysis wall time includes process invocation, CLI argument parsing, replay reading, and artifact creation; persistent live-agent per-decision latency was not directly benchmarked in this round.*
 
 ## Result and decision
 
 ### Answer to Q1 (Continuation-Search Value)
-1. **Continuation planning adds a modest, bounded improvement over static-successor evaluation**:
-   - `n2000` scores 5,703.1 bps vs `n1` (73 wins vs 55 losses, a net margin of +703 bps / ~7.0 pp).
-   - Across all 4 comparisons against `n1`, the 95% bootstrap confidence intervals overlap the 5,000 bps line, reflecting that static-successor evaluation (`n1`) already captures the vast majority of playing strength.
-2. **Compute saturation occurs by $n=500$**:
-   - `n500` and `n2000` achieve identical actions on **100.0% of sampled decision contexts**, identical mean nodes visited (2,448.9), and identical win/loss records vs D2 (96/1/31).
-   - At $n=2000$, M07 utilizes only **1.21%** of its allocated per-call node cap. The depth-1 tree is almost universally resolved well within 200–500 nodes per branch.
+1. **Statistically Unresolved Difference Over `n1`**:
+   - For all four continuation budgets (`n50`, `n200`, `n500`, `n2000`) vs `n1`, the 95% bootstrap confidence intervals overlap the 5,000 bps equality line.
+   - Point estimates show `n2000` achieving 5,703.1 bps (+703.1 bps point estimate over `n1`), but this difference is **statistically unresolved** under the pre-registered decision rule. There is currently no statistical evidence that completed depth-1 continuation search produces a statistically significant playing strength advantage over static-successor evaluation.
+2. **Behavioral Saturation in Audited Sample**:
+   - In the audited 100-context sample, `n500` and `n2000` produced **zero action disagreements** (0 / 100) and identical mean nodes visited (2,505.4), strongly suggesting that for this depth-1 search family, behavioral decisions saturate by approximately $n=500$.
+   - In matches vs D2, `n200`, `n500`, and `n2000` exhibit an aggregate outcome plateau at 7,539.1 bps (96/1/31).
 
 ### Answer to Q2 (D2 Crossover Point)
-1. **$n^* \le 1$ — Immediate Crossover**:
-   - The direct neural policy `d2-direct` is overwhelmingly defeated even by `n1` (**8,203.1 bps**, 105 wins to 23 losses, 95% CI: [7,500.0, 8,906.2]).
-   - No continuation planning is needed to beat the direct policy: physically simulating the candidate root action and scoring the resulting child with `StaticEvaluatorV1` is already sufficient to achieve an **82.0% win rate** over D2.
-2. **Complete Plateau vs D2**:
-   - From $n=200$ upwards, the score against D2 remains completely flat at **7,539.1 bps** (96 wins, 1 tie, 31 losses).
+1. **$n^* \le 1$ — Immediate Statistically Significant Superiority**:
+   - In the tested grid, the lowest legal budget `n1` is already statistically significantly stronger than `d2-direct` (**8,203.1 bps**, 95% CI: [7,500.0, 8,906.2], 105 wins to 23 losses).
+   - The substantial strength gap between M07 and direct neural policies does not require completed depth-1 continuation search to emerge.
+2. **Mechanistic Interpretation**:
+   - The result strongly points toward successor-state evaluation / exact transition modeling as a primary difference worth investigating; however, M42S does not isolate whether this advantage stems uniquely from forward simulation, full legal-action enumeration, multiple determinizations, or the static evaluator's feature weights.
 
 ## Known limitations
 
-1. M42S characterizes depth-1 continuation search (`max_depth_turns = 1`). Deeper lookahead (depth 2+) with smaller beam widths or learned heuristics was not evaluated in this round.
+1. M42S characterizes depth-1 continuation search (`max_depth_turns = 1`). Deeper lookahead (depth 2+) with smaller beam widths was not evaluated.
 2. Leaf evaluations in search arms strictly used `StaticEvaluatorV1`; the interaction between search and a learned neural value function remains unmeasured.
 
 ## Next authorized gate
 
-M42S execution is complete. All 1,152 matches and common-state audit data are recorded in `local-artifacts/m42s-arena/m42s-final-summary.json`.
-Awaiting cloud review on M42S final results.
+M42S execution and exhaustive audit are complete. Tracked result artifact stored at `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
+Awaiting final cloud review for M42S closure.

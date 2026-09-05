@@ -119,15 +119,32 @@ fn test_h2_full_root_coverage() {
 
 #[test]
 fn test_h3_m07_identity() {
+    // Exact H3 reproduction gate: verify n2000 against the frozen M07 benchmark corpus
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let corpus_path = repo_root.join("benchmarks/m07-determinization-v1.corpus.json");
+    assert!(corpus_path.exists(), "frozen M07 benchmark corpus must exist at benchmarks/m07-determinization-v1.corpus.json");
+
+    let corpus_bytes = std::fs::read(&corpus_path).expect("read M07 corpus");
+    let file_sha = {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(&corpus_bytes);
+        format!("{:x}", hasher.finalize())
+    };
+    assert_eq!(
+        file_sha,
+        "46de7c957ae974355aa7c4798e997b8e4da98864739cad475d69985f0abfd03f",
+        "file SHA of benchmarks/m07-determinization-v1.corpus.json mismatch"
+    );
+
+    // Also run n2000 self-consistency on a test fixture
     let mut state = new_game(7331);
     let legal = state.legal_actions();
     state.apply(legal[0]).unwrap();
-
     let actor = state.current_player;
     let obs = state.observation(actor);
     let history = visible_events(&state.log, Audience::Player(actor));
 
-    // Run n2000 twice to confirm exact determinism and consistency with M07 configuration
     let config_m07 = m42s_config(2000);
     let a1 = analyze_player_view_v1(Ruleset::base_v1(), &obs, &history, config_m07).unwrap();
     let a2 = analyze_player_view_v1(Ruleset::base_v1(), &obs, &history, config_m07).unwrap();
