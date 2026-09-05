@@ -3,17 +3,36 @@
 ```text
 Milestone:      M42S
 Title:          Search Gap Diagnostic (Strength–Compute Frontier Probe)
-Status:         COMPLETED / CLOSURE_PENDING_FINAL_REVIEW
+Status:         COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review APPROVED 2026-09-05, basis 209ea63)
+Review:         APPROVED / CLOSED (P0=0, P1=0, P2=2 non-blocking)
+Design commit:  67ee4cd
+Execution:      4e917cc (1,152 / 1,152 matches, 0 aborts, 0 faults)
+Audit R1:       d408dda (superseded)
+Audit R2:       209ea63 (PASS, basis for permanent closure)
 Baseline:       2fc2ba2 (M42A closure + M42S draft)
-Design:         REVISION_1 / FROZEN
-Implementation: COMPLETE
-Execution:      COMPLETE (1,152 / 1,152 matches, 0 aborts, 0 faults)
-Audit:          REPAIR_2_VERIFIED (authoritative hashes, lineup checks, M07 12-pos benchmark)
 Prior rounds:   M27A (Fixed-Model Search-Budget Scaling, M27A_INCONCLUSIVE);
                 M42A (Visible Action–Entity Relation Residual Probe, CLOSED_NEGATIVE)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (diagnostic / characterization round)
 Training:       NONE
+
+Licensed conclusion (strict):
+  1. Continuation-search gain (Family A): For all four budgets
+     (n50, n200, n500, n2000) vs n1, the 95% bootstrap confidence intervals
+     overlap 5,000 bps equality. M42S establishes NO statistically resolved
+     evidence that completed depth-1 continuation search improves playing
+     strength over the static-successor baseline n1 (M07 n2000 point estimate
+     +703.1 bps is statistically unresolved).
+  2. Direct-neural crossover (Family B): The static-successor search-family
+     baseline n1 is statistically significantly stronger than d2-direct
+     (8,203.1 bps, 95% CI: [7500.0, 8906.2], 105W / 0T / 23L). The massive
+     strength gap between M07 and direct neural policies does NOT require
+     completed depth-1 continuation search to emerge.
+  3. Behavioral saturation: In the audited 100-context sample, n500 and n2000
+     exhibit zero action disagreements and identical mean nodes visited, with
+     n2000 utilizing only 1.21% of its per-call node cap. Outcome plateaus vs
+     D2 occur from n200 upwards (96W / 1T / 31L).
 ```
 
 ## Problem and motivation
@@ -152,11 +171,11 @@ Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairin
 
 | Budget | Offline Analysis Wall Time p50 (ms) | Mean (ms) | Nodes Visited Mean | Nodes Visited Max | Continuation Searches Mean |
 |---|---:|---:|---:|---:|---:|
-| `n1` | 71.7 | 72.6 | 106.2 | 792 | 106.2 |
-| `n50` | 86.2 | 85.6 | 2,388.2 | 9,783 | 106.2 |
-| `n200` | 85.6 | 87.9 | 2,504.4 | 9,783 | 106.2 |
-| `n500` | 83.7 | 86.6 | 2,505.4 | 9,783 | 106.2 |
-| `n2000` (M07) | 83.8 | 84.8 | 2,505.4 | 9,783 | 106.2 |
+| `n1` | 62.0 | 70.7 | 105.0 | 792 | 105.0 |
+| `n50` | 93.0 | 98.5 | 2,372.3 | 9,783 | 105.0 |
+| `n200` | 98.0 | 100.8 | 2,549.7 | 9,783 | 105.0 |
+| `n500` | 99.1 | 104.5 | 2,550.8 | 9,783 | 105.0 |
+| `n2000` (M07) | 101.8 | 102.4 | 2,550.8 | 9,783 | 105.0 |
 
 *Note: Offline analysis wall time includes process invocation, CLI argument parsing, replay reading, and artifact creation; persistent live-agent per-decision latency was not directly benchmarked in this round.*
 
@@ -184,5 +203,7 @@ Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairin
 
 ## Next authorized gate
 
-M42S execution and exhaustive audit are complete. Tracked result artifact stored at `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
-Awaiting final cloud review for M42S closure.
+M42S is permanently closed (approved basis `209ea63`).
+Next authorized research direction:
+- **Successor Decomposition Diagnostic**: Disentangling the exact engine successor transition access from StaticEvaluatorV1 vs frozen D2 value head (comparing D2-direct, current-state StaticEvaluator, exact successor + frozen D2 value, and exact successor + StaticEvaluator n1).
+- Requires an independent design proposal and review before implementation.
