@@ -3,16 +3,33 @@
 ```text
 Milestone:      M42A
 Title:          Visible Action–Entity Relation Residual Probe
-Status:         PROPOSED / REVISION_1 / PENDING_FINAL_REVIEW
+Status:         COMPLETED_NEGATIVE / CLOSED —
+                M42A_RELATION_REPRESENTATION_NOT_VALIDATED
+                (final review APPROVED 2026-09-05, basis f5d241c)
+Review:         APPROVED / CLOSED_NEGATIVE (P0=0, P1=0, P2=2 non-blocking)
+Run 1:          VOID (preserved as *-VOID1-*, contract drift)
+Run 2:          VALID
 Baseline:       605bb83 (M41A closure)
 Prior rounds:   M41A (COMPLETED_NEGATIVE / CLOSED — M41A_COUNTERFACTUAL_ACTION_VALUE_NOT_VALIDATED)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (measurement / representation probe)
-Arena:          NOT AUTHORIZED
-Power-cal:      SEALED / NOT AUTHORIZED
-Formal reserve: SEALED / NOT AUTHORIZED (9_000_304..9_000_815 untouched)
-TD / fitted-Q / PPO / search: OUT OF SCOPE
-M42S:           NOT YET AUTHORIZED
+Arena:          NOT RUN
+Power-cal:      SEALED
+Formal reserve: UNTOUCHED (9_000_304..9_000_815)
+TD / fitted-Q / PPO: NOT AUTHORIZED
+M42S:           DESIGN AUTHORIZED / EXECUTION NOT YET AUTHORIZED
+
+Licensed conclusion (strict):
+  Under the frozen M41A-F base with a zero-init residual head adding
+  explicit visible action–entity relations, the relation pathway
+  experienced parameter divergence from initialization (||Δθ|| ≈ 0.30,
+  relation encoder moving 3.2x vs control), but achieved only
+  negligible functional influence on final scoring (~1e-5 output delta
+  upon relation zeroing). The model failed both action-identity
+  cyclic-shift and usefulness gates on both arms (Case A). This probe
+  closes only this specific residual repair formulation; it does NOT
+  disprove end-to-end relational models, successor representations, or
+  planning.
 ```
 
 ## Problem and evidence
@@ -171,21 +188,26 @@ For player entities and empty padding slots: all 28 dimensions are $0.0$.
 ### Scientific Diagnosis
 1. **The dataset genuinely varies**: 99.31% of states and 99.01% of legal action pairs exhibit distinctly different relation tensors, with substantial mean L1 distance (10.36). There is no dataset redundancy or lack of input signal.
 2. **Gradients flowed and weights updated**: In both arms, the residual parameters moved significantly from initialization ($\|\theta_{\text{final}} - \theta_{\text{init}}\|_2 \approx 0.30$). Arm R's relation encoder and gate moved 3.2x and 3.8x further than Arm X, and 13 of 14 tensors diverged between X and R.
-3. **The residual signal was suppressed**: Despite weight updates, the residual score magnitude remained minuscule (mean $\|q_{\text{res}}\| \approx 0.00077$), and the sensitivity of Arm R's output to zeroing the relation tensor was on the order of $10^{-5}$ ($0.000009$). The converged base Q-head $f_B$ completely dominated predictions.
+3. **Negligible functional influence**: Despite weight updates, the residual score magnitude remained minuscule (mean $\|q_{\text{res}}\| \approx 0.00077$), and the sensitivity of Arm R's output to zeroing the relation tensor was on the order of $10^{-5}$ ($0.000009$). The base Q-head $f_B$ dominated predictions. Note: attributing this strictly to "pathway dampening by zero-init" remains an unproven mechanistic hypothesis; the observed fact is that under this specific setup (frozen B + 16 epochs lr=1e-4 + zero-init residual), the relation pathway did not acquire functional leverage.
 4. **Integrity gate result**: Cyclic shift of actions degrades ranking by only 5.52 pp (< 10 pp) and regret by only +0.0139 (< 0.05). Both Arm X and Arm R FAIL the action-identity integrity gate.
 
 ### Ruling
 Per the pre-registered decision table:
 - Case A applies (`X FAIL identity`, `R FAIL identity`).
-- Proposed verdict: `M42A_RELATION_REPRESENTATION_NOT_VALIDATED / CLOSED_NEGATIVE`.
-- Status: **`PENDING_FINAL_REVIEW`** (awaiting reviewer confirmation).
+- Official verdict: **`M42A_RELATION_REPRESENTATION_NOT_VALIDATED / CLOSED_NEGATIVE`**.
+- Status: **`COMPLETED_NEGATIVE / CLOSED`** (formal review approved, basis `f5d241c`).
+
+### Non-blocking Review Notes Carried Forward
+- **P2-A (Cache provenance scope)**: Derived cache is authoritative-bound upon fresh build from corpus `state-probe.json`/`state-manifest.json` and sealed by `canonical_manifest_sha256`; subsequent cache loads are integrity-checked against this derived manifest.
+- **P2-B (Relation test coverage)**: The current test suite validates exact numeric oracle, deficit tradeoffs, reserve_deck, pass, and boundary conditions (5 tests). Historical microfixtures (buy_reserved, reserve_market, choose_noble) should be re-incorporated whenever the relation encoder is reused.
 
 ## Known limitations
 
-1. Adding a zero-initialized residual head on top of a converged base Q-head under a legal-set centered Huber loss allowed the network to satisfy gradients with minimal output perturbations, effectively suppressing the newly added relation pathway.
-2. The probe evaluated a residual addition; it did not re-train an end-to-end model from scratch where relation features could participate in primary state-action representation learning.
+1. Adding a zero-initialized residual head on top of a converged base Q-head under a legal-set centered Huber loss resulted in negligible functional output perturbation; whether an end-to-end relational model or non-zero initialization would behave differently remains unmeasured.
+2. The probe evaluated immediate 1-ply player-view relations; long-horizon continuation values remain dominated by base policy dynamics.
 
 ## Next authorized gate
 
-Awaiting final review on M42A Repair 1 evidence.
-`M42S` remains NOT YET AUTHORIZED until M42A formal review approval.
+M42A is permanently closed. No further training, hyperparameter tuning, or ablations authorized under M42A.
+- **M42S (Search Gap Diagnostic)**: DESIGN AUTHORIZED; EXECUTION NOT YET AUTHORIZED.
+- Any future representation or RL investigation requires a new, independent hypothesis.
