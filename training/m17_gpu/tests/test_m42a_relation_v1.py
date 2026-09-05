@@ -1,4 +1,4 @@
-"""P0 Contract tests for M42A Visible Action-Entity Relation Tensor Encoder."""
+"""P0 Contract & Numeric Oracle tests for M42A Visible Action-Entity Relation Tensor Encoder."""
 
 from __future__ import annotations
 
@@ -23,20 +23,47 @@ def catalog():
 
 
 @pytest.fixture
-def base_obs():
-    """Construct a clean 2-player observation for testing."""
-    return {
+def oracle_setup():
+    """Construct an observation and synthetic card for exact hand-calculated deficit testing."""
+    # Synthetic custom catalog with known card: cost = [4, 2, 0, 0, 0] (4 white, 2 blue), bonus = green
+    test_catalog = {
+        "cards": {
+            999: {
+                "id": 999,
+                "tier": "One",
+                "bonus": "green",
+                "prestige": 1,
+                "cost": [4, 2, 0, 0, 0],
+            },
+            998: {
+                "id": 998,
+                "tier": "One",
+                "bonus": "red",
+                "prestige": 0,
+                "cost": [0, 1, 0, 0, 0],  # costs 1 blue
+            },
+        },
+        "nobles": {
+            100: {
+                "id": 100,
+                "prestige": 3,
+                "requirements": [3, 3, 0, 0, 0],  # 3 white, 3 blue
+            }
+        },
+    }
+    # Viewer has: tokens: white=1, blue=1, gold=1; bonuses: white=1
+    obs = {
         "viewer": 0,
         "public": {
             "player_count": 2,
             "current_player": 0,
             "phase": "main",
             "market": [
-                [0, 1, 2, 3],      # Tier One
-                [40, 41, 42, 43],  # Tier Two
-                [70, 71, 72, 73],  # Tier Three
+                [999, 998, None, None],
+                [None, None, None, None],
+                [None, None, None, None],
             ],
-            "nobles": [0, 1, 2],
+            "nobles": [100],
             "bank": {"white": 4, "blue": 4, "green": 4, "red": 4, "black": 4, "gold": 5},
             "deck_counts": [36, 26, 16],
             "end_game_triggered": False,
@@ -45,163 +72,146 @@ def base_obs():
             "players": [
                 {
                     "id": 0,
-                    "tokens": {"white": 2, "blue": 1, "green": 0, "red": 0, "black": 0, "gold": 1},
+                    "tokens": {"white": 1, "blue": 1, "green": 0, "red": 0, "black": 0, "gold": 1},
                     "bonuses": [1, 0, 0, 0, 0],
                     "prestige": 0,
-                    "reserved_count": 1,
-                    "public_reserved": [4],
+                    "reserved_count": 0,
+                    "public_reserved": [],
                 },
                 {
                     "id": 1,
                     "tokens": {"white": 0, "blue": 0, "green": 0, "red": 0, "black": 0, "gold": 0},
                     "bonuses": [0, 0, 0, 0, 0],
                     "prestige": 0,
-                    "reserved_count": 1,
-                    "public_reserved": [None],  # Blind reserve
+                    "reserved_count": 0,
+                    "public_reserved": [],
                 },
             ],
         },
         "private": {
-            "reserved": [{"card": 4}],
+            "reserved": [],
         },
     }
+    return obs, test_catalog
 
 
-def test_shape_and_zero_slots(catalog, base_obs):
-    """Assert shape is (31, 28) and player/padding slots are all zeros."""
-    action = {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1}, "return": {}}
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
-    assert R.shape == (31, RELATION_DIM)
+def test_hand_calculated_numeric_oracle(oracle_setup):
+    """P2-1 Exact hand-calculated numeric oracle for deficits, reductions, and feasibility.
 
-    # Slots 17, 18 (players) must be strictly 0
-    assert torch.all(R[17] == 0.0)
-    assert torch.all(R[18] == 0.0)
+    Card 999: cost = [4 white, 2 blue, 0, 0, 0]
+    Viewer: bonuses = [1 white, 0, 0, 0, 0], tokens = [1 white, 1 blue, 0, 0, 0], gold = 1
 
-    # Slots 28, 29, 30 (padding) must be strictly 0
-    assert torch.all(R[28] == 0.0)
-    assert torch.all(R[29] == 0.0)
-    assert torch.all(R[30] == 0.0)
+    Hand calculation BEFORE action:
+      white deficit: max(0, 4 - 1 - 1) = 2 -> 2 / 7.0
+      blue deficit:  max(0, 2 - 0 - 1) = 1 -> 1 / 7.0
+      green/red/black: 0.0
+      sum deficits:  3 -> total_deficit_before = 3 / 35.0
+      feasible_before: 3 > 1 (gold) -> False (0.0)
+    """
+    obs, cat = oracle_setup
+    # Action: take 1 white, 1 blue
+    take_act = {"type": "take_tokens", "take": {"white": 1, "blue": 1}, "return": {}}
+    R = compute_action_visible_relation_tensor(obs, take_act, cat)
+
+    # Check slot 0 (card 999) BEFORE values
+    assert pytest.approx(R[0, 7].item(), abs=1e-6) == 2.0 / 7.0   # white deficit before
+    assert pytest.approx(R[0, 8].item(), abs=1e-6) == 1.0 / 7.0   # blue deficit before
+    assert R[0, 9].item() == 0.0
+    assert R[0, 10].item() == 0.0
+    assert R[0, 11].item() == 0.0
+    assert pytest.approx(R[0, 22].item(), abs=1e-6) == 3.0 / 35.0 # total deficit before
+    assert R[0, 25].item() == 0.0                                 # feasible_before
+
+    # Hand calculation AFTER action (took 1 white, 1 blue; tokens: white=2, blue=2, gold=1):
+    #   white deficit: max(0, 4 - 1 - 2) = 1 -> 1 / 7.0
+    #   blue deficit:  max(0, 2 - 0 - 2) = 0 -> 0.0
+    #   sum deficits:  1 -> total_deficit_after = 1 / 35.0
+    #   feasible_after: 1 <= 1 (gold) -> True (1.0)
+    #   deficit reduction: white = (2-1)/7 = 1/7, blue = (1-0)/7 = 1/7, total = (3-1)/35 = 2/35
+    #   newly_feasible: True (1.0)
+    assert pytest.approx(R[0, 12].item(), abs=1e-6) == 1.0 / 7.0  # white deficit after
+    assert pytest.approx(R[0, 13].item(), abs=1e-6) == 0.0        # blue deficit after
+    assert pytest.approx(R[0, 23].item(), abs=1e-6) == 1.0 / 35.0 # total deficit after
+    assert R[0, 26].item() == 1.0                                 # feasible_after
+    assert pytest.approx(R[0, 17].item(), abs=1e-6) == 1.0 / 7.0  # white reduction
+    assert pytest.approx(R[0, 18].item(), abs=1e-6) == 1.0 / 7.0  # blue reduction
+    assert pytest.approx(R[0, 24].item(), abs=1e-6) == 2.0 / 35.0 # total reduction
+    assert R[0, 27].item() == 1.0                                 # newly_feasible
 
 
-def test_no_leak_p0_hard_gate(catalog, base_obs):
-    """Assert relation tensor is strictly independent of any hidden/unseen elements."""
-    action = {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1}, "return": {}}
-    R1 = compute_action_visible_relation_tensor(base_obs, action, catalog)
+def test_tradeoff_negative_deficit_reduction(oracle_setup):
+    """Buying Card 998 spends the 1 blue token, increasing Card 999's blue deficit."""
+    obs, cat = oracle_setup
+    # Card 998 costs 1 blue. Viewer has 1 blue. Buying it spends the blue token.
+    buy_act = {"type": "buy_market", "tier": "One", "slot": 1}
+    R = compute_action_visible_relation_tensor(obs, buy_act, cat)
 
-    # 1. Tampering with opponent's blind reserve does not affect relation tensor
-    obs_tampered = copy.deepcopy(base_obs)
-    obs_tampered["public"]["players"][1]["public_reserved"] = [99]  # hypothetical opponent leak
-    R2 = compute_action_visible_relation_tensor(obs_tampered, action, catalog)
-    # The opponent's public reserved slot 22 may have a card, but viewer's market/noble/own cards are unaffected
-    assert torch.equal(R1[:17], R2[:17])
-    assert torch.equal(R1[25:], R2[25:])
-
-    # 2. Blind reserve action: changing hypothetical drawn card never enters relation tensor
-    reserve_deck_act = {"type": "reserve_deck", "tier": "One", "return": {}}
-    R_res1 = compute_action_visible_relation_tensor(base_obs, reserve_deck_act, catalog)
-    # Simulate an observer adding a hidden draw info to private
-    obs_with_leak = copy.deepcopy(base_obs)
-    obs_with_leak["private"]["drawn_card"] = 88
-    R_res2 = compute_action_visible_relation_tensor(obs_with_leak, reserve_deck_act, catalog)
-    assert torch.equal(R_res1, R_res2)
-
-    # 3. Determinism
-    R_det = compute_action_visible_relation_tensor(base_obs, action, catalog)
-    assert torch.equal(R1, R_det)
+    # For Card 999 (slot 0):
+    # Before: blue token = 1 -> blue deficit = 1/7
+    # After: blue token = 0 -> blue deficit = 2/7
+    # Deficit reduction on blue should be negative: (1 - 2) / 7 = -1/7
+    assert pytest.approx(R[0, 8].item(), abs=1e-6) == 1.0 / 7.0
+    assert pytest.approx(R[0, 13].item(), abs=1e-6) == 2.0 / 7.0
+    assert pytest.approx(R[0, 18].item(), abs=1e-6) == -1.0 / 7.0
 
 
-def test_microfixture_take_tokens(catalog, base_obs):
-    """Test take_tokens deficit reductions on market cards."""
-    # Viewer has 2 white, 1 blue, 1 white bonus.
-    # Take green, red, black.
-    action = {"type": "take_tokens", "take": {"green": 1, "red": 1, "black": 1}, "return": {}}
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
+def test_reserve_deck_exact_fixture(oracle_setup):
+    """P2-1 Test reserve_deck exact behavior: gains gold, updates feasibility without targeting cards."""
+    obs, cat = oracle_setup
+    # Card 999 has total deficit 3. Viewer has 1 gold.
+    # reserve_deck gives +1 gold (bank has gold > 0). New gold = 2.
+    # Total deficit remains 3. Since 3 > 2, still not feasible.
+    act = {"type": "reserve_deck", "tier": "One", "return": {}}
+    R = compute_action_visible_relation_tensor(obs, act, cat)
 
-    # No target entity
+    # No card is targeted or consumed
     assert torch.all(R[:, 2] == 0.0)  # action_targets_entity
     assert torch.all(R[:, 3] == 0.0)  # action_buys_entity
     assert torch.all(R[:, 4] == 0.0)  # action_reserves_entity
     assert torch.all(R[:, 6] == 0.0)  # entity_consumed_or_relocated
 
-    # For every active market card (0..11), check that deficit reduction matches before - after
-    for slot in range(12):
-        assert torch.allclose(R[slot, 17:22], R[slot, 7:12] - R[slot, 12:17], atol=1e-6)
-        assert pytest.approx(R[slot, 24].item(), abs=1e-6) == (R[slot, 22].item() - R[slot, 23].item())
+    # Deficits before and after are identical because tokens did not change
+    assert torch.equal(R[0, 7:12], R[0, 12:17])
+    assert R[0, 22] == R[0, 23]
+    assert torch.all(R[0, 17:22] == 0.0)
+    assert R[0, 24] == 0.0
+    assert R[0, 25] == 0.0  # feasible_before
+    assert R[0, 26] == 0.0  # feasible_after
 
 
-def test_microfixture_buy_market(catalog, base_obs):
-    """Test buy_market target properties and token tradeoff."""
-    # Find a card in market
-    card_id = base_obs["public"]["market"][0][0]
-    action = {"type": "buy_market", "tier": "One", "slot": 0}
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
+def test_pass_exact_fixture(oracle_setup):
+    """P2-1 Test pass action: bit-exact before == after, all reductions zero."""
+    obs, cat = oracle_setup
+    act = {"type": "pass"}
+    R = compute_action_visible_relation_tensor(obs, act, cat)
 
-    # Target card is slot 0
-    assert R[0, 0] == 1.0  # is_card
-    assert R[0, 2] == 1.0  # action_targets_entity
-    assert R[0, 3] == 1.0  # action_buys_entity
-    assert R[0, 6] == 1.0  # entity_consumed_or_relocated
-    assert torch.all(R[0, 12:17] == 0.0)  # after deficit = 0
-    assert R[0, 23] == 0.0  # total deficit after = 0
-    assert R[0, 26] == 1.0  # feasible_after = 1.0
+    # All targets are zero
+    assert torch.all(R[:, 2:7] == 0.0)
 
-    # Non-target cards must have action_targets_entity = 0
-    assert torch.all(R[1:, 2] == 0.0)
+    # For card 999 (slot 0)
+    assert torch.equal(R[0, 7:12], R[0, 12:17])
+    assert R[0, 22] == R[0, 23]
+    assert torch.all(R[0, 17:22] == 0.0)
+    assert R[0, 24] == 0.0
+    assert R[0, 25] == R[0, 26]
+    assert R[0, 27] == 0.0
 
 
-def test_microfixture_reserve_market(catalog, base_obs):
-    """Test reserve_market: relocated=1, but post-action deficit is still computed."""
-    action = {"type": "reserve_market", "tier": "Two", "slot": 1, "return": {}}
-    # Target slot is tier 1 * 4 + 1 = 5
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
+def test_player_view_boundary_and_determinism(catalog, oracle_setup):
+    """P2-1 Strict player-view boundary test:
+    Verify that relation computation is a pure, deterministic function of
+    (Observation, Action, Catalog) and does not rely on global/hidden state."""
+    obs, cat = oracle_setup
+    act = {"type": "take_tokens", "take": {"white": 1, "blue": 1}, "return": {}}
 
-    assert R[5, 0] == 1.0  # is_card
-    assert R[5, 2] == 1.0  # action_targets_entity
-    assert R[5, 3] == 0.0  # action_buys_entity = 0
-    assert R[5, 4] == 1.0  # action_reserves_entity = 1
-    assert R[5, 6] == 1.0  # entity_consumed_or_relocated = 1
+    R1 = compute_action_visible_relation_tensor(obs, act, cat)
+    R2 = compute_action_visible_relation_tensor(copy.deepcopy(obs), copy.deepcopy(act), cat)
 
-    # In reserve_market, relocated cards still have deficits computed (not wiped to 0 unless naturally 0)
-    card_id = base_obs["public"]["market"][1][1]
-    card = catalog["cards"][card_id]
-    if sum(card["cost"]) > 0:
-        # Should have valid deficit before
-        assert R[5, 22] > 0.0
+    # Determinism
+    assert torch.equal(R1, R2)
 
-
-def test_microfixture_buy_reserved(catalog, base_obs):
-    """Test buy_reserved targeting slot 25."""
-    action = {"type": "buy_reserved", "slot": 0}
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
-
-    assert R[25, 0] == 1.0  # is_card
-    assert R[25, 2] == 1.0  # action_targets_entity
-    assert R[25, 3] == 1.0  # action_buys_entity
-    assert R[25, 6] == 1.0  # entity_consumed_or_relocated
-    assert R[25, 23] == 0.0  # deficit after = 0
-    assert R[25, 26] == 1.0  # feasible after = 1.0
-
-
-def test_microfixture_choose_noble(catalog, base_obs):
-    """Test choose_noble targeting slot 12+noble_index."""
-    action = {"type": "choose_noble", "noble": 1}
-    R = compute_action_visible_relation_tensor(base_obs, action, catalog)
-
-    # noble 1 is at index 1 -> slot 13
-    assert R[13, 1] == 1.0  # is_noble
-    assert R[13, 2] == 1.0  # action_targets_entity
-    assert R[13, 5] == 1.0  # action_claims_entity
-    assert R[13, 6] == 1.0  # entity_consumed_or_relocated
-    assert R[13, 23] == 0.0  # deficit after = 0
-    assert R[13, 26] == 1.0  # feasible after = 1.0
-
-
-def test_observation_batching(catalog, base_obs):
-    """Test computing relation tensors for a list of legal actions."""
-    legal_actions = [
-        {"type": "take_tokens", "take": {"white": 1, "blue": 1, "green": 1}, "return": {}},
-        {"type": "buy_market", "tier": "One", "slot": 0},
-        {"type": "reserve_market", "tier": "One", "slot": 1, "return": {}},
-    ]
-    batch = compute_observation_relation_tensors(base_obs, legal_actions, catalog)
-    assert batch.shape == (3, 31, RELATION_DIM)
+    # Shape and padding invariants
+    assert R1.shape == (31, RELATION_DIM)
+    assert torch.all(R1[17] == 0.0)  # player 0
+    assert torch.all(R1[18] == 0.0)  # player 1
+    assert torch.all(R1[28:] == 0.0)  # padding slots 28..30

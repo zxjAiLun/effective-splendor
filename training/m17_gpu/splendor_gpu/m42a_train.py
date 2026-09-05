@@ -1,13 +1,10 @@
-"""M42A trainer: Visible Action-Entity Relation Residual Probe.
+"""M42A trainer: Visible Action-Entity Relation Residual Probe (Repair 1).
 
-Trains paired arms X (generic residual control) and R (explicit relation residual).
-Shared contract:
-  RELATION_INIT_SEED = 42_261_001 (single draw bit-copied to X and R)
-  TRAINER_SEED       = 40_261_002 (M41A 16-epoch deterministic game shuffle)
-  AdamW lr=1e-4, wd=1e-4, betas=(0.9, 0.999), eps=1e-8
-  32 games/batch, 16 epochs, final-epoch checkpoint only
-  Hierarchical loss: state -> game -> batch mean of legal-set centered Huber(delta=1.0)
-  FP32, grad clip 1.0, CUDA deterministic
+Enforces:
+  - AdamW explicit foreach=False (P0-1)
+  - Hard assertions on B file SHA256, B semantic SHA256, M41 run-contract SHA256 (P1-3)
+  - Fully bound per-state derived cache with authoritative hashes and fail-closed validation (P1-2)
+  - Parameter delta and gradient norm activation tracking (P1-1)
 """
 
 from __future__ import annotations
@@ -66,6 +63,11 @@ SPLN = REPO / "target/release/splendor.exe"
 RUN_CONTRACT_PATH = CORPUS_ROOT / "run-contract.json"
 RELATION_V1_PY = REPO / "training/m17_gpu/splendor_gpu/m42a_relation_v1.py"
 
+# Frozen contract constants
+EXPECTED_RUN_CONTRACT_SHA256 = "2a449550c179425a58fb536851c8f78d907fa227b8de58f2704357a0ec716563"
+EXPECTED_B_FILE_SHA256 = "6af9d23597ade13663748d96c82d43f0e3159ae60c5e7cd7d8a2066553b7dd9a"
+EXPECTED_B_SEMANTIC_SHA256 = "c475f6f20761e1580f8ec39517f940ab81fa848689ccf6c3473fa676f42cc05c"
+
 BATCH_GAMES = 32
 EPOCHS = 16
 LR = 1e-4
@@ -79,6 +81,63 @@ def compute_file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def compute_m41a_semantic_hash(ckpt: dict[str, Any]) -> str:
+    hasher = hashlib.sha256()
+    for key in sorted(ckpt["q_head_state"].keys()):
+        t = ckpt["q_head_state"][key].detach().cpu()
+        hasher.update(key.encode())
+        hasher.update(str(tuple(t.shape)).encode())
+        hasher.update(t.numpy().tobytes())
+    for key in sorted(ckpt["encoder_state"].keys()):
+        t = ckpt["encoder_state"][key].detach().cpu()
+        hasher.update(key.encode())
+        hasher.update(str(tuple(t.shape)).encode())
+        hasher.update(t.numpy().tobytes())
+    return hasher.hexdigest()
+
+
+def compute_residual_semantic_hash(residual_state: dict[str, torch.Tensor]) -> str:
+    hasher = hashlib.sha256()
+    for key in sorted(residual_state.keys()):
+        t = residual_state[key].detach().cpu()
+        hasher.update(key.encode())
+        hasher.update(str(tuple(t.shape)).encode())
+        hasher.update(t.numpy().tobytes())
+    return hasher.hexdigest()
+
+
+def assert_base_contracts() -> None:
+    """Fail-closed hard assertions on frozen parent contracts (P1-3)."""
+    # 1. M41 run contract exact SHA
+    if not RUN_CONTRACT_PATH.is_file():
+        raise FileNotFoundError(f"M41 run contract not found at {RUN_CONTRACT_PATH}")
+    actual_contract_sha = compute_file_sha256(RUN_CONTRACT_PATH)
+    if actual_contract_sha != EXPECTED_RUN_CONTRACT_SHA256:
+        raise RuntimeError(
+            f"M41 run-contract SHA mismatch: expected {EXPECTED_RUN_CONTRACT_SHA256}, "
+            f"found {actual_contract_sha}"
+        )
+
+    # 2. Immutable baseline B file SHA
+    if not BASE_CHECKPOINT_PATH.is_file():
+        raise FileNotFoundError(f"Base checkpoint B not found at {BASE_CHECKPOINT_PATH}")
+    actual_b_file_sha = compute_file_sha256(BASE_CHECKPOINT_PATH)
+    if actual_b_file_sha != EXPECTED_B_FILE_SHA256:
+        raise RuntimeError(
+            f"Immutable baseline B file SHA mismatch: expected {EXPECTED_B_FILE_SHA256}, "
+            f"found {actual_b_file_sha}"
+        )
+
+    # 3. Immutable baseline B semantic SHA
+    b_ckpt = torch.load(BASE_CHECKPOINT_PATH, map_location="cpu", weights_only=False)
+    actual_b_semantic_sha = compute_m41a_semantic_hash(b_ckpt)
+    if actual_b_semantic_sha != EXPECTED_B_SEMANTIC_SHA256:
+        raise RuntimeError(
+            f"Immutable baseline B semantic SHA mismatch: expected {EXPECTED_B_SEMANTIC_SHA256}, "
+            f"found {actual_b_semantic_sha}"
+        )
+
+
 def get_provenance_metadata(catalog: dict[str, Any]) -> dict[str, str]:
     return {
         "m41_run_contract_sha256": compute_file_sha256(RUN_CONTRACT_PATH),
@@ -89,43 +148,48 @@ def get_provenance_metadata(catalog: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def precompute_derived_cache(split: str, catalog: dict[str, Any]) -> list[dict[str, Any]]:
-    """Precompute or load derived features for a split, saving to DERIVED_ROOT/split."""
+def rebuild_and_cache_derived_split(split: str, catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build derived cache from scratch with per-state authoritative hashes (P1-2)."""
     assert_split_allowed(split)
     split_dir = DERIVED_ROOT / split
-    cache_meta_path = split_dir / "cache_manifest.json"
+    split_dir.mkdir(parents=True, exist_ok=True)
     provenance = get_provenance_metadata(catalog)
 
-    # Check if cache exists and is valid
-    if cache_meta_path.is_file():
-        try:
-            meta = json.loads(cache_meta_path.read_text(encoding="utf-8"))
-            if all(meta.get(k) == v for k, v in provenance.items()):
-                print(f"Loading cached derived features for {split} from {split_dir}...", flush=True)
-                cached_games = torch.load(split_dir / "encoded_games.pt", map_location="cpu", weights_only=False)
-                return cached_games
-        except Exception as e:
-            print(f"Cache invalid or unreadable ({e}), recomputing...", flush=True)
-
-    print(f"Computing derived features for {split}...", flush=True)
+    print(f"Building derived cache for {split} from authoritative corpus...", flush=True)
     t0 = time.time()
     raw_games = load_split(split)
     encoded_games = []
+    state_manifest_records = []
 
-    for g_idx, game in enumerate(raw_games):
+    for game in raw_games:
+        gdir = Path(game["dir"])
         encoded_states = []
-        for s_idx, state in enumerate(game["states"]):
+        for state in game["states"]:
+            ply = state["ply"]
+            sdir = gdir / f"branch-ply{ply:04d}"
+            state_probe = json.loads((sdir / "state-probe.json").read_text(encoding="utf-8"))
+            state_manifest = json.loads((sdir / "state-manifest.json").read_text(encoding="utf-8"))
+
+            auth_obs_hash = state_probe["observation_hash"]
+            auth_state_hash = state_probe["state_hash"]
+            auth_legal_hash = hashlib.sha256(
+                json.dumps(state_probe["legal_actions"], sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+            ordered_actions_hash = hashlib.sha256(
+                json.dumps(state["actions"], sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+
             obs = state["observation"]
             actions = state["actions"]
             returns = state["returns"]
 
-            # 1. Base observation encoding
+            # 1. Observation encoding
             enc_obs = encode_observation(obs, catalog)
-            entities = enc_obs.entities  # (31, 32)
-            mask = enc_obs.mask          # (31,)
-            global_features = enc_obs.global_features  # (40,)
+            entities = enc_obs.entities
+            mask = enc_obs.mask
+            global_features = enc_obs.global_features
 
-            # 2. Base actions encoding (59-dim: base 36 + delta 23)
+            # 2. Action encoding
             actions_list = []
             for a in actions:
                 base = encode_action(a).tolist()
@@ -133,23 +197,34 @@ def precompute_derived_cache(split: str, catalog: dict[str, Any]) -> list[dict[s
                 actions_list.append(base + delta)
             actions_tensor = torch.tensor(actions_list, dtype=torch.float32)
 
-            # 3. Relation tensor encoding (N, 31, 28)
+            # 3. Relation tensor encoding
             relations_tensor = compute_observation_relation_tensors(obs, actions, catalog)
+            relation_tensor_sha256 = hashlib.sha256(relations_tensor.numpy().tobytes()).hexdigest()
 
-            # 4. Target computation: A_cf = G(s,a) - mean_legal(G)
+            # 4. Target computation
             mean_return = sum(returns) / len(returns)
             targets = [g - mean_return for g in returns]
             targets_tensor = torch.tensor(targets, dtype=torch.float32)
 
-            # Provenance hashes for state
-            obs_hash = obs.get("observation_hash", "")
-            actions_canonical_json = json.dumps(actions, sort_keys=True)
-            legal_hash = hashlib.sha256(actions_canonical_json.encode("utf-8")).hexdigest()
+            state_record = {
+                "game_id": gdir.name,
+                "ply": ply,
+                "seed": state_probe["seed"],
+                "authoritative_observation_hash": auth_obs_hash,
+                "authoritative_state_hash": auth_state_hash,
+                "authoritative_legal_hash": auth_legal_hash,
+                "ordered_actions_hash": ordered_actions_hash,
+                "relation_tensor_sha256": relation_tensor_sha256,
+            }
+            state_manifest_records.append(state_record)
 
             encoded_states.append({
-                "ply": state["ply"],
-                "obs_hash": obs_hash,
-                "legal_hash": legal_hash,
+                "ply": ply,
+                "obs_hash": auth_obs_hash,
+                "state_hash": auth_state_hash,
+                "legal_hash": auth_legal_hash,
+                "ordered_actions_hash": ordered_actions_hash,
+                "relation_tensor_sha256": relation_tensor_sha256,
                 "entities": entities,
                 "mask": mask,
                 "global_features": global_features,
@@ -161,22 +236,102 @@ def precompute_derived_cache(split: str, catalog: dict[str, Any]) -> list[dict[s
                 "observation": obs,
             })
         encoded_games.append({
-            "dir": game["dir"],
+            "dir": str(gdir),
             "states": encoded_states,
         })
 
-    split_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(encoded_games, split_dir / "encoded_games.pt")
-    cache_meta = {
-        **provenance,
+    # Compute canonical manifest hash over all state records
+    canonical_manifest_bytes = json.dumps(
+        state_manifest_records, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    canonical_manifest_sha256 = hashlib.sha256(canonical_manifest_bytes).hexdigest()
+
+    manifest_payload = {
+        "format": "effective-splendor-m42a-derived-split-manifest",
+        "version": 1,
         "split": split,
-        "games_count": len(encoded_games),
-        "states_count": sum(len(g["states"]) for g in encoded_games),
         "computed_at": time.time(),
+        **provenance,
+        "games_count": len(encoded_games),
+        "states_count": len(state_manifest_records),
+        "canonical_manifest_sha256": canonical_manifest_sha256,
+        "states": state_manifest_records,
     }
-    cache_meta_path.write_text(json.dumps(cache_meta, indent=2), encoding="utf-8")
-    print(f"Derived features for {split} saved in {time.time() - t0:.1f}s.", flush=True)
+
+    manifest_path = split_dir / "cache_manifest.json"
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    torch.save(encoded_games, split_dir / "encoded_games.pt")
+    print(
+        f"Derived cache for {split} created in {time.time() - t0:.1f}s "
+        f"({len(state_manifest_records)} states, manifest SHA: {canonical_manifest_sha256[:16]}...).",
+        flush=True,
+    )
     return encoded_games
+
+
+def load_and_validate_derived_cache(split: str, catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    """Load derived cache and validate EVERY state fail-closed against manifest (P1-2)."""
+    assert_split_allowed(split)
+    split_dir = DERIVED_ROOT / split
+    manifest_path = split_dir / "cache_manifest.json"
+    data_path = split_dir / "encoded_games.pt"
+
+    if not manifest_path.is_file() or not data_path.is_file():
+        return rebuild_and_cache_derived_split(split, catalog)
+
+    provenance = get_provenance_metadata(catalog)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    # 1. Global provenance check
+    for k, expected_val in provenance.items():
+        if manifest.get(k) != expected_val:
+            print(f"Provenance drift detected on {k}, rebuilding cache for {split}...", flush=True)
+            return rebuild_and_cache_derived_split(split, catalog)
+
+    # 2. Canonical manifest hash verification
+    canonical_bytes = json.dumps(
+        manifest["states"], sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    recomputed_manifest_sha = hashlib.sha256(canonical_bytes).hexdigest()
+    if recomputed_manifest_sha != manifest.get("canonical_manifest_sha256"):
+        print(f"Manifest canonical hash corruption in {split}, rebuilding...", flush=True)
+        return rebuild_and_cache_derived_split(split, catalog)
+
+    # 3. Load games and validate every single state
+    try:
+        games = torch.load(data_path, map_location="cpu", weights_only=False)
+    except Exception as e:
+        print(f"Error reading cache data ({e}), rebuilding...", flush=True)
+        return rebuild_and_cache_derived_split(split, catalog)
+
+    manifest_states = manifest["states"]
+    state_counter = 0
+
+    for game in games:
+        for state in game["states"]:
+            if state_counter >= len(manifest_states):
+                raise RuntimeError(f"Cached states count exceeds manifest in {split}")
+            m_rec = manifest_states[state_counter]
+            state_counter += 1
+
+            # Fail-closed checks on per-state hashes
+            if state["obs_hash"] != m_rec["authoritative_observation_hash"]:
+                raise RuntimeError(f"State observation hash mismatch in {split} state {state_counter}")
+            if state["legal_hash"] != m_rec["authoritative_legal_hash"]:
+                raise RuntimeError(f"State legal hash mismatch in {split} state {state_counter}")
+            if state["ordered_actions_hash"] != m_rec["ordered_actions_hash"]:
+                raise RuntimeError(f"State ordered actions hash mismatch in {split} state {state_counter}")
+            actual_rel_sha = hashlib.sha256(state["relations"].numpy().tobytes()).hexdigest()
+            if actual_rel_sha != m_rec["relation_tensor_sha256"]:
+                raise RuntimeError(f"State relation tensor SHA mismatch in {split} state {state_counter}")
+
+    if state_counter != len(manifest_states):
+        raise RuntimeError(
+            f"State count mismatch in {split}: data has {state_counter}, manifest has {len(manifest_states)}"
+        )
+
+    print(f"Validated {state_counter} cached states for {split} (all hashes bit-exact).", flush=True)
+    return games
 
 
 def pack_batch(batch_games: list[dict[str, Any]], device: torch.device):
@@ -237,6 +392,31 @@ def hierarchical_loss(
     return torch.stack(game_losses).mean()
 
 
+def compute_module_param_deltas(
+    initial_residual: M42ARelationResidual,
+    final_residual: M42ARelationResidual,
+) -> dict[str, float]:
+    """Compute module-wise L2 parameter deltas ||theta_final - theta_init||_2 (P1-1)."""
+    deltas = {}
+    modules = {
+        "relation_encoder": (initial_residual.relation_encoder, final_residual.relation_encoder),
+        "pair_encoder": (initial_residual.pair_encoder, final_residual.pair_encoder),
+        "entity_gate": (initial_residual.entity_gate, final_residual.entity_gate),
+        "residual_head_0": (initial_residual.residual_head[0], final_residual.residual_head[0]),
+        "residual_head_final": (initial_residual.residual_head[-1], final_residual.residual_head[-1]),
+    }
+    total_sq = 0.0
+    for mod_name, (m_init, m_final) in modules.items():
+        sq = 0.0
+        for p_i, p_f in zip(m_init.parameters(), m_final.parameters()):
+            sq += float(torch.sum((p_f.detach().cpu() - p_i.detach().cpu()) ** 2))
+        deltas[mod_name] = float(sq ** 0.5)
+        total_sq += sq
+
+    deltas["total_residual_l2_delta"] = float(total_sq ** 0.5)
+    return deltas
+
+
 def train_arm(
     arm_name: str,
     base_arm: M41AArm,
@@ -245,15 +425,17 @@ def train_arm(
     device: torch.device,
 ) -> dict[str, Any]:
     print(f"\n=======================================================", flush=True)
-    print(f"Starting Training for Arm {arm_name}...", flush=True)
+    print(f"Starting Training for Arm {arm_name} (Repair 1 Run 2)...", flush=True)
     print(f"=======================================================", flush=True)
 
     # 1. Build arm model
     torch.manual_seed(RELATION_INIT_SEED)
-    residual = M42ARelationResidual()
-    model = M42AModel(copy.deepcopy(base_arm), residual, arm_type=arm_name).to(device)
+    initial_residual = M42ARelationResidual()
+    initial_residual_copy = copy.deepcopy(initial_residual)
 
-    # 2. Setup AdamW optimizer (trainable residual parameters only)
+    model = M42AModel(copy.deepcopy(base_arm), initial_residual, arm_type=arm_name).to(device)
+
+    # 2. Setup AdamW optimizer (P0-1 explicit foreach=False)
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
         trainable_params,
@@ -262,6 +444,7 @@ def train_arm(
         eps=EPS,
         weight_decay=WEIGHT_DECAY,
         amsgrad=False,
+        foreach=False,  # P0-1 contract fix
         fused=False,
     )
 
@@ -269,6 +452,10 @@ def train_arm(
     assert num_games == 192, f"expected 192 train games, found {num_games}"
 
     epoch_losses = []
+    grad_norms = []
+    first_batch_grad_norm: float | None = None
+    final_batch_grad_norm: float | None = None
+
     t_train_start = time.time()
 
     for epoch in range(1, EPOCHS + 1):
@@ -297,7 +484,14 @@ def train_arm(
             )
             loss = hierarchical_loss(q_total, offsets, game_boundaries, targets)
             loss.backward()
-            nn.utils.clip_grad_norm_(trainable_params, GRAD_CLIP)
+
+            # P1-1 Gradient norm tracking
+            total_norm = float(nn.utils.clip_grad_norm_(trainable_params, GRAD_CLIP))
+            if first_batch_grad_norm is None:
+                first_batch_grad_norm = total_norm
+            final_batch_grad_norm = total_norm
+            grad_norms.append(total_norm)
+
             optimizer.step()
             batch_losses.append(loss.item())
 
@@ -305,56 +499,86 @@ def train_arm(
         epoch_losses.append(mean_ep_loss)
         print(
             f"[Arm {arm_name}] Epoch {epoch:02d}/{EPOCHS} - "
-            f"Loss: {mean_ep_loss:.6f} ({time.time() - t_ep_start:.2f}s)",
+            f"Loss: {mean_ep_loss:.6f} - GradNorm: {final_batch_grad_norm:.6f} "
+            f"({time.time() - t_ep_start:.2f}s)",
             flush=True,
         )
 
     total_time = time.time() - t_train_start
     print(f"Arm {arm_name} training complete in {total_time:.1f}s.", flush=True)
 
-    # 3. Save final checkpoint
+    # 3. Activation audit: module-wise deltas from initialization
+    param_deltas = compute_module_param_deltas(initial_residual_copy, model.residual)
+    residual_semantic_sha = compute_residual_semantic_hash(model.residual.state_dict())
+
+    # 4. Save final checkpoint
     RUN_ROOT.mkdir(parents=True, exist_ok=True)
     ckpt_path = RUN_ROOT / f"m42a-{arm_name}-final.pt"
     ckpt_payload = {
         "arm": arm_name,
+        "run_era": "run2_valid",
         "epoch": EPOCHS,
         "residual_state": model.residual.state_dict(),
-        "base_checkpoint_sha256": compute_file_sha256(BASE_CHECKPOINT_PATH),
+        "residual_semantic_sha256": residual_semantic_sha,
+        "base_checkpoint_file_sha256": EXPECTED_B_FILE_SHA256,
+        "base_checkpoint_semantic_sha256": EXPECTED_B_SEMANTIC_SHA256,
+        "run_contract_sha256": EXPECTED_RUN_CONTRACT_SHA256,
         "relation_init_seed": RELATION_INIT_SEED,
         "trainer_seed": TRAINER_SEED,
         "loss_history": epoch_losses,
         "final_loss": epoch_losses[-1],
         "training_time_seconds": total_time,
+        "first_batch_grad_norm": first_batch_grad_norm,
+        "final_batch_grad_norm": final_batch_grad_norm,
+        "mean_grad_norm": sum(grad_norms) / len(grad_norms),
+        "param_deltas_from_init": param_deltas,
     }
     torch.save(ckpt_payload, ckpt_path)
     file_sha = compute_file_sha256(ckpt_path)
-    print(f"Saved Arm {arm_name} checkpoint to {ckpt_path} (SHA-256: {file_sha}).", flush=True)
+    print(
+        f"Saved Arm {arm_name} checkpoint to {ckpt_path}\n"
+        f"  File SHA-256:     {file_sha}\n"
+        f"  Residual Semantic: {residual_semantic_sha}\n"
+        f"  Total L2 Delta:   {param_deltas['total_residual_l2_delta']:.6f}",
+        flush=True,
+    )
 
     return {
         "arm": arm_name,
         "checkpoint_path": str(ckpt_path),
-        "checkpoint_sha256": file_sha,
-        "loss_history": epoch_losses,
+        "file_sha256": file_sha,
+        "residual_semantic_sha256": residual_semantic_sha,
         "final_loss": epoch_losses[-1],
+        "first_batch_grad_norm": first_batch_grad_norm,
+        "final_batch_grad_norm": final_batch_grad_norm,
+        "param_deltas": param_deltas,
         "training_time_seconds": total_time,
     }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="M42A Paired Training Pipeline")
+    parser = argparse.ArgumentParser(description="M42A Paired Training Pipeline (Repair 1)")
     parser.add_argument("--arm", choices=["X", "R", "both"], default="both")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
     device = torch.device(args.device)
 
-    print(f"M42A Training Pipeline initialized on {device}.", flush=True)
+    print(f"M42A Training Pipeline (Repair 1) on {device}.", flush=True)
+
+    # 1. Hard fail-closed assertion on B and run-contract contracts (P1-3)
+    assert_base_contracts()
+    print("Base contracts asserted bit-exact:", flush=True)
+    print(f"  M41 Run-Contract: {EXPECTED_RUN_CONTRACT_SHA256}", flush=True)
+    print(f"  B File SHA:       {EXPECTED_B_FILE_SHA256}", flush=True)
+    print(f"  B Semantic SHA:   {EXPECTED_B_SEMANTIC_SHA256}", flush=True)
+
     catalog = load_catalog(CATALOG_PATH)
 
-    # 1. Precompute or load derived cache for train and validation
-    train_games = precompute_derived_cache("train", catalog)
-    val_games = precompute_derived_cache("validation", catalog)
+    # 2. Derived cache loading with full fail-closed state validation (P1-2)
+    train_games = load_and_validate_derived_cache("train", catalog)
+    val_games = load_and_validate_derived_cache("validation", catalog)
 
-    # 2. Load D2 and Base Arm
+    # 3. Load D2 and Base Arm
     d2_model, _ = load_and_validate_checkpoint(
         "M25-D2-v2", catalog_hash=catalog_semantic_hash(catalog),
         device=torch.device("cpu"),

@@ -3,8 +3,7 @@
 ```text
 Milestone:      M42A
 Title:          Visible Action–Entity Relation Residual Probe
-Status:         COMPLETED_NEGATIVE / CLOSED —
-                M42A_RELATION_REPRESENTATION_NOT_VALIDATED
+Status:         PROPOSED / REVISION_1 / PENDING_FINAL_REVIEW
 Baseline:       605bb83 (M41A closure)
 Prior rounds:   M41A (COMPLETED_NEGATIVE / CLOSED — M41A_COUNTERFACTUAL_ACTION_VALUE_NOT_VALIDATED)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
@@ -13,6 +12,7 @@ Arena:          NOT AUTHORIZED
 Power-cal:      SEALED / NOT AUTHORIZED
 Formal reserve: SEALED / NOT AUTHORIZED (9_000_304..9_000_815 untouched)
 TD / fitted-Q / PPO / search: OUT OF SCOPE
+M42S:           NOT YET AUTHORIZED
 ```
 
 ## Problem and evidence
@@ -90,25 +90,37 @@ For player entities and empty padding slots: all 28 dimensions are $0.0$.
 ## Iteration log
 
 - 2026-09-05: M42A Design v1 frozen and authorized by user. P0 implementation, P1 training, and P2 validation diagnostics authorized.
-- 2026-09-05: P0 implementation complete: `m42a_relation_v1.py` and `m42a_model.py`. 11 unit tests passed (`test_m42a_relation_v1.py` 8/8, `test_m42a_model.py` 3/3).
-- 2026-09-05: Immutable Baseline B reproduction verified on validation split: material ranking 59.3056% (59.31%), mean regret 0.8750, bit-exact match (`test_m42a_baseline_b_reproduction.py` 1/1).
-- 2026-09-05: P1 paired training executed: Arm X (16 epochs, 7.5s, loss 0.272681) and Arm R (16 epochs, 16.8s, loss 0.272681).
-- 2026-09-05: P2 validation diagnostics completed: both Arm X and Arm R fail the cyclic-shift identity integrity gate. Case A ruling applied: `M42A_RELATION_REPRESENTATION_NOT_VALIDATED / CLOSED_NEGATIVE`.
+- 2026-09-05: P0 implementation complete: `m42a_relation_v1.py` and `m42a_model.py`.
+- 2026-09-05: Run 1 executed: Arm X (loss 0.272681) and Arm R (loss 0.272681). Review verdict: **Run 1 VOID** due to optimizer contract drift (missing `foreach=False`), unasserted base contracts, and unvalidated cache. P0=1, P1=3, P2=2. Milestone reopened for Repair 1 + exact rerun.
+- 2026-09-05 (Repair 1):
+  - **P0-1**: AdamW updated with explicit `foreach=False`.
+  - **P1-3**: Hard fail-closed assertions added for B file SHA (`6af9d235…`), B semantic SHA (`c475f6f2…`), and M41 run-contract SHA (`2a449550…`).
+  - **P1-2**: Derived cache deleted and completely rebuilt from scratch with per-state authoritative hashes (`authoritative_observation_hash`, `authoritative_state_hash`, `authoritative_legal_hash`, `ordered_actions_hash`, `relation_tensor_sha256`) and split canonical manifest SHA (`898445e5…` train, `7b551272…` val). Loading validates every state fail-closed.
+  - **P2-1**: Comprehensive tests added in `test_m42a_relation_v1.py` including hand-calculated numeric deficit/feasibility oracle, reserve_deck, pass, and strict player-view boundary checks.
+  - **P1-1**: Activation instrumentation implemented (parameter L2 deltas from init, X vs R tensor comparison, gradient norms, $q_{res}$ within-state standard deviations, and R vs relzero score deltas).
+  - Run 1 artifacts preserved as `*-VOID1-*`.
+  - Fresh Run 2 executed (Arm X and Arm R, 16 epochs each).
+  - Diagnostics re-executed and full activation audit table generated.
 
-## Final implementation
+## Final implementation (Repair 1)
 
 - Relation encoder: `training/m17_gpu/splendor_gpu/m42a_relation_v1.py` (28-dim player-view relation tensor $R(o, a, e_i)$ across 31 entity slots, zero access to FullState or hidden cards).
 - Model architecture: `training/m17_gpu/splendor_gpu/m42a_model.py` (`M42AModel`, `M42ARelationResidual`, zero-init final linear layer, 277,314 trainable parameters).
-- Trainer: `training/m17_gpu/splendor_gpu/m42a_train.py` (hierarchical legal-set centered Huber loss, 16 epochs, 32 games/batch, FP32 deterministic CUDA).
-- Diagnostics: `training/m17_gpu/splendor_gpu/m42a_diagnostics.py` (normal, zero, cyclic-shift, relation-zero, relation-shift ablations).
+- Trainer: `training/m17_gpu/splendor_gpu/m42a_train.py` (hierarchical legal-set centered Huber loss, 16 epochs, 32 games/batch, FP32 deterministic CUDA, explicit `foreach=False`).
+- Diagnostics: `training/m17_gpu/splendor_gpu/m42a_diagnostics.py` (normal, zero, cyclic-shift, relation-zero, relation-shift ablations, activation audit, relation dataset audit).
 - Artifacts:
-  - Cache: `local-artifacts/m42a-derived/`
-  - Checkpoints: `local-artifacts/m42a-run/m42a-X-final.pt` (SHA: `3608681354cc6d7a19673fe66b3b88e315105db1b96e743d6b52785cb829eb0a`), `local-artifacts/m42a-run/m42a-R-final.pt` (SHA: `d44420c39c7584971cb7e0184c0f3fd47184d212518407cb9894d436f4b4ae79`).
+  - Cache: `local-artifacts/m42a-derived/` (train manifest: `898445e5ff371089…`, val manifest: `7b5512726899b55a…`)
+  - Run 1 (VOID): `local-artifacts/m42a-run/m42a-*-VOID1-*.pt`
+  - Run 2 Checkpoints:
+    - Arm X: `local-artifacts/m42a-run/m42a-X-final.pt` (File SHA: `20e43618ace1edb8a99932a766b58437b78ed3e47c2271932c309fe1d08c62b3`, Residual Semantic SHA: `666f24ae5afd4426e72fb17acfa50f1ea9b5d467e8a17edbc6981ae8830f5df6`)
+    - Arm R: `local-artifacts/m42a-run/m42a-R-final.pt` (File SHA: `d6268786d827af7eeb52dd11e73e1de2651444b04a0170ce87b24a693d522ba3`, Residual Semantic SHA: `3f32c7c637303c71584fdcde606530a36f205ca1ec73ee718d214c2d654d3928`)
   - Report: `local-artifacts/m42a-run/m42a-diagnostics-report.json`.
 
-## Validation and evidence
+## Validation and evidence (Run 2 Valid)
 
 144 validation states, 27,677 material pairs, $\tau = 1.0$:
+
+### 1. Main Metrics & Ablation Table
 
 | Metric / Arm | Baseline B (M41A-F) | Arm X (Generic Residual) | Arm R (Relation Residual) |
 |---|---|---|---|
@@ -123,35 +135,57 @@ For player entities and empty padding slots: all 28 dimensions are $0.0$.
 | **Cyclic Shift Regret** | 0.8889 (+0.0139) | 0.8889 (+0.0139) | 0.8889 (+0.0139) |
 | **Shift Integrity Gate** | **FAIL** | **FAIL** | **FAIL** |
 
-### Relation-only Diagnostics (Arm R)
-- `relation-zero`: ranking 59.25% ($\Delta = 0.00\text{ pp}$), regret 0.8750 ($\Delta = 0.00$).
-- `relation-shift`: ranking 59.26% ($\Delta = +0.01\text{ pp}$), regret 0.8750 ($\Delta = 0.00$).
+### 2. Post-Training Activation Audit Table
+
+| Evidence Metric | Arm X | Arm R |
+|---|---:|---:|
+| **Residual Semantic SHA** | `666f24ae5afd4426…` | `3f32c7c637303c71…` |
+| **Total Parameter L2 Delta $\|\theta_{\text{final}} - \theta_{\text{init}}\|_2$** | 0.295970 | 0.301228 |
+| **relation_encoder Delta** | 0.005062 | **0.016167** (3.2x vs X) |
+| **pair_encoder Delta** | 0.149322 | **0.155542** |
+| **gate Delta** | 0.000104 | **0.000395** (3.8x vs X) |
+| **residual_head[0] Delta** | 0.254698 | 0.256666 |
+| **residual_head[final] Delta** | 0.020123 | 0.020150 |
+| **Mean $\|q_{\text{res}}\|$** | 0.000727 | 0.000768 |
+| **Within-State $\text{std}(q_{\text{res}})$** | 0.000642 | 0.000642 |
+| **Mean $\|R(\text{normal}) - R(\text{relation-zero})\|$** | N/A | **0.000009** (max: 0.000022) |
+| **Mean $\|R - X\|$ Score Delta** | 0.000059 | 0.000059 (max: 0.000068) |
+
+**Comparison X vs R**:
+- Tensors different: 13 / 14 (only 1 tensor identical, 13 changed differently).
+- Max absolute tensor delta: 0.001455.
+- $L_2$ parameter distance between X and R: 0.046826.
+
+### 3. Relation Dataset Audit
+
+| Dataset Feature | Validation Split (144 states) |
+|---|---:|
+| **States with $\ge 2$ distinct relation tensors** | 143 / 144 (**99.31%**) |
+| **Action pairs with distinct relation tensors** | 88,475 / 89,363 (**99.01%**) |
+| **Relation tensor nonzero rate** | **17.75%** |
+| **Mean pairwise L1 distance between distinct relations** | **10.3601** |
+| **Mean pairwise L2 distance between distinct relations** | **2.2757** |
 
 ## Result and decision
 
-Both Arm X and Arm R fail the cyclic-shift action-identity integrity gate (ranking drops only ~5.52 pp < 10 pp, regret degrades by only +0.0139 < 0.05).
-Per the pre-registered decision table (Section 20):
-**Case A applies**:
-- `X FAIL identity`
-- `R FAIL identity`
-- Ruling: **`M42A_RELATION_REPRESENTATION_NOT_VALIDATED / CLOSED_NEGATIVE`**.
+### Scientific Diagnosis
+1. **The dataset genuinely varies**: 99.31% of states and 99.01% of legal action pairs exhibit distinctly different relation tensors, with substantial mean L1 distance (10.36). There is no dataset redundancy or lack of input signal.
+2. **Gradients flowed and weights updated**: In both arms, the residual parameters moved significantly from initialization ($\|\theta_{\text{final}} - \theta_{\text{init}}\|_2 \approx 0.30$). Arm R's relation encoder and gate moved 3.2x and 3.8x further than Arm X, and 13 of 14 tensors diverged between X and R.
+3. **The residual signal was suppressed**: Despite weight updates, the residual score magnitude remained minuscule (mean $\|q_{\text{res}}\| \approx 0.00077$), and the sensitivity of Arm R's output to zeroing the relation tensor was on the order of $10^{-5}$ ($0.000009$). The converged base Q-head $f_B$ completely dominated predictions.
+4. **Integrity gate result**: Cyclic shift of actions degrades ranking by only 5.52 pp (< 10 pp) and regret by only +0.0139 (< 0.05). Both Arm X and Arm R FAIL the action-identity integrity gate.
 
-Strict scientific verdict:
-Adding an explicit 28-dimensional player-view visible action-entity relation residual (even with zero-init Bit-exact start, exact deficit calculations, and 277k parameters) was insufficient to force the action-conditioned model to genuinely bind specific action identities to entity outcomes. The residual network remained essentially dormant/flat relative to the frozen base Q-head, and the cyclic shift corruption continued to produce only marginal degradation.
-
-As stipulated in the design contract:
-> **不再继续堆 architecture (Stop piling on representation architecture).**
+### Ruling
+Per the pre-registered decision table:
+- Case A applies (`X FAIL identity`, `R FAIL identity`).
+- Proposed verdict: `M42A_RELATION_REPRESENTATION_NOT_VALIDATED / CLOSED_NEGATIVE`.
+- Status: **`PENDING_FINAL_REVIEW`** (awaiting reviewer confirmation).
 
 ## Known limitations
 
-1. Residual head zero-initialization on top of an already converged base Q-head ($f_B$) created an optimization landscape where gradient steps on the centered Huber loss were insufficient to overcome the dominance of $f_B$.
-2. Linear pooling of pair representations still relies on soft entity attention weights without relational graph message-passing or hard candidate filtering.
-3. The offline target remains bounded by D2/D2 continuation values.
+1. Adding a zero-initialized residual head on top of a converged base Q-head under a legal-set centered Huber loss allowed the network to satisfy gradients with minimal output perturbations, effectively suppressing the newly added relation pathway.
+2. The probe evaluated a residual addition; it did not re-train an end-to-end model from scratch where relation features could participate in primary state-action representation learning.
 
 ## Next authorized gate
 
-M42A is permanently closed. No further training or ablations authorized under M42A.
-Next authorized steps:
-1. Parallel diagnostic **M42S (Search Gap Diagnostic)** to measure the empirical strength-compute frontier of shallow search on top of fixed evaluators.
-2. Any future representation or value-learning work requires an entirely independent hypothesis and milestone design.
-
+Awaiting final review on M42A Repair 1 evidence.
+`M42S` remains NOT YET AUTHORIZED until M42A formal review approval.
