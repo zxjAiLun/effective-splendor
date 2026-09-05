@@ -119,7 +119,10 @@ fn test_h2_full_root_coverage() {
 
 #[test]
 fn test_h3_m07_identity() {
-    // Exact H3 reproduction gate: verify n2000 against the frozen M07 benchmark corpus
+    // H3 lightweight corpus file identity & n2000 determinism guard.
+    // Full 12-position two-pass M07 benchmark reproduction is authoritative in
+    // `imperfect_search_benchmark::m07_determinization_benchmark_is_reproducible`
+    // and verified as a formal acceptance gate in `m42s_final_audit.py`.
     let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let corpus_path = repo_root.join("benchmarks/m07-determinization-v1.corpus.json");
     assert!(corpus_path.exists(), "frozen M07 benchmark corpus must exist at benchmarks/m07-determinization-v1.corpus.json");

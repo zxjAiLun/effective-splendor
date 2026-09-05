@@ -3,11 +3,12 @@
 ```text
 Milestone:      M42S
 Title:          Search Gap Diagnostic (Strength–Compute Frontier Probe)
-Status:         COMPLETED / PENDING_FINAL_REVIEW
+Status:         COMPLETED / CLOSURE_PENDING_FINAL_REVIEW
 Baseline:       2fc2ba2 (M42A closure + M42S draft)
 Design:         REVISION_1 / FROZEN
 Implementation: COMPLETE
 Execution:      COMPLETE (1,152 / 1,152 matches, 0 aborts, 0 faults)
+Audit:          REPAIR_2_VERIFIED (authoritative hashes, lineup checks, M07 12-pos benchmark)
 Prior rounds:   M27A (Fixed-Model Search-Budget Scaling, M27A_INCONCLUSIVE);
                 M42A (Visible Action–Entity Relation Residual Probe, CLOSED_NEGATIVE)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
@@ -100,19 +101,21 @@ Before Arena execution, all 5 semantic properties must pass:
 
 ## Deliverables
 
-1. P0 test suite passing (`crates/splendor-cli/tests/m42s_p0_semantic.rs`, 5/5 passed; `imperfect_search_benchmark.rs`, 2/2 passed including M07 12-position reproducibility).
-2. 1,152 completed Arena matches with 0 aborts / 0 faults, exhaustively audited in `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
+1. P0 test suite passing (`crates/splendor-cli/tests/m42s_p0_semantic.rs`, 5/5 passed; `imperfect_search_benchmark::m07_determinization_benchmark_is_reproducible` 12/12 positions passed, two-pass reproducibility verified).
+2. 1,152 completed Arena matches with 0 aborts / 0 faults, exhaustively audited with true lineup (2,304 checks) and rotation (1,152 checks) verification in `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
 3. Strength–compute frontier plot & data table.
 4. D2 crossover evaluation.
-5. Strict common-state action agreement audit with source action reproduction proof.
+5. Strict common-state action agreement audit with direct authoritative `visible_history_hash` and `information_set_hash` identity binding and source action reproduction proof (55/55 PASS).
 
 ## Validation and evidence
 
-Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairings, 0 aborts, 0 candidate faults. Exhaustive audit recorded in `benchmarks/m42s-search-gap-diagnostic-v1.result.json`.
+Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairings, 0 aborts, 0 candidate faults. Exhaustive audit recorded in `benchmarks/m42s-search-gap-diagnostic-v1.result.json` (v2).
 - Rust executable SHA-256: `303cb7f77354cc93c83e3f1c53fc50ac158973f4297a69f9140f8ebf0b3cfe0c`
 - D2 checkpoint SHA-256: `113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17`
 - Catalog SHA-256: `4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4`
 - Bootstrap seeds: `42_270_001` (10,000 resamples over 64 paired blocks).
+- Authoritative M07 Benchmark: `imperfect_search_benchmark::m07_determinization_benchmark_is_reproducible` passed (12/12 positions, two-pass verified, corpus semantic hash `ac37627eb4c89ce1408a1bd1f33e1aff9e353b0f96fde92166f431db87b2470d`).
+- Match Lineup & Rotation Verification: 2,304 agent argument checks passed (0 mismatches), 1,152 rotation checks passed (0 mismatches), 1,152 replay verifications passed (0 failures).
 
 ### 1. Family A: Search-Gain Comparisons (vs `n1` static-successor baseline)
 
@@ -133,10 +136,10 @@ Formal execution completed on 2026-09-05: 1,152 physical matches across 9 pairin
 | `det-s4-d1-n500` | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | **STRONGER** (CI > 5000) | 7812.5 / 7265.6 | 61.6 | 5.57 |
 | `det-s4-d1-n2000` (M07) | `d2-direct` | 128 | 64 | 96 / 1 / 31 | **7,539.1** | [6,796.9, 8,242.2] | **STRONGER** (CI > 5000) | 7812.5 / 7265.6 | 61.6 | 5.53 |
 
-### 3. Strict Common-State Action Audit (100 unique contexts, identity-bound)
+### 3. Strict Common-State Action Audit (100 unique contexts, authoritative identity)
 
-- **Audit Sample Identity Digest**: `37c3548e4d24fb421e7f799519ce294f143253045341ae05fde854ac4d38b917` (100 contexts).
-- **Source Action Reproduction**: **50 / 50 (100.0% PASS)** on all matching search agent contexts.
+- **Audit Sample Identity Digest**: `0ced456ba024a27b68c146a7899f906dae5ea425f0c9ec9d900e4ffb49f03ff1` (100 contexts, bound by authoritative `observation_hash`, `visible_history_hash`, and `information_set_hash`).
+- **Source Action Reproduction**: **55 / 55 (100.0% PASS)** on all matching search agent contexts.
 - **Identical Action Rate Across All 5 Budgets**: **73.0%** (73 / 100 contexts).
 - **Pairwise Disagreement Rates**:
   - `n1 vs n50`: **26.0%** (26 / 100 contexts)

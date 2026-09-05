@@ -101,12 +101,16 @@ def main() -> None:
                     tmp_path.unlink()
 
             source_meta = analysis_doc["source"]
-            history_hash = hashlib.sha256(
-                f"{source_meta['replay_document_hash']}:{ply}:{recorded_actor}".encode("utf-8")
-            ).hexdigest()
-            info_set_hash = hashlib.sha256(
-                f"{obs_hash}:{history_hash}".encode("utf-8")
-            ).hexdigest()
+            # Authoritative assertion: probe-legal observation_hash must match analysis source
+            if source_meta["observation_hash"] != obs_hash:
+                raise RuntimeError(
+                    f"Observation hash mismatch in {rpl_path} ply {ply}: "
+                    f"probe says {obs_hash}, analysis source says {source_meta['observation_hash']}"
+                )
+
+            # Direct authoritative hashes from Rust belief/search pipeline
+            history_hash = source_meta["visible_history_hash"]
+            info_set_hash = source_meta["information_set_hash"]
 
             identity_key = f"{obs_hash}:{history_hash}:{info_set_hash}"
             if identity_key not in seen_identities:
