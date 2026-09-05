@@ -3,97 +3,105 @@
 ```text
 Milestone:      M42S
 Title:          Search Gap Diagnostic (Strength–Compute Frontier Probe)
-Status:         PROPOSED / DRAFT_PENDING_REVIEW
-Baseline:       f5d241c (M42A closure)
-Authorization:  DESIGN_AUTHORIZED / EXECUTION_NOT_YET_AUTHORIZED
+Status:         DESIGN_FROZEN / IN_PROGRESS — P0+EXECUTION AUTHORIZED
+Baseline:       2fc2ba2 (M42A closure + M42S draft)
+Design:         REVISION_1 / FROZEN
+Implementation: AUTHORIZED
+Execution:      AUTHORIZED (after P0 tests pass)
 Prior rounds:   M27A (Fixed-Model Search-Budget Scaling, M27A_INCONCLUSIVE);
                 M42A (Visible Action–Entity Relation Residual Probe, CLOSED_NEGATIVE)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE (diagnostic / characterization round)
-Arena / Eval:   NOT YET AUTHORIZED
-Model Training: NONE (frozen agents / search configurations only)
+Training:       NONE
 ```
 
 ## Problem and motivation
 
 Throughout the project's neural milestones (M17 through M42A), neural models have predominantly been evaluated as **direct policies** (0-search, greedy $\arg\max$ of single-forward network outputs). In retrospective arenas (M35A, M39A), these direct neural checkpoints consistently lost to the champion search baseline `M07` (scoring ~17% to 32% win rates).
 
-Previous discussions have often characterized M07 through exaggerated estimates (e.g. "8 worlds × 4 plies × 50,000 nodes"). Repository verification confirms that M07's true, authoritative frozen configuration is much more modest:
+Previous discussions have often characterized M07 through exaggerated estimates (e.g. "8 worlds × 4 plies × 50,000 nodes"). Repository verification confirms that M07's true, authoritative frozen configuration is much more focused:
 
 ```text
+sample_seed:         20_260_703
 sample_count:        4
 continuation_search:
   max_depth_turns:   1
-  max_nodes:         2000
+  max_nodes:         2000 (per continuation call)
 evaluator:           StaticEvaluatorV1
 ```
 
-Semantics: M07 forces the candidate root action, samples 4 root determinizations, and runs a 1-turn continuation search with a shared budget of 2,000 nodes, evaluating leaves with the integer `StaticEvaluatorV1`.
+M07 iterates over 4 determinization samples; for each canonical root action, it forces that action, and if non-terminal, calls an independent `search_maxn_v1(child, config)` with a node cap of 2,000. Because `max_depth_turns = 1`, continuation search either completes depth 1 or discards the unfinished iteration and falls back to `StaticEvaluatorV1(child)`.
 
-Before designing joint neural-search architectures (e.g. MCTS / AlphaZero-style priors / learned leaf evaluators), a foundational empirical question must be cleanly quantified:
+M42S addresses two clean, empirical scientific questions:
 
-> **Within the verified M07 compute envelope, how does competitive strength scale as test-time search budget increases from 0 to 2,000 nodes? Exactly how much playing strength does this modest test-time planning purchase, and where does the direct neural policy (D2-v2) sit on that strength–compute frontier?**
-
-## Scope and non-goals
-
-### In scope
-- Precise characterization of the Strength–Compute Frontier using frozen, reproducible search configurations.
-- Node budget sweep: `max_nodes ∈ {0, 50, 200, 500, 2000}` under identical `sample_count = 4, max_depth_turns = 1, StaticEvaluatorV1`.
-- Direct policy anchor: `D2-v2` (0-search direct policy) as an external benchmark anchor.
-- Systematic recording of: win/loss rates, score (bps), p50/p95 decision latency (ms), and search node statistics.
-
-### Out of scope / strictly forbidden
-- Model training, fine-tuning, or parameter updates.
-- Changing `StaticEvaluatorV1` weights or M07 champion configuration.
-- Modifying engine rules, terminal scoring, or player-view observation boundaries.
-- Seeking champion replacement or promotion.
-- Executing Arena matches before formal design review approval.
+1. **Q1 (Continuation-search value)**: Within the fixed M07 family (`sample_seed=20_260_703, sample_count=4, max_depth_turns=1, StaticEvaluatorV1`), how does competitive strength and realized compute scale as the per-continuation node cap increases across `1 → 50 → 200 → 500 → 2000`?
+2. **Q2 (Direct neural anchor)**: At which of these compute regimes does the fixed search family match or exceed the frozen D2-v2 direct policy? (D2 is an external algorithmic anchor, not part of the search compute frontier line).
 
 ## Candidates and experimental lineup
 
-All search agents share the exact M07 determinization pipeline (`DeterminizationAgentPolicyV1`), differing strictly in `max_nodes`:
+All search-family agents share the exact M07 determinization pipeline (`DeterminizationAgentPolicyV1`), differing strictly in `max_nodes`:
 
-| Agent ID | Sample Count | Depth Turns | Max Nodes | Leaf Evaluator | Description |
-|---|---:|---:|---:|---|---|
-| `det-s4-d1-n0` | 4 | 1 | 0 (fallback) | StaticEvaluatorV1 | Root evaluation fallback (pure heuristic, 0 continuation nodes) |
-| `det-s4-d1-n50` | 4 | 1 | 50 | StaticEvaluatorV1 | Very shallow search (budget-constrained) |
-| `det-s4-d1-n200` | 4 | 1 | 200 | StaticEvaluatorV1 | Light search |
-| `det-s4-d1-n500` | 4 | 1 | 500 | StaticEvaluatorV1 | Moderate search |
-| `det-s4-d1-n2000` (M07) | 4 | 1 | 2,000 | StaticEvaluatorV1 | Champion baseline |
-| `d2-direct` | 0 | 0 | 0 | D2-v2 Policy Net | Direct neural policy anchor (greedy argmax) |
+| Agent ID | Sample Seed | Sample Count | Depth Turns | Max Nodes (per call) | Evaluator | Description |
+|---|---:|---:|---:|---:|---|---|
+| `det-s4-d1-n1` | 20_260_703 | 4 | 1 | 1 | StaticEvaluatorV1 | Static-successor baseline (forces root action, budget 1 exhausts, falls back to child static evaluation) |
+| `det-s4-d1-n50` | 20_260_703 | 4 | 1 | 50 | StaticEvaluatorV1 | Very shallow continuation search |
+| `det-s4-d1-n200` | 20_260_703 | 4 | 1 | 200 | StaticEvaluatorV1 | Light continuation search |
+| `det-s4-d1-n500` | 20_260_703 | 4 | 1 | 500 | StaticEvaluatorV1 | Moderate continuation search |
+| `det-s4-d1-n2000` (M07) | 20_260_703 | 4 | 1 | 2,000 | StaticEvaluatorV1 | Champion baseline |
+| `d2-direct` | N/A | N/A | 0 | 0 | D2-v2 Policy Net | Direct neural policy anchor (greedy argmax, 0 search) |
 
-## Experimental matrix & schedule contract
+### Note on `n1`
+`n1` is NOT a current-state 0-search heuristic: it executes every canonical root action, simulates the resulting child state under 4 sampled determinizations, and scores each child with `StaticEvaluatorV1`. It is an exact **forced-root one-step successor evaluator**: $\arg\max_a \mathbb{E}_{\text{det}}[V_{\text{static}}(T(s, a))]$.
 
-1. **Pairing Structure**:
-   - Each search budget candidate (`n0`, `n50`, `n200`, `n500`) vs `det-s4-d1-n2000` (M07 champion): 4 pairings.
-   - Direct neural anchor (`d2-direct`) vs each search candidate (`n0`, `n50`, `n200`, `n500`, `n2000`): 5 pairings.
-   - Total pairings: 9 pairings.
+## Pairing matrix (9 pairings)
 
-2. **Match Schedule**:
-   - 32 paired seed blocks per pairing × 2 seat rotations = 64 matches per pairing.
-   - Total matches: $9 \times 64 = 576$ matches.
-   - Evaluation seeds: isolated namespace `5_300_000..5_300_031` (disjoint from all prior training, M39A, M40A, and M41A seed ranges).
+### Family A: Search-gain comparisons (vs static-successor baseline `n1`)
+1. `det-s4-d1-n50` vs `det-s4-d1-n1`
+2. `det-s4-d1-n200` vs `det-s4-d1-n1`
+3. `det-s4-d1-n500` vs `det-s4-d1-n1`
+4. `det-s4-d1-n2000` vs `det-s4-d1-n1`
 
-3. **Invariants**:
-   - Both seats play deterministic $\arg\max$ decisions (zero temperature).
-   - Complete block requirement: both rotations (r0, r1) must complete with 0 aborts and 0 faults.
-   - Wall-clock isolation: search decisions are bounded by explicit node counts and depth, never wall-clock limits. Wall latency is measured for instrumentation only.
+### Family B: Direct-neural crossover comparisons (vs `d2-direct`)
+5. `det-s4-d1-n1` vs `d2-direct`
+6. `det-s4-d1-n50` vs `d2-direct`
+7. `det-s4-d1-n200` vs `d2-direct`
+8. `det-s4-d1-n500` vs `d2-direct`
+9. `det-s4-d1-n2000` vs `d2-direct`
 
-## Target outputs and deliverables
+## Match schedule & statistical protocol
 
-1. **Strength–Compute Curve**:
-   Plotting Score (bps) against:
-   - Search node budget `max_nodes`.
-   - Observed median decision latency (p50 ms).
-   - Observed mean nodes expanded per decision.
-2. **Search Gap Quantification**:
-   - $\Delta_{\text{search}}(n) = \text{Score}(n) - \text{Score}(n=0)$: pure value of continuation tree search over root static heuristic.
-   - $\Delta_{\text{neural}} = \text{Score}(\text{D2}) - \text{Score}(n=0)$: strength of learned direct policy relative to root static heuristic.
-   - Crossover point $n^*$: at what search node budget does a simple heuristic searcher match or exceed the direct neural network?
+- **Seeds**: 64 paired blocks (`5_300_000 .. 5_300_063`), disjoint from all prior training and evaluation namespaces.
+- **Seat Rotations**: Each seed block contains 2 rotations (r0: agent A as seat 0, r1: agent A as seat 1).
+- **Physical Matches**: $9 \times 64 \times 2 = 1,152$ matches.
+- **Statistical Unit**: Paired seed block (score averaged over both seat rotations).
+- **Bootstrap Uncertainty**: Deterministic paired-block bootstrap (`BOOTSTRAP_SEED = 42_270_001`, 10,000 resamples), reporting mean center bps and 95% two-sided confidence intervals.
 
-## Execution authorization status
+## P0 semantic test gates
 
-```text
-DESIGN:      AUTHORIZED
-EXECUTION:   NOT AUTHORIZED (pending independent design review)
-```
+Before Arena execution, all 5 semantic properties must pass:
+- **H0 (Config boundary)**: `max_nodes = 0` yields `SearchError::InvalidConfig`; `max_nodes = 1` is valid.
+- **H1 (n1 fallback semantics)**: For deterministic non-terminal fixtures, `n1` produces `completed_depth_turns = 0`, `stop_reason = NodeBudgetReached`, and `utility = StaticEvaluatorV1(child)`.
+- **H2 (Full root coverage)**: For all budgets, `action_aggregates.len() == canonical_legal_actions.len()`. No candidate root action is omitted due to budget exhaustion.
+- **H3 (M07 identity)**: `det-s4-d1-n2000` reproduces frozen M07 decisions bit-exact on benchmark positions.
+- **H4 (Determinization invariance)**: All budgets use identical sampled determinizations (`sample_seed = 20_260_703`, `sample_count = 4`, indices `0..3`) for any fixed information set.
+
+## Compute instrumentation
+
+1. **Per-Decision Search Stats**:
+   - `nodes_visited / decision` (mean, p50, p90, p95, max)
+   - `nodes_expanded / decision`
+   - `leaf_evaluations / decision`
+   - `continuation_searches / decision`
+   - Budget consumption ratio: `nodes_visited / (continuation_searches * max_nodes)`
+2. **Decision Latency**:
+   - End-to-end wall latency per decision (mean, p50, p90, p95 ms) for all agents.
+3. **Common-State Action Audit**:
+   - Post-hoc evaluation of all 5 search budgets on identical deduplicated decision contexts from replays, reporting pairwise action disagreement rates and identical-action rates.
+
+## Deliverables
+
+1. P0 test suite passing.
+2. 1,152 completed Arena matches with 0 aborts / 0 faults.
+3. Strength–compute frontier plot & data table.
+4. D2 crossover evaluation.
+5. Common-state action agreement audit.
