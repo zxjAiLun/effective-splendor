@@ -4,9 +4,9 @@
 Milestone:      M44B
 Title:          Permanent Engine Attribution
 Type:           evaluator sub-family attribution
-Status:         COMPLETED / CLOSURE_CANDIDATE —
-                M44B_PERMANENT_ENGINE_ATTRIBUTION_COMPLETE
-                (pending final review)
+Status:         COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review APPROVED 2026-09-05, basis ce16a58)
+Review:         APPROVED / CLOSED (P0=0, P1=0, P2=2 non-blocking)
 Tracked Result: benchmarks/m44b-permanent-engine-attribution-v1.result.json
 Baseline:       4d83b3f (M44A permanent closure)
 Design:         DESIGN_V1 / FROZEN
@@ -18,6 +18,20 @@ Bonus vs Card:  NOT AUTHORIZED (coarse E1 vs E2 attribution only)
 F4 Experiment:  NOT AUTHORIZED (backlog only)
 M44C:           NOT AUTHORIZED
 Depth-2 / MCTS: OUT OF SCOPE
+
+Licensed conclusion (strict):
+  1. Case A Confirmed: Inside the resolved-sensitive F2 PERMANENT_ENGINE
+     family, the conditional playing-strength importance is concentrated
+     in CORE_ENGINE (DROP_CORE_ENGINE collapses to 2,187.5 bps, 97.5% CI:
+     [1484.375, 2968.75], 28W / 0T / 100L, RESOLVED_SENSITIVE).
+  2. NOBLE_PROGRESS conditional effect is UNRESOLVED: DROP_NOBLE_PROGRESS
+     vs FULL scores 5,156.25 bps (97.5% CI: [4765.625, 5625.0], 65W / 2T / 61L),
+     statistically indistinguishable from 5,000 bps equality.
+  3. Margin decomposition: In the audited 200-context sample, CORE_ENGINE
+     accounts for ~99.3% of F2's descriptive signed mean top-two margin
+     (+1.08M out of +1.087M), and independent ONLY_ENGINE margin linearity
+     is verified 200/200 exact. This signed margin percentage is a descriptive
+     sample metric, not a causal claim about playing-strength share.
 ```
 
 ## Problem and evidence
@@ -199,9 +213,9 @@ $$\text{margin}_{\text{F2}} \equiv \text{margin}_{\text{CORE}} + \text{margin}_{
 ## Result and decision
 
 ### Ruling: Case A Confirmed
-- `DROP_CORE_ENGINE < FULL` is **RESOLVED_SENSITIVE** (Upper 97.5% CI = 2,968.8 < 5,000 bps).
-- `DROP_NOBLE_PROGRESS vs FULL` is **UNRESOLVED** (97.5% CI: [4,765.6, 5,625.0] crosses 5,000 bps).
-- Pre-registered Case A applies:
+- `DROP_CORE_ENGINE < FULL` is **RESOLVED_SENSITIVE** (Upper 97.5% CI = 2,968.75 < 5,000 bps).
+- `DROP_NOBLE_PROGRESS vs FULL` is **UNRESOLVED** (97.5% CI: [4,765.625, 5,625.0] crosses 5,000 bps).
+- Official Ruling: **`Case A Confirmed / CLOSED — PERMANENTLY`** (approved basis `ce16a58`).
   $$\boxed{\textbf{CORE\_ENGINE RESOLVED\_SENSITIVE / NOBLE\_PROGRESS UNRESOLVED}}$$
 
 ### Scientific Interpretation
@@ -224,7 +238,7 @@ $$\text{margin}_{\text{F2}} \equiv \text{margin}_{\text{CORE}} + \text{margin}_{
 
 ## Next authorized gate
 
-M44B is complete.
-Awaiting final review for M44B closure.
-Next authorized milestone direction:
-- **M44C — Core Engine Decomposition**: Isolating `permanent_bonuses` (weight 2,000,000) vs `purchased_card_count` (weight 250,000) within the resolved-sensitive `CORE_ENGINE` unit.
+M44B is permanently closed (approved basis `ce16a58`).
+Next authorized research direction:
+- **M44C — Core Engine Collinearity & Decomposition**: Designing a dedicated protocol to disentangle the severe mechanical collinearity between permanent bonuses and purchased-card count before attempting fine-grained attribution.
+- Requires an independent design proposal and review before implementation.
