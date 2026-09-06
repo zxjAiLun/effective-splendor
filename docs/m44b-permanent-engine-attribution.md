@@ -4,7 +4,10 @@
 Milestone:      M44B
 Title:          Permanent Engine Attribution
 Type:           evaluator sub-family attribution
-Status:         DESIGN_FROZEN / IN_PROGRESS — P0+ARENA AUTHORIZED
+Status:         COMPLETED / CLOSURE_CANDIDATE —
+                M44B_PERMANENT_ENGINE_ATTRIBUTION_COMPLETE
+                (pending final review)
+Tracked Result: benchmarks/m44b-permanent-engine-attribution-v1.result.json
 Baseline:       4d83b3f (M44A permanent closure)
 Design:         DESIGN_V1 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
@@ -121,3 +124,101 @@ On exactly 200 unique decision contexts (identified by authoritative `observatio
 ## Iteration log
 
 - 2026-09-05: M44B Design v1 frozen and authorized by reviewer. Focuses strictly on 2-subfamily F2 attribution (CORE_ENGINE vs NOBLE_PROGRESS) within the validated n1 shell across 256 matches.
+- 2026-09-05: Implementation & P0 tests complete:
+  - 4 research profiles implemented in `crates/splendor-search/src/attribution.rs` (`DROP_CORE_ENGINE`, `DROP_NOBLE_PROGRESS`, `ONLY_CORE_ENGINE`, `ONLY_NOBLE_PROGRESS`).
+  - M44A regression suite passed (6/6).
+  - M44B P0 semantic suite passed in `crates/splendor-cli/tests/m44b_p0_semantic.rs` (4/4): F2 partition gate (`F2 == CORE + NOBLE` across 140 reachable states), purchased-count component fixture, permanent-bonus component fixture, noble-progress hand-calculated deficit fixture, profile mask identities.
+- 2026-09-05: 256 Arena matches completed across 2 pairings (0 aborts, 0 faults).
+- 2026-09-05: Post-hoc balanced 200-context audit executed (100 from DROP_CORE_ENGINE, 100 from DROP_NOBLE_PROGRESS). Source action reproduction 200/200 PASS. Exact F2 margin linearity identity verified bit-exact.
+- 2026-09-05: Final exhaustive audit passed (512 lineup checks, 256 rotation checks, 256 replay verifications). Tracked result artifact sealed at `benchmarks/m44b-permanent-engine-attribution-v1.result.json`.
+
+## Final implementation
+
+- Evaluator: `crates/splendor-search/src/attribution.rs` (extended with `e1_core_engine` and `e2_noble_progress`, 4 new attribution profiles).
+- P0 test suite: `crates/splendor-cli/tests/m44b_p0_semantic.rs` (4 tests).
+- Scripts: `scripts/m44b_orchestrator.py`, `scripts/m44b_common_state_audit.py`, `scripts/m44b_final_audit.py`.
+- Tracked result: `benchmarks/m44b-permanent-engine-attribution-v1.result.json`.
+
+## Validation and evidence
+
+### 1. P0 Semantic & Invariant Gates (All Passed)
+
+- **M44A Regression Gate**: `cargo test --test m44a_p0_semantic` (6/6 passed, 0 regressions in existing M44A profiles).
+- **Subfamily Partition Gate**: 140 reachable non-terminal states evaluated across 2p, 3p, 4p in isolated namespace `6_100_000..`:
+  `F2_ENGINE == CORE_ENGINE + NOBLE_PROGRESS` exact integer equality ($\ge 96$ gate PASS).
+  `FULL == F1 + CORE_ENGINE + NOBLE_PROGRESS + F3 + F4` exact integer equality.
+- **CORE_ENGINE Exact Microfixtures**:
+  - Purchased-count fixture: delta purchased count changes by 3 without bonus change $\to$ $\Delta\text{CORE} = 750,000$ exact, $\Delta\text{NOBLE} = 0$.
+  - Bonus component fixture: delta bonus changes by 3 $\to$ $\Delta\text{bonus} = 6,000,000$ exact, $\Delta\text{F2} == \Delta\text{CORE} + \Delta\text{NOBLE}$ verified.
+- **NOBLE_PROGRESS Exact Fixture**: Hand-calculated noble progress against 3 nobles with deficit evaluation $\to$ `expected_noble_score == NOBLE_PROGRESS` exact integer match ($10,000 \times \text{progress}$).
+- **Profile Mask Identities**:
+  `DROP_CORE_ENGINE == FULL - CORE_ENGINE`
+  `DROP_NOBLE_PROGRESS == FULL - NOBLE_PROGRESS`
+  Terminal rank base verified non-ablatable.
+
+### 2. 256-Match Arena Subfamily Attribution Results
+
+64 paired seed blocks (`5_600_000 .. 5_600_063`) $\times$ 2 seat rotations = 128 physical matches per pairing. 0 aborts, 0 candidate faults. Exhaustive audit recorded in `benchmarks/m44b-permanent-engine-attribution-v1.result.json`.
+
+| Candidate Arm | Control Arm | Matches | W / T / L | Center Score (bps) | CI Level | Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies |
+|---|---|---:|:---:|---:|:---:|:---:|:---:|---:|---:|
+| `DROP_CORE_ENGINE` (E1) | `FULL` | 128 | 28 / 0 / 100 | **2,187.5** | 97.5% | [1,484.4, 2,968.8] | **RESOLVED_SENSITIVE** | 1718.8 / 2656.2 | 62.8 |
+| `DROP_NOBLE_PROGRESS` (E2) | `FULL` | 128 | 65 / 2 / 61 | **5,156.2** | 97.5% | [4,765.6, 5,625.0] | **UNRESOLVED** | 5312.5 / 5000.0 | 61.2 |
+
+*Bonferroni-adjusted $\alpha = 0.05 / 2 = 0.025 \to$ 97.5% two-sided bootstrap CI. 10,000 resamples, seed 44_280_001.*
+
+### 3. Post-Hoc Balanced Common-State Audit (200 Authoritative Contexts)
+
+- **Contexts Identity Digest**: `acd36162addb0d90be273e515436e9cd2b840962fd1e7134d8e2c5437cc5f4f3` (200 unique contexts).
+- **Sample Composition**: Exactly 100 unique contexts from `DROP_CORE_ENGINE vs FULL` and 100 unique contexts from `DROP_NOBLE_PROGRESS vs FULL` (contributing replays: 14; recorded profiles: 51 drop_core_engine, 52 drop_noble_progress, 97 full).
+- **Source Action Reproduction**: **200 / 200 (100.0% PASS)** on matching source agent profiles.
+- **Disagreement Rates vs FULL**:
+  - `DROP_CORE_ENGINE vs FULL`: **20.0%** (40 / 200 contexts differ)
+  - `DROP_NOBLE_PROGRESS vs FULL`: **1.0%** (only 2 / 200 contexts differ)
+- **Standalone Subfamily Agreement with FULL (`ONLY_*`)**:
+  - `ONLY_CORE_ENGINE`: 15.0% (30 / 200)
+  - `ONLY_NOBLE_PROGRESS`: 15.0% (30 / 200)
+
+### 4. F2 Margin Decomposition ($a^*$ Best vs $b^*$ Runner-up)
+
+Exact linearity identity verified across 100% of audited states:
+$$\text{margin}_{\text{F2}} \equiv \text{margin}_{\text{CORE}} + \text{margin}_{\text{NOBLE}}$$
+
+| Subfamily | Mean Margin Contribution | Median Margin | Mean Absolute Contribution | p90 Absolute Contribution | Positive Sign Rate | Zero Rate |
+|---|---:|---:|---:|---:|---:|---:|
+| **E1 (CORE_ENGINE)** | **+1,080,000.0** | 0.0 | 1,710,000.0 | 9,000,000.0 | 15.5% | 81.0% |
+| **E2 (NOBLE_PROGRESS)** | **+7,400.0** | 0.0 | 19,800.0 | 80,000.0 | 22.0% | 65.5% |
+| **F2 (Total Net)** | **+1,087,400.0** | 0.0 | 1,729,800.0 | 9,040,000.0 | 24.5% | 63.0% |
+
+## Result and decision
+
+### Ruling: Case A Confirmed
+- `DROP_CORE_ENGINE < FULL` is **RESOLVED_SENSITIVE** (Upper 97.5% CI = 2,968.8 < 5,000 bps).
+- `DROP_NOBLE_PROGRESS vs FULL` is **UNRESOLVED** (97.5% CI: [4,765.6, 5,625.0] crosses 5,000 bps).
+- Pre-registered Case A applies:
+  $$\boxed{\textbf{CORE\_ENGINE RESOLVED\_SENSITIVE / NOBLE\_PROGRESS UNRESOLVED}}$$
+
+### Scientific Interpretation
+1. **The resolved conditional importance of F2 is concentrated in `CORE_ENGINE`**:
+   Removing permanent bonuses and purchased card count while retaining noble progress (and F1/F3/F4) causes a severe, statistically resolved collapse in playing strength to 2,187.5 bps (28W / 0T / 100L).
+2. **`NOBLE_PROGRESS` conditional effect is UNRESOLVED**:
+   Removing noble progress while retaining core engine (and F1/F3/F4) produces 65 wins to 61 losses (5,156.2 bps), indistinguishable from equality at the 97.5% level.
+3. **Margin Decomposition Insight**:
+   `CORE_ENGINE` accounts for **99.3%** of F2's total margin contribution (+1.08M out of +1.087M). Dropping noble progress changes only 1.0% of decisions in the balanced audit sample.
+4. **Disciplined Boundaries**:
+   - Allowed: `CORE_ENGINE` is resolved-sensitive conditional on the rest of the frozen evaluator.
+   - Allowed: `NOBLE_PROGRESS` conditional effect is unresolved.
+   - Not allowed: Noble progress is useless (unresolved $\ne$ useless).
+   - Not allowed: Permanent bonuses are the real source (bonuses vs purchased cards not yet isolated).
+
+## Known limitations
+
+1. M44B evaluated `CORE_ENGINE` as a joint economic unit; the independent contribution of `permanent_bonuses` vs `purchased_card_count` remains un-isolated.
+2. All measurements were conducted under the frozen `n1` static-successor shell with `StaticEvaluatorV1` weights.
+
+## Next authorized gate
+
+M44B is complete.
+Awaiting final review for M44B closure.
+Next authorized milestone direction:
+- **M44C — Core Engine Decomposition**: Isolating `permanent_bonuses` (weight 2,000,000) vs `purchased_card_count` (weight 250,000) within the resolved-sensitive `CORE_ENGINE` unit.

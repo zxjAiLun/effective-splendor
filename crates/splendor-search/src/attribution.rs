@@ -42,6 +42,11 @@ pub enum AttributionProfile {
     OnlyEngine,
     OnlyLiquidity,
     OnlyConvertibility,
+    // M44B Subfamily Profiles
+    DropCoreEngine,
+    DropNobleProgress,
+    OnlyCoreEngine,
+    OnlyNobleProgress,
 }
 
 impl std::str::FromStr for AttributionProfile {
@@ -59,18 +64,24 @@ impl std::str::FromStr for AttributionProfile {
             "only_engine" => Ok(Self::OnlyEngine),
             "only_liquidity" => Ok(Self::OnlyLiquidity),
             "only_convertibility" => Ok(Self::OnlyConvertibility),
+            "drop_core_engine" => Ok(Self::DropCoreEngine),
+            "drop_noble_progress" => Ok(Self::DropNobleProgress),
+            "only_core_engine" => Ok(Self::OnlyCoreEngine),
+            "only_noble_progress" => Ok(Self::OnlyNobleProgress),
             other => Err(format!("unknown attribution profile `{other}`")),
         }
     }
 }
 
-/// Exact integer contributions from the 4 information families for one player.
+/// Exact integer contributions from the 4 information families and F2 subfamilies for one player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FamilyProgress {
     pub f1_score: i64,
     pub f2_engine: i64,
     pub f3_liquidity: i64,
     pub f4_convertibility: i64,
+    pub e1_core_engine: i64,
+    pub e2_noble_progress: i64,
 }
 
 impl FamilyProgress {
@@ -94,6 +105,10 @@ impl FamilyProgress {
             AttributionProfile::OnlyEngine => self.f2_engine,
             AttributionProfile::OnlyLiquidity => self.f3_liquidity,
             AttributionProfile::OnlyConvertibility => self.f4_convertibility,
+            AttributionProfile::DropCoreEngine => self.f1_score + self.e2_noble_progress + self.f3_liquidity + self.f4_convertibility,
+            AttributionProfile::DropNobleProgress => self.f1_score + self.e1_core_engine + self.f3_liquidity + self.f4_convertibility,
+            AttributionProfile::OnlyCoreEngine => self.e1_core_engine,
+            AttributionProfile::OnlyNobleProgress => self.e2_noble_progress,
         }
     }
 }
@@ -120,9 +135,10 @@ pub fn family_progress_for(state: &FullState, player: &FullPlayerState) -> Famil
         noble_progress += (NOBLE_CONTRIBUTION_CEILING - deficit).max(0);
     }
 
-    let f2_engine = total_permanent_bonuses * BONUS_WEIGHT
-        + purchased_card_count * PURCHASED_CARD_WEIGHT
-        + noble_progress * NOBLE_PROGRESS_WEIGHT;
+    let e1_core_engine = total_permanent_bonuses * BONUS_WEIGHT
+        + purchased_card_count * PURCHASED_CARD_WEIGHT;
+    let e2_noble_progress = noble_progress * NOBLE_PROGRESS_WEIGHT;
+    let f2_engine = e1_core_engine + e2_noble_progress;
 
     // F3: Liquidity and optionality
     let colored_token_count = i64::from(player.tokens.total_colors());
@@ -159,6 +175,8 @@ pub fn family_progress_for(state: &FullState, player: &FullPlayerState) -> Famil
         f2_engine,
         f3_liquidity,
         f4_convertibility,
+        e1_core_engine,
+        e2_noble_progress,
     }
 }
 
