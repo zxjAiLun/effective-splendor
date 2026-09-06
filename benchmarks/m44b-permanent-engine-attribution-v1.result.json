@@ -3,7 +3,7 @@
   "version": 1,
   "milestone": "M44B",
   "title": "Permanent Engine Attribution",
-  "audit_completed_at": 1788698725.243758,
+  "audit_completed_at": 1788701616.7715511,
   "total_pairings": 2,
   "total_matches_expected": 256,
   "total_matches_verified": 256,
@@ -51,6 +51,7 @@
   },
   "provenance": {
     "design_commit": "1d8327b",
+    "closure_repair_1_commit": "870c148",
     "m44a_closure_basis": "70cbfcd",
     "m44a_closure_commit": "4d83b3f",
     "m44a_result_artifact_sha256": "ac0995666f762d0059a3e8d8fe7bbf257265d89f59d3f2727b6070c0676b243c",
@@ -71,9 +72,9 @@
     "coefficients_table_sha256": "4ca7de85344076b6eb3eb988789a1982ee15d7ebdc4a2a06248eb285bfa025b3",
     "source_shas": {
       "orchestrator": "8f7efbbefb3920e070a3a57d2235722fb66850c6cb856410d14b38304f40bbdd",
-      "final_audit": "05841e100be9b50202321a3405ed9721ad3feeaa7f25bb2d361cc2655e14df1a",
-      "common_state_audit": "80dd3c27e37aba33c924dc08e6fe0bf1d12a2ef0dc0583616269221c76009445",
-      "m44b_p0_semantic_test": "212379be09c048236e63b559483df3f4112882381b6b859c4d8dd91b081ff986",
+      "final_audit": "29fd0c98f24944062ec784b3138bf940d703e93c31302c5c45936631b5bfb3e0",
+      "common_state_audit": "ec7102002928e3f80babf6b567e213e4de4a90878dc12637717d8d46b82ba7ea",
+      "m44b_p0_semantic_test": "10c0a243c21d89b5554747c6fa265b5d7b676e365aebeca95cf714cb65ede168",
       "m44a_p0_semantic_test": "94a18061e18a64d795da02bc987ce9360a8594f9a5a742fd3e006a15c98fef99",
       "attribution_evaluator": "891082b17bcd6d61113b77d2253d3302f5b10ed6672cfeaccfca3b800a9d5e3a",
       "static_evaluator": "ad5350b3ae2e4f63badc85b3616d15e2ec720b84831c37e6f7042b8690b8dbbd",
@@ -153,6 +154,11 @@
       "matching_source_checks": 200,
       "reproduced": 200,
       "reproduction_rate": 1.0,
+      "pass": true
+    },
+    "margin_linearity_verification": {
+      "tested_contexts": 200,
+      "exact_linear_matches": 200,
       "pass": true
     },
     "disagreement_rates_vs_full": {

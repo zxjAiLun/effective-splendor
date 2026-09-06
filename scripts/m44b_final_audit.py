@@ -281,11 +281,23 @@ def main() -> None:
     assert total_lineup_checks == 256 * 2, f"expected 512 lineup checks, got {total_lineup_checks}"
     assert total_rotation_checks == 256, f"expected 256 rotation checks, got {total_rotation_checks}"
 
-    # 3. Read common-state audit summary
+    # 3. Read common-state audit summary and assert linearity & balanced composition (Repair 1)
     c_audit_path = ARENA_ROOT / "m44b-common-state-audit.json"
     if not c_audit_path.is_file():
         raise FileNotFoundError(f"Common-state audit not found at {c_audit_path}")
     common_state_data = json.loads(c_audit_path.read_text(encoding="utf-8"))
+
+    assert common_state_data["margin_linearity_verification"]["pass"] is True, "Margin linearity must pass"
+    assert common_state_data["source_action_reproduction"]["pass"] is True, "Source action reproduction must pass"
+    assert common_state_data["source_action_reproduction"]["reproduced"] == 200, "Must reproduce 200/200 source actions"
+    assert common_state_data["sample_composition"]["contexts_by_pairing"] == {
+        "drop_core_engine_vs_full": 100,
+        "drop_noble_progress_vs_full": 100,
+    }, "Contexts must be exactly 100/100 balanced"
+    assert (
+        common_state_data["canonical_contexts_identity_sha256"]
+        == "acd36162addb0d90be273e515436e9cd2b840962fd1e7134d8e2c5437cc5f4f3"
+    ), "Canonical contexts identity digest must match acd36162..."
 
     # 4. Provenance
     from splendor_gpu.data import catalog_semantic_hash, load_catalog
@@ -297,6 +309,7 @@ def main() -> None:
 
     provenance = {
         "design_commit": "1d8327b",
+        "closure_repair_1_commit": "870c148",
         "m44a_closure_basis": "70cbfcd",
         "m44a_closure_commit": "4d83b3f",
         "m44a_result_artifact_sha256": file_sha256(M44A_RESULT_JSON),

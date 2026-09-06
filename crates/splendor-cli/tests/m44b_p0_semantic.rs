@@ -12,7 +12,7 @@ use splendor_core::{
     FullState, GameConfig, GemColor, PlayerId, Ruleset, TerminalReason,
 };
 use splendor_search::{
-    AttributionProfile, StaticEvaluatorAttributionV1, TERMINAL_RANK_UNIT,
+    terminal_rank_base, AttributionProfile, StaticEvaluatorAttributionV1, TERMINAL_RANK_UNIT,
 };
 
 fn new_game(seed: u64, player_count: u8) -> FullState {
@@ -237,9 +237,16 @@ fn test_m44b_p0_profile_mask_identity() {
         StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropCoreEngine).unwrap();
     let u_term_noble =
         StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropNobleProgress).unwrap();
+    let u_term_zero =
+        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::ZeroProgress).unwrap();
 
-    // Terminal rank base (+/- 1e12) dominates in all profiles:
-    assert!(u_term_full[0] >= TERMINAL_RANK_UNIT / 2);
-    assert!(u_term_core[0] >= TERMINAL_RANK_UNIT / 2);
-    assert!(u_term_noble[0] >= TERMINAL_RANK_UNIT / 2);
+    // Terminal rank base (+/- 1e12) dominates in all profiles and matches exact base:
+    assert_eq!(u_term_zero[0], terminal_rank_base(0));
+    assert_eq!(u_term_zero[1], terminal_rank_base(1));
+    assert_eq!(u_term_zero[0], TERMINAL_RANK_UNIT);
+    assert_eq!(u_term_zero[1], -TERMINAL_RANK_UNIT);
+
+    // Delta between profiles at terminal states also matches relative progress delta exactly:
+    assert_eq!(u_term_full[0] - u_term_core[0], delta_core_rel);
+    assert_eq!(u_term_full[0] - u_term_noble[0], delta_noble_rel);
 }

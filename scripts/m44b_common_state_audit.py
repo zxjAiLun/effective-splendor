@@ -42,6 +42,7 @@ PROFILES = [
     "drop_noble_progress",
     "only_core_engine",
     "only_noble_progress",
+    "only_engine",
 ]
 
 
@@ -255,9 +256,19 @@ def main() -> None:
         u_noble_run = get_util("only_noble_progress", runner_up_act)
         m_noble = u_noble_best - u_noble_run
 
-        # Also get drop profiles to verify F2 sum
-        # In attribution: ONLY_CORE + ONLY_NOBLE == F2_ENGINE relative utility
-        m_f2 = m_core + m_noble
+        # Independent F2 margin from only_engine profile (Closure Repair 1 P1-1)
+        u_only_engine_best = get_util("only_engine", best_act)
+        u_only_engine_run = get_util("only_engine", runner_up_act)
+        m_f2_independent = u_only_engine_best - u_only_engine_run
+
+        # Exact integer linearity check: only_engine margin == m_core + m_noble
+        if m_f2_independent != (m_core + m_noble):
+            raise RuntimeError(
+                f"F2 margin linearity broken at context {i}: "
+                f"only_engine margin ({m_f2_independent}) != m_core ({m_core}) + m_noble ({m_noble})"
+            )
+
+        m_f2 = m_f2_independent
 
         margin_decompositions["core_engine"].append(m_core)
         margin_decompositions["noble_progress"].append(m_noble)
@@ -279,7 +290,11 @@ def main() -> None:
             "zero_rate": float(np.mean(arr == 0)),
         }
 
-    # Contexts identity digest
+    # Contexts identity digest & fail-closed assertion
+    EXPECTED_CANONICAL_IDENTITIES_SHA = (
+        "acd36162addb0d90be273e515436e9cd2b840962fd1e7134d8e2c5437cc5f4f3"
+    )
+
     identity_records = [
         {
             "context_idx": c["context_idx"],
@@ -296,6 +311,19 @@ def main() -> None:
         json.dumps(identity_records, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
+    if canonical_identities_sha != EXPECTED_CANONICAL_IDENTITIES_SHA:
+        raise RuntimeError(
+            f"Canonical context identity SHA mismatch: expected {EXPECTED_CANONICAL_IDENTITIES_SHA}, "
+            f"got {canonical_identities_sha}"
+        )
+
+    # Hard assert 100/100 pairing composition
+    if contexts_by_pairing != {
+        "drop_core_engine_vs_full": 100,
+        "drop_noble_progress_vs_full": 100,
+    }:
+        raise RuntimeError(f"Unexpected contexts_by_pairing: {contexts_by_pairing}")
+
     audit_summary = {
         "format": "effective-splendor-m44b-common-state-audit",
         "version": 1,
@@ -311,6 +339,11 @@ def main() -> None:
             "matching_source_checks": len(source_reproduction_checks),
             "reproduced": sum(source_reproduction_checks),
             "reproduction_rate": 1.0,
+            "pass": True,
+        },
+        "margin_linearity_verification": {
+            "tested_contexts": len(margin_decompositions["f2_total"]),
+            "exact_linear_matches": len(margin_decompositions["f2_total"]),
             "pass": True,
         },
         "disagreement_rates_vs_full": disagreement_rates,

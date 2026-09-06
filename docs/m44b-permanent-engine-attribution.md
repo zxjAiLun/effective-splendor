@@ -131,6 +131,12 @@ On exactly 200 unique decision contexts (identified by authoritative `observatio
 - 2026-09-05: 256 Arena matches completed across 2 pairings (0 aborts, 0 faults).
 - 2026-09-05: Post-hoc balanced 200-context audit executed (100 from DROP_CORE_ENGINE, 100 from DROP_NOBLE_PROGRESS). Source action reproduction 200/200 PASS. Exact F2 margin linearity identity verified bit-exact.
 - 2026-09-05: Final exhaustive audit passed (512 lineup checks, 256 rotation checks, 256 replay verifications). Tracked result artifact sealed at `benchmarks/m44b-permanent-engine-attribution-v1.result.json`.
+- 2026-09-05 (Closure Repair 1):
+  - In `scripts/m44b_common_state_audit.py`, added independent `only_engine` profile evaluation to verify action-margin linearity: $\text{margin}_{\text{F2}} \equiv \text{margin}_{\text{CORE}} + \text{margin}_{\text{NOBLE}}$ verified bit-exact on 200/200 contexts. Maintained canonical context identity digest `acd36162…`.
+  - P0 terminal test tightened in `crates/splendor-cli/tests/m44b_p0_semantic.rs` to assert exact `terminal_rank_base(rank)` ($\pm 1,000,000,000,000$) on zero-progress profile and exact relative progress delta on masked profiles.
+  - Regenerated tracked result artifact `benchmarks/m44b-permanent-engine-attribution-v1.result.json` with 100/100 balanced composition assertion.
+  - Synchronized documentation table values to exact tracked result JSON: CORE seat 0/1 = `1718.75 / 2656.25`, mean plies = `63.3`; NOBLE seat 0/1 = `5859.38 / 4453.12`, mean plies = `60.9`.
+  - Refined margin wording: CORE_ENGINE accounts for ~99.3% of F2's descriptive signed mean top-two margin in the audited 200-context sample (+1.08M out of +1.087M), without extrapolating to a causal playing-strength share.
 
 ## Final implementation
 
@@ -162,8 +168,8 @@ On exactly 200 unique decision contexts (identified by authoritative `observatio
 
 | Candidate Arm | Control Arm | Matches | W / T / L | Center Score (bps) | CI Level | Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies |
 |---|---|---:|:---:|---:|:---:|:---:|:---:|---:|---:|
-| `DROP_CORE_ENGINE` (E1) | `FULL` | 128 | 28 / 0 / 100 | **2,187.5** | 97.5% | [1,484.4, 2,968.8] | **RESOLVED_SENSITIVE** | 1718.8 / 2656.2 | 62.8 |
-| `DROP_NOBLE_PROGRESS` (E2) | `FULL` | 128 | 65 / 2 / 61 | **5,156.2** | 97.5% | [4,765.6, 5,625.0] | **UNRESOLVED** | 5312.5 / 5000.0 | 61.2 |
+| `DROP_CORE_ENGINE` (E1) | `FULL` | 128 | 28 / 0 / 100 | **2,187.5** | 97.5% | [1,484.4, 2,968.8] | **RESOLVED_SENSITIVE** | 1718.75 / 2656.25 | 63.3 |
+| `DROP_NOBLE_PROGRESS` (E2) | `FULL` | 128 | 65 / 2 / 61 | **5,156.2** | 97.5% | [4,765.6, 5,625.0] | **UNRESOLVED** | 5859.38 / 4453.12 | 60.9 |
 
 *Bonferroni-adjusted $\alpha = 0.05 / 2 = 0.025 \to$ 97.5% two-sided bootstrap CI. 10,000 resamples, seed 44_280_001.*
 
@@ -204,7 +210,7 @@ $$\text{margin}_{\text{F2}} \equiv \text{margin}_{\text{CORE}} + \text{margin}_{
 2. **`NOBLE_PROGRESS` conditional effect is UNRESOLVED**:
    Removing noble progress while retaining core engine (and F1/F3/F4) produces 65 wins to 61 losses (5,156.2 bps), indistinguishable from equality at the 97.5% level.
 3. **Margin Decomposition Insight**:
-   `CORE_ENGINE` accounts for **99.3%** of F2's total margin contribution (+1.08M out of +1.087M). Dropping noble progress changes only 1.0% of decisions in the balanced audit sample.
+   In the audited 200-context sample, `CORE_ENGINE` accounts for **99.3%** of F2's descriptive signed mean top-two margin contribution (+1.08M out of +1.087M). Dropping noble progress changes only 1.0% of decisions in this balanced audit sample. Note: this signed margin percentage is a descriptive sample property and is not a causal claim about playing-strength share.
 4. **Disciplined Boundaries**:
    - Allowed: `CORE_ENGINE` is resolved-sensitive conditional on the rest of the frozen evaluator.
    - Allowed: `NOBLE_PROGRESS` conditional effect is unresolved.
