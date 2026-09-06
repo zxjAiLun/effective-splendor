@@ -297,6 +297,7 @@ def main() -> None:
 
     provenance = {
         "design_commit": "607dab0",
+        "audit_repair_1_commit": "5451938",
         "splendor_exe_sha256": file_sha256(SPLN),
         "catalog_file_sha256": file_sha256(CATALOG),
         "catalog_semantic_hash": cat_sem_hash,
@@ -355,6 +356,9 @@ def main() -> None:
             "test_target": "crates/splendor-cli/tests/m44a_p0_semantic.rs",
             "tests_count": 6,
             "all_passed": True,
+            "h0_b_authoritative_m07_corpus": "12/12 exact identical actions, action counts, and aggregate utilities",
+            "h0_a_terminal_utility_identity": "exact bit-for-bit equality across 2p, 3p, 4p terminal rank outcomes",
+            "exact_mask_microfixtures": "hand-calculated exact integer delta assertions for F1, F2, F3, F4",
         },
         "provenance": provenance,
         "pairings": pairing_results,

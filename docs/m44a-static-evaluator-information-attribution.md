@@ -142,6 +142,15 @@ On up to 200 unique decision contexts (identified by authoritative `observation_
 - 2026-09-05: Arena execution completed: 640 physical matches across 5 pairings, 0 aborts, 0 candidate faults.
 - 2026-09-05: Common-state action audit & family margin decomposition executed across 200 unique decision contexts. 200/200 source actions reproduced. Linearity identity verified bit-exact.
 - 2026-09-05: Final exhaustive audit passed (1,280 lineup checks, 640 rotation checks, 640 replay verifications). Tracked result artifact sealed at `benchmarks/m44a-static-evaluator-information-attribution-v1.result.json`.
+- 2026-09-05 (Closure Repair 1):
+  - P0 authoritative identity evidence repaired in `crates/splendor-cli/tests/m44a_p0_semantic.rs`:
+    * H0-B evaluated against authoritative frozen M07 12-position corpus replay reconstructions: FULL vs det-s4-d1-n1 12/12 exact match.
+    * H0-A expanded to assert exact bit-for-bit utility equality across non-terminal states and 2p, 3p, 4p terminal rank outcomes.
+    * Exact mask microfixtures updated with hand-calculated integer assertions without inequalities.
+  - Common-state action audit sample composition recorded: 200 unique contexts across 13 contributing replays (102 drop_convertibility / 98 full), verified against canonical identity digest `122f3d82…`.
+  - Regenerated tracked result artifact `benchmarks/m44a-static-evaluator-information-attribution-v1.result.json`.
+  - Synchronized documentation table values (seat 0/1 splits and mean plies) to exact tracked result JSON values.
+  - Disciplined scientific wording: F3 and F4 strictly marked UNRESOLVED with descriptive-only audit notes; F1 and F2 designated as conditionally critical pillars of the frozen evaluator; ZERO_PROGRESS attribution bounded to the static evaluator without unproven D2-extrapolation.
 
 ## Final implementation
 
@@ -170,8 +179,8 @@ On up to 200 unique decision contexts (identified by authoritative `observation_
 
 | Candidate Arm | Control Arm | Matches | W / T / L | Center Score (bps) | CI Level | Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies |
 |---|---|---:|:---:|---:|:---:|:---:|:---:|:---:|---:|
-| `DROP_SCORE` (F1) | `FULL` | 128 | 17 / 0 / 111 | **1,328.1** | 98.75% | [703.1, 2,031.2] | **RESOLVED_SENSITIVE** | 1093.8 / 1562.5 | 60.5 |
-| `DROP_ENGINE` (F2) | `FULL` | 128 | 24 / 0 / 104 | **1,875.0** | 98.75% | [1,093.8, 2,656.2] | **RESOLVED_SENSITIVE** | 1875.0 / 1875.0 | 60.9 |
+| `DROP_SCORE` (F1) | `FULL` | 128 | 17 / 0 / 111 | **1,328.1** | 98.75% | [703.1, 2,031.2] | **RESOLVED_SENSITIVE** | 781.2 / 1875.0 | 64.2 |
+| `DROP_ENGINE` (F2) | `FULL` | 128 | 24 / 0 / 104 | **1,875.0** | 98.75% | [1,093.8, 2,656.2] | **RESOLVED_SENSITIVE** | 1562.5 / 2187.5 | 63.0 |
 | `DROP_LIQUIDITY` (F3) | `FULL` | 128 | 65 / 1 / 62 | **5,117.2** | 98.75% | [3,945.3, 6,289.1] | **UNRESOLVED** | 5390.6 / 4843.8 | 61.5 |
 | `DROP_CONVERTIBILITY` (F4) | `FULL` | 128 | 77 / 0 / 51 | **6,015.6** | 98.75% | [4,921.9, 7,109.4] | **UNRESOLVED** | 6562.5 / 5468.8 | 58.8 |
 | `ZERO_PROGRESS` | `FULL` | 128 | 7 / 0 / 121 | **546.9** | 95.00% | [234.4, 937.5] | **RESOLVED_SENSITIVE** | 156.2 / 937.5 | 62.1 |
@@ -181,6 +190,7 @@ On up to 200 unique decision contexts (identified by authoritative `observation_
 ### 3. Post-Hoc Common-State Audit (200 Authoritative Contexts)
 
 - **Contexts Identity Digest**: `122f3d825bdabb59604552ea00383d5db0886f66bd4019a75ce1932b5ebb53ad` (200 unique contexts).
+- **Sample Composition**: 200 unique contexts sampled deterministically from 13 contributing replays (contexts by recorded profile: 102 `drop_convertibility`, 98 `full`). The audit provides descriptive within-sample diagnostics.
 - **Source Action Reproduction**: **200 / 200 (100.0% PASS)** on matching source agent profiles.
 - **Disagreement Rates vs FULL**:
   - `DROP_SCORE vs FULL`: **19.0%** (38 / 200)
@@ -211,15 +221,15 @@ $$\text{FULL margin} = \text{terminal margin} + \text{F1 margin} + \text{F2 marg
 ## Result and decision
 
 1. **`ZERO_PROGRESS` is decisively weaker than `FULL` (RESOLVED_SENSITIVE, 546.9 bps, 95% CI: [234.4, 937.5])**:
-   Removing all non-terminal progress terms collapses playing strength to 7 wins vs 121 losses. This definitively proves that `StaticEvaluatorV1`'s non-terminal progress terms as a whole provide the decisive playing strength in the `n1` shell beyond exact root simulation and terminal outcomes.
+   In the identical exact root transition + 4-determinization shell, removing all non-terminal progress terms collapses playing strength to 7 wins vs 121 losses. This confirms that `StaticEvaluatorV1`'s non-terminal progress terms as a whole provide a massive playing strength contribution beyond exact root simulation and terminal outcomes. Note: because ZERO_PROGRESS was not pitted directly against D2, M44A does not quantify the exact proportion of the total `n1 vs D2` gap attributable to non-terminal terms.
 2. **`F1 (REALIZED_SCORE)` is conditionally critical (RESOLVED_SENSITIVE, 1,328.1 bps, 98.75% CI: [703.1, 2031.2])**:
-   Ablating victory point tracking collapses playing strength to 17 wins vs 111 losses. In the margin decomposition, F1 provides massive margin swings (+88M mean) whenever prestige-earning actions are available (17.5% of states).
+   Conditional on the other three families remaining present, ablating victory point tracking causes a massive, statistically resolved loss (17 wins vs 111 losses). In the margin decomposition, F1 provides large margin swings (+88M mean) whenever prestige-earning actions are available (17.5% of states).
 3. **`F2 (PERMANENT_ENGINE)` is conditionally critical (RESOLVED_SENSITIVE, 1,875.0 bps, 98.75% CI: [1093.8, 2656.2])**:
-   Ablating permanent bonuses, cards, and noble progress collapses playing strength to 24 wins vs 104 losses. F2 provides continuous positive gradient (+1.09M mean margin, positive in 23% of states) driving mid-game engine building.
-4. **`F3 (LIQUIDITY_OPTIONALITY)` is conditionally redundant / UNRESOLVED (5,117.2 bps, 98.75% CI: [3945.3, 6289.1])**:
-   Removing token and reserve counts produces nearly dead-even play (65 wins vs 62 losses). When F1, F2, and F4 remain active, liquidity tracking has minimal conditional contribution.
+   Conditional on the other three families remaining present, ablating permanent bonuses, cards, and noble progress causes a massive, statistically resolved loss (24 wins vs 104 losses). F2 provides a continuous positive gradient (+1.09M mean margin, positive in 23% of states) driving mid-game engine building.
+4. **`F3 (LIQUIDITY_OPTIONALITY)` conditional effect is UNRESOLVED (5,117.2 bps, 98.75% CI: [3945.3, 6289.1])**:
+   Removing token and reserve counts produces nearly dead-even play (65 wins vs 62 losses), crossing 5,000 bps at the 98.75% Bonferroni level. In the audited sample, dropping F3 changed only 6% of actions, which is descriptive evidence suggesting a relatively small behavioral role when F1, F2, and F4 remain active.
 5. **`F4 (IMMEDIATE_CONVERTIBILITY)` is UNRESOLVED with positive point estimate (6,015.6 bps, 98.75% CI: [4921.9, 7109.4])**:
-   Removing affordability terms shows a 77W / 51L advantage over FULL (though crossing 5000 at 98.75% Bonferroni level). The margin decomposition shows negative average contribution (-1.38M), suggesting potential interference or distortion between short-term affordability and long-term permanent engine incentives.
+   While the point estimate favors dropping F4 (+1015.6 bps, 77W / 51L), the Bonferroni-adjusted 98.75% CI crosses 5,000 bps. The audited sample margin decomposition shows negative average contribution (-1.38M), presenting a hypothesis that F4's short-term affordability preferences may locally conflict with long-term engine goals, to be formally tested in future work.
 
 ## Known limitations
 

@@ -3,7 +3,7 @@
   "version": 1,
   "milestone": "M44A",
   "title": "StaticEvaluator Information Attribution",
-  "audit_completed_at": 1788687826.0510545,
+  "audit_completed_at": 1788693784.908007,
   "total_pairings": 5,
   "total_matches_expected": 640,
   "total_matches_verified": 640,
@@ -54,10 +54,14 @@
   "p0_semantic_tests": {
     "test_target": "crates/splendor-cli/tests/m44a_p0_semantic.rs",
     "tests_count": 6,
-    "all_passed": true
+    "all_passed": true,
+    "h0_b_authoritative_m07_corpus": "12/12 exact identical actions, action counts, and aggregate utilities",
+    "h0_a_terminal_utility_identity": "exact bit-for-bit equality across 2p, 3p, 4p terminal rank outcomes",
+    "exact_mask_microfixtures": "hand-calculated exact integer delta assertions for F1, F2, F3, F4"
   },
   "provenance": {
     "design_commit": "607dab0",
+    "audit_repair_1_commit": "5451938",
     "splendor_exe_sha256": "67c3f0c1ca161b573e0732b2f8a46ca88a05457112b776082974b427080eb814",
     "catalog_file_sha256": "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4",
     "catalog_semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26",
@@ -75,9 +79,9 @@
     "coefficients_table_sha256": "4ca7de85344076b6eb3eb988789a1982ee15d7ebdc4a2a06248eb285bfa025b3",
     "source_shas": {
       "orchestrator": "15c47e27c1595cf56503f81891b9a0313254f0caa06d5cff05c8547d7b6a3bd4",
-      "final_audit": "f0011b6da1d202b202a3d1d570ea79b5df5a4b545c3572143cb0992b1ca3f0b7",
-      "common_state_audit": "6b6010631587c322d3b18fab9ef3189ba8ee367287f7311bddbac7743675ac3e",
-      "p0_semantic_test": "e8692358b42d3a3111310ad33f88cace4422cf38476b55b2b6131636d3032c35",
+      "final_audit": "97d67467b9dd72c112dea1ff3f87f2ea27ba9fee3c63ed3e2704d56c19146cf2",
+      "common_state_audit": "b2ce8c4065379a456a23ada43accd74c9e517ec818b8f7ad7f8f4c4cb2f5b2a2",
+      "p0_semantic_test": "94a18061e18a64d795da02bc987ce9360a8594f9a5a742fd3e006a15c98fef99",
       "attribution_evaluator": "3d178e3c73739fb6f487ac65f0d6fc0dac079771209298c391e2da9e9d8353ed",
       "static_evaluator": "ad5350b3ae2e4f63badc85b3616d15e2ec720b84831c37e6f7042b8690b8dbbd",
       "imperfect_search_player_view": "8820f5b9004ae12e658d654e44d0b9a26911cf70bf6f4e97de162f0ae39d0928",
@@ -217,6 +221,17 @@
     "version": 1,
     "audited_contexts_count": 200,
     "canonical_contexts_identity_sha256": "122f3d825bdabb59604552ea00383d5db0886f66bd4019a75ce1932b5ebb53ad",
+    "sample_composition": {
+      "total_contexts": 200,
+      "contributing_replays_count": 13,
+      "contexts_by_pairing": {
+        "drop_convertibility_vs_full": 200
+      },
+      "contexts_by_recorded_profile": {
+        "drop_convertibility": 102,
+        "full": 98
+      }
+    },
     "source_action_reproduction": {
       "matching_source_checks": 200,
       "reproduced": 200,

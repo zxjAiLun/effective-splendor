@@ -306,7 +306,9 @@ def main() -> None:
             "zero_rate": float(np.mean(arr == 0)),
         }
 
-    # Contexts identity digest
+    # Contexts identity digest & sample composition (Repair 1)
+    EXPECTED_CANONICAL_IDENTITIES_SHA = "122f3d825bdabb59604552ea00383d5db0886f66bd4019a75ce1932b5ebb53ad"
+
     identity_records = [
         {
             "context_idx": c["context_idx"],
@@ -322,11 +324,46 @@ def main() -> None:
         json.dumps(identity_records, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
 
+    if canonical_identities_sha != EXPECTED_CANONICAL_IDENTITIES_SHA:
+        raise RuntimeError(
+            f"Context identity digest mismatch: expected {EXPECTED_CANONICAL_IDENTITIES_SHA}, "
+            f"got {canonical_identities_sha}"
+        )
+
+    # Sample composition metrics
+    contexts_by_pairing = {}
+    contexts_by_profile = {}
+    distinct_replays = set()
+
+    for c in contexts:
+        r_path = c["replay_path"].replace("\\", "/")
+        distinct_replays.add(r_path)
+        parts = r_path.split("/")
+        pairing_id = [p for p in parts if "_vs_full" in p][0]
+        contexts_by_pairing[pairing_id] = contexts_by_pairing.get(pairing_id, 0) + 1
+
+        is_r0 = "/r0/" in r_path
+        actor = c["recorded_actor"]
+        if is_r0:
+            agent_seat0 = pairing_id.replace("_vs_full", "")
+            agent_seat1 = "full"
+        else:
+            agent_seat0 = "full"
+            agent_seat1 = pairing_id.replace("_vs_full", "")
+        rec_prof = agent_seat0 if actor == 0 else agent_seat1
+        contexts_by_profile[rec_prof] = contexts_by_profile.get(rec_prof, 0) + 1
+
     audit_summary = {
         "format": "effective-splendor-m44a-common-state-audit",
         "version": 1,
         "audited_contexts_count": n_ctx,
         "canonical_contexts_identity_sha256": canonical_identities_sha,
+        "sample_composition": {
+            "total_contexts": n_ctx,
+            "contributing_replays_count": len(distinct_replays),
+            "contexts_by_pairing": contexts_by_pairing,
+            "contexts_by_recorded_profile": contexts_by_profile,
+        },
         "source_action_reproduction": {
             "matching_source_checks": len(source_reproduction_checks),
             "reproduced": sum(source_reproduction_checks),
