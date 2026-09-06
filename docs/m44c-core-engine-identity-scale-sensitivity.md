@@ -4,13 +4,17 @@
 Milestone:      M44C
 Title:          Core Engine Identity & Scale Sensitivity
 Type:           evaluator scalar scale sensitivity & algebraic identity proof
-Status:         COMPLETED_DIAGNOSTIC / CLOSURE_PENDING_REPAIR_1_DONE
-                (Closure Repair 1 executed; awaiting final closure signature)
+Status:         COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review APPROVED on 1c26314, 2026-09-05)
 Tracked Result: benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json
 Baseline:       fd0211d (M44C design v2 commit)
 Implementation: 58863f8 (P0/P1/P2/P3 implementation + 384-match Arena)
-Repair Basis:   M44C terminal review on 58863f8
-                (P1 ACCEPTED; P0 evidence / P2 / P3 repairs ordered; Arena rerun FORBIDDEN)
+Closure Repair: 1c26314 (authoritative P0 corpus, P2/P3 identity rebuild,
+                hardened final audit; Arena NOT re-run — 384 matches frozen)
+Final Review:   APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (review basis 1c26314; P1 ACCEPTED/FROZEN; P2 VALID;
+                P3 VALID DESCRIPTIVE DIAGNOSTIC; Repair 2 NONE; P0=0 P1=0;
+                one non-blocking P2 note on audit-script assert granularity)
 Design:         DESIGN_V2 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE
@@ -441,11 +445,25 @@ The terminal review **accepted** the P1 384-match Arena (frozen; rerun FORBIDDEN
 
 Non-blocking note recorded by the reviewer: the `fd0211d → 58863f8` round had reformatted the sealed `m44a_p0_semantic.rs` (+367/−85 churn). The semantics were verified unchanged; the file was not reverted (further churn was judged worse than leaving it). Future milestones must not reformat permanently closed test files.
 
+### 2026-09-05 — Final Closure (APPROVED / CLOSED — PERMANENTLY)
+
+Final review on `1c26314` signed M44C off:
+
+- **P0**: authoritative-corpus evidence accepted (PASS; P0 = 0 findings).
+- **P1**: 384-match Arena confirmed frozen and un-drifted (reviewer independently compared the v1 and v2 artifacts in Git: W/T/L, center bps, CIs, seat splits, mean plies, and all six report/replay digests identical). P1 = 0 findings.
+- **P2**: rebuilt audit accepted as VALID; one **non-blocking** finding recorded: the final-audit script's comment overstates its frozen assertions — `FROZEN_P1` hard-codes W/T/L and center only, while CIs and report/replay digests are recomputed rather than compared against hard-coded constants. The reviewer verified CI and digest stability independently, so no Repair 2 is required; future auditors should either tighten the asserts or soften the comment.
+- **P3**: rebuilt audit accepted as VALID DESCRIPTIVE DIAGNOSTIC.
+- **Verdict**: `APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`. Scale25/50/88 all remain `UNRESOLVED`; Champion M07 unchanged; Promotion NONE; Arena rerun NONE; Repair 2 NONE; M45A NOT YET AUTHORIZED.
+
+Closing takeaway recorded for the research line: the entire M44 evaluator-scalar-attribution thread has reached a natural convergence point — further dense coefficient search around $W_C = 2.25\text{M}$ has low research value; the open question is the 5-color bonus-vector information beyond F4/E2.
+
 ---
 
 ## Next Authorized Gate
 
-M44C Closure Repair 1 executed in full (P0 evidence re-bound, P2/P3 rebuilt on authoritative identities, final audit hardened, provenance completed). The 384-match P1 Arena remains frozen and accepted; no Arena rerun was performed.
-Awaiting final closure signature for M44C.
-Next authorized research direction (NOT YET AUTHORIZED to start):
+M44C is **permanently closed**: final review APPROVED on `1c26314` (2026-09-05), verdict `COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`, with P1 Arena frozen and accepted (no rerun), Repair 2 not required, and one non-blocking P2 note recorded (the final-audit script asserts frozen W/T/L and center exactly but recomputes CIs and digests rather than hard-coding them; the reviewer independently verified v1-vs-v2 CI and digest equality in Git, so the closure evidence stands).
+
+Closing scientific note: M44C did not find an optimal engine coefficient — it established that further fine-grained coefficient search around $W_C = 2.25\text{M}$ now has low research value. The genuinely open question on this line is whether the 5-color bonus-vector structure discarded by the scalar $C$ contains decision-relevant information beyond what F4 (affordability) and E2 (noble progress) already consume.
+
+Candidate next direction (**NOT YET AUTHORIZED to start**):
 - **M45A — Bonus-Vector Information Probe**: Investigating whether explicit color-vector representations (beyond the scalar count $C$) provide distinct, actionable playing-strength value when properly decoupled from F4 affordability and E2 noble progress.
