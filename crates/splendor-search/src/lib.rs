@@ -30,9 +30,9 @@ pub use analysis::{
     ReplaySearchSourceV1, SearchAnalysisV1, SEARCH_ANALYSIS_FORMAT, SEARCH_ANALYSIS_VERSION,
 };
 pub use attribution::{
-    family_progress_for, AttributionProfile, FamilyProgress, StaticEvaluatorAttributionV1,
-    ENGINE_SCALE_100_WEIGHT, ENGINE_SCALE_25_WEIGHT, ENGINE_SCALE_50_WEIGHT,
-    ENGINE_SCALE_88_WEIGHT, EQUAL_LOO_WEIGHT,
+    family_progress_for, shift1_bonus, AttributionProfile, FamilyProgress,
+    StaticEvaluatorAttributionV1, ENGINE_SCALE_100_WEIGHT, ENGINE_SCALE_25_WEIGHT,
+    ENGINE_SCALE_50_WEIGHT, ENGINE_SCALE_88_WEIGHT, EQUAL_LOO_WEIGHT,
 };
 pub use config::{
     SearchConfigV1, MAX_SEARCH_DEPTH_TURNS, MAX_SEARCH_NODES, MIN_SEARCH_DEPTH_TURNS,
