@@ -6,7 +6,8 @@ Title:          Successor-State Value Decoupling Probe
 Type:           representation / evaluator decomposition
 Status:         COMPLETED_NEGATIVE / CLOSURE_CANDIDATE —
                 M43A_SUCCESSOR_VALUE_NOT_LEARNED
-                (Run 1 VOID preserved; Run 2 VALID; pending final review)
+                (Run 1 VOID preserved; Run 2 VALID; Closure Repair 2 executed)
+Tracked Result: benchmarks/m43a-successor-state-value-decoupling-v1.result.json
 Baseline:       14108de (M42S permanent closure)
 Design:         DESIGN_V1 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
@@ -167,6 +168,11 @@ Two pairings (128 games each, seeds `5_400_000..5_400_063`):
   - Preserved Run 1 artifacts as `*-VOID1-*`.
   - Fresh Run 2 trained from zero (32 epochs, 13.4s). Best epoch 4 reached Val MSE 0.244782 vs constant baseline 0.249445 ($BSS = +0.0187 < +0.05$ **FAIL**).
   - Pre-registered gate triggers **STOP**; P2 is NOT RUN for Run 2. Run 1 P2 permanently marked `VOID / DIAGNOSTIC ONLY`. P3 Arena NOT RUN.
+- 2026-09-05 (Closure Repair 2):
+  - Added `BuyMarket` H3 mutation fixture in `crates/splendor-cli/tests/m43a_p0_semantic.rs`: tests that mutating the refill card changes root observation, while mutating deeper unseen cards leaves root observation invariant. Tests passed (2/2).
+  - Generated tracked `benchmarks/m43a-successor-state-value-decoupling-v1.result.json` binding Run 2 checkpoint (`a00d348c…`), training report SHA (`a54004c0…`), train/val successor manifest SHAs, catalog semantic hash, D2 checkpoint and imported encoder SHAs, and BSS P1 metrics.
+  - Clarified cache provenance semantics: build-time authoritative source binding + load-time cache-internal integrity validation.
+  - All closure evidence gaps closed; ready for permanent closure.
 
 ## Final implementation
 
@@ -177,6 +183,8 @@ Two pairings (128 games each, seeds `5_400_000..5_400_063`):
 - Model tests: `training/m17_gpu/tests/test_m43a_model.py` (2/2 passed).
 - Trainer: `training/m17_gpu/splendor_gpu/m43a_train.py` (true 48-game weighted validation MSE, deterministic CUDA, AdamW).
 - Artifacts:
+  - Tracked result: `benchmarks/m43a-successor-state-value-decoupling-v1.result.json`.
+  - Cache: `local-artifacts/m43a-successor-data/` (build-time authoritative source binding + load-time cache-internal integrity validation).
   - Run 1 (VOID): `local-artifacts/m43a-run/*-VOID1-*`
   - Run 2 Checkpoint: `local-artifacts/m43a-run/m43a-successor-value-best.pt` (SHA-256: `a00d348c9362bd223b0b171740de04ca9f1559c6672aca96be2e369894a11e85`).
   - Run 2 Training report: `local-artifacts/m43a-run/m43a-training-report.json`.

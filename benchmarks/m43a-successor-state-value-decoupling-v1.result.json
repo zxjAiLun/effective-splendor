@@ -1,0 +1,112 @@
+{
+  "format": "effective-splendor-m43a-successor-value-decoupling-result",
+  "version": 1,
+  "milestone": "M43A",
+  "title": "Successor-State Value Decoupling Probe",
+  "generated_at": 1788680215.1810033,
+  "design_baseline": "14108de",
+  "repair_1_commit": "16bbc7f",
+  "runs": {
+    "run_1": {
+      "status": "VOID",
+      "reason": "Validation game-weighting distortion (batch means 32 vs 16), unmutated H3 test, and deterministic CUDA contract drift. Artifacts preserved.",
+      "best_epoch": 4,
+      "uncorrected_val_brier": 0.245868
+    },
+    "run_2": {
+      "status": "VALID",
+      "validation_game_weighting": "Exact unweighted mean over all 48 individual validation game losses",
+      "deterministic_cuda": "torch.use_deterministic_algorithms(True) + CUBLAS :4096:8",
+      "epochs_trained": 32,
+      "best_epoch": 4,
+      "best_val_brier": 0.24478239131470522,
+      "constant_brier": 0.24944466476639113,
+      "brier_skill_score": 0.018690612028331777,
+      "p1_gate_threshold": 0.05,
+      "p1_gate_verdict": "FAIL",
+      "checkpoint_file_sha256": "a00d348c9362bd223b0b171740de04ca9f1559c6672aca96be2e369894a11e85",
+      "training_report_file_sha256": "a54004c03ba101bb191dd2f46e89a680a709f39e5f8c1ca81ebd7030df6586b4",
+      "p1_diagnostics": {
+        "validation_brier": 0.24478239131470522,
+        "constant_brier": 0.24944466476639113,
+        "brier_skill_score": 0.018690612028331777,
+        "bss_pass": false,
+        "prediction_mean": 0.49646067441863617,
+        "prediction_std": 0.07227223580581515,
+        "prediction_p05": 0.36312019675970075,
+        "prediction_p50": 0.5033515393733978,
+        "prediction_p95": 0.5912049472332,
+        "positive_target_mean_prediction": 0.5103769594187028,
+        "negative_target_mean_prediction": 0.48606636610491344,
+        "roc_auc_diagnostic": 0.6343737069106544
+      },
+      "encoder_l2_delta": 0.5925218773287765,
+      "value_head_l2_delta": 0.11128580755233033
+    }
+  },
+  "dataset": {
+    "train": {
+      "games_count": 192,
+      "states_count": 576,
+      "branches_count": 12249,
+      "manifest_sha256": "fcec5f1dd98a0d63da6999d1aa4278bf9cc1e056c92423a31e186a29142b4723",
+      "data_file_sha256": "36bf8fbf5259a0da09c31187de68c29aa10b01dd0310e34cc04f61022456d6bf"
+    },
+    "validation": {
+      "games_count": 48,
+      "states_count": 144,
+      "branches_count": 3258,
+      "manifest_sha256": "c65162d6c23425e19f300ac87076498a7fa1f3707f36757bb990776a12e2f6ef",
+      "data_file_sha256": "25cc98f135fe0cc02519a49a4c8db92d929c95e0de63ef912b320eff7d4567f9"
+    }
+  },
+  "initialization_audit": {
+    "imported_encoder_tensor_count": 38,
+    "imported_encoder_semantic_sha256": "0d907ade54c457e4a8d00405613aea55639a7934905cc1d674440ddf5c5b1ded",
+    "excluded_old_d2_value_tensor_count": 4,
+    "excluded_other_tensor_count": 8,
+    "fresh_value_head_seed": 43261001,
+    "fresh_value_head_semantic_sha256": "81390778d382b5cf455ff58c59ec196ccd7a56dd95db889c2459afc53b23127e",
+    "assert_zero_old_value_imported": true,
+    "assert_zero_policy_action_imported": true
+  },
+  "provenance": {
+    "m41_run_contract_sha256": "2a449550c179425a58fb536851c8f78d907fa227b8de58f2704357a0ec716563",
+    "catalog_file_sha256": "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4",
+    "catalog_semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26",
+    "d2_checkpoint_file_sha256": "113372fc1092e611804cb7261844ac2a104608772f68ab74a854a038370c7e17",
+    "splendor_exe_sha256": "d21da6f829f35da52a7f5c72bce57dbfb0a04ab0ade0565c5d24e1462fd6cf95",
+    "source_shas": {
+      "trainer": "05b1e36f495b11644b5f2e5b730939b95d7e0cfc85ee9c524e1193b26cf8e27e",
+      "model": "7cc4e31775710ca587b3deab21944f8f8aac0720cb731d33a5e818103f12309c",
+      "dataset": "4a28ad7238745159f5031546d590dfe0817c08f30ad54807d92351cc15c3df27",
+      "eval": "0c7a16d4d04a0a40ad37c48af44c214bc2c09eb7322499f9226ce1893a7ff606",
+      "rust_command": "dca21940a8ad34f4726dfe36757857c0fc9b4de6572efd12304ff0e1dfd657b3",
+      "p0_semantic_test": "85f50e450a98663950557fa33f5f80997d57a60d7209a1d3ceade0675ea003d8"
+    },
+    "training_contract": {
+      "value_head_init_seed": 43261001,
+      "trainer_seed": 43261002,
+      "optimizer": "AdamW",
+      "lr": 0.0001,
+      "weight_decay": 0.0001,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "amsgrad": false,
+      "foreach": false,
+      "fused": false,
+      "gradient_clip": 1.0,
+      "batch_games": 32,
+      "epochs": 32
+    }
+  },
+  "gates_and_decisions": {
+    "p1_bss_pass": false,
+    "p2_run_2": "NOT RUN (frozen gate BSS < 0.05 triggered STOP)",
+    "p3_arena": "NOT RUN (frozen gate BSS < 0.05 triggered STOP)",
+    "formal_verdict": "M43A_SUCCESSOR_VALUE_NOT_LEARNED"
+  }
+}

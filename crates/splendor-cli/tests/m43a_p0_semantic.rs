@@ -196,7 +196,43 @@ fn test_h3_blind_information_boundary() {
     );
 
     // -----------------------------------------------------------------------
-    // Fixture 3: Opponent blind reserve
+    // Fixture 3: BuyMarket
+    // -----------------------------------------------------------------------
+    // Give player 0 enough gold/tokens to afford buying market tier 0 slot 0
+    let mut state_buyable = state.clone();
+    state_buyable.players[0].tokens.gold = 10;
+    let act_buy_market = Action::BuyMarket {
+        tier: Tier::One,
+        slot: 0,
+    };
+
+    let mut s_bm = state_buyable.clone();
+    s_bm.apply(act_buy_market).unwrap();
+    let obs_bm_base = s_bm.observation(PlayerId(0));
+    let hash_bm_base = observation_hash(&obs_bm_base);
+
+    // Deeper deck mutation: swap bottom cards of deck 0 -> market refill is from top, deeper is invisible
+    let mut s_bm_deeper = state_buyable.clone();
+    s_bm_deeper.decks[0].swap(0, 1);
+    s_bm_deeper.apply(act_buy_market).unwrap();
+    let obs_bm_deeper = s_bm_deeper.observation(PlayerId(0));
+    assert_eq!(
+        hash_bm_base, observation_hash(&obs_bm_deeper),
+        "H3 fail: deeper deck mutation leaked in BuyMarket"
+    );
+
+    // Refill card mutation: swap top card of deck 0 -> changes market refill card visible to player
+    let mut s_bm_refill = state_buyable.clone();
+    s_bm_refill.decks[0].swap(dlen - 1, 0);
+    s_bm_refill.apply(act_buy_market).unwrap();
+    let obs_bm_refill = s_bm_refill.observation(PlayerId(0));
+    assert_ne!(
+        hash_bm_base, observation_hash(&obs_bm_refill),
+        "H3 fail: BuyMarket refill card mutation must change player-view observation"
+    );
+
+    // -----------------------------------------------------------------------
+    // Fixture 4: Opponent blind reserve
     // -----------------------------------------------------------------------
     // State where Player 1 (opponent) has a blind reserve card
     let mut s_opp = state.clone();
