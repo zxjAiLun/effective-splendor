@@ -4,8 +4,12 @@
 Milestone:      M45A
 Title:          Bonus-Vector Information Probe
 Type:           evaluator color-identity binding probe & residual capacity audit
-Status:         AUTHORIZED / IN_PROGRESS
+Status:         COMPLETED_DIAGNOSTIC / CLOSURE_CANDIDATE
+                (all gates passed; awaiting final review)
+Tracked Result: benchmarks/m45a-bonus-vector-information-probe-v1.result.json
 Starting point: 99872f0 — M44C permanently closed
+Design Commit:  2f36ee4 (DESIGN_V1, approved and frozen)
+Implementation: b462ea9 (SHIFT1 profiles + P0 gates)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Training:       NONE
 New learned model: NONE
@@ -173,20 +177,93 @@ Non-goals (explicitly excluded):
 
 ## Iteration Log
 
-(to be appended during execution)
+### 2026-09-05 — Implementation & Execution
+
+- `b462ea9`: implemented `ShiftF4` / `ShiftE2` / `ShiftF4E2` as research-only `AttributionProfile` variants; deterministic `shift1_bonus` (sum-preserving cyclic shift); scrambled E2/F4 carried as new `FamilyProgress` fields so all sealed profiles keep their exact arithmetic; `m45a_p0_semantic.rs` (5/5 PASS: P0-A/B/C/D + parsing). P0-E regression: M44A 6/6, M44B 4/4, M44C 4/4, plus splendor-search and splendor-imperfect-search suites.
+- P0-D activation on the 2160-state corpus: F4 differs on 1273/2160 states (59%), E2 on 1377/2160 (64%) — both paths genuinely active.
+- 384-match Arena executed on fresh seeds `5_800_000..5_800_063` (15.3s wall).
+- P2 (180 contexts, authoritative identity, 1-based staging, top-1/runner-up margins) and P3 (11,742-context residual capacity audit) executed via `m45a-audit`.
+- Final audit `scripts/m45a_final_audit.py`: all fail-closed gates passed; tracked result written.
 
 ## Validation and Evidence
 
-(to be filled at round completion with exact commands, results, and artifact hashes)
+Executed commands (all exit 0):
+
+```
+cargo test -p splendor-cli --test m45a_p0_semantic     # 5/5 PASS
+cargo test -p splendor-cli --test m44a_p0_semantic     # 6/6 PASS (regression)
+cargo test -p splendor-cli --test m44b_p0_semantic     # 4/4 PASS (regression)
+cargo test -p splendor-cli --test m44c_p0_semantic     # 4/4 PASS (regression)
+python scripts/m45a_orchestrator.py --workers 8        # 384 matches
+target/release/splendor.exe m45a-audit --arena-dir local-artifacts/m45a-arena
+python scripts/m45a_final_audit.py                     # all hard gates PASS
+```
+
+Tracked artifact: `benchmarks/m45a-bonus-vector-information-probe-v1.result.json`.
+
+### P1 — Arena (384 matches, strict n1 shell, seeds 5_800_000..5_800_063, bootstrap seed 44_300_001)
+
+| Arm | Control | W/T/L | Center (bps) | 98.333% CI | Verdict |
+|---|---|---|---:|---|---|
+| `SHIFT_F4` | `FULL` | 27/0/101 | **2,109.38** | [1,328.12, 3,046.88] | **RESOLVED_BINDING_IMPORTANT** |
+| `SHIFT_E2` | `FULL` | 64/2/62 | **5,078.12** | [4,609.38, 5,546.88] | **UNRESOLVED** |
+| `SHIFT_F4_E2` | `FULL` | 28/0/100 | **2,187.50** | [1,328.12, 3,099.61] | **RESOLVED_BINDING_IMPORTANT** |
+
+Paired-block score distributions: SHIFT_F4 `{10000.0: 3, 0.0: 40, 5000.0: 21}`; SHIFT_E2 `{0.0: 3, 5000.0: 57, 10000.0: 4}`; SHIFT_F4_E2 `{5000.0: 22, 0.0: 39, 10000.0: 3}`.
+
+### P2 — 180-context behavior audit (authoritative identity, 180/180 reproduction)
+
+| Arm | Disagreement vs FULL | Engine-pivotal flips |
+|---|---:|---:|
+| `SHIFT_F4` | **43.3%** (78/180) | 15.0% (27/180) |
+| `SHIFT_E2` | **1.1%** (2/180) | 0.0% (0/180) |
+| `SHIFT_F4_E2` | **43.9%** (79/180) | 15.0% (27/180) |
+
+True-vs-shifted F4 delta distribution (22 distinct values): 88 contexts unchanged, 28 at +100k, plus large tails at ±(4.8M..10.2M) from the max-affordable-prestige term. True-vs-shifted E2 delta distribution (9 values): 53 unchanged, spread over ±10k..60k.
+
+Contexts identity digest: `2d5a024754982ebc9f73453b40ea414857c98318d2449353052bc35a8cbf4dc9`.
+
+### P3 — Residual capacity audit (11,742 unique authoritative-identity contexts)
+
+| Key | Collision groups | Contexts in collisions | H(b\|key) | Mean distinct vectors |
+|---|---:|---:|---:|---:|
+| `K_path = (C, E2, F4)` | 1,303 / 2,787 groups | **9,670 (82.4%)** | 2.386 bits | 5.03 |
+| `K_eval = (F1, CORE, E2, F3, F4)` | 993 / 9,249 groups | **2,800 (23.8%)** | 0.312 bits | 2.40 |
+
+Corpus identity digest: `8254eacabc04d606122d868166edec4ac1df020cba7962bef5b78f129f49cace`.
 
 ## Result and Decision
 
-(to be filled at round completion)
+### Q1 — Existing-path binding
+
+**Resolved: correct bonus-color identity through F4 is decisively important.**
+
+- `SHIFT_F4` collapses to 2,109.38 bps (`RESOLVED_BINDING_IMPORTANT`) — scrambling only the color binding inside the affordability path costs ~2,890 bps against FULL. Notably this collapse is of the same magnitude as M44B's complete CORE deletion (2,187.5 bps): destroying the color structure of F4 is nearly as damaging as removing the entire scalar engine term.
+- `SHIFT_E2` is `UNRESOLVED` (5,078.12 bps, CI straddling 5,000): noble-progress color binding alone shows no resolved strength effect.
+- `SHIFT_F4_E2` (2,187.50 bps, `RESOLVED_BINDING_IMPORTANT`) is statistically indistinguishable from `SHIFT_F4` alone: the E2 scramble adds no resolved marginal damage on top of the F4 scramble.
+
+Licensed wording: *correct bonus-color identity within the current F4 affordability path has resolved conditional playing-strength importance when the remainder of FULL is retained; correct color binding inside noble-progress computation did not show a resolvable conditional effect in this sample.* Not licensed: "F4 is globally beneficial" (M44A family result remains UNRESOLVED) or "noble progress is essential" (M44B deletion remains UNRESOLVED).
+
+### Q2 — Residual representational capacity
+
+**Confirmed: the current evaluator is many-to-one with respect to the full bonus vector.**
+
+- Conditioning on the two color-sensitive path outputs (`C, E2, F4`), 82.4% of contexts still share their key with at least one different bonus vector (mean 5.03 distinct vectors per collision group; conditional entropy 2.386 bits).
+- Conditioning on the complete evaluator summary (`F1, CORE, E2, F3, F4`), 2,800 contexts (23.8%) still carry a bonus vector their summary does not determine (mean 2.40 vectors; conditional entropy 0.312 bits).
+
+This is a representation result only. It does not prove the omitted vector information would improve playing strength, and other state variables co-vary inside collision groups. No causal inference from collision statistics.
+
+### Outcome classification (pre-registered exit logic)
+
+**Outcome 1 — binding resolved + residual capacity exists.** Correct color structure already matters through F4, and current summaries still discard vector information. This is the strongest motivation for a future explicit residual vector treatment; a later M45B may design one such channel. M45B is not automatically authorized.
 
 ## Known Limitations
 
-(to be filled at round completion)
+1. The scramble is an identity-scramble ablation, not a legal-state evaluation: no inference about reachable alternative bonus vectors is licensed.
+2. `SHIFT_E2`'s UNRESOLVED verdict is a non-resolution, not evidence of irrelevance; the E2 weight (10k) is two orders of magnitude smaller than CORE, so a small true effect may be undetectable at this sample size.
+3. P3 collision statistics are observational; co-varying state variables are not controlled.
+4. All findings are under the frozen n1 static-successor shell (`max_nodes = 1`).
 
 ## Next Authorized Gate
 
-Cloud final review of the tracked result artifact and documentation after execution completes.
+Cloud final review of `benchmarks/m45a-bonus-vector-information-probe-v1.result.json` and this document. M45B (explicit residual vector channel) is a candidate direction but NOT AUTHORIZED.

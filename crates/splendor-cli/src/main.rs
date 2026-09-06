@@ -19,6 +19,7 @@ mod m18a_command;
 mod m39a_command;
 mod m43a_command;
 mod m44c_audit_command;
+mod m45a_audit_command;
 mod promotion_command;
 mod rating_command;
 mod search_command;
@@ -188,6 +189,7 @@ fn main() {
             teacher_target_command::run_build_search_teacher_targets(&argv[2..]),
         ),
         Some("m44c-audit") => std::process::exit(m44c_audit_command::run_m44c_audit(&argv[2..])),
+        Some("m45a-audit") => std::process::exit(m45a_audit_command::run_m45a_audit(&argv[2..])),
         _ => {}
     }
 
