@@ -4,9 +4,9 @@
 Milestone:      M43A
 Title:          Successor-State Value Decoupling Probe
 Type:           representation / evaluator decomposition
-Status:         COMPLETED_NEGATIVE / CLOSURE_CANDIDATE —
-                M43A_SUCCESSOR_VALUE_NOT_LEARNED
-                (Run 1 VOID preserved; Run 2 VALID; Closure Repair 2 executed)
+Status:         COMPLETED_NEGATIVE / CLOSED — PERMANENTLY
+                (final review APPROVED 2026-09-05, basis 5b954dd)
+Review:         APPROVED / CLOSED (P0=0, P1=0, P2=2 non-blocking)
 Tracked Result: benchmarks/m43a-successor-state-value-decoupling-v1.result.json
 Baseline:       14108de (M42S permanent closure)
 Design:         DESIGN_V1 / FROZEN
@@ -198,10 +198,10 @@ Two pairings (128 games each, seeds `5_400_000..5_400_063`):
 | **Best Validation Brier / MSE** | 0.244782 | < Constant Brier | Epoch 4 |
 | **Constant Predictor Brier** | 0.249445 | Baseline ($p_{\text{train}} = 0.4869$) | - |
 | **Brier Skill Score (BSS)** | **+0.0187** | $\ge +0.05$ | **FAIL** |
-| **Prediction Mean $\pm$ Std** | $0.4950 \pm 0.0766$ | - | - |
-| **Positive Target Mean Prediction** | 0.5097 | - | - |
-| **Negative Target Mean Prediction** | 0.4810 | - | - |
-| **ROC-AUC (Diagnostic)** | 0.6344 | Diagnostic only | Weak directional signal |
+| **Prediction Mean $\pm$ Std** | $0.4965 \pm 0.0723$ | - | - |
+| **Positive Target Mean Prediction** | 0.51038 | - | - |
+| **Negative Target Mean Prediction** | 0.48607 | - | - |
+| **ROC-AUC (Diagnostic)** | 0.63437 | Diagnostic only | Weak directional signal |
 
 *Per the pre-registered frozen protocol (Section 13), failing the P1 BSS gate ($BSS < +0.05$) triggers an immediate STOP. P2 offline root-action evaluation was NOT executed for Run 2.*
 
@@ -223,7 +223,7 @@ Two pairings (128 games each, seeds `5_400_000..5_400_063`):
 3. **P3 Arena**: Pre-registered decision rules stipulate:
    > "If not: `M43A_SUCCESSOR_VALUE_NOT_LEARNED`, STOP, NO ARENA."
    P3 Arena was therefore **NOT RUN**.
-4. **Proposed Ruling**: **`M43A_SUCCESSOR_VALUE_NOT_LEARNED / CLOSED_NEGATIVE`**.
+4. **Official Ruling**: **`M43A_SUCCESSOR_VALUE_NOT_LEARNED / CLOSED_NEGATIVE — PERMANENTLY`** (formal review approved, basis `5b954dd`).
 
 ### Scientific Interpretation
 M43A provides a clear empirical boundary:
@@ -237,5 +237,7 @@ M43A provides a clear empirical boundary:
 
 ## Next authorized gate
 
-Awaiting final review for M43A closure.
-Proposed next step: **StaticEvaluator Feature Attribution / Progress Decomposition** (systematically ablating StaticEvaluatorV1 terms to isolate which handcrafted heuristics provide $n1$'s playing strength).
+M43A is permanently closed (approved basis `5b954dd`).
+Next authorized research direction:
+- **M44A — StaticEvaluator Information Attribution**: Coarse attribution across 3-4 information families to disentangle collinear heuristic terms (prestige, bonuses, affordability, noble progress), followed by sensitive family refinement.
+- Requires an independent design proposal and review before implementation.
