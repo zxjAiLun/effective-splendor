@@ -4,16 +4,19 @@
 Milestone:      M45A
 Title:          Bonus-Vector Information Probe
 Type:           evaluator color-identity binding probe & residual capacity audit
-Status:         COMPLETED_DIAGNOSTIC / CLOSURE_PENDING_REPAIR_1
-                (P1/P2/P3 results and Outcome 1 ACCEPTED in terminal review
-                on 12a0974; wording repair ordered; Arena rerun FORBIDDEN)
+Status:         COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review APPROVED on 59e6420, 2026-09-05;
+                P0=0, P1=0, P2=1 non-blocking; Repair 2 NONE)
 Tracked Result: benchmarks/m45a-bonus-vector-information-probe-v1.result.json
 Starting point: 99872f0 — M44C permanently closed
 Design Commit:  2f36ee4 (DESIGN_V1, approved and frozen)
 Implementation: b462ea9 (SHIFT1 profiles + P0 gates)
 Execution:      12a0974 (384-match Arena + P2/P3 + final audit)
-Repair Basis:   M45A terminal review on 12a0974
-                (P0=0, P1=2 wording violations, P2=2 non-blocking)
+Closure Repair: 59e6420 (wording seal P1-1/P1-2/P2-1; values frozen)
+Final Review:   APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (closure basis 59e6420; P1/P2/P3 and Outcome 1 all
+                ACCEPTED/FROZEN; Arena rerun NONE; Repair 2 NONE;
+                Champion M07 unchanged; Promotion NONE; M45B NOT AUTHORIZED)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Training:       NONE
 New learned model: NONE
@@ -201,6 +204,20 @@ P2-2 (non-blocking, recorded): the final-audit exhaustiveness counters (candidat
 
 All P1/P2/P3 numeric values, the tracked result JSON, and the Arena corpus remain frozen and unchanged in this repair (docs-only commit).
 
+### 2026-09-05 — Final Closure (APPROVED / CLOSED — PERMANENTLY)
+
+Final review on `59e6420` signed M45A off (P0 = 0, P1 = 0, P2 = 1 non-blocking; Repair 2 NONE):
+
+- All three closure blockers verified closed: no statistical-indistinguishability claim for `SHIFT_F4_E2` vs `SHIFT_F4`; the M44B 2187.5 bps comparison is cross-milestone descriptive only; P3 scoped to the root-player progress summary.
+- **Verdict**: `APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`. `SHIFT_F4` = `RESOLVED_BINDING_IMPORTANT` (2,109.375 bps), `SHIFT_E2` = `UNRESOLVED` (5,078.125 bps), `SHIFT_F4_E2` = `RESOLVED_BINDING_IMPORTANT` (2,187.5 bps). Outcome 1 ACCEPTED. Champion M07 unchanged; Promotion NONE; Arena rerun NONE; M45B NOT AUTHORIZED.
+
+**Frozen scientific conclusions (permanent)**:
+
+- Q1: *when the remainder of FULL is retained, correct bonus-color identity within the F4 affordability path has resolved conditional playing-strength importance.* This must not be reworded as "the F4 family is proven necessary" — M44A's `DROP_CONVERTIBILITY` remains `UNRESOLVED`.
+- Q2: *the current root-player five-term progress summary does not fully encode the bonus vector; genuine residual representation capacity exists in the observed corpus.* But **residual capacity ≠ residual playing-strength value**.
+
+**Non-blocking wording note for future citation (reviewer)**: "bad information > missing information" may serve as the intuitive summary of this research chain, but formal citations should use the strict version — *in two independent experiments, deleting F4 did not resolve a strength loss, while scrambling F4's color binding produced a large resolved loss; the available evidence therefore indicates that injecting wrongly-bound color information into a high-weight affordability path may be more dangerous than simply missing that path.* The two experiments must not be treated as a direct effect-size comparison.
+
 ## Validation and Evidence
 
 Executed commands (all exit 0):
@@ -289,6 +306,8 @@ This statement is scoped to the root player's progress summary (the five scalar 
 
 ## Next Authorized Gate
 
-Closure Repair 1 (wording seal) executed in full: all numeric results frozen unchanged, no Arena rerun, no result-JSON modification. Awaiting final closure signature (`APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`).
+M45A is **permanently closed**: final review APPROVED on `59e6420` (2026-09-05), verdict `COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`, with all P1/P2/P3 results and Outcome 1 frozen, no Arena rerun, no Repair 2.
 
-Post-closure research guidance (from the terminal review): the two headline facts are (a) wrongly-bound color structure entering a high-weight affordability path is extremely dangerous, and (b) current summaries do not fully encode the bonus vector. Any future M45B must therefore define, before anything else, what operational information $R(\mathbf{b} \mid C, E2, F4, \ldots)$ a residual channel represents — explicitly demonstrating it is not a re-encoding of F4 affordability or E2 noble deficit. M45B remains NOT AUTHORIZED.
+The M44 → M45A research chain is now complete: non-terminal progress matters (M44A) → its key component is CORE_ENGINE (M44B) → bonus-total ≡ purchased-count ≡ C, one scalar not two information sources (M44C) → what actually matters is **color structure**: wrong color binding in F4 is massively harmful while the scalar summaries do not fully encode the bonus vector (M45A).
+
+The open question for a future M45B: *what, in the residual bonus-vector structure, is not a duplicate encoding of F4 affordability or E2 noble deficit, and can form an actionable decision signal?* M45B is NOT AUTHORIZED and is not automatically authorized by this closure; its first step must define the operational meaning of $R(\mathbf{b} \mid C, E2, F4, \ldots)$ before any feature/weight work.
