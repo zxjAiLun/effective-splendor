@@ -17,6 +17,7 @@
 //! Dependency discipline: `splendor-search -> splendor-core + splendor-catalog`
 //! only. No dependency on protocol, replay, arena, agent, eval or cli.
 
+pub mod attribution;
 mod analysis;
 mod config;
 mod error;
@@ -25,6 +26,9 @@ mod model;
 mod order;
 mod search;
 
+pub use attribution::{
+    family_progress_for, AttributionProfile, FamilyProgress, StaticEvaluatorAttributionV1,
+};
 pub use analysis::{
     ReplaySearchSourceV1, SearchAnalysisV1, SEARCH_ANALYSIS_FORMAT, SEARCH_ANALYSIS_VERSION,
 };

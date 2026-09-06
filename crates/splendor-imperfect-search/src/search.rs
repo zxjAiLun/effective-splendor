@@ -1,6 +1,9 @@
 use splendor_belief::{sample_determinization_v1, InformationSetV1};
 use splendor_core::{Action, Phase, PlayerId};
-use splendor_search::{canonical_order, search_maxn_v1, SearchError, StaticEvaluatorV1};
+use splendor_search::{
+    canonical_order, search_maxn_v1, AttributionProfile, SearchError,
+    StaticEvaluatorAttributionV1, StaticEvaluatorV1,
+};
 
 use crate::config::RootDeterminizationConfigV1;
 use crate::error::ImperfectSearchError;
@@ -147,12 +150,131 @@ pub fn aggregate_root_determinizations_v1(
 }
 
 /// Compatibility spelling for callers that describe the operation as a
+/// Compatibility spelling for callers that describe the operation as a
 /// search rather than an aggregation.
 pub fn search_root_determinizations_v1(
     information_set: &InformationSetV1,
     config: RootDeterminizationConfigV1,
 ) -> Result<RootDeterminizationResultV1, ImperfectSearchError> {
     aggregate_root_determinizations_v1(information_set, config)
+}
+
+/// M44A research entry point: root-determinization aggregation using
+/// [`StaticEvaluatorAttributionV1`] with a masked information family profile.
+pub fn aggregate_root_determinizations_attribution_v1(
+    information_set: &InformationSetV1,
+    config: RootDeterminizationConfigV1,
+    profile: AttributionProfile,
+) -> Result<RootDeterminizationResultV1, ImperfectSearchError> {
+    config
+        .validate()
+        .map_err(|e| ImperfectSearchError::InvalidConfig(e.to_string()))?;
+
+    let observation = information_set.observation();
+    let root_player = observation.public.current_player;
+    if observation.viewer != root_player {
+        return Err(ImperfectSearchError::ViewerIsNotRootPlayer {
+            viewer: observation.viewer,
+            current_player: root_player,
+        });
+    }
+    if observation.public.phase == Phase::GameOver {
+        return Err(ImperfectSearchError::TerminalInformationSet);
+    }
+
+    let player_count = usize::from(observation.public.player_count);
+    if root_player.index() >= player_count {
+        return Err(ImperfectSearchError::Engine(format!(
+            "root player {:?} is outside player count {player_count}",
+            root_player
+        )));
+    }
+
+    let mut expected_actions: Option<Vec<Action>> = None;
+    let mut aggregates: Vec<RootActionAggregateV1> = Vec::new();
+    let mut stats = RootDeterminizationStatsV1 {
+        samples: config.sample_count,
+        root_actions: 0,
+        continuation_searches: 0,
+        terminal_children: 0,
+        nodes_visited: 0,
+        nodes_expanded: 0,
+        leaf_evaluations: 0,
+        transposition_hits: 0,
+    };
+
+    for sample_index in 0..u64::from(config.sample_count) {
+        let determinization =
+            sample_determinization_v1(information_set, config.sample_seed, sample_index)?;
+        let state = determinization.state();
+        let actions = canonical_order(&state.legal_actions());
+        if actions.is_empty() {
+            return Err(ImperfectSearchError::NoLegalActions);
+        }
+
+        ensure_root_action_set(expected_actions.as_deref(), &actions, sample_index)?;
+        if expected_actions.is_none() {
+            stats.root_actions = u32::try_from(actions.len()).map_err(|_| {
+                ImperfectSearchError::Overflow("root action count exceeds u32".to_owned())
+            })?;
+            aggregates = actions
+                .iter()
+                .copied()
+                .map(|action| RootActionAggregateV1 {
+                    action,
+                    utility_sum_by_player: vec![0; player_count],
+                })
+                .collect();
+            expected_actions = Some(actions);
+        }
+
+        let root_actions = expected_actions
+            .as_deref()
+            .ok_or(ImperfectSearchError::NoLegalActions)?;
+        for (action_index, action) in root_actions.iter().copied().enumerate() {
+            let mut child = state.clone();
+            child
+                .apply(action)
+                .map_err(|error| ImperfectSearchError::Engine(error.to_string()))?;
+
+            let utility_by_player = if child.is_terminal() {
+                let utilities = StaticEvaluatorAttributionV1::utilities(&child, profile)
+                    .map_err(map_search_error)?;
+                checked_add_u64(&mut stats.terminal_children, 1, "terminal child count")?;
+                utilities
+            } else {
+                let utilities = StaticEvaluatorAttributionV1::utilities(&child, profile)
+                    .map_err(map_search_error)?;
+                checked_add_u64(
+                    &mut stats.continuation_searches,
+                    1,
+                    "continuation search count",
+                )?;
+                checked_add_u64(&mut stats.nodes_visited, 1, "nodes_visited")?;
+                checked_add_u64(&mut stats.nodes_expanded, 1, "nodes_expanded")?;
+                utilities
+            };
+
+            validate_utility_shape(player_count, utility_by_player.len())?;
+            for (player, value) in utility_by_player.into_iter().enumerate() {
+                checked_add_i64(
+                    &mut aggregates[action_index].utility_sum_by_player[player],
+                    value,
+                    "utility sum",
+                )?;
+            }
+        }
+    }
+
+    let action = choose_best_action(&aggregates, root_player)?;
+    Ok(RootDeterminizationResultV1 {
+        action,
+        root_player,
+        sample_seed: config.sample_seed,
+        sample_count: config.sample_count,
+        action_aggregates: aggregates,
+        stats,
+    })
 }
 
 fn ensure_root_action_set(

@@ -1,0 +1,309 @@
+{
+  "format": "effective-splendor-m44a-information-attribution-result",
+  "version": 1,
+  "milestone": "M44A",
+  "title": "StaticEvaluator Information Attribution",
+  "audit_completed_at": 1788687826.0510545,
+  "total_pairings": 5,
+  "total_matches_expected": 640,
+  "total_matches_verified": 640,
+  "exhaustiveness": {
+    "reports_seen": 640,
+    "replays_seen": 640,
+    "missing_reports": 0,
+    "duplicate_reports": 0,
+    "aborted_matches": 0,
+    "candidate_faults": 0,
+    "lineup_checks_performed": 1280,
+    "lineup_mismatches_found": 0,
+    "rotation_checks_performed": 640,
+    "rotation_mismatches_found": 0,
+    "replay_verification_failures": 0
+  },
+  "family_partition": {
+    "F1_REALIZED_SCORE": [
+      "prestige"
+    ],
+    "F2_PERMANENT_ENGINE": [
+      "total_permanent_bonuses",
+      "purchased_card_count",
+      "noble_progress"
+    ],
+    "F3_LIQUIDITY_OPTIONALITY": [
+      "colored_token_count",
+      "gold_token_count",
+      "reserved_card_count"
+    ],
+    "F4_IMMEDIATE_CONVERTIBILITY": [
+      "affordable_card_count",
+      "max_affordable_prestige"
+    ]
+  },
+  "frozen_coefficients": {
+    "PRESTIGE_WEIGHT": 100000000,
+    "BONUS_WEIGHT": 2000000,
+    "PURCHASED_CARD_WEIGHT": 250000,
+    "COLORED_TOKEN_WEIGHT": 20000,
+    "GOLD_TOKEN_WEIGHT": 40000,
+    "RESERVED_CARD_WEIGHT": 10000,
+    "AFFORDABLE_CARD_WEIGHT": 100000,
+    "MAX_AFFORDABLE_PRESTIGE_WEIGHT": 5000000,
+    "NOBLE_PROGRESS_WEIGHT": 10000,
+    "TERMINAL_RANK_UNIT": 1000000000000
+  },
+  "p0_semantic_tests": {
+    "test_target": "crates/splendor-cli/tests/m44a_p0_semantic.rs",
+    "tests_count": 6,
+    "all_passed": true
+  },
+  "provenance": {
+    "design_commit": "607dab0",
+    "splendor_exe_sha256": "67c3f0c1ca161b573e0732b2f8a46ca88a05457112b776082974b427080eb814",
+    "catalog_file_sha256": "4e6e5bc7f6134500fc501674e1be97dd34dd5306188dd2fb9220e6d8c58612d4",
+    "catalog_semantic_hash": "4c90cb85d565e74af3e955df62d431174aaf5a8d4192895f95c8d21d57d78a26",
+    "sample_seed": 20260703,
+    "sample_count": 4,
+    "depth_turns": 1,
+    "max_nodes": 1,
+    "bootstrap_seed": 44270001,
+    "bootstrap_resamples": 10000,
+    "frozen_seeds_count": 64,
+    "frozen_seeds_sha256": "25b1f7cb9cbd9c8e2b4d94fc48cf1668eceac4a7d70edd284dbb2536853d69a9",
+    "pairing_schedule_sha256": "96c07437f9035b998f54d30f779961f2903c7b66ceada186f8228b80b7afaeae",
+    "seat_rotation_contract_sha256": "a08f6256039c2ac334cf6fa6902f8526f8005747fc755dfb64fc79ad01d2e11d",
+    "family_partition_sha256": "35d1945808b34c0f92560a3245541ae3b666ebdfe39764be6f919ab26e6c5f06",
+    "coefficients_table_sha256": "4ca7de85344076b6eb3eb988789a1982ee15d7ebdc4a2a06248eb285bfa025b3",
+    "source_shas": {
+      "orchestrator": "15c47e27c1595cf56503f81891b9a0313254f0caa06d5cff05c8547d7b6a3bd4",
+      "final_audit": "f0011b6da1d202b202a3d1d570ea79b5df5a4b545c3572143cb0992b1ca3f0b7",
+      "common_state_audit": "6b6010631587c322d3b18fab9ef3189ba8ee367287f7311bddbac7743675ac3e",
+      "p0_semantic_test": "e8692358b42d3a3111310ad33f88cace4422cf38476b55b2b6131636d3032c35",
+      "attribution_evaluator": "3d178e3c73739fb6f487ac65f0d6fc0dac079771209298c391e2da9e9d8353ed",
+      "static_evaluator": "ad5350b3ae2e4f63badc85b3616d15e2ec720b84831c37e6f7042b8690b8dbbd",
+      "imperfect_search_player_view": "8820f5b9004ae12e658d654e44d0b9a26911cf70bf6f4e97de162f0ae39d0928",
+      "imperfect_search": "b315f637d5320bb68564ddc57ba5cc1f11e6cef1b81129e20f61fecc2efd39a9",
+      "determinization_agent": "6887808004b3255b179fac612a650a1354e4a64cf6930aa425c5d0941b0649eb"
+    }
+  },
+  "pairings": [
+    {
+      "pairing_id": "drop_score_vs_full",
+      "primary_profile": "drop_score",
+      "secondary_profile": "full",
+      "is_family_hypothesis": true,
+      "matches_expected": 128,
+      "matches_verified": 128,
+      "lineup_checks_passed": 256,
+      "rotation_checks_passed": 128,
+      "wins": 17,
+      "ties": 0,
+      "losses": 111,
+      "center_bps": 1328.125,
+      "ci_level": "98.75%",
+      "bootstrap_ci": [
+        703.125,
+        2031.25
+      ],
+      "verdict": "RESOLVED_SENSITIVE",
+      "seat0_mean_bps": 781.25,
+      "seat1_mean_bps": 1875.0,
+      "mean_completed_plies": 64.1875,
+      "reports_digest_sha256": "844f33434cfed9da7c5b32a52c291a44697a674ac5a7edd2a34c4265b55e8c98",
+      "replays_digest_sha256": "3fdb079715f6f6e17a6f9ee7653e795688795abccf8b7807f0c48cc5d532e38e"
+    },
+    {
+      "pairing_id": "drop_engine_vs_full",
+      "primary_profile": "drop_engine",
+      "secondary_profile": "full",
+      "is_family_hypothesis": true,
+      "matches_expected": 128,
+      "matches_verified": 128,
+      "lineup_checks_passed": 256,
+      "rotation_checks_passed": 128,
+      "wins": 24,
+      "ties": 0,
+      "losses": 104,
+      "center_bps": 1875.0,
+      "ci_level": "98.75%",
+      "bootstrap_ci": [
+        1093.75,
+        2656.25
+      ],
+      "verdict": "RESOLVED_SENSITIVE",
+      "seat0_mean_bps": 1562.5,
+      "seat1_mean_bps": 2187.5,
+      "mean_completed_plies": 62.984375,
+      "reports_digest_sha256": "274f8151eca70dd21cf65f5a7476a677ff686e1d5a388ec324bce295d231bf5a",
+      "replays_digest_sha256": "5d72c0f40e06c0578216f3f8b4816c744d77a71f45da73ae0534680a6801e03c"
+    },
+    {
+      "pairing_id": "drop_liquidity_vs_full",
+      "primary_profile": "drop_liquidity",
+      "secondary_profile": "full",
+      "is_family_hypothesis": true,
+      "matches_expected": 128,
+      "matches_verified": 128,
+      "lineup_checks_passed": 256,
+      "rotation_checks_passed": 128,
+      "wins": 65,
+      "ties": 1,
+      "losses": 62,
+      "center_bps": 5117.1875,
+      "ci_level": "98.75%",
+      "bootstrap_ci": [
+        3945.3125,
+        6289.0625
+      ],
+      "verdict": "UNRESOLVED",
+      "seat0_mean_bps": 5390.625,
+      "seat1_mean_bps": 4843.75,
+      "mean_completed_plies": 61.5390625,
+      "reports_digest_sha256": "444c56354bd2a2c3f7caf1c25cace7e7fe416f9ab68bdf5a0e2c0e741699b3ed",
+      "replays_digest_sha256": "f7716ef3004a02e47c85fd4d9f067394dc0f252b6069a043b39fe4cc235e5aa2"
+    },
+    {
+      "pairing_id": "drop_convertibility_vs_full",
+      "primary_profile": "drop_convertibility",
+      "secondary_profile": "full",
+      "is_family_hypothesis": true,
+      "matches_expected": 128,
+      "matches_verified": 128,
+      "lineup_checks_passed": 256,
+      "rotation_checks_passed": 128,
+      "wins": 77,
+      "ties": 0,
+      "losses": 51,
+      "center_bps": 6015.625,
+      "ci_level": "98.75%",
+      "bootstrap_ci": [
+        4921.875,
+        7109.375
+      ],
+      "verdict": "UNRESOLVED",
+      "seat0_mean_bps": 6562.5,
+      "seat1_mean_bps": 5468.75,
+      "mean_completed_plies": 58.7734375,
+      "reports_digest_sha256": "dc83a012b9d79019441fbeda14299aa1339b0870ac28550c7766d5178949bf6c",
+      "replays_digest_sha256": "a427a6eb72a5f28687f9b49eb5158647c54c0ce885b41d91f0c96ffe1786d9a5"
+    },
+    {
+      "pairing_id": "zero_progress_vs_full",
+      "primary_profile": "zero_progress",
+      "secondary_profile": "full",
+      "is_family_hypothesis": false,
+      "matches_expected": 128,
+      "matches_verified": 128,
+      "lineup_checks_passed": 256,
+      "rotation_checks_passed": 128,
+      "wins": 7,
+      "ties": 0,
+      "losses": 121,
+      "center_bps": 546.875,
+      "ci_level": "95%",
+      "bootstrap_ci": [
+        234.375,
+        937.5
+      ],
+      "verdict": "RESOLVED_SENSITIVE",
+      "seat0_mean_bps": 156.25,
+      "seat1_mean_bps": 937.5,
+      "mean_completed_plies": 62.1484375,
+      "reports_digest_sha256": "e0d01a3d1c89ee1baaba6124b22623a9bd47ff3b095bd9aab65b6ac3b93f077c",
+      "replays_digest_sha256": "281ac1a1a3e274dd3176427380b0eb7beb652bb7dfb9c7eef618ae7ef89edcaf"
+    }
+  ],
+  "common_state_action_audit": {
+    "format": "effective-splendor-m44a-common-state-audit",
+    "version": 1,
+    "audited_contexts_count": 200,
+    "canonical_contexts_identity_sha256": "122f3d825bdabb59604552ea00383d5db0886f66bd4019a75ce1932b5ebb53ad",
+    "source_action_reproduction": {
+      "matching_source_checks": 200,
+      "reproduced": 200,
+      "reproduction_rate": 1.0,
+      "pass": true
+    },
+    "disagreement_rates_vs_full": {
+      "drop_score_vs_full": 0.19,
+      "drop_engine_vs_full": 0.165,
+      "drop_liquidity_vs_full": 0.06,
+      "drop_convertibility_vs_full": 0.6,
+      "zero_progress_vs_full": 0.815,
+      "only_score_agreement_with_full": 0.32,
+      "only_engine_agreement_with_full": 0.185,
+      "only_liquidity_agreement_with_full": 0.115,
+      "only_convertibility_agreement_with_full": 0.6
+    },
+    "winner_change_rates": {
+      "dropping_score_changes_action_rate": 0.19,
+      "dropping_engine_changes_action_rate": 0.165,
+      "dropping_liquidity_changes_action_rate": 0.06,
+      "dropping_convertibility_changes_action_rate": 0.6,
+      "dropping_zero_progress_changes_action_rate": 0.815
+    },
+    "family_margin_decomposition": {
+      "f1_score": {
+        "mean_margin": 88000000.0,
+        "median_margin": 0.0,
+        "mean_abs_contribution": 88000000.0,
+        "p90_abs_contribution": 400000000.0,
+        "positive_sign_rate": 0.175,
+        "zero_rate": 0.825
+      },
+      "f2_engine": {
+        "mean_margin": 1087000.0,
+        "median_margin": 0.0,
+        "mean_abs_contribution": 2445800.0,
+        "p90_abs_contribution": 9044000.0,
+        "positive_sign_rate": 0.23,
+        "zero_rate": 0.665
+      },
+      "f3_liquidity": {
+        "mean_margin": -68400.0,
+        "median_margin": 0.0,
+        "mean_abs_contribution": 126000.0,
+        "p90_abs_contribution": 400000.0,
+        "positive_sign_rate": 0.19,
+        "zero_rate": 0.485
+      },
+      "f4_convertibility": {
+        "mean_margin": -1381000.0,
+        "median_margin": 0.0,
+        "mean_abs_contribution": 9692000.0,
+        "p90_abs_contribution": 27510000.0,
+        "positive_sign_rate": 0.46,
+        "zero_rate": 0.275
+      },
+      "terminal": {
+        "mean_margin": 0.0,
+        "median_margin": 0.0,
+        "mean_abs_contribution": 0.0,
+        "p90_abs_contribution": 0.0,
+        "positive_sign_rate": 0.0,
+        "zero_rate": 1.0
+      },
+      "full": {
+        "mean_margin": 87637600.0,
+        "median_margin": 400000.0,
+        "mean_abs_contribution": 87637600.0,
+        "p90_abs_contribution": 379916000.0,
+        "positive_sign_rate": 0.755,
+        "zero_rate": 0.245
+      }
+    },
+    "legal_actions_distribution": {
+      "mean": 38.745,
+      "min": 3,
+      "max": 370,
+      "median": 26.0
+    },
+    "fraction_contexts_with_terminal_child": 0.0
+  },
+  "formal_classifications": {
+    "drop_score_vs_full": "RESOLVED_SENSITIVE (Upper 98.75% CI 2031.2 < 5000)",
+    "drop_engine_vs_full": "RESOLVED_SENSITIVE (Upper 98.75% CI 2656.2 < 5000)",
+    "drop_liquidity_vs_full": "UNRESOLVED (98.75% CI [3945.3, 6289.1] crosses 5000)",
+    "drop_convertibility_vs_full": "UNRESOLVED (98.75% CI [4921.9, 7109.4] crosses 5000)",
+    "zero_progress_vs_full": "RESOLVED_SENSITIVE (Upper 95% CI 937.5 < 5000)"
+  }
+}

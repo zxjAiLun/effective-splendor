@@ -26,12 +26,12 @@ use splendor_core::{
     FullState, GameConfig, PlayerId, Ruleset, CATALOG_VERSION, ENGINE_VERSION,
 };
 use splendor_imperfect_search::{
-    analyze_player_view_v1, RootDeterminizationConfigV1, RootDeterminizationResultV1,
-    DETERMINIZATION_VERSION, IMPERFECT_SEARCH_ALGORITHM_ID, IMPERFECT_SEARCH_VERSION,
-    INFORMATION_SET_VERSION,
+    analyze_player_view_attribution_v1, analyze_player_view_v1, RootDeterminizationConfigV1,
+    RootDeterminizationResultV1, DETERMINIZATION_VERSION, IMPERFECT_SEARCH_ALGORITHM_ID,
+    IMPERFECT_SEARCH_VERSION, INFORMATION_SET_VERSION,
 };
 use splendor_replay::{replay_document_hash_v1, verify_replay_position, ReplayV1};
-use splendor_search::{SearchConfigV1, SEARCH_ALGORITHM_ID, SEARCH_VERSION};
+use splendor_search::{AttributionProfile, SearchConfigV1, SEARCH_ALGORITHM_ID, SEARCH_VERSION};
 
 use crate::atomic_output;
 
@@ -130,11 +130,20 @@ fn run_analyze_player_view_inner(args: &[String]) -> Result<(), AnalyzePlayerVie
         ));
     }
 
-    let player_view =
+    let player_view = if let Some(profile) = parsed.attribution_profile {
+        analyze_player_view_attribution_v1(
+            Ruleset::base_v1(),
+            &observation,
+            &visible_history,
+            config,
+            profile,
+        )
+    } else {
         analyze_player_view_v1(Ruleset::base_v1(), &observation, &visible_history, config)
-            .map_err(|error| {
-                AnalyzePlayerViewError::Fatal(format!("player-view analysis failed: {error}"))
-            })?;
+    }
+    .map_err(|error| {
+        AnalyzePlayerViewError::Fatal(format!("player-view analysis failed: {error}"))
+    })?;
     let result = player_view.result();
     if result.root_player != viewer {
         return Err(AnalyzePlayerViewError::Fatal(
@@ -398,6 +407,7 @@ struct AnalyzePlayerViewArgs {
     sample_count: u16,
     max_depth_turns: u8,
     max_nodes: u64,
+    attribution_profile: Option<AttributionProfile>,
     out: PathBuf,
 }
 
@@ -408,6 +418,7 @@ fn parse_analyze_player_view_args(args: &[String]) -> Result<AnalyzePlayerViewAr
     let mut sample_count: Option<String> = None;
     let mut max_depth_turns: Option<String> = None;
     let mut max_nodes: Option<String> = None;
+    let mut attribution_profile: Option<String> = None;
     let mut out: Option<String> = None;
 
     let mut index = 0;
@@ -423,6 +434,7 @@ fn parse_analyze_player_view_args(args: &[String]) -> Result<AnalyzePlayerViewAr
                 args.get(index + 1),
             )?,
             "--max-nodes" => set_flag(&mut max_nodes, "--max-nodes", args.get(index + 1))?,
+            "--attribution-profile" => set_flag(&mut attribution_profile, "--attribution-profile", args.get(index + 1))?,
             "--out" => set_flag(&mut out, "--out", args.get(index + 1))?,
             other if other.starts_with('-') => {
                 return Err(format!("unknown flag `{other}`"));
@@ -439,6 +451,10 @@ fn parse_analyze_player_view_args(args: &[String]) -> Result<AnalyzePlayerViewAr
     let max_depth_turns =
         max_depth_turns.ok_or_else(|| "missing required --max-depth-turns".to_string())?;
     let max_nodes = max_nodes.ok_or_else(|| "missing required --max-nodes".to_string())?;
+    let profile = attribution_profile
+        .map(|s| s.parse::<AttributionProfile>())
+        .transpose()
+        .map_err(|e| e.to_string())?;
     let out = out.ok_or_else(|| "missing required --out".to_string())?;
 
     Ok(AnalyzePlayerViewArgs {
@@ -448,6 +464,7 @@ fn parse_analyze_player_view_args(args: &[String]) -> Result<AnalyzePlayerViewAr
         sample_count: parse_number("--sample-count", &sample_count)?,
         max_depth_turns: parse_number("--max-depth-turns", &max_depth_turns)?,
         max_nodes: parse_number("--max-nodes", &max_nodes)?,
+        attribution_profile: profile,
         out: PathBuf::from(out),
     })
 }

@@ -4,7 +4,10 @@ use splendor_core::{Observation, Ruleset, VisibleEvent};
 use crate::config::RootDeterminizationConfigV1;
 use crate::error::ImperfectSearchError;
 use crate::model::RootDeterminizationResultV1;
-use crate::search::aggregate_root_determinizations_v1;
+use crate::search::{
+    aggregate_root_determinizations_attribution_v1, aggregate_root_determinizations_v1,
+};
+use splendor_search::AttributionProfile;
 
 /// Replay-neutral composition result for one player information view.
 ///
@@ -53,6 +56,28 @@ pub fn analyze_player_view_v1(
     let visible_history_hash = information_set.visible_history_hash().clone();
     let information_set_hash = information_set.information_set_hash().clone();
     let result = aggregate_root_determinizations_v1(&information_set, config)?;
+
+    Ok(PlayerViewRootAnalysisV1 {
+        visible_history_hash,
+        information_set_hash,
+        result,
+    })
+}
+
+/// M44A research entry point: Build a validated player information set and
+/// aggregate its root actions under the specified attribution profile.
+pub fn analyze_player_view_attribution_v1(
+    ruleset: Ruleset,
+    observation: &Observation,
+    visible_history: &[VisibleEvent],
+    config: RootDeterminizationConfigV1,
+    profile: AttributionProfile,
+) -> Result<PlayerViewRootAnalysisV1, ImperfectSearchError> {
+    let information_set = build_information_set_v1(ruleset, observation, visible_history)?;
+    let visible_history_hash = information_set.visible_history_hash().clone();
+    let information_set_hash = information_set.information_set_hash().clone();
+    let result =
+        aggregate_root_determinizations_attribution_v1(&information_set, config, profile)?;
 
     Ok(PlayerViewRootAnalysisV1 {
         visible_history_hash,

@@ -31,9 +31,10 @@ use splendor_replay::{verify_replay, verify_rollout_prefix};
 use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
 use splendor_determinization_agent::{
-    run_determinization_agent_with_identity_v1, DETERMINIZATION_AGENT_NAME,
-    DETERMINIZATION_AGENT_VERSION,
+    run_determinization_agent_attribution_v1, run_determinization_agent_with_identity_v1,
+    DETERMINIZATION_AGENT_NAME, DETERMINIZATION_AGENT_VERSION,
 };
+use splendor_search::AttributionProfile;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
@@ -766,7 +767,7 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let (config, runtime_name, runtime_version) = match parse_agent_determinization_args(args) {
+    let (config, runtime_name, runtime_version, attribution_profile) = match parse_agent_determinization_args(args) {
         Ok(parsed) => parsed,
         Err(msg) => {
             let mut stderr = io::stderr().lock();
@@ -783,16 +784,31 @@ pub fn agent_determinization(args: &[String]) -> i32 {
     let stderr = io::stderr();
     let diagnostics = stderr.lock();
 
-    match run_determinization_agent_with_identity_v1(
-        input,
-        output,
-        diagnostics,
-        config,
-        AgentIdentity {
-            name: &runtime_name,
-            version: &runtime_version,
-        },
-    ) {
+    let identity = AgentIdentity {
+        name: &runtime_name,
+        version: &runtime_version,
+    };
+
+    let res = if let Some(profile) = attribution_profile {
+        run_determinization_agent_attribution_v1(
+            input,
+            output,
+            diagnostics,
+            config,
+            profile,
+            identity,
+        )
+    } else {
+        run_determinization_agent_with_identity_v1(
+            input,
+            output,
+            diagnostics,
+            config,
+            identity,
+        )
+    };
+
+    match res {
         Ok(()) => 0,
         Err(_) => 1,
     }
@@ -1002,13 +1018,14 @@ fn parse_agent_random_args(args: &[String]) -> Result<u64, String> {
 
 fn parse_agent_determinization_args(
     args: &[String],
-) -> Result<(RootDeterminizationConfigV1, String, String), String> {
+) -> Result<(RootDeterminizationConfigV1, String, String, Option<AttributionProfile>), String> {
     let mut sample_seed: Option<String> = None;
     let mut sample_count: Option<String> = None;
     let mut max_depth_turns: Option<String> = None;
     let mut max_nodes: Option<String> = None;
     let mut runtime_name: Option<String> = None;
     let mut runtime_version: Option<String> = None;
+    let mut attribution_profile: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -1019,6 +1036,7 @@ fn parse_agent_determinization_args(
             "--max-nodes" => set_flag(&mut max_nodes, arg, args.get(i + 1))?,
             "--runtime-name" => set_flag(&mut runtime_name, arg, args.get(i + 1))?,
             "--runtime-version" => set_flag(&mut runtime_version, arg, args.get(i + 1))?,
+            "--attribution-profile" => set_flag(&mut attribution_profile, arg, args.get(i + 1))?,
             other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         }
@@ -1032,6 +1050,10 @@ fn parse_agent_determinization_args(
     let runtime_name = runtime_name.unwrap_or_else(|| DETERMINIZATION_AGENT_NAME.to_string());
     let runtime_version =
         runtime_version.unwrap_or_else(|| DETERMINIZATION_AGENT_VERSION.to_string());
+    let profile = match attribution_profile {
+        Some(s) => Some(s.parse::<AttributionProfile>()?),
+        None => None,
+    };
 
     Ok((
         RootDeterminizationConfigV1 {
@@ -1044,6 +1066,7 @@ fn parse_agent_determinization_args(
         },
         runtime_name,
         runtime_version,
+        profile,
     ))
 }
 

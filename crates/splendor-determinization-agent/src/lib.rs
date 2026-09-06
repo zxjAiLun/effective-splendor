@@ -8,9 +8,10 @@
 use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, DecisionContext};
 use splendor_core::{Action, Ruleset};
 use splendor_imperfect_search::{
-    analyze_player_view_v1, ImperfectSearchError, RootDeterminizationConfigV1,
+    analyze_player_view_attribution_v1, analyze_player_view_v1, ImperfectSearchError,
+    RootDeterminizationConfigV1,
 };
-use splendor_search::canonical_order;
+use splendor_search::{canonical_order, AttributionProfile};
 use thiserror::Error;
 
 /// Stable Arena identity for the first live M07-backed policy.
@@ -77,6 +78,91 @@ impl AgentPolicy for DeterminizationAgentPolicyV1 {
 
         Ok(result.action)
     }
+}
+
+/// M44A research policy backed by masked StaticEvaluatorAttributionV1.
+#[derive(Debug, Clone)]
+pub struct DeterminizationAgentAttributionPolicyV1 {
+    ruleset: Ruleset,
+    config: RootDeterminizationConfigV1,
+    profile: AttributionProfile,
+}
+
+impl DeterminizationAgentAttributionPolicyV1 {
+    pub fn new(
+        config: RootDeterminizationConfigV1,
+        profile: AttributionProfile,
+    ) -> Result<Self, DeterminizationAgentError> {
+        config.validate()?;
+        Ok(Self {
+            ruleset: Ruleset::base_v1(),
+            config,
+            profile,
+        })
+    }
+
+    pub fn profile(&self) -> AttributionProfile {
+        self.profile
+    }
+
+    pub fn config(&self) -> RootDeterminizationConfigV1 {
+        self.config
+    }
+}
+
+impl AgentPolicy for DeterminizationAgentAttributionPolicyV1 {
+    type Error = DeterminizationAgentError;
+
+    fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
+        if context.meta.recipient_seat != context.observation.viewer {
+            return Err(DeterminizationAgentError::RecipientViewerMismatch);
+        }
+
+        let analysis = analyze_player_view_attribution_v1(
+            self.ruleset,
+            &context.observation,
+            context.visible_history,
+            self.config,
+            self.profile,
+        )?;
+        let result = analysis.result();
+        let search_actions = result
+            .action_aggregates
+            .iter()
+            .map(|aggregate| aggregate.action)
+            .collect::<Vec<_>>();
+        if canonical_order(context.legal_actions) != search_actions {
+            return Err(DeterminizationAgentError::LegalActionSetMismatch);
+        }
+
+        Ok(result.action)
+    }
+}
+
+/// Run the M44A attribution research policy over the standard NDJSON Agent SDK runtime.
+pub fn run_determinization_agent_attribution_v1<R, W, E>(
+    input: R,
+    output: W,
+    mut diagnostics: E,
+    config: RootDeterminizationConfigV1,
+    profile: AttributionProfile,
+    identity: AgentIdentity<'_>,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    let policy = match DeterminizationAgentAttributionPolicyV1::new(config, profile) {
+        Ok(policy) => policy,
+        Err(error) => {
+            let agent_error = AgentError::Policy(error.to_string());
+            let _ = writeln!(diagnostics, "error: {agent_error}");
+            let _ = diagnostics.flush();
+            return Err(agent_error);
+        }
+    };
+    run_agent(input, output, diagnostics, identity, 0, policy)
 }
 
 /// Run the v1 policy over the standard NDJSON Agent SDK runtime with custom identity.
