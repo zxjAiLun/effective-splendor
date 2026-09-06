@@ -4,34 +4,38 @@
 Milestone:      M44C
 Title:          Core Engine Identity & Scale Sensitivity
 Type:           evaluator scalar scale sensitivity & algebraic identity proof
-Status:         PROPOSED / DRAFT_PENDING_REVIEW
+Status:         DESIGN_V2 / FROZEN_BY_REVIEW (authorized for implementation)
 Tracked Result: benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json (planned)
-Baseline:       b3bb4c9 (M44B closure record)
-Design:         DESIGN_V1 / DRAFT
+Baseline:       f04aedf (M44C design v1 commit)
+Design:         DESIGN_V2 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE
 Model Training: NONE
 Weight Tuning:  NONE (pre-registered scale probe only; no search or production weight changes)
 
-Scope:
-  1. Algebraic identity proof: In standard Splendor base rules, total permanent bonuses
+Mandatory Design V2 Scope:
+  1. Algebraic identity closure: In standard Splendor base rules, total permanent bonuses
      B(p) and purchased-card count P(p) are identically equal to the same scalar C(p)
-     on all reachable states.
+     on all reachable states (code/rule algebraic proof + deterministic state regression).
   2. Equalized LOO isomorphism: Prove algebraically and bit-exact that symmetric
-     weights yield bit-identical utilities and actions (no Arena needed).
-  3. Scalar weight Arena calibration: Evaluate playing-strength sensitivity to W_C
-     at 25%, 50%, and 88.89% of full baseline W_C = 2,250,000 (384 matches).
-  4. Common-state scale audit: Evaluate action disagreement and margin shifts across
-     200 balanced contexts.
-  5. Vector heterogeneity descriptive audit: Quantify color-vector diversity compressed
-     by scalar C and its indirect influence through F4/E2 (no evaluator changes, no Arena).
+     weights yield bit-identical utilities and actions (P0-B, no Arena).
+  3. FULL scale identity: Prove bit-exact equivalence between ENGINE_SCALE_100 and
+     existing AttributionProfile::FULL across frozen positions and reachable states (P0-C).
+  4. Scalar weight Arena calibration: Evaluate playing-strength sensitivity to W_C
+     at 25%, 50%, and 88.89% of full baseline W_C = 2,250,000 in the strict n1 shell
+     (max_nodes = 1, 384 matches, Bonferroni-corrected 98.333% CI).
+  5. Common-state scale audit: Evaluate action disagreement and margin shifts across
+     an exact 200-context quota matrix with deterministic deduplicated sampling.
+  6. Vector heterogeneity descriptive audit: Structural code fact + observational
+     diversity metrics across P1 Arena-state corpus (no evaluator changes, no Arena).
 
 Non-goals (explicitly excluded):
   - Naive bonus-vs-purchased semantic LOO (PERMANENTLY REJECTED AS NON-IDENTIFIABLE)
   - Equalized-weight Arena (NOT AUTHORIZED; proven algebraically / bit-exact instead)
   - Vector-aware evaluator modifications or Arena in M44C (DEFERRED to M45A if justified)
   - Re-running W_C = 0 (M44B result 2,187.5 bps serves as external historical anchor)
-  - Modifying M07 search parameters, sample counts, or node budgets
+  - Modifying M07 search parameters, sample counts, or node budgets (max_nodes = 1 strict)
+  - Sequential seed extensions, extra scale points, or production code refactoring
 ```
 
 ## Problem and Evidence
@@ -48,7 +52,7 @@ However, rigorous code and rule inspection reveals a fundamental algebraic barri
 
 ### The Algebraic Identity Invariant
 
-1. **Catalog Specification**: The Splendor development card catalog contains exactly 90 cards (Tier 1: 40, Tier 2: 30, Tier 3: 20). Every card definition has a mandatory, single `GemColor` bonus. There are zero cards with 0 bonuses, and zero cards with $\ge 2$ bonuses.
+1. **Catalog Specification**: The Splendor development card catalog contains exactly **90 cards** (Tier 1: 40, Tier 2: 30, Tier 3: 20). Every card definition has a mandatory, single `GemColor` bonus. There are zero cards with 0 bonuses, and zero cards with $\ge 2$ bonuses.
 2. **Initial State**: At setup, every player $p$ begins with:
    $$\text{bonuses}(p) = [0, 0, 0, 0, 0] \implies B(p) = \sum_{c} \text{bonuses}_c(p) = 0$$
    $$\text{purchased}(p) = [] \implies P(p) = |\text{purchased}(p)| = 0$$
@@ -58,7 +62,7 @@ However, rigorous code and rule inspection reveals a fundamental algebraic barri
    purchased.insert(card_id)
    ```
    No game action can increase one without the other, and no game rule allows cards or bonuses to be discarded, traded, or lost.
-4. **Reachable-State Theorem**:
+4. **Reachable-State Invariant**:
    $$\forall s \in \mathcal{S}_{\text{reachable}}, \forall p \in \text{Players}(s): \quad B(p) \equiv P(p) \equiv C(p)$$
 5. **Correlation Form**: For any sample of reachable legal states with non-zero variance $\text{Var}(C) > 0$, the Pearson correlation is identically:
    $$\rho(B, P) \equiv 1.0$$
@@ -81,11 +85,11 @@ Attempting to evaluate `DROP_PURCHASED` vs `DROP_BONUSES` does not isolate two d
 - `DROP_BONUSES`: Sets $W_C = 250{,}000$ (**11.11%** of full $W_C$).
 
 If `DROP_PURCHASED` maintains high playing strength while `DROP_BONUSES` drops, this does **not** prove that "bonuses contain more information than card count." It merely reflects that 88.89% of the scalar signal was retained in one case and only 11.11% in the other.
-Therefore, **naive bonus-vs-purchased semantic LOO is permanently rejected as non-identifiable.**
+Therefore, **naive bonus-vs-purchased semantic LOO is permanently rejected as non-identifiable under current base rules and state representation.**
 
 ---
 
-## The True Research Question for M44C
+## Research Questions for M44C
 
 Given that `CORE_ENGINE` contains exactly one scalar degree of freedom $C(p) \times W_C$:
 > **How sensitive is the $n1$ search agent to the magnitude of the economic engine weight $W_C$, and where does the playing-strength degradation begin as $W_C$ is scaled down from $2{,}250{,}000$ toward $0$?**
@@ -103,29 +107,31 @@ M44C comprises four focused, decoupled protocols:
 ┌────────────────────────────────────────────────────────────────────────┐
 │ M44C Core Engine Identity & Scale Sensitivity                          │
 ├────────────────────────────────┬───────────────────────────────────────┤
-│ P0: Algebraic & Isomorphism    │ Proof of B ≡ P ≡ C and symmetric-     │
-│     Closure (No Arena)         │ weight bit-exact equivalence          │
+│ P0: Algebraic & Isomorphism    │ Code-level proof of B ≡ P ≡ C,        │
+│     Closure (No Arena)         │ symmetric LOO isomorphism (P0-B),     │
+│                                │ and ENGINE_SCALE_100 == FULL (P0-C)   │
 ├────────────────────────────────┼───────────────────────────────────────┤
 │ P1: Scalar Weight Arena        │ 3 pairings (25%, 50%, 88.89% vs FULL)  │
-│     Calibration (384 matches)  │ Bonferroni-corrected 98.333% CI       │
+│     Calibration (384 matches)  │ Strict n1 shell (max_nodes = 1)       │
+│                                │ Bonferroni-corrected 98.333% CI       │
 ├────────────────────────────────┼───────────────────────────────────────┤
-│ P2: Common-State Scale Audit   │ Action agreement & margin breakdown   │
-│     (200 contexts)             │ on balanced context sample            │
+│ P2: Common-State Scale Audit   │ Exact 200-context quota matrix        │
+│     (200 contexts)             │ Action agreement & margin breakdown   │
 ├────────────────────────────────┼───────────────────────────────────────┤
-│ P3: Vector Heterogeneity Audit │ Descriptive audit of vector diversity │
-│     (Descriptive diagnostic)   │ & F4/E2 variance at constant C        │
+│ P3: Vector Heterogeneity Audit │ Structural code fact + observational  │
+│     (Descriptive diagnostic)   │ diversity metrics on Arena corpus     │
 └────────────────────────────────┴───────────────────────────────────────┘
 ```
 
 ---
 
-## P0 — Algebraic Identity & Equalized LOO Isomorphism (Bit-Exact)
+## P0 — Algebraic Identity, Equalized LOO, & FULL Scale Identity (Bit-Exact)
 
 **No Arena execution permitted for P0.** This protocol establishes algebraic truths in code and unit tests.
 
-### P0-A: Algebraic Identity Invariant
+### P0-A: Algebraic Identity Regression
 1. **Catalog Integrity**: Assert all 90 cards in `splendor-catalog` have valid tier and exactly one bonus gem color.
-2. **Transition Invariance**: Assert `B(p) == P(p)` initially and after every legal action across $\ge 256$ game states generated from 2-player, 3-player, and 4-player simulations.
+2. **Transition Invariance**: Assert `B(p) == P(p)` initially and after every legal action across $\ge 256$ game states generated from deterministic 2-player, 3-player, and 4-player simulations.
 3. **Core Term Equivalence**: Assert $E_1(s, p) \equiv C(p) \times 2{,}250{,}000$ identically for all tested states.
 
 ### P0-B: Equalized LOO Isomorphism
@@ -149,7 +155,21 @@ Assert:
 3. Exact identity of the selected canonical action:
    $$\text{argmax}(a)_{\text{drop\_b}} == \text{argmax}(a)_{\text{drop\_p}}$$
 
-Passing P0-B permanently closes the question: "Which feature carries more information, bonuses or card count?" by proving they produce identical decision landscapes under symmetric scaling.
+Passing P0-B permanently closes the question of feature superiority under symmetric scaling.
+
+### P0-C: FULL Scale Identity
+Define `ENGINE_SCALE_100` with $W_C = 2{,}250{,}000$.
+Across:
+- The 12 frozen M07 benchmark positions;
+- $\ge 128$ deterministic reachable states;
+- All 4 determinizations per state;
+
+Assert bit-exact equality between `ENGINE_SCALE_100` and the existing verified `AttributionProfile::FULL`:
+1. Player utility vector: $\text{utilities}_{\text{scale\_100}}(s) == \text{utilities}_{\text{full}}(s)$.
+2. All legal canonical action aggregate scores: $\text{action\_scores}_{\text{scale\_100}}(s, a) == \text{action\_scores}_{\text{full}}(s, a)$.
+3. Selected canonical action: $\text{argmax}(a)_{\text{scale\_100}} == \text{argmax}(a)_{\text{full}}$.
+
+**G0 Gate Requirement**: Only when P0-A, P0-B, and P0-C pass completely is the P1 Arena unlocked. In the formal Arena, `FULL` continues using the verified production `FULL` profile to eliminate extraneous control variations.
 
 ---
 
@@ -166,7 +186,7 @@ All profiles retain the full static evaluator terms for F1 (prestige), E2 (noble
 | `ENGINE_SCALE_88` | $2{,}000{,}000$ | $88.89\%$ | Naive `DROP_PURCHASED` weight equivalent |
 | `FULL` | $2{,}250{,}000$ | $100.00\%$ | Standard frozen baseline |
 
-*Historical Anchor (External, not re-run)*:
+*Historical Anchor (External, not re-run or pooled)*:
 - `ENGINE_SCALE_0` ($W_C = 0$): Measured in M44B as `DROP_CORE_ENGINE`, yielding **2,187.5 bps** (97.5% CI: `[1484.4, 2968.8]`, `RESOLVED_SENSITIVE`).
 
 ### Arena Pairing Schedule
@@ -178,104 +198,114 @@ All profiles retain the full static evaluator terms for F1 (prestige), E2 (noble
 | `PAIRING_3` | `ENGINE_SCALE_88` | `FULL` | 128 | 64 / 64 |
 | **Total** | | | **384** | **192 / 192** |
 
-### Execution Constants
+### Execution Constants (Strict n1 Shell)
 
+To ensure comparability with M44A and M44B, the execution shell is frozen strictly to:
+- `sample_seed = 20_260_703`
+- `sample_count = 4`
+- `max_depth_turns = 1`
+- `max_nodes = 1` (**strict n1 static-successor shell, NOT 2000**)
 - **Seed Segment**: Fresh segment `5_700_000 .. 5_700_063` (64 seeds, rotated over 2 seats = 128 matches per pairing).
-- **Search Configuration**: Identical $n1$ shell across all arms:
-  - `sample_seed = 20_260_703`
-  - `sample_count = 4`
-  - `max_depth_turns = 1`
-  - `max_nodes = 2000`
 - **Execution Engine**: `crates/splendor-cli` arena runner, strict fail-closed contract (0 aborts, 0 candidate faults, 0 unhandled panics).
 
 ### Statistical Protocol & Decision Gates
 
 - **Family-wise Error Rate**: Controlled at $\alpha = 0.05$ across the 3 primary scale hypotheses using Bonferroni correction:
-  $$\alpha_{\text{per-test}} = \frac{0.05}{3} \approx 0.01667 \implies \mathbf{98.333\%} \text{ two-sided CI}$$
+  $$\alpha_{\text{per-test}} = \frac{0.05}{3} \approx 0.016667 \implies \mathbf{98.333\%} \text{ two-sided CI}$$
+  Exact percentile bounds: lower $= 0.833333\%$, upper $= 99.166667\%$.
 - **Bootstrap Parameters**: 10,000 resamples, seed `44_290_001`, paired block unit (evaluating paired matches under matched seed and swapped seat rotation).
 - **Classification Vocabulary** (Calibration-specific):
   - **`RESOLVED_WEAKER`**: Upper bound of $98.333\%$ CI $< 5{,}000$ bps.
   - **`RESOLVED_STRONGER`**: Lower bound of $98.333\%$ CI $> 5{,}000$ bps.
   - **`UNRESOLVED`**: $98.333\%$ CI crosses $5{,}000$ bps.
 
-### Interpretation Matrix
+### Disciplined Interpretation Matrix
 
-1. **Step-Threshold Pattern** (e.g. 25% WEAKER, 50% WEAKER, 88.9% UNRESOLVED):
-   - Confirms that the engine weight requires a minimum absolute threshold (between 50% and 88.9%) to guide search effectively.
-   - Explains why naive `DROP_PURCHASED` appeared harmless in preliminary thinking: it only reduced $W_C$ to 88.89%, well above the collapse cliff.
-2. **Broad Plateau Pattern** (e.g. 25% WEAKER, 50% UNRESOLVED, 88.9% UNRESOLVED):
-   - Proves that $W_C$ has extensive coefficient robustness; any value $\ge 1.125\text{M}$ suffices to prioritize engine tempo over token liquidity.
-3. **Acute Linear Sensitivity** (e.g. 88.9% WEAKER):
-   - Proves that even an 11% change in $W_C$ degrades playing strength, establishing high precision in the original handcrafted coefficients.
+1. **Bracketing Pattern** (if 25% WEAKER, 50% WEAKER, 88.9% UNRESOLVED):
+   - *Licensed wording*: At the sampled calibration points, 50% is resolved weaker while 88.9% is not resolved different from FULL. This brackets a change in resolved evidence between the two sampled scales, but does not identify a mathematical threshold, cliff shape, monotonic frontier, or equivalence region.
+2. **Robustness Compatibility** (if 25% WEAKER, 50% UNRESOLVED, 88.9% UNRESOLVED):
+   - *Licensed wording*: No strength difference was resolved at the sampled 50% and 88.9% points. This is compatible with a broad robustness region, but does not establish behavior for unsampled intermediate or larger values.
+3. **Local Scale Sensitivity** (if 88.9% WEAKER):
+   - *Licensed wording*: A reduction from 2.25M to 2.0M produces a resolved strength loss under the frozen evaluator. This establishes local scale sensitivity over that tested interval, but does not establish linearity, coefficient optimality, or uniqueness of 2.25M.
 
 ---
 
 ## P2 — Common-State Scale Audit (Descriptive)
 
-### Sample Construction
-- Select 200 balanced decision contexts from P1 replay logs:
-  - $\sim 67$ contexts from `PAIRING_1` (`ENGINE_SCALE_25 vs FULL`)
-  - $\sim 67$ contexts from `PAIRING_2` (`ENGINE_SCALE_50 vs FULL`)
-  - $\sim 66$ contexts from `PAIRING_3` (`ENGINE_SCALE_88 vs FULL`)
-- Even ply distribution across early (plies 1–20), mid (plies 21–45), and late game (plies 46+).
+### Exact 200-Context Quota Matrix
 
-### Audit Metrics (Descriptive Only)
-For each audited state $s$ and each scale $w \in \{25\%, 50\%, 88.89\%\}$:
-1. **Top-Action Disagreement Rate**:
-   $$\text{Disagreement}(w) = \frac{1}{N} \sum_{i=1}^N \mathbb{I}\left( \text{action}_w(s_i) \neq \text{action}_{\text{full}}(s_i) \right)$$
-2. **Top-1 vs Runner-up Margin Shift**:
-   Measure how the score margin between the optimal action and second-best action changes as $W_C$ scales down.
-3. **Engine-Pivotal Fraction**:
-   Fraction of contexts where scaling $W_C$ specifically flips the choice between an engine-building action (`BuyMarket` / `BuyReserved`) and a non-engine action (`TakeTokens` / `Reserve`).
+Sampling is frozen to an exact quota matrix across pairings and game stages:
+
+| Pairing | Early (Plies 1–20) | Mid (Plies 21–45) | Late (Plies 46+) | Total |
+| :--- | :---: | :---: | :---: | :---: |
+| `PAIRING_1` (`Scale25`) | 23 | 22 | 22 | 67 |
+| `PAIRING_2` (`Scale50`) | 22 | 23 | 22 | 67 |
+| `PAIRING_3` (`Scale88`) | 22 | 22 | 22 | 66 |
+| **Total** | **67** | **67** | **66** | **200** |
+
+### Deterministic Selection Contract
+- **Eligibility Criteria**:
+  1. `state.phase == Phase::Main`.
+  2. Number of legal canonical actions $\ge 2$.
+- **Selection Order**:
+  `pairing -> stage -> seed ascending -> rotation 0 then 1 -> ply ascending -> actor`.
+- **Identity & Deduplication**:
+  Deduplication is performed globally across all three pairings using the authoritative identity triple:
+  `observation_hash`, `visible_history_hash`, `information_set_hash`.
+- **Fail-Closed Contract**:
+  If any quota cell cannot be filled after traversing all replays of the pairing, the audit **fails closed**. No borrowing across cells or pairings is permitted.
+- **Source Reproduction**:
+  The recorded action of the source profile must be reproduced exactly: **200 / 200 exact reproduction required**.
+
+### Audit Metrics (Descriptive Behavior Diagnostic)
+For each audited context $s$ and each scale $w \in \{25\%, 50\%, 88.89\%\}$:
+1. **Action Disagreement Rate vs FULL**:
+   $$\text{Disagreement}(w) = \frac{1}{200} \sum_{i=1}^{200} \mathbb{I}\left( \text{action}_w(s_i) \neq \text{action}_{\text{full}}(s_i) \right)$$
+2. **Top-1 vs Runner-up Margin Contribution**:
+   Measure how the score margin between the top two actions is affected by $W_C$.
+3. **Engine-Pivotal Behavior Label**:
+   Fraction of contexts where the scale profile flips the winning action across the boundary between:
+   - **Engine actions**: `BuyMarket`, `BuyReserved`.
+   - **Non-engine actions**: `TakeTokens`, `ReserveMarket`, `ReserveDeck`, `Pass`.
+   *Disciplinary note*: This is a descriptive behavioral tag, not evidence that a particular weight makes the agent "understand economics better".
 
 ---
 
 ## P3 — Vector Heterogeneity Audit (Descriptive Diagnostic)
 
-This protocol performs **zero evaluator modifications** and **zero Arena runs**. It is a descriptive diagnostic on reachable game states to quantify the information compressed by scalar $C(p)$, preparing the empirical foundation for a future milestone (M45A).
+### Part A: Code-Level Structural Fact
+The static evaluator definition in `crates/splendor-search/src/evaluation.rs` demonstrates directly:
+1. **F4 Affordability**: `player.can_afford(cost)` explicitly tests `player.bonuses[color]`.
+2. **E2 Noble Progress**: Noble requirement deficits test `def.requirements[color].saturating_sub(player.bonuses[color])`.
 
-### Diagnostic Questions
-1. **Vector Diversity given $C$**:
-   For each observed value of $C \in \{1, 2, \dots, 15\}$ across the reachable corpus:
-   - What is the count of distinct color vectors $\mathbf{b} = (b_W, b_U, b_G, b_R, b_K)$ such that $\sum b_i = C$?
-   - What is the empirical entropy / Shannon diversity of bonus distributions observed in high-level play?
-2. **Information Leakage via Existing Families**:
-   For pairs of states with the exact same scalar $C(p)$ but different vectors $\mathbf{b}_1 \neq \mathbf{b}_2$:
-   - How much variance exists in F4 (`affordable_card_count` and `max_affordable_prestige`)?
-   - How much variance exists in E2 (`noble_progress`)?
-3. **Implication**:
-   If identical $C$ states exhibit high variance in F4 and E2, it confirms that color-structure information is already active in the agent via F4/E2, and any future vector-engine probe must decouple from F4/E2 to avoid multi-collinearity.
+Therefore, the 5-dimensional bonus color vector $\mathbf{b} \in \mathbb{N}^5$ **structurally enters the existing evaluator** through F4 and E2, even though `CORE_ENGINE` compresses it into the scalar sum $C$.
 
----
+### Part B: Arena-State Corpus Observational Heterogeneity
+- **Corpus Definition**: All unique `Phase::Main` root-actor contexts from the 384 accepted P1 replays, deduplicated by identity triple.
+- **Reporting Scope**: No artificial bounds on $C$; report all observed strata $C \in \{0, 1, 2, \dots\}$.
+- **Stratum Metrics**:
+  For each observed $C$:
+  1. Context count $N_C$.
+  2. Distinct bonus-vector count $K_C$.
+  3. Vector empirical frequencies $p(\mathbf{v} \mid C)$.
+  4. Shannon diversity entropy:
+     $$H_C = - \sum_{\mathbf{v}} p(\mathbf{v} \mid C) \log_2 p(\mathbf{v} \mid C) \quad (\text{bits})$$
+  5. F4 value distribution (mean, min, max, std).
+  6. E2 value distribution (mean, min, max, std).
 
-## Implementation Plan
-
-1. **Rust Engine Extension (`splendor-search`)**:
-   - Update `AttributionProfile` to support:
-     - `EngineScale25` ($W_C = 562{,}500$)
-     - `EngineScale50` ($W_C = 1{,}125{,}000$)
-     - `EngineScale88` ($W_C = 2{,}000{,}000$)
-     - `EqualDropBonus` ($w_b = 0, w_p = 1{,}125{,}000$)
-     - `EqualDropPurchased` ($w_b = 1{,}125{,}000, w_p = 0$)
-   - Keep integer arithmetic exact; no floating-point conversions.
-2. **Automated P0 Tests (`crates/splendor-cli/tests/m44c_p0_semantic.rs`)**:
-   - P0-A: Catalog 90-card integrity & reachable-state algebraic identity check.
-   - P0-B: Equalized LOO bit-exact isomorphism check across M07 positions.
-3. **Orchestrator & Audit Scripts (`scripts/`)**:
-   - `scripts/m44c_orchestrator.py`: CLI driver for the 384 Arena matches.
-   - `scripts/m44c_common_state_audit.py`: 200-context scale audit driver.
-   - `scripts/m44c_vector_heterogeneity_audit.py`: Reachable state vector diversity diagnostic.
-   - `scripts/m44c_final_audit.py`: Result aggregator generating `benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json`.
+*Strict Disciplinary Boundary*:
+> At fixed scalar $C$, the observed Arena-state corpus contains multiple bonus-vector configurations, demonstrating information loss under scalar compression. F4 and E2 also vary within $C$ strata, but this observational variance is **not** attributed uniquely to bonus-vector differences because other state variables (board market, tokens, reserved cards, noble targets) co-vary simultaneously.
 
 ---
 
 ## Acceptance Gates
 
-- [ ] **G0 (P0 Semantic Verification)**: All P0-A and P0-B unit tests pass with 0 failures. Equalized LOO isomorphism confirmed bit-exact.
-- [ ] **G1 (Arena Execution Completeness)**: 384/384 matches completed across fresh seeds `5_700_000 .. 5_700_063`. 0 aborted matches, 0 candidate faults.
-- [ ] **G2 (Statistical Classification)**: Each of the 3 scale arms receives a definitive Bonferroni-corrected classification (`RESOLVED_WEAKER`, `RESOLVED_STRONGER`, or `UNRESOLVED`).
-- [ ] **G3 (Audit Convergence)**: Common-state audit and vector heterogeneity audit successfully extract metrics on 200 balanced contexts with 0 replay format errors.
-- [ ] **G4 (Provenance Integrity)**: Tracked result artifact binds exact git commit, SHA256 of binaries, catalogs, seeds, and replay digests.
+- [ ] **G0 (P0 Bit-Exact Verification)**: P0-A (algebraic identity regression), P0-B (equalized LOO isomorphism), and P0-C (FULL scale identity) all pass with 0 failures.
+- [ ] **G1 (Arena Execution Completeness)**: 384/384 matches completed in the strict $n1$ shell (`max_nodes = 1`, seeds `5_700_000 .. 5_700_063`). 0 aborted matches, 0 candidate faults.
+- [ ] **G2 (Statistical Classification)**: Each of the 3 scale arms receives a definitive Bonferroni-corrected classification (`RESOLVED_WEAKER`, `RESOLVED_STRONGER`, or `UNRESOLVED`) using $98.333\%$ bootstrap CI.
+- [ ] **G3 (Deterministic P2 Quota)**: Exact 200-context matrix filled without borrowing; 200/200 source reproduction verified.
+- [ ] **G4 (P3 Diagnostic Execution)**: Observational vector diversity and Shannon entropy computed across deduplicated Arena corpus with structural boundary adhered to.
+- [ ] **G5 (Provenance & Artifact)**: Tracked result artifact binds exact git commit, SHA256 of binaries, catalogs, seeds, and replay digests.
 
 ---
 
@@ -283,4 +313,4 @@ This protocol performs **zero evaluator modifications** and **zero Arena runs**.
 
 1. **Discretized Scale Grid**: Testing 25%, 50%, and 88.89% leaves intervals between points; it maps the coarse shape of the sensitivity curve, not a continuous derivative.
 2. **Historical Anchor Distinction**: $W_C = 0$ is drawn from M44B; it cannot be pooled directly into the M44C bootstrap CI due to distinct seed segments, but serves as a qualitative asymptotic anchor.
-3. **Vector Structure Out of Scope for Arena**: M44C strictly diagnoses scalar magnitude; it does not test whether a color-aware engine term improves search strength.
+3. **Observational Vector Variance**: In-stratum F4/E2 variance reflects the whole game state, not pure vector counterfactuals.
