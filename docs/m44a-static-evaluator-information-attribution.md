@@ -4,9 +4,9 @@
 Milestone:      M44A
 Title:          StaticEvaluator Information Attribution
 Type:           evaluator decomposition / strength attribution
-Status:         COMPLETED / CLOSURE_CANDIDATE —
-                M44A_INFORMATION_ATTRIBUTION_COMPLETE
-                (pending final review)
+Status:         COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review APPROVED 2026-09-05, basis 70cbfcd)
+Review:         APPROVED / CLOSED (P0=0, P1=0, P2=3 non-blocking)
 Tracked Result: benchmarks/m44a-static-evaluator-information-attribution-v1.result.json
 Baseline:       1117e0a (M43A permanent closure)
 Design:         DESIGN_V1 / FROZEN
@@ -17,6 +17,25 @@ Weight Tuning:  NONE
 Individual 9:   NOT AUTHORIZED (coarse family attribution only)
 M44B:           NOT AUTHORIZED
 Depth-2 / MCTS: OUT OF SCOPE
+
+Licensed conclusion (strict):
+  1. Non-terminal progress evaluator as a whole is decisive: ZERO_PROGRESS
+     vs FULL collapses to 546.9 bps (95% CI: [234.4, 937.5], 7W / 121L),
+     proving conclusively that n1's strength depends heavily on the
+     non-terminal heuristic terms beyond exact root simulation and terminal
+     rank base alone.
+  2. F1 (REALIZED_SCORE) is conditionally critical: DROP_SCORE vs FULL
+     collapses to 1,328.1 bps (98.75% CI: [703.1, 2031.2], 17W / 111L).
+  3. F2 (PERMANENT_ENGINE) is conditionally critical: DROP_ENGINE vs FULL
+     collapses to 1,875.0 bps (98.75% CI: [1093.8, 2656.2], 24W / 104L).
+  4. F3 (LIQUIDITY_OPTIONALITY) conditional contribution is UNRESOLVED:
+     DROP_LIQUIDITY vs FULL scores 5,117.2 bps (98.75% CI: [3945.3, 6289.1],
+     65W / 1T / 62L).
+  5. F4 (IMMEDIATE_CONVERTIBILITY) conditional contribution is UNRESOLVED:
+     DROP_CONVERTIBILITY vs FULL scores 6,015.6 bps (98.75% CI: [4921.9, 7109.4],
+     77W / 51L). Point estimate favors dropping F4, but adjusted CI crosses
+     5,000 bps; negative margin contribution in audited sample (-1.38M)
+     suggests potential local objective conflict with engine building.
 ```
 
 ## Problem and evidence
@@ -238,7 +257,7 @@ $$\text{FULL margin} = \text{terminal margin} + \text{F1 margin} + \text{F2 marg
 
 ## Next authorized gate
 
-M44A coarse attribution is complete.
-Awaiting final review for M44A closure.
-Next authorized milestone direction:
-- **M44B — Engine & Convertibility Refinement**: Fine-grained attribution isolating terms within the sensitive F2 family (bonuses vs cards vs nobles) and investigating whether F4 convertibility interferes with engine building.
+M44A is permanently closed (approved basis `70cbfcd`).
+Next authorized research direction:
+- **M44B — Permanent Engine Attribution**: Fine-grained attribution within the resolved-sensitive F2 family, isolating CORE_ENGINE (permanent bonuses + purchased-card count) vs NOBLE_PROGRESS. F4 convertibility remains in hypothesis backlog without premature weight tuning.
+- Requires an independent design proposal and review before implementation.
