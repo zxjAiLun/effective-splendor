@@ -4,12 +4,16 @@
 Milestone:      M45A
 Title:          Bonus-Vector Information Probe
 Type:           evaluator color-identity binding probe & residual capacity audit
-Status:         COMPLETED_DIAGNOSTIC / CLOSURE_CANDIDATE
-                (all gates passed; awaiting final review)
+Status:         COMPLETED_DIAGNOSTIC / CLOSURE_PENDING_REPAIR_1
+                (P1/P2/P3 results and Outcome 1 ACCEPTED in terminal review
+                on 12a0974; wording repair ordered; Arena rerun FORBIDDEN)
 Tracked Result: benchmarks/m45a-bonus-vector-information-probe-v1.result.json
 Starting point: 99872f0 — M44C permanently closed
 Design Commit:  2f36ee4 (DESIGN_V1, approved and frozen)
 Implementation: b462ea9 (SHIFT1 profiles + P0 gates)
+Execution:      12a0974 (384-match Arena + P2/P3 + final audit)
+Repair Basis:   M45A terminal review on 12a0974
+                (P0=0, P1=2 wording violations, P2=2 non-blocking)
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Training:       NONE
 New learned model: NONE
@@ -139,7 +143,7 @@ Non-goals (explicitly excluded):
 - Per context, compute the root player's `bonus_vector = [W,B,G,R,K]`, `C`, `F1`, `CORE`, `E2`, `F3`, `F4`.
 - **Key A (F4/E2-conditioned)**: `K_path = (C, E2, F4)`. For every observed `K_path`: context count, distinct bonus vectors, bonus-vector entropy.
 - **Key B (full-evaluator)**: `K_eval = (F1, CORE, E2, F3, F4)`. Report number of collision groups, contexts inside collision groups, distinct bonus vectors per group, conditional entropy. A collision means same current evaluator summary, different bonus vector.
-- Formal meaning: if collision groups exist, M45A may conclude the current static evaluator is many-to-one with respect to the player's full bonus vector; some color-structure information remains unrepresented even after conditioning on its current scalar progress summaries. This is a **representation result**. It does NOT prove the omitted vector information would improve playing strength; other game-state variables can co-vary inside those groups; no causal inference from collision statistics.
+- Formal meaning: if collision groups exist, M45A may conclude the root-player evaluator progress summary is many-to-one with respect to the player's full bonus vector in the observed corpus; some color-structure information remains unrepresented even after conditioning on the current scalar progress summaries. This is a **representation result**. It does NOT prove the omitted vector information would improve playing strength; other game-state variables can co-vary inside those groups; no causal inference from collision statistics.
 
 ## Implementation Plan
 
@@ -184,6 +188,18 @@ Non-goals (explicitly excluded):
 - 384-match Arena executed on fresh seeds `5_800_000..5_800_063` (15.3s wall).
 - P2 (180 contexts, authoritative identity, 1-based staging, top-1/runner-up margins) and P3 (11,742-context residual capacity audit) executed via `m45a-audit`.
 - Final audit `scripts/m45a_final_audit.py`: all fail-closed gates passed; tracked result written.
+
+### 2026-09-05 — Terminal Review & Closure Repair 1 (wording seal)
+
+The terminal review on `12a0974` **accepted** all experimental results (P1/P2/P3) and the pre-registered **Outcome 1**, ordering a wording-only repair (Arena rerun FORBIDDEN; all numeric values frozen unchanged):
+
+1. **P1-1 (wording violation)**: the document had claimed `SHIFT_F4_E2` is "statistically indistinguishable from `SHIFT_F4` alone" and that "the E2 scramble adds no resolved marginal damage on top of the F4 scramble". No `SHIFT_F4_E2` vs `SHIFT_F4` contrast was preregistered or performed, and overlapping confidence intervals do not establish indistinguishability. **Repair**: replaced with the numerically-similar-point-estimates statement plus an explicit no-marginal-conclusion disclaimer; limitation added.
+2. **P1-2 (wording violation)**: the document had claimed the SHIFT_F4 collapse is "of the same magnitude" as / "nearly as damaging as" M44B's CORE deletion, implying effect equivalence across different milestones, seed segments, multiple-comparison setups, and interventions. **Repair**: downgraded to a cross-milestone descriptive point-estimate observation with an explicit no-effect-equivalence disclaimer; the more informative M44A contrast (DROP_CONVERTIBILITY UNRESOLVED vs SHIFT_F4 resolved-loss ⇒ wrongly-bound color structure in a high-weight path is more dangerous than missing information) recorded with its boundaries.
+3. **P2-1 (precision)**: "the current evaluator is many-to-one" scoped to "the root-player evaluator progress summary is many-to-one with respect to the bonus vector in the observed corpus" in both the design contract and the result section.
+
+P2-2 (non-blocking, recorded): the final-audit exhaustiveness counters (candidate_faults = 0 etc.) remain summary-filled values rather than independent accumulators; the per-match config/report/replay/lineup/verify-replay walk supports them, and this matches the accepted M44A–M44C pattern. No change required.
+
+All P1/P2/P3 numeric values, the tracked result JSON, and the Arena corpus remain frozen and unchanged in this repair (docs-only commit).
 
 ## Validation and Evidence
 
@@ -238,20 +254,25 @@ Corpus identity digest: `8254eacabc04d606122d868166edec4ac1df020cba7962bef5b78f1
 
 **Resolved: correct bonus-color identity through F4 is decisively important.**
 
-- `SHIFT_F4` collapses to 2,109.38 bps (`RESOLVED_BINDING_IMPORTANT`) — scrambling only the color binding inside the affordability path costs ~2,890 bps against FULL. Notably this collapse is of the same magnitude as M44B's complete CORE deletion (2,187.5 bps): destroying the color structure of F4 is nearly as damaging as removing the entire scalar engine term.
+- `SHIFT_F4` collapses to 2,109.38 bps (`RESOLVED_BINDING_IMPORTANT`) — scrambling only the color binding inside the affordability path costs ~2,890 bps against FULL.
 - `SHIFT_E2` is `UNRESOLVED` (5,078.12 bps, CI straddling 5,000): noble-progress color binding alone shows no resolved strength effect.
-- `SHIFT_F4_E2` (2,187.50 bps, `RESOLVED_BINDING_IMPORTANT`) is statistically indistinguishable from `SHIFT_F4` alone: the E2 scramble adds no resolved marginal damage on top of the F4 scramble.
+- `SHIFT_F4_E2` is also `RESOLVED_BINDING_IMPORTANT` (2,187.50 bps); its point estimate is numerically similar to `SHIFT_F4`'s. M45A did not preregister or perform a direct `SHIFT_F4_E2` vs `SHIFT_F4` contrast, so no formal marginal-effect conclusion about adding the E2 scramble on top of the F4 scramble is licensed.
 
-Licensed wording: *correct bonus-color identity within the current F4 affordability path has resolved conditional playing-strength importance when the remainder of FULL is retained; correct color binding inside noble-progress computation did not show a resolvable conditional effect in this sample.* Not licensed: "F4 is globally beneficial" (M44A family result remains UNRESOLVED) or "noble progress is essential" (M44B deletion remains UNRESOLVED).
+Cross-experiment observations (descriptive only, no effect-equivalence claims):
+
+- The `SHIFT_F4` point estimate (2,109.38 bps) is numerically close to the historical M44B `DROP_CORE_ENGINE` result (2,187.5 bps). The two come from different milestones, different seed segments, different multiple-comparison setups, and different interventions; this is recorded only as a cross-milestone descriptive observation, not as effect equivalence.
+- The contrast with M44A is the more informative comparison: M44A's `DROP_CONVERTIBILITY` (deleting the entire F4 family) was `UNRESOLVED`, while M45A's `SHIFT_F4` (keeping F4's weight but scrambling only its color binding) is resolved at a massive loss. This indicates the finding is not "the F4 family must exist" but rather: *if the evaluator uses a high-weight affordability signal, the color identities inside it must be correct — wrongly-bound color structure can be far more damaging than missing information.*
+
+Licensed wording: *correct bonus-color identity within the current F4 affordability path has resolved conditional playing-strength importance when the remainder of FULL is retained; correct color binding inside noble-progress computation did not show a resolvable conditional effect in this sample.* Not licensed: "F4 is globally beneficial" (M44A family result remains UNRESOLVED), "noble progress is essential" (M44B deletion remains UNRESOLVED), any equivalence between the SHIFT_F4 and DROP_CORE interventions, and any formal conclusion about the E2 scramble's marginal effect conditional on F4 scrambling (no such contrast was preregistered or performed).
 
 ### Q2 — Residual representational capacity
 
-**Confirmed: the current evaluator is many-to-one with respect to the full bonus vector.**
+**Confirmed: the root-player evaluator progress summary is many-to-one with respect to the bonus vector in the observed corpus.**
 
 - Conditioning on the two color-sensitive path outputs (`C, E2, F4`), 82.4% of contexts still share their key with at least one different bonus vector (mean 5.03 distinct vectors per collision group; conditional entropy 2.386 bits).
-- Conditioning on the complete evaluator summary (`F1, CORE, E2, F3, F4`), 2,800 contexts (23.8%) still carry a bonus vector their summary does not determine (mean 2.40 vectors; conditional entropy 0.312 bits).
+- Conditioning on the complete root-player progress summary (`F1, CORE, E2, F3, F4`), 2,800 contexts (23.8%) still carry a bonus vector their summary does not determine (mean 2.40 vectors; conditional entropy 0.312 bits).
 
-This is a representation result only. It does not prove the omitted vector information would improve playing strength, and other state variables co-vary inside collision groups. No causal inference from collision statistics.
+This statement is scoped to the root player's progress summary (the five scalar terms), not to the full multi-player evaluator input/output. It is a representation result only. It does not prove the omitted vector information would improve playing strength, and other state variables co-vary inside collision groups. No causal inference from collision statistics.
 
 ### Outcome classification (pre-registered exit logic)
 
@@ -261,9 +282,13 @@ This is a representation result only. It does not prove the omitted vector infor
 
 1. The scramble is an identity-scramble ablation, not a legal-state evaluation: no inference about reachable alternative bonus vectors is licensed.
 2. `SHIFT_E2`'s UNRESOLVED verdict is a non-resolution, not evidence of irrelevance; the E2 weight (10k) is two orders of magnitude smaller than CORE, so a small true effect may be undetectable at this sample size.
-3. P3 collision statistics are observational; co-varying state variables are not controlled.
-4. All findings are under the frozen n1 static-successor shell (`max_nodes = 1`).
+3. No direct `SHIFT_F4_E2` vs `SHIFT_F4` contrast was preregistered or performed; overlapping confidence intervals between the two arms do not establish statistical indistinguishability, and no marginal-effect conclusion about the E2 scramble conditional on F4 scrambling is licensed.
+4. The cross-experiment numerical proximity of `SHIFT_F4` (2,109.38 bps) to M44B's `DROP_CORE_ENGINE` (2,187.5 bps) is a descriptive observation across different milestones, seed segments, multiple-comparison setups, and interventions — not effect equivalence.
+5. P3 collision statistics are observational; co-varying state variables are not controlled.
+6. All findings are under the frozen n1 static-successor shell (`max_nodes = 1`).
 
 ## Next Authorized Gate
 
-Cloud final review of `benchmarks/m45a-bonus-vector-information-probe-v1.result.json` and this document. M45B (explicit residual vector channel) is a candidate direction but NOT AUTHORIZED.
+Closure Repair 1 (wording seal) executed in full: all numeric results frozen unchanged, no Arena rerun, no result-JSON modification. Awaiting final closure signature (`APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY`).
+
+Post-closure research guidance (from the terminal review): the two headline facts are (a) wrongly-bound color structure entering a high-weight affordability path is extremely dangerous, and (b) current summaries do not fully encode the bonus vector. Any future M45B must therefore define, before anything else, what operational information $R(\mathbf{b} \mid C, E2, F4, \ldots)$ a residual channel represents — explicitly demonstrating it is not a re-encoding of F4 affordability or E2 noble deficit. M45B remains NOT AUTHORIZED.
