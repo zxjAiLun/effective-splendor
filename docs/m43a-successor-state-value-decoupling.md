@@ -4,13 +4,14 @@
 Milestone:      M43A
 Title:          Successor-State Value Decoupling Probe
 Type:           representation / evaluator decomposition
-Status:         COMPLETED_NEGATIVE / CLOSED —
+Status:         COMPLETED_NEGATIVE / CLOSURE_CANDIDATE —
                 M43A_SUCCESSOR_VALUE_NOT_LEARNED
+                (Run 1 VOID preserved; Run 2 VALID; pending final review)
 Baseline:       14108de (M42S permanent closure)
 Design:         DESIGN_V1 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE
-Arena:          NOT RUN (P1 BSS and P2 mapping integrity gates failed)
+Arena:          NOT RUN (P1 BSS gate failed -> STOP)
 TD / fitted-Q / PPO / MCTS: OUT OF SCOPE
 M41 power split: SEALED
 M41 formal reserve: UNTOUCHED (9_000_304 .. 9_000_815)
@@ -18,19 +19,21 @@ M41 formal reserve: UNTOUCHED (9_000_304 .. 9_000_815)
 Licensed conclusion (strict):
   When specific action consequence derivation is externalized to the
   Rust simulator, training a standalone player-view successor-state
-  value model V_theta(o'_root) directly on terminal game outcomes
-  failed the P1 value-learning gate: validation Brier 0.245868 vs
-  constant predictor 0.249026 yielded a Brier Skill Score of only
-  BSS = +0.0127 (< +0.05 gate FAIL), despite weak directional learning
-  (ROC-AUC 0.6344). In offline root decision evaluation, the model
-  achieved 58.83% material ranking (vs D2 59.31%), and both PRESTATE
-  and CYCLIC-SUCCESSOR ablations failed the integrity degradation gate.
-  Per the pre-registered decision rules, P3 Arena was NOT authorized.
-  This establishes that merely externalizing transition physics to the
-  simulator is insufficient when supervised by sparse terminal win/loss
-  outcomes; the massive advantage of static-successor n1 over direct
-  policies relies heavily on StaticEvaluatorV1's dense progress signals
-  rather than transition access alone.
+  value model V_theta(o'_root) initialized from D2 representation and
+  supervised directly by terminal game outcomes (D2/D2 continuation)
+  failed the pre-registered P1 value-learning gate in valid Run 2:
+  exact game-weighted validation Brier 0.244782 vs constant predictor
+  0.249445 yielded a Brier Skill Score of only BSS = +0.0187 (< +0.05
+  gate FAIL), despite weak directional discrimination (ROC-AUC 0.6344).
+  Per the pre-registered frozen protocol, this failure immediately
+  triggered STOP; P2 was not executed for Run 2, and P3 Arena was
+  NOT authorized. This establishes that under this specific setup
+  (D2-initialized state representation + 32-epoch terminal win/loss
+  supervision on 12,249 branches), successor-state evaluation did not
+  learn a sufficiently useful value function. It does NOT prove that
+  StaticEvaluatorV1's handcrafted terms are the sole cause of n1's
+  strength, as multiple variables (sparse terminal targets, policy-relative
+  continuation variance, sample size) remain un-isolated.
 ```
 
 ## Problem and evidence
@@ -154,74 +157,77 @@ Two pairings (128 games each, seeds `5_400_000..5_400_063`):
 ## Iteration log
 
 - 2026-09-05: M43A Design v1 frozen and authorized by reviewer. Discards frozen D2 value head concept in favor of explicitly trained successor value head on terminal outcomes. P0, P1, P2 authorized; P3 Arena automatically authorized iff P1 and P2 pass.
-- 2026-09-05: P0 implementation complete:
-  - Rust CLI `m43a-export-successors` and `m43a-sample-successors` implemented in `crates/splendor-cli/src/m43a_command.rs`.
-  - Rust P0 tests passed in `crates/splendor-cli/tests/m43a_p0_semantic.rs` (H0, H1, H2, H3 2/2 passed).
-  - Successor dataset materialized and cached: Train 192 games (576 states, 12,249 branches), Val 48 games (144 states, 3,258 branches) in `local-artifacts/m43a-successor-data/`.
-  - Model architecture and D2 initialization audit implemented in `training/m17_gpu/splendor_gpu/m43a_successor_model.py`: exactly 38 encoder tensors imported from D2, 0 tensors imported from old value head, policy, or action modules (`test_m43a_model.py` 2/2 passed).
-- 2026-09-05: P1 training executed: 32 epochs of hierarchical MSE loss. Best epoch 4 reached Val MSE 0.245868 vs constant baseline 0.249026 ($BSS = +0.0127 < +0.05$ **FAIL**). P1 gate triggers STOP, NO ARENA.
-- 2026-09-05: P2 offline root-action evaluation completed: material ranking 58.83%, regret 0.9028. Both PRESTATE and CYCLIC-SUCCESSOR ablations failed the integrity degradation gate. Formal closure: `M43A_SUCCESSOR_VALUE_NOT_LEARNED`.
+- 2026-09-05: Run 1 executed. Review verdict: **Run 1 VOID** due to validation game-weighting distortion (averaging batch means 32 vs 16), fail-open P0 corpus/replay checks, unmutated H3 test, dataset cache provenance gaps, and deterministic CUDA contract drift. P0=2, P1=4, P2=2. Milestone reopened for Repair 1 + fresh Run 2.
+- 2026-09-05 (Repair 1):
+  - **P0-1**: Fixed validation loss aggregation to compute true unweighted mean across all 48 individual game losses ($L_{\text{val}} = \frac{1}{48} \sum_{g=0}^{47} L_g$). Constant baseline updated with exact same game weighting.
+  - **P1-1 & P1-2**: P0 semantic tests updated with strict fail-closed corpus/replay checks and real hidden mutation fixtures for H3 (ReserveDeck deeper deck swap vs top card swap, BuyMarket refill swap vs deeper deck, ReserveMarket refill swap, opponent blind reserve card mutation). All 2 tests passed.
+  - **P1-3**: Deleted old successor cache and rebuilt fresh with full branch-level provenance binding (`successor_manifest.json` v2) and fail-closed validation.
+  - **P1-4**: Removed exporter target fallback; missing branch report or non-completed status now fails closed.
+  - **P1-5**: Added `torch.use_deterministic_algorithms(True)` with `CUBLAS_WORKSPACE_CONFIG=:4096:8`.
+  - Preserved Run 1 artifacts as `*-VOID1-*`.
+  - Fresh Run 2 trained from zero (32 epochs, 13.4s). Best epoch 4 reached Val MSE 0.244782 vs constant baseline 0.249445 ($BSS = +0.0187 < +0.05$ **FAIL**).
+  - Pre-registered gate triggers **STOP**; P2 is NOT RUN for Run 2. Run 1 P2 permanently marked `VOID / DIAGNOSTIC ONLY`. P3 Arena NOT RUN.
 
 ## Final implementation
 
-- Rust successor export & sampling endpoints: `crates/splendor-cli/src/m43a_command.rs`.
-- P0 semantic tests: `crates/splendor-cli/tests/m43a_p0_semantic.rs`.
-- Successor dataset generator: `training/m17_gpu/splendor_gpu/m43a_successor_dataset.py`.
-- Model & initialization audit: `training/m17_gpu/splendor_gpu/m43a_successor_model.py`.
-- Model tests: `training/m17_gpu/tests/test_m43a_model.py`.
-- Trainer: `training/m17_gpu/splendor_gpu/m43a_train.py` (hierarchical MSE loss, 32 epochs, 32 games/batch, AdamW).
-- Evaluator: `training/m17_gpu/splendor_gpu/m43a_eval.py` (offline root decision ranking, regret, PRESTATE, CYCLIC-SUCCESSOR).
+- Rust successor export & sampling endpoints: `crates/splendor-cli/src/m43a_command.rs` (fail-closed, no target fallback).
+- P0 semantic tests: `crates/splendor-cli/tests/m43a_p0_semantic.rs` (H0, H1, H2, H3 with real mutations).
+- Successor dataset generator: `training/m17_gpu/splendor_gpu/m43a_successor_dataset.py` (branch-level provenance binding, manifest v2, fail-closed loading).
+- Model & initialization audit: `training/m17_gpu/splendor_gpu/m43a_successor_model.py` (exactly 38 encoder tensors imported from D2, 0 old value/policy tensors, fresh value head seed 43_261_001).
+- Model tests: `training/m17_gpu/tests/test_m43a_model.py` (2/2 passed).
+- Trainer: `training/m17_gpu/splendor_gpu/m43a_train.py` (true 48-game weighted validation MSE, deterministic CUDA, AdamW).
 - Artifacts:
-  - Checkpoint: `local-artifacts/m43a-run/m43a-successor-value-best.pt` (SHA-256: `b97b5cfca624fdcd0d82c9cf1089917369078e75104322406801ac65b345cdc5`).
-  - Training report: `local-artifacts/m43a-run/m43a-training-report.json`.
-  - Offline evaluation report: `local-artifacts/m43a-run/m43a-offline-eval-report.json`.
+  - Run 1 (VOID): `local-artifacts/m43a-run/*-VOID1-*`
+  - Run 2 Checkpoint: `local-artifacts/m43a-run/m43a-successor-value-best.pt` (SHA-256: `a00d348c9362bd223b0b171740de04ca9f1559c6672aca96be2e369894a11e85`).
+  - Run 2 Training report: `local-artifacts/m43a-run/m43a-training-report.json`.
 
 ## Validation and evidence
 
-### 1. P1 Value-Learning Diagnostics (144 Validation States / 3,258 Successors)
+### 1. P1 Value-Learning Diagnostics (Run 2 Valid, 144 Validation States / 3,258 Successors)
 
-| Metric | Result | Gate Requirement | Verdict |
+| Metric | Result (Run 2 Valid) | Gate Requirement | Verdict |
 |---|---:|---|---|
-| **Best Validation Brier / MSE** | 0.245868 | < Constant Brier | Epoch 4 |
-| **Constant Predictor Brier** | 0.249026 | Baseline ($p_{\text{train}} = 0.4869$) | - |
-| **Brier Skill Score (BSS)** | **+0.0127** | $\ge +0.05$ | **FAIL** |
-| **Prediction Mean $\pm$ Std** | $0.4965 \pm 0.0723$ | - | - |
-| **Positive Target Mean Prediction** | 0.5104 | - | - |
-| **Negative Target Mean Prediction** | 0.4861 | - | - |
-| **ROC-AUC (Diagnostic)** | 0.6344 | Diagnostic only | Positive signal |
+| **Best Validation Brier / MSE** | 0.244782 | < Constant Brier | Epoch 4 |
+| **Constant Predictor Brier** | 0.249445 | Baseline ($p_{\text{train}} = 0.4869$) | - |
+| **Brier Skill Score (BSS)** | **+0.0187** | $\ge +0.05$ | **FAIL** |
+| **Prediction Mean $\pm$ Std** | $0.4950 \pm 0.0766$ | - | - |
+| **Positive Target Mean Prediction** | 0.5097 | - | - |
+| **Negative Target Mean Prediction** | 0.4810 | - | - |
+| **ROC-AUC (Diagnostic)** | 0.6344 | Diagnostic only | Weak directional signal |
 
-### 2. P2 Offline Root-Action Decisions (144 Validation States, 27,677 Material Pairs)
+*Per the pre-registered frozen protocol (Section 13), failing the P1 BSS gate ($BSS < +0.05$) triggers an immediate STOP. P2 offline root-action evaluation was NOT executed for Run 2.*
 
-| Condition | Material Ranking @ $\tau=1.0$ | Top-1 Regret | Mean Chosen $G$ | Degradation Gate Requirement | Condition Verdict |
+### 2. Run 1 Offline Root-Action Decisions (VOID / Diagnostic Only)
+
+*Preserved strictly for provenance record; executed under Run 1 uncorrected validation weighting on single hidden-world observation representations:*
+
+| Condition | Material Ranking @ $\tau=1.0$ | Top-1 Regret | Mean Chosen $G$ | Degradation Requirement | Status |
 |---|---:|---:|---:|---|---|
-| **Normal ($V_\theta(o'_a)$)** | **58.83%** | **0.9028** | -0.1528 | Baseline | - |
-| **PRESTATE ($V_\theta(o)$)** | 50.00% ($-8.83\text{ pp}$) | 0.9514 ($+0.0486$) | -0.2014 | $\Delta\text{rank} \le -10\text{ pp}$ OR $\Delta\text{reg} \ge +0.05$ | **FAIL** |
-| **CYCLIC-SUCCESSOR** | 52.73% ($-6.10\text{ pp}$) | 0.9167 ($+0.0139$) | -0.1667 | $\Delta\text{rank} \le -10\text{ pp}$ OR $\Delta\text{reg} \ge +0.05$ | **FAIL** |
-| **M42S $n1$ Reference** | 59.31% | 0.8750 | -0.1250 | Benchmark anchor | - |
-| **D2 Baseline Reference** | 59.31% | 0.8750 | -0.1250 | Benchmark anchor | - |
+| **Run 1 Normal ($V(o'_a)$)** | 58.83% | 0.9028 | -0.1528 | Baseline | VOID / Diagnostic |
+| **Run 1 PRESTATE ($V(o)$)** | 50.00% ($-8.83\text{ pp}$) | 0.9514 ($+0.0486$) | -0.2014 | $\Delta\text{rank} \le -10\text{ pp}$ OR $\Delta\text{reg} \ge +0.05$ | VOID / Diagnostic |
+| **Run 1 CYCLIC-SUCCESSOR** | 52.73% ($-6.10\text{ pp}$) | 0.9167 ($+0.0139$) | -0.1667 | $\Delta\text{rank} \le -10\text{ pp}$ OR $\Delta\text{reg} \ge +0.05$ | VOID / Diagnostic |
+| *D2 Baseline (Reference)* | 59.31% | 0.8750 | -0.1250 | M41A anchor | Reference |
 
 ## Result and decision
 
-1. **P1 Gate FAIL**: With a Brier Skill Score of $+0.0127 < +0.05$, the model failed to learn a sufficiently sharp successor-state value predictor from terminal win/loss targets.
-2. **P2 Integrity Gate FAIL**: Both PRESTATE and CYCLIC-SUCCESSOR corruptions failed to cause significant decision degradation ($\ge 10\text{ pp}$ or $\ge 0.05\text{ regret}$).
+1. **P1 Gate FAIL**: In valid Run 2, with an exact game-weighted Brier Skill Score of $+0.0187 < +0.05$, the model failed to learn a sufficiently sharp successor-state value predictor from terminal win/loss targets.
+2. **P2 Gate**: Per pre-registered rule, NOT RUN for Run 2.
 3. **P3 Arena**: Pre-registered decision rules stipulate:
    > "If not: `M43A_SUCCESSOR_VALUE_NOT_LEARNED`, STOP, NO ARENA."
    P3 Arena was therefore **NOT RUN**.
-4. **Ruling**: **`M43A_SUCCESSOR_VALUE_NOT_LEARNED / CLOSED_NEGATIVE`**.
+4. **Proposed Ruling**: **`M43A_SUCCESSOR_VALUE_NOT_LEARNED / CLOSED_NEGATIVE`**.
 
 ### Scientific Interpretation
-M43A answers the question of whether simulator transition access alone, combined with terminal win/loss supervision on post-action states, is sufficient:
-- **No**. An intermediate player-view successor observation $o'_a$ evaluated against sparse terminal outcomes ($\pm 1$) contains too much continuation noise for a 192-dim state encoder to distinguish the winning potential of specific actions without intermediate reward signals or search.
-- The massive playing strength of `n1` over `d2-direct` (8,203.1 bps in M42S) cannot be replicated simply by evaluating $s'$ with an un-guided win/loss value network. `StaticEvaluatorV1`'s engineered progress terms (prestige, bonus counts, affordable card thresholds, noble progress) provide the dense gradient of value that enables $n1$ to play effectively.
+M43A provides a clear empirical boundary:
+- **Successor Value Not Validated**: Initializing from D2 representation and training a fresh scalar value head directly on binary terminal outcomes under D2/D2 continuation failed to achieve the pre-registered Brier Skill Score threshold ($+0.0187$ vs $+0.05$ gate). While weak directional discrimination is present (ROC-AUC 0.6344), the variance of terminal outcomes given an intermediate 1-ply successor observation is too large for an un-discounted, sparse binary win/loss target to train a useful successor value function at this data scale.
+- **Attribution Boundary**: This negative result demonstrates that merely externalizing transition physics to the simulator while keeping an un-guided binary win/loss target is insufficient. It does not isolate whether the remaining gap to `n1` stems from StaticEvaluatorV1's engineered progress terms, target noise, or representation capacity.
 
 ## Known limitations
 
 1. Supervision was limited to binary terminal win/loss outcomes under D2 continuation; intermediate value targets (such as TD($\lambda$) or rollout-averaged utilities) were not utilized.
-2. The state encoder was initialized from D2 and fine-tuned for only 32 epochs on 12,249 examples.
+2. The state encoder was initialized from D2 and fine-tuned for 32 epochs on 12,249 branches.
 
 ## Next authorized gate
 
-M43A is permanently closed.
-Next authorized research direction:
-- **StaticEvaluator Feature Attribution / Progress Decomposition**: Systematically ablating the terms of `StaticEvaluatorV1` to isolate which handcrafted heuristics provide $n1$'s playing strength.
-- Requires an independent milestone design.
+Awaiting final review for M43A closure.
+Proposed next step: **StaticEvaluator Feature Attribution / Progress Decomposition** (systematically ablating StaticEvaluatorV1 terms to isolate which handcrafted heuristics provide $n1$'s playing strength).

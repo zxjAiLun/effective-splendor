@@ -1,10 +1,10 @@
 //! M43A P0 Semantic & Invariant Tests (H0, H1, H2, H3).
 //!
 //! Verifies:
-//! - H0: Branch identity matches corpus probe and manifest
+//! - H0: Branch identity matches corpus probe and manifest fail-closed
 //! - H1: One-action reconstruction s' = T(s, a) reproduces branch replay state_hash_after exactly
 //! - H2: Successor observation is strictly player-view from root_actor perspective
-//! - H3: Blind-information boundary: unobserved hidden state does not leak into observation
+//! - H3: Blind-information boundary: real hidden-state mutations (ReserveDeck, BuyMarket, ReserveMarket, opponent blind reserve)
 
 use std::path::Path;
 use splendor_core::{
@@ -14,18 +14,20 @@ use splendor_replay::{verify_replay, ReplayRecorder, ReplayV1};
 
 #[test]
 fn test_h0_h1_h2_branch_reconstruction() {
-    let state_dir = Path::new("local-artifacts/m41a-corpus/train/game-0000/branch-ply0016");
-    if !state_dir.exists() {
-        eprintln!("Warning: corpus state directory not found; skipping test on this environment");
-        return;
-    }
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let state_dir = repo_root.join("local-artifacts/m41a-corpus/train/game-0000/branch-ply0016");
+    assert!(
+        state_dir.exists(),
+        "H0 fail-closed: corpus state directory must exist at {}",
+        state_dir.display()
+    );
 
     let probe_val: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(state_dir.join("state-probe.json")).unwrap(),
+        &std::fs::read_to_string(state_dir.join("state-probe.json")).expect("read state-probe.json"),
     )
     .unwrap();
     let manifest_val: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(state_dir.join("state-manifest.json")).unwrap(),
+        &std::fs::read_to_string(state_dir.join("state-manifest.json")).expect("read state-manifest.json"),
     )
     .unwrap();
 
@@ -35,6 +37,11 @@ fn test_h0_h1_h2_branch_reconstruction() {
     let expected_obs_hash = probe_val["observation_hash"].as_str().unwrap();
 
     let source_replay_path = state_dir.parent().unwrap().join("replay.json");
+    assert!(
+        source_replay_path.is_file(),
+        "source replay must exist at {}",
+        source_replay_path.display()
+    );
     let source_replay: ReplayV1 =
         serde_json::from_str(&std::fs::read_to_string(&source_replay_path).unwrap()).unwrap();
     verify_replay(&source_replay).unwrap();
@@ -59,6 +66,8 @@ fn test_h0_h1_h2_branch_reconstruction() {
 
     // H1 and H2 check across actions
     let actions = manifest_val["actions"].as_array().unwrap();
+    assert!(!actions.is_empty(), "H0 fail-closed: actions must not be empty");
+
     for item in actions {
         let action_index = item["action_index"].as_u64().unwrap() as usize;
         let forced_action: Action =
@@ -68,33 +77,43 @@ fn test_h0_h1_h2_branch_reconstruction() {
         child.apply(forced_action).unwrap();
         let post_hash = full_state_hash(&child);
 
-        // H1 check against branch replay
+        // H1 check against branch replay (fail-closed, report and replay must exist)
         let branch_replay_path = state_dir
             .join(format!("action-{action_index:03}"))
             .join("replay.json");
-        if branch_replay_path.is_file() {
-            let br_replay: ReplayV1 =
-                serde_json::from_str(&std::fs::read_to_string(&branch_replay_path).unwrap()).unwrap();
-            let step_after = &br_replay.steps[branch_ply];
-            assert_eq!(
-                post_hash.as_str(),
-                step_after.state_hash_after.as_str(),
-                "H1 failure on action {action_index}"
-            );
-        }
+        let branch_report_path = state_dir
+            .join(format!("action-{action_index:03}"))
+            .join("report.json");
+
+        assert!(
+            branch_replay_path.is_file(),
+            "H1 fail-closed: branch replay must exist at {}",
+            branch_replay_path.display()
+        );
+        assert!(
+            branch_report_path.is_file(),
+            "H1 fail-closed: branch report must exist at {}",
+            branch_report_path.display()
+        );
+
+        let br_replay: ReplayV1 =
+            serde_json::from_str(&std::fs::read_to_string(&branch_replay_path).unwrap()).unwrap();
+        let step_after = &br_replay.steps[branch_ply];
+        assert_eq!(
+            post_hash.as_str(),
+            step_after.state_hash_after.as_str(),
+            "H1 failure on action {action_index}"
+        );
 
         // H2: Player-view observation from root_actor
         let post_obs = child.observation(PlayerId(root_actor));
         assert_eq!(post_obs.viewer.0, root_actor);
-        // Viewer is root actor, so private reserved cards of root actor are accessible
-        // while opponent private reserved cards remain strictly hidden (empty or masked)
         assert!(post_obs.private.reserved.len() <= 3);
     }
 }
 
 #[test]
 fn test_h3_blind_information_boundary() {
-    // Construct a state where Player 0 reserves a blind deck card
     let (state, _) = splendor_core::FullState::new(GameConfig {
         player_count: 2,
         seed: 42,
@@ -102,32 +121,107 @@ fn test_h3_blind_information_boundary() {
     })
     .unwrap();
 
-    // Action: ReserveDeck Tier One
-    let act = Action::ReserveDeck {
+    // -----------------------------------------------------------------------
+    // Fixture 1: ReserveDeck
+    // -----------------------------------------------------------------------
+    let act_reserve_deck = Action::ReserveDeck {
         tier: Tier::One,
         give_back: Gems::ZERO,
     };
 
-    let mut state1 = state.clone();
-    state1.apply(act).unwrap();
-    let obs_actor = state1.observation(PlayerId(0));
-    let obs_opp = state1.observation(PlayerId(1));
+    // Base post-action state
+    let mut s1 = state.clone();
+    s1.apply(act_reserve_deck).unwrap();
+    let obs_base = s1.observation(PlayerId(0));
+    let hash_base = observation_hash(&obs_base);
 
-    // Root actor (viewer 0) knows the card ID of their own newly drawn reserved card
-    assert_eq!(obs_actor.viewer.0, 0);
-    assert_eq!(obs_actor.private.reserved.len(), 1);
-    let _drawn_card = obs_actor.private.reserved[0].card;
+    // Mutation 1A: Mutate deeper unseen cards (swap bottom two cards in Tier 1 deck)
+    let mut s_deeper = state.clone();
+    let dlen = s_deeper.decks[0].len();
+    assert!(dlen >= 3, "deck must have >= 3 cards for deeper mutation test");
+    s_deeper.decks[0].swap(0, 1); // swap bottom two cards
+    s_deeper.apply(act_reserve_deck).unwrap();
+    let obs_deeper = s_deeper.observation(PlayerId(0));
+    let hash_deeper = observation_hash(&obs_deeper);
+    // Deeper unseen deck order mutation must NOT change root actor observation
+    assert_eq!(
+        hash_base, hash_deeper,
+        "H3 fail: deeper deck mutation leaked into player-view observation"
+    );
 
-    // Opponent (viewer 1) CANNOT see the card ID of Player 0's newly drawn reserved card
-    assert_eq!(obs_opp.viewer.0, 1);
-    assert_eq!(obs_opp.private.reserved.len(), 0); // opponent's own reserve is empty
-    assert_eq!(obs_opp.public.players[0].reserved_count, 1);
-    // In public_reserved, deck-reserved cards are omitted (hidden)!
-    assert_eq!(obs_opp.public.players[0].public_reserved.len(), 0);
+    // Mutation 1B: Mutate drawn top card (swap top card with another card)
+    let mut s_drawn = state.clone();
+    s_drawn.decks[0].swap(dlen - 1, 0); // swap top card with bottom card
+    s_drawn.apply(act_reserve_deck).unwrap();
+    let obs_drawn = s_drawn.observation(PlayerId(0));
+    let hash_drawn = observation_hash(&obs_drawn);
+    // Mutating the card drawn into private reserve MUST change root actor observation
+    assert_ne!(
+        hash_base, hash_drawn,
+        "H3 fail: drawn card identity was not visible to root actor"
+    );
 
-    // Assert that changing card order deeper in the hidden deck does NOT affect obs_actor
-    // (Deck contents deeper in the stack remain invisible)
-    let obs_actor_hash1 = observation_hash(&obs_actor);
-    let obs_actor_hash2 = observation_hash(&state1.observation(PlayerId(0)));
-    assert_eq!(obs_actor_hash1, obs_actor_hash2);
+    // -----------------------------------------------------------------------
+    // Fixture 2: ReserveMarket
+    // -----------------------------------------------------------------------
+    let act_reserve_market = Action::ReserveMarket {
+        tier: Tier::One,
+        slot: 0,
+        give_back: Gems::ZERO,
+    };
+
+    let mut s2 = state.clone();
+    s2.apply(act_reserve_market).unwrap();
+    let obs_rm_base = s2.observation(PlayerId(0));
+    let hash_rm_base = observation_hash(&obs_rm_base);
+
+    // Deeper deck mutation: swap bottom cards of deck 0 -> market refill is from top, so deeper is invisible
+    let mut s2_deeper = state.clone();
+    s2_deeper.decks[0].swap(0, 1);
+    s2_deeper.apply(act_reserve_market).unwrap();
+    let obs_rm_deeper = s2_deeper.observation(PlayerId(0));
+    assert_eq!(
+        hash_rm_base, observation_hash(&obs_rm_deeper),
+        "H3 fail: deeper deck mutation leaked in ReserveMarket"
+    );
+
+    // Refill card mutation: swap top card of deck 0 -> changes market refill card visible to player
+    let mut s2_refill = state.clone();
+    s2_refill.decks[0].swap(dlen - 1, 0);
+    s2_refill.apply(act_reserve_market).unwrap();
+    let obs_rm_refill = s2_refill.observation(PlayerId(0));
+    assert_ne!(
+        hash_rm_base, observation_hash(&obs_rm_refill),
+        "H3 fail: market refill card mutation must change player-view observation"
+    );
+
+    // -----------------------------------------------------------------------
+    // Fixture 3: Opponent blind reserve
+    // -----------------------------------------------------------------------
+    // State where Player 1 (opponent) has a blind reserve card
+    let mut s_opp = state.clone();
+    s_opp.apply(Action::TakeTokens {
+        take: Gems::from_colors([1, 1, 1, 0, 0]),
+        give_back: Gems::ZERO,
+    }).unwrap(); // P0 takes tokens
+    s_opp.apply(Action::ReserveDeck {
+        tier: Tier::One,
+        give_back: Gems::ZERO,
+    }).unwrap(); // P1 blind reserves
+
+    let obs_p0_base = s_opp.observation(PlayerId(0));
+    let hash_p0_base = observation_hash(&obs_p0_base);
+
+    // Mutate the card ID stored inside P1's blind reserve
+    let mut s_opp_mutated = s_opp.clone();
+    assert_eq!(s_opp_mutated.players[1].reserved.len(), 1);
+    s_opp_mutated.players[1].reserved[0].card = splendor_catalog::CardId(88);
+    let obs_p0_mutated = s_opp_mutated.observation(PlayerId(0));
+    let hash_p0_mutated = observation_hash(&obs_p0_mutated);
+
+    // Mutating opponent's hidden blind reserve must NOT leak to root actor observation
+    assert_eq!(
+        hash_p0_base, hash_p0_mutated,
+        "H3 fail: opponent blind reserve leaked to root actor observation"
+    );
 }

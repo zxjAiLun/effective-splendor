@@ -1,7 +1,11 @@
-"""M43A: Successor Value Model Trainer.
+"""M43A: Successor Value Model Trainer (Repair 1).
 
-Trains M43ASuccessorValueModel to evaluate post-action player-view successor states V(o')
-using terminal win/loss targets y in {0, 1} with hierarchical MSE loss.
+Enforces:
+  - True per-game validation loss weighting across all 48 validation games (P0-1 fix)
+  - Identical game-weighted constant baseline calculation (P0-1 fix)
+  - Deterministic CUDA: torch.use_deterministic_algorithms(True) + CUBLAS :4096:8 (P1-5 fix)
+  - Checkpoint selection by lowest hierarchical validation Brier (earliest tie-break)
+  - Evaluation of P1 Value-Learning Gate (BSS >= +0.05)
 """
 
 from __future__ import annotations
@@ -25,6 +29,10 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 import numpy as np
 import torch
 import torch.nn as nn
+
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 from splendor_gpu.data import catalog_semantic_hash, load_catalog
 from splendor_gpu.m35a_registry import load_and_validate_checkpoint
@@ -98,8 +106,10 @@ def hierarchical_brier_loss(
     targets: torch.Tensor,
     offsets: torch.Tensor,
     game_boundaries: list[tuple[int, int]],
-) -> torch.Tensor:
-    """Hierarchical Brier / MSE loss: branch -> state mean -> game mean -> batch mean."""
+) -> tuple[torch.Tensor, list[torch.Tensor]]:
+    """Hierarchical Brier / MSE loss: branch -> state mean -> game mean -> batch mean.
+    Returns (batch_mean_loss, list_of_per_game_losses).
+    """
     boundaries = offsets.detach().cpu().tolist()
     game_losses = []
     for state_start, state_end in game_boundaries:
@@ -112,19 +122,21 @@ def hierarchical_brier_loss(
             mse_state = torch.mean((p_state - y_state) ** 2)
             state_losses.append(mse_state)
         game_losses.append(torch.stack(state_losses).mean())
-    return torch.stack(game_losses).mean()
+    return torch.stack(game_losses).mean(), game_losses
 
 
-def evaluate_split(
+def evaluate_split_game_weighted(
     model: M43ASuccessorValueModel | None,
     constant_val: float | None,
     games: list[dict[str, Any]],
     device: torch.device,
 ) -> tuple[float, list[float], list[float]]:
-    """Evaluate hierarchical Brier loss and extract predictions on a split."""
+    """Evaluate hierarchical Brier loss with exact per-game weighting across all games (P0-1 fix).
+    Concatenates all individual game losses and takes the unweighted mean over all games.
+    """
+    all_game_losses = []
     total_preds = []
     total_targets = []
-    batch_losses = []
 
     with torch.no_grad():
         for b_idx in range(0, len(games), BATCH_GAMES):
@@ -137,13 +149,16 @@ def evaluate_split(
             else:
                 preds = torch.full_like(targets, constant_val)
 
-            loss = hierarchical_brier_loss(preds, targets, offsets, boundaries)
-            batch_losses.append(loss.item())
+            _, game_losses = hierarchical_brier_loss(preds, targets, offsets, boundaries)
+            all_game_losses.extend([gl.item() for gl in game_losses])
             total_preds.extend(preds.detach().cpu().tolist())
             total_targets.extend(targets.detach().cpu().tolist())
 
-    mean_loss = sum(batch_losses) / len(batch_losses)
-    return mean_loss, total_preds, total_targets
+    assert len(all_game_losses) == len(games), (
+        f"Game losses count {len(all_game_losses)} != total games {len(games)}"
+    )
+    exact_game_weighted_brier = sum(all_game_losses) / len(all_game_losses)
+    return exact_game_weighted_brier, total_preds, total_targets
 
 
 def compute_p1_diagnostics(
@@ -162,7 +177,6 @@ def compute_p1_diagnostics(
     mean_pos = float(np.mean(arr_p[pos_mask])) if np.any(pos_mask) else 0.0
     mean_neg = float(np.mean(arr_p[neg_mask])) if np.any(neg_mask) else 0.0
 
-    # Diagnostic ROC-AUC via rank sum / Mann-Whitney
     auc = None
     if np.any(pos_mask) and np.any(neg_mask):
         n_pos = np.sum(pos_mask)
@@ -189,7 +203,7 @@ def compute_p1_diagnostics(
 
 
 def train_m43a(device: torch.device) -> dict[str, Any]:
-    print(f"M43A Training Pipeline initialized on {device}.", flush=True)
+    print(f"M43A Training Pipeline (Repair 1 Run 2) initialized on {device}.", flush=True)
     catalog = load_catalog(CATALOG_PATH)
 
     # 1. Load data
@@ -204,8 +218,9 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
     p_train = sum(all_train_targets) / len(all_train_targets)
     print(f"Train targets count: {len(all_train_targets)}, prevalence (p_train): {p_train:.4f}", flush=True)
 
-    val_const_brier, _, val_targets = evaluate_split(None, p_train, val_games, device)
-    print(f"Constant baseline validation Brier: {val_const_brier:.6f}", flush=True)
+    # P0-1 fix: exact game-weighted constant baseline
+    val_const_brier, _, val_targets = evaluate_split_game_weighted(None, p_train, val_games, device)
+    print(f"Exact game-weighted constant baseline validation Brier: {val_const_brier:.6f}", flush=True)
 
     # 3. Build model with D2 initialization audit
     d2_model, _ = load_and_validate_checkpoint(
@@ -227,7 +242,7 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
         if k.startswith("value_head.")
     }
 
-    # 4. Setup AdamW
+    # 4. Setup AdamW (P0-1/P1-5 explicit parameters)
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(
         trainable_params,
@@ -264,7 +279,7 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
 
             optimizer.zero_grad()
             preds = model(entities, mask, global_features)
-            loss = hierarchical_brier_loss(preds, targets, offsets, boundaries)
+            loss, _ = hierarchical_brier_loss(preds, targets, offsets, boundaries)
             loss.backward()
             nn.utils.clip_grad_norm_(trainable_params, GRAD_CLIP)
             optimizer.step()
@@ -272,9 +287,9 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
 
         train_loss = sum(batch_losses) / len(batch_losses)
 
-        # Validation evaluation
+        # Validation evaluation with exact per-game weighting (P0-1 fix)
         model.eval()
-        val_loss, val_preds, val_targets = evaluate_split(model, None, val_games, device)
+        val_loss, val_preds, val_targets = evaluate_split_game_weighted(model, None, val_games, device)
         diag = compute_p1_diagnostics(val_preds, val_targets, val_loss, val_const_brier)
 
         is_best = val_loss < best_val_brier
@@ -301,7 +316,10 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
         )
 
     total_training_seconds = time.time() - t_train_start
-    print(f"\nTraining complete in {total_training_seconds:.1f}s. Best epoch: {best_epoch} (Val MSE: {best_val_brier:.6f}).", flush=True)
+    print(
+        f"\nTraining complete in {total_training_seconds:.1f}s. Best epoch: {best_epoch} (Val MSE: {best_val_brier:.6f}).",
+        flush=True,
+    )
 
     # Compute parameter deltas on best model
     model.load_state_dict(best_checkpoint_state)
@@ -322,6 +340,7 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
     ckpt_path = RUN_ROOT / "m43a-successor-value-best.pt"
     ckpt_payload = {
         "milestone": "M43A",
+        "run_era": "run2_valid",
         "best_epoch": best_epoch,
         "state_dict": model.state_dict(),
         "d2_checkpoint_file_sha256": hashlib.sha256(
@@ -338,6 +357,8 @@ def train_m43a(device: torch.device) -> dict[str, Any]:
     print(f"Saved best checkpoint to {ckpt_path} (SHA-256: {file_sha}).", flush=True)
 
     training_report = {
+        "milestone": "M43A",
+        "run_era": "run2_valid",
         "init_audit": init_audit,
         "best_epoch": best_epoch,
         "best_val_brier": best_val_brier,

@@ -160,66 +160,59 @@ fn export_state_successors_inner(state_dir: &Path, source_replay_path: &Path) ->
 
         let post_hash = full_state_hash(&child_state);
 
-        // H1 check: check post-action state hash against branch replay if branch replay is present
+        // H1 check: check post-action state hash against branch replay (fail-closed, no optional fallback)
         let action_dir = state_dir.join(format!("action-{action_index:03}"));
         let branch_replay_path = action_dir.join("replay.json");
         let branch_report_path = action_dir.join("report.json");
 
-        if branch_replay_path.is_file() {
-            let br_text = std::fs::read_to_string(&branch_replay_path)
-                .map_err(|e| format!("cannot read branch replay {action_index}: {e}"))?;
-            let br_replay: ReplayV1 = serde_json::from_str(&br_text)
-                .map_err(|e| format!("parse branch replay {action_index}: {e}"))?;
-            let step_after = &br_replay.steps[branch_ply as usize];
-            if post_hash.as_str() != step_after.state_hash_after.as_str() {
-                return Err(format!(
-                    "H1 error: action {action_index} post_hash {} != branch replay {}",
-                    post_hash.as_str(),
-                    step_after.state_hash_after.as_str()
-                ));
-            }
+        if !branch_replay_path.is_file() {
+            return Err(format!(
+                "H1 error: missing branch replay for action {action_index} at {}",
+                branch_replay_path.display()
+            ));
+        }
+        let br_text = std::fs::read_to_string(&branch_replay_path)
+            .map_err(|e| format!("cannot read branch replay {action_index}: {e}"))?;
+        let br_replay: ReplayV1 = serde_json::from_str(&br_text)
+            .map_err(|e| format!("parse branch replay {action_index}: {e}"))?;
+        let step_after = &br_replay.steps[branch_ply as usize];
+        if post_hash.as_str() != step_after.state_hash_after.as_str() {
+            return Err(format!(
+                "H1 error: action {action_index} post_hash {} != branch replay {}",
+                post_hash.as_str(),
+                step_after.state_hash_after.as_str()
+            ));
         }
 
         // H2: Player-view observation from root_actor perspective
         let post_obs = child_state.observation(PlayerId(root_actor));
         let post_obs_hash = observation_hash(&post_obs);
 
-        // Target y from terminal result
-        let target_y = if branch_report_path.is_file() {
-            let rep_text = std::fs::read_to_string(&branch_report_path)
-                .map_err(|e| format!("cannot read branch report {action_index}: {e}"))?;
-            let rep_val: Value = serde_json::from_str(&rep_text)
-                .map_err(|e| format!("parse branch report {action_index}: {e}"))?;
-            let outcome = &rep_val["outcome"];
-            if outcome["status"] != "completed" {
-                return Err(format!(
-                    "Branch report {action_index} is not completed: {:?}",
-                    outcome["status"]
-                ));
-            }
-            let ranks = outcome["result"]["ranks"]
-                .as_array()
-                .ok_or_else(|| "missing ranks".to_string())?;
-            let root_rank = ranks[root_actor as usize]
-                .as_u64()
-                .ok_or_else(|| "missing root rank".to_string())? as u8;
-            if root_rank == 0 {
-                1.0f32
-            } else {
-                0.0f32
-            }
-        } else {
-            // Fallback to acting_seat_return from manifest
-            let return_val = item["acting_seat_return"]
-                .as_f64()
-                .ok_or_else(|| "missing acting_seat_return".to_string())?;
-            // centered return: +1.0 = win (rank 0), 0.0 = draw (shared rank 0), -1.0 = loss (rank > 0)
-            if return_val >= 0.0 {
-                1.0f32
-            } else {
-                0.0f32
-            }
-        };
+        // Target y from verified completed branch report (fail-closed, no fallback)
+        if !branch_report_path.is_file() {
+            return Err(format!(
+                "Missing branch report for action {action_index} at {}",
+                branch_report_path.display()
+            ));
+        }
+        let rep_text = std::fs::read_to_string(&branch_report_path)
+            .map_err(|e| format!("cannot read branch report {action_index}: {e}"))?;
+        let rep_val: Value = serde_json::from_str(&rep_text)
+            .map_err(|e| format!("parse branch report {action_index}: {e}"))?;
+        let outcome = &rep_val["outcome"];
+        if outcome["status"] != "completed" {
+            return Err(format!(
+                "Branch report {action_index} is not completed: {:?}",
+                outcome["status"]
+            ));
+        }
+        let ranks = outcome["result"]["ranks"]
+            .as_array()
+            .ok_or_else(|| "missing ranks".to_string())?;
+        let root_rank = ranks[root_actor as usize]
+            .as_u64()
+            .ok_or_else(|| "missing root rank".to_string())? as u8;
+        let target_y = if root_rank == 0 { 1.0f32 } else { 0.0f32 };
 
         successors.push(serde_json::json!({
             "action_index": action_index,
