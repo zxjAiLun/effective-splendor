@@ -1,21 +1,34 @@
 //! M44C P2 Scale Audit and P3 Vector Heterogeneity Audit Command.
 //!
-//! Enforces:
+//! Enforces (Closure Repair 1):
 //! - P2: Exact 200-context quota matrix across 3 pairings and 3 game stages.
-//! - P2: Deterministic deduplication, 200/200 source action reproduction, and scale evaluations.
-//! - P3: Full Arena-state corpus scan, deduplicated by identity triple.
-//! - P3: In-stratum bonus vector diversity, Shannon entropy, F4/E2 observational distributions.
+//! - P2: Authoritative context identity = (observation_hash,
+//!   visible_history_hash, information_set_hash) computed via the same
+//!   `build_information_set_v1` pipeline used by `analyze-replay-player-view`.
+//! - P2: Decision-ply staging with `decision_ply = zero_based_ply + 1`
+//!   (early 1..=20, mid 21..=45, late 46+).
+//! - P2: Top-1 vs runner-up margin computed from sorted root utilities, not
+//!   canonical array positions.
+//! - P2: Deterministic global deduplication, 200/200 source action
+//!   reproduction (fail closed), and full/scale evaluations.
+//! - P3: Arena-state corpus scan deduplicated by the same authoritative
+//!   identity triple; root-actor Phase::Main contexts only.
+//! - P3: In-stratum bonus vector diversity, Shannon entropy, F4/E2
+//!   observational distributions.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use splendor_core::{
     observation_hash, visible_events, Action, Audience, FullState, GameConfig, Phase, PlayerId,
-    Ruleset,
+    Ruleset, VisibleEvent,
 };
-use splendor_imperfect_search::{analyze_player_view_attribution_v1, RootDeterminizationConfigV1};
+use splendor_imperfect_search::{
+    analyze_player_view_attribution_v1, RootActionAggregateV1, RootDeterminizationConfigV1,
+};
 use splendor_replay::{verify_replay, ReplayV1};
 use splendor_search::{family_progress_for, AttributionProfile, SearchConfigV1};
 
@@ -42,13 +55,114 @@ fn is_engine_action(action: &Action) -> bool {
     )
 }
 
+/// Stage classification on 1-based decision ply (Closure Repair 1):
+/// early = decisions 1..=20, mid = 21..=45, late = 46+.
+fn stage_for_decision_ply(decision_ply: u32) -> &'static str {
+    if decision_ply <= 20 {
+        "early"
+    } else if decision_ply <= 45 {
+        "mid"
+    } else {
+        "late"
+    }
+}
+
+/// Authoritative context identity triple. The observation hash comes from
+/// `splendor_core::observation_hash`; the visible-history and
+/// information-set hashes come from the same
+/// `splendor_belief::build_information_set_v1` pipeline used by the
+/// `analyze-replay-player-view` command (via
+/// `analyze_player_view_attribution_v1`).
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct IdentityTriple {
+    pub observation_hash: String,
+    pub visible_history_hash: String,
+    pub information_set_hash: String,
+}
+
+impl IdentityTriple {
+    fn composite_key(&self) -> String {
+        format!(
+            "{}:{}:{}",
+            self.observation_hash, self.visible_history_hash, self.information_set_hash
+        )
+    }
+}
+
+/// Top-1 vs runner-up margin computed from actual root utilities.
+///
+/// Best action = highest root-player utility with earliest canonical index
+/// breaking ties (identical tie-break to `choose_best_action`). Runner-up =
+/// second-highest utility (a different canonical action; when several actions
+/// tie for second the canonical-first among them is used, matching aggregate
+/// order). Returns (best_action, runner_up_action, margin). Fails closed if
+/// fewer than two legal actions exist.
+fn top1_runnerup_margin(
+    aggregates: &[RootActionAggregateV1],
+    root_player: PlayerId,
+    selected_action: &Action,
+) -> Result<(Action, Action, i64), String> {
+    let player_index = root_player.index();
+    if aggregates.len() < 2 {
+        return Err(format!(
+            "expected at least 2 action aggregates, got {}",
+            aggregates.len()
+        ));
+    }
+
+    let mut best_idx = 0usize;
+    let mut best_value = i64::MIN;
+    for (idx, agg) in aggregates.iter().enumerate() {
+        let value = *agg
+            .utility_sum_by_player
+            .get(player_index)
+            .ok_or_else(|| format!("utility shape mismatch for player {player_index}"))?;
+        if idx == 0 || value > best_value {
+            best_value = value;
+            best_idx = idx;
+        }
+    }
+
+    // Runner-up: highest utility among actions other than best_idx; ties
+    // resolved by canonical order (first encountered wins because we only
+    // replace on strictly greater value).
+    let mut runner_idx = usize::MAX;
+    let mut runner_value = i64::MIN;
+    for (idx, agg) in aggregates.iter().enumerate() {
+        if idx == best_idx {
+            continue;
+        }
+        let value = *agg
+            .utility_sum_by_player
+            .get(player_index)
+            .ok_or_else(|| format!("utility shape mismatch for player {player_index}"))?;
+        if runner_idx == usize::MAX || value > runner_value {
+            runner_value = value;
+            runner_idx = idx;
+        }
+    }
+
+    let best_action = aggregates[best_idx].action;
+    if best_action != *selected_action {
+        return Err(format!(
+            "best action by utility ({best_action:?}) != analyzer selected action ({selected_action:?})"
+        ));
+    }
+
+    let margin = best_value - runner_value;
+    Ok((best_action, aggregates[runner_idx].action, margin))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2ContextRecord {
     pub context_idx: usize,
     pub pairing_id: String,
     pub seed: u64,
     pub rotation: u8,
-    pub ply: usize,
+    /// 0-based step index into the replay file.
+    pub step_index: usize,
+    /// 1-based decision ply used for staging (Closure Repair 1).
+    pub decision_ply: u32,
     pub stage: String,
     pub recorded_actor: usize,
     pub recorded_action: Action,
@@ -77,7 +191,7 @@ pub struct P3StratumMetrics {
     pub context_count: usize,
     pub distinct_vectors_count: usize,
     pub shannon_entropy_bits: f64,
-    pub vector_frequencies: HashMap<String, usize>,
+    pub vector_frequencies: BTreeMap<String, usize>,
     pub f4_mean: f64,
     pub f4_std: f64,
     pub f4_min: i64,
@@ -86,6 +200,21 @@ pub struct P3StratumMetrics {
     pub e2_std: f64,
     pub e2_min: i64,
     pub e2_max: i64,
+}
+
+/// One scanned candidate context during the selection walk over a replay.
+struct ScannedContext {
+    pairing_id: &'static str,
+    seed: u64,
+    rotation: u8,
+    step_index: usize,
+    decision_ply: u32,
+    stage: &'static str,
+    actor: PlayerId,
+    recorded_action: Action,
+    recorded_profile: String,
+    rpl_path: PathBuf,
+    identity: IdentityTriple,
 }
 
 pub fn run_m44c_audit(args: &[String]) -> i32 {
@@ -107,7 +236,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         arena_dir.join("m44c-vector-heterogeneity-audit.json")
     };
 
-    println!("Starting M44C Audits (P2 & P3)...");
+    println!("Starting M44C Audits (P2 & P3, Closure Repair 1)...");
     println!("Arena Directory: {:?}", arena_dir);
 
     let pairings = [
@@ -120,7 +249,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
     let cfg = n1_config();
 
     // -----------------------------------------------------------------------
-    // P2: Exact 200-Context Quota Matrix
+    // P2: Exact 200-Context Quota Matrix (authoritative identity)
     // -----------------------------------------------------------------------
     // Quota matrix:
     // Scale25: Early 23, Mid 22, Late 22 -> 67
@@ -141,7 +270,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
     .collect();
 
     let mut current_counts: HashMap<(&'static str, &'static str), usize> = HashMap::new();
-    let mut selected_contexts = Vec::new();
+    let mut selected_contexts: Vec<ScannedContext> = Vec::new();
     let mut global_seen_identities = HashSet::new();
 
     // Iterate over pairings
@@ -177,38 +306,70 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
                     })
                     .unwrap();
 
-                    // Replay step by step
-                    for ply in 0..replay.steps.len() {
-                        let step = &replay.steps[ply];
+                    // Maintain per-player cumulative visible histories so that
+                    // each step's identity probe sees exactly the transcript
+                    // the acting player has observed up to that decision.
+                    let player_count = replay.player_count as usize;
+                    let mut histories: Vec<Vec<VisibleEvent>> = (0..player_count)
+                        .map(|p| visible_events(&setup.events, Audience::Player(PlayerId(p as u8))))
+                        .collect();
+
+                    // Replay step by step, maintaining the visible history for
+                    // the acting player of each step.
+                    for step_index in 0..replay.steps.len() {
+                        let step = &replay.steps[step_index];
                         let actor = step.actor;
-                        let ply_stage = if ply <= 20 {
-                            "early"
-                        } else if ply <= 45 {
-                            "mid"
-                        } else {
-                            "late"
-                        };
+                        let decision_ply = u32::try_from(step_index).unwrap() + 1;
+                        let ply_stage = stage_for_decision_ply(decision_ply);
 
                         let legal = state.legal_actions();
                         let is_main = state.phase == Phase::Main;
                         let eligible = is_main && legal.len() >= 2;
 
-                        // Check observation and hashes
-                        let viewer = actor;
-                        let _obs = state.observation(viewer);
-                        let _vis_hist = visible_events(&setup.events, Audience::Player(viewer));
-
-                        // Use state hash and actor for canonical identity
-                        let id_key = format!("{}:{}:{}", step.state_hash_before, actor.0, ply);
+                        // Authoritative identity for this actor's information
+                        // set, computed via the same pipeline as
+                        // `analyze-replay-player-view`. The search result is
+                        // discarded; only the identity hashes are consumed.
+                        let visible_history = &histories[actor.index()];
+                        let obs = state.observation(actor);
+                        let identity = {
+                            let probe = match analyze_player_view_attribution_v1(
+                                ruleset,
+                                &obs,
+                                visible_history,
+                                cfg,
+                                AttributionProfile::Full,
+                            ) {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    eprintln!(
+                                        "FAIL CLOSED: identity probe failed at {:?} step {}: {e}",
+                                        rpl_path, step_index
+                                    );
+                                    return 1;
+                                }
+                            };
+                            IdentityTriple {
+                                observation_hash: observation_hash(&obs).to_string(),
+                                visible_history_hash: probe
+                                    .visible_history_hash()
+                                    .as_str()
+                                    .to_string(),
+                                information_set_hash: probe
+                                    .information_set_hash()
+                                    .as_str()
+                                    .to_string(),
+                            }
+                        };
 
                         // If eligible for P2 selection in this pairing & stage:
                         let cell_count = current_counts.entry((pairing_id, stage)).or_insert(0);
                         if eligible
                             && ply_stage == stage
                             && *cell_count < cell_target
-                            && !global_seen_identities.contains(&id_key)
+                            && !global_seen_identities.contains(&identity.composite_key())
                         {
-                            global_seen_identities.insert(id_key.clone());
+                            global_seen_identities.insert(identity.composite_key());
                             *cell_count += 1;
 
                             // Determine recorded profile for this actor
@@ -218,33 +379,41 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
                                 } else {
                                     "full"
                                 }
+                            } else if actor.index() == 1 {
+                                p_candidate_profile.as_str()
                             } else {
-                                if actor.index() == 1 {
-                                    p_candidate_profile.as_str()
-                                } else {
-                                    "full"
-                                }
+                                "full"
                             };
 
-                            selected_contexts.push((
+                            selected_contexts.push(ScannedContext {
                                 pairing_id,
                                 seed,
                                 rotation,
-                                ply,
+                                step_index,
+                                decision_ply,
                                 stage,
-                                actor.index(),
-                                step.action,
-                                recorded_profile_str.to_string(),
-                                rpl_path.clone(),
-                            ));
+                                actor,
+                                recorded_action: step.action,
+                                recorded_profile: recorded_profile_str.to_string(),
+                                rpl_path: rpl_path.clone(),
+                                identity,
+                            });
 
                             if *cell_count >= cell_target {
                                 break 'search_loop;
                             }
                         }
 
-                        // Apply action to advance state
-                        let _ = state.apply(step.action).unwrap();
+                        // Apply action to advance state and extend every
+                        // player's visible transcript with the events of this
+                        // step as projected for that player.
+                        let res = state.apply(step.action).unwrap();
+                        for (p, history) in histories.iter_mut().enumerate() {
+                            history.extend(visible_events(
+                                &res.events,
+                                Audience::Player(PlayerId(p as u8)),
+                            ));
+                        }
                     }
                 }
             }
@@ -271,22 +440,8 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
     let mut p2_records = Vec::new();
     let mut source_reproductions_ok = 0;
 
-    for (
-        idx,
-        &(
-            pairing_id,
-            seed,
-            rotation,
-            ply,
-            stage,
-            actor_idx,
-            recorded_action,
-            ref recorded_profile,
-            ref rpl_path,
-        ),
-    ) in selected_contexts.iter().enumerate()
-    {
-        let file = File::open(rpl_path).unwrap();
+    for (idx, sc) in selected_contexts.iter().enumerate() {
+        let file = File::open(&sc.rpl_path).unwrap();
         let replay: ReplayV1 = serde_json::from_reader(file).unwrap();
 
         let (mut state, setup) = FullState::new(GameConfig {
@@ -296,16 +451,16 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         })
         .unwrap();
 
-        let viewer = PlayerId(actor_idx as u8);
+        let viewer = sc.actor;
         let mut visible_history = visible_events(&setup.events, Audience::Player(viewer));
 
-        for step in replay.steps.iter().take(ply) {
+        for step in replay.steps.iter().take(sc.step_index) {
             let res = state.apply(step.action).unwrap();
             visible_history.extend(visible_events(&res.events, Audience::Player(viewer)));
         }
 
         let obs = state.observation(viewer);
-        let player = &state.players[actor_idx];
+        let player = &state.players[sc.actor.index()];
         let fp = family_progress_for(&state, player);
         let c_val = fp.purchased_card_count;
         let bonus_vector = player.bonuses;
@@ -321,12 +476,29 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         .unwrap();
         let res_full = a_full.result();
         let full_action = res_full.action;
-        let full_margin = if res_full.action_aggregates.len() >= 2 {
-            res_full.action_aggregates[0].utility_sum_by_player[actor_idx]
-                - res_full.action_aggregates[1].utility_sum_by_player[actor_idx]
-        } else {
-            0
-        };
+        let (full_best, _full_runner, full_margin) =
+            match top1_runnerup_margin(&res_full.action_aggregates, sc.actor, &full_action) {
+                Ok(v) => v,
+                Err(msg) => {
+                    eprintln!(
+                        "FAIL CLOSED: context {}: FULL margin check failed: {msg}",
+                        idx
+                    );
+                    return 1;
+                }
+            };
+        debug_assert_eq!(full_best, full_action);
+        // Authoritative identity cross-check: the analysis-time hashes must
+        // equal the selection-time identity triple.
+        if a_full.visible_history_hash().as_str() != sc.identity.visible_history_hash
+            || a_full.information_set_hash().as_str() != sc.identity.information_set_hash
+        {
+            eprintln!(
+                "FAIL CLOSED: context {}: identity mismatch between selection and analysis",
+                idx
+            );
+            return 1;
+        }
 
         // 2. Analyze with SCALE 25
         let a_s25 = analyze_player_view_attribution_v1(
@@ -339,12 +511,17 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         .unwrap();
         let res_s25 = a_s25.result();
         let s25_action = res_s25.action;
-        let s25_margin = if res_s25.action_aggregates.len() >= 2 {
-            res_s25.action_aggregates[0].utility_sum_by_player[actor_idx]
-                - res_s25.action_aggregates[1].utility_sum_by_player[actor_idx]
-        } else {
-            0
-        };
+        let (_, _, s25_margin) =
+            match top1_runnerup_margin(&res_s25.action_aggregates, sc.actor, &s25_action) {
+                Ok(v) => v,
+                Err(msg) => {
+                    eprintln!(
+                        "FAIL CLOSED: context {}: Scale25 margin check failed: {msg}",
+                        idx
+                    );
+                    return 1;
+                }
+            };
 
         // 3. Analyze with SCALE 50
         let a_s50 = analyze_player_view_attribution_v1(
@@ -357,12 +534,17 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         .unwrap();
         let res_s50 = a_s50.result();
         let s50_action = res_s50.action;
-        let s50_margin = if res_s50.action_aggregates.len() >= 2 {
-            res_s50.action_aggregates[0].utility_sum_by_player[actor_idx]
-                - res_s50.action_aggregates[1].utility_sum_by_player[actor_idx]
-        } else {
-            0
-        };
+        let (_, _, s50_margin) =
+            match top1_runnerup_margin(&res_s50.action_aggregates, sc.actor, &s50_action) {
+                Ok(v) => v,
+                Err(msg) => {
+                    eprintln!(
+                        "FAIL CLOSED: context {}: Scale50 margin check failed: {msg}",
+                        idx
+                    );
+                    return 1;
+                }
+            };
 
         // 4. Analyze with SCALE 88
         let a_s88 = analyze_player_view_attribution_v1(
@@ -375,15 +557,20 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         .unwrap();
         let res_s88 = a_s88.result();
         let s88_action = res_s88.action;
-        let s88_margin = if res_s88.action_aggregates.len() >= 2 {
-            res_s88.action_aggregates[0].utility_sum_by_player[actor_idx]
-                - res_s88.action_aggregates[1].utility_sum_by_player[actor_idx]
-        } else {
-            0
-        };
+        let (_, _, s88_margin) =
+            match top1_runnerup_margin(&res_s88.action_aggregates, sc.actor, &s88_action) {
+                Ok(v) => v,
+                Err(msg) => {
+                    eprintln!(
+                        "FAIL CLOSED: context {}: Scale88 margin check failed: {msg}",
+                        idx
+                    );
+                    return 1;
+                }
+            };
 
         // Check source reproduction
-        let source_action = match recorded_profile.as_str() {
+        let source_action = match sc.recorded_profile.as_str() {
             "full" => full_action,
             "engine_scale_25" => s25_action,
             "engine_scale_50" => s50_action,
@@ -391,12 +578,12 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
             other => panic!("Unknown recorded profile: {other}"),
         };
 
-        if source_action == recorded_action {
+        if source_action == sc.recorded_action {
             source_reproductions_ok += 1;
         } else {
             eprintln!(
                 "FAIL CLOSED: Source reproduction mismatch at context {} ({}, seed {}, ply {}): recorded {:?}, reproduced {:?}",
-                idx, pairing_id, seed, ply, recorded_action, source_action
+                idx, sc.pairing_id, sc.seed, sc.decision_ply, sc.recorded_action, source_action
             );
             return 1;
         }
@@ -408,17 +595,18 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
 
         p2_records.push(P2ContextRecord {
             context_idx: idx,
-            pairing_id: pairing_id.to_string(),
-            seed,
-            rotation,
-            ply,
-            stage: stage.to_string(),
-            recorded_actor: actor_idx,
-            recorded_action,
-            recorded_profile: recorded_profile.to_string(),
-            observation_hash: format!("{}", observation_hash(&obs)),
-            visible_history_hash: format!("{}", visible_history.len()),
-            information_set_hash: format!("{}:{}", seed, ply),
+            pairing_id: sc.pairing_id.to_string(),
+            seed: sc.seed,
+            rotation: sc.rotation,
+            step_index: sc.step_index,
+            decision_ply: sc.decision_ply,
+            stage: sc.stage.to_string(),
+            recorded_actor: sc.actor.index(),
+            recorded_action: sc.recorded_action,
+            recorded_profile: sc.recorded_profile.clone(),
+            observation_hash: sc.identity.observation_hash.clone(),
+            visible_history_hash: sc.identity.visible_history_hash.clone(),
+            information_set_hash: sc.identity.information_set_hash.clone(),
             c_val,
             bonus_vector,
             full_action,
@@ -469,9 +657,53 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         .filter(|r| r.scale88_engine_pivotal)
         .count();
 
+    // Identity digest over the frozen context list (sorted by selection order,
+    // which is deterministic given the fixed walk).
+    let identities_json = serde_json::to_vec(
+        &p2_records
+            .iter()
+            .map(|r| {
+                (
+                    &r.observation_hash,
+                    &r.visible_history_hash,
+                    &r.information_set_hash,
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    let contexts_identity_sha256 = {
+        let mut hasher = Sha256::new();
+        hasher.update(b"effective-splendor-m44c-p2-context-identities-v1\0");
+        hasher.update(&identities_json);
+        hex_encode(hasher.finalize().as_slice())
+    };
+
+    // Global uniqueness assertion over identity triples.
+    {
+        let mut seen = HashSet::new();
+        for r in &p2_records {
+            let key = format!(
+                "{}:{}:{}",
+                r.observation_hash, r.visible_history_hash, r.information_set_hash
+            );
+            if !seen.insert(key) {
+                eprintln!(
+                    "FAIL CLOSED: duplicate identity triple in selected contexts (context {})",
+                    r.context_idx
+                );
+                return 1;
+            }
+        }
+    }
+
     let p2_summary = serde_json::json!({
         "format": "effective-splendor-m44c-p2-common-state-scale-audit",
-        "version": 1,
+        "version": 2,
+        "closure_repair": 1,
+        "identity_method": "authoritative information-set triple (observation_hash, visible_history_hash, information_set_hash) via build_information_set_v1; identical pipeline to analyze-replay-player-view source metadata",
+        "decision_ply_convention": "decision_ply = zero_based_step_index + 1; early = 1..=20, mid = 21..=45, late = 46+",
+        "margin_definition": "top-1 utility minus runner-up utility for the root actor, ties broken by canonical action order; best action asserted equal to analyzer selected action",
         "audited_contexts_count": 200,
         "source_reproduction": {
             "checks": 200,
@@ -485,6 +717,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
             "scale88": {"early": 22, "mid": 22, "late": 22, "total": 66},
             "total": 200
         },
+        "contexts_identity_sha256": contexts_identity_sha256,
         "disagreement_rates_vs_full": {
             "scale25_vs_full": (s25_disagreements as f64) / n_ctx,
             "scale50_vs_full": (s50_disagreements as f64) / n_ctx,
@@ -533,19 +766,52 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
                 let replay: ReplayV1 = serde_json::from_reader(file).unwrap();
                 let _verified = verify_replay(&replay).unwrap();
 
-                let (mut state, _) = FullState::new(GameConfig {
+                let (mut state, setup) = FullState::new(GameConfig {
                     player_count: replay.player_count,
                     seed: replay.seed,
                     ruleset,
                 })
                 .unwrap();
 
-                for ply in 0..replay.steps.len() {
-                    let step = &replay.steps[ply];
+                // Maintain per-player cumulative visible histories so that
+                // each step's identity probe sees exactly the transcript the
+                // acting player has observed up to that decision.
+                let player_count = replay.player_count as usize;
+                let mut histories: Vec<Vec<VisibleEvent>> = (0..player_count)
+                    .map(|p| visible_events(&setup.events, Audience::Player(PlayerId(p as u8))))
+                    .collect();
+
+                // Root-actor Phase::Main contexts only.
+                for step_index in 0..replay.steps.len() {
+                    let step = &replay.steps[step_index];
                     let actor = step.actor;
 
                     if state.phase == Phase::Main {
-                        let id_key = format!("{}:{}:{}", step.state_hash_before, actor.0, ply);
+                        // Authoritative identity triple for the root actor.
+                        let visible_history = &histories[actor.index()];
+                        let obs = state.observation(actor);
+                        let probe = match analyze_player_view_attribution_v1(
+                            ruleset,
+                            &obs,
+                            visible_history,
+                            cfg,
+                            AttributionProfile::Full,
+                        ) {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!(
+                                    "FAIL CLOSED: P3 identity probe failed at {:?} step {}: {e}",
+                                    rpl_path, step_index
+                                );
+                                return 1;
+                            }
+                        };
+                        let id_key = format!(
+                            "{}:{}:{}",
+                            observation_hash(&obs),
+                            probe.visible_history_hash().as_str(),
+                            probe.information_set_hash().as_str()
+                        );
                         if !p3_unique_keys.contains(&id_key) {
                             p3_unique_keys.insert(id_key);
                             total_p3_contexts += 1;
@@ -564,14 +830,23 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
                         }
                     }
 
-                    let _ = state.apply(step.action).unwrap();
+                    // Apply action to advance state and extend every
+                    // player's visible transcript with the events of this
+                    // step as projected for that player.
+                    let res = state.apply(step.action).unwrap();
+                    for (p, history) in histories.iter_mut().enumerate() {
+                        history.extend(visible_events(
+                            &res.events,
+                            Audience::Player(PlayerId(p as u8)),
+                        ));
+                    }
                 }
             }
         }
     }
 
     println!(
-        "P3 Corpus Scanned: {} unique Phase::Main decision contexts.",
+        "P3 Corpus Scanned: {} unique authoritative-identity Phase::Main root-actor decision contexts.",
         total_p3_contexts
     );
 
@@ -585,7 +860,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         let entries = p3_corpus_by_c.get(&c_val).unwrap();
         let n_c = entries.len();
 
-        let mut vec_counts: HashMap<[u8; 5], usize> = HashMap::new();
+        let mut vec_counts: BTreeMap<[u8; 5], usize> = BTreeMap::new();
         let mut f4_vals = Vec::new();
         let mut e2_vals = Vec::new();
 
@@ -599,7 +874,7 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
 
         // Shannon entropy: H = - sum p * log2(p)
         let mut shannon_h = 0.0;
-        let mut string_vec_counts = HashMap::new();
+        let mut string_vec_counts = BTreeMap::new();
         for (v, count) in &vec_counts {
             let p = (*count as f64) / (n_c as f64);
             shannon_h -= p * p.log2();
@@ -643,16 +918,46 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
         });
     }
 
+    // Stratum internal consistency: every stratum must have >= 1 context and
+    // the total across strata must equal the corpus size.
+    {
+        let strata_total: usize = strata_metrics.iter().map(|m| m.context_count).sum();
+        if strata_total != total_p3_contexts {
+            eprintln!(
+                "FAIL CLOSED: P3 strata total {} != corpus size {}",
+                strata_total, total_p3_contexts
+            );
+            return 1;
+        }
+    }
+
+    // Corpus identity digest over the sorted unique identity keys.
+    let mut sorted_p3_keys: Vec<String> = p3_unique_keys.into_iter().collect();
+    sorted_p3_keys.sort_unstable();
+    let corpus_identity_sha256 = {
+        let mut hasher = Sha256::new();
+        hasher.update(b"effective-splendor-m44c-p3-corpus-identities-v1\0");
+        for key in &sorted_p3_keys {
+            hasher.update(key.as_bytes());
+            hasher.update(b"\n");
+        }
+        hex_encode(hasher.finalize().as_slice())
+    };
+
     let p3_summary = serde_json::json!({
         "format": "effective-splendor-m44c-p3-vector-heterogeneity-audit",
-        "version": 1,
+        "version": 2,
+        "closure_repair": 1,
+        "identity_method": "authoritative information-set triple (observation_hash, visible_history_hash, information_set_hash) via build_information_set_v1; identical pipeline to analyze-replay-player-view source metadata",
+        "corpus_scope": "Phase::Main root-actor decision contexts across all 384 accepted Arena replays, deduplicated by authoritative identity triple",
         "structural_fact_attestation": {
             "f4_affordability_reads_bonuses_vector": true,
             "e2_noble_progress_reads_bonuses_vector": true,
             "structural_color_vector_entry_confirmed": true
         },
-        "disciplinary_boundary": "At fixed scalar C, the observed Arena-state corpus contains multiple bonus-vector configurations, demonstrating information loss under scalar compression. F4 and E2 also vary within C strata, but this observational variance is not attributed uniquely to bonus-vector differences because other state variables co-vary simultaneously.",
+        "disciplinary_boundary": "At fixed scalar C, the observed Arena-state corpus contains multiple bonus-vector configurations, demonstrating information loss under scalar compression. F4 and E2 also vary within C strata, but this observational variance is not attributed uniquely to bonus-vector differences because other state variables co-vary simultaneously. Color-vector information already partially enters the current evaluator through F4 and E2; any future explicit vector probe must account for overlap with these existing paths. This does NOT establish that scalar C is sufficient, only that the vector is not wholly absent from the evaluator.",
         "corpus_unique_contexts": total_p3_contexts,
+        "corpus_identity_sha256": corpus_identity_sha256,
         "observed_c_strata_count": observed_c_keys.len(),
         "observed_c_values": observed_c_keys,
         "strata_metrics": strata_metrics
@@ -663,4 +968,12 @@ pub fn run_m44c_audit(args: &[String]) -> i32 {
 
     println!("\n=== Audits Completed Successfully ===");
     0
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        out.push_str(&format!("{b:02x}"));
+    }
+    out
 }

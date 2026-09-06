@@ -1,18 +1,29 @@
-"""M44C Final Exhaustive Audit & Tracked Result JSON Generator.
+"""M44C Final Exhaustive Audit & Tracked Result JSON Generator (Closure Repair 1).
 
-Audits:
+Audits (all fail-closed):
   - M44A regression test passing (m44a_p0_semantic.rs, 6/6)
   - M44B regression test passing (m44b_p0_semantic.rs, 4/4)
-  - M44C P0 semantic test suite passing (m44c_p0_semantic.rs, 4/4)
+  - M44C P0 semantic test suite passing (m44c_p0_semantic.rs, 4/4, authoritative M07 12-case corpus)
   - Exhaustive 384-match audit across all 3 pairings:
     * 384 reports seen, 384 replays seen, 0 missing, 0 duplicates
     * 0 aborts, 0 candidate faults, status == completed
     * 768 lineup checks passed, 384 rotation checks passed
     * Every replay verified with splendor verify-replay
-  - Recomputes exact W/T/L, center bps, Bonferroni 98.333% CIs
-  - Embeds deterministic 200-context common-state scale audit (P2)
-  - Embeds observational vector heterogeneity audit across Arena corpus (P3)
-  - Binds complete provenance hashes (M44C design V2 commit, M44B closure commit/basis, source SHAs)
+    * Frozen P1 numbers asserted exactly (W/T/L, center bps, 98.333% CIs)
+    * Scale88 paired-block score distribution recorded explicitly
+  - P2 common-state scale audit hard gates:
+    * exactly 200 contexts, exact quota matrix (23/22/22, 22/23/22, 22/22/22)
+    * source reproduction == 200/200
+    * all identity fields are authoritative 64-hex hashes
+    * all identity triples globally unique
+    * contexts_identity_sha256 present
+    * 1-based decision-ply staging convention (early 1..=20, mid 21..=45, late 46+)
+    * margin = top-1 minus runner-up with best==selected assertion
+  - P3 vector heterogeneity audit hard gates:
+    * authoritative identity method recorded
+    * corpus_identity_sha256 present
+    * strata internally consistent (sum of stratum counts == corpus size)
+  - Provenance: catalog_semantic_hash computed from the real catalog loader
   - Writes tracked benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json
 """
 
@@ -20,7 +31,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 import time
@@ -43,6 +53,13 @@ SAMPLE_COUNT = 4
 DEPTH_TURNS = 1
 MAX_NODES = 1
 FROZEN_SEEDS = list(range(5_700_000, 5_700_064))  # 64 paired blocks
+
+# Frozen P1 outcomes (accepted in the M44C terminal review; Arena rerun FORBIDDEN).
+FROZEN_P1 = {
+    "engine_scale_25_vs_full": {"wins": 67, "ties": 0, "losses": 61, "center_bps": 5234.375},
+    "engine_scale_50_vs_full": {"wins": 62, "ties": 0, "losses": 66, "center_bps": 4843.75},
+    "engine_scale_88_vs_full": {"wins": 64, "ties": 0, "losses": 64, "center_bps": 5000.0},
+}
 
 PAIRING_SPECS = [
     {"id": "engine_scale_25_vs_full", "primary_profile": "engine_scale_25", "secondary_profile": "full"},
@@ -77,6 +94,26 @@ ALGEBRAIC_IDENTITY_THEOREM = {
     "evaluator_collapse": "CORE_ENGINE(p) == C(p) * (2,000,000 + 250,000) == C(p) * 2,250,000",
     "naive_loo_ruling": "PERMANENTLY REJECTED AS NON-IDENTIFIABLE",
 }
+
+# Formal scientific conclusion (reviewer-approved wording, Closure Repair 1).
+FROZEN_CONCLUSION = (
+    "M44C establishes that total permanent bonuses and purchased-card count are "
+    "algebraically non-identifiable as separate scalar information sources under "
+    "the current base rules: both equal the same reachable-state scalar C. The "
+    "three preregistered positive scale points-562.5k, 1.125M and 2.0M-were all "
+    "UNRESOLVED against the 2.25M FULL baseline at the adjusted 98.333% "
+    "confidence level. Separately, the historical M44B zero-engine arm was "
+    "resolved weaker. Together these results are compatible with substantial "
+    "scale robustness above zero, but do not identify a continuous robustness "
+    "plateau, threshold, cliff location, monotonic response, or coefficient "
+    "optimum."
+)
+
+HEX64 = set("0123456789abcdef")
+
+
+def is_hex64(value: str) -> bool:
+    return isinstance(value, str) and len(value) == 64 and set(value) <= HEX64
 
 
 def file_sha256(path: Path) -> str:
@@ -130,6 +167,7 @@ def audit_pairing(spec: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(f"Pairing directory missing: {p_dir}")
 
     block_scores = []
+    block_score_distribution: dict[str, int] = {}
     wins = 0
     ties = 0
     losses = 0
@@ -214,7 +252,9 @@ def audit_pairing(spec: dict[str, Any]) -> dict[str, Any]:
             report_shas.append(file_sha256(rep_file))
             replay_shas.append(file_sha256(rpl_file))
 
-        block_scores.append(sum(block_rot_scores) / 2.0)
+        block_score = sum(block_rot_scores) / 2.0
+        block_scores.append(block_score)
+        block_score_distribution[f"{block_score:.1f}"] = block_score_distribution.get(f"{block_score:.1f}", 0) + 1
 
     center_bps = sum(block_scores) / len(block_scores)
     ci_lower, ci_upper = bootstrap_ci_983(block_scores, BOOTSTRAP_SEED, BOOTSTRAP_RESAMPLES)
@@ -225,6 +265,18 @@ def audit_pairing(spec: dict[str, Any]) -> dict[str, Any]:
         verdict = "RESOLVED_STRONGER"
     else:
         verdict = "UNRESOLVED"
+
+    # Fail-closed assertion against the frozen P1 numbers accepted in review.
+    frozen = FROZEN_P1[pairing_id]
+    if (wins, ties, losses) != (frozen["wins"], frozen["ties"], frozen["losses"]):
+        raise RuntimeError(
+            f"FROZEN P1 VIOLATION for {pairing_id}: recomputed W/T/L "
+            f"{(wins, ties, losses)} != frozen {(frozen['wins'], frozen['ties'], frozen['losses'])}"
+        )
+    if abs(center_bps - frozen["center_bps"]) > 1e-9:
+        raise RuntimeError(
+            f"FROZEN P1 VIOLATION for {pairing_id}: recomputed center {center_bps} != frozen {frozen['center_bps']}"
+        )
 
     return {
         "pairing_id": pairing_id,
@@ -244,13 +296,104 @@ def audit_pairing(spec: dict[str, Any]) -> dict[str, Any]:
         "seat0_mean_bps": sum(seat0_scores) / len(seat0_scores),
         "seat1_mean_bps": sum(seat1_scores) / len(seat1_scores),
         "mean_completed_plies": sum(total_plies) / len(total_plies),
+        "paired_block_score_distribution": block_score_distribution,
         "reports_digest_sha256": hashlib.sha256("\n".join(report_shas).encode()).hexdigest(),
         "replays_digest_sha256": hashlib.sha256("\n".join(replay_shas).encode()).hexdigest(),
     }
 
 
+def hard_assert_p2(p2_audit: dict[str, Any]) -> None:
+    """Fail-closed gate on the P2 common-state scale audit (Closure Repair 1)."""
+    if p2_audit.get("closure_repair") != 1:
+        raise RuntimeError("P2 audit is not the Closure Repair 1 version")
+    if p2_audit.get("audited_contexts_count") != 200:
+        raise RuntimeError(f"P2 must audit exactly 200 contexts, got {p2_audit.get('audited_contexts_count')}")
+
+    quota = p2_audit["quota_matrix_composition"]
+    expected_quota = {
+        "scale25": {"early": 23, "mid": 22, "late": 22, "total": 67},
+        "scale50": {"early": 22, "mid": 23, "late": 22, "total": 67},
+        "scale88": {"early": 22, "mid": 22, "late": 22, "total": 66},
+        "total": 200,
+    }
+    if quota != expected_quota:
+        raise RuntimeError(f"P2 quota matrix mismatch: {quota}")
+
+    repro = p2_audit["source_reproduction"]
+    if repro["checks"] != 200 or repro["reproduced"] != 200 or repro["pass"] is not True:
+        raise RuntimeError(f"P2 source reproduction must be 200/200, got {repro}")
+
+    if not is_hex64(p2_audit.get("contexts_identity_sha256", "")):
+        raise RuntimeError("P2 contexts_identity_sha256 missing or not a 64-hex digest")
+
+    if "build_information_set_v1" not in p2_audit.get("identity_method", ""):
+        raise RuntimeError("P2 identity_method must reference the authoritative build_information_set_v1 pipeline")
+
+    if "zero_based_step_index + 1" not in p2_audit.get("decision_ply_convention", ""):
+        raise RuntimeError("P2 decision_ply_convention must be the 1-based Closure Repair 1 convention")
+
+    if "top-1" not in p2_audit.get("margin_definition", ""):
+        raise RuntimeError("P2 margin_definition must be the top-1 vs runner-up definition")
+
+    contexts = p2_audit["contexts"]
+    if len(contexts) != 200:
+        raise RuntimeError(f"P2 contexts list must have 200 entries, got {len(contexts)}")
+
+    seen_triples = set()
+    for c in contexts:
+        for field in ("observation_hash", "visible_history_hash", "information_set_hash"):
+            if not is_hex64(c[field]):
+                raise RuntimeError(
+                    f"P2 context {c['context_idx']} field {field} is not an authoritative 64-hex hash: {c[field]!r}"
+                )
+        triple = (c["observation_hash"], c["visible_history_hash"], c["information_set_hash"])
+        if triple in seen_triples:
+            raise RuntimeError(f"P2 duplicate identity triple at context {c['context_idx']}")
+        seen_triples.add(triple)
+
+        # 1-based staging convention.
+        ply, stage = c["decision_ply"], c["stage"]
+        expected_stage = "early" if ply <= 20 else ("mid" if ply <= 45 else "late")
+        if stage != expected_stage:
+            raise RuntimeError(f"P2 context {c['context_idx']} stage {stage} inconsistent with decision_ply {ply}")
+
+    print("P2 hard gates passed: 200 contexts, exact quota, authoritative unique identities, 200/200 reproduction.")
+
+
+def hard_assert_p3(p3_audit: dict[str, Any]) -> None:
+    """Fail-closed gate on the P3 vector heterogeneity audit (Closure Repair 1)."""
+    if p3_audit.get("closure_repair") != 1:
+        raise RuntimeError("P3 audit is not the Closure Repair 1 version")
+    if not is_hex64(p3_audit.get("corpus_identity_sha256", "")):
+        raise RuntimeError("P3 corpus_identity_sha256 missing or not a 64-hex digest")
+    if "build_information_set_v1" not in p3_audit.get("identity_method", ""):
+        raise RuntimeError("P3 identity_method must reference the authoritative build_information_set_v1 pipeline")
+
+    corpus = p3_audit["corpus_unique_contexts"]
+    strata = p3_audit["strata_metrics"]
+    strata_total = sum(m["context_count"] for m in strata)
+    if strata_total != corpus:
+        raise RuntimeError(f"P3 strata total {strata_total} != corpus size {corpus}")
+
+    observed = p3_audit["observed_c_values"]
+    strata_c = [m["c_val"] for m in strata]
+    if sorted(strata_c) != sorted(observed):
+        raise RuntimeError("P3 observed_c_values inconsistent with strata metrics")
+
+    for m in strata:
+        if m["context_count"] < 1:
+            raise RuntimeError(f"P3 stratum C={m['c_val']} has non-positive context count")
+        if m["distinct_vectors_count"] < 1:
+            raise RuntimeError(f"P3 stratum C={m['c_val']} has non-positive distinct vector count")
+        freq_total = sum(m["vector_frequencies"].values())
+        if freq_total != m["context_count"]:
+            raise RuntimeError(f"P3 stratum C={m['c_val']} vector frequencies sum {freq_total} != count {m['context_count']}")
+
+    print(f"P3 hard gates passed: {corpus} unique authoritative-identity contexts, {len(strata)} consistent strata.")
+
+
 def main() -> None:
-    print("M44C Final Exhaustive Audit started...", flush=True)
+    print("M44C Final Exhaustive Audit (Closure Repair 1) started...", flush=True)
     t0 = time.time()
 
     # 1. Run P0 semantic test suites (M44A, M44B regression + M44C P0)
@@ -270,9 +413,9 @@ def main() -> None:
     p0_c_res = subprocess.run(["cargo", "test", "-p", "splendor-cli", "--test", "m44c_p0_semantic"], capture_output=True, text=True, cwd=str(REPO))
     if p0_c_res.returncode != 0:
         raise RuntimeError(f"M44C P0 semantic tests failed:\n{p0_c_res.stdout}\n{p0_c_res.stderr}")
-    print("M44C P0 semantic test suite PASSED (4/4).", flush=True)
+    print("M44C P0 semantic test suite PASSED (4/4, authoritative M07 12-case corpus).", flush=True)
 
-    # 2. Audit all 3 Arena pairings
+    # 2. Audit all 3 Arena pairings (frozen P1 assertions inside)
     pairing_results = []
     total_lineup_checks = 0
     total_rotation_checks = 0
@@ -290,24 +433,40 @@ def main() -> None:
     assert total_lineup_checks == 768, f"Expected 768 lineup checks, got {total_lineup_checks}"
     assert total_rotation_checks == 384, f"Expected 384 rotation checks, got {total_rotation_checks}"
 
-    # 3. Load P2 common-state scale audit
+    # Scale88 paired-block score distribution must be recorded explicitly.
+    s88 = next(p for p in pairing_results if p["pairing_id"] == "engine_scale_88_vs_full")
+    if not s88["paired_block_score_distribution"]:
+        raise RuntimeError("Scale88 paired_block_score_distribution missing")
+    s88_dist_total = sum(s88["paired_block_score_distribution"].values())
+    if s88_dist_total != 64:
+        raise RuntimeError(f"Scale88 paired-block distribution must cover 64 blocks, got {s88_dist_total}")
+
+    # 3. Load and hard-gate P2 common-state scale audit
     p2_path = ARENA_ROOT / "m44c-common-state-scale-audit.json"
     if not p2_path.exists():
         raise RuntimeError(f"P2 audit summary missing at {p2_path}")
     p2_audit = json.loads(p2_path.read_text(encoding="utf-8"))
+    hard_assert_p2(p2_audit)
 
-    # 4. Load P3 vector heterogeneity audit
+    # 4. Load and hard-gate P3 vector heterogeneity audit
     p3_path = ARENA_ROOT / "m44c-vector-heterogeneity-audit.json"
     if not p3_path.exists():
         raise RuntimeError(f"P3 audit summary missing at {p3_path}")
     p3_audit = json.loads(p3_path.read_text(encoding="utf-8"))
+    hard_assert_p3(p3_audit)
 
     # 5. Provenance bindings
     splendor_exe_sha = file_sha256(SPLN)
     catalog_sha = file_sha256(CATALOG)
-    with open(CATALOG, "r", encoding="utf-8") as f:
-        cat_data = json.load(f)
-    catalog_semantic_hash = cat_data.get("catalog_semantic_hash", "")
+
+    # Real catalog semantic hash from the authoritative loader (P2-A repair).
+    sys.path.insert(0, str(REPO / "training/m17_gpu"))
+    from splendor_gpu.data import catalog_semantic_hash, load_catalog
+
+    catalog = load_catalog(CATALOG)
+    cat_sem_hash = catalog_semantic_hash(catalog)
+    if not is_hex64(cat_sem_hash):
+        raise RuntimeError(f"catalog_semantic_hash is not a 64-hex digest: {cat_sem_hash!r}")
 
     m44b_result_sha = file_sha256(M44B_RESULT_JSON)
     m44a_result_sha = file_sha256(M44A_RESULT_JSON)
@@ -337,13 +496,18 @@ def main() -> None:
     # 6. Build final tracked result document
     final_document = {
         "format": "effective-splendor-m44c-core-engine-identity-scale-sensitivity",
-        "version": 1,
+        "version": 2,
+        "closure_repair": 1,
         "milestone": "M44C",
         "title": "Core Engine Identity & Scale Sensitivity",
         "audit_completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "total_pairings": 3,
         "total_matches_expected": 384,
         "total_matches_verified": total_verified_matches,
+        "arena_freeze": {
+            "p1_arena_rerun": "FORBIDDEN (accepted in terminal review; Closure Repair 1 re-audits evidence only)",
+            "frozen_p1_outcomes": FROZEN_P1,
+        },
         "exhaustiveness": {
             "reports_seen": total_verified_matches,
             "replays_seen": total_verified_matches,
@@ -359,10 +523,12 @@ def main() -> None:
         },
         "algebraic_identity_theorem": ALGEBRAIC_IDENTITY_THEOREM,
         "frozen_coefficients": FROZEN_COEFFICIENTS,
+        "frozen_conclusion": FROZEN_CONCLUSION,
         "p0_semantic_tests": {
             "m44a_regression_tests_passed": 6,
             "m44b_regression_tests_passed": 4,
             "m44c_p0_tests_passed": 4,
+            "m44c_p0_frozen_corpus": "authoritative M44A 12-case definitions (bit-exact)",
             "p0_a_algebraic_identity_verified": True,
             "p0_b_equalized_loo_isomorphism_verified": True,
             "p0_c_full_scale_identity_verified": True,
@@ -371,6 +537,7 @@ def main() -> None:
         },
         "provenance": {
             "design_v2_commit": "fd0211d",
+            "implementation_commit": "58863f8",
             "m44b_closure_commit": "b3bb4c9",
             "m44b_closure_basis": "ce16a58",
             "m44b_result_artifact_sha256": m44b_result_sha,
@@ -378,7 +545,7 @@ def main() -> None:
             "m44a_result_artifact_sha256": m44a_result_sha,
             "splendor_exe_sha256": splendor_exe_sha,
             "catalog_file_sha256": catalog_sha,
-            "catalog_semantic_hash": catalog_semantic_hash,
+            "catalog_semantic_hash": cat_sem_hash,
             "sample_seed": SAMPLE_SEED,
             "sample_count": SAMPLE_COUNT,
             "depth_turns": DEPTH_TURNS,
@@ -400,10 +567,11 @@ def main() -> None:
     print(f"\nTracked result document written to {RESULT_JSON} (SHA256: {file_sha256(RESULT_JSON)})")
 
     print("\n" + "=" * 60)
-    print("M44C AUDIT SUMMARY:")
+    print("M44C AUDIT SUMMARY (Closure Repair 1):")
     print("=" * 60)
     for p in pairing_results:
         print(f"  {p['pairing_id']:26s}: {p['center_bps']:7.2f} bps  98.333% CI: [{p['bootstrap_ci'][0]:6.2f}, {p['bootstrap_ci'][1]:6.2f}]  -> {p['verdict']}")
+    print(f"  Scale88 paired-block score distribution: {s88['paired_block_score_distribution']}")
     print(f"\nP2 Disagreement Rates vs FULL:")
     for k, v in p2_audit["disagreement_rates_vs_full"].items():
         print(f"  {k}: {v * 100:.1f}% ({p2_audit['disagreement_counts'][k]}/200)")
@@ -412,7 +580,7 @@ def main() -> None:
         print(f"  {k}: {v * 100:.1f}% ({p2_audit['engine_pivotal_counts'][k]}/200)")
     print(f"\nP3 Corpus Unique Contexts: {p3_audit['corpus_unique_contexts']}")
     print(f"P3 Observed C Strata: {len(p3_audit['observed_c_values'])} strata ({p3_audit['observed_c_values'][0]}..{p3_audit['observed_c_values'][-1]})")
-    print(f"All 384 matches verified, all P0/P1/P2/P3 gates passed in {time.time() - t0:.1f}s.")
+    print(f"All 384 matches verified, all P0/P1/P2/P3 hard gates passed in {time.time() - t0:.1f}s.")
 
 
 if __name__ == "__main__":

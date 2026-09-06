@@ -4,10 +4,13 @@
 Milestone:      M44C
 Title:          Core Engine Identity & Scale Sensitivity
 Type:           evaluator scalar scale sensitivity & algebraic identity proof
-Status:         COMPLETED_DIAGNOSTIC / CLOSURE_CANDIDATE
-                (pending final review)
+Status:         COMPLETED_DIAGNOSTIC / CLOSURE_PENDING_REPAIR_1_DONE
+                (Closure Repair 1 executed; awaiting final closure signature)
 Tracked Result: benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json
 Baseline:       fd0211d (M44C design v2 commit)
+Implementation: 58863f8 (P0/P1/P2/P3 implementation + 384-match Arena)
+Repair Basis:   M44C terminal review on 58863f8
+                (P1 ACCEPTED; P0 evidence / P2 / P3 repairs ordered; Arena rerun FORBIDDEN)
 Design:         DESIGN_V2 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE
@@ -301,12 +304,12 @@ Therefore, the 5-dimensional bonus color vector $\mathbf{b} \in \mathbb{N}^5$ **
 
 ## Acceptance Gates Status
 
-- [x] **G0 (P0 Bit-Exact Verification)**: P0-A (algebraic identity regression), P0-B (equalized LOO isomorphism), and P0-C (FULL scale identity) all pass (4/4 tests passed in `crates/splendor-cli/tests/m44c_p0_semantic.rs`).
+- [x] **G0 (P0 Bit-Exact Verification)**: P0-A (algebraic identity regression), P0-B (equalized LOO isomorphism), and P0-C (FULL scale identity) all pass (4/4 tests passed in `crates/splendor-cli/tests/m44c_p0_semantic.rs`; Closure Repair 1 re-bound P0-B/P0-C to the authoritative sealed M44A 12-case definitions).
 - [x] **G1 (Arena Execution Completeness)**: 384/384 matches completed in the strict $n1$ shell (`max_nodes = 1`, seeds `5_700_000 .. 5_700_063`). 0 aborted matches, 0 candidate faults.
 - [x] **G2 (Statistical Classification)**: Each of the 3 scale arms receives a definitive Bonferroni-corrected classification (`UNRESOLVED` for all three sampled points) using $98.333\%$ bootstrap CI.
-- [x] **G3 (Deterministic P2 Quota)**: Exact 200-context matrix filled without borrowing; 200/200 source reproduction verified (100.0%).
-- [x] **G4 (P3 Diagnostic Execution)**: Observational vector diversity and Shannon entropy computed across deduplicated Arena corpus (7,725 unique contexts, 21 $C$ strata) with structural boundary adhered to.
-- [x] **G5 (Provenance & Artifact)**: Tracked result artifact `benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json` (SHA256: `ae071e75c371fb8624306a5427f45fd29d7336e841114cb2d9005c9be1e16d9e`).
+- [x] **G3 (Deterministic P2 Quota)**: Exact 200-context matrix filled without borrowing; 200/200 source reproduction verified (100.0%). Closure Repair 1 rebuilt the audit on the authoritative identity triple with 1-based decision-ply staging and top-1/runner-up margins.
+- [x] **G4 (P3 Diagnostic Execution)**: Observational vector diversity and Shannon entropy computed across the authoritative-identity-deduplicated Arena corpus (7,725 unique contexts, 21 $C$ strata) with structural boundary adhered to.
+- [x] **G5 (Provenance & Artifact)**: Tracked result artifact `benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json` (Closure Repair 1 version, SHA256: `ef73df5aa64f3abfdd5b7a3dcec698b600fb0a073ea46f1c4cfb3314d784ca10`).
 
 ---
 
@@ -334,26 +337,33 @@ Regression tests for M44A (`m44a_p0_semantic.rs`, 6/6) and M44B (`m44b_p0_semant
 *Historical Anchor (External, M44B)*:
 - `DROP_CORE_ENGINE` ($W_C = 0$): 128 matches, 28 / 0 / 100, Center: **2,187.50 bps**, 97.5% CI: `[1484.4, 2968.8]`, `RESOLVED_SENSITIVE`.
 
-### 3. P2 Balanced Common-State Scale Audit (200 Contexts)
+### 3. P2 Balanced Common-State Scale Audit (200 Contexts, Closure Repair 1)
+
+Rebuilt in Closure Repair 1 with the authoritative identity triple (`observation_hash`, `visible_history_hash`, `information_set_hash` from `build_information_set_v1`, the same pipeline as `analyze-replay-player-view` source metadata), 1-based decision-ply staging (early 1–20, mid 21–45, late 46+), and top-1/runner-up margins computed from sorted root utilities with the best-equals-selected assertion.
 
 - **Quota Matrix Fulfillment**: Exactly filled without borrowing:
   - `Scale25`: Early 23, Mid 22, Late 22 = 67
   - `Scale50`: Early 22, Mid 23, Late 22 = 67
   - `Scale88`: Early 22, Mid 22, Late 22 = 66
   - **Total**: Early 67, Mid 67, Late 66 = 200 contexts.
-- **Source Action Reproduction**: **200 / 200 (100.0% PASS)** exact match with recorded replay actions.
+- **Source Action Reproduction**: **200 / 200 (100.0% PASS)** exact match with recorded replay actions (fail closed).
+- **Identity Digest**: `contexts_identity_sha256 = 7e63e0653a7718d61278fe2ae5ae9369653a4bd4a45e0c350b47df9eb72784ba` (all 200 triples authoritative 64-hex, globally unique).
 - **Disagreement Rates vs FULL**:
   - `ENGINE_SCALE_88 vs FULL`: **0.0%** (0 / 200 differs)
   - `ENGINE_SCALE_50 vs FULL`: **1.0%** (2 / 200 differs)
-  - `ENGINE_SCALE_25 vs FULL`: **2.5%** (5 / 200 differs)
+  - `ENGINE_SCALE_25 vs FULL`: **3.0%** (6 / 200 differs)
 - **Engine-Pivotal Behavior Flips**:
   - `ENGINE_SCALE_88`: **0.0%** (0 / 200 flips)
   - `ENGINE_SCALE_50`: **1.0%** (2 / 200 flips)
-  - `ENGINE_SCALE_25`: **2.5%** (5 / 200 flips)
+  - `ENGINE_SCALE_25`: **3.0%** (6 / 200 flips)
 
-### 4. P3 Vector Heterogeneity Audit (7,725 Arena Contexts)
+*Note*: The pre-repair P2 run (VOID, diagnostic only) had used a non-authoritative identity key (`state_hash_before:actor:ply`), 0-based stage boundaries, and canonical-position margins; its 2.5% Scale25 figure is superseded by the 3.0% authoritative value.
 
-Scanned all 384 replays in the P1 Arena corpus across all 7,725 unique `Phase::Main` decision contexts, stratified across all observed $C$ values ($C \in \{0, 1, \dots, 20\}$):
+### 4. P3 Vector Heterogeneity Audit (7,725 Arena Contexts, Closure Repair 1)
+
+Rebuilt in Closure Repair 1 with the same authoritative identity triple for context deduplication (root-actor `Phase::Main` contexts only, across all 384 accepted replays). Corpus identity digest: `corpus_identity_sha256 = a2127c0ac078f547135cab9bede44e0004094d73a8dd021f91a681f57e50abbb`.
+
+Scanned all 384 replays in the P1 Arena corpus across all 7,725 unique authoritative-identity decision contexts, stratified across all observed $C$ values ($C \in \{0, 1, \dots, 20\}$):
 
 | $C$ Stratum | Context Count $N_C$ | Distinct Bonus Vectors $K_C$ | Shannon Diversity $H_C$ (bits) | F4 Mean Value | E2 Mean Value |
 |---:|---:|---:|---:|---:|---:|
@@ -383,36 +393,59 @@ Scanned all 384 replays in the P1 Arena corpus across all 7,725 unique `Phase::M
 
 ## Result and Decision
 
-### Official Ruling: Robustness Compatibility Confirmed
+### Official Ruling
 All three sampled scale points ($W_C \in \{562.5\text{k}, 1.125\text{M}, 2.000\text{M}\}$) yield statistically **`UNRESOLVED`** outcomes against `FULL` ($2.250\text{M}$) at the Bonferroni-adjusted $98.333\%$ confidence level:
 $$\boxed{\textbf{ENGINE\_SCALE\_25 UNRESOLVED / ENGINE\_SCALE\_50 UNRESOLVED / ENGINE\_SCALE\_88 UNRESOLVED}}$$
 
-### Scientific Interpretation
-1. **Resolution of the Naive LOO Mystery**:
-   - `ENGINE_SCALE_88` ($W_C = 2{,}000{,}000$) exhibits **0.0% action disagreement** across all 200 audited contexts in P2, and scored exactly 64W / 0T / 64L (5,000.00 bps) in P1.
-   - This conclusively demonstrates that naive `DROP_PURCHASED` has no detectable impact not because "card count lacks information compared to bonuses", but because reducing $W_C$ from $2.25\text{M}$ to $2.0\text{M}$ (an 11.11% reduction) **preserves virtually identical action rankings and choices**.
-2. **Robustness Compatibility across Sampled Scales**:
+### Frozen Scientific Conclusion (Closure Repair 1, reviewer-approved wording)
+
+> M44C establishes that total permanent bonuses and purchased-card count are algebraically non-identifiable as separate scalar information sources under the current base rules: both equal the same reachable-state scalar $C$. The three preregistered positive scale points—562.5k, 1.125M and 2.0M—were all UNRESOLVED against the 2.25M FULL baseline at the adjusted 98.333% confidence level. Separately, the historical M44B zero-engine arm was resolved weaker. Together these results are compatible with substantial scale robustness above zero, but do not identify a continuous robustness plateau, threshold, cliff location, monotonic response, or coefficient optimum.
+
+### Interpretation Notes (licensed by the evidence)
+1. **Resolution of the Naive LOO Question**:
+   - The bonus-vs-purchased leave-one-out question is permanently closed as non-identifiable: $B \equiv P \equiv C$ on all reachable states, so the two terms are duplicate encodings of one scalar, not distinct information sources.
+   - `ENGINE_SCALE_88` ($W_C = 2{,}000{,}000$) exhibits **0.0% action disagreement** across all 200 audited contexts in P2, and every one of the 64 paired seed blocks scored exactly 5,000.00 bps (paired-block distribution: `{5000.0: 64}`, frozen in the result artifact) in P1. This shows that the naive `DROP_PURCHASED` ablation (which is algebraically $W_C: 2.25\text{M} \to 2.0\text{M}$) preserves action choices in the audited sample — it does not establish that 2.0M and FULL are the same strategy in general.
+2. **Scale Points Sampled**:
    - No strength difference was resolved at the sampled 25%, 50%, and 88.9% points against `FULL`.
-   - In P2, `ENGINE_SCALE_50` ($1.125\text{M}$) changed only 1.0% of decisions (2 / 200), and `ENGINE_SCALE_25` ($562.5\text{k}$) changed only 2.5% of decisions (5 / 200).
-   - This is compatible with a broad robustness region for $W_C \ge 562{,}500$: because the engine weight remains an order of magnitude larger than token weights ($20\text{k}$ and $40\text{k}$) and noble progress ($10\text{k}$), the $n1$ search agent continues to decisively favor engine development over liquidity hoarding.
-   - Combined with M44B's historical finding that $W_C = 0$ collapses to **2,187.5 bps** (`RESOLVED_SENSITIVE`), the catastrophic performance cliff is bracketed within the interval $[0, 562{,}500)$.
+   - In P2, `ENGINE_SCALE_50` ($1.125\text{M}$) changed 1.0% of decisions (2 / 200), and `ENGINE_SCALE_25` ($562.5\text{k}$) changed 3.0% of decisions (6 / 200).
+   - The historical M44B zero-engine arm ($W_C = 0$) was resolved weaker on its own seeds. The combination is compatible with substantial scale robustness above zero, but M44C does not locate a threshold, cliff, plateau start, or continuous robust interval, and does not test unsampled values (including values below 562.5k other than zero).
 3. **P3 Vector Heterogeneity & Structural Entry**:
    - Compressing the 5-dimensional bonus vector $\mathbf{b} \in \mathbb{N}^5$ into a single scalar $C$ discards extensive information: at typical mid-game engine sizes ($C = 6..10$), the agent encounters between 100 and 153 distinct color configurations with Shannon entropy exceeding 6.8 bits.
-   - The code-level structural audit confirms that $\mathbf{b}$ already enters the evaluator through F4 (affordability) and E2 (noble progress), explaining why scalar $C$ in `CORE_ENGINE` suffices as a coarse progress driver while color-specific requirements are handled by other families.
+   - The code-level structural audit confirms that $\mathbf{b}$ already enters the evaluator through F4 (affordability) and E2 (noble progress). Therefore any future explicit vector probe must account for overlap with these existing paths. This does **not** establish that scalar $C$ is sufficient — only that the color vector is not wholly absent from the current evaluator.
 
 ---
 
 ## Known Limitations
 
-1. **Calibration Discretization**: M44C evaluated coarse scale points (25%, 50%, 88.89%); it brackets the robust plateau above 25%, but does not map the continuous derivative or the exact boundary within $[0, 562{,}500)$.
+1. **Calibration Discretization**: M44C evaluated coarse scale points (25%, 50%, 88.89%) plus the historical zero point from M44B. The results are compatible with substantial scale robustness above zero, but do not identify a continuous robustness plateau, threshold, cliff location, monotonic response, or coefficient optimum, and do not test unsampled values below 562.5k other than zero.
 2. **Observational Variance**: In-stratum variance of F4 and E2 across the Arena corpus reflects whole-state co-variance (market cards, player tokens, available nobles), not isolated counterfactual vector effects.
 3. **Search Horizon**: All findings are established under the frozen $n1$ static-successor shell (`max_nodes = 1`).
+4. **Equality Degeneration of Scale88 Arena Outcome**: The Scale88 pairing's degenerate `[5000, 5000]` CI reflects exact paired-block equality on these 64 seeds (every block scored 5,000.00 bps). This is an outcome-equality observation on this sample, not proof that the two configurations are the same strategy in general.
+
+---
+
+## Iteration Log (Closure Repair 1)
+
+### 2026-09 — M44C Terminal Review on `58863f8`
+
+The terminal review **accepted** the P1 384-match Arena (frozen; rerun FORBIDDEN) and the core algebraic conclusion, but ordered Closure Repair 1 before permanent closure:
+
+1. **P0 authoritative corpus gap (PARTIAL)**: M44C's `frozen_m07_12_cases()` was a re-invented corpus that did not match the sealed M44A authoritative 12-case definitions (2p prefixes had 4 actions instead of 6; 4p prefixes differed in slot numbers and order). Because P0-B/P0-C claims rest on algebra plus 140 reachable-state bit-exact regressions, this was an evidence gap, not a treatment invalidation — the Arena was not voided. **Repair**: M44C's corpus was replaced byte-for-byte with the sealed M44A definitions; all 4 P0 tests re-passed on the authoritative corpus.
+2. **P2 VOID (identity violation)**: The pre-repair P2 used `state_hash_before:actor:ply` as the dedup key and wrote fake identity fields (`visible_history_hash = len(events)`, `information_set_hash = "seed:ply"`), violating the DESIGN_V2-frozen authoritative identity triple and changing which 200 contexts were selected. **Repair**: rebuilt on the authoritative triple via `build_information_set_v1` (identical pipeline to `analyze-replay-player-view` source metadata), with per-player cumulative visible histories. Scale25 disagreement changed 2.5% → **3.0%** (6/200).
+3. **P2 off-by-one staging**: The pre-repair code classified stages on 0-based indices (early = decisions 1–21). **Repair**: `decision_ply = zero_based_step_index + 1`, early 1–20 / mid 21–45 / late 46+.
+4. **P2 margin miscalculation**: The pre-repair code read `aggregates[0] - aggregates[1]` (canonical positions), not top-1 vs runner-up. **Repair**: margins computed from sorted root utilities with ties broken by canonical order, asserting best-equals-selected.
+5. **P3 PROVISIONAL → rebuilt**: Same non-authoritative dedup key. **Repair**: rebuilt on the authoritative triple (root-actor `Phase::Main` contexts only); corpus statistics regenerated (7,725 unique contexts, 21 strata, new `corpus_identity_sha256`).
+6. **Final-audit hardening**: `m44c_final_audit.py` now fail-closed asserts the frozen P1 numbers, exact P2 quota matrix, 200/200 reproduction, 64-hex authoritative identities, global identity uniqueness, 1-based staging convention, P3 strata consistency, and records the Scale88 paired-block score distribution explicitly (`{5000.0: 64}`).
+7. **Provenance**: `catalog_semantic_hash` was an empty string; now computed from the real catalog loader (matches M44B's authoritative value `4c90cb85...`).
+8. **Documentation**: Over-strong interpretations ("broad robustness plateau", "cliff bracketed in [0, 562500)", "scalar C suffices") were replaced with the reviewer-approved frozen conclusion wording.
+
+Non-blocking note recorded by the reviewer: the `fd0211d → 58863f8` round had reformatted the sealed `m44a_p0_semantic.rs` (+367/−85 churn). The semantics were verified unchanged; the file was not reverted (further churn was judged worse than leaving it). Future milestones must not reformat permanently closed test files.
 
 ---
 
 ## Next Authorized Gate
 
-M44C is complete.
-Awaiting final review for M44C closure.
-Next authorized research direction:
+M44C Closure Repair 1 executed in full (P0 evidence re-bound, P2/P3 rebuilt on authoritative identities, final audit hardened, provenance completed). The 384-match P1 Arena remains frozen and accepted; no Arena rerun was performed.
+Awaiting final closure signature for M44C.
+Next authorized research direction (NOT YET AUTHORIZED to start):
 - **M45A — Bonus-Vector Information Probe**: Investigating whether explicit color-vector representations (beyond the scalar count $C$) provide distinct, actionable playing-strength value when properly decoupled from F4 affordability and E2 noble progress.

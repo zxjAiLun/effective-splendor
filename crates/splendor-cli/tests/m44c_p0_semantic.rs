@@ -108,9 +108,18 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                     tier: Tier::One,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 1,
+                    slot: 0,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
@@ -135,9 +144,18 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                     tier: Tier::One,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 1,
+                    slot: 0,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
@@ -162,9 +180,18 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                     tier: Tier::One,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 1,
+                    slot: 0,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
@@ -189,9 +216,18 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                     tier: Tier::One,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 1,
+                    slot: 0,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
@@ -362,20 +398,20 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                 },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 0,
+                    slot: 3,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
                     tier: Tier::Two,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Three,
                     slot: 1,
-                    give_back: zero,
-                },
-                Action::ReserveDeck {
-                    tier: Tier::Three,
                     give_back: zero,
                 },
             ],
@@ -398,20 +434,20 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                 },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 0,
+                    slot: 3,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
                     tier: Tier::Two,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Three,
                     slot: 1,
-                    give_back: zero,
-                },
-                Action::ReserveDeck {
-                    tier: Tier::Three,
                     give_back: zero,
                 },
             ],
@@ -434,20 +470,20 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                 },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 0,
+                    slot: 3,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
                     tier: Tier::Two,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Three,
                     slot: 1,
-                    give_back: zero,
-                },
-                Action::ReserveDeck {
-                    tier: Tier::Three,
                     give_back: zero,
                 },
             ],
@@ -470,20 +506,20 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
                 },
                 Action::ReserveMarket {
                     tier: Tier::Two,
-                    slot: 0,
+                    slot: 3,
                     give_back: zero,
                 },
                 Action::ReserveDeck {
                     tier: Tier::Two,
                     give_back: zero,
                 },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
                 Action::ReserveMarket {
                     tier: Tier::Three,
                     slot: 1,
-                    give_back: zero,
-                },
-                Action::ReserveDeck {
-                    tier: Tier::Three,
                     give_back: zero,
                 },
             ],
