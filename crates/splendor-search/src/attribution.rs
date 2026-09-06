@@ -26,6 +26,12 @@ const AFFORDABLE_CARD_WEIGHT: i64 = 100_000;
 const MAX_AFFORDABLE_PRESTIGE_WEIGHT: i64 = 5_000_000;
 const NOBLE_PROGRESS_WEIGHT: i64 = 10_000;
 
+pub const ENGINE_SCALE_25_WEIGHT: i64 = 562_500;
+pub const ENGINE_SCALE_50_WEIGHT: i64 = 1_125_000;
+pub const ENGINE_SCALE_88_WEIGHT: i64 = 2_000_000;
+pub const ENGINE_SCALE_100_WEIGHT: i64 = 2_250_000;
+pub const EQUAL_LOO_WEIGHT: i64 = 1_125_000;
+
 const NOBLE_CONTRIBUTION_CEILING: i64 = 25;
 
 /// Information attribution profile for M44A.
@@ -47,6 +53,13 @@ pub enum AttributionProfile {
     DropNobleProgress,
     OnlyCoreEngine,
     OnlyNobleProgress,
+    // M44C Scale Calibration & Equalized Profiles
+    EngineScale25,
+    EngineScale50,
+    EngineScale88,
+    EngineScale100,
+    EqualDropBonus,
+    EqualDropPurchased,
 }
 
 impl std::str::FromStr for AttributionProfile {
@@ -68,6 +81,12 @@ impl std::str::FromStr for AttributionProfile {
             "drop_noble_progress" => Ok(Self::DropNobleProgress),
             "only_core_engine" => Ok(Self::OnlyCoreEngine),
             "only_noble_progress" => Ok(Self::OnlyNobleProgress),
+            "engine_scale_25" => Ok(Self::EngineScale25),
+            "engine_scale_50" => Ok(Self::EngineScale50),
+            "engine_scale_88" => Ok(Self::EngineScale88),
+            "engine_scale_100" => Ok(Self::EngineScale100),
+            "equal_drop_bonus" => Ok(Self::EqualDropBonus),
+            "equal_drop_purchased" => Ok(Self::EqualDropPurchased),
             other => Err(format!("unknown attribution profile `{other}`")),
         }
     }
@@ -82,6 +101,8 @@ pub struct FamilyProgress {
     pub f4_convertibility: i64,
     pub e1_core_engine: i64,
     pub e2_noble_progress: i64,
+    pub total_permanent_bonuses: i64,
+    pub purchased_card_count: i64,
 }
 
 impl FamilyProgress {
@@ -96,19 +117,73 @@ impl FamilyProgress {
     pub fn for_profile(&self, profile: AttributionProfile) -> i64 {
         match profile {
             AttributionProfile::Full => self.total(),
-            AttributionProfile::DropScore => self.f2_engine + self.f3_liquidity + self.f4_convertibility,
-            AttributionProfile::DropEngine => self.f1_score + self.f3_liquidity + self.f4_convertibility,
-            AttributionProfile::DropLiquidity => self.f1_score + self.f2_engine + self.f4_convertibility,
-            AttributionProfile::DropConvertibility => self.f1_score + self.f2_engine + self.f3_liquidity,
+            AttributionProfile::DropScore => {
+                self.f2_engine + self.f3_liquidity + self.f4_convertibility
+            }
+            AttributionProfile::DropEngine => {
+                self.f1_score + self.f3_liquidity + self.f4_convertibility
+            }
+            AttributionProfile::DropLiquidity => {
+                self.f1_score + self.f2_engine + self.f4_convertibility
+            }
+            AttributionProfile::DropConvertibility => {
+                self.f1_score + self.f2_engine + self.f3_liquidity
+            }
             AttributionProfile::ZeroProgress => 0,
             AttributionProfile::OnlyScore => self.f1_score,
             AttributionProfile::OnlyEngine => self.f2_engine,
             AttributionProfile::OnlyLiquidity => self.f3_liquidity,
             AttributionProfile::OnlyConvertibility => self.f4_convertibility,
-            AttributionProfile::DropCoreEngine => self.f1_score + self.e2_noble_progress + self.f3_liquidity + self.f4_convertibility,
-            AttributionProfile::DropNobleProgress => self.f1_score + self.e1_core_engine + self.f3_liquidity + self.f4_convertibility,
+            AttributionProfile::DropCoreEngine => {
+                self.f1_score + self.e2_noble_progress + self.f3_liquidity + self.f4_convertibility
+            }
+            AttributionProfile::DropNobleProgress => {
+                self.f1_score + self.e1_core_engine + self.f3_liquidity + self.f4_convertibility
+            }
             AttributionProfile::OnlyCoreEngine => self.e1_core_engine,
             AttributionProfile::OnlyNobleProgress => self.e2_noble_progress,
+            AttributionProfile::EngineScale25 => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.purchased_card_count * ENGINE_SCALE_25_WEIGHT
+            }
+            AttributionProfile::EngineScale50 => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.purchased_card_count * ENGINE_SCALE_50_WEIGHT
+            }
+            AttributionProfile::EngineScale88 => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.purchased_card_count * ENGINE_SCALE_88_WEIGHT
+            }
+            AttributionProfile::EngineScale100 => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.purchased_card_count * ENGINE_SCALE_100_WEIGHT
+            }
+            AttributionProfile::EqualDropBonus => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.purchased_card_count * EQUAL_LOO_WEIGHT
+            }
+            AttributionProfile::EqualDropPurchased => {
+                self.f1_score
+                    + self.e2_noble_progress
+                    + self.f3_liquidity
+                    + self.f4_convertibility
+                    + self.total_permanent_bonuses * EQUAL_LOO_WEIGHT
+            }
         }
     }
 }
@@ -135,8 +210,8 @@ pub fn family_progress_for(state: &FullState, player: &FullPlayerState) -> Famil
         noble_progress += (NOBLE_CONTRIBUTION_CEILING - deficit).max(0);
     }
 
-    let e1_core_engine = total_permanent_bonuses * BONUS_WEIGHT
-        + purchased_card_count * PURCHASED_CARD_WEIGHT;
+    let e1_core_engine =
+        total_permanent_bonuses * BONUS_WEIGHT + purchased_card_count * PURCHASED_CARD_WEIGHT;
     let e2_noble_progress = noble_progress * NOBLE_PROGRESS_WEIGHT;
     let f2_engine = e1_core_engine + e2_noble_progress;
 
@@ -177,6 +252,8 @@ pub fn family_progress_for(state: &FullState, player: &FullPlayerState) -> Famil
         f4_convertibility,
         e1_core_engine,
         e2_noble_progress,
+        total_permanent_bonuses,
+        purchased_card_count,
     }
 }
 
@@ -231,6 +308,10 @@ impl StaticEvaluatorAttributionV1 {
 
     /// Extract family progress breakdown for all players.
     pub fn family_progress_for_all(state: &FullState) -> Vec<FamilyProgress> {
-        state.players.iter().map(|p| family_progress_for(state, p)).collect()
+        state
+            .players
+            .iter()
+            .map(|p| family_progress_for(state, p))
+            .collect()
     }
 }

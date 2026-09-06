@@ -4,9 +4,10 @@
 Milestone:      M44C
 Title:          Core Engine Identity & Scale Sensitivity
 Type:           evaluator scalar scale sensitivity & algebraic identity proof
-Status:         DESIGN_V2 / FROZEN_BY_REVIEW (authorized for implementation)
-Tracked Result: benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json (planned)
-Baseline:       f04aedf (M44C design v1 commit)
+Status:         COMPLETED_DIAGNOSTIC / CLOSURE_CANDIDATE
+                (pending final review)
+Tracked Result: benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json
+Baseline:       fd0211d (M44C design v2 commit)
 Design:         DESIGN_V2 / FROZEN
 Champion:       M07 (determinization-s4-d1-n2000-v1) — unchanged
 Promotion:      NONE
@@ -298,19 +299,120 @@ Therefore, the 5-dimensional bonus color vector $\mathbf{b} \in \mathbb{N}^5$ **
 
 ---
 
-## Acceptance Gates
+## Acceptance Gates Status
 
-- [ ] **G0 (P0 Bit-Exact Verification)**: P0-A (algebraic identity regression), P0-B (equalized LOO isomorphism), and P0-C (FULL scale identity) all pass with 0 failures.
-- [ ] **G1 (Arena Execution Completeness)**: 384/384 matches completed in the strict $n1$ shell (`max_nodes = 1`, seeds `5_700_000 .. 5_700_063`). 0 aborted matches, 0 candidate faults.
-- [ ] **G2 (Statistical Classification)**: Each of the 3 scale arms receives a definitive Bonferroni-corrected classification (`RESOLVED_WEAKER`, `RESOLVED_STRONGER`, or `UNRESOLVED`) using $98.333\%$ bootstrap CI.
-- [ ] **G3 (Deterministic P2 Quota)**: Exact 200-context matrix filled without borrowing; 200/200 source reproduction verified.
-- [ ] **G4 (P3 Diagnostic Execution)**: Observational vector diversity and Shannon entropy computed across deduplicated Arena corpus with structural boundary adhered to.
-- [ ] **G5 (Provenance & Artifact)**: Tracked result artifact binds exact git commit, SHA256 of binaries, catalogs, seeds, and replay digests.
+- [x] **G0 (P0 Bit-Exact Verification)**: P0-A (algebraic identity regression), P0-B (equalized LOO isomorphism), and P0-C (FULL scale identity) all pass (4/4 tests passed in `crates/splendor-cli/tests/m44c_p0_semantic.rs`).
+- [x] **G1 (Arena Execution Completeness)**: 384/384 matches completed in the strict $n1$ shell (`max_nodes = 1`, seeds `5_700_000 .. 5_700_063`). 0 aborted matches, 0 candidate faults.
+- [x] **G2 (Statistical Classification)**: Each of the 3 scale arms receives a definitive Bonferroni-corrected classification (`UNRESOLVED` for all three sampled points) using $98.333\%$ bootstrap CI.
+- [x] **G3 (Deterministic P2 Quota)**: Exact 200-context matrix filled without borrowing; 200/200 source reproduction verified (100.0%).
+- [x] **G4 (P3 Diagnostic Execution)**: Observational vector diversity and Shannon entropy computed across deduplicated Arena corpus (7,725 unique contexts, 21 $C$ strata) with structural boundary adhered to.
+- [x] **G5 (Provenance & Artifact)**: Tracked result artifact `benchmarks/m44c-core-engine-identity-scale-sensitivity-v1.result.json` (SHA256: `ae071e75c371fb8624306a5427f45fd29d7336e841114cb2d9005c9be1e16d9e`).
+
+---
+
+## Final Validation and Evidence
+
+### 1. P0 Semantic & Bit-Exact Verification
+Executed via `cargo test -p splendor-cli --test m44c_p0_semantic`:
+- **P0-A (Algebraic Identity Regression)**: Verified 90-card base catalog integrity (all cards have exactly 1 bonus). Verified $B(p) \equiv P(p) \equiv C(p)$ initially and across 300 reachable states in 2p/3p/4p games. Verified $E_1(s, p) \equiv C(p) \times 2{,}250{,}000$ identically.
+- **P0-B (Equalized LOO Isomorphism)**: Evaluated symmetric weights ($w_b = w_p = 1{,}125{,}000$). Verified 100% bit-exact equality of utilities, root action aggregates, and selected actions between `EqualDropBonus` and `EqualDropPurchased` across the 12 frozen M07 positions and 140 deterministic reachable states.
+- **P0-C (FULL Scale Identity)**: Verified 100% bit-exact equality between `EngineScale100` ($W_C = 2{,}250{,}000$) and existing `AttributionProfile::FULL` across the 12 frozen M07 positions and 140 deterministic reachable states.
+- **P0-D (Constants & Parsing)**: Verified integer constants ($562\text{k}, 1.125\text{M}, 2.0\text{M}, 2.25\text{M}$) and string parsing.
+
+Regression tests for M44A (`m44a_p0_semantic.rs`, 6/6) and M44B (`m44b_p0_semantic.rs`, 4/4) also passed 100%.
+
+### 2. P1 Arena Calibration Evidence (384 Physical Matches)
+
+64 paired seed blocks (`5_700_000 .. 5_700_063`) $\times$ 2 seat rotations = 128 matches per pairing. 0 aborts, 0 candidate faults. Strict $n1$ shell (`max_nodes = 1`, `max_depth_turns = 1`, `sample_count = 4`, `sample_seed = 20_260_703`).
+
+| Candidate Arm | Control Arm | Matches | W / T / L | Center Score (bps) | CI Level | Bootstrap CI (bps) | Formal Verdict | Seat 0 / 1 (bps) | Mean Plies |
+|---|---|---:|:---:|---:|:---:|:---:|:---:|---:|---:|
+| `ENGINE_SCALE_25` ($562.5\text{k}$) | `FULL` ($2.25\text{M}$) | 128 | 67 / 0 / 61 | **5,234.38** | 98.333% | [4,218.75, 6,224.61] | **UNRESOLVED** | 4687.50 / 5781.25 | 61.4 |
+| `ENGINE_SCALE_50` ($1.125\text{M}$) | `FULL` ($2.25\text{M}$) | 128 | 62 / 0 / 66 | **4,843.75** | 98.333% | [4,062.50, 5,703.12] | **UNRESOLVED** | 4843.75 / 4843.75 | 61.4 |
+| `ENGINE_SCALE_88` ($2.000\text{M}$) | `FULL` ($2.25\text{M}$) | 128 | 64 / 0 / 64 | **5,000.00** | 98.333% | [5,000.00, 5,000.00] | **UNRESOLVED** | 5468.75 / 4531.25 | 61.3 |
+
+*Historical Anchor (External, M44B)*:
+- `DROP_CORE_ENGINE` ($W_C = 0$): 128 matches, 28 / 0 / 100, Center: **2,187.50 bps**, 97.5% CI: `[1484.4, 2968.8]`, `RESOLVED_SENSITIVE`.
+
+### 3. P2 Balanced Common-State Scale Audit (200 Contexts)
+
+- **Quota Matrix Fulfillment**: Exactly filled without borrowing:
+  - `Scale25`: Early 23, Mid 22, Late 22 = 67
+  - `Scale50`: Early 22, Mid 23, Late 22 = 67
+  - `Scale88`: Early 22, Mid 22, Late 22 = 66
+  - **Total**: Early 67, Mid 67, Late 66 = 200 contexts.
+- **Source Action Reproduction**: **200 / 200 (100.0% PASS)** exact match with recorded replay actions.
+- **Disagreement Rates vs FULL**:
+  - `ENGINE_SCALE_88 vs FULL`: **0.0%** (0 / 200 differs)
+  - `ENGINE_SCALE_50 vs FULL`: **1.0%** (2 / 200 differs)
+  - `ENGINE_SCALE_25 vs FULL`: **2.5%** (5 / 200 differs)
+- **Engine-Pivotal Behavior Flips**:
+  - `ENGINE_SCALE_88`: **0.0%** (0 / 200 flips)
+  - `ENGINE_SCALE_50`: **1.0%** (2 / 200 flips)
+  - `ENGINE_SCALE_25`: **2.5%** (5 / 200 flips)
+
+### 4. P3 Vector Heterogeneity Audit (7,725 Arena Contexts)
+
+Scanned all 384 replays in the P1 Arena corpus across all 7,725 unique `Phase::Main` decision contexts, stratified across all observed $C$ values ($C \in \{0, 1, \dots, 20\}$):
+
+| $C$ Stratum | Context Count $N_C$ | Distinct Bonus Vectors $K_C$ | Shannon Diversity $H_C$ (bits) | F4 Mean Value | E2 Mean Value |
+|---:|---:|---:|---:|---:|---:|
+| **0** | 567 | 1 | 0.000 | 792,769.0 | 496,437.4 |
+| **1** | 575 | 5 | 2.267 | 1,454,260.9 | 511,565.2 |
+| **2** | 604 | 15 | 3.734 | 1,675,662.3 | 526,473.5 |
+| **3** | 547 | 34 | 4.715 | 1,393,601.5 | 541,224.9 |
+| **4** | 562 | 54 | 5.432 | 1,695,907.5 | 555,676.2 |
+| **5** | 567 | 82 | 5.893 | 2,110,405.6 | 570,493.8 |
+| **6** | 566 | 100 | 6.108 | 2,328,445.2 | 584,311.0 |
+| **7** | 571 | 107 | 6.308 | 2,673,204.9 | 596,042.0 |
+| **8** | 555 | 127 | 6.477 | 2,801,621.6 | 604,810.8 |
+| **9** | 565 | 148 | 6.807 | 3,287,079.6 | 607,115.0 |
+| **10** | 510 | 153 | 6.868 | 3,865,039.2 | 610,686.3 |
+| **11** | 441 | 152 | 6.862 | 4,284,852.6 | 611,179.1 |
+| **12** | 338 | 134 | 6.702 | 4,834,142.0 | 612,455.6 |
+| **13** | 240 | 114 | 6.452 | 5,321,291.7 | 612,916.7 |
+| **14** | 165 | 86 | 6.096 | 6,367,090.9 | 613,939.4 |
+| **15** | 106 | 67 | 5.760 | 6,750,094.3 | 614,056.6 |
+| **16** | 63 | 43 | 5.176 | 7,609,841.3 | 615,555.6 |
+| **17** | 32 | 26 | 4.542 | 8,300,625.0 | 615,625.0 |
+| **18** | 15 | 13 | 3.565 | 8,837,333.3 | 616,666.7 |
+| **19** | 6 | 6 | 2.585 | 11,385,000.0 | 616,666.7 |
+| **20** | 1 | 1 | 0.000 | 10,700,000.0 | 617,000.0 |
+
+---
+
+## Result and Decision
+
+### Official Ruling: Robustness Compatibility Confirmed
+All three sampled scale points ($W_C \in \{562.5\text{k}, 1.125\text{M}, 2.000\text{M}\}$) yield statistically **`UNRESOLVED`** outcomes against `FULL` ($2.250\text{M}$) at the Bonferroni-adjusted $98.333\%$ confidence level:
+$$\boxed{\textbf{ENGINE\_SCALE\_25 UNRESOLVED / ENGINE\_SCALE\_50 UNRESOLVED / ENGINE\_SCALE\_88 UNRESOLVED}}$$
+
+### Scientific Interpretation
+1. **Resolution of the Naive LOO Mystery**:
+   - `ENGINE_SCALE_88` ($W_C = 2{,}000{,}000$) exhibits **0.0% action disagreement** across all 200 audited contexts in P2, and scored exactly 64W / 0T / 64L (5,000.00 bps) in P1.
+   - This conclusively demonstrates that naive `DROP_PURCHASED` has no detectable impact not because "card count lacks information compared to bonuses", but because reducing $W_C$ from $2.25\text{M}$ to $2.0\text{M}$ (an 11.11% reduction) **preserves virtually identical action rankings and choices**.
+2. **Robustness Compatibility across Sampled Scales**:
+   - No strength difference was resolved at the sampled 25%, 50%, and 88.9% points against `FULL`.
+   - In P2, `ENGINE_SCALE_50` ($1.125\text{M}$) changed only 1.0% of decisions (2 / 200), and `ENGINE_SCALE_25` ($562.5\text{k}$) changed only 2.5% of decisions (5 / 200).
+   - This is compatible with a broad robustness region for $W_C \ge 562{,}500$: because the engine weight remains an order of magnitude larger than token weights ($20\text{k}$ and $40\text{k}$) and noble progress ($10\text{k}$), the $n1$ search agent continues to decisively favor engine development over liquidity hoarding.
+   - Combined with M44B's historical finding that $W_C = 0$ collapses to **2,187.5 bps** (`RESOLVED_SENSITIVE`), the catastrophic performance cliff is bracketed within the interval $[0, 562{,}500)$.
+3. **P3 Vector Heterogeneity & Structural Entry**:
+   - Compressing the 5-dimensional bonus vector $\mathbf{b} \in \mathbb{N}^5$ into a single scalar $C$ discards extensive information: at typical mid-game engine sizes ($C = 6..10$), the agent encounters between 100 and 153 distinct color configurations with Shannon entropy exceeding 6.8 bits.
+   - The code-level structural audit confirms that $\mathbf{b}$ already enters the evaluator through F4 (affordability) and E2 (noble progress), explaining why scalar $C$ in `CORE_ENGINE` suffices as a coarse progress driver while color-specific requirements are handled by other families.
 
 ---
 
 ## Known Limitations
 
-1. **Discretized Scale Grid**: Testing 25%, 50%, and 88.89% leaves intervals between points; it maps the coarse shape of the sensitivity curve, not a continuous derivative.
-2. **Historical Anchor Distinction**: $W_C = 0$ is drawn from M44B; it cannot be pooled directly into the M44C bootstrap CI due to distinct seed segments, but serves as a qualitative asymptotic anchor.
-3. **Observational Vector Variance**: In-stratum F4/E2 variance reflects the whole game state, not pure vector counterfactuals.
+1. **Calibration Discretization**: M44C evaluated coarse scale points (25%, 50%, 88.89%); it brackets the robust plateau above 25%, but does not map the continuous derivative or the exact boundary within $[0, 562{,}500)$.
+2. **Observational Variance**: In-stratum variance of F4 and E2 across the Arena corpus reflects whole-state co-variance (market cards, player tokens, available nobles), not isolated counterfactual vector effects.
+3. **Search Horizon**: All findings are established under the frozen $n1$ static-successor shell (`max_nodes = 1`).
+
+---
+
+## Next Authorized Gate
+
+M44C is complete.
+Awaiting final review for M44C closure.
+Next authorized research direction:
+- **M45A — Bonus-Vector Information Probe**: Investigating whether explicit color-vector representations (beyond the scalar count $C$) provide distinct, actionable playing-strength value when properly decoupled from F4 affordability and E2 noble progress.

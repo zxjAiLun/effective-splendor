@@ -2,15 +2,14 @@
 //!
 //! Verifies:
 //! - H0-A: Bit-for-bit utility equality between StaticEvaluatorAttributionV1(FULL) and StaticEvaluatorV1
-//!         on both non-terminal states and terminal states with various rank outcomes.
+//!   on both non-terminal states and terminal states with various rank outcomes.
 //! - H0-B: Root decision identity on frozen M07 12-position corpus (12/12 match FULL == det-s4-d1-n1)
-//!         using authoritative frozen case replay reconstruction.
+//!   using authoritative frozen case replay reconstruction.
 //! - H0-C: >=64 reachable non-terminal states bit-for-bit utility equality.
 //! - Family Partition: FULL progress == F1 + F2 + F3 + F4 exact integer equality for all states/players.
 //! - Exact Mask Microfixtures: Hand-calculated exact integer delta assertions for each family.
 //! - Zero-Progress Semantics: Non-terminal utilities are strictly [0, 0], terminal equals terminal_rank_base.
 
-use std::path::Path;
 use splendor_catalog::card;
 use splendor_core::{
     visible_events, Action, Audience, FullState, GameConfig, Gems, PlayerId, Ruleset,
@@ -24,6 +23,7 @@ use splendor_search::{
     canonical_order, terminal_rank_base, AttributionProfile, SearchConfigV1,
     StaticEvaluatorAttributionV1, StaticEvaluatorV1, TERMINAL_RANK_UNIT,
 };
+use std::path::Path;
 
 const M07_SAMPLE_SEED: u64 = 20_260_703;
 const M07_SAMPLE_COUNT: u16 = 4;
@@ -62,7 +62,10 @@ fn test_h0_a_utility_identity() {
             let u_orig = StaticEvaluatorV1::utilities(&state).unwrap();
             let u_attr =
                 StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::Full).unwrap();
-            assert_eq!(u_orig, u_attr, "H0-A non-terminal utility mismatch on seed {seed}");
+            assert_eq!(
+                u_orig, u_attr,
+                "H0-A non-terminal utility mismatch on seed {seed}"
+            );
 
             let legal = state.legal_actions();
             if legal.is_empty() || state.is_terminal() {
@@ -90,7 +93,10 @@ fn test_h0_a_utility_identity() {
 
             state.phase = splendor_core::Phase::GameOver;
             let current_ranks = ranks[..player_count as usize].to_vec();
-            let scores = current_ranks.iter().map(|&r| if r == 0 { 15 } else { 10 - r }).collect();
+            let scores = current_ranks
+                .iter()
+                .map(|&r| if r == 0 { 15 } else { 10 - r })
+                .collect();
             let winners = current_ranks
                 .iter()
                 .enumerate()
@@ -175,12 +181,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17002,
             ply: 0,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 1, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -190,12 +217,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17002,
             ply: 2,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 1, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -205,12 +253,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17002,
             ply: 4,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 1, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -220,12 +289,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17002,
             ply: 6,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 1, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -235,12 +325,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17003,
             ply: 0,
             prefix: vec![
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 1, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 0, give_back: zero },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 0,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -250,12 +361,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17003,
             ply: 2,
             prefix: vec![
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 1, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 0, give_back: zero },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 0,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -265,12 +397,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17003,
             ply: 4,
             prefix: vec![
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 1, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 0, give_back: zero },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 0,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -280,12 +433,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17003,
             ply: 6,
             prefix: vec![
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 1, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 0, give_back: zero },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 1,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 0,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 0,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -295,12 +469,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17004,
             ply: 0,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 2, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 3, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 1, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 2,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 3,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 1,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -310,12 +505,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17004,
             ply: 2,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 2, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 3, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 1, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 2,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 3,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 1,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -325,12 +541,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17004,
             ply: 4,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 2, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 3, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 1, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 2,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 3,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 1,
+                    give_back: zero,
+                },
             ],
         },
         FrozenCase {
@@ -340,12 +577,33 @@ fn frozen_m07_12_cases() -> Vec<FrozenCase> {
             continuation_seed: 17004,
             ply: 6,
             prefix: vec![
-                Action::ReserveMarket { tier: Tier::One, slot: 2, give_back: zero },
-                Action::ReserveDeck { tier: Tier::One, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Two, slot: 3, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Two, give_back: zero },
-                Action::ReserveDeck { tier: Tier::Three, give_back: zero },
-                Action::ReserveMarket { tier: Tier::Three, slot: 1, give_back: zero },
+                Action::ReserveMarket {
+                    tier: Tier::One,
+                    slot: 2,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::One,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Two,
+                    slot: 3,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Two,
+                    give_back: zero,
+                },
+                Action::ReserveDeck {
+                    tier: Tier::Three,
+                    give_back: zero,
+                },
+                Action::ReserveMarket {
+                    tier: Tier::Three,
+                    slot: 1,
+                    give_back: zero,
+                },
             ],
         },
     ]
@@ -485,10 +743,22 @@ fn test_family_partition_gate() {
 
                 // Check profiles
                 assert_eq!(fp.for_profile(AttributionProfile::Full), full_total);
-                assert_eq!(fp.for_profile(AttributionProfile::DropScore), sum_parts - fp.f1_score);
-                assert_eq!(fp.for_profile(AttributionProfile::DropEngine), sum_parts - fp.f2_engine);
-                assert_eq!(fp.for_profile(AttributionProfile::DropLiquidity), sum_parts - fp.f3_liquidity);
-                assert_eq!(fp.for_profile(AttributionProfile::DropConvertibility), sum_parts - fp.f4_convertibility);
+                assert_eq!(
+                    fp.for_profile(AttributionProfile::DropScore),
+                    sum_parts - fp.f1_score
+                );
+                assert_eq!(
+                    fp.for_profile(AttributionProfile::DropEngine),
+                    sum_parts - fp.f2_engine
+                );
+                assert_eq!(
+                    fp.for_profile(AttributionProfile::DropLiquidity),
+                    sum_parts - fp.f3_liquidity
+                );
+                assert_eq!(
+                    fp.for_profile(AttributionProfile::DropConvertibility),
+                    sum_parts - fp.f4_convertibility
+                );
                 assert_eq!(fp.for_profile(AttributionProfile::ZeroProgress), 0);
             }
 
@@ -522,7 +792,10 @@ fn test_exact_mask_microfixtures() {
         assert_eq!(fp[0].f2_engine, fp_base[0].f2_engine);
         assert_eq!(fp[0].f3_liquidity, fp_base[0].f3_liquidity);
         assert_eq!(fp[0].f4_convertibility, fp_base[0].f4_convertibility);
-        assert_eq!(fp[0].for_profile(AttributionProfile::DropScore), fp_base[0].total());
+        assert_eq!(
+            fp[0].for_profile(AttributionProfile::DropScore),
+            fp_base[0].total()
+        );
     }
 
     // 2. F2 (Purchased cards count only - zero bonuses, zero noble progress impact)
@@ -541,7 +814,10 @@ fn test_exact_mask_microfixtures() {
         assert_eq!(fp[0].f4_convertibility, fp_base[0].f4_convertibility);
 
         // When DROP_ENGINE is active, f2_engine is masked away
-        assert_eq!(fp[0].for_profile(AttributionProfile::DropEngine), fp[0].total() - fp[0].f2_engine);
+        assert_eq!(
+            fp[0].for_profile(AttributionProfile::DropEngine),
+            fp[0].total() - fp[0].f2_engine
+        );
     }
 
     // 3. F3 (Reserved cards count only - reserving an un-affordable card so F4 is untouched)
@@ -562,7 +838,10 @@ fn test_exact_mask_microfixtures() {
         assert_eq!(fp[0].f2_engine, fp_base[0].f2_engine);
         assert_eq!(fp[0].f4_convertibility, fp_base[0].f4_convertibility);
         // When DROP_LIQUIDITY is active, f3_liquidity is masked away
-        assert_eq!(fp[0].for_profile(AttributionProfile::DropLiquidity), fp[0].total() - fp[0].f3_liquidity);
+        assert_eq!(
+            fp[0].for_profile(AttributionProfile::DropLiquidity),
+            fp[0].total() - fp[0].f3_liquidity
+        );
     }
 
     // 4. F4 (Affordability only - hand-calculated exact affordable card count & max prestige)
@@ -595,7 +874,10 @@ fn test_exact_mask_microfixtures() {
         // F3 changed by 10 gold tokens = 10 * 40_000 = 400_000
         assert_eq!(fp[0].f3_liquidity - fp_base[0].f3_liquidity, 400_000);
         // Under DROP_CONVERTIBILITY, expected_f4 is dropped exactly:
-        assert_eq!(fp[0].for_profile(AttributionProfile::DropConvertibility), fp[0].total() - expected_f4);
+        assert_eq!(
+            fp[0].for_profile(AttributionProfile::DropConvertibility),
+            fp[0].total() - expected_f4
+        );
     }
 }
 
