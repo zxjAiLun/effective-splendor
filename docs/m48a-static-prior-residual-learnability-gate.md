@@ -2,16 +2,26 @@
 
 ```ini
 MILESTONE = M48A
-STATUS = DESIGN_ONLY_DRAFT / PENDING_REVIEW
-SCOPE = design document only; no implementation, no training, no Arena
+STATUS = DESIGN_V2 / APPROVED / FROZEN BY REVIEW
+SCOPE = full frozen contract; implementation auto-authorized after docs-only commit
 BASE_COMMIT = e0e4a44 (M47S permanently closed)
-AUTHORIZATION = M48A DESIGN-ONLY AUTHORIZED (M47S terminal review)
-IMPLEMENTATION = NOT AUTHORIZED
-TRAINING = NOT AUTHORIZED
-M48B_ARENA = NOT AUTHORIZED
-M47S_HOLDOUT_USE_FOR_TRAINING_OR_SELECTION = FORBIDDEN
-ARCHITECTURE_SWEEP = NOT AUTHORIZED (one model, one recipe)
-EXTRA_RUN_AFTER_VALID_FAIL = NOT AUTHORIZED (neural evaluator research stops)
+DESIGN_V1 = 412d7a4 (research question / formulation / isolation accepted)
+DESIGN_V2 = this document (corpus / loss / model / recipe / thresholds frozen;
+            SHIFT1 demoted from gate to diagnostic per review)
+IMPLEMENTATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+LABEL_GENERATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+CORPUS_AUDIT = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+SINGLE_FROZEN_TRAINING_RUN = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+VALIDATION_CHECKPOINT_SELECTION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+INTERNAL_TEST_EVALUATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+M47S_HOLOUT_EVALUATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+TRACKED_RESULT = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+FINAL_AUDIT = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
+ARENA_M48B = NOT AUTHORIZED
+SECOND_TRAINING_RUN = NOT AUTHORIZED
+ARCHITECTURE_CHANGE = NOT AUTHORIZED
+HP_OR_LOSS_SWEEP = NOT AUTHORIZED
+M48A_V2_AFTER_VALID_FAIL = NOT AUTHORIZED (neural evaluator research stops)
 ```
 
 > **Research question.** With the StaticEvaluator kept intact and always
@@ -19,15 +29,15 @@ EXTRA_RUN_AFTER_VALID_FAIL = NOT AUTHORIZED (neural evaluator research stops)
 > capturing part of the stable continuation-preference errors — without
 > destroying static-correct decisions?
 >
-> $$q_{\text{corr}}(s,a) = q_1(s,a) + R_\theta(s,a)$$
+> $$q_{\text{corr}}(s,a) = q_1(s,a) + D(s)\,r_\theta(a)$$
 
 ## Problem and evidence
 
 - M46A (closed, valid negative): the learned-replacement route failed — a
   357k-parameter successor representation given exact dynamics, exact
   terminals, explicit local relation primitives, and 4.2M scoring examples
-  reached only 72.8% teacher-optimal-set fidelity. A neural network asked
-  to re-derive the whole evaluator does not carry the n1 decision structure.
+  reached only 72.8% teacher-optimal-set fidelity. A network asked to
+  re-derive the whole evaluator does not carry the n1 decision structure.
 - M47S (closed, valid positive): on the frozen 2,048-root diagnostic
   holdout, n1/static and M07/n2000 continuation exhibit a dense (27.8%),
   highly budget-stable (98.9% of corrections), non-trivial (median
@@ -35,161 +45,308 @@ EXTRA_RUN_AFTER_VALID_FAIL = NOT AUTHORIZED (neural evaluator research stops)
   supervision is ample (4.72M teacher-strict pairs, 10.1% correction rate);
   static margins are mostly local (median normalized 0.115).
 
-M48A therefore asks a different question from M46A: not "can a network
-learn the evaluator," but "can a network learn only the evaluator's
-errors, on top of an always-exact prior."
+M48A asks: not "can a network learn the evaluator," but "can a network
+learn only the evaluator's errors, on top of an always-exact prior."
 
-## Why this route deserves one more gate
+## Formulation: root-normalized correction
 
-The M47S margin shape is precisely the regime the residual hypothesis
-predicts: ~90% of teacher-strict pairs are already correct under static;
-~10% need correction; the corrections are mostly small local preference
-flips (median normalized static margin 0.115), concentrated in specific
-patterns (TakeTokens → ReserveMarket dominant, early-game concentrated)
-that plausibly involve option value, denial, and reserve timing —
-structure an immediate-successor scalar evaluator is poorly suited to
-hand-write, but a residual might learn.
+To avoid training on StaticEvaluator's huge integer scale, the residual is
+a **root-normalized correction**. Per root:
 
-## Scope and non-goals
+$$D(s)=\max\big(\max_a q_1(a)-\min_a q_1(a),\,1\big)$$
 
-### In scope (design only at this stage)
+$$z_1(a)=\frac{q_1(a)-\operatorname{mean}_b q_1(b)}{D(s)}$$
 
-- One frozen residual model, one frozen training recipe, one corpus
-  contract, frozen offline gates.
+The network outputs a dimensionless scalar $r_\theta(a)$; ranking uses:
 
-### Not in scope / not authorized
+$$z_{\text{corr}}(a)=z_1(a)+r_\theta(a)$$
 
-- Retraining or replacing any part of StaticEvaluatorV1.
-- Any Arena (M48B is a separate future authorization).
-- Use of the M47S holdout for training or checkpoint selection.
-- Architecture sweeps, loss sweeps, multiple runs after a valid FAIL.
+This is exactly equivalent to $q_{\text{corr}}(a)=q_1(a)+D(s)\,r_\theta(a)$
+— StaticEvaluator remains the exact prior; the network learns only the
+correction relative to the current root's static preference range.
 
-## Contracts and invariants (design commitments)
+## Contracts and invariants
 
 ### B1. StaticEvaluator is retained exactly
 
-The final score is always `q_1(s,a) + R_θ(s,a)`. The M46A-style
-replacement objective (network reconstructing the whole evaluator) must
-not reappear under any framing. No production evaluator code changes.
+The final score is always $q_1 + D\cdot r_\theta$. No replacement
+objective, no mechanics heads, no progress reconstruction, no terminal
+value loss, no absolute q2000 regression. No production code changes.
 
-### B2. Zero-init residual with bit-exact baseline gate
+### B2. Zero-init residual with bit-exact baseline gate (G0)
 
-Before training, `R_θ(s,a) = 0` for every action. On a preregistered
-audit corpus, the corrected action selection must be **100% bit-exact
-equal** to n1/static selection. If this cannot be demonstrated:
+The final residual head `Linear(128,1)` has weight **exactly 0** and bias
+**exactly 0**; the rest of the trunk is randomly initialized under the
+training seed. Before training, on ALL validation roots:
 
 ```text
-FAIL BEFORE TRAINING
+every nonterminal residual scalar == exactly 0.0
+every action residual             == exactly 0.0
+q_corr float64                    == q1 float64 exactly
+canonical selected action         == n1 action
 ```
 
-### B3. M47S holdout is external final diagnostic only
+all at 100%. Any failure: `FAIL_BEFORE_TRAINING`. No threshold loosening.
 
-The frozen roots (games 6,602,304–6,602,559, 2,048 roots) are a permanent
-diagnostic holdout: never used for training, validation, or checkpoint
-selection. M48A's training corpus reuses the **M46A train/val games**
-(6,600,000–6,602,303), with offline n2000-teacher labels added; no new
-self-play generation is required.
+### B3. Corpus: four splits, no new self-play
 
-### B4. Success standard: improve over static, not reproduce n2000
+No new games. The M46A train split is re-cut; labels are n1 + n2000 only
+(M47S showed 98.95% of corrections are budget-stable, so n200/n500 are
+unnecessary for training).
 
-The gates compare `static + residual` against `static` under the n2000
-teacher:
+| Split | Games | Seeds (inclusive) | Roots | Use |
+|---|---:|---|---:|---|
+| Train | 1,792 | 6,600,000..6,601,791 | 14,336 | optimizer |
+| Internal test | 256 | 6,601,792..6,602,047 | 2,048 | first true test (unseen at design time) |
+| Validation | 256 | 6,602,048..6,602,303 | 2,048 | checkpoint selection |
+| M47S external holdout | 256 | 6,602,304..6,602,559 | 2,048 | final replication |
 
-- correction capture (fraction of static errors fixed),
-- static-correct retention (fraction of static-correct decisions kept),
-- overall optimal-set agreement (must improve),
-- normalized regret (must decrease).
-
-The binding constraint is **both**: fix errors AND do not destroy correct
-static choices. Exact frozen thresholds will be set at design review with
-the M47S distribution as prior (e.g. correction capture materially above
-zero while retention stays near 100%); no threshold may be tuned after
-seeing results.
-
-### B5. One model, one recipe — terminal budget
-
-This is the last neural-evaluator gate before a forced stop. A valid
-frozen run that fails its gates ends the route:
+Split by game seed BEFORE label generation. For all four splits re-verify
+authoritative identity triples; because internal test is carved from the
+old M46A train, re-assert ALL pairwise disjointness:
 
 ```text
-neural evaluator research = STOP
+train ∩ internal-test = 0    train ∩ val = 0
+train ∩ M47S = 0            internal-test ∩ val = 0
+internal-test ∩ M47S = 0     val ∩ M47S = 0
 ```
 
-No M48A-v2, no attention variant, no bigger hidden, no loss sweep.
+Successor semantic hashes likewise disjoint across splits. Any collision:
+corpus FAIL — never delete samples after the fact.
 
-### B6. Scientific isolation: reuse the M46A trunk family
+### B4. Labels (n1 + n2000 only)
 
-The residual network reuses the M46A successor relational trunk family
-(not because M46A succeeded — it failed, but because reusing it makes the
-only changed variable the presence of the static prior):
+Per root, frozen shell (`sample_seed=20_260_703, sample_count=4,
+depth=1`):
 
 ```text
-M46A: R_θ must reconstruct everything        → FAILED
-M48A: q_static + R_θ (prior retained)        → ?
+n1:    max_nodes = 1
+n2000: max_nodes = 2000
+```
+
+Recorded per root: all canonical actions, `q1(a)`, `q2000(a)`, the 4 exact
+successors per action (relational features), terminal mask, root identity.
+The M47S external holdout reuses the existing M47S raw records — no
+recomputation.
+
+### B5. Model: M46A trunk family, residual task only
+
+Keep the M46A trunk (card relation MLP, noble relation MLP, player/global
+MLP, SUM+MAX aggregation, 704→256→128, two residual blocks, LayerNorm)
+but:
+
+- delete mechanics heads;
+- delete progress-reconstruction loss;
+- do NOT load M46A checkpoints; fresh random init under the training seed;
+- one residual scalar head `Linear(128,1)` with zero weight and zero bias.
+
+Viewer-relative residual over the 4 exact successors per action:
+
+$$u_\theta(s,p)=h_\theta(s,p)-h_\theta(s,1-p)$$
+
+$$r_\theta(a)=\tfrac14\sum_{d=1}^{4}u_\theta(s'_{a,d},p)$$
+
+If a determinization's successor is terminal: $u_\theta=0$ for it — the
+exact terminal utility handles it; the residual never touches terminal
+outcomes.
+
+### B6. Loss: ranking residual objective (no absolute regression)
+
+For each teacher-strict pair ($q_{2000}(a_i)\ne q_{2000}(a_j)$):
+
+$$y_{ij}=\operatorname{sign}\big(q_{2000}(a_i)-q_{2000}(a_j)\big)$$
+
+$$m_{ij}=y_{ij}\left[\frac{q_1(a_i)-q_1(a_j)}{D(s)}+r_i-r_j\right]$$
+
+$$\ell_{ij}=\operatorname{softplus}(-m_{ij})$$
+
+Pairs split into:
+
+- **Correction pairs**: $y_{ij}\,(q_1(a_i)-q_1(a_j))\le 0$ (static tie or
+  wrong direction);
+- **Retention pairs**: $y_{ij}\,(q_1(a_i)-q_1(a_j))> 0$.
+
+Total loss (group means summed, never pooled):
+
+$$L=L_{\text{correction}}+L_{\text{retention}}+0.01\,L_{\text{anchor}}$$
+
+$$L_{\text{anchor}}=\operatorname{mean}_a\, r_\theta(a)^2$$
+
+Per root per epoch, at most **64 correction pairs and 64 retention pairs**
+(oversampling resolved by deterministic hash
+`hash(training_seed, epoch, root_identity, pair_indices)` without
+replacement; fewer → use all). No hard-negative mining; no test-informed
+sampling. The group-mean split exists because ~90% of strict pairs are
+already static-correct — pooled averaging would make $R_\theta=0$ too
+comfortable a local solution.
+
+### B7. Training recipe (single, frozen)
+
+```text
+training seed = 48_000_001
+optimizer     = AdamW, lr 1e-4, weight decay 1e-4,
+                betas (0.9, 0.999), eps 1e-8
+epochs        = 24
+batch         = 32 roots
+grad clip     = 1.0 (global norm)
+dropout       = 0
+scheduler     = cosine to final lr 1e-5
+```
+
+Excluded: mechanics loss, progress regression, terminal value loss,
+absolute q2000 regression, action encoder, attention, pretrained M46A
+weights.
+
+### B8. Checkpoint selection (validation only)
+
+Compute the static validation baseline first. An epoch with
+`Retention_val < 99.0%` is not a normal candidate. Among candidates with
+retention ≥ 99%:
+
+```text
+1. highest correction capture
+2. highest overall optimal-set agreement
+3. lowest mean normalized regret
+4. earliest epoch
+```
+
+If no epoch of 24 reaches 99% validation retention: select the
+highest-retention checkpoint for the record only, and set
+`VALIDATION_ROUTE_FAIL = true` → M48A automatically FAILs. Internal test
+and M47S holdout never participate in epoch selection.
+
+### B9. PASS gates: eight checks across two splits
+
+The selected checkpoint must pass ALL of the following on BOTH the
+internal test AND the M47S external holdout:
+
+| Gate | Definition | Threshold |
+|---|---|---|
+| G1 correction capture | among roots with $a_{n1}\notin A^*_{2000}$: fraction with $a_{\text{corr}}\in A^*_{2000}$ | **≥ 20%** |
+| G2 retention | among roots with $a_{n1}\in A^*_{2000}$: fraction with $a_{\text{corr}}\in A^*_{2000}$ | **≥ 99.0%** |
+| G3 agreement gain | $A_{\text{corr}}-A_{\text{static}}$ | **≥ +3.0 pp** |
+| G4 regret reduction | $(\bar r_{\text{static}}-\bar r_{\text{corr}})/\bar r_{\text{static}}$ | **≥ 15%** |
+
+(G2 does not require keeping the same canonical action — moving to another
+teacher-optimal action in a multi-optimal set is not destruction.)
+
+All eight (4 gates × 2 splits) pass:
+
+```text
+STATIC_PRIOR_RESIDUAL_LEARNABLE
+```
+
+Any failure:
+
+```text
+STATIC_PRIOR_RESIDUAL_NOT_VALIDATED
+→ neural evaluator research = STOP
+```
+
+No M48A-v2. This is the terminal step of the two-gate budget.
+
+### B10. SHIFT1: diagnostic only, NOT a gate
+
+V1's G5 hard gate is REJECTED by review: the static prior already handles
+F4/E2 color binding exactly, so the residual has no obligation to
+re-encode it — forcing that would pull M48A back toward M46A's
+replacement task. On the M47S holdout, still REPORT:
+
+```text
+true vs SHIFT1 bonus view:
+  residual Δ distribution
+  absolute residual response
+  stratified by M45A F4-changing / E2-changing contexts
+```
+
+but with no must-change / must-have-correct-sign / must-exceed-X gates.
+
+### B11. Scientific isolation (unchanged from V1)
+
+M46A trunk family reused so the only changed variable is the static prior:
+
+```text
+M46A: R_θ must reconstruct everything  → FAILED
+M48A: q_static + D·r_θ (prior retained) → ?
 ```
 
 If M48A learns where M46A could not, the clean conclusion is that the
-strong exact prior fundamentally changes the learnability regime — not
-that some new architecture happened to be better.
+strong exact prior fundamentally changes the learnability regime.
 
-## Proposed experiment structure (to be frozen at design review)
+## Non-claims (binding)
 
-### Corpus
+Even if all eight gates pass, M48A may claim only:
 
-- Reuse M46A train/val games (2,048 + 256), same root selection
-  (8/game, `i_k = floor((2k+1)N/16)`), same authoritative identity
-  pipeline.
-- Offline labels: per-root, all canonical actions, n1 utility
-  (`q_1`) and n2000 utility (`q_2000`) under the frozen shell
-  (seed 20_260_703, count 4, depth 1) — the same recording contract as
-  M47S.
-- External final diagnostic: M47S holdout, untouched.
+> static prior + learned residual shows stable offline improvement toward
+> M07/n2000 continuation preferences on two frozen holdouts.
 
-### Residual target (within-root, never absolute terminal probability)
-
-Following the M47S review guidance, the training signal is a
-within-root preference correction:
-
-$$\Delta R \approx \Delta Q_{\text{champ}} - \Delta Q_{\text{static}}$$
-
-i.e. pairwise/listwise losses on `q_1(a_i) + R_θ(a_i)` against the n2000
-teacher's strict pairs — with a retention term anchoring teacher-agreeing
-static pairs so correct decisions are not perturbed. Absolute terminal
-win/loss regression is explicitly excluded (M43A/M46A lesson).
-
-### Evaluation gates (directions frozen now; exact numbers at review)
-
-On held-out roots (M46A val + M47S holdout as external):
+It may NOT claim "stronger than n1 in playing strength" — M42S left the
+n2000-vs-n1 Arena advantage UNRESOLVED. Therefore:
 
 ```text
-G0 bit-exact zero-init baseline (100%)
-G1 correction capture improves over static (material, frozen threshold)
-G2 static-correct retention ~ near-perfect (frozen threshold)
-G3 overall n2000 optimal-set agreement improves vs static
-G4 normalized regret decreases vs static
-G5 SHIFT1-style color-binding sanity on the residual (no total-C shortcut)
+M48A PASS → M48B Arena worth running (not automatic promotion)
 ```
 
-### Execution discipline
+## Final audit requirements (fail closed, restrained)
 
-- Single frozen run; checkpoint selection by frozen validation rule only
-  (never the holdout).
-- Fail-closed audits: action-set identity across budgets, identity
-  digests, recomputation of every headline metric from raw records.
-- One narrowly scoped implementation repair (bug/provenance/metric only)
-  allowed before or during the run; nothing that changes architecture,
-  corpus, thresholds, or seeds.
+```text
+exact seed splits; root identity + successor-hash disjointness (all pairs)
+n1 + n2000 exact configs; all canonical actions; all q values
+M47S holdout never appears in train/val paths
+G0 exact-zero prior gate
+training recipe exact; 24 epochs exactly
+checkpoint selection recomputed from validation
+internal-test metrics recomputed from raw
+M47S-holdout metrics recomputed from raw
+static baseline metrics recomputed
+G1/G2/G3/G4 exact on both splits
+no second training run; no Arena
+```
+
+No peripheral test inflation.
+
+## Execution sequence (auto-authorized after this commit)
+
+```text
+DESIGN_V2 docs-only commit
+→ build n1/n2000 labels
+→ corpus audit
+→ G0 zero-init
+→ one 24-epoch run
+→ select by validation only
+→ seal checkpoint hash
+→ internal test
+→ M47S holdout
+→ final audit
+→ result/docs/handoff
+→ commit + push
+→ return for final review
+```
 
 ## Iteration log
 
-### Design-only draft — 2026-09-07
+### Design V1 — 2026-09-07 (`412d7a4`)
 
-- Created under M48A DESIGN-ONLY authorization from the M47S terminal
-  review. No implementation, corpus, training, or evaluation exists.
+- Research question, static-prior formulation, zero-init invariant, corpus
+  reuse strategy, single-run stop rule, and M46A trunk isolation all
+  accepted by review.
+- G5 (SHIFT1 hard gate) REJECTED by review → demoted to diagnostic.
+
+### DESIGN_V2 frozen contract — 2026-09-07 (this document)
+
+- Review froze the complete contract in one pass: corpus re-cut (four
+  splits incl. a genuinely unseen internal test carved from M46A train),
+  n1+n2000-only labels, root-normalized residual formulation, trunk reuse
+  with zero-init head, ranking-residual loss with correction/retention
+  group means and 64+64 pair caps, single recipe (seed 48_000_001, 24
+  epochs), validation-only checkpoint rule with 99% retention floor,
+  G1–G4 thresholds (20% / 99% / +3pp / 15%) on BOTH internal test and M47S
+  holdout, SHIFT1 as diagnostic, and the eight-check PASS semantics.
+- No implementation exists yet. This revision is docs-only.
 
 ## Validation and evidence
 
-None yet. Design stage only.
+None yet. Design stage complete; execution not started.
 
 ## Result and decision
 
@@ -197,18 +354,17 @@ None yet.
 
 ## Known limitations and non-claims
 
-- The n2000 teacher is a champion-continuation target, not ground truth
-  (M42S: n2000-vs-n1 Arena UNRESOLVED). M48A success would establish
-  learnability of the residual, not playing-strength benefit — that is
-  exclusively M48B's question, if ever authorized.
-- Reusing the M46A trunk family trades architectural exploration for
-  scientific isolation; if the trunk itself is the bottleneck, M48A may
-  fail for reasons not attributable to the residual hypothesis. This is
-  an accepted, deliberate trade under the two-step terminal budget.
+- The n2000 teacher is a champion-continuation target, not ground truth;
+  M48A PASS does not establish playing-strength benefit (exclusively
+  M48B's question, if authorized).
+- Reusing the M46A trunk trades architectural exploration for scientific
+  isolation; if the trunk itself is the bottleneck, M48A may fail for
+  reasons not attributable to the residual hypothesis. Accepted under the
+  terminal two-gate budget.
 
 ## Next authorized gate
 
-Design review of this document. The review should freeze: exact gate
-thresholds, the residual-target loss specification, corpus labeling
-details, and the one-recipe numerics. Implementation remains NOT
-AUTHORIZED until that review approves it.
+Commit this DESIGN_V2 revision, then execute the authorized sequence
+above and return for final review. Still NOT authorized under any
+outcome: Arena/M48B, a second training run, architecture changes,
+HP/loss sweeps, and M48A-v2 after a valid FAIL.
