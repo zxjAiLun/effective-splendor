@@ -4,24 +4,27 @@
 
 ```ini
 MILESTONE = M46A
-STATUS = COMPLETED_NEGATIVE / VALID RUN FAIL
-SCOPE = one frozen valid run executed; verdict recorded; no M46A-v2
+STATUS = COMPLETED_NEGATIVE / CLOSED — PERMANENTLY
+                (final review APPROVED AS A VALID NEGATIVE RESULT on c2cbf38,
+                2026-09-07; RELATIONAL_SUCCESSOR_REPRESENTATION_NOT_VALIDATED)
+SCOPE = one frozen valid run executed; verdict recorded; closed
 BASE_COMMIT = adfab3d
-FINAL_COMMIT = <this commit: execution + tracked result>
+FINAL_COMMIT = c2cbf38 (execution + tracked result)
+CLOSURE_DOCS = <this commit>
 DESIGN = DESIGN_V2 / APPROVED / FROZEN BY REVIEW (a174ee0 + 4f46d2b)
-IMPLEMENTATION = EXECUTED (32b2f80 + pre-run bugfixes below)
+IMPLEMENTATION = VALID (32b2f80 + pre-run bugfixes; accepted, not voided)
 DATASET_GENERATION = EXECUTED (2560 n1 self-play games, frozen seeds)
 TRAINING = EXECUTED (one run, seed 46_000_001, 32 epochs)
 GATE_A_EVALUATION = EXECUTED (FAIL)
 GATE_B_OFFLINE_EVALUATION = EXECUTED (FAIL)
 TRACKED_RESULT_GENERATION = EXECUTED
-ARENA = NOT AUTHORIZED (none run)
+ARENA = NONE
 M45B = NOT AUTHORIZED
-M46B = NOT AUTHORIZED
-M47A = NOT AUTHORIZED
-ARCHITECTURE_CHANGES = NOT AUTHORIZED (none made)
-HYPERPARAMETER_SWEEP = NOT AUTHORIZED (none performed)
-EXTRA_TRAINING_RUN_AFTER_VALID_FAIL = NOT AUTHORIZED
+M46A-v2 = FORBIDDEN
+M46B = CANCELLED UNDER THIS ROUTE
+M47A (original) = CANCELLED UNDER THIS ROUTE
+CHAMPION = M07 unchanged
+PROMOTION = NONE
 ```
 
 Draft revised to frozen V2: 2026-09-07 (UTC).
@@ -734,6 +737,24 @@ and the project returns to strategy review. There is no automatic M46A-v2.
   predictions (exact match) and wrote the tracked result.
 - No Arena, no extra training run, no hyperparameter or architecture change.
 
+### Final closure — 2026-09-07
+
+- Terminal review on `c2cbf38`: **APPROVED AS A VALID NEGATIVE RESULT —
+  `COMPLETED_NEGATIVE / CLOSED — PERMANENTLY`.** Design freeze order
+  (4f46d2b before 32b2f80), corpus scale/splits, checkpoint selection, and
+  gate recomputation all validated; pre-run bugfixes accepted (before the
+  valid run, no contract change) — run VALID, no retraining.
+- Corpus scale forecloses the "insufficient data" explanation that applied
+  to M41/M43 (4.2M scoring examples, zero cross-split leakage).
+- Route-level ruling recorded in Next authorized gate: learned-replacement
+  route stopped; M46A-v2 forbidden; M46B and original M47A cancelled; the
+  candidate successor hypothesis is static-prior + learned residual
+  (M48A/M48B, two-step budget), gated on a minimal residual-target
+  feasibility diagnostic before any design work.
+- handoff truncation incident ruled a non-scientific-validity event: tracked
+  evidence was committed first (`c2cbf38`), handoff rebuilt locally from
+  tracked sources (plan A).
+
 ## Final implementation
 
 - `crates/splendor-search/src/evaluation.rs`: additive read-only
@@ -787,11 +808,34 @@ result: all recomputations match; frozen PASS table evaluated; OVERALL FAIL
 
 ## Result and decision
 
+**Final review (c2cbf38, 2026-09-07): APPROVED AS A VALID NEGATIVE RESULT —
+`COMPLETED_NEGATIVE / CLOSED — PERMANENTLY`.**
+
 **Verdict: `RELATIONAL_SUCCESSOR_REPRESENTATION_NOT_VALIDATED`.** The single
 frozen valid run failed the frozen PASS table on 8 of 10 gate groups (only
-A2-claimable and A3-coverage passed). Per the frozen contract there is no
-M46A-v2, no extra training run, and no M46B. The project returns to
-strategy review.
+A2-claimable and A3-coverage passed). Reviewer-endorsed interpretation of
+the failure:
+
+- The most damaging results are not B1 but A2/A3: local rule answers were
+  already present as input relation primitives, yet the SUM+MAX aggregation
+  did not reliably reconstitute even `affordable count` (0.9074) or `max
+  affordable prestige` (0.8872) at the frozen checkpoint.
+- The claimable-noble head is exact (1.0) on natural test data yet scores
+  0.0/0.0 on 5,072 SHIFT1 changed pairs: ordinary IID accuracy does not
+  demonstrate color binding; this is the exact shortcut signature A3 was
+  designed to catch.
+- However, the negative result must NOT be over-generalized to "NNs cannot
+  understand Splendor relations." The precise licensed statement: **the
+  frozen SUM+MAX relational successor representation, with the frozen joint
+  progress/ranking/mechanics objective, did not validate a representation
+  robust enough to carry the n1 decision structure.** Mechanics accuracy
+  (e.g., min deficit 96.1%) shows partial capacity; the missing piece is a
+  joint decision representation satisfying both counterfactual color
+  sensitivity and n1 ranking fidelity.
+- Epoch-4 checkpoint selection was the frozen rule operating correctly, not
+  an accident: later mechanics gains did not bring ranking gains, showing
+  that learning auxiliary aggregates does not imply forming an n1 decision
+  representation. No post-hoc checkpoint reselection is permitted.
 
 Frozen test-set results (best epoch 4; 2,048 test roots; 9,089,030 strict
 pairs):
@@ -839,6 +883,30 @@ Observed facts (descriptive only, no causal claims beyond the verdict):
 
 ## Next authorized gate
 
-Strategy review of the recorded negative result. Explicitly unauthorized:
-M46A-v2, any extra training run, hyperparameter or architecture changes,
-Arena, M46B, M47A, M45B, and production changes.
+M46A is permanently closed. The terminal review also issued a **route-level
+strategy ruling**:
+
+- The learned-replacement-evaluator route (NN replacing StaticEvaluator on
+  successor states) is stopped: given exact dynamics, exact terminals,
+  explicit local relation primitives, a large deterministic teacher corpus,
+  and a tailored SUM+MAX architecture, 72.8% teacher-optimal-set fidelity
+  and 0.127 normalized regret are far from carrying n1; further
+  architecture substitution risks an unbounded search.
+- M46A-v2: FORBIDDEN. M46B: CANCELLED under this route. Original M47A:
+  CANCELLED under this route. No Arena for any of them.
+- The next candidate neural hypothesis inverts the responsibility split:
+  keep StaticEvaluator exact and learn only its residual errors
+  (`score = q_static + Rθ`, Rθ zero-initialized so the initial policy is
+  exactly n1/static). Candidate framing: **M48A — Static-Prior Residual
+  Learnability Gate** (offline only; stronger-teacher targets such as
+  champion-continuation within-root preference corrections, never absolute
+  terminal probability), followed at most by **M48B — Residual Arena**;
+  if M48B fails, neural evaluator research stops entirely.
+- Before any M48A design, the reviewer requires a minimal **residual-target
+  feasibility diagnostic** (no model training): measure how often n1/static
+  and a stronger continuation teacher disagree on the same roots — M42S's
+  n1-vs-n2000 disagreement (~26/100 contexts) is a promising prior but was
+  a 100-context descriptive audit, not a data contract for a new route.
+
+M48A, M48B, the feasibility diagnostic, M45B, and all production changes
+remain NOT AUTHORIZED pending explicit authorization after this closure.
