@@ -42,6 +42,19 @@ pub fn terminal_rank_base(rank: u8) -> i64 {
 pub struct StaticEvaluatorV1;
 
 impl StaticEvaluatorV1 {
+    /// Non-terminal per-player progress scalars: the exact values summed into
+    /// relative utilities by [`StaticEvaluatorV1::utilities`].
+    ///
+    /// Exposed for M46A teacher-label generation. No behavior change: this is
+    /// the identical computation used internally by `utilities`.
+    pub fn nonterminal_progress(state: &FullState) -> Vec<i64> {
+        state
+            .players
+            .iter()
+            .map(|player| progress_for(state, player))
+            .collect()
+    }
+
     /// Utility vector in seat/player-ID order; length equals player count.
     ///
     /// Non-terminal states use relative progress:
