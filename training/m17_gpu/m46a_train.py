@@ -97,89 +97,131 @@ class ShardStore:
         return {k: zf[k] for k in keys}
 
 
-def build_inputs(z, ri, ai, si, pi, shifted=False):
-    """Build model input tensors for one scoring example (numpy float32)."""
-    n_cards = int(z["n_cards"][ri, ai, si, pi])
-    n_nobles = int(z["n_nobles"][ri, ai, si, pi])
-    praw = z["praw"][ri, ai, si, pi].astype(np.int64)  # 26
-    bonuses = praw[1:6].copy()
-    tokens = praw[6:11].copy()
-    gold = int(praw[11])
+def root_tensors(z, ri, shifted=False):
+    """Vectorized model inputs + labels for all (action, det, player) of a root.
+
+    Array shapes carry (A, D, P, ...) with A = n_actions[ri]. All rules are
+    identical to the per-example path; only the loop order is eliminated.
+    """
+    na = int(z["n_actions"][ri])
+    card = z["card"][ri, :na].astype(np.int64)      # (A,D,P,15,21)
+    nc = z["n_cards"][ri, :na]                       # (A,D,P)
+    noble = z["noble"][ri, :na].astype(np.int64)     # (A,D,P,5,12)
+    nnb = z["n_nobles"][ri, :na]                     # (A,D,P)
+    praw_i = z["praw"][ri, :na].astype(np.int64)     # (A,D,P,26)
+    glob = z["glob"][ri, :na].astype(np.float32)     # (A,D,P,13)
+    term = z["terminal"][ri, :na]                    # (A,D)
+    tu = z["teacher_util"][ri, :na].astype(np.int64)  # (A,D,2)
+    prog = z["progress"][ri, :na].astype(np.int64)    # (A,D,2)
+    mech = z["mech"][ri, :na].astype(np.int64)        # (A,D,P,4)
+    has_nb = z["has_nobles"][ri, :na]                # (A,D,P)
+    actor = int(z["root_meta"][ri][2])
+    bonuses = praw_i[..., 1:6].copy()
     if shifted:
         bonuses = shift1(bonuses)
-    card_rows = []
-    for ci in range(n_cards):
-        c = z["card"][ri, ai, si, pi, ci].astype(np.int64)
-        cost, prestige, tier, bonus, role = c[0:5], int(c[5]), int(c[6]), int(c[7]), int(c[8])
-        disc = np.maximum(cost - bonuses, 0)
-        short = np.maximum(disc - tokens, 0)
-        gn = int(short.sum())
-        aff = 1 if gold >= gn else 0
-        tier_oh = np.zeros(3)
-        tier_oh[tier] = 1
-        bonus_oh = np.zeros(5)
-        bonus_oh[bonus] = 1
-        role_oh = np.zeros(2)
-        role_oh[role] = 1
-        tok6 = np.append(tokens, gold)
-        card_rows.append(np.concatenate([
-            cost, [prestige], tier_oh, bonus_oh, role_oh,
-            bonuses, tok6, disc, short, [gn, aff]]).astype(np.float32))
-    noble_rows = []
-    for ni in range(n_nobles):
-        nb = z["noble"][ri, ai, si, pi, ni].astype(np.int64)
-        req, nprest = nb[0:5], int(nb[5])
-        deficit = np.maximum(req - bonuses, 0)
-        claim = 1 if deficit.sum() == 0 else 0
-        noble_rows.append(np.concatenate(
-            [req, [nprest], deficit, [claim]]).astype(np.float32))
-    praw_f = praw.astype(np.float32)
-    if shifted:
-        praw_f[1:6] = shift1(praw[1:6])
-    glob = z["glob"][ri, ai, si, pi].astype(np.float32)
-    return card_rows, noble_rows, praw_f, glob
+    tokens = praw_i[..., 6:11]
+    gold = praw_i[..., 11:12]
+    cost = card[..., 0:5]
+    pres = card[..., 5:6].astype(np.float32)
+    Bb = bonuses[..., None, :]
+    disc = np.maximum(cost - Bb, 0)
+    short = np.maximum(disc - tokens[..., None, :], 0)
+    gn = short.sum(axis=-1, keepdims=True)
+    aff = (gold[..., None, :] >= gn).astype(np.float32)
+    tier_oh = (card[..., 6:7] == np.arange(3)).astype(np.float32)
+    bonus_oh = (card[..., 7:8] == np.arange(5)).astype(np.float32)
+    role_oh = (card[..., 8:9] == np.arange(2)).astype(np.float32)
+    tok6 = np.concatenate([np.broadcast_to(tokens[..., None, :], disc.shape),
+                           np.broadcast_to(gold[..., None, :], gn.shape)], axis=-1)
+    card39 = np.concatenate([
+        cost.astype(np.float32), pres, tier_oh, bonus_oh, role_oh,
+        np.broadcast_to(bonuses[..., None, :], disc.shape).astype(np.float32),
+        tok6.astype(np.float32), disc.astype(np.float32),
+        short.astype(np.float32), gn.astype(np.float32), aff], axis=-1)
+    cmask = np.arange(15).reshape(1, 1, 1, 15) < nc[..., None]
+    req = noble[..., 0:5]
+    npres = noble[..., 5:6].astype(np.float32)
+    deficit = np.maximum(req - bonuses[..., None, :], 0)
+    claim = (deficit.sum(axis=-1, keepdims=True) == 0).astype(np.float32)
+    noble12 = np.concatenate([req.astype(np.float32), npres,
+                              deficit.astype(np.float32), claim], axis=-1)
+    nmask = np.arange(5).reshape(1, 1, 1, 5) < nnb[..., None]
+    praw_f = praw_i.astype(np.float32)
+    praw_f[..., 1:6] = bonuses
+    # mechanics labels recomputed (must equal stored labels when not shifted)
+    aff_c = ((aff[..., 0] > 0) & cmask).sum(axis=-1)
+    best = np.where(cmask & (aff[..., 0] > 0), card[..., 5], -1)
+    maxp = np.maximum(best.max(axis=-1), 0)
+    dtot = deficit.sum(axis=-1)
+    clm = ((dtot == 0) & nmask).sum(axis=-1)
+    any_nb = nmask.any(axis=-1)
+    mnd = np.where(any_nb, np.where(nmask, dtot, 10 ** 9).min(axis=-1), -1)
+    return {
+        "na": na, "actor": actor, "opp": 1 - actor,
+        "card39": card39, "cmask": cmask, "noble12": noble12,
+        "nmask": nmask, "praw": praw_f, "glob": glob,
+        "term": term, "tu": tu, "prog": prog, "mech": mech,
+        "has_nb": has_nb, "aff_c": aff_c, "maxp": maxp, "clm": clm,
+        "mnd": mnd, "any_nb": any_nb,
+    }
 
 
-def shard_to_examples(z, ri_list, shifted=False, for_train=True):
-    """Flatten (root, action, det, player) scoring examples to padded tensors."""
-    import torch as T
-    ex = []
-    for ri in ri_list:
-        na = int(z["n_actions"][ri])
-        for ai in range(na):
-            for si in range(N_DETS):
-                term = bool(z["terminal"][ri, ai, si])
-                for pi in range(N_PLAYERS):
-                    cards, nobles, praw, glob = build_inputs(z, ri, ai, si, pi, shifted)
-                    ex.append(dict(ri=ri, ai=ai, si=si, pi=pi, terminal=term,
-                                   cards=cards, nobles=nobles, praw=praw, glob=glob,
-                                   tu=int(z["teacher_util"][ri, ai, si, pi]),
-                                   tvec=[int(x) for x in z["teacher_util"][ri, ai, si]],
-                                   prog=int(z["progress"][ri, ai, si, pi]),
-                                   mech=z["mech"][ri, ai, si, pi].astype(np.int64),
-                                   has_nb=bool(z["has_nobles"][ri, ai, si, pi])))
-    if not ex:
-        return None
-    nc = max(len(e["cards"]) for e in ex)
-    nn = max(len(e["nobles"]) for e in ex)
-    B = len(ex)
-    card = np.zeros((B, nc, 39), np.float32)
-    cmask = np.zeros((B, nc), bool)
-    noble = np.zeros((B, nn, 12), np.float32)
-    nmask = np.zeros((B, nn), bool)
-    praw = np.zeros((B, 26), np.float32)
-    glob = np.zeros((B, 13), np.float32)
-    for i, e in enumerate(ex):
-        if e["cards"]:
-            card[i, :len(e["cards"])] = np.stack(e["cards"])
-            cmask[i, :len(e["cards"])] = True
-        if e["nobles"]:
-            noble[i, :len(e["nobles"])] = np.stack(e["nobles"])
-            nmask[i, :len(e["nobles"])] = True
-        praw[i] = e["praw"]
-        glob[i] = e["glob"]
-    return {"ex": ex, "card": card, "cmask": cmask, "noble": noble, "nmask": nmask,
-            "praw": praw, "glob": glob}
+def flatten_roots(rt_list):
+    """Flatten per-root tensors to example-major batch + root table.
+
+    Example order within a root is (action, det, player); roots concatenate
+    in list order. Returns (batch, table) where batch holds flat arrays and
+    table holds per-root (start, count, na, actor, opp, teacher_means, tu,
+    te) with tu/te shaped (na, D).
+    """
+    batch, table, pos = {}, [], 0
+    for rt in rt_list:
+        na = rt["na"]
+        count = na * N_DETS * N_PLAYERS
+        batch.setdefault("card", []).append(rt["card39"].reshape(-1, 15, 39))
+        batch.setdefault("noble", []).append(rt["noble12"].reshape(-1, 5, 12))
+        batch.setdefault("praw", []).append(rt["praw"].reshape(-1, 26))
+        batch.setdefault("glob", []).append(rt["glob"].reshape(-1, 13))
+        batch.setdefault("cmask", []).append(rt["cmask"].reshape(-1, 15))
+        batch.setdefault("nmask", []).append(rt["nmask"].reshape(-1, 5))
+        batch.setdefault("term", []).append(
+            np.repeat(rt["term"][:, :, None], N_PLAYERS, axis=2).ravel())
+        batch.setdefault("prog_t", []).append(
+            (rt["prog"].reshape(-1).astype(np.float64) / PROGRESS_SCALE).astype(np.float32))
+        batch.setdefault("mech_t", []).append(rt["mech"].reshape(-1, 4))
+        batch.setdefault("has_nb", []).append(rt["has_nb"].ravel())
+        batch.setdefault("aff_c", []).append(rt["aff_c"].ravel())
+        batch.setdefault("maxp", []).append(rt["maxp"].ravel())
+        batch.setdefault("clm", []).append(rt["clm"].ravel())
+        batch.setdefault("mnd", []).append(rt["mnd"].ravel())
+        batch.setdefault("any_nb", []).append(rt["any_nb"].ravel())
+        q = rt["tu"][:, :, rt["actor"]].mean(axis=1)
+        table.append({"start": pos, "count": count, "na": na,
+                      "actor": rt["actor"], "opp": rt["opp"],
+                      "teacher_means": [float(x) for x in q],
+                      "tu": rt["tu"].astype(np.float64),
+                      "te": rt["term"]})
+        pos += count
+    for k in ("card", "noble", "praw", "glob", "cmask", "nmask"):
+        batch[k] = np.concatenate(batch[k], axis=0)
+    for k in ("term", "prog_t", "has_nb", "aff_c", "maxp", "clm",
+              "mnd", "any_nb"):
+        batch[k] = np.concatenate(batch[k], axis=0)
+    batch["mech_t"] = np.concatenate(batch["mech_t"], axis=0)
+    return batch, table
+
+
+@torch.no_grad()
+def _forward_flat(model, batch, device):
+    """Forward a flattened batch dict; returns numpy output arrays."""
+    t = {k: torch.from_numpy(v).to(device) for k, v in batch.items()
+         if k in ("card", "noble", "praw", "glob")}
+    t["cmask"] = torch.from_numpy(batch["cmask"]).to(device)
+    t["nmask"] = torch.from_numpy(batch["nmask"]).to(device)
+    out = model.encode(t["card"], t["cmask"], t["noble"], t["nmask"],
+                       t["praw"], t["glob"])
+    return {k: (v.detach().cpu().numpy() if isinstance(v, torch.Tensor) else v)
+            for k, v in out.items()}
 
 
 @torch.no_grad()
@@ -228,49 +270,19 @@ def main():
     val_index = game_roots(val_store)
 
     def load_batch(items, store):
-        # items: list of (gi, ri); returns padded batch tensors, flat metas,
-        # and per-root boundary records (start/count/n_actions/actor/teacher).
+        # items: list of (gi, ri); returns flat batch tensors + root table.
         per_shard = {}
         for gi, ri in items:
             p = (train_store.paths[gi] if store is train_store else val_store.paths[gi])
             per_shard.setdefault(str(p), []).append(ri)
-        parts, metas, root_bounds = [], [], []
+        rt_list = []
         for key, ris in per_shard.items():
             zpath = Path(key)
             z = (train_store.get(zpath, LOAD_KEYS) if store is train_store
                  else val_store.get(zpath, LOAD_KEYS))
-            t = shard_to_examples(z, ris)
-            base = len(metas)
             for ri in ris:
-                na = int(z["n_actions"][ri])
-                actor = int(z["root_meta"][ri][2])
-                q = [float(z["teacher_util"][ri, ai, :, actor].mean())
-                     for ai in range(na)]
-                root_bounds.append({
-                    "start": base, "count": na * N_DETS * N_PLAYERS,
-                    "n_actions": na, "actor": actor, "opp": 1 - actor,
-                    "teacher_means": q,
-                })
-                base += na * N_DETS * N_PLAYERS
-            parts.append(t)
-            metas.extend(t["ex"])
-        # concat
-        cat = {}
-        for k in ("card", "noble", "praw", "glob"):
-            m = max(p[k].shape[1] for p in parts)
-            arrs = []
-            for p in parts:
-                pad = m - p[k].shape[1]
-                if pad:
-                    arrs.append(np.pad(p[k], ((0, 0), (0, pad), (0, 0))))
-                else:
-                    arrs.append(p[k])
-            cat[k] = np.concatenate(arrs, axis=0)
-        for k in ("cmask", "nmask"):
-            m = max(p[k].shape[1] for p in parts)
-            arrs = [np.pad(p[k], ((0, 0), (0, m - p[k].shape[1]))) for p in parts]
-            cat[k] = np.concatenate(arrs, axis=0)
-        return cat, metas, root_bounds
+                rt_list.append(root_tensors(z, ri))
+        return flatten_roots(rt_list)
 
     def forward_batch(cat):
         t = {k: torch.from_numpy(v).to(device) for k, v in cat.items()
@@ -295,12 +307,10 @@ def main():
         nb = 0
         for b_games in batches:
             items = [(gi, ri) for gi in b_games for ri in range(8)]
-            cat, metas, root_bounds = load_batch(items, train_store)
-            out = forward_batch(cat)
-            B = len(metas)
-            prog_t = torch.tensor([e["prog"] / PROGRESS_SCALE for e in metas],
-                                  dtype=torch.float32, device=device)
-            term_m = torch.tensor([e["terminal"] for e in metas], device=device)
+            batch, table = load_batch(items, train_store)
+            out = forward_batch(batch)
+            prog_t = torch.from_numpy(batch["prog_t"]).to(device)
+            term_m = torch.from_numpy(batch["term"]).to(device)
             learn_m = ~term_m
             if learn_m.any():
                 l_prog = F.smooth_l1_loss(out["progress"][learn_m], prog_t[learn_m],
@@ -309,20 +319,17 @@ def main():
                 l_prog = torch.zeros((), device=device)
             # mechanics
             ce_terms = []
-            aff_c = torch.tensor([e["mech"][0] for e in metas], device=device)
-            aff_m = torch.tensor([e["mech"][1] for e in metas], device=device)
-            clm = torch.tensor([e["mech"][2] for e in metas], device=device)
-            mnd = torch.tensor([e["mech"][3] for e in metas], device=device)
-            has_nb = torch.tensor([e["has_nb"] for e in metas], device=device)
+            mech_t = torch.from_numpy(batch["mech_t"]).to(device)
+            has_nb = torch.from_numpy(batch["has_nb"]).to(device)
             if learn_m.any():
-                ce_terms.append(F.cross_entropy(out["aff_count"][learn_m], aff_c[learn_m]))
-                ce_terms.append(F.cross_entropy(out["aff_max"][learn_m], aff_m[learn_m]))
+                ce_terms.append(F.cross_entropy(out["aff_count"][learn_m], mech_t[learn_m, 0]))
+                ce_terms.append(F.cross_entropy(out["aff_max"][learn_m], mech_t[learn_m, 1]))
             else:
                 ce_terms += [torch.zeros((), device=device)] * 2
             nbm = learn_m & has_nb
             if nbm.any():
-                ce_terms.append(F.cross_entropy(out["noble_claim"][nbm], clm[nbm]))
-                ce_terms.append(F.cross_entropy(out["noble_mindef"][nbm], mnd[nbm]))
+                ce_terms.append(F.cross_entropy(out["noble_claim"][nbm], mech_t[nbm, 2]))
+                ce_terms.append(F.cross_entropy(out["noble_mindef"][nbm], mech_t[nbm, 3]))
             else:
                 ce_terms += [torch.zeros((), device=device)] * 2
             l_mech = sum(ce_terms) / 4
@@ -331,30 +338,26 @@ def main():
             # roots that have at least one strict pair.
             prog_flat = out["progress"]
             l_rank_terms = []
-            for rb in root_bounds:
-                na, actor, opp = rb["n_actions"], rb["actor"], rb["opp"]
+            for rb in table:
+                na, actor, opp = rb["na"], rb["actor"], rb["opp"]
                 q = rb["teacher_means"]
-                mns = []
-                for ai in range(na):
-                    s = torch.zeros((), device=device)
-                    for si in range(N_DETS):
-                        b = rb["start"] + ((ai * N_DETS) + si) * N_PLAYERS
-                        er = metas[b + (0 if actor == 0 else 1)]
-                        if er["terminal"]:
-                            s = s + er["tu"]
-                        else:
-                            s = s + (prog_flat[b + (0 if actor == 0 else 1)]
-                                     - prog_flat[b + (0 if opp == 0 else 1)])
-                    mns.append(s / N_DETS)
-                pair_losses = []
-                for i in range(na):
-                    for j in range(na):
-                        if i == j or q[i] == q[j]:
-                            continue
-                        sgn = 1.0 if q[i] > q[j] else -1.0
-                        pair_losses.append(F.softplus(-sgn * (mns[i] - mns[j])))
-                if pair_losses:
-                    l_rank_terms.append(sum(pair_losses) / len(pair_losses))
+                seg = prog_flat[rb["start"]:rb["start"] + rb["count"]].reshape(na, N_DETS, N_PLAYERS)
+                tu_seg = torch.from_numpy(rb["tu"]).to(device)
+                te_seg = torch.from_numpy(rb["te"]).to(device)
+                # model mean per action: terminal bypass uses exact teacher
+                pa = seg[:, :, actor]
+                po = seg[:, :, opp]
+                exact = tu_seg[:, :, actor]
+                mns = torch.where(te_seg, exact, pa - po).float().mean(dim=1)
+                # Vectorized ordered strict-pair mean (identical pair set to
+                # the nested loop; required for large token-return roots).
+                qv = torch.tensor(q, dtype=torch.float32, device=device)
+                dq = qv[:, None] - qv[None, :]
+                dm = mns[:, None] - mns[None, :]
+                strict = dq != 0
+                if strict.any():
+                    l_rank_terms.append(
+                        F.softplus(-torch.sign(dq[strict]) * dm[strict]).mean())
             if l_rank_terms:
                 l_rank = sum(l_rank_terms) / len(l_rank_terms)
             else:
@@ -424,89 +427,70 @@ def _json_default(o):
 def evaluate_split(model, store, index, device, save_prefix=None):
     """Gate A (mechanics on test examples) + Gate B (ranking per root)."""
     model.eval()
-    # group index by shard
     per_shard = {}
     for gi, ri in index:
         per_shard.setdefault(gi, []).append(ri)
-    # Gate A accumulators
     aff_c_ok = aff_c_n = aff_m_ok = aff_m_n = 0
     clm_ok = clm_n = mnd_ok = mnd_n = 0
     save_pred = [] if save_prefix else None
-    # Gate B accumulators
     roots_total = 0
     opt_ok = 0
     sp_ok = sp_n = 0
     regrets = []
     zero_regret = 0
-    saved_roots = []  # (teacher_means, model_means) per root for audit
+    saved_roots = []
     with torch.no_grad():
         for gi, ris in per_shard.items():
-            z = store.get(store.paths[gi])
-            t = shard_to_examples(z, ris)
-            out = score_examples(model, t, device)
-            prog = out["progress"].numpy()
-            # Gate A per example
-            for i, e in enumerate(t["ex"]):
-                if e["terminal"]:
-                    continue
-                pa = (int(np.argmax(out["aff_count"][i].numpy())),
-                      int(np.argmax(out["aff_max"][i].numpy())),
-                      int(np.argmax(out["noble_claim"][i].numpy())),
-                      int(np.argmax(out["noble_mindef"][i].numpy())))
-                lt = (e["mech"][0], e["mech"][1], e["mech"][2], e["mech"][3])
-                if save_pred is not None:
-                    save_pred.append(pa + lt + (int(e["has_nb"]),))
-                if pa[0] == lt[0]:
-                    aff_c_ok += 1
-                aff_c_n += 1
-                if pa[1] == lt[1]:
-                    aff_m_ok += 1
-                aff_m_n += 1
-                if e["has_nb"]:
-                    if pa[2] == lt[2]:
-                        clm_ok += 1
-                    clm_n += 1
-                    if pa[3] == lt[3]:
-                        mnd_ok += 1
-                    mnd_n += 1
-            # Gate B per root: means over dets; terminal bypass uses exact teacher
-            # rebuild per-root structure from ex list order
-            pos = 0
-            for ri in ris:
-                na = int(z["n_actions"][ri])
-                actor = int(z["root_meta"][ri][2])
-                opp = 1 - actor
-                q, m = [], []
-                for ai in range(na):
-                    tq = mm = 0.0
-                    for si in range(N_DETS):
-                        # find example indices: order is ri,ai,si,pi
-                        base = pos + ((ai * N_DETS) + si) * N_PLAYERS
-                        er = t["ex"][base + (0 if actor == 0 else 1)]
-                        tq += er["tvec"][actor] / N_DETS
-                        if er["terminal"]:
-                            mm += er["tvec"][actor] / N_DETS
-                        else:
-                            mm += (prog[base + (0 if actor == 0 else 1)]
-                                   - prog[base + (0 if opp == 0 else 1)]) / N_DETS
-                    q.append(tq)
-                    m.append(mm)
-                pos += na * N_DETS * N_PLAYERS
-                q = np.array(q, dtype=np.float64)
-                m = np.array(m, dtype=np.float64)
+            zpath = store.paths[gi]
+            z = store.get(zpath)
+            batch, table = flatten_roots([root_tensors(z, ri) for ri in ris])
+            t = {k: torch.from_numpy(v).to(device) for k, v in batch.items()
+                 if k in ("card", "noble", "praw", "glob")}
+            t["cmask"] = torch.from_numpy(batch["cmask"]).to(device)
+            t["nmask"] = torch.from_numpy(batch["nmask"]).to(device)
+            out = model.encode(t["card"], t["cmask"], t["noble"], t["nmask"],
+                               t["praw"], t["glob"])
+            pa = np.stack([
+                out["aff_count"].argmax(-1).cpu().numpy(),
+                out["aff_max"].argmax(-1).cpu().numpy(),
+                out["noble_claim"].argmax(-1).cpu().numpy(),
+                out["noble_mindef"].argmax(-1).cpu().numpy()], axis=1)
+            lt = np.stack([batch["aff_c"], batch["maxp"],
+                           batch["clm"], batch["mnd"]], axis=1)
+            nt = ~batch["term"]
+            nb = batch["has_nb"] & nt
+            aff_c_ok += int(((pa[:, 0] == lt[:, 0]) & nt).sum())
+            aff_c_n += int(nt.sum())
+            aff_m_ok += int(((pa[:, 1] == lt[:, 1]) & nt).sum())
+            aff_m_n += int(nt.sum())
+            clm_ok += int(((pa[:, 2] == lt[:, 2]) & nb).sum())
+            clm_n += int(nb.sum())
+            mnd_ok += int(((pa[:, 3] == lt[:, 3]) & nb).sum())
+            mnd_n += int(nb.sum())
+            if save_pred is not None:
+                save_pred.append(np.concatenate(
+                    [pa, lt, batch["has_nb"][:, None]], axis=1))
+            prog = out["progress"].cpu().numpy().reshape(-1)
+            for rb in table:
+                na, actor, opp = rb["na"], rb["actor"], rb["opp"]
+                seg = prog[rb["start"]:rb["start"] + rb["count"]].reshape(na, N_DETS, N_PLAYERS)
+                tu = rb["tu"]
+                te = rb["te"]
+                q = np.array(rb["teacher_means"], dtype=np.float64)
+                m = np.where(te, tu[:, :, actor],
+                             seg[:, :, actor] - seg[:, :, opp]).mean(axis=1)
                 roots_total += 1
                 best = q.max()
                 astar = set(np.flatnonzero(q == best).tolist())
                 mhat = int(np.argmax(m))
                 if mhat in astar:
                     opt_ok += 1
-                for i in range(na):
-                    for j in range(na):
-                        if i == j or q[i] == q[j]:
-                            continue
-                        sp_n += 1
-                        if np.sign(m[i] - m[j]) == np.sign(q[i] - q[j]) and m[i] != m[j]:
-                            sp_ok += 1
+                dq = q[:, None] - q[None, :]
+                dm = m[:, None] - m[None, :]
+                strict = dq != 0
+                sp_n += int(strict.sum())
+                agree = (np.sign(dm[strict]) == np.sign(dq[strict])) & (dm[strict] != 0)
+                sp_ok += int(agree.sum())
                 rstar = float(q[np.argmax(q)])
                 rhat = float(q[mhat])
                 denom = max(rstar - float(q.min()), 1.0)
@@ -515,7 +499,8 @@ def evaluate_split(model, store, index, device, save_prefix=None):
                 if r == 0.0:
                     zero_regret += 1
                 if save_prefix:
-                    saved_roots.append({"teacher_means": q.tolist(), "model_means": m.tolist()})
+                    saved_roots.append({"teacher_means": q.tolist(),
+                                        "model_means": m.tolist()})
     regrets = np.array(regrets)
     out = {
         "aff_count_acc": aff_c_ok / aff_c_n if aff_c_n else 0.0,
@@ -538,7 +523,7 @@ def evaluate_split(model, store, index, device, save_prefix=None):
                             **{f"root_{i}": np.array([r["teacher_means"], r["model_means"]])
                                for i, r in enumerate(saved_roots)})
         np.savez_compressed(RUN_DIR / f"{save_prefix}_gatea_preds.npz",
-                            preds=np.array(save_pred, dtype=np.int64))
+                            preds=np.concatenate(save_pred, axis=0).astype(np.int64))
     return out
 
 
@@ -548,51 +533,40 @@ def evaluate_shift1(model, store, index, device):
     per_shard = {}
     for gi, ri in index:
         per_shard.setdefault(gi, []).append(ri)
-    # targets: aff_count, aff_max, claim, mindef
     stats = {k: {"changed": 0, "both_ok": 0, "sign_ok": 0} for k in
              ("aff_count", "aff_max", "claim", "mindef")}
     save_rows = []
     with torch.no_grad():
         for gi, ris in per_shard.items():
-            z = store.get(store.paths[gi])
-            t = shard_to_examples(z, ris)
-            out_t = score_examples(model, t, device)
-            ts = shard_to_examples(z, ris, shifted=True)
-            out_s = score_examples(model, ts, device)
-            heads = [("aff_count", out_t["aff_count"], out_s["aff_count"]),
-                     ("aff_max", out_t["aff_max"], out_s["aff_max"]),
-                     ("claim", out_t["noble_claim"], out_s["noble_claim"]),
-                     ("mindef", out_t["noble_mindef"], out_s["noble_mindef"])]
-            for i, e in enumerate(t["ex"]):
-                if e["terminal"]:
-                    continue
-                lt = [e["mech"][0], e["mech"][1], e["mech"][2], e["mech"][3]]
-                ls = shifted_labels(z, t, i, e)
-                noble_ok = e["has_nb"]
-                pt_all = [int(np.argmax(out_t["aff_count"][i].numpy())),
-                          int(np.argmax(out_t["aff_max"][i].numpy())),
-                          int(np.argmax(out_t["noble_claim"][i].numpy())),
-                          int(np.argmax(out_t["noble_mindef"][i].numpy()))]
-                ps_all = [int(np.argmax(out_s["aff_count"][i].numpy())),
-                          int(np.argmax(out_s["aff_max"][i].numpy())),
-                          int(np.argmax(out_s["noble_claim"][i].numpy())),
-                          int(np.argmax(out_s["noble_mindef"][i].numpy()))]
-                save_rows.append(pt_all + ps_all + lt + ls + [int(noble_ok)])
-                for (name, pt, ps), ltv, lsv in zip(heads, lt, ls):
-                    if name in ("claim", "mindef") and not noble_ok:
-                        continue
-                    if ltv == lsv:
-                        continue
-                    st = stats[name]
-                    st["changed"] += 1
-                    pt_i = int(np.argmax(pt[i].numpy()))
-                    ps_i = int(np.argmax(ps[i].numpy()))
-                    if pt_i == ltv and ps_i == lsv:
-                        st["both_ok"] += 1
-                    if np.sign(ps_i - pt_i) == np.sign(lsv - ltv):
-                        st["sign_ok"] += 1
+            zpath = store.paths[gi]
+            z = store.get(zpath)
+            bt, _ = flatten_roots([root_tensors(z, ri, shifted=False) for ri in ris])
+            bs, _ = flatten_roots([root_tensors(z, ri, shifted=True) for ri in ris])
+            ot = _forward_flat(model, bt, device)
+            os_ = _forward_flat(model, bs, device)
+            pt = np.stack([ot["aff_count"].argmax(-1), ot["aff_max"].argmax(-1),
+                           ot["noble_claim"].argmax(-1), ot["noble_mindef"].argmax(-1)], axis=1)
+            ps = np.stack([os_["aff_count"].argmax(-1), os_["aff_max"].argmax(-1),
+                           os_["noble_claim"].argmax(-1), os_["noble_mindef"].argmax(-1)], axis=1)
+            lt = np.stack([bt["aff_c"], bt["maxp"], bt["clm"], bt["mnd"]], axis=1)
+            ls = np.stack([bs["aff_c"], bs["maxp"], bs["clm"], bs["mnd"]], axis=1)
+            nt = ~bt["term"]
+            nb = bt["has_nb"] & nt
+            save_rows.append(np.concatenate(
+                [pt, ps, lt, ls, bt["has_nb"][:, None]], axis=1))
+            heads = [("aff_count", 0, False), ("aff_max", 1, False),
+                     ("claim", 2, True), ("mindef", 3, True)]
+            for name, j, noble_only in heads:
+                keep = (nb if noble_only else nt)
+                ltv, lsv = lt[keep, j], ls[keep, j]
+                chg = ltv != lsv
+                st = stats[name]
+                st["changed"] += int(chg.sum())
+                pti, psi = pt[keep, j][chg], ps[keep, j][chg]
+                st["both_ok"] += int(((pti == ltv[chg]) & (psi == lsv[chg])).sum())
+                st["sign_ok"] += int((np.sign(psi - pti) == np.sign(lsv[chg] - ltv[chg])).sum())
     np.savez_compressed(RUN_DIR / "shift1_preds.npz",
-                        rows=np.array(save_rows, dtype=np.int64))
+                        rows=np.concatenate(save_rows, axis=0).astype(np.int64))
     res = {}
     for k, st in stats.items():
         n = st["changed"]
@@ -600,48 +574,6 @@ def evaluate_shift1(model, store, index, device):
                   "both_side_exact": st["both_ok"] / n if n else 0.0,
                   "signed_delta_acc": st["sign_ok"] / n if n else 0.0}
     return res
-
-
-def shifted_labels(z, t, i, e):
-    """Recompute mechanics labels under SHIFT1 from stored raw fields."""
-    # e carries no raw card/noble rows; recompute from shard arrays via indices
-    # stored in the example dict during shard_to_examples? We rebuild here from
-    # the flat tensors: card rows for this example are in t['card'][i].
-    # Bonus vector lives in praw; shift it and recompute.
-    import numpy as _np
-    praw = t["praw"][i].astype(_np.int64)
-    b = shift1(praw[1:6])
-    tok = praw[6:11]
-    gold = int(praw[11])
-    cards = t["card"][i]  # (C,39) float
-    cmask = t["cmask"][i]
-    aff = mp = 0
-    for ci in range(cards.shape[0]):
-        if not cmask[ci]:
-            continue
-        row = cards[ci].astype(_np.int64)
-        cost = row[0:5]
-        pres = int(row[5])
-        disc = _np.maximum(cost - b, 0)
-        short = _np.maximum(disc - tok, 0)
-        if gold >= int(short.sum()):
-            aff += 1
-            mp = max(mp, pres)
-    nobles = t["noble"][i]
-    nmask = t["nmask"][i]
-    claim = 0
-    mnd = None
-    for ni in range(nobles.shape[0]):
-        if not nmask[ni]:
-            continue
-        row = nobles[ni].astype(_np.int64)
-        req = row[0:5]
-        d = _np.maximum(req - b, 0)
-        tot = int(d.sum())
-        if tot == 0:
-            claim += 1
-        mnd = tot if mnd is None else min(mnd, tot)
-    return [aff, mp, claim, mnd if mnd is not None else -1]
 
 
 def compute_verdict(final):

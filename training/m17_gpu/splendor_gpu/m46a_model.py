@@ -77,13 +77,13 @@ class RelationalSuccessorScorer(nn.Module):
         card_sum = (ce * m).sum(dim=-2)
         neg_inf = torch.finfo(ce.dtype).min
         card_max = ce.masked_fill(~m, neg_inf).amax(dim=-2)
-        card_max = torch.where(m.any(dim=-1, keepdim=True).expand_as(card_max),
+        card_max = torch.where(m.any(dim=-2).expand_as(card_max),
                                card_max, torch.zeros_like(card_max))
         ne = self.noble_mlp(noble)
         nm = noble_mask.unsqueeze(-1)
         noble_sum = (ne * nm).sum(dim=-2)
         noble_max = ne.masked_fill(~nm, neg_inf).amax(dim=-2)
-        noble_max = torch.where(nm.any(dim=-1, keepdim=True).expand_as(noble_max),
+        noble_max = torch.where(nm.any(dim=-2).expand_as(noble_max),
                                 noble_max, torch.zeros_like(noble_max))
         pe = self.player_mlp(praw)
         ge = self.global_mlp(glob)

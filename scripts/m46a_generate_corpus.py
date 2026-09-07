@@ -15,7 +15,10 @@ Frozen seed ranges (inclusive):
   test:  6_602_304 .. 6_602_559 =  256 games
 
 Shard layout per game (R=8 roots, A=Amax actions in game, D=4, P=2):
-  card        uint8  (R,A,D,P,15,39)  market(role 0)+own reserved(role 1)
+  card        uint8  (R,A,D,P,15,21)  stored rows: cost[5], prestige, tier,
+                                     bonus, role, discounted[5], shortfall[5],
+                                     gold_needed, affordable (model builds
+                                     one-hots + appends praw in loader)
   noble       uint8  (R,A,D,P,5,12)   visible nobles
   praw        uint8  (R,A,D,P,26)     self then opponent public raw
   glob        uint8  (R,A,D,P,13)     bank, decks, endgame state
@@ -186,7 +189,7 @@ def pack_one(split: str, seed: int) -> dict:
     amax = max(len(r["actions"]) for r in g["roots"])
     R, A, D, P = ROOTS_PER_GAME, amax, N_DETS, N_PLAYERS
 
-    card = np.zeros((R, A, D, P, MAX_CARDS, 39), dtype=np.uint8)
+    card = np.zeros((R, A, D, P, MAX_CARDS, 21), dtype=np.uint8)
     noble = np.zeros((R, A, D, P, MAX_NOBLES, 12), dtype=np.uint8)
     praw = np.zeros((R, A, D, P, 26), dtype=np.uint8)
     glob = np.zeros((R, A, D, P, 13), dtype=np.uint8)

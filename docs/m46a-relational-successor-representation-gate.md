@@ -4,23 +4,23 @@
 
 ```ini
 MILESTONE = M46A
-STATUS = DESIGNED
-SCOPE = complete frozen design; implementation authorized only after this docs-only commit
+STATUS = COMPLETED_NEGATIVE / VALID RUN FAIL
+SCOPE = one frozen valid run executed; verdict recorded; no M46A-v2
 BASE_COMMIT = adfab3d
-FINAL_COMMIT = <none yet>
-DESIGN = DESIGN_V2 / APPROVED / FROZEN BY REVIEW
-IMPLEMENTATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-DATASET_GENERATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-TRAINING = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-GATE_A_EVALUATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-GATE_B_OFFLINE_EVALUATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-TRACKED_RESULT_GENERATION = AUTHORIZED AFTER THIS DOCS-ONLY COMMIT
-ARENA = NOT AUTHORIZED
+FINAL_COMMIT = <this commit: execution + tracked result>
+DESIGN = DESIGN_V2 / APPROVED / FROZEN BY REVIEW (a174ee0 + 4f46d2b)
+IMPLEMENTATION = EXECUTED (32b2f80 + pre-run bugfixes below)
+DATASET_GENERATION = EXECUTED (2560 n1 self-play games, frozen seeds)
+TRAINING = EXECUTED (one run, seed 46_000_001, 32 epochs)
+GATE_A_EVALUATION = EXECUTED (FAIL)
+GATE_B_OFFLINE_EVALUATION = EXECUTED (FAIL)
+TRACKED_RESULT_GENERATION = EXECUTED
+ARENA = NOT AUTHORIZED (none run)
 M45B = NOT AUTHORIZED
 M46B = NOT AUTHORIZED
 M47A = NOT AUTHORIZED
-ARCHITECTURE_CHANGES = NOT AUTHORIZED
-HYPERPARAMETER_SWEEP = NOT AUTHORIZED
+ARCHITECTURE_CHANGES = NOT AUTHORIZED (none made)
+HYPERPARAMETER_SWEEP = NOT AUTHORIZED (none performed)
 EXTRA_TRAINING_RUN_AFTER_VALID_FAIL = NOT AUTHORIZED
 ```
 
@@ -710,36 +710,135 @@ and the project returns to strategy review. There is no automatic M46A-v2.
 - M46A still has no implementation, dataset, training, Arena, result, or
   artifact. This revision is docs-only.
 
+### Execution — 2026-09-07 (single valid run)
+
+- Corpus: 2,560 n1 self-play games (profile `full`, frozen n1 shell) across
+  the frozen seed ranges; per-game expansion via `m46a-generate-corpus`;
+  NPZ packing with class-range asserts; split/identity/successor-hash audit
+  PASS (train 2048 games / 16,384 roots / 2,098,656 successors / 4,197,312
+  scoring examples; val 256 / 2,048 / 256,228; test 256 / 2,048 / 275,316;
+  all root identities unique within splits and disjoint across splits;
+  successor hashes disjoint across splits).
+- Pre-run fixes (before the valid run started; no valid run had executed):
+  masked-MAX empty-set semantics in the model; per-game card width (stored
+  21-int rows vs 39-dim model inputs built in the loader); explicit
+  card/noble presence masks in shards; vectorized data pipeline (identical
+  pair sets, losses, and metrics — pure evaluation-order change required
+  for feasible training throughput). No architecture, recipe, corpus,
+  threshold, or seed was changed by these fixes.
+- Training: one frozen run (seed 46_000_001, AdamW 3e-4, 32 epochs, root
+  batches of 32, cosine to 3e-5); best epoch 4 by the frozen validation
+  rule (val optimal-set agreement 0.7334); all 32 epochs completed.
+- Evaluation: Gate A/B on frozen test + unseen SHIFT1 pairs; predictions
+  saved; final audit recomputed every headline metric from saved
+  predictions (exact match) and wrote the tracked result.
+- No Arena, no extra training run, no hyperparameter or architecture change.
+
 ## Final implementation
 
-None yet. Implementation becomes authorized only after this docs-only commit.
+- `crates/splendor-search/src/evaluation.rs`: additive read-only
+  `StaticEvaluatorV1::nonterminal_progress()` accessor (identical
+  computation to `utilities()`; no behavior change).
+- `crates/splendor-cli/src/m46a_corpus_command.rs` (+ registration in
+  `main.rs`): replay → per-game successor records; 8 roots/game via
+  `i_k = floor((2k+1)N/16)` with N ≥ 8 fail-closed; 4 frozen
+  determinizations (seed 20_260_703) × all canonical actions (cross-det
+  action-set equality fail-closed); StaticEvaluatorV1 teacher utilities +
+  progress labels; relational features + mechanics labels; authoritative
+  identity triple + successor hashes; class-range asserts.
+- `training/m17_gpu/splendor_gpu/m46a_model.py`: exact DESIGN V2
+  RelationalSuccessorScorer (357,234 parameters).
+- `training/m17_gpu/m46a_train.py`: frozen recipe, losses, checkpoint
+  selection, Gate A/B + unseen SHIFT1 evaluation, prediction artifacts.
+- `scripts/m46a_generate_corpus.py`: matches → expand → pack → audit
+  (all fail closed).
+- `scripts/m46a_final_audit.py`: P0 suites, manifest checks,
+  selection-rule recomputation, metric recomputation from saved
+  predictions, frozen PASS table, tracked result JSON. No Arena.
 
 ## Validation and evidence
 
-None yet. No implementation, dataset, training, evaluation, Arena, or artifact
-has been produced for M46A.
+```text
+command: cargo test -p splendor-cli --test m45a_p0_semantic
+result: PASS 5/5
+command: cargo test -p splendor-cli --test m44a_p0_semantic
+result: PASS 6/6 (regression)
+command: cargo test -p splendor-cli --test m44b_p0_semantic
+result: PASS 4/4 (regression)
+command: cargo test -p splendor-cli --test m44c_p0_semantic
+result: PASS 4/4 (regression)
+command: python scripts/m46a_generate_corpus.py --phases matches,expand,pack,audit
+result: PASS — 2560 games; corpus audit PASS (split sizes, identity
+  disjointness, successor-hash disjointness, digests)
+command: python training/m17_gpu/m46a_train.py --device cuda
+result: 32/32 epochs; best epoch 4; VALID RUN FAIL (see gates below)
+command: python scripts/m46a_final_audit.py
+result: all recomputations match; frozen PASS table evaluated; OVERALL FAIL
+```
+
+- Tracked artifact:
+  `benchmarks/m46a-relational-successor-representation-gate-v1.result.json`
+  (SHA256: `7b9c3aa84d005464b97eaef22128ab9a6c4c23cfa817a91c4cfb3314d784ca10`).
+- Corpus manifest: `local-artifacts/m46a-corpus/corpus-manifest.json`
+  (train identity digest `bf2d961d...`; val `9e31106e...`; test `3efa584b...`).
+- Training artifacts: `local-artifacts/m46a-run/` (best.pt = epoch 4,
+  epoch_metrics.json, final_metrics.json, test_gateb_roots.npz,
+  test_gatea_preds.npz, shift1_preds.npz, verdict.json).
 
 ## Result and decision
 
-None yet. M46A remains unexecuted pending the authorized post-commit
-sequence.
+**Verdict: `RELATIONAL_SUCCESSOR_REPRESENTATION_NOT_VALIDATED`.** The single
+frozen valid run failed the frozen PASS table on 8 of 10 gate groups (only
+A2-claimable and A3-coverage passed). Per the frozen contract there is no
+M46A-v2, no extra training run, and no M46B. The project returns to
+strategy review.
+
+Frozen test-set results (best epoch 4; 2,048 test roots; 9,089,030 strict
+pairs):
+
+| Gate | Result | Frozen requirement | Verdict |
+|---|---:|---:|---|
+| A2 affordable count | 0.9074 | ≥ 0.995 | FAIL |
+| A2 max affordable prestige | 0.8872 | ≥ 0.995 | FAIL |
+| A2 claimable nobles | 1.0000 | ≥ 0.995 | PASS |
+| A2 min noble deficit | 0.9611 | ≥ 0.99 | FAIL |
+| A3 SHIFT1 coverage | ≥ 5,072 changed pairs per target | ≥ 256 | PASS |
+| A3 both-side exact (count / prestige / claim / deficit) | 0.7853 / 0.5181 / 0.0000 / 0.8823 | ≥ 0.99 | FAIL |
+| A3 signed-delta (count / prestige / claim / deficit) | 0.9229 / 0.7277 / 0.0000 / 0.9303 | ≥ 0.99 | FAIL |
+| B1 optimal-set agreement | 0.7280 | ≥ 0.98 | FAIL |
+| B1 strict-pair accuracy | 0.8946 | ≥ 0.99 | FAIL |
+| B1 mean normalized regret | 0.1272 | ≤ 0.005 | FAIL |
+
+Observed facts (descriptive only, no causal claims beyond the verdict):
+
+- Ranking metrics plateaued early: validation optimal-set agreement peaked
+  at epoch 4 (0.7334) and never recovered across the remaining 28 epochs
+  while training loss kept decreasing.
+- The noble-claimable head is exact (1.0) on natural test data yet scores
+  0.0/0.0 on 5,072 SHIFT1 changed pairs: it predicts the majority outcome
+  without tracking color binding — the precise shortcut signature the paired
+  gate was designed to catch.
+- Signed-delta accuracy uniformly exceeds both-side-exact accuracy: partial
+  directional sensitivity without exactness.
+- Best-epoch selection (epoch 4) was recomputed from the epoch table by the
+  final audit and matches; all Gate A/B/SHIFT1 headline numbers were
+  recomputed from saved predictions and match exactly.
 
 ## Known limitations and non-claims
 
-- This document proves no modeling result.
-- It does not establish that the proposed representation will learn, that the
-  frozen thresholds are attainable, or that relational successor evaluation
-  will reach n1 strength.
-- It does not authorize M46B, M47A, M45B, training beyond the single frozen
-  run, Arena, or production changes.
+- This round proves no modeling result; it records a valid negative result
+  for exactly one frozen architecture, recipe, corpus, and run.
+- It does not establish that no relational architecture could learn these
+  targets, nor does it diagnose which component (capacity, optimization,
+  loss balance, data regime) limited the run — the frozen contract forbids
+  post-hoc ablations, so no such attribution is licensed.
+- Gate B was evaluated against the StaticEvaluator teacher only; no
+  playing-strength (Arena) claim of any kind is made.
+- All findings are under the frozen n1 static-successor shell and the
+  frozen 2-player base-rules corpus.
 
 ## Next authorized gate
 
-Commit this docs-only DESIGN_V2 revision first. After that commit, the
-authorized post-commit sequence is dataset generation, one-architecture
-implementation, one frozen training run, Gate A evaluation, unseen SHIFT1
-evaluation, Gate B evaluation, tracked-result generation, commit, push, and
-final review.
-
-Arena, M46B, M47A, M45B, architecture changes, hyperparameter sweeps, and an
-extra training run after a valid FAIL remain explicitly unauthorized.
+Strategy review of the recorded negative result. Explicitly unauthorized:
+M46A-v2, any extra training run, hyperparameter or architecture changes,
+Arena, M46B, M47A, M45B, and production changes.
