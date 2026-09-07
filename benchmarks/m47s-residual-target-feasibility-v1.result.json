@@ -1,0 +1,180 @@
+{
+  "format": "effective-splendor-m47s-residual-target-feasibility",
+  "version": 1,
+  "milestone": "M47S",
+  "title": "Residual Target Feasibility Diagnostic",
+  "audit_completed_at": "2026-09-07T14:05:14Z",
+  "starting_point": "e159d64 (M46A permanently closed)",
+  "design_commit": "7ba8f5f",
+  "corpus": {
+    "source": "M46A frozen test split (permanent diagnostic holdout)",
+    "game_seeds": [
+      6602304,
+      6602559
+    ],
+    "games": 256,
+    "roots": 2048,
+    "root_identity_sha256": "3efa584b2536a35a3d717fbe0bc5b0bab7509bb5a4f9cacc6ab4ecebe5ce2a20",
+    "budgets": [
+      1,
+      200,
+      500,
+      2000
+    ],
+    "sample_seed": 20260703,
+    "sample_count": 4,
+    "max_depth_turns": 1
+  },
+  "roots_total": 2048,
+  "legacy_canonical_disagreement": {
+    "count": 585,
+    "rate": 0.28564453125
+  },
+  "gates": {
+    "F1_incidence": {
+      "n2000_correction_roots": 569,
+      "rate": 0.27783203125,
+      "threshold": 0.1,
+      "pass": true
+    },
+    "F2_stability": {
+      "stable_corrections": 563,
+      "stability_ratio": 0.9894551845342706,
+      "stability_threshold": 0.8,
+      "coverage": 0.27490234375,
+      "coverage_threshold": 0.08,
+      "pass": true
+    },
+    "F3_magnitude": {
+      "median_normalized_regret": 0.46039366298607776,
+      "mean": 0.4954418436653083,
+      "p25": 0.1272203947368421,
+      "p50": 0.46039366298607776,
+      "p75": 0.9123146186440678,
+      "p90": 0.9895505386673986,
+      "p95": 0.9958509204325197,
+      "max": 1.0,
+      "threshold": 0.05,
+      "pass": true
+    }
+  },
+  "verdict": "RESIDUAL_TARGET_FEASIBLE",
+  "descriptive": {
+    "pairwise_density": {
+      "teacher_strict_pairs": 4716579,
+      "n1_correct": 4239096,
+      "n1_tie_on_strict": 191751,
+      "n1_reversed": 285732,
+      "pairwise_correction_rate": 0.1012350264884782
+    },
+    "static_margin": {
+      "median": 400000.0,
+      "mean": 23857939.609236233,
+      "median_normalized": 0.11509543088490456,
+      "max": 1136900000.0,
+      "n": 563
+    },
+    "correction_taxonomy": {
+      "TakeTokens -> ReserveMarket": 121,
+      "TakeTokens -> TakeTokens": 88,
+      "BuyMarket -> TakeTokens": 54,
+      "ReserveMarket -> ReserveMarket": 49,
+      "ReserveMarket -> ReserveDeck": 41,
+      "BuyMarket -> ReserveMarket": 32,
+      "TakeTokens -> BuyMarket": 32,
+      "BuyMarket -> BuyMarket": 27,
+      "ReserveMarket -> TakeTokens": 23,
+      "BuyMarket -> BuyReserved": 23,
+      "TakeTokens -> ReserveDeck": 15,
+      "TakeTokens -> BuyReserved": 11,
+      "ReserveDeck -> TakeTokens": 9,
+      "BuyMarket -> ReserveDeck": 8,
+      "BuyReserved -> TakeTokens": 7,
+      "BuyReserved -> BuyMarket": 6,
+      "ReserveDeck -> ReserveMarket": 6,
+      "BuyReserved -> ReserveMarket": 5,
+      "ReserveMarket -> BuyMarket": 2,
+      "BuyReserved -> ReserveDeck": 1,
+      "BuyReserved -> BuyReserved": 1,
+      "ReserveDeck -> BuyMarket": 1,
+      "ReserveDeck -> ReserveDeck": 1
+    },
+    "correction_taxonomy_by_stage": {
+      "early: ReserveDeck -> TakeTokens": 7,
+      "mid: BuyMarket -> ReserveMarket": 14,
+      "late: BuyMarket -> TakeTokens": 19,
+      "early: ReserveMarket -> TakeTokens": 12,
+      "early: ReserveMarket -> ReserveDeck": 14,
+      "early: TakeTokens -> TakeTokens": 32,
+      "early: TakeTokens -> ReserveMarket": 90,
+      "mid: TakeTokens -> TakeTokens": 34,
+      "mid: BuyMarket -> TakeTokens": 25,
+      "early: ReserveMarket -> ReserveMarket": 28,
+      "late: BuyMarket -> BuyMarket": 10,
+      "mid: BuyMarket -> ReserveDeck": 5,
+      "late: TakeTokens -> TakeTokens": 22,
+      "late: TakeTokens -> ReserveMarket": 10,
+      "mid: ReserveMarket -> ReserveDeck": 22,
+      "mid: BuyReserved -> BuyMarket": 1,
+      "mid: ReserveMarket -> ReserveMarket": 13,
+      "late: ReserveMarket -> ReserveDeck": 5,
+      "mid: BuyMarket -> BuyMarket": 13,
+      "mid: TakeTokens -> BuyMarket": 14,
+      "mid: TakeTokens -> BuyReserved": 6,
+      "late: TakeTokens -> BuyMarket": 8,
+      "early: BuyMarket -> TakeTokens": 10,
+      "mid: TakeTokens -> ReserveMarket": 21,
+      "early: BuyMarket -> BuyReserved": 6,
+      "early: TakeTokens -> ReserveDeck": 9,
+      "late: TakeTokens -> ReserveDeck": 2,
+      "mid: ReserveMarket -> TakeTokens": 9,
+      "late: ReserveMarket -> ReserveMarket": 8,
+      "early: BuyMarket -> ReserveMarket": 14,
+      "mid: TakeTokens -> ReserveDeck": 4,
+      "late: BuyMarket -> BuyReserved": 4,
+      "early: TakeTokens -> BuyMarket": 10,
+      "late: BuyReserved -> BuyMarket": 5,
+      "mid: BuyMarket -> BuyReserved": 13,
+      "mid: ReserveMarket -> BuyMarket": 1,
+      "late: TakeTokens -> BuyReserved": 2,
+      "late: BuyReserved -> TakeTokens": 3,
+      "mid: ReserveDeck -> ReserveMarket": 2,
+      "late: BuyMarket -> ReserveMarket": 4,
+      "late: ReserveMarket -> TakeTokens": 2,
+      "early: BuyMarket -> BuyMarket": 4,
+      "late: ReserveDeck -> TakeTokens": 2,
+      "early: BuyMarket -> ReserveDeck": 3,
+      "mid: BuyReserved -> ReserveMarket": 2,
+      "early: BuyReserved -> ReserveMarket": 2,
+      "early: BuyReserved -> ReserveDeck": 1,
+      "early: ReserveDeck -> ReserveMarket": 4,
+      "early: TakeTokens -> BuyReserved": 3,
+      "mid: BuyReserved -> BuyReserved": 1,
+      "mid: ReserveDeck -> BuyMarket": 1,
+      "mid: BuyReserved -> TakeTokens": 2,
+      "early: BuyReserved -> TakeTokens": 2,
+      "early: ReserveDeck -> ReserveDeck": 1,
+      "late: BuyReserved -> ReserveMarket": 1,
+      "late: ReserveMarket -> BuyMarket": 1
+    },
+    "corrections_by_stage": {
+      "early": 258,
+      "mid": 203,
+      "late": 108
+    },
+    "roots_by_stage": {
+      "early": 693,
+      "mid": 827,
+      "late": 528
+    }
+  },
+  "provenance": {
+    "splendor_exe_sha256": "1ee3b0ca6e0d96991c4d2bae797aa7a0eddedec74a4531163154ae7c5295cd05",
+    "m46a_result_artifact_sha256": "7b9c3aa84d005464b97eaef22128ab9a6c4c23cfa817a91c0a1198264b56c5c7",
+    "m47s_residual_command_sha256": "5ee8e9517fa2f71e49e120481550bf02c2ba7f905b4a7f9c77fb4de33f18ffab",
+    "m47s_orchestrator_sha256": "3ace658d906ef2be5fd7ed1275a3ab680b3e4d70d13037bdf8e0ba503aeaa615",
+    "raw_records_path": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\m47s-run\\raw-records.json",
+    "raw_records_sha256": "7f5f3e456599f0f00172868839334ec3fd6452171a744c237af4e610093d3b6c"
+  },
+  "scientific_boundary": "n2000 is the champion M07 continuation target, not ground truth; M42S left n2000-vs-n1 Arena advantage UNRESOLVED. This diagnostic tests the existence of an imitable, stable residual target, not ground-truth Q*. Playing-strength gains can only be decided by a future M48B Arena if ever authorized."
+}

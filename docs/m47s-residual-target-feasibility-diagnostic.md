@@ -2,7 +2,10 @@
 
 ```ini
 MILESTONE = M47S
-STATUS = AUTHORIZED / DESIGN_STAGE
+STATUS = COMPLETED_DIAGNOSTIC / RESIDUAL_TARGET_FEASIBLE
+                (all three gates passed with wide margins; awaiting strategy
+                review of the verdict; M48A design stage now justified but
+                still NOT AUTHORIZED)
 SCOPE = offline-only residual-target feasibility diagnostic; no model, no training
 BASE_COMMIT = e159d64 (M46A permanently closed)
 DESIGN = frozen by user ruling 2026-09-07; design-only commit first, then
@@ -310,13 +313,69 @@ no training, no checkpoint, no Arena
   diagnostics, scientific boundary, and verdict semantics all frozen by the
   user ruling before any analysis ran.
 
+### Execution — 2026-09-07
+
+- Implementation: `m47s-residual` Rust batch command (replay + M46A shard
+  root selection → four budgets per root, full per-action utilities,
+  cross-budget canonical action-set identity asserted, per-budget identity
+  drift asserted, canonical-order cross-check) + orchestrator/audit scripts.
+- Execution: 256 games × 8 roots × 4 budgets in 219.4s. Root identity digest
+  recomputed from the run matches the M46A test manifest exactly
+  (`3efa584b...`); 2,048 identities unique.
+- Final audit: all recomputations (F1/F2/F3/legacy counts) match the tracked
+  result; no training or Arena artifacts.
+
 ## Validation and evidence
 
-None yet. No analysis has been executed.
+```text
+command: python scripts/m47s_residual_target_audit.py
+result: VERDICT = RESIDUAL_TARGET_FEASIBLE; 219.4s
+command: python scripts/m47s_final_audit.py
+result: ALL CHECKS PASS (identity digest matches M46A; F1/F2/F3/legacy
+  recomputed from raw records match; verdict consistent; no .pt artifacts)
+```
+
+- Tracked artifact:
+  `benchmarks/m47s-residual-target-feasibility-v1.result.json`
+  (SHA256: `56065c1a13933626efcc1aad5fceaaa74df21826e9c9e3ecc1ab757d4fa53a1d`).
+- Raw per-root records: `local-artifacts/m47s-run/raw-records.json`
+  (SHA256 bound in the tracked result provenance).
 
 ## Result and decision
 
-None yet. Pending execution.
+**Verdict: `RESIDUAL_TARGET_FEASIBLE` — all three main gates passed with
+wide margins.**
+
+| Gate | Result | Threshold | Verdict |
+|---|---:|---:|---|
+| F1 incidence (n2000 optimal-set miss) | **27.78%** (569/2048) | ≥10% | **PASS** |
+| F2 stability (stable/n2000) | **98.95%** (563/569) | ≥80% | **PASS** |
+| F2 coverage (stable/all roots) | **27.49%** (563/2048) | ≥8% | **PASS** |
+| F3 median normalized regret | **0.4604** | ≥0.05 | **PASS** |
+
+Key findings:
+
+- The correction target is dense (28% of roots, not 10%), almost entirely
+  budget-stable (99%), and far from tie noise (median regret 0.46 — the n1
+  choice is on average nearly the worst action under the n2000 teacher).
+- Legacy canonical disagreement (28.6%) closely tracks the tie-aware rate
+  (27.8%): the corrections are real preference reversals, not tie-break
+  noise.
+- Pairwise density: 4.72M teacher-strict pairs; n1 agrees on 89.9%, ties on
+  4.1%, reverses on 6.1% → pairwise correction rate 10.1% — ample dense
+  supervision for a future residual model.
+- Static margin: median normalized static preference the residual must
+  overcome is 0.115 (median raw 400k) — corrections are mostly local, not
+  strong-preference overturns, though the tail reaches 1.14B.
+- Taxonomy: the dominant correction is TakeTokens → ReserveMarket (121),
+  then within-kind TakeTokens→TakeTokens (88) and ReserveMarket→ReserveDeck
+  (41); corrections concentrate early (258 early / 203 mid / 108 late).
+
+This establishes, under the frozen scientific boundary, that a dense,
+  budget-stable, non-trivial imitable residual target exists between n1 and
+  the champion continuation. It does NOT establish that imitating it adds
+  playing strength — that question belongs to a future M48B Arena, if ever
+  authorized.
 
 ## Known limitations and non-claims
 
@@ -330,7 +389,7 @@ None yet. Pending execution.
 
 ## Next authorized gate
 
-After the design-only commit: offline implementation + execution of the
-diagnostic, then tracked result + docs/handoff + commit/push, then strategy
-review of the verdict. M48A/M48B remain NOT AUTHORIZED regardless of the
-outcome; a PASS only opens M48A's design stage.
+Strategy review of the `RESIDUAL_TARGET_FEASIBLE` verdict. A PASS opens
+M48A's design stage (static-prior residual learnability gate) but does NOT
+authorize M48A implementation; the M47S test roots remain a permanent
+diagnostic holdout that M48A may never train or checkpoint-select on.
