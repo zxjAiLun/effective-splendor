@@ -2,10 +2,10 @@
 
 ```ini
 MILESTONE = M47S
-STATUS = COMPLETED_DIAGNOSTIC / RESIDUAL_TARGET_FEASIBLE
-                (all three gates passed with wide margins; awaiting strategy
-                review of the verdict; M48A design stage now justified but
-                still NOT AUTHORIZED)
+STATUS = APPROVED / COMPLETED_DIAGNOSTIC / CLOSED — PERMANENTLY
+                (final review on 86a21b8, 2026-09-07; P0=0, P1=0, P2=2
+                non-blocking; verdict RESIDUAL_TARGET_FEASIBLE accepted;
+                wording seal applied — no numeric rerun, no repair run)
 SCOPE = offline-only residual-target feasibility diagnostic; no model, no training
 BASE_COMMIT = e159d64 (M46A permanently closed)
 DESIGN = frozen by user ruling 2026-09-07; design-only commit first, then
@@ -313,7 +313,37 @@ no training, no checkpoint, no Arena
   diagnostics, scientific boundary, and verdict semantics all frozen by the
   user ruling before any analysis ran.
 
-### Execution — 2026-09-07
+### Final closure — 2026-09-07
+
+- Terminal review on `86a21b8`: **APPROVED / COMPLETED_DIAGNOSTIC /
+  CLOSED — PERMANENTLY** (P0 = 0, P1 = 0, P2 = 2 non-blocking; review
+  basis `86a21b8`). Verdict `RESIDUAL_TARGET_FEASIBLE` accepted; numeric
+  rerun NONE; repair run NONE; Arena NONE; Champion M07 unchanged.
+- Wording seal: the F3 summary was corrected from "the n1 choice is on
+  average nearly the worst action" to the precise statement (median
+  correction loses 0.46 of the within-root teacher range; upper quartile
+  0.91 = substantial near-worst tail). No numeric value changed.
+- Reviewer-verified points: corpus binding (identity digest `3efa584b...`
+  independently matches the tracked M46A test split), cross-budget
+  action-set/identity invariance, tie-aware correction semantics
+  (`a_n1 ∉ A*_2000`, distinct from raw canonical disagreement), and the
+  M46A artifact SHA in M47S provenance (computed live by the orchestrator
+  from the unchanged tracked file; an earlier report string with a
+  mismatched tail was ruled a transcription error, not artifact drift).
+- Permanent scientific conclusion: *on the frozen 2,048-root diagnostic
+  holdout, n1/static and M07/n2000 continuation exhibit a dense (27.8%),
+  highly budget-stable (98.9% of corrections), and non-trivial (median
+  normalized regret 0.46) residual action-preference target. This
+  establishes residual-target feasibility, not playing-strength benefit*
+  (n2000-vs-n1 Arena advantage remains UNRESOLVED per M42S).
+- Non-blocking notes recorded: (P2-1) the final audit's no-artifact check
+  scans `.pt/.pth` only, proving no checkpoints in the run dir rather than
+  a whole-repo Arena sweep; (P2-2) the M46A artifact SHA in provenance is
+  not re-verified by the final audit. Neither affects corpus binding or
+  F1/F2/F3; no repair required.
+- M47S roots remain a permanent diagnostic holdout. M48A design stage:
+  AUTHORIZED by this review; M48A implementation/training and M48B:
+  NOT AUTHORIZED.
 
 - Implementation: `m47s-residual` Rust batch command (replay + M46A shard
   root selection → four budgets per root, full per-action utilities,
@@ -356,8 +386,10 @@ wide margins.**
 Key findings:
 
 - The correction target is dense (28% of roots, not 10%), almost entirely
-  budget-stable (99%), and far from tie noise (median regret 0.46 — the n1
-  choice is on average nearly the worst action under the n2000 teacher).
+  budget-stable (99%), and far from tie noise — corrections are materially
+  non-trivial: the median correction loses 0.46 of the within-root teacher
+  utility range, and the upper quartile is already 0.91, so a substantial
+  tail of n1 mistakes is near-worst under the n2000 teacher.
 - Legacy canonical disagreement (28.6%) closely tracks the tie-aware rate
   (27.8%): the corrections are real preference reversals, not tie-break
   noise.
@@ -389,7 +421,8 @@ This establishes, under the frozen scientific boundary, that a dense,
 
 ## Next authorized gate
 
-Strategy review of the `RESIDUAL_TARGET_FEASIBLE` verdict. A PASS opens
-M48A's design stage (static-prior residual learnability gate) but does NOT
-authorize M48A implementation; the M47S test roots remain a permanent
-diagnostic holdout that M48A may never train or checkpoint-select on.
+M47S is permanently closed (final review APPROVED on `86a21b8`).
+
+**M48A — Static-Prior Residual Learnability Gate: DESIGN-ONLY AUTHORIZED**
+by this review. M48A implementation, training, and M48B Arena remain
+NOT AUTHORIZED.
