@@ -32,7 +32,8 @@ pub use player_view::{
 };
 pub use search::{
     aggregate_root_determinizations_attribution_v1, aggregate_root_determinizations_v1,
-    search_root_determinizations_v1,
+    aggregate_root_determinizations_with_depth_diagnostics_v1,
+    search_root_determinizations_v1, ContinuationDepthDiagnosticsV1,
 };
 pub use splendor_belief::{DETERMINIZATION_VERSION, INFORMATION_SET_VERSION};
 

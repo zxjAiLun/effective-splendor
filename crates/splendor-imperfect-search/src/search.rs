@@ -11,6 +11,28 @@ use crate::model::{
     RootActionAggregateV1, RootDeterminizationResultV1, RootDeterminizationStatsV1,
 };
 
+/// S1 continuation-depth diagnostics (additive; NOT part of any frozen
+/// result contract).
+///
+/// Counts, over all non-terminal sampled root children of one decision, the
+/// per-continuation `completed_depth_turns` histogram and `stop_reason`
+/// histogram of the underlying `search_maxn_v1` calls — values the frozen
+/// aggregation loop already receives and otherwise discards.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct ContinuationDepthDiagnosticsV1 {
+    /// Count of continuations whose last fully completed iterative-deepening
+    /// iteration was depth `k`, indexed 0..=max_depth_turns (vector length is
+    /// `max_depth_turns + 1`).
+    pub depth_histogram: Vec<u64>,
+    /// Continuations that finished every iteration up to the configured
+    /// depth (`SearchStopReasonV1::DepthLimitReached`).
+    pub stop_depth_limit_reached: u64,
+    /// Continuations whose node budget exhausted before the final depth
+    /// completed (`SearchStopReasonV1::NodeBudgetReached`).
+    pub stop_node_budget_reached: u64,
+}
+
 /// Aggregate one root action across deterministic hidden-state samples.
 ///
 /// Every sample must expose exactly the same canonical root action set. Each
@@ -23,6 +45,31 @@ pub fn aggregate_root_determinizations_v1(
     information_set: &InformationSetV1,
     config: RootDeterminizationConfigV1,
 ) -> Result<RootDeterminizationResultV1, ImperfectSearchError> {
+    config.validate()?;
+    let (result, _) = aggregate_with_optional_diagnostics(information_set, config, false)?;
+    Ok(result)
+}
+
+/// S1 research entry point: identical aggregation to
+/// [`aggregate_root_determinizations_v1`], additionally reporting the
+/// per-continuation depth/stop-reason histogram over all non-terminal
+/// sampled root children. The frozen result and stats are unchanged; the
+/// diagnostics are a separate additive return value.
+pub fn aggregate_root_determinizations_with_depth_diagnostics_v1(
+    information_set: &InformationSetV1,
+    config: RootDeterminizationConfigV1,
+) -> Result<(RootDeterminizationResultV1, ContinuationDepthDiagnosticsV1), ImperfectSearchError>
+{
+    config.validate()?;
+    aggregate_with_optional_diagnostics(information_set, config, true)
+}
+
+fn aggregate_with_optional_diagnostics(
+    information_set: &InformationSetV1,
+    config: RootDeterminizationConfigV1,
+    collect_diagnostics: bool,
+) -> Result<(RootDeterminizationResultV1, ContinuationDepthDiagnosticsV1), ImperfectSearchError>
+{
     config.validate()?;
 
     let observation = information_set.observation();
@@ -56,6 +103,12 @@ pub fn aggregate_root_determinizations_v1(
         nodes_expanded: 0,
         leaf_evaluations: 0,
         transposition_hits: 0,
+    };
+    let max_depth = usize::from(config.continuation_search.max_depth_turns);
+    let mut diagnostics = ContinuationDepthDiagnosticsV1 {
+        depth_histogram: vec![0; max_depth + 1],
+        stop_depth_limit_reached: 0,
+        stop_node_budget_reached: 0,
     };
 
     for sample_index in 0..u64::from(config.sample_count) {
@@ -99,6 +152,41 @@ pub fn aggregate_root_determinizations_v1(
             } else {
                 let continuation =
                     search_maxn_v1(&child, config.continuation_search).map_err(map_search_error)?;
+                if collect_diagnostics {
+                    let depth = usize::from(continuation.completed_depth_turns);
+                    if depth > max_depth {
+                        return Err(ImperfectSearchError::Overflow(format!(
+                            "continuation completed depth {depth} exceeds configured {max_depth}"
+                        )));
+                    }
+                    diagnostics.depth_histogram[depth] = diagnostics.depth_histogram[depth]
+                        .checked_add(1)
+                        .ok_or_else(|| {
+                            ImperfectSearchError::Overflow("depth histogram".to_owned())
+                        })?;
+                    match continuation.stop_reason {
+                        splendor_search::SearchStopReasonV1::DepthLimitReached => {
+                            diagnostics.stop_depth_limit_reached = diagnostics
+                                .stop_depth_limit_reached
+                                .checked_add(1)
+                                .ok_or_else(|| {
+                                    ImperfectSearchError::Overflow(
+                                        "stop reason histogram".to_owned(),
+                                    )
+                                })?;
+                        }
+                        splendor_search::SearchStopReasonV1::NodeBudgetReached => {
+                            diagnostics.stop_node_budget_reached = diagnostics
+                                .stop_node_budget_reached
+                                .checked_add(1)
+                                .ok_or_else(|| {
+                                    ImperfectSearchError::Overflow(
+                                        "stop reason histogram".to_owned(),
+                                    )
+                                })?;
+                        }
+                    }
+                }
                 checked_add_u64(
                     &mut stats.continuation_searches,
                     1,
@@ -139,14 +227,15 @@ pub fn aggregate_root_determinizations_v1(
     }
 
     let action = choose_best_action(&aggregates, root_player)?;
-    Ok(RootDeterminizationResultV1 {
+    let result = RootDeterminizationResultV1 {
         action,
         root_player,
         sample_seed: config.sample_seed,
         sample_count: config.sample_count,
         action_aggregates: aggregates,
         stats,
-    })
+    };
+    Ok((result, diagnostics))
 }
 
 /// Compatibility spelling for callers that describe the operation as a

@@ -576,6 +576,7 @@ dependencies = [
  "serde",
  "serde_json",
  "splendor-agent",
+ "splendor-belief",
  "splendor-core",
  "splendor-imperfect-search",
  "splendor-search",

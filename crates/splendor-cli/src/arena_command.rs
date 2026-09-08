@@ -768,7 +768,7 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let (config, runtime_name, runtime_version, attribution_profile, stats_out) =
+    let (config, runtime_name, runtime_version, attribution_profile, stats_out, emit_depth_histogram) =
         match parse_agent_determinization_args(args) {
             Ok(parsed) => parsed,
             Err(msg) => {
@@ -811,6 +811,7 @@ pub fn agent_determinization(args: &[String]) -> i32 {
             config,
             identity,
             std::path::PathBuf::from(stats_path),
+            emit_depth_histogram,
         )
     } else if let Some(profile) = attribution_profile {
         run_determinization_agent_attribution_v1(
@@ -1048,6 +1049,7 @@ fn parse_agent_determinization_args(
         String,
         Option<AttributionProfile>,
         Option<String>,
+        bool,
     ),
     String,
 > {
@@ -1059,6 +1061,7 @@ fn parse_agent_determinization_args(
     let mut runtime_version: Option<String> = None;
     let mut attribution_profile: Option<String> = None;
     let mut stats_out: Option<String> = None;
+    let mut emit_depth_histogram = false;
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -1071,6 +1074,14 @@ fn parse_agent_determinization_args(
             "--runtime-version" => set_flag(&mut runtime_version, arg, args.get(i + 1))?,
             "--attribution-profile" => set_flag(&mut attribution_profile, arg, args.get(i + 1))?,
             "--stats-out" => set_flag(&mut stats_out, arg, args.get(i + 1))?,
+            "--emit-depth-histogram" => {
+                if emit_depth_histogram {
+                    return Err("--emit-depth-histogram given more than once".to_owned());
+                }
+                emit_depth_histogram = true;
+                i += 1;
+                continue;
+            }
             other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         }
@@ -1102,6 +1113,7 @@ fn parse_agent_determinization_args(
         runtime_version,
         profile,
         stats_out,
+        emit_depth_histogram,
     ))
 }
 

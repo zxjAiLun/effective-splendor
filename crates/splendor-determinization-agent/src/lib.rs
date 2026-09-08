@@ -8,7 +8,8 @@
 use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, DecisionContext};
 use splendor_core::{Action, Ruleset};
 use splendor_imperfect_search::{
-    analyze_player_view_attribution_v1, analyze_player_view_v1, ImperfectSearchError,
+    aggregate_root_determinizations_with_depth_diagnostics_v1, analyze_player_view_attribution_v1,
+    analyze_player_view_v1, ContinuationDepthDiagnosticsV1, ImperfectSearchError,
     RootDeterminizationConfigV1,
 };
 use splendor_search::{canonical_order, AttributionProfile};
@@ -25,6 +26,7 @@ pub struct DeterminizationAgentPolicyV1 {
     ruleset: Ruleset,
     config: RootDeterminizationConfigV1,
     last_telemetry: Option<PerDecisionTelemetry>,
+    emit_depth_diagnostics: bool,
 }
 
 /// What [`DeterminizationAgentPolicyV1`] records about its most recent
@@ -35,6 +37,8 @@ pub struct PerDecisionTelemetry {
     pub request_id: u64,
     pub decide_micros: u64,
     pub stats: splendor_imperfect_search::RootDeterminizationStatsV1,
+    /// Present only when the S1 depth-diagnostics variant was used.
+    pub depth_diagnostics: Option<ContinuationDepthDiagnosticsV1>,
 }
 
 impl DeterminizationAgentPolicyV1 {
@@ -45,11 +49,51 @@ impl DeterminizationAgentPolicyV1 {
             ruleset: Ruleset::base_v1(),
             config,
             last_telemetry: None,
+            emit_depth_diagnostics: false,
         })
+    }
+
+    /// Enable S1 depth diagnostics (per-continuation completed-depth and
+    /// stop-reason histograms in the telemetry). This only selects the
+    /// diagnostics aggregation variant; the chosen action and the frozen
+    /// stats are identical.
+    pub fn with_depth_diagnostics(mut self) -> Self {
+        self.emit_depth_diagnostics = true;
+        self
     }
 
     pub fn config(&self) -> RootDeterminizationConfigV1 {
         self.config
+    }
+
+    /// Diagnostics aggregation: build the player information set and run the
+    /// depth-diagnostics aggregation variant. The frozen action/stats equal
+    /// those of `analyze_player_view_v1` by construction (same pipeline).
+    fn analyze_with_diagnostics(
+        &self,
+        observation: &splendor_core::Observation,
+        visible_history: &[splendor_core::VisibleEvent],
+    ) -> Result<
+        (
+            splendor_imperfect_search::RootDeterminizationResultV1,
+            ContinuationDepthDiagnosticsV1,
+        ),
+        DeterminizationAgentError,
+    > {
+        use splendor_belief::build_information_set_v1;
+
+        let information_set = build_information_set_v1(self.ruleset, observation, visible_history)
+            .map_err(|error| {
+                DeterminizationAgentError::Search(splendor_imperfect_search::ImperfectSearchError::from(
+                    error,
+                ))
+            })?;
+        let (result, diagnostics) = aggregate_root_determinizations_with_depth_diagnostics_v1(
+            &information_set,
+            self.config,
+        )
+        .map_err(DeterminizationAgentError::Search)?;
+        Ok((result, diagnostics))
     }
 
     /// Telemetry of the most recent successful decision, if any.
@@ -78,26 +122,42 @@ impl AgentPolicy for DeterminizationAgentPolicyV1 {
         }
 
         let started = std::time::Instant::now();
-        let analysis = analyze_player_view_v1(
-            self.ruleset,
-            &context.observation,
-            context.visible_history,
-            self.config,
-        );
+        let outcome = if self.emit_depth_diagnostics {
+            // S1 diagnostics variant: identical action and frozen stats,
+            // plus per-continuation depth/stop histograms.
+            let (result, diagnostics) = self.analyze_with_diagnostics(
+                &context.observation,
+                context.visible_history,
+            )?;
+            (result, Some(diagnostics))
+        } else {
+            (
+                analyze_player_view_v1(
+                    self.ruleset,
+                    &context.observation,
+                    context.visible_history,
+                    self.config,
+                )?
+                .result()
+                .clone(),
+                None,
+            )
+        };
         let decide_micros = u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
-        let analysis = analysis?;
-        let result = analysis.result();
+        let (result, depth_diagnostics) = outcome;
         if let Some(t) = self.last_telemetry.as_mut() {
             t.game_id = context.meta.game_id.clone();
             t.request_id = context.meta.request_id;
             t.decide_micros = decide_micros;
             t.stats = result.stats.clone();
+            t.depth_diagnostics = depth_diagnostics;
         } else {
             self.last_telemetry = Some(PerDecisionTelemetry {
                 game_id: context.meta.game_id.clone(),
                 request_id: context.meta.request_id,
                 decide_micros,
                 stats: result.stats.clone(),
+                depth_diagnostics,
             });
         }
         let search_actions = result
@@ -266,6 +326,10 @@ pub struct PerDecisionStatsV1 {
     /// Aggregated search counters for this decision (already computed by
     /// the search; this layer only reports them).
     pub stats: splendor_imperfect_search::RootDeterminizationStatsV1,
+    /// Present only with the S1 `--emit-depth-histogram` mode: per-
+    /// continuation completed-depth and stop-reason histograms.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth_diagnostics: Option<ContinuationDepthDiagnosticsV1>,
 }
 
 impl From<&PerDecisionTelemetry> for PerDecisionStatsV1 {
@@ -275,6 +339,7 @@ impl From<&PerDecisionTelemetry> for PerDecisionStatsV1 {
             request_id: t.request_id,
             decide_micros: t.decide_micros,
             stats: t.stats.clone(),
+            depth_diagnostics: t.depth_diagnostics.clone(),
         }
     }
 }
@@ -329,6 +394,7 @@ pub fn run_determinization_agent_with_stats_v1<R, W, E>(
     config: RootDeterminizationConfigV1,
     identity: AgentIdentity<'_>,
     stats_out: std::path::PathBuf,
+    emit_depth_histogram: bool,
 ) -> Result<(), AgentError>
 where
     R: std::io::BufRead,
@@ -355,6 +421,11 @@ where
             let _ = diagnostics.flush();
             return Err(agent_error);
         }
+    };
+    let policy = if emit_depth_histogram {
+        policy.with_depth_diagnostics()
+    } else {
+        policy
     };
     let policy = StatsEmittingPolicy::new(policy, stats_file);
     run_agent(input, output, diagnostics, identity, 0, policy)
@@ -452,6 +523,98 @@ mod tests {
         // Frozen boundary: no completed-depth / stop-reason fields exist.
         assert!(v.get("completed_depth_turns").is_none());
         assert!(v.get("stop_reason").is_none());
+    }
+
+    #[test]
+    fn depth_diagnostics_variant_keeps_decisions_identical_and_consistent() {
+        use splendor_agent::DecisionContext;
+
+        let (state, setup) = FullState::new(GameConfig {
+            player_count: 2,
+            seed: 20260908,
+            ..Default::default()
+        })
+        .unwrap();
+        let viewer = PlayerId(0);
+        let observation = state.observation(viewer);
+        let actions: Vec<splendor_core::Action> = state.legal_actions();
+        let history: Vec<splendor_core::VisibleEvent> =
+            visible_events(&setup.events, Audience::Player(viewer));
+        let history_ref: &'static [splendor_core::VisibleEvent] =
+            Box::leak(history.into_boxed_slice());
+        let obs_hash = observation_hash(&observation).clone();
+
+        let cfg = RootDeterminizationConfigV1 {
+            sample_seed: 20260703,
+            sample_count: 4,
+            continuation_search: SearchConfigV1 {
+                max_depth_turns: 2,
+                max_nodes: 2000,
+            },
+        };
+        cfg.validate().unwrap();
+
+        let mut plain = DeterminizationAgentPolicyV1::new(cfg).unwrap();
+        let mut diag = DeterminizationAgentPolicyV1::new(cfg).unwrap().with_depth_diagnostics();
+
+        let mut rng_a = StableRng::new(11);
+        let mut rng_b = StableRng::new(11);
+        let meta = |game_id: &str, request_id: u64| PublicRequestMeta {
+            game_id: game_id.to_owned(),
+            recipient_seat: PlayerId(0),
+            request_id,
+            observation_hash: obs_hash.clone(),
+        };
+
+        let action_plain = plain
+            .choose_action(DecisionContext {
+                observation: observation.clone(),
+                visible_history: history_ref,
+                legal_actions: &actions,
+                meta: meta("s1-test", 1),
+                rng: &mut rng_a,
+            })
+            .unwrap();
+        let action_diag = diag
+            .choose_action(DecisionContext {
+                observation,
+                visible_history: history_ref,
+                legal_actions: &actions,
+                meta: meta("s1-test", 1),
+                rng: &mut rng_b,
+            })
+            .unwrap();
+        assert_eq!(action_plain, action_diag, "diagnostics must not change the action");
+
+        let t = diag.last_telemetry().expect("telemetry recorded");
+        assert!(t.depth_diagnostics.is_some(), "diagnostics present when enabled");
+        assert!(plain.last_telemetry().unwrap().depth_diagnostics.is_none());
+        let d = t.depth_diagnostics.as_ref().unwrap();
+        // Consistency: histogram sums == stop sums == non-terminal continuations.
+        let hist_total: u64 = d.depth_histogram.iter().sum();
+        assert_eq!(
+            hist_total,
+            d.stop_depth_limit_reached + d.stop_node_budget_reached,
+            "histogram and stop-reason totals must agree"
+        );
+        assert_eq!(hist_total, t.stats.continuation_searches);
+        // Hard completion definition consistency: depth==2 <=> DepthLimitReached
+        // only binds the TOP depth bin; here we assert the structural invariant
+        // that budget-stopped continuations never carry the top depth.
+        if d.depth_histogram.len() == 3 {
+            assert_eq!(
+                d.depth_histogram[2], d.stop_depth_limit_reached,
+                "top-depth bin must equal DepthLimitReached count"
+            );
+        }
+        // Serialized sidecar keeps the field optional (absent when None).
+        let s0 = serde_json::to_string(
+            &PerDecisionStatsV1::from(plain.last_telemetry().unwrap()),
+        )
+        .unwrap();
+        assert!(!s0.contains("depth_diagnostics"), "absent when disabled: {s0}");
+        let s1 = serde_json::to_string(&PerDecisionStatsV1::from(t)).unwrap();
+        assert!(s1.contains("depth_diagnostics"), "present when enabled: {s1}");
     }
 
     fn config() -> RootDeterminizationConfigV1 {
