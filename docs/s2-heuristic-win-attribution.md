@@ -1,23 +1,22 @@
 # S2 — Heuristic Win Attribution (why does heuristic-v1 beat n1/M07?)
 
-STATUS     = APPROVED / FROZEN (S2 DESIGN_V2 review verdict on 9fa76a8:
-            direction, replay reuse, three-policy census, term accessor,
-            exploration-not-confirmation, and no-implementation boundary
-            all APPROVED; P1-1/P1-2/P1-3 + P2-1..3 revisions applied
-            docs-only; A1 -> A2 -> A3 automatically authorized; S2
-            closure review at the end)
-REVISION   = V2 2026-09-08 — review repairs: H optimal-SET semantics
-            (no counterfactual tie-break; strict divergence requires a
-            unique H optimum); two statistical units (context for
-            occurrence, GAME for win association; opponent- and
-            seat-stratified); frozen candidate grammar (SEARCH_ACTOR +
-            action transition, optionally x fixed stage; market flags
-            and term dominance demoted to annotation) with
-            frequency-first ranking and NO_ACTIONABLE_PATTERN exit;
-            REFERENCE_ACTOR vs SEARCH_ACTOR separated; term-attribution
-            wording narrowed to heuristic preference (NOT search
-            information absence); fixed absolute stage bins; exact term
-            contract with a hard additive parity gate. V1 = 9fa76a8.
+STATUS     = EXECUTED (design APPROVED/FROZEN at 82fc400; A1 -> A2 -> A3
+            executed 2026-09-08 with all parity gates PASS; verdict
+            ACTIONABLE_HYPOTHESIS_FOUND — nominee presented for review,
+            NOT implemented; awaiting S2 closure review)
+RESULT     = One candidate hypothesis: on SEARCH_ACTOR contexts where the
+            frozen search policies take tokens, heuristic's unique
+            optimum is to BUY a tier-1 card (853 strict divergences =
+            11.27% of SEARCH_ACTOR Main contexts; 248 of 256 games;
+            game-level exposed-vs-unexposed H win-rate delta positive in
+            both opponent strata: n1 +0.169, M07 +0.194). The separating
+            score gap is category-dominated (buy category prior over
+            take) with a positive bonus_usefulness feature component in
+            98.7% of cases. This is heuristic PREFERENCE attribution —
+            not search information absence, and not a validated
+            improvement.
+REVISION   = V2 2026-09-08 (frozen, 82fc400) — executed as frozen.
+            V1 = 9fa76a8.
 BASELINE   = 2df0fcb (S1 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -296,15 +295,121 @@ Engineering budget < 30 min total, no GPU, no new games.
 - A passing pattern is a hypothesis for a SEPARATE confirmation round,
   not a validated improvement; S2 stops before implementation.
 
-## Authorized execution path (per DESIGN_V2 review)
+## Validation and evidence
 
-1. Term accessor + parity test.
-2. Batched census harness.
-3. A1 census (tracked intermediate result).
-4. A2 term attribution.
-5. A3 synthesis -> docs closure + tracked result -> commit + push.
-6. S2 closure review.
+### Execution — 2026-09-08 (single valid pass)
 
-Still NOT authorized: candidate implementation (S2b), new Arena, new
-self-play, search engineering, evaluator behavior change, heuristic
-behavior change, neural work, promotion/default-agent change.
+Implementation (in-scope only):
+- `HeuristicTermScores` accessor: the score decomposition shares the
+  computation with `score_actions` via term-level structs; buy-prestige
+  stays folded into the buy category base EXACTLY as the historical
+  arithmetic computed it, so totals are bit-identical. Hard parity gate
+  (sum of terms == aggregate score for 100% of legal actions across
+  seed-spread states) locked by regression tests; workspace 774/0.
+- `splendor s2-census` batched in-process harness (no per-context
+  subprocess): per replay, per eligible context — H* set (via term
+  totals), both frozen search actions (recomputed), stage bin, market
+  flags, winner seats. `--emit-terms` adds signed per-term gap rows at
+  |H*|==1 divergences for both policies.
+- `scripts/s2_census.py` (A1) and `scripts/s2_term_attribution.py`
+  (A2+A3).
+
+Parity gates (all PASS, 100%):
+1. REFERENCE_ACTOR: `recorded_action in H*` — and exact-equal when
+   |H*|==1 — on every heuristic-mover context.
+2. SEARCH_ACTOR: recomputed frozen action == recorded action on every
+   search-mover context (n1 and M07 separately).
+3. Term-gap parity: sum of signed deltas == score gap > 0 on every
+   strict-divergence row (4,063 rows).
+
+### A1 — census (256 games, 15,143 Main contexts)
+
+Role split: REFERENCE_ACTOR 7,573 / SEARCH_ACTOR 7,570. Tie rate
+(|H*|>1): 749 / 667 respectively (reported so tie artifacts cannot
+masquerade as disagreement).
+
+Set-aware classification (SEARCH_ACTOR, per opponent):
+- n1: X_IN_H* 1,624 / X_NOT_IN_H*_UNIQUE 1,868 / X_NOT_IN_H*_TIE 228
+- M07: X_IN_H* 1,399 / X_NOT_IN_H*_UNIQUE 2,195 / X_NOT_IN_H*_TIE 256
+
+SEARCH_ACTOR strict divergences total: 4,063. Top transitions (of
+7,570 SEARCH_ACTOR contexts): take_tokens->buy_market 853 (11.27%),
+buy_market->buy_market 630, reserve_market->take_tokens 568 (7.50%),
+take_tokens->take_tokens 531, reserve_market->buy_market 483.
+
+### A2 — term attribution (4,063 strict divergences)
+
+Dominant separating terms: category_base 2,451; bonus_usefulness
+1,029; deficit_reduction 487; cost_efficiency 52; new_target 44;
+noble_gain 1. Category-dominated 2,451 vs feature-dominated 1,612.
+
+### A3 — candidates passing all four frozen gates (3 of 14x4 patterns)
+
+| Pattern | Rate | Games | delta n1 | delta M07 |
+|---|---:|---:|---:|---:|
+| **take_tokens->buy_market** (nominee) | 0.1127 (853) | 248 | +0.169 | +0.194 |
+| reserve_market->take_tokens | 0.0750 (568) | 235 | +0.070 | +0.255 |
+| reserve_market->take_tokens|early | 0.0532 (403) | 214 | +0.048 | +0.089 |
+
+Frequency-first ranking (rate, then game coverage, then lexical id)
+selects take_tokens->buy_market as the single S2 nominee.
+
+### Nominee annotation (descriptive, not part of the pattern key)
+
+- The H action is a BUY of a tier-1 card in 3,362/3,386 pre-filter gap
+  rows (tier-2 in 24).
+- Stage spread: early 540 / mid 1,806 / late 1,040 — concentrated in
+  mid but present throughout.
+- Score gap p50 881,800 [min 830,800, max 1,011,800] — buy-category
+  prior dominated (3,386/3,386 category-dominant), with a positive
+  bonus_usefulness feature component in 3,344/3,386 (98.7%); noble_gain
+  positive in only 8; the take's own feature positives (deficit
+  reduction, new targets) are exceeded by the category gap in every
+  case.
+- Interpretation (heuristic preference attribution, frozen wording):
+  when the frozen search policies choose TakeTokens, heuristic's unique
+  optimum is buying a cheap (mostly tier-1) card whose bonus color is
+  useful for its targets. The search baselines' static evaluator
+  evidently ranks the take higher in these positions; whether
+  transplanting a buy-bias would improve THEM is the S2b question, NOT
+  answered here.
+
+### Tracked artifacts
+
+- `benchmarks/s2-heuristic-win-attribution-v1.result.json` (git-blob
+  SHA recorded after commit).
+- Raw census rows + term-gap rows under ignored
+  `local-artifacts/s2-census/` (cloud evidence boundary as in S0/S1).
+
+## Result and decision
+
+**Verdict: ACTIONABLE_HYPOTHESIS_FOUND.** The S2 nominee is
+`take_tokens->buy_market` on SEARCH_ACTOR strict divergences. Per the
+frozen contract, this authorizes NOTHING beyond presenting the
+hypothesis: S2b (candidate implementation + frozen confirmation design
+with fresh seeds and preregistered gates) is a separate review
+decision. The two reserve_market->take_tokens patterns are recorded as
+runner-ups (they pass all four gates; frequency-first ranking placed
+them below the nominee).
+
+Non-claims (frozen): this is heuristic preference attribution, not
+search information absence; the deltas are game-level associations on
+256 games (Wilson-wide), not causal effects; the nominee is a
+hypothesis, not a validated improvement.
+
+## Execution status and next authorized gate
+
+Executed: (1) term accessor + parity tests; (2) batched census harness;
+(3) A1 census — parity gates PASS; (4) A2 term attribution — term-gap
+parity PASS; (5) A3 synthesis — ACTIONABLE_HYPOTHESIS_FOUND, nominee
+`take_tokens->buy_market`; tracked result + this closure doc.
+
+Next gate: **S2 closure review.** The review decides whether S2b (a
+candidate implementing the nominee, evaluated under a frozen
+confirmation design with fresh seeds and preregistered gates) is
+authorized, deferred, or rejected. S2 itself implements nothing.
+
+Still NOT authorized (unchanged): candidate implementation (S2b), new
+Arena, new self-play, search engineering, evaluator behavior change,
+heuristic behavior change, neural work, promotion/default-agent
+change.

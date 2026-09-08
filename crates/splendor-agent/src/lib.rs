@@ -22,7 +22,10 @@ mod runtime;
 mod stable_rng;
 
 pub use error::AgentError;
-pub use heuristic::{HeuristicAgentPolicy, HEURISTIC_AGENT_NAME, HEURISTIC_AGENT_VERSION};
+pub use heuristic::{
+    heuristic_term_scores, HeuristicAgentPolicy, HeuristicTermScores, HEURISTIC_AGENT_NAME,
+    HEURISTIC_AGENT_VERSION,
+};
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
 pub use runtime::{run_agent, AgentIdentity};
 pub use stable_rng::StableRng;

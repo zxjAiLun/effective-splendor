@@ -102,9 +102,63 @@ const NOBLE_DIRECT: i64 = 60_000;
 // Scoring
 // ---------------------------------------------------------------------------
 
+/// Per-action decomposition of the heuristic score into its named additive
+/// terms (S2 output-only attribution; the totals are bit-identical to
+/// [`score_actions`]).
+///
+/// Inapplicable terms are 0. The hard contract is
+/// `sum of all term fields == score_actions(obs, actions)[i]` for every
+/// analyzed action, asserted by tests and by the census harness.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub struct HeuristicTermScores {
+    pub category_base: i64,
+    pub prestige: i64,
+    pub noble_gain: i64,
+    pub noble_direct: i64,
+    pub bonus_usefulness: i64,
+    pub cost_efficiency: i64,
+    pub deficit_reduction: i64,
+    pub new_target: i64,
+    pub return_penalty: i64,
+    pub gold_value: i64,
+    pub reserve_proximity: i64,
+    pub reserve_gold: i64,
+    pub reserve_blind_gold: i64,
+}
+
+impl HeuristicTermScores {
+    /// Sum of all terms; must equal the action's aggregate score.
+    pub fn total(&self) -> i64 {
+        self.category_base
+            + self.prestige
+            + self.noble_gain
+            + self.noble_direct
+            + self.bonus_usefulness
+            + self.cost_efficiency
+            + self.deficit_reduction
+            + self.new_target
+            + self.return_penalty
+            + self.gold_value
+            + self.reserve_proximity
+            + self.reserve_gold
+            + self.reserve_blind_gold
+    }
+}
+
 /// Score every legal action for `obs`. The returned vector is aligned with
 /// `actions` by index.
 fn score_actions(obs: &Observation, actions: &[Action]) -> Vec<i64> {
+    heuristic_term_scores(obs, actions)
+        .iter()
+        .map(|terms| terms.total())
+        .collect()
+}
+
+/// Decompose every legal action's heuristic score into named additive terms
+/// (S2 attribution accessor). Aligned with `actions` by index; totals are
+/// bit-identical to the historical `score_actions` values.
+pub fn heuristic_term_scores(obs: &Observation, actions: &[Action]) -> Vec<HeuristicTermScores> {
     let me = obs
         .public
         .players
@@ -136,92 +190,183 @@ fn score_actions(obs: &Observation, actions: &[Action]) -> Vec<i64> {
 
     actions
         .iter()
-        .map(|action| match *action {
-            Action::BuyMarket { tier, slot } => {
-                let id = obs.public.market[tier.index()][slot as usize]
-                    .expect("a legal buy references a present market card");
-                score_buy(
-                    *card(id),
-                    &nobles_in_play,
-                    bonuses,
-                    nobles_now,
-                    &bonus_useful,
-                )
-            }
-            Action::BuyReserved { slot } => {
-                let id = obs.private.reserved[slot as usize].card;
-                score_buy(
-                    *card(id),
-                    &nobles_in_play,
-                    bonuses,
-                    nobles_now,
-                    &bonus_useful,
-                )
-            }
-            Action::TakeTokens { take, give_back } => {
-                score_take(take, give_back, &targets, tokens, bonuses)
-            }
-            Action::ReserveMarket {
-                tier,
-                slot,
-                give_back,
-            } => {
-                let id = obs.public.market[tier.index()][slot as usize]
-                    .expect("a legal reserve references a present market card");
-                score_reserve_visible(
-                    *card(id),
+        .map(|action| {
+            let mut terms = HeuristicTermScores {
+                category_base: 0,
+                prestige: 0,
+                noble_gain: 0,
+                noble_direct: 0,
+                bonus_usefulness: 0,
+                cost_efficiency: 0,
+                deficit_reduction: 0,
+                new_target: 0,
+                return_penalty: 0,
+                gold_value: 0,
+                reserve_proximity: 0,
+                reserve_gold: 0,
+                reserve_blind_gold: 0,
+            };
+            match *action {
+                Action::BuyMarket { tier, slot } => {
+                    let id = obs.public.market[tier.index()][slot as usize]
+                        .expect("a legal buy references a present market card");
+                    terms_buy(*card(id), &nobles_in_play, bonuses, nobles_now, &bonus_useful)
+                        .into_terms(&mut terms);
+                }
+                Action::BuyReserved { slot } => {
+                    let id = obs.private.reserved[slot as usize].card;
+                    terms_buy(*card(id), &nobles_in_play, bonuses, nobles_now, &bonus_useful)
+                        .into_terms(&mut terms);
+                }
+                Action::TakeTokens { take, give_back } => {
+                    terms_take(take, give_back, &targets, tokens, bonuses)
+                        .into_terms(&mut terms);
+                }
+                Action::ReserveMarket {
+                    tier,
+                    slot,
                     give_back,
-                    tokens,
-                    bonuses,
-                    gold_available,
-                    &bonus_useful,
-                )
+                } => {
+                    let id = obs.public.market[tier.index()][slot as usize]
+                        .expect("a legal reserve references a present market card");
+                    terms_reserve_visible(
+                        *card(id),
+                        give_back,
+                        tokens,
+                        bonuses,
+                        gold_available,
+                        &bonus_useful,
+                    )
+                    .into_terms(&mut terms);
+                }
+                Action::ReserveDeck { give_back, .. } => {
+                    terms_reserve_blind(give_back, gold_available).into_terms(&mut terms);
+                }
+                Action::ChooseNoble { .. } => {
+                    terms.category_base = SCORE_BUY + 3 * BUY_PRESTIGE;
+                    terms.noble_direct = NOBLE_DIRECT;
+                }
+                Action::Pass => {
+                    terms.category_base = SCORE_PASS;
+                }
             }
-            Action::ReserveDeck { give_back, .. } => score_reserve_blind(give_back, gold_available),
-            Action::ChooseNoble { .. } => SCORE_BUY + 3 * BUY_PRESTIGE + NOBLE_DIRECT,
-            Action::Pass => SCORE_PASS,
+            terms
         })
         .collect()
 }
 
-/// Score a buy (market or reserved) of `card`.
-fn score_buy(
+/// Term-level view of one scoring category, applied onto a
+/// [`HeuristicTermScores`] in one call per action.
+trait IntoTerms {
+    fn into_terms(self, out: &mut HeuristicTermScores);
+}
+
+/// Buy terms (market or reserved).
+struct BuyTerms {
+    base: i64,
+    noble_gain: i64,
+    bonus_usefulness: i64,
+    cost_efficiency: i64,
+}
+
+impl IntoTerms for BuyTerms {
+    fn into_terms(self, out: &mut HeuristicTermScores) {
+        out.category_base = self.base;
+        out.noble_gain = self.noble_gain;
+        out.bonus_usefulness = self.bonus_usefulness;
+        out.cost_efficiency = self.cost_efficiency;
+    }
+}
+
+/// TakeTokens terms.
+struct TakeTerms {
+    base: i64,
+    deficit_reduction: i64,
+    new_target: i64,
+    return_penalty: i64,
+    gold_value: i64,
+}
+
+impl IntoTerms for TakeTerms {
+    fn into_terms(self, out: &mut HeuristicTermScores) {
+        out.category_base = self.base;
+        out.deficit_reduction = self.deficit_reduction;
+        out.new_target = self.new_target;
+        out.return_penalty = self.return_penalty;
+        out.gold_value = self.gold_value;
+    }
+}
+
+/// Reserve-visible terms.
+struct ReserveVisibleTerms {
+    base: i64,
+    prestige: i64,
+    bonus_usefulness: i64,
+    reserve_proximity: i64,
+    reserve_gold: i64,
+    return_penalty: i64,
+}
+
+impl IntoTerms for ReserveVisibleTerms {
+    fn into_terms(self, out: &mut HeuristicTermScores) {
+        out.category_base = self.base;
+        out.prestige = self.prestige;
+        out.bonus_usefulness = self.bonus_usefulness;
+        out.reserve_proximity = self.reserve_proximity;
+        out.reserve_gold = self.reserve_gold;
+        out.return_penalty = self.return_penalty;
+    }
+}
+
+/// Reserve-blind terms.
+struct ReserveBlindTerms {
+    base: i64,
+    reserve_blind_gold: i64,
+    return_penalty: i64,
+}
+
+impl IntoTerms for ReserveBlindTerms {
+    fn into_terms(self, out: &mut HeuristicTermScores) {
+        out.category_base = self.base;
+        out.reserve_blind_gold = self.reserve_blind_gold;
+        out.return_penalty = self.return_penalty;
+    }
+}
+
+fn terms_buy(
     card: CardDef,
     nobles_in_play: &[NobleId],
     bonuses: [u8; 5],
     nobles_now: usize,
     bonus_useful: &[i64; 5],
-) -> i64 {
-    let mut s = SCORE_BUY;
-    s += card.prestige as i64 * BUY_PRESTIGE;
+) -> BuyTerms {
+    // The prestige contribution (prestige * BUY_PRESTIGE) stays folded into
+    // the category base exactly as the historical `score_buy` computed it,
+    // so totals remain bit-identical; the prestige term is reserved for the
+    // reserve-visible category where it was a separate addend.
+    let mut base = SCORE_BUY;
+    base += card.prestige as i64 * BUY_PRESTIGE;
 
-    // A buy that completes a noble is worth a large premium.
     let mut bonuses_after = bonuses;
     bonuses_after[card.bonus.index()] += 1;
     let nobles_after = nobles_completable(nobles_in_play, bonuses_after);
     let gain = nobles_after.saturating_sub(nobles_now);
-    s += gain as i64 * BUY_NOBLE_GAIN;
 
-    // Reward the bonus color this card grants if it is still useful.
-    s += bonus_useful[card.bonus.index()] * BONUS_USEFULNESS_WEIGHT;
-
-    // Cheaper cards are marginally preferred among equal prestige/noble gains.
-    s -= card.total_cost() as i64 * BUY_COST_EFFICIENCY;
-    s
+    BuyTerms {
+        base,
+        noble_gain: gain as i64 * BUY_NOBLE_GAIN,
+        bonus_usefulness: bonus_useful[card.bonus.index()] * BONUS_USEFULNESS_WEIGHT,
+        cost_efficiency: -(card.total_cost() as i64 * BUY_COST_EFFICIENCY),
+    }
 }
 
-/// Score a `TakeTokens` action by how much it shrinks the token deficit toward
-/// the target cards, whether it makes a target affordable, and the tokens it is
-/// forced to return.
-fn score_take(
+fn terms_take(
     take: Gems,
     give_back: Gems,
     targets: &[CardDef],
     tokens: Gems,
     bonuses: [u8; 5],
-) -> i64 {
-    let mut s = SCORE_TAKE;
-
+) -> TakeTerms {
     let before: i64 = targets
         .iter()
         .map(|c| card_deficit(c, tokens, bonuses))
@@ -232,52 +377,49 @@ fn score_take(
         .map(|c| card_deficit(c, after, bonuses))
         .sum();
     let reduction = before - after_total;
-    s += reduction * TAKE_DEFICIT_REDUCTION;
-
     let newly = targets
         .iter()
         .filter(|c| card_deficit(c, tokens, bonuses) > 0 && card_deficit(c, after, bonuses) == 0)
         .count() as i64;
-    s += newly * TAKE_NEW_TARGET;
 
-    // Tokens forced back to the bank are wasted acquisition.
-    s -= give_back.total() as i64 * TAKE_RETURN_PENALTY;
-
-    // Gold is a wild resource usable against any color deficit.
-    s += take.gold as i64 * TAKE_GOLD_VALUE;
-    s
+    TakeTerms {
+        base: SCORE_TAKE,
+        deficit_reduction: reduction * TAKE_DEFICIT_REDUCTION,
+        new_target: newly * TAKE_NEW_TARGET,
+        return_penalty: -(give_back.total() as i64 * TAKE_RETURN_PENALTY),
+        gold_value: take.gold as i64 * TAKE_GOLD_VALUE,
+    }
 }
 
-/// Score a visible-card reserve.
-fn score_reserve_visible(
+fn terms_reserve_visible(
     card: CardDef,
     give_back: Gems,
     tokens: Gems,
     bonuses: [u8; 5],
     gold_available: bool,
     bonus_useful: &[i64; 5],
-) -> i64 {
-    let mut s = SCORE_RESERVE_VISIBLE;
-    s += card.prestige as i64 * RESERVE_PRESTIGE;
-    s += bonus_useful[card.bonus.index()] * BONUS_USEFULNESS_WEIGHT;
-    // Prefer reserving cards we are closer to affording.
-    s -= card_deficit(&card, tokens, bonuses) * RESERVE_PROXIMITY;
-    if gold_available {
-        s += RESERVE_GOLD;
+) -> ReserveVisibleTerms {
+    ReserveVisibleTerms {
+        base: SCORE_RESERVE_VISIBLE,
+        prestige: card.prestige as i64 * RESERVE_PRESTIGE,
+        bonus_usefulness: bonus_useful[card.bonus.index()] * BONUS_USEFULNESS_WEIGHT,
+        reserve_proximity: -(card_deficit(&card, tokens, bonuses) * RESERVE_PROXIMITY),
+        reserve_gold: if gold_available { RESERVE_GOLD } else { 0 },
+        return_penalty: -(give_back.total() as i64 * TAKE_RETURN_PENALTY),
     }
-    s -= give_back.total() as i64 * TAKE_RETURN_PENALTY;
-    s
 }
 
-/// Score a blind deck reserve (no public card information is available).
-fn score_reserve_blind(give_back: Gems, gold_available: bool) -> i64 {
-    let mut s = SCORE_RESERVE_BLIND;
-    if gold_available {
-        s += RESERVE_BLIND_GOLD;
+fn terms_reserve_blind(give_back: Gems, gold_available: bool) -> ReserveBlindTerms {
+    ReserveBlindTerms {
+        base: SCORE_RESERVE_BLIND,
+        reserve_blind_gold: if gold_available { RESERVE_BLIND_GOLD } else { 0 },
+        return_penalty: -(give_back.total() as i64 * TAKE_RETURN_PENALTY),
     }
-    s -= give_back.total() as i64 * TAKE_RETURN_PENALTY;
-    s
 }
+
+
+
+
 
 /// Tokens a player would hold after the take/give-back exchange, capped at the
 /// per-player maximum so deficit math stays realistic.
@@ -353,6 +495,54 @@ mod tests {
     use crate::{DecisionContext, PublicRequestMeta, StableRng};
     use splendor_catalog::CardId;
     use splendor_core::{observation_hash, FullState, GameConfig, PlayerId};
+
+    #[test]
+    fn term_decomposition_sums_to_score_actions_for_all_action_kinds() {
+        // S2 hard parity gate: sum(terms) == score_actions for 100% of
+        // legal actions, across a spread of real game states (covering
+        // buys, takes with/without give-back, reserves, and pass).
+        for seed in [1u64, 7, 42, 2026, 20_260_703, 20_260_812] {
+            let (state, _) = FullState::new(GameConfig {
+                player_count: 2,
+                seed,
+                ..Default::default()
+            })
+            .unwrap();
+            let (obs, actions) = obs_for_state(state);
+            let scores = score_actions(&obs, &actions);
+            let terms = heuristic_term_scores(&obs, &actions);
+            assert_eq!(scores.len(), terms.len());
+            for (i, ts) in terms.iter().enumerate() {
+                assert_eq!(
+                    ts.total(),
+                    scores[i],
+                    "term sum != aggregate score at seed {seed} action {i} ({:?})",
+                    actions[i]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn term_scores_serialize_with_all_fields() {
+        let (state, _) = FullState::new(GameConfig {
+            player_count: 2,
+            seed: 3,
+            ..Default::default()
+        })
+        .unwrap();
+        let (obs, actions) = obs_for_state(state);
+        let terms = heuristic_term_scores(&obs, &actions);
+        let json = serde_json::to_string(&terms[0]).unwrap();
+        for field in [
+            "category_base", "prestige", "noble_gain", "noble_direct",
+            "bonus_usefulness", "cost_efficiency", "deficit_reduction",
+            "new_target", "return_penalty", "gold_value", "reserve_proximity",
+            "reserve_gold", "reserve_blind_gold",
+        ] {
+            assert!(json.contains(field), "missing field {field} in {json}");
+        }
+    }
 
     fn obs_for_state(state: FullState) -> (Observation, Vec<Action>) {
         let obs = state.observation(PlayerId(0));

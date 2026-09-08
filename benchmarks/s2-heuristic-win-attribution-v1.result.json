@@ -1,0 +1,325 @@
+{
+  "format": "effective-splendor-s2-result",
+  "version": 1,
+  "experiment_id": "s2-heuristic-win-attribution-v1",
+  "design_doc": "docs/s2-heuristic-win-attribution.md @ 82fc400 (DESIGN_V2 APPROVED/FROZEN)",
+  "a1": {
+    "total_games": 256,
+    "total_contexts": 15143,
+    "role_counts": {
+      "REFERENCE_ACTOR": 7573,
+      "SEARCH_ACTOR": 7570
+    },
+    "tie_rate": {
+      "REFERENCE_ACTOR": 749,
+      "SEARCH_ACTOR": 667
+    },
+    "classification": {
+      "REFERENCE_ACTOR:n1:X_NOT_IN_H*_TIE": 269,
+      "SEARCH_ACTOR:n1:X_NOT_IN_H*_TIE": 228,
+      "REFERENCE_ACTOR:n1:X_IN_H*": 1341,
+      "REFERENCE_ACTOR:n1:X_NOT_IN_H*_UNIQUE": 2112,
+      "SEARCH_ACTOR:n1:X_NOT_IN_H*_UNIQUE": 1868,
+      "SEARCH_ACTOR:n1:X_IN_H*": 1624,
+      "REFERENCE_ACTOR:M07:X_NOT_IN_H*_TIE": 316,
+      "SEARCH_ACTOR:M07:X_NOT_IN_H*_TIE": 256,
+      "REFERENCE_ACTOR:M07:X_IN_H*": 1297,
+      "SEARCH_ACTOR:M07:X_IN_H*": 1399,
+      "SEARCH_ACTOR:M07:X_NOT_IN_H*_UNIQUE": 2195,
+      "REFERENCE_ACTOR:M07:X_NOT_IN_H*_UNIQUE": 2238
+    },
+    "search_actor_transitions": {
+      "reserve_market->take_tokens": 568,
+      "take_tokens->buy_reserved": 236,
+      "buy_market->buy_reserved": 191,
+      "take_tokens->take_tokens": 531,
+      "buy_market->buy_market": 630,
+      "take_tokens->buy_market": 853,
+      "buy_reserved->buy_market": 230,
+      "reserve_market->buy_market": 483,
+      "reserve_deck->buy_market": 94,
+      "reserve_market->buy_reserved": 89,
+      "reserve_deck->take_tokens": 86,
+      "buy_reserved->buy_reserved": 53,
+      "reserve_deck->buy_reserved": 19
+    },
+    "search_actor_total": 7570,
+    "exposure_report": {
+      "take_tokens->buy_market": {
+        "n1": {
+          "exposed_games": 124,
+          "exposed_h_wins": 83,
+          "exposed_rate": 0.6694,
+          "unexposed_games": 4,
+          "unexposed_h_wins": 2,
+          "unexposed_rate": 0.5,
+          "delta": 0.1694,
+          "wilson_exposed": [
+            0.5826,
+            0.746
+          ]
+        },
+        "M07": {
+          "exposed_games": 124,
+          "exposed_h_wins": 86,
+          "exposed_rate": 0.6935,
+          "unexposed_games": 4,
+          "unexposed_h_wins": 2,
+          "unexposed_rate": 0.5,
+          "delta": 0.1935,
+          "wilson_exposed": [
+            0.6076,
+            0.7679
+          ]
+        }
+      },
+      "buy_market->buy_market": {
+        "n1": {
+          "exposed_games": 115,
+          "exposed_h_wins": 75,
+          "exposed_rate": 0.6522,
+          "unexposed_games": 13,
+          "unexposed_h_wins": 10,
+          "unexposed_rate": 0.7692,
+          "delta": -0.1171,
+          "wilson_exposed": [
+            0.5615,
+            0.733
+          ]
+        },
+        "M07": {
+          "exposed_games": 111,
+          "exposed_h_wins": 77,
+          "exposed_rate": 0.6937,
+          "unexposed_games": 17,
+          "unexposed_h_wins": 11,
+          "unexposed_rate": 0.6471,
+          "delta": 0.0466,
+          "wilson_exposed": [
+            0.6027,
+            0.7718
+          ]
+        }
+      },
+      "reserve_market->take_tokens": {
+        "n1": {
+          "exposed_games": 118,
+          "exposed_h_wins": 79,
+          "exposed_rate": 0.6695,
+          "unexposed_games": 10,
+          "unexposed_h_wins": 6,
+          "unexposed_rate": 0.6,
+          "delta": 0.0695,
+          "wilson_exposed": [
+            0.5805,
+            0.7478
+          ]
+        },
+        "M07": {
+          "exposed_games": 117,
+          "exposed_h_wins": 83,
+          "exposed_rate": 0.7094,
+          "unexposed_games": 11,
+          "unexposed_h_wins": 5,
+          "unexposed_rate": 0.4545,
+          "delta": 0.2549,
+          "wilson_exposed": [
+            0.6215,
+            0.784
+          ]
+        }
+      },
+      "take_tokens->take_tokens": {
+        "n1": {
+          "exposed_games": 119,
+          "exposed_h_wins": 80,
+          "exposed_rate": 0.6723,
+          "unexposed_games": 9,
+          "unexposed_h_wins": 5,
+          "unexposed_rate": 0.5556,
+          "delta": 0.1167,
+          "wilson_exposed": [
+            0.5837,
+            0.7501
+          ]
+        },
+        "M07": {
+          "exposed_games": 110,
+          "exposed_h_wins": 75,
+          "exposed_rate": 0.6818,
+          "unexposed_games": 18,
+          "unexposed_h_wins": 13,
+          "unexposed_rate": 0.7222,
+          "delta": -0.0404,
+          "wilson_exposed": [
+            0.5899,
+            0.7615
+          ]
+        }
+      },
+      "reserve_market->buy_market": {
+        "n1": {
+          "exposed_games": 99,
+          "exposed_h_wins": 64,
+          "exposed_rate": 0.6465,
+          "unexposed_games": 29,
+          "unexposed_h_wins": 21,
+          "unexposed_rate": 0.7241,
+          "delta": -0.0777,
+          "wilson_exposed": [
+            0.5484,
+            0.7336
+          ]
+        },
+        "M07": {
+          "exposed_games": 111,
+          "exposed_h_wins": 72,
+          "exposed_rate": 0.6486,
+          "unexposed_games": 17,
+          "unexposed_h_wins": 16,
+          "unexposed_rate": 0.9412,
+          "delta": -0.2925,
+          "wilson_exposed": [
+            0.5562,
+            0.7311
+          ]
+        }
+      },
+      "take_tokens->buy_reserved": {
+        "n1": {
+          "exposed_games": 66,
+          "exposed_h_wins": 45,
+          "exposed_rate": 0.6818,
+          "unexposed_games": 62,
+          "unexposed_h_wins": 40,
+          "unexposed_rate": 0.6452,
+          "delta": 0.0367,
+          "wilson_exposed": [
+            0.5621,
+            0.7815
+          ]
+        },
+        "M07": {
+          "exposed_games": 63,
+          "exposed_h_wins": 47,
+          "exposed_rate": 0.746,
+          "unexposed_games": 65,
+          "unexposed_h_wins": 41,
+          "unexposed_rate": 0.6308,
+          "delta": 0.1153,
+          "wilson_exposed": [
+            0.6266,
+            0.8372
+          ]
+        }
+      },
+      "buy_reserved->buy_market": {
+        "n1": {
+          "exposed_games": 59,
+          "exposed_h_wins": 42,
+          "exposed_rate": 0.7119,
+          "unexposed_games": 69,
+          "unexposed_h_wins": 43,
+          "unexposed_rate": 0.6232,
+          "delta": 0.0887,
+          "wilson_exposed": [
+            0.5862,
+            0.8116
+          ]
+        },
+        "M07": {
+          "exposed_games": 93,
+          "exposed_h_wins": 60,
+          "exposed_rate": 0.6452,
+          "unexposed_games": 35,
+          "unexposed_h_wins": 28,
+          "unexposed_rate": 0.8,
+          "delta": -0.1548,
+          "wilson_exposed": [
+            0.5439,
+            0.7349
+          ]
+        }
+      },
+      "buy_market->buy_reserved": {
+        "n1": {
+          "exposed_games": 58,
+          "exposed_h_wins": 42,
+          "exposed_rate": 0.7241,
+          "unexposed_games": 70,
+          "unexposed_h_wins": 43,
+          "unexposed_rate": 0.6143,
+          "delta": 0.1099,
+          "wilson_exposed": [
+            0.598,
+            0.8225
+          ]
+        },
+        "M07": {
+          "exposed_games": 52,
+          "exposed_h_wins": 39,
+          "exposed_rate": 0.75,
+          "unexposed_games": 76,
+          "unexposed_h_wins": 49,
+          "unexposed_rate": 0.6447,
+          "delta": 0.1053,
+          "wilson_exposed": [
+            0.6179,
+            0.8477
+          ]
+        }
+      }
+    }
+  },
+  "a2": {
+    "strict_divergences": 4063,
+    "dominant_terms": {
+      "category_base": 2451,
+      "bonus_usefulness": 1029,
+      "new_target": 44,
+      "deficit_reduction": 487,
+      "cost_efficiency": 52,
+      "noble_gain": 1
+    },
+    "category_dominated": 2451,
+    "feature_dominated": 1612
+  },
+  "a3": {
+    "search_actor_total": 7570,
+    "candidates": [
+      {
+        "pattern": "take_tokens->buy_market",
+        "count": 853,
+        "rate": 0.1127,
+        "distinct_games": 248,
+        "delta_n1": 0.1694,
+        "delta_M07": 0.1935
+      },
+      {
+        "pattern": "reserve_market->take_tokens",
+        "count": 568,
+        "rate": 0.075,
+        "distinct_games": 235,
+        "delta_n1": 0.0695,
+        "delta_M07": 0.2549
+      },
+      {
+        "pattern": "reserve_market->take_tokens|early",
+        "count": 403,
+        "rate": 0.0532,
+        "distinct_games": 214,
+        "delta_n1": 0.0481,
+        "delta_M07": 0.0889
+      }
+    ],
+    "nominee": {
+      "pattern": "take_tokens->buy_market",
+      "count": 853,
+      "rate": 0.1127,
+      "distinct_games": 248,
+      "delta_n1": 0.1694,
+      "delta_M07": 0.1935
+    }
+  },
+  "verdict": "ACTIONABLE_HYPOTHESIS_FOUND"
+}
