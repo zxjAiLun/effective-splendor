@@ -15,6 +15,11 @@ use splendor_imperfect_search::{
 use splendor_search::{canonical_order, AttributionProfile};
 use thiserror::Error;
 
+pub mod s2b_overlay;
+pub use s2b_overlay::{
+    run_n1_buy_overlay_agent_v1, N1BuyOverlayPolicy, S2B_OVERLAY_AGENT_NAME,
+};
+
 /// Stable Arena identity for the first live M07-backed policy.
 pub const DETERMINIZATION_AGENT_NAME: &str = "effective-splendor-determinization-agent-v1";
 /// Policy release version, independent of the engine crate version.

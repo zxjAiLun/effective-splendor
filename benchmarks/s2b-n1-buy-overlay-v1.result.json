@@ -1,0 +1,149 @@
+{
+  "format": "effective-splendor-s2b-result",
+  "version": 1,
+  "experiment_id": "s2b-n1-buy-overlay-v1",
+  "design_doc": "docs/s2b-n1-buy-overlay.md @ ff7a4f1 (DESIGN_V2 APPROVED/FROZEN)",
+  "contract": {
+    "frozen_seeds": [
+      5800192,
+      5800193,
+      5800194,
+      5800195,
+      5800196,
+      5800197,
+      5800198,
+      5800199,
+      5800200,
+      5800201,
+      5800202,
+      5800203,
+      5800204,
+      5800205,
+      5800206,
+      5800207,
+      5800208,
+      5800209,
+      5800210,
+      5800211,
+      5800212,
+      5800213,
+      5800214,
+      5800215,
+      5800216,
+      5800217,
+      5800218,
+      5800219,
+      5800220,
+      5800221,
+      5800222,
+      5800223,
+      5800224,
+      5800225,
+      5800226,
+      5800227,
+      5800228,
+      5800229,
+      5800230,
+      5800231,
+      5800232,
+      5800233,
+      5800234,
+      5800235,
+      5800236,
+      5800237,
+      5800238,
+      5800239,
+      5800240,
+      5800241,
+      5800242,
+      5800243,
+      5800244,
+      5800245,
+      5800246,
+      5800247,
+      5800248,
+      5800249,
+      5800250,
+      5800251,
+      5800252,
+      5800253,
+      5800254,
+      5800255
+    ],
+    "rotations": 2,
+    "pairings": [
+      "p1_overlay_vs_n1",
+      "p2_overlay_vs_heuristic"
+    ],
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 43200001,
+      "unit": "paired seed block"
+    },
+    "ci_levels": {
+      "descriptive_95": 95.0,
+      "decision_97_5": 97.5
+    },
+    "decision_ci": "decision_97_5 (Bonferroni for 2 comparisons)",
+    "candidate": "exact n1 args + --heuristic-buy-overlay (fail-closed identity)"
+  },
+  "pairings": [
+    {
+      "pairing_id": "p1_overlay_vs_n1",
+      "primary": "overlay",
+      "secondary": "n1",
+      "total_matches": 128,
+      "wins": 51,
+      "ties": 2,
+      "losses": 75,
+      "center_bps": 4062.5,
+      "ci_descriptive_95_bps": [
+        3242.1875,
+        4882.8125
+      ],
+      "ci_decision_97_5_bps": [
+        3125.0,
+        5000.0
+      ],
+      "verdict_descriptive_95": "STRONGER_B",
+      "verdict_decision_97_5": "UNRESOLVED",
+      "mean_plies": 60.4609375,
+      "wall_total_s": 12.8
+    },
+    {
+      "pairing_id": "p2_overlay_vs_heuristic",
+      "primary": "overlay",
+      "secondary": "heuristic",
+      "total_matches": 128,
+      "wins": 40,
+      "ties": 1,
+      "losses": 87,
+      "center_bps": 3164.0625,
+      "ci_descriptive_95_bps": [
+        2421.875,
+        3946.289062499986
+      ],
+      "ci_decision_97_5_bps": [
+        2304.6875,
+        4062.5
+      ],
+      "verdict_descriptive_95": "STRONGER_B",
+      "verdict_decision_97_5": "STRONGER_B",
+      "mean_plies": 58.6328125,
+      "wall_total_s": 9.0
+    }
+  ],
+  "decision": {
+    "vs_n1": "UNRESOLVED",
+    "vs_heuristic": "STRONGER_B",
+    "verdict": "UNRESOLVED",
+    "reference_challenge_signal": false,
+    "primary_reference_change": false,
+    "wording_rules": [
+      "UNRESOLVED means evidence insufficient to separate; NOT equivalence.",
+      "No outcome changes the primary reference or promotion state.",
+      "CARRIER_GAIN_ONLY is a valuable engineering result, never conflated with REFUTED."
+    ]
+  },
+  "splendor_exe_sha256": "b97a93ac05d29f0fcfe5b01ebce81aeb9ef1a51ce758e58f02839f4ac5195972"
+}

@@ -35,6 +35,7 @@ use splendor_determinization_agent::{
     run_determinization_agent_with_stats_v1, DETERMINIZATION_AGENT_NAME,
     DETERMINIZATION_AGENT_VERSION,
 };
+use splendor_determinization_agent::run_n1_buy_overlay_agent_v1;
 use splendor_search::AttributionProfile;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
@@ -768,7 +769,7 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let (config, runtime_name, runtime_version, attribution_profile, stats_out, emit_depth_histogram) =
+    let (config, runtime_name, runtime_version, attribution_profile, stats_out, emit_depth_histogram, heuristic_buy_overlay) =
         match parse_agent_determinization_args(args) {
             Ok(parsed) => parsed,
             Err(msg) => {
@@ -791,7 +792,30 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         version: &runtime_version,
     };
 
-    let res = if let Some(stats_path) = stats_out {
+    let res = if heuristic_buy_overlay {
+        // S2b candidate: parameter-free n1 buy-overlay. Fail-closed identity:
+        // the overlay is only valid for the EXACT frozen n1 config, and it
+        // cannot be combined with attribution profiles or telemetry flags.
+        if attribution_profile.is_some() {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(
+                stderr,
+                "error: --heuristic-buy-overlay cannot be combined with --attribution-profile"
+            );
+            let _ = stderr.flush();
+            return 1;
+        }
+        if stats_out.is_some() || emit_depth_histogram {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(
+                stderr,
+                "error: --heuristic-buy-overlay cannot be combined with --stats-out/--emit-depth-histogram"
+            );
+            let _ = stderr.flush();
+            return 1;
+        }
+        run_n1_buy_overlay_agent_v1(input, output, diagnostics, config, identity)
+    } else if let Some(stats_path) = stats_out {
         // S0 telemetry path: identical decisions, one PerDecisionStatsV1
         // JSON line per successful decision appended to the agent-owned
         // stats file (arena stderr tail stays untouched).
@@ -1050,6 +1074,7 @@ fn parse_agent_determinization_args(
         Option<AttributionProfile>,
         Option<String>,
         bool,
+        bool,
     ),
     String,
 > {
@@ -1062,6 +1087,7 @@ fn parse_agent_determinization_args(
     let mut attribution_profile: Option<String> = None;
     let mut stats_out: Option<String> = None;
     let mut emit_depth_histogram = false;
+    let mut heuristic_buy_overlay = false;
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -1079,6 +1105,14 @@ fn parse_agent_determinization_args(
                     return Err("--emit-depth-histogram given more than once".to_owned());
                 }
                 emit_depth_histogram = true;
+                i += 1;
+                continue;
+            }
+            "--heuristic-buy-overlay" => {
+                if heuristic_buy_overlay {
+                    return Err("--heuristic-buy-overlay given more than once".to_owned());
+                }
+                heuristic_buy_overlay = true;
                 i += 1;
                 continue;
             }
@@ -1114,6 +1148,7 @@ fn parse_agent_determinization_args(
         profile,
         stats_out,
         emit_depth_histogram,
+        heuristic_buy_overlay,
     ))
 }
 

@@ -1,0 +1,30 @@
+{
+  "format": "effective-splendor-s2b-scope-result",
+  "version": 1,
+  "experiment_id": "s2b-scope-v1",
+  "design_doc": "docs/s2b-n1-buy-overlay.md @ ff7a4f1 (DESIGN_V2 APPROVED/FROZEN)",
+  "corpus": {
+    "P1": "S0 p1 replays, n1 mover contexts (S2 discovery overlap)",
+    "P3": "S0 p3 replays, n1 mover contexts (additional development corpus)"
+  },
+  "contexts": 7676,
+  "parity": "exhaustive fixed-context pointwise PASS (100%)",
+  "trigger_stats": {
+    "P1": {
+      "contexts": 3720,
+      "triggers": 386,
+      "rate": 0.103763
+    },
+    "P3": {
+      "contexts": 3956,
+      "triggers": 401,
+      "rate": 0.101365
+    }
+  },
+  "p1_identity_cross_check": {
+    "s2_nominee_count": 386,
+    "scope_trigger_count": 386,
+    "sets_equal": true,
+    "identity_set_digest": "c0668c1646da42c8813cdf0721a613b62ad5b65047eff54adc297519391a00fc"
+  }
+}

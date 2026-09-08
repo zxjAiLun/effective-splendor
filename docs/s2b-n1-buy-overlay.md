@@ -1,25 +1,22 @@
 # S2b — n1 Buy-Overlay Confirmation (parameter-free candidate)
 
-STATUS     = APPROVED / FROZEN (S2b DESIGN_V2 review verdict on adddbe2:
-            candidate rule, n1 carrier, fresh-Arena confirmation,
-            no-tuning, and heuristic-as-anchor all APPROVED; P1-1/P1-2/
-            P1-3 + P2-1..3 revisions applied docs-only; the full chain —
-            implementation, exhaustive fixed-context scope measurement,
-            P1 identity cross-check, 256-match fresh Arena, 10k
-            bootstrap, final audit, tracked result — is automatically
-            authorized; S2b closure review at the end)
-REVISION   = V2 2026-09-08 — review repairs: scope parity is fixed-context
-            pointwise (never trajectory-replay comparison); the overlay
-            flag fail-closed binds the EXACT n1 identity (20260703/s4/
-            d1/n1/StaticEvaluatorV1) so the candidate cannot silently
-            attach to non-n1 configs; the Arena family is TWO pairings
-            only (overlay vs n1, overlay vs heuristic — M07 NOT run) with
-            a 97.5% two-sided decision CI (Bonferroni for 2 comparisons)
-            plus a 95% descriptive CI; "the 853 decisions" narrowed to
-            "rule-shaped decisions on fresh states"; scope corpus split
-            into P1 (S2 discovery overlap) vs P3 (additional development
-            corpus); overhead is measured, not asserted; scope parity is
-            exhaustive, not spot-checked. V1 = adddbe2.
+STATUS     = EXECUTED (design APPROVED/FROZEN at ff7a4f1; implementation +
+            exhaustive scope measurement + 256-match fresh Arena + final
+            audit all completed 2026-09-08, ALL CHECKS PASS; verdict
+            UNRESOLVED — the frozen rule did NOT demonstrate improvement
+            over n1 at this budget (point estimate favors plain n1:
+            overlay 51-2-75, center 4062.5, 97.5% CI [3125.0, 5000.0]
+            touches the parity line, so formally UNRESOLVED, NOT
+            REFUTED), and the overlay is resolved WEAKER than heuristic
+            (3164.1 [2304.7, 4062.5]); awaiting S2b closure review)
+RESULT     = UNRESOLVED (vs n1) / STRONGER_B (vs heuristic).
+            Scope: triggers 386/3,720 (10.38%) on P1 and 401/3,956
+            (10.14%) on P3 — the historical ~11% rate transferred to
+            the additional P3 corpus; exhaustive fixed-context parity
+            100%; P1 trigger identity set EXACTLY equals the S2 A1
+            n1-side nominee set (386 == 386, digest-bound).
+REVISION   = V2 2026-09-08 (frozen, ff7a4f1) — executed as frozen.
+            V1 = adddbe2.
 BASELINE   = d409801 (S2 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -256,20 +253,119 @@ any rule change reopens this design for review.
   (a separate future question).
 - M07 interactions are unmeasured this round (deliberate).
 
-## Authorized execution path (per DESIGN_V2 review)
+## Validation and evidence
 
-1. Docs-only V2 (this document).
-2. Implement the exact-n1-only overlay.
-3. Exhaustive fixed-context scope measurement.
-4. P1 identity-set cross-check against S2.
-5. Tests / parity.
-6. Fresh 256-match Arena.
-7. 10k paired bootstrap (95% descriptive + 97.5% decision).
-8. Final audit.
-9. Tracked result.
-10. Return for closure review.
+### Execution — 2026-09-08 (single valid run)
 
-Still NOT authorized: M07 pairing, rule changes, tier-1 condition,
-bonus-usefulness condition, thresholds, weight tuning,
+Implementation:
+- `N1BuyOverlayPolicy` (crates/splendor-determinization-agent/src/
+  s2b_overlay.rs): wraps `DeterminizationAgentPolicyV1`; the constructor
+  fail-closes on any config other than the EXACT frozen n1; H* is
+  computed via `heuristic_term_scores().total()` (no policy RNG, no tie
+  state; |H*| > 1 is an automatic no-op); trigger/decision counters are
+  descriptive only.
+- CLI `--heuristic-buy-overlay`: rejected for non-n1 configs (verified:
+  n2000 + overlay -> explicit identity error); cannot combine with
+  attribution/telemetry flags.
+- `splendor s2b-scope` batched fixed-context harness + unit tests
+  (config rejection, non-take no-op, wrapper-vs-plain parity on the
+  same context). Workspace 778 tests / 0 failed.
+
+### Scope measurement (exhaustive, fixed-context pointwise)
+
+- Corpus: S0 P1 n1 mover contexts (3,720) + S0 P3 n1 mover contexts
+  (3,956) = 7,676 contexts.
+- Parity: 100% — every non-trigger context has candidate == base_n1 ==
+  recorded action exactly; every trigger context satisfies the full
+  trigger shape and candidate == the unique H buy.
+- Triggers: P1 386/3,720 = **10.38%**; P3 401/3,956 = **10.14%**. The
+  historical ~11% S2 rate transferred to the additional P3 corpus.
+- **P1 identity cross-check: PASS** — the P1 trigger identity set
+  equals the S2 A1 n1-side `TakeTokens -> unique H BuyMarket`
+  strict-divergence set exactly (386 == 386; identity-set digest
+  recorded in the tracked scope result). Implementation correctness is
+  bound, not assumed.
+
+### Arena (fresh seeds 5_800_192..5_800_255; 2 pairings x 64 x 2 = 256 matches)
+
+| Pairing | W-T-L | Center | 95% CI | 97.5% decision CI | Verdict |
+|---|---|---:|---|---|---|
+| overlay vs n1 | 51-2-75 | 4062.5 | [3242.2, 4882.8] | **[3125.0, 5000.0]** | **UNRESOLVED** |
+| overlay vs heuristic | 40-1-87 | 3164.1 | [2421.9, 3946.3] | [2304.7, 4062.5] | **STRONGER_B (heuristic)** |
+
+Mean plies 60.5 / 58.6; total wall ~22 s.
+
+### Decision table application (frozen)
+
+vs n1 = UNRESOLVED -> verdict = **UNRESOLVED** (the frozen table maps
+any UNRESOLVED-vs-n1 to UNRESOLVED regardless of the heuristic
+pairing). reference_challenge_signal = false. Primary reference
+unchanged.
+
+### Final audit
+
+ALL CHECKS PASS: seed disjointness; exhaustive lineup/rotation
+verification from match configs (candidate bound as exact n1 args +
+overlay flag; heuristic without overlay flags); 256/256 replays
+verified; full recomputation of W/T/L, block scores, center, both CI
+levels, verdicts, decision table; scope exhaustive parity + P1
+cross-check re-run; binary identity.
+
+### Tracked artifacts
+
+- `benchmarks/s2b-scope-v1.result.json` (scope + parity + cross-check).
+- `benchmarks/s2b-n1-buy-overlay-v1.result.json` (Arena + decision).
+- Raw per-match artifacts under ignored `local-artifacts/s2b-arena/`;
+  scope rows under ignored `local-artifacts/s2b-scope/` (cloud
+  evidence boundary as in S0/S1/S2).
+
+## Result and interpretation (frozen wording)
+
+The frozen `TakeTokens -> unique heuristic BuyMarket` overlay did NOT
+demonstrate improvement over n1 at this budget:
+
+> In the fresh 256-match confirmation Arena, the overlay-vs-n1 pairing
+> finished 51-2-75 (center 4062.5 bps) with a 97.5% decision CI of
+> [3125.0, 5000.0] — the interval touches the parity line, so the
+> comparison is formally UNRESOLVED, though the point estimate favors
+> plain n1. The overlay is resolved weaker than heuristic (3164.1 bps
+> [2304.7, 4062.5]).
+
+Reading notes (descriptive, post-hoc):
+
+- The overlay fired at ~10% of n1 decisions (transferring the S2
+  historical rate), so the null-ish result is not a "rule never fired"
+  artifact — the rule acted frequently and did not help.
+- The 95% CI for overlay-vs-n1 ([3242.2, 4882.8]) sits entirely BELOW
+  5000; only the widened 97.5% decision interval touches parity. A
+  stronger budget would plausibly resolve this against the overlay.
+- Licensed conclusion: this specific single-rule overlay is not a
+  demonstrated improvement; the heuristic gap is not closed by
+  transplanting the buy-preference alone. NOT licensed: "the S2
+  preference gap is worthless" (one rule, one carrier, one budget) or
+  anything about combined/alternative candidates.
+
+Per the frozen contract: UNRESOLVED stands (extra seeds are a user
+decision, never automatic); no reference or promotion change; S2b
+closes on review.
+
+## Execution status and next authorized gate
+
+Executed (single valid run, 2026-09-08): docs V2 -> exact-n1-only
+overlay implementation -> exhaustive scope measurement (parity 100%,
+P1 cross-check exact) -> 256-match fresh Arena -> 10k bootstrap (95% +
+97.5%) -> final audit ALL CHECKS PASS -> tracked results. Verdict:
+UNRESOLVED (vs n1; point estimate favors plain n1) / STRONGER_B (vs
+heuristic).
+
+Next gate: **S2b closure review.** The open user decisions per the
+frozen contract: (a) accept UNRESOLVED and close; (b) authorize
+additional seeds for the overlay-vs-n1 pairing (the 95% CI sits below
+parity, so a larger budget would likely resolve it — against the
+overlay); (c) any rule change REOPENS the design (not a repair). No
+outcome changes the primary reference or promotion state.
+
+Still NOT authorized (unchanged): M07 pairing, rule changes, tier-1
+condition, bonus-usefulness condition, thresholds, weight tuning,
 StaticEvaluator/search changes, extra seeds after UNRESOLVED,
 promotion/default change.
