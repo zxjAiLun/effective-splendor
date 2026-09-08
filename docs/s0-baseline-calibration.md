@@ -1,7 +1,19 @@
 # S0 — Baseline Calibration (Heuristic / n1 / M07)
 
-STATUS     = PROPOSED (design frozen for review; execution NOT authorized)
-BASELINE   = 3c50692 (2026-09-08, post M48A closure)
+STATUS     = PROPOSED (design revision 2 for review; execution NOT authorized)
+REVISION   = v2 2026-09-08 — review repairs: (1) config-comparability section
+            (M09/M22 used sample-seed 20260810 + heuristic seed 101/20260812;
+            historical results are a strong prior, not the S0 lineup's settled
+            direction; M09 already carried gate CI bounds); (2) decision table
+            rewritten — complete rule set, UNRESOLVED ≠ equivalence, cheap-baseline
+            choice is a cost choice with unresolved gap; (3) contradiction
+            handling unified (same validity gates, reversal stands if no error
+            found); (4) terminal_child_ratio renamed and scoped (NOT a
+            budget-fallback metric; achieved depth/fallback rate explicitly
+            unobserved this round); (5) joint decisions use per-pairing 98.33%
+            CIs (Bonferroni, same matches); (6) cost estimate de-double-counted
+            (~8k search decisions, provisional).
+BASELINE   = 3c50692 (2026-09-08, post M48A closure); design v1 commit bb881ca
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
 ## Problem and evidence
@@ -30,44 +42,64 @@ All three historical sources measured `heuristic-v1` vs the M07 family.
 Engine/agent/search core code is **unchanged** between the M07 tag
 (`ab573d7`) and current HEAD (verified: only additive test/accessor diffs
 in `heuristic.rs`/`evaluation.rs`; `state.rs`, `search.rs`, `catalog` core
-untouched), so these results transfer to current HEAD.
+untouched), so these results transfer to current HEAD **at the code
+level**. However, the participating configurations are NOT identical to
+S0's (see "Config comparability" below), so these results are a strong
+prior on heuristic beating this family of M07 configurations — not a
+settled direction for the exact S0 lineup.
 
 | Source | Matchup | Result | Seeds | Verdict status |
 |---|---|---|---|---|
-| **M09 formal** (`8ae796e`, 2026-08-11, 64 matches) | M07 (`det-s4-d1-n2000-v1`) vs `heuristic-v1` | **Heuristic 49–15** (2343.8 bps, M07 perspective) | 900000..900031 × 2 rotations | Completed formal run, gate-checked |
+| **M09 formal** (`8ae796e`, 2026-08-11, 64 matches) | M07 (`det-s4-d1-n2000-v1`) vs `heuristic-v1` | **Heuristic 49–15** (2343.8 bps, M07 perspective; gate-reported CI [177, 4509] on the candidate side) | 900000..900031 × 2 rotations | Completed formal run, gate-checked (decision: reject candidate) |
 | **M19 championship** (`1841413`, 42 matches) | `heuristic-v1` vs `m07-champion` | Heuristic 2–0 | 190000 × 2 rotations | Provisional (1 seed/pair) |
 | **M22 league** (`8ae796e` era, 48 matches) | `heuristic-v1` vs `m07-champion` | Heuristic 6–2 | 220100..220103 × 2 rotations | 4 seeds/pair |
-| **M42S** (2026-09-05, 1,152 matches) | n50/n200/n500/n2000 each vs `n1` | n2000 5703.1 bps [4843.8, 6562.5] vs n1 — **UNRESOLVED** (CI crosses 5000) | 5_300_000..5_300_063 × 2 | Formal, bootstrap CI |
+| **M42S** (2026-09-05, 1,152 matches) | n50/n200/n500/n2000 each vs `n1` | n2000 5703.1 bps [4843.8, 6562.5] vs n1 — **UNRESOLVED** (CI crosses 5000) | 5_300_000..5_300_063 × 2 | Formal, paired-block bootstrap |
+
+### Config comparability (review finding 1)
+
+The historical lineups differ from S0's in agent seeds:
+
+| Config | M09 / M22 | M42S / S0 |
+|---|---|---|
+| determinization sample seed | `20260810` | `20260703` |
+| heuristic seed | `101` (M09) / `20260812` (M22) | `20260812` (S0) |
+
+These are different sampled-determinization streams and different
+heuristic tie-break streams. "Core code unchanged" does not make the
+participants identical: the historical results establish that heuristic
+beat *that* M07 configuration, which is a strong prior — not proof of the
+S0 lineup's direction. Additionally, M09's promotion report already
+carried confidence bounds (lower 177 / upper 4509 bps at 95%, one-sided
+lower-bound gate); it is not a statistically unquantified result, and
+this round does not claim otherwise.
 
 Key facts from the inventory:
 
-1. **Heuristic vs M07 is NOT an open question at the direction level.**
-   Three independent seed sets (900000-series, 190000, 220100-series) all
-   show heuristic winning. Combined record 57–17 (M07 perspective
-   2343.8 bps in the only formal gate-checked run). M07's 15/64 vs
-   heuristic's 49/64 in M09 is far outside paired-block noise for that
-   sample. The user's recollection that "Heuristic ranked first in M19 and
-   M22" is confirmed, and the stronger M09 formal result (which the docs
-   under-emphasize) points the same way.
+1. **Heuristic vs the M07 family has a strong, consistent prior.** Three
+   independent seed sets and two determinization-sample-seed values
+   (20260810 everywhere; heuristic seeds 101/20260812) all show heuristic
+   winning: combined 57–17, M09's gate CI excluding parity on the lower
+   side. S0 re-measures under the current unified config (20260703)
+   rather than assuming the direction.
 2. **n1 vs M07 is genuinely UNRESOLVED.** M42S's 128-match pairing
    (5703.1 bps, CI crossing 5000) cannot separate them. This is the one
-   matchup where new evidence changes a decision: if n1 ≈ M07, the
-   champion's 2000-node continuation search adds no measured strength,
-   and S1's "deeper horizon" question inherits a cheap baseline.
+   matchup where new evidence changes a decision: if the relationship
+   stays unresolved, S1 inherits an explicitly unresolved baseline
+   question rather than a cheap-by-equivalence claim.
 3. **n1 vs heuristic has never been measured.** No historical source
    pairs them.
 4. **Historical caveats:** M19 used 1 seed/pair (provisional by design);
    M22 used 4 seeds/pair; M09 is the only 64-match formal gate-checked
-   comparison. None of the three used the modern paired-block bootstrap
-   protocol (M42S-era); M09 predates it.
+   comparison, and its config differs from S0's as above.
 
 ### Why a fresh calibration is still warranted
 
-- M09's heuristic-vs-M07 verdict is old enough (pre-M42S protocol) that
-  the project's current standard for "resolved" (paired-block bootstrap
-  CI) has never been applied to it.
-- n1's status is unresolved, and n1 sits at ~60% of M07's measured cost —
-  if n1 ≈ M07 in strength, the cost reference for S1 changes materially.
+- Unify the lineup under the current frozen M07-family config
+  (sample_seed 20260703 — the M42S/M07-champion value) so the result
+  describes the exact configuration S1 will inherit.
+- Fill the never-measured n1 vs heuristic pairing.
+- Measure actual per-decision cost (the historical runs recorded
+  configured budgets, not measured cost).
 - S1 (deeper horizon) needs a fixed baseline identity and fresh seeds
   disjoint from everything S1 will later use.
 
@@ -111,19 +143,27 @@ agents, no evaluator/search changes, no neural anything.
 - Statistical unit: paired seed block (2 rotations averaged).
 - Bootstrap: deterministic paired-block bootstrap, 10,000 resamples,
   seed `42_280_001` (fresh, disjoint from M42S's 42_270_001).
-- Report: center bps + two-sided 95% CI per pairing.
-- Decision rule (per pairing):
-  - `STRONGER_A` if CI entirely above 5000 bps,
+- Report: center bps + two-sided 95% CI **and** two-sided 98.33% CI per
+  pairing (same bootstrap resamples; two percentile cuts).
+- Decision rule (per pairing, uses the 98.33% CI — see multiplicity
+  note):
+  - `STRONGER_A` if the 98.33% CI lies entirely above 5000 bps,
   - `STRONGER_B` if entirely below,
-  - `UNRESOLVED` if CI crosses 5000.
+  - `UNRESOLVED` if it crosses 5000.
+  The 95% CI is reported for description only and never feeds a joint
+  decision.
 - No sequential extension: 64 seed blocks is the whole budget; an
   `UNRESOLVED` verdict stays `UNRESOLVED` (no "keep playing until
   significant"). Rationale: the user's instruction that UNRESOLVED is a
   legitimate standing outcome, plus the prior expectation that P3 may
   remain unresolved at this budget (M42S at the same n did).
-- Bonferroni note: with 3 pairings, a 95% two-sided CI per pairing gives
-  a family-wise coverage ≥ ~85.7%; we report per-pairing CIs and do not
-  claim joint confidence. This matches M42S practice (9 pairings, 95%).
+- Multiplicity note: three pairwise comparisons without independence
+  assumptions have family-wise error ≥ 1 − (0.95)^... — the Bonferroni
+  bound for 3 comparisons at per-pairing 95% is ≥ 85% family-wise
+  coverage (1 − 3×0.05 = 0.85 in the worst case), which is why joint
+  decisions use per-pairing 98.33% CIs (1 − 3×0.0167 ≈ 0.95 family-wise
+  in the union-bound sense). This adds no matches; it only widens the
+  decision CI.
 
 ### Cost observation (the new measurement layer)
 
@@ -149,20 +189,30 @@ changing it in place is forbidden). Therefore:
     `--emit-per-decision-stats` flag so existing agents' behavior and
     identity are untouched).
   - `completed_depth_turns` per continuation is NOT currently aggregated
-    into `RootDeterminizationStatsV1`; the fallback-ratio observation
-    instead uses `continuation_searches` vs `root_actions × samples`
-    plus `nodes_visited / (continuation_searches × max_nodes)` budget
-    consumption (both derivable from existing counters). A true
-    per-continuation `stop_reason` histogram is deferred (would need
-    model-schema extension; S1 can decide if it's needed).
+    into `RootDeterminizationStatsV1`, and **budget-exhaustion fallback
+    inside a continuation search is a different event from
+    `terminal_children`** (which counts sampled root children that are
+    already game-over after the root action — checked against
+    `crates/splendor-imperfect-search/src/search.rs`). Therefore this
+    round records:
+    - `terminal_child_ratio` = terminal_children /
+      (continuation_searches + terminal_children), **named and
+      interpreted strictly as "fraction of sampled root children already
+      terminal"** — NOT as a search-fallback/degradation indicator;
+    - `budget_consumption` = nodes_visited /
+      (continuation_searches × max_nodes) as a descriptive utilization
+      ratio.
+    Achieved depth and true budget-fallback rates are **explicitly not
+    observed this round** (they would need per-continuation
+    stop_reason/completed_depth aggregation — a model-schema extension);
+    S1 decides whether to add them.
 - Sampling plan: full observation for ALL decisions in all 384 matches
   (heuristic decisions are ~0-cost to observe; determinization stats
   lines are already computed internally).
 - Aggregation (report-time, not agent-time): per agent per pairing —
   mean/p50/p90/p95 of `wall_ms`, totals and ratios of search counters,
-  fallback ratio = terminal_children/(continuation+terminal) meaning
-  (fraction of sampled root children that were terminal, i.e. search
-  degenerated to static eval).
+  and `terminal_child_ratio` (terminal-children share, named as above —
+  not a fallback/degradation metric).
 - Observation files are local-only artifacts (ignored); a compact cost
   summary (per-agent percentiles) is bound into the tracked result JSON.
 
@@ -186,14 +236,22 @@ changing it in place is forbidden). Therefore:
 
 ### Estimated cost
 
-- 384 matches × ~62 plies mean ≈ 23.8k decisions per pairing set.
-- Determinization decisions: 2 pairings × 128 × ~60 ≈ 15.4k at n1
-  (~62 ms CLI-measured, but that included process startup; live
-  per-decision is lower) and P1/P2/P3's n2000 seats ≈ 15.4k at ~100 ms
-  → order 30–60 min wall time for the full 384 on the local machine,
-  heuristic seats negligible.
+- 384 matches × ~62 plies mean ≈ **23.8k total decisions** (both seats
+  combined; a "decision" is one player action — counting each match's
+  plies once, not per pairing set).
+- Determinization decisions: each pairing has one determinization seat
+  and one heuristic seat per match, so n1 seats ≈ 128 × ~31 ≈ 4.0k
+  decisions (P1's n1 + P3's n1) and n2000 seats ≈ 128 × ~31 ≈ 4.0k (P2's
+  M07 + P3's M07) — total ≈ **8k search-agent decisions**, plus ~15.8k
+  heuristic decisions at ~0 cost. (Review correction: the earlier draft
+  double-counted both seats per match.)
+- Wall-time estimate: ~8k decisions at CLI-measured ~62 ms (n1) and
+  ~102 ms (n2000) upper bounds → ~30–35 min serial upper bound, likely
+  less live (CLI numbers include process startup); heuristic seats and
+  observation I/O add little. **30–60 minutes stands as a provisional
+  budget, not a measured conclusion.**
 - Observation overhead: one stderr line per determinization decision
-  (~200 bytes × ~31k ≈ 6 MB total). The existing bounded 64 KiB tail
+  (~200 bytes × ~8k ≈ 1.6 MB total). The existing bounded 64 KiB tail
   remains for fault diagnosis only; the observation sampler drains the
   full stderr stream incrementally into the per-match sidecar file, so
   the bound never truncates observations.
@@ -241,20 +299,52 @@ changing it in place is forbidden). Therefore:
 
 ## Result and decision table (frozen)
 
-For each pairing, the verdict table maps to development decisions:
+### Verdict rule (per pairing, same validity standard for every outcome)
 
-| P1 heuristic vs n1 | P2 heuristic vs M07 | P3 n1 vs M07 | Decision |
-|---|---|---|---|
-| any | STRONGER_A (heuristic) | any | Reference = heuristic-v1; must-not-regress = {heuristic, and best of P3}; S1 runs vs heuristic as primary anchor |
-| any | UNRESOLVED | any | Reference stays ambiguous: keep {heuristic, M07} both as anchors; S1 must face both |
-| any | STRONGER_B (M07) | any | Contradicts three prior sources ⇒ treat as anomaly: freeze round, review before any use (this outcome would demand explanation, e.g. seed/protocol regression, before being believed) |
-| STRONGER_A (heuristic) | any | any | n1 confirmed weaker than heuristic: n1 demoted to diagnostic-only role in S1 |
-| any | any | STRONGER_B (M07) | M07's continuation search has measured value: S1's cost-benefit framing keeps n2000 as the cost reference |
-| any | any | STRONGER_A (n1) or UNRESOLVED | n1 ≈ M07 at this budget: champion search adds no separable strength; S1's cheap baseline is n1; M07 cost reference demoted |
+All three pairings pass through the same P0 validity gates regardless of
+whether the outcome matches or contradicts historical priors. A
+contradiction adds **diagnostic work** (config/lineup/seed/replay
+re-verification, which the final audit performs anyway) but does NOT
+place the result under a different acceptance standard: if no concrete
+error is found, a contradicting result stands as a valid reversal. In
+particular, a P2 reversal (M07 over heuristic) would be reported as a
+valid finding of this round — noteworthy against the 20260810-seeded
+priors, and explicitly hypothesized as possibly config-sensitive
+(sample-seed difference) rather than dismissed.
+
+### Verdict vocabulary
+
+- `STRONGER_X` (X = A or B): 98.33% joint-decision CI entirely on one
+  side of 5000 bps (see multiplicity note below).
+- `UNRESOLVED`: the CI crosses 5000. UNRESOLVED means *evidence
+  insufficient to separate* — it does NOT mean "equivalent", and no
+  equivalence/equality margin is pre-registered in this round. Choosing a
+  cheaper agent over an UNRESOLVED-but-expensive one is a **cost choice
+  with an explicitly unresolved strength gap**, and must be recorded as
+  such wherever used.
+
+### Multiplicity note
+
+Three per-pairing 95% two-sided CIs do not support a joint "unique
+strongest" claim without correction. The frozen rule: **joint decisions
+(naming the reference, demotions, "beats both others") use per-pairing
+98.33% CIs** (Bonferroni for 3 comparisons; same 384 matches, no extra
+games), while the 95% CIs are reported for description only.
+
+### Decision table
+
+The table keys on the 98.33%-CI verdicts:
+
+| Pattern | Decision |
+|---|---|
+| One agent is `STRONGER` in both of its pairings | That agent is the **primary reference**. The other two remain must-not-regress opponents if their pairings are `STRONGER`-resolved against them or UNRESOLVED (see below). |
+| No agent beats both others (e.g. one UNRESOLVED pairing, or a cycle A>B, B>C, C>A) | **No unique reference is named.** Keep the full opponent set {heuristic, n1, M07} as anchors; S1 candidates must face all of them. A cheap agent may be chosen as the *development* baseline for cost reasons, recorded as a cost choice with the strength gap explicitly unresolved. |
+| A pairing is `UNRESOLVED` | Both members stay in the must-not-regress set; no demotion of either. "n1 ≈ M07"-style equivalence claims are FORBIDDEN wording — only "unresolved at this budget" is licensed. |
 
 Cost summary (all rows): the per-agent `wall_ms` percentiles and search
 counter ratios become the standing cost table for S1's "acceptable cost"
-judgment.
+judgment. Cost data never overrides a strength verdict; it selects among
+strength-undifferentiated options.
 
 **No outcome in this table changes the M07 champion title** (historical
 promotion record) — it changes the *development reference* going forward.
@@ -268,9 +358,10 @@ promotion record) — it changes the *development reference* going forward.
   controlled benchmarks. The GPU is not involved (no neural agents).
 - Heuristic's cost is ~0 by construction; its observation value is the
   control stream proving the sampler works.
-- The M09-era result (49–15) is strong prior evidence for P2's
-  direction; this round re-measures under the modern protocol rather
-  than discovering the answer.
+- The M09-era result (49–15 under sample-seed 20260810) is strong prior
+  evidence for P2's direction under that config; this round measures the
+  unified 20260703 config fresh and reports whatever it shows, including
+  a reversal, under the same validity standard.
 
 ## Next authorized gate
 
