@@ -1,8 +1,12 @@
 # S0 — Baseline Calibration (Heuristic / n1 / M07)
 
-STATUS     = EXECUTED (design APPROVED/FROZEN at 825f042; single valid run
-            executed 2026-09-08 with final audit ALL CHECKS PASS; result
-            tracked; awaiting closure review)
+STATUS     = APPROVED / COMPLETED_CALIBRATION / CLOSED (final review
+            2026-09-08 on 0d2f21d: P0:0 / P1:0 / P2:5 non-blocking wording
+            repairs, applied docs-only; result JSON untouched; strength
+            calibration VALID; heuristic-v1 primary development reference;
+            must-not-regress {heuristic-v1, n1, M07}; n1-vs-M07 UNRESOLVED
+            at this budget; M07 historical champion UNCHANGED; promotion
+            NONE; S1 design-only authorized)
 RESULT     = heuristic-v1 is the unique primary reference (double resolved
             win under 98.33% joint-decision CIs); p3 n1-vs-M07 UNRESOLVED
             (unresolved at this budget — NOT equivalence); must-not-regress
@@ -155,8 +159,10 @@ agents, no evaluator/search changes, no neural anything.
 - Multiplicity note: with three comparisons, Bonferroni gives family-wise
   coverage of at least 85% for three nominal 95% intervals. Therefore
   joint S0 decisions use 98.33% per-pairing intervals, yielding
-  family-wise coverage of at least 95%. This adds no matches; it only
-  widens the decision CI.
+  family-wise coverage of approximately 95% (98.33% is a rounded value,
+  not the exact 1 − 0.05/3 = 98.3333…%, so "approximately" is the
+  accurate wording). This adds no matches; it only widens the decision
+  CI.
 
 ### Cost observation (the new measurement layer)
 
@@ -341,6 +347,14 @@ This boundary exists so S0 does not build half of S1 by inertia.
   (stats rows == replay-counted decisions per search seat, game_id
   match, monotone request_ids), full recomputation of W/T/L, block
   scores, center bps, both CI levels, verdicts, and the decision block.
+  Provenance note (review): the audit's P0-6 check re-verifies the
+  splendor binary hash against the result record only; the flag-on/off
+  action-parity evidence itself was produced by the pre-run smoke
+  (identical replay_final_hash) and the committed Rust parity test,
+  NOT re-executed by the final audit. Observation binding is indirect
+  (match directory + game_id + row counts + independently verified
+  replay) rather than the per-row replay_final_hash field the original
+  design sketched; the reviewer accepted this as adequate.
 
 ### Results (frozen contract)
 
@@ -371,14 +385,21 @@ UNRESOLVED matches M42S.
 | n1 (P3) | 3,963 | 1.66 ms | 5.51 ms | 0.0067 | 1.000 |
 | M07/n2000 (P3) | 3,962 | 12.2 ms | 78.1 ms | 0.0092 | 0.0144 |
 
-Heuristic decisions: ~0 by construction (no stats lines; sampler
-verified absent). Reading notes: M07's mean decide time is ~8–9× n1's;
-its p95 tail reaches 78 ms in P3. n1's budget consumption = 1.0 exactly
-(max_nodes=1 exhausted by design — this is the expected degenerate
-value, not a finding). terminal_child_ratio is the terminal-root-children
-share (naming per the frozen boundary — NOT a fallback indicator).
-These are live in-process numbers on the local machine under normal
-load; descriptive, not controlled benchmarks.
+Heuristic has NO agent-side timing rows in S0: the telemetry wrapper
+is determinization-only, so `decisions: 0` in the result means "no
+search-stats telemetry rows", NOT "made zero decisions" — its
+per-decision latency was not independently measured in this round
+(cheap by implementation inspection is not a measurement). Reading
+notes: M07 is roughly an ORDER OF MAGNITUDE slower than n1 in S0's
+in-process decision timing, with a substantially heavier tail (p95:
+78 ms vs 5.5 ms in P3 — the tail gap matters more for S1 than the
+median). n1's budget consumption = 1.0 exactly (max_nodes=1 exhausted
+by design — expected degenerate value, not a finding).
+terminal_child_ratio is the terminal-root-children share (naming per
+the frozen boundary — NOT a fallback indicator). All timing values are
+descriptive live costs on this machine under the 4-worker concurrent
+Arena workload, not controlled benchmarks; per-pairing distributions
+differ visibly for the same agent.
 
 ### Tracked artifacts
 
@@ -445,22 +466,77 @@ promotion record) — it changes the *development reference* going forward.
 ## Known limitations
 
 - 64 seed blocks may leave P3 UNRESOLVED (M42S at same n did); that is
-  an accepted outcome, not a failure.
-- Live wall_ms depends on machine load; the round records environment
-  (CPU, load average at start/end) and the numbers are descriptive, not
-  controlled benchmarks. The GPU is not involved (no neural agents).
-- Heuristic's cost is ~0 by construction; its observation value is the
-  control stream proving the sampler works.
+  an accepted outcome, not a failure. P3 remained UNRESOLVED.
+- Per-decision timing in S0 is search-agent IN-PROCESS timing
+  (decide_micros, excludes transport), not all-agent end-to-end
+  per-decision latency; S0 did not obtain end-to-end per-decision
+  latency for any agent (only per-match subprocess wall time).
+- Heuristic has no timing rows in S0 (determinization-only telemetry
+  wrapper); its cost is unmeasured, cheap by implementation inspection.
+- Stats-to-replay binding is indirect (match directory + game_id + row
+  counts + independently verified replay), not a per-row
+  replay_final_hash field.
+- Timing values are descriptive under the 4-worker concurrent local
+  Arena workload; same-agent distributions differ visibly across
+  pairings.
 - The M09-era result (49–15 under sample-seed 20260810) is strong prior
-  evidence for P2's direction under that config; this round measures the
-  unified 20260703 config fresh and reports whatever it shows, including
-  a reversal, under the same validity standard.
+  evidence for P2's direction under that config; this round measured
+  the unified 20260703 config fresh and confirmed the direction.
 
-## Next authorized gate
+## Cloud evidence boundary (review note)
 
-- Cloud review of this design (matchups, seed segment, budget,
-  statistical rule, observation scheme, decision table).
-- After APPROVE: implementation per plan (stats flag → P0 gates → 384
-  matches → result JSON → final audit), then S0 closure review.
-- S1 (search-horizon validation) design is drafted ONLY after S0's
-  reference-opponent question is answered.
+The tracked repository carries the frozen design, implementation,
+result JSON, audit source, agent configs, bootstrap and decision-rule
+code, telemetry schema, and result hash — all independently checkable
+from the cloud. The 384 raw per-match reports/replays/stats sidecars
+live in ignored `local-artifacts/` and cannot be re-read or re-audited
+from the cloud; the cloud review therefore verified the audit code's
+logic and the tracked-result consistency, and relied on the reported
+final-audit PASS for the raw-artifact checks. This is the standing
+evidence boundary of the local-artifact workflow, not an S0 defect.
+
+## Canonical result sentences (closure wording)
+
+Strength (permanent):
+
+> On the frozen current configurations and 64 fresh paired seed blocks,
+> heuristic-v1 resolved stronger than both n1 and M07 under the
+> pre-registered joint-decision intervals, making heuristic-v1 the
+> primary development strength reference. The n1–M07 relationship
+> remained unresolved at this budget.
+
+Cost (permanent):
+
+> Live S0 telemetry shows n2000 has materially higher in-process
+> decision cost and a substantially heavier latency tail than n1; S0
+> did not obtain end-to-end per-decision latency for all three agents.
+
+Engineering implication for S1 (licensed):
+
+> There is currently no competitive evidence that M07's additional
+> shallow compute buys a separable strength gain over n1 — but this is
+> NOT evidence that deeper search has no value; S1 tests that question
+> directly.
+
+## Closure and next authorized gate
+
+- Final review 2026-09-08 (basis `0d2f21d`): **APPROVED /
+  COMPLETED_CALIBRATION / CLOSED**. P0:0 / P1:0 / P2:5 non-blocking
+  wording repairs applied docs-only; the executed result JSON is
+  intentionally untouched (the misleading `heuristic decisions: 0` field
+  is explained here rather than edited post-hoc). No repair run, no new
+  Arena, no extra games, no telemetry retrofit.
+- S1 (search-horizon validation) is **design-only authorized**: its
+  research question, refined by S0, is whether increased true search
+  horizon can produce a competitive gain sufficient to beat heuristic —
+  given that heuristic is already resolved stronger than both n1 and
+  M07, and n1→M07's additional shallow compute showed no resolved gain.
+  S1 design principles (frozen by this closure): primary strength anchor
+  = heuristic; final candidates must face the full
+  {heuristic, n1, M07} pool; a small compute-feasibility probe must
+  precede any Arena; only the horizon and its enabling budget change.
+  S1 is authorized to add the minimal completed_depth_turns and
+  stop_reason telemetry this time because it directly answers S1's
+  research question — and nothing more.
+- Execution of S1 (deeper search) remains NOT authorized until its
+  design passes review.
