@@ -1,22 +1,32 @@
 # S2 — Heuristic Win Attribution (why does heuristic-v1 beat n1/M07?)
 
-STATUS     = EXECUTED (design APPROVED/FROZEN at 82fc400; A1 -> A2 -> A3
-            executed 2026-09-08 with all parity gates PASS; verdict
-            ACTIONABLE_HYPOTHESIS_FOUND — nominee presented for review,
-            NOT implemented; awaiting S2 closure review)
-RESULT     = One candidate hypothesis: on SEARCH_ACTOR contexts where the
-            frozen search policies take tokens, heuristic's unique
-            optimum is to BUY a tier-1 card (853 strict divergences =
-            11.27% of SEARCH_ACTOR Main contexts; 248 of 256 games;
-            game-level exposed-vs-unexposed H win-rate delta positive in
-            both opponent strata: n1 +0.169, M07 +0.194). The separating
-            score gap is category-dominated (buy category prior over
-            take) with a positive bonus_usefulness feature component in
-            98.7% of cases. This is heuristic PREFERENCE attribution —
-            not search information absence, and not a validated
-            improvement.
-REVISION   = V2 2026-09-08 (frozen, 82fc400) — executed as frozen.
-            V1 = 9fa76a8.
+STATUS     = REPAIR 1 EXECUTED (final review of 96a09c6 found P1:3 —
+            Buy term mapping violated the frozen contract, seat
+            stratification missing, nominee annotations computed on the
+            wrong set; narrow repair authorized and executed 2026-09-08:
+            A1 census rows NOT regenerated; term-gap pass re-run with the
+            corrected mapping; exposure tables re-aggregated with
+            opponent x seat stratification; nominee annotations computed
+            on the exact 853 SEARCH_ACTOR take->buy occurrences; A3
+            re-synthesized under the same frozen grammar/gates/ranking;
+            verdict unchanged — ACTIONABLE_HYPOTHESIS_FOUND; awaiting
+            closure re-review)
+RESULT     = Nominee (unchanged by repair): take_tokens->buy_market on
+            SEARCH_ACTOR strict divergences — 853 occurrences (11.27% of
+            7,570 SEARCH_ACTOR Main contexts), 248/256 games, pooled
+            game-level win delta n1 +0.169 / M07 +0.194 (gate-passing
+            descriptive point estimates). Repaired nominee annotations:
+            H buys tier-1 in 841/853; category_base dominates the score
+            gap in 853/853 (buy prior over take); bonus_usefulness
+            positive in 851/853; noble_gain positive in 0/853; score
+            gap p50 881,800 [841,750, 931,600]. Seat-stratified tables
+            reveal thin unexposed controls (e.g. n1|seat0: 1 unexposed
+            game) — the pattern occurs in almost every game, so the
+            exposure delta is NOT the candidate's main evidence; the
+            frequency (11.27%) is. Heuristic preference attribution —
+            not search information absence, not a validated improvement.
+REVISION   = V2 2026-09-08 (frozen, 82fc400) — executed; Repair 1 per
+            final review of 96a09c6. V1 = 9fa76a8.
 BASELINE   = 2df0fcb (S1 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -337,11 +347,21 @@ SEARCH_ACTOR strict divergences total: 4,063. Top transitions (of
 buy_market->buy_market 630, reserve_market->take_tokens 568 (7.50%),
 take_tokens->take_tokens 531, reserve_market->buy_market 483.
 
-### A2 — term attribution (4,063 strict divergences)
+### A2 — term attribution (4,063 strict divergences; REPAIRED)
 
-Dominant separating terms: category_base 2,451; bonus_usefulness
+Repair note: the initial execution folded buy prestige into
+category_base, violating the frozen term contract; Repair 1 separates
+them (category_base = bare SCORE_BUY; prestige = prestige x
+BUY_PRESTIGE) with a dedicated regression asserting the exact frozen
+Buy mapping beyond total parity. Corrected numbers:
+
+Dominant separating terms: category_base 2,428; bonus_usefulness
 1,029; deficit_reduction 487; cost_efficiency 52; new_target 44;
-noble_gain 1. Category-dominated 2,451 vs feature-dominated 1,612.
+prestige 23; noble_gain 1. Category-dominated 2,428 vs
+feature-dominated 1,635.
+
+(For the record, the pre-repair numbers — category 2,451 / feature
+1,612 — were computed under the wrong mapping and are superseded.)
 
 ### A3 — candidates passing all four frozen gates (3 of 14x4 patterns)
 
@@ -354,31 +374,59 @@ noble_gain 1. Category-dominated 2,451 vs feature-dominated 1,612.
 Frequency-first ranking (rate, then game coverage, then lexical id)
 selects take_tokens->buy_market as the single S2 nominee.
 
-### Nominee annotation (descriptive, not part of the pattern key)
+Gate-4 rationale (recorded per review, for each gate-passing pattern):
+take_tokens->buy_market is implementable as an n1 decision overlay that
+triggers only when n1 selects TakeTokens and heuristic has a unique
+BuyMarket optimum; requires no new search machinery.
+reserve_market->take_tokens (runner-up) is implementable analogously
+(overlay when the search reserves visible and heuristic's unique
+optimum is a TakeTokens action).
 
-- The H action is a BUY of a tier-1 card in 3,362/3,386 pre-filter gap
-  rows (tier-2 in 24).
-- Stage spread: early 540 / mid 1,806 / late 1,040 — concentrated in
-  mid but present throughout.
-- Score gap p50 881,800 [min 830,800, max 1,011,800] — buy-category
-  prior dominated (3,386/3,386 category-dominant), with a positive
-  bonus_usefulness feature component in 3,344/3,386 (98.7%); noble_gain
-  positive in only 8; the take's own feature positives (deficit
-  reduction, new targets) are exceeded by the category gap in every
-  case.
+### Nominee annotation (REPAIRED: computed on the exact 853 occurrences)
+
+The pre-repair annotation mixed in REFERENCE_ACTOR rows,
+counterfactual-policy rows, and non-opponent rows (3,386 pre-filter
+gap rows). The repaired annotation is computed ONLY on the 853
+SEARCH_ACTOR, actual-opponent, strict-divergence take_tokens->
+buy_market occurrences (asserted == 853, joined to their repaired
+term-gap rows):
+
+- H buys a tier-1 card in 841/853 (tier-2 in 12).
+- Stage spread: early 129 / mid 432 / late 292 — mid-concentrated but
+  present throughout.
+- Score gap p50 881,800 [min 841,750, max 931,600].
+- Dominant separating term: category_base in 853/853 — even with
+  prestige correctly separated, the buy-category prior over the
+  take-category prior dominates every single gap.
+- bonus_usefulness positive in 851/853; noble_gain positive in 0/853.
 - Interpretation (heuristic preference attribution, frozen wording):
   when the frozen search policies choose TakeTokens, heuristic's unique
-  optimum is buying a cheap (mostly tier-1) card whose bonus color is
-  useful for its targets. The search baselines' static evaluator
+  optimum is buying a cheap tier-1 card whose bonus color is useful for
+  its targets; the separating score is dominated by the category prior
+  with a near-universal positive bonus_usefulness component and NO
+  noble-completion component. The search baselines' static evaluator
   evidently ranks the take higher in these positions; whether
-  transplanting a buy-bias would improve THEM is the S2b question, NOT
-  answered here.
+  transplanting this preference would improve THEM is the S2b question,
+  NOT answered here.
+
+### Seat-stratified exposure (repair addition)
+
+The frozen seat stratification (omitted in the initial execution) is
+now reported. Key reading: the pattern occurs in 248/256 games, so
+unexposed control groups are tiny (1-8 games per stratum); e.g.
+n1|seat0 has ONE unexposed game. The pooled deltas (+0.169 / +0.194)
+are gate-passing descriptive point estimates over ~124/4 exposure
+splits — the pattern's real evidence is its 11.27% decision frequency,
+not the exposure contrast. Stratified tables are in the tracked
+result.
 
 ### Tracked artifacts
 
-- `benchmarks/s2-heuristic-win-attribution-v1.result.json` (git-blob
-  SHA256, LF form, execution commit `12ec3c5`:
-  `0a573d4697294d5e47cbcd04a5696d5486ef5d10e0db72cbaedf55d35035089a`).
+- `benchmarks/s2-heuristic-win-attribution-v1.result.json` (version 2,
+  Repair 1; git-blob SHA256 of the ORIGINAL execution commit 12ec3c5:
+  `0a573d4697294d5e47cbcd04a5696d5486ef5d10e0db72cbaedf55d35035089a`;
+  the repaired version-2 blob hash is recorded after the repair
+  commit).
 - Raw census rows + term-gap rows under ignored
   `local-artifacts/s2-census/` (cloud evidence boundary as in S0/S1).
 
@@ -403,12 +451,28 @@ hypothesis, not a validated improvement.
 Executed: (1) term accessor + parity tests; (2) batched census harness;
 (3) A1 census — parity gates PASS; (4) A2 term attribution — term-gap
 parity PASS; (5) A3 synthesis — ACTIONABLE_HYPOTHESIS_FOUND, nominee
-`take_tokens->buy_market`; tracked result + this closure doc.
+`take_tokens->buy_market`.
 
-Next gate: **S2 closure review.** The review decides whether S2b (a
-candidate implementing the nominee, evaluated under a frozen
-confirmation design with fresh seeds and preregistered gates) is
-authorized, deferred, or rejected. S2 itself implements nothing.
+Repair 1 (per the final review of 96a09c6, narrow scope): Buy term
+mapping fixed to the frozen contract (category_base = bare SCORE_BUY;
+prestige = prestige x BUY_PRESTIGE) with a dedicated exact-mapping
+regression; term-gap pass re-run (A1 census rows NOT regenerated — H*
+and search actions do not depend on term decomposition); exposure
+tables re-aggregated with opponent x heuristic-seat stratification;
+nominee annotations recomputed on the exact 853 occurrences; A3
+re-synthesized under the same frozen grammar/gates/ranking (no gate
+changes). Verdict unchanged: ACTIONABLE_HYPOTHESIS_FOUND, nominee
+unchanged. Workspace 775/0.
+
+Next gate: **S2 closure re-review.** The prior review DEFERRED S2b
+pending this repair (not rejected): the reviewer's stated future
+preference — for the record, NOT an authorization — is a
+parameter-free direct behavior candidate on n1: "if n1 selected
+TakeTokens AND heuristic H* is unique AND the unique H action is
+BuyMarket, then choose that BuyMarket action; else keep n1's action
+exactly" — chosen because n1-vs-M07 is UNRESOLVED while n1 is much
+cheaper, and explicitly NOT a StaticEvaluator weight sweep. S2b design
+and implementation remain unauthorized until the closure re-review.
 
 Still NOT authorized (unchanged): candidate implementation (S2b), new
 Arena, new self-play, search engineering, evaluator behavior change,

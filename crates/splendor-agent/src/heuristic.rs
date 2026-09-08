@@ -264,6 +264,7 @@ trait IntoTerms {
 /// Buy terms (market or reserved).
 struct BuyTerms {
     base: i64,
+    prestige: i64,
     noble_gain: i64,
     bonus_usefulness: i64,
     cost_efficiency: i64,
@@ -272,6 +273,7 @@ struct BuyTerms {
 impl IntoTerms for BuyTerms {
     fn into_terms(self, out: &mut HeuristicTermScores) {
         out.category_base = self.base;
+        out.prestige = self.prestige;
         out.noble_gain = self.noble_gain;
         out.bonus_usefulness = self.bonus_usefulness;
         out.cost_efficiency = self.cost_efficiency;
@@ -340,20 +342,18 @@ fn terms_buy(
     nobles_now: usize,
     bonus_useful: &[i64; 5],
 ) -> BuyTerms {
-    // The prestige contribution (prestige * BUY_PRESTIGE) stays folded into
-    // the category base exactly as the historical `score_buy` computed it,
-    // so totals remain bit-identical; the prestige term is reserved for the
-    // reserve-visible category where it was a separate addend.
-    let mut base = SCORE_BUY;
-    base += card.prestige as i64 * BUY_PRESTIGE;
-
+    // S2 DESIGN_V2 frozen term contract (repair 1): category_base is the
+    // bare SCORE_BUY prior; buy prestige is its own `prestige` term
+    // (prestige * BUY_PRESTIGE). The total is bit-identical to the
+    // historical score_buy sum.
     let mut bonuses_after = bonuses;
     bonuses_after[card.bonus.index()] += 1;
     let nobles_after = nobles_completable(nobles_in_play, bonuses_after);
     let gain = nobles_after.saturating_sub(nobles_now);
 
     BuyTerms {
-        base,
+        base: SCORE_BUY,
+        prestige: card.prestige as i64 * BUY_PRESTIGE,
         noble_gain: gain as i64 * BUY_NOBLE_GAIN,
         bonus_usefulness: bonus_useful[card.bonus.index()] * BONUS_USEFULNESS_WEIGHT,
         cost_efficiency: -(card.total_cost() as i64 * BUY_COST_EFFICIENCY),
@@ -542,6 +542,71 @@ mod tests {
         ] {
             assert!(json.contains(field), "missing field {field} in {json}");
         }
+    }
+
+    #[test]
+    fn buy_term_mapping_matches_frozen_contract_exactly() {
+        // S2 DESIGN_V2 repair-1 regression: beyond total parity, the Buy
+        // decomposition must place the bare SCORE_BUY prior in
+        // category_base and prestige * BUY_PRESTIGE in the prestige term.
+        let (mut state, _) = FullState::new(GameConfig {
+            player_count: 2,
+            seed: 20260908,
+            ..Default::default()
+        })
+        .unwrap();
+        // Advance until a buy is affordable: repeatedly apply the first
+        // canonical TakeTokens/ReserveDeck action (deterministic walk).
+        for _ in 0..40 {
+            if state
+                .legal_actions()
+                .iter()
+                .any(|a| matches!(a, Action::BuyMarket { .. } | Action::BuyReserved { .. }))
+            {
+                break;
+            }
+            let step = state
+                .legal_actions()
+                .into_iter()
+                .find(|a| {
+                    matches!(
+                        a,
+                        Action::TakeTokens { .. } | Action::ReserveDeck { .. }
+                    )
+                })
+                .expect("a take or blind reserve is always available pre-buy");
+            state.apply(step).unwrap();
+        }
+        let (obs, actions) = obs_for_state(state);
+        let terms = heuristic_term_scores(&obs, &actions);
+        let mut checked_buys = 0;
+        for (a, ts) in actions.iter().zip(terms.iter()) {
+            if let Action::BuyMarket { .. } | Action::BuyReserved { .. } = a {
+                assert_eq!(
+                    ts.category_base, SCORE_BUY,
+                    "buy category_base must be the bare SCORE_BUY prior"
+                );
+                let card_prestige = match a {
+                    Action::BuyMarket { tier, slot } => {
+                        let id = obs.public.market[tier.index()][*slot as usize].unwrap();
+                        card(id).prestige as i64
+                    }
+                    Action::BuyReserved { slot } => {
+                        card(obs.private.reserved[*slot as usize].card).prestige as i64
+                    }
+                    _ => unreachable!(),
+                };
+                assert_eq!(
+                    ts.prestige,
+                    card_prestige * BUY_PRESTIGE,
+                    "buy prestige term must be prestige * BUY_PRESTIGE"
+                );
+                // Total still bit-identical to the aggregate score.
+                assert_eq!(ts.total(), score_actions(&obs, &actions)[actions.iter().position(|x| x == a).unwrap()]);
+                checked_buys += 1;
+            }
+        }
+        assert!(checked_buys > 0, "fixture must contain at least one buy");
     }
 
     fn obs_for_state(state: FullState) -> (Observation, Vec<Action>) {
