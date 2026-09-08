@@ -77,10 +77,12 @@ def main() -> None:
                 for ag in cfgm["agents"]:
                     args = ag["args"]
                     if "agent-heuristic" in args:
-                        if args[:3] != HEURISTIC_OK[:3] and args[:2] != HEURISTIC_OK[:2]:
-                            fail(f"heuristic args drift: {args[:4]}")
-                        if "--heuristic-buy-overlay" in args:
-                            fail(f"heuristic with overlay flag: {game_id}")
+                        # Strict seed binding: the heuristic seat must carry
+                        # exactly the frozen args (agent-heuristic --seed
+                        # 20260812), nothing more. The earlier two-tier
+                        # check was too loose (any seed value passed).
+                        if args != HEURISTIC_OK:
+                            fail(f"heuristic args drift: {args}")
                         seats.append("heuristic")
                     elif "agent-determinization" in args:
                         core = [a for a in args if a in N1_ARGS_SET or a.startswith("--runtime")]

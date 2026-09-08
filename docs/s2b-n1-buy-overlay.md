@@ -1,24 +1,24 @@
 # S2b — n1 Buy-Overlay Confirmation (parameter-free candidate)
 
-STATUS     = EXECUTED (design APPROVED/FROZEN at ff7a4f1; implementation +
-            exhaustive scope measurement + 256-match fresh Arena + final
-            audit all completed 2026-09-08, ALL CHECKS PASS; verdict
-            UNRESOLVED — the frozen rule did NOT demonstrate improvement
-            over n1 at this budget (point estimate favors plain n1:
-            overlay 51-2-75, center 4062.5, 97.5% CI [3125.0, 5000.0]
-            touches the parity line, so formally UNRESOLVED, NOT
-            REFUTED), and the overlay is resolved WEAKER than heuristic
-            (3164.1 [2304.7, 4062.5]); awaiting S2b closure review)
-RESULT     = UNRESOLVED (vs n1) / STRONGER_B (vs heuristic).
-            Scope: triggers 386/3,720 (10.38%) on P1 and 401/3,956
-            (10.14%) on P3 — the historical ~11% rate transferred to
-            the additional P3 corpus; exhaustive fixed-context parity
-            100%; P1 trigger identity set EXACTLY equals the S2 A1
-            n1-side nominee set (386 == 386, digest-bound).
-REVISION   = V2 2026-09-08 (frozen, ff7a4f1) — executed as frozen.
+STATUS     = CLOSED / IMPROVEMENT_NOT_CONFIRMED / CANDIDATE_NOT_ADOPTED
+            (final review 2026-09-09: the closure accepts UNRESOLVED vs
+            n1 as the standing verdict — the 97.5% decision CI
+            [3125.0, 5000.0] touches the parity line, so the comparison
+            is NOT re-adjudicated with the 95% interval, and no extra
+            matches are added to worsen it; the candidate is not
+            adopted. P0:0 / P1:0 — four descriptive-record items
+            applied docs-only, no re-run.)
+RESULT     = UNRESOLVED (vs n1; point estimate favors plain n1:
+            overlay 51-2-75, center 4062.5) / STRONGER_B (vs heuristic:
+            40-1-87, 3164.1 [2304.7, 4062.5]). Scope: triggers 386/3,720
+            (10.38%) on P1 and 401/3,956 (10.14%) on P3; exhaustive
+            fixed-context parity 100%; P1 trigger identity set exactly
+            equals the S2 A1 n1-side nominee set.
+REVISION   = V2 2026-09-08 (frozen, ff7a4f1) — executed as frozen;
+            closed 2026-09-09 with the descriptive-record items below.
             V1 = adddbe2.
 BASELINE   = d409801 (S2 closure, 2026-09-08)
-OWNER-DATE = local implementation + cloud review, 2026-09-08
+OWNER-DATE = local implementation + cloud review, 2026-09-08/09
 
 ## Problem and evidence
 
@@ -323,6 +323,29 @@ cross-check re-run; binary identity.
   scope rows under ignored `local-artifacts/s2b-scope/` (cloud
   evidence boundary as in S0/S1/S2).
 
+## Closure record (final review items, docs-only)
+
+1. **Verdict standing**: UNRESOLVED vs n1 is accepted as-is. The
+   97.5% interval's upper bound is exactly 5000.0 (touches parity);
+   the comparison is not re-adjudicated at 95%, and no additional
+   matches are run. The candidate is NOT ADOPTED: unproven benefit is
+   sufficient for non-adoption.
+2. **Trigger-rate provenance**: the ~10% trigger rates (P1 10.38%,
+   P3 10.14%) come from the historical fixed-context scope corpus. The
+   fresh Arena did NOT record a live trigger rate (the overlay's
+   in-process counters were not surfaced to the orchestrator this
+   round), so the rate on fresh trajectories is unmeasured.
+3. **Heuristic-seed audit condition**: the final audit's heuristic
+   lineup check was initially too loose (a prefix match that any seed
+   value would pass). It has been tightened to exact-args equality and
+   the full audit re-run: ALL CHECKS PASS — all 256 heuristic-seat
+   configs carry exactly the frozen args, independently confirming the
+   coordinator's own recomputation of the 256 configs.
+4. **Overlay overhead**: the overlay's standalone single-step overhead
+   (H* scoring on top of n1) was not separately measured this round;
+   the Arena wall times (~22 s for 256 matches) bound it loosely.
+   Descriptive gap only; no re-run.
+
 ## Result and interpretation (frozen wording)
 
 The frozen `TakeTokens -> unique heuristic BuyMarket` overlay did NOT
@@ -362,12 +385,20 @@ P1 cross-check exact) -> 256-match fresh Arena -> 10k bootstrap (95% +
 UNRESOLVED (vs n1; point estimate favors plain n1) / STRONGER_B (vs
 heuristic).
 
-Next gate: **S2b closure review.** The open user decisions per the
-frozen contract: (a) accept UNRESOLVED and close; (b) authorize
-additional seeds for the overlay-vs-n1 pairing (the 95% CI sits below
-parity, so a larger budget would likely resolve it — against the
-overlay); (c) any rule change REOPENS the design (not a repair). No
-outcome changes the primary reference or promotion state.
+Closure: the final review (2026-09-09) accepted UNRESOLVED and CLOSED
+S2b (IMPROVEMENT_NOT_CONFIRMED / CANDIDATE_NOT_ADOPTED). No additional
+seeds; no rule changes (any change would have reopened the design).
+heuristic-v1 remains the primary development reference; the M07
+historical champion and all promotion state are unchanged.
+
+Standing follow-up states (per the coordinator's direction): S2
+runner-up overlay NOT continued; neural evaluator STOP unchanged;
+search tail-cost optimization retained as a backup direction (not
+dead, not mainline — S1's n2000 p95 exceeded the gate by only ~0.24 s
+while maxima reached 28 s/132 s; any future investment would first
+profile wide-branching contexts and bound root-level work, never
+loosen the gate); the next mainline direction is the S3 heuristic
+full-policy rollout design (design-only).
 
 Still NOT authorized (unchanged): M07 pairing, rule changes, tier-1
 condition, bonus-usefulness condition, thresholds, weight tuning,
