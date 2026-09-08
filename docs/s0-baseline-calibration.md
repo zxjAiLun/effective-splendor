@@ -1,19 +1,32 @@
 # S0 — Baseline Calibration (Heuristic / n1 / M07)
 
-STATUS     = PROPOSED (design revision 2 for review; execution NOT authorized)
-REVISION   = v2 2026-09-08 — review repairs: (1) config-comparability section
-            (M09/M22 used sample-seed 20260810 + heuristic seed 101/20260812;
-            historical results are a strong prior, not the S0 lineup's settled
-            direction; M09 already carried gate CI bounds); (2) decision table
-            rewritten — complete rule set, UNRESOLVED ≠ equivalence, cheap-baseline
-            choice is a cost choice with unresolved gap; (3) contradiction
-            handling unified (same validity gates, reversal stands if no error
-            found); (4) terminal_child_ratio renamed and scoped (NOT a
-            budget-fallback metric; achieved depth/fallback rate explicitly
-            unobserved this round); (5) joint decisions use per-pairing 98.33%
-            CIs (Bonferroni, same matches); (6) cost estimate de-double-counted
-            (~8k search decisions, provisional).
-BASELINE   = 3c50692 (2026-09-08, post M48A closure); design v1 commit bb881ca
+STATUS     = APPROVED / FROZEN (S0 DESIGN_V2 review verdict: APPROVED AFTER
+            NARROW DOC FIX — P0:0 / P1:0 / P2:2 docs-only, both applied;
+            implementation authorized, no third design review required)
+AUTHORITY  = user review of 65da941 (2026-09-08): research question,
+            schedule, 98.33% joint-decision CI, UNRESOLVED semantics,
+            decision logic, historical reversal rule, and
+            terminal_children semantics all APPROVED; telemetry boundary
+            frozen (stats flag + existing counters allowed; no schema /
+            completed-depth / stop-reason / budget-exhaustion work)
+AUTHORIZED SCOPE (implementation):
+            minimal stats-emission flag; timing/observation sidecar; P0
+            isolation + exact identity checks; 384 matches; 10k
+            paired-block bootstrap; 95% descriptive + 98.33% decision
+            CIs; final audit; tracked result.
+NOT AUTHORIZED: S1 experiment; deeper depth; new search telemetry
+            schema; S2 candidate; neural work; evaluator/search behavior
+            changes; promotion/default-agent change.
+REVISION   = v3 2026-09-08 — approved-condition fixes: cost counts
+            corrected (H ≈ 7.9k / N1 ≈ 7.9k / N2000 ≈ 7.9k; search total
+            ≈ 15.9k; stderr ≈ 3.2 MB); Bonferroni wording cleaned
+            (union-bound coverage only; removed the erroneous
+            independence-based 1−0.95³ line); frozen telemetry boundary
+            recorded; STATUS → APPROVED / FROZEN.
+            v2 2026-09-08 — review repairs (config comparability,
+            decision rules, metric semantics, multiplicity, cost).
+            v1 = bb881ca.
+BASELINE   = 3c50692 (2026-09-08, post M48A closure)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
 ## Problem and evidence
@@ -157,13 +170,11 @@ agents, no evaluator/search changes, no neural anything.
   significant"). Rationale: the user's instruction that UNRESOLVED is a
   legitimate standing outcome, plus the prior expectation that P3 may
   remain unresolved at this budget (M42S at the same n did).
-- Multiplicity note: three pairwise comparisons without independence
-  assumptions have family-wise error ≥ 1 − (0.95)^... — the Bonferroni
-  bound for 3 comparisons at per-pairing 95% is ≥ 85% family-wise
-  coverage (1 − 3×0.05 = 0.85 in the worst case), which is why joint
-  decisions use per-pairing 98.33% CIs (1 − 3×0.0167 ≈ 0.95 family-wise
-  in the union-bound sense). This adds no matches; it only widens the
-  decision CI.
+- Multiplicity note: with three comparisons, Bonferroni gives family-wise
+  coverage of at least 85% for three nominal 95% intervals. Therefore
+  joint S0 decisions use 98.33% per-pairing intervals, yielding
+  family-wise coverage of at least 95%. This adds no matches; it only
+  widens the decision CI.
 
 ### Cost observation (the new measurement layer)
 
@@ -216,6 +227,25 @@ changing it in place is forbidden). Therefore:
 - Observation files are local-only artifacts (ignored); a compact cost
   summary (per-agent percentiles) is bound into the tracked result JSON.
 
+### Frozen telemetry boundary (review-ratified)
+
+```text
+S0 telemetry allowed:
+  wall_ms
+  existing RootDeterminizationStatsV1 counters
+  terminal_child_ratio (named as terminal-root-children share)
+  descriptive node-budget consumption
+
+S0 telemetry NOT allowed:
+  new search stats schema
+  completed_depth implementation
+  stop_reason implementation
+  budget-exhaustion instrumentation
+  search algorithm changes
+```
+
+This boundary exists so S0 does not build half of S1 by inertia.
+
 ### P0 semantic gates (must pass before any match counts)
 
 1. Seed-segment disjointness: `5_800_064..5_800_127` ∩ every previously
@@ -237,21 +267,26 @@ changing it in place is forbidden). Therefore:
 ### Estimated cost
 
 - 384 matches × ~62 plies mean ≈ **23.8k total decisions** (both seats
-  combined; a "decision" is one player action — counting each match's
-  plies once, not per pairing set).
-- Determinization decisions: each pairing has one determinization seat
-  and one heuristic seat per match, so n1 seats ≈ 128 × ~31 ≈ 4.0k
-  decisions (P1's n1 + P3's n1) and n2000 seats ≈ 128 × ~31 ≈ 4.0k (P2's
-  M07 + P3's M07) — total ≈ **8k search-agent decisions**, plus ~15.8k
-  heuristic decisions at ~0 cost. (Review correction: the earlier draft
-  double-counted both seats per match.)
-- Wall-time estimate: ~8k decisions at CLI-measured ~62 ms (n1) and
-  ~102 ms (n2000) upper bounds → ~30–35 min serial upper bound, likely
-  less live (CLI numbers include process startup); heuristic seats and
-  observation I/O add little. **30–60 minutes stands as a provisional
-  budget, not a measured conclusion.**
-- Observation overhead: one stderr line per determinization decision
-  (~200 bytes × ~8k ≈ 1.6 MB total). The existing bounded 64 KiB tail
+  combined). Per seat ≈ 31 decisions per match, and each of the three
+  pairings has 128 matches, so each participating agent identity plays
+  ≈ 128 × 31 ≈ **3,968 decisions**:
+
+  | Agent | Pairings | Decisions |
+  |---|---|---|
+  | heuristic | P1, P2 | ≈ 7.9k |
+  | n1 | P1, P3 | ≈ 7.9k |
+  | n2000 (M07) | P2, P3 | ≈ 7.9k |
+
+  Total search-agent decisions ≈ **15.9k**; heuristic ≈ 7.9k at ~0
+  cost. (Review correction: the earlier draft mislabeled the seat
+  composition — P3 is n1 vs n2000 with no heuristic seat — and
+  under-counted search decisions.)
+- Wall-time estimate: ~7.9k decisions each at CLI-measured ~62 ms (n1)
+  and ~102 ms (n2000) upper bounds → ~35 min serial upper bound, likely
+  less live (CLI numbers include process startup). **30–60 minutes
+  stands as a rough provisional budget, not a measured conclusion.**
+- Observation overhead: one stderr line per search decision
+  (~200 bytes × ~15.9k ≈ 3.2 MB total). The existing bounded 64 KiB tail
   remains for fault diagnosis only; the observation sampler drains the
   full stderr stream incrementally into the per-match sidecar file, so
   the bound never truncates observations.
