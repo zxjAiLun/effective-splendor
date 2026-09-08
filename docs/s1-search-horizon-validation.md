@@ -304,8 +304,9 @@ completion and tail cost are in direct tension.
 
 ### Tracked artifacts
 
-- `benchmarks/s1-feasibility-probe-v1.result.json` (git-blob SHA
-  recorded after commit).
+- `benchmarks/s1-feasibility-probe-v1.result.json` (git-blob SHA256,
+  LF form, execution commit `771a4c5`:
+  `8ab9b53e61f043a606b5adb84b22093700d609b4598dfe1a36f3eb1792055964`).
 - Raw probe telemetry under ignored
   `local-artifacts/s1-feasibility/` (per-context analysis traces +
   probe NDJSON sidecars).
