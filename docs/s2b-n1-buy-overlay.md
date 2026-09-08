@@ -338,9 +338,15 @@ cross-check re-run; binary identity.
 3. **Heuristic-seed audit condition**: the final audit's heuristic
    lineup check was initially too loose (a prefix match that any seed
    value would pass). It has been tightened to exact-args equality and
-   the full audit re-run: ALL CHECKS PASS — all 256 heuristic-seat
-   configs carry exactly the frozen args, independently confirming the
-   coordinator's own recomputation of the 256 configs.
+   the full audit re-run: ALL CHECKS PASS. Correction of the closure
+   record: heuristic participates only in the second pairing, so the
+   verification covers all 256 match lineups, of which **128 are
+   heuristic-seat configs** (each exactly bound to the frozen args) —
+   the other 128 are overlay-vs-n1 games; the earlier "256
+   heuristic-seat configs" phrasing overcounted. (Provenance note: the
+   closure commit 18f798d included this audit-code hardening, so it
+   was a docs seal PLUS audit hardening, not a pure docs-only change;
+   the coordinator independently confirmed the configs.)
 4. **Overlay overhead**: the overlay's standalone single-step overhead
    (H* scoring on top of n1) was not separately measured this round;
    the Arena wall times (~22 s for 256 matches) bound it loosely.
