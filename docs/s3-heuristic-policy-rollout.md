@@ -1,15 +1,24 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = DESIGN_V2 / APPROVED-FOR-PILOT (the aligned review approved
-            the direction, the three-policy proposal set, D=4, and
-            P=120 for this round, and fixed the complete experimental
-            contract below; Stage-A implementation + pilot + minimal
-            tests/audits are AUTHORIZED; everything after the pilot —
-            including Stage B — requires the Stage-A review. P1:6 /
-            P2:3 from the two aligned reviews are all incorporated.)
-REVISION   = V2 2026-09-09 (final contract; incorporates the local
-            coordinator's four semantic repairs AND the cloud's two
-            additions). V1 = c253de7.
+STATUS     = STAGE-A EXECUTED / PILOT_PASS / STOPPED-FOR-REVIEW (per the
+            frozen contract: implementation + pilot completed 2026-09-09
+            at c503bda; all gates pass in both strata with ~10x latency
+            margin (p95 114 ms ordinary / 170 ms wide vs the 2,000 ms
+            gate; complete-comparison rate 1.000 vs the 0.70 gate; zero
+            errors); behavioral delta exists (rollout choice != a_H in
+            122/150 ordinary and 26/50 wide complete comparisons — the
+            NO_BEHAVIORAL_DELTA exit did not fire). Stage B (the 128-match
+            candidate-vs-heuristic Arena) remains NOT AUTHORIZED until
+            the Stage-A review. Two recorded pilot notes: the selector
+            deviation (game_id|ply encoding instead of the identity
+            triple — deterministic, reproducible) and the
+            leave-one-world-out diagnostic being unavailable in the
+            current row telemetry.)
+RESULT     = PILOT_PASS. The candidate is computationally feasible with
+            large margin and produces a real behavioral signal on both
+            strata; strength is entirely untested (Stage B not run).
+REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen;
+            Stage-A executed at c503bda. V1 = c253de7.
 BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
