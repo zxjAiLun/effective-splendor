@@ -382,8 +382,10 @@ load; descriptive, not controlled benchmarks.
 
 ### Tracked artifacts
 
-- `benchmarks/s0-baseline-calibration-v1.result.json` (git-blob SHA256
-  recorded after commit; working-tree hash differs by CRLF).
+- `benchmarks/s0-baseline-calibration-v1.result.json` (git-blob SHA256,
+  LF form, execution commit `0d2f21d`:
+  `088b99c7168affce3e98d0d6d6b3f11df3447aa9a71503081f14f9f1015aea1b`;
+  the working-tree hash differs by CRLF).
 - Raw per-match artifacts (configs, reports, replays, stats sidecars)
   under ignored `local-artifacts/s0-baseline-calibration/`.
 
