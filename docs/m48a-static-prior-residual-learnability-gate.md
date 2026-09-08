@@ -2,7 +2,10 @@
 
 ```ini
 MILESTONE = M48A
-STATUS = DESIGN_V2 / APPROVED / FROZEN BY REVIEW
+STATUS = COMPLETED_NEGATIVE / VALID RUN FAIL — STATIC_PRIOR_RESIDUAL_NOT_VALIDATED
+                (single valid run after one implementation repair; all 8 gates
+                FAIL on both splits; VALIDATION_ROUTE_FAIL; per frozen terminal
+                budget: neural evaluator research STOPPED)
 SCOPE = full frozen contract; implementation auto-authorized after docs-only commit
 BASE_COMMIT = e0e4a44 (M47S permanently closed)
 DESIGN_V1 = 412d7a4 (research question / formulation / isolation accepted)
@@ -332,7 +335,7 @@ DESIGN_V2 docs-only commit
   accepted by review.
 - G5 (SHIFT1 hard gate) REJECTED by review → demoted to diagnostic.
 
-### DESIGN_V2 frozen contract — 2026-09-07 (this document)
+### DESIGN_V2 frozen contract — 2026-09-07 (`c543658`)
 
 - Review froze the complete contract in one pass: corpus re-cut (four
   splits incl. a genuinely unseen internal test carved from M46A train),
@@ -344,27 +347,134 @@ DESIGN_V2 docs-only commit
   holdout, SHIFT1 as diagnostic, and the eight-check PASS semantics.
 - No implementation exists yet. This revision is docs-only.
 
+### Execution — Run 1 VOID — 2026-09-08
+
+- Mid-run user review found three implementation defects: (1) the residual
+  used the seat-0 viewpoint (`u[:,:,0]-u[:,:,1]`) instead of the frozen
+  actor-viewpoint (`h(s,actor)-h(s,1-actor)`) — a contract violation that
+  invalidates the run; (2) the no-candidate fallback was missing (would
+  have crashed loading a nonexistent best.pt); (3) audit gaps (no
+  successor-hash cross-split check for the re-cut splits; G0 only checked
+  r==0 without full scoring equivalence; pair sampling used Python's
+  process-seeded hash()). Run stopped at epoch 21; log preserved in
+  `local-artifacts/m48a-run/run1-void/`. Run 1 VOID — not a valid run.
+
+### Implementation repair (the one permitted) — 2026-09-08
+
+- Actor viewpoint fixed in both training and evaluation residual paths.
+- Route-fail fallback implemented: highest-retention checkpoint saved as
+  `route-fail-checkpoint.pt`; when no epoch reaches the 99% floor it is
+  evaluated for the record with `VALIDATION_ROUTE_FAIL = true`.
+- Audit hardening: successor-state-hash disjointness re-asserted across
+  the four NEW splits (1,503,060 / 220,324 / 214,700 / 222,452 unique,
+  zero overlap); G0 extended to the full contract (r==0 ∧ q_corr==q1
+  bitwise via the contract formula ∧ selected action == n1); pair sampling
+  switched to SHA-256-derived deterministic seeds.
+- Non-contractual performance repairs (user-directed GC investigation):
+  removed all gc.collect() from hot loops (~213 full collections/epoch at
+  ~1s each identified as the dominant cost); train pairs stored as compact
+  numpy int16/int8 arrays instead of ~27.5M Python tuples (sampling parity
+  verified identical: 64 roots × 4 epochs × 2 groups, selection
+  bit-identical); validation batched per game; per-epoch phase timing and
+  RSS tracking added. Model/batch composition/loss math/gates unchanged.
+- One transient crash fixed before the valid run (pre-concatenated te_all
+  indexing bug in the batched-train refactor); G0 false-fail fixed by
+  checking q_corr with the contract formula (z-space round-trip loses
+  precision).
+
+### Execution — Run 2 (single valid run) — 2026-09-08
+
+- G0 PASSED (full contract): 2048/2048 roots bitwise q-equality and
+  action-equality; residual head exactly zero.
+- Training: 24 epochs, seed 48_000_001; assembly 3,269,690 correction +
+  24,279,127 retention pairs; phase totals data 1,044s / train 6,230s /
+  val 249s.
+- VALIDATION_ROUTE_FAIL: no epoch of 24 reached the 99% retention floor
+  (best observed 0.854 at epoch 0, degrading to ~0.60 by late epochs). The
+  highest-retention fallback checkpoint (epoch 0) was evaluated for the
+  record per contract.
+- All eight gates FAILED on both splits (numbers below). Verdict:
+  `STATIC_PRIOR_RESIDUAL_NOT_VALIDATED`.
+- Final audit: corpus manifest, G0, checkpoint-selection recomputation,
+  static/corrected/gates recomputation from raw on both splits — all
+  match; no Arena artifacts.
+
 ## Validation and evidence
 
-None yet. Design stage complete; execution not started.
+```text
+command: python scripts/m48a_generate_labels.py
+result: labels complete; corpus audit PASS (identity + successor-hash
+  disjoint across all 4 new splits)
+command: python training/m17_gpu/m48a_train.py --device cuda
+result: G0 PASS; 24/24 epochs; VALIDATION_ROUTE_FAIL; all 8 gates FAIL
+command: python scripts/m48a_final_audit.py
+result: ALL CHECKS PASS; tracked result written
+```
+
+- Tracked artifact:
+  `benchmarks/m48a-static-prior-residual-learnability-gate-v1.result.json`
+  (SHA256: `b63e9ae7b661c25a94b727572ef724da5487aef2063ef5bd97e8c97542605880`).
+- Run artifacts: `local-artifacts/m48a-run/` (g0.json, label-manifest.json,
+  epoch_metrics.json with phase timing, final_metrics.json,
+  route-fail-checkpoint.pt, run1-void/).
 
 ## Result and decision
 
-None yet.
+**Verdict: `STATIC_PRIOR_RESIDUAL_NOT_VALIDATED`.** The single valid run
+failed all eight gates on both evaluation splits:
+
+| Gate | Internal test | M47S holdout | Threshold |
+|---|---:|---:|---:|
+| G1 correction capture | 0.1584 | 0.1353 | ≥ 0.20 |
+| G2 static-correct retention | 0.8363 | 0.8343 | ≥ 0.99 |
+| G3 agreement gain | **−0.0684** | **−0.0820** | ≥ +3.0pp |
+| G4 regret reduction | **−0.2053** | **−0.2020** | ≥ 15% |
+
+(static baselines: internal test agreement 0.7041 / regret 0.1449;
+M47S holdout 0.7222 / 0.1366.)
+
+Observed facts (descriptive, no causal claims):
+
+- The residual learned real corrections (capture 13–16%) but at a cost of
+  destroying ~16% of static-correct decisions — retention never came close
+  to the 99% floor in any epoch (max 0.854, degrading thereafter).
+- The corrected policy is net WORSE than static on both splits: agreement
+  down 6.8–8.2pp, mean normalized regret up ~20%.
+- The retention loss term and 0.01 anchor did not constrain the residual
+  to small, selective corrections under this frozen objective; the
+  optimization steadily traded retention for capture across all 24 epochs
+  (validation retention 0.854 → ~0.60 while capture 0.147 → 0.226).
+- SHIFT1 diagnostic (no gates): residual response is near-zero on
+  unchanged strata (median 0.0) with a small nonzero tail on F4/E2-changing
+  strata (p90 ≈ 0.57–0.59, max 2.68) — the residual partially re-encodes
+  color-adjacent structure, which the static prior already owns; this is
+  consistent with the model learning overlapping rather than complementary
+  corrections.
+
+Per the frozen terminal budget (DESIGN_V2 B5): **neural evaluator research
+= STOP.** No M48A-v2, no M48B, no architecture/HP variants. This closes
+the two-gate residual budget opened after M47S: the residual target exists
+(M47S, feasible and stable) but was not learnable into a net improvement
+by the frozen static-prior residual model under this contract.
 
 ## Known limitations and non-claims
 
 - The n2000 teacher is a champion-continuation target, not ground truth;
-  M48A PASS does not establish playing-strength benefit (exclusively
-  M48B's question, if authorized).
-- Reusing the M46A trunk trades architectural exploration for scientific
-  isolation; if the trunk itself is the bottleneck, M48A may fail for
-  reasons not attributable to the residual hypothesis. Accepted under the
-  terminal two-gate budget.
+  the FAIL verdict concerns offline improvement toward n2000 preferences
+  and makes no playing-strength claim in either direction.
+- Reusing the M46A trunk traded architectural exploration for scientific
+  isolation; the result is specific to the frozen model/recipe/loss. It
+  does not prove that NO residual formulation could succeed — it proves
+  this one, under the terminal budget, did not, and the budget rule
+  forbids further attempts.
+- Run 1's seat-0 viewpoint bug and its fix are documented; run-2 numbers
+  are from the corrected implementation only.
 
 ## Next authorized gate
 
-Commit this DESIGN_V2 revision, then execute the authorized sequence
-above and return for final review. Still NOT authorized under any
-outcome: Arena/M48B, a second training run, architecture changes,
-HP/loss sweeps, and M48A-v2 after a valid FAIL.
+M48A is permanently closed. Per the M47S terminal review's budget rule,
+the valid FAIL stops neural evaluator research entirely: M48A-v2, M48B,
+any new neural evaluator milestone, Arena, and production changes are all
+NOT AUTHORIZED. Strategy review may consider non-neural directions (e.g.
+search/evaluator engineering) but no new milestone is opened by this
+closure.
