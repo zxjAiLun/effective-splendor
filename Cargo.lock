@@ -573,6 +573,8 @@ dependencies = [
 name = "splendor-determinization-agent"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "splendor-agent",
  "splendor-core",
  "splendor-imperfect-search",

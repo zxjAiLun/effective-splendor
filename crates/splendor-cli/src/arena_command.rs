@@ -32,7 +32,8 @@ use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
 use splendor_determinization_agent::{
     run_determinization_agent_attribution_v1, run_determinization_agent_with_identity_v1,
-    DETERMINIZATION_AGENT_NAME, DETERMINIZATION_AGENT_VERSION,
+    run_determinization_agent_with_stats_v1, DETERMINIZATION_AGENT_NAME,
+    DETERMINIZATION_AGENT_VERSION,
 };
 use splendor_search::AttributionProfile;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
@@ -767,15 +768,16 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let (config, runtime_name, runtime_version, attribution_profile) = match parse_agent_determinization_args(args) {
-        Ok(parsed) => parsed,
-        Err(msg) => {
-            let mut stderr = io::stderr().lock();
-            let _ = writeln!(stderr, "error: {msg}");
-            let _ = stderr.flush();
-            return 1;
-        }
-    };
+    let (config, runtime_name, runtime_version, attribution_profile, stats_out) =
+        match parse_agent_determinization_args(args) {
+            Ok(parsed) => parsed,
+            Err(msg) => {
+                let mut stderr = io::stderr().lock();
+                let _ = writeln!(stderr, "error: {msg}");
+                let _ = stderr.flush();
+                return 1;
+            }
+        };
 
     let stdin = io::stdin();
     let input = BufReader::new(stdin.lock());
@@ -789,7 +791,28 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         version: &runtime_version,
     };
 
-    let res = if let Some(profile) = attribution_profile {
+    let res = if let Some(stats_path) = stats_out {
+        // S0 telemetry path: identical decisions, one PerDecisionStatsV1
+        // JSON line per successful decision appended to the agent-owned
+        // stats file (arena stderr tail stays untouched).
+        if attribution_profile.is_some() {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(
+                stderr,
+                "error: --stats-out cannot be combined with --attribution-profile"
+            );
+            let _ = stderr.flush();
+            return 1;
+        }
+        run_determinization_agent_with_stats_v1(
+            input,
+            output,
+            diagnostics,
+            config,
+            identity,
+            std::path::PathBuf::from(stats_path),
+        )
+    } else if let Some(profile) = attribution_profile {
         run_determinization_agent_attribution_v1(
             input,
             output,
@@ -1018,7 +1041,16 @@ fn parse_agent_random_args(args: &[String]) -> Result<u64, String> {
 
 fn parse_agent_determinization_args(
     args: &[String],
-) -> Result<(RootDeterminizationConfigV1, String, String, Option<AttributionProfile>), String> {
+) -> Result<
+    (
+        RootDeterminizationConfigV1,
+        String,
+        String,
+        Option<AttributionProfile>,
+        Option<String>,
+    ),
+    String,
+> {
     let mut sample_seed: Option<String> = None;
     let mut sample_count: Option<String> = None;
     let mut max_depth_turns: Option<String> = None;
@@ -1026,6 +1058,7 @@ fn parse_agent_determinization_args(
     let mut runtime_name: Option<String> = None;
     let mut runtime_version: Option<String> = None;
     let mut attribution_profile: Option<String> = None;
+    let mut stats_out: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
         let arg = args[i].as_str();
@@ -1037,6 +1070,7 @@ fn parse_agent_determinization_args(
             "--runtime-name" => set_flag(&mut runtime_name, arg, args.get(i + 1))?,
             "--runtime-version" => set_flag(&mut runtime_version, arg, args.get(i + 1))?,
             "--attribution-profile" => set_flag(&mut attribution_profile, arg, args.get(i + 1))?,
+            "--stats-out" => set_flag(&mut stats_out, arg, args.get(i + 1))?,
             other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         }
@@ -1067,6 +1101,7 @@ fn parse_agent_determinization_args(
         runtime_name,
         runtime_version,
         profile,
+        stats_out,
     ))
 }
 

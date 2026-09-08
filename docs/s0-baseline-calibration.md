@@ -1,31 +1,13 @@
 # S0 — Baseline Calibration (Heuristic / n1 / M07)
 
-STATUS     = APPROVED / FROZEN (S0 DESIGN_V2 review verdict: APPROVED AFTER
-            NARROW DOC FIX — P0:0 / P1:0 / P2:2 docs-only, both applied;
-            implementation authorized, no third design review required)
-AUTHORITY  = user review of 65da941 (2026-09-08): research question,
-            schedule, 98.33% joint-decision CI, UNRESOLVED semantics,
-            decision logic, historical reversal rule, and
-            terminal_children semantics all APPROVED; telemetry boundary
-            frozen (stats flag + existing counters allowed; no schema /
-            completed-depth / stop-reason / budget-exhaustion work)
-AUTHORIZED SCOPE (implementation):
-            minimal stats-emission flag; timing/observation sidecar; P0
-            isolation + exact identity checks; 384 matches; 10k
-            paired-block bootstrap; 95% descriptive + 98.33% decision
-            CIs; final audit; tracked result.
-NOT AUTHORIZED: S1 experiment; deeper depth; new search telemetry
-            schema; S2 candidate; neural work; evaluator/search behavior
-            changes; promotion/default-agent change.
-REVISION   = v3 2026-09-08 — approved-condition fixes: cost counts
-            corrected (H ≈ 7.9k / N1 ≈ 7.9k / N2000 ≈ 7.9k; search total
-            ≈ 15.9k; stderr ≈ 3.2 MB); Bonferroni wording cleaned
-            (union-bound coverage only; removed the erroneous
-            independence-based 1−0.95³ line); frozen telemetry boundary
-            recorded; STATUS → APPROVED / FROZEN.
-            v2 2026-09-08 — review repairs (config comparability,
-            decision rules, metric semantics, multiplicity, cost).
-            v1 = bb881ca.
+STATUS     = EXECUTED (design APPROVED/FROZEN at 825f042; single valid run
+            executed 2026-09-08 with final audit ALL CHECKS PASS; result
+            tracked; awaiting closure review)
+RESULT     = heuristic-v1 is the unique primary reference (double resolved
+            win under 98.33% joint-decision CIs); p3 n1-vs-M07 UNRESOLVED
+            (unresolved at this budget — NOT equivalence); must-not-regress
+            set = all three agents. No promotion claim; M07 champion title
+            unchanged.
 BASELINE   = 3c50692 (2026-09-08, post M48A closure)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -191,14 +173,15 @@ changing it in place is forbidden). Therefore:
     `move_deadline` instrumentation points),
   - agent-reported search counters where the agent already computes them:
     `RootDeterminizationStatsV1` (continuation_searches, nodes_visited,
-    nodes_expanded, leaf_evaluations) — surfaced via the agent's
-    **stderr diagnostics channel** (bounded 64 KiB tail already captured
-    by `splendor-arena/src/process.rs`), one NDJSON line per decision.
-    This requires NO protocol change: stderr is already drained and
-    retained; we extend the determinization agent to emit a per-decision
-    stats line (additive, off by default, enabled by a new
-    `--emit-per-decision-stats` flag so existing agents' behavior and
-    identity are untouched).
+    nodes_expanded, leaf_evaluations, terminal_children, …) — surfaced by
+    a new default-off `--stats-out <path>` flag on `agent-determinization`
+    that appends one `PerDecisionStatsV1` JSON line per decision
+    (game_id, request_id, decide_micros, stats) to an agent-owned NDJSON
+    file. NO protocol change and NO arena change: the arena's bounded
+    stderr tail stays untouched (implementation note: stderr-forwarding
+    was considered first, but the arena drains agent stderr into a
+    bounded 64 KiB tail that never reaches the parent, so a dedicated
+    stats file is the only sidecar channel that survives long matches).
   - `completed_depth_turns` per continuation is NOT currently aggregated
     into `RootDeterminizationStatsV1`, and **budget-exhaustion fallback
     inside a continuation search is a different event from
@@ -259,10 +242,9 @@ This boundary exists so S0 does not build half of S1 by inertia.
 5. Observation binding: every observation record's (game_id,
    replay_final_hash) matches its match report; counts of stats lines ==
    decisions made by determinization seats.
-6. Stats-flag isolation: agents launched WITHOUT the stats flag produce
-   zero stderr stats lines and identical actions to the flagless
-   baseline on a fixed 12-position smoke (actions must be bit-identical
-   with flag on — the flag only adds stderr output).
+6. Stats-flag isolation: the SAME match run with and without
+   `--stats-out` produces a bit-identical `replay_final_hash` (verified
+   on the smoke match; the flag only appends sidecar lines).
 
 ### Estimated cost
 
@@ -285,11 +267,10 @@ This boundary exists so S0 does not build half of S1 by inertia.
   and ~102 ms (n2000) upper bounds → ~35 min serial upper bound, likely
   less live (CLI numbers include process startup). **30–60 minutes
   stands as a rough provisional budget, not a measured conclusion.**
-- Observation overhead: one stderr line per search decision
-  (~200 bytes × ~15.9k ≈ 3.2 MB total). The existing bounded 64 KiB tail
-  remains for fault diagnosis only; the observation sampler drains the
-  full stderr stream incrementally into the per-match sidecar file, so
-  the bound never truncates observations.
+- Observation overhead: one stats line per search decision
+  (~250 bytes × ~15.9k ≈ 4 MB total) written to agent-owned sidecar
+  files; the arena's bounded stderr tail remains for fault diagnosis
+  only and is never a telemetry channel.
 
 ## Scope and non-goals
 
@@ -318,20 +299,95 @@ This boundary exists so S0 does not build half of S1 by inertia.
    seed segments (M09 900000.., M19 190000, M22 220100..103, M13/M10/M11
    segments, M24 series, M35A, M42S 5_300_000.., M44C 5_700_000..,
    M45A 5_800_000..5_800_063); disjointness assert.
-2. Rust: add `--emit-per-decision-stats` flag to
-   `agent-determinization` (stderr NDJSON: per-decision
-   RootDeterminizationStatsV1 + wall ms measured in-process); P0 gate 6
-   proves decision-identity.
-3. Arena-side observation sampler: wrap `wait_for_action` timing
-   (runner-external driver script preferred; if runner changes are
-   needed, they must be additive and behind a config default-off) and
-   drain stderr to per-match sidecar JSON.
+2. Rust: add `--stats-out <path>` flag to `agent-determinization`
+   (`StatsEmittingPolicy` wrapping `DeterminizationAgentPolicyV1`;
+   per-decision PerDecisionStatsV1 = game_id, request_id,
+   in-process decide_micros, RootDeterminizationStatsV1); P0 gate 6
+   proves decision-identity via replay_final_hash equality.
+3. Orchestrator-side observation assembly: per-match sidecar JSON
+   combining (a) the agents' `--stats-out` NDJSON lines and (b)
+   match-level wall time from the orchestrator's own subprocess timing;
+   bound to the match by (game_id, replay_final_hash). Per-request
+   arena-side wall_ms timing would need runner changes, so the frozen
+   decision-time metric this round is the AGENT-MEASURED decide_micros
+   (in-process, excludes transport overhead) plus per-match wall —
+   stated as such in the result.
 4. `scripts/s0_orchestrator.py` — plan generation, 384-match execution,
    bootstrap, tracked result JSON
    (`benchmarks/s0-baseline-calibration-v1.result.json`).
 5. `scripts/s0_final_audit.py` — fail-closed recheck of all P0 gates +
    result recomputation from raw replay/observation files.
 
+
+## Validation and evidence
+
+### Execution — 2026-09-08 (single valid run)
+
+- P0 pre-run gates:
+  1. Seed disjointness PASS (`scripts/s0_seed_registry.py`: 64 S0 seeds
+     vs 3,124 consumed seeds across 20 registered ranges).
+  2. M07 identity PASS (frozen 12-position benchmark bit-exact,
+     `m07_determinization_benchmark_is_reproducible` release run).
+  6. Stats-flag decision-identity PASS (same match with/without
+     `--stats-out` → identical `replay_final_hash`
+     `eb8b9bc4…`; plus a Rust unit test locking parity and the telemetry
+     shape).
+- 384/384 matches completed, 0 aborts. Total wall 67 s (far under the
+  provisional 30–60 min — live in-process search is much cheaper than
+  the CLI-analysis numbers suggested).
+- Final audit (`scripts/s0_final_audit.py`) ALL CHECKS PASS: exhaustive
+  lineup/rotation verification from match configs, 384/384 replays
+  verified via `splendor verify-replay --input`, observation binding
+  (stats rows == replay-counted decisions per search seat, game_id
+  match, monotone request_ids), full recomputation of W/T/L, block
+  scores, center bps, both CI levels, verdicts, and the decision block.
+
+### Results (frozen contract)
+
+| Pairing | W-T-L (primary) | Center bps | 95% CI (desc.) | 98.33% CI (decision) | Verdict |
+|---|---|---:|---|---|---|
+| P1 heuristic vs n1 | 85-0-43 | 6640.6 | [5859.4, 7421.9] | [5625.0, 7656.2] | **STRONGER_A (heuristic)** |
+| P2 heuristic vs M07 | 88-0-40 | 6875.0 | [5937.5, 7734.4] | [5781.2, 7890.6] | **STRONGER_A (heuristic)** |
+| P3 n1 vs M07 | 68-1-59 | 5351.6 | [4492.2, 6210.9] | [4296.9, 6445.3] | **UNRESOLVED** |
+
+Decision block (98.33% verdicts): heuristic beats both other agents →
+**unique primary reference = `heuristic-v1`**. P3 stays UNRESOLVED: at
+this budget the 2000-node continuation search is not separable from the
+1-node static-successor baseline (consistent with M42S). This is
+"unresolved at this budget", NOT equivalence. Must-not-regress set =
+{heuristic, n1, M07} (all three; the frozen conservative rule).
+
+Consistency with prior evidence: P2's direction (heuristic over M07)
+matches the 20260810-seeded M09/M19/M22 priors (57–17) — the reversal
+case did not materialize, and no anomaly handling was needed. P3's
+UNRESOLVED matches M42S.
+
+### Measured cost (agent-side, in-process decide_micros; excludes transport)
+
+| Agent | Decisions | p50 | p95 | terminal_child_ratio | budget consumption (desc.) |
+|---|---:|---:|---:|---:|---:|
+| n1 (P1) | 3,722 | 1.49 ms | 2.66 ms | 0.0113 | 1.000 (budget 1 always exhausted) |
+| M07/n2000 (P2) | 3,851 | 14.4 ms | 43.0 ms | 0.0122 | 0.0157 |
+| n1 (P3) | 3,963 | 1.66 ms | 5.51 ms | 0.0067 | 1.000 |
+| M07/n2000 (P3) | 3,962 | 12.2 ms | 78.1 ms | 0.0092 | 0.0144 |
+
+Heuristic decisions: ~0 by construction (no stats lines; sampler
+verified absent). Reading notes: M07's mean decide time is ~8–9× n1's;
+its p95 tail reaches 78 ms in P3. n1's budget consumption = 1.0 exactly
+(max_nodes=1 exhausted by design — this is the expected degenerate
+value, not a finding). terminal_child_ratio is the terminal-root-children
+share (naming per the frozen boundary — NOT a fallback indicator).
+These are live in-process numbers on the local machine under normal
+load; descriptive, not controlled benchmarks.
+
+### Tracked artifacts
+
+- `benchmarks/s0-baseline-calibration-v1.result.json` (git-blob SHA256
+  recorded after commit; working-tree hash differs by CRLF).
+- Raw per-match artifacts (configs, reports, replays, stats sidecars)
+  under ignored `local-artifacts/s0-baseline-calibration/`.
+
+## Result and decision (final)
 ## Result and decision table (frozen)
 
 ### Verdict rule (per pairing, same validity standard for every outcome)

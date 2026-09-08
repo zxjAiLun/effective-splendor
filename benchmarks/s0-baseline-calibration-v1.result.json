@@ -1,0 +1,298 @@
+{
+  "format": "effective-splendor-s0-result",
+  "version": 1,
+  "experiment_id": "s0-baseline-calibration-v1",
+  "design_doc": "docs/s0-baseline-calibration.md @ 825f042 (DESIGN_V2 APPROVED/FROZEN)",
+  "contract": {
+    "frozen_seeds": [
+      5800064,
+      5800065,
+      5800066,
+      5800067,
+      5800068,
+      5800069,
+      5800070,
+      5800071,
+      5800072,
+      5800073,
+      5800074,
+      5800075,
+      5800076,
+      5800077,
+      5800078,
+      5800079,
+      5800080,
+      5800081,
+      5800082,
+      5800083,
+      5800084,
+      5800085,
+      5800086,
+      5800087,
+      5800088,
+      5800089,
+      5800090,
+      5800091,
+      5800092,
+      5800093,
+      5800094,
+      5800095,
+      5800096,
+      5800097,
+      5800098,
+      5800099,
+      5800100,
+      5800101,
+      5800102,
+      5800103,
+      5800104,
+      5800105,
+      5800106,
+      5800107,
+      5800108,
+      5800109,
+      5800110,
+      5800111,
+      5800112,
+      5800113,
+      5800114,
+      5800115,
+      5800116,
+      5800117,
+      5800118,
+      5800119,
+      5800120,
+      5800121,
+      5800122,
+      5800123,
+      5800124,
+      5800125,
+      5800126,
+      5800127
+    ],
+    "rotations": 2,
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 42280001,
+      "unit": "paired seed block"
+    },
+    "ci_levels": {
+      "descriptive_95": 95.0,
+      "decision_98_33": 98.33
+    },
+    "decision_ci": "decision_98_33 (Bonferroni for 3 comparisons)",
+    "agents": {
+      "heuristic-v1": [
+        "agent-heuristic",
+        "--seed",
+        "20260812"
+      ],
+      "det-s4-d1-n1": [
+        "agent-determinization",
+        "--sample-seed",
+        "20260703",
+        "--sample-count",
+        "4",
+        "--max-depth-turns",
+        "1",
+        "--max-nodes",
+        "1"
+      ],
+      "det-s4-d1-n2000": [
+        "agent-determinization",
+        "--sample-seed",
+        "20260703",
+        "--sample-count",
+        "4",
+        "--max-depth-turns",
+        "1",
+        "--max-nodes",
+        "2000"
+      ]
+    },
+    "sample_seed": 20260703,
+    "telemetry_boundary": "wall_s per match (orchestrator); decide_micros per search decision (agent-measured, in-process, excludes transport); RootDeterminizationStatsV1 counters; terminal_child_ratio (terminal root children share, NOT budget fallback); descriptive budget consumption. No completed-depth, no stop_reason."
+  },
+  "pairings": [
+    {
+      "pairing_id": "p1_heuristic_vs_n1",
+      "primary": "heuristic-v1",
+      "secondary": "det-s4-d1-n1",
+      "total_matches": 128,
+      "wins": 85,
+      "ties": 0,
+      "losses": 43,
+      "center_bps": 6640.625,
+      "ci_descriptive_95_bps": [
+        5859.375,
+        7421.875
+      ],
+      "ci_decision_98_33_bps": [
+        5625.0,
+        7656.25
+      ],
+      "verdict_descriptive_95": "STRONGER_A",
+      "verdict_decision_98_33": "STRONGER_A",
+      "seat_scores_bps": {
+        "r0": 6406.25,
+        "r1": 6875.0
+      },
+      "mean_plies": 58.3125,
+      "wall_total_s": 6.8,
+      "agent_stats": {
+        "heuristic-v1": {
+          "decisions": 0
+        },
+        "det-s4-d1-n1": {
+          "decisions": 3722,
+          "decide_micros_mean": 1631.5,
+          "decide_micros_p50": 1491,
+          "decide_micros_p90": 2318,
+          "decide_micros_p95": 2664,
+          "decide_micros_max": 56126,
+          "continuation_searches_total": 361396,
+          "terminal_children_total": 4116,
+          "terminal_child_ratio": 0.011261,
+          "nodes_visited_total": 361396,
+          "leaf_evaluations_total": 0,
+          "nodes_expanded_total": 361396,
+          "budget_consumption_descriptive": 1.0
+        }
+      }
+    },
+    {
+      "pairing_id": "p2_heuristic_vs_m07",
+      "primary": "heuristic-v1",
+      "secondary": "det-s4-d1-n2000",
+      "total_matches": 128,
+      "wins": 88,
+      "ties": 0,
+      "losses": 40,
+      "center_bps": 6875.0,
+      "ci_descriptive_95_bps": [
+        5937.5,
+        7734.375
+      ],
+      "ci_decision_98_33_bps": [
+        5781.25,
+        7890.625
+      ],
+      "verdict_descriptive_95": "STRONGER_A",
+      "verdict_decision_98_33": "STRONGER_A",
+      "seat_scores_bps": {
+        "r0": 7500.0,
+        "r1": 6250.0
+      },
+      "mean_plies": 60.3828125,
+      "wall_total_s": 24.2,
+      "agent_stats": {
+        "heuristic-v1": {
+          "decisions": 0
+        },
+        "det-s4-d1-n2000": {
+          "decisions": 3851,
+          "decide_micros_mean": 19075.3,
+          "decide_micros_p50": 14354,
+          "decide_micros_p90": 26489,
+          "decide_micros_p95": 42967,
+          "decide_micros_max": 530876,
+          "continuation_searches_total": 363088,
+          "terminal_children_total": 4492,
+          "terminal_child_ratio": 0.01222,
+          "nodes_visited_total": 11418184,
+          "leaf_evaluations_total": 10317489,
+          "nodes_expanded_total": 367923,
+          "budget_consumption_descriptive": 0.015724
+        }
+      }
+    },
+    {
+      "pairing_id": "p3_n1_vs_m07",
+      "primary": "det-s4-d1-n1",
+      "secondary": "det-s4-d1-n2000",
+      "total_matches": 128,
+      "wins": 68,
+      "ties": 1,
+      "losses": 59,
+      "center_bps": 5351.5625,
+      "ci_descriptive_95_bps": [
+        4492.1875,
+        6210.9375
+      ],
+      "ci_decision_98_33_bps": [
+        4296.875,
+        6445.3125
+      ],
+      "verdict_descriptive_95": "UNRESOLVED",
+      "verdict_decision_98_33": "UNRESOLVED",
+      "seat_scores_bps": {
+        "r0": 5937.5,
+        "r1": 4765.625
+      },
+      "mean_plies": 61.9140625,
+      "wall_total_s": 36.1,
+      "agent_stats": {
+        "det-s4-d1-n1": {
+          "decisions": 3963,
+          "decide_micros_mean": 2686.6,
+          "decide_micros_p50": 1656,
+          "decide_micros_p90": 3246,
+          "decide_micros_p95": 5510,
+          "decide_micros_max": 84950,
+          "continuation_searches_total": 519508,
+          "terminal_children_total": 3480,
+          "terminal_child_ratio": 0.006654,
+          "nodes_visited_total": 519508,
+          "leaf_evaluations_total": 0,
+          "nodes_expanded_total": 519508,
+          "budget_consumption_descriptive": 1.0
+        },
+        "det-s4-d1-n2000": {
+          "decisions": 3962,
+          "decide_micros_mean": 27122.8,
+          "decide_micros_p50": 12212,
+          "decide_micros_p90": 30745,
+          "decide_micros_p95": 78080,
+          "decide_micros_max": 1255881,
+          "continuation_searches_total": 448460,
+          "terminal_children_total": 4184,
+          "terminal_child_ratio": 0.009243,
+          "nodes_visited_total": 12925010,
+          "leaf_evaluations_total": 10901799,
+          "nodes_expanded_total": 451027,
+          "budget_consumption_descriptive": 0.01441
+        }
+      }
+    }
+  ],
+  "decision": {
+    "pairwise_verdicts": {
+      "p1_heuristic_vs_n1": "STRONGER_A",
+      "p2_heuristic_vs_m07": "STRONGER_A",
+      "p3_n1_vs_m07": "UNRESOLVED"
+    },
+    "wins_over": {
+      "heuristic-v1": 2,
+      "det-s4-d1-n1": 0,
+      "det-s4-d1-n2000": 0
+    },
+    "primary_reference": "heuristic-v1",
+    "unique_reference_named": true,
+    "unresolved_pairings": [
+      "p3_n1_vs_m07"
+    ],
+    "must_not_regress_set": [
+      "heuristic-v1",
+      "det-s4-d1-n1",
+      "det-s4-d1-n2000"
+    ],
+    "wording_rules": [
+      "UNRESOLVED means evidence insufficient to separate; it does NOT mean equivalent.",
+      "Equivalence/equality wording (e.g. 'n1 ~ M07') is forbidden; only 'unresolved at this budget'.",
+      "A cheap development baseline may be selected only as an explicit cost choice with the strength gap unresolved.",
+      "All outcomes passed the same validity gates; contradictions add diagnostics, not acceptance thresholds."
+    ]
+  },
+  "wall_total_s": 67.1,
+  "splendor_exe_sha256": "60d40c3b5a080052bd748fd509a2a1fffe01f10948e0e1a2455077c4575d7fcb"
+}

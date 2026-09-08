@@ -11,4 +11,6 @@ splendor-agent = { workspace = true }
 splendor-core = { workspace = true }
 splendor-imperfect-search = { workspace = true }
 splendor-search = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
