@@ -377,7 +377,8 @@ selects take_tokens->buy_market as the single S2 nominee.
 ### Tracked artifacts
 
 - `benchmarks/s2-heuristic-win-attribution-v1.result.json` (git-blob
-  SHA recorded after commit).
+  SHA256, LF form, execution commit `12ec3c5`:
+  `0a573d4697294d5e47cbcd04a5696d5486ef5d10e0db72cbaedf55d35035089a`).
 - Raw census rows + term-gap rows under ignored
   `local-artifacts/s2-census/` (cloud evidence boundary as in S0/S1).
 
