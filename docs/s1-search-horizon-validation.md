@@ -1,24 +1,20 @@
 # S1 — Search-Horizon Validation (depth-2 vs the calibrated field)
 
-STATUS     = COMPUTE_INFEASIBLE / CLOSED (Phase A executed 2026-09-08
-            per DESIGN_V2: both probe configs passed the completion gate
-            (82.3% / 98.6% >= 80%) but FAILED the p95 cost gate
-            (2.24 s / 4.16 s > 2.0 s); per the frozen contract, Phase B
-            did not run and S1 stops. Whether to invest in search
-            engineering is a separate user decision. Interpretation
-            boundary: this means the CURRENT implementation does not
-            deliver depth-2 within the preregistered gates — NOT that
-            depth-2 is inherently infeasible.)
-RESULT     = COMPUTE_INFEASIBLE. Distribution shape: medians are fine
-            (p50 ~0.39 s for both configs) but heavy tails fail the
-            gate (13-19 of 200 decisions exceed 2 s; maxima 28 s /
-            132 s; the expensive contexts are wide-branching middlegame
-            positions with up to 187 legal actions). n10000 raises
-            completion 82.3% -> 98.6% but worsens the tail (p95 2.24 ->
-            4.16 s): the completion/cost tension is structural at the
-            per-continuation budget level.
+STATUS     = APPROVED AS A VALID COMPUTE-FEASIBILITY NEGATIVE /
+            COMPLETED_DIAGNOSTIC / CLOSED (final review 2026-09-08 on
+            caa85cc: Phase A VALID; verdict COMPUTE_INFEASIBLE; Phase B
+            correctly cancelled by frozen contract; P0:0 / P1:0 / P2:4
+            non-blocking wording repairs applied docs-only; no repair
+            run, no extra probe, no Arena; heuristic-v1 primary reference
+            unchanged; M07 historical champion unchanged; promotion NONE)
+RESULT     = COMPUTE_INFEASIBLE — a COST-TAIL failure, not an inability
+            to reach depth 2 (n2000 completed 82.3%, n10000 98.6% of
+            continuations; p95 decision times 2.24 s / 4.16 s vs the
+            2.0 s cap; medians ~0.39 s). Depth-2 strength vs heuristic
+            remains COMPLETELY UNTESTED (Phase B never ran).
 REVISION   = V2 2026-09-08 (frozen, 1f557e0) — review repairs per
-            DESIGN_V1 review; executed as frozen. V1 = 76d8993.
+            DESIGN_V1 review; executed as frozen; closed at caa85cc.
+            V1 = 76d8993.
 BASELINE   = 093e5fa (S0 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -293,14 +289,21 @@ Cost data never overrides strength verdicts (S0 rule).
 Neither config is feasible => per the frozen selection rule:
 **COMPUTE_INFEASIBLE — Phase B did not run — S1 stops.**
 
-Tail anatomy (post-hoc description, no gate): n2000 has 13/200 and
-n10000 has 19/200 decisions above 2.0 s, with maxima 28 s and 132 s.
-The slow contexts are wide-branching (legal_actions up to 187 in the
-manifest); per-decision work scales with root_actions x samples
-continuations, so the cost gate fails specifically on middlegame
-breadth, not on typical positions. n10000 buys completion (+16.3pp) at
-a worse tail (+1.92 s p95): at a fixed per-continuation budget,
-completion and tail cost are in direct tension.
+Tail anatomy (post-hoc descriptive association, no gate, no causal
+claim): n2000 has 13/200 and n10000 has 19/200 decisions above 2.0 s,
+with maxima 28 s and 132 s. The slow-tail observations are concentrated
+among wide-action Main-phase contexts (legal_actions up to 187 in the
+manifest) — an observed association, not a proven sole cause (child
+branching, subtree shape, TT hit rate, and determinization complexity
+also vary across contexts). Medians are ~0.39 s for both configs: the
+failure is a heterogeneous heavy tail, not uniformly slow decisions.
+Increasing the per-continuation node budget from 2k to 10k substantially
+increased completion on this corpus (82.3% -> 98.6%) but also worsened
+the observed decision-time tail (p95 2.24 -> 4.16 s) — an observation
+about this budget comparison, not a proven structural law. Future
+search-engineering direction (NOT authorized by this round; a user
+decision): the median/tail split suggests tail-control (worst-case
+work) matters more than uniform speedup.
 
 ### Tracked artifacts
 
@@ -344,16 +347,72 @@ efficiently".
   the accepted arbiter).
 - The determinization information-set limitation persists at any depth.
 
-## Authorized execution path (per DESIGN_V2 review)
+## Preregistration precision lessons (recorded for future gates)
 
-1. Minimal depth-diagnostics implementation + parity/consistency tests.
-2. Phase A probe (200 contexts, both configs) → tracked feasibility
-   result.
-3. If and ONLY if Phase A passes: Phase B 384-match Arena + final
-   audit + tracked result.
-4. Return for S1 closure review.
+1. **Selector byte encoding**: DESIGN_V2 froze `SHA256(seed || identity)`
+   abstractly; the executed script used
+   `SHA256(utf8("43_000_001|<obs_hash>|<history_hash>|<info_hash>"))`.
+   The executed encoding was deterministic, fixed in the committed
+   script before the run, and the full 200-identity manifest is in the
+   tracked result — so this is NOT a protocol violation — but future
+   designs must freeze the exact byte serialization whenever a selector
+   feeds a hard gate.
+2. **Quantile convention**: the p95 gate did not preregister a quantile
+   interpolation method; the script used nearest-index
+   (`round(q*(n-1))`). Immaterial to this verdict (13 and 19 of 200
+   decisions exceed 2.0 s; no common convention moves either p95 under
+   the cap), but future cost gates should preregister the convention.
 
-Still NOT authorized: depth 3+, search optimization, TT redesign,
-evaluator changes, sampling changes, pruning, extra seeds after
-UNRESOLVED, S2 implementation, promotion/default-agent change, neural
-work.
+## Cloud evidence boundary
+
+As in S0: the frozen design, implementation, probe selector and
+runner, 200-context manifest, aggregated histograms, summary timing,
+and result hash are tracked and independently checkable from the cloud;
+the 400 raw per-context telemetry rows and the S0 source replays are
+local-only (ignored `local-artifacts/`), so the cloud cannot recompute
+the percentiles from raw rows. The cloud review verified the script
+logic, tracked aggregates, manifest, contract, and commit provenance
+are mutually consistent.
+
+## Canonical result sentences (closure wording)
+
+Core result (permanent):
+
+> On the frozen 200-context S1 feasibility corpus, both tested depth-2
+> configurations met the >= 80% continuation-completion requirement, but
+> neither met the preregistered <= 2.0 s p95 in-process decision-time
+> cap. S1 therefore terminated as COMPUTE_INFEASIBLE before Arena, as
+> required by the frozen contract.
+
+More important detail (permanent):
+
+> The failure was a cost-tail failure rather than an inability to reach
+> depth 2: d2-n2000 completed 82.3% of continuations and d2-n10000
+> 98.6%, while their p95 decision times were 2.24 s and 4.16 s
+> respectively.
+
+Forbidden wording: "deeper search is infeasible"; "deeper search has no
+strength value" (Phase B never ran; depth-2 strength vs heuristic is
+completely untested).
+
+## Closure and next authorized gate
+
+Executed path: (1) depth diagnostics + parity tests; (2) Phase A probe
+(200 contexts, both configs) -> tracked feasibility result; (3) Phase A
+FAILED the cost gate -> Phase B correctly NOT RUN per the frozen
+contract; (4) closure review completed (basis caa85cc): APPROVED AS A
+VALID COMPUTE-FEASIBILITY NEGATIVE / COMPLETED_DIAGNOSTIC / CLOSED.
+
+Standing authorizations after closure (per the S1 final review):
+- Search engineering: NOT AUTHORIZED (the candidate's strength value is
+  unknown — optimizing it before any strength evidence repeats the old
+  build-first-ask-later pattern).
+- S2 implementation: NOT AUTHORIZED.
+- **S2 error-attribution design (design-only): AUTHORIZED** — the next
+  round studies why heuristic stably beats n1/M07: where they disagree,
+  which disagreement classes predict heuristic's wins, and which
+  heuristic terms drive those decisions, culminating in at most one
+  S2-candidate hypothesis for review — no implementation.
+- Still NOT authorized: depth 3+, search optimization, TT redesign,
+  evaluator changes, sampling changes, pruning, extra seeds after
+  UNRESOLVED, promotion/default-agent change, neural work.
