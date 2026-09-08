@@ -313,8 +313,12 @@ cross-check re-run; binary identity.
 
 ### Tracked artifacts
 
-- `benchmarks/s2b-scope-v1.result.json` (scope + parity + cross-check).
-- `benchmarks/s2b-n1-buy-overlay-v1.result.json` (Arena + decision).
+- `benchmarks/s2b-scope-v1.result.json` (scope + parity + cross-check;
+  git-blob SHA256, LF form, execution commit `79ba251`:
+  `060754b085154b1d953c7fd80f09e84749fc385d12c335c181c5666260da318a`).
+- `benchmarks/s2b-n1-buy-overlay-v1.result.json` (Arena + decision;
+  git-blob SHA256, LF form, execution commit `79ba251`:
+  `531d5ddcbf757e8aa57db8d17c8b69dd4379a0a550c7a38bb55ee86c9ac9066e`).
 - Raw per-match artifacts under ignored `local-artifacts/s2b-arena/`;
   scope rows under ignored `local-artifacts/s2b-scope/` (cloud
   evidence boundary as in S0/S1/S2).
