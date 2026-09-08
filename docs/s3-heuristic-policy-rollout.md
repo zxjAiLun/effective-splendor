@@ -1,9 +1,48 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = PROPOSED (design-only, authorized by the S2b closure /
-            coordinator's 2026-09-09 direction; execution NOT authorized
-            until this design passes review)
-BASELINE   = 18f798d (S2b closure, 2026-09-09)
+STATUS     = PROPOSED (design revision 2; execution NOT authorized until
+            this design passes review. The V1 review approved the
+            mainline and the three-policy proposal set but required
+            four experimental-semantics revisions — determinism
+            contract, incomplete-rollout scoring, shared randomness,
+            pilot gating — plus the Stage-B contraction to a
+            heuristic-only primary comparison. All applied in this
+            revision.)
+REVISION   = V2 2026-09-09 — review repairs: (1) the normal decision
+            path is a FIXED-WORKLOAD computation (frozen C-candidate /
+            D-sample / P-ply contract) with unconditional bitwise
+            determinism; the 2.0 s figure is the PILOT ACCEPTANCE LINE
+            ONLY; a separate, much larger emergency guard (30 s,
+            cooperative checks between rollouts) exists for live-Arena
+            safety — if it EVER fires, that decision is recorded as an
+            over-budget event and the run is flagged LOAD_TAINTED (the
+            policy then explicitly depends on machine load; bitwise
+            determinism is disclaimed for that decision); timing
+            covers the entire pipeline (candidate generation,
+            information-set construction, sampling, simulation,
+            selection). (2) Incomplete rollouts no longer score 0.5:
+            if ANY rollout participating in a decision's comparison
+            fails to complete, the decision KEEPS a_H (no truncation
+            fill-in; the comparison signal must come from completed
+            worlds only). (3) Shared randomness: all candidates are
+            evaluated on the SAME D sampled worlds; the simulated
+            heuristic tie-break RNG is candidate-INDEPENDENT (derived
+            from root identity, world index, ply, seat — fixed byte
+            encoding); the root a_H is the canonical-first action of
+            H* (no runtime RNG); the argmax tie rule is fully
+            specified (prefer a_H only if it is IN the top-scoring
+            set; otherwise canonical-first among the top set).
+            (4) Pilot gating distinguishes "runs" from "performs
+            meaningful comparisons": per-stratum reporting, exact
+            selection (150 ordinary + 50 wide), |C|==1 decisions
+            excluded from feasibility metrics and separately counted,
+            D=4 stability reported as coarse only, and two-layer
+            information-isolation tests. Stage B contracted to
+            heuristic-only: 64 fresh blocks x 2 rotations = 128
+            matches, single primary comparison, 95% decision CI (no
+            multiplicity correction needed for one comparison).
+            V1 = c253de7.
+BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
 ## Problem and evidence
@@ -14,10 +53,8 @@ Four closed rounds (S0 calibration, S1 depth-feasibility, S2
 attribution, S2b confirmation) establish: heuristic-v1 is the primary
 development reference; the search baselines' shallow compute shows no
 resolved strength gain; the single highest-frequency preference
-difference (take-vs-buy, 11.27%) did NOT transfer into improvement when
-transplanted as an isolated rule (S2b: UNRESOLVED vs n1, resolved
-weaker than heuristic). One full calibration-to-confirmation cycle is
-complete, and the coordinator's standing question is:
+difference did NOT transfer into improvement when transplanted as an
+isolated rule. The coordinator's standing question:
 
 > **Does added computation actually help the current strongest policy
 > make better decisions?**
@@ -25,244 +62,290 @@ complete, and the coordinator's standing question is:
 S3 tests the most direct computation the project has NOT yet tried:
 evaluate root actions by the OUTCOME of letting the FULL heuristic
 policy play on from each candidate action — rollout policy
-improvement. This is the classic rollout idea (Bertsekas): approximate
-the value of action a by simulating the base policy forward from a and
-scoring the terminal outcome, then pick the action with the best
-simulated outcome.
+improvement. No automatic improvement guarantee exists under finite
+sampling, opponent modeling (both simulated seats play heuristic), and
+imperfect information; S3 measures whether it helps in practice.
 
-Three project-specific reasons (coordinator's ruling):
-
-1. The base policy has real win-rate support (heuristic is the
-   measured strongest reference) — a rollout candidate directly
-   challenges the strongest agent instead of patching a weaker one.
-2. It preserves heuristic's ENTIRE downstream decision machinery —
-   no need to guess which isolated rule is transplantable (S2b showed
-   the isolated-rule path failed once).
-3. It tests a different evaluation source: M10 ISMCTS still evaluates
-   leaves with StaticEvaluatorV1; full-policy rollouts are not a rerun
-   of the existing ISMCTS.
+What this round specifically tests (framed exactly): **whether
+re-ranking the actions proposed by the three frozen policies — using
+full heuristic continuation rollouts on shared sampled worlds —
+improves heuristic's playing strength.** The proposal-generation cost
+(computing a_n1 and a_M07 on each context) is part of the measured
+pipeline.
 
 ### What this is NOT
 
-- NOT an improvement guarantee: finite sampling, opponent modeling
-  (both seats play heuristic), and imperfect information mean rollout
-  policy improvement has NO automatic improvement property here. The
-  coordinator's ruling states this explicitly; S3 measures whether it
-  helps in practice.
-- NOT a search-engineering round: no TT redesign, no depth-2, no
-  StaticEvaluator changes.
+- NOT a search-engineering round (no TT redesign, no depth-2, no
+  StaticEvaluator changes).
+- NOT a guarantee claim; NOT a sequential transplantation of further
+  S2 rules (coordinator's explicit prohibition).
 
-## Initial design
-
-### The candidate (parameter-free except the frozen rollout budget)
+## The candidate (V2 frozen semantics)
 
 At a decision context (the acting player's observation + visible
 history):
 
+### Step 1 — Root candidate set (proposal generation)
+
 ```text
-1. Root candidate set C = dedup{ a_H, a_n1, a_M07 }  (the frozen
-   heuristic action, the frozen n1 action, the frozen M07 action —
-   each computed on this context; deduplicated). Rationale: the three
-   frozen policies define the project's known decision diversity; the
-   set stays small (<= 3) independent of branching factor.
-
-2. Sample D determinizations of the player's information set
-   (sample_seed 20260703 stream, sample_count D — frozen below) —
-   the same hidden-state sampler the determinization family uses.
-
-3. For each candidate action a in C and each sampled determinization
-   d: apply a to d, then SIMULATE forward with BOTH seats playing the
-   frozen heuristic policy (each seat decides from ITS OWN observation
-   + visible history — information-isolated, no referee-only reads),
-   until terminal or the ply cap P (frozen below).
-
-4. Score each (a, d) rollout by terminal outcome from the root
-   player's perspective: win = 1, tie = 0.5, loss = 0; an
-   incomplete rollout (ply cap) scores 0.5 (conservative neutral —
-   frozen before any result; alternatives rejected: static-eval
-   fallback would reintroduce the evaluator we are trying to get away
-   from; 0 would punish viable long games).
-
-5. Choose argmax_a of the mean score over D rollouts; tie between
-   candidates -> keep a_H (the base policy's action — conservative
-   rollout convention; frozen before any result).
+C = dedup{ a_H, a_n1, a_M07 }
 ```
 
-Frozen budget constants (design-review decision points, defaults
-proposed):
+- a_H = the canonical-FIRST action of H*(context) (the heuristic
+  score-optimal set; deterministic, NO runtime RNG — the heuristic
+  agent's tie-break RNG is never invoked at the root).
+- a_n1 / a_M07 = the frozen search policies' actions on this context
+  (exact configs 20260703/s4/d1/n{1,2000}).
+- Dedup by canonical action equality; C is ordered canonically.
+- If |C| == 1: the decision returns that action immediately (no
+  rollouts; recorded as a no-comparison decision and counted
+  separately — these decisions must not inflate feasibility metrics).
 
-- D (determinizations per candidate): 4 (matches the family's
-  sample_count).
-- P (ply cap per rollout): 120 plies (S0 games ran ~52-66 plies mean;
-  120 covers natural termination with margin; the pilot measures the
-  actual completion rate).
-- TOTAL per-decision budget: the work is |C| x D rollouts x <= P
-  heuristic decisions = at most 3 x 4 x 120 = 1,440 heuristic
-  decisions, each ~0-cost (integer scoring on an observation) — but
-  the REAL cost is state cloning + event log growth per applied
-  action, which the pilot measures. A hard wall-clock guard W
-  (default 2.0 s per decision, the S1 cost-gate precedent) bounds the
-  worst case: if exceeded, the candidate falls back to a_H for that
-  decision (conservative; the trigger count is recorded).
+### Step 2 — Shared sampled worlds
 
-### Information-isolation invariants (frozen)
+```text
+worlds[0..D) = sample_determinization_v1(root information set,
+                                          sample_seed 20260703 stream,
+                                          world_index)
+```
 
-- Every simulated seat — including the root player after the candidate
-  action — decides ONLY from its own observation + visible history
-  reconstructed from the simulated state (the ISMCTS pattern:
-  `state.observation(current_player)` + `visible_events(...,
-  Audience::Player(...))`); never from the true hidden state, deck
-  order, or opponent blind reserves.
-- The determinizations are sampled from the ROOT player's information
-  set only (the same `sample_determinization_v1` machinery as the
-  frozen family); within a rollout, the sampled state is the ground
-  truth of that simulated world (both seats stay observation-bound
-  inside it).
-- The heuristic's tie-break RNG: rollouts use a FIXED per-rollout seed
-  derived from (root identity, candidate, determinization index) —
-  deterministic, reproducible, and never carrying state across
-  rollouts. (The heuristic consumes RNG only on exact-score ties.)
+- D = 4 (frozen; design-review parameter).
+- ALL candidates are evaluated on the SAME worlds (shared random
+  conditions — a candidate never gets an easier world draw).
 
-### What must be frozen before the confirmation Arena
+### Step 3 — Full-policy rollouts
 
-- D, P, W and the fallback rule (pilot may only MEASURE, not tune:
-  the pilot runs with the defaults above; if the pilot fails its
-  gates, S3 stops — the constants are NOT adjusted and re-run within
-  this round; any change reopens the design).
-- Incomplete-rollout scoring (0.5) and the candidate tie-break
-  (prefer a_H).
-- The root candidate set definition (dedup of the three frozen
-  policies' actions).
+For each candidate a in C and each world w: apply a to a clone of w,
+then simulate BOTH seats playing the frozen heuristic policy until
+terminal or the ply cap:
 
-## Two-stage work package (per the coordinator's ruling)
+- Each simulated seat decides ONLY from its own observation + visible
+  history (the ISMCTS information-isolation pattern; no referee-only
+  reads, no true deck order, no opponent blind reserves).
+- Simulated tie-break RNG: candidate-INDEPENDENT, derived per
+  (root identity, world index, ply, seat) with a fixed byte encoding
+  `SHA256("s3-rollout|" + root_info_hash + "|" + world + "|" + ply +
+  "|" + seat)` -> StableRng. Forked trajectories after different root
+  actions therefore see DIFFERENT tie-break streams at the same
+  (world, ply, seat) only when their root identity differs — which it
+  does not — so the streams are identical across candidates at equal
+  (world, ply, seat): the comparison is randomized-common-random-
+  numbers. (Divergent trajectories legitimately choose different
+  actions later; only the tie-break STREAMS are shared.)
+- P = 120 plies per rollout (frozen; design-review parameter).
+
+### Step 4 — Completion-gated scoring (V2 semantics)
+
+A rollout is COMPLETE iff it reaches a terminal state within P plies
+(incomplete = ply-capped; there is no time-based truncation in the
+normal path).
+
+```text
+if ANY (candidate, world) rollout in this decision is incomplete:
+    decision action = a_H                      (keep the base policy)
+    decision marked fallback_ply_cap
+else:
+    score(a) = mean over w of terminal_score(a, w)     # win=1, tie=0.5, loss=0
+```
+
+- NO truncation fill-in value: an incomplete world contributes no
+  signal, and a decision with any incomplete rollout keeps a_H. The
+  comparison signal must come from completed worlds only.
+- Recorded per decision: all-complete flag, per-rollout completion,
+  and (in the emergency-guard case below) fallback_time.
+
+### Step 5 — Argmax with the full tie rule (V2)
+
+```text
+T = { a in C : score(a) == max_score }        # top-scoring set
+if a_H in T:  chosen = a_H
+else:         chosen = canonical_first(T)
+```
+
+This fully specifies ties among non-a_H candidates (canonical-first)
+and the a_H preference (only when a_H is itself in the top set).
+
+### Determinism contract (V2, replaces the wall-clock guard)
+
+- **Normal path**: the decision is a pure function of (context,
+  frozen constants, frozen seed derivations) — unconditionally
+  bitwise deterministic. There is NO wall-clock input to the action
+  choice.
+- **2.0 s is the PILOT ACCEPTANCE LINE ONLY** (Stage A measures the
+  distribution; it is not enforced at runtime).
+- **Emergency guard (live-Arena safety only)**: a cooperative check
+  BETWEEN rollouts (never mid-rollout) against a 30 s per-decision
+  budget. If it fires: the decision keeps a_H, the event is recorded
+  (over-budget), and the Arena run is flagged `LOAD_TAINTED` — from
+  that point the policy explicitly depends on machine load for the
+  affected decisions, and bitwise determinism is disclaimed for them.
+  The guard is expected to NEVER fire given the pilot's measured
+  costs; its existence does not weaken the normal-path determinism.
+- **Timing scope**: all pipeline stages are timed (candidate
+  generation, information-set construction, sampling, simulation,
+  selection) — reported per stage in the pilot.
+
+## Two-stage work package
 
 ### Stage A — Feasibility pilot (no Arena, no strength claims)
 
-Question: can full-heuristic rollouts distinguish the candidate
-actions within acceptable latency, on both ordinary and
-wide-branching positions?
+Question: does the fixed-workload computation complete meaningful
+comparisons within acceptable latency, on ordinary AND wide-branching
+positions?
 
-- Corpus: 200 contexts sampled deterministically (SHA256 selection,
-  exact byte encoding preregistered — S1 lesson) from the S0 replays,
-  stratified 150 ordinary (legal_actions < 30) + 50 wide-branching
-  (legal_actions >= 30) — the S1 tail lesson demands wide-branching
-  coverage.
-- Measurements per context: wall time per decision (mean/p50/p95/max),
-  rollout completion rate (terminated vs ply-capped), candidate-set
-  size distribution, sampling disagreement (how often the argmax over
-  D samples is unstable — a bootstrap-over-determinizations proxy),
-  and the fallback-trigger rate under W.
-- Frozen pilot gates (defaults; review may adjust BEFORE execution):
-  - p95 decision time <= 2.0 s (the S1 cost-gate precedent — the
-    candidate must fit the same local-cost envelope);
-  - rollout completion >= 70% (most rollouts reach terminal within P;
-    if most hit the cap, the terminal-outcome signal is diluted);
-  - fallback rate under W <= 5% (the guard must be rare, not the norm).
-- If ANY gate fails: **S3 STOPS (COMPUTE_INFEASIBLE-style)**. The
-  constants are not tuned within this round; whether to invest further
-  is the coordinator's separate decision. If ALL gates pass, Stage A
-  also reports (descriptively) how often the rollout choice differs
-  from a_H on the pilot corpus — a scope preview, NOT a success
-  signal.
+**Corpus**: eligible contexts from the S0 replays — `Phase::Main`,
+`>= 2` legal actions, non-terminal, identity-triple dedupe; stratified:
+
+- ordinary stratum: legal_actions < 30;
+- wide stratum: legal_actions >= 30.
+
+Selection (exact byte encoding, preregistered):
+`SHA256(utf8("43_300_001|" + obs_hash + "|" + history_hash + "|" +
+info_hash))` ascending — first **150 within the ordinary stratum** and
+first **50 within the wide stratum** (per-stratum selection; V1's
+"first 200" phrasing is corrected). If a stratum has fewer eligible
+contexts than its quota, take all of them and record the shortfall.
+
+**Reported per stratum separately** (never mixed into one "natural
+distribution p95"):
+
+- decision wall time (mean/p50/p90/p95/max; nearest-index quantile
+  convention `round(q*(n-1))`, preregistered);
+- per-rollout completion rate; all-complete decision fraction;
+- |C| distribution and the no-comparison (|C|==1) decision count —
+  these are EXCLUDED from the latency/completion feasibility metrics
+  and reported separately;
+- ply-cap fallback rate (decisions keeping a_H due to incompleteness);
+- sampling stability: the fraction of decisions whose argmax changes
+  under leave-one-world-out (a coarse descriptive diagnostic for
+  D=4 — explicitly NOT a high-precision confidence statement).
+
+**Frozen pilot gates** (evaluated on the ORDINARY stratum; the wide
+stratum is reported but gated only on the emergency-guard expectation):
+
+- G1: p95 decision wall time <= 2.0 s (ordinary stratum).
+- G2: all-complete decision fraction >= 70% (ordinary stratum).
+- G3: ply-cap fallback rate <= 30% (ordinary stratum; the complement
+  of G2 stated separately so both are auditable).
+
+If any gate fails: **S3 STOPS** (constants are not tuned within this
+round; any change reopens the design). If all gates pass, the pilot
+also reports (descriptively, NOT a success signal) the fraction of
+comparable decisions where the rollout choice differs from a_H.
+
+**Information-isolation tests (two layers, both fail-closed)**:
+
+1. ROOT layer: with the root information set fixed, changing the TRUE
+   hidden world (a different determinization consistent with the same
+   information set) must not change the root decision inputs
+   (candidate set, a_H) — the decision procedure reads only the
+   information set.
+2. SIMULATION layer: within a rollout, with a simulated player's
+   observation fixed, changing fields invisible to that player must
+   not change that player's chosen action. Simulated worlds whose
+   observations legitimately differ MAY choose different actions.
 
 ### Stage B — Independent strength confirmation (only if Stage A passes)
 
-- The single frozen candidate (the rule above with the Stage-A-measured
-  constants — which are the defaults, since no tuning is allowed)
-  enters a fresh-seed Arena.
-- Pairings: `candidate vs heuristic` (PRIMARY — the coordinator's
-  anchor question) + `candidate vs n1` + `candidate vs M07`
-  (adaptability checks). 64 fresh blocks x 2 rotations x 3 pairings =
-  384 matches. Seed segment: fresh (next after S2b's 5_800_192..255;
-  registry-asserted).
-- Statistics: the S0 frozen protocol (paired-block bootstrap, 10,000
-  resamples; 95% descriptive + 98.33% joint-decision CI for the
-  3-comparison family; UNRESOLVED stands).
-- Success (frozen): RESOLVED improvement over heuristic in the primary
-  pairing. Any lesser outcome is recorded as-is:
-  - resolved loss vs heuristic: REFUTED (valid negative, sealed);
-  - UNRESOLVED vs heuristic: UNRESOLVED (extra seeds = coordinator
-    decision);
-  - win vs n1/M07 but not heuristic: recorded as adaptability signal
-    only — the candidate's purpose is improving ON heuristic.
-- No outcome changes the M07 historical champion or promotion state.
+Contracted per the V1 review (first round tests ONLY the primary
+question — can rollout improve heuristic?):
+
+- **Single pairing**: `candidate vs heuristic`.
+- 64 fresh seed blocks x 2 rotations = **128 matches**; seed segment
+  fresh after S2b's (registry-asserted disjoint).
+- **Statistics**: paired-block bootstrap, 10,000 resamples, seed
+  43_300_001; **95% descriptive CI and 95% decision CI** (a single
+  primary comparison needs no multiplicity correction). UNRESOLVED
+  stands; extra seeds are the coordinator's decision, never automatic.
+- **Success (frozen)**: RESOLVED improvement over heuristic (95%
+  decision CI entirely above 5000 bps). Resolved loss = REFUTED
+  (sealed negative). UNRESOLVED = UNRESOLVED.
+- Opponent-pool calibration vs n1/M07 happens only AFTER a confirmed
+  win, as a separate round.
+- Emergency-guard telemetry: any firing is recorded per decision; a
+  LOAD_TAINTED flag on the run is reported in the result and to the
+  closure review (it does not void the run by itself, but the review
+  sees it).
+- No outcome changes the M07 historical champion, the promotion
+  state, or the primary reference without a separate field
+  calibration.
 
 ## Scope and non-goals
 
-- No StaticEvaluatorV1 changes; no heuristic behavior changes (the
-  heuristic policy is only INVOKED inside rollouts); no n1/M07
-  behavior changes (their actions only join the root candidate set).
+- No StaticEvaluatorV1 changes; no heuristic/n1/M07 behavior changes
+  (the policies are only INVOKED; the root a_H is computed from the
+  frozen scoring, never from the heuristic agent's RNG).
+- No offline tuning between implementation and Arena (S2b contract);
+  the frozen constants (D=4, P=120, the tie rule, the completion
+  gate) change only through a design review.
+- No sequential transplantation of further S2 rules.
 - No neural work; no depth-2/3+; no TT/search engineering.
-- No offline tuning between implementation and Arena (S2b contract).
-- No sequential transplantation of further S2 rules (coordinator's
-  explicit prohibition).
 
 ## Contracts and invariants
 
-- Determinism: identical inputs produce identical decisions (fixed
-  seeds, sorted candidate order by canonical action order with a_H
-  tie-preference).
-- Information isolation per the frozen invariants above; a regression
-  test constructs a context where referee-only information would
-  change the rollout choice and asserts it does not.
-- Stage A gate arithmetic preregistered (S1 lesson: quantile
-  convention = nearest-index `round(q*(n-1))`, stated here).
-- Selector byte encoding for the pilot corpus preregistered:
-  `SHA256(utf8("43_300_001|" + obs_hash + "|" + history_hash + "|" +
-  info_hash))` ascending, first 200 within each stratum (150 + 50).
+- Normal-path bitwise determinism (fixed workload, fixed seed
+  derivations, no wall-clock inputs) — regression-tested.
+- Shared-randomness invariants: same worlds across candidates;
+  candidate-independent simulated tie-break streams; root RNG never
+  advanced by simulation — all locked by unit tests.
+- Completion-gated scoring and the full tie rule — locked by unit
+  tests (including the "two non-a_H candidates tie above a_H" case).
+- Two-layer information isolation — locked by the tests above.
 - Fail-closed audits: lineup/rotation, replay verification, exhaustive
-  recomputation, per-decision budget-guard telemetry binding.
+  recomputation, per-stage timing telemetry, guard-event binding.
 
 ## Implementation plan
 
-1. Rust: rollout engine (sample determinizations; step states; both
-  seats = frozen heuristic policy from their own observations; ply
-  cap; terminal scoring) + the candidate composition policy; CLI
-   `agent-rollout` with the frozen constants; unit tests (information
-   isolation, determinism, ply-cap scoring, tie preference, candidate
-   dedup).
-2. `scripts/s3_pilot.py`: corpus selection (stratified), pilot
-   execution, gate evaluation, tracked pilot result.
-3. If Stage A passes: `scripts/s3_orchestrator.py` (384-match Arena)
-   + `scripts/s3_final_audit.py`; tracked result.
-4. Docs closure + handoff; S3 closure review (the coordinator's two
-   intervention points: pilot end and Arena end).
+1. Rust: rollout engine (shared worlds; step states; both seats =
+   frozen heuristic scoring from their own observations with the
+   shared tie-break stream; ply cap; terminal scoring; completion
+   gating; the full tie rule) + the candidate composition policy +
+   CLI `agent-rollout` with the frozen constants + per-stage timing +
+   guard telemetry. Unit tests: determinism (same input -> same
+   action, twice), shared-world equality, candidate-independent
+   streams, |C|==1 short-circuit, ply-cap fallback, tie rule,
+   isolation layers.
+2. `scripts/s3_pilot.py`: stratified corpus selection, pilot
+   execution, per-stratum reporting, gate evaluation, tracked pilot
+   result.
+3. If Stage A passes: `scripts/s3_orchestrator.py` (128-match Arena,
+   heuristic-only) + `scripts/s3_final_audit.py`; tracked result.
+4. Docs closure + handoff; S3 closure review at the coordinator's two
+   intervention points (pilot end; Arena end).
 
 ## Estimated cost
 
-- Heuristic decisions are ~0-cost; the real cost is state cloning and
-  event-log growth per simulated ply. Worst case per decision:
-  |C| x D x P = 1,440 simulated plies (each a clone + apply +
-  observation rebuild). The pilot measures actual cost; the 2.0 s
-  guard bounds the tail.
-- Pilot: 200 contexts x ~1,440 plies worst case ~ minutes.
-- Arena (if run): candidate decisions at pilot-measured cost; n1/M07
-  opponent seats at their S0-measured costs; total expected
-  minutes-to-low-hours depending on the measured per-decision cost;
-  the 2.0 s guard caps the candidate at ~8k decisions x <= 2 s ~<=
-  4.4 h serial worst case (4 workers ~<= 1.1 h). The pilot's p95
-  measurement will refine this before Stage B is scheduled.
+- Worst-case normal-path workload per decision: |C| x D x P = at most
+  3 x 4 x 120 = 1,440 simulated plies (each: clone + apply +
+  observation rebuild + integer scoring) PLUS candidate generation
+  (one n1 and one M07 decision ~1.5 ms / ~12-14 ms). The pilot
+  measures the actual distribution; nothing is asserted in advance
+  beyond the gates.
+- Pilot: 200 contexts; minutes-scale expected.
+- Arena (if run): ~8k candidate decisions at the pilot-measured cost;
+  the emergency guard (30 s) bounds the pathological tail.
 
 ## Known limitations
 
-- Both simulated seats play heuristic — an opponent model; if
-  heuristic-vs-heuristic dynamics differ from real opponents, rollout
-  values are biased. Stated, not corrected (correcting it = opponent
-  modeling, out of scope).
-- The terminal-outcome signal with D=4 samples is coarse; sampling
-  disagreement is reported in the pilot.
-- The candidate set (3 frozen policies' actions) may miss the true
-  best action when all three agree-and-are-wrong; that is an accepted
-  boundary of this design.
-- A REFUTED or UNRESOLVED outcome closes S3 without prejudging
-  alternative rollout variants (any variant = new design).
+- Both simulated seats play heuristic — an opponent model; rollout
+  values are biased if heuristic-vs-heuristic dynamics differ from
+  real play. Stated, not corrected.
+- D=4 gives a coarse signal; leave-one-out stability is a descriptive
+  diagnostic, not a confidence measure.
+- The proposal set (three frozen policies) may miss the true best
+  action when all three agree-and-are-wrong — an accepted boundary.
+- The completion gate means long games reduce the comparison signal;
+  the pilot's all-complete fraction quantifies this before any Arena.
+- A REFUTED/UNRESOLVED outcome closes S3 without prejudging rollout
+  variants (any variant = new design).
 
 ## Next authorized gate
 
-- Cloud review of this design: (a) the candidate rule and frozen
-  constants (D=4, P=120, W=2.0 s, 0.5 cap-score, a_H tie-preference);
-  (b) the root candidate set definition; (c) the pilot gates and
-  stratified corpus; (d) the Stage-B pairing set and success rule;
-  (e) the no-tuning boundary.
-- After APPROVE: Stage A pilot -> (if gates pass) Stage B Arena ->
-  closure review at the coordinator's two intervention points.
+- Cloud review of this V2: (a) the fixed-workload determinism contract
+  and the emergency-guard semantics; (b) the completion-gated scoring
+  and the full tie rule; (c) shared-randomness derivations; (d) the
+  pilot gates/strata and the |C|==1 exclusion; (e) Stage-B contraction
+  (heuristic-only, 128 matches, 95% decision CI); (f) the frozen
+  constants (D=4, P=120).
+- After APPROVE: Stage A pilot -> coordinator checkpoint -> (if gates
+  pass) Stage B Arena -> closure review.
