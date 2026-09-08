@@ -423,10 +423,10 @@ result.
 ### Tracked artifacts
 
 - `benchmarks/s2-heuristic-win-attribution-v1.result.json` (version 2,
-  Repair 1; git-blob SHA256 of the ORIGINAL execution commit 12ec3c5:
+  Repair 1). Blob provenance: original execution commit `12ec3c5`
   `0a573d4697294d5e47cbcd04a5696d5486ef5d10e0db72cbaedf55d35035089a`;
-  the repaired version-2 blob hash is recorded after the repair
-  commit).
+  repaired version 2 commit `521f4ca`
+  `bd4c795419ba1c3409c8f192cbe64df70ce42353f348183148ace2a76d4b049a`.
 - Raw census rows + term-gap rows under ignored
   `local-artifacts/s2-census/` (cloud evidence boundary as in S0/S1).
 
