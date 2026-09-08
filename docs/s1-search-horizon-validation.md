@@ -1,23 +1,24 @@
 # S1 — Search-Horizon Validation (depth-2 vs the calibrated field)
 
-STATUS     = APPROVED / FROZEN (S1 DESIGN_V2 review verdict on 76d8993:
-            direction/structure/telemetry APPROVED; P1-1 cost gate 150 ms
-            -> 2.0 s, P1-2 reference rule -> resolved beats-all-three,
-            P2-1..4 wording/arithmetic fixes — all applied docs-only;
-            Phase A automatically authorized; Phase B authorized iff
-            Phase A passes; S1 closure review at the end)
-REVISION   = V2 2026-09-08 — review repairs: cost gate 2.0 s p95 (was
-            150 ms, which contradicted the design's own cost evidence);
-            reference rule = resolved beats-ALL-THREE only (UNRESOLVED
-            is never a tie; non-transitivity respected); frozen Phase A
-            corpus definition (Phase::Main, >=2 legal actions, identity
-            triple, SHA256 selection); hard completion definition
-            (completed_depth_turns == 2 AND stop_reason ==
-            DepthLimitReached, with a consistency assertion); telemetry
-            as a separate optional depth_diagnostics object (frozen
-            schemas untouched); wall vs node multipliers separated;
-            saturation claim narrowed; candidate decisions corrected to
-            ~11.9k; sampling wording fixed. V1 = 76d8993.
+STATUS     = COMPUTE_INFEASIBLE / CLOSED (Phase A executed 2026-09-08
+            per DESIGN_V2: both probe configs passed the completion gate
+            (82.3% / 98.6% >= 80%) but FAILED the p95 cost gate
+            (2.24 s / 4.16 s > 2.0 s); per the frozen contract, Phase B
+            did not run and S1 stops. Whether to invest in search
+            engineering is a separate user decision. Interpretation
+            boundary: this means the CURRENT implementation does not
+            deliver depth-2 within the preregistered gates — NOT that
+            depth-2 is inherently infeasible.)
+RESULT     = COMPUTE_INFEASIBLE. Distribution shape: medians are fine
+            (p50 ~0.39 s for both configs) but heavy tails fail the
+            gate (13-19 of 200 decisions exceed 2 s; maxima 28 s /
+            132 s; the expensive contexts are wide-branching middlegame
+            positions with up to 187 legal actions). n10000 raises
+            completion 82.3% -> 98.6% but worsens the tail (p95 2.24 ->
+            4.16 s): the completion/cost tension is structural at the
+            per-continuation budget level.
+REVISION   = V2 2026-09-08 (frozen, 1f557e0) — review repairs per
+            DESIGN_V1 review; executed as frozen. V1 = 76d8993.
 BASELINE   = 093e5fa (S0 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -262,6 +263,52 @@ Cost data never overrides strength verdicts (S0 rule).
   they appear in). With 4 workers the whole 384-match Arena remains
   roughly an hour-scale local job. (V1 understated the candidate
   decision count as 7.9k — corrected.)
+
+## Validation and evidence
+
+### Phase A execution — 2026-09-08 (single valid run)
+
+- Depth-diagnostics implementation (4bf3e42): `ContinuationDepthDiagnosticsV1`
+  (additive; frozen schemas untouched); parity + consistency locked by a
+  Rust regression test and a live flag-on/off match smoke (identical
+  `replay_final_hash`); workspace 772 tests 0 fail.
+- Corpus: 22,026 unique eligible contexts extracted from all 384 S0
+  verified replays (Phase::Main, >=2 legal actions, non-terminal,
+  identity-triple dedupe); 200 selected by SHA256(43_000_001 || identity)
+  ascending; full manifest in the tracked result.
+- Probe: `splendor s1-probe` (live fixed-seed policy on rebuilt verified
+  contexts — identical decision path to the arena agent, in-process
+  timing). 200 decisions x 2 configs; every telemetry row carries
+  depth_diagnostics; all consistency assertions passed (histogram totals
+  == stop totals == continuation counts; top-depth bin ==
+  DepthLimitReached count).
+
+### Results (frozen gates: completion >= 80%, p95 <= 2.0 s)
+
+| Config | Completion | p50 | p95 | Max | Verdict |
+|---|---:|---:|---:|---:|---|
+| d2-n2000 | 17,291/21,000 = **0.8234** | 0.39 s | **2.24 s** | 28.2 s | completion PASS, cost **FAIL** |
+| d2-n10000 | 20,704/21,000 = **0.9859** | 0.39 s | **4.16 s** | 132.0 s | completion PASS, cost **FAIL** |
+
+Neither config is feasible => per the frozen selection rule:
+**COMPUTE_INFEASIBLE — Phase B did not run — S1 stops.**
+
+Tail anatomy (post-hoc description, no gate): n2000 has 13/200 and
+n10000 has 19/200 decisions above 2.0 s, with maxima 28 s and 132 s.
+The slow contexts are wide-branching (legal_actions up to 187 in the
+manifest); per-decision work scales with root_actions x samples
+continuations, so the cost gate fails specifically on middlegame
+breadth, not on typical positions. n10000 buys completion (+16.3pp) at
+a worse tail (+1.92 s p95): at a fixed per-continuation budget,
+completion and tail cost are in direct tension.
+
+### Tracked artifacts
+
+- `benchmarks/s1-feasibility-probe-v1.result.json` (git-blob SHA
+  recorded after commit).
+- Raw probe telemetry under ignored
+  `local-artifacts/s1-feasibility/` (per-context analysis traces +
+  probe NDJSON sidecars).
 
 ## Interpretation boundaries (frozen wording)
 

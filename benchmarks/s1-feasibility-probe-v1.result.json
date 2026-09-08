@@ -1,0 +1,2080 @@
+{
+  "format": "effective-splendor-s1-feasibility-result",
+  "version": 1,
+  "experiment_id": "s1-feasibility-probe-v1",
+  "design_doc": "docs/s1-search-horizon-validation.md @ 1f557e0 (DESIGN_V2 APPROVED/FROZEN)",
+  "contract": {
+    "selection_seed": "43_000_001",
+    "target_contexts": 200,
+    "sample_seed": 20260703,
+    "sample_count": 4,
+    "depth_turns": 2,
+    "probe_configs": {
+      "d2-n2000": 2000,
+      "d2-n10000": 10000
+    },
+    "completion_gate": 0.8,
+    "cost_gate_p95_seconds": 2.0,
+    "completion_definition": "completed_depth_turns == 2 AND stop_reason == DepthLimitReached",
+    "eligible_context": "Phase::Main, >=2 legal actions, non-terminal, identity-triple dedupe"
+  },
+  "manifest": [
+    {
+      "identity": {
+        "observation_hash": "7fd0ea2424c3ed4f8ee843acd322c79391dea2fa516e262412d3f5e0894edf17",
+        "visible_history_hash": "ddf04321091c935e9553064fbc1a2217c2e372873e79af10e6c2d5a88f0939e3",
+        "information_set_hash": "da28637e045ee87a17e87eafde545f2785252d171c770655f118ed01d125d4c9"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-09-seed-5800073\\r0\\match-replay.json",
+      "ply": 47,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "c24d8cd0585738e03183717b4e8ae0e5735321414199689d2137c94525cfc70d",
+        "visible_history_hash": "008793b6fb82b6a3591491932b9f7acea9595263e1e69055da862ccee5985051",
+        "information_set_hash": "8c14854c55dcb1a73fb797d640e55699c43eaf52db4151977128fa0286031047"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-24-seed-5800088\\r1\\match-replay.json",
+      "ply": 7,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "b258b97e6ac2c6e1478c39d9c48bda5a4c1b1a4da9393c786201e7c8405cfd3c",
+        "visible_history_hash": "1c74711563765d8c54e6228a41eb047f6d17d41918538afd445562db794af80a",
+        "information_set_hash": "5fc1834a97e1330776b9cde0b4b5c464fde34681eb622d006852711a1e96eab5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-03-seed-5800067\\r0\\match-replay.json",
+      "ply": 32,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "86a3b8315383b5446f75a37fb28eca62379533a7fcbd188681703c8b01cbe689",
+        "visible_history_hash": "0e48a7e4a4f596c780154bdd3d831366d26404457a1b2396d6acbaebfb234d5d",
+        "information_set_hash": "03165487d073d9b47773a4ece2540c9756ed08321efd5b6ba48705defe663c10"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-40-seed-5800104\\r1\\match-replay.json",
+      "ply": 47,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "80f4f6da543b085afb8ee41687dd9c1730588b3eb1e2df965aafd6371b46d24d",
+        "visible_history_hash": "3e71aef1494e8795882ca56b5905b52ad9de94eba54c7692720e7305ffad1b4c",
+        "information_set_hash": "b64bbdc4b42306ec2f862887476a0c11789084c8b49e8ead19e4855ad689f90f"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-34-seed-5800098\\r0\\match-replay.json",
+      "ply": 25,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "41a72ff1dba95c033a2b2c44ef6fb50cce1c376d1e8c33be269b68294b42666e",
+        "visible_history_hash": "a8aa624aaa6e811591d189b8a510b41318b195845b8ed1846ac7efdc25ba39d5",
+        "information_set_hash": "c9ed43049dc472d8e3fc0e27564792c8dc42ba9f0d2e21dd688eac439ebbd294"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-18-seed-5800082\\r0\\match-replay.json",
+      "ply": 38,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "8957c23045f06c0830c2cebe1f5e859b9970cdc6c69ff1f8f86390ca36562d43",
+        "visible_history_hash": "a92808a98bfa9fac2f3a7ec53cde33ab62a18b50cc38d076de25e4b985bc3438",
+        "information_set_hash": "56ec90cdfb0bef9de8ff4bea89f40118dd7d5aba5fb0e3ece1a7fe4a84f9cd94"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-30-seed-5800094\\r1\\match-replay.json",
+      "ply": 28,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "4e308796072e30bef527ea884202e7394d08d978a14bf8705e30160c0edaf33d",
+        "visible_history_hash": "8b516736ff53919d70dda09a35282a9e7e907f01eb777d05b46b4bbd6dbc21e4",
+        "information_set_hash": "0b93a79ce56f029ca55fb995d06e50cca582fe4f41a2f54301c1ca62130bdb66"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-03-seed-5800067\\r1\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "4555c733a7a8a40548dfd9fd783000571ebe7b2179ec73e805096706a38e2f56",
+        "visible_history_hash": "70f8bc50c8c39b2e11db37e85056f9a73938ad86f290c69c138d8090351f3c6d",
+        "information_set_hash": "0c474fac700e38166e55daa40649b51f9027cc3ad5cb8cc535fa4f1e681c1238"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-33-seed-5800097\\r1\\match-replay.json",
+      "ply": 17,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "28e56bd9a2daeadbe0b0d2fe0d82a6eb7808017210efc921634c73a2590ca9f9",
+        "visible_history_hash": "5dae57627b1244241d26637973981a144c674d2bec1d68a9d12bd60c8b256618",
+        "information_set_hash": "23bdf00de52ebc3e32a98cb6e5333a92de7aaac0074bafd5b1cbb4da056f42fa"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-05-seed-5800069\\r1\\match-replay.json",
+      "ply": 35,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "f5fd2bcb5d0074b49c2398ac828e35512b676d314aaf8ad1cc6728c6b345add6",
+        "visible_history_hash": "06b39be833066d261959f34394c6d3a8b321e53ce27d080cba5a32ee7ca9eb9f",
+        "information_set_hash": "cf8a0665150f20d7db4bd193adb0a62856e508eb3a705dc55c5e8041589d2a64"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-26-seed-5800090\\r0\\match-replay.json",
+      "ply": 41,
+      "legal_actions": 31
+    },
+    {
+      "identity": {
+        "observation_hash": "9d12800d4b2fa251529bd77cf1a61c496e5088ea9ea321717509d35e199558e1",
+        "visible_history_hash": "7de07c735925bb6c117e651a9533649aafb101f755713f4303c87028000b53e8",
+        "information_set_hash": "b8a46938f0311fc7fd54ac8ba94e4987f0828d0adcfebb1c29403c614c7efa98"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-14-seed-5800078\\r1\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 13
+    },
+    {
+      "identity": {
+        "observation_hash": "2ba222005553b82caedd4a712c0b45ce9856f50356d135bc228039343f983f3b",
+        "visible_history_hash": "a500d3d26f0adcac484373d5c10953fd0f58ccf0feff45cbee071d27740dea97",
+        "information_set_hash": "3814b5aa406a9cac4dfb4dd0bbef62ebaddf43444406bc1c69f07d7856aceae0"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-09-seed-5800073\\r0\\match-replay.json",
+      "ply": 5,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "71a235766555dd2090ee939a6709b2f5bc24a33af6e88d04d422613bd01a05cf",
+        "visible_history_hash": "dac1a9c0eee92b43e56b969d06d79f0316fbbcac6968b2c483ab455fb3b0e35a",
+        "information_set_hash": "533aaaceb526449044598792554d32505ddf43d61fb0e8ad3a62d5eb3ee867c3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-04-seed-5800068\\r1\\match-replay.json",
+      "ply": 17,
+      "legal_actions": 105
+    },
+    {
+      "identity": {
+        "observation_hash": "426ce4dcf416380dbc5ce32b31199088dab88fbd9c3d810e417749ea1cfea3a3",
+        "visible_history_hash": "a00702a4142e297f4a5e7a80efe52e3323ef0f4982ba77ad97283145d9c68ffb",
+        "information_set_hash": "d403f7f57f7a2342b30f7a3cc97679a8fb6e3287bb5a85002c312297f09ea51b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-07-seed-5800071\\r1\\match-replay.json",
+      "ply": 17,
+      "legal_actions": 35
+    },
+    {
+      "identity": {
+        "observation_hash": "26321e0e041caefc6f955787f8d579a74cb59f7d6baa5f0ae74c4dd1fad4a397",
+        "visible_history_hash": "dbb2aecabb601281b142f32394095ca039ff5577699fe9c6f51f06dcc3467dd5",
+        "information_set_hash": "c101bba6502ae5c3071ea7c33dda55e2d025d780fb8fb73a1e61902f61bf7ebe"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-53-seed-5800117\\r0\\match-replay.json",
+      "ply": 56,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "da55f5c904af1dc6a6a87a50139335b94ac62c667dd949f33e727da071ee252b",
+        "visible_history_hash": "3e9d4e93dab01cfd1ba4af27a0cf4883f3eebe126a1e9238ddf488ea9520b918",
+        "information_set_hash": "f4340ae621bb65b2b1b7333205619c6de4fdd7302551af0ea3a92dde072a430c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-10-seed-5800074\\r0\\match-replay.json",
+      "ply": 51,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "8d0c63775628010f2cb8f0ac21b238e47eb33718aac1a73c2334b71650b5ec0a",
+        "visible_history_hash": "dfabd350b46fa6f8183c00865129559fc0d52dc5318b8a2fc6c4e4a680af3840",
+        "information_set_hash": "184917bef99b95538b92f9b4c492d1ebe672f5198446ba3992f752e59cc750c6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-22-seed-5800086\\r0\\match-replay.json",
+      "ply": 15,
+      "legal_actions": 37
+    },
+    {
+      "identity": {
+        "observation_hash": "6a5134bf67f41d2fa940fca750429fdff4800d9726a2ddb477be6f681050370e",
+        "visible_history_hash": "a700ea3bcf5096f3666cd873127a01302e025976c3cf86049775a04cd023bf6f",
+        "information_set_hash": "f4ed716f6d008aa79359f6e94e37154b57aac866721490d7b0bc7f7bff84c087"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-61-seed-5800125\\r1\\match-replay.json",
+      "ply": 47,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "04d3f8d565c385bc9520a36ef444784769a0fc74976dc33af605e14f0b82b257",
+        "visible_history_hash": "8cca2c6e74d7b5bb435a34ca502259c413c50c9ff13a73464afc3d183397a794",
+        "information_set_hash": "eba25be1cde4ecbbe1fc900a03f575cf95fd45167f87d5cc55ff237b1b94b900"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-43-seed-5800107\\r0\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "638a5ad7373e14039af187247059cba24353c141a501541a2e0f43c0f8332202",
+        "visible_history_hash": "e740a326715e14bf0e13c0a6ce972eba51609a5ecbf56923c0ecece5168c2552",
+        "information_set_hash": "287ca2452e2cac0bc2e45da8770a6f23c2432226ed01255fefe36d2b9bcf31cf"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-48-seed-5800112\\r0\\match-replay.json",
+      "ply": 27,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "5e0ba004305b8d8f949ceb4a94dd61e43781b3ee63b24b9d0fad195e5804ef53",
+        "visible_history_hash": "af36626f3349a5882b5bc9f305e03151a2d29ce9e32bfffba06f0d66bcd614c9",
+        "information_set_hash": "0d95c3dd8a6ec3444e273fa89d3cd9715ff47a0fae84a7b9d3ae14ba4c2e2629"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-51-seed-5800115\\r1\\match-replay.json",
+      "ply": 16,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "148e6962142d891716dcbf2cb6645c7290c1e8a177c2068d4d095df2df8cebe1",
+        "visible_history_hash": "df201f07485985949ecbd6aeca3610abd31d26e9848a1282a01d16701d8008b9",
+        "information_set_hash": "2bb1bc022f2167395f19a548c50183a9c4f56e5487616972f2624ddb3e2394a3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-25-seed-5800089\\r1\\match-replay.json",
+      "ply": 16,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "eaa8be43dac9a3264d8432da8eca5d3e76780bf350e308e632a2256cba895987",
+        "visible_history_hash": "21e3cb5247417fa4b7cc0786fd7a36cc30dc9ce7ab43f7d6726b96c210824b60",
+        "information_set_hash": "a0b964addcd6527115ca06915b17416ed230791b6779df6d413b12d2bc5742a1"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-52-seed-5800116\\r1\\match-replay.json",
+      "ply": 50,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "954790773cf65caae704ef47fb3dcf00e85eb1feb0226503a36e79b6d101cac4",
+        "visible_history_hash": "b92078ab74a63afbbe5ccfcc6e58f5cf75b839aeb2d0a33e8032162b1b1ba0e8",
+        "information_set_hash": "39995d969e02bec7210c14fa2108aea32ca3f76039d899bc2c23ccca52f2931a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-56-seed-5800120\\r1\\match-replay.json",
+      "ply": 36,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "055806385ed447c9f61ae17bc2e239982262e02c0d80cf57473915e29bc24c55",
+        "visible_history_hash": "e075036a971fbfc3867c9056e0e663faa5d2b498ef55f13b901460413e40bbc8",
+        "information_set_hash": "af4e539b0aab33c44a319b7efb4951943995fa458f8070b67c1d4445a3f86d45"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-31-seed-5800095\\r0\\match-replay.json",
+      "ply": 39,
+      "legal_actions": 24
+    },
+    {
+      "identity": {
+        "observation_hash": "e8220ef9225369a92fbf986ab1acfe29839dca70fd12cd8b4ffa26174af5ba47",
+        "visible_history_hash": "a923c06fd3b6744aecae09cde9adcd7e9f37706cc0d7801763d72a0eaced01ad",
+        "information_set_hash": "65ec665f4b5aecd946991e19971b096e2b31370c65e02d61be9b3ce5b31c8937"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-57-seed-5800121\\r0\\match-replay.json",
+      "ply": 25,
+      "legal_actions": 23
+    },
+    {
+      "identity": {
+        "observation_hash": "5daa4dea00f764ee5a330fb665210eab112d43e311f41a1cc9cdf2e351049d9b",
+        "visible_history_hash": "1bc2a583c4048d36f426a1e144bf460abb76f11fb58c45f56f1e29dbe31b7510",
+        "information_set_hash": "78ec8a43235cbfe84e1f826969d95bbbcbb5249960182393f141b9badc7c7ab5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-51-seed-5800115\\r1\\match-replay.json",
+      "ply": 39,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "42f2f33fb537857eb2ef4ef9d649d7669f9fea6754466fe52a1bb9e7424488f4",
+        "visible_history_hash": "f98a29541ebaed409bd6d07291b9069b99807965619d8378e2c6c6789b7d4913",
+        "information_set_hash": "0e505b8e6d3726e269569e1f8e711b5fb31071956eb92aa3fded8e36efd5c42c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-10-seed-5800074\\r1\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "f294a820a70ea54db50fefcf6a26a27348966d9f96d8603d1b87986c9bbdbac6",
+        "visible_history_hash": "e78740f0507065f66ab84db6a080dd53ed54728ab1fc8c42efb9cb9f03b26261",
+        "information_set_hash": "6198ab6ea995492f2fb1afde3238467cbcb33c220819aadd3d16aab511efc54a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-57-seed-5800121\\r0\\match-replay.json",
+      "ply": 19,
+      "legal_actions": 17
+    },
+    {
+      "identity": {
+        "observation_hash": "c91ad108fd577db1625bda548008faa2f29ada92481aceb2e04904ee7b28fa99",
+        "visible_history_hash": "03d3e2bec5363515555380fd7696a4ebef152885948d4ba247998afe5f227226",
+        "information_set_hash": "a5b51766ffd14f1546838031b1dde99b3df8bc7eee7cce235554b61c8ab7b2cc"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-15-seed-5800079\\r1\\match-replay.json",
+      "ply": 59,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "1132ac7bb940a4695e3ebb96197e6423b5b73d4f0e76515327a6f1bef4383143",
+        "visible_history_hash": "eb8dc5c32af460e8afd6eefe62fc6f95aa3a706c224e6f88ac17ae8270eee60c",
+        "information_set_hash": "bbe68d24d3a6d37bed9824988449f1146f2ee52cdd9241aca233e9e5fcac09ad"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-20-seed-5800084\\r1\\match-replay.json",
+      "ply": 15,
+      "legal_actions": 67
+    },
+    {
+      "identity": {
+        "observation_hash": "3bc33365acebbd5ccfab51083d34ff94934c4c513969cd25c39de038d0d76773",
+        "visible_history_hash": "4ab95bf6e0c3899e86a2039343efcd29d0c0a8413c99b8d7f60fda70ee95de03",
+        "information_set_hash": "ff1c73e6340fcac4b2ca7a6e5846060184333b6a5d569d1a4399948a7f4099bd"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-28-seed-5800092\\r0\\match-replay.json",
+      "ply": 5,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "6701915e05286a6dfc6071ece275afcf08624023e60020bb69060c471c40a3b2",
+        "visible_history_hash": "630f98c67865d5991838710a64329ab4b7bf1f232e4a8b8ae24d650b3d541b38",
+        "information_set_hash": "c3ce5b3e86dc53b1adb3a5b097ca83df69425cbe1cc3cf52f10d1b75394c9c9c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-02-seed-5800066\\r1\\match-replay.json",
+      "ply": 42,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "31294f4334bf5036c472fba427afa95b5d2c222e904376d839c833869697e0a6",
+        "visible_history_hash": "0bd1d77b7d893c68fec7204eeddc337cf65f988335f70abd95b9410da1499a3e",
+        "information_set_hash": "be8c381c9800218597ca092bd7c1f7c76833e9b2d7b93e249a1fa61e82f0ea75"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-47-seed-5800111\\r0\\match-replay.json",
+      "ply": 56,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "7c363f36228578bc664112a7b0549cf1c9f2ca220777d50e54c78804fdcae7e0",
+        "visible_history_hash": "f782105d575429c12638e995f7f507bd263533b82429d90a3d6d6be5c9123089",
+        "information_set_hash": "69bfa0744dceab2e0567523fae43e51b761a378d2b822a4096b679991e660b45"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-63-seed-5800127\\r1\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "64d551da0b5652c91a1650a0eb21313e218a945a542f166059417f7e569667ae",
+        "visible_history_hash": "383157389ca44bdd3d6e4a2ee54af6fcb75e148b85fb220ec55e823748d94b3d",
+        "information_set_hash": "05bab981acf9f78b715e3a6ba3f25a2aac804062f16f6ce892524ea5c83e9feb"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-41-seed-5800105\\r0\\match-replay.json",
+      "ply": 60,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "88d6b04398f8132c44213e9f0e791bc29aaadd6ec8c4c2049ff1513717638c32",
+        "visible_history_hash": "4b7686d4e18349187db2cef11d35cf37745138a696f13d919c48c96b65becfa1",
+        "information_set_hash": "10827e56d18cc3ef89fb5ed3f4ad4641fbaae86117110eefb0397757c5e4761d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-19-seed-5800083\\r1\\match-replay.json",
+      "ply": 56,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "3a696a471621e7e891ab0c930951a6e1f84cc9ab75fe26efb19899b0658ad851",
+        "visible_history_hash": "dbdb3f0a754ca73965cab820c111c17baab26e7c08ba9f92d7c099b67028759d",
+        "information_set_hash": "0e9a868af71ee9eed0cc88862c3f1f7c854293f1ee684a1164dc3d79898ad88e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-31-seed-5800095\\r0\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "f8efda92e71f3099b185fb908320ebc1e52e27ca1fef7cf25b537d0ee9417e97",
+        "visible_history_hash": "3c400806c7769cc84902202144ef5d4d69d2f033d55db8bced71c2eeab4521d2",
+        "information_set_hash": "cfa46c71b2f96c5214b90898516e1876a910955d5f88356a74a34d14484f0270"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-06-seed-5800070\\r0\\match-replay.json",
+      "ply": 6,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "cd6572495e4f902c658babcf81389ede2242ff61680b5ddb5117e865bcbb5250",
+        "visible_history_hash": "1eddfed037b1f353d3be13671e51f5954eaf1fcf7fde53a1a5a772aca24b0ecd",
+        "information_set_hash": "31ba418bf4985ad80d8aba82baf2040048a7602282d36791fbcae8cf5518123a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-62-seed-5800126\\r0\\match-replay.json",
+      "ply": 35,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "46ffd94b49faee9e931fcccfba5419fb22f8f7b367404969efe7dac93fe5aeca",
+        "visible_history_hash": "6f69ac9be33cb58ccddaa61113d8ec2f0bba81003617d670860a3d8962a0fdab",
+        "information_set_hash": "be3c9b45a2f42d5195461e042023cefee4afeb98f86f58f957301b34b2d85b1b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-04-seed-5800068\\r0\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 38
+    },
+    {
+      "identity": {
+        "observation_hash": "865d754c3e1932bbd3f9ceea9d7ccb41ce36717833f61d64bfe14b922c3eb7bf",
+        "visible_history_hash": "271c0c638e6a260f942d6a410a4ea3ca0394b4d9ff50a9d7dda4f31d3f01fc6b",
+        "information_set_hash": "a7b22397d26b2bd6953b54fa9885a13bd3498c1c3fce039fa3d4a0b6f624bdea"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-46-seed-5800110\\r0\\match-replay.json",
+      "ply": 54,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "b5fd8a5d396aa7a9eed88a18cd03350b2a33a9b241709c3e62bb92981ed783f2",
+        "visible_history_hash": "6605540f14acb4e69c32eabc7b049e309e852d35237e171b58d617a3a46afc36",
+        "information_set_hash": "0dff5d761a18e8f720409c57e3b5abc93db4cad5e00cca0ebd9adc9fe7a282a8"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-62-seed-5800126\\r0\\match-replay.json",
+      "ply": 27,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "4bfbb3f5967552ea94741d70285897f4d961e8987c27d20e3abeb4e79770b1ef",
+        "visible_history_hash": "b80129d7d98e90f09424e238ae1210841e2565426604f15dd785253e165dcfd2",
+        "information_set_hash": "41f11ce8c3abff7fc5f56435f774b6be5a665bf44f48832b164263e6e5e4af3f"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-41-seed-5800105\\r1\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "71eb566981d257723bbdeabe19a42b76088160de461f1b9dc8727488df13c9f5",
+        "visible_history_hash": "9cc4df20e9fdb9d51bf197e1e335760108ae87302dac4d6d27c4be3b921f5374",
+        "information_set_hash": "a809c909d9880a1c2cc069800fcab1bbdeff7d050ed21559b5673a74704ff8b3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-52-seed-5800116\\r1\\match-replay.json",
+      "ply": 10,
+      "legal_actions": 25
+    },
+    {
+      "identity": {
+        "observation_hash": "e4bb9b56363e8803611daa402ceae69ad05d625e958b4bac25d2a9448d681c0c",
+        "visible_history_hash": "638521bebfd37343e558a506bb2927d6561da69a2d340984ac404c3651236a37",
+        "information_set_hash": "a884fd6ae8617584912784a71355591d573914f6e8feb6785c4d2c9b0341d12b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-61-seed-5800125\\r0\\match-replay.json",
+      "ply": 24,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "928acd29afd2b330902986f5781023c760a110b3b2654cf8a2244ae0c3c82026",
+        "visible_history_hash": "4189daa9c277850d62af6750f30e90b754802d87949aa2f3675a9b00f5e09a5b",
+        "information_set_hash": "729710aa3bf77a58627bd74443eda54392048d2530c91f0ec8293838bfa0b3d6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-17-seed-5800081\\r0\\match-replay.json",
+      "ply": 31,
+      "legal_actions": 6
+    },
+    {
+      "identity": {
+        "observation_hash": "53bf7ce9a4bf76b8f60f06a7f5bf1138f7a98b6ccfa0b63d97c54945778be55e",
+        "visible_history_hash": "ed52ec5d03bbfe02222eab76faae03a3909c89d019498acea380a9f22587cea0",
+        "information_set_hash": "beea7c6e069f7dfbf661bf62ecf029f804f47d37fb2feb6676684f8d444e8b12"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 40,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "616927791c42c02b2b91b16937853af31bfc9860b1e55e672b4abf59b0ff88a5",
+        "visible_history_hash": "1abb5f102be98e6f4e54e25f0d3eec4239e876eb38daa0857b4172a0c72c1587",
+        "information_set_hash": "a177dc97a878fa9c1705fb7c72754ca3db9296cbd250055a3d3dbcf76b7f8a15"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-62-seed-5800126\\r1\\match-replay.json",
+      "ply": 43,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "41730ab0dae427868f2a2f254fcb7ae234e63b2ace9512ef36bd7ed8f6415d6f",
+        "visible_history_hash": "8697956ade7555251e16773135ab5933eddf23a7e2642cca86f3ebaf65e58695",
+        "information_set_hash": "0e3727ac8c3ae8d181d70ede4c7a6c2deaa8668c4c5db936760d4e47a815d9fc"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-06-seed-5800070\\r0\\match-replay.json",
+      "ply": 57,
+      "legal_actions": 33
+    },
+    {
+      "identity": {
+        "observation_hash": "bd54c108278e5f3207e5b63adb4ec36285726463bb871f3fc30598148405dd67",
+        "visible_history_hash": "64b9c5df07a2697eb8d20cf586222985de955933c079cdd1cfea3cd83be9f60c",
+        "information_set_hash": "910478c13120b5122be00f8d01b737a1ac10139e0c57a3ed3a7b6df5729ffdc2"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-03-seed-5800067\\r0\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 22
+    },
+    {
+      "identity": {
+        "observation_hash": "1d071e0be6cc6c8c359c84d2dfb0ae5da9a0f6c2139acfa0e11d479fcb38c710",
+        "visible_history_hash": "f1f7dbdb93ec4b65418170285ea3c0403a33b58b3723610281c7b3896091d565",
+        "information_set_hash": "3176c0f1045924518a405b5e1ace045425f15e51d784c5a75c36d51d1f0b0aac"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-48-seed-5800112\\r1\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 31
+    },
+    {
+      "identity": {
+        "observation_hash": "44a9ba96b501f8f31f8f64c27349e29d29cebd459d059ad70f0af7030cb6c096",
+        "visible_history_hash": "53f1c8d284ff926eac86aad7528a23c1919301deba56407a3660f43b123b2181",
+        "information_set_hash": "aa8ebe8dab01251c2c43015df633c7c20b3f581ac0920a7a57a6a32acad36931"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-09-seed-5800073\\r1\\match-replay.json",
+      "ply": 38,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "93b5a85558cbec8b7bdcc1712cd200f0fc6d6253db103feee9569c8e98f366a1",
+        "visible_history_hash": "cc2ff9402eb1551df777dfb7443adddb140e0ece0242051f3ec72cdf617d2216",
+        "information_set_hash": "2750118d337b5f0c2cbefd296049d08532a6a9f42cb70f42aff01bc44cdd47ae"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-01-seed-5800065\\r0\\match-replay.json",
+      "ply": 27,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "ed2945fed9cc412f22d0d2fccf12ca64f2584141a568e75006fac69ec493d0c2",
+        "visible_history_hash": "9fd9d9627119f0cb488da9a4095b79645c3e840e609a0a4a8a4838c550a359e9",
+        "information_set_hash": "3f76027ec6a3cf563796eafaac1e297d39b4da14d65f83425e97b39c3145412e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-06-seed-5800070\\r0\\match-replay.json",
+      "ply": 40,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "599d52dcdd48eb88cfbcf55c729df7c6cb0fe737882690da93fbf1c1efb2858a",
+        "visible_history_hash": "d4228bb501df4e5358255f8180fc3da979650a3a10d1edd34efdef5d7544df45",
+        "information_set_hash": "bbe5398bb11a7671e0901434979a509efe22dea2b43c7cfcbc5a4550df619e73"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-28-seed-5800092\\r0\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 10
+    },
+    {
+      "identity": {
+        "observation_hash": "cd6afed7c340049624aea2b34261105d09722e6c86e4f7101f824dcc0f5b45a3",
+        "visible_history_hash": "00c3446a9f5d0e89b8de63e493f575da6f969cc502f9ec1ce7169f189856c636",
+        "information_set_hash": "6c85e502a396f853ad0662efdbf2b4eb5a5a2582edb67141cc4c78a8c2f72998"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-12-seed-5800076\\r1\\match-replay.json",
+      "ply": 15,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "57b2198e2dbb618eb23b9fd2ec6af81dc2bbf6edc50869189a8bcc934e43f500",
+        "visible_history_hash": "6c131680aa531046aba7d3b04613d8ff5b34aac143db9c5a153ae4c62aa544d0",
+        "information_set_hash": "a89b90c627109b282a7038fbca59cf620e24fbde1f5d80177682163636287cbd"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-59-seed-5800123\\r1\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 9
+    },
+    {
+      "identity": {
+        "observation_hash": "2a511fd9164134877cb0951b21e1416dbd2cd04077d47ad06de94205056be9dd",
+        "visible_history_hash": "c8b4ee4a55084e3432636caf7bbc16c76d070e98ede1b6a8a610aa0f1dd7fe63",
+        "information_set_hash": "2df4e9fc91563979019b8f5811a4ad44622ff64c093b16e9650fb43eda0a4758"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-12-seed-5800076\\r0\\match-replay.json",
+      "ply": 20,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "e9c421df15b138cbcf0677abf33398c368edb4fd303dfde305b3554162ba3bca",
+        "visible_history_hash": "83743f5846650a74796216409e42808d5c840f2f7dec35f98999f68ac0f16d5f",
+        "information_set_hash": "d19baa3a187798d766e2ef38d6101ddeaa17d59a9951ef75a82856030966bdb2"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-50-seed-5800114\\r0\\match-replay.json",
+      "ply": 5,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "513043173bed2ab50a3f4e0a1b6e7b72747d4d62eacd785240b2ff2c8e1dd34e",
+        "visible_history_hash": "f547aa2cb89eb66736803f18516b07162bf6351f13103d87b144377ab2001032",
+        "information_set_hash": "4052deed2c21539737eeddff0eaff061bb17a9cd917035b9dd69b83fcb2e08c5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-63-seed-5800127\\r1\\match-replay.json",
+      "ply": 2,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "bd362b791694848aaca63437cb3e6400fb383ea148440139049f25b4474a18bc",
+        "visible_history_hash": "a8cacf0f7fb352e789a4fe33695fb257d95f55706bbd97d4b9d54c0ac7548aec",
+        "information_set_hash": "dc6a231fffa78853d159bbea771092aa6e1e0c13fa880fa9de0925219ca80d92"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-05-seed-5800069\\r0\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "790c1908b05b53a8e6cf983ad6528dde172d95a1315a88362d9a997546d688d5",
+        "visible_history_hash": "5e356f246c26902cfd206c0eaee0670896fc6c37c2f9866977a6373adc3f0eaa",
+        "information_set_hash": "e33d0bc38d280b005ee6546eb702e4de562fad1ff19675ae814ca58571ebb7f1"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-29-seed-5800093\\r1\\match-replay.json",
+      "ply": 50,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "1a5ad9fc21ebc30d865fdb8c9673fa7c25323d2ff8c02d73938400d230470051",
+        "visible_history_hash": "b15f6c2cb0ec83b57f0ad64ceebb9e4d5c96e242d79c0daba923b90740416558",
+        "information_set_hash": "9ecce9dad7ad9f4d7bb715e96fb82e8720e15da89a3c79ead3263795c35a495a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-47-seed-5800111\\r0\\match-replay.json",
+      "ply": 59,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "0dc8e0a11f3bc25cdd90974d4c2f4451b4a4c72291510dfc80c349e998e1c700",
+        "visible_history_hash": "3a01f74589b97798d392d39dbb412eae09fe3de943d4590828a9f05a2e45a330",
+        "information_set_hash": "5b390cd4edc92afa2248068e5537ea9f006575b53804d02fffbcec90d73af6ab"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-03-seed-5800067\\r0\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "88ab9df36cc9c3953a07d10a4d7f86a0a97aa4300bb508f7b90d30994fc31b4c",
+        "visible_history_hash": "1f653e0ae1aa4edaa17b0c14081f646056db9ad33c8be2b93a6ff815a8e5e306",
+        "information_set_hash": "f83221bab23f8a32907a3550535c00b561b3f7c5cd4b76c41724c439fc37b7ca"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-05-seed-5800069\\r0\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "d1e3eba5ba22aca6b663b563855a0471f56f534cbdb539e4e53e373ace12ee19",
+        "visible_history_hash": "624ec79490f02343d9099f96f32f587a96a6c42d41b681907e112d36bb0a547d",
+        "information_set_hash": "0cc276ca1b95d664dfb354ebeca1f728724bf32460cec9b5ca03d40d744d6d9b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-52-seed-5800116\\r0\\match-replay.json",
+      "ply": 18,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "274a8fd7392e33755237b79b990f009009f3e2b3707f234b99a0810b206af8a4",
+        "visible_history_hash": "357e34b591b6196c9855de2a5075bab9411432e1e1926f81f119b112109072e3",
+        "information_set_hash": "c07397dc5371ea2fd5272e8d5aff8498f8f2475b565de91aee7dff1a4d26ec1e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-03-seed-5800067\\r1\\match-replay.json",
+      "ply": 56,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "d2463da0722991097ee157a43f656c779e4506a2534e73fba0b6a5a317163f73",
+        "visible_history_hash": "21971f870cd1064f5c87a6a021dd07f3a1c25fe26821a0de29f2ea488cb18461",
+        "information_set_hash": "cb9f6ce8dc6851e12a474c6f6f1436e03d03d7a7a8013716161530b04bcc3c9a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-14-seed-5800078\\r1\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "800de7fee3d5de0dfcdab5d1b1ebe187060219b33757f48a7a3512aa0c598c0a",
+        "visible_history_hash": "1094e6b5f1b634de74713cf1da6c3a14aaa24eb3604ad17b905e1c3d14f733e9",
+        "information_set_hash": "c7c038efa54a00555c4a23b570dbb61fccfaa4838ce110e4fda5644620df1239"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-49-seed-5800113\\r1\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "ab84ef67a1f706846414a052433b4737df4224bb26abef3881dec7c62de72da9",
+        "visible_history_hash": "0e4f5d5eccd0b0ce447f208b24105c38538f27c5cb27ff1ca074ba5d8def7d8d",
+        "information_set_hash": "30fb55028d29e4b71560eb0b221f48590be69fb297aa010ff7992894c62c37f5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-47-seed-5800111\\r0\\match-replay.json",
+      "ply": 9,
+      "legal_actions": 11
+    },
+    {
+      "identity": {
+        "observation_hash": "462b7b988abe387c6d7c498a2364d45f5cc320e621e00c7898949c662e95a900",
+        "visible_history_hash": "cb6fff39f13fe935fa467bf8b6ed28e0b0aa38eee57c4f1f15f6262f125afc4b",
+        "information_set_hash": "0658b96c429c6925d60186b451c70e21d707e61655c57df6059148f8599dbeb3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-22-seed-5800086\\r0\\match-replay.json",
+      "ply": 47,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "79be92adaac788dcdc707019f4d7e2e2cf1557fe4fd5208fbc0095d4cc6fac9f",
+        "visible_history_hash": "1461b4df5a493465d69298eac9b54f5bb4680d01a9e1207615bce4c67b055231",
+        "information_set_hash": "5d363d043f43ef05be2c76bd39173312d3ead8f432204fe6abeb282b4b586975"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-59-seed-5800123\\r1\\match-replay.json",
+      "ply": 33,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "4c47038362d81a9d39524831f0b9b5da1a97d976f2c9d76eaaa12f6a98aada4d",
+        "visible_history_hash": "8a93a4d107f8f101b13b7834a672ef3892cb0b7e3ae3433371111636c5ce6028",
+        "information_set_hash": "66e9213f4bc582c3a3433713b3b00a4179ed2a45cc0f59c6586c28b8db96adfa"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-05-seed-5800069\\r0\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 31
+    },
+    {
+      "identity": {
+        "observation_hash": "e02a0f9a98ae03b81d52413c751c15ff585cff212aed2f4c6f45a774c6450c1c",
+        "visible_history_hash": "ead5624b3ef4c425c5563deab73e563883b719ee746a2b8c5ee44c53f20aad6d",
+        "information_set_hash": "805a4a8012575e4e0cba6a79414397010acf42d260515ed0335008520ad72e0a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-54-seed-5800118\\r1\\match-replay.json",
+      "ply": 16,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "e738e6d95f433f3bedc9ab57a594bbc20e36a7d36cc0604d6c4d8db3b5d05eb7",
+        "visible_history_hash": "01cc0c9f541d623ce852a4e37d1a0097b24ab42c24644eae4e3165c809d8e415",
+        "information_set_hash": "d9fa66b71211e02d8430607ad4900f6c6b385bba1d7ca5bc6e426b9521333e05"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-29-seed-5800093\\r0\\match-replay.json",
+      "ply": 33,
+      "legal_actions": 187
+    },
+    {
+      "identity": {
+        "observation_hash": "04a583da615729407660edcadb116738e4c0b237526ed53d6e754ecdc346cb9c",
+        "visible_history_hash": "f79fbc30150019bd8b6a94fa43341513e767c25be1ddddcd96e590f3a1c5541e",
+        "information_set_hash": "3b45e6665848fba7fa59d1196ae8857536c5fcbc5026524c88d07b2d79472ea3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-39-seed-5800103\\r0\\match-replay.json",
+      "ply": 36,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "f86e3045be809e3c431f36089b279e15c498101b6e48585c689aef1403d15e80",
+        "visible_history_hash": "71a1e67d1c386776a5527166c3e319f023f8452f84a9e5caaec43ff2088b8133",
+        "information_set_hash": "c15faf75ad5377d9e3fdd32a43b61f899e9617a6e724e3996cb14128d33148e8"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-54-seed-5800118\\r0\\match-replay.json",
+      "ply": 51,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "674dbb73c8725c63cf936a726e58ea63cfa1776ba8f693bae2655af80478514d",
+        "visible_history_hash": "69f0248594998bf43aed124e86c8121fd327c2d671d1623c5bb99884f41301f5",
+        "information_set_hash": "cdf2c92bafeeb3f2bc844fe17f1c1031b41286fb2e206026633e5087f940ebb5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-27-seed-5800091\\r1\\match-replay.json",
+      "ply": 26,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "e715d286b156633edbda0b6ff155b749de3ad38bb5a84b58cd4115ee2d8056aa",
+        "visible_history_hash": "17ef5b1184fc74bd65c5609d06b957e36f3aefb5dfba8010bfdc78eb40b9a23e",
+        "information_set_hash": "e2e8ceaedfd8289d8cb14d08d73cd48c51a8da97a05fb992f1d0ab113a49f5fe"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-16-seed-5800080\\r0\\match-replay.json",
+      "ply": 8,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "7386d3f9ba6b9e0515e654190dee73a875f84c40df9594e2832382155e1b9cd0",
+        "visible_history_hash": "6584a1e9332eed559c5de2708dcb82ed30b74a0eec7ea57218dfd921e7fb2e39",
+        "information_set_hash": "8b8966436165c59974925ba82763f2c8e4243423df97fca63a00f42dcda39481"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-60-seed-5800124\\r1\\match-replay.json",
+      "ply": 39,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "ca156e2838fb1a5834f767def917e55352dbf1538734ab73fe50ca8497902e0f",
+        "visible_history_hash": "17fc5edf353b886a4c7c7f4024a260731a3350b748abcca2eac1f5090410abe6",
+        "information_set_hash": "eac9ef94851d4c858d2010a80869aaccdf5441b2ac94519d5d0500dd89bfde95"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-12-seed-5800076\\r0\\match-replay.json",
+      "ply": 17,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "4cf29bd024e4f91653d208a01635dc9033a854ae57ea1171a4a4cf9daf60a823",
+        "visible_history_hash": "5dfb6f043730a2cdcb5a115ec911a8a223fd3d6839342920e0c77ec81d3076df",
+        "information_set_hash": "466ccdf7a28f7265844ef37a4316697aaa3365844fa83e12f84bb9f223013ed9"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-53-seed-5800117\\r0\\match-replay.json",
+      "ply": 25,
+      "legal_actions": 13
+    },
+    {
+      "identity": {
+        "observation_hash": "994da5f2f664a2a4cab4f721b4ea173d3fc782ef8b6b8400cad2addfe91e05d2",
+        "visible_history_hash": "b7e3c4352ccc6982d7b72408ec460577885263dbbe4735fb4bbb9f1fba27a80d",
+        "information_set_hash": "abafcd93da68facce58643b8180cbbbfb889a6bb674713ad657cf86eda61fa1c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-42-seed-5800106\\r1\\match-replay.json",
+      "ply": 3,
+      "legal_actions": 25
+    },
+    {
+      "identity": {
+        "observation_hash": "67200bc9af6993ab6d568b947fc29cf5bb911c6e7db2f6caf4cd329b46aa6e84",
+        "visible_history_hash": "d60dea9ab64f22cd4aac2235d6d7faadcd336cacef7678910d2009ac81ec7796",
+        "information_set_hash": "1cdb5fa3ebb84230c6788bf353a63d88ff67fc9497374c22f0cb524560700968"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-63-seed-5800127\\r0\\match-replay.json",
+      "ply": 43,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "ce0c74ca262eee28a2545e102982789d9a500d7460eacd0502d8122bc1620e67",
+        "visible_history_hash": "3c811924269c0fc37db1452df2a61bc905080cca6cfd11cca066fdf2e15ddc14",
+        "information_set_hash": "ba53edfc46185348338ef0e6d78231bd8d81c7e752a4f4c65e1a7e604900aa01"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-49-seed-5800113\\r0\\match-replay.json",
+      "ply": 54,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "0d264b0e1661b833e8a6fbd2a3fa78e3aa84a7bbe1421fad2baa019956674fdc",
+        "visible_history_hash": "2db08c1e4e8a7a0c515b02f1405348a53b998e172234d282a5b02d2c3b529fac",
+        "information_set_hash": "5cfcde38c7667e7246e78c2dde5b9a0afe47471f244b029332e5b0f31bc93e4c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-56-seed-5800120\\r1\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 13
+    },
+    {
+      "identity": {
+        "observation_hash": "aa7230e5e6ae27fb4c9abbf5c6cd9bf4cc996923eeea6c9f564469c5b7d7337f",
+        "visible_history_hash": "4497795ca631a4902c4a83ce965ef9ee001a804ab01d415c5b7c44162b111180",
+        "information_set_hash": "cc7c38ee2bf8ac5106bceb2d9664a0f697ca37eefe500764bbfc42272cdfcbb0"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-60-seed-5800124\\r0\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 13
+    },
+    {
+      "identity": {
+        "observation_hash": "d6951497d4c8090f7b53585ace843d8ecad87a8820d02a4ccff66c1cc24ec182",
+        "visible_history_hash": "f92b765827bd5ffaf3d61b4467d95d0b54a668380cc5aa8e3226f20924633cf8",
+        "information_set_hash": "b80bb7b54c976b082989ca046b763f1a73843171d1edf6ea0ec2d9d6c23ae07c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-29-seed-5800093\\r1\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 20
+    },
+    {
+      "identity": {
+        "observation_hash": "82007c38f2bff78ca41739c4578aa90a90a254dc6011f1029b24f1c81382cbbd",
+        "visible_history_hash": "657d51fbfbc57ae43aad78c022e48203d5e66ded9c990cbb6061282eb6f66f22",
+        "information_set_hash": "9eb221386ac1ebf14d6724250ea50288545b5d545382f8a346fadd78a295d973"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-19-seed-5800083\\r1\\match-replay.json",
+      "ply": 13,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "dd054d8dcff508d13ba9707f26afeccfed9e93670632f4cef03629bb9a9027a6",
+        "visible_history_hash": "b5989e1ecaf166018da2c48f4b6fe6d87caf09def46b1f38ac559ede9a44c925",
+        "information_set_hash": "df4b39b3e9f7f5cd9d0a45efa8c6a0db984b5d77a2efd5ea6229759e795896e0"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-25-seed-5800089\\r0\\match-replay.json",
+      "ply": 37,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "8681cae3f177706d6e21154e0cdf0bdfc3d024585e902e8d107103b1fe05908c",
+        "visible_history_hash": "31e4b5604fd22a2c0702de0e8269590c4f2bf32c4e5e98b2e193e3899f4a4ab1",
+        "information_set_hash": "fa053186d4cef0515b61949702513f5cdcc55a932ea7ff560c2485cef8867785"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-60-seed-5800124\\r0\\match-replay.json",
+      "ply": 31,
+      "legal_actions": 11
+    },
+    {
+      "identity": {
+        "observation_hash": "fbbd291db377906a18f63d8799041314aaba7f0897028d6331c396b822f18f1c",
+        "visible_history_hash": "5fd3ac242e448387f686bedc8cf7b9e9af79bf3d9731cee2984377c5ce164dc7",
+        "information_set_hash": "055fa7003fbe9fd903b4dfa86dd750fccdd1f179d75c714936d65132c27e8aa6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-45-seed-5800109\\r1\\match-replay.json",
+      "ply": 6,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "5b7e3c1a04c6feaafd1681f91fcb6ccfa90833d57a064bbf642615fbd55bef39",
+        "visible_history_hash": "8c3ea61568f9c930a28549c25ac98a307e619c702260af285394229425143b53",
+        "information_set_hash": "943834bdeff276b1b278b1a30d087f8c89c474b0fe6470680887c7dbac4d46a3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-06-seed-5800070\\r1\\match-replay.json",
+      "ply": 6,
+      "legal_actions": 34
+    },
+    {
+      "identity": {
+        "observation_hash": "c1bfdcb95a22d630f6922842ae576a03dc4b0a99dd1bc3858cfa9f828090ef88",
+        "visible_history_hash": "d505f918a600cb085cb2de31ee4816932ce3ef749742e9cc599e30384f68daff",
+        "information_set_hash": "4f2fce6b665c5b8ca2c354fa2d5f807bfb891e1638485ca5d9dd1e32ef984219"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-51-seed-5800115\\r0\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 8
+    },
+    {
+      "identity": {
+        "observation_hash": "c6447337a894a15e0e066b0db34bf1a73eb82a28db0097b99e2483f0be69e13f",
+        "visible_history_hash": "78c288a909c7a1e0281bdd5d520c820835880e308f8e2e35776ae712f458c686",
+        "information_set_hash": "c014693a8878eaa673afe9d8afe2d3b82e12db73b29b3dd41fef10bbd4117ab4"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-05-seed-5800069\\r1\\match-replay.json",
+      "ply": 36,
+      "legal_actions": 12
+    },
+    {
+      "identity": {
+        "observation_hash": "b1018066de04eda0e71b5de0a792d579d94c5623f8db2f11140d99584af3994e",
+        "visible_history_hash": "8d652ada7142c9bba7f16390354cf44813988cca8f28dfeaabc81305d746c998",
+        "information_set_hash": "9128ae013265f83f0a25095a599573d11951af3a1f3ca100bee4a186c858fa67"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-60-seed-5800124\\r0\\match-replay.json",
+      "ply": 34,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "b55d78a15c693972482c1efcab52a6baf3b5aac8f16cd44c1055adbd9bbebea3",
+        "visible_history_hash": "fa1830c515c94eabf43c835b0de96e533fead575a9b21129626dbbcb39019f83",
+        "information_set_hash": "0c64be6581bcc077af2a27ffc68db408586835ad958a47138698a3d5509b4685"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-45-seed-5800109\\r1\\match-replay.json",
+      "ply": 4,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "8d8d9c848d846a4dc371bf74a04a6745e22dd74b24cb5360ea534ab5fd4de9b1",
+        "visible_history_hash": "88f11dd6cc79da6f401294a05ff59288fc3e12c14e44847e813d8faa660f3a42",
+        "information_set_hash": "39eb673d96bbb36a5acff8a76f2e9c329296bd34ea657b59fda52f7ae4389b6e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-44-seed-5800108\\r1\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "68b11b6a37491b427f40eaeba0b86abac644984755797d1bdcc17415d8f9247f",
+        "visible_history_hash": "17937c22942469d90687aa7b48bcda9c8594ac6aa8376a6a92281d90304f47ae",
+        "information_set_hash": "8bf1a054cf0be0f9783662a0bd11cf63a5535576271de2f1752e605537df271a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-11-seed-5800075\\r1\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 67
+    },
+    {
+      "identity": {
+        "observation_hash": "5c4587f1328413c3a9268a905ec4ac59edd79f00e99c4f6191681b1a47d3ef63",
+        "visible_history_hash": "c620810e1fa8fee439e54e37e0d471e9baf90265b1cb2d8bd77b76deaf07c0d8",
+        "information_set_hash": "b06f8d12be49a9b4c7fd0db51fa85e9b0395e9d0a8c1f026a443a707443dd18b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-46-seed-5800110\\r1\\match-replay.json",
+      "ply": 43,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "4adda5ca2a0b9af69e8a633837513baeec0082e7c591e2485430b87e3f0638ab",
+        "visible_history_hash": "17d4213d07b1fd65feb5c1ae1fe8b3d86dacf643acae48148904f8753078a6ca",
+        "information_set_hash": "277aaad0b765444edc85c3af017a4a75b8807d2052fdeed8c0d5f391733ac0b8"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-40-seed-5800104\\r0\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "568190db33e5c1c449904f38faf7dd7561df1c9f249fe3d023af0b3ce2432b53",
+        "visible_history_hash": "7515cc61ccd34acffd43e0e699bbc519d6e1b8d3a14a67bc24fb9ce6a07e1034",
+        "information_set_hash": "c036cde08dd8edf2d5027e4d9140520d8ad9abc13690d18ae999dfb66ab89b81"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-43-seed-5800107\\r0\\match-replay.json",
+      "ply": 13,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "1bcf8b11be1730189dcae2a6867f124085ec0783c47a644dbe92d75278aa8883",
+        "visible_history_hash": "0b8c9196ce486adfd9901a4811083d534bac43fb8f503a8754fccabe58ac87fb",
+        "information_set_hash": "f5df4a505707114f334e99983acfc0c7d268f2e91bb0101800a9081f4e8b3769"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-51-seed-5800115\\r1\\match-replay.json",
+      "ply": 20,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "7381ed19da60c0924159feae12664f7136a6b6664bf7ee53fce57abac3b5ed1e",
+        "visible_history_hash": "e0b364608700d9e5041ad6f4fe109892d04f4803d305f4b7035eb4a53f46e5cf",
+        "information_set_hash": "d601b4480e88e51054a2743977cf4b09272fe0b68a3ec3bd52afd3c0b75a4192"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-22-seed-5800086\\r0\\match-replay.json",
+      "ply": 32,
+      "legal_actions": 20
+    },
+    {
+      "identity": {
+        "observation_hash": "62bdc84b979d6c9847c303f0bebde19ad0fb3ebc55e265c79549b17f5365ff96",
+        "visible_history_hash": "e57e5d58b0654be59a5767a4fbd7d6ed950971bc8204c2401c514f27faf42fb1",
+        "information_set_hash": "5ed9277de3488f844876f913931ae5a573f489061b06886b0f0a83fb4f2c09cd"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-20-seed-5800084\\r1\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 10
+    },
+    {
+      "identity": {
+        "observation_hash": "7e5fda14490346ef1559aff0b8c7fae0cc6f449e2c414bf5ff3a529a5ae90b6a",
+        "visible_history_hash": "55556be2cc33d666ff54f97e7919467b667c4f2d837b2e0c14047f7d78a49ac9",
+        "information_set_hash": "b6de8fe5b01cfba9ef46a4304230a0c5c53c3bd99e2b765ec57411cdf8d75ac5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-31-seed-5800095\\r1\\match-replay.json",
+      "ply": 43,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "b2c9965926966af37fc31ff3797d27c1beafe3cd6a8d114c9be0d485304f1686",
+        "visible_history_hash": "a9e0ab7b965610eaba084a724badc09ee1a1fbba277725790b858967caf8cc72",
+        "information_set_hash": "3c071c6965acc244b133863ac237fa78a383acd80233c63179bc4724cad6244d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-03-seed-5800067\\r0\\match-replay.json",
+      "ply": 29,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "e2d040ff4102065b562ab6dbfeb2b80c988603708067bb86cecb5e9f403f3058",
+        "visible_history_hash": "5b7b46d20b55b4ff8471ab49c5050a5b39253bf6cecd62faa62f2582d16abb0f",
+        "information_set_hash": "5c4229dee2e23632201ab0c8c7a7f1c94ee309f0ad9ccee53ad73023fa587e89"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 62,
+      "legal_actions": 33
+    },
+    {
+      "identity": {
+        "observation_hash": "155b3149205b9efdac32877c31e446034430dd58b9bf36a591a859748465b127",
+        "visible_history_hash": "b6360628c8f01b7e61e9f5cccab8d7fb61ff0812b9e671ee31aeb9d2b0699b17",
+        "information_set_hash": "8590fde82ff803e6f8c6ae9e29dd1ab3ca3f4983a018cc6757fc49ee358a3efc"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-14-seed-5800078\\r1\\match-replay.json",
+      "ply": 37,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "2a53f29a649cec0b3c085bfeb7d40ebc872283591db6b528ec38b7c7cbb0a126",
+        "visible_history_hash": "f1b360737045487ce1edff1b8fbaa6c63654a29a7abb1124674f59bb0dd163e3",
+        "information_set_hash": "e407c8f79e2b7381d142bb5b60f8653a9d85bb0e79efe0362f31542556135e40"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-11-seed-5800075\\r1\\match-replay.json",
+      "ply": 37,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "1b7c28f1d3c37b915790fba1d45abe06adfb77532c38a0b3b60fa67eb5330fec",
+        "visible_history_hash": "0b062b32f7041293b8f24be4c8c7c3b16d0e69fcb428bd966fe2f738628bac2c",
+        "information_set_hash": "88cf67274e074d958b9d0d5cf6f849e5e39a176e1e31735004aab78fdd204d01"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-08-seed-5800072\\r0\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 184
+    },
+    {
+      "identity": {
+        "observation_hash": "023631731f104df4383190f0893cd9c7e2ab886d064b0769b80e0cd954496865",
+        "visible_history_hash": "0a571a1e5fa3c46c0ecfdec77d2d79d63dcc3f45feeebcef54cf3ef15462290d",
+        "information_set_hash": "d7d4235caeddb621c9150355ff73f9e4937cd052d4248b2ce3095d14dbe7a49e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-00-seed-5800064\\r0\\match-replay.json",
+      "ply": 10,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "82c6911978e4cc16fa48039de5027219360586c7b603e176a23c6078d538c44b",
+        "visible_history_hash": "048cd7ea359543d642613365a2b09d9b4c26bd84834ac7c77db5c9b7360bc7ca",
+        "information_set_hash": "1b18d9bd2e9ca7de7bb592a0f3dec06de27797dddc47e82a7d5bbe7f6775e598"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-00-seed-5800064\\r0\\match-replay.json",
+      "ply": 4,
+      "legal_actions": 25
+    },
+    {
+      "identity": {
+        "observation_hash": "61d45e0ff10a718ee6199bebf274cb9fc92d23666bb86e57f321293de44db282",
+        "visible_history_hash": "88e8241f63e245d7a826328e6b0d9779a6350e5e7065ff4030042d513dec17bc",
+        "information_set_hash": "238494d295cd8a2281ab8b34ecc61419d2f4dcb476afe18abf075ca11aebbb89"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-46-seed-5800110\\r1\\match-replay.json",
+      "ply": 7,
+      "legal_actions": 75
+    },
+    {
+      "identity": {
+        "observation_hash": "548af0363b0bde53334b60f899e02d911effc6774c68f50bc69dd3b06b48a9fc",
+        "visible_history_hash": "436f5611e418654b2adc25c49c9711b9f10b4455222db2aa2f1283b2ff9677f5",
+        "information_set_hash": "110433eeac35b2b9804fbc20d6bac6f39eb3d167ee8de3d37de7f3fcadff6209"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-31-seed-5800095\\r1\\match-replay.json",
+      "ply": 26,
+      "legal_actions": 6
+    },
+    {
+      "identity": {
+        "observation_hash": "7565ef775a2d9d2a1b39a7579742d067e3b41d1962df173710f22e8952cf06e7",
+        "visible_history_hash": "33f4b6ace6e3bfc9b2b0274fd12101a03427777691ba6d9ccf40a5a7113db9ed",
+        "information_set_hash": "546fd9a20548bc8369890290185e6847544ca637a39d1c3a327b181b9fb637d6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-41-seed-5800105\\r0\\match-replay.json",
+      "ply": 54,
+      "legal_actions": 33
+    },
+    {
+      "identity": {
+        "observation_hash": "2d2aa4d2a0860a255923ba0b77e596915fb12f4a403fc92e40e65f4f9493452c",
+        "visible_history_hash": "e8a040a93581bdbb94a31603a366ef0c0efc2137fecfd91cbd71070bfd8c453e",
+        "information_set_hash": "5408ace55fcc94267d20d0b4aeceeeeab34914a6535c99dccb72d1fb6cd31eb1"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-11-seed-5800075\\r0\\match-replay.json",
+      "ply": 12,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "ea723290713ebd0d6f5a09f7050b471087e9a151e82e462ec6d1f0e98d6b49fe",
+        "visible_history_hash": "466d362f68f02a68e9be49aa8da7dec1932a43dbf742a22a6d6cf9be685ebf8d",
+        "information_set_hash": "e7f0b5c4a5d549bb53f3229442ec0c0d93e25ed1d99a58428a9943da70d7852f"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-10-seed-5800074\\r0\\match-replay.json",
+      "ply": 21,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "d5749deea0655b4ad0c24fa3f6850df3974967fbe7bf017ddbbdab09a4c45814",
+        "visible_history_hash": "f80b08fc08d41abd4d6211782175127564e266cff63b8b8bc64272681fab2af4",
+        "information_set_hash": "cb1c7230f60d65745fa3fae41d4943ee6d4dd821475bf0c3b8c2e11c43dfb050"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 34,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "8b914318e9c522903a1bd03304fd80b95c462f3c0647d136a3b9a8cdac95c42c",
+        "visible_history_hash": "94ff480d7b2569e4b5e29be19dd4e031f9641ee0c9ad68a5bf7375bae95a7ef5",
+        "information_set_hash": "90a8451fe7f2488c29cce624149a6246958a82249485867f223d74db3b6343c4"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-30-seed-5800094\\r1\\match-replay.json",
+      "ply": 51,
+      "legal_actions": 17
+    },
+    {
+      "identity": {
+        "observation_hash": "4823a5dbe497ef29457abf2b47feafd4a8907e0a91d7e50dc4be4461c5cc135a",
+        "visible_history_hash": "2d3abbb4bd1b44b4a0bec3a0da96429a57db0f2ba64871fe1e39bda9df7bdb3a",
+        "information_set_hash": "220e36ff25b834dc799ceb90db3adf4036aa20c3b2fb3a5a250c25c53e01501b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-25-seed-5800089\\r0\\match-replay.json",
+      "ply": 4,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "c17cad8c9636cce4bea547a158266eb699890a9a1d8fef86a5125f3da3fa8e8a",
+        "visible_history_hash": "802eb7e2e4c6300fff00158203e955a6ebe07e3f2fb34b07bf4a43ff92598d38",
+        "information_set_hash": "610884f1f8ae667e0378794a97d2131fb3bbb224ec110c1ed66cea1dedf973b4"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-22-seed-5800086\\r1\\match-replay.json",
+      "ply": 3,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "87bd6bdca87efcd6af5d234347022a884a1322ecfc110e0314fe4978f546392e",
+        "visible_history_hash": "b8320abdc868431289552c28b1108c2c80aa10b3b173f659cc4e67da87c359f1",
+        "information_set_hash": "25426259c06203718b983d5952d9da40c20c46cf522c75e9deb48f77386b1173"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-03-seed-5800067\\r1\\match-replay.json",
+      "ply": 63,
+      "legal_actions": 11
+    },
+    {
+      "identity": {
+        "observation_hash": "9646c76f4255149e047947e6435dc31ebf7e7f06e33b4e82c7948889c3d7d2e7",
+        "visible_history_hash": "2a50b4ec1505abd6e8733b44297c698de19155cb880e7aadd95cfddbdb544894",
+        "information_set_hash": "e9cadcd8b8316af787c964ff999dfa983cd4ab7f589e1fdfb8050309cb89fa53"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-10-seed-5800074\\r0\\match-replay.json",
+      "ply": 7,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "7eeab804ab880f8100fb26b2c35b62d63750d171ae6382646663f3a91b742ba3",
+        "visible_history_hash": "50e20868babe1ca02e8aa1e81b95fa5e3d5a0ae2dd3b19981f676bb8cf4b1bcb",
+        "information_set_hash": "0201664578357de36ffaeb0ef7eca4f717342858d598e7d11c5931d4c728f45b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-31-seed-5800095\\r0\\match-replay.json",
+      "ply": 12,
+      "legal_actions": 25
+    },
+    {
+      "identity": {
+        "observation_hash": "11e54f25f7e8909f6e3fefc02ea07e673fba1668fff023ba916721262977dd56",
+        "visible_history_hash": "ae30987a27a0bc82d8244bb05e4eadb1db84905142f7efc663db9be53bd40778",
+        "information_set_hash": "fdae5e1919cf40514fe4d097c9dfb7b1a8ea96b32d992b0e6dcafca468c8e182"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-57-seed-5800121\\r1\\match-replay.json",
+      "ply": 32,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "53db11b26453957b2ef769a5d34fed8c616b02a132033550acc92db8ccf0912a",
+        "visible_history_hash": "9aafe7fd0a904bba069f1fa89d655ae1e401d956f4a870d42f9c54991afdaa5a",
+        "information_set_hash": "15b15c6e5c749f8bc9cb520191a51fd2904a9357d5757b35da88588d08c8cb74"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-46-seed-5800110\\r0\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "b7e96e5c60855cfccdc59f088189799a324962342c5549992d7ef0ba8b14df6d",
+        "visible_history_hash": "22246e264efe5a0a296a479c63a70bca35b3bfc6a5ad152ddee3a8334ecb1461",
+        "information_set_hash": "a441d45c78ba258d63f156e2288e20909ac50b9141343ec7f0457a738ca3bb87"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-14-seed-5800078\\r1\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 17
+    },
+    {
+      "identity": {
+        "observation_hash": "0c3fd8eb6afcf153b1a1b92dcafe94c8973281246006ed200ca98d83f69bbe9e",
+        "visible_history_hash": "1ff599dc5a56179c2af372d75bfc88bbc5560e3231272aa4c4b0e19ee07d7160",
+        "information_set_hash": "c42c95969e0f5dcbb9c00b306357c13f9651c73a182c661e3065ee76f94e6f95"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-58-seed-5800122\\r1\\match-replay.json",
+      "ply": 60,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "926f2cd203708df345c32e5645ce4633d8287c7ba91a1f99b80abf71ce472142",
+        "visible_history_hash": "212800f4bcfe99bea321d050d6e7b1d44f0900bf89f1acaf028d74b4a8296958",
+        "information_set_hash": "c0b24c656580752b588dc8029f225edbdb14b3bfdcecc8b6365402b9b9d73958"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-26-seed-5800090\\r0\\match-replay.json",
+      "ply": 55,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "465b137525ff1b476ecc5e5bc363a89c6220660b8b210a0cbc9013c36bf3ff4b",
+        "visible_history_hash": "4205c0f97df4212575322079f79ad2ec5918603599556b6b1dd228a4bd498196",
+        "information_set_hash": "8cc1393a2408700eb533977a48954376415f76f555a80355d2ee4cffa0f1be04"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-13-seed-5800077\\r0\\match-replay.json",
+      "ply": 24,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "4698b611524f9dd799b798ba189c51d7613259d80e6a3021741bbd0940bd7599",
+        "visible_history_hash": "00c6f59e8c72104a1a76b649ff19867a25d2f7e200bcdc84b5c0918505f4c356",
+        "information_set_hash": "1be79bc2b0c8b4a8ec11ce54f543170b5bef1997dd078b66fe4414fdd16befb3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-62-seed-5800126\\r1\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "43750722ad0620507b9347e91a55adc2c0409365d76f6990813cf263e2220995",
+        "visible_history_hash": "fb15815f090f42ae5d0b979e10eef1574a76f02d355784ac6203abc7b3084ef4",
+        "information_set_hash": "8a682804be22f5b69069fd21cda747d0311cbdd88f2b3e7c96a0489a4037beab"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-55-seed-5800119\\r1\\match-replay.json",
+      "ply": 18,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "96fed984dbcc08b7834baabb9fb009a0f438b09ad19f9e50d1eaba16ef97b368",
+        "visible_history_hash": "180ca35813d5cac1e32be2168fa935a67f2b2134b2a2a66b322c21207389cdb8",
+        "information_set_hash": "a130ab18d54d3494568faed28ff4aa58d26e0025ff80a2caa95af57b702733cb"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-55-seed-5800119\\r1\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 14
+    },
+    {
+      "identity": {
+        "observation_hash": "a5bd0d799307fbfd9125a428cd88a9107a6932913507a35a79012067b2d3144c",
+        "visible_history_hash": "5e51264803b36b42fea789cf0e5f876d6011d1474d6692a63a77de7071e3351e",
+        "information_set_hash": "cebd4807d3e3210e0735dd03e6b2522bfc858e9fbd1c9896c2e7376eb158a599"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-52-seed-5800116\\r0\\match-replay.json",
+      "ply": 58,
+      "legal_actions": 33
+    },
+    {
+      "identity": {
+        "observation_hash": "676c1809d3a3b0bf6655de5a6bba4913e8fd203c4e7d8a958acb722a18f4fedd",
+        "visible_history_hash": "be4324f8f81aa64bc603ff67bb86a066010d35960b6b0d930a662cd604ad6f5a",
+        "information_set_hash": "4375203d6645ea776c43135605ba9668dbb3fb1edc1b4ead110516eb28abf8e2"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-25-seed-5800089\\r0\\match-replay.json",
+      "ply": 52,
+      "legal_actions": 10
+    },
+    {
+      "identity": {
+        "observation_hash": "45b8c79caece3f735beac3629d0ba8164e3731bdb3b06c9db9b74d24ce11453f",
+        "visible_history_hash": "3735786bebd86bab8f1336a73948ec92538b39613438e140df3bb2dd00d66a43",
+        "information_set_hash": "7e099d9f17877c27a72f9e828edfb2cbb46c6e239a4bd85e7fdea995060fea3a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-32-seed-5800096\\r0\\match-replay.json",
+      "ply": 0,
+      "legal_actions": 30
+    },
+    {
+      "identity": {
+        "observation_hash": "8d1441176e84172f7c86c1dd78a094bbc8f6d004e6246bc0273c68bdbe9a0750",
+        "visible_history_hash": "63a37eeba2aed2500439bdbcfa52f7f4a1301ef2eda40fee98c82c38d03bb4ae",
+        "information_set_hash": "ce4330d77f5c0d168707ff25ad0d84962c96b4992e3b54d74254f37930d593a7"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-41-seed-5800105\\r1\\match-replay.json",
+      "ply": 58,
+      "legal_actions": 35
+    },
+    {
+      "identity": {
+        "observation_hash": "d90d67aeb1f0b20bdbdc351dfa6169014a5574b86d32e8a66d51535c92a3a39d",
+        "visible_history_hash": "4e5221e96651e7e47c58a5cd7eddb130a3ea3134a2d27485d135628e1bcdcb08",
+        "information_set_hash": "af9eccded5f57111666524440a22585382a499a3c393fabdcac8e0ec9646c55d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-27-seed-5800091\\r0\\match-replay.json",
+      "ply": 28,
+      "legal_actions": 23
+    },
+    {
+      "identity": {
+        "observation_hash": "25fe74dba3e2b72a207dc8ec8ccda58be29492496ad8852d6cd0036e6ea68e60",
+        "visible_history_hash": "e7bb037489d7003046b5c6250925e25f679a53d31c0221c740ed07e13d66311e",
+        "information_set_hash": "9699f671d23c7d7fee37c0d1292b6620fa0abaa258a5aaa9efe7df067d448c49"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-27-seed-5800091\\r1\\match-replay.json",
+      "ply": 1,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "0a216fcb34edef260bcaf28665acac339524cf03b3dd72188b69e1491045a3aa",
+        "visible_history_hash": "50a65ae10db46a80eecc1a756f13f3ec26f48dc86ca31b40b3a151441c150d7f",
+        "information_set_hash": "4f843a7d4b61efc6d5702a923fa0240ec129ebbdd0118e248456db852b0fb5ce"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-46-seed-5800110\\r0\\match-replay.json",
+      "ply": 42,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "65078bdc787a7ab1ab13dd07660ea5abb88cdd9eb0330dc5a2229f80b769edea",
+        "visible_history_hash": "3055661ef0f67aa397ff9154ce66ebe9bdc40447fe22cec01cde18bccf7d2a77",
+        "information_set_hash": "c39ff94ab44cdacc8d2a3e94a4ab4cb0c7e00db6631b37b6b9caf582c462aff9"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-40-seed-5800104\\r0\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 31
+    },
+    {
+      "identity": {
+        "observation_hash": "2306b3cdebfa3d2b99ade3b8eb7370811b55a94e9c4a73eb197a9ba8ea9eda00",
+        "visible_history_hash": "2c390377fff020f43a821bfb7edd5914e6d05ac563dc2495ed9957297d14b6ee",
+        "information_set_hash": "dbd808a3d382d2f91710e3050eebe275d1561c61b313ab9057228b76e5339258"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-38-seed-5800102\\r1\\match-replay.json",
+      "ply": 52,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "32340e6e84a36a0ab2e65b0ed41bacc6d1bc9ae4e3bbb78b0eee631943d1ce29",
+        "visible_history_hash": "3a8300fcad3d8e8d6e3f85005746617ac28d886291d99e9a2e46e791587311bf",
+        "information_set_hash": "d55afebd314c6790aaf7820ab2e92e3cc8cfe0f2aaa12aee5e963391e14c1cf9"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-16-seed-5800080\\r1\\match-replay.json",
+      "ply": 62,
+      "legal_actions": 24
+    },
+    {
+      "identity": {
+        "observation_hash": "566d90a8f3d05177d74c36b2d8e39741620dcdb049be2a2a64434aedb3b1ae4f",
+        "visible_history_hash": "aa2a1ecf333a30f7fa315c6abbef5f5a9cb36de52ff6008d11084798c538e425",
+        "information_set_hash": "10f70dd88c60f020aaadb70614fd2cec0d755aa3333eba7e3bc1026feea47d91"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-21-seed-5800085\\r0\\match-replay.json",
+      "ply": 36,
+      "legal_actions": 24
+    },
+    {
+      "identity": {
+        "observation_hash": "649575a2f323e59e40887652cf54a6381d684242828540979a8d6b4e135ee1d0",
+        "visible_history_hash": "89092fe76763fc6cf0ee159d678040c5512844a28c24467a1f2561d90c48fc5a",
+        "information_set_hash": "15a6b358657243db2a462c8b8450571e3d245b1226d2c0f4a8ca2130c1acd309"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-38-seed-5800102\\r1\\match-replay.json",
+      "ply": 13,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "fbeedfe80e8ea2602bce31767ac014c019b0ea833df5199aed2a092b2f6d54c6",
+        "visible_history_hash": "ff7ffe4dc7d0ababa8de453d17146745f54b9e805de8dd4b88f428174338fe8e",
+        "information_set_hash": "31f77ad24b17b16e00904bebb10aea13c2aebde7e0d7bbadcbf8cfc96a5874bb"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-27-seed-5800091\\r1\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "eb52d4de241eb5003b1d48907b0c7fb2df2d2bca1dbd528e10361e4226499fe9",
+        "visible_history_hash": "ccd23e3a20233130f581d145b3ad68c2e160deaf2bf15da40ed203510a1dc44c",
+        "information_set_hash": "3d39e2cecb5c846a860efe1dbe2aef27c9276417a701eac6aa56e925a0d3e274"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-32-seed-5800096\\r1\\match-replay.json",
+      "ply": 4,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "1da5201dd21a24fe21b7d2e78067d168ccc593e897e6b3ecac82603084731b0c",
+        "visible_history_hash": "e1c93ede166d69b11fd408c3c80978b563ad8f995622d7acbeb9dd2fac5bbf54",
+        "information_set_hash": "4abb7e8a043b86b818093e0b2c21606b46e211edd347eb9435fc923ba735d983"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-13-seed-5800077\\r0\\match-replay.json",
+      "ply": 8,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "8555a1b5709a0afac1aa8988f72f35e814eddd53841d2e01b3c41fd442d3e8de",
+        "visible_history_hash": "47d06f1dfb2ef2f11f3a8f7a34b65a54b1d5ee27bc85eda10275d18072dc0668",
+        "information_set_hash": "411b016eec9469ff7b40b070650165366bdb505f5ff359fecbc9d50fadf34c1e"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-08-seed-5800072\\r1\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 8
+    },
+    {
+      "identity": {
+        "observation_hash": "84a73108acecaf89a3d7611ddaa943ae1f474df264171d6b85f186841c93b03f",
+        "visible_history_hash": "a70d1a2af340bbf3e1768285ad639e76edc4dacc2043dfe4e4f44e8256198026",
+        "information_set_hash": "e04ac729b14a457c5a6160e5d63b687215dc073bb718f9817572dbcf28578a27"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-01-seed-5800065\\r1\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "98fc3ded329b3cc82f9892951d377dd8b587152b204b5099155c23be25bc0822",
+        "visible_history_hash": "c8019d7d46b0f512a713ca032cd03336b1f316b4da917d8681d2eb566a7e4b09",
+        "information_set_hash": "92c8ed48213c4d0c66c6727cb999b0b739810e7d05643bfc961d28cd75f17652"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-39-seed-5800103\\r0\\match-replay.json",
+      "ply": 43,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "76152a1d43be7c96bd02bee53ababd6d01d86aaeb7709d87f4b01bbc3e37c836",
+        "visible_history_hash": "0d53fabcc8a9105250f4311f2db8c951174421ada41efd70d11b42094ca7017e",
+        "information_set_hash": "26b4c1001c0140937a9e970f43431f2b3b1c1e3299a0f23fdd5dfd9929f29d0c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-49-seed-5800113\\r0\\match-replay.json",
+      "ply": 42,
+      "legal_actions": 13
+    },
+    {
+      "identity": {
+        "observation_hash": "0cba19b5f3e05fe347ee5a3595aea462de1df47d9926d267e28b933dcacea29a",
+        "visible_history_hash": "5d183045ac18d9dce46219473ec40b4926cc73f772d5011ffad4c6757130c465",
+        "information_set_hash": "cb8588fa3f4ce230d82a385ad989163c27f21cec411bc4f9be98cf47ac030a5b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-06-seed-5800070\\r0\\match-replay.json",
+      "ply": 12,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "051fccdf53f636669ed767760bc70a20264096b9d5a41be7bd9c4da10f933a95",
+        "visible_history_hash": "266418cff3097a60c5ab8c9383153fa25d82de2f9faf7c62dec81bc9e294bec0",
+        "information_set_hash": "bdc705210681e6583809561dcc6f2bbe5f568aed711d5202d3d30b56552fd698"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-44-seed-5800108\\r0\\match-replay.json",
+      "ply": 59,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "ae25f82bbb92a433dc74f45f9ef8d7391b59668e215c75d4b340c6b3ab5cd1cc",
+        "visible_history_hash": "8f42a0e236d4252b6f87071d6d25b8086c64ba8f0bdf557f93a071dc1e606a0c",
+        "information_set_hash": "58aec3faf5e0a50609b4cc3fd3673e7087f26540c4981793d72f8b72ea703c4b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-60-seed-5800124\\r1\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "44bce1d05e0b00b4b6b0e69d288d8f2cc197416aff443d1d858add4550506b7b",
+        "visible_history_hash": "e3e4de05ead5faa35be8416d2154c31f326577dc189c0abd7694bd6d9dd93a59",
+        "information_set_hash": "1bf6f7b242fcdce38814a8bb65cee9188082b3c067f3ed7fa04964a11e06ed62"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-20-seed-5800084\\r1\\match-replay.json",
+      "ply": 51,
+      "legal_actions": 32
+    },
+    {
+      "identity": {
+        "observation_hash": "6232a1b138e040e0c9a37d91145e9d0a7559ba566796bebcd9087edc54245f52",
+        "visible_history_hash": "80fcc9aba208687f3091cc7e4151d2049a1222e76f42d1fd04e7c5c72153c215",
+        "information_set_hash": "81261e8108937673e5183058a6d89616054964b2e74c341105b6bada97c1d765"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-10-seed-5800074\\r1\\match-replay.json",
+      "ply": 33,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "ced1b513384d5a84c59416487073daf7ef651d61972312a2314b7795bc596af1",
+        "visible_history_hash": "aa2017c0956f3dcda64409739cc75abc9bacdd1d12a8168f86529c2f958645bd",
+        "information_set_hash": "6c42c21ff737fb21d84689945d2dae333b1c9668082765ec8351ee9a55a27057"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-07-seed-5800071\\r0\\match-replay.json",
+      "ply": 21,
+      "legal_actions": 22
+    },
+    {
+      "identity": {
+        "observation_hash": "7bc65a66df8e9619b04a912d4ac64b93fd6d0a2fcdbde8e36e6d59ca4837d899",
+        "visible_history_hash": "5ef562d58f22df2b01cdd456156a9f60e4a91f1620c26f359de048920182071c",
+        "information_set_hash": "6984542ea2487d0308b9ddab65b10cfd74c767870be94d8120e96f4c61a0bcee"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-19-seed-5800083\\r0\\match-replay.json",
+      "ply": 52,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "c47be4a4fd1d2b169e538847c053cac72e7a49f288adbdb877ffd7d4ec1cb52a",
+        "visible_history_hash": "3f2350fede3d17af8d1af5433aeec2f05b56cd6d74312febd57b693c36b38ee7",
+        "information_set_hash": "1590c3529047610f81c7630ee1b54de7b123b821dd80438ab02a4c84d6beca1a"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 1,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "15593f888cfac4c1d359b041e11d4c1747bbae4f4b0d0eeb77083ad6d5f3e553",
+        "visible_history_hash": "33ce20bcf32766a4821f2445f8188b1bcaef5f40bbb17140184e29fb2fadc430",
+        "information_set_hash": "313d4da92e44b706739552ba4ff672cf73eb291d4b96c8aeae41829b902eaee6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-17-seed-5800081\\r1\\match-replay.json",
+      "ply": 9,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "097c62511d5a3b6bdd24d0d95572424732d44c52fb2cc6bafe520f99e47add73",
+        "visible_history_hash": "cea82bf20a54dd2cf1d0d8b6c7dd247c2a0ffdc41a548133eec8fb686a98b040",
+        "information_set_hash": "f0ddfd2a269b52b372cebb667dbc60acd712127323050e8b5d6ecae7af312b44"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-48-seed-5800112\\r0\\match-replay.json",
+      "ply": 20,
+      "legal_actions": 24
+    },
+    {
+      "identity": {
+        "observation_hash": "f621e747d4fd6c50b08ec4c098d0bb66aad329398224b0384e22764d32dacf20",
+        "visible_history_hash": "0f40f961cced9ea4d50c5c21c9873db2dc737bbe1443cb8cbd92a098c1c0006b",
+        "information_set_hash": "0e30e4400a95a0a507e2fd16fd84eb7803a1d89f22d9706f5ea3b17b76aad9d3"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-22-seed-5800086\\r0\\match-replay.json",
+      "ply": 6,
+      "legal_actions": 73
+    },
+    {
+      "identity": {
+        "observation_hash": "3fef5359430943303b6b40507e5746e86b766a037c1416534e28f5aae4ed10df",
+        "visible_history_hash": "fe9fc8321acbef900b0dc410f9e6c0622076f74af46fdd4b77397b82ee7bb7e0",
+        "information_set_hash": "319749171d11cc1bdd53709f65899903c094618b1a2765ce9caf7de718b36421"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-43-seed-5800107\\r0\\match-replay.json",
+      "ply": 1,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "8791d1f52ae3c38d0c56f092bafa582e849a7105610ee94c989beb658f0fccad",
+        "visible_history_hash": "9b7c2fbdb758fffccd1f003407ea5cad73a44b31cfc1082e71049b884387c2b7",
+        "information_set_hash": "817b91ca8c1ae1fc5eb2061f3ad88cef8e102c59cb6729ddefcb17a0598fc0ab"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-39-seed-5800103\\r1\\match-replay.json",
+      "ply": 22,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "df6159f238ebe8c822d78f62ae1b23dd435457756689638090c799e4a82c330d",
+        "visible_history_hash": "0822ab1d0feefdbce545e53667c03a15b0ca6742dde77776109e4355f6d3aef8",
+        "information_set_hash": "28343433600779da01bf1b9a5fd6dcad709c30c8699c21608495d495dbea561b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-41-seed-5800105\\r0\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 22
+    },
+    {
+      "identity": {
+        "observation_hash": "e285262686662e25a5da5c0a8c58f56c968e7c571a23b9823e8a37ebbe8639ad",
+        "visible_history_hash": "6c732109d2ca6f205a00f1ec3a06b86a9221dedd963ff32637836292c5e633a4",
+        "information_set_hash": "bf78bfa2f2da72aecf10f93e9f0ed08b94d3b214c247a26c84e35f2ac7086e5d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-24-seed-5800088\\r1\\match-replay.json",
+      "ply": 8,
+      "legal_actions": 78
+    },
+    {
+      "identity": {
+        "observation_hash": "6abdd39052431a9dfe4d3718602225017dcd8e055baba1672f893069f09de38f",
+        "visible_history_hash": "8536b9d388546082fdb1780214c2ffabf4ad9865a1f5029367503ffc3448f588",
+        "information_set_hash": "a59fbd82c3313ca464ba821a5c9c55f8d749995a7018d10387c79ec72bb18dec"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-03-seed-5800067\\r0\\match-replay.json",
+      "ply": 10,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "cdb33d43ff47c0eb11a29578320f7d3778670f140322ae8657b1da6ef4352f19",
+        "visible_history_hash": "b4f28aebadb700faec56799db0afd21472fa705f9f12301ad664fd5ea601eeae",
+        "information_set_hash": "f933e60a2193e487c68fec63e609bc1d1138c05d6f6e15605a6889386195803c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-48-seed-5800112\\r1\\match-replay.json",
+      "ply": 28,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "d95794fedda4a3b54a02d7ffc47447fc18aa25ec011f382b1f298bdf0226c90d",
+        "visible_history_hash": "7d090ed6f140e5e56b47b4982740e7160b4e289eb6a568d0007e0afc952622f2",
+        "information_set_hash": "19390274609c6ffebe6f2b54173163c6d241f17c9f9fc49f9d5e0aca85ec619c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-57-seed-5800121\\r1\\match-replay.json",
+      "ply": 65,
+      "legal_actions": 35
+    },
+    {
+      "identity": {
+        "observation_hash": "056ea1325562f661d1d9c3003bd97e3e323fb0291b6c3b6eb575b40a3d09ca81",
+        "visible_history_hash": "119d83ec2c293825499219d4158623c1f71a6b7778542299410a1e8d61728fea",
+        "information_set_hash": "df6ec3c43e95ee8ea8debc2ae991278c9c1f802c71711b7240fa97a27c1f10ec"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-43-seed-5800107\\r1\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "78aadeb5f9f8381384268665295492dff4879c65196057e6e07d7870b139285b",
+        "visible_history_hash": "e9d7ca023af4cc22dbc2981e74dab3225ccd830bb88d951ab16ef3229a14b043",
+        "information_set_hash": "d18d5db162d23169d1f9cec00025a0aa4658f873917f740b84e863355c1d9fd8"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-62-seed-5800126\\r1\\match-replay.json",
+      "ply": 19,
+      "legal_actions": 16
+    },
+    {
+      "identity": {
+        "observation_hash": "12f8bc47337dbcaa7c2f4593f685571ada3901d417dbb96894e785ab34df8ec8",
+        "visible_history_hash": "630664ab774033e5cb39d1a720aab907909892e7503fd0772cdb88276d78ac81",
+        "information_set_hash": "33915a548cc1ef40d3a66ca886eaaeb5dd31a887125144bc664a52bb8d703fc6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-44-seed-5800108\\r1\\match-replay.json",
+      "ply": 52,
+      "legal_actions": 31
+    },
+    {
+      "identity": {
+        "observation_hash": "ff26d7bf7342ce9d63bd9f3583d083c56e18389f35c23ea534556c8d3fa1b0fb",
+        "visible_history_hash": "4b98fbc088fc5878ef363d97d4886b8acff1e3606a4698975c53451386d263e8",
+        "information_set_hash": "93838ba2616d9e60a0438e8f3b84ca251bdcff043a8dab080b905883cd6abe4d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-01-seed-5800065\\r1\\match-replay.json",
+      "ply": 46,
+      "legal_actions": 18
+    },
+    {
+      "identity": {
+        "observation_hash": "cbdfab9e39a56fda9d5727b70e19eb20907633bcea7cf80a2fe6e7ad3fbae62b",
+        "visible_history_hash": "bf71b43fc954cdc623766a027822966802c2ab7130f589590b47c90d7b42221d",
+        "information_set_hash": "9c23d84436b0b8f50d78471be7507b934d6a17a12f6c835ccc4d8b18702096b1"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-32-seed-5800096\\r0\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "64f2d42e6d4e9702fa7a43888a19fffb6bfc302b945a11892c2974576c9e03a8",
+        "visible_history_hash": "9386179b9922ffa725dc86f3bc263b732efff40377d98702db96a2c84b3594bc",
+        "information_set_hash": "b49eab558c94ee5d62d7bdcecd9417fb8c4d1748c591db7705e1812d1791d872"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-00-seed-5800064\\r1\\match-replay.json",
+      "ply": 22,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "c031fc4bd19e2dbc1e040506a375f29ceca9ab9f693bf873fcb2f73bebb73187",
+        "visible_history_hash": "bdcfcc09cff8ea82c273daff573ffb45d87beb5bbc8525692eb60e0eeea84df7",
+        "information_set_hash": "a221dc41010d7fa435561825ef4da7007bdd0ba4bf533c6498d2a4a96b011322"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-52-seed-5800116\\r0\\match-replay.json",
+      "ply": 9,
+      "legal_actions": 10
+    },
+    {
+      "identity": {
+        "observation_hash": "11a9c766e254f9aecaa8d92b9ce93a94487b33361535ba9f576371e6adcd288b",
+        "visible_history_hash": "5240422fbceef680bcd854a867e7748c6a35c53c61697639f80d88e34d68272c",
+        "information_set_hash": "e4a4aae74cfa7222597193aeb626e47baf39467ecec60c54d1bc93159645b9fe"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-40-seed-5800104\\r0\\match-replay.json",
+      "ply": 35,
+      "legal_actions": 78
+    },
+    {
+      "identity": {
+        "observation_hash": "10dbe3fb0da0b723df33be9738d5183f3ad212f2154478f5b577a2c8ce5b23db",
+        "visible_history_hash": "fdd571a94057c891a1709aef299be2d660244339c9883b3f47a3e19260229ee9",
+        "information_set_hash": "52c2da20488c46bfd9f8548b8e4e23cb3922145b1cf0702bfb6f5d7015ec77c5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 11,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "85eabb8242d8b05b7bc0079e0e84b7abf217672a1a5b8bab299b3e41d3a22de7",
+        "visible_history_hash": "125ebfef015ececd0f0419dd21c9dbf88c750a373f684e5021c56838412c3fd6",
+        "information_set_hash": "208b0accd87ce466d8e675f72e7c79cf6991b766776474dde6cedb5ce6ab6ce4"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-15-seed-5800079\\r0\\match-replay.json",
+      "ply": 32,
+      "legal_actions": 20
+    },
+    {
+      "identity": {
+        "observation_hash": "bd2d675e7496d758d85c3d6630130eb99689af906f62f18c001ba33f816465bf",
+        "visible_history_hash": "2a0daba24b337acf0a50e667eadd451456f3e50eaa18f8fc17241aaf1e5e3f35",
+        "information_set_hash": "a10434cda977dd204bd2f32af045b52e0991276c4ac8f805ab6840430007e33b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-19-seed-5800083\\r1\\match-replay.json",
+      "ply": 22,
+      "legal_actions": 27
+    },
+    {
+      "identity": {
+        "observation_hash": "def4ea1471cff84c848d0ca33e27788d4113a5b6a66845e6202d2aa4d90c336e",
+        "visible_history_hash": "4acbbe035693873f3c7a4e46ad6ebcd620e8d01d07e0144646990c6ebd5aaea4",
+        "information_set_hash": "84e5f02c3c41343d99ac3668d1e1bc02fc420a105751ec99b07917bb302dc5cd"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-37-seed-5800101\\r1\\match-replay.json",
+      "ply": 40,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "5ab2189b881b82f19178caea48f930fa5136f748ab96863c40d99dd84ee73530",
+        "visible_history_hash": "9add99e11522841cf94d2ab2568417ae355bc758b01d4108b7461527d926e43f",
+        "information_set_hash": "bac47ec537034b913d1e3908d10d21dd2a0d98942462effb268e09b4a024077c"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-38-seed-5800102\\r0\\match-replay.json",
+      "ply": 25,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "5c834e1012bfbae198ddc2a54b483262cdc7e8e241a13c8ea44751783d92d146",
+        "visible_history_hash": "3c8eb5aeb1fcce11c20f224126d5bf44713d6cf8b6cb85738fc7fbd34eea16b7",
+        "information_set_hash": "f4a9cadcd0ff9ec407d8620dd5f17e1214032c948d413d32df0e853befcd799d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-34-seed-5800098\\r0\\match-replay.json",
+      "ply": 5,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "480f068198dac9d29029d95167801e8233ac83ab135fb432513a0e40291e9b04",
+        "visible_history_hash": "b79650b7d043caf116d65fdc790b1738693b54532fd75c8592a5efaadf15b637",
+        "information_set_hash": "d2d324449e0a8ec15aabbabef36925736070c370b7d7408100a8ee0f6dd2514f"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-62-seed-5800126\\r0\\match-replay.json",
+      "ply": 26,
+      "legal_actions": 26
+    },
+    {
+      "identity": {
+        "observation_hash": "df4cb6f3b0280d659d4a7eb6e69d9d6dceab45be9401c834c5df4bb22d4fd5c2",
+        "visible_history_hash": "133a1daaf225e4ee4f8c29e0983277531d0e1a63a1e348c1e80c43d0c33ac5e9",
+        "information_set_hash": "336dc973b58603623fed12f5f8cb534db856518f760bbd94fe311e625caef51b"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-18-seed-5800082\\r1\\match-replay.json",
+      "ply": 15,
+      "legal_actions": 41
+    },
+    {
+      "identity": {
+        "observation_hash": "f75eefdbbbfeb59e3262625f9e97d38b0749b40e215fc7565903ae6791fae7a0",
+        "visible_history_hash": "7d658676daffc899683817c1cf70206f934275b606a6727b72c4898aea020f77",
+        "information_set_hash": "6d099fe47428a0953572576a36bfe0ae97a6a89a7ce92c9a0d658fc8e2294a92"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-22-seed-5800086\\r1\\match-replay.json",
+      "ply": 5,
+      "legal_actions": 17
+    },
+    {
+      "identity": {
+        "observation_hash": "135875de110c557be49e1de9440ffbd97b7fa5401a78973797c4000e96f74288",
+        "visible_history_hash": "68857ba59f17ae8a0f620da4ff98cd7ae7f81f993561a2c2a9344fdbddb0d28b",
+        "information_set_hash": "65c63d73cc3cf76272366e5cdc04dc775c2063772e205828d64d24caffeb2172"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-47-seed-5800111\\r0\\match-replay.json",
+      "ply": 44,
+      "legal_actions": 15
+    },
+    {
+      "identity": {
+        "observation_hash": "25b1c431068e07ee6558e16420b9a8c95ca419ba39644e04c26fecd38ffa0c4d",
+        "visible_history_hash": "75b61e9c1c571b99107256ba03a9161515b46ad390bde4a848e257aa953e0792",
+        "information_set_hash": "6b30d1a01b7cb886f310ed6184e021db00265bc9fa90a0245a0e6a2254acc865"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-07-seed-5800071\\r0\\match-replay.json",
+      "ply": 30,
+      "legal_actions": 21
+    },
+    {
+      "identity": {
+        "observation_hash": "1913ad1bdba23527997cb57908fa332fcff946e75f18294783cd3bcd6058d931",
+        "visible_history_hash": "b86470a85bae4fba76973a5a2b87ef31752d9bb9703f56b423ab3743ba7e0a89",
+        "information_set_hash": "4c8808cf0d0a3579c4fdc58036e29d31da1cd55306ab17a90a199dd8038582c6"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-47-seed-5800111\\r0\\match-replay.json",
+      "ply": 53,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "632595c056718aa674502110b191dab55ba596e074d9ea300e1bb2bce512166e",
+        "visible_history_hash": "14c7f390f5c1040c1f95c323295f2c4f9bb20e16acaeddc0e89c93f70a0dafb0",
+        "information_set_hash": "8e98236502a9e2b4b05a16a16a8cfc1145005a4db60c2bf3e7d91b2f3c50c809"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-58-seed-5800122\\r1\\match-replay.json",
+      "ply": 41,
+      "legal_actions": 28
+    },
+    {
+      "identity": {
+        "observation_hash": "b4890f52001a2f155a54c8c51a9002c32946ca65f684eafddff613e3c8d9f949",
+        "visible_history_hash": "e9dbc8d6d003528f9a10bd34c9557fab8191fec1c8430e9fed39d63caba01943",
+        "information_set_hash": "6ba7fcde3ce040a594091ed24320b5e62be9363b7a2c0c66884a678e3b3ffbe5"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p1_heuristic_vs_n1\\block-48-seed-5800112\\r0\\match-replay.json",
+      "ply": 13,
+      "legal_actions": 19
+    },
+    {
+      "identity": {
+        "observation_hash": "8a6f151d7d49c2d99feb1a20f50a30bc5988dfc8a57ca98bdd96968748fdf065",
+        "visible_history_hash": "c869c39e20b3f9016a7364a405b245cf80f867af1a985ca7bcf08e81a36d0627",
+        "information_set_hash": "ba4872a5f77e5df10833709abfac7eead50f885e55e8bc156846ee7ffe8c9c59"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-25-seed-5800089\\r1\\match-replay.json",
+      "ply": 26,
+      "legal_actions": 11
+    },
+    {
+      "identity": {
+        "observation_hash": "ac31dd392fd48a5fd91738ec7bbb5216e3991a7315d7fc6c8550429684101d32",
+        "visible_history_hash": "1a7000f4f049d52b44bc1eebe4d794537381e8d8eb6b24aefc3ad60bf85306e9",
+        "information_set_hash": "ab91f9dd386e2497587fedb746da593503ae28b6b82618e6d5b0762bf4415dd9"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-00-seed-5800064\\r1\\match-replay.json",
+      "ply": 23,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "8a7bdef0eecbda8210ea2bfe08e9a401a19554891358be55650d7cc68fba32da",
+        "visible_history_hash": "7126603ccf76af5e55132c9c07186b4c4bc7ff6d573f83264f55a41ce93e6ff1",
+        "information_set_hash": "55a066b3c18e9a4204c81d06fab67d7dcae88d2e8eb5377e1441342c3cc8ebca"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p2_heuristic_vs_m07\\block-31-seed-5800095\\r0\\match-replay.json",
+      "ply": 48,
+      "legal_actions": 29
+    },
+    {
+      "identity": {
+        "observation_hash": "16c2ccb1911d1c48a58274ddc050688486e540b1e367918d7be922c590b709c6",
+        "visible_history_hash": "32c60206f8d021c3fb2c7fb4b51083eb566d2c0b10412879c74a737b8c127756",
+        "information_set_hash": "7aed97a1f599d687c84e5104f273621ba8769841076614adcde2856d3a9c4f48"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-49-seed-5800113\\r0\\match-replay.json",
+      "ply": 14,
+      "legal_actions": 22
+    },
+    {
+      "identity": {
+        "observation_hash": "e77c0c27400fa7d35e0fbc7b1fd9fd83095fe8e45baa3eb41e05720076d9aeec",
+        "visible_history_hash": "248b6070cc9fb4b79d228f10803763fc01db49f0c49c2aa679a7f060459d2f13",
+        "information_set_hash": "c8866c995c0fe8d6a00a9fe18f6526f7e17ffc82e3d6717faded6f87a7ea594d"
+      },
+      "source_replay": "E:\\AUbuntuProject\\project\\splendor\\local-artifacts\\s0-baseline-calibration\\p3_n1_vs_m07\\block-09-seed-5800073\\r1\\match-replay.json",
+      "ply": 20,
+      "legal_actions": 22
+    }
+  ],
+  "probe_results": {
+    "d2-n2000": {
+      "config": "d2-n2000",
+      "decisions": 200,
+      "nonterminal_continuations": 21000,
+      "depth_histogram": {
+        "0": 0,
+        "1": 3709,
+        "2": 17291
+      },
+      "stop_reasons": {
+        "depth_limit_reached": 17291,
+        "node_budget_reached": 3709
+      },
+      "completed_depth2": 17291,
+      "completion_rate": 0.823381,
+      "decide_seconds": {
+        "mean": 0.8835,
+        "p50": 0.39,
+        "p90": 0.9878,
+        "p95": 2.2414,
+        "max": 28.2069
+      },
+      "wall_total_s": 190.7,
+      "completion_gate_pass": true,
+      "cost_gate_pass": false
+    },
+    "d2-n10000": {
+      "config": "d2-n10000",
+      "decisions": 200,
+      "nonterminal_continuations": 21000,
+      "depth_histogram": {
+        "0": 0,
+        "1": 296,
+        "2": 20704
+      },
+      "stop_reasons": {
+        "depth_limit_reached": 20704,
+        "node_budget_reached": 296
+      },
+      "completed_depth2": 20704,
+      "completion_rate": 0.985905,
+      "decide_seconds": {
+        "mean": 2.1768,
+        "p50": 0.3941,
+        "p90": 1.6427,
+        "p95": 4.1602,
+        "max": 132.0495
+      },
+      "wall_total_s": 448.3,
+      "completion_gate_pass": true,
+      "cost_gate_pass": false
+    }
+  },
+  "feasible_configs": [],
+  "selected_arena_config": null,
+  "verdict": "COMPUTE_INFEASIBLE"
+}
