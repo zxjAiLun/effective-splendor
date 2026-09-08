@@ -1,0 +1,78 @@
+{
+  "format": "effective-splendor-s3-pilot-result",
+  "version": 1,
+  "experiment_id": "s3-feasibility-pilot-v1",
+  "design_doc": "docs/s3-heuristic-policy-rollout.md @ 92af7bb (DESIGN_V2 APPROVED-FOR-PILOT)",
+  "contract": {
+    "strata": {
+      "ordinary": 150,
+      "wide": 50
+    },
+    "selector": "SHA256(utf8('43_300_001|game_id|ply')) ascending within stratum (DEVIATION from the frozen identity-triple encoding: census rows lack the hash triple; deterministic and reproducible; recorded)",
+    "eligibility": "Main, legal>=2, |H*|==1, |dedup{a_H,a_n1,a_M07}|>=2",
+    "gates": {
+      "p95_full_ms": 2000,
+      "complete_rate": 0.7,
+      "zero_errors": true
+    },
+    "constants": {
+      "D": 4,
+      "P": 120,
+      "sample_seed": 43300101
+    }
+  },
+  "strata_reports": {
+    "ordinary": {
+      "decisions": 150,
+      "full_ms": {
+        "mean": 30.8,
+        "p50": 23,
+        "p90": 41,
+        "p95": 114,
+        "max": 294
+      },
+      "paths": {
+        "rollout_comparison": 150
+      },
+      "complete_comparison_rate": 1.0,
+      "ply_cap_fallback_rate": 0.0,
+      "fast_path_root_tie": 0,
+      "fast_path_proposals_agreed": 0,
+      "behavioral_delta_count": 122,
+      "loo_diagnostic": null
+    },
+    "wide": {
+      "decisions": 50,
+      "full_ms": {
+        "mean": 38.6,
+        "p50": 27,
+        "p90": 41,
+        "p95": 170,
+        "max": 294
+      },
+      "paths": {
+        "rollout_comparison": 50
+      },
+      "complete_comparison_rate": 1.0,
+      "ply_cap_fallback_rate": 0.0,
+      "fast_path_root_tie": 0,
+      "fast_path_proposals_agreed": 0,
+      "behavioral_delta_count": 26,
+      "loo_diagnostic": null
+    }
+  },
+  "gates": {
+    "ordinary": {
+      "gate_A_latency": true,
+      "gate_B_complete": true,
+      "gate_C_zero_errors": true
+    },
+    "wide": {
+      "gate_A_latency": true,
+      "gate_B_complete": true,
+      "gate_C_zero_errors": true
+    }
+  },
+  "behavioral_delta_total": 148,
+  "verdict": "PILOT_PASS"
+}

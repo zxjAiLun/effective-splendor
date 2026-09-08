@@ -10,6 +10,7 @@ mod branch_command;
 mod determinization_analysis_command;
 mod s1_probe_command;
 mod s2b_scope_command;
+mod s3_decide_command;
 mod s2_census_command;
 mod eval_command;
 mod evaluation_analysis_command;
@@ -187,6 +188,7 @@ fn main() {
         Some("s1-probe") => std::process::exit(s1_probe_command::run_s1_probe(&argv[2..])),
         Some("s2-census") => std::process::exit(s2_census_command::run_s2_census(&argv[2..])),
         Some("s2b-scope") => std::process::exit(s2b_scope_command::run_s2b_scope(&argv[2..])),
+        Some("s3-decide") => std::process::exit(s3_decide_command::run_s3_decide(&argv[2..])),
         Some("analyze-replay-determinization") => std::process::exit(
             determinization_analysis_command::run_analyze_replay_determinization(&argv[2..]),
         ),
