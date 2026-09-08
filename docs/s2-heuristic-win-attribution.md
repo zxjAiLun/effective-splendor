@@ -1,32 +1,24 @@
 # S2 — Heuristic Win Attribution (why does heuristic-v1 beat n1/M07?)
 
-STATUS     = REPAIR 1 EXECUTED (final review of 96a09c6 found P1:3 —
-            Buy term mapping violated the frozen contract, seat
-            stratification missing, nominee annotations computed on the
-            wrong set; narrow repair authorized and executed 2026-09-08:
-            A1 census rows NOT regenerated; term-gap pass re-run with the
-            corrected mapping; exposure tables re-aggregated with
-            opponent x seat stratification; nominee annotations computed
-            on the exact 853 SEARCH_ACTOR take->buy occurrences; A3
-            re-synthesized under the same frozen grammar/gates/ranking;
-            verdict unchanged — ACTIONABLE_HYPOTHESIS_FOUND; awaiting
-            closure re-review)
-RESULT     = Nominee (unchanged by repair): take_tokens->buy_market on
-            SEARCH_ACTOR strict divergences — 853 occurrences (11.27% of
-            7,570 SEARCH_ACTOR Main contexts), 248/256 games, pooled
-            game-level win delta n1 +0.169 / M07 +0.194 (gate-passing
-            descriptive point estimates). Repaired nominee annotations:
-            H buys tier-1 in 841/853; category_base dominates the score
-            gap in 853/853 (buy prior over take); bonus_usefulness
-            positive in 851/853; noble_gain positive in 0/853; score
-            gap p50 881,800 [841,750, 931,600]. Seat-stratified tables
-            reveal thin unexposed controls (e.g. n1|seat0: 1 unexposed
-            game) — the pattern occurs in almost every game, so the
-            exposure delta is NOT the candidate's main evidence; the
-            frequency (11.27%) is. Heuristic preference attribution —
-            not search information absence, not a validated improvement.
+STATUS     = APPROVED / COMPLETED_EXPLORATORY / CLOSED (final review of
+            Repair 1 on d6776f3: APPROVED; A1 VALID; A2 repaired VALID;
+            A3 VALID under the frozen hypothesis filter; verdict
+            ACTIONABLE_HYPOTHESIS_FOUND accepted; nominee
+            take_tokens->buy_market; P0:0 / P1:0 / P2:4 non-blocking
+            closure wording applied docs-only; no repair 2, no new
+            census, no new games, no Arena. S2b design-only AUTHORIZED
+            by the same review.)
+RESULT     = In 11.27% of eligible SEARCH_ACTOR Main-phase contexts
+            (853/7,570), the acting search baseline chose TakeTokens
+            while heuristic-v1 had a unique BuyMarket optimum. The
+            divergence is overwhelmingly driven by heuristic's large
+            Buy-vs-Take category prior (900k base difference vs gap
+            median 881,800); the nominated pattern is frequent,
+            cross-opponent, simple, and suitable for a separate
+            confirmation test. S2 does NOT establish that overriding
+            those decisions improves playing strength.
 REVISION   = V2 2026-09-08 (frozen, 82fc400) — executed; Repair 1 per
-            final review of 96a09c6. V1 = 9fa76a8.
+            final review of 96a09c6; closed at d6776f3. V1 = 9fa76a8.
 BASELINE   = 2df0fcb (S1 closure, 2026-09-08)
 OWNER-DATE = local implementation + cloud review, 2026-09-08
 
@@ -311,11 +303,13 @@ Engineering budget < 30 min total, no GPU, no new games.
 
 Implementation (in-scope only):
 - `HeuristicTermScores` accessor: the score decomposition shares the
-  computation with `score_actions` via term-level structs; buy-prestige
-  stays folded into the buy category base EXACTLY as the historical
-  arithmetic computed it, so totals are bit-identical. Hard parity gate
-  (sum of terms == aggregate score for 100% of legal actions across
-  seed-spread states) locked by regression tests; workspace 774/0.
+  computation with `score_actions` via term-level structs. After Repair
+  1, buy prestige is separated into the frozen `prestige` term
+  (category_base = bare SCORE_BUY); aggregate scores and policy
+  behavior remain bit-identical. Hard parity gate (sum of terms ==
+  aggregate score for 100% of legal actions) PLUS a dedicated
+  exact-frozen-Buy-mapping regression (asserting each field, not just
+  the sum); workspace 775/0.
 - `splendor s2-census` batched in-process harness (no per-context
   subprocess): per replay, per eligible context — H* set (via term
   totals), both frozen search actions (recomputed), stage bin, market
@@ -399,26 +393,51 @@ term-gap rows):
   prestige correctly separated, the buy-category prior over the
   take-category prior dominates every single gap.
 - bonus_usefulness positive in 851/853; noble_gain positive in 0/853.
+- Mechanism (corrected per closure review): the bare category prior
+  difference SCORE_BUY − SCORE_TAKE = 900,000 already explains the bulk
+  of the gap median (881,800). Aggregate term deltas over the 853:
+  category_base +767.7M, bonus_usefulness +14.1M, prestige +0.09M,
+  cost_efficiency −0.17M, deficit_reduction −14.3M, new_target −15.1M —
+  i.e. the category prior is the overwhelming direct separator;
+  bonus_usefulness further favors the buy in nearly all nominees, while
+  the take's own feature positives (deficit reduction, new targets)
+  frequently compensate in the opposite direction. The hypothesis worth
+  confirming is therefore neutral-worded: the search family may be
+  systemically late on immediate buys — an immediate-buy vs
+  continue-accumulating preference gap (consistent with a buy-timing
+  gap; NOT a proof that search loses because it buys too late).
 - Interpretation (heuristic preference attribution, frozen wording):
   when the frozen search policies choose TakeTokens, heuristic's unique
   optimum is buying a cheap tier-1 card whose bonus color is useful for
-  its targets; the separating score is dominated by the category prior
-  with a near-universal positive bonus_usefulness component and NO
-  noble-completion component. The search baselines' static evaluator
-  evidently ranks the take higher in these positions; whether
-  transplanting this preference would improve THEM is the S2b question,
-  NOT answered here.
+  its targets. The search baselines' static evaluator evidently ranks
+  the take higher in these positions; whether transplanting this
+  preference would improve THEM is the S2b question, NOT answered here.
 
-### Seat-stratified exposure (repair addition)
+### Term-count semantics note
+
+`prestige: 23` in the A2 table means prestige was the DOMINANT
+separating term in 23/4,063 strict divergences — not that prestige
+contributed in only 23 cases (it contributes in every buy-containing
+gap; it is simply rarely the LARGEST positive term).
+
+### Seat-stratified exposure (repair addition) and outcome-delta status
 
 The frozen seat stratification (omitted in the initial execution) is
 now reported. Key reading: the pattern occurs in 248/256 games, so
-unexposed control groups are tiny (1-8 games per stratum); e.g.
-n1|seat0 has ONE unexposed game. The pooled deltas (+0.169 / +0.194)
-are gate-passing descriptive point estimates over ~124/4 exposure
-splits — the pattern's real evidence is its 11.27% decision frequency,
-not the exposure contrast. Stratified tables are in the tracked
-result.
+unexposed control groups are tiny (1-3 games per cell; e.g. n1|seat0
+has ONE unexposed game), and the four cells' deltas are
+direction-inconsistent (−0.365 / +0.372 / +0.087 / +0.635).
+
+Outcome-delta status (permanent wording): the pooled-by-opponent
+deltas (+0.169 n1 / +0.194 M07) technically satisfy the preregistered
+exploratory filter — which froze pooled-by-opponent point estimates,
+not four seat cells — but the exposure pattern is nearly ubiquitous and
+the unexposed controls are too sparse for those deltas to carry
+meaningful causal or predictive weight. They are filter bookkeeping,
+not evidence. The nomination evidence is: (1) high frequency (11.27%);
+(2) strict (unique H optimum); (3) SEARCH_ACTOR positions the weak
+baselines actually reached; (4) present against both baselines;
+(5) an extremely simple implementable rule.
 
 ### Tracked artifacts
 
@@ -432,14 +451,29 @@ result.
 
 ## Result and decision
 
-**Verdict: ACTIONABLE_HYPOTHESIS_FOUND.** The S2 nominee is
-`take_tokens->buy_market` on SEARCH_ACTOR strict divergences. Per the
-frozen contract, this authorizes NOTHING beyond presenting the
-hypothesis: S2b (candidate implementation + frozen confirmation design
-with fresh seeds and preregistered gates) is a separate review
-decision. The two reserve_market->take_tokens patterns are recorded as
-runner-ups (they pass all four gates; frequency-first ranking placed
-them below the nominee).
+**Verdict: ACTIONABLE_HYPOTHESIS_FOUND — ACCEPTED.** The S2 nominee is
+`take_tokens->buy_market` on SEARCH_ACTOR strict divergences, on the
+nomination evidence of its 11.27% frequency (853/7,570), strictness,
+SEARCH_ACTOR provenance, cross-opponent presence, and rule simplicity
+— NOT on the sparse-control exposure deltas.
+
+Canonical result sentence (permanent):
+
+> In 11.27% of eligible SEARCH_ACTOR Main-phase contexts, the acting
+> search baseline chose TakeTokens while heuristic-v1 had a unique
+> BuyMarket optimum. The divergence is overwhelmingly driven by
+> heuristic's large Buy-vs-Take category prior; the nominated pattern
+> is frequent, cross-opponent, simple, and suitable for a separate
+> confirmation test. S2 does not establish that overriding those
+> decisions improves playing strength.
+
+Runner-ups recorded: reserve_market->take_tokens (0.0750) and its
+early variant (0.0532) — both pass the four gates; frequency-first
+ranking placed them below the nominee.
+
+Per the frozen contract, S2 itself authorizes NOTHING beyond presenting
+the hypothesis. The closure review has authorized **S2b design-only**
+(see next section).
 
 Non-claims (frozen): this is heuristic preference attribution, not
 search information absence; the deltas are game-level associations on
@@ -464,15 +498,21 @@ re-synthesized under the same frozen grammar/gates/ranking (no gate
 changes). Verdict unchanged: ACTIONABLE_HYPOTHESIS_FOUND, nominee
 unchanged. Workspace 775/0.
 
-Next gate: **S2 closure re-review.** The prior review DEFERRED S2b
-pending this repair (not rejected): the reviewer's stated future
-preference — for the record, NOT an authorization — is a
-parameter-free direct behavior candidate on n1: "if n1 selected
-TakeTokens AND heuristic H* is unique AND the unique H action is
-BuyMarket, then choose that BuyMarket action; else keep n1's action
-exactly" — chosen because n1-vs-M07 is UNRESOLVED while n1 is much
-cheaper, and explicitly NOT a StaticEvaluator weight sweep. S2b design
-and implementation remain unauthorized until the closure re-review.
+Closure: the re-review of Repair 1 (basis d6776f3) APPROVED S2 as
+APPROVED / COMPLETED_EXPLORATORY / CLOSED, and authorized **S2b
+DESIGN-ONLY** (implementation and Arena still NOT authorized). The S2b
+candidate direction, recorded by the reviewer at closure: a
+parameter-free n1 decision overlay — "if n1 selected TakeTokens AND
+H* is unique AND the unique H action is BuyMarket, then choose that
+BuyMarket action; else keep n1's action exactly" — chosen because
+n1-vs-M07 is UNRESOLVED while n1 is much cheaper, and explicitly NOT a
+StaticEvaluator weight sweep. The S2b design must pin: (1) behavioral
+scope on a development corpus (how many n1 decisions the overlay
+modifies; 100% bit-identical elsewhere); (2) no offline tuning (the
+candidate is that single frozen rule); (3) a fresh-seed confirmation
+Arena measuring strength only (offline disagreement is NOT the success
+criterion); (4) success = resolved improvement over n1 while not
+clearly losing to heuristic (the project's primary anchor).
 
 Still NOT authorized (unchanged): candidate implementation (S2b), new
 Arena, new self-play, search engineering, evaluator behavior change,
