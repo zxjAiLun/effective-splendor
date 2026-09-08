@@ -2,10 +2,12 @@
 
 ```ini
 MILESTONE = M48A
-STATUS = COMPLETED_NEGATIVE / VALID RUN FAIL — STATIC_PRIOR_RESIDUAL_NOT_VALIDATED
-                (single valid run after one implementation repair; all 8 gates
-                FAIL on both splits; VALIDATION_ROUTE_FAIL; per frozen terminal
-                budget: neural evaluator research STOPPED)
+STATUS = COMPLETED_NEGATIVE / CLOSED — PERMANENTLY
+                (final review 2026-09-08 on b92e112: APPROVED AS A VALID
+                NEGATIVE RESULT; STATIC_PRIOR_RESIDUAL_NOT_VALIDATED and
+                VALIDATION_ROUTE_FAIL confirmed by reviewer's independent
+                read-only recomputation; closure wording repair applied;
+                neural evaluator research STOPPED per frozen budget)
 SCOPE = full frozen contract; implementation auto-authorized after docs-only commit
 BASE_COMMIT = e0e4a44 (M47S permanently closed)
 DESIGN_V1 = 412d7a4 (research question / formulation / isolation accepted)
@@ -373,10 +375,23 @@ DESIGN_V2 docs-only commit
 - Non-contractual performance repairs (user-directed GC investigation):
   removed all gc.collect() from hot loops (~213 full collections/epoch at
   ~1s each identified as the dominant cost); train pairs stored as compact
-  numpy int16/int8 arrays instead of ~27.5M Python tuples (sampling parity
-  verified identical: 64 roots × 4 epochs × 2 groups, selection
-  bit-identical); validation batched per game; per-epoch phase timing and
-  RSS tracking added. Model/batch composition/loss math/gates unchanged.
+  numpy int16 arrays (~158 MiB payload) instead of ~27.5M Python tuples
+  (sampling parity verified identical — reviewer independently confirmed
+  64 roots × 24 epochs × 2 groups = 3,072 comparisons, and that max action
+  count 576 fits int16); validation batched per game; per-epoch phase
+  timing added. Model/batch composition/loss math/gates unchanged.
+  Performance outcome (descriptive, cross-run, NOT a controlled A/B):
+  median epoch 300.5s → 191.5s (~36% faster); last-6-epoch median 116.6s;
+  but the run had a long tail (slowest epoch ≈ 1,928.8s, cause
+  undiagnosed) and the whole run averaged 313.5s/epoch (~125.4 min for
+  24 epochs + validation). RSS tracking was attempted but unavailable in
+  this environment (psutil absent; /proc fallback not functional on
+  Windows) — memory stability was NOT verified. `phase_train_s` includes
+  Python loss construction, host-to-device transfers, and waiting — it is
+  not pure GPU compute time; per-root small-tensor uploads remain. The
+  performance work is accepted as an implementation improvement, not a
+  completed stability acceptance; no further optimization will be run for
+  this stopped research line.
 - One transient crash fixed before the valid run (pre-concatenated te_all
   indexing bug in the batched-train refactor); G0 false-fail fixed by
   checking q_corr with the contract formula (z-space round-trip loses
@@ -390,14 +405,46 @@ DESIGN_V2 docs-only commit
   24,279,127 retention pairs; phase totals data 1,044s / train 6,230s /
   val 249s.
 - VALIDATION_ROUTE_FAIL: no epoch of 24 reached the 99% retention floor
-  (best observed 0.854 at epoch 0, degrading to ~0.60 by late epochs). The
-  highest-retention fallback checkpoint (epoch 0) was evaluated for the
+  (best observed 0.854 at epoch 0; movement across epochs was
+  non-monotonic, ending near ~0.60). The highest-retention fallback
+  checkpoint (epoch 0) was evaluated for the
   record per contract.
 - All eight gates FAILED on both splits (numbers below). Verdict:
   `STATIC_PRIOR_RESIDUAL_NOT_VALIDATED`.
 - Final audit: corpus manifest, G0, checkpoint-selection recomputation,
   static/corrected/gates recomputation from raw on both splits — all
   match; no Arena artifacts.
+
+### Final closure — 2026-09-08 (wording repair seal)
+
+- Terminal review on `b92e112`: **APPROVED AS A VALID NEGATIVE RESULT —
+  `COMPLETED_NEGATIVE / CLOSED — PERMANENTLY`.** The reviewer performed an
+  independent read-only recomputation (no reruns): all 20,480 roots across
+  four splits align on labels/features/actor/n1-utility; six cross-split
+  disjointness checks pass; source hashes match; the fallback checkpoint
+  reproduces epoch-0 validation metrics exactly; both holdouts' metrics
+  match the report. Net-decision view: internal test −140 (96 fixed / 236
+  broken), M47S holdout −168 (77 fixed / 245 broken) of 2,048 each.
+- Closure wording repairs applied per review (no result values changed):
+  (1) tracked-result SHA corrected to the Git-blob hash
+  `0d5a30a3…05b0e2` (the old `b63e9ae7…` was a transient working-tree
+  hash); (2) audit-scope claims corrected — the label script's restored
+  seed/budget checks are unreachable dead code, the final audit's recipe
+  check only counts epoch records and does not independently bind the
+  fallback checkpoint, and the "no Arena" check scans checkpoint names
+  only; these scripts are not a complete audit template for reuse;
+  (3) interpretations narrowed — SHIFT1 response documents sensitivity
+  only (no "overlapping vs complementary" claim); retention/capture
+  curves were non-monotonic; (4) performance wording corrected — RSS
+  tracking unavailable (memory stability NOT verified), `epoch_wall_s`
+  excludes validation, `phase_train_s` is not pure GPU time, cross-run
+  timing comparison is descriptive not controlled, and the ~32-minute
+  epoch-17 outlier is undiagnosed.
+- Performance repairs accepted as an implementation improvement
+  (median epoch −36%, pair-array parity independently confirmed over 3,072
+  sampling comparisons); stability acceptance NOT claimed.
+- Neural evaluator research remains STOPPED: no M48A-v2, no M48B, no new
+  neural evaluator milestones, no Arena. Champion M07 unchanged.
 
 ## Validation and evidence
 
@@ -408,12 +455,23 @@ result: labels complete; corpus audit PASS (identity + successor-hash
 command: python training/m17_gpu/m48a_train.py --device cuda
 result: G0 PASS; 24/24 epochs; VALIDATION_ROUTE_FAIL; all 8 gates FAIL
 command: python scripts/m48a_final_audit.py
-result: ALL CHECKS PASS; tracked result written
+result: recorded checks pass; tracked result written. Audit-scope note:
+  the label script's restored seed/budget checks sit after an
+  unconditional return (unreachable code); the final audit's recipe check
+  only counts epoch records and does not independently bind the fallback
+  checkpoint to the highest-retention epoch; its "no Arena" check scans
+  checkpoint file names only. The reviewer's independent read-only
+  recomputation (all 20,480 roots aligned; six cross-split disjointness
+  checks; source hashes; fallback checkpoint reproducing epoch-0 metrics;
+  both holdouts' metrics matching) supplied the decisive evidence.
 ```
 
 - Tracked artifact:
   `benchmarks/m48a-static-prior-residual-learnability-gate-v1.result.json`
-  (SHA256: `b63e9ae7b661c25a94b727572ef724da5487aef2063ef5bd97e8c97542605880`).
+  (SHA256 of the Git blob, LF form:
+  `0d5a30a31bca65353336348c82c6bb24b91b2a7936bcd367f3485d7d5f05b0e2`.
+  The earlier doc value `b63e9ae7…` was a transient working-tree hash from
+  the audit run and is superseded.)
 - Run artifacts: `local-artifacts/m48a-run/` (g0.json, label-manifest.json,
   epoch_metrics.json with phase timing, final_metrics.json,
   route-fail-checkpoint.pt, run1-void/).
@@ -437,19 +495,28 @@ Observed facts (descriptive, no causal claims):
 
 - The residual learned real corrections (capture 13–16%) but at a cost of
   destroying ~16% of static-correct decisions — retention never came close
-  to the 99% floor in any epoch (max 0.854, degrading thereafter).
-- The corrected policy is net WORSE than static on both splits: agreement
-  down 6.8–8.2pp, mean normalized regret up ~20%.
-- The retention loss term and 0.01 anchor did not constrain the residual
-  to small, selective corrections under this frozen objective; the
-  optimization steadily traded retention for capture across all 24 epochs
-  (validation retention 0.854 → ~0.60 while capture 0.147 → 0.226).
-- SHIFT1 diagnostic (no gates): residual response is near-zero on
-  unchanged strata (median 0.0) with a small nonzero tail on F4/E2-changing
-  strata (p90 ≈ 0.57–0.59, max 2.68) — the residual partially re-encodes
-  color-adjacent structure, which the static prior already owns; this is
-  consistent with the model learning overlapping rather than complementary
-  corrections.
+  to the 99% floor in any epoch (max 0.854 at epoch 0).
+- The corrected policy is net WORSE than static on both splits: internal
+  test −140 decisions net (96 fixed vs 236 broken of 2,048), M47S holdout
+  −168 (77 fixed vs 245 broken); agreement down 6.84 / 8.20pp; mean
+  normalized regret up 20.5% / 20.2%.
+- Validation retention and capture moved non-monotonically across epochs
+  (retention 0.854 → ~0.60, capture 0.147 → 0.226 overall, with
+  fluctuations); the observed endpoint is a trade of retention for
+  capture, not a smooth monotone curve. The retention loss term and 0.01
+  anchor did not constrain the residual to small, selective corrections
+  under this frozen objective.
+- SHIFT1 diagnostic (no gates): the residual is sensitive to the SHIFT1
+  perturbation — response is near zero on unchanged strata (median 0.0,
+  max ≈ 0.309) with a nonzero tail on F4/E2-changing strata (p90 ≈
+  0.57–0.59, max 2.68). This documents sensitivity only; it does NOT
+  establish that the model learned "overlapping rather than complementary"
+  structure.
+- Accurate conclusion (reviewer-endorsed): the frozen model, objective,
+  and training recipe failed to convert the stable teacher preference
+  differences into a net improvement. This supports the budget stop; it
+  does not prove all residual approaches infeasible and is not a
+  playing-strength claim.
 
 Per the frozen terminal budget (DESIGN_V2 B5): **neural evaluator research
 = STOP.** No M48A-v2, no M48B, no architecture/HP variants. This closes

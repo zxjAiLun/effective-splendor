@@ -3,7 +3,7 @@
   "version": 1,
   "milestone": "M48A",
   "title": "Static-Prior Residual Learnability Gate",
-  "audit_completed_at": "2026-09-08T07:48:12Z",
+  "audit_completed_at": "2026-09-08T08:20:00Z",
   "starting_point": "e0e4a44 (M47S permanently closed)",
   "design_commits": [
     "412d7a4 (V1)",
@@ -623,8 +623,8 @@
     "evaluated_checkpoint_sha256": "11ef130e4bd222073b97754332709e2d38b9782e05a0d3851a4fc27423222e18",
     "m48a_model_sha256": "6ed556bee6756c61f158d6725ee3740b9874620b0f222a1b6525e2c3486b978b",
     "m48a_train_sha256": "23d42386a3218b2f3d51dc8628fca5f0968f9e7c0fb69e8c2d15319a3cc49cb2",
-    "m48a_labels_sha256": "4df741aad98d53e36bb43802d19697be5c48153f9ffc94dc2962b2b66b6b4469",
-    "m48a_final_audit_sha256": "4d59c8500e2948cad09c86574d7369da3f4c8937df9440124d9c1648ef672ef4"
+    "m48a_labels_sha256": "a979a996770fd93ca407440dcd26d7a9c0e420045b9fd220b60b5743a78cbc0c",
+    "m48a_final_audit_sha256": "fd06c07680d057298b346e00100a82361d1bffed632ef617cbe8f084664af396"
   },
   "scientific_boundary": "n2000 is the champion continuation target, not ground truth. This verdict concerns offline improvement toward n2000 preferences only; no playing-strength claim is made or implied. Per the frozen terminal budget, a valid FAIL stops neural evaluator research: no M48A-v2, no M48B."
 }

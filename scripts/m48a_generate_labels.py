@@ -95,9 +95,8 @@ def generate_split(split: str) -> list[dict]:
 
 def audit(games_by_split: dict[str, list[dict]]) -> dict:
     """All-pairs root-identity AND successor-state-hash disjointness across
-    the four new splits. The successor hashes come from the M46A shards
-    (feature side); the re-cut changed split membership, so the old M46A
-    audit cannot substitute — we re-assert everything here, fail-closed."""
+    the four new splits (plus seed/budget/label sanity checks)."""
+    label_sanity_checks(games_by_split)
     split_triples: dict[str, set] = {}
     split_succ: dict[str, set] = {}
     split_roots: dict[str, int] = {}
@@ -200,7 +199,10 @@ def locate_root_index(z, step_index: int) -> int:
     raise RuntimeError(f"root step {step_index} not in shard")
 
 
-    # Seed range sanity + budget sanity + label sanity (restored checks)
+def label_sanity_checks(games_by_split):
+    """Seed range + budget + label sanity, invoked from audit() so the
+    checks actually execute (they were previously unreachable module-level
+    code after an unconditional return path)."""
     for split, games in games_by_split.items():
         seeds = sorted(g["game_seed"] for g in games)
         a, b = SPLITS[split]

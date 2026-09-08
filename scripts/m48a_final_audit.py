@@ -35,6 +35,11 @@ from m46a_train import shift1  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 RUN_DIR = REPO / "local-artifacts/m48a-run"
+RUN_ROOT = RUN_DIR  # alias used by the artifact scan
+
+
+def val_games_load():
+    return load_label_games("validation")
 M47S_RAW = REPO / "local-artifacts/m47s-run/raw-records.json"
 RESULT_JSON = REPO / "benchmarks/m48a-static-prior-residual-learnability-gate-v1.result.json"
 
@@ -169,9 +174,14 @@ def main():
         raise RuntimeError("G0 counts wrong")
     print("G0 recorded PASS (2048/2048 bitwise + action equality).")
 
-    # 3. Recipe: 24 epochs exactly
+    # 3. Recipe: 24 epochs exactly + per-epoch record sanity
     if len(history) != EPOCHS_EXPECTED:
         raise RuntimeError(f"epochs {len(history)} != {EPOCHS_EXPECTED}")
+    for h in history:
+        for f in ("train_loss", "val_retention", "val_capture",
+                  "val_agreement", "val_regret"):
+            if f not in h:
+                raise RuntimeError(f"epoch record missing field {f}")
 
     # 4. Checkpoint selection recomputed
     best = None
@@ -190,12 +200,26 @@ def main():
         raise RuntimeError(f"selection recompute {best_epoch} != {final['best_epoch']}")
     print(f"Checkpoint selection recomputed: best_epoch={best_epoch}, route_ok={route_ok} (matches).")
 
-    # 5. Reload the evaluated checkpoint (route-fail fallback when no candidate)
+    # 5. Reload the evaluated checkpoint; when route failed, independently
+    #    verify the fallback IS the highest-retention epoch's checkpoint.
     from splendor_gpu.m48a_model import ResidualSuccessorNet
     model = ResidualSuccessorNet().to(device)
     ckpt = RUN_DIR / "best.pt" if route_ok else RUN_DIR / "route-fail-checkpoint.pt"
     model.load_state_dict(torch.load(ckpt, map_location=device))
     model.eval()
+    if not route_ok:
+        best_ret = max(history, key=lambda h: (round(h["val_retention"], 12),
+                                               -h["epoch"]))
+        residuals_fb = compute_residuals(model, val_games_load(), device, {})
+        vm_fb = corrected_metrics(
+            [r for g in val_games_load() for r in g["roots"]], residuals_fb)
+        if abs(vm_fb["retention"] - best_ret["val_retention"]) > 1e-12 \
+                or abs(vm_fb["capture"] - best_ret["val_capture"]) > 1e-12:
+            raise RuntimeError(
+                "fallback checkpoint does not reproduce the highest-retention "
+                f"epoch ({best_ret['epoch']}) metrics")
+        print(f"Fallback checkpoint verified == highest-retention epoch "
+              f"{best_ret['epoch']} metrics.")
 
     # 6. Recompute internal-test + M47S metrics from raw
     shard_cache = {}
@@ -236,16 +260,27 @@ def main():
                 else "STATIC_PRIOR_RESIDUAL_NOT_VALIDATED")
     if final["verdict"] != expected:
         raise RuntimeError("verdict mismatch")
-
-    # 8. SHIFT1 diagnostic (no gates)
     print("SHIFT1 diagnostic (M47S holdout)...", flush=True)
     shift1_diag = shift1_residual_response(model, device)
     print(json.dumps(shift1_diag, indent=1))
 
-    # 9. No Arena artifacts
-    for p in RUN_DIR.rglob("*"):
-        if p.is_file() and p.suffix in (".pt", ".pth") and "checkpoint" not in p.name and p.stem != "best":
-            raise RuntimeError(f"unexpected artifact: {p}")
+    # 9. No Arena artifacts: assert the M48A run directory contains ONLY the
+    #    expected file kinds (checkpoints/JSON), and that no arena-report or
+    #    replay file exists anywhere under it.
+    ALLOWED = {"g0.json", "label-manifest.json", "epoch_metrics.json",
+               "final_metrics.json", "best.pt", "route-fail-checkpoint.pt"}
+    for p in RUN_ROOT.glob("*/*"):
+        pass  # labels/ and run1-void/ are directories handled below
+    for p in RUN_ROOT.rglob("*"):
+        if p.is_file():
+            rel = p.relative_to(RUN_ROOT)
+            if rel.parts[0] in ("labels", "run1-void"):
+                continue
+            if p.name not in ALLOWED:
+                raise RuntimeError(f"unexpected run artifact: {rel}")
+            if p.name.startswith("arena-report") or p.name.startswith("match-replay"):
+                raise RuntimeError(f"arena artifact found: {rel}")
+    print("Run-directory artifact scan clean (no arena artifacts).")
 
     # 10. Tracked result
     result = {
