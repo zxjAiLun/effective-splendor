@@ -468,10 +468,15 @@ result: recorded checks pass; tracked result written. Audit-scope note:
 
 - Tracked artifact:
   `benchmarks/m48a-static-prior-residual-learnability-gate-v1.result.json`
-  (SHA256 of the Git blob, LF form:
-  `0d5a30a31bca65353336348c82c6bb24b91b2a7936bcd367f3485d7d5f05b0e2`.
-  The earlier doc value `b63e9ae7…` was a transient working-tree hash from
-  the audit run and is superseded.)
+  (SHA256 of the final Git blob, LF form, as committed together with this
+  closure document:
+  `8c69ec5f67dba147a9066b9c01d4e9dc9636c6c3f9218039a5d199adc902a644`.
+  Provenance history: the execution commit `b92e112` carried blob
+  `0d5a30a31bca65353336348c82c6bb24b91b2a7936bcd367f3485d7d5f05b0e2`;
+  the earlier doc value `b63e9ae7…` was a transient working-tree hash
+  from the first audit run. The closure-commit rewrite added the
+  fallback-binding and artifact-scan audit evidence only; every numeric
+  gate/metric value is identical.)
 - Run artifacts: `local-artifacts/m48a-run/` (g0.json, label-manifest.json,
   epoch_metrics.json with phase timing, final_metrics.json,
   route-fail-checkpoint.pt, run1-void/).
