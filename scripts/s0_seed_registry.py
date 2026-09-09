@@ -36,8 +36,7 @@ CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 #                    namespace, must NOT be reused)
 #   5_800_192..255  S2b confirmation — CONSUMED
 #   5_800_256..319  S3 Stage-B — CONSUMED
-#   5_800_320..383  S3 field calibration — CANDIDATE segment (asserted
-#                    disjoint here; that round's result records consumption)
+#   5_800_320..383  S3 field calibration — CONSUMED
 
 # Frozen scanned ranges (start, end_inclusive, label).
 # Single-seed ranges are (s, s).
@@ -62,6 +61,7 @@ REGISTRY: list[tuple[int, int, str]] = [
     (5_800_128, 5_800_191, "s1-reserved-retired-never-reuse"),
     (5_800_192, 5_800_255, "s2b-confirmation"),
     (5_800_256, 5_800_319, "s3-stage-b"),
+    (5_800_320, 5_800_383, "s3-field-calibration"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),

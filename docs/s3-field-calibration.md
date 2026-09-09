@@ -1,17 +1,23 @@
 # S3 Field Calibration — candidate positioning in the current measured field
 
-STATUS     = EXECUTED / FIELD_TOP_CONFIRMED (single valid run 2026-09-09;
-            final audit ALL CHECKS PASS; the S3 candidate is resolved
-            stronger than BOTH n1 (104-0-24, 8125.0 [7343.8, 8828.1]) and
-            M07 (100-0-28, 7812.5 [6953.1, 8593.8]) at the 97.5% decision
-            level — combined with S3 Stage B's resolved win over heuristic,
-            the candidate is the unique resolved top of the entire current
-            measured field. Per the frozen decision table: the S3 candidate
-            becomes the NEW PRIMARY DEVELOPMENT REFERENCE (development
-            reference only — NOT the product default, NOT an automatic
-            promotion). Awaiting field-calibration closure review.)
-RESULT     = FIELD_TOP_CONFIRMED. New primary development reference:
-            s3-rollout-candidate (agent-s3-rollout, zero flags).
+STATUS     = APPROVED / COMPLETED_CALIBRATION / CLOSED (final review
+            2026-09-09 on 2f54b0f: FIELD_TOP_CONFIRMED accepted — the
+            candidate has DIRECT resolved wins over heuristic (S3 Stage
+            B), n1, and M07 (this round, both at the preregistered 97.5%
+            joint-decision CI); no transitivity used. The reference
+            switch is OFFICIAL: new primary development reference =
+            s3-rollout-candidate; historical primary reference =
+            heuristic-v1; historical champion = M07 (narrative label
+            only — no longer the current strongest reference). Product
+            default UNCHANGED; promotion NONE. P0:0 / P1:0 / P2:4
+            non-blocking closure items applied docs-only + audit
+            hardening, audit re-run PASS.)
+RESULT     = FIELD_TOP_CONFIRMED: candidate > n1 104-0-24 (8125.0,
+            97.5% [7343.75, 8828.125]); candidate > M07 100-0-28
+            (7812.5, 97.5% [6953.125, 8593.75]); with candidate >
+            heuristic 80-0-48 (95% [5468.75, 6953.125], S3 Stage B) —
+            the candidate is the unique resolved top of the measured
+            field.
 BASELINE   = 3ffdcd8 (S3 closure, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
@@ -75,7 +81,9 @@ updated registry, no monkeypatching; 2 pairings x 64 blocks x 2 rotations
 | candidate vs n1 | **104-0-24** | 8125.0 | [7343.8, 8828.1] | **STRONGER_A** |
 | candidate vs M07 | **100-0-28** | 7812.5 | [6953.1, 8593.8] | **STRONGER_A** |
 
-(95% descriptive CIs: [7421.9, 8789.1] and [7031.2, 8546.9].)
+(95% descriptive CIs, corrected to the tracked result values — the
+earlier doc numbers were a transcription error: [7421.875, 8750.0] and
+[7109.375, 8515.625].)
 
 Decision table application: both resolved wins -> **FIELD_TOP_CONFIRMED**
 -> per the frozen table, the S3 candidate becomes the new PRIMARY
@@ -105,7 +113,7 @@ Canonical result sentence (permanent):
 > change only: the product default and all promotion state are unchanged
 > pending a separate product decision.
 
-## Execution plan## Execution plan
+## Execution plan
 
 1. `scripts/s3_field_calibration.py`: registry check (320..383), 256
    matches, bootstrap, decision table, tracked result

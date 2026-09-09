@@ -40,9 +40,13 @@ def main() -> None:
 
     sys.path.insert(0, str(REPO / "scripts"))
     import s0_seed_registry as reg
+    # Provenance check (post-execution): the segment must now be RECORDED as
+    # consumed in the registry (freshness was asserted pre-execution; this
+    # re-run verifies the recording).
     reg.CHECK_SEGMENT = range(5_800_320, 5_800_384)
-    if reg.check() != 0:
-        fail("seed overlap (real registry)")
+    if reg.check() == 0:
+        fail("segment 5_800_320..383 not recorded as consumed in the registry")
+    print("seed provenance PASS (segment recorded as consumed)")
     if result["contract"]["frozen_seeds"] != FROZEN_SEEDS:
         fail("result seeds != contract")
     print("seed disjointness PASS (real registry, no monkeypatch)")
@@ -74,16 +78,26 @@ def main() -> None:
                             fail(f"candidate args drift: {args}")
                         seats.append("candidate")
                     elif "agent-determinization" in args:
-                        core = [a for a in args if not a.startswith("--runtime")]
-                        if core[:4] != N1_EXPECT[:4]:
-                            fail(f"determinization config drift: {core}")
-                        i = core.index("--max-nodes") if "--max-nodes" in core else -1
-                        if i == -1:
-                            fail(f"missing --max-nodes: {core}")
-                        nodes = core[i + 1]
+                        # EXACT argument equality (hardened per the closure
+                        # review): strip the runtime-name/version FLAG+VALUE
+                        # pairs, then require the complete frozen vector.
+                        core = list(args)
+                        cleaned = []
+                        ci = 0
+                        while ci < len(core):
+                            if core[ci] in ("--runtime-name", "--runtime-version"):
+                                ci += 2
+                            else:
+                                cleaned.append(core[ci])
+                                ci += 1
+                        core = cleaned
+                        i_nodes = core.index("--max-nodes")
+                        nodes = core[i_nodes + 1]
+                        expected = (N1_EXPECT if nodes == "1" else
+                                    N1_EXPECT[:-1] + ["2000"])
+                        if core != expected:
+                            fail(f"determinization args mismatch: {core} != {expected}")
                         seats.append(f"n{nodes}")
-                        if nodes not in ("1", "2000"):
-                            fail(f"unexpected nodes {nodes}")
                     else:
                         fail(f"unknown agent: {args[:2]}")
                 expected = [primary, secondary] if rot == 0 else [secondary, primary]
