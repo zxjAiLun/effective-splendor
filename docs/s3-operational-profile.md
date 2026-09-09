@@ -1,18 +1,17 @@
 # S3 Operational Profile — live workload, latency distribution, and cost multiple for product decision support
 
-STATUS     = EXECUTED / CORRECTNESS_GATES_PASS / AWAITING_PRODUCT_DECISION
-            (Single valid execution 2026-09-09; 128 live matches on fresh
-            seeds 5_800_384..5_800_447; 7,487 decision events captured via
-            dedicated profiling wrappers; all 3 correctness gates PASS:
-            Gate 1 wrapper action parity = 100%, Gate 2 completed = 128/128,
-            Gate 3 move timeouts / process errors = 0; fail-closed audit
-            ALL CHECKS PASS. Operational profile documented below;
-            submitted for product decision review: Choice A, B, or C.)
+STATUS     = APPROVED / COMPLETED_PROFILE / CLOSED (final review 2026-09-09
+            on ba8f2b1: operational profile accepted; all 3 correctness
+            gates PASS; PRODUCT DECISION: CHOICE C adopted — S3 rollout
+            becomes the product default AI, heuristic-v1 retained and
+            exposed as explicit Fast mode; primary development reference =
+            s3-rollout-candidate; promotion = NONE. P0:0 / P1:0 / P2:4
+            non-blocking closure wording items applied docs-only).
 RESULT     = S3 LIVE WORKLOAD PROFILED:
             - S3 latency: p50 = 55.94 ms, p95 = 152.73 ms, p99 = 507.40 ms,
               max = 3,020.86 ms (watchdog headroom: 19.9x vs 60s limit).
             - Heuristic latency: p50 = 0.013 ms, p95 = 0.026 ms, max = 0.252 ms.
-            - Latency multiple vs Heuristic: 4,303x median, 5,874x p95.
+            - Latency multiple vs Heuristic: 4,303x median, 5,874x p95, 4,727.8x mean.
             - S3 rollout invocation rate: 61.08% (2,287/3,744 decisions).
             - S3 fast-path rate: 38.92% (1,457/3,744 decisions).
             - S3 override rate: 18.35% overall (687/3,744 decisions;
@@ -135,7 +134,7 @@ for product design. The round has exactly **three hard correctness gates**:
 | Metric | Candidate (`S3`) | Baseline (`heuristic`) | Operational multiple |
 |---|---:|---:|---:|
 | **Decisions count** | 3,744 | 3,743 | — |
-| **Mean** | **72.81 ms** | **0.0154 ms** (15.4 µs) | **4,723.2x** |
+| **Mean** | **72.81 ms** | **0.0154 ms** (15.4 µs) | **4,727.8x** |
 | **p50 (Median)** | **55.94 ms** | **0.0130 ms** (13.0 µs) | **4,303.0x** |
 | **p90** | **115.97 ms** | **0.0190 ms** (19.0 µs) | **6,103.7x** |
 | **p95** | **152.73 ms** | **0.0260 ms** (26.0 µs) | **5,874.3x** |
@@ -165,11 +164,12 @@ clock (95.9 s) recorded. Process-specific CPU time not measured
 | **Overrides (changed from `a_H`)** | 687 | **18.35% of all decisions** |
 | **Overrides of comparisons** | 687 | **30.04% of rollout comparisons** |
 
-In roughly 1 in every 5 decisions (and nearly 1 in every 3 rollout
-comparisons), the S3 rollout policy overturned the baseline heuristic
-action `a_H`, explaining the substantial playing-strength advantage
-confirmed in S3 Stage B (80-0-48) and Field Calibration (104-0-24 vs n1,
-100-0-28 vs M07).
+In roughly 1 in every 5 decisions (and 30.04% of rollout comparisons),
+the S3 rollout policy changed the heuristic proposal `a_H`. The aggregate
+policy containing these changes is empirically resolved stronger (S3
+Stage B: 80-0-48 vs H; Field Calibration: 104-0-24 vs n1, 100-0-28 vs M07),
+though individual overrides are not claimed to be point-by-point proven
+corrections.
 
 ### 4. Operational latency observations
 
@@ -178,9 +178,10 @@ confirmed in S3 Stage B (80-0-48) and Field Calibration (104-0-24 vs n1,
   comfortable for interactive play and CLI usage.
 - **Latency tail**: p95 is **~153 ms**, p99 is **~507 ms**, and the
   single worst-case decision across 3,744 decisions took **3.02 s**.
-- **Watchdog headroom**: Against the standard 60.0s move timeout, the
-  maximum latency observed represents a **19.9x safety margin**. Zero
-  moves came anywhere close to watchdog limits.
+- **Watchdog headroom**: No timeout was observed in this 128-match profile;
+  the worst observed decision was 3.02s versus the 60.0s watchdog limit
+  (19.9x observed headroom on this test host). Note: operational latency
+  is environment- and platform-specific.
 - **Cost multiple**: Compared to the microsecond-level heuristic baseline
   (13 µs median), S3 is ~4,300x heavier in compute time, reflecting the
   full evaluation of search proposals (n1 and M07 2000-node searches) plus
@@ -198,9 +199,10 @@ the project faces three clear product choices:
     interactive thresholds for human play.
   - Zero watchdog risk (3s max vs 60s limit).
 - **Arguments against**:
-  - High-throughput automated pipelines (e.g. running 100,000 self-play
-    games) will experience a ~4,000x throughput penalty compared to the
-    microsecond heuristic.
+  - S3 is orders of magnitude more computationally expensive per decision
+    than the microsecond heuristic (4,303x median per-decision latency
+    ratio); heuristic remains the preferred option for high-throughput batch
+    simulation.
 
 ### Choice B: Heuristic remains normal default; S3 exposed as "strong" mode
 - **Arguments for**:
@@ -221,4 +223,11 @@ the project faces three clear product choices:
   - Requires documentation clarity so high-volume simulation users know
     to select the fast mode.
 
-Submitted for product decision review.
+## Formal product decision: Choice C adopted
+
+Following formal closure review (2026-09-09), **Choice C** was adopted:
+- **Product default**: `s3-rollout-candidate` (strongest confirmed agent).
+- **Explicit Fast mode**: `heuristic-v1` (retained for high-throughput batch runs).
+- **Primary development reference**: `s3-rollout-candidate`.
+- **Historical champion**: `M07` (narrative label only).
+- **Promotion**: NONE (product default selection is not a research promotion).

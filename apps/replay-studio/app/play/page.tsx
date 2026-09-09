@@ -101,7 +101,7 @@ export default function HumanPlayPage() {
   const [recentGames,setRecentGames] = useState<RecentGame[]>([]);
   const [showReviewers,setShowReviewers] = useState(false);
   const [catalog,setCatalog] = useState<Catalog|null>(null);
-  const [agentId,setAgentId] = useState("m07-champion");
+  const [agentId,setAgentId] = useState("s3-rollout");
   const [humanSeat,setHumanSeat] = useState(0);
   const [seed,setSeed] = useState(()=>Math.floor(Date.now()/1000));
   const [hostOnline,setHostOnline] = useState(false);

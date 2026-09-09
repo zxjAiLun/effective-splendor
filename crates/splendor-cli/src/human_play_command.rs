@@ -31,7 +31,7 @@ use splendor_protocol::{
 use splendor_replay::{replay_document_hash_v1, verify_replay, ReplayRecorder, ReplayV1};
 use splendor_search::SearchConfigV1;
 
-const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> (--opponent <heuristic|m07> | --registry <registry.json> --agent-id <id>) --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
+const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|heuristic|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
     "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
@@ -40,6 +40,7 @@ const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
 const REVIEWS_DIR: &str = "reviews";
 
 enum InProcessOpponent {
+    S3(splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy),
     Heuristic(HeuristicAgentPolicy),
     M07(DeterminizationAgentPolicyV1),
 }
@@ -47,6 +48,9 @@ enum InProcessOpponent {
 impl InProcessOpponent {
     fn choose(&mut self, context: DecisionContext<'_>) -> Result<Action, String> {
         match self {
+            Self::S3(policy) => policy
+                .choose_action(context)
+                .map_err(|error| error.to_string()),
             Self::Heuristic(policy) => policy
                 .choose_action(context)
                 .map_err(|error| error.to_string()),
@@ -1394,8 +1398,26 @@ fn build_session(args: &Args) -> Result<Session, String> {
     let (recorder, _setup) = ReplayRecorder::new_with_setup(config)
         .map_err(|error| format!("cannot create replay recorder: {error}"))?;
     let opponent = match (&args.opponent, &args.registry, &args.agent_id) {
-        (Some(name), None, None) if name == "heuristic" => Opponent::InProcess {
-            label: "Heuristic baseline",
+        // Choice C product default: when no opponent is specified or "s3" is chosen,
+        // use the strongest confirmed S3 rollout candidate as default.
+        (None, None, None) => Opponent::InProcess {
+            label: "S3 rollout default",
+            policy: InProcessOpponent::S3(
+                splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy::new()
+                    .map_err(|error| error.to_string())?,
+            ),
+        },
+        (Some(name), None, None) if name == "s3" || name == "s3-rollout" || name == "default" => {
+            Opponent::InProcess {
+                label: "S3 rollout default",
+                policy: InProcessOpponent::S3(
+                    splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy::new()
+                        .map_err(|error| error.to_string())?,
+                ),
+            }
+        }
+        (Some(name), None, None) if name == "heuristic" || name == "fast" => Opponent::InProcess {
+            label: "Heuristic fast mode",
             policy: InProcessOpponent::Heuristic(HeuristicAgentPolicy::new()),
         },
         (Some(name), None, None) if name == "m07" => Opponent::InProcess {
@@ -1412,10 +1434,22 @@ fn build_session(args: &Args) -> Result<Session, String> {
                 .map_err(|error| error.to_string())?,
             ),
         },
-        (Some(_), None, None) => return Err("--opponent must be heuristic or m07".into()),
+        (Some(_), None, None) => return Err("--opponent must be s3, heuristic (or fast), or m07".into()),
+        (None, Some(registry_path), Some(agent_id)) => Opponent::Registered(
+            RegisteredOpponent::start(
+                registry_path,
+                agent_id,
+                PlayerId(1 - args.human_seat),
+                &id,
+                args.seed,
+                recorder.state(),
+                &_setup.events,
+                args.move_timeout_ms,
+            )?,
+        ),
         _ => {
             return Err(
-                "choose either --opponent <heuristic|m07> or --registry <path> --agent-id <id>"
+                "choose --opponent <s3|heuristic|m07> or --registry <path> --agent-id <id> (defaults to s3)"
                     .into(),
             )
         }
