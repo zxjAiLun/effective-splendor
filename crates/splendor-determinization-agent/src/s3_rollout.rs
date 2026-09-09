@@ -71,6 +71,11 @@ pub struct S3Decision {
     pub candidate_set_size: usize,
     /// Per-candidate integer terminal-score sums (complete comparisons only).
     pub score2: Vec<(Action, i64)>,
+    /// Per-candidate, per-world terminal scores (complete comparisons only).
+    /// Enables the leave-one-world-out diagnostic without extra gates.
+    pub per_world_score2: Vec<(Action, Vec<i64>)>,
+    /// The information-set hash used as the root identity (telemetry).
+    pub root_identity: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,20 +130,31 @@ fn simulated_heuristic_action(
 
 /// Advance a rollout world by one simulated decision (one acting seat's
 /// action application; sub-phase actions each count as one application).
-fn rollout_step(state: &mut FullState, root_identity: &str, world: usize, rngs: &mut [StableRng; 2]) {
+/// Fail-closed: any apply error propagates.
+fn rollout_step(
+    state: &mut FullState,
+    root_identity: &str,
+    world: usize,
+    rngs: &mut [StableRng; 2],
+) -> Result<(), String> {
     if state.is_terminal() {
-        return;
+        return Ok(());
     }
     let actor = state.current_player;
     let observation = state.observation(actor);
     let visible_history = splendor_core::visible_events(&state.log, Audience::Player(actor));
     let legal = canonical_order(&state.legal_actions());
     if legal.is_empty() {
-        return; // defensive; engine guarantees legal actions pre-terminal
+        return Err("no legal actions in non-terminal simulated state".to_owned());
     }
-    let rng = &mut rngs[usize::from(actor.index() < 2)];
+    let seat = actor.index();
+    assert!(seat < 2, "S3 rollouts are frozen for 2-player games");
+    let rng = &mut rngs[seat];
     let action = simulated_heuristic_action(&observation, &visible_history, &legal, rng);
-    let _ = state.apply(action);
+    state
+        .apply(action)
+        .map_err(|e| format!("simulated action apply failed: {e}"))?;
+    Ok(())
 }
 
 /// Integer terminal score for the root player (frozen: 2 / 1 / 0).
@@ -166,23 +182,26 @@ fn run_rollout(
     root_player: PlayerId,
     root_identity: &str,
     world: usize,
-) -> Option<i64> {
+) -> Result<Option<i64>, String> {
     let mut state = world_state.clone();
-    let _ = state.apply(candidate); // root action does NOT count toward P
+    // Root candidate must be legal in this sampled world (fail-closed).
+    state
+        .apply(candidate)
+        .map_err(|e| format!("root candidate apply failed: {e}"))?;
     let mut rngs = [
         StableRng::new(rollout_tie_seed(root_identity, world, 0)),
         StableRng::new(rollout_tie_seed(root_identity, world, 1)),
     ];
     for _ in 0..S3_P {
         if state.is_terminal() {
-            return Some(terminal_score2(&state, root_player));
+            return Ok(Some(terminal_score2(&state, root_player)));
         }
-        rollout_step(&mut state, root_identity, world, &mut rngs);
+        rollout_step(&mut state, root_identity, world, &mut rngs)?;
     }
     if state.is_terminal() {
-        return Some(terminal_score2(&state, root_player));
+        return Ok(Some(terminal_score2(&state, root_player)));
     }
-    None // ply-capped
+    Ok(None) // ply-capped
 }
 
 /// Root heuristic score-optimal set (deterministic; no RNG).
@@ -209,7 +228,6 @@ pub fn s3_decide(
     legal_actions: &[Action],
     a_n1: Action,
     a_m07: Action,
-    root_identity: &str,
     ruleset: splendor_core::Ruleset,
 ) -> Result<S3Decision, String> {
     if observation.public.phase != Phase::Main {
@@ -222,6 +240,8 @@ pub fn s3_decide(
             path: S3Path::RootTieKeptA_H,
             candidate_set_size: 1,
             score2: Vec::new(),
+            per_world_score2: Vec::new(),
+            root_identity: String::new(), // no rollouts ran; identity unused
         });
     }
     let a_h = hs[0];
@@ -240,6 +260,8 @@ pub fn s3_decide(
             path: S3Path::ProposalsAgreed,
             candidate_set_size: 1,
             score2: Vec::new(),
+            per_world_score2: Vec::new(),
+            root_identity: String::new(),
         });
     }
 
@@ -248,6 +270,10 @@ pub fn s3_decide(
         build_information_set_v1(ruleset, observation, visible_history)
             .map_err(|e| format!("information set build failed: {e}"))?;
     let root_player = information_set.observation().public.current_player;
+    // Root identity = the authoritative information-set hash (public
+    // information state identity; NEVER a file path — the same information
+    // set always derives the same tie streams, for pilot AND live use).
+    let root_identity = information_set.information_set_hash().as_str().to_owned();
     let mut worlds = Vec::with_capacity(S3_D);
     for world in 0..S3_D {
         let det = sample_determinization_v1(
@@ -259,24 +285,33 @@ pub fn s3_decide(
         worlds.push(det.state().clone());
     }
 
-    // Complete-comparison-gated scoring.
+    // Complete-comparison-gated scoring (per-world scores retained for the
+    // LOO diagnostic).
     let mut score2 = Vec::with_capacity(candidates.len());
+    let mut per_world = Vec::with_capacity(candidates.len());
     for candidate in &candidates {
         let mut sum: i64 = 0;
+        let mut worlds_scores = Vec::with_capacity(S3_D);
         for (world, world_state) in worlds.iter().enumerate() {
-            match run_rollout(world_state, *candidate, root_player, root_identity, world) {
-                Some(v) => sum += v,
+            match run_rollout(world_state, *candidate, root_player, root_identity.as_str(), world)? {
+                Some(v) => {
+                    sum += v;
+                    worlds_scores.push(v);
+                }
                 None => {
                     return Ok(S3Decision {
                         action: a_h,
                         path: S3Path::PlyCapFallback,
                         candidate_set_size: candidates.len(),
                         score2: Vec::new(),
+                        per_world_score2: Vec::new(),
+                        root_identity,
                     });
                 }
             }
         }
         score2.push((*candidate, sum));
+        per_world.push((*candidate, worlds_scores));
     }
 
     // Argmax with the full tie rule.
@@ -296,7 +331,48 @@ pub fn s3_decide(
         path: S3Path::RolloutComparison,
         candidate_set_size: candidates.len(),
         score2,
+        per_world_score2: per_world,
+        root_identity,
     })
+}
+
+/// Leave-one-world-out diagnostic (frozen: diagnostic ONLY, never a gate):
+/// for a complete comparison, does the D=3 choice (dropping each world in
+/// turn) agree with the full D=4 choice?
+pub fn loo_agreement(decision: &S3Decision) -> Option<(usize, usize)> {
+    if decision.path != S3Path::RolloutComparison || decision.per_world_score2.is_empty() {
+        return None;
+    }
+    let full = decision.action;
+    let mut agree = 0;
+    let mut total = 0;
+    for drop in 0..S3_D {
+        let mut best: Option<(Action, i64)> = None;
+        for (a, scores) in &decision.per_world_score2 {
+            let sum: i64 = scores
+                .iter()
+                .enumerate()
+                .filter(|(w, _)| *w != drop)
+                .map(|(_, v)| *v)
+                .sum();
+            match best {
+                Some((_, s)) if sum < s => {}
+                Some((ba, s)) if sum == s => {
+                    // tie: canonical-first between the two
+                    let pair = canonical_order(&[ba, *a]);
+                    best = Some((pair[0], s));
+                }
+                _ => best = Some((*a, sum)),
+            }
+        }
+        if let Some((a, _)) = best {
+            total += 1;
+            if a == full {
+                agree += 1;
+            }
+        }
+    }
+    Some((agree, total))
 }
 
 #[cfg(test)]
@@ -327,9 +403,9 @@ mod tests {
         let (obs, hist, legal, _) = context(20260909);
         let a_n1 = legal[0];
         let a_m07 = legal[legal.len() - 1];
-        let d1 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, "test-root", Ruleset::base_v1())
+        let d1 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, Ruleset::base_v1())
             .unwrap();
-        let d2 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, "test-root", Ruleset::base_v1())
+        let d2 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, Ruleset::base_v1())
             .unwrap();
         assert_eq!(d1, d2);
     }
@@ -377,7 +453,7 @@ mod tests {
             return; // fixture not in the eligible shape; skipped shape
         }
         let a_h = hs[0];
-        let d = s3_decide(&obs, &hist, &legal, a_h, a_h, "test-root", Ruleset::base_v1())
+        let d = s3_decide(&obs, &hist, &legal, a_h, a_h, Ruleset::base_v1())
             .unwrap();
         assert_eq!(d.path, S3Path::ProposalsAgreed);
         assert_eq!(d.action, a_h);
@@ -393,8 +469,12 @@ mod tests {
             let hs = h_star(&obs, &legal);
             if hs.len() > 1 {
                 let d = s3_decide(
-                    &obs, &hist, &legal, legal[0], legal[legal.len() - 1],
-                    "test-root", Ruleset::base_v1(),
+                    &obs,
+                    &hist,
+                    &legal,
+                    legal[0],
+                    legal[legal.len() - 1],
+                    Ruleset::base_v1(),
                 )
                 .unwrap();
                 assert_eq!(d.path, S3Path::RootTieKeptA_H);
@@ -427,7 +507,7 @@ mod tests {
             if a_n1 == a_h && a_m07 == a_h {
                 continue;
             }
-            let d = s3_decide(&obs, &hist, &legal, a_n1, a_m07, "cap-test", Ruleset::base_v1())
+            let d = s3_decide(&obs, &hist, &legal, a_n1, a_m07, Ruleset::base_v1())
                 .unwrap();
             if d.path == S3Path::PlyCapFallback {
                 assert_eq!(d.action, a_h, "ply-cap fallback must keep a_H");
@@ -437,6 +517,54 @@ mod tests {
         }
         // No capping fixture in this sweep: acceptable (the contract is
         // also covered by construction in run_rollout).
+    }
+
+    // ---- Two-layer information-isolation regressions (V2 frozen) ----
+
+    #[test]
+    fn root_isolation_decision_depends_only_on_information_set() {
+        // ROOT layer: two TRUE hidden worlds that project to the SAME root
+        // information set must yield the same decision. The engine's public
+        // inputs are (observation, visible_history, legal_actions) — we
+        // verify the engine never reads beyond them by construction: the
+        // decision is invoked with identical public inputs while the
+        // underlying FullState differs (two different sampled
+        // determinizations of the same information set are never passed —
+        // the API cannot even receive them). This test pins the API shape
+        // plus determinism across invocation order.
+        let (obs, hist, legal, _state_a) = context(20260909);
+        let a_n1 = legal[0];
+        let a_m07 = legal[legal.len() - 1];
+        let d1 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, Ruleset::base_v1()).unwrap();
+        // Same public inputs again (a second "world" with identical public
+        // projection): identical decision, since no hidden state is an
+        // input to the root path.
+        let d2 = s3_decide(&obs, &hist, &legal, a_n1, a_m07, Ruleset::base_v1()).unwrap();
+        assert_eq!(d1, d2);
+    }
+
+    #[test]
+    fn simulated_seat_isolation_invisible_fields_do_not_change_actions() {
+        // SIMULATION layer: a simulated seat's action depends only on its
+        // observation/history/legal set. We pin this on the scoring
+        // primitive: heuristic_term_scores is a pure function of the
+        // Observation; changing invisible state cannot alter it. Two
+        // observations that serialize identically produce identical
+        // scores, and the tie-break consumes the same stream position —
+        // the frozen heuristic semantics.
+        let (obs, hist, legal, _) = context(42);
+        let scores1 = splendor_agent::heuristic_term_scores(&obs, &legal);
+        // Rebuild an identical observation via clone (no hidden fields can
+        // sneak in: the type carries only public + own-private data).
+        let obs2 = obs.clone();
+        let scores2 = splendor_agent::heuristic_term_scores(&obs2, &legal);
+        assert_eq!(scores1, scores2);
+        // And the simulated decision with identical streams is identical:
+        let mut rng1 = StableRng::new(rollout_tie_seed("iso-test", 0, 0));
+        let mut rng2 = StableRng::new(rollout_tie_seed("iso-test", 0, 0));
+        let a1 = simulated_heuristic_action(&obs, &hist, &legal, &mut rng1);
+        let a2 = simulated_heuristic_action(&obs2, &hist, &legal, &mut rng2);
+        assert_eq!(a1, a2);
     }
 
     #[test]

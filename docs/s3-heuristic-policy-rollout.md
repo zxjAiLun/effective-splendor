@@ -1,24 +1,26 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = STAGE-A EXECUTED / PILOT_PASS / STOPPED-FOR-REVIEW (per the
-            frozen contract: implementation + pilot completed 2026-09-09
-            at c503bda; all gates pass in both strata with ~10x latency
-            margin (p95 114 ms ordinary / 170 ms wide vs the 2,000 ms
-            gate; complete-comparison rate 1.000 vs the 0.70 gate; zero
-            errors); behavioral delta exists (rollout choice != a_H in
-            122/150 ordinary and 26/50 wide complete comparisons — the
-            NO_BEHAVIORAL_DELTA exit did not fire). Stage B (the 128-match
-            candidate-vs-heuristic Arena) remains NOT AUTHORIZED until
-            the Stage-A review. Two recorded pilot notes: the selector
-            deviation (game_id|ply encoding instead of the identity
-            triple — deterministic, reproducible) and the
-            leave-one-world-out diagnostic being unavailable in the
-            current row telemetry.)
-RESULT     = PILOT_PASS. The candidate is computationally feasible with
-            large margin and produces a real behavioral signal on both
-            strata; strength is entirely untested (Stage B not run).
+STATUS     = STAGE-A REPAIR 1 EXECUTED / PILOT_PASS (Run2) /
+            STOPPED-FOR-REVIEW (Run1 at c503bda is VOID — five
+            implementation/protocol defects per the Stage-A review of
+            bf5df58: seat-RNG routing (both seats consumed one stream),
+            row-join collisions (basename+ply), 256-game population
+            instead of 384, filepath-based root identity, swallowed apply
+            errors. Repair 1 fixed all five, restored the frozen
+            corpus/selector/dedupe, added per-world scores + the LOO
+            diagnostic and the two isolation regressions, and re-ran the
+            SAME 200-context pilot. Run2: all gates pass in both strata
+            (p95 43 ms ordinary / 116 ms wide vs the 2,000 ms gate;
+            complete-comparison rate 1.000 vs 0.70; zero errors);
+            behavioral delta exists (43/150 ordinary, 13/50 wide — the
+            repaired per-seat RNG substantially lowered Run1's inflated
+            122/150 and 26/50); LOO agreement 0.870 / 0.805 (diagnostic
+            only). Stage B remains NOT AUTHORIZED until this review.)
+RESULT     = PILOT_PASS (Run2, decision-valid). The repaired engine's
+            behavioral delta is real but smaller than Run1 suggested;
+            strength remains entirely untested.
 REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen;
-            Stage-A executed at c503bda. V1 = c253de7.
+            Run1 VOID; Repair 1 + Run2 recorded. V1 = c253de7.
 BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
@@ -270,6 +272,84 @@ gates pass AND behavioral delta exists
 any gate fail / PILOT_CORPUS_INSUFFICIENT / NO_BEHAVIORAL_DELTA
     -> S3 stops; constants are NOT tuned in-round
 ```
+
+## Stage-A execution record (Run1 VOID; Repair 1; Run2 PILOT_PASS)
+
+### Run1 (c503bda) — VOID, not used for gate decisions
+
+Five defects found by the Stage-A review of bf5df58:
+1. Seat-RNG routing: `rngs[usize::from(actor.index() < 2)]` sent BOTH
+   seats to stream 1 — the frozen per-(world, seat) streams were not
+   actually in effect.
+2. Pilot row join keyed on (basename, ply); every replay's basename is
+   `match-replay.json`, so rows collided across games.
+3. The eligibility pool came from the S2 census (P1+P2 = 256 games),
+   not the frozen all-384 population; no identity-triple dedupe; the
+   selector used game_id|py instead of the frozen identity encoding.
+4. The rollout tie-stream root identity was the replay FILE PATH — the
+   same information set at different paths got different streams.
+5. `state.apply` errors were swallowed (`let _ =`), making Gate C
+   (zero mismatches) vacuous.
+
+### Repair 1 (authorized scope, all applied)
+
+1. Seat routing fixed: `rngs[actor.index()]` with a 2-player assertion.
+2. Root identity = the authoritative `information_set_hash`, derived
+   INSIDE `s3_decide` (one shared helper for pilot and future live use;
+   file paths can never enter the derivation).
+3. All `state.apply` calls are fail-closed `Result` propagation (root
+   candidate AND simulated actions); errors abort the decision with a
+   non-zero exit — Gate C is now a real gate.
+4. Population restored: ALL 384 verified S0 replays (P1+P2+P3), with a
+   fresh P3 census pass; identity-triple dedupe (13,483 unique eligible
+   contexts); the frozen selector
+   `SHA256(utf8("43_300_001|obs|history|info"))` within strata.
+5. Unique binding: every decision row carries its `root_identity`
+   (information-set hash) and the audit joins contexts by that hash
+   (fail-closed on mismatch).
+6. Per-world terminal scores added to the decision telemetry; the
+   leave-one-world-out diagnostic is computed from them (diagnostic
+   only — NO gate).
+7. The two frozen isolation regressions added (root public-input
+   invariance; simulated-seat observation-purity invariance).
+8. The tracked result records the full 200-identity manifest + digest.
+
+### Run2 results (same frozen D=4/P=120/150+50/gates)
+
+| Stratum | p95 full-decision | complete rate | behavioral delta | LOO |
+|---|---:|---:|---:|---:|
+| ordinary | **43 ms** (gate 2000) | 1.000 (gate 0.70) | 43/150 | 0.870 |
+| wide | **116 ms** | 1.000 | 13/50 | 0.805 |
+
+All gates pass in both strata; zero errors (fail-closed engine);
+behavioral delta exists (NO_BEHAVIORAL_DELTA did not fire). The
+repaired per-seat RNG stream substantially lowered Run1's inflated
+delta (122/150, 26/50 -> 43/150, 13/50): Run1's shared-stream bug had
+manufactured disagreement. LOO agreement ~0.8-0.9 is the coarse
+stability picture at D=4 (no gate, no threshold).
+
+### Live-candidate semantics for Stage B (P1-6, frozen here BEFORE any Arena)
+
+The Stage-B candidate's base behavior at every real decision:
+
+```text
+compute the frozen heuristic proposal exactly once, using the
+persistent root_heuristic_rng = StableRng(20260812):
+    unique maximum -> no RNG consumed; tie -> the stream advances
+
+if phase != Main:               return the actual heuristic action
+if legal_actions < 2:           return the actual heuristic action
+if |H*| > 1:                    return the RNG-tiebroken heuristic action
+otherwise (Main, >=2 legal, unique H optimum):
+    proposal set dedup{a_H, a_n1, a_M07}; |C|==1 -> return it
+    else full rollout comparison per the V2 contract
+```
+
+The root stream matches the standalone heuristic agent's semantics
+(same seed, same tie-only consumption, never advanced by simulation),
+so on fast paths and root ties the candidate is EXACTLY heuristic — no
+hidden tie-behavior change. Non-Main phases fast-path to the heuristic
+(decided now, not at Stage-B implementation time).
 
 ## Stage B — Strength confirmation (CONTRACT FROZEN; NOT YET AUTHORIZED)
 

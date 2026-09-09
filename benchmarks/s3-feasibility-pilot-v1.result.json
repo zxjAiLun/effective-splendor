@@ -1,19 +1,23 @@
 {
   "format": "effective-splendor-s3-pilot-result",
-  "version": 1,
-  "experiment_id": "s3-feasibility-pilot-v1",
-  "design_doc": "docs/s3-heuristic-policy-rollout.md @ 92af7bb (DESIGN_V2 APPROVED-FOR-PILOT)",
+  "version": 2,
+  "experiment_id": "s3-feasibility-pilot-v1 (repair 1)",
+  "run_provenance": {
+    "run1": "VOID \u2014 implementation defects (seat RNG routing, row-join collision, 256-game population, filepath identity, swallowed apply errors) per the Stage-A review of bf5df58; not used for gate decisions",
+    "run2": "this document \u2014 repaired engine, all-384 population, identity-triple dedupe, frozen selector, unique binding"
+  },
+  "design_doc": "docs/s3-heuristic-policy-rollout.md @ 92af7bb",
   "contract": {
+    "population": "all 384 verified S0 replays (P1+P2+P3)",
+    "eligibility": "Main, legal>=2, |H*|==1, identity-triple dedupe, |C|>=2",
+    "selector": "SHA256(utf8('43_300_001|obs|history|info')) ascending within stratum",
     "strata": {
       "ordinary": 150,
       "wide": 50
     },
-    "selector": "SHA256(utf8('43_300_001|game_id|ply')) ascending within stratum (DEVIATION from the frozen identity-triple encoding: census rows lack the hash triple; deterministic and reproducible; recorded)",
-    "eligibility": "Main, legal>=2, |H*|==1, |dedup{a_H,a_n1,a_M07}|>=2",
     "gates": {
       "p95_full_ms": 2000,
-      "complete_rate": 0.7,
-      "zero_errors": true
+      "complete_rate": 0.7
     },
     "constants": {
       "D": 4,
@@ -21,58 +25,1866 @@
       "sample_seed": 43300101
     }
   },
+  "manifest": [
+    {
+      "game_id": "p3_n1_vs_m07-block-38-seed-5800102-r0",
+      "ply": 20,
+      "observation_hash": "886cac5c59ac1668d973f11547b5c9a8f78163c4cc42af6e9ddac5d30ab64a8f",
+      "visible_history_hash": "57121865020edf41d2a5d14c6a26dfdd7095e06321377694c440c60585263a69",
+      "information_set_hash": "11b2609aabf7dd6571eb568a3b50d0203c1787e483c08332e152ce9d463dc309",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-20-seed-5800084-r0",
+      "ply": 61,
+      "observation_hash": "f7d34a2ee2dcd46111d647008b2238fa447c247c5f87f9b7b3b3614f25262fde",
+      "visible_history_hash": "7dc917b230a1fa652e458f69c223904c9384180c912a0a590708920f015b47ef",
+      "information_set_hash": "76f8896f43d94ec0b7ae3468121ce7c8235c64a0544037c97f60a6d7787601b6",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-02-seed-5800066-r0",
+      "ply": 16,
+      "observation_hash": "c4701f95610bc26b7e5fb15911a4be202c76f3886b1dad6752f1f96f0a95faf6",
+      "visible_history_hash": "10750754252988c84d4e8cc438d2a63a3278808937a2666f9c4b3cf3c6550d00",
+      "information_set_hash": "2499dcc49918103bb43a2bcbffd2819c85740b8dc5e44f65670fb2d9cc175a0b",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-08-seed-5800072-r0",
+      "ply": 33,
+      "observation_hash": "a8a963ce04f202ee1eef2b80707fda9a86650f9b4f9c077eeb22eae29a833d55",
+      "visible_history_hash": "db844d7bb7d8f7ed23ee8c30a1d2799296c4ab2881b56bed9d05b4a3a49e3edd",
+      "information_set_hash": "5ee20506f0e810aeb9bf7ca3248aa3fdd3f4ab807094804c696b8fc4ab850938",
+      "legal_action_count": 20,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-39-seed-5800103-r1",
+      "ply": 48,
+      "observation_hash": "62f72d256a814353ba888586c6d991fa4765fee0280b279d8a5c333b62da8f94",
+      "visible_history_hash": "616231589edfb8159b9dacf4fe1249a9b4253f1512ae8c30b4f37fce19d4c7d4",
+      "information_set_hash": "400e3698c23ed7dbeb1d9f9888c114a3ebc9ba73c98da5f61893e7f7864c6515",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-59-seed-5800123-r1",
+      "ply": 38,
+      "observation_hash": "ea8de445286315f64eb469a13035b21c68071dc5f0554a9e67374420e8bad574",
+      "visible_history_hash": "c0870b73d9760876a47547af71eaa154ffbbe8f26d55e3369f30d7771a2aea2f",
+      "information_set_hash": "599dc791b3242547986619385ae2af873fa5936cf3ea09cd781a3fa68bb75560",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-42-seed-5800106-r0",
+      "ply": 43,
+      "observation_hash": "68711023518e9c530010ac3efda4560fac00db52922febb1466123753a28bbad",
+      "visible_history_hash": "52f39a1560443ced6ac507eed38a8f0bec2ee9a7af6eff8083c7eb00bdfbfe3c",
+      "information_set_hash": "6fb0acb23419e0beff84ad6ac5da4790be8042d61c11c508da755874332b2828",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-61-seed-5800125-r0",
+      "ply": 17,
+      "observation_hash": "29a1131866afc918c44500d3d46531a07c87e45068387645fd6abebc5d1b4835",
+      "visible_history_hash": "4984957f46176513d5fc8e4ede96a17f6b65dbacee9b7ddc7305d0de7d615041",
+      "information_set_hash": "5a5f919364cfe33d2ad196a6cc82e1ff9b969a2f26b212b6c8d03d4c0ee101cd",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-23-seed-5800087-r1",
+      "ply": 18,
+      "observation_hash": "7b91d31438330e69ab580d12822d97c3a04672c5dfcae2d5326a6b98a45b6314",
+      "visible_history_hash": "596cc42dfac2fdb943d0eb78beddb5e3302cde459507e1181d126fa27b4d5526",
+      "information_set_hash": "d7b35e5ac4c85f1fbe07265ee1f61baac4e3fffc1a549961dc3d735d66a28cd4",
+      "legal_action_count": 4,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-16-seed-5800080-r1",
+      "ply": 39,
+      "observation_hash": "298c404fcbc4911646e06926ff88dcaa8eddcbd8b6508e27269f6a1bd9679685",
+      "visible_history_hash": "bbd6d0c3a849ca80fd3e407ef7284cf7d2ae044841776dbed78f65aaa223db52",
+      "information_set_hash": "c292353faf04ce17c0f3338c42cc36aa0e92c9d5cc39b905c42d460a496826bb",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-25-seed-5800089-r1",
+      "ply": 30,
+      "observation_hash": "3d91791b24ebb62ee4134d0e227a8423dc0b0301273946239080f19bdd2f5fa0",
+      "visible_history_hash": "b2cec9cc7a9c43b2a19da32166378af8445740eac39add4cbb863bf58a37c7b3",
+      "information_set_hash": "20dc987ae2b3b8bc5d910716ceb87e5f98e07b3639698f10758a0d4da2b833e0",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-39-seed-5800103-r1",
+      "ply": 32,
+      "observation_hash": "2abada095a80317bf65140adf2deecd7fa7168f44daba1004302087225414c56",
+      "visible_history_hash": "230ba1837f27a10d03967332eb7746bb2eeab37b02b0d6710adc15aa978b2ef0",
+      "information_set_hash": "ec98848ffb45bd4bdf1bff6ded03fc8fbaf9d6e5cb50caa00e4acb23e92fe732",
+      "legal_action_count": 11,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-07-seed-5800071-r1",
+      "ply": 7,
+      "observation_hash": "0ea762a68d5028029e934c17c8a826bb3e4c70d6e42c8d95f9e040f1b6a5c52f",
+      "visible_history_hash": "a24532ae531457ad31f3aa1ad63cfad8204a072052d28a4b2f8152fc88565e88",
+      "information_set_hash": "ba7855be9615737ca7a0cf1d780daabe3be982364610ac46bd7baba8ab53fc72",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-44-seed-5800108-r1",
+      "ply": 49,
+      "observation_hash": "241145bb5a6d707f8f0ac7db7e18db4e0c94b1c2bb7956d0e4b2a0a3ea2f7f84",
+      "visible_history_hash": "57791fa89e49237538a31402a08546713a6b3eebb9ec638bb4639b1cc1fde2a1",
+      "information_set_hash": "55ad82697d6cf2b86d97aca9f29ebae60bd3c073f7a27880cf852ad8e2ced5f3",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-27-seed-5800091-r0",
+      "ply": 35,
+      "observation_hash": "53995f0a75fff6142a21fa0330ddbd9f005942d98ab74c27ec2ffe92ce947d32",
+      "visible_history_hash": "4520f44edc6b15135125924454183cb77cc7980854326682f007d9284714f92f",
+      "information_set_hash": "467a250e5bc3cfdfb6d1debc8c7bcc3ad6ccf1bddeeb5e902d357825c764f63c",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-14-seed-5800078-r0",
+      "ply": 13,
+      "observation_hash": "4054a3d7f38ba42b3255a85b99d518544384be9a778359c0c3963017edeb5333",
+      "visible_history_hash": "ed4e49795d74fd2709f530b4beca57a413aee04016db673b01cf9f9001822983",
+      "information_set_hash": "690919dbcbe956c2d7843406a24dae21b0a1d95aa744c2ff613cc24de994906b",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-51-seed-5800115-r0",
+      "ply": 28,
+      "observation_hash": "694b6e209baa96fea29eb9e5cc98fdaf495a0f43abb0bfbf26995ebff7530847",
+      "visible_history_hash": "47eee44e10cef29fde3ccb0ed432643ef158cd4c196164c7916f11ff59ef748b",
+      "information_set_hash": "36ff4f3c3275be97ce2911b018630804fecc251baa62c592fd72bbae965b1bb3",
+      "legal_action_count": 23,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-14-seed-5800078-r1",
+      "ply": 41,
+      "observation_hash": "ba5fb732a265e89225199595c2d58c3f18ab8c95dd47d77b8f3b26046311fe74",
+      "visible_history_hash": "b456d7eb2a829f3a5c22ffc481bfa9f5a6469c114bafc661273d341a43f6f2db",
+      "information_set_hash": "335ecc39fa296f4c10909d6a75dc61096b8a761d63f937bcd9ea408021c7af1b",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-27-seed-5800091-r1",
+      "ply": 25,
+      "observation_hash": "d0c3ee40fb400be2797ce9b1ffe3de83a40094425f3f054868ef8cf747abab5b",
+      "visible_history_hash": "52ff3a1ddd67f235ea438ca208019d991a4ccaaeae89b3b7fdb2f6779d76bafc",
+      "information_set_hash": "5f98e09386e674a65ae5a5a3686e0ec78ad135870e10c94214fd237f59c6d8b6",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-10-seed-5800074-r1",
+      "ply": 56,
+      "observation_hash": "1c3a8f2a5822a3b36140a8cd8eeeb839303331a1d1a0cecb6550be95bc82c5fd",
+      "visible_history_hash": "3760fb288d3dfbd520c4dfbef35f553baa30a148ae28c2aee373782b9793c004",
+      "information_set_hash": "26481db3783d12c8f44497d81b791494ad28d8a03444278605a08cd9668dc5ae",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-47-seed-5800111-r1",
+      "ply": 27,
+      "observation_hash": "8b6ced5a45159014f689acc91a33508f9cc65cd2a2f952e0d7d25eefaf429dc9",
+      "visible_history_hash": "6be0b990cd75181a75d24d9f14f33f18cede58ef88d7da6575c4f5abc025d255",
+      "information_set_hash": "a839aa644d752a1f758b9451c2c47e029cd4a653ac5205e75b0e04974ca38457",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-03-seed-5800067-r0",
+      "ply": 29,
+      "observation_hash": "40a3381f3a988369967b6f4933a3e8caf45c1762a0e7f58848fcfe355a6c6be4",
+      "visible_history_hash": "a7af3608a1782587f5a888461367b1e3a1fcbb806283b475c7c033e27959dddb",
+      "information_set_hash": "e3ce0180ef494bd8ba377840d068043f5c64f86a73035eb3cd9fba90919be798",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-14-seed-5800078-r0",
+      "ply": 47,
+      "observation_hash": "055acb9aa967a543c1d1e3e289ca5939145cec7f88d7df5225032e7ceccc8ead",
+      "visible_history_hash": "81d4a69a8e4735ffba3dd3b545e7288c97b505a0700743a83ab1eb23a942bbaf",
+      "information_set_hash": "98cb9fa7a914a31c3e2bea391bb2b49f16bab12a08a2d94401a9e194c39884fe",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-60-seed-5800124-r1",
+      "ply": 54,
+      "observation_hash": "12c28b28a648066399913eeef39173e8474df602d01489a71831ff96244003dc",
+      "visible_history_hash": "03769d62600bdd9634432c5119126590e5c1637b603c7ffba6ce5a57a006af8c",
+      "information_set_hash": "471ea14629ef2c1cfdb2ba680579371f4d0ab56614f02d0202a33650ae8177a3",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-09-seed-5800073-r1",
+      "ply": 63,
+      "observation_hash": "69618b1a786e65bff49c4e0f14fef9c4d4bc1a7d8e41c57da32093fa8f7b99a2",
+      "visible_history_hash": "b4a26f53274108be92f62707067703c2581b54231cff98d57b62e6fd62afb390",
+      "information_set_hash": "ee162452de2609ede8115313fce3999bd9c9d1f1cf86da37913ef711444787d3",
+      "legal_action_count": 23,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-57-seed-5800121-r0",
+      "ply": 49,
+      "observation_hash": "e8c1a2ac97c7000e5bff9e44b66882d6bfc83078972f57310d6e0b5488d23d0d",
+      "visible_history_hash": "8bcdb8807d8ca56b39337e93aa5b002f6142ad764d14ffd8f47d6f09e6fc2fba",
+      "information_set_hash": "ed564e15dfef07b58383eded97d1176d1b6b02fef5f3bcd2d30529b431f30ce0",
+      "legal_action_count": 16,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-34-seed-5800098-r0",
+      "ply": 27,
+      "observation_hash": "392281cf483d8d0caaeb64fb8addd657e0b9d515b449b88c8cdfafe6aca0933f",
+      "visible_history_hash": "38b3bf082dd88fbc689cb12796067c4afa2269e9f318300ef529cbf594f0ad91",
+      "information_set_hash": "82b8b1f078b8c1f5ffe29ed37257bb9a1c661b504d2ddac85d83e5b5917df033",
+      "legal_action_count": 6,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-19-seed-5800083-r0",
+      "ply": 22,
+      "observation_hash": "2d057fae3f8f581a2b2f651428bf46e3956fd7ad7ed092d8055400930b785a5c",
+      "visible_history_hash": "33a9e24f1a3f6ef19b81b27c937e7d009c87ddacc623bc0433201f3833ea5c94",
+      "information_set_hash": "de94558d0dc66a6cc80401f05a0c14b59338318ab761660ec46b98e93db59a7c",
+      "legal_action_count": 20,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-29-seed-5800093-r1",
+      "ply": 17,
+      "observation_hash": "f301286f30eb88a5c49755671b68b4f1042f8bd6be4aae43af733f8b6f6127fc",
+      "visible_history_hash": "ab8c206a1cee27c5284544dee5f903062a44c3a2b171ad59f763362212d93eae",
+      "information_set_hash": "db93d6498688e3317d873b03a826391f13aab4b58c9633dd13a18ce605922a92",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-10-seed-5800074-r0",
+      "ply": 33,
+      "observation_hash": "5ea4514b2f1956c5a6e507ac3040387677b9786db7114fba337793261cf8ab9c",
+      "visible_history_hash": "3596f66a1282bdf160a3a634525a7572e4090f47c99779e96f477ab7c5c1e7bf",
+      "information_set_hash": "c13b6d95dfc68f6dbb9b8e299a2d0e8e6d703c1aefb5d02f06d2aec5ec35ef32",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-48-seed-5800112-r1",
+      "ply": 44,
+      "observation_hash": "3b20a129642a39f244155556461958e3f2f23e13e2e39bc3ca30bbad179205ae",
+      "visible_history_hash": "9244a40a14b9d736a02b326c868eaec5ebd9b901d079821bacfae52a55789923",
+      "information_set_hash": "0d07fbf84be318510e38d19d1e992ad54121f3a60c5abd044f625414e58e4827",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-10-seed-5800074-r1",
+      "ply": 14,
+      "observation_hash": "6f09d7b5e6d0788b3da02b0c140091710228ebb0eabb718308c67b5d044d291d",
+      "visible_history_hash": "bd4591e4de43e044d2d1b44a1aa1be0669bf18f8275219e6c1ea56eb330bb0a5",
+      "information_set_hash": "4754444124f04733cb8d5d68bfd904fe8bb7b5d9b25dfbf7f77657bdd8b18aed",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-29-seed-5800093-r1",
+      "ply": 48,
+      "observation_hash": "1493b05bfafd1a846b5d83702ab9a4dafd12dfde79fe419fe12565190ec99f64",
+      "visible_history_hash": "e06cf4611e421cee7e872568b7a0baac3a1228a58f571fe6e56ac436bee3e6a8",
+      "information_set_hash": "ec61e2977b27275a798d8dfaab1750d10f2a9f3de73ecf95300c11058a15a2c2",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-04-seed-5800068-r1",
+      "ply": 47,
+      "observation_hash": "6493a47134aa48141ee1acccfaebfa0276db80e93be8efd004dc5919b76dda53",
+      "visible_history_hash": "5ff33ea7c8fccaec0eb9ab92ffaddba58a10b270730059c5e6d2746fd802f2cb",
+      "information_set_hash": "ae0a4de51206b3ff1287f5f0e38aab09c7fd2c48a41d8c39459c2d4d9358c455",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-07-seed-5800071-r1",
+      "ply": 41,
+      "observation_hash": "65f3e459d15ab4aed6cc404723560ba35e5a1267627f014f4bacaf88b5f9e291",
+      "visible_history_hash": "b6c7751fe750673077ebc127f110bd7431a7f41bed9c3978000adb48355c8c0f",
+      "information_set_hash": "66f0eb862cd450ccde91c2dca9cc9d12a356848f0237a1a024337f3320f999ef",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-32-seed-5800096-r0",
+      "ply": 51,
+      "observation_hash": "c48013c2b121157d542cc5fc8c5210bf1154a6f859867e8070c4cc7afbbb3205",
+      "visible_history_hash": "d15e49c6329e9673b746f949edfd8de6836cf58ef2886669b12ee7182a4d6508",
+      "information_set_hash": "c21307765a2354ec9343f2d7db8a4e26ada548dfda99b46ac312eb17e68edf3f",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-63-seed-5800127-r0",
+      "ply": 22,
+      "observation_hash": "fc2139c09269ef26492db122a76a4f6d91049a0a213af171448016f7091ddff4",
+      "visible_history_hash": "cad25d94653ea4ef9d86ca6067dd24fa9f1aa21ce385ac3c5833462f718cca73",
+      "information_set_hash": "5fe66f3c7f076700a825e2cb23bf2300e1559cf573b3d92e66dada12a1f316be",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-53-seed-5800117-r1",
+      "ply": 14,
+      "observation_hash": "1bceff6e3e93944ac1053caa09269902b0e4e8b54c4135ec6fd4ac2773ce3262",
+      "visible_history_hash": "5758c840a5ad35bafc167cf00d97fc514f827bf888f548cec337904278c89caa",
+      "information_set_hash": "ea0b3221374193a49a784d343917e92d5c9988e210b05aea194784985c926260",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-10-seed-5800074-r1",
+      "ply": 55,
+      "observation_hash": "aa1f2486bed5b2e4e1caa25f06acf5527c1db5269b04d038e55bb67e45abd186",
+      "visible_history_hash": "26dfeedf4b7fd79476721c586584e7a35344f5818ba52e7e39cdeaba1f5010f1",
+      "information_set_hash": "748a31b1e2583bf0743a856222ea18a021129cbfe00939915100a268533c3ffc",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-32-seed-5800096-r0",
+      "ply": 55,
+      "observation_hash": "7a33909a61feeb6ec63db38cbef35d41fc717ae3100d26a83212df8d7322d86f",
+      "visible_history_hash": "7a77d16c205a192dc509f9f79e8fff81aee5d62bca5f0bc800c8765b7c273891",
+      "information_set_hash": "9f229d8162a440c8a05b0d95375340d5db5b8f2da49521197ebc330f5a3bd5ac",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-15-seed-5800079-r1",
+      "ply": 6,
+      "observation_hash": "3047709d68c08ff8082b4075008e60d8cfc96a0b4b29323fd0c1fb73a2b88d2f",
+      "visible_history_hash": "11995221af5a1c4be9f1c418df8f71a676d5cb3e03da6239b1bad2ff4a496ad6",
+      "information_set_hash": "e58a45215fe6f4540eaa33345f641296a33bdd5881fed2ffbf8f2bf21450a88a",
+      "legal_action_count": 19,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-03-seed-5800067-r1",
+      "ply": 23,
+      "observation_hash": "84956e05cd859dda34e94842254ca30c80f34bccbf6aa2e555c8d2d62f1b1bbe",
+      "visible_history_hash": "be2a6a91ee81106e2fbe50e592f8c9216117657dab98b6b4fc0b1526999b5176",
+      "information_set_hash": "809ce75452aa28d1c030ded02fa80e88154a6028f11098b59ea2809be7bf42e3",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-27-seed-5800091-r0",
+      "ply": 35,
+      "observation_hash": "4a6d2d9e32754974f6d864e2e73bf8fbbc48680f97fca209aa726e0de6284aef",
+      "visible_history_hash": "7864bf9485e6ece0abd41ee787c968f1a7c17202c2b274c7eb060324b049021c",
+      "information_set_hash": "ef25b7813d695f060ddfe6df91d2e224efa305f7c8e3e5c6448c114cecde417a",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-20-seed-5800084-r0",
+      "ply": 26,
+      "observation_hash": "3d829bea57447813905f0ca96fee00bb60d068763090085f00f10cdc70bce644",
+      "visible_history_hash": "3caa8a92582819b464b042049209c26d2b3e8fe8d60b6b9b900698b04f5984b9",
+      "information_set_hash": "39e7a4141914add9691b2cc526129b9e1548ed358a417ea6cf925a1c89481f35",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-21-seed-5800085-r1",
+      "ply": 11,
+      "observation_hash": "9d73c6313d961e7095646cd4fa07b79e1fef0794d7cbc9226e06ca0cc05afd04",
+      "visible_history_hash": "08826778ba12a1c045d21abd2b88a0a9e5784765b2141d8abd43445270d1313e",
+      "information_set_hash": "2e3ab66392d6785ad71899e29b03c172be8f810672f52db5bf9d36c122cab466",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-00-seed-5800064-r1",
+      "ply": 36,
+      "observation_hash": "3eecb581389e6a85f32c9c001d2da4e2f3eb3901a026ae2af5608555c249abaa",
+      "visible_history_hash": "ae3e07adc1b0e5616eb2fa4cc026fafa6ea02601a87421b51747342a586bd25a",
+      "information_set_hash": "13a9c76cceb3ea20c01832217758135066b8b01b4099c0050d49c831c2f9eda4",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-03-seed-5800067-r1",
+      "ply": 50,
+      "observation_hash": "6c6e1f3c94595f6a67984e2a81881a67dc9f6dfd0a55e8cadf504fae9e420bd8",
+      "visible_history_hash": "21a40175fab9b9c93b9d8f8c1905ff9349ac797b1e4aa3b349bb8816ed85d374",
+      "information_set_hash": "63749b1e6eb4e470098a1153af63e6009f171d1825b7988b36886c45fdb8c81a",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-03-seed-5800067-r1",
+      "ply": 22,
+      "observation_hash": "91c6d4dd5500b75da3616fd992f3d4e315ab989d20db42c7ead0c60bd7568cd3",
+      "visible_history_hash": "85aacc78ed4045630a4fec04eb2ca62161b706d27fa0e630476ec0593245b5bd",
+      "information_set_hash": "bc8190d2f6ca451ce9c731d3ebc7cc78cfe8c7f89cc523c9cfa80e200dc91a97",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-15-seed-5800079-r0",
+      "ply": 28,
+      "observation_hash": "9edb0a2f7a5ebed32fd98a68b92474d4d76be4928602acbbc43371b18187a5da",
+      "visible_history_hash": "6fd1ab0870ce34ec54c1ec6862610dc364eb03a9388491de9414f54c65bbd31b",
+      "information_set_hash": "1fced4f78f89e619af28c1d46cc4756249262d9b93de1e2e6229dbecebcd9fc0",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-27-seed-5800091-r0",
+      "ply": 45,
+      "observation_hash": "2708c1599cb83e141e0b87be73a8dbcf4fd62b4701ae5ad0e1acbad442e8a1bb",
+      "visible_history_hash": "85a17d2dea20544bceba4a2b985ed715ff55eb673a5e4264e9fcdcbf37977ddb",
+      "information_set_hash": "8002a29722f9a862387cb75190c593268261e741ef15842e819ee15954c409a9",
+      "legal_action_count": 11,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-49-seed-5800113-r0",
+      "ply": 55,
+      "observation_hash": "aa5f737589ac84dfff2a5cd622725c10a4f92044118c6a5a8b57dc2bc87250e0",
+      "visible_history_hash": "a8fa6cb386d01e3f3430ad3dc503d94e7364daef612819ced0c451eaa13b4ac3",
+      "information_set_hash": "d73e795c6cdfeb04ea0c9147e6c0330966316fa5f0e9e0d9ac86891b9edb0a92",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-07-seed-5800071-r0",
+      "ply": 37,
+      "observation_hash": "a1910ff45c81121eb0ec60e574d5683ec76aa2767ab4061279eb6b437664eeca",
+      "visible_history_hash": "844bf70ab0e1fc6a87e4fcde9062652bfe76d914643676ea0668bc91ef5fefa7",
+      "information_set_hash": "dd869aa629eba156b9116e159e4e9776c83f1a599fbd7aec4261cec2b552e43a",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-02-seed-5800066-r0",
+      "ply": 21,
+      "observation_hash": "c4921b79abb21d643643d8cca609408720da269c4d413339a3ba7ad600f2962f",
+      "visible_history_hash": "8b7f0466fd472896a1280cd68f39a4a4ad8644c97fdeefa46fada92f33eb7a58",
+      "information_set_hash": "90f025d283cdafbf2a9404935d70322e342350621de76dad3fa1b56acf5eadcd",
+      "legal_action_count": 11,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-18-seed-5800082-r1",
+      "ply": 14,
+      "observation_hash": "c5251d160e117afcd7181f584226e51e0efb7003929e056afff831790a93d68f",
+      "visible_history_hash": "e21690bc0f74e8dd8c2fb6dd4d2aa8d3af89456926ee6fc11d2f26e1abc3a2b6",
+      "information_set_hash": "30fc6b9426cd8e5ce776ee96ce241db0722c0865c5799776e54aed740dad3460",
+      "legal_action_count": 8,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-25-seed-5800089-r0",
+      "ply": 63,
+      "observation_hash": "ede0a5933be5c9ee7c1c6dc3ae531be00bf047c11916566a0207c8159822d91c",
+      "visible_history_hash": "c394bff6a39de701d2bf2f2c1b07c131fce2d3475a11d9ca6bf372effcea81d6",
+      "information_set_hash": "301d49f5aa438c54675973ca20a20b53fa46e4924de9b7cb3516cf48ccb4dc04",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-28-seed-5800092-r0",
+      "ply": 17,
+      "observation_hash": "c7979da1b330908844737d8e46f0ef7bbf46eec0632b160f97c2b38a7aa43b77",
+      "visible_history_hash": "7a98cf547c03f4864e8422dec1cd78708cc28a7e953c8426a8a1beb9285c0ca5",
+      "information_set_hash": "8a8f500b7e0a4d7e3c8d010f7af73a322f6eb75ef409977a3c7bdd1e787a4138",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-28-seed-5800092-r0",
+      "ply": 27,
+      "observation_hash": "dee697685c54bf8c87f41962fd92a527cf4b21a7d4ffe413990fbff685fba3cd",
+      "visible_history_hash": "547b92ec584305ee9596c2c188ea0f744166db8e7efb5a0964a46a002dbc5f54",
+      "information_set_hash": "4d931535d01df9b275fee04060c1d0afd36f063bae4a62723ada1e5599a059c7",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-04-seed-5800068-r0",
+      "ply": 7,
+      "observation_hash": "59add25367a57fe9907c06c45b93e252f64da5f28eacd5254a8d7fb057430eff",
+      "visible_history_hash": "5fe1d984ea5776a28bf6b5aceecf7ef652b3dac3509076e051f3cbf2d9bfd3ff",
+      "information_set_hash": "b7edba32db214146d1f19b03988d5ec8306cc3e9908c9a93080b7040e3f9859d",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-39-seed-5800103-r1",
+      "ply": 18,
+      "observation_hash": "821fb54047c7721305b19c6bc50d091417de84371892c12bca8226fa648e945a",
+      "visible_history_hash": "db1670f5a6ea876c439e7a21abaafaa6a4a1cf66f742e7b33caa13d43bbd630d",
+      "information_set_hash": "d397f738511054c5cd00eb83fed2b6f89cb0e09877d4a4d766d633377b8191a1",
+      "legal_action_count": 6,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-21-seed-5800085-r1",
+      "ply": 25,
+      "observation_hash": "ef41320e9ac711c747622c828952ea08e5bab72aba1708b0ad821595683ade58",
+      "visible_history_hash": "7a35853c6dc7f06f97ba8760495e60426bb62f5f3aa82fb9b5325323aca898a5",
+      "information_set_hash": "b63a174496d89f2e3adc3cd033358d5563f1875b9fa8477033212caa98258ed5",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-39-seed-5800103-r0",
+      "ply": 49,
+      "observation_hash": "3f688b1fbdcaf82b3c217d9969806c720a5d89c980d65aaf57fba0c426ab2ff4",
+      "visible_history_hash": "8626773d3ba96eec710d2f12920ad474c6ef6dd5b6435ef5b852c62ecdeeb967",
+      "information_set_hash": "9f0caa27a82d4b6a6b15306938de74bce91db70c9a5431932200181901ab4668",
+      "legal_action_count": 8,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-24-seed-5800088-r0",
+      "ply": 5,
+      "observation_hash": "a14911d9827cfc1567de8de16aaab6d028681a6171018af046ea68db28d72946",
+      "visible_history_hash": "55c629d944e7ccd5e2f2ab109b8f85cf6bbd66a4a68d207fad1afcc70a567233",
+      "information_set_hash": "4d8c52d369752bd92eae4861d3a7bf6abccbc75168c0b3e9eea2ebb5522cef95",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-30-seed-5800094-r1",
+      "ply": 31,
+      "observation_hash": "d5bbf6bb507a2bf68cc74481272171826450e408d58b7c01062a1db062b48f0b",
+      "visible_history_hash": "f73409925d257607163ae5c70cb00b64f8ec2aad3be59e1e88666fc554f056aa",
+      "information_set_hash": "e2582f80a118c87393d81870aa0ad1e857418364ac1fe21ef199dcf870b4d8cc",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-27-seed-5800091-r0",
+      "ply": 3,
+      "observation_hash": "33bcc0faf0ace0f7738309e490ef934209aa9cffcda7ce3724bcd8ca591386d5",
+      "visible_history_hash": "a28d5581e77cc2eba1d299ae37f57e8a48a21989cf711f298a3bfaf7ab5df28e",
+      "information_set_hash": "fce744c38d9187391556b2a528d19507ce37b956bdae8f90ed96ca173c25bc49",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-27-seed-5800091-r1",
+      "ply": 36,
+      "observation_hash": "085cf5b8ac2064be71332632ca81ef73e1a85db82fa2b078acecc141ccbaf804",
+      "visible_history_hash": "63c8911e2d0a9c28d45fe5e3228f79ad912993361707aa6e2ea72adaf12bdf15",
+      "information_set_hash": "4cdfdc7993d312ec0b4aab60e75336911fc25cca843eeca7dabc081dc1596dc4",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-10-seed-5800074-r1",
+      "ply": 57,
+      "observation_hash": "fe00f2d6e85e6bf285ffc64769124b1b49595216c3a7fb618f32b96fd3ad2fc0",
+      "visible_history_hash": "643ba7d3f4ba58a73ff1269ad9c514a7f3599422bd4cb5776b1b6b0f962c03a9",
+      "information_set_hash": "e588a0177792e9c398d21e2bb989c0e79cf8175e21a45d3e286ab1a63d8a4f98",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-12-seed-5800076-r0",
+      "ply": 53,
+      "observation_hash": "0349c0ef6fe322ef331392d8b4fe37a724636877df87e7df966db8849a6be8c6",
+      "visible_history_hash": "23cd393c0cf311196a0aba616ff3b9a240a5fa2339d095bc09f21744392e7040",
+      "information_set_hash": "a9baaddf81d37f9c3968eebc56f8579c415dec41b523a47f6dcf6fcf527deaf0",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-51-seed-5800115-r1",
+      "ply": 34,
+      "observation_hash": "aaad246984c1cc88cbb59be1f13592197923433d024f0966c46db3eef3012d33",
+      "visible_history_hash": "52dbfe0143c53064116e43f73c5ffdad19671de945e76ad504146319df02020f",
+      "information_set_hash": "45316970e2a3e685ffb9d9418705f973525f37696a33357c2debc1fc152ee58a",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-31-seed-5800095-r0",
+      "ply": 37,
+      "observation_hash": "5d725b71cb62b25f8122416cab6100ff64fc8596cd4aa7ccfb0a5f9176440c7b",
+      "visible_history_hash": "5dc9ad7218a3704d8537deaf5bce52cd636fd264163eec9d15c315b773a47d23",
+      "information_set_hash": "c2de342794deee88c31fa07a67d5c7c3f42dcd8952f27af24985558ef222bc12",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-61-seed-5800125-r1",
+      "ply": 10,
+      "observation_hash": "fefbbf5ee29d2cc068b777a3641a4111975355de5a61f84597ba7e0ef072b2aa",
+      "visible_history_hash": "e38c1ea346c093a73918c5a8cc9094121d969cbe1beb56ec783c899d238564ea",
+      "information_set_hash": "47bf2533c008248c3f81e62af6416f4f2a8c0f248153fefb0c500a68b4348825",
+      "legal_action_count": 21,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-24-seed-5800088-r1",
+      "ply": 29,
+      "observation_hash": "6e513990b26c1668845475423e3c83a74718bd2e3d05411a68877d6dbd4a4849",
+      "visible_history_hash": "e46aa3261a0e9afa89d06c778c66ed9d676f614c0e15a25617f76458d3c572d8",
+      "information_set_hash": "5e528c15a69c429edf26da150605bfba531f02af68f4f6198f7c3664c576a72d",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-10-seed-5800074-r0",
+      "ply": 39,
+      "observation_hash": "e59f8d840fbdb7c11be0897fce5ecad557efab828fdbfce922b42d9ab0b56c57",
+      "visible_history_hash": "0d7fd838d1a95ac03741a8845f8edaf327a3bc64d9476768f0fabee75f6eb20b",
+      "information_set_hash": "05f6c1f9f7db2ee398b6d1ba76fb8af6063dcac04c6fed847b9ec95f976d0fb2",
+      "legal_action_count": 11,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-52-seed-5800116-r1",
+      "ply": 42,
+      "observation_hash": "a0b207b282889447b3728a7d57af5327a092aa0bd28947cdfb34cc5648307a56",
+      "visible_history_hash": "606c55400eea670ce3af04e15801ec1a476e2c1c0fa7803a14093cf44e8a8960",
+      "information_set_hash": "719201a7f83b9532515be9712d6f5e3cd575c5e8cabb5e1121e355ca3ce50558",
+      "legal_action_count": 16,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-45-seed-5800109-r0",
+      "ply": 15,
+      "observation_hash": "fde613f451a8d0b9eef08faa49bb61b5d5f50f5c7c91bcdb71a73b64f9063330",
+      "visible_history_hash": "644cc683352dfbc1a1e78746060fbc086d151f5837c1a3ad73aa4a4676633b5b",
+      "information_set_hash": "6e1587a9eca9d563b6548d9576b0b9397c42addbd2bda58cde9d7f867d7843cb",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-06-seed-5800070-r0",
+      "ply": 16,
+      "observation_hash": "b5b955f0a16487534e0967af23c227d2ec2f652c0fd2ffe0ac18aeeb4373176c",
+      "visible_history_hash": "abf07d0231ec38995fee4cfea91fedeacb6a4d357d2e1abd133a64ad45f70094",
+      "information_set_hash": "b8f4b153ad9388f4b1c7c2c2377efc8a6e95706c4ee4a5fc85d688e929368670",
+      "legal_action_count": 21,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-47-seed-5800111-r0",
+      "ply": 28,
+      "observation_hash": "6d56da0260d97250b6b0ba849b27fdd1be342423b37a495c45a92f446184f0c5",
+      "visible_history_hash": "09bc331636170eebc4098aac2a10ef5f8cef0589601ff8b125a9c397ef80c670",
+      "information_set_hash": "089fa830fb6dd5416b37ba4a6874d1c38606898c1cf750de12bb0ad7685a87aa",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-31-seed-5800095-r0",
+      "ply": 46,
+      "observation_hash": "ae82bad0c9d9a06bbb9bc6c2dfae12f8b1a57f0afa0085f29b615c96a2bb5232",
+      "visible_history_hash": "f33078705f0a50c58151e6ea24061bdabca78cc2de9c994a666ce371447272ab",
+      "information_set_hash": "34df46bd06361ed006bc080bf9cd794d21ae4aa2e205bf0583bc958a75eb2543",
+      "legal_action_count": 16,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-42-seed-5800106-r0",
+      "ply": 8,
+      "observation_hash": "abed624df0e51394cf0e244f795260d351142a75834a4a51c19605f95c99e27e",
+      "visible_history_hash": "c7808da6bb7d9c403d0fb04f913bb2660305e1b2c270d49893ffa5cd41cff40f",
+      "information_set_hash": "1ab13a9d895efdba81d9a0bbff32cfa761a5072d8298a745fc3f009a04b37a15",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-60-seed-5800124-r0",
+      "ply": 36,
+      "observation_hash": "f3a9dfe9767e166b5a3250b7f5f5ce0ddec056e2b6b33deab817872d6826879a",
+      "visible_history_hash": "178f2477da4874dd2b10981a093f7d9c29156828780b458a788968a2a146bdb1",
+      "information_set_hash": "d3a9284da74355ebceb219d34820094dfceed8ed662b1cf70f1fcccf3cefe155",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-07-seed-5800071-r0",
+      "ply": 45,
+      "observation_hash": "14b1a535274347db8afe5ab3a01976a8644e894d1a4394b1be03663107da0958",
+      "visible_history_hash": "b65763d9e04abfa78cad35042b269786c02233505edecf4a74fef612e5fb5fd3",
+      "information_set_hash": "383b3052c0669c8e767bba962193a2b5cdf9e73dfb10316880fe078fbdfb55f8",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-33-seed-5800097-r1",
+      "ply": 8,
+      "observation_hash": "492e0d7508aa61ca7e431001fbb32cbda40ef7f4f9008129eec924f4f649e707",
+      "visible_history_hash": "cfddedd7456526aacf743df2e59c227fabb4c7136fb240d59c19a8a0adf15e5c",
+      "information_set_hash": "91b0205bf691d28c87857a0378e98eecdea07078a8f92bdfc6ee303675053d1a",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-47-seed-5800111-r1",
+      "ply": 36,
+      "observation_hash": "d4c281c319a9a775b9e5154f8d643474ab4b6fd99c3953521298a46205fa944f",
+      "visible_history_hash": "d3421eb5e6af3e319b9afe26b527468aa557d9b0d22526729e8d4695b9371b4c",
+      "information_set_hash": "15475cbf4903510a52bcaa342edc942c30c3fb7e98aa012bd0fb170e810513c7",
+      "legal_action_count": 8,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-03-seed-5800067-r0",
+      "ply": 3,
+      "observation_hash": "b07ab209831295bae2b1199a1a2242f0ddda1d688ce7350161d5138a1f535d26",
+      "visible_history_hash": "8f59c902472fbb661622664005859cdf167a39b93673501ff2a99b277460fbee",
+      "information_set_hash": "128b52408a98ea5896150da6a422bf1a9e208c0db86ae8f89cb361698bc0dd8b",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-16-seed-5800080-r1",
+      "ply": 30,
+      "observation_hash": "a0c94e2b32d60aa558f4610c32b63d70cbe37db032fdc188ba3b946e25029c1a",
+      "visible_history_hash": "548e75f4399c795aa64eb554b019c4db0ee61cfbb7c4d0fde54037dc2f21300b",
+      "information_set_hash": "0c91ca4e50d31691698f65b469dc4bead1d79491d763b61ac22f1f033b8bbf4f",
+      "legal_action_count": 22,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-53-seed-5800117-r0",
+      "ply": 25,
+      "observation_hash": "73a8e8991ce11a24d931ad15b7ff4d08e744262bde1d9d9cafab97fa292c4667",
+      "visible_history_hash": "039b1d63e04dbf43c7551969021eda1b257c01165960325d4cbca7837a0e86cc",
+      "information_set_hash": "e3fda4204f3f44420b90be432c2b446138d75f4190e25742cafa229a8b9275b5",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-19-seed-5800083-r1",
+      "ply": 8,
+      "observation_hash": "e2e1ed6b0ee50fb748148de4dbb678d48b6ee779cb79741ccd1d5ed226c43238",
+      "visible_history_hash": "586c91464b4f321c77e178e67f104c42c00f223f338446985682facf1188cb46",
+      "information_set_hash": "d4f955a797919948082a68b74ab6fa08e345bf5cec12935d673da0c2ed293795",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-45-seed-5800109-r0",
+      "ply": 13,
+      "observation_hash": "36eccdb8fffa9cdf9a81593d6a76d56e5c2e0820f4dd1fe18b03205b7a738509",
+      "visible_history_hash": "fd39e030f4b3dfbf9b9f3b3818fbe8ee31cb22d64ab5c80067fab1a5e53c1b06",
+      "information_set_hash": "c6520de0e04b5a36670ef2012ac96c682bf52bf57787fac61ed3eb3046930777",
+      "legal_action_count": 19,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-59-seed-5800123-r0",
+      "ply": 45,
+      "observation_hash": "d3cbfa64962d530f25f7ea63ae90a5bcb1eb8d257b0f5792209be0fefa78e3d7",
+      "visible_history_hash": "fb4c30551ee63ac1a56c4512dc74709716c7550193cc70471eff2ef3672cb9a1",
+      "information_set_hash": "40dfac148af9483d5b9c520d891cbf16f9678d1dfcf0e49c342d5dccee9f842c",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-34-seed-5800098-r1",
+      "ply": 29,
+      "observation_hash": "f65a52afa7d589ea818bc7fa26fd1aea242c17645925869a95045601130630cd",
+      "visible_history_hash": "31b395cadf91d49b4901cc81c1cb6c704a860e09bf8714f30d0fa98c554b2718",
+      "information_set_hash": "adf7f70c86b50db85a30d2f12eb109feb6fac251f896467da152d48027fb652e",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-04-seed-5800068-r0",
+      "ply": 26,
+      "observation_hash": "5f27eb8730da395f60d0c676c5ab6f6201d297355e49ad59b4a1e436d3210d37",
+      "visible_history_hash": "3c5745be33a5f1325b81761b54b14ea01a31f7dd562b0b38cb952365d3e17d70",
+      "information_set_hash": "f55bfe1fbf4a073cf3faed113f4f51514e13f1f754f92682770af465dfbfe03e",
+      "legal_action_count": 20,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-50-seed-5800114-r0",
+      "ply": 49,
+      "observation_hash": "ba574d671865ac5334246d7b750d04d2c39e3f3fed6aa32e6413b97abb7edf51",
+      "visible_history_hash": "71fb74789b0c89046ac70ee562b60971fccc2abc14cc9b996e6f4c74f95d1a64",
+      "information_set_hash": "44f3da7ac6fab73d7649de5a07490b089db742915994b9dc85c214e3a5fcd07a",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-37-seed-5800101-r1",
+      "ply": 40,
+      "observation_hash": "def4ea1471cff84c848d0ca33e27788d4113a5b6a66845e6202d2aa4d90c336e",
+      "visible_history_hash": "4acbbe035693873f3c7a4e46ad6ebcd620e8d01d07e0144646990c6ebd5aaea4",
+      "information_set_hash": "84e5f02c3c41343d99ac3668d1e1bc02fc420a105751ec99b07917bb302dc5cd",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-18-seed-5800082-r0",
+      "ply": 3,
+      "observation_hash": "9c9b7527d2c51b98821e5f64fe7f3256a1d23023cacf681851ae7ede05415d50",
+      "visible_history_hash": "7545b4c05fc493971a71ec96c89d6ad8fffe3d5646367ba7b7a229f932956732",
+      "information_set_hash": "24a771d0588a16de3ac8db0bba05fb5d1265281214d33c1776f9c84e066b1ae4",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-59-seed-5800123-r1",
+      "ply": 61,
+      "observation_hash": "cbe3510e083e6064f08cf2220af5b3506ffdcc997f59b1fd7fe341bded5cbad7",
+      "visible_history_hash": "b39ea06ce52d9ac2c850c9d5d8ea64495e8b58e771959a3916fe166811a0516a",
+      "information_set_hash": "047f4c23ca40670dbaf811f980d1a60a427655d1a48f52f12eae89bb67e74450",
+      "legal_action_count": 19,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-41-seed-5800105-r0",
+      "ply": 17,
+      "observation_hash": "1058378a9e100a97b0f56b38d43484ffed731a59ba136d71885bbd895dbd35c1",
+      "visible_history_hash": "d6e9c2956f4e0bd1f5c90af558d0c240d266c184b791c757585cdc500b49c1bd",
+      "information_set_hash": "617988dc3df9d07d95fa74dfc3db632484c0f805ac7ab8902c8d5be504a5f34b",
+      "legal_action_count": 4,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-39-seed-5800103-r1",
+      "ply": 46,
+      "observation_hash": "17ed552899a06cff9ad6a15d88aea8186b5e08e9eb73b8e177953e6bf0a15491",
+      "visible_history_hash": "044f0a11c70af5022f0a1feb3c8c44add9f5a6c693d117149245839de3396058",
+      "information_set_hash": "32ab789baa5efa3db41ac61847fc6868cc227b2ee57953f46f2c1cd0fb6a3de1",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-13-seed-5800077-r1",
+      "ply": 49,
+      "observation_hash": "216db7c788db1791fa24f80824859e37dc0bf0b70957d4698c2bdca2363b5279",
+      "visible_history_hash": "50c9ce9fbded77c279af75d022bcbc5b58adaef1146aa6a6fbd081b4b4d643f4",
+      "information_set_hash": "0648689d2adce826031ef5c3cd2b597f5b32399fb11d1da898359d89d5128e28",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-27-seed-5800091-r1",
+      "ply": 26,
+      "observation_hash": "cad146868bb22dbed5b2a356df9ddaa89c5f5e46c26c317a08d3ec48cd6645d2",
+      "visible_history_hash": "bbcbadb4d6c9732bcc2771ebbae734b0a8e6d21cc4310cde356d8f576bff72b1",
+      "information_set_hash": "a69bd4aa24f8b4032f780ab8f8ff5acf812e985ec99fb298d1195e19a6cc727c",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-34-seed-5800098-r1",
+      "ply": 30,
+      "observation_hash": "615ebdc5f8482be9989929026ab70d32edf48f0ceb8263bbb8614be9904779c4",
+      "visible_history_hash": "0bb16b89f5fd1fe3b2b3449b76810d7044dc69566f2dc23e4378501c0a50a89a",
+      "information_set_hash": "a4443694a2531b5aadef17d68b1ea155dcd26944ed4e5ef1b5d0d5b9e10a5431",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-15-seed-5800079-r0",
+      "ply": 56,
+      "observation_hash": "f183a85b743f3c88d6f7591432644bae4b831a8f0ccfb26c9956e9e313be47cb",
+      "visible_history_hash": "a04927e0d08c223ad825d2b4059e1bc199219a6d8fa23481fa618c6024d824c0",
+      "information_set_hash": "948719e6d463929f740e1101874afd8a4d922ade158d6f442e45471d05e10145",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-30-seed-5800094-r0",
+      "ply": 3,
+      "observation_hash": "8b0e2cd44ba8b4ecf455cadd3f3a67ba4800a93e07c202f4d020d9ba093cec09",
+      "visible_history_hash": "227f7ca17370c9ad36f54874a7ef5bd421f348b974a01a364110455d80e27654",
+      "information_set_hash": "f3d6682f4a9492dd457dcb5a6d5dd0a506c1004987d3a83a019834f7dd52f77f",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-07-seed-5800071-r1",
+      "ply": 49,
+      "observation_hash": "5be56247ec7a9c70d8264c103c3223999f587142e78affdea5304e787e4d8b6d",
+      "visible_history_hash": "8e6ef8fda9ab0acfb9233911d32e0ef6555e368c0f782bf5e3b39f1f1c2fc7be",
+      "information_set_hash": "47fd64f63721740e5f4a4e2425e4c259779fc942ea5557bdc152b77bd4848a2f",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-58-seed-5800122-r1",
+      "ply": 50,
+      "observation_hash": "b7ae4d45179d7930349fe85d432d9ecfdfba076d238b115b375e51fd4bb4b256",
+      "visible_history_hash": "2b13c0fc50eafdcd15810f1452d7aa2316ab56fc3f89b2f0256b09300b68c7dd",
+      "information_set_hash": "c634b5e468d8a19c76be6ea194f5d7290def872ccad14c5629c5cbbe3743fbf1",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-29-seed-5800093-r1",
+      "ply": 52,
+      "observation_hash": "911a26c62f77514cd1768022742f6729c5dffe3bd82ab1ca1951c1cccfafab7e",
+      "visible_history_hash": "d1386765d9dfdbaf46fc489d820b92f525f4f3e95c498ff7ec49dc7038ca3f09",
+      "information_set_hash": "49e2e3ce0d07403287ca56ce51b17eb4979a636d4b6be6e120e1f9e7e203c249",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-24-seed-5800088-r1",
+      "ply": 26,
+      "observation_hash": "fa5d8125227e0edcd717123ed4aa576d9723828bd5a63d8594daf179740f2fcd",
+      "visible_history_hash": "8171d6b68134b43b177c6fabd3e889d9efcaa4ad22478adc5c9dc58a20dc8dd5",
+      "information_set_hash": "90a420dbe3aee96f78f1ff69fc44531e9dcca640237ebe17c56d158dc69bee1f",
+      "legal_action_count": 5,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-60-seed-5800124-r0",
+      "ply": 15,
+      "observation_hash": "8283a314e5aa756787217d41ffef21782f7682b4a993ed4cd8e4199a89bb015f",
+      "visible_history_hash": "a19bb529a167c37b656bf8813128c5bd3491e73db66a71a158867604fa291c26",
+      "information_set_hash": "67b2e7b14bd151b6c9ef1792b2f8191dfc9f7dc6a168d07874dc97b20187969b",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-10-seed-5800074-r1",
+      "ply": 28,
+      "observation_hash": "b4898277cb04dfffb640996301536b0e1f45ae1e151d35dca0ff07ec577cf707",
+      "visible_history_hash": "e8e98c78297664e7c02a61afbaba08836d2c19460968e6eac182065ff54a001b",
+      "information_set_hash": "fd43fe08e3b2f9e21355921d51a985632caf829d53e6afccf78ccb6078496599",
+      "legal_action_count": 12,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-36-seed-5800100-r0",
+      "ply": 2,
+      "observation_hash": "1dad9d4bf738f35f6b213d28c58fb7fabc44f9e396f5765689ffc73c8ef9f9bc",
+      "visible_history_hash": "7f3d9355cfe597f7958d7d7849b4bb59b9c8f89ddb5d7477d1aff1506cfb4feb",
+      "information_set_hash": "684b5a21de66e579fbd3bd878c6ae587ae39f18e306b9731afaeac3bae81b6ff",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-24-seed-5800088-r0",
+      "ply": 43,
+      "observation_hash": "38e51372cca2ecdff610e295522cf1eeb0de51d3f3faa055bf06e098ecc40a0e",
+      "visible_history_hash": "46ed6704fea0ecbdbd3b93623f3339842610bc94547ee7bdc9ebc84489bc238c",
+      "information_set_hash": "4f1444265e8c2f130377fd9a08b6bb62b0421d74ac02599df1ac19c848976dad",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-20-seed-5800084-r0",
+      "ply": 22,
+      "observation_hash": "90c4d88cb07ba002b849c7a22f2db43f23736f841fd6374f400f9371e759c6a8",
+      "visible_history_hash": "4e1e305d49d2992e39d61d7e70fcc3dedb13982678182e9cd1309d363f728ab7",
+      "information_set_hash": "27893f9434f65c10f6589b92318a17faeaf6a2389860edff18328fc77e1267e2",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-09-seed-5800073-r1",
+      "ply": 17,
+      "observation_hash": "c1ab2baf3fee469796945a64a1e8a92b8e8a3589569280dcc25100c5ef80d767",
+      "visible_history_hash": "0e80ebd77315c51256b922be48aa8496fce3e3d23b565d8ca5699cda32c99299",
+      "information_set_hash": "156f48ee58b5f056a04e5735ad21a167b5cf3d6c85d1742d08a9f13a62d6ae89",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-31-seed-5800095-r1",
+      "ply": 10,
+      "observation_hash": "6dee40adf4ccd8c34cc6b7c3d94e20f1cc630b8139729f958fc7910a4524dd53",
+      "visible_history_hash": "5bc57ea1dba8b135bbbbb2d0289d05d2a621a169dd8f66ca4bf0de36d15ae371",
+      "information_set_hash": "ba8d98edb90d3d7a431df28518643f4896b6d180b2458a15930825891d40ebcd",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-18-seed-5800082-r0",
+      "ply": 5,
+      "observation_hash": "de61cca601d8aeff8d021fbddd1ba66ce5bef99b55b04f3395db445ee7c68206",
+      "visible_history_hash": "426f271086cfb60dc6d657dfbc6f9c67c084a6e47b1815c6400d1e09e619e666",
+      "information_set_hash": "d54f59235ea59f3d6a0c73bd763b1cd34d9a28b8b15bcbb638e4e75cb653dfa8",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-48-seed-5800112-r0",
+      "ply": 32,
+      "observation_hash": "2ffb0beee472c13475b86c6d1247d455453b17d0eef3df630d9f400bf637ab98",
+      "visible_history_hash": "b14e82dadc4ba74a17b97b2a90d7aad605bf096cffa90cbdb6058104f82572a3",
+      "information_set_hash": "9a4b1ea4f40c255561211e44becdcc79dd299e55808809f90238fb39dd1249f3",
+      "legal_action_count": 18,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-60-seed-5800124-r0",
+      "ply": 32,
+      "observation_hash": "c9226458f10d00cdd5fdd255ea0bfbfa8681b9a236d9f878b70ae20c85603e0e",
+      "visible_history_hash": "ab85fe01454f9e351ecd2eec5d0ed2756f7b692bb6be0201493b689df19fefde",
+      "information_set_hash": "e3107e5c95228bf378efa79583ffe657f3f33bb7e9a4172b06aaeb404601900e",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-49-seed-5800113-r0",
+      "ply": 23,
+      "observation_hash": "df76f377477cdc882351c518ddc5d337c8d4d514254bc87b2d3d7bd8cd8d60f0",
+      "visible_history_hash": "c824a37da7f0e989747566ae1d0fb763fad88b4fe2e11433e30e2b347d74d56a",
+      "information_set_hash": "c8f50ac77b3439002eb3b21f59ea4842d67528adf815e942dd643aa1f490d5ce",
+      "legal_action_count": 11,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-28-seed-5800092-r0",
+      "ply": 9,
+      "observation_hash": "76f0fbba1d2ff3fc93ae87d147a776bc95a9352fe17da1951ab7bec5612318ee",
+      "visible_history_hash": "6290564f8b0282a5509a048b8fce51e05c58daab7042f6948c1ae1b77c8d6085",
+      "information_set_hash": "fa32424bfca4d27f06cbbf77f50df208b41eee1e21ff397aea8bb2b7ec804b3b",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-34-seed-5800098-r0",
+      "ply": 11,
+      "observation_hash": "b689c8ffd81c633dfe1b1efcd410083d297669f85f3968c84664ee9fd76eeddb",
+      "visible_history_hash": "3ca6af057cc7a44abff54a9e50cbf6f0d0d4216976b1db7bf2013c1ab08cb7ba",
+      "information_set_hash": "9fe221bdd85e806a72456faf6a3908d91cd06c14fa917e6d171bbfe4439b14a7",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-60-seed-5800124-r0",
+      "ply": 4,
+      "observation_hash": "0b69549a2107df7371d4b0779b26b9f9dc4658a44c2be77768e928719f23147b",
+      "visible_history_hash": "b7b403d9ed83211dd00c14eb6600f0dd3b74a717034d6cbfdd74cab6351b87f6",
+      "information_set_hash": "27b06c9840af873b653e5a551c7a84d0adf3de4f76fde0241b38c5f618bdc2d5",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-01-seed-5800065-r0",
+      "ply": 3,
+      "observation_hash": "801869685f554f4a6b77a1b7e14cdfbf0807eb7922acfe1d5169296125e91525",
+      "visible_history_hash": "ad0f2813e7a16c4263cfa4215d4f3e2200b38c79e74abaf9426998327939802b",
+      "information_set_hash": "07dc09da28bb8ce56e8cfd08c48bd1d64e1cfa200a16200d4672941f8fdbc185",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-25-seed-5800089-r0",
+      "ply": 5,
+      "observation_hash": "0e0f1778f9a0f5762b0aad6bae36492562e878662c5080b29c297566f88f1952",
+      "visible_history_hash": "7bcaf6f0777305980eb380f9dd50104baab2824fcae3ff6db3107d35fa0a2301",
+      "information_set_hash": "4df85984ede725850c2675f9f172ca5089a039394c7f81bc77ffb61224bddeed",
+      "legal_action_count": 20,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-39-seed-5800103-r0",
+      "ply": 47,
+      "observation_hash": "10074c7dabb8299bd80babe56caefe2b6c5edd3f5dbaf34510a52ddadf90470e",
+      "visible_history_hash": "665e293cc29cd4334dc2e09025e933bbc776fcaaaa395c30d64ddc5c5d943eb4",
+      "information_set_hash": "a564e95a06b4f364f9ab3792248ed790499dc36159cb611c590bd8689b5f094b",
+      "legal_action_count": 17,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-19-seed-5800083-r1",
+      "ply": 27,
+      "observation_hash": "64631657aa8135415a7168f9fb4cdf0d2a3e1424526bae288c0febd9b1d0623c",
+      "visible_history_hash": "1bd16f8047e0c9ec2c0aa85079d55b09f26c0a6893fbcadcf3b0450c862c468c",
+      "information_set_hash": "3db338a02cda7f460a61835a3c4e941a970a7cd66604b4ee00321b596383e486",
+      "legal_action_count": 22,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-40-seed-5800104-r0",
+      "ply": 24,
+      "observation_hash": "b3be54c4264dc8010d73f45ab325aa69c34169361075544b8152c28cc73b2ad1",
+      "visible_history_hash": "bfde45d30b666bc881b4b4a4c61e7314a159dcc2ddcb5e869f5d9b1c28ba13ca",
+      "information_set_hash": "211509eea827ac7cdf1aafce24f546791104b4d85b2c68d5e54c369d424fb608",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-37-seed-5800101-r0",
+      "ply": 8,
+      "observation_hash": "c314e618fd017417c0fe4f38df0ff0da8ec825790aaa7d233d9509acff9451b4",
+      "visible_history_hash": "07bd10d5921cedf517bd2f191b8268bdd58e30ca0fcf6c7fe0c5f43f710634f7",
+      "information_set_hash": "dc3490f2aa28a99c890083258e4db3d5a2a1abca515ef01ac20efc748f7ac786",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-08-seed-5800072-r0",
+      "ply": 32,
+      "observation_hash": "06e147b0ee84e5aa13a96bf44458d02bde9ffd6a2a57fcc9fabbf5decdfacf7a",
+      "visible_history_hash": "a496d9359bc1e92c71e24df4e45bbddda0e75b385843db5813ff1487fb30316a",
+      "information_set_hash": "bc3f3189a30497a9f57dd570a267b90249f66dc1475cdd4266f2e6ea5c07f47c",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-50-seed-5800114-r1",
+      "ply": 18,
+      "observation_hash": "eb815a4d38489f5384a830fb8000fd3843dd4280780d731ea87c20d10d8a2f63",
+      "visible_history_hash": "d4f5eb17a398dfdbd5ca19a406f09ff6d5bd570185f42b4ab71d55511ada9c39",
+      "information_set_hash": "3862ccdda605c3fe91af1d85140192f8c4b40fe6235f4896271b32492eb2f89b",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-35-seed-5800099-r0",
+      "ply": 10,
+      "observation_hash": "20c687ffc77520bf52ad796dc1d564964ad73d10aa09da9debb4da0e4df3957a",
+      "visible_history_hash": "8fddbd8cc22b569e8dd4d3f4157d31dfb81521860587c1c8fcdb858be922bb09",
+      "information_set_hash": "c7f306ab004e4d28e53694942288de302d7bef8cd3255ac84051854139183c9c",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-05-seed-5800069-r1",
+      "ply": 28,
+      "observation_hash": "8a12f8eb73de225c99ff392fa097cd916015e7591f4d0c0d1cd2b19f48c28015",
+      "visible_history_hash": "8a6aa063428d3b428b8604461e469d5201ebe22376d2e53de837a15bc6d9f524",
+      "information_set_hash": "e0ec1935e6b220192a191856ed45a9724a26f6ca34d45c065b0b4d3a44dcefb1",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-42-seed-5800106-r0",
+      "ply": 12,
+      "observation_hash": "40f0339822797021515cd802fe5d332902f39e6f60fe9d0bab32fb8b8f112820",
+      "visible_history_hash": "491d3f3dd87213431dff8c0eb45a8e99d92f7657be84710e0e3f235db70030b8",
+      "information_set_hash": "2fc29b99884913650dea56fe8663ec1794a17056bf2555158b71e24afd96e78e",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-58-seed-5800122-r0",
+      "ply": 22,
+      "observation_hash": "b96117749faa05593f6ed24d7028921ae6f98b217798e3fc2104898bc2c1b165",
+      "visible_history_hash": "1c6758585e7c3a80e8c1766b0bd00e9e7b44c6e31e44d2586029f9f2fdd5023c",
+      "information_set_hash": "4fd6e0e92d51a5338211649eabdbbe258538ef4949759f8fbff95fa70d3276cd",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-51-seed-5800115-r0",
+      "ply": 49,
+      "observation_hash": "c0d8d70d9a33709be667ac399d7d7126e3c8c8ddc78687b41a6484a77786a2f8",
+      "visible_history_hash": "8589b97039844d8c8c24ddc54dd9f8a947a1bb4e8c44e1fc483b27d399399d6e",
+      "information_set_hash": "bb05f77da42514ff2dd4bbfab69e9d53f3451118b05b2248d957dc49111717f1",
+      "legal_action_count": 15,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-59-seed-5800123-r1",
+      "ply": 26,
+      "observation_hash": "f198cbfb77b260a545cb2918353f782fb542b13d10b9439c797213dae3b23790",
+      "visible_history_hash": "daafbdab066845091bcda53cd5f20c9e14d814c62b3b137619ba83ec1ac39cc5",
+      "information_set_hash": "560a7fbd2e0b8ebed2b5a3fc5c52b4d16bdec7744fc7604cb3d7c27afa664ffd",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-01-seed-5800065-r1",
+      "ply": 6,
+      "observation_hash": "264cf64df6a8eafd83917100158aba3377093cc168e901071672e525e3264000",
+      "visible_history_hash": "05b061635fb2ff591a712ee0b4a202c23c5cde3abbac9398be634e6a1ce37c44",
+      "information_set_hash": "2b5f0b887036fc782a9ee6957933c231f3851899a53f8e8ef2ce352065f112a6",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-51-seed-5800115-r1",
+      "ply": 20,
+      "observation_hash": "528be0d1e6d69e55d36cdb8368d5723cc2d33f8627b5e99befe81be6066ca78c",
+      "visible_history_hash": "df771be6f0e190e39a3419631e26f93ef2688c0f84458a828c57b4bc1caef343",
+      "information_set_hash": "4ace25e0e330189cec2205d43ae871a6d1fc6922652022ebccdd23290fa45703",
+      "legal_action_count": 28,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-35-seed-5800099-r1",
+      "ply": 36,
+      "observation_hash": "d401d2dba4168cf5817374a3e8b8f6c24eadb1ea86489f1fccf9b4d4cac64ae9",
+      "visible_history_hash": "f8bcc70dfd7f750c58f149730d48befd54527cf39a145d5378fe54d7eca2da0a",
+      "information_set_hash": "be1b9f631cb08e90ea348ca7cebd4073e7ced576b37817e7a6efc9956816a2ec",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-08-seed-5800072-r0",
+      "ply": 24,
+      "observation_hash": "ffa7a3dd3f9507c6dba4326a0e502c729c7225919ebc6a4677aaec1296f3dd65",
+      "visible_history_hash": "5953d03130f69f37f454813539954a2cda2b0538fa370fcbc808b1e04154ebad",
+      "information_set_hash": "d4e78f61828d71ec2f3cb39116497bb06111dc7385ad8def12f0fb2db62b141b",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-23-seed-5800087-r0",
+      "ply": 12,
+      "observation_hash": "0cf1f5cca9a91622273f1e9288f3b6988bf3a5b8d667af1cff3056d8a7e93810",
+      "visible_history_hash": "12b0ca7862292df093a2b6a182cb4dc6669924e5570c07f52c951e52dbced457",
+      "information_set_hash": "38381e49d7531bfceec5a585394e0eb782c1009f1650a2a1cffb6846b055da8b",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-07-seed-5800071-r0",
+      "ply": 28,
+      "observation_hash": "0784afb9a05fd6ddfbd555a1e74ed554b90947553432e6b3ab1ddccb2cc21e18",
+      "visible_history_hash": "154638aa330d450100860fd65f628537971cfba6198b59e135afea6970c8942d",
+      "information_set_hash": "05ad96f433020d7f7c88b811ba92413de356c02b5a89d979c8254999b89d9a60",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-39-seed-5800103-r1",
+      "ply": 41,
+      "observation_hash": "252c9464732eab0105d19a493a9c13b269909f33d0f3abfc03aba6f06a763175",
+      "visible_history_hash": "951b78da2954b960b01889f208204f71ac7ddd44ef8f472e07690ef424ee13ef",
+      "information_set_hash": "781b31971cb195512b39929fda1e78996a8cd5853d9ff79cd628dac025e8c807",
+      "legal_action_count": 24,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-35-seed-5800099-r0",
+      "ply": 13,
+      "observation_hash": "536d9d9a7cae8728800f698ba0e47a118f381dadc564efd87e40ee29123dd774",
+      "visible_history_hash": "c02ea090421e39f9e42145ce36737ed3d236ebe4ee7258db7237b7e54fa85d53",
+      "information_set_hash": "c4276aa87a48a00f8aa3e8d85826767e7ca610b8da8e51a4cde6868ccab64c73",
+      "legal_action_count": 21,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-39-seed-5800103-r0",
+      "ply": 26,
+      "observation_hash": "53d934cd3c383b13b14727a34c3a0eb6d4b093d4cc48a2fba2da196ed918667c",
+      "visible_history_hash": "280eab8eb935a5729349e984cc4838a617c18c52412bc5724419ce3178f1521a",
+      "information_set_hash": "a6267c1a17d067190c8dbf97a8bcf168c9843cf9543031038c1130e1a377c91a",
+      "legal_action_count": 13,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-63-seed-5800127-r0",
+      "ply": 21,
+      "observation_hash": "3cb00a2750893fc6a54f00854e41570b49bbff48ab63cd9dc15e27ba8d48a89e",
+      "visible_history_hash": "8ad7113d750475f32813654e6b5559d67986dab68a973412fed495b58a23a8c9",
+      "information_set_hash": "7dd3ea42642f456b5c75ee8a74fd1e1ef3a2d0cea39b1a11a909f52184460b3f",
+      "legal_action_count": 27,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-20-seed-5800084-r0",
+      "ply": 13,
+      "observation_hash": "298af6a926217880c7328d8af49573014f8721aa14dc4151577ff29bd5b54a61",
+      "visible_history_hash": "1c97302232f74054d9350988733b9621b1c78ef61133f1d3c5179ee515e14c6f",
+      "information_set_hash": "52c3c53baf79b2e3d0dfe30b0a6eaf7710e475068d9bcb54ca445d1881856bb3",
+      "legal_action_count": 25,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-61-seed-5800125-r0",
+      "ply": 22,
+      "observation_hash": "ccb792c333d37fc96165b40bc0a286153e277dae62a2644c7a4be4d75c3abc0f",
+      "visible_history_hash": "0c1b7f1387204b2d405bc9e84e8a39622754b4f9a4021678ed0c7b9127a2d867",
+      "information_set_hash": "5109d8fec8c76a604979d58f81bc407acf414c9c34531310bb75e0f70ef52be6",
+      "legal_action_count": 6,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-60-seed-5800124-r0",
+      "ply": 10,
+      "observation_hash": "21e13392e6a6b68bc19c96dda76392231c00354c35a39ae51f7e40f9d0da4b40",
+      "visible_history_hash": "e3214eef9a3035a9fb5a5dd573ce3c17acf1aae4f3fb0302534518e88aa0f633",
+      "information_set_hash": "49dcc2a02864e02a244304281a4626877912ae695b385d5afda512ddb9c33581",
+      "legal_action_count": 19,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-49-seed-5800113-r1",
+      "ply": 51,
+      "observation_hash": "5b36b2eeeb86d2e4cd525ab4a3f9dd1a28bce4e7198ea6b8e310239225349ff4",
+      "visible_history_hash": "099c58b9dca7e7357f980f7d221f44ef24b1f5cf8213d25ec0bb0a560ab250fc",
+      "information_set_hash": "aac7675a0cd2a3c6bd1fda326eefbfcfe277a15a06ac5c97c5865d332417eb99",
+      "legal_action_count": 29,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-33-seed-5800097-r1",
+      "ply": 13,
+      "observation_hash": "ecebe1e0303693d92fcce4a6bc09a9ba99915386e6f613e37677817063932eef",
+      "visible_history_hash": "c6d9fe63098adfd317542faa134e0b583df8f91b0e456cfb9b952af0539f733b",
+      "information_set_hash": "9f28b4f1b268424731ef5310362784ca44e4843c15f891edba956f5272d9d093",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-41-seed-5800105-r1",
+      "ply": 53,
+      "observation_hash": "ad04c730f645a5c9f26f88551ccb502739ebf2e6d2219e8ce60f4ee574502937",
+      "visible_history_hash": "b3fcc9f29ef7ff736624861b1ac13b8c3fa6a84e8ce89a4b7d344af5b40fb383",
+      "information_set_hash": "7dce2beab095a557e93cf319c02f4538a627b2f6301a50a24c2d20a4d4921221",
+      "legal_action_count": 14,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-02-seed-5800066-r0",
+      "ply": 24,
+      "observation_hash": "1532b52f8663bdfa00433ae45656540038cd2f23e38a2256f149142f4f0823a9",
+      "visible_history_hash": "3930f11eb86cb2d5ff04685e9db9c92e876a6f1b307a0156d0937c9db23ec942",
+      "information_set_hash": "26e225f7dc1bea1969ecfd64e8a97354f39bc5da417af19f1d8538b9ccc63129",
+      "legal_action_count": 26,
+      "stratum": "ordinary"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-17-seed-5800081-r1",
+      "ply": 44,
+      "observation_hash": "112f16330def14fad060b94ae9be9ad19d46642c5949c475f9c78e5563ad5f00",
+      "visible_history_hash": "a1ec34c8825ab4c0e24d4164cadf045e00a98d10e820356ef1f3cbc49000dae1",
+      "information_set_hash": "2f6d24ced3e09e0de596e84342f0da8f5713f0107a974e07399ec8b7e329639f",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-47-seed-5800111-r0",
+      "ply": 10,
+      "observation_hash": "e2c716c9c1c43c38187315f50ae0358387c82a40a24139196f654160ff585db3",
+      "visible_history_hash": "5984296cb54f6b4fb3b402696394d1de399972b5b752da1fafadbf4c2c6c638a",
+      "information_set_hash": "f7f91644a9a9f68d0baa6202424683ce0a2c28e31ffbccd0ceb8c9f38dd18fcd",
+      "legal_action_count": 63,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-08-seed-5800072-r1",
+      "ply": 61,
+      "observation_hash": "ea6952e908e609f3b22d376c3f8ff54f7750d3443ecd478a4e32594bae4ff6da",
+      "visible_history_hash": "ab38255ecdcac3ce8516f82b0e292e63017614732f65034de0f1b7de870fc872",
+      "information_set_hash": "16cf60f2f5c893f356b4559667373887d1c45d3a14fd65fa858fb3a861f3b6ab",
+      "legal_action_count": 34,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-45-seed-5800109-r1",
+      "ply": 44,
+      "observation_hash": "d7de76db14ab72a7ac0dcbb428a31e58a33f67c7289a766763feb49132794306",
+      "visible_history_hash": "6fb145115b45fa7668a21e15a28ed82101a94c689c3ce3c15224784b1e1c0358",
+      "information_set_hash": "a32b300d7adecb9797820c856e50ddb65ed358e8cf80347d990c826f4362deab",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-12-seed-5800076-r1",
+      "ply": 50,
+      "observation_hash": "af874cf2158654528f5e8cf16d28c9bfc4de9f3914de9a2ac22c42b3430abcdb",
+      "visible_history_hash": "af17988703c9d80987ba37f69d05843de27b8fac9ea09d39cb5079c6890d362b",
+      "information_set_hash": "cf7a62392d97dd48f5f9c207c4d30903f39c8d77f9188f1742592046b1683fb5",
+      "legal_action_count": 31,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-03-seed-5800067-r1",
+      "ply": 23,
+      "observation_hash": "b3fabbfbbc9d576df0f1f4cc9672cbe3b15156db1666d88f2e073bf83982e200",
+      "visible_history_hash": "bcbe642efb69e60d9434358206e448eb0d71d370680cb1fd055d2f052fda680f",
+      "information_set_hash": "ccc3ac739a35d7ac0c321d6524147e59abb1f76bd0b06f7ee2e74cfc30108aac",
+      "legal_action_count": 67,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-02-seed-5800066-r1",
+      "ply": 39,
+      "observation_hash": "d08f63b059a5d97c96e4646e1f8eb8cc37d0c50392dcc62846a861521c506695",
+      "visible_history_hash": "4c776148984e2d99b981932a941530676e34b61ab8bbd3293c01ec82caa26830",
+      "information_set_hash": "0eb8a028ac298cef44729096145dd2030944b0d076446434d5775084a919f2bf",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-06-seed-5800070-r1",
+      "ply": 61,
+      "observation_hash": "bbba9b489e1c4d07060305d6c4d676fcb344213e5fb8125d306f2d0a9db411bb",
+      "visible_history_hash": "0f41209c69d51a5d812f102d2fb172cff3a4593318a2939324f7b746ab4b7f0b",
+      "information_set_hash": "c622bf1ffc1e4687a30ce7a566660c30a6f6d58c0a1cf9a51c758e517193ee5e",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-34-seed-5800098-r0",
+      "ply": 24,
+      "observation_hash": "dd2700ca38561ac0633978d79cde9d8d33bea74ae853cecfd50a334484267871",
+      "visible_history_hash": "7b4bc72eafce13dadcd42e449822ef173a7aff652007591fc8fe1ae81b6cfd98",
+      "information_set_hash": "212633b75c0ef10522f16b7d5bc2dbe9a7eb54229e7d41a6a7a6c2843d4bcdb7",
+      "legal_action_count": 115,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-28-seed-5800092-r0",
+      "ply": 54,
+      "observation_hash": "c52666379e227e3fb721649819fb84108e50c6750963dd0e17ab3958d374ba74",
+      "visible_history_hash": "8dae45b24eade55057c6c1b020fbdb417e8530ba0acdbb5db1738524ad974870",
+      "information_set_hash": "4f2ae527e954a9d3b156881fd5602001932a96204ead3c5eb738bde62ffb8afb",
+      "legal_action_count": 31,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-57-seed-5800121-r1",
+      "ply": 65,
+      "observation_hash": "d95794fedda4a3b54a02d7ffc47447fc18aa25ec011f382b1f298bdf0226c90d",
+      "visible_history_hash": "7d090ed6f140e5e56b47b4982740e7160b4e289eb6a568d0007e0afc952622f2",
+      "information_set_hash": "19390274609c6ffebe6f2b54173163c6d241f17c9f9fc49f9d5e0aca85ec619c",
+      "legal_action_count": 35,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-02-seed-5800066-r1",
+      "ply": 43,
+      "observation_hash": "f64f369bc528436ddb8ff5ca1a33f0b2123b82528873d4ad351c6d3a2fecd398",
+      "visible_history_hash": "2f5aa8dcd56e73b7a576c25948aad4d76a7887a0b6ffa73bc926b3d88e7866d3",
+      "information_set_hash": "fb8887a5848be38285c6c973f624424da4f0d6d803d3372a5e5b65a02d2321d7",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-01-seed-5800065-r0",
+      "ply": 10,
+      "observation_hash": "6a857a2b43b4f3753e11513c44a989de17383ee30a808de97a976dde0991fe01",
+      "visible_history_hash": "1fe031246a8ff76f43a267579102523f2562954024a14bf76cdff33e15c2088c",
+      "information_set_hash": "2542aaaf26d40cdc6f777217992096065e742e7240b40f6538099b7fcddb5dbf",
+      "legal_action_count": 35,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-58-seed-5800122-r1",
+      "ply": 35,
+      "observation_hash": "b87e3236c0cd013942de68624e716f904391684114a37c79376dd43cfd61a5f2",
+      "visible_history_hash": "447a2a2dbfc983264d817188dfa0b4bbb779a17bc5ccde595583be768645022d",
+      "information_set_hash": "2665848001cbae2297754f5e396702380b02da20711edd00d9b32b085082421c",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-31-seed-5800095-r0",
+      "ply": 10,
+      "observation_hash": "dadeb683c86ca07ac3a328b373fba5d47fb3bd7771bf9089651bae1f651b373d",
+      "visible_history_hash": "e043e34967a034c287f52beb3d1d04046b22a27b4bb500a4880e1777b9625713",
+      "information_set_hash": "43a0bb6cb0b919a5e3eadd320e298bfcb2c35dd343a8a3a4ca743ef6846cce53",
+      "legal_action_count": 496,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-32-seed-5800096-r1",
+      "ply": 16,
+      "observation_hash": "3f9024846b1f9505baa288115b58cfb6e4174eef5d8e8643e666b5eeed0c4578",
+      "visible_history_hash": "a577d1ced92af7790ecfd4eda7597e83559762c0e7a771d7ad2a3d04ee0a445a",
+      "information_set_hash": "a18f545fb7daba27af0454bad899f1501578206eadc7015b9c7b5efbcb8aa697",
+      "legal_action_count": 80,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-49-seed-5800113-r0",
+      "ply": 45,
+      "observation_hash": "1f79c09daa1851b2cffb5163c1e8c0aa1360ad9d830f27b19d22aa1110bacacb",
+      "visible_history_hash": "7c6371f7d40d1042d672e59a1455e697c884055c4ac5bcd69d99b873dc0c8be6",
+      "information_set_hash": "d0b3aeaa6dac5c4828c3b84fb8f4dd924189a0c201d746ba63f662d4dccca228",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-21-seed-5800085-r0",
+      "ply": 58,
+      "observation_hash": "31f89f78f2e555fe5f3b8a1eb70140717fccb7a44c0a96d576f95557f85fd4c2",
+      "visible_history_hash": "50ae35ae45605391426b13a9d01b75d55f3224971717e98e37cec08eb69ed366",
+      "information_set_hash": "6d6e53c4d5864f0f55b0f2c80f27bfcb10f5d892d3ddd043cd3e77c32cd7ac7f",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-56-seed-5800120-r1",
+      "ply": 53,
+      "observation_hash": "8ffc52e391207c3099612f80e00d316a2efdd95d117dda0e2105a962d637a572",
+      "visible_history_hash": "93804faf128c50b45d3ef939be6da8f6bdee4eb8224eb0c55dcf0648d43706b4",
+      "information_set_hash": "29cb2be123ae139be15ced2724301633758d0b2d8f59f8a94d4139ec7c2da8c6",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-34-seed-5800098-r0",
+      "ply": 56,
+      "observation_hash": "17fb0a2f1995a9de30c82e331eec19fa41cdcee6b02b9cb1aeda1bd8a29ba7fd",
+      "visible_history_hash": "6fab91f330762c6931b779ea3be376e8caa35c21fa0e39c159446602d3341e16",
+      "information_set_hash": "39f21cd291f4fec51180e34980bea4ca451263c90101e863c00b6de1c60e0667",
+      "legal_action_count": 34,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-56-seed-5800120-r0",
+      "ply": 30,
+      "observation_hash": "b1f7e9f36f04cfe44e75db2fa98eeb638f3c5badd17f6aa30d22d687a04ccff1",
+      "visible_history_hash": "4dc17a129c108eeb5d101f577a5fc19afd97d690a6be8d77ae4d644f12fdc97d",
+      "information_set_hash": "09758718811a480e14b3a65aeb6dcfa5566ad21ee3cb3b75501109e6795dd414",
+      "legal_action_count": 37,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-19-seed-5800083-r1",
+      "ply": 55,
+      "observation_hash": "68c20a018921bdb610c6bdd77ae2a63e7499d1a0fe69440e7652af5825c50881",
+      "visible_history_hash": "5737b58c5c5d062e78ef9d27da7490d86cb0bed53a9325179c6e35a8133cc073",
+      "information_set_hash": "85927612eaf670735a7320edee90ce2dbd3c63d62d1c10099953289cc4dc5285",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-62-seed-5800126-r1",
+      "ply": 7,
+      "observation_hash": "8e885321af88382e8511eb6380fe3fbdb67605865873813d52c30668b9ba7b94",
+      "visible_history_hash": "d39f3da0f4c1764c41d702da9869d54ff15ede133f8084fce91da74dd47f5204",
+      "information_set_hash": "5d408869728240a4359d18965922f117a07fc85742c6fe3725109e855992e2aa",
+      "legal_action_count": 160,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-45-seed-5800109-r0",
+      "ply": 28,
+      "observation_hash": "93548b2ae0aacd5e97f7224c149f4733c828382e113f5739a1333d1a139a5af2",
+      "visible_history_hash": "53f034f8f24ee669a7feaf5f158ff4b8a7748ade039047dd423fb76d0e2a5a87",
+      "information_set_hash": "90bbb3a5fdfe81d4745ff14bf07c87b93656936edeb7c1f2e6babc947f027b3b",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-03-seed-5800067-r0",
+      "ply": 42,
+      "observation_hash": "b770a5ac7e6c0fe77645eb9b633558419f19ed18242fcf85608dca77b9260009",
+      "visible_history_hash": "9ee638f14011f182d429333f63eba5e5e8cc622310f620f150bc487f0b592317",
+      "information_set_hash": "d996594bbe9421bfa00a95580c6e4cde7b0ff8e4c4ab34d8e6caf130f8b7e90b",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-23-seed-5800087-r1",
+      "ply": 45,
+      "observation_hash": "3a4caf657dbc796ed3986553cac706a805d5b978f8f25c66995a03f7d7fadc74",
+      "visible_history_hash": "c7eac2170e8c1b6b3fe46262a290ef174092b5045f1f53841e81496118fa22a7",
+      "information_set_hash": "d7df1744192f96450c7e8de2e74ff581313be68a73088315f391ba7675efa763",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-46-seed-5800110-r0",
+      "ply": 10,
+      "observation_hash": "eb0396bfe84993305d6f512df126230c20019af6f25596abe306bc85d207f41f",
+      "visible_history_hash": "2efff7197150f28833c8d65205202ac1c46570770f8a8bd8481907d3b9e35149",
+      "information_set_hash": "f09e94171da711f9e706fa57b6d4878fef91ea4cc12ac444bf5a277d6547cccf",
+      "legal_action_count": 267,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-52-seed-5800116-r1",
+      "ply": 43,
+      "observation_hash": "950e7376bc93e695ea6375f0deb46e404593664b47ecd89fb4955dbba856fce6",
+      "visible_history_hash": "2938b00b603aea4fd20089ecd6df6f6f7c80cd1cd980f71787780a590be4d2fb",
+      "information_set_hash": "69e12051ff31412de68edd477f42cdb3d0204d4165ffbab5d59d8afd4fe78ca1",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-54-seed-5800118-r0",
+      "ply": 42,
+      "observation_hash": "c86b7b4289bc7dc9896488be56cbbab1627e0ebf83569e7576824fe6918113f8",
+      "visible_history_hash": "378414c9a77a19d39fcbaab4c87a870246e448167433045dfac407fa0c320bf1",
+      "information_set_hash": "b06e4280a6913c7446bdd3fd7c83f90bc0fec100a4608b1b6230fcc006732213",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-42-seed-5800106-r1",
+      "ply": 46,
+      "observation_hash": "58e935a49da5f212eb8d14e3d9cdfc86ae0d8f556b1466eeafc1903c01576b59",
+      "visible_history_hash": "4827444eb2529442ed58251977422397d3938381bd5a3fb1ade8bff28362da79",
+      "information_set_hash": "167e3517534c33eafc2963b062b95f625aa348398e1620f428c78553aa986b78",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-02-seed-5800066-r0",
+      "ply": 32,
+      "observation_hash": "9cf0ffc69d1ea835f5fccdf5a97a074b07adce03a1779676700061db1392343f",
+      "visible_history_hash": "501f0c1b54cbe39a2cbc4d3fe827b02c0080a90e2cedc803e6d3350931870b8a",
+      "information_set_hash": "c07015b5e488c68e4b63d29a26dfd9448d9ae7145b0ef563743eca6c005c7b54",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-45-seed-5800109-r0",
+      "ply": 13,
+      "observation_hash": "95f0d2d02a1cfc64e39f79e49ca97b63c30cc4788c6869d131879772b6ef32f2",
+      "visible_history_hash": "d73ccb948fef561279444259a285d4a5f31ea32e2c8e45d4f3a7d74be203cacd",
+      "information_set_hash": "62b9934ea6620e144e5ef4a9486194c903eb9acc43cc7008444f800088ce3713",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-45-seed-5800109-r0",
+      "ply": 7,
+      "observation_hash": "16c9a34952f6ca79fb9002d4eb358685e673840786ddadadb4f4a5d390dc259d",
+      "visible_history_hash": "1e0fd1bcc2a8368120955ebd45a88b9b57f6c32016582e4daf59db15018fc54d",
+      "information_set_hash": "f30dce41e2400b55a2606b0ea0b89c0fd0b3e874fe8fc0bd40299b188f36ffd7",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-45-seed-5800109-r1",
+      "ply": 50,
+      "observation_hash": "b42bc06d46129bddf61c3b470ef837020759d8ce76e46be21be351ce24aa34ed",
+      "visible_history_hash": "6fd30e7e85f909988aa255966a23935d33d08d209232e0bf9ffce8cbd78c576f",
+      "information_set_hash": "bfaa31d4e58f00ea0e333341f158a27af021f607b46374641f2cc744dd65e718",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-58-seed-5800122-r1",
+      "ply": 34,
+      "observation_hash": "d18d4d3a561216b72c00b6c89bc772eaa7f5380d1a6f704add82dfa406c748fe",
+      "visible_history_hash": "f10c20af5531db08b0193c5c802931ab14faac4414564f69f93c58d193cab8ab",
+      "information_set_hash": "bc088ec4ea8c9e2eafd225f8db49b0e6e2d014d99a56f864a9928f97ce2745d8",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-44-seed-5800108-r0",
+      "ply": 34,
+      "observation_hash": "93f69e480bc354712b48df293e3f7c81d2c8f0ca564cbdbead679bfa5aaad586",
+      "visible_history_hash": "601fa679a7f603b709287f294d910834aaeb2c718fdfe38dce41cfde23ae8423",
+      "information_set_hash": "61b5edd9ea171b5b13f2243d688d00a2895c748fdbf83243bf1b458d6adaf477",
+      "legal_action_count": 31,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-35-seed-5800099-r1",
+      "ply": 19,
+      "observation_hash": "867eb0a32315e71d365dee2d44e82b8c471963af75d787d9e947152394d11313",
+      "visible_history_hash": "f2b8f8aee530aa00853cb2d9cb7d11d2602a8ffab9a408878fe7453a0d390dbe",
+      "information_set_hash": "f8821af8f7ce0b4c88d7b751a9820cbc0417194dbb7f6c7441c0dcb122f09379",
+      "legal_action_count": 43,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-59-seed-5800123-r1",
+      "ply": 11,
+      "observation_hash": "209f316b5909b8fbba66501c6aa300bc4557c5d890fe7ee1028b36b9632ffcb7",
+      "visible_history_hash": "d1b2ee5a8848b45a89f36e0ee22707ac566f2bbcd48e02383c2348c3ee2b4d0d",
+      "information_set_hash": "360977e2b75518068eedae531fa80a3dffbaefb12d1fc7295069db9b9475f683",
+      "legal_action_count": 163,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-18-seed-5800082-r1",
+      "ply": 7,
+      "observation_hash": "3a742def52c44864acb76bbd580a7bf51edd70889bbcd2f3c64f2da0ae4c475c",
+      "visible_history_hash": "d6bf7b2172749f24ee89d1d344adc2dcb09213b9b0fab7be5c47de9136040ade",
+      "information_set_hash": "2bfb6e7b9f66add07b4599a5edba1c72c6e3c0ee11aa3f5c9451795fcba870fd",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-15-seed-5800079-r1",
+      "ply": 7,
+      "observation_hash": "381e259fa3079f7085488d0b529753532ae9325e3f0c074a1c4efcd78b69df96",
+      "visible_history_hash": "13768299caf6af7a8f8cbc3c555930f3cd9251aa4bc87aed3a0756895751988f",
+      "information_set_hash": "f7177225e0337bd3709f46828cc1988ed8875c607c35096216a21ca1bc39beca",
+      "legal_action_count": 74,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-14-seed-5800078-r0",
+      "ply": 49,
+      "observation_hash": "3ae044b907355521853241980f591fd2b4f50354d5ae3efee5361f4e356bfd16",
+      "visible_history_hash": "208fe20ad28eb0e831e1ba410cf74e52025459e4c1c08030730dd3ee2e53529b",
+      "information_set_hash": "14de3cc5cfd4d0bb88c10afdc6beb6ec7bc0c19a85cfff5d219f473594c241ba",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-22-seed-5800086-r1",
+      "ply": 36,
+      "observation_hash": "07e7b96476c0b25630f3f398ceca9b23af46e025febf4ca04e8a1c0f07e08985",
+      "visible_history_hash": "ca74f95f02f8f1e6840c9528ba6dd698eab162e7cdeacd11224b6bdc1aba14fc",
+      "information_set_hash": "2f0a3ebea5b7f8e9c1bb926b909153c490b549737ca92e908bf598afc950cc6f",
+      "legal_action_count": 31,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-34-seed-5800098-r0",
+      "ply": 54,
+      "observation_hash": "c72208886385218ba41a8c5695fb027853c4df9e9e8943674cea3fa86611704a",
+      "visible_history_hash": "9da03e3bcacbfa04c5240d6b0c97ceb0be3ac13e51fd09d990b82a1da56c040e",
+      "information_set_hash": "d4c9006aaa292ddb05e0c4e78886c09ff9a50a61d2640f7860f018de215663ee",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-10-seed-5800074-r0",
+      "ply": 0,
+      "observation_hash": "168b78b93ae7a1b9d31a64a1ba837115ab4dd2c12f01e970fe8bb51e4004b5fc",
+      "visible_history_hash": "d3e408a207b4507bf9d0a8b78bec16fcf72b7e2b176c2a9e6fe6fda70dfaadc1",
+      "information_set_hash": "7c9c47dac0a5b08df8c9cabbae8f8f00e8ff23aa8a8f996f80165181f2ed4ed1",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-14-seed-5800078-r0",
+      "ply": 34,
+      "observation_hash": "75e192cdcbccee91a7c9be0362fc0221a73356bcfc94edd6fc00a079fce8c731",
+      "visible_history_hash": "c4fc8f38f038d449081490e0bb7754e07ed163fe9cf05e380823f01bb51eb0dc",
+      "information_set_hash": "c8c86080fcbe800c4567d0788f29becc354b99fc3f514a963964f3a9261081bf",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-13-seed-5800077-r0",
+      "ply": 52,
+      "observation_hash": "6ddf07aa5ec43bd23440f115a0f6d6912c67aa2602e043d137cde7ca339dc5a7",
+      "visible_history_hash": "0ed1f2be3544938bb29827b04494126d419ff79e06c17059c314549764e36407",
+      "information_set_hash": "11627b1f80ae5ab335c26f97d85ac7534107d29fdaf634ecf51ace9cf77184d6",
+      "legal_action_count": 190,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p2_heuristic_vs_m07-block-14-seed-5800078-r0",
+      "ply": 61,
+      "observation_hash": "39a9907f75e74d96df4b5cf035e412f9320df8bc67c75dce8bc20dc9fffa88f1",
+      "visible_history_hash": "9e2a8794ee71e2a1a714e6a2c219cf2380a560a6ca7c42262e35eeb6eee52e21",
+      "information_set_hash": "544ade74adc59014ce9e868e4e77993d9fe358fe97959d9e231ec070e883dd93",
+      "legal_action_count": 33,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-01-seed-5800065-r1",
+      "ply": 36,
+      "observation_hash": "a237e96f788cba32813365af2ef4d08fa8592a12c219b4e4a5bb825ace5e06cc",
+      "visible_history_hash": "071ef9377e6da8f93a7ffd843f7b52b0102534a110ae71aa8c9f78e638875e5a",
+      "information_set_hash": "0c2cf440c42f32396a1d4aa0d7764382aea9f900a2f521c111276dc705aece83",
+      "legal_action_count": 30,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p3_n1_vs_m07-block-50-seed-5800114-r1",
+      "ply": 52,
+      "observation_hash": "752d16c0c3114f1934e9e14232c909ce699bdf6b620c7a6b8a4ff21272709a3c",
+      "visible_history_hash": "299c6fa296c46aa649f4ee83844e92d75ede6886d181799ff7584390d4c77615",
+      "information_set_hash": "62158ba48d62ff9dffcada19ae289a3345ce414314bde4a33fa474b664b643da",
+      "legal_action_count": 32,
+      "stratum": "wide"
+    },
+    {
+      "game_id": "p1_heuristic_vs_n1-block-39-seed-5800103-r1",
+      "ply": 7,
+      "observation_hash": "ba471370e41c66110bd85e85eaeac0d25d5f5a57dc4710d32b8e7e3b52900af8",
+      "visible_history_hash": "e342f5d47e673eb0051dbc0a0f30a6fa8a229d0c6c71c1678bf3df27390f2caa",
+      "information_set_hash": "b7b1cf297bed590806ed2dea036de0d90653b38c67a2d7a60db5732450f0b0a8",
+      "legal_action_count": 67,
+      "stratum": "wide"
+    }
+  ],
+  "manifest_digest": "5de33537e79c58e2249bf7e8b148ce99ebeba41019f79f81fd5f59b0ef1a1551",
   "strata_reports": {
     "ordinary": {
       "decisions": 150,
       "full_ms": {
-        "mean": 30.8,
-        "p50": 23,
-        "p90": 41,
-        "p95": 114,
-        "max": 294
+        "mean": 24.8,
+        "p50": 15,
+        "p90": 29,
+        "p95": 43,
+        "max": 728
       },
       "paths": {
         "rollout_comparison": 150
       },
       "complete_comparison_rate": 1.0,
       "ply_cap_fallback_rate": 0.0,
-      "fast_path_root_tie": 0,
-      "fast_path_proposals_agreed": 0,
-      "behavioral_delta_count": 122,
-      "loo_diagnostic": null
+      "behavioral_delta_count": 43,
+      "behavioral_delta_of_complete": 0.2867,
+      "loo_agreement": 0.87,
+      "loo_n": 600
     },
     "wide": {
       "decisions": 50,
       "full_ms": {
-        "mean": 38.6,
-        "p50": 27,
-        "p90": 41,
-        "p95": 170,
-        "max": 294
+        "mean": 36.2,
+        "p50": 23,
+        "p90": 55,
+        "p95": 116,
+        "max": 341
       },
       "paths": {
         "rollout_comparison": 50
       },
       "complete_comparison_rate": 1.0,
       "ply_cap_fallback_rate": 0.0,
-      "fast_path_root_tie": 0,
-      "fast_path_proposals_agreed": 0,
-      "behavioral_delta_count": 26,
-      "loo_diagnostic": null
+      "behavioral_delta_count": 13,
+      "behavioral_delta_of_complete": 0.26,
+      "loo_agreement": 0.805,
+      "loo_n": 200
     }
   },
   "gates": {
     "ordinary": {
-      "gate_A_latency": true,
-      "gate_B_complete": true,
+      "gate_A_latency_p95_ms": true,
+      "gate_B_complete_rate": true,
       "gate_C_zero_errors": true
     },
     "wide": {
-      "gate_A_latency": true,
-      "gate_B_complete": true,
+      "gate_A_latency_p95_ms": true,
+      "gate_B_complete_rate": true,
       "gate_C_zero_errors": true
     }
   },
-  "behavioral_delta_total": 148,
+  "loo_diagnostic": {
+    "agreement_rate": 0.8538,
+    "n": 800,
+    "note": "diagnostic ONLY, no gate"
+  },
+  "behavioral_delta_total": 56,
   "verdict": "PILOT_PASS"
 }

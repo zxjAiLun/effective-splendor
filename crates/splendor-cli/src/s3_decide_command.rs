@@ -8,7 +8,9 @@ use std::time::Instant;
 
 use splendor_agent::AgentPolicy;
 use splendor_core::{Audience, Ruleset};
-use splendor_determinization_agent::s3_rollout::{s3_decide, s3_m07_config, s3_n1_config, S3Path};
+use splendor_determinization_agent::s3_rollout::{
+    loo_agreement, s3_decide, s3_m07_config, s3_n1_config, S3Path,
+};
 use splendor_determinization_agent::DeterminizationAgentPolicyV1;
 use splendor_replay::{verify_replay_trace, ReplayV1};
 use splendor_search::canonical_order;
@@ -90,11 +92,9 @@ fn run(args: &[String]) -> Result<(), String> {
     if legal.is_empty() {
         return Err("no legal actions".to_owned());
     }
-    let root_identity = format!(
-        "{}|{}",
-        input,
-        ply // binds tie streams to the context identity
-    );
+    // Root identity is derived INSIDE s3_decide from the information-set
+    // hash (never a file path). The game identity here is telemetry only.
+    let game_identity = format!("seed{}|{}", replay.seed, ply);
 
     let mut timings = serde_json::Map::new();
     let t_all = Instant::now();
@@ -113,7 +113,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 visible_history: &visible_history,
                 legal_actions: &legal,
                 meta: PublicRequestMeta {
-                    game_id: root_identity.clone(),
+                    game_id: game_identity.clone(),
                     recipient_seat: actor,
                     request_id: 1,
                     observation_hash: obs_hash,
@@ -136,7 +136,7 @@ fn run(args: &[String]) -> Result<(), String> {
                 visible_history: &visible_history,
                 legal_actions: &legal,
                 meta: PublicRequestMeta {
-                    game_id: root_identity.clone(),
+                    game_id: game_identity.clone(),
                     recipient_seat: actor,
                     request_id: 1,
                     observation_hash: obs_hash,
@@ -155,9 +155,9 @@ fn run(args: &[String]) -> Result<(), String> {
         &legal,
         a_n1,
         a_m07,
-        &root_identity,
         Ruleset::base_v1(),
     )?;
+    let loo = loo_agreement(&decision);
     timings.insert("s3_decide_ms".into(), serde_json::json!(t_decide.elapsed().as_millis()));
     timings.insert("full_ms".into(), serde_json::json!(t_all.elapsed().as_millis()));
 
@@ -168,16 +168,20 @@ fn run(args: &[String]) -> Result<(), String> {
         S3Path::RolloutComparison => "rollout_comparison",
     };
     let row = serde_json::json!({
+        "replay_seed": replay.seed,
         "source": input,
         "ply": ply,
         "actor_seat": actor.index(),
         "legal_action_count": legal.len(),
+        "root_identity": decision.root_identity,
         "a_n1": a_n1,
         "a_m07": a_m07,
         "chosen": decision.action,
         "path": path,
         "candidate_set_size": decision.candidate_set_size,
         "score2": decision.score2,
+        "per_world_score2": decision.per_world_score2,
+        "loo_agreement": loo,
         "timings_ms": timings,
     });
     let mut file = std::fs::OpenOptions::new()
