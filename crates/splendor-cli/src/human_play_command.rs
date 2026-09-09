@@ -31,7 +31,7 @@ use splendor_protocol::{
 use splendor_replay::{replay_document_hash_v1, verify_replay, ReplayRecorder, ReplayV1};
 use splendor_search::SearchConfigV1;
 
-const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|heuristic|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
+const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
     "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
@@ -1397,46 +1397,61 @@ fn build_session(args: &Args) -> Result<Session, String> {
     };
     let (recorder, _setup) = ReplayRecorder::new_with_setup(config)
         .map_err(|error| format!("cannot create replay recorder: {error}"))?;
-    let opponent = match (&args.opponent, &args.registry, &args.agent_id) {
+    let (opponent, opponent_rng_seed) = match (&args.opponent, &args.registry, &args.agent_id) {
         // Choice C product default: when no opponent is specified or "s3" is chosen,
-        // use the strongest confirmed S3 rollout candidate as default.
-        (None, None, None) => Opponent::InProcess {
-            label: "S3 rollout default",
-            policy: InProcessOpponent::S3(
-                splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy::new()
-                    .map_err(|error| error.to_string())?,
-            ),
-        },
-        (Some(name), None, None) if name == "s3" || name == "s3-rollout" || name == "default" => {
+        // use the strongest confirmed S3 rollout candidate as default with its exact
+        // frozen root RNG stream seed (S3_ROOT_SEED = 20_260_812).
+        (None, None, None) => (
             Opponent::InProcess {
                 label: "S3 rollout default",
                 policy: InProcessOpponent::S3(
                     splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy::new()
                         .map_err(|error| error.to_string())?,
                 ),
-            }
+            },
+            splendor_determinization_agent::s3_agent::S3_ROOT_SEED,
+        ),
+        (Some(name), None, None) if name == "s3" || name == "s3-rollout" || name == "default" => (
+            Opponent::InProcess {
+                label: "S3 rollout default",
+                policy: InProcessOpponent::S3(
+                    splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy::new()
+                        .map_err(|error| error.to_string())?,
+                ),
+            },
+            splendor_determinization_agent::s3_agent::S3_ROOT_SEED,
+        ),
+        (Some(name), None, None) if name == "heuristic" || name == "fast" => (
+            Opponent::InProcess {
+                label: "Heuristic fast mode",
+                policy: InProcessOpponent::Heuristic(HeuristicAgentPolicy::new()),
+            },
+            20_260_812, // Authoritative heuristic-v1 seed (identical to agent-heuristic --seed 20260812)
+        ),
+        (Some(name), None, None) if name == "m07" => (
+            Opponent::InProcess {
+                label: "M07 determinization champion",
+                policy: InProcessOpponent::M07(
+                    DeterminizationAgentPolicyV1::new(RootDeterminizationConfigV1 {
+                        sample_seed: 20260810,
+                        sample_count: 4,
+                        continuation_search: SearchConfigV1 {
+                            max_depth_turns: 1,
+                            max_nodes: 2_000,
+                        },
+                    })
+                    .map_err(|error| error.to_string())?,
+                ),
+            },
+            args.seed ^ 0xa5a5_5a5a, // Preserves historical human-play M07 game-derived seed
+        ),
+        (Some(_), None, None) => {
+            return Err(
+                "--opponent must be s3 (or s3-rollout/default), heuristic (or fast), or m07".into(),
+            )
         }
-        (Some(name), None, None) if name == "heuristic" || name == "fast" => Opponent::InProcess {
-            label: "Heuristic fast mode",
-            policy: InProcessOpponent::Heuristic(HeuristicAgentPolicy::new()),
-        },
-        (Some(name), None, None) if name == "m07" => Opponent::InProcess {
-            label: "M07 determinization champion",
-            policy: InProcessOpponent::M07(
-                DeterminizationAgentPolicyV1::new(RootDeterminizationConfigV1 {
-                    sample_seed: 20260810,
-                    sample_count: 4,
-                    continuation_search: SearchConfigV1 {
-                        max_depth_turns: 1,
-                        max_nodes: 2_000,
-                    },
-                })
-                .map_err(|error| error.to_string())?,
-            ),
-        },
-        (Some(_), None, None) => return Err("--opponent must be s3, heuristic (or fast), or m07".into()),
-        (None, Some(registry_path), Some(agent_id)) => Opponent::Registered(
-            RegisteredOpponent::start(
+        (None, Some(registry_path), Some(agent_id)) => (
+            Opponent::Registered(RegisteredOpponent::start(
                 registry_path,
                 agent_id,
                 PlayerId(1 - args.human_seat),
@@ -1445,11 +1460,12 @@ fn build_session(args: &Args) -> Result<Session, String> {
                 recorder.state(),
                 &_setup.events,
                 args.move_timeout_ms,
-            )?,
+            )?),
+            args.seed ^ 0xa5a5_5a5a,
         ),
         _ => {
             return Err(
-                "choose --opponent <s3|heuristic|m07> or --registry <path> --agent-id <id> (defaults to s3)"
+                "choose --opponent <s3|s3-rollout|default|heuristic|fast|m07> or --registry <path> --agent-id <id> (defaults to s3)"
                     .into(),
             )
         }
@@ -1469,7 +1485,7 @@ fn build_session(args: &Args) -> Result<Session, String> {
         replay_out,
         frames: Vec::new(),
         opponent,
-        opponent_rng: StableRng::new(args.seed ^ 0xa5a5_5a5a),
+        opponent_rng: StableRng::new(opponent_rng_seed),
         request_id: 0,
         ply: 0,
     };
@@ -1998,6 +2014,67 @@ mod tests {
     }
 
     #[test]
+    fn human_play_opponent_aliases_map_to_expected_policies() {
+        // Verify all accepted aliases resolve to correct in-process opponent labels
+        for alias in &["s3", "s3-rollout", "default"] {
+            let session = build_session(&Args {
+                seed: 10,
+                human_seat: 0,
+                opponent: Some((*alias).to_string()),
+                registry: None,
+                agent_id: None,
+                port: 43125,
+                move_timeout_ms: 10_000,
+                replay_out: None,
+            })
+            .unwrap();
+            assert_eq!(session.opponent.label(), "S3 rollout default");
+        }
+
+        for alias in &["heuristic", "fast"] {
+            let session = build_session(&Args {
+                seed: 10,
+                human_seat: 0,
+                opponent: Some((*alias).to_string()),
+                registry: None,
+                agent_id: None,
+                port: 43126,
+                move_timeout_ms: 10_000,
+                replay_out: None,
+            })
+            .unwrap();
+            assert_eq!(session.opponent.label(), "Heuristic fast mode");
+        }
+
+        let session_m07 = build_session(&Args {
+            seed: 10,
+            human_seat: 0,
+            opponent: Some("m07".to_string()),
+            registry: None,
+            agent_id: None,
+            port: 43127,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        })
+        .unwrap();
+        assert_eq!(session_m07.opponent.label(), "M07 determinization champion");
+
+        // No opponent flag -> defaults to S3 rollout
+        let session_none = build_session(&Args {
+            seed: 10,
+            human_seat: 0,
+            opponent: None,
+            registry: None,
+            agent_id: None,
+            port: 43128,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        })
+        .unwrap();
+        assert_eq!(session_none.opponent.label(), "S3 rollout default");
+    }
+
+    #[test]
     fn registered_agent_arguments_are_exclusive() {
         let error = parse_args(&[
             "--seed".into(),
@@ -2086,6 +2163,259 @@ mod tests {
         assert_eq!(catalog.nobles.len(), 10);
         assert_eq!(catalog.cards[0].id, CardId(0));
         assert!(catalog.cards.iter().all(|card| card.cost.len() == 5));
+    }
+
+    #[test]
+    fn human_play_default_s3_and_fast_heuristic_bind_exact_production_rng_stream() {
+        use splendor_agent::heuristic_term_scores;
+        use splendor_determinization_agent::s3_agent::{S3RolloutAgentPolicy, S3_ROOT_SEED};
+        use splendor_search::canonical_order;
+
+        // Construct sessions with arbitrary game seeds (e.g. 42, 9999).
+        // Before the P1 repair, in-process opponent_rng was initialized with
+        // `args.seed ^ 0xa5a5_5a5a`. With the repair, S3 (default) and Fast
+        // (heuristic) must bind EXACTLY S3_ROOT_SEED (20_260_812), identical to
+        // production standalone `agent-s3-rollout` and `agent-heuristic --seed 20260812`.
+        let args_default = Args {
+            seed: 42,
+            human_seat: 1,
+            opponent: None,
+            registry: None,
+            agent_id: None,
+            port: 43120,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        };
+        let session_default = build_session(&args_default).unwrap();
+        assert_eq!(session_default.opponent.label(), "S3 rollout default");
+
+        let args_fast = Args {
+            seed: 42,
+            human_seat: 1,
+            opponent: Some("fast".into()),
+            registry: None,
+            agent_id: None,
+            port: 43120,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        };
+        let session_fast = build_session(&args_fast).unwrap();
+        assert_eq!(session_fast.opponent.label(), "Heuristic fast mode");
+
+        // 1. Same-seed live game first-action parity:
+        // On seed 42 with human_seat = 1, opponent is Player 0 and acts on ply 0.
+        // The action chosen by session_default must exactly match standalone S3.
+        let (state, setup) = FullState::new(GameConfig {
+            player_count: 2,
+            seed: 42,
+            ..Default::default()
+        })
+        .unwrap();
+        let obs = state.observation(PlayerId(0));
+        let history = visible_events(&setup.events, Audience::Player(PlayerId(0)));
+        let legal = canonical_order(&state.legal_actions());
+        let meta = PublicRequestMeta {
+            game_id: "parity-check".into(),
+            recipient_seat: PlayerId(0),
+            request_id: 1,
+            observation_hash: observation_hash(&obs),
+        };
+
+        let mut standalone_s3 = S3RolloutAgentPolicy::new().unwrap();
+        let mut standalone_s3_rng = StableRng::new(S3_ROOT_SEED);
+        let standalone_first_action = standalone_s3
+            .choose_action(DecisionContext {
+                observation: obs.clone(),
+                visible_history: &history,
+                legal_actions: &legal,
+                meta: meta.clone(),
+                rng: &mut standalone_s3_rng,
+            })
+            .unwrap();
+
+        assert_eq!(
+            session_default.frames[0].recorded_action,
+            standalone_first_action,
+            "session default S3 first action must equal standalone S3"
+        );
+
+        // 2. Multi-step consecutive root-tie decision sequence:
+        // Find actions that produce exact score ties under heuristic scoring.
+        let all_scores: Vec<i64> = heuristic_term_scores(&obs, &legal)
+            .into_iter()
+            .map(|t| t.total())
+            .collect();
+        // Group legal actions by score to form tie sets of size >= 2
+        let mut score_to_actions: std::collections::HashMap<i64, Vec<Action>> =
+            std::collections::HashMap::new();
+        for (idx, score) in all_scores.iter().enumerate() {
+            score_to_actions.entry(*score).or_default().push(legal[idx]);
+        }
+        let tie_sets: Vec<Vec<Action>> = score_to_actions
+            .into_values()
+            .filter(|acts| acts.len() >= 2)
+            .collect();
+        assert!(
+            tie_sets.len() >= 3,
+            "must have at least 3 distinct tie sets for multi-step sequence"
+        );
+
+        // Test at least 3 consecutive tie decisions for S3 (human-play default vs standalone)
+        let mut s3_live = S3RolloutAgentPolicy::new().unwrap();
+        let mut s3_live_rng = StableRng::new(S3_ROOT_SEED);
+        let mut hp_s3_session = build_session(&Args {
+            seed: 9999, // arbitrary seed: must NOT affect S3 root RNG
+            human_seat: 0,
+            opponent: Some("s3".into()),
+            registry: None,
+            agent_id: None,
+            port: 43121,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        })
+        .unwrap();
+
+        for (step, tie_set) in tie_sets.iter().take(3).enumerate() {
+            let hp_action = hp_s3_session
+                .opponent
+                .choose(
+                    "parity-game",
+                    step as u64 + 1,
+                    obs.clone(),
+                    &history,
+                    tie_set,
+                    &mut hp_s3_session.opponent_rng,
+                )
+                .unwrap();
+
+            let standalone_action = s3_live
+                .choose_action(DecisionContext {
+                    observation: obs.clone(),
+                    visible_history: &history,
+                    legal_actions: tie_set,
+                    meta: PublicRequestMeta {
+                        game_id: "parity-game".into(),
+                        recipient_seat: PlayerId(0),
+                        request_id: step as u64 + 1,
+                        observation_hash: observation_hash(&obs),
+                    },
+                    rng: &mut s3_live_rng,
+                })
+                .unwrap();
+
+            assert_eq!(
+                hp_action, standalone_action,
+                "consecutive tie step {step}: human-play S3 must equal standalone S3"
+            );
+        }
+
+        // Test at least 3 consecutive tie decisions for Fast Heuristic (human-play fast vs standalone)
+        let mut h_live = HeuristicAgentPolicy::new();
+        let mut h_live_rng = StableRng::new(20_260_812);
+        let mut hp_h_session = build_session(&Args {
+            seed: 8888, // arbitrary seed: must NOT affect fast heuristic root RNG
+            human_seat: 0,
+            opponent: Some("fast".into()),
+            registry: None,
+            agent_id: None,
+            port: 43122,
+            move_timeout_ms: 10_000,
+            replay_out: None,
+        })
+        .unwrap();
+
+        for (step, tie_set) in tie_sets.iter().take(3).enumerate() {
+            let hp_action = hp_h_session
+                .opponent
+                .choose(
+                    "parity-game",
+                    step as u64 + 1,
+                    obs.clone(),
+                    &history,
+                    tie_set,
+                    &mut hp_h_session.opponent_rng,
+                )
+                .unwrap();
+
+            let standalone_action = h_live
+                .choose_action(DecisionContext {
+                    observation: obs.clone(),
+                    visible_history: &history,
+                    legal_actions: tie_set,
+                    meta: PublicRequestMeta {
+                        game_id: "parity-game".into(),
+                        recipient_seat: PlayerId(0),
+                        request_id: step as u64 + 1,
+                        observation_hash: observation_hash(&obs),
+                    },
+                    rng: &mut h_live_rng,
+                })
+                .unwrap();
+
+            assert_eq!(
+                hp_action, standalone_action,
+                "consecutive tie step {step}: human-play fast must equal standalone heuristic"
+            );
+        }
+
+        // 3. Sensitivity check: verify that an incorrect seed DOES diverge on ties
+        let mut buggy_rng = StableRng::new(9999 ^ 0xa5a5_5a5a);
+        let mut matched_all = true;
+        let mut test_policy = HeuristicAgentPolicy::new();
+        for (step, tie_set) in tie_sets.iter().take(3).enumerate() {
+            let buggy_action = test_policy
+                .choose_action(DecisionContext {
+                    observation: obs.clone(),
+                    visible_history: &history,
+                    legal_actions: tie_set,
+                    meta: PublicRequestMeta {
+                        game_id: "sensitivity".into(),
+                        recipient_seat: PlayerId(0),
+                        request_id: step as u64 + 1,
+                        observation_hash: observation_hash(&obs),
+                    },
+                    rng: &mut buggy_rng,
+                })
+                .unwrap();
+            let mut correct_rng = StableRng::new(20_260_812);
+            for _ in 0..step {
+                // advance correct_rng to the same step
+                let _ = test_policy.choose_action(DecisionContext {
+                    observation: obs.clone(),
+                    visible_history: &history,
+                    legal_actions: tie_set,
+                    meta: PublicRequestMeta {
+                        game_id: "sensitivity".into(),
+                        recipient_seat: PlayerId(0),
+                        request_id: step as u64 + 1,
+                        observation_hash: observation_hash(&obs),
+                    },
+                    rng: &mut correct_rng,
+                });
+            }
+            let correct_action = test_policy
+                .choose_action(DecisionContext {
+                    observation: obs.clone(),
+                    visible_history: &history,
+                    legal_actions: tie_set,
+                    meta: PublicRequestMeta {
+                        game_id: "sensitivity".into(),
+                        recipient_seat: PlayerId(0),
+                        request_id: step as u64 + 1,
+                        observation_hash: observation_hash(&obs),
+                    },
+                    rng: &mut correct_rng,
+                })
+                .unwrap();
+            if buggy_action != correct_action {
+                matched_all = false;
+                break;
+            }
+        }
+        assert!(
+            !matched_all,
+            "sensitivity check: buggy game-derived RNG must diverge from correct seed"
+        );
     }
 
     #[test]
