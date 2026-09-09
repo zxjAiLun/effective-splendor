@@ -1,18 +1,23 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = STAGE-A ACCEPTED / STAGE-B AUTHORIZED (Run2 PILOT_PASS accepted
-            by the re-review of 179db0f; P0:0 / P1:0 / P2:4 non-blocking
-            applied; Stage-B implementation + the 128-match Arena are
-            authorized; execution in progress — see the Stage-B record)
-RESULT     = Stage A: PILOT_PASS (Run2, decision-valid): p95 43/116 ms,
-            complete-comparison rate 1.000 both strata, behavioral delta
-            43/150 + 13/50 = 56/200 (on the pilot's selected
-            rollout-eligible comparison contexts; NOT a fresh-game
-            override rate), LOO (corrected tie rule) 0.9067 / 0.9100.
-            Stage B: strength question pending.
+STATUS     = STAGE-B EXECUTED / CONFIRMED_IMPROVEMENT (single valid run
+            2026-09-09: implementation 297891e + 128-match Arena + final
+            audit ALL CHECKS PASS; verdict CONFIRMED_IMPROVEMENT —
+            candidate 80-0-48 vs heuristic, center 6250.0 bps, 95% decision
+            CI [5468.8, 6953.1] entirely above parity. The rollout
+            re-ranking of the three frozen policies' proposals IMPROVES
+            heuristic's playing strength at D=4/P=120 with p95 decision
+            cost ~43-116 ms. REFERENCE_CHALLENGE_SIGNAL = true; the primary
+            reference and promotion state are UNCHANGED pending a separate
+            field-calibration decision. Awaiting S3 closure review.)
+RESULT     = CONFIRMED_IMPROVEMENT (Stage B). Stage A (Run2): PILOT_PASS.
+            Stage B: the first CONFIRMED strength improvement of the
+            strategy-reset line: added computation (shared-world
+            full-heuristic rollouts over the three-policy proposal set)
+            measurably helps the strongest policy make better decisions.
 REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen; Run1
-            VOID; Repair 1 + Run2 accepted; Stage B authorized.
-            V1 = c253de7.
+            VOID; Repair 1 + Run2 accepted; Stage B executed and
+            CONFIRMED. V1 = c253de7.
 BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
@@ -376,6 +381,53 @@ hidden tie-behavior change. Non-Main phases fast-path to the heuristic
 - A confirmed win sets `REFERENCE_CHALLENGE_SIGNAL = true` and a
   separate small field-calibration round would be designed; nothing
   auto-promotes.
+
+## Stage-B execution record (2026-09-09, single valid run)
+
+Implementation (297891e): `agent-s3-rollout` live agent (zero flags;
+identity fully frozen). Live semantics per the Repair-1 frozen contract:
+the persistent root RNG is the run_agent seed 20_260_812 (the standalone
+heuristic stream; unique maxima consume no RNG, ties advance it exactly
+as the standalone agent); non-Main / <2 legal / |H*|>1 fast paths return
+the ACTUAL standalone heuristic action including RNG-tiebreaks (an
+initial closure-based tie helper had a tie-index bug caught by the
+3-match smoke — fixed before any Arena match). Regressions added:
+step-by-step lockstep parity vs the standalone heuristic policy
+(including ties; any divergence must be an actual rollout override),
+and counter consistency. Workspace 790/0; smoke 3/3 live matches
+complete (~0.9 s each).
+
+Arena (seeds 5_800_256..319 — registry-asserted fresh; 64 blocks x 2
+rotations = 128 matches; candidate vs heuristic only; ~47 s wall):
+
+| Metric | Value |
+|---|---|
+| Record (candidate perspective) | **80-0-48** |
+| Center | **6250.0 bps** |
+| 95% decision CI | **[5468.8, 6953.1]** — entirely above 5000 |
+| Verdict | **CONFIRMED_IMPROVEMENT** |
+
+Final audit (fail-closed): seed disjointness; exhaustive lineup
+(candidate = exact zero-flag args; heuristic = exact frozen args);
+128/128 replays verified; full recomputation of W/T/L, block scores,
+center, CI, verdict; decision-block consistency; binary identity. ALL
+CHECKS PASS.
+
+Decision (frozen table): CONFIRMED_IMPROVEMENT sets
+REFERENCE_CHALLENGE_SIGNAL = true. The primary reference and promotion
+state are UNCHANGED — a separate small field calibration (the candidate
+vs n1 and vs M07, plus the reference question) is the follow-up design
+decision for the closure review. No transitivity claims (n1/M07
+unmeasured this round). Extra seeds not authorized (none needed).
+
+Canonical result sentence (permanent):
+
+> In a fresh 128-match paired-seed Arena against heuristic-v1, the
+> rollout-enhanced candidate (D=4 shared-world full-heuristic rollouts
+> re-ranking the {a_H, a_n1, a_M07} proposal set, P=120,
+> completion-gated integer scoring) won 80-0-48 (center 6250.0 bps;
+> 95% CI [5468.8, 6953.1]) — a resolved improvement over the calibrated
+> primary reference at a measured p95 decision cost of ~43-116 ms.
 
 ## Scope and non-goals
 
