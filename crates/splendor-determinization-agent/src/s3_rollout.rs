@@ -339,7 +339,7 @@ pub fn s3_decide(
 /// Leave-one-world-out diagnostic (frozen: diagnostic ONLY, never a gate):
 /// for a complete comparison, does the D=3 choice (dropping each world in
 /// turn) agree with the full D=4 choice?
-pub fn loo_agreement(decision: &S3Decision) -> Option<(usize, usize)> {
+pub fn loo_agreement(decision: &S3Decision, a_h: Action) -> Option<(usize, usize)> {
     if decision.path != S3Path::RolloutComparison || decision.per_world_score2.is_empty() {
         return None;
     }
@@ -347,29 +347,35 @@ pub fn loo_agreement(decision: &S3Decision) -> Option<(usize, usize)> {
     let mut agree = 0;
     let mut total = 0;
     for drop in 0..S3_D {
-        let mut best: Option<(Action, i64)> = None;
-        for (a, scores) in &decision.per_world_score2 {
-            let sum: i64 = scores
-                .iter()
-                .enumerate()
-                .filter(|(w, _)| *w != drop)
-                .map(|(_, v)| *v)
-                .sum();
-            match best {
-                Some((_, s)) if sum < s => {}
-                Some((ba, s)) if sum == s => {
-                    // tie: canonical-first between the two
-                    let pair = canonical_order(&[ba, *a]);
-                    best = Some((pair[0], s));
-                }
-                _ => best = Some((*a, sum)),
-            }
+        // D=3 recompute uses the SAME frozen tie semantics as the full
+        // decision: prefer a_H if it is in the top-scoring set, else
+        // canonical-first of the top set.
+        let mut entries: Vec<(Action, i64)> = decision
+            .per_world_score2
+            .iter()
+            .map(|(a, scores)| {
+                let sum: i64 = scores
+                    .iter()
+                    .enumerate()
+                    .filter(|(w, _)| *w != drop)
+                    .map(|(_, v)| *v)
+                    .sum();
+                (*a, sum)
+            })
+            .collect();
+        if entries.is_empty() {
+            continue;
         }
-        if let Some((a, _)) = best {
-            total += 1;
-            if a == full {
-                agree += 1;
-            }
+        let max = entries.iter().map(|(_, s)| *s).max().unwrap();
+        let top: Vec<Action> = entries
+            .iter()
+            .filter(|(_, s)| *s == max)
+            .map(|(a, _)| *a)
+            .collect();
+        let chosen = if top.contains(&a_h) { a_h } else { canonical_order(&top)[0] };
+        total += 1;
+        if chosen == full {
+            agree += 1;
         }
     }
     Some((agree, total))

@@ -11,6 +11,7 @@ use splendor_core::{Audience, Ruleset};
 use splendor_determinization_agent::s3_rollout::{
     loo_agreement, s3_decide, s3_m07_config, s3_n1_config, S3Path,
 };
+use splendor_determinization_agent::s3_rollout;
 use splendor_determinization_agent::DeterminizationAgentPolicyV1;
 use splendor_replay::{verify_replay_trace, ReplayV1};
 use splendor_search::canonical_order;
@@ -157,7 +158,12 @@ fn run(args: &[String]) -> Result<(), String> {
         a_m07,
         Ruleset::base_v1(),
     )?;
-    let loo = loo_agreement(&decision);
+    // a_H for the LOO tie rule: the unique optimum when eligible; the
+    // canonical-first of H* otherwise (LOO only applies to complete
+    // comparisons, where H* is unique by eligibility).
+    let hs = s3_rollout::h_star(&observation, &legal);
+    let a_h = hs[0];
+    let loo = loo_agreement(&decision, a_h);
     timings.insert("s3_decide_ms".into(), serde_json::json!(t_decide.elapsed().as_millis()));
     timings.insert("full_ms".into(), serde_json::json!(t_all.elapsed().as_millis()));
 

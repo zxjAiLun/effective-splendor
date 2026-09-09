@@ -1,26 +1,18 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = STAGE-A REPAIR 1 EXECUTED / PILOT_PASS (Run2) /
-            STOPPED-FOR-REVIEW (Run1 at c503bda is VOID — five
-            implementation/protocol defects per the Stage-A review of
-            bf5df58: seat-RNG routing (both seats consumed one stream),
-            row-join collisions (basename+ply), 256-game population
-            instead of 384, filepath-based root identity, swallowed apply
-            errors. Repair 1 fixed all five, restored the frozen
-            corpus/selector/dedupe, added per-world scores + the LOO
-            diagnostic and the two isolation regressions, and re-ran the
-            SAME 200-context pilot. Run2: all gates pass in both strata
-            (p95 43 ms ordinary / 116 ms wide vs the 2,000 ms gate;
-            complete-comparison rate 1.000 vs 0.70; zero errors);
-            behavioral delta exists (43/150 ordinary, 13/50 wide — the
-            repaired per-seat RNG substantially lowered Run1's inflated
-            122/150 and 26/50); LOO agreement 0.870 / 0.805 (diagnostic
-            only). Stage B remains NOT AUTHORIZED until this review.)
-RESULT     = PILOT_PASS (Run2, decision-valid). The repaired engine's
-            behavioral delta is real but smaller than Run1 suggested;
-            strength remains entirely untested.
-REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen;
-            Run1 VOID; Repair 1 + Run2 recorded. V1 = c253de7.
+STATUS     = STAGE-A ACCEPTED / STAGE-B AUTHORIZED (Run2 PILOT_PASS accepted
+            by the re-review of 179db0f; P0:0 / P1:0 / P2:4 non-blocking
+            applied; Stage-B implementation + the 128-match Arena are
+            authorized; execution in progress — see the Stage-B record)
+RESULT     = Stage A: PILOT_PASS (Run2, decision-valid): p95 43/116 ms,
+            complete-comparison rate 1.000 both strata, behavioral delta
+            43/150 + 13/50 = 56/200 (on the pilot's selected
+            rollout-eligible comparison contexts; NOT a fresh-game
+            override rate), LOO (corrected tie rule) 0.9067 / 0.9100.
+            Stage B: strength question pending.
+REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen; Run1
+            VOID; Repair 1 + Run2 accepted; Stage B authorized.
+            V1 = c253de7.
 BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
@@ -322,11 +314,31 @@ Five defects found by the Stage-A review of bf5df58:
 | wide | **116 ms** | 1.000 | 13/50 | 0.805 |
 
 All gates pass in both strata; zero errors (fail-closed engine);
-behavioral delta exists (NO_BEHAVIORAL_DELTA did not fire). The
-repaired per-seat RNG stream substantially lowered Run1's inflated
-delta (122/150, 26/50 -> 43/150, 13/50): Run1's shared-stream bug had
-manufactured disagreement. LOO agreement ~0.8-0.9 is the coarse
-stability picture at D=4 (no gate, no threshold).
+behavioral delta exists (NO_BEHAVIORAL_DELTA did not fire).
+
+Attribution wording (corrected per the re-review — Run1->Run2 changed
+seat RNG routing AND corpus AND selector AND identity dedupe AND row
+binding, so the delta change admits no single-cause attribution):
+Run1's behavioral-delta numbers were invalid under multiple
+implementation/protocol defects; after repairing all defects and
+restoring the frozen corpus, Run2 produced 43/150 and 13/50. The
+magnitude of Run1's inflation cannot be attributed uniquely to the
+seat-RNG bug.
+
+LOO diagnostic correction (post-hoc, from the raw per-world scores —
+the Run2 result's recorded values used a canonical-only D=3 tie rule;
+the corrected rule is the frozen a_H-preference rule): ordinary
+544/600 = 0.9067, wide 182/200 = 0.9100, overall 726/800 = 0.9075
+(diagnostic only; no gate). The tracked Run2 result is left unchanged;
+this paragraph is the correction record. The Rust `loo_agreement` now
+implements the a_H tie rule for future runs.
+
+|C| distribution (from the raw rows): 146 contexts with |C|=2, 54 with
+|C|=3. The pilot contexts are pre-filtered to |C|>=2 and are all
+RolloutComparison, so 100% complete comparison implies every
+participating individual rollout terminated. The 56/200 behavioral
+delta is on the SELECTED rollout-eligible comparison contexts — NOT a
+fresh-game override rate (Stage B measures the live rate).
 
 ### Live-candidate semantics for Stage B (P1-6, frozen here BEFORE any Arena)
 
