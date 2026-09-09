@@ -23,7 +23,21 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
-S0_SEGMENT = range(5_800_064, 5_800_128)  # 64 seeds, inclusive of 5_800_127
+# The segment to check is assigned by the caller (each round's
+# orchestrator sets its own frozen segment before calling check()).
+# Registry updated 2026-09-09 to the real current state: the early static
+# scan ended at the M45A/M46A era and did not list the S-era segments,
+# forcing callers to monkeypatch — that gap is closed here.
+CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
+
+# S-era arena segments (2026-09-08/09):
+#   5_800_064..127  S0 baseline calibration — CONSUMED
+#   5_800_128..191  S1 — RESERVED then RETIRED (Phase B never ran; retired
+#                    namespace, must NOT be reused)
+#   5_800_192..255  S2b confirmation — CONSUMED
+#   5_800_256..319  S3 Stage-B — CONSUMED
+#   5_800_320..383  S3 field calibration — CANDIDATE segment (asserted
+#                    disjoint here; that round's result records consumption)
 
 # Frozen scanned ranges (start, end_inclusive, label).
 # Single-seed ranges are (s, s).
@@ -44,6 +58,10 @@ REGISTRY: list[tuple[int, int, str]] = [
     (5_300_000, 5_300_063, "m42s-arena"),
     (5_700_000, 5_700_063, "m44c-arena"),
     (5_800_000, 5_800_063, "m45a-arena"),
+    (5_800_064, 5_800_127, "s0-baseline-calibration"),
+    (5_800_128, 5_800_191, "s1-reserved-retired-never-reuse"),
+    (5_800_192, 5_800_255, "s2b-confirmation"),
+    (5_800_256, 5_800_319, "s3-stage-b"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),
@@ -61,16 +79,17 @@ def check() -> int:
             duplicates.append(f"{label} overlaps prior ranges at {sorted(clash)[:3]}")
         consumed.update(rng)
 
-    s0 = set(S0_SEGMENT)
+    s0 = set(CHECK_SEGMENT)
     overlap = sorted(s0.intersection(consumed))
     if overlap:
-        print(f"FAIL: S0 segment 5_800_064..5_800_127 overlaps consumed seeds: {overlap}")
+        print(f"FAIL: segment {CHECK_SEGMENT.start}..{CHECK_SEGMENT.stop - 1} overlaps consumed seeds: {overlap}")
         return 1
     if duplicates:
         print(f"FAIL: registry self-overlaps: {duplicates}")
         return 1
     print(
-        f"PASS: S0 segment 5_800_064..5_800_127 (64 seeds) disjoint from "
+        f"PASS: segment {CHECK_SEGMENT.start}..{CHECK_SEGMENT.stop - 1} "
+        f"({len(s0)} seeds) disjoint from "
         f"{len(consumed)} consumed seeds across {len(REGISTRY)} ranges."
     )
     return 0

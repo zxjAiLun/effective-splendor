@@ -1,23 +1,29 @@
 # S3 — Heuristic Full-Policy Limited Rollout (rollout policy improvement attempt)
 
-STATUS     = STAGE-B EXECUTED / CONFIRMED_IMPROVEMENT (single valid run
-            2026-09-09: implementation 297891e + 128-match Arena + final
-            audit ALL CHECKS PASS; verdict CONFIRMED_IMPROVEMENT —
-            candidate 80-0-48 vs heuristic, center 6250.0 bps, 95% decision
-            CI [5468.8, 6953.1] entirely above parity. The rollout
-            re-ranking of the three frozen policies' proposals IMPROVES
-            heuristic's playing strength at D=4/P=120 with p95 decision
-            cost ~43-116 ms. REFERENCE_CHALLENGE_SIGNAL = true; the primary
-            reference and promotion state are UNCHANGED pending a separate
-            field-calibration decision. Awaiting S3 closure review.)
-RESULT     = CONFIRMED_IMPROVEMENT (Stage B). Stage A (Run2): PILOT_PASS.
-            Stage B: the first CONFIRMED strength improvement of the
-            strategy-reset line: added computation (shared-world
-            full-heuristic rollouts over the three-policy proposal set)
-            measurably helps the strongest policy make better decisions.
+STATUS     = APPROVED / COMPLETED_CONFIRMATION / CLOSED (final review
+            2026-09-09 on 7f911fb: CONFIRMED_IMPROVEMENT accepted with no
+            boundary dispute — the 95% decision CI lower bound is 5468.75,
+            strictly above 5000; P0:0 / P1:0 / P2:4 non-blocking closure
+            wording applied docs-only. REFERENCE_CHALLENGE_SIGNAL = TRUE;
+            the primary development reference remains heuristic-v1 pending
+            the S3 FIELD CALIBRATION (separately authorized and executed —
+            see its own record). Promotion/default: NONE. S3's research
+            question — can full heuristic rollout improve heuristic? — is
+            answered YES and is complete independently of the field
+            calibration's outcome.)
+RESULT     = CONFIRMED_IMPROVEMENT: the frozen S3 candidate
+            ({a_H,a_n1,a_M07} proposal set -> D=4 shared worlds -> full
+            heuristic rollouts -> root re-ranking) beat heuristic-v1
+            80-0-48 in a fresh 128-match paired-seed Arena (center 6250.0
+            bps; 95% decision CI [5468.75, 6953.125] — entirely above
+            parity). Scope of proof: THIS candidate under THIS contract
+            (proposal set H/n1/M07, D=4, P=120, the frozen sampling/CRN/
+            terminal scoring/heuristic opponent model) — NOT a general
+            claim that rollout beats heuristic or that full-policy rollout
+            is the optimal direction.
 REVISION   = V2 2026-09-09 (frozen, 92af7bb) — executed as frozen; Run1
-            VOID; Repair 1 + Run2 accepted; Stage B executed and
-            CONFIRMED. V1 = c253de7.
+            VOID; Repair 1 + Run2 accepted; Stage B CONFIRMED; closed at
+            7f911fb. V1 = c253de7.
 BASELINE   = a827207 (S2b record corrections, 2026-09-09)
 OWNER-DATE = local implementation + cloud review, 2026-09-09
 
@@ -420,14 +426,39 @@ vs n1 and vs M07, plus the reference question) is the follow-up design
 decision for the closure review. No transitivity claims (n1/M07
 unmeasured this round). Extra seeds not authorized (none needed).
 
-Canonical result sentence (permanent):
+Canonical result sentence (permanent; latency wording corrected per the
+closure review — the 43/116 ms figures are Stage-A fixed-context
+feasibility-stratum p95s, NOT fresh-Arena live per-decision latency):
 
 > In a fresh 128-match paired-seed Arena against heuristic-v1, the
 > rollout-enhanced candidate (D=4 shared-world full-heuristic rollouts
 > re-ranking the {a_H, a_n1, a_M07} proposal set, P=120,
 > completion-gated integer scoring) won 80-0-48 (center 6250.0 bps;
 > 95% CI [5468.8, 6953.1]) — a resolved improvement over the calibrated
-> primary reference at a measured p95 decision cost of ~43-116 ms.
+> primary reference. Stage A measured 43 ms ordinary / 116 ms wide p95
+> on the frozen fixed-context feasibility strata; Stage B confirmed
+> strength on fresh trajectories but did not collect live per-decision
+> latency (the ~47 s Arena wall time does not decompose into
+> per-decision latency).
+
+Closure-record items (P2, docs-only):
+
+- **Fresh-Arena rollout scope unrecorded**: the live policy maintains
+  descriptive counters (total decisions / fast paths / comparisons /
+  overrides / ply-cap fallbacks) but they were not exported to the
+  Stage-B result; no fresh-game override rate can be stated. The
+  Stage-A 56/200 belongs to the pilot's selected rollout-eligible
+  contexts only.
+- **LOO authority**: the authoritative diagnostic interpretation is the
+  corrected docs value 0.9075 (a_H tie rule); the tracked Run2 result's
+  LOO field (0.8538, canonical-only rule) is superseded diagnostic
+  only — never cite the two together without this note.
+- **Seed-registry provenance**: the Stage-B disjointness check
+  monkeypatched the early S0-era static registry (which did not list
+  the S0/S2b/S3-era segments); the seeds 5_800_256..319 were in fact
+  fresh, but the audit's proof strength was overstated. The registry is
+  now updated to the real current state (see the field-calibration
+  record).
 
 ## Scope and non-goals
 
