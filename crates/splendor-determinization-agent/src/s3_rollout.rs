@@ -245,6 +245,20 @@ pub fn s3_decide(
         });
     }
     let a_h = hs[0];
+    s3_comparison(observation, visible_history, legal_actions, a_h, a_n1, a_m07, ruleset)
+}
+
+/// The rollout-comparison core (|H*| == 1 already established by the
+/// caller): proposal dedup, shared worlds, rollouts, scoring, tie rule.
+pub fn s3_comparison(
+    observation: &Observation,
+    visible_history: &[VisibleEvent],
+    legal_actions: &[Action],
+    a_h: Action,
+    a_n1: Action,
+    a_m07: Action,
+    ruleset: splendor_core::Ruleset,
+) -> Result<S3Decision, String> {
 
     // Dedup proposals in canonical order.
     let mut candidates: Vec<Action> = vec![a_h];

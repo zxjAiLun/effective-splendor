@@ -16,6 +16,7 @@ use splendor_search::{canonical_order, AttributionProfile};
 use thiserror::Error;
 
 pub mod s2b_overlay;
+pub mod s3_agent;
 pub mod s3_rollout;
 pub use s2b_overlay::{
     run_n1_buy_overlay_agent_v1, N1BuyOverlayPolicy, S2B_OVERLAY_AGENT_NAME,

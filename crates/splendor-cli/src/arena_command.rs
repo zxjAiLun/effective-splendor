@@ -36,6 +36,7 @@ use splendor_determinization_agent::{
     DETERMINIZATION_AGENT_VERSION,
 };
 use splendor_determinization_agent::run_n1_buy_overlay_agent_v1;
+use splendor_determinization_agent::s3_agent::run_s3_agent_v1;
 use splendor_search::AttributionProfile;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
@@ -857,6 +858,42 @@ pub fn agent_determinization(args: &[String]) -> i32 {
     };
 
     match res {
+        Ok(()) => 0,
+        Err(_) => 1,
+    }
+}
+
+/// Entry point for the S3 live rollout-enhanced heuristic agent
+/// (`agent-s3-rollout`). Takes no flags: the candidate's identity is fully
+/// frozen (root seed 20260812, D=4, P=120, the frozen proposal set).
+pub fn agent_s3_rollout(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout("Usage: splendor agent-s3-rollout
+
+The frozen S3 rollout-enhanced heuristic candidate. No flags; identity
+is fully frozen (persistent root RNG seed 20260812 = the standalone
+heuristic stream; fast paths return the ACTUAL standalone heuristic
+action including RNG tie-breaks).
+");
+        return 0;
+    }
+    if !args.is_empty() {
+        let mut stderr = io::stderr().lock();
+        let _ = writeln!(stderr, "error: agent-s3-rollout takes no arguments");
+        let _ = stderr.flush();
+        return 1;
+    }
+    let stdin = io::stdin();
+    let input = BufReader::new(stdin.lock());
+    let stdout = io::stdout();
+    let output = stdout.lock();
+    let stderr = io::stderr();
+    let diagnostics = stderr.lock();
+    let identity = AgentIdentity {
+        name: "effective-splendor-s3-rollout-v1",
+        version: "1",
+    };
+    match run_s3_agent_v1(input, output, diagnostics, identity) {
         Ok(()) => 0,
         Err(_) => 1,
     }

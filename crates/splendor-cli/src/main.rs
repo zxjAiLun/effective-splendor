@@ -189,6 +189,9 @@ fn main() {
         Some("s2-census") => std::process::exit(s2_census_command::run_s2_census(&argv[2..])),
         Some("s2b-scope") => std::process::exit(s2b_scope_command::run_s2b_scope(&argv[2..])),
         Some("s3-decide") => std::process::exit(s3_decide_command::run_s3_decide(&argv[2..])),
+        Some("agent-s3-rollout") => {
+            std::process::exit(arena_command::agent_s3_rollout(&argv[2..]))
+        }
         Some("analyze-replay-determinization") => std::process::exit(
             determinization_analysis_command::run_analyze_replay_determinization(&argv[2..]),
         ),
