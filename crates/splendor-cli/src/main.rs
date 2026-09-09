@@ -26,6 +26,7 @@ mod m44c_audit_command;
 mod m45a_audit_command;
 mod m46a_corpus_command;
 mod m47s_residual_command;
+mod profile_agent;
 mod promotion_command;
 mod rating_command;
 mod search_command;
@@ -191,6 +192,12 @@ fn main() {
         Some("s3-decide") => std::process::exit(s3_decide_command::run_s3_decide(&argv[2..])),
         Some("agent-s3-rollout") => {
             std::process::exit(arena_command::agent_s3_rollout(&argv[2..]))
+        }
+        Some("agent-s3-rollout-profile") => {
+            std::process::exit(profile_agent::agent_s3_rollout_profile(&argv[2..]))
+        }
+        Some("agent-heuristic-profile") => {
+            std::process::exit(profile_agent::agent_heuristic_profile(&argv[2..]))
         }
         Some("analyze-replay-determinization") => std::process::exit(
             determinization_analysis_command::run_analyze_replay_determinization(&argv[2..]),

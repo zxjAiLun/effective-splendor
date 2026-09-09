@@ -898,3 +898,30 @@ fn run_match_rejects_unknown_flag() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("unknown flag"), "stderr: {stderr}");
 }
+
+#[test]
+fn profile_heuristic_agent_match_completes_with_telemetry() {
+    let dir = tmp_dir();
+    let heur_stats = dir.join("heur-stats.jsonl");
+    let config = write_config(
+        &dir,
+        &mixed_config(
+            "cli-heur-prof-vs-rand",
+            42,
+            &[
+                "agent-heuristic-profile",
+                "--stats-out",
+                heur_stats.to_str().unwrap(),
+                "--seed",
+                "20260812",
+            ],
+            &["agent-random", "--seed", "1002"],
+        ),
+    );
+    let report = assert_completed_match(&config, &dir);
+    assert_eq!(report.agents.len(), 2);
+    assert!(heur_stats.is_file());
+    let heur_content = std::fs::read_to_string(&heur_stats).unwrap();
+    let heur_lines: Vec<&str> = heur_content.lines().filter(|l| !l.is_empty()).collect();
+    assert!(!heur_lines.is_empty());
+}

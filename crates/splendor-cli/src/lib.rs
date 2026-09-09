@@ -2,3 +2,4 @@
 //! tests while keeping the binary's module tree unchanged.
 
 pub mod experiment_replays;
+pub mod profile_agent;
