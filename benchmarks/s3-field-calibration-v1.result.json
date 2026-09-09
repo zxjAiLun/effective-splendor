@@ -1,0 +1,157 @@
+{
+  "format": "effective-splendor-s3-field-calibration-result",
+  "version": 1,
+  "experiment_id": "s3-field-calibration-v1",
+  "design_doc": "docs/s3-field-calibration.md @ 1c31c40 (frozen contract)",
+  "contract": {
+    "pairings": [
+      "p1_candidate_vs_n1",
+      "p2_candidate_vs_m07"
+    ],
+    "heuristic_rematch": false,
+    "candidate_identity": "agent-s3-rollout zero flags (no policy code changes)",
+    "frozen_seeds": [
+      5800320,
+      5800321,
+      5800322,
+      5800323,
+      5800324,
+      5800325,
+      5800326,
+      5800327,
+      5800328,
+      5800329,
+      5800330,
+      5800331,
+      5800332,
+      5800333,
+      5800334,
+      5800335,
+      5800336,
+      5800337,
+      5800338,
+      5800339,
+      5800340,
+      5800341,
+      5800342,
+      5800343,
+      5800344,
+      5800345,
+      5800346,
+      5800347,
+      5800348,
+      5800349,
+      5800350,
+      5800351,
+      5800352,
+      5800353,
+      5800354,
+      5800355,
+      5800356,
+      5800357,
+      5800358,
+      5800359,
+      5800360,
+      5800361,
+      5800362,
+      5800363,
+      5800364,
+      5800365,
+      5800366,
+      5800367,
+      5800368,
+      5800369,
+      5800370,
+      5800371,
+      5800372,
+      5800373,
+      5800374,
+      5800375,
+      5800376,
+      5800377,
+      5800378,
+      5800379,
+      5800380,
+      5800381,
+      5800382,
+      5800383
+    ],
+    "rotations": 2,
+    "matches": 256,
+    "bootstrap": {
+      "resamples": 10000,
+      "seed": 43300301,
+      "unit": "paired seed block"
+    },
+    "ci_levels": {
+      "descriptive_95": 95.0,
+      "decision_97_5": 97.5
+    },
+    "decision_ci": "decision_97_5 (two-comparison Bonferroni family)"
+  },
+  "pairings": [
+    {
+      "pairing_id": "p1_candidate_vs_n1",
+      "primary": "candidate",
+      "secondary": "n1",
+      "total_matches": 128,
+      "wins": 104,
+      "ties": 0,
+      "losses": 24,
+      "center_bps": 8125.0,
+      "ci_descriptive_95_bps": [
+        7421.875,
+        8750.0
+      ],
+      "ci_decision_97_5_bps": [
+        7343.75,
+        8828.125
+      ],
+      "verdict_descriptive_95": "STRONGER_A",
+      "verdict_decision_97_5": "STRONGER_A",
+      "mean_plies": 59.9609375,
+      "wall_total_s": 45.2
+    },
+    {
+      "pairing_id": "p2_candidate_vs_m07",
+      "primary": "candidate",
+      "secondary": "m07",
+      "total_matches": 128,
+      "wins": 100,
+      "ties": 0,
+      "losses": 28,
+      "center_bps": 7812.5,
+      "ci_descriptive_95_bps": [
+        7109.375,
+        8515.625
+      ],
+      "ci_decision_97_5_bps": [
+        6953.125,
+        8593.75
+      ],
+      "verdict_descriptive_95": "STRONGER_A",
+      "verdict_decision_97_5": "STRONGER_A",
+      "mean_plies": 61.53125,
+      "wall_total_s": 94.9
+    }
+  ],
+  "decision": {
+    "vs_n1": "STRONGER_A",
+    "vs_m07": "STRONGER_A",
+    "state": "FIELD_TOP_CONFIRMED",
+    "new_primary_development_reference": "s3-rollout-candidate",
+    "prior_knowledge": {
+      "candidate_vs_heuristic": "STRONGER (S3 Stage B: 80-0-48, 95% CI [5468.75, 6953.125])",
+      "heuristic_vs_n1": "STRONGER (S0)",
+      "heuristic_vs_m07": "STRONGER (S0)",
+      "n1_vs_m07": "UNRESOLVED (S0/M42S)"
+    },
+    "wording_rules": [
+      "Transitivity is never assumed (the candidate's rollout opponent model IS heuristic).",
+      "FIELD_TOP_CONFIRMED changes the PRIMARY DEVELOPMENT REFERENCE only \u2014 not the product default, not an automatic promotion.",
+      "A genuine cycle (NONTRANSITIVE_SPLIT_FIELD) is a scientific result: the rollout gain may be opponent/model-specific.",
+      "No extra seeds in any outcome."
+    ]
+  },
+  "splendor_exe_sha256": "109aee2aff50a892ef8f728e153e0c3bb54fbb7ff8a2b009dab9827024e09f32"
+}
