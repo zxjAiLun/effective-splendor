@@ -7,17 +7,24 @@
 //! ```text
 //! root_determinization   -> mean utility vectors (M07)
 //! neural_ismcts          -> policy prior / visit / Q vectors (M13)
+//! policy_recommendation  -> S3 proposal set + decision path (no utility/Q)
 //! ```
 //!
-//! The two result kinds are deliberately never merged: M07 utility is never
-//! written into a `Q` field and M13 never fabricates a determinization utility.
-//! A reviewer only ever receives the recorded actor's `Observation` plus its
-//! visible history; the referee reveal data carried here is for post-game
-//! display only and is never an analyzer input.
+//! The result kinds are deliberately never merged: M07 utility is never
+//! written into a `Q` field, M13 never fabricates a determinization utility,
+//! and the S3 reviewer only reports its own proposal set and decision path
+//! (never a fabricated utility or rank). A reviewer only ever receives the
+//! recorded actor's `Observation` plus its visible history; the referee reveal
+//! data carried here is for post-game display only and is never an analyzer
+//! input.
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use splendor_core::{Action, Observation, PlayerId};
+use splendor_determinization_agent::s3_agent::S3_ROOT_SEED;
+use splendor_determinization_agent::s3_rollout::{
+    s3_m07_config, s3_n1_config, S3_D, S3_P, S3_ROLLOUT_SAMPLE_SEED,
+};
 use splendor_imperfect_search::{
     RootDeterminizationConfigV1, RootDeterminizationStatsV1, IMPERFECT_SEARCH_ALGORITHM_ID,
 };
@@ -48,6 +55,20 @@ pub const M13_REVIEWER_ALGORITHM_VERSION: u32 = 1;
 pub const M13_REVIEWER_SEED_DERIVATION: &str =
     "frozen sample_seed from NeuralIsmctsConfigV1 (no referee seed reuse)";
 
+pub const S3_REVIEWER_ID: &str = "s3-rollout-review";
+pub const S3_REVIEWER_DISPLAY_NAME: &str = "S3 Rollout Review";
+pub const S3_REVIEWER_ALGORITHM_VERSION: u32 = 1;
+/// Algorithm identity shared with the live S3 rollout candidate
+/// (`splendor_determinization_agent::s3_agent::S3_AGENT_NAME`).
+pub const S3_REVIEWER_ALGORITHM_ID: &str = "effective-splendor-s3-rollout-v1";
+pub const S3_REVIEWER_SEED_DERIVATION: &str =
+    "per-seat persistent StableRng(20_260_812) advanced over replay plies in order; consumed only on root heuristic ties (unique maxima consume nothing)";
+/// Honest metric names: the S3 reviewer exposes its recommendation, the
+/// decision path and the integer rollout outcome score only. It never exposes
+/// mean utility, a rank, a prior, a visit count or a Q value.
+pub const S3_REVIEWER_METRICS: [&str; 3] =
+    ["recommended_action", "decision_path", "rollout_outcome_score"];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewerStatusV2 {
@@ -61,6 +82,60 @@ pub enum ReviewerStatusV2 {
 pub enum ReviewerResultKindV2 {
     RootDeterminization,
     NeuralIsmcts,
+    PolicyRecommendation,
+}
+
+/// Frozen S3 review configuration identity.
+///
+/// The S3 decision engine keeps D/P/seeds as frozen code constants; this
+/// config mirrors them so the trace is self-describing and so
+/// [`review_cache_key_v2`] flips when a future S3 policy revision changes the
+/// rollout identity. `validate()` only accepts the exact frozen v1 values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct S3ReviewConfigV2 {
+    pub version: u32,
+    /// Frozen rollout policy identity label.
+    pub rollout_policy: String,
+    /// D: shared hidden-world samples per decision.
+    pub determinizations: u16,
+    /// P: simulated action applications after the root candidate action.
+    pub ply_cap: u16,
+    /// Frozen evaluation (world sampling) stream seed.
+    pub sample_seed: u64,
+    /// Frozen n1/M07 proposal sample seed.
+    pub proposal_seed: u64,
+    /// Persistent per-seat root heuristic RNG seed.
+    pub root_seed: u64,
+}
+
+pub const S3_REVIEW_CONFIG_VERSION: u32 = 1;
+pub const S3_REVIEW_ROLLOUT_POLICY: &str = "s3-rollout-d4-p120-v1";
+
+impl S3ReviewConfigV2 {
+    /// The one frozen v1 identity (derived from the agent's constants).
+    pub fn frozen_v1() -> Self {
+        Self {
+            version: S3_REVIEW_CONFIG_VERSION,
+            rollout_policy: S3_REVIEW_ROLLOUT_POLICY.to_owned(),
+            determinizations: u16::try_from(S3_D).expect("S3_D fits u16"),
+            ply_cap: u16::try_from(S3_P).expect("S3_P fits u16"),
+            sample_seed: S3_ROLLOUT_SAMPLE_SEED,
+            proposal_seed: s3_n1_config().sample_seed,
+            root_seed: S3_ROOT_SEED,
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        let expected = Self::frozen_v1();
+        if s3_m07_config().sample_seed != expected.proposal_seed {
+            return Err("frozen S3 proposal configs disagree on the sample seed".into());
+        }
+        if self != &expected {
+            return Err("S3 review config is not the frozen v1 rollout identity".into());
+        }
+        Ok(())
+    }
 }
 
 /// Reviewer-specific frozen configuration, discriminated by result kind.
@@ -69,6 +144,23 @@ pub enum ReviewerResultKindV2 {
 pub enum ReviewerConfigV2 {
     RootDeterminization(RootDeterminizationConfigV1),
     NeuralIsmcts(NeuralIsmctsConfigV1),
+    PolicyRecommendation(S3ReviewConfigV2),
+}
+
+/// S3 decision path, mirrored from the agent crate's `S3Path` so the analysis
+/// JSON schema stays independent of the agent crate's internal serialization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum S3ReviewPathV2 {
+    /// No rollout comparison ran (non-Main phase, <2 legal actions, or a
+    /// root heuristic tie): the recommendation is the base heuristic action.
+    HeuristicFastPath,
+    /// All proposals agreed: the unique action was returned without rollouts.
+    ProposalsAgreed,
+    /// Some rollout was ply-capped: the decision kept the base heuristic action.
+    PlyCapFallback,
+    /// Complete comparison: integer terminal-score argmax with the full tie rule.
+    RolloutComparison,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -121,6 +213,12 @@ impl ReviewerIdentityV2 {
                 vec!["prior", "visit", "q"],
                 M13_REVIEWER_SEED_DERIVATION,
             ),
+            ReviewerResultKindV2::PolicyRecommendation => (
+                S3_REVIEWER_ALGORITHM_ID,
+                S3_REVIEWER_ALGORITHM_VERSION,
+                S3_REVIEWER_METRICS.to_vec(),
+                S3_REVIEWER_SEED_DERIVATION,
+            ),
         };
         Self {
             id: id.into(),
@@ -164,11 +262,30 @@ pub struct NeuralIsmctsReviewResultV2 {
     pub result: NeuralIsmctsResultV1,
 }
 
+/// The S3 reviewer's honest output: its recommendation, the three frozen
+/// proposals that produced it, and the decision path. Deliberately minimal —
+/// `recorded_action` / `recommended_matches_recorded` live on the frame and
+/// are never duplicated here. No utility, rank, prior, visit or Q is exposed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PolicyRecommendationReviewResultV2 {
+    pub recommended_action: Action,
+    /// The base heuristic action (with its persistent root-RNG tie break).
+    pub base_heuristic_action: Action,
+    /// The n1 proposal; equals the base heuristic action when no comparison ran.
+    pub n1_proposal: Action,
+    /// The M07 proposal; equals the base heuristic action when no comparison ran.
+    pub m07_proposal: Action,
+    pub decision_path: S3ReviewPathV2,
+    pub recommended_differs_from_base_heuristic: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ReviewResultV2 {
     RootDeterminization(RootDeterminizationReviewResultV2),
     NeuralIsmcts(NeuralIsmctsReviewResultV2),
+    PolicyRecommendation(PolicyRecommendationReviewResultV2),
 }
 
 impl ReviewResultV2 {
@@ -176,6 +293,7 @@ impl ReviewResultV2 {
         match self {
             Self::RootDeterminization(_) => ReviewerResultKindV2::RootDeterminization,
             Self::NeuralIsmcts(_) => ReviewerResultKindV2::NeuralIsmcts,
+            Self::PolicyRecommendation(_) => ReviewerResultKindV2::PolicyRecommendation,
         }
     }
 
@@ -183,6 +301,7 @@ impl ReviewResultV2 {
         match self {
             Self::RootDeterminization(result) => result.recommended_action,
             Self::NeuralIsmcts(result) => result.result.action,
+            Self::PolicyRecommendation(result) => result.recommended_action,
         }
     }
 }
@@ -351,6 +470,12 @@ impl AnalysisTraceV2 {
                     ["prior", "visit", "q"].as_slice(),
                     M13_REVIEWER_SEED_DERIVATION,
                 ),
+                ReviewerResultKindV2::PolicyRecommendation => (
+                    S3_REVIEWER_ALGORITHM_ID,
+                    S3_REVIEWER_ALGORITHM_VERSION,
+                    S3_REVIEWER_METRICS.as_slice(),
+                    S3_REVIEWER_SEED_DERIVATION,
+                ),
             };
         if reviewer.algorithm_id != expected_algorithm
             || reviewer.algorithm_version != expected_version
@@ -377,6 +502,12 @@ impl AnalysisTraceV2 {
             {
                 return Err(invalid("M13 reviewer status/kind mismatch"));
             }
+            S3_REVIEWER_ID
+                if reviewer.competitive_status != ReviewerStatusV2::Champion
+                    || reviewer.result_kind != ReviewerResultKindV2::PolicyRecommendation =>
+            {
+                return Err(invalid("S3 reviewer status/kind mismatch"));
+            }
             _ => {}
         }
         match (&reviewer.config, reviewer.checkpoint_hash.as_deref()) {
@@ -397,6 +528,13 @@ impl AnalysisTraceV2 {
                 if config.expected_checkpoint_hash != checkpoint_hash {
                     return Err(invalid("reviewer checkpoint binding mismatch"));
                 }
+            }
+            (ReviewerConfigV2::PolicyRecommendation(config), None)
+                if reviewer.result_kind == ReviewerResultKindV2::PolicyRecommendation =>
+            {
+                config
+                    .validate()
+                    .map_err(|error| invalid(format!("reviewer config: {error}")))?;
             }
             _ => return Err(invalid("reviewer config/checkpoint/kind mismatch")),
         }
@@ -492,6 +630,33 @@ impl AnalysisTraceV2 {
                     {
                         return Err(invalid(format!("frame {index} neural edge stats invalid")));
                     }
+                }
+            }
+            ReviewResultV2::PolicyRecommendation(result) => {
+                let actions = [
+                    result.recommended_action,
+                    result.base_heuristic_action,
+                    result.n1_proposal,
+                    result.m07_proposal,
+                ];
+                if actions
+                    .iter()
+                    .any(|action| !frame.legal_actions.contains(action))
+                    || result.recommended_differs_from_base_heuristic
+                        != (result.recommended_action != result.base_heuristic_action)
+                {
+                    return Err(invalid(format!(
+                        "frame {index} policy recommendation binding mismatch"
+                    )));
+                }
+                if result.decision_path == S3ReviewPathV2::HeuristicFastPath
+                    && (result.recommended_action != result.base_heuristic_action
+                        || result.n1_proposal != result.base_heuristic_action
+                        || result.m07_proposal != result.base_heuristic_action)
+                {
+                    return Err(invalid(format!(
+                        "frame {index} fast-path policy recommendation mismatch"
+                    )));
                 }
             }
         }

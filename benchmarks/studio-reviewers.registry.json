@@ -4,12 +4,34 @@
   "registry_id": "studio-reviewers-2026-08-13",
   "reviewers": [
     {
+      "id": "s3-rollout-review",
+      "display_name": "S3 Rollout Review",
+      "description": "Product-default rollout-enhanced heuristic. Reports its recommendation, the frozen n1/M07 proposals and the decision path only — no utility, rank, prior or Q.",
+      "competitive_status": "champion",
+      "result_kind": "policy_recommendation",
+      "is_default": true,
+      "available_metrics": ["recommended_action", "decision_path", "rollout_outcome_score"],
+      "required_artifacts": [],
+      "estimated_cost": "cpu",
+      "default_config": {
+        "kind": "policy_recommendation",
+        "version": 1,
+        "rollout_policy": "s3-rollout-d4-p120-v1",
+        "determinizations": 4,
+        "ply_cap": 120,
+        "sample_seed": 43300101,
+        "proposal_seed": 20260703,
+        "root_seed": 20260812
+      },
+      "checkpoint_path": null
+    },
+    {
       "id": "m07-determinization-champion",
       "display_name": "M07 Determinization Champion",
-      "description": "Frozen root-determinization baseline. Mean continuation utility per action, no priors or Q values.",
+      "description": "Frozen root-determinization baseline (historical champion reviewer). Mean continuation utility per action, no priors or Q values.",
       "competitive_status": "champion",
       "result_kind": "root_determinization",
-      "is_default": true,
+      "is_default": false,
       "available_metrics": ["mean_utility", "utility_gap", "action_rank"],
       "required_artifacts": [],
       "estimated_cost": "cpu",

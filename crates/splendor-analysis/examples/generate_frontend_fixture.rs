@@ -2,9 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use splendor_analysis::{
-    analyze_replay_determinization_v2, analyze_replay_neural_v1, ReviewerConfigV2,
-    ReviewerIdentityV2, ReviewerResultKindV2, ReviewerStatusV2, M07_REVIEWER_DISPLAY_NAME,
-    M07_REVIEWER_ID,
+    analyze_replay_determinization_v2, analyze_replay_neural_v1, analyze_replay_s3_v2,
+    ReviewerConfigV2, ReviewerIdentityV2, ReviewerResultKindV2, ReviewerStatusV2,
+    S3ReviewConfigV2, M07_REVIEWER_DISPLAY_NAME, M07_REVIEWER_ID, S3_REVIEWER_DISPLAY_NAME,
+    S3_REVIEWER_ID,
 };
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_learning::{
@@ -61,6 +62,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     bytes.push(b'\n');
     let output =
         workspace_root().join("apps/replay-studio/tests/fixtures/rust-analysis-trace-v2-m07.json");
+    fs::write(&output, bytes)?;
+    println!("wrote {}", output.display());
+
+    let s3_reviewer = ReviewerIdentityV2::new(
+        S3_REVIEWER_ID,
+        S3_REVIEWER_DISPLAY_NAME,
+        ReviewerStatusV2::Champion,
+        ReviewerResultKindV2::PolicyRecommendation,
+        ReviewerConfigV2::PolicyRecommendation(S3ReviewConfigV2::frozen_v1()),
+        None,
+    );
+    let mut s3_review = analyze_replay_s3_v2(&replay, &s3_reviewer)?;
+    s3_review.frames.truncate(1);
+    s3_review.validate()?;
+    let mut bytes = serde_json::to_vec_pretty(&s3_review)?;
+    bytes.push(b'\n');
+    let output =
+        workspace_root().join("apps/replay-studio/tests/fixtures/rust-analysis-trace-v2-s3.json");
     fs::write(&output, bytes)?;
     println!("wrote {}", output.display());
     Ok(())

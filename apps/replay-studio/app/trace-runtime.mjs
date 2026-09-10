@@ -340,7 +340,8 @@ export function buildAnalysisRows(trace, frame) {
 // ---------------------------------------------------------------------------
 
 const REVIEW_STATUSES = ["champion", "experimental", "rejected"];
-const REVIEW_KINDS = ["root_determinization", "neural_ismcts"];
+const REVIEW_KINDS = ["root_determinization", "neural_ismcts", "policy_recommendation"];
+const S3_REVIEW_PATHS = ["heuristic_fast_path", "proposals_agreed", "ply_cap_fallback", "rollout_comparison"];
 
 export function isReviewTraceEnvelope(value) {
   return Boolean(value && typeof value === "object"
@@ -369,13 +370,23 @@ function validateReviewer(reviewer) {
     integer(continuation.max_depth_turns, "reviewer.config.continuation_search.max_depth_turns", 1);
     integer(continuation.max_nodes, "reviewer.config.continuation_search.max_nodes", 1);
     if (value.checkpoint_hash !== null) fail("reviewer.checkpoint_hash", "root determinization must not bind a checkpoint");
-  } else {
+  } else if (value.result_kind === "neural_ismcts") {
     integer(config.sample_seed, "reviewer.config.sample_seed");
     integer(config.simulations, "reviewer.config.simulations", 1);
     integer(config.max_depth_turns, "reviewer.config.max_depth_turns", 1);
     integer(config.puct_exploration_milli, "reviewer.config.puct_exploration_milli", 1);
     hash(config.expected_checkpoint_hash, "reviewer.config.expected_checkpoint_hash");
     if (config.expected_checkpoint_hash !== value.checkpoint_hash) fail("reviewer.config.expected_checkpoint_hash", "checkpoint binding mismatch");
+  } else {
+    // policy_recommendation (S3): frozen rollout identity, no checkpoint.
+    integer(config.version, "reviewer.config.version", 1);
+    text(config.rollout_policy, "reviewer.config.rollout_policy");
+    integer(config.determinizations, "reviewer.config.determinizations", 1);
+    integer(config.ply_cap, "reviewer.config.ply_cap", 1);
+    integer(config.sample_seed, "reviewer.config.sample_seed");
+    integer(config.proposal_seed, "reviewer.config.proposal_seed");
+    integer(config.root_seed, "reviewer.config.root_seed");
+    if (value.checkpoint_hash !== null) fail("reviewer.checkpoint_hash", "policy recommendation must not bind a checkpoint");
   }
   return value;
 }
@@ -397,6 +408,23 @@ function validateReviewResult(reviewResult, trace, frame, path) {
     });
     const stats = object(value.stats, `${path}.stats`);
     if (integer(stats.samples, `${path}.stats.samples`, 1) !== sampleCount) fail(`${path}.stats.samples`, "sample count mismatch");
+    return value;
+  }
+  if (value.kind === "policy_recommendation") {
+    // S3 proposal set: honest actions only, no utility/Q/rank fields.
+    const legalKeys = frame.legal_actions.map(actionKey);
+    for (const field of ["recommended_action", "base_heuristic_action", "n1_proposal", "m07_proposal"]) {
+      validateAction(value[field], `${path}.${field}`);
+      if (!legalKeys.includes(actionKey(value[field]))) fail(`${path}.${field}`, "not in legal actions");
+    }
+    if (!S3_REVIEW_PATHS.includes(value.decision_path)) fail(`${path}.decision_path`, "unsupported decision path");
+    if (typeof value.recommended_differs_from_base_heuristic !== "boolean") fail(`${path}.recommended_differs_from_base_heuristic`, "expected boolean");
+    const differs = actionKey(value.recommended_action) !== actionKey(value.base_heuristic_action);
+    if (value.recommended_differs_from_base_heuristic !== differs) fail(`${path}.recommended_differs_from_base_heuristic`, "does not match recommended/base identity");
+    if (value.decision_path === "heuristic_fast_path"
+        && (differs || actionKey(value.n1_proposal) !== actionKey(value.base_heuristic_action) || actionKey(value.m07_proposal) !== actionKey(value.base_heuristic_action))) {
+      fail(`${path}.decision_path`, "fast path must keep the base heuristic action for every proposal");
+    }
     return value;
   }
   // neural_ismcts: mirror the V1 neural_result validation.
@@ -486,9 +514,9 @@ function validateReviewFrame(frame, index, trace) {
 }
 
 export function reviewRecommendedAction(reviewResult) {
-  return reviewResult.kind === "root_determinization"
-    ? reviewResult.recommended_action
-    : reviewResult.result.action;
+  return reviewResult.kind === "neural_ismcts"
+    ? reviewResult.result.action
+    : reviewResult.recommended_action;
 }
 
 export function validateReviewTrace(value) {
@@ -533,6 +561,26 @@ function rankWithTies(values) {
 
 export function buildReviewRows(trace, frame) {
   const actor = frame.actor;
+  if (trace.reviewer.result_kind === "policy_recommendation") {
+    const result = frame.review_result;
+    const proposals = [
+      ["recommended_action", result.recommended_action],
+      ["base_heuristic_action", result.base_heuristic_action],
+      ["n1_proposal", result.n1_proposal],
+      ["m07_proposal", result.m07_proposal],
+    ];
+    return {
+      kind: "policy_recommendation",
+      decisionPath: result.decision_path,
+      recommendedDiffersFromBase: result.recommended_differs_from_base_heuristic,
+      rows: proposals.map(([role, action]) => ({
+        role,
+        action,
+        actual: actionKey(action) === actionKey(frame.recorded_action),
+        recommended: actionKey(action) === actionKey(result.recommended_action),
+      })),
+    };
+  }
   if (trace.reviewer.result_kind === "root_determinization") {
     const sampleCount = frame.review_result.sample_count;
     const means = frame.review_result.action_stats.map((stats) => stats.utility_sum_by_player[actor] / sampleCount);
@@ -578,6 +626,23 @@ export function buildReviewSummary(trace, humanSeat = null) {
     ? trace.frames
     : trace.frames.filter((frame) => frame.actor === humanSeat);
   const decisions = humanFrames.length;
+  if (trace.reviewer.result_kind === "policy_recommendation") {
+    // Neutral S3 summary: how often the recommendation equals the recorded
+    // action, how often the rollout moved away from the base heuristic, and
+    // the decision-path histogram. No rank, unscored bucket or accuracy.
+    let matches = 0;
+    let differs = 0;
+    let differsFromBase = 0;
+    const decisionPaths = {};
+    for (const frame of humanFrames) {
+      if (frame.recommended_matches_recorded) matches += 1;
+      else differs += 1;
+      const path = frame.review_result.decision_path;
+      decisionPaths[path] = (decisionPaths[path] ?? 0) + 1;
+      if (frame.review_result.recommended_differs_from_base_heuristic) differsFromBase += 1;
+    }
+    return { decisions, matches, differs, differsFromBase, decisionPaths };
+  }
   let scored = 0;
   let unscored = 0;
   let agreements = 0;

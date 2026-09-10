@@ -12,7 +12,8 @@ use splendor_agent::{
 };
 use splendor_analysis::{
     analyze_replay_determinization_v2_with_progress, analyze_replay_neural_v2_with_progress,
-    review_cache_key_v2, AnalysisTraceV2, ReviewerConfigV2, ReviewerIdentityV2, ReviewerRegistryV1,
+    analyze_replay_s3_v2_with_progress, review_cache_key_v2, AnalysisTraceV2, ReviewerConfigV2,
+    ReviewerIdentityV2, ReviewerRegistryV1,
 };
 use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, InboundEvent};
 use splendor_catalog::{all_cards, all_nobles, CardId, GemColor, NobleId, Tier};
@@ -873,6 +874,7 @@ impl StudioHost {
                 Some(checkpoint)
             }
             ReviewerConfigV2::RootDeterminization(_) => None,
+            ReviewerConfigV2::PolicyRecommendation(_) => None,
         };
 
         let cache_key = review_cache_key_v2(&replay_document_hash, &reviewer)
@@ -1115,6 +1117,7 @@ fn reviewer_identity_from_entry(
     let checkpoint_hash = match &entry.default_config {
         ReviewerConfigV2::NeuralIsmcts(config) => Some(config.expected_checkpoint_hash.clone()),
         ReviewerConfigV2::RootDeterminization(_) => None,
+        ReviewerConfigV2::PolicyRecommendation(_) => None,
     };
     Ok(ReviewerIdentityV2::new(
         entry.id.clone(),
@@ -1309,6 +1312,10 @@ fn run_review(
                 let checkpoint = checkpoint
                     .ok_or_else(|| "missing checkpoint for neural reviewer".to_string())?;
                 analyze_replay_neural_v2_with_progress(replay, checkpoint, reviewer, &mut progress)
+                    .map_err(|error| error.to_string())?
+            }
+            ReviewerConfigV2::PolicyRecommendation(_) => {
+                analyze_replay_s3_v2_with_progress(replay, reviewer, &mut progress)
                     .map_err(|error| error.to_string())?
             }
         }

@@ -10,7 +10,7 @@ use std::path::{Component, Path};
 
 use crate::{
     AnalysisError, ReviewerConfigV2, ReviewerResultKindV2, ReviewerStatusV2, M07_REVIEWER_ID,
-    M13_REVIEWER_ID,
+    M13_REVIEWER_ID, S3_REVIEWER_ID, S3_REVIEWER_METRICS,
 };
 
 pub const REVIEWER_REGISTRY_FORMAT: &str = "effective-splendor-studio-reviewers";
@@ -88,6 +88,7 @@ impl ReviewerRegistryV1 {
                     &["mean_utility", "utility_gap", "action_rank"]
                 }
                 ReviewerResultKindV2::NeuralIsmcts => &["prior", "visit", "q"],
+                ReviewerResultKindV2::PolicyRecommendation => &S3_REVIEWER_METRICS,
             };
             if entry
                 .available_metrics
@@ -112,6 +113,12 @@ impl ReviewerRegistryV1 {
                         || entry.result_kind != ReviewerResultKindV2::NeuralIsmcts =>
                 {
                     return Err(reviewer("M13 reviewer status/kind mismatch"));
+                }
+                S3_REVIEWER_ID
+                    if entry.competitive_status != ReviewerStatusV2::Champion
+                        || entry.result_kind != ReviewerResultKindV2::PolicyRecommendation =>
+                {
+                    return Err(reviewer("S3 reviewer status/kind mismatch"));
                 }
                 _ => {}
             }
@@ -153,6 +160,20 @@ impl ReviewerRegistryV1 {
                     {
                         return Err(reviewer(format!(
                             "reviewer '{}' checkpoint_path must stay below local-artifacts",
+                            entry.id
+                        )));
+                    }
+                }
+                (
+                    ReviewerConfigV2::PolicyRecommendation(config),
+                    ReviewerResultKindV2::PolicyRecommendation,
+                ) => {
+                    config.validate().map_err(|error| {
+                        reviewer(format!("reviewer '{}' config: {error}", entry.id))
+                    })?;
+                    if entry.checkpoint_path.is_some() {
+                        return Err(reviewer(format!(
+                            "reviewer '{}' must not bind a checkpoint",
                             entry.id
                         )));
                     }

@@ -45,7 +45,7 @@ type Reviewer = {
   display_name: string;
   description: string;
   competitive_status: "champion" | "experimental" | "rejected";
-  result_kind: "root_determinization" | "neural_ismcts";
+  result_kind: "root_determinization" | "neural_ismcts" | "policy_recommendation";
   is_default: boolean;
   available_metrics: string[];
   required_artifacts: string[];
@@ -64,11 +64,16 @@ type ReviewFrame = {
   referee_reveal: { seed: number; decks: number[][]; players: Array<{ id: number; reserved: Array<{ card: number; from_deck: boolean }> }> };
   legal_actions: Action[];
   review_result: {
-    kind: "root_determinization" | "neural_ismcts";
+    kind: "root_determinization" | "neural_ismcts" | "policy_recommendation";
     recommended_action?: Action;
     sample_count?: number;
     action_stats?: Array<{ action: Action; utility_sum_by_player: number[] }>;
     result?: { action: Action; action_stats: Array<{ action: Action; prior_micros: number; visits: number; value_sum_by_player: number[] }>; stats: { root_visits: number; simulations: number; tree_nodes: number } };
+    base_heuristic_action?: Action;
+    n1_proposal?: Action;
+    m07_proposal?: Action;
+    decision_path?: "heuristic_fast_path" | "proposals_agreed" | "ply_cap_fallback" | "rollout_comparison";
+    recommended_differs_from_base_heuristic?: boolean;
   };
   recommended_matches_recorded: boolean;
 };
@@ -77,6 +82,7 @@ type ReviewTraceReviewer = Reviewer & {
   algorithm_version: number;
   config: {
     kind: string;
+    version?: number;
     sample_seed: number;
     sample_count?: number;
     continuation_search?: { max_depth_turns: number; max_nodes: number };
@@ -84,6 +90,11 @@ type ReviewTraceReviewer = Reviewer & {
     max_depth_turns?: number;
     puct_exploration_milli?: number;
     expected_checkpoint_hash?: string;
+    rollout_policy?: string;
+    determinizations?: number;
+    ply_cap?: number;
+    proposal_seed?: number;
+    root_seed?: number;
   };
   checkpoint_hash: string | null;
   provenance: { seed_derivation: string; metrics: string[] };
@@ -113,6 +124,24 @@ type Job = {
 };
 
 const API = "http://127.0.0.1:43120";
+
+const S3_PATH_LABELS: Record<string, string> = {
+  heuristic_fast_path: "Heuristic fast path",
+  proposals_agreed: "Proposals agreed",
+  ply_cap_fallback: "Ply-cap fallback",
+  rollout_comparison: "Rollout comparison",
+};
+
+function reviewConfigLabel(trace: ReviewTrace) {
+  const config = trace.reviewer.config;
+  if (trace.reviewer.result_kind === "policy_recommendation") {
+    return `S3 · D=${config.determinizations ?? "?"} · P=${config.ply_cap ?? "?"}`;
+  }
+  if (trace.reviewer.result_kind === "root_determinization") {
+    return `s${config.sample_count}`;
+  }
+  return `s${config.simulations} d${config.max_depth_turns}`;
+}
 
 function shortHash(hash: string) {
   return `${hash.slice(0, 8)}…${hash.slice(-6)}`;
@@ -361,9 +390,16 @@ function ReviewSummaryBar({ trace, reviewer, summary, job }: { trace: ReviewTrac
         <div><dt>Status</dt><dd>{reviewer.competitive_status === "rejected" ? "Experimental · rejected" : reviewer.competitive_status}</dd></div>
         <div><dt>Replay verified</dt><dd>yes</dd></div>
         <div><dt>Artifact</dt><dd>{cacheLabel}</dd></div>
-        <div><dt>Config</dt><dd>{trace.reviewer.result_kind === "root_determinization" ? `s${trace.reviewer.config.sample_count}` : `s${trace.reviewer.config.simulations} d${trace.reviewer.config.max_depth_turns}`}</dd></div>
+        <div><dt>Config</dt><dd>{reviewConfigLabel(trace)}</dd></div>
       </dl>
-      {summary && (
+      {summary && ("matches" in summary ? (
+        <div className="review-summary-stats">
+          <span><b>{summary.decisions}</b> human decisions</span>
+          <span><b>{summary.matches}</b> matches S3 recommendation</span>
+          <span><b>{summary.differs}</b> S3 recommends another action</span>
+          <span><b>{summary.differsFromBase}</b> rollout differs from base heuristic</span>
+        </div>
+      ) : (
         <div className="review-summary-stats">
           <span><b>{summary.decisions}</b> human decisions</span>
           <span><b>{summary.scored}</b> scored</span>
@@ -372,7 +408,7 @@ function ReviewSummaryBar({ trace, reviewer, summary, job }: { trace: ReviewTrac
           <span><b>{summary.topRanked}</b> top-ranked</span>
           <span><b>{summary.medianActionRank ?? "—"}</b> median rank</span>
         </div>
-      )}
+      ))}
     </section>
   );
 }
@@ -381,6 +417,44 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
   if (!frame) return null;
   const rows = buildReviewRows(trace, frame).rows;
   const recommended = reviewRecommendedAction(frame.review_result);
+  if (trace.reviewer.result_kind === "policy_recommendation") {
+    const result = frame.review_result;
+    const recommendedAction = recommended as Action;
+    const baseHeuristic = result.base_heuristic_action as Action;
+    const pathLabel = S3_PATH_LABELS[result.decision_path ?? ""] ?? result.decision_path ?? "unknown";
+    const proposals: Array<[string, Action, boolean, boolean]> = [
+      ["S3 recommendation", recommendedAction, actionKey(recommendedAction) === actionKey(frame.recorded_action), true],
+      ["Base heuristic", baseHeuristic, actionKey(baseHeuristic) === actionKey(frame.recorded_action), actionKey(baseHeuristic) === actionKey(recommendedAction)],
+      ["n1 proposal", result.n1_proposal as Action, actionKey(result.n1_proposal as Action) === actionKey(frame.recorded_action), actionKey(result.n1_proposal as Action) === actionKey(recommendedAction)],
+      ["M07 proposal", result.m07_proposal as Action, actionKey(result.m07_proposal as Action) === actionKey(frame.recorded_action), actionKey(result.m07_proposal as Action) === actionKey(recommendedAction)],
+    ];
+    return (
+      <div>
+        <div className="analysis-header">
+          <div><span className="section-kicker">POLICY RECOMMENDATION</span><h2>{trace.reviewer.display_name}</h2></div>
+          <span className="budget">D={trace.reviewer.config.determinizations} · P={trace.reviewer.config.ply_cap} · no utility</span>
+        </div>
+        <div className="legend"><span><i className="actual-marker">★</i> recorded</span><span><i className="best-marker">▲</i> S3 recommendation</span></div>
+        <div className="analysis-table" role="table" aria-label="S3 policy recommendation">
+          <div className="analysis-row determinization table-head" role="row"><span>Proposal</span><span>Action</span><span>Recorded</span><span>S3</span></div>
+          {proposals.map(([label, action, recorded, recommendedRow]) => (
+            <div className={`analysis-row determinization ${recorded ? "actual-row" : ""} ${recommendedRow ? "best-row" : ""}`} role="row" key={label}>
+              <span className="action-name"><i>{recorded ? "★" : recommendedRow ? "▲" : ""}</i>{label}</span>
+              <span className="action-name">{formatActionLabel(action, frame, cards)}</span>
+              <span className="q-value">{recorded ? "★" : "—"}</span>
+              <span className="q-value">{recommendedRow ? "▲" : "—"}</span>
+            </div>
+          ))}
+        </div>
+        <div className="decision-summary">
+          <span className={frame.recommended_matches_recorded ? "match" : "mismatch"}>{frame.recommended_matches_recorded ? "MATCHES S3 RECOMMENDATION" : "S3 RECOMMENDS ANOTHER ACTION"}</span>
+          <p>Played <strong>{formatActionLabel(frame.recorded_action, frame, cards)}</strong></p>
+          <p>S3 recommends <strong>{formatActionLabel(recommendedAction, frame, cards)}</strong></p>
+          <p>Decision path <strong>{pathLabel}</strong></p>
+        </div>
+      </div>
+    );
+  }
   if (trace.reviewer.result_kind === "root_determinization") {
     return (
       <div>

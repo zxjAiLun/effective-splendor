@@ -7,11 +7,13 @@ rust-version.workspace = true
 description = "M14A replay-bound analysis traces and Replay Studio projections"
 
 [dependencies]
+splendor-agent = { workspace = true }
 splendor-catalog = { workspace = true }
 splendor-core = { workspace = true }
 splendor-belief = { workspace = true }
 splendor-replay = { workspace = true }
 splendor-arena = { workspace = true }
+splendor-determinization-agent = { workspace = true }
 splendor-eval = { workspace = true }
 splendor-learning = { workspace = true }
 splendor-league = { workspace = true }

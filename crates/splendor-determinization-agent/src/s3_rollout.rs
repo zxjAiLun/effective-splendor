@@ -65,6 +65,12 @@ pub fn s3_m07_config() -> RootDeterminizationConfigV1 {
 pub struct S3Decision {
     /// The chosen action.
     pub action: Action,
+    /// The base heuristic action, including its persistent root-RNG tie break.
+    pub base_heuristic_action: Action,
+    /// The n1 proposal produced during this decision.
+    pub n1_proposal: Action,
+    /// The M07 proposal produced during this decision.
+    pub m07_proposal: Action,
     /// Which path produced the decision.
     pub path: S3Path,
     /// Candidate set size after dedup (fast paths report the trivial size).
@@ -237,6 +243,9 @@ pub fn s3_decide(
     if hs.len() > 1 {
         return Ok(S3Decision {
             action: hs[0],
+            base_heuristic_action: hs[0],
+            n1_proposal: a_n1,
+            m07_proposal: a_m07,
             path: S3Path::RootTieKeptA_H,
             candidate_set_size: 1,
             score2: Vec::new(),
@@ -271,6 +280,9 @@ pub fn s3_comparison(
     if candidates.len() == 1 {
         return Ok(S3Decision {
             action: candidates[0],
+            base_heuristic_action: a_h,
+            n1_proposal: a_n1,
+            m07_proposal: a_m07,
             path: S3Path::ProposalsAgreed,
             candidate_set_size: 1,
             score2: Vec::new(),
@@ -315,6 +327,9 @@ pub fn s3_comparison(
                 None => {
                     return Ok(S3Decision {
                         action: a_h,
+                        base_heuristic_action: a_h,
+                        n1_proposal: a_n1,
+                        m07_proposal: a_m07,
                         path: S3Path::PlyCapFallback,
                         candidate_set_size: candidates.len(),
                         score2: Vec::new(),
@@ -342,6 +357,9 @@ pub fn s3_comparison(
     };
     Ok(S3Decision {
         action: chosen,
+        base_heuristic_action: a_h,
+        n1_proposal: a_n1,
+        m07_proposal: a_m07,
         path: S3Path::RolloutComparison,
         candidate_set_size: candidates.len(),
         score2,
