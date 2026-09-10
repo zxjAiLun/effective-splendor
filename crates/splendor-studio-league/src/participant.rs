@@ -140,9 +140,13 @@ fn insert_participant(
     Ok(())
 }
 
-/// Resolve an exact engine identity to its derived participant id, creating the
-/// row on first sight. Never merges by display name: the identity key is the only
-/// key, and an explicitly declared alias always wins.
+/// Resolve an exact engine identity to its participant id, creating the row on
+/// first sight.
+///
+/// The participant id is always derived from the **canonical** identity key: when
+/// the identity is aliased, the alias target key decides the id. That makes the
+/// result independent of declaration order, and independent of which of the two
+/// keys the corpus happens to mention first (Commit A Repair 2, P1-1).
 pub fn resolve_engine_participant(
     conn: &Connection,
     identity: &EngineIdentityV1,
@@ -150,23 +154,8 @@ pub fn resolve_engine_participant(
     now: i64,
 ) -> Result<String> {
     let key = identity.key();
-    if let Some(canonical) = resolve_alias(conn, &key)? {
-        // An alias may be declared before its target has ever appeared in the
-        // corpus. Bootstrap it here, registering the key being resolved as the
-        // canonical participant's identity, so ordering cannot change the result.
-        if !participant_row_exists(conn, &canonical)? {
-            insert_participant(
-                conn,
-                &canonical,
-                ParticipantKind::Engine,
-                display_name,
-                Some(&key),
-                now,
-            )?;
-        }
-        return Ok(canonical);
-    }
-    let participant_id = derived_participant_id(&key);
+    let canonical_key = canonical_identity_key(conn, &key)?;
+    let participant_id = derived_participant_id(&canonical_key);
     if participant_row_exists(conn, &participant_id)? {
         return Ok(participant_id);
     }
@@ -175,10 +164,18 @@ pub fn resolve_engine_participant(
         &participant_id,
         ParticipantKind::Engine,
         display_name,
-        Some(&key),
+        Some(&canonical_key),
         now,
     )?;
     Ok(participant_id)
+}
+
+/// The identity key a raw key should be treated as, following an explicit alias.
+///
+/// Returns the input unchanged when no alias is declared, so callers never need a
+/// separate "was it aliased?" branch.
+pub fn canonical_identity_key(conn: &Connection, key: &str) -> Result<String> {
+    Ok(resolve_alias(conn, key)?.unwrap_or_else(|| key.to_string()))
 }
 
 fn participant_row_exists(conn: &Connection, participant_id: &str) -> Result<bool> {
@@ -192,32 +189,41 @@ fn participant_row_exists(conn: &Connection, participant_id: &str) -> Result<boo
         .is_some())
 }
 
-/// Follow an explicit alias to its canonical participant, if one was declared.
+/// Follow an explicit alias to the canonical **identity key** it maps to.
+///
+/// The mapping is `alias_key -> canonical_identity_key`, never `-> participant_id`:
+/// participant ids are derived, and storing one would reintroduce an authored id
+/// that the durable manifest could not rebuild (Commit A Repair 2, P1-1).
 pub fn resolve_alias(conn: &Connection, key: &str) -> Result<Option<String>> {
     Ok(conn
         .query_row(
-            "SELECT participant_id FROM participant_aliases WHERE alias_key = ?1",
+            "SELECT canonical_identity_key FROM participant_aliases WHERE alias_key = ?1",
             params![key],
             |row| row.get::<_, String>(0),
         )
         .optional()?)
 }
 
-/// Declare that an identity key belonging to an engine is the same participant as
-/// an existing one. Merging is only ever this explicit act.
+/// Declare that an identity key is the same participant as another.
 ///
-/// The durable copy of this decision belongs in the identity manifest; this writes
-/// the index so reads are a single lookup.
-pub fn declare_alias(
+/// Private on purpose: the durable copy of this decision belongs in the identity
+/// manifest, and a database-only alias would be authored state that a rebuild
+/// would silently lose. Only [`sync_identity_manifest`] writes this table.
+fn declare_alias(
     conn: &Connection,
     alias_key: &str,
-    participant_id: &str,
+    canonical_identity_key: &str,
     note: &str,
 ) -> Result<()> {
+    if alias_key == canonical_identity_key {
+        return Err(StudioLeagueError::Invalid(format!(
+            "alias `{alias_key}` points at itself; an alias must name a different identity key"
+        )));
+    }
     conn.execute(
-        "INSERT OR REPLACE INTO participant_aliases (alias_key, participant_id, note)
+        "INSERT OR REPLACE INTO participant_aliases (alias_key, canonical_identity_key, note)
          VALUES (?1, ?2, ?3)",
-        params![alias_key, participant_id, note],
+        params![alias_key, canonical_identity_key, note],
     )?;
     Ok(())
 }
@@ -311,24 +317,12 @@ pub fn sync_identity_manifest(
         }
     }
     for alias in &manifest.aliases {
-        declare_alias(conn, &alias.alias_key, &alias.participant_id, &alias.note)?;
-    }
-    Ok(())
-}
-
-pub fn rename_participant(
-    conn: &Connection,
-    participant_id: &str,
-    display_name: &str,
-) -> Result<()> {
-    let changed = conn.execute(
-        "UPDATE participants SET display_name = ?1 WHERE participant_id = ?2",
-        params![display_name, participant_id],
-    )?;
-    if changed == 0 {
-        return Err(StudioLeagueError::Missing(format!(
-            "participant `{participant_id}`"
-        )));
+        declare_alias(
+            conn,
+            &alias.alias_key,
+            &alias.canonical_identity_key,
+            &alias.note,
+        )?;
     }
     Ok(())
 }

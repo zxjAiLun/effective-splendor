@@ -4,6 +4,19 @@ use crate::error::{Result, StudioLeagueError};
 use crate::participant::EngineIdentityV1;
 use serde::{Deserialize, Serialize};
 
+/// A 64-character lowercase hex SHA-256.
+///
+/// Every content hash the league stores must satisfy this: otherwise a missing
+/// hash (`None`) or an arbitrary string could masquerade as a content identity,
+/// which is exactly how a hashless duplicate slipped through as idempotent
+/// (Commit A Repair 2, P1-3).
+pub fn is_lowercase_hex64(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MatchStatus {
@@ -97,12 +110,7 @@ impl ReplayBindingV1 {
         let hash_ok = self
             .document_hash
             .as_deref()
-            .map(|hash| {
-                hash.len() == 64
-                    && hash
-                        .bytes()
-                        .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
-            })
+            .map(is_lowercase_hex64)
             .unwrap_or(false);
         if !hash_ok {
             return Err(StudioLeagueError::Invalid(format!(
@@ -152,7 +160,11 @@ pub struct StudioMatchRecordV1 {
     /// SHA-256 of the source document itself. Idempotency compares this, so a
     /// changed document under an unchanged key is a conflict, never a silent
     /// no-op (P1 of the Commit A review).
-    pub source_document_hash: Option<String>,
+    ///
+    /// **Required**: `None == None` would let two different hashless documents
+    /// share one key and be swallowed as `AlreadyPresent`, so every ingestable
+    /// source must carry a stable content hash (Commit A Repair 2, P1-3).
+    pub source_document_hash: String,
     pub played_at: Option<i64>,
     pub ruleset_fingerprint: String,
     pub engine_version: Option<String>,
@@ -212,6 +224,12 @@ impl StudioMatchRecordV1 {
         if self.source_identity.trim().is_empty() {
             return Err(StudioLeagueError::Invalid(
                 "source_identity must not be empty".to_string(),
+            ));
+        }
+        if !is_lowercase_hex64(&self.source_document_hash) {
+            return Err(StudioLeagueError::Invalid(
+                "source_document_hash must be a 64-character lowercase hex sha256; a source without a stable content hash cannot be ingested"
+                    .to_string(),
             ));
         }
         if self.player_count == 0 {

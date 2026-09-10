@@ -8,17 +8,17 @@
 //! 5. `rating_eligible` always implies exactly one valid 1v1 Elo update.
 
 use league::{
-    aliases, canonical_league_order, identity_index, ingest_batch_canonical, ingest_match,
-    leaderboard, league_order, local_human_participant, match_count, open_in_memory, open_league,
-    participant, participant_elo, participant_id_for_identity, rating_event_count, rating_history,
-    rebuild_ratings, rebuild_ratings_with, resolve_engine_participant, schema_version,
-    stored_rating_config, sync_identity_manifest, unassigned_human_participant, EligibilityInput,
-    EngineIdentityV1, IdentityManifestV1, IngestOutcome, MatchStatus, ParticipantKind,
-    RatingEligibility, ReplayStorage, ReplayVerification, StudioLeagueError, StudioMatchRecordV1,
-    StudioMatchSeatV1, StudioRatingConfigV1, REASON_ABORTED, REASON_DIAGNOSTIC,
-    REASON_INCOMPLETE_SEATS, REASON_PLAYER_COUNT, REASON_REPLAY, REASON_RULESET, REASON_SELF_MATCH,
-    REASON_TRUNCATED, REASON_UNMAPPED, SPLENDOR_BASE_V1_RULESET_FINGERPRINT,
-    STUDIO_LEAGUE_SCHEMA_VERSION,
+    aliases, canonical_identity_key, canonical_league_order, identity_index,
+    ingest_batch_canonical, ingest_match, leaderboard, league_order, local_human_participant,
+    match_count, open_in_memory, open_league, participant, participant_elo,
+    participant_id_for_identity, protocol_rating_config, rating_event_count, rating_history,
+    rebuild_ratings, resolve_engine_participant, schema_version, stored_rating_config,
+    sync_identity_manifest, unassigned_human_participant, EligibilityInput, EngineIdentityV1,
+    IdentityManifestV1, IngestOutcome, MatchStatus, ParticipantKind, RatingEligibility,
+    ReplayStorage, ReplayVerification, StudioLeagueError, StudioMatchRecordV1, StudioMatchSeatV1,
+    StudioRatingConfigV1, REASON_ABORTED, REASON_DIAGNOSTIC, REASON_INCOMPLETE_SEATS,
+    REASON_PLAYER_COUNT, REASON_REPLAY, REASON_RULESET, REASON_SELF_MATCH, REASON_TRUNCATED,
+    REASON_UNMAPPED, SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_LEAGUE_SCHEMA_VERSION,
 };
 use splendor_studio_league as league;
 
@@ -26,7 +26,7 @@ const NOW: i64 = 1_700_000_000;
 
 /// Collect everything a rebuild must reproduce.
 macro_rules! league_snapshot {
-    ($conn:expr, $config:expr) => {{
+    ($conn:expr) => {{
         let identities = identity_index(&$conn).unwrap();
         let alias_rows = aliases(&$conn).unwrap();
         let order = league_order(&$conn).unwrap();
@@ -34,7 +34,7 @@ macro_rules! league_snapshot {
             .iter()
             .map(|(key, id)| (key.clone(), rating_history(&$conn, id).unwrap()))
             .collect();
-        let board = leaderboard(&$conn, &$config).unwrap();
+        let board = leaderboard(&$conn).unwrap();
         (identities, alias_rows, order, histories, board)
     }};
 }
@@ -51,12 +51,28 @@ fn seat(index: u8, name: &str, version: &str, won: bool, score: i32) -> StudioMa
     }
 }
 
+/// A deterministic 64-character lowercase hex value for a short label.
+///
+/// Test records must carry a structurally valid content hash, and a hasher would
+/// just add a dependency to the test for no extra coverage.
+fn hex64(label: &str) -> String {
+    let mut value = String::new();
+    for byte in label.bytes() {
+        value.push_str(&format!("{byte:02x}"));
+    }
+    while value.len() < 64 {
+        value.push('0');
+    }
+    value.truncate(64);
+    value
+}
+
 fn record(source_identity: &str, seats: Vec<StudioMatchSeatV1>) -> StudioMatchRecordV1 {
     StudioMatchRecordV1 {
         source_kind: "arena_report".to_string(),
         source_identity: source_identity.to_string(),
         source_path: Some(format!("benchmarks/{source_identity}.report.json")),
-        source_document_hash: Some(format!("{:0>64}", source_identity).replace(' ', "0")),
+        source_document_hash: hex64(source_identity),
         played_at: Some(NOW),
         ruleset_fingerprint: SPLENDOR_BASE_V1_RULESET_FINGERPRINT.to_string(),
         engine_version: Some("0.4.0".to_string()),
@@ -375,19 +391,18 @@ fn elo_reuses_the_single_frozen_rule() {
 #[test]
 fn an_eligible_match_writes_two_rating_events_and_moves_both_ratings() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
-    let outcome = ingest_match(&mut conn, &config, &pair("m-1", true)).unwrap();
+    let outcome = ingest_match(&mut conn, &pair("m-1", true)).unwrap();
     assert!(outcome.was_inserted());
     assert_eq!(outcome.rating_events(), 2);
 
-    assert_eq!(leaderboard(&conn, &config).unwrap().len(), 2);
+    assert_eq!(leaderboard(&conn).unwrap().len(), 2);
     assert_eq!(league::eligible_match_count(&conn).unwrap(), 1);
     assert_eq!(rating_event_count(&conn).unwrap(), 2);
 
     let a = participant_id_for_identity("engine-a@1");
     let b = participant_id_for_identity("engine-b@1");
-    assert_eq!(participant_elo(&conn, &a, &config).unwrap(), 1516.0);
-    assert_eq!(participant_elo(&conn, &b, &config).unwrap(), 1484.0);
+    assert_eq!(participant_elo(&conn, &a).unwrap(), 1516.0);
+    assert_eq!(participant_elo(&conn, &b).unwrap(), 1484.0);
 
     let events = rating_history(&conn, &a).unwrap();
     assert_eq!(events.len(), 1);
@@ -405,14 +420,8 @@ fn an_eligible_match_writes_two_rating_events_and_moves_both_ratings() {
 #[test]
 fn rating_eligible_always_implies_exactly_two_rating_events() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
     for index in 0..3 {
-        ingest_match(
-            &mut conn,
-            &config,
-            &pair(&format!("m-{index}"), index % 2 == 0),
-        )
-        .unwrap();
+        ingest_match(&mut conn, &pair(&format!("m-{index}"), index % 2 == 0)).unwrap();
     }
     let eligible = league::eligible_match_count(&conn).unwrap();
     assert_eq!(eligible, 3);
@@ -426,7 +435,6 @@ fn rating_eligible_always_implies_exactly_two_rating_events() {
 #[test]
 fn ineligible_matches_are_recorded_but_rate_nobody() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
 
     let mut broken = pair("m-invalid-replay", true);
     broken.replay.verification = Some(ReplayVerification::Invalid);
@@ -464,9 +472,7 @@ fn ineligible_matches_are_recorded_but_rate_nobody() {
         self_match,
         unmapped,
     ] {
-        assert!(ingest_match(&mut conn, &config, &value)
-            .unwrap()
-            .was_inserted());
+        assert!(ingest_match(&mut conn, &value).unwrap().was_inserted());
     }
     assert_eq!(match_count(&conn).unwrap(), 6);
     assert_eq!(league::eligible_match_count(&conn).unwrap(), 0);
@@ -482,12 +488,16 @@ fn ineligible_matches_are_recorded_but_rate_nobody() {
     assert_eq!(reasons.get(REASON_SELF_MATCH), Some(&1));
     assert_eq!(reasons.get(REASON_UNMAPPED), Some(&1));
 
-    for row in leaderboard(&conn, &config).unwrap() {
+    for row in leaderboard(&conn).unwrap() {
         assert_eq!(row.rated_games, 0);
         assert!(rating_history(&conn, &row.participant_id)
             .unwrap()
             .is_empty());
-        assert_eq!(row.elo, config.initial_elo, "ratings must not have moved");
+        assert_eq!(
+            row.elo,
+            protocol_rating_config().initial_elo,
+            "ratings must not have moved"
+        );
     }
 }
 
@@ -495,17 +505,15 @@ fn ineligible_matches_are_recorded_but_rate_nobody() {
 #[test]
 fn no_result_never_becomes_a_loss() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
     for value in [
         unfinished("m-aborted", MatchStatus::Aborted),
         unfinished("m-truncated", MatchStatus::Truncated),
     ] {
-        ingest_match(&mut conn, &config, &value).unwrap();
+        ingest_match(&mut conn, &value).unwrap();
     }
     // A self match: two seats, one participant.
     ingest_match(
         &mut conn,
-        &config,
         &record(
             "m-self",
             vec![
@@ -517,7 +525,7 @@ fn no_result_never_becomes_a_loss() {
     .unwrap();
 
     let a = participant_id_for_identity("engine-a@1");
-    let row = leaderboard(&conn, &config)
+    let row = leaderboard(&conn)
         .unwrap()
         .into_iter()
         .find(|row| row.participant_id == a)
@@ -532,13 +540,12 @@ fn no_result_never_becomes_a_loss() {
         row.rated_losses, 0,
         "an aborted, truncated or self match must never be presented as a loss"
     );
-    assert_eq!(row.elo, config.initial_elo);
+    assert_eq!(row.elo, protocol_rating_config().initial_elo);
 
     // The self match contributes exactly one recorded game, not two seat rows.
     let mut only_self = open_in_memory().unwrap();
     ingest_match(
         &mut only_self,
-        &config,
         &record(
             "m-self",
             vec![
@@ -548,7 +555,7 @@ fn no_result_never_becomes_a_loss() {
         ),
     )
     .unwrap();
-    let row = leaderboard(&only_self, &config)
+    let row = leaderboard(&only_self)
         .unwrap()
         .into_iter()
         .find(|row| row.participant_id == a)
@@ -561,9 +568,8 @@ fn no_result_never_becomes_a_loss() {
 #[test]
 fn ingest_is_idempotent_on_source_identity() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
-    let first = ingest_match(&mut conn, &config, &pair("m-1", true)).unwrap();
-    let second = ingest_match(&mut conn, &config, &pair("m-1", true)).unwrap();
+    let first = ingest_match(&mut conn, &pair("m-1", true)).unwrap();
+    let second = ingest_match(&mut conn, &pair("m-1", true)).unwrap();
     match second {
         IngestOutcome::AlreadyPresent { match_id } => assert_eq!(match_id, first.match_id()),
         other => panic!("expected AlreadyPresent, got {other:?}"),
@@ -575,7 +581,7 @@ fn ingest_is_idempotent_on_source_identity() {
         "Elo moved once, not twice"
     );
     assert_eq!(
-        leaderboard(&conn, &config)
+        leaderboard(&conn)
             .unwrap()
             .iter()
             .map(|r| r.elo)
@@ -589,19 +595,18 @@ fn ingest_is_idempotent_on_source_identity() {
 #[test]
 fn same_source_key_with_changed_content_fails() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
     let mut first = pair("m-1", true);
-    first.source_document_hash = Some("a".repeat(64));
-    ingest_match(&mut conn, &config, &first).unwrap();
+    first.source_document_hash = "a".repeat(64);
+    ingest_match(&mut conn, &first).unwrap();
 
     // Identical content under the same key is genuinely already present.
-    let again = ingest_match(&mut conn, &config, &first).unwrap();
+    let again = ingest_match(&mut conn, &first).unwrap();
     assert!(matches!(again, IngestOutcome::AlreadyPresent { .. }));
 
     // Drifted content under the same key must not be swallowed.
     let mut drifted = first.clone();
-    drifted.source_document_hash = Some("b".repeat(64));
-    let error = ingest_match(&mut conn, &config, &drifted).unwrap_err();
+    drifted.source_document_hash = "b".repeat(64);
+    let error = ingest_match(&mut conn, &drifted).unwrap_err();
     assert!(
         matches!(error, StudioLeagueError::SourceConflict { .. }),
         "expected a source conflict, got {error}"
@@ -611,7 +616,7 @@ fn same_source_key_with_changed_content_fails() {
     assert_eq!(match_count(&conn).unwrap(), 1);
     assert_eq!(rating_event_count(&conn).unwrap(), 2);
     assert_eq!(
-        leaderboard(&conn, &config)
+        leaderboard(&conn)
             .unwrap()
             .iter()
             .map(|r| r.elo)
@@ -625,7 +630,6 @@ fn same_source_key_with_changed_content_fails() {
 #[test]
 fn malformed_records_are_rejected_before_anything_is_written() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
 
     let rejected: Vec<(&str, StudioMatchRecordV1)> = vec![
         (
@@ -684,7 +688,7 @@ fn malformed_records_are_rejected_before_anything_is_written() {
     ];
 
     for (label, value) in rejected {
-        let error = ingest_match(&mut conn, &config, &value).unwrap_err();
+        let error = ingest_match(&mut conn, &value).unwrap_err();
         assert!(
             matches!(error, StudioLeagueError::Invalid(_)),
             "{label}: expected a structural rejection, got {error}"
@@ -694,52 +698,75 @@ fn malformed_records_are_rejected_before_anything_is_written() {
     assert_eq!(rating_event_count(&conn).unwrap(), 0);
 }
 
-/// Proof 2: the rating config is frozen on first ingest and cannot drift.
+/// Proof 2: the rating identity is a protocol constant, not a caller input.
 #[test]
 fn rating_config_cannot_drift() {
     let mut conn = open_in_memory().unwrap();
-    let k32 = StudioRatingConfigV1::default();
-    ingest_match(&mut conn, &k32, &pair("m-1", true)).unwrap();
-    assert_eq!(stored_rating_config(&conn).unwrap().unwrap(), k32);
+    ingest_match(&mut conn, &pair("m-1", true)).unwrap();
+    assert_eq!(
+        stored_rating_config(&conn).unwrap().unwrap(),
+        protocol_rating_config(),
+        "the build's protocol config is recorded as integrity evidence"
+    );
 
     let matches_before = match_count(&conn).unwrap();
     let events_before = rating_event_count(&conn).unwrap();
 
-    let mut k64 = StudioRatingConfigV1::default();
-    k64.k_factor = 64;
-    let error = ingest_match(&mut conn, &k64, &pair("m-2", true)).unwrap_err();
+    // Simulate a database written by a different Studio Elo protocol: the stored
+    // evidence must not be silently accepted, and nothing may be written.
+    let mut drifted = protocol_rating_config();
+    drifted.k_factor = 64;
+    league::set_meta(
+        &conn,
+        league::schema::RATING_CONFIG_META_KEY,
+        &drifted.to_json().unwrap(),
+    )
+    .unwrap();
+    let error = ingest_match(&mut conn, &pair("m-2", true)).unwrap_err();
     assert!(
         matches!(error, StudioLeagueError::RatingConfig(_)),
         "expected a config rejection, got {error}"
     );
     assert_eq!(match_count(&conn).unwrap(), matches_before, "zero mutation");
     assert_eq!(rating_event_count(&conn).unwrap(), events_before);
-    assert_eq!(
-        stored_rating_config(&conn).unwrap().unwrap(),
-        k32,
-        "the stored config is unchanged"
-    );
+
+    // A rebuild refuses the same database instead of recomputing it under a
+    // different protocol.
+    assert!(matches!(
+        rebuild_ratings(&mut conn).unwrap_err(),
+        StudioLeagueError::RatingConfig(_)
+    ));
+}
+
+/// Commit A Repair 2, P1-2: every read path uses the protocol constant, so no
+/// caller has a rating config to forget. (`rebuild_ratings` and the read helpers
+/// have no config parameter at all — that is the compile-time half of this proof;
+/// the delete-and-rebuild test below is the runtime half.)
+#[test]
+fn rating_reads_and_rebuild_need_no_caller_config() {
+    let mut conn = open_in_memory().unwrap();
+    ingest_match(&mut conn, &pair("m-1", true)).unwrap();
+    let a = participant_id_for_identity("engine-a@1");
+    assert_eq!(participant_elo(&conn, &a).unwrap(), 1516.0);
+    assert_eq!(leaderboard(&conn).unwrap().len(), 2);
+    assert_eq!(rebuild_ratings(&mut conn).unwrap(), 2);
+    assert_eq!(participant_elo(&conn, &a).unwrap(), 1516.0);
 }
 
 #[test]
-fn rebuild_reads_the_stored_config_and_rejects_a_drifting_caller() {
+fn rebuild_uses_the_protocol_config_and_refuses_a_database_without_evidence() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
-    ingest_match(&mut conn, &config, &pair("m-1", true)).unwrap();
-    ingest_match(&mut conn, &config, &pair("m-2", false)).unwrap();
+    ingest_match(&mut conn, &pair("m-1", true)).unwrap();
+    ingest_match(&mut conn, &pair("m-2", false)).unwrap();
 
-    let before = league_snapshot!(conn, config);
+    let before = league_snapshot!(conn);
     let events = rebuild_ratings(&mut conn).unwrap();
     assert_eq!(events, 4);
-    let after = league_snapshot!(conn, config);
+    let after = league_snapshot!(conn);
     assert_eq!(
         before, after,
         "rebuild must reproduce the identical history"
     );
-
-    let mut k64 = StudioRatingConfigV1::default();
-    k64.k_factor = 64;
-    assert!(rebuild_ratings_with(&mut conn, &k64).is_err());
 
     let fresh = open_in_memory().unwrap();
     assert!(
@@ -760,7 +787,6 @@ fn same_evidence_and_manifest_rebuild_the_identical_league() {
     let db_path = dir.join("league.sqlite3");
     let manifest_path = dir.join("identity.json");
 
-    let config = StudioRatingConfigV1::default();
     let mut records = Vec::new();
     for (index, (a, b, a_wins)) in [
         ("engine-a", "engine-b", true),
@@ -782,17 +808,17 @@ fn same_evidence_and_manifest_rebuild_the_identical_league() {
         ));
     }
 
-    // A single engine identity is merged into another explicitly.
+    // A single engine identity is merged into another explicitly. The manifest
+    // stores the canonical *identity key*, never a participant id.
     let mut manifest = IdentityManifestV1::load_or_create(&manifest_path, "Nick").unwrap();
-    let canonical = participant_id_for_identity("engine-a@1");
-    manifest.declare_alias("engine-legacy@1", &canonical, "historical rename");
+    manifest.declare_alias("engine-legacy@1", "engine-a@1", "historical rename");
     manifest.save(&manifest_path).unwrap();
 
     let build = |records: &[StudioMatchRecordV1]| {
         let mut conn = open_league(&db_path).unwrap();
         sync_identity_manifest(&conn, &manifest, NOW).unwrap();
-        ingest_batch_canonical(&mut conn, &config, records).unwrap();
-        let snapshot = league_snapshot!(conn, config);
+        ingest_batch_canonical(&mut conn, records).unwrap();
+        let snapshot = league_snapshot!(conn);
         drop(conn);
         snapshot
     };
@@ -810,7 +836,9 @@ fn same_evidence_and_manifest_rebuild_the_identical_league() {
         manifest.hash().unwrap(),
         "the manifest round-trips through disk"
     );
-    assert!(manifest_reloaded.alias_target("engine-legacy@1").is_some());
+    assert!(manifest_reloaded
+        .alias_target_identity_key("engine-legacy@1")
+        .is_some());
     let mut reversed = records.clone();
     reversed.reverse();
     let second = build(&reversed);
@@ -873,14 +901,8 @@ fn canonical_league_order_ignores_input_order() {
 #[test]
 fn league_seq_is_monotonic_and_orders_the_elo_history() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
     for index in 0..4 {
-        ingest_match(
-            &mut conn,
-            &config,
-            &pair(&format!("m-{index}"), index % 2 == 0),
-        )
-        .unwrap();
+        ingest_match(&mut conn, &pair(&format!("m-{index}"), index % 2 == 0)).unwrap();
     }
     let history = rating_history(&conn, &participant_id_for_identity("engine-a@1")).unwrap();
     let seqs: Vec<i64> = history.iter().map(|e| e.league_seq).collect();
@@ -893,7 +915,6 @@ fn league_seq_is_monotonic_and_orders_the_elo_history() {
 #[test]
 fn explicit_aliases_merge_identities_and_nothing_else_does() {
     let mut conn = open_in_memory().unwrap();
-    let config = StudioRatingConfigV1::default();
     let canonical = resolve_engine_participant(
         &conn,
         &EngineIdentityV1::new("effective-splendor-s3-rollout-v1", "1"),
@@ -903,7 +924,6 @@ fn explicit_aliases_merge_identities_and_nothing_else_does() {
     .unwrap();
     ingest_match(
         &mut conn,
-        &config,
         &record(
             "m-a",
             vec![
@@ -915,7 +935,6 @@ fn explicit_aliases_merge_identities_and_nothing_else_does() {
     .unwrap();
     ingest_match(
         &mut conn,
-        &config,
         &record(
             "m-b",
             vec![
@@ -926,14 +945,20 @@ fn explicit_aliases_merge_identities_and_nothing_else_does() {
     )
     .unwrap();
     assert_eq!(
-        leaderboard(&conn, &config).unwrap().len(),
+        leaderboard(&conn).unwrap().len(),
         3,
         "display/name variants are never auto-merged"
     );
 
-    // Only an explicit alias merges it. (Retroactively reassigning matches
-    // already ingested under the old key is commit B's job, not this one's.)
-    league::alias_participants(&conn, "s3-rollout-v1@1", &canonical, "historical rename").unwrap();
+    // Only an explicit, manifest-authored alias merges it. (Retroactively
+    // reassigning already-ingested matches is commit B's job, not this one's.)
+    let mut manifest = IdentityManifestV1::new();
+    manifest.declare_alias(
+        "s3-rollout-v1@1",
+        "effective-splendor-s3-rollout-v1@1",
+        "historical rename",
+    );
+    sync_identity_manifest(&conn, &manifest, NOW).unwrap();
     let merged = resolve_engine_participant(
         &conn,
         &EngineIdentityV1::new("s3-rollout-v1", "1"),
@@ -943,6 +968,218 @@ fn explicit_aliases_merge_identities_and_nothing_else_does() {
     .unwrap();
     assert_eq!(
         merged, canonical,
-        "the alias resolves to the canonical participant"
+        "the alias resolves to the canonical participant id"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Commit A Repair 2 proof tests (P1-1, P1-2, P1-3, P1-4, P2).
+// ---------------------------------------------------------------------------
+
+/// P1-1: an alias is `alias_key -> canonical_identity_key`, so the participant id
+/// is always the one derived from the canonical key — whichever of the two keys
+/// the corpus mentions first, and with no separate resolution order in the ledger
+/// that could disagree.
+#[test]
+fn alias_resolution_does_not_depend_on_which_key_appears_first() {
+    let build = |first_key: &str| {
+        let conn = open_in_memory().unwrap();
+        // The manifest is synced before any corpus ingestion, so the alias target
+        // participant does not exist yet: the case that used to break and the case
+        // the ledger's own alias lookup used to short-circuit.
+        let mut manifest = IdentityManifestV1::new();
+        manifest.declare_alias("legacy-engine@1", "canonical-engine@1", "rename");
+        sync_identity_manifest(&conn, &manifest, NOW).unwrap();
+        let identity = EngineIdentityV1::new(first_key, "1");
+        let id = resolve_engine_participant(&conn, &identity, "label", NOW).unwrap();
+        (conn, id)
+    };
+
+    let (conn_alias_first, id_when_alias_seen_first) = build("legacy-engine");
+    let (_, id_when_canonical_seen_first) = build("canonical-engine");
+
+    assert_eq!(
+        id_when_alias_seen_first, id_when_canonical_seen_first,
+        "declaration/encounter order must not change the participant id"
+    );
+    assert_eq!(
+        id_when_alias_seen_first,
+        participant_id_for_identity("canonical-engine@1"),
+        "the id is derived from the canonical identity key"
+    );
+    assert_eq!(
+        canonical_identity_key(&conn_alias_first, "legacy-engine@1").unwrap(),
+        "canonical-engine@1"
+    );
+    assert_eq!(
+        participant(&conn_alias_first, &id_when_alias_seen_first)
+            .unwrap()
+            .unwrap()
+            .identity_key
+            .as_deref(),
+        Some("canonical-engine@1"),
+        "the row registers the canonical identity key, never the alias key"
+    );
+
+    // The ledger's seat resolution must take the same single path, so ingesting a
+    // match whose seat uses the alias key cannot create a second participant.
+    let mut conn = open_in_memory().unwrap();
+    let mut manifest = IdentityManifestV1::new();
+    manifest.declare_alias("legacy-engine@1", "canonical-engine@1", "rename");
+    sync_identity_manifest(&conn, &manifest, NOW).unwrap();
+    ingest_match(
+        &mut conn,
+        &record(
+            "m-alias-first",
+            vec![
+                seat(0, "legacy-engine", "1", true, 15),
+                seat(1, "other-engine", "1", false, 12),
+            ],
+        ),
+    )
+    .unwrap();
+    assert_eq!(
+        participant(&conn, &participant_id_for_identity("canonical-engine@1"))
+            .unwrap()
+            .expect("an alias-first seat must create the canonical participant")
+            .identity_key
+            .as_deref(),
+        Some("canonical-engine@1")
+    );
+    assert_eq!(
+        leaderboard(&conn).unwrap().len(),
+        2,
+        "the alias key must not become a third participant"
+    );
+}
+
+/// P1-3: a source with no stable content hash is un-ingestable, so
+/// `None == None` can never make two different hashless documents look idempotent.
+#[test]
+fn a_source_without_a_valid_document_hash_is_refused() {
+    let mut conn = open_in_memory().unwrap();
+    let bad_hashes = [
+        String::new(),
+        "   ".to_string(),
+        "abc".to_string(),
+        "A".repeat(64),
+        "z".repeat(64),
+        "a".repeat(63),
+        "a".repeat(65),
+        format!("{}g", "a".repeat(63)),
+    ];
+    for bad in bad_hashes {
+        let mut value = pair("m-hashless", true);
+        value.source_document_hash = bad.clone();
+        let error = ingest_match(&mut conn, &value).unwrap_err();
+        assert!(
+            matches!(error, StudioLeagueError::Invalid(_)),
+            "hash `{bad}` must be refused, got {error}"
+        );
+    }
+    assert_eq!(match_count(&conn).unwrap(), 0, "nothing may be written");
+    assert_eq!(rating_event_count(&conn).unwrap(), 0);
+
+    // The valid form still ingests.
+    ingest_match(&mut conn, &pair("m-ok", true)).unwrap();
+    assert_eq!(match_count(&conn).unwrap(), 1);
+}
+
+/// P1-4: a historical batch shares one transaction, so a failure at record N
+/// leaves nothing behind — no match, no rating event, no participant, no config
+/// evidence.
+#[test]
+fn a_late_batch_failure_rolls_the_entire_batch_back() {
+    let mut conn = open_in_memory().unwrap();
+    let mut records = vec![pair("m-1", true), pair("m-2", false), pair("m-3", true)];
+    // Record 3 reuses record 1's key with different content: a source conflict
+    // that can only be detected after the first two records were written.
+    records[2].source_identity = "m-1".to_string();
+    records[2].source_document_hash = hex64("m-1-drifted");
+
+    let error = ingest_batch_canonical(&mut conn, &records).unwrap_err();
+    assert!(
+        matches!(error, StudioLeagueError::SourceConflict { .. }),
+        "expected a source conflict, got {error}"
+    );
+
+    assert_eq!(match_count(&conn).unwrap(), 0, "no match may survive");
+    assert_eq!(
+        rating_event_count(&conn).unwrap(),
+        0,
+        "no rating event may survive"
+    );
+    assert_eq!(
+        identity_index(&conn).unwrap().len(),
+        0,
+        "no participant side effect may survive"
+    );
+    assert_eq!(aliases(&conn).unwrap().len(), 0);
+    assert!(
+        stored_rating_config(&conn).unwrap().is_none(),
+        "the config evidence is written inside the same transaction"
+    );
+
+    // And the same batch succeeds once the conflict is removed.
+    records[2].source_identity = "m-3".to_string();
+    records[2].source_document_hash = hex64("m-3");
+    assert_eq!(
+        ingest_batch_canonical(&mut conn, &records).unwrap().len(),
+        3
+    );
+    assert_eq!(match_count(&conn).unwrap(), 3);
+}
+
+/// P2: Windows replaces a file with remove + rename, so a crash in that window
+/// can delete the only user-authored identity file. `save` leaves a synced
+/// staging copy and a backup, and `load_or_recover` heals the primary.
+#[test]
+fn the_identity_manifest_survives_losing_its_primary_file() {
+    let dir = std::env::temp_dir().join(format!(
+        "splendor-studio-league-manifest-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("identity.json");
+
+    let mut first = IdentityManifestV1::new();
+    first.ensure_local_human("Nick");
+    let local = first.local_human.clone().unwrap().participant_id;
+    first.save(&path).unwrap();
+
+    let mut second = first.clone();
+    second.declare_alias("legacy@1", "canonical@1", "rename");
+
+    // Exactly the interrupted-replace state: the freshly written staging copy
+    // exists, the primary has been removed, the rename has not happened yet.
+    second.save(&league::temp_path(&path)).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    assert!(!path.exists());
+
+    let recovered = IdentityManifestV1::load_or_recover(&path)
+        .unwrap()
+        .expect("the manifest must recover from its staging copy");
+    assert_eq!(recovered.hash().unwrap(), second.hash().unwrap());
+    assert_eq!(
+        recovered.local_human.clone().unwrap().participant_id,
+        local,
+        "the recovered identity keeps its id"
+    );
+    assert_eq!(
+        recovered.alias_target_identity_key("legacy@1"),
+        Some("canonical@1")
+    );
+    assert!(path.is_file(), "recovery heals the primary");
+
+    // Recovery also works from the backup when the staging copy is gone too.
+    std::fs::copy(&path, league::backup_path(&path)).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    let from_backup = IdentityManifestV1::load_or_recover(&path)
+        .unwrap()
+        .expect("the manifest must recover from its backup");
+    assert_eq!(from_backup.hash().unwrap(), second.hash().unwrap());
+    assert!(path.is_file(), "backup recovery heals the primary as well");
+
+    let _ = std::fs::remove_dir_all(&dir);
 }

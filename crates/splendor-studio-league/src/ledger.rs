@@ -7,20 +7,21 @@
 //! * **Ingestion is idempotent on `(source_kind, source_identity)` — and only when
 //!   the content matches.** The same key with a different `source_document_hash`
 //!   is a conflict, not a no-op.
-//! * **The rating config is persisted and cannot drift.** The first ingest freezes
-//!   it in `league_meta`; every later ingest and every rebuild must match it
-//!   exactly or fail closed with zero mutation.
+//! * **The rating config is a fixed protocol constant.** Studio Elo v1 is not a
+//!   user setting, so `league_meta` stores it only as version/integrity evidence;
+//!   a database written by a different protocol fails closed with zero mutation,
+//!   and a rebuild needs nothing out of band (Commit A Repair 2, P1-2).
 //! * **`rating_eligible` implies exactly two rating events.** A eligible 1v1 match
 //!   that cannot produce a pair event is an error, never a silent skip.
+//! * **Batch ingestion is atomic.** `ingest_batch_canonical` shares one
+//!   transaction, so a failure at record N leaves nothing committed
+//!   (Commit A Repair 2, P1-4).
 
 use crate::eligibility::{evaluate_eligibility, EligibilityInput, RatingEligibility};
 use crate::elo::{pair_score_a, plan_pair_update};
 use crate::error::{Result, StudioLeagueError};
 use crate::match_record::{ReplayVerification, StudioMatchRecordV1};
-use crate::participant::{
-    declare_alias, derived_participant_id, resolve_alias, resolve_engine_participant,
-    ParticipantKind,
-};
+use crate::participant::{derived_participant_id, resolve_engine_participant, ParticipantKind};
 use crate::schema::{get_meta, set_meta, RATING_CONFIG_META_KEY};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
@@ -113,24 +114,34 @@ pub fn stored_rating_config(conn: &Connection) -> Result<Option<StudioRatingConf
     }
 }
 
-/// Freeze the rating config on first use, then require an exact match forever.
+/// The Studio Elo protocol constant.
 ///
-/// This is what stops "K=32 today, K=64 tomorrow" from silently rewriting a
-/// league's meaning. On mismatch nothing is written.
-pub fn ensure_rating_config(
-    conn: &Connection,
-    config: &StudioRatingConfigV1,
-) -> Result<StudioRatingConfigV1> {
+/// Studio Elo v1 is a fixed protocol, not a user setting, so the rating identity
+/// travels with the build rather than with the caller. That is what lets a rebuild
+/// depend on nothing out of band: the corpus plus the identity manifest are
+/// sufficient (Commit A Repair 2, P1-2).
+pub fn protocol_rating_config() -> StudioRatingConfigV1 {
+    StudioRatingConfigV1::default()
+}
+
+/// Record the protocol config in `league_meta` as integrity evidence, and require
+/// any previously stored value to match it exactly.
+///
+/// The stored row is evidence, not the authority: deleting the database can no
+/// longer change the rating identity, and a database written by a different build
+/// fails closed with zero mutation.
+pub fn ensure_rating_config(conn: &Connection) -> Result<StudioRatingConfigV1> {
+    let config = protocol_rating_config();
     config.validate()?;
     match stored_rating_config(conn)? {
         None => {
             set_meta(conn, RATING_CONFIG_META_KEY, &config.to_json()?)?;
-            Ok(config.clone())
+            Ok(config)
         }
         Some(stored) => {
-            if &stored != config {
+            if stored != config {
                 return Err(StudioLeagueError::RatingConfig(format!(
-                    "stored config {} drifts from the requested {}; the league's rating identity is frozen on first ingest",
+                    "this database was built with {} but this build's Studio Elo protocol is {}; the index is derived, so delete and rebuild it",
                     stored.to_json()?,
                     config.to_json()?
                 )));
@@ -235,7 +246,6 @@ pub fn canonical_league_order(records: &[StudioMatchRecordV1]) -> Vec<usize> {
 /// unambiguous; incremental arrivals use [`IngestOrder::Append`] instead.
 pub fn ingest_batch_canonical(
     conn: &mut Connection,
-    config: &StudioRatingConfigV1,
     records: &[StudioMatchRecordV1],
 ) -> Result<Vec<IngestOutcome>> {
     if match_count(conn)? != 0 {
@@ -245,40 +255,56 @@ pub fn ingest_batch_canonical(
         ));
     }
     let order = canonical_league_order(records);
+    // ONE transaction for the whole batch. Per-record transactions would leave
+    // the first N-1 records committed when record N fails, which contradicts the
+    // documented importer promise that a failure imports nothing
+    // (Commit A Repair 2, P1-4).
+    let tx = conn.transaction()?;
     let mut outcomes = Vec::with_capacity(records.len());
     for (position, index) in order.into_iter().enumerate() {
-        outcomes.push(ingest_match_ordered(
-            conn,
-            config,
+        outcomes.push(ingest_match_in_tx(
+            &tx,
             &records[index],
             IngestOrder::Assigned(position as i64 + 1),
         )?);
     }
+    tx.commit()?;
     Ok(outcomes)
 }
 
 /// Insert one finished match, resolving identities and applying Elo if eligible.
-pub fn ingest_match(
-    conn: &mut Connection,
-    config: &StudioRatingConfigV1,
-    record: &StudioMatchRecordV1,
-) -> Result<IngestOutcome> {
-    ingest_match_ordered(conn, config, record, IngestOrder::Append)
+pub fn ingest_match(conn: &mut Connection, record: &StudioMatchRecordV1) -> Result<IngestOutcome> {
+    ingest_match_ordered(conn, record, IngestOrder::Append)
 }
 
+/// One match in its **own** transaction: the unit for live/runtime arrivals.
 pub fn ingest_match_ordered(
     conn: &mut Connection,
-    config: &StudioRatingConfigV1,
+    record: &StudioMatchRecordV1,
+    order: IngestOrder,
+) -> Result<IngestOutcome> {
+    let tx = conn.transaction()?;
+    let outcome = ingest_match_in_tx(&tx, record, order)?;
+    tx.commit()?;
+    Ok(outcome)
+}
+
+/// The transaction-scoped primitive shared by single and batch ingestion.
+///
+/// [`ingest_batch_canonical`] reuses this so one historical batch shares one
+/// transaction and any failing record rolls the whole batch back
+/// (Commit A Repair 2, P1-4).
+fn ingest_match_in_tx(
+    tx: &Transaction<'_>,
     record: &StudioMatchRecordV1,
     order: IngestOrder,
 ) -> Result<IngestOutcome> {
     record.validate_for_ingest()?;
-    let tx = conn.transaction()?;
 
-    // Freeze (or verify) the rating identity before anything else is written.
-    let config = ensure_rating_config(&tx, config)?;
+    // Record (or verify) the rating identity before anything else is written.
+    let config = ensure_rating_config(tx)?;
 
-    let existing: Option<(String, Option<String>)> = tx
+    let existing: Option<(String, String)> = tx
         .query_row(
             "SELECT match_id, source_document_hash FROM matches
               WHERE source_kind = ?1 AND source_identity = ?2",
@@ -293,7 +319,7 @@ pub fn ingest_match_ordered(
         return Err(StudioLeagueError::SourceConflict {
             source_kind: record.source_kind.clone(),
             source_identity: record.source_identity.clone(),
-            stored: stored_hash,
+            stored: stored_hash.clone(),
             incoming: record.source_document_hash.clone(),
         });
     }
@@ -336,17 +362,15 @@ pub fn ingest_match_ordered(
         let id = match (&seat.participant_id, &seat.identity) {
             (Some(explicit), _) => Some(explicit.clone()),
             (None, Some(identity)) => {
-                let key = identity.key();
-                match resolve_alias(&tx, &key)? {
-                    Some(existing) => Some(existing),
-                    None => {
-                        let name = seat
-                            .display_name
-                            .clone()
-                            .unwrap_or_else(|| identity.agent_name.clone());
-                        Some(resolve_engine_participant(&tx, identity, &name, now)?)
-                    }
-                }
+                // Always the single canonical path: an alias is followed inside
+                // `resolve_engine_participant`, so there is no second, divergent
+                // resolution order that could disagree with it
+                // (Commit A Repair 2, P1-1).
+                let name = seat
+                    .display_name
+                    .clone()
+                    .unwrap_or_else(|| identity.agent_name.clone());
+                Some(resolve_engine_participant(tx, identity, &name, now)?)
             }
             (None, None) => None,
         };
@@ -426,7 +450,7 @@ pub fn ingest_match_ordered(
     }
 
     let rating_events = if eligibility.is_eligible() {
-        apply_rating_for_match(&tx, &config, &match_id, league_seq)?
+        apply_rating_for_match(tx, &config, &match_id, league_seq)?
     } else {
         0
     };
@@ -449,7 +473,6 @@ pub fn ingest_match_ordered(
         ],
     )?;
 
-    tx.commit()?;
     Ok(IngestOutcome::Inserted {
         match_id,
         rating_events,
@@ -489,8 +512,8 @@ pub fn apply_rating_for_match(
         )));
     };
 
-    let rating_a = participant_elo(tx, &a, config)?;
-    let rating_b = participant_elo(tx, &b, config)?;
+    let rating_a = participant_elo_with(tx, &a, config)?;
+    let rating_b = participant_elo_with(tx, &b, config)?;
     let score_a = pair_score_a(seats[0].1 != 0, seats[1].1 != 0)?;
     let update = plan_pair_update(rating_a, rating_b, score_a, config.k_factor);
 
@@ -541,8 +564,13 @@ pub fn apply_rating_for_match(
     Ok(2)
 }
 
-/// Current Elo, falling back to the config's initial value for a fresh participant.
-pub fn participant_elo(
+/// Current Elo, falling back to the protocol's initial value for a fresh
+/// participant.
+pub fn participant_elo(conn: &Connection, participant_id: &str) -> Result<f64> {
+    participant_elo_with(conn, participant_id, &protocol_rating_config())
+}
+
+fn participant_elo_with(
     conn: &Connection,
     participant_id: &str,
     config: &StudioRatingConfigV1,
@@ -558,21 +586,27 @@ pub fn participant_elo(
     Ok(stored.unwrap_or(config.initial_elo as f64))
 }
 
-/// Recompute every Elo event from the ledger, in `league_seq` order, using the
-/// config this database was built with.
+/// Recompute every Elo event from the ledger, in `league_seq` order, under the
+/// Studio Elo protocol this build implements.
+///
+/// The caller supplies nothing: the protocol is a constant, and the database's
+/// stored copy is checked for agreement rather than trusted as an input
+/// (Commit A Repair 2, P1-2).
 pub fn rebuild_ratings(conn: &mut Connection) -> Result<u64> {
-    let config = stored_rating_config(conn)?.ok_or_else(|| {
+    let stored = stored_rating_config(conn)?.ok_or_else(|| {
         StudioLeagueError::RatingConfig(
-            "this database has no stored rating config; ingest at least one match first"
+            "this database has no stored rating config; ingest at least one match before rebuilding"
                 .to_string(),
         )
     })?;
-    rebuild_with_config(conn, &config)
-}
-
-/// Recompute ratings after proving the caller's config matches the stored one.
-pub fn rebuild_ratings_with(conn: &mut Connection, config: &StudioRatingConfigV1) -> Result<u64> {
-    let stored = ensure_rating_config(conn, config)?;
+    let protocol = protocol_rating_config();
+    if stored != protocol {
+        return Err(StudioLeagueError::RatingConfig(format!(
+            "this database was built with {} but this build's Studio Elo protocol is {}; the index is derived, so delete and rebuild it",
+            stored.to_json()?,
+            protocol.to_json()?
+        )));
+    }
     rebuild_with_config(conn, &stored)
 }
 
@@ -631,10 +665,8 @@ pub fn rating_history(conn: &Connection, participant_id: &str) -> Result<Vec<Rat
 /// W/T/L count **rated** matches only, so an aborted, truncated, unmapped or
 /// self match can never be presented as a loss; `recorded_games` counts distinct
 /// matches separately.
-pub fn leaderboard(
-    conn: &Connection,
-    config: &StudioRatingConfigV1,
-) -> Result<Vec<LeaderboardRow>> {
+pub fn leaderboard(conn: &Connection) -> Result<Vec<LeaderboardRow>> {
+    let config = protocol_rating_config();
     let mut stmt = conn.prepare(
         "SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
                 (SELECT COUNT(DISTINCT s.match_id) FROM match_seats s
@@ -745,10 +777,10 @@ pub fn league_order(conn: &Connection) -> Result<Vec<(String, i64)>> {
     Ok(rows)
 }
 
-/// Every `(alias_key, participant_id)` in the index, ordered.
+/// Every `(alias_key, canonical_identity_key)` in the index, ordered.
 pub fn aliases(conn: &Connection) -> Result<Vec<(String, String)>> {
     let mut stmt = conn.prepare(
-        "SELECT alias_key, participant_id FROM participant_aliases ORDER BY alias_key ASC",
+        "SELECT alias_key, canonical_identity_key FROM participant_aliases ORDER BY alias_key ASC",
     )?;
     let rows = stmt
         .query_map([], |row| {
@@ -772,16 +804,6 @@ pub fn identity_index(conn: &Connection) -> Result<Vec<(String, String)>> {
     Ok(rows)
 }
 
-/// Convenience for tests and the importer: declare an explicit merge.
-pub fn alias_participants(
-    conn: &Connection,
-    alias_key: &str,
-    participant_id: &str,
-    note: &str,
-) -> Result<()> {
-    declare_alias(conn, alias_key, participant_id, note)
-}
-
 /// The id an engine identity will derive, without touching the database.
 pub fn participant_id_for_identity(identity_key: &str) -> String {
     derived_participant_id(identity_key)
@@ -802,7 +824,6 @@ pub fn is_rating_quality_replay(verification: ReplayVerification) -> bool {
 pub fn preview_eligibility(
     record: &StudioMatchRecordV1,
     resolved: &[Option<String>],
-    config: &StudioRatingConfigV1,
 ) -> RatingEligibility {
     evaluate_eligibility(
         &EligibilityInput {
@@ -813,6 +834,6 @@ pub fn preview_eligibility(
             participants: resolved.to_vec(),
             diagnostic: record.diagnostic,
         },
-        config,
+        &protocol_rating_config(),
     )
 }

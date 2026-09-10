@@ -1,9 +1,11 @@
 # Studio League v1 — Participant + Match Ledger + Studio Elo + statistics
 
 - **Status**: `AUTHORIZED` (owner pre-authorized implementation end-to-end: "直接授权实施，不需要再回来问设计确认").
-  **Commit A** landed as `9f88aca`, the owner's review returned **`REPAIR_REQUIRED`**
-  (P0=0, P1=5), and **Commit A Repair 1 is `IMPLEMENTED` / `VERIFIED`** — see the repair
-  section below. Commits B–E are not started. Nothing here is `ACCEPTED`.
+  **Commit A** landed as `9f88aca`; the owner's first review returned **`REPAIR_REQUIRED`**
+  (P0=0, P1=5) and **Repair 1** landed as `714bc5f`. The owner's re-review of `714bc5f` again
+  returned **`REPAIR_REQUIRED`** (P0=0, P1=4, P2=1) on authority / ingestion seams, and
+  **Commit A Repair 2 is `IMPLEMENTED` / `VERIFIED`** — see the repair sections below.
+  Commits B–E are not started. Nothing here is `ACCEPTED`.
 - **Baseline**: `3468046` (`main == origin/main`; Replay Studio Product Shell / History v1 ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -103,12 +105,15 @@ local-artifacts/studio-league/replays/<sha256>.json   content-addressed replay a
 ```
 
 Because the index is derived, everything it cannot re-derive from the corpus lives in the identity
-manifest: the local human participant id and display name, and the explicit `participant_aliases`.
-Engine participant ids are **derived** from the exact identity key
-(`sha256("studio-league-participant-v1\n" + identity_key)[..32]`, prefixed `eng-`), so they rebuild
-for free. `league_seq` likewise comes from an explicit canonical sort
+manifest: the local human participant id and display name, and the explicit identity aliases. An
+alias is stored as `alias_key -> canonical_identity_key` (never as a participant id), and engine
+participant ids are **derived** from the canonical identity key
+(`sha256("studio-league-participant-v1\n" + identity_key)[..32]`, prefixed `eng-`), so an alias never
+has to wait for its target row to exist and can never introduce an authored id. `league_seq`
+likewise comes from an explicit canonical sort
 ([`canonical_league_order`](../crates/splendor-studio-league/src/ledger.rs)), never from filesystem
-traversal order. The rating config is frozen in `league_meta` on first ingest.
+traversal order. The Studio Elo rating config is a **protocol constant**; `league_meta` keeps a copy
+only as integrity evidence (Repair 2, P1-2).
 
 Core tables: `participants`, `participant_aliases`, `matches`, `match_seats`,
 `match_gameplay_stats`, `rating_events`, `league_meta` / `ingest_sources`.
@@ -145,7 +150,9 @@ The owner's frozen boundaries, verbatim in intent:
    `Human` / `Engine` kinds.
 5. **Missing human metadata is never auto-assigned** to the local profile.
 6. **Engines are counted by exact policy identity**; display-name collisions never auto-merge;
-   merging is only ever an explicit `participant_aliases` row.
+   merging is only ever an explicit alias in the durable identity manifest, stored as
+   `alias_key -> canonical_identity_key`, so the merged participant id is the one derived from the
+   canonical key regardless of declaration order (Repair 2, P1-1).
 7. **No fabrication of Tier/Noble statistics for replay-less matches.**
 8. **Elo has exactly one implementation, in the Rust backend**; the frontend only displays.
 9. **Studio Elo ≠ `official_elo`** (order-independent batch Bradley–Terry on a frozen pool). Both
@@ -161,15 +168,17 @@ Additional invariants introduced by this round:
     same participant (deviation D3, **approved by the owner**).
 12. **Rebuildability.** Deleting the index and replaying the same corpus with the same identity
     manifest reproduces identical participant ids, aliases, league ordering and Elo history.
-13. **The rating config cannot drift.** The first ingest freezes `StudioRatingConfigV1` in
-    `league_meta`; every later ingest and every rebuild must match it exactly or fail closed with
-    zero mutation; `rebuild_ratings` reads the stored config rather than trusting its caller.
+13. **The rating identity is a protocol constant and cannot drift.** `ingest_match` accepts no
+    caller config; `league_meta` records `StudioRatingConfigV1` as integrity evidence, and any
+    mismatch with this build's protocol fails closed with zero mutation. A rebuild therefore needs
+    the same corpus and the same manifest and *nothing* the caller remembers (Repair 2, P1-2).
 14. **No-result is never a loss.** Leaderboard W/T/L count **rated** matches only (a match that did
     not move Elo cannot appear as a win, tie or loss); `recorded_games` is a separate
     `COUNT(DISTINCT match_id)`, so a self-match adds one recorded game, not two seat rows.
-15. **Idempotency means same-content**, not same-key. Each record carries
-    `source_document_hash`; the same `(source_kind, source_identity)` with a different hash is a
-    `SourceConflict` error, never a silent no-op.
+15. **Idempotency means same-content**, not same-key. `source_document_hash` is **required** and
+    validated as 64 lowercase hex, so `None == None` can never make two different hashless
+    documents look idempotent; the same `(source_kind, source_identity)` with a different hash is a
+    `SourceConflict` error, never a silent no-op (Repair 2, P1-3).
 16. **`rating_eligible` implies exactly two rating events.** A record is structurally validated
     before any write (seat count must equal `player_count`, seats unique, no winner outside
     `completed`, a `Verified` binding must be complete), and an eligible 1v1 match that cannot
@@ -180,7 +189,9 @@ Additional invariants introduced by this round:
 13. Average ending round is derived from a real `main_turn_count`, never from `completed_plies`
     (follow-up decision phases make one turn several recorded decisions).
 14. The importer is **fail-closed**: an unknown or malformed document raises a clear error and
-    changes nothing; it never partially imports.
+    changes nothing; it never partially imports. `ingest_batch_canonical` therefore shares ONE
+    transaction for the whole batch, so a failure at record N rolls back records 1..N-1
+    (Repair 2, P1-4).
 
 ## Implementation plan
 
@@ -226,6 +237,13 @@ Additional invariants introduced by this round:
   Elo extraction explicitly approved and left untouched. Repair 1 implemented and verified (see the
   repair section). Two extra defects were surfaced by the new tests during the repair: the alias
   foreign-key ordering trap, and the schema-version bump implied by adding `source_document_hash`.
+- 2026-09-11 (owner re-review of `714bc5f`): **`REPAIR_REQUIRED`** again, P0 = 0 / P1 = 4 / P2 = 1,
+  all on authority / ingestion seams rather than the ledger's core semantics. Commit A Repair 2
+  implemented and verified (see its section below): an alias is `alias_key -> canonical_identity_key`
+  with one resolution path, the Studio Elo config is a protocol constant rather than stored caller
+  input, `source_document_hash` is required and hex-validated (schema v3), `ingest_batch_canonical`
+  shares one transaction, and the identity manifest replaces via a synced `.tmp` plus `.bak` with
+  recovery. 24 tests pass (19 -> 24) with three negative controls.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -307,6 +325,47 @@ each was checked against the defect it exists to catch:
   (`rated_losses = recorded − rated_wins − rated_ties`) made `no_result_never_becomes_a_loss`
   **FAIL** with `left: 3, right: 0` — exactly the fabricated-loss bug; reverting made it pass.
 
+## Commit A Repair 2 (second owner review follow-up)
+
+The owner re-reviewed `714bc5f` and returned **`REPAIR_REQUIRED`** again: P0 = 0 / **P1 = 4** /
+P2 = 1. Repair 1 had already fixed the body of the five original findings; what remained were four
+authority / ingestion seams that were not sealed. Scope stayed narrow — no commit B, no replay
+resolver, no historical alias census, no gameplay stats, no Host API.
+
+| P1 | Problem | Fix |
+| --- | --- | --- |
+| 1 | The alias fix was bypassed on the real path: `ingest_match_ordered` resolved the alias itself and returned early, so `resolve_engine_participant`'s bootstrap never ran; and the bootstrap registered the *alias* key as the canonical participant's identity. | An alias is now `alias_key -> canonical_identity_key`, and the participant id is always derived from the canonical identity key — in the manifest and in the index. The ledger's duplicate lookup is gone, so seat resolution has exactly one path. `alias_participants` and `rename_participant` were removed: no authored state may exist only in the deletable index. |
+| 2 | "Delete the DB and rebuild" still needed a third input: `StudioRatingConfigV1` lived only in the deletable `league_meta`, so a caller had to remember K. | Studio Elo v1's config is a protocol constant (`protocol_rating_config()`). `ingest_match`, `ingest_batch_canonical`, `rebuild_ratings`, `leaderboard`, `participant_elo` and `preview_eligibility` take no config; `league_meta` keeps it as integrity evidence, and a mismatch with the build fails closed with zero mutation. |
+| 3 | `source_document_hash` was `Option<String>` and unvalidated, so `None == None` let two different hashless documents share one key and be swallowed as `AlreadyPresent`. | The field is a required `String`, validated as 64 lowercase hex in `validate_for_ingest`, with `NOT NULL` columns (schema v3). A source without a stable content hash is un-ingestable. |
+| 4 | `ingest_batch_canonical` looped `ingest_match_ordered`, and each iteration opened its own transaction: a failure at record 20,001 left the first 20,000 committed, contradicting the documented fail-closed import promise. | `ingest_match_in_tx` is the transaction-scoped primitive. `ingest_match_ordered` = one match / one transaction; `ingest_batch_canonical` = one transaction for the whole batch, so any failure rolls back participants, config evidence, matches, seats and rating events together. |
+| P2 | The manifest's "atomic save" was write-temp → remove → rename, so a Windows crash inside that window deleted the only user-authored identity authority. | `save` writes and syncs `.tmp` before touching the primary, keeps a `.bak` of the previous contents, and `load_or_recover` recovers from primary → `.tmp` → `.bak` and heals the primary. |
+
+This supersedes Repair 1's "remove the alias foreign key and bootstrap the alias target" approach:
+both the FK and the bootstrap disappear, because the durable mapping no longer names a participant id
+at all.
+
+### The new gates, and what proves each
+
+| Sentence | Test |
+| --- | --- |
+| an alias resolves identically whichever key is seen first | `alias_resolution_does_not_depend_on_which_key_appears_first` — builds the alias-first and canonical-first cases, asserts one derived id, asserts the row carries the canonical `identity_key`, and asserts an alias-first *ingest* creates no third participant |
+| a rebuild needs no out-of-band rating config | `rating_reads_and_rebuild_need_no_caller_config`, plus the delete-and-rebuild proof below (every ingest/rebuild/read call compiles and runs with no config argument) |
+| the stored config cannot silently disagree with the build | `rating_config_cannot_drift` — a drifted stored config is refused with zero mutation, and a rebuild refuses that database |
+| a source without a valid content hash is refused | `a_source_without_a_valid_document_hash_is_refused` — eight malformed forms (empty, blank, short, uppercase, non-hex, 63 chars, 65 chars, trailing `g`), each rejected with nothing written |
+| a late batch failure imports nothing | `a_late_batch_failure_rolls_the_entire_batch_back` — record 3 conflicts with record 1; asserts 0 matches, 0 rating events, 0 participants, 0 aliases and no config evidence survive, then the corrected batch succeeds |
+| the manifest survives losing its primary | `the_identity_manifest_survives_losing_its_primary_file` — constructs the interrupted-replace state and the backup-only state; both recover the same hash and heal the primary |
+
+**Negative controls (run, then reverted).** Each of the three highest-stakes gates was checked
+against the defect it exists to catch:
+
+- Restoring per-record transactions in `ingest_batch_canonical` made
+  `a_late_batch_failure_rolls_the_entire_batch_back` **FAIL** (`no match may survive`: left 1,
+  right 0).
+- Making `canonical_identity_key` ignore aliases made
+  `alias_resolution_does_not_depend_on_which_key_appears_first` **FAIL** (two different derived ids).
+- Removing the `source_document_hash` validation made
+  `a_source_without_a_valid_document_hash_is_refused` **FAIL**.
+
 ## Validation and evidence
 
 ### Commit A (League core) — run 2026-09-10
@@ -347,6 +406,27 @@ Not yet run (deferred to commits B–E): the historical import, the replay archi
 UI, and any browser check. The `studio-league-inventory` command was re-run unchanged and still
 reports the numbers quoted in "Problem and evidence".
 
+### Commit A Repair 2 — run 2026-09-11
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p splendor-studio-league` | **24 passed / 0 failed** (was 19; +5 repair gates; no existing gate weakened) |
+| `cargo fmt --check -p splendor-studio-league` | clean |
+| `cargo build --bin splendor` (isolated `CARGO_TARGET_DIR`) | ok; only pre-existing warnings in other crates |
+| `cargo test -p splendor-eval` | 37 passed / 0 failed (the Elo extraction stayed inert) |
+| `cargo test -p splendor-cli --bin splendor` | 89 passed / 0 failed |
+| negative controls | all three failed as required, then reverted |
+
+Not run in this repair (unchanged from Repair 1 and still deferred to B–E): the historical import,
+the replay archive, the Host APIs, the UI, and any browser check. `m19_result` / `m22_result` /
+`model_evaluation_contract` were not re-run because this repair touches no evaluation or arena code,
+and the publish-frozen numbers were already proven inert in Repair 1.
+
+`cargo build --bin splendor` against the shared `target/` failed at the final step with
+`failed to remove ...\target\debug\splendor.exe: 拒绝访问 (os error 5)` — a Windows file lock on the
+previously built executable, not a compile error. The isolated-target build succeeded, matching the
+Repair 1 procedure.
+
 ## Result and decision
 
 `AUTHORIZED`; implementation in progress. No verdict is claimed.
@@ -365,8 +445,16 @@ reports the numbers quoted in "Problem and evidence".
 - An alias declared *after* matches were ingested does not retroactively reassign those matches yet;
   Repair 1 makes the mapping load order-independent and makes an alias resolvable before its target
   exists, but reassigning already-ingested history remains commit B's job.
-- `participant_aliases` intentionally has no foreign key to `participants`: the manifest is its
-  authority and an alias target may legitimately be unseen until the corpus provides it.
+- `participant_aliases` stores `alias_key -> canonical_identity_key` with no foreign key: the
+  manifest is its authority, and an alias target may legitimately be unseen until the corpus
+  provides it. The participant id is derived from the canonical key, so nothing has to be
+  bootstrapped or reconciled later.
+- The identity manifest is replaced with remove + rename (Windows cannot rename over an existing
+  file), so `save` leaves a synced `.tmp` and a `.bak`, and `load_or_recover` recovers from either
+  and heals the primary (Repair 2, P2). A full filesystem-durability guarantee was explicitly out of
+  scope: if the primary and both siblings are lost, the manifest is gone.
+- Authored state has exactly one writer. `alias_participants` and `rename_participant` were removed
+  from the API, because a database-only alias or rename would silently vanish on the next rebuild.
 - `detail_metrics_available` is still always false; `match_gameplay_stats` has no writer until
   commit B/C.
 - The Studio Elo pool is not comparable to `official_elo` pools; the two must never be rendered in

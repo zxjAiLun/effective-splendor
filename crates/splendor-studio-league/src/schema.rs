@@ -9,7 +9,13 @@ use rusqlite::Connection;
 use std::path::Path;
 
 /// Bumped whenever the DDL below changes shape.
-pub const STUDIO_LEAGUE_SCHEMA_VERSION: u32 = 2;
+///
+/// v3 (Commit A Repair 2): `source_document_hash` is `NOT NULL` in `matches`
+/// and `ingest_sources` (a hashless source can no longer be ingested), and
+/// `participant_aliases` stores the canonical identity key instead of a
+/// participant id. The index is derived, so a stale v2 index is rejected and
+/// rebuilt rather than migrated.
+pub const STUDIO_LEAGUE_SCHEMA_VERSION: u32 = 3;
 
 pub const SCHEMA_VERSION_META_KEY: &str = "schema_version";
 pub const RATING_CONFIG_META_KEY: &str = "studio_rating_config";
@@ -31,13 +37,16 @@ CREATE TABLE IF NOT EXISTS participants (
     created_at     INTEGER NOT NULL
 );
 
--- Deliberately no FK to participants: an alias is an authored mapping and its
--- target legitimately may not have been seen in the corpus yet. The manifest is
--- the authority for this table, and resolution bootstraps the target on demand.
+-- An alias maps an identity key to the canonical identity key it should be
+-- treated as. Deliberately no FK and no participant id: the participant id is
+-- always derived from the canonical identity key, so an alias declared before
+-- its target ever appears in the corpus cannot reference a row that does not
+-- exist yet, and declaration order cannot change the result. The manifest is the
+-- authority for this table.
 CREATE TABLE IF NOT EXISTS participant_aliases (
-    alias_key      TEXT PRIMARY KEY,
-    participant_id TEXT NOT NULL,
-    note           TEXT NOT NULL DEFAULT ''
+    alias_key             TEXT PRIMARY KEY,
+    canonical_identity_key TEXT NOT NULL,
+    note                  TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS matches (
@@ -47,7 +56,8 @@ CREATE TABLE IF NOT EXISTS matches (
     source_path              TEXT,
     -- SHA-256 of the source document itself: idempotency compares this, so a
     -- changed document under an unchanged key is a conflict, not a no-op.
-    source_document_hash     TEXT,
+    -- NOT NULL: a source with no stable content hash is not ingestable.
+    source_document_hash     TEXT NOT NULL,
     -- Monotonic position that fixes the Elo order; never derived from arrival time.
     league_seq               INTEGER NOT NULL UNIQUE,
     played_at                INTEGER,
@@ -124,7 +134,7 @@ CREATE TABLE IF NOT EXISTS ingest_sources (
     source_kind     TEXT NOT NULL,
     source_identity TEXT NOT NULL,
     first_seen_at   INTEGER NOT NULL,
-    source_document_hash TEXT,
+    source_document_hash TEXT NOT NULL,
     document_hash   TEXT,
     PRIMARY KEY (source_kind, source_identity)
 );
