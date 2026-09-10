@@ -30,6 +30,7 @@ mod profile_agent;
 mod promotion_command;
 mod rating_command;
 mod search_command;
+mod studio_league_command;
 mod self_play_v2_command;
 mod teacher_target_command;
 use rand::rngs::SmallRng;
@@ -161,6 +162,9 @@ fn main() {
         Some("rating-run") => std::process::exit(rating_command::run_rating_run(&argv[2..])),
         Some("rating-report") => std::process::exit(rating_command::run_rating_report(&argv[2..])),
         Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
+        Some("studio-league-inventory") => {
+            std::process::exit(studio_league_command::run_studio_league_inventory(&argv[2..]))
+        }
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("train-policy-value") => {
             std::process::exit(learning_command::run_train_policy_value(&argv[2..]))

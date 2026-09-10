@@ -1,7 +1,8 @@
 # Studio League v1 — Participant + Match Ledger + Studio Elo + statistics
 
 - **Status**: `AUTHORIZED` (owner pre-authorized implementation end-to-end: "直接授权实施，不需要再回来问设计确认").
-  Implementation in progress. No part of this round is `VERIFIED` or `ACCEPTED` yet.
+  **Commit A (League core) is `IMPLEMENTED` / `VERIFIED`**; commits B–E are not started. No
+  part of this round is `ACCEPTED`.
 - **Baseline**: `3468046` (`main == origin/main`; Replay Studio Product Shell / History v1 ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -22,23 +23,32 @@ Consequences measured in this round's read-only inventory:
 | `effective-splendor-arena-report` documents | 48,273 |
 | `effective-splendor-replay` documents | 48,278 |
 | Arena outcomes | completed 48,050 · aborted 221 · truncated 2 |
-| Matches with a sibling `*.replay.json` on disk | 48,069 / 48,273 (99.6%) |
-| Completed matches with a replay | 48,050 |
+| Matches bounding a real ReplayV1 (content join on `final_state_hash`) | **48,050 / 48,273 (99.5%)** |
+| Matches with the colocated `<stem>.replay.json` naming convention | 3,594 (7.4%) |
+| Completed matches lacking a replay | **0** |
+| Replay documents · distinct sha256 · distinct `final_state_hash` | 48,278 · 43,192 · 37,883 |
 | Total replay bytes | **0.15 GB** (avg 3 KB/file) |
-| Distinct `replay_final_hash` | 37,655 (10,395 repeated occurrences) |
-| Distinct replay file SHA-256 | 41,525 (of 48,069 files) |
+| Distinct match binding hash (`replay_final_hash`) | 37,655 (10,395 repeated occurrences) |
 | Distinct `game_id` | 22,294 (25,979 duplicated ⇒ **not a usable key**) |
-| Distinct participant identities (`agent_name@agent_version`) | 69 |
+| Distinct participant identities (`agent_name@agent_version`) | 68 |
 | Seats with no identity at all | 406 seats / 214 matches |
 | Distinct unordered participant pairs | 316 |
 | Human-play replays | 10 replays · 6 `.meta.json` · **4 without meta** |
 
-Two corrections to the design assumptions this inventory produced:
+Three corrections to the design assumptions this inventory produced:
 
-1. **Most historical arena data is NOT result-only.** 99.6% of arena matches have a full ReplayV1
-   beside them. "RESULT_ONLY" is the exception (204 matches, plus the 406 identity-less seats), not
-   the rule.
-2. **The replay corpus is cheap.** 0.15 GB for ~48k replays. The 32.9 GB corpus bulk is
+1. **Replay coverage is essentially total, but not where the filenames suggest.** 48,050 of
+   48,273 matches (99.5%) bind a real ReplayV1 — and the 223 that do not are *exactly* the 221
+   aborted + 2 truncated matches, which carry no `replay_final_hash` at all. So **every completed
+   match has a replay; zero completed matches are result-only.** However only 3,594 matches (7.4%)
+   use the colocated `<stem>.report.json` + `<stem>.replay.json` convention; the rest are bound by
+   *content* (`final_state_hash`), because corpora like `m41a-corpus` store
+   `game-NNNN/{arena-report.json, replay.json}` and `m40a-run` nests them yet differently. The
+   importer must therefore bind on the hash, never on a filename — see the iteration log for the
+   measurement error that made this look like a filename question.
+2. **"RESULT_ONLY" is a category for aborted/truncated and identity-less matches, not for the
+   archive as a whole.** It is the exception (223 matches, plus the 406 identity-less seats).
+3. **The replay corpus is cheap.** 0.15 GB for ~48k replays. The 32.9 GB corpus bulk is
    m39a/m40a trajectory and materialization sidecars, not replays — so the owner's preferred
    content-addressed replay archive is affordable rather than a multi-GB copy.
 
@@ -47,12 +57,24 @@ Scale caveat that the owner must see: **25,622 of 48,273 matches (53%) are
 (`m46a-n1-selfplay` 2,560; m39a self-play 288) follow. A literal reading of the owner's eligibility
 list would make every one of them an Elo event.
 
-Evidence basis: read-only scan of every `*.json` under `benchmarks/` and `local-artifacts/`
-(paths/names/sizes, `JSON.parse` + `.format` dispatch), writing
-`local-artifacts/studio-league/inventory.jsonl` (48,273 rows, 40.6 MB, local-only). Reproduce with
-`splendor studio-league-inventory --json` once commit A lands the durable command; the ad-hoc scan
-above read only documents ≤ 40 MB and skipped `node_modules`, `.git`, `.uv-cache`,
-`m24-torch-cu124`, and the architecture-html artifacts.
+Evidence basis: the durable read-only command landed in commit A,
+`splendor studio-league-inventory --json <path> --jsonl <path>`, which scans every `*.json` under
+`benchmarks/` and `local-artifacts/`, prints the summary above and writes the per-match rows
+(`local-artifacts/studio-league/inventory.jsonl`, 48,273 rows, local-only). Measured output:
+
+```text
+documents: seen 143457 · parsed 143420 · unparseable 0 · skipped-too-large 37
+candidate matches: 48273 · replays 48278 · evaluation reports 112
+outcomes: aborted 221 completed 48050 truncated 2
+replay coverage (content join on final_state_hash): bound 48050 · unbound 223 · no binding hash 223
+replay coverage (colocated <stem>.replay.json convention): present 3594 · absent 44679
+replay documents: 48278 · distinct sha256 43192 · distinct final_state_hash 37883
+duplication: match binding hash distinct 37655 (repeats 10395) · game_id distinct 22294 (duplicates 25979)
+identity: distinct participants 68 · unmapped seats 406 · matches with an unmapped seat 214 · distinct pairs 316
+```
+
+The scan skips `node_modules`, `.git`, `.uv-cache`, `m24-torch-cu124`, and the architecture-html
+artifacts, and skips documents above 40 MB (37 of them).
 
 ## Initial design
 
@@ -155,9 +177,24 @@ Additional invariants introduced by this round:
   explicitly forbidding "just add a few fields to the existing `/ratings` page".
 - 2026-09-10: Reconnaissance found two blockers that changed the plan (see Deviations):
   `crates/splendor-league` already exists, and the workspace has no SQLite dependency.
-- 2026-09-10: Inventories run (two passes; the first mis-assumed arena reports were multi-match
-  collections when in fact each `*.report.json` is exactly one match, and the outcome key is
-  `outcome.status`, not `outcome.kind`). Corrected counts are the table above.
+- 2026-09-10: Inventories run (three passes). **Two measurement errors, both corrected and kept
+  here on purpose.**
+  (a) The first pass assumed each `*.report.json` was a multi-match collection and that the outcome
+  key was `outcome.kind`; in fact each file is exactly one match, the outcome key is
+  `outcome.status`, and the agent array is `agents[].agent_name/agent_version`. All counts in the
+  table above are post-correction.
+  (b) The second pass measured replay coverage with
+  `sib = path.replace(/\.report\.json$/, '.replay.json')` and then `existsSync(sib)`. For arena
+  reports whose filename does **not** end in `.report.json` (most of the corpus — e.g.
+  `m41a-corpus/train/game-0000/arena-report.json`), the regex did not match, `sib === path`, and the
+  file trivially "existed" — inflating coverage to 48,069/48,273 (99.6%). The durable Rust command
+  disagreed (3,594), which exposed the bug. The honest resolution was to measure *both* things
+  separately, because they are different questions: colocated-filename coverage is 3,594 (7.4%)
+  while content-join coverage is 48,050 (99.5%), and **the importer must bind on
+  `final_state_hash`.** The inventory command now reports both numbers side by side so the two can
+  never be conflated again.
+  (c) A third pass confirmed the join: every one of the 48,050 `replay_final_hash` values resolves
+  to a real ReplayV1 `final_state_hash`, with zero unmatched.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -191,7 +228,28 @@ owner's exclusion list is a family of "must not pollute Studio Elo" cases and th
 
 ## Validation and evidence
 
-_(filled in per commit; nothing here is claimed as run until it has been run)_
+### Commit A (League core) — run 2026-09-10
+
+| Command | Result |
+| --- | --- |
+| `cargo build -p splendor-studio-league` | ok (compiles the bundled SQLite amalgamation) |
+| `cargo test -p splendor-studio-league` | **12 passed / 0 failed** (`tests/league_core.rs`) |
+| `cargo build --bin splendor` (isolated `CARGO_TARGET_DIR`) | ok; 2 pre-existing warnings in `s2_census_command.rs` |
+| `splendor studio-league-inventory` | output quoted in "Problem and evidence" |
+
+The 12 gates cover: schema version + idempotent init; exact-identity keying (same key ⇒ same
+participant, different version ⇒ different participant, a later label never renames); local human
+profile created once and surviving a rename; the reserved unassigned-human pseudo participant; the
+full eligibility matrix (10 cases, one per reason code); that Studio Elo reuses
+`splendor_eval::elo_delta` exactly (1500/1500 K=32 ⇒ ±16, zero-sum, and equal to the frozen
+function for three uneven pairs); that an eligible match writes two events and moves both ratings;
+that aborted / invalid-replay / diagnostic / self-match / unmapped matches are all recorded yet move
+nobody's rating; ingest idempotency on `(source_kind, source_identity)`; that
+`rebuild_ratings` reproduces the identical event history for a 6-match round robin; monotonic
+`league_seq`; and that only an explicit alias merges identities.
+
+Not yet run (deferred to commits B–E): the historical import, the replay archive, the Host APIs, the
+UI, and any browser check.
 
 ## Result and decision
 
@@ -201,10 +259,16 @@ _(filled in per commit; nothing here is claimed as run until it has been run)_
 
 - The inventory is a point-in-time scan of this machine's `local-artifacts/`; corpora are
   local-only and not part of the repository.
-- 204 arena matches have no replay and 406 seats carry no identity; these must stay visible as
-  `RESULT_ONLY` / `unmapped` rather than being guessed.
+- 223 matches have no replay binding and 406 seats carry no identity; these must stay visible as
+  `RESULT_ONLY` / `unmapped` rather than being guessed. The 223 are exactly the aborted and
+  truncated matches.
 - `game_id` is not unique (25,979 duplicates), so ingest keys on content identity
   (`replay_final_hash` / replay document hash) plus source path — never on `game_id`.
+- Replay binding must be by `final_state_hash` content join, not by filename; only 7.4% of matches
+  use the colocated naming convention.
+- An alias declared *after* matches were ingested does not retroactively reassign those matches yet;
+  commit A provides and tests the resolve-time merge primitive only, and commit B must complete the
+  historical merge.
 - The Studio Elo pool is not comparable to `official_elo` pools; the two must never be rendered in
   one column.
 

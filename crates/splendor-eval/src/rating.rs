@@ -140,6 +140,20 @@ pub struct RatingReportV1 {
     pub pair_evaluation_report_hashes: Vec<String>,
 }
 
+/// Canonical Elo expectation for the first player, from the frozen live-Elo rule.
+///
+/// This is the single source of truth for the sequential Elo arithmetic: it is
+/// used by [`build_rating_report_v1`] and by every Studio League rating event, so
+/// the two can never drift into "two slightly different Elos".
+pub fn elo_expected_score(rating_a: f64, rating_b: f64) -> f64 {
+    1.0 / (1.0 + 10f64.powf((rating_b - rating_a) / 400.0))
+}
+
+/// Canonical Elo delta for the first player; the opponent's delta is its negation.
+pub fn elo_delta(rating_a: f64, rating_b: f64, score_a: f64, k_factor: u32) -> f64 {
+    k_factor as f64 * (score_a - elo_expected_score(rating_a, rating_b))
+}
+
 fn check_text(field: &str, value: &str) -> Result<(), String> {
     if value.trim().is_empty() {
         return Err(format!("{field} must not be empty"));
@@ -501,7 +515,7 @@ pub fn build_rating_report_v1(
                         }
                         (false, false) => return Err("completed result has no winner".to_string()),
                     };
-                    let expected_a = 1.0 / (1.0 + 10f64.powf((live[ib] - live[ia]) / 400.0));
+                    let expected_a = elo_expected_score(live[ia], live[ib]);
                     let delta = plan.live_k_factor as f64 * (score_a - expected_a);
                     live[ia] += delta;
                     live[ib] -= delta;

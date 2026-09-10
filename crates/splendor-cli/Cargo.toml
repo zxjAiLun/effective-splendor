@@ -33,6 +33,7 @@ splendor-learning = { workspace = true }
 splendor-neural-search = { workspace = true }
 splendor-neural-agent = { workspace = true }
 splendor-analysis = { workspace = true }
+splendor-studio-league = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
