@@ -5,11 +5,18 @@
 //! research registry. Engines keep their *exact* policy identity
 //! (`agent_name@agent_version`, where the version is a version string or a
 //! checkpoint hash), never a display name.
+//!
+//! Ids are **reproducible**. An engine id is derived from its identity key, so it
+//! survives deleting the database; a human id is user-authored state and lives in
+//! the durable [`crate::identity_manifest`] instead. Nothing here may depend on
+//! random ids that only exist inside the derived SQLite index.
 
 use crate::error::{Result, StudioLeagueError};
+use crate::identity_manifest::IdentityManifestV1;
 use rand::Rng;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 /// Identity key reserved for legacy human games whose `.meta.json` is missing.
 /// Those games stay in the ledger but are never attributed to the local profile.
@@ -66,33 +73,22 @@ impl EngineIdentityV1 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ParticipantRow {
-    pub participant_id: String,
-    pub kind: ParticipantKind,
-    pub display_name: String,
-    pub identity_key: Option<String>,
-    /// `None` until the participant's first rating event; the effective value
-    /// comes from `StudioRatingConfigV1::initial_elo`.
-    pub current_elo: Option<f64>,
-    pub created_at: i64,
+/// A participant id derived purely from an identity key.
+///
+/// Deterministic on purpose: the same corpus and the same manifest must produce
+/// the same participant ids after the database is deleted and rebuilt.
+pub fn derived_participant_id(identity_key: &str) -> String {
+    let digest = hex::encode(Sha256::digest(
+        format!("studio-league-participant-v1\n{identity_key}").as_bytes(),
+    ));
+    format!("eng-{}", &digest[..32])
 }
 
-impl ParticipantRow {
-    pub fn is_provisional(&self, completed: u32) -> bool {
-        completed < PROVISIONAL_MATCH_THRESHOLD
-    }
-}
-
-/// Mirrors the frozen M16 rule: fewer than 20 completed games is provisional.
-pub const PROVISIONAL_MATCH_THRESHOLD: u32 = 20;
-
-/// A random, opaque, dash-formatted participant id. Not derived from the display
-/// name, so renaming a participant never changes its identity.
+/// A random, opaque, dash-formatted id, used only for the **user-authored** local
+/// human identity, which is then pinned by the manifest.
 pub fn new_participant_id() -> String {
     let mut bytes = [0u8; 16];
     rand::thread_rng().fill(&mut bytes);
-    // RFC 4122 version 4 / variant bits, so the id is recognisably a UUID.
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     let h = hex::encode(bytes);
@@ -106,14 +102,29 @@ pub fn new_participant_id() -> String {
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantRow {
+    pub participant_id: String,
+    pub kind: ParticipantKind,
+    pub display_name: String,
+    pub identity_key: Option<String>,
+    /// `None` until the participant's first rating event; the effective value
+    /// comes from `StudioRatingConfigV1::initial_elo`.
+    pub current_elo: Option<f64>,
+    pub created_at: i64,
+}
+
+/// Mirrors the frozen M16 rule: fewer than 20 completed games is provisional.
+pub const PROVISIONAL_MATCH_THRESHOLD: u32 = 20;
+
 fn insert_participant(
     conn: &Connection,
+    participant_id: &str,
     kind: ParticipantKind,
     display_name: &str,
     identity_key: Option<&str>,
     now: i64,
-) -> Result<String> {
-    let participant_id = new_participant_id();
+) -> Result<()> {
     conn.execute(
         "INSERT INTO participants
              (participant_id, kind, display_name, identity_key, current_elo, created_at)
@@ -126,12 +137,12 @@ fn insert_participant(
             now
         ],
     )?;
-    Ok(participant_id)
+    Ok(())
 }
 
-/// Resolve an exact engine identity to a participant id, creating the row on
-/// first sight. Never merges by display name: the identity key is the only key,
-/// and an explicitly declared alias always wins over a same-shaped key.
+/// Resolve an exact engine identity to its derived participant id, creating the
+/// row on first sight. Never merges by display name: the identity key is the only
+/// key, and an explicitly declared alias always wins.
 pub fn resolve_engine_participant(
     conn: &Connection,
     identity: &EngineIdentityV1,
@@ -140,19 +151,45 @@ pub fn resolve_engine_participant(
 ) -> Result<String> {
     let key = identity.key();
     if let Some(canonical) = resolve_alias(conn, &key)? {
+        // An alias may be declared before its target has ever appeared in the
+        // corpus. Bootstrap it here, registering the key being resolved as the
+        // canonical participant's identity, so ordering cannot change the result.
+        if !participant_row_exists(conn, &canonical)? {
+            insert_participant(
+                conn,
+                &canonical,
+                ParticipantKind::Engine,
+                display_name,
+                Some(&key),
+                now,
+            )?;
+        }
         return Ok(canonical);
     }
-    if let Some(existing) = conn
+    let participant_id = derived_participant_id(&key);
+    if participant_row_exists(conn, &participant_id)? {
+        return Ok(participant_id);
+    }
+    insert_participant(
+        conn,
+        &participant_id,
+        ParticipantKind::Engine,
+        display_name,
+        Some(&key),
+        now,
+    )?;
+    Ok(participant_id)
+}
+
+fn participant_row_exists(conn: &Connection, participant_id: &str) -> Result<bool> {
+    Ok(conn
         .query_row(
-            "SELECT participant_id FROM participants WHERE identity_key = ?1",
-            params![key],
-            |row| row.get::<_, String>(0),
+            "SELECT 1 FROM participants WHERE participant_id = ?1",
+            params![participant_id],
+            |_| Ok(()),
         )
         .optional()?
-    {
-        return Ok(existing);
-    }
-    insert_participant(conn, ParticipantKind::Engine, display_name, Some(&key), now)
+        .is_some())
 }
 
 /// Follow an explicit alias to its canonical participant, if one was declared.
@@ -168,6 +205,9 @@ pub fn resolve_alias(conn: &Connection, key: &str) -> Result<Option<String>> {
 
 /// Declare that an identity key belonging to an engine is the same participant as
 /// an existing one. Merging is only ever this explicit act.
+///
+/// The durable copy of this decision belongs in the identity manifest; this writes
+/// the index so reads are a single lookup.
 pub fn declare_alias(
     conn: &Connection,
     alias_key: &str,
@@ -183,52 +223,97 @@ pub fn declare_alias(
 }
 
 /// The reserved pseudo-participant for human games with no recorded seat
-/// metadata. Those games stay in the ledger but are never attributed to the
-/// local profile (boundary 5).
+/// metadata. Those games stay in the ledger but are never attributed to the local
+/// profile (boundary 5). Its id is derived, so it rebuilds identically.
 pub fn unassigned_human_participant(conn: &Connection, now: i64) -> Result<String> {
-    let identity = EngineIdentityV1::new(UNASSIGNED_HUMAN_KEY, "1");
-    let existing: Option<String> = conn
-        .query_row(
-            "SELECT participant_id FROM participants WHERE identity_key = ?1",
-            params![identity.key()],
-            |row| row.get(0),
-        )
-        .optional()?;
-    match existing {
-        Some(id) => Ok(id),
-        None => insert_participant(
-            conn,
-            ParticipantKind::Human,
-            "Unassigned human (no seat metadata)",
-            Some(&identity.key()),
-            now,
-        ),
+    let identity_key = EngineIdentityV1::new(UNASSIGNED_HUMAN_KEY, "1").key();
+    let participant_id = derived_participant_id(&identity_key);
+    if participant_row_exists(conn, &participant_id)? {
+        return Ok(participant_id);
     }
+    insert_participant(
+        conn,
+        &participant_id,
+        ParticipantKind::Human,
+        "Unassigned human (no seat metadata)",
+        Some(&identity_key),
+        now,
+    )?;
+    Ok(participant_id)
 }
 
 /// The local human profile id, if one has been created.
 pub fn local_human_participant(conn: &Connection) -> Result<Option<String>> {
-    let meta = conn
+    Ok(conn
         .query_row(
             "SELECT value FROM league_meta WHERE key = ?1",
             params![LOCAL_HUMAN_META_KEY],
             |row| row.get::<_, String>(0),
         )
-        .optional()?;
-    Ok(meta)
+        .optional()?)
 }
 
-/// Create the local human profile exactly once. Renaming later keeps the id.
-pub fn ensure_local_human(conn: &Connection, display_name: &str, now: i64) -> Result<String> {
-    if let Some(id) = local_human_participant(conn)? {
-        return Ok(id);
+/// Create the local human profile with an id supplied by the manifest.
+///
+/// The id is a parameter precisely so it comes from durable user-authored state
+/// rather than from this database.
+pub fn ensure_local_human(
+    conn: &Connection,
+    participant_id: &str,
+    display_name: &str,
+    now: i64,
+) -> Result<String> {
+    if let Some(existing) = local_human_participant(conn)? {
+        return Ok(existing);
     }
-    let id = insert_participant(conn, ParticipantKind::Human, display_name, None, now)?;
+    insert_participant(
+        conn,
+        participant_id,
+        ParticipantKind::Human,
+        display_name,
+        None,
+        now,
+    )?;
     conn.execute(
         "INSERT OR REPLACE INTO league_meta (key, value) VALUES (?1, ?2)",
-        params![LOCAL_HUMAN_META_KEY, id],
+        params![LOCAL_HUMAN_META_KEY, participant_id],
     )?;
-    Ok(id)
+    Ok(participant_id.to_string())
+}
+
+/// Project the durable manifest into the derived index: the local human identity
+/// and every explicit alias. Idempotent, and safe to call before any ingest.
+pub fn sync_identity_manifest(
+    conn: &Connection,
+    manifest: &IdentityManifestV1,
+    now: i64,
+) -> Result<()> {
+    manifest.validate()?;
+    if let Some(local) = &manifest.local_human {
+        match local_human_participant(conn)? {
+            Some(existing) if existing == local.participant_id => {
+                // Keep the manifest's display name authoritative; renames are
+                // authored there, not in the derived index.
+                conn.execute(
+                    "UPDATE participants SET display_name = ?1 WHERE participant_id = ?2",
+                    params![local.display_name, local.participant_id],
+                )?;
+            }
+            Some(existing) => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "the index's local human `{existing}` disagrees with the manifest's `{}`; the index is derived, so rebuild it instead of editing it",
+                    local.participant_id
+                )));
+            }
+            None => {
+                ensure_local_human(conn, &local.participant_id, &local.display_name, now)?;
+            }
+        }
+    }
+    for alias in &manifest.aliases {
+        declare_alias(conn, &alias.alias_key, &alias.participant_id, &alias.note)?;
+    }
+    Ok(())
 }
 
 pub fn rename_participant(

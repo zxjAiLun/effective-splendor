@@ -1,18 +1,27 @@
 //! The match ledger and its deterministic Elo events.
 //!
-//! Two invariants drive this module:
-//! * `league_seq` — not arrival or thread order — fixes the Elo order, so a
-//!   rebuild from the same sources reproduces the same Elo history.
-//! * ingestion is idempotent on `(source_kind, source_identity)`, so a repeated
-//!   scan of the same artifacts can never double-rate a match.
+//! Invariants this module must enforce, and the reasons they exist:
+//!
+//! * **`league_seq` fixes the Elo order.** It comes from an explicit canonical
+//!   sort ([`canonical_league_order`]), never from filesystem traversal order.
+//! * **Ingestion is idempotent on `(source_kind, source_identity)` — and only when
+//!   the content matches.** The same key with a different `source_document_hash`
+//!   is a conflict, not a no-op.
+//! * **The rating config is persisted and cannot drift.** The first ingest freezes
+//!   it in `league_meta`; every later ingest and every rebuild must match it
+//!   exactly or fail closed with zero mutation.
+//! * **`rating_eligible` implies exactly two rating events.** A eligible 1v1 match
+//!   that cannot produce a pair event is an error, never a silent skip.
 
 use crate::eligibility::{evaluate_eligibility, EligibilityInput, RatingEligibility};
 use crate::elo::{pair_score_a, plan_pair_update};
 use crate::error::{Result, StudioLeagueError};
 use crate::match_record::{ReplayVerification, StudioMatchRecordV1};
 use crate::participant::{
-    declare_alias, new_participant_id, resolve_alias, resolve_engine_participant, ParticipantKind,
+    declare_alias, derived_participant_id, resolve_alias, resolve_engine_participant,
+    ParticipantKind,
 };
+use crate::schema::{get_meta, set_meta, RATING_CONFIG_META_KEY};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -26,8 +35,7 @@ pub const STUDIO_ELIGIBLE_PLAYER_COUNT: u8 = 2;
 pub const SPLENDOR_BASE_V1_RULESET_FINGERPRINT: &str =
     "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb";
 
-/// The frozen Studio rating identity. Recorded in `league_meta` so a rebuild can
-/// prove it used the same rule.
+/// The frozen Studio rating identity, persisted in `league_meta` on first use.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StudioRatingConfigV1 {
     pub version: u32,
@@ -97,6 +105,41 @@ pub fn now_epoch_seconds() -> i64 {
         .unwrap_or(0)
 }
 
+/// The rating config this database was built with, if it has one.
+pub fn stored_rating_config(conn: &Connection) -> Result<Option<StudioRatingConfigV1>> {
+    match get_meta(conn, RATING_CONFIG_META_KEY)? {
+        Some(text) => Ok(Some(StudioRatingConfigV1::from_json(&text)?)),
+        None => Ok(None),
+    }
+}
+
+/// Freeze the rating config on first use, then require an exact match forever.
+///
+/// This is what stops "K=32 today, K=64 tomorrow" from silently rewriting a
+/// league's meaning. On mismatch nothing is written.
+pub fn ensure_rating_config(
+    conn: &Connection,
+    config: &StudioRatingConfigV1,
+) -> Result<StudioRatingConfigV1> {
+    config.validate()?;
+    match stored_rating_config(conn)? {
+        None => {
+            set_meta(conn, RATING_CONFIG_META_KEY, &config.to_json()?)?;
+            Ok(config.clone())
+        }
+        Some(stored) => {
+            if &stored != config {
+                return Err(StudioLeagueError::RatingConfig(format!(
+                    "stored config {} drifts from the requested {}; the league's rating identity is frozen on first ingest",
+                    stored.to_json()?,
+                    config.to_json()?
+                )));
+            }
+            Ok(stored)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IngestOutcome {
     Inserted {
@@ -118,6 +161,21 @@ impl IngestOutcome {
     pub fn was_inserted(&self) -> bool {
         matches!(self, IngestOutcome::Inserted { .. })
     }
+    pub fn rating_events(&self) -> usize {
+        match self {
+            IngestOutcome::Inserted { rating_events, .. } => *rating_events,
+            IngestOutcome::AlreadyPresent { .. } => 0,
+        }
+    }
+}
+
+/// How the ledger position of a new match is decided.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IngestOrder {
+    /// Next free position — for genuinely new matches arriving now.
+    Append,
+    /// An explicit position from a canonical sort — for historical migration.
+    Assigned(i64),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -135,20 +193,68 @@ pub struct RatingEventRow {
     pub algorithm: String,
 }
 
+/// A leaderboard row. W/T/L are **rated** records only: a match that did not move
+/// Elo must never appear here as a loss.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LeaderboardRow {
     pub participant_id: String,
     pub kind: ParticipantKind,
     pub display_name: String,
     pub elo: i32,
-    /// Matches that actually moved Elo.
+    /// Matches that moved Elo.
     pub rated_games: u32,
-    /// Every match this participant appears in, eligible or not.
+    /// Distinct matches this participant appears in, eligible or not.
     pub recorded_games: u32,
-    pub wins: u32,
-    pub ties: u32,
-    pub losses: u32,
+    pub rated_wins: u32,
+    pub rated_ties: u32,
+    pub rated_losses: u32,
     pub provisional: bool,
+}
+
+/// Deterministic league order for a batch of records.
+///
+/// Returns indices into `records` sorted by `(played_at, source_kind,
+/// source_identity)`. Historical migration must assign `league_seq` from this, so
+/// the Elo history never depends on how the filesystem was traversed.
+pub fn canonical_league_order(records: &[StudioMatchRecordV1]) -> Vec<usize> {
+    fn key(record: &StudioMatchRecordV1) -> (i64, String, String) {
+        (
+            record.played_at.unwrap_or(i64::MIN),
+            record.source_kind.clone(),
+            record.source_identity.clone(),
+        )
+    }
+    let mut indices: Vec<usize> = (0..records.len()).collect();
+    indices.sort_by(|&a, &b| key(&records[a]).cmp(&key(&records[b])));
+    indices
+}
+
+/// Ingest a whole historical batch in canonical order, assigning positions 1..N.
+///
+/// Refuses a non-empty ledger, so "the canonical order of this batch" is
+/// unambiguous; incremental arrivals use [`IngestOrder::Append`] instead.
+pub fn ingest_batch_canonical(
+    conn: &mut Connection,
+    config: &StudioRatingConfigV1,
+    records: &[StudioMatchRecordV1],
+) -> Result<Vec<IngestOutcome>> {
+    if match_count(conn)? != 0 {
+        return Err(StudioLeagueError::Invalid(
+            "ingest_batch_canonical requires an empty ledger; use IngestOrder::Append for new matches"
+                .to_string(),
+        ));
+    }
+    let order = canonical_league_order(records);
+    let mut outcomes = Vec::with_capacity(records.len());
+    for (position, index) in order.into_iter().enumerate() {
+        outcomes.push(ingest_match_ordered(
+            conn,
+            config,
+            &records[index],
+            IngestOrder::Assigned(position as i64 + 1),
+        )?);
+    }
+    Ok(outcomes)
 }
 
 /// Insert one finished match, resolving identities and applying Elo if eligible.
@@ -157,21 +263,71 @@ pub fn ingest_match(
     config: &StudioRatingConfigV1,
     record: &StudioMatchRecordV1,
 ) -> Result<IngestOutcome> {
-    config.validate()?;
+    ingest_match_ordered(conn, config, record, IngestOrder::Append)
+}
+
+pub fn ingest_match_ordered(
+    conn: &mut Connection,
+    config: &StudioRatingConfigV1,
+    record: &StudioMatchRecordV1,
+    order: IngestOrder,
+) -> Result<IngestOutcome> {
+    record.validate_for_ingest()?;
     let tx = conn.transaction()?;
-    let existing: Option<String> = tx
+
+    // Freeze (or verify) the rating identity before anything else is written.
+    let config = ensure_rating_config(&tx, config)?;
+
+    let existing: Option<(String, Option<String>)> = tx
         .query_row(
-            "SELECT match_id FROM matches WHERE source_kind = ?1 AND source_identity = ?2",
+            "SELECT match_id, source_document_hash FROM matches
+              WHERE source_kind = ?1 AND source_identity = ?2",
             params![record.source_kind, record.source_identity],
-            |row| row.get(0),
+            |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()?;
-    if let Some(match_id) = existing {
-        return Ok(IngestOutcome::AlreadyPresent { match_id });
+    if let Some((match_id, stored_hash)) = existing {
+        if stored_hash == record.source_document_hash {
+            return Ok(IngestOutcome::AlreadyPresent { match_id });
+        }
+        return Err(StudioLeagueError::SourceConflict {
+            source_kind: record.source_kind.clone(),
+            source_identity: record.source_identity.clone(),
+            stored: stored_hash,
+            incoming: record.source_document_hash.clone(),
+        });
     }
 
     let now = now_epoch_seconds();
     let match_id = record.match_id();
+
+    let league_seq = match order {
+        IngestOrder::Append => tx.query_row(
+            "SELECT COALESCE(MAX(league_seq), 0) + 1 FROM matches",
+            [],
+            |row| row.get::<_, i64>(0),
+        )?,
+        IngestOrder::Assigned(seq) => {
+            if seq < 1 {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "assigned league_seq {seq} must be at least 1"
+                )));
+            }
+            let taken: Option<String> = tx
+                .query_row(
+                    "SELECT match_id FROM matches WHERE league_seq = ?1",
+                    params![seq],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if let Some(other) = taken {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "league_seq {seq} is already used by match `{other}`"
+                )));
+            }
+            seq
+        }
+    };
 
     // Resolve every seat before deciding eligibility: an identity the league
     // cannot determine must block rating rather than be guessed.
@@ -206,32 +362,27 @@ pub fn ingest_match(
             participants: resolved.clone(),
             diagnostic: record.diagnostic,
         },
-        config,
+        &config,
     );
-
-    let next_seq: i64 = tx.query_row(
-        "SELECT COALESCE(MAX(league_seq), 0) + 1 FROM matches",
-        [],
-        |row| row.get(0),
-    )?;
 
     let scores = record.scores();
     let winners = record.winners();
     tx.execute(
         "INSERT INTO matches
-            (match_id, source_kind, source_identity, source_path, league_seq, played_at,
-             ruleset_fingerprint, engine_version, player_count, status, scores_json,
-             winners_json, completed_plies, main_turn_count, replay_document_hash,
+            (match_id, source_kind, source_identity, source_path, source_document_hash,
+             league_seq, played_at, ruleset_fingerprint, engine_version, player_count, status,
+             scores_json, winners_json, completed_plies, main_turn_count, replay_document_hash,
              replay_final_hash, replay_storage, replay_path, replay_verification,
              rating_eligible, rating_ineligible_reason, detail_metrics_available, ingested_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
-                 ?18, ?19, ?20, ?21, ?22, ?23)",
+                 ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
         params![
             match_id,
             record.source_kind,
             record.source_identity,
             record.source_path,
-            next_seq,
+            record.source_document_hash,
+            league_seq,
             record.played_at,
             record.ruleset_fingerprint,
             record.engine_version,
@@ -275,19 +426,25 @@ pub fn ingest_match(
     }
 
     let rating_events = if eligibility.is_eligible() {
-        apply_rating_for_match(&tx, config, &match_id, next_seq)?
+        apply_rating_for_match(&tx, &config, &match_id, league_seq)?
     } else {
         0
     };
+    if eligibility.is_eligible() && rating_events != 2 {
+        return Err(StudioLeagueError::Invalid(format!(
+            "eligible match `{match_id}` produced {rating_events} rating events; a 1v1 Elo update must produce exactly 2"
+        )));
+    }
 
     tx.execute(
         "INSERT OR REPLACE INTO ingest_sources
-            (source_kind, source_identity, first_seen_at, document_hash)
-         VALUES (?1, ?2, ?3, ?4)",
+            (source_kind, source_identity, first_seen_at, source_document_hash, document_hash)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
         params![
             record.source_kind,
             record.source_identity,
             now,
+            record.source_document_hash,
             record.replay.document_hash
         ],
     )?;
@@ -300,37 +457,41 @@ pub fn ingest_match(
 }
 
 /// Write the two Elo events for an eligible 1v1 match and move current Elo.
+///
+/// Fails rather than returning `0` when the pair is not a clean 1v1: an eligible
+/// match with no rating event would be a silent lie.
 pub fn apply_rating_for_match(
     tx: &Transaction<'_>,
     config: &StudioRatingConfigV1,
     match_id: &str,
     league_seq: i64,
 ) -> Result<usize> {
-    let seats: Vec<(i64, Option<String>, i64)> = {
+    let seats: Vec<(Option<String>, i64)> = {
         let mut stmt = tx.prepare(
-            "SELECT seat, participant_id, won FROM match_seats WHERE match_id = ?1 ORDER BY seat ASC",
+            "SELECT participant_id, won FROM match_seats WHERE match_id = ?1 ORDER BY seat ASC",
         )?;
         let rows = stmt
             .query_map(params![match_id], |row| {
-                Ok((
-                    row.get::<_, i64>(0)?,
-                    row.get::<_, Option<String>>(1)?,
-                    row.get::<_, i64>(2)?,
-                ))
+                Ok((row.get::<_, Option<String>>(0)?, row.get::<_, i64>(1)?))
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         rows
     };
     if seats.len() != 2 {
-        return Ok(0);
+        return Err(StudioLeagueError::Invalid(format!(
+            "eligible match `{match_id}` has {} seats; a Studio Elo update requires exactly 2",
+            seats.len()
+        )));
     }
-    let (Some(a), Some(b)) = (seats[0].1.clone(), seats[1].1.clone()) else {
-        return Ok(0);
+    let (Some(a), Some(b)) = (seats[0].0.clone(), seats[1].0.clone()) else {
+        return Err(StudioLeagueError::Invalid(format!(
+            "eligible match `{match_id}` has an unresolved participant; it must not have been marked eligible"
+        )));
     };
 
     let rating_a = participant_elo(tx, &a, config)?;
     let rating_b = participant_elo(tx, &b, config)?;
-    let score_a = pair_score_a(seats[0].2 != 0, seats[1].2 != 0)?;
+    let score_a = pair_score_a(seats[0].1 != 0, seats[1].1 != 0)?;
     let update = plan_pair_update(rating_a, rating_b, score_a, config.k_factor);
 
     for (participant_id, opponent_id, before, after, score, expected, delta) in [
@@ -397,11 +558,25 @@ pub fn participant_elo(
     Ok(stored.unwrap_or(config.initial_elo as f64))
 }
 
-/// Recompute every Elo event from the ledger, in `league_seq` order.
-///
-/// This is the determinism proof: if it reproduces the same events, the stored
-/// history contains nothing that depends on write order.
-pub fn rebuild_ratings(conn: &mut Connection, config: &StudioRatingConfigV1) -> Result<u64> {
+/// Recompute every Elo event from the ledger, in `league_seq` order, using the
+/// config this database was built with.
+pub fn rebuild_ratings(conn: &mut Connection) -> Result<u64> {
+    let config = stored_rating_config(conn)?.ok_or_else(|| {
+        StudioLeagueError::RatingConfig(
+            "this database has no stored rating config; ingest at least one match first"
+                .to_string(),
+        )
+    })?;
+    rebuild_with_config(conn, &config)
+}
+
+/// Recompute ratings after proving the caller's config matches the stored one.
+pub fn rebuild_ratings_with(conn: &mut Connection, config: &StudioRatingConfigV1) -> Result<u64> {
+    let stored = ensure_rating_config(conn, config)?;
+    rebuild_with_config(conn, &stored)
+}
+
+fn rebuild_with_config(conn: &mut Connection, config: &StudioRatingConfigV1) -> Result<u64> {
     config.validate()?;
     let tx = conn.transaction()?;
     tx.execute("DELETE FROM rating_events", [])?;
@@ -451,27 +626,34 @@ pub fn rating_history(conn: &Connection, participant_id: &str) -> Result<Vec<Rat
     Ok(rows)
 }
 
-/// The leaderboard, ordered by Studio Elo. Numbers come from the database only;
-/// no caller may recompute them.
+/// The leaderboard, ordered by Studio Elo.
+///
+/// W/T/L count **rated** matches only, so an aborted, truncated, unmapped or
+/// self match can never be presented as a loss; `recorded_games` counts distinct
+/// matches separately.
 pub fn leaderboard(
     conn: &Connection,
     config: &StudioRatingConfigV1,
 ) -> Result<Vec<LeaderboardRow>> {
     let mut stmt = conn.prepare(
-        "SELECT p.participant_id, p.kind, p.display_name,
-                (SELECT COUNT(*) FROM match_seats s WHERE s.participant_id = p.participant_id),
+        "SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
+                (SELECT COUNT(DISTINCT s.match_id) FROM match_seats s
+                  WHERE s.participant_id = p.participant_id),
                 (SELECT COUNT(*) FROM match_seats s
                    JOIN matches m ON m.match_id = s.match_id
                   WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1),
                 (SELECT COUNT(*) FROM match_seats s
-                  WHERE s.participant_id = p.participant_id AND s.won = 1
+                   JOIN matches m ON m.match_id = s.match_id
+                  WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1
+                    AND s.won = 1
                     AND (SELECT COUNT(*) FROM match_seats s2
                           WHERE s2.match_id = s.match_id AND s2.won = 1) = 1),
                 (SELECT COUNT(*) FROM match_seats s
-                  WHERE s.participant_id = p.participant_id AND s.won = 1
+                   JOIN matches m ON m.match_id = s.match_id
+                  WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1
+                    AND s.won = 1
                     AND (SELECT COUNT(*) FROM match_seats s2
-                          WHERE s2.match_id = s.match_id AND s2.won = 1) > 1),
-                p.current_elo
+                          WHERE s2.match_id = s.match_id AND s2.won = 1) > 1)
            FROM participants p",
     )?;
     let mut rows: Vec<LeaderboardRow> = stmt
@@ -480,17 +662,19 @@ pub fn leaderboard(
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, i64>(3)?,
+                row.get::<_, Option<f64>>(3)?,
                 row.get::<_, i64>(4)?,
                 row.get::<_, i64>(5)?,
                 row.get::<_, i64>(6)?,
-                row.get::<_, Option<f64>>(7)?,
+                row.get::<_, i64>(7)?,
             ))
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?
         .into_iter()
-        .map(|(id, kind, name, recorded, rated, wins, ties, elo)| {
+        .map(|(id, kind, name, elo, recorded, rated, wins, ties)| {
             let rated = rated as u32;
+            let wins = wins as u32;
+            let ties = ties as u32;
             Ok(LeaderboardRow {
                 participant_id: id,
                 kind: ParticipantKind::from_db(&kind)?,
@@ -498,9 +682,9 @@ pub fn leaderboard(
                 elo: elo.unwrap_or(config.initial_elo as f64).round() as i32,
                 rated_games: rated,
                 recorded_games: recorded as u32,
-                wins: wins as u32,
-                ties: ties as u32,
-                losses: recorded as u32 - wins as u32 - ties as u32,
+                rated_wins: wins,
+                rated_ties: ties,
+                rated_losses: rated.saturating_sub(wins + ties),
                 provisional: rated < config.provisional_threshold,
             })
         })
@@ -528,6 +712,14 @@ pub fn eligible_match_count(conn: &Connection) -> Result<u64> {
     )? as u64)
 }
 
+pub fn rating_event_count(conn: &Connection) -> Result<u64> {
+    Ok(
+        conn.query_row("SELECT COUNT(*) FROM rating_events", [], |row| {
+            row.get::<_, i64>(0)
+        })? as u64,
+    )
+}
+
 pub fn ineligible_reason_counts(conn: &Connection) -> Result<Vec<(String, u64)>> {
     let mut stmt = conn.prepare(
         "SELECT COALESCE(rating_ineligible_reason, '(eligible)'), COUNT(*)
@@ -536,6 +728,45 @@ pub fn ineligible_reason_counts(conn: &Connection) -> Result<Vec<(String, u64)>>
     let rows = stmt
         .query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)? as u64))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// The `(match_id, league_seq)` assignment, for proving a rebuild is identical.
+pub fn league_order(conn: &Connection) -> Result<Vec<(String, i64)>> {
+    let mut stmt =
+        conn.prepare("SELECT match_id, league_seq FROM matches ORDER BY league_seq ASC")?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Every `(alias_key, participant_id)` in the index, ordered.
+pub fn aliases(conn: &Connection) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT alias_key, participant_id FROM participant_aliases ORDER BY alias_key ASC",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Every `(identity_key, participant_id)` in the index, ordered.
+pub fn identity_index(conn: &Connection) -> Result<Vec<(String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT identity_key, participant_id FROM participants
+          WHERE identity_key IS NOT NULL ORDER BY identity_key ASC",
+    )?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
     Ok(rows)
@@ -551,9 +782,14 @@ pub fn alias_participants(
     declare_alias(conn, alias_key, participant_id, note)
 }
 
+/// The id an engine identity will derive, without touching the database.
+pub fn participant_id_for_identity(identity_key: &str) -> String {
+    derived_participant_id(identity_key)
+}
+
 /// Unused-but-reserved id generator, exported so importers never invent one.
 pub fn fresh_participant_id() -> String {
-    new_participant_id()
+    crate::participant::new_participant_id()
 }
 
 /// True when `verification` permits Elo. Kept next to the ledger so callers do

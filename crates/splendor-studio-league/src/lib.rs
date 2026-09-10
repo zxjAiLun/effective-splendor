@@ -19,6 +19,7 @@
 pub mod eligibility;
 pub mod elo;
 pub mod error;
+pub mod identity_manifest;
 pub mod inventory;
 pub mod ledger;
 pub mod match_record;
@@ -32,15 +33,22 @@ pub use eligibility::{
 };
 pub use elo::{elo_delta, elo_expected_score, pair_score_a, plan_pair_update, PairEloUpdate};
 pub use error::{Result, StudioLeagueError};
+pub use identity_manifest::{
+    AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1, DEFAULT_IDENTITY_MANIFEST_PATH,
+    IDENTITY_MANIFEST_FORMAT, IDENTITY_MANIFEST_VERSION,
+};
 pub use inventory::{
     scan, write_jsonl, InventoryMatchRowV1, InventoryReportV1, InventoryScanConfig,
     InventorySeatV1, INVENTORY_REPORT_FORMAT, INVENTORY_REPORT_VERSION,
 };
 pub use ledger::{
-    alias_participants, apply_rating_for_match, eligible_match_count, ineligible_reason_counts,
-    ingest_match, is_rating_quality_replay, leaderboard, match_count, participant_elo,
-    preview_eligibility, rating_history, rebuild_ratings, IngestOutcome, LeaderboardRow,
-    RatingEventRow, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    alias_participants, aliases, apply_rating_for_match, canonical_league_order,
+    eligible_match_count, ensure_rating_config, identity_index, ineligible_reason_counts,
+    ingest_batch_canonical, ingest_match, ingest_match_ordered, is_rating_quality_replay,
+    leaderboard, league_order, match_count, participant_elo, participant_id_for_identity,
+    preview_eligibility, rating_event_count, rating_history, rebuild_ratings, rebuild_ratings_with,
+    stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, RatingEventRow,
+    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };
@@ -49,10 +57,10 @@ pub use match_record::{
     StudioMatchSeatV1,
 };
 pub use participant::{
-    ensure_local_human, local_human_participant, new_participant_id, participant,
-    rename_participant, resolve_alias, resolve_engine_participant, unassigned_human_participant,
-    EngineIdentityV1, ParticipantKind, ParticipantRow, LOCAL_HUMAN_META_KEY,
-    PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
+    derived_participant_id, ensure_local_human, local_human_participant, new_participant_id,
+    participant, rename_participant, resolve_alias, resolve_engine_participant,
+    sync_identity_manifest, unassigned_human_participant, EngineIdentityV1, ParticipantKind,
+    ParticipantRow, LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
 };
 pub use schema::{
     get_meta, initialise, open_in_memory, open_league, schema_version, set_meta,
@@ -62,6 +70,8 @@ pub use schema::{
 /// Default location of the derived league index.
 pub const STUDIO_LEAGUE_DIR: &str = "local-artifacts/studio-league";
 pub const STUDIO_LEAGUE_DB_FILE: &str = "local-artifacts/studio-league/league.sqlite3";
+/// Durable user-authored identity state; the index is rebuildable from it.
+pub const STUDIO_LEAGUE_IDENTITY_FILE: &str = "local-artifacts/studio-league/identity.json";
 /// Content-addressed replay archive root (`<document sha256>.json`).
 pub const STUDIO_LEAGUE_REPLAY_DIR: &str = "local-artifacts/studio-league/replays";
 /// Default local human display name, used only when the profile is first created.

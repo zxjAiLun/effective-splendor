@@ -1,5 +1,6 @@
 //! The canonical, source-independent match record every ingestion path produces.
 
+use crate::error::{Result, StudioLeagueError};
 use crate::participant::EngineIdentityV1;
 use serde::{Deserialize, Serialize};
 
@@ -89,6 +90,42 @@ impl ReplayBindingV1 {
     pub fn storage(&self) -> ReplayStorage {
         self.storage.unwrap_or(ReplayStorage::Absent)
     }
+
+    /// A replay this league is willing to *claim* it verified must be fully
+    /// traceable; a claim with no binding is a structural contradiction.
+    fn require_complete(&self, label: &str) -> Result<()> {
+        let hash_ok = self
+            .document_hash
+            .as_deref()
+            .map(|hash| {
+                hash.len() == 64
+                    && hash
+                        .bytes()
+                        .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+            })
+            .unwrap_or(false);
+        if !hash_ok {
+            return Err(StudioLeagueError::Invalid(format!(
+                "{label} replay must carry a 64-character lowercase replay document hash"
+            )));
+        }
+        if self.final_hash.as_deref().unwrap_or("").trim().is_empty() {
+            return Err(StudioLeagueError::Invalid(format!(
+                "{label} replay must carry the referee's replay_final_hash"
+            )));
+        }
+        if matches!(self.storage(), ReplayStorage::Absent) {
+            return Err(StudioLeagueError::Invalid(format!(
+                "{label} replay must record where it is stored"
+            )));
+        }
+        if self.path.as_deref().unwrap_or("").trim().is_empty() {
+            return Err(StudioLeagueError::Invalid(format!(
+                "{label} replay must record its path"
+            )));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -112,6 +149,10 @@ pub struct StudioMatchRecordV1 {
     /// Stable within `source_kind`; together they form the ingest key.
     pub source_identity: String,
     pub source_path: Option<String>,
+    /// SHA-256 of the source document itself. Idempotency compares this, so a
+    /// changed document under an unchanged key is a conflict, never a silent
+    /// no-op (P1 of the Commit A review).
+    pub source_document_hash: Option<String>,
     pub played_at: Option<i64>,
     pub ruleset_fingerprint: String,
     pub engine_version: Option<String>,
@@ -155,5 +196,101 @@ impl StudioMatchRecordV1 {
 
     pub fn scores(&self) -> Vec<i32> {
         self.seats.iter().filter_map(|seat| seat.score).collect()
+    }
+
+    /// Structural gate applied before anything is written.
+    ///
+    /// These are hard contradictions, not eligibility opinions: a record that
+    /// fails here must be reported, never stored as "eligible" and then quietly
+    /// produce no rating event.
+    pub fn validate_for_ingest(&self) -> Result<()> {
+        if self.source_kind.trim().is_empty() {
+            return Err(StudioLeagueError::Invalid(
+                "source_kind must not be empty".to_string(),
+            ));
+        }
+        if self.source_identity.trim().is_empty() {
+            return Err(StudioLeagueError::Invalid(
+                "source_identity must not be empty".to_string(),
+            ));
+        }
+        if self.player_count == 0 {
+            return Err(StudioLeagueError::Invalid(
+                "player_count must be at least 1".to_string(),
+            ));
+        }
+        if self.seats.is_empty() {
+            return Err(StudioLeagueError::Invalid(
+                "a match record must carry at least one seat".to_string(),
+            ));
+        }
+        // Exactly one seat per player: seat count and player_count must agree, so a
+        // "2-player" record with three seats cannot sneak through as eligible.
+        if self.seats.len() != self.player_count as usize {
+            return Err(StudioLeagueError::Invalid(format!(
+                "player_count {} does not match {} recorded seats",
+                self.player_count,
+                self.seats.len()
+            )));
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for seat in &self.seats {
+            if !seen.insert(seat.seat) {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "seat {} is recorded twice",
+                    seat.seat
+                )));
+            }
+        }
+        if let Some(highest) = seen.iter().next_back() {
+            if *highest as usize >= self.seats.len() {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "seat {highest} is outside 0..{}",
+                    self.seats.len()
+                )));
+            }
+        }
+        match self.status {
+            MatchStatus::Completed => {
+                if !self.seats.iter().any(|seat| seat.won) {
+                    return Err(StudioLeagueError::Invalid(
+                        "a completed match must record at least one winner".to_string(),
+                    ));
+                }
+            }
+            MatchStatus::Aborted | MatchStatus::Truncated => {
+                if self.seats.iter().any(|seat| seat.won) {
+                    return Err(StudioLeagueError::Invalid(format!(
+                        "a {} match must not record a winner",
+                        self.status.as_str()
+                    )));
+                }
+            }
+        }
+        match self.replay.verification() {
+            ReplayVerification::Verified => self.replay.require_complete("a verified")?,
+            ReplayVerification::Invalid => {
+                // Something was read and rejected; the hash of what was read is
+                // the evidence, so it must be present and no binding may be implied.
+                if self.replay.document_hash.is_none() {
+                    return Err(StudioLeagueError::Invalid(
+                        "an invalid replay must record the hash of the document that failed"
+                            .to_string(),
+                    ));
+                }
+            }
+            ReplayVerification::Unavailable => {
+                if self.replay.document_hash.is_some()
+                    || self.replay.final_hash.is_some()
+                    || self.replay.path.is_some()
+                    || !matches!(self.replay.storage(), ReplayStorage::Absent)
+                {
+                    return Err(StudioLeagueError::Invalid(
+                        "a match without a replay must not carry a replay binding".to_string(),
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 }

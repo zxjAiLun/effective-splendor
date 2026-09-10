@@ -17,6 +17,17 @@ pub enum StudioLeagueError {
     Invalid(String),
     #[error("studio league record is missing {0}")]
     Missing(String),
+    /// The same ingest key was seen again with *different* content. Silently
+    /// accepting this would let a drifted corpus rewrite history.
+    #[error(
+        "studio league source conflict for {source_kind}/{source_identity}: the stored document hash {stored:?} does not match the incoming {incoming:?}"
+    )]
+    SourceConflict {
+        source_kind: String,
+        source_identity: String,
+        stored: Option<String>,
+        incoming: Option<String>,
+    },
     #[error("studio league rating config is invalid: {0}")]
     RatingConfig(String),
 }

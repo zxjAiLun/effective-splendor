@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use std::path::Path;
 
 /// Bumped whenever the DDL below changes shape.
-pub const STUDIO_LEAGUE_SCHEMA_VERSION: u32 = 1;
+pub const STUDIO_LEAGUE_SCHEMA_VERSION: u32 = 2;
 
 pub const SCHEMA_VERSION_META_KEY: &str = "schema_version";
 pub const RATING_CONFIG_META_KEY: &str = "studio_rating_config";
@@ -31,9 +31,12 @@ CREATE TABLE IF NOT EXISTS participants (
     created_at     INTEGER NOT NULL
 );
 
+-- Deliberately no FK to participants: an alias is an authored mapping and its
+-- target legitimately may not have been seen in the corpus yet. The manifest is
+-- the authority for this table, and resolution bootstraps the target on demand.
 CREATE TABLE IF NOT EXISTS participant_aliases (
     alias_key      TEXT PRIMARY KEY,
-    participant_id TEXT NOT NULL REFERENCES participants(participant_id),
+    participant_id TEXT NOT NULL,
     note           TEXT NOT NULL DEFAULT ''
 );
 
@@ -42,6 +45,9 @@ CREATE TABLE IF NOT EXISTS matches (
     source_kind              TEXT NOT NULL,
     source_identity          TEXT NOT NULL,
     source_path              TEXT,
+    -- SHA-256 of the source document itself: idempotency compares this, so a
+    -- changed document under an unchanged key is a conflict, not a no-op.
+    source_document_hash     TEXT,
     -- Monotonic position that fixes the Elo order; never derived from arrival time.
     league_seq               INTEGER NOT NULL UNIQUE,
     played_at                INTEGER,
@@ -118,6 +124,7 @@ CREATE TABLE IF NOT EXISTS ingest_sources (
     source_kind     TEXT NOT NULL,
     source_identity TEXT NOT NULL,
     first_seen_at   INTEGER NOT NULL,
+    source_document_hash TEXT,
     document_hash   TEXT,
     PRIMARY KEY (source_kind, source_identity)
 );

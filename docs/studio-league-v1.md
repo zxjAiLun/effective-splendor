@@ -1,8 +1,9 @@
 # Studio League v1 — Participant + Match Ledger + Studio Elo + statistics
 
 - **Status**: `AUTHORIZED` (owner pre-authorized implementation end-to-end: "直接授权实施，不需要再回来问设计确认").
-  **Commit A (League core) is `IMPLEMENTED` / `VERIFIED`**; commits B–E are not started. No
-  part of this round is `ACCEPTED`.
+  **Commit A** landed as `9f88aca`, the owner's review returned **`REPAIR_REQUIRED`**
+  (P0=0, P1=5), and **Commit A Repair 1 is `IMPLEMENTED` / `VERIFIED`** — see the repair
+  section below. Commits B–E are not started. Nothing here is `ACCEPTED`.
 - **Baseline**: `3468046` (`main == origin/main`; Replay Studio Product Shell / History v1 ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -97,8 +98,17 @@ evaluation artifacts stay the source evidence. The DB may be deleted and rebuilt
 
 ```text
 local-artifacts/studio-league/league.sqlite3     derived, rebuildable
+local-artifacts/studio-league/identity.json      durable, user-authored identity state
 local-artifacts/studio-league/replays/<sha256>.json   content-addressed replay archive
 ```
+
+Because the index is derived, everything it cannot re-derive from the corpus lives in the identity
+manifest: the local human participant id and display name, and the explicit `participant_aliases`.
+Engine participant ids are **derived** from the exact identity key
+(`sha256("studio-league-participant-v1\n" + identity_key)[..32]`, prefixed `eng-`), so they rebuild
+for free. `league_seq` likewise comes from an explicit canonical sort
+([`canonical_league_order`](../crates/splendor-studio-league/src/ledger.rs)), never from filesystem
+traversal order. The rating config is frozen in `league_meta` on first ingest.
 
 Core tables: `participants`, `participant_aliases`, `matches`, `match_seats`,
 `match_gameplay_stats`, `rating_events`, `league_meta` / `ingest_sources`.
@@ -147,8 +157,23 @@ Additional invariants introduced by this round:
 
 11. `rating_eligible = false` for: invalid/failed replay verification, aborted, truncated
     (ply-cap/non-termination), excluded-prefix, differing ruleset fingerprint, diagnostic or
-    altered-config agents, unresolvable identity, and — **new, see Deviations** — self-matches where
-    both seats resolve to the same participant.
+    altered-config agents, unresolvable identity, and self-matches where both seats resolve to the
+    same participant (deviation D3, **approved by the owner**).
+12. **Rebuildability.** Deleting the index and replaying the same corpus with the same identity
+    manifest reproduces identical participant ids, aliases, league ordering and Elo history.
+13. **The rating config cannot drift.** The first ingest freezes `StudioRatingConfigV1` in
+    `league_meta`; every later ingest and every rebuild must match it exactly or fail closed with
+    zero mutation; `rebuild_ratings` reads the stored config rather than trusting its caller.
+14. **No-result is never a loss.** Leaderboard W/T/L count **rated** matches only (a match that did
+    not move Elo cannot appear as a win, tie or loss); `recorded_games` is a separate
+    `COUNT(DISTINCT match_id)`, so a self-match adds one recorded game, not two seat rows.
+15. **Idempotency means same-content**, not same-key. Each record carries
+    `source_document_hash`; the same `(source_kind, source_identity)` with a different hash is a
+    `SourceConflict` error, never a silent no-op.
+16. **`rating_eligible` implies exactly two rating events.** A record is structurally validated
+    before any write (seat count must equal `player_count`, seats unique, no winner outside
+    `completed`, a `Verified` binding must be complete), and an eligible 1v1 match that cannot
+    produce a pair event is an error rather than a silent skip.
 12. `match_gameplay_stats` exists only for replay-backed matches; its rows carry
     `metric_integrity` and the invariant
     `tier1_vp + tier2_vp + tier3_vp + noble_vp == final prestige` is asserted, never silently patched.
@@ -195,6 +220,12 @@ Additional invariants introduced by this round:
   never be conflated again.
   (c) A third pass confirmed the join: every one of the 48,050 `replay_final_hash` values resolves
   to a real ReplayV1 `final_state_hash`, with zero unmatched.
+- 2026-09-10 (owner review of `9f88aca`): **`REPAIR_REQUIRED`**, P0=0 / P1=5, all five in the
+  long-term ledger semantics, scope kept narrow to identity/ledger truthfulness and explicitly
+  forbidden from starting commit B. D1/D2 approved; D3 approved (no longer a veto invitation); the
+  Elo extraction explicitly approved and left untouched. Repair 1 implemented and verified (see the
+  repair section). Two extra defects were surfaced by the new tests during the repair: the alias
+  foreign-key ordering trap, and the schema-version bump implied by adding `source_document_hash`.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -218,13 +249,63 @@ C compilation at first build, and a C toolchain requirement for everyone buildin
 (already resolved: `getrandom 0.2.17`, `rand 0.8.7`) and timestamps use `SystemTime` epoch seconds,
 matching existing code — no extra dependency.
 
-**D3 — self-matches are recorded but not rating-eligible.**
-53% of the historical corpus is one participant against itself. Rating a participant against
-itself produces no meaningful Elo event (expected 0.5 for both seats ⇒ net zero) while inflating
-games/W-T-L and burning ~25k `rating_events`. They stay in the Ledger with `recorded = true` and
-`rating_eligible = false`, which is a refinement of boundary 1 rather than a departure from it: the
-owner's exclusion list is a family of "must not pollute Studio Elo" cases and this belongs to it.
-**Flagged for the owner to veto** — it is one predicate in `eligibility.rs`, trivially reversible.
+**D3 — self-matches are recorded but not rating-eligible. APPROVED by the owner** (2026-09-10),
+no longer a pending veto. 53% of the historical corpus is one participant against itself; rating a
+participant against itself produces no meaningful Elo event (expected 0.5 for both seats ⇒ net
+zero) while inflating games/W-T-L and burning ~25k `rating_events`. They stay in the Ledger with
+`recorded = true` and `rating_eligible = false`. The residual risk the owner identified is not D3
+itself but that the leaderboard could still let those matches pollute *recorded* W/T-L — addressed
+by Repair 1 item 3 (rated W/T/L only).
+
+## Commit A Repair 1 (owner review follow-up)
+
+The owner reviewed `9f88aca` and returned **`REPAIR_REQUIRED`** — direction `APPROVED`, but
+P0 = 0 / **P1 = 5**, all of them in the long-term ledger semantics of Commit A, to be fixed
+*before* B rather than after C/D started depending on the APIs. D1 (`splendor-studio-league` split
+from the M11 research league) and D2 (`rusqlite + bundled`) were approved as-is; the Elo extraction
+was explicitly approved and left untouched.
+
+| P1 | Problem | Fix |
+| --- | --- | --- |
+| 1 | "The DB is derived and always rebuildable" was false: participant ids were random UUIDs and the local human id/name, renames and aliases lived only in SQLite, so deleting the DB changed every id and discarded authored identity. `league_seq` was `MAX(seq)+1`, i.e. ingest order. | New durable `identity_manifest.rs` holds exactly the non-derivable authored state (local human id + display name, explicit aliases). Engine ids are derived from the identity key. `league_seq` for historical batches comes from `canonical_league_order` (played_at, source_kind, source_identity) via `ingest_batch_canonical`, which refuses a non-empty ledger. |
+| 2 | `RATING_CONFIG_META_KEY` existed but was never written or checked, so K=32 today and K=64 tomorrow could write into one DB, and `rebuild_ratings(conn, config)` recomputed history with whatever the caller passed. | `ensure_rating_config` freezes the config on first use and exact-matches afterwards, failing closed with zero mutation. `rebuild_ratings(conn)` reads the stored config; `rebuild_ratings_with` proves equality first. |
+| 3 | The leaderboard re-created the fabricated-result problem that `3468046` had just fixed: `recorded_games` counted seat rows (a self-match counted 2), and `losses = recorded − wins − ties`, so aborted/truncated/no-result matches became **losses**. | W/T/L are now **rated** records only (`rating_eligible = 1`); `recorded_games` is `COUNT(DISTINCT match_id)`; `rated_losses = rated_games − rated_wins − rated_ties`. |
+| 4 | "Idempotent" silently swallowed source drift: the key hit returned `AlreadyPresent` without comparing content, and the record had no source document hash at all. | `StudioMatchRecordV1::source_document_hash` (new column, schema v2) plus `StudioLeagueError::SourceConflict`: same key + same hash ⇒ `AlreadyPresent`; same key + different hash ⇒ error. |
+| 5 | No real fail-closed validation: eligibility only checked `participants.len() < 2`, so `player_count=2` with three seats could be marked eligible while the rating path produced no pair event; `Verified` was trusted with no structural binding. | `StudioMatchRecordV1::validate_for_ingest()` (seat count must equal `player_count`, seats unique, no winner outside `completed`, `Verified` requires a complete binding, `Unavailable` forbids any binding) and eligibility now requires an exact seat/player-count agreement. An eligible match that does not produce exactly two events is an error. |
+
+Two further defects were found by the new tests while repairing:
+
+- Declaring a manifest alias whose target participant the index had not created yet violated the
+  `participant_aliases → participants` foreign key, i.e. the authored state could not be loaded
+  before the corpus was. The FK is removed (the manifest is the authority for that mapping, and its
+  target legitimately may not exist yet) and `resolve_engine_participant` now bootstraps an alias
+  target on demand, registering the key being resolved as the canonical participant's identity so
+  declaration order cannot change the outcome.
+- `STUDIO_LEAGUE_SCHEMA_VERSION` moved 1 → 2 for the added `source_document_hash` columns and the
+  alias FK removal. The version guard therefore rejects a stale v1 index, which is correct because
+  the index is derived.
+
+### The five sentences, and what proves each
+
+The owner asked for these to be *true*, not for more tests, so each is bound to a named test:
+
+| Sentence | Test |
+| --- | --- |
+| same evidence rebuilds same league | `same_evidence_and_manifest_rebuild_the_identical_league` — builds a temp-file DB, ingests 6 matches via `ingest_batch_canonical`, deletes the DB file, rebuilds from the **reversed** record slice, and asserts identical identity index, aliases, `(match_id, league_seq)` order, per-participant Elo history and leaderboard; plus an anti-vacuity assertion that a different participant set produces a different league |
+| rating config cannot drift | `rating_config_cannot_drift` (K=64 rejected, `match_count`/`rating_event_count`/stored config all unchanged) and `rebuild_reads_the_stored_config_and_rejects_a_drifting_caller` (rebuild reproduces the identical snapshot; a drifting caller is refused; a DB with no stored config cannot be rebuilt) |
+| no-result never becomes loss | `no_result_never_becomes_a_loss` (aborted + truncated + a self-match ⇒ `recorded_games == 3`, `rated_games = rated_wins = rated_ties = rated_losses = 0`; a self-match alone ⇒ `recorded_games == 1`) |
+| same source key with changed content fails | `same_source_key_with_changed_content_fails` (identical content ⇒ `AlreadyPresent`; drifted hash ⇒ `SourceConflict`; counts and Elo unchanged) |
+| `rating_eligible` implies exactly one valid 1v1 Elo update | `rating_eligible_always_implies_exactly_two_rating_events` (`rating_event_count == 2 × eligible_match_count`), `malformed_records_are_rejected_before_anything_is_written` (7 structural contradictions each rejected with nothing written) |
+
+**Negative controls (run, then reverted).** To show the two highest-stakes tests are not vacuous,
+each was checked against the defect it exists to catch:
+
+- Replacing the derived engine id with a random UUID made `same_evidence_and_manifest_rebuild_the_
+  identical_league` **FAIL**; restoring it made it pass. (`participant.rs` byte-identical afterwards,
+  verified with `diff`.)
+- Restoring the recorded-based loss computation
+  (`rated_losses = recorded − rated_wins − rated_ties`) made `no_result_never_becomes_a_loss`
+  **FAIL** with `left: 3, right: 0` — exactly the fabricated-loss bug; reverting made it pass.
 
 ## Validation and evidence
 
@@ -251,6 +332,21 @@ nobody's rating; ingest idempotency on `(source_kind, source_identity)`; that
 Not yet run (deferred to commits B–E): the historical import, the replay archive, the Host APIs, the
 UI, and any browser check.
 
+### Commit A Repair 1 — run 2026-09-10
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p splendor-studio-league` | **19 passed / 0 failed** (was 12; +7 repair/contract gates; the round-robin rebuild test was replaced by the stronger delete-and-rebuild proof) |
+| `cargo test -p splendor-eval` | 37 passed / 0 failed (the Elo extraction stayed inert) |
+| `cargo test -p splendor-cli --bin splendor` | 89 passed / 0 failed |
+| `--test m19_result` / `--test m22_result` / `--test model_evaluation_contract` | 8 / 1 / 1 passed, 0 failed — frozen published numbers did not move |
+| `cargo fmt --check -p splendor-studio-league` | clean |
+| negative controls | both failed as required, then reverted (see above) |
+
+Not yet run (deferred to commits B–E): the historical import, the replay archive, the Host APIs, the
+UI, and any browser check. The `studio-league-inventory` command was re-run unchanged and still
+reports the numbers quoted in "Problem and evidence".
+
 ## Result and decision
 
 `AUTHORIZED`; implementation in progress. No verdict is claimed.
@@ -267,8 +363,12 @@ UI, and any browser check.
 - Replay binding must be by `final_state_hash` content join, not by filename; only 7.4% of matches
   use the colocated naming convention.
 - An alias declared *after* matches were ingested does not retroactively reassign those matches yet;
-  commit A provides and tests the resolve-time merge primitive only, and commit B must complete the
-  historical merge.
+  Repair 1 makes the mapping load order-independent and makes an alias resolvable before its target
+  exists, but reassigning already-ingested history remains commit B's job.
+- `participant_aliases` intentionally has no foreign key to `participants`: the manifest is its
+  authority and an alias target may legitimately be unseen until the corpus provides it.
+- `detail_metrics_available` is still always false; `match_gameplay_stats` has no writer until
+  commit B/C.
 - The Studio Elo pool is not comparable to `official_elo` pools; the two must never be rendered in
   one column.
 

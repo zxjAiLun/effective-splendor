@@ -50,8 +50,8 @@ pub struct EligibilityInput {
 
 /// Decide, in a fixed precedence so the recorded reason is stable.
 ///
-/// Precedence: status → seat count → player count → ruleset → replay →
-/// diagnostic → unmapped identity → self-match.
+/// Precedence: status → seat/player-count agreement → player count → ruleset →
+/// replay → diagnostic → unmapped identity → self-match.
 pub fn evaluate_eligibility(
     input: &EligibilityInput,
     config: &StudioRatingConfigV1,
@@ -61,7 +61,10 @@ pub fn evaluate_eligibility(
         MatchStatus::Truncated => return RatingEligibility::Ineligible(REASON_TRUNCATED),
         MatchStatus::Completed => {}
     }
-    if input.participants.len() < 2 {
+    // The recorded seat count must agree with the declared player count. A
+    // "2-player" match carrying three seats is a contradiction, not an eligible
+    // match that happens to produce no pair event.
+    if input.participants.len() != input.player_count as usize {
         return RatingEligibility::Ineligible(REASON_INCOMPLETE_SEATS);
     }
     if input.player_count != config.eligible_player_count {
