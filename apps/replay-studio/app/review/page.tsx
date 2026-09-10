@@ -6,8 +6,10 @@ import {
   actionKey,
   buildReviewRows,
   buildReviewSummary,
+  defaultReviewerIdFor,
   formatActionLabel,
   reviewRecommendedAction,
+  reviewerSupportsPlayerCount,
   validateReviewTrace,
 } from "../trace-runtime.mjs";
 import { type DevelopmentCardData } from "../development-card";
@@ -46,7 +48,8 @@ type Reviewer = {
   description: string;
   competitive_status: "champion" | "experimental" | "rejected";
   result_kind: "root_determinization" | "neural_ismcts" | "policy_recommendation";
-  is_default: boolean;
+  supported_player_counts: number[];
+  default_for_player_counts: number[];
   available_metrics: string[];
   required_artifacts: string[];
   estimated_cost: string;
@@ -70,8 +73,8 @@ type ReviewFrame = {
     action_stats?: Array<{ action: Action; utility_sum_by_player: number[] }>;
     result?: { action: Action; action_stats: Array<{ action: Action; prior_micros: number; visits: number; value_sum_by_player: number[] }>; stats: { root_visits: number; simulations: number; tree_nodes: number } };
     base_heuristic_action?: Action;
-    n1_proposal?: Action;
-    m07_proposal?: Action;
+    n1_proposal?: Action | null;
+    m07_proposal?: Action | null;
     decision_path?: "heuristic_fast_path" | "proposals_agreed" | "ply_cap_fallback" | "rollout_comparison";
     recommended_differs_from_base_heuristic?: boolean;
   };
@@ -93,8 +96,9 @@ type ReviewTraceReviewer = Reviewer & {
     rollout_policy?: string;
     determinizations?: number;
     ply_cap?: number;
-    proposal_seed?: number;
     root_seed?: number;
+    n1_config?: { sample_seed: number; sample_count: number; continuation_search: { max_depth_turns: number; max_nodes: number } };
+    m07_config?: { sample_seed: number; sample_count: number; continuation_search: { max_depth_turns: number; max_nodes: number } };
   };
   checkpoint_hash: string | null;
   provenance: { seed_derivation: string; metrics: string[] };
@@ -152,6 +156,7 @@ export default function ReviewPage() {
   const [humanSeat, setHumanSeat] = useState<number | null>(null);
   const [reviewerId, setReviewerId] = useState("");
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
+  const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [trace, setTrace] = useState<ReviewTrace | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
@@ -242,13 +247,24 @@ export default function ReviewPage() {
       setHumanSeat(seat);
       setFilter(seat === null ? "all" : "mine");
       try {
-        const response = await fetch(`${API}/reviewers`);
+        // Reviewer discovery resolves per-context defaults and availability
+        // from the replay itself (the host reads its player count).
+        const response = await fetch(`${API}/reviewers?session=${encodeURIComponent(session)}`);
         const value = await response.json();
         if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
         const list = value.reviewers as Reviewer[];
+        const count = typeof value.player_count === "number" ? value.player_count : null;
         setReviewers(list);
-        const target = list.some((r) => r.id === requestedReviewer) && requestedReviewer ? requestedReviewer : (list.find((r) => r.is_default)?.id ?? list[0]?.id ?? "");
-        if (!target) { setError("No reviewers registered"); return; }
+        setPlayerCount(count);
+        if (count === null) { setError("The host did not report this replay's player count."); return; }
+        const requested = requestedReviewer ? list.find((r) => r.id === requestedReviewer) ?? null : null;
+        if (requested && !reviewerSupportsPlayerCount(requested, count)) {
+          // Fail closed in the UI too: never POST an unsupported reviewer.
+          setError(`${requested.display_name} is unavailable for ${count}-player replays (the S3 rollout reviewer is frozen for 2 players). Choose a supported reviewer.`);
+          return;
+        }
+        const target = requested?.id ?? defaultReviewerIdFor(list, count);
+        if (!target) { setError(`No reviewer is available for ${count}-player replays.`); return; }
         await startReview(session, target, seat);
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
@@ -306,6 +322,30 @@ export default function ReviewPage() {
 
       {error && <div className="error-banner" role="alert">{error}</div>}
 
+      {reviewers.length > 0 && (
+        <div className="reviewer-switch" role="group" aria-label="Review with">
+          <span>Review with</span>
+          {reviewers.map((reviewer) => {
+            const supported = playerCount === null || reviewerSupportsPlayerCount(reviewer, playerCount);
+            const statusLabel = reviewer.competitive_status === "rejected"
+              ? "Experimental · Formal promotion rejected"
+              : reviewer.competitive_status;
+            return (
+              <button
+                key={reviewer.id}
+                className={reviewer.id === reviewerId ? "active" : ""}
+                disabled={!supported}
+                title={supported ? undefined : `Unavailable for ${playerCount}-player replays`}
+                onClick={() => void startReview(sessionId, reviewer.id, humanSeat)}
+              >
+                <strong>{reviewer.display_name}</strong>
+                <small>{statusLabel}{reviewer.estimated_cost === "cpu" ? " · CPU" : ""}{supported ? "" : ` · unavailable for ${playerCount}-player replays`}</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {!trace && !error && (
         <div className="review-progress">
           <span className="section-kicker">ANALYZING</span>
@@ -317,15 +357,6 @@ export default function ReviewPage() {
       {trace && activeReviewer && (
         <>
           <ReviewSummaryBar trace={trace} reviewer={activeReviewer} summary={summary} job={job} />
-          <div className="reviewer-switch" role="group" aria-label="Review with">
-            <span>Review with</span>
-            {reviewers.map((reviewer) => (
-                <button key={reviewer.id} className={reviewer.id === reviewerId ? "active" : ""} onClick={() => void startReview(sessionId, reviewer.id, humanSeat)}>
-                <strong>{reviewer.display_name}</strong>
-                <small>{reviewer.competitive_status === "rejected" ? "Experimental · Formal promotion rejected" : reviewer.competitive_status}{reviewer.estimated_cost === "cpu" ? " · CPU" : ""}</small>
-              </button>
-            ))}
-          </div>
           <section className="workspace">
             <div className="board-panel">
               <div className="panel-heading">
@@ -420,14 +451,14 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
   if (trace.reviewer.result_kind === "policy_recommendation") {
     const result = frame.review_result;
     const recommendedAction = recommended as Action;
-    const baseHeuristic = result.base_heuristic_action as Action;
     const pathLabel = S3_PATH_LABELS[result.decision_path ?? ""] ?? result.decision_path ?? "unknown";
-    const proposals: Array<[string, Action, boolean, boolean]> = [
-      ["S3 recommendation", recommendedAction, actionKey(recommendedAction) === actionKey(frame.recorded_action), true],
-      ["Base heuristic", baseHeuristic, actionKey(baseHeuristic) === actionKey(frame.recorded_action), actionKey(baseHeuristic) === actionKey(recommendedAction)],
-      ["n1 proposal", result.n1_proposal as Action, actionKey(result.n1_proposal as Action) === actionKey(frame.recorded_action), actionKey(result.n1_proposal as Action) === actionKey(recommendedAction)],
-      ["M07 proposal", result.m07_proposal as Action, actionKey(result.m07_proposal as Action) === actionKey(frame.recorded_action), actionKey(result.m07_proposal as Action) === actionKey(recommendedAction)],
-    ];
+    const proposalLabels: Record<string, string> = {
+      recommended_action: "S3 recommendation",
+      base_heuristic_action: "Base heuristic",
+      n1_proposal: "n1 proposal",
+      m07_proposal: "M07 proposal",
+    };
+    const proposalRows = rows as Array<{ role: string; action: Action | null; evaluated: boolean; actual: boolean; recommended: boolean }>;
     return (
       <div>
         <div className="analysis-header">
@@ -437,12 +468,12 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
         <div className="legend"><span><i className="actual-marker">★</i> recorded</span><span><i className="best-marker">▲</i> S3 recommendation</span></div>
         <div className="analysis-table" role="table" aria-label="S3 policy recommendation">
           <div className="analysis-row determinization table-head" role="row"><span>Proposal</span><span>Action</span><span>Recorded</span><span>S3</span></div>
-          {proposals.map(([label, action, recorded, recommendedRow]) => (
-            <div className={`analysis-row determinization ${recorded ? "actual-row" : ""} ${recommendedRow ? "best-row" : ""}`} role="row" key={label}>
-              <span className="action-name"><i>{recorded ? "★" : recommendedRow ? "▲" : ""}</i>{label}</span>
-              <span className="action-name">{formatActionLabel(action, frame, cards)}</span>
-              <span className="q-value">{recorded ? "★" : "—"}</span>
-              <span className="q-value">{recommendedRow ? "▲" : "—"}</span>
+          {proposalRows.map((row) => (
+            <div className={`analysis-row determinization ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={row.role}>
+              <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{proposalLabels[row.role] ?? row.role}</span>
+              <span className="action-name">{row.action ? formatActionLabel(row.action, frame, cards) : "Not evaluated"}</span>
+              <span className="q-value">{row.actual ? "★" : "—"}</span>
+              <span className="q-value">{row.recommended ? "▲" : "—"}</span>
             </div>
           ))}
         </div>

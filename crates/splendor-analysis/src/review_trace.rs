@@ -63,11 +63,10 @@ pub const S3_REVIEWER_ALGORITHM_VERSION: u32 = 1;
 pub const S3_REVIEWER_ALGORITHM_ID: &str = "effective-splendor-s3-rollout-v1";
 pub const S3_REVIEWER_SEED_DERIVATION: &str =
     "per-seat persistent StableRng(20_260_812) advanced over replay plies in order; consumed only on root heuristic ties (unique maxima consume nothing)";
-/// Honest metric names: the S3 reviewer exposes its recommendation, the
-/// decision path and the integer rollout outcome score only. It never exposes
-/// mean utility, a rank, a prior, a visit count or a Q value.
-pub const S3_REVIEWER_METRICS: [&str; 3] =
-    ["recommended_action", "decision_path", "rollout_outcome_score"];
+/// Honest metric names: the S3 reviewer exposes its recommendation and the
+/// decision path only. It never exposes mean utility, a rank, a prior, a
+/// visit count, a Q value or any rollout outcome score.
+pub const S3_REVIEWER_METRICS: [&str; 2] = ["recommended_action", "decision_path"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -87,10 +86,12 @@ pub enum ReviewerResultKindV2 {
 
 /// Frozen S3 review configuration identity.
 ///
-/// The S3 decision engine keeps D/P/seeds as frozen code constants; this
-/// config mirrors them so the trace is self-describing and so
-/// [`review_cache_key_v2`] flips when a future S3 policy revision changes the
-/// rollout identity. `validate()` only accepts the exact frozen v1 values.
+/// The S3 decision engine keeps D/P/seeds as frozen code constants and the
+/// exact n1/M07 proposal configs in the agent crate's canonical
+/// constructors; this config mirrors ALL of them so the trace is
+/// self-describing and so [`review_cache_key_v2`] flips when any part of the
+/// production S3 identity drifts (including a changed n1/M07 search budget).
+/// `validate()` only accepts the exact frozen v1 values.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct S3ReviewConfigV2 {
@@ -103,17 +104,21 @@ pub struct S3ReviewConfigV2 {
     pub ply_cap: u16,
     /// Frozen evaluation (world sampling) stream seed.
     pub sample_seed: u64,
-    /// Frozen n1/M07 proposal sample seed.
-    pub proposal_seed: u64,
     /// Persistent per-seat root heuristic RNG seed.
     pub root_seed: u64,
+    /// The exact n1 proposal config used in production (`s3_n1_config()`).
+    pub n1_config: RootDeterminizationConfigV1,
+    /// The exact M07 proposal config used in production (`s3_m07_config()`).
+    pub m07_config: RootDeterminizationConfigV1,
 }
 
 pub const S3_REVIEW_CONFIG_VERSION: u32 = 1;
 pub const S3_REVIEW_ROLLOUT_POLICY: &str = "s3-rollout-d4-p120-v1";
 
 impl S3ReviewConfigV2 {
-    /// The one frozen v1 identity (derived from the agent's constants).
+    /// The one frozen v1 identity (derived from the agent's canonical
+    /// production constants and config constructors — never re-typed by
+    /// hand).
     pub fn frozen_v1() -> Self {
         Self {
             version: S3_REVIEW_CONFIG_VERSION,
@@ -121,18 +126,18 @@ impl S3ReviewConfigV2 {
             determinizations: u16::try_from(S3_D).expect("S3_D fits u16"),
             ply_cap: u16::try_from(S3_P).expect("S3_P fits u16"),
             sample_seed: S3_ROLLOUT_SAMPLE_SEED,
-            proposal_seed: s3_n1_config().sample_seed,
             root_seed: S3_ROOT_SEED,
+            n1_config: s3_n1_config(),
+            m07_config: s3_m07_config(),
         }
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        let expected = Self::frozen_v1();
-        if s3_m07_config().sample_seed != expected.proposal_seed {
-            return Err("frozen S3 proposal configs disagree on the sample seed".into());
-        }
-        if self != &expected {
-            return Err("S3 review config is not the frozen v1 rollout identity".into());
+        if self != &Self::frozen_v1() {
+            return Err(
+                "S3 review config is not the frozen v1 rollout identity (D/P/seeds or the exact n1/M07 configs drifted)"
+                    .into(),
+            );
         }
         Ok(())
     }
@@ -265,17 +270,20 @@ pub struct NeuralIsmctsReviewResultV2 {
 /// The S3 reviewer's honest output: its recommendation, the three frozen
 /// proposals that produced it, and the decision path. Deliberately minimal —
 /// `recorded_action` / `recommended_matches_recorded` live on the frame and
-/// are never duplicated here. No utility, rank, prior, visit or Q is exposed.
+/// are never duplicated here. No utility, rank, prior, visit, Q or rollout
+/// outcome score is exposed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyRecommendationReviewResultV2 {
     pub recommended_action: Action,
     /// The base heuristic action (with its persistent root-RNG tie break).
     pub base_heuristic_action: Action,
-    /// The n1 proposal; equals the base heuristic action when no comparison ran.
-    pub n1_proposal: Action,
-    /// The M07 proposal; equals the base heuristic action when no comparison ran.
-    pub m07_proposal: Action,
+    /// The n1 proposal; `None` exactly when the decision was a fast path that
+    /// never evaluated proposals.
+    pub n1_proposal: Option<Action>,
+    /// The M07 proposal; `None` exactly when the decision was a fast path
+    /// that never evaluated proposals.
+    pub m07_proposal: Option<Action>,
     pub decision_path: S3ReviewPathV2,
     pub recommended_differs_from_base_heuristic: bool,
 }
@@ -633,15 +641,8 @@ impl AnalysisTraceV2 {
                 }
             }
             ReviewResultV2::PolicyRecommendation(result) => {
-                let actions = [
-                    result.recommended_action,
-                    result.base_heuristic_action,
-                    result.n1_proposal,
-                    result.m07_proposal,
-                ];
-                if actions
-                    .iter()
-                    .any(|action| !frame.legal_actions.contains(action))
+                if !frame.legal_actions.contains(&result.recommended_action)
+                    || !frame.legal_actions.contains(&result.base_heuristic_action)
                     || result.recommended_differs_from_base_heuristic
                         != (result.recommended_action != result.base_heuristic_action)
                 {
@@ -649,14 +650,36 @@ impl AnalysisTraceV2 {
                         "frame {index} policy recommendation binding mismatch"
                     )));
                 }
-                if result.decision_path == S3ReviewPathV2::HeuristicFastPath
-                    && (result.recommended_action != result.base_heuristic_action
-                        || result.n1_proposal != result.base_heuristic_action
-                        || result.m07_proposal != result.base_heuristic_action)
-                {
-                    return Err(invalid(format!(
-                        "frame {index} fast-path policy recommendation mismatch"
-                    )));
+                match result.decision_path {
+                    S3ReviewPathV2::HeuristicFastPath => {
+                        // The fast path never evaluates proposals: reporting
+                        // one (even a backfilled a_H) is fabrication.
+                        if result.n1_proposal.is_some()
+                            || result.m07_proposal.is_some()
+                            || result.recommended_differs_from_base_heuristic
+                        {
+                            return Err(invalid(format!(
+                                "frame {index} fast-path policy recommendation mismatch"
+                            )));
+                        }
+                    }
+                    S3ReviewPathV2::ProposalsAgreed
+                    | S3ReviewPathV2::PlyCapFallback
+                    | S3ReviewPathV2::RolloutComparison => {
+                        // Comparison paths always evaluated both proposals.
+                        for proposal in [result.n1_proposal, result.m07_proposal] {
+                            let Some(proposal) = proposal else {
+                                return Err(invalid(format!(
+                                    "frame {index} comparison path is missing an evaluated proposal"
+                                )));
+                            };
+                            if !frame.legal_actions.contains(&proposal) {
+                                return Err(invalid(format!(
+                                    "frame {index} policy recommendation binding mismatch"
+                                )));
+                            }
+                        }
+                    }
                 }
             }
         }

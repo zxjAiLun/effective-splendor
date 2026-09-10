@@ -16,6 +16,10 @@ use crate::{
 pub const REVIEWER_REGISTRY_FORMAT: &str = "effective-splendor-studio-reviewers";
 pub const REVIEWER_REGISTRY_VERSION: u32 = 1;
 
+/// Player counts every reviewer context covers (the engine supports 2..=4).
+pub const REVIEWER_MIN_PLAYERS: u8 = 2;
+pub const REVIEWER_MAX_PLAYERS: u8 = 4;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReviewerEntryV1 {
@@ -24,9 +28,13 @@ pub struct ReviewerEntryV1 {
     pub description: String,
     pub competitive_status: ReviewerStatusV2,
     pub result_kind: ReviewerResultKindV2,
-    /// Exactly one entry should be the recommended default.
+    /// The player counts for which this reviewer is the per-context default.
+    ///
+    /// Defaults are player-count aware: every covered player count (2..=4)
+    /// must be claimed by exactly one entry, and an entry may only claim a
+    /// count it supports. This supersedes any unconditional global default.
     #[serde(default)]
-    pub is_default: bool,
+    pub default_for_player_counts: Vec<u8>,
     pub available_metrics: Vec<String>,
     pub required_artifacts: Vec<String>,
     pub estimated_cost: String,
@@ -35,6 +43,34 @@ pub struct ReviewerEntryV1 {
     /// the Studio Host from a fixed directory; never supplied by the browser.
     #[serde(default)]
     pub checkpoint_path: Option<String>,
+}
+
+impl ReviewerEntryV1 {
+    /// Whether this reviewer can analyze a replay with `player_count` players.
+    ///
+    /// The S3 rollout reviewer is frozen for 2-player games (the S3 policy
+    /// asserts two seats); every other reviewer covers 2..=4 players.
+    pub fn supports_player_count(&self, player_count: u8) -> bool {
+        if !(REVIEWER_MIN_PLAYERS..=REVIEWER_MAX_PLAYERS).contains(&player_count) {
+            return false;
+        }
+        match self.result_kind {
+            ReviewerResultKindV2::PolicyRecommendation => player_count == 2,
+            ReviewerResultKindV2::RootDeterminization | ReviewerResultKindV2::NeuralIsmcts => true,
+        }
+    }
+
+    /// Every player count this reviewer supports, in ascending order.
+    pub fn supported_player_counts(&self) -> Vec<u8> {
+        (REVIEWER_MIN_PLAYERS..=REVIEWER_MAX_PLAYERS)
+            .filter(|player_count| self.supports_player_count(*player_count))
+            .collect()
+    }
+
+    /// Whether this reviewer is the context default for `player_count`.
+    pub fn is_default_for(&self, player_count: u8) -> bool {
+        self.default_for_player_counts.contains(&player_count)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,7 +94,7 @@ impl ReviewerRegistryV1 {
             return Err(reviewer("reviewer registry requires at least one reviewer"));
         }
         let mut ids = std::collections::HashSet::new();
-        let mut defaults = 0usize;
+        let mut defaults: std::collections::BTreeMap<u8, &str> = std::collections::BTreeMap::new();
         for entry in &self.reviewers {
             if entry.id.trim().is_empty()
                 || entry.display_name.trim().is_empty()
@@ -80,8 +116,21 @@ impl ReviewerRegistryV1 {
                     entry.id
                 )));
             }
-            if entry.is_default {
-                defaults += 1;
+            // Per-context default declarations: a reviewer may only claim a
+            // player count it supports, and no count may have two defaults.
+            for player_count in &entry.default_for_player_counts {
+                if !entry.supports_player_count(*player_count) {
+                    return Err(reviewer(format!(
+                        "reviewer '{}' cannot default for {player_count}-player replays",
+                        entry.id
+                    )));
+                }
+                if let Some(existing) = defaults.insert(*player_count, entry.id.as_str()) {
+                    return Err(reviewer(format!(
+                        "reviewers '{existing}' and '{}' both default for {player_count}-player replays",
+                        entry.id
+                    )));
+                }
             }
             let expected_metrics: &[&str] = match entry.result_kind {
                 ReviewerResultKindV2::RootDeterminization => {
@@ -186,10 +235,12 @@ impl ReviewerRegistryV1 {
                 }
             }
         }
-        if defaults != 1 {
-            return Err(reviewer(
-                "reviewer registry requires exactly one default reviewer",
-            ));
+        for player_count in REVIEWER_MIN_PLAYERS..=REVIEWER_MAX_PLAYERS {
+            if !defaults.contains_key(&player_count) {
+                return Err(reviewer(format!(
+                    "no reviewer defaults for {player_count}-player replays"
+                )));
+            }
         }
         Ok(())
     }
@@ -199,6 +250,23 @@ impl ReviewerRegistryV1 {
             .iter()
             .find(|entry| entry.id == reviewer_id)
             .ok_or_else(|| reviewer(format!("unknown reviewer id '{reviewer_id}'")))
+    }
+
+    /// The single per-context default reviewer for `player_count`.
+    pub fn default_entry(&self, player_count: u8) -> Result<&ReviewerEntryV1, AnalysisError> {
+        let mut matching = self
+            .reviewers
+            .iter()
+            .filter(|entry| entry.is_default_for(player_count));
+        let entry = matching.next().ok_or_else(|| {
+            reviewer(format!("no default reviewer for {player_count}-player replays"))
+        })?;
+        if matching.next().is_some() {
+            return Err(reviewer(format!(
+                "multiple default reviewers for {player_count}-player replays"
+            )));
+        }
+        Ok(entry)
     }
 }
 

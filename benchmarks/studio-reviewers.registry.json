@@ -6,11 +6,11 @@
     {
       "id": "s3-rollout-review",
       "display_name": "S3 Rollout Review",
-      "description": "Product-default rollout-enhanced heuristic. Reports its recommendation, the frozen n1/M07 proposals and the decision path only — no utility, rank, prior or Q.",
+      "description": "Product-default rollout-enhanced heuristic. Reports its recommendation, the frozen n1/M07 proposals and the decision path only — no utility, rank, prior or Q. Frozen for 2-player replays.",
       "competitive_status": "champion",
       "result_kind": "policy_recommendation",
-      "is_default": true,
-      "available_metrics": ["recommended_action", "decision_path", "rollout_outcome_score"],
+      "default_for_player_counts": [2],
+      "available_metrics": ["recommended_action", "decision_path"],
       "required_artifacts": [],
       "estimated_cost": "cpu",
       "default_config": {
@@ -20,8 +20,17 @@
         "determinizations": 4,
         "ply_cap": 120,
         "sample_seed": 43300101,
-        "proposal_seed": 20260703,
-        "root_seed": 20260812
+        "root_seed": 20260812,
+        "n1_config": {
+          "sample_seed": 20260703,
+          "sample_count": 4,
+          "continuation_search": { "max_depth_turns": 1, "max_nodes": 1 }
+        },
+        "m07_config": {
+          "sample_seed": 20260703,
+          "sample_count": 4,
+          "continuation_search": { "max_depth_turns": 1, "max_nodes": 2000 }
+        }
       },
       "checkpoint_path": null
     },
@@ -31,7 +40,7 @@
       "description": "Frozen root-determinization baseline (historical champion reviewer). Mean continuation utility per action, no priors or Q values.",
       "competitive_status": "champion",
       "result_kind": "root_determinization",
-      "is_default": false,
+      "default_for_player_counts": [3, 4],
       "available_metrics": ["mean_utility", "utility_gap", "action_rank"],
       "required_artifacts": [],
       "estimated_cost": "cpu",
@@ -49,7 +58,7 @@
       "description": "Neural-guided information-set search. Model policy prior, visit share and value estimate only. Formal promotion rejected.",
       "competitive_status": "rejected",
       "result_kind": "neural_ismcts",
-      "is_default": false,
+      "default_for_player_counts": [],
       "available_metrics": ["prior", "visit", "q"],
       "required_artifacts": ["checkpoint"],
       "estimated_cost": "cpu",

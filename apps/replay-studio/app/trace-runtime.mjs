@@ -342,11 +342,32 @@ export function buildAnalysisRows(trace, frame) {
 const REVIEW_STATUSES = ["champion", "experimental", "rejected"];
 const REVIEW_KINDS = ["root_determinization", "neural_ismcts", "policy_recommendation"];
 const S3_REVIEW_PATHS = ["heuristic_fast_path", "proposals_agreed", "ply_cap_fallback", "rollout_comparison"];
+const S3_REVIEW_METRICS = ["recommended_action", "decision_path"];
 
 export function isReviewTraceEnvelope(value) {
   return Boolean(value && typeof value === "object"
     && value.format === "effective-splendor-analysis-trace"
     && value.version === 2);
+}
+
+export function reviewerSupportsPlayerCount(reviewer, playerCount) {
+  return Array.isArray(reviewer?.supported_player_counts)
+    && reviewer.supported_player_counts.includes(playerCount);
+}
+
+export function defaultReviewerIdFor(reviewers, playerCount) {
+  const entry = (reviewers ?? []).find((reviewer) => reviewerSupportsPlayerCount(reviewer, playerCount)
+    && Array.isArray(reviewer.default_for_player_counts)
+    && reviewer.default_for_player_counts.includes(playerCount));
+  return entry ? entry.id : "";
+}
+
+function validateRootDeterminizationConfig(config, path) {
+  integer(config.sample_seed, `${path}.sample_seed`);
+  integer(config.sample_count, `${path}.sample_count`, 1);
+  const continuation = object(config.continuation_search, `${path}.continuation_search`);
+  integer(continuation.max_depth_turns, `${path}.continuation_search.max_depth_turns`, 1);
+  integer(continuation.max_nodes, `${path}.continuation_search.max_nodes`, 1);
 }
 
 function validateReviewer(reviewer) {
@@ -364,11 +385,7 @@ function validateReviewer(reviewer) {
   text(provenance.seed_derivation, "reviewer.provenance.seed_derivation");
   array(provenance.metrics, "reviewer.provenance.metrics");
   if (value.result_kind === "root_determinization") {
-    integer(config.sample_seed, "reviewer.config.sample_seed");
-    integer(config.sample_count, "reviewer.config.sample_count", 1);
-    const continuation = object(config.continuation_search, "reviewer.config.continuation_search");
-    integer(continuation.max_depth_turns, "reviewer.config.continuation_search.max_depth_turns", 1);
-    integer(continuation.max_nodes, "reviewer.config.continuation_search.max_nodes", 1);
+    validateRootDeterminizationConfig(config, "reviewer.config");
     if (value.checkpoint_hash !== null) fail("reviewer.checkpoint_hash", "root determinization must not bind a checkpoint");
   } else if (value.result_kind === "neural_ismcts") {
     integer(config.sample_seed, "reviewer.config.sample_seed");
@@ -378,14 +395,20 @@ function validateReviewer(reviewer) {
     hash(config.expected_checkpoint_hash, "reviewer.config.expected_checkpoint_hash");
     if (config.expected_checkpoint_hash !== value.checkpoint_hash) fail("reviewer.config.expected_checkpoint_hash", "checkpoint binding mismatch");
   } else {
-    // policy_recommendation (S3): frozen rollout identity, no checkpoint.
+    // policy_recommendation (S3): frozen rollout identity + the exact n1/M07
+    // proposal configs, no checkpoint, and only the two honest metrics.
     integer(config.version, "reviewer.config.version", 1);
     text(config.rollout_policy, "reviewer.config.rollout_policy");
     integer(config.determinizations, "reviewer.config.determinizations", 1);
     integer(config.ply_cap, "reviewer.config.ply_cap", 1);
     integer(config.sample_seed, "reviewer.config.sample_seed");
-    integer(config.proposal_seed, "reviewer.config.proposal_seed");
     integer(config.root_seed, "reviewer.config.root_seed");
+    validateRootDeterminizationConfig(object(config.n1_config, "reviewer.config.n1_config"), "reviewer.config.n1_config");
+    validateRootDeterminizationConfig(object(config.m07_config, "reviewer.config.m07_config"), "reviewer.config.m07_config");
+    if (provenance.metrics.length !== S3_REVIEW_METRICS.length
+        || provenance.metrics.some((metric, index) => metric !== S3_REVIEW_METRICS[index])) {
+      fail("reviewer.provenance.metrics", "policy recommendation exposes exactly recommended_action and decision_path");
+    }
     if (value.checkpoint_hash !== null) fail("reviewer.checkpoint_hash", "policy recommendation must not bind a checkpoint");
   }
   return value;
@@ -412,8 +435,10 @@ function validateReviewResult(reviewResult, trace, frame, path) {
   }
   if (value.kind === "policy_recommendation") {
     // S3 proposal set: honest actions only, no utility/Q/rank fields.
+    // Proposals are `null` exactly when the decision was a fast path that
+    // never evaluated them; a comparison path must report both.
     const legalKeys = frame.legal_actions.map(actionKey);
-    for (const field of ["recommended_action", "base_heuristic_action", "n1_proposal", "m07_proposal"]) {
+    for (const field of ["recommended_action", "base_heuristic_action"]) {
       validateAction(value[field], `${path}.${field}`);
       if (!legalKeys.includes(actionKey(value[field]))) fail(`${path}.${field}`, "not in legal actions");
     }
@@ -421,9 +446,16 @@ function validateReviewResult(reviewResult, trace, frame, path) {
     if (typeof value.recommended_differs_from_base_heuristic !== "boolean") fail(`${path}.recommended_differs_from_base_heuristic`, "expected boolean");
     const differs = actionKey(value.recommended_action) !== actionKey(value.base_heuristic_action);
     if (value.recommended_differs_from_base_heuristic !== differs) fail(`${path}.recommended_differs_from_base_heuristic`, "does not match recommended/base identity");
-    if (value.decision_path === "heuristic_fast_path"
-        && (differs || actionKey(value.n1_proposal) !== actionKey(value.base_heuristic_action) || actionKey(value.m07_proposal) !== actionKey(value.base_heuristic_action))) {
-      fail(`${path}.decision_path`, "fast path must keep the base heuristic action for every proposal");
+    const proposals = [value.n1_proposal, value.m07_proposal];
+    if (value.decision_path === "heuristic_fast_path") {
+      if (differs || proposals.some((proposal) => proposal !== null)) {
+        fail(`${path}.decision_path`, "fast-path frames must not report evaluated proposals");
+      }
+    } else {
+      for (const field of ["n1_proposal", "m07_proposal"]) {
+        validateAction(value[field], `${path}.${field}`);
+        if (!legalKeys.includes(actionKey(value[field]))) fail(`${path}.${field}`, "not in legal actions");
+      }
     }
     return value;
   }
@@ -575,9 +607,12 @@ export function buildReviewRows(trace, frame) {
       recommendedDiffersFromBase: result.recommended_differs_from_base_heuristic,
       rows: proposals.map(([role, action]) => ({
         role,
-        action,
-        actual: actionKey(action) === actionKey(frame.recorded_action),
-        recommended: actionKey(action) === actionKey(result.recommended_action),
+        action: action ?? null,
+        // A never-evaluated proposal stays null: the UI renders
+        // "Not evaluated" instead of a fabricated action.
+        evaluated: action != null,
+        actual: action != null && actionKey(action) === actionKey(frame.recorded_action),
+        recommended: action != null && actionKey(action) === actionKey(result.recommended_action),
       })),
     };
   }

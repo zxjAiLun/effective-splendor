@@ -36,16 +36,30 @@
       "determinizations": 4,
       "ply_cap": 120,
       "sample_seed": 43300101,
-      "proposal_seed": 20260703,
-      "root_seed": 20260812
+      "root_seed": 20260812,
+      "n1_config": {
+        "sample_seed": 20260703,
+        "sample_count": 4,
+        "continuation_search": {
+          "max_depth_turns": 1,
+          "max_nodes": 1
+        }
+      },
+      "m07_config": {
+        "sample_seed": 20260703,
+        "sample_count": 4,
+        "continuation_search": {
+          "max_depth_turns": 1,
+          "max_nodes": 2000
+        }
+      }
     },
     "checkpoint_hash": null,
     "provenance": {
       "seed_derivation": "per-seat persistent StableRng(20_260_812) advanced over replay plies in order; consumed only on root heuristic ties (unique maxima consume nothing)",
       "metrics": [
         "recommended_action",
-        "decision_path",
-        "rollout_outcome_score"
+        "decision_path"
       ]
     }
   },

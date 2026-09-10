@@ -40,7 +40,8 @@ pub use review_trace::{
     S3_REVIEW_ROLLOUT_POLICY,
 };
 pub use reviewer_registry::{
-    ReviewerEntryV1, ReviewerRegistryV1, REVIEWER_REGISTRY_FORMAT, REVIEWER_REGISTRY_VERSION,
+    ReviewerEntryV1, ReviewerRegistryV1, REVIEWER_MAX_PLAYERS, REVIEWER_MIN_PLAYERS,
+    REVIEWER_REGISTRY_FORMAT, REVIEWER_REGISTRY_VERSION,
 };
 pub use s3_review_trace::{analyze_replay_s3_v2, analyze_replay_s3_v2_with_progress};
 pub use schema::{

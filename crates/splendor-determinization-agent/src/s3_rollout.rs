@@ -67,10 +67,14 @@ pub struct S3Decision {
     pub action: Action,
     /// The base heuristic action, including its persistent root-RNG tie break.
     pub base_heuristic_action: Action,
-    /// The n1 proposal produced during this decision.
-    pub n1_proposal: Action,
-    /// The M07 proposal produced during this decision.
-    pub m07_proposal: Action,
+    /// The n1 proposal produced during this decision. `None` only for
+    /// decisions that never evaluated proposals (live fast paths); the
+    /// comparison entry points always populate it.
+    pub n1_proposal: Option<Action>,
+    /// The M07 proposal produced during this decision. `None` only for
+    /// decisions that never evaluated proposals (live fast paths); the
+    /// comparison entry points always populate it.
+    pub m07_proposal: Option<Action>,
     /// Which path produced the decision.
     pub path: S3Path,
     /// Candidate set size after dedup (fast paths report the trivial size).
@@ -86,7 +90,11 @@ pub struct S3Decision {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum S3Path {
-    /// |H*| > 1 at the root: keep the (canonical-first) heuristic action.
+    /// Non-Main phase or fewer than two legal actions: the ACTUAL standalone
+    /// heuristic action was returned before any proposal was computed.
+    HeuristicFastPath,
+    /// |H*| > 1 at the root: keep the heuristic action (RNG-tiebroken in
+    /// live play, exactly as the standalone heuristic agent).
     RootTieKeptA_H,
     /// All proposals agreed: return the unique action.
     ProposalsAgreed,
@@ -244,8 +252,8 @@ pub fn s3_decide(
         return Ok(S3Decision {
             action: hs[0],
             base_heuristic_action: hs[0],
-            n1_proposal: a_n1,
-            m07_proposal: a_m07,
+            n1_proposal: Some(a_n1),
+            m07_proposal: Some(a_m07),
             path: S3Path::RootTieKeptA_H,
             candidate_set_size: 1,
             score2: Vec::new(),
@@ -281,8 +289,8 @@ pub fn s3_comparison(
         return Ok(S3Decision {
             action: candidates[0],
             base_heuristic_action: a_h,
-            n1_proposal: a_n1,
-            m07_proposal: a_m07,
+            n1_proposal: Some(a_n1),
+            m07_proposal: Some(a_m07),
             path: S3Path::ProposalsAgreed,
             candidate_set_size: 1,
             score2: Vec::new(),
@@ -328,8 +336,8 @@ pub fn s3_comparison(
                     return Ok(S3Decision {
                         action: a_h,
                         base_heuristic_action: a_h,
-                        n1_proposal: a_n1,
-                        m07_proposal: a_m07,
+                        n1_proposal: Some(a_n1),
+                        m07_proposal: Some(a_m07),
                         path: S3Path::PlyCapFallback,
                         candidate_set_size: candidates.len(),
                         score2: Vec::new(),
@@ -358,8 +366,8 @@ pub fn s3_comparison(
     Ok(S3Decision {
         action: chosen,
         base_heuristic_action: a_h,
-        n1_proposal: a_n1,
-        m07_proposal: a_m07,
+        n1_proposal: Some(a_n1),
+        m07_proposal: Some(a_m07),
         path: S3Path::RolloutComparison,
         candidate_set_size: candidates.len(),
         score2,

@@ -168,6 +168,7 @@ fn run(args: &[String]) -> Result<(), String> {
     timings.insert("full_ms".into(), serde_json::json!(t_all.elapsed().as_millis()));
 
     let path = match decision.path {
+        S3Path::HeuristicFastPath => "heuristic_fast_path",
         S3Path::RootTieKeptA_H => "root_tie_kept_a_h",
         S3Path::ProposalsAgreed => "proposals_agreed",
         S3Path::PlyCapFallback => "ply_cap_fallback",

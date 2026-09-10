@@ -813,7 +813,22 @@ impl StudioHost {
             .snapshot())
     }
 
-    fn reviewers_json(&self) -> Result<String, String> {
+    /// Reviewer discovery is player-count aware for the current replay: when
+    /// a session is supplied, its replay is read once to resolve the replay's
+    /// player count, and every entry reports the counts it supports and the
+    /// counts it defaults for. The browser never supplies the player count
+    /// itself.
+    fn reviewers_json(&self, session: Option<&str>) -> Result<String, String> {
+        let player_count = match session {
+            Some(session_id) => {
+                let session_id = sanitize_session_id(session_id)?;
+                let replay_path =
+                    Path::new(HUMAN_PLAY_DIR).join(format!("{session_id}.replay.json"));
+                let replay = read_replay_file(&replay_path)?;
+                Some(replay.player_count)
+            }
+            None => None,
+        };
         let reviewers = self
             .reviewer_registry
             .reviewers
@@ -825,7 +840,8 @@ impl StudioHost {
                     "description": entry.description,
                     "competitive_status": entry.competitive_status,
                     "result_kind": entry.result_kind,
-                    "is_default": entry.is_default,
+                    "supported_player_counts": entry.supported_player_counts(),
+                    "default_for_player_counts": entry.default_for_player_counts,
                     "available_metrics": entry.available_metrics,
                     "required_artifacts": entry.required_artifacts,
                     "estimated_cost": entry.estimated_cost,
@@ -836,6 +852,7 @@ impl StudioHost {
             "format": "effective-splendor-studio-reviewers",
             "version": 1,
             "registry_id": self.reviewer_registry.registry_id,
+            "player_count": player_count,
             "reviewers": reviewers,
         }))
         .map_err(|error| error.to_string())
@@ -851,6 +868,10 @@ impl StudioHost {
         let replay_path = Path::new(HUMAN_PLAY_DIR).join(format!("{session_id}.replay.json"));
         let replay = read_replay_file(&replay_path)?;
         verify_replay(&replay).map_err(|error| format!("replay verification failed: {error}"))?;
+        // Fail closed BEFORE any job is created: a reviewer that cannot
+        // analyze this replay's player count must never start a background
+        // job that fails mysteriously.
+        ensure_reviewer_supported(&entry, replay.player_count)?;
         let replay_document_hash =
             replay_document_hash_v1(&replay).map_err(|error| error.to_string())?;
 
@@ -1127,6 +1148,45 @@ fn reviewer_identity_from_entry(
         entry.default_config.clone(),
         checkpoint_hash,
     ))
+}
+
+/// Fail closed when a reviewer cannot analyze a replay with this player
+/// count; the error is returned to the browser as a 4xx before any job runs.
+fn ensure_reviewer_supported(
+    entry: &splendor_analysis::ReviewerEntryV1,
+    player_count: u8,
+) -> Result<(), String> {
+    if entry.supports_player_count(player_count) {
+        Ok(())
+    } else {
+        Err(unsupported_reviewer_message(
+            &entry.id,
+            &entry.display_name,
+            player_count,
+        ))
+    }
+}
+
+/// Fail-closed message for a reviewer that cannot analyze a replay with this
+/// player count. The S3 rollout reviewer is the only 2-player-only reviewer.
+fn unsupported_reviewer_message(reviewer_id: &str, display_name: &str, player_count: u8) -> String {
+    let hint = if reviewer_id == splendor_analysis::S3_REVIEWER_ID {
+        "the S3 rollout reviewer is frozen for 2-player replays"
+    } else {
+        "this reviewer does not cover that player count"
+    };
+    format!(
+        "reviewer `{display_name}` is unavailable for {player_count}-player replays: {hint}; choose a reviewer that supports this replay"
+    )
+}
+
+/// Extract a query parameter from a raw request target (`/path?a=b&c=d`).
+fn query_param(target: &str, key: &str) -> Option<String> {
+    let query = target.split_once('?')?.1;
+    query.split('&').find_map(|pair| {
+        let (name, value) = pair.split_once('=')?;
+        (name == key).then(|| value.to_owned())
+    })
 }
 
 fn read_replay_file(path: &Path) -> Result<ReplayV1, String> {
@@ -1653,8 +1713,9 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
     }
 
     match request.method.as_str() {
-        "GET" if request.path == "/reviewers" => {
-            return respond_result(&mut stream, host.reviewers_json());
+        "GET" if request.path == "/reviewers" || request.path.starts_with("/reviewers?") => {
+            let session = query_param(&request.path, "session");
+            return respond_result(&mut stream, host.reviewers_json(session.as_deref()));
         }
         "GET" if request.path == "/recent-games" => {
             return respond_result(&mut stream, host.recent_games());
@@ -2436,37 +2497,111 @@ mod tests {
         }
     }
 
+    #[test]
+    fn review_creation_fails_closed_for_unsupported_player_counts() {
+        // 2p -> S3 default; 3/4p -> M07 default; an explicit S3 selection on
+        // a 3/4p replay must be rejected by the host BEFORE any job starts.
+        let registry = ReviewerRegistryV1 {
+            format: "effective-splendor-studio-reviewers".into(),
+            version: 1,
+            registry_id: "test-reviewers".into(),
+            reviewers: vec![
+                test_reviewer_entry(
+                    splendor_analysis::S3_REVIEWER_ID,
+                    "S3 Rollout Review",
+                    splendor_analysis::ReviewerStatusV2::Champion,
+                    splendor_analysis::ReviewerResultKindV2::PolicyRecommendation,
+                    vec![2],
+                ),
+                test_reviewer_entry(
+                    "m07-determinization-champion",
+                    "M07 Determinization Champion",
+                    splendor_analysis::ReviewerStatusV2::Champion,
+                    splendor_analysis::ReviewerResultKindV2::RootDeterminization,
+                    vec![3, 4],
+                ),
+            ],
+        };
+        registry.validate().unwrap();
+        let s3 = registry.entry(splendor_analysis::S3_REVIEWER_ID).unwrap();
+        let m07 = registry.entry("m07-determinization-champion").unwrap();
+
+        assert!(ensure_reviewer_supported(s3, 2).is_ok());
+        assert_eq!(registry.default_entry(2).unwrap().id, splendor_analysis::S3_REVIEWER_ID);
+        for player_count in [3u8, 4] {
+            let error = ensure_reviewer_supported(s3, player_count).unwrap_err();
+            assert!(
+                error.contains("unavailable for") && error.contains("frozen for 2-player"),
+                "unclear unsupported-reviewer error: {error}"
+            );
+            assert!(ensure_reviewer_supported(m07, player_count).is_ok());
+            assert_eq!(
+                registry.default_entry(player_count).unwrap().id,
+                "m07-determinization-champion"
+            );
+        }
+    }
+
+    fn test_reviewer_entry(
+        id: &str,
+        display_name: &str,
+        competitive_status: splendor_analysis::ReviewerStatusV2,
+        result_kind: splendor_analysis::ReviewerResultKindV2,
+        default_for_player_counts: Vec<u8>,
+    ) -> splendor_analysis::ReviewerEntryV1 {
+        let (available_metrics, default_config) = match result_kind {
+            splendor_analysis::ReviewerResultKindV2::PolicyRecommendation => (
+                vec!["recommended_action".into(), "decision_path".into()],
+                ReviewerConfigV2::PolicyRecommendation(
+                    splendor_analysis::S3ReviewConfigV2::frozen_v1(),
+                ),
+            ),
+            splendor_analysis::ReviewerResultKindV2::RootDeterminization => (
+                vec![
+                    "mean_utility".into(),
+                    "utility_gap".into(),
+                    "action_rank".into(),
+                ],
+                ReviewerConfigV2::RootDeterminization(RootDeterminizationConfigV1 {
+                    sample_seed: 20260810,
+                    sample_count: 4,
+                    continuation_search: SearchConfigV1 {
+                        max_depth_turns: 1,
+                        max_nodes: 2000,
+                    },
+                }),
+            ),
+            splendor_analysis::ReviewerResultKindV2::NeuralIsmcts => {
+                unreachable!("test helper only builds S3/M07 reviewers")
+            }
+        };
+        splendor_analysis::ReviewerEntryV1 {
+            id: id.into(),
+            display_name: display_name.into(),
+            description: "test".into(),
+            competitive_status,
+            result_kind,
+            default_for_player_counts,
+            available_metrics,
+            required_artifacts: vec![],
+            estimated_cost: "cpu".into(),
+            default_config,
+            checkpoint_path: None,
+        }
+    }
+
     fn test_reviewer_registry() -> ReviewerRegistryV1 {
         ReviewerRegistryV1 {
             format: "effective-splendor-studio-reviewers".into(),
             version: 1,
             registry_id: "test-reviewers".into(),
-            reviewers: vec![splendor_analysis::ReviewerEntryV1 {
-                id: "m07-determinization-champion".into(),
-                display_name: "M07 Determinization Champion".into(),
-                description: "test".into(),
-                competitive_status: splendor_analysis::ReviewerStatusV2::Champion,
-                result_kind: splendor_analysis::ReviewerResultKindV2::RootDeterminization,
-                is_default: true,
-                available_metrics: vec![
-                    "mean_utility".into(),
-                    "utility_gap".into(),
-                    "action_rank".into(),
-                ],
-                required_artifacts: vec![],
-                estimated_cost: "cpu".into(),
-                default_config: ReviewerConfigV2::RootDeterminization(
-                    RootDeterminizationConfigV1 {
-                        sample_seed: 20260810,
-                        sample_count: 4,
-                        continuation_search: SearchConfigV1 {
-                            max_depth_turns: 1,
-                            max_nodes: 2000,
-                        },
-                    },
-                ),
-                checkpoint_path: None,
-            }],
+            reviewers: vec![test_reviewer_entry(
+                "m07-determinization-champion",
+                "M07 Determinization Champion",
+                splendor_analysis::ReviewerStatusV2::Champion,
+                splendor_analysis::ReviewerResultKindV2::RootDeterminization,
+                vec![2, 3, 4],
+            )],
         }
     }
 }
