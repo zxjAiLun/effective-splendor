@@ -345,7 +345,7 @@ mod tests {
     use super::*;
     use splendor_agent::{AgentPolicy, DecisionContext, PublicRequestMeta, StableRng};
     use splendor_core::{
-        observation_hash, FullState, GameConfig, PlayerId, CATALOG_VERSION, ENGINE_VERSION,
+        observation_hash, FullState, GameConfig, CATALOG_VERSION, ENGINE_VERSION,
     };
     use splendor_determinization_agent::s3_agent::{S3RolloutAgentPolicy, S3_AGENT_NAME};
     use splendor_determinization_agent::s3_rollout::h_star;
@@ -588,7 +588,6 @@ mod tests {
         let viewer = state.current_player;
         let observation = state.observation(viewer);
         let visible_history = visible_events(&state.log, Audience::Player(viewer));
-        let legal = canonical_order(&state.legal_actions());
         let information_set =
             build_information_set_v1(Ruleset::base_v1(), &observation, &visible_history).unwrap();
         let world_a = splendor_belief::sample_determinization_v1(&information_set, 43_300_101, 0)
