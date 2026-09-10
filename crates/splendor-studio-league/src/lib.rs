@@ -42,13 +42,12 @@ pub use inventory::{
     InventorySeatV1, INVENTORY_REPORT_FORMAT, INVENTORY_REPORT_VERSION,
 };
 pub use ledger::{
-    aliases, apply_rating_for_match, canonical_league_order, eligible_match_count,
-    ensure_rating_config, identity_index, ineligible_reason_counts, ingest_batch_canonical,
-    ingest_match, ingest_match_ordered, is_rating_quality_replay, leaderboard, league_order,
-    match_count, participant_elo, participant_id_for_identity, preview_eligibility,
-    protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
-    stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, RatingEventRow,
-    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    aliases, canonical_league_order, eligible_match_count, ensure_rating_config, identity_index,
+    ineligible_reason_counts, ingest_batch_canonical, ingest_match, ingest_match_ordered,
+    is_rating_quality_replay, leaderboard, league_order, match_count, participant_elo,
+    participant_id_for_identity, preview_eligibility, protocol_rating_config, rating_event_count,
+    rating_history, rebuild_ratings, stored_rating_config, IngestOrder, IngestOutcome,
+    LeaderboardRow, RatingEventRow, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };
@@ -57,10 +56,10 @@ pub use match_record::{
     StudioMatchRecordV1, StudioMatchSeatV1,
 };
 pub use participant::{
-    canonical_identity_key, derived_participant_id, ensure_local_human, local_human_participant,
-    new_participant_id, participant, resolve_engine_participant, sync_identity_manifest,
-    unassigned_human_participant, EngineIdentityV1, ParticipantKind, ParticipantRow,
-    LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
+    canonical_identity_key, derived_participant_id, local_human_participant, new_participant_id,
+    participant, resolve_engine_participant, sync_identity_manifest, unassigned_human_participant,
+    EngineIdentityV1, ParticipantKind, ParticipantRow, LOCAL_HUMAN_META_KEY,
+    PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
 };
 pub use schema::{
     get_meta, initialise, open_in_memory, open_league, schema_version, set_meta,

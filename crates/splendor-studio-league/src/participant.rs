@@ -263,7 +263,7 @@ pub fn local_human_participant(conn: &Connection) -> Result<Option<String>> {
 ///
 /// The id is a parameter precisely so it comes from durable user-authored state
 /// rather than from this database.
-pub fn ensure_local_human(
+pub(crate) fn ensure_local_human(
     conn: &Connection,
     participant_id: &str,
     display_name: &str,

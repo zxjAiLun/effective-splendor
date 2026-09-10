@@ -1183,3 +1183,71 @@ fn the_identity_manifest_survives_losing_its_primary_file() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Close patch P1-1: damaged identity evidence is not a first launch. When all
+/// recovery candidates are unusable, `load_or_create` must preserve the evidence
+/// and fail instead of minting a replacement local-human id.
+#[test]
+fn unrecoverable_identity_manifest_fails_closed_without_replacing_identity() {
+    let dir = std::env::temp_dir().join(format!(
+        "splendor-studio-league-manifest-corrupt-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("identity.json");
+    let original = b"{ corrupt authoritative identity";
+    std::fs::write(&path, original).unwrap();
+    std::fs::write(league::temp_path(&path), b"not json either").unwrap();
+    // `.bak` deliberately absent: the contract covers invalid *or* missing
+    // recovery siblings once any identity evidence exists.
+
+    let error = IdentityManifestV1::load_or_create(&path, "Replacement").unwrap_err();
+    assert!(
+        matches!(error, StudioLeagueError::Invalid(_)),
+        "unrecoverable identity evidence must fail closed, got {error}"
+    );
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        original,
+        "the authoritative bytes must be left untouched"
+    );
+    assert_eq!(
+        std::fs::read(league::temp_path(&path)).unwrap(),
+        b"not json either",
+        "the failed recovery must not overwrite its evidence"
+    );
+    assert!(!league::backup_path(&path).exists());
+
+    // Only the true first-run state — all three candidates absent — may create.
+    std::fs::remove_file(&path).unwrap();
+    std::fs::remove_file(league::temp_path(&path)).unwrap();
+    let created = IdentityManifestV1::load_or_create(&path, "First run").unwrap();
+    assert_eq!(created.local_human.unwrap().display_name, "First run");
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Close patch P1-2: the resolver follows one edge by contract, so every
+/// accepted alias must point directly to a terminal canonical key. Both a chain
+/// and a cycle are malformed V2 manifests.
+#[test]
+fn non_terminal_and_cyclic_aliases_are_rejected() {
+    let mut chain = IdentityManifestV1::new();
+    chain.declare_alias("old@1", "middle@1", "old rename");
+    chain.declare_alias("middle@1", "current@1", "current rename");
+    let chain_error = chain.validate().unwrap_err();
+    assert!(
+        matches!(chain_error, StudioLeagueError::Invalid(_)),
+        "an alias chain must be rejected, got {chain_error}"
+    );
+
+    let mut cycle = IdentityManifestV1::new();
+    cycle.declare_alias("a@1", "b@1", "cycle-a");
+    cycle.declare_alias("b@1", "a@1", "cycle-b");
+    let cycle_error = cycle.validate().unwrap_err();
+    assert!(
+        matches!(cycle_error, StudioLeagueError::Invalid(_)),
+        "an alias cycle must be rejected, got {cycle_error}"
+    );
+}

@@ -145,6 +145,19 @@ impl IdentityManifestV1 {
                 )));
             }
         }
+        // Every target must already be terminal. Resolution deliberately follows
+        // exactly one edge, so accepting a target that is itself an alias would
+        // split a chain (and accepting a cycle would make canonical identity
+        // undefined). V2 manifests therefore require direct alias -> canonical
+        // mappings and fail closed on both chains and cycles.
+        for alias in &self.aliases {
+            if seen.contains(alias.canonical_identity_key.as_str()) {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "alias `{}` targets `{}`, which is itself an alias; every alias must point directly to a terminal canonical identity key",
+                    alias.alias_key, alias.canonical_identity_key
+                )));
+            }
+        }
         Ok(())
     }
 
@@ -171,19 +184,28 @@ impl IdentityManifestV1 {
     /// Load, recovering from `<path>.tmp` or `<path>.bak` when the primary is
     /// missing or unusable, then heal the primary.
     ///
+    /// `None` means a genuine first run: all three candidate paths are absent.
+    /// If any identity evidence exists but none validates, recovery fails closed;
+    /// it must never mint a replacement local-human id over damaged authority.
+    ///
     /// Windows cannot rename over an existing file, so [`Self::save`] has to
     /// remove before it renames; a crash inside that window would otherwise
     /// destroy the only user-authored identity authority. Recovery prefers the
-    /// newer synced `.tmp`, then the previous ` `.bak` (Commit A Repair 2, P2).
+    /// newer synced `.tmp`, then the previous `.bak` (Commit A Repair 2, P2).
     pub fn load_or_recover(path: &Path) -> Result<Option<Self>> {
-        if let Ok(Some(manifest)) = Self::load(path) {
-            return Ok(Some(manifest));
-        }
-        for candidate in [temp_path(path), backup_path(path)] {
+        let temp = temp_path(path);
+        let backup = backup_path(path);
+        let candidates = [path.to_path_buf(), temp, backup];
+        let any_evidence = candidates.iter().any(|candidate| candidate.exists());
+
+        for candidate in &candidates {
             if !candidate.is_file() {
                 continue;
             }
-            let text = std::fs::read_to_string(&candidate)?;
+            let text = match std::fs::read_to_string(candidate) {
+                Ok(text) => text,
+                Err(_) => continue,
+            };
             let recovered: Self = match serde_json::from_str(&text) {
                 Ok(value) => value,
                 Err(_) => continue,
@@ -191,9 +213,18 @@ impl IdentityManifestV1 {
             if recovered.validate().is_err() {
                 continue;
             }
-            // Heal the primary so the next load is a plain read.
-            recovered.save(path)?;
+            if candidate != path {
+                // Heal the primary so the next load is a plain read.
+                recovered.save(path)?;
+            }
             return Ok(Some(recovered));
+        }
+
+        if any_evidence {
+            return Err(StudioLeagueError::Invalid(format!(
+                "identity manifest recovery failed: `{}`, its staging copy, or its backup exists, but none is a valid manifest",
+                path.display()
+            )));
         }
         Ok(None)
     }

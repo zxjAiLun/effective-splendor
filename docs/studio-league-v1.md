@@ -4,7 +4,9 @@
   **Commit A** landed as `9f88aca`; the owner's first review returned **`REPAIR_REQUIRED`**
   (P0=0, P1=5) and **Repair 1** landed as `714bc5f`. The owner's re-review of `714bc5f` again
   returned **`REPAIR_REQUIRED`** (P0=0, P1=4, P2=1) on authority / ingestion seams, and
-  **Commit A Repair 2 is `IMPLEMENTED` / `VERIFIED`** — see the repair sections below.
+  **Commit A Repair 2 is `IMPLEMENTED` / `VERIFIED`**. The owner's review of `2501fe0`
+  confirmed its four principal repairs and returned a narrow **close patch / Repair 2b
+  `REPAIR_REQUIRED`** (P0=0, P1=3, P2=1); Repair 2b is now `IMPLEMENTED` / `VERIFIED` — see below.
   Commits B–E are not started. Nothing here is `ACCEPTED`.
 - **Baseline**: `3468046` (`main == origin/main`; Replay Studio Product Shell / History v1 ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
@@ -183,15 +185,24 @@ Additional invariants introduced by this round:
     before any write (seat count must equal `player_count`, seats unique, no winner outside
     `completed`, a `Verified` binding must be complete), and an eligible 1v1 match that cannot
     produce a pair event is an error rather than a silent skip.
-12. `match_gameplay_stats` exists only for replay-backed matches; its rows carry
+17. `match_gameplay_stats` exists only for replay-backed matches; its rows carry
     `metric_integrity` and the invariant
     `tier1_vp + tier2_vp + tier3_vp + noble_vp == final prestige` is asserted, never silently patched.
-13. Average ending round is derived from a real `main_turn_count`, never from `completed_plies`
+18. Average ending round is derived from a real `main_turn_count`, never from `completed_plies`
     (follow-up decision phases make one turn several recorded decisions).
-14. The importer is **fail-closed**: an unknown or malformed document raises a clear error and
+19. The importer is **fail-closed**: an unknown or malformed document raises a clear error and
     changes nothing; it never partially imports. `ingest_batch_canonical` therefore shares ONE
     transaction for the whole batch, so a failure at record N rolls back records 1..N-1
     (Repair 2, P1-4).
+20. **Identity recovery is fail-closed.** `load_or_recover` returns `None` only when primary,
+    `.tmp`, and `.bak` are all absent. If any identity evidence exists but no candidate validates,
+    it errors without replacing the bytes or minting a new local-human id (Repair 2b, P1-1).
+21. **Aliases are direct.** Every accepted `canonical_identity_key` is terminal — it must not also
+    appear as an alias key. Chains and cycles are malformed V2 manifests, so the intentionally
+    one-hop resolver cannot split one identity into two (Repair 2b, P1-2).
+22. **No normal public authority bypass.** The only local-human DB writer is crate-private and is
+    reached through `sync_identity_manifest`; the rating-event writer is private and receives the
+    protocol config only from ledger internals (Repair 2b, P1-3).
 
 ## Implementation plan
 
@@ -244,6 +255,11 @@ Additional invariants introduced by this round:
   input, `source_document_hash` is required and hex-validated (schema v3), `ingest_batch_canonical`
   shares one transaction, and the identity manifest replaces via a synced `.tmp` plus `.bak` with
   recovery. 24 tests pass (19 -> 24) with three negative controls.
+- 2026-09-11 (owner review of `2501fe0`): Repair 2's four principal fixes all **PASS**, but Commit A
+  remains `REPAIR_REQUIRED` for a narrow close patch (P0=0/P1=3/P2=1): damaged identity evidence
+  could be mistaken for first launch; aliases could target another alias; and two public write APIs
+  bypassed the manifest/protocol authorities. Repair 2b seals those three boundaries, adds exactly
+  two targeted tests, fixes the duplicated invariant numbering, and does not start commit B.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -366,6 +382,35 @@ against the defect it exists to catch:
 - Removing the `source_document_hash` validation made
   `a_source_without_a_valid_document_hash_is_refused` **FAIL**.
 
+## Commit A Close Patch / Repair 2b
+
+The owner reviewed `2501fe0` and confirmed that Repair 2's alias-first resolution, protocol rating
+config, required source hash, and batch atomicity are all genuine and correctly directed. The
+remaining verdict was a deliberately small close patch: **`REPAIR_REQUIRED`, P0=0 / P1=3 / P2=1**.
+No exact-alias reconciliation, historical import, replay index, Host API, gameplay stats, or UI was
+included.
+
+| Item | Boundary left open | Close patch |
+| --- | --- | --- |
+| P1-1 | If primary, `.tmp`, and `.bak` were all unusable, `load_or_recover` returned `None`, and `load_or_create` treated damaged authority as first launch and minted a new local-human id. | The loader records whether *any* candidate exists. `None` now means all three are absent; existing-but-unrecoverable evidence returns `Invalid` without modifying any candidate. |
+| P1-2 | V2 accepted `old -> middle -> current` and `a -> b -> a`, but runtime resolution intentionally follows one edge, splitting chains into multiple participants. | Validation now requires every `canonical_identity_key` to be terminal: no target may also appear in the alias-key set. Chains and cycles both fail closed. |
+| P1-3 | `ensure_local_human` and the mutating `apply_rating_for_match(config, ...)` remained public/re-exported, bypassing the two newly established authorities. | The DB local-human writer is `pub(crate)` and only manifest projection calls it; the rating-event writer is private. Both re-exports were removed. |
+| P2 | The invariant list repeated 12/13/14. | Renumbered continuously through 22. |
+
+The requested closure statement is now an implementation contract:
+
+> corrupt identity evidence never creates a new identity; every accepted alias points directly to
+> one canonical identity; authored identity and Elo mutation have no normal public bypass.
+
+Targeted proofs:
+
+- `unrecoverable_identity_manifest_fails_closed_without_replacing_identity`: corrupt primary +
+  invalid `.tmp` + absent `.bak` ⇒ error; primary and staging bytes unchanged; only after all three
+  are absent does first-run creation succeed.
+- `non_terminal_and_cyclic_aliases_are_rejected`: one test covers both chain and cycle manifests.
+- `cargo check` / crate tests verify that removed public exports have no remaining consumer; a
+  source-surface grep confirms neither mutating function is public/re-exported.
+
 ## Validation and evidence
 
 ### Commit A (League core) — run 2026-09-10
@@ -427,6 +472,20 @@ and the publish-frozen numbers were already proven inert in Repair 1.
 previously built executable, not a compile error. The isolated-target build succeeded, matching the
 Repair 1 procedure.
 
+### Commit A Close Patch / Repair 2b — run 2026-09-11
+
+| Command | Result |
+| --- | --- |
+| `cargo test -p splendor-studio-league` | **26 passed / 0 failed** (24 → 26; exactly two targeted tests added) |
+| `cargo fmt --check -p splendor-studio-league` | clean |
+| `cargo test -p splendor-eval` | 37 passed / 0 failed; shared Elo arithmetic remains inert |
+| `cargo test -p splendor-cli --bin splendor` (isolated `CARGO_TARGET_DIR`) | 89 passed / 0 failed |
+| `cargo build --bin splendor` (isolated `CARGO_TARGET_DIR`) | PASS |
+| `rg` public-surface check for `ensure_local_human` / `apply_rating_for_match` | no public function or crate-root re-export remains; only the manifest's distinct in-memory `ensure_local_human` authoring method is public |
+
+GitHub had no status checks / workflow runs for `2501fe0`, so this section reports local evidence
+only and makes no cloud-CI claim.
+
 ## Result and decision
 
 `AUTHORIZED`; implementation in progress. No verdict is claimed.
@@ -451,8 +510,10 @@ Repair 1 procedure.
   bootstrapped or reconciled later.
 - The identity manifest is replaced with remove + rename (Windows cannot rename over an existing
   file), so `save` leaves a synced `.tmp` and a `.bak`, and `load_or_recover` recovers from either
-  and heals the primary (Repair 2, P2). A full filesystem-durability guarantee was explicitly out of
-  scope: if the primary and both siblings are lost, the manifest is gone.
+  and heals the primary (Repair 2, P2). `None` is reserved for the true first-run state where all
+  three candidates are absent; any existing-but-invalid evidence fails closed (Repair 2b). A full
+  filesystem-durability guarantee was explicitly out of scope: if all three files are physically
+  lost, the manifest is gone.
 - Authored state has exactly one writer. `alias_participants` and `rename_participant` were removed
   from the API, because a database-only alias or rename would silently vanish on the next rebuild.
 - `detail_metrics_available` is still always false; `match_gameplay_stats` has no writer until
@@ -462,6 +523,7 @@ Repair 1 procedure.
 
 ## Next authorized gate
 
-Owner review of commit A (League core) once it lands. The owner pre-authorized the whole round, so
-the working expectation is continuous progress through A→E followed by one owner closure review —
-not per-commit approval.
+Owner re-review of Commit A close patch. If the three closure statements above are accepted,
+Commit A may close and the next authorized implementation is **Commit B historical migration**:
+first build the `final_state_hash` ReplayV1 content index, then bind/import arena reports. This patch
+itself does not start B.

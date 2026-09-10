@@ -483,7 +483,7 @@ fn ingest_match_in_tx(
 ///
 /// Fails rather than returning `0` when the pair is not a clean 1v1: an eligible
 /// match with no rating event would be a silent lie.
-pub fn apply_rating_for_match(
+fn apply_rating_for_match(
     tx: &Transaction<'_>,
     config: &StudioRatingConfigV1,
     match_id: &str,
