@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { describeGameRow } from "./games-runtime.mjs";
 
 const API = "http://127.0.0.1:43120";
 
@@ -82,9 +83,7 @@ export default function GamesHome() {
         ) : null}
         <div className="recent-game-list">
           {games.map((game) => {
-            const seat = game.human_seat ?? 0;
-            const verified = game.verification === "verified";
-            const outcome = game.winners ? (game.winners.includes(seat) ? "Victory" : "Defeat") : "—";
+            const row = describeGameRow(game);
             const cached = game.available_reviews?.length ?? 0;
             return (
               <article key={game.session_id}>
@@ -92,26 +91,20 @@ export default function GamesHome() {
                   <strong>{when(game.timestamp)}</strong>
                   <small>{game.session_id}</small>
                   <small>
-                    vs {game.opponent ?? "unknown opponent"} · You P{seat} ·{" "}
-                    {game.player_count ?? "?"}-player · {verified ? "verified" : game.error ?? "invalid"} ·{" "}
+                    vs {game.opponent ?? "unknown opponent"} · {row.seatLabel} ·{" "}
+                    {game.player_count ?? "?"}-player · {row.verified ? "verified" : game.error ?? "invalid"} ·{" "}
                     {cached} cached review{cached === 1 ? "" : "s"}
                   </small>
                 </div>
                 <div>
-                  <span>{outcome}</span>
-                  <small>{(game.scores ?? []).join(" – ") || "—"}</small>
-                  {verified ? (
+                  <span>{row.outcome}</span>
+                  <small>{row.scoreLine}</small>
+                  {row.verified ? (
                     <>
-                      <Link href={`/replay?session=${encodeURIComponent(game.session_id)}`}>
-                        View replay
-                      </Link>
-                      <Link href={`/review?session=${encodeURIComponent(game.session_id)}&seat=${seat}`}>
-                        Review
-                      </Link>
+                      <Link href={row.replayHref}>View replay</Link>
+                      <Link href={row.reviewHref}>Review</Link>
                     </>
-                  ) : (
-                    <small>Unavailable: this replay failed verification.</small>
-                  )}
+                  ) : null}
                 </div>
               </article>
             );

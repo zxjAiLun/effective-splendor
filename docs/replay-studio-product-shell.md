@@ -1,7 +1,10 @@
 # Replay Studio Product Shell / History v1
 
-- **Status**: `IMPLEMENTED` / `VERIFIED` (named checks below actually ran). Not `ACCEPTED` —
-  product closure review is the next gate.
+- **Status**: `IMPLEMENTED` / `VERIFIED` (named checks below actually ran), then
+  **`REPAIR_REQUIRED`** from the owner's independent review of `e125c2c`
+  (P0 = 0, P1 = 1, P2 = 3), then **Repair 1 IMPLEMENTED / VERIFIED**
+  (2026-09-10, see the repair section below). Not `ACCEPTED` — the owner's product
+  closure review is still the next gate.
 - **Baseline**: `9573141` (`main == origin/main`, S3 Review Integration v1 ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, authorized by the product owner in the closure conversation of
   S3 Review Integration v1 ("直接授权开工，不需要他再回来问一次").
@@ -91,6 +94,16 @@ strength experiments, S3/reviewer logic changes, new S3 tests, mass test-writing
   `/ACTION ANALYSIS/`, `/Load replay + analysis/`); rewritten for the new home, plus new route
   shell tests for `/advanced` and `/replay`. `/review` header link relabelled `Advanced import`
   → `Games` (the target route changed meaning).
+- 2026-09-10 (owner review of `e125c2c`): architecture direction **APPROVED**; Games home,
+  historical replay endpoint, reviewer-free View replay, legacy V1 isolation and sessionStorage
+  removal all **PASS**. Verdict **REPAIR_REQUIRED** (P0 = 0, P1 = 1, P2 = 3), repair scope
+  declared `VERY SMALL`: Games/history presentation truthfulness only. Explicitly out of bounds
+  for the repair: Host archive reconstruction, Review, S3, upload, pagination, deletion, UI
+  redesign. Full verdict quoted in the repair section below.
+- 2026-09-10 (Repair 1, lead-direct): new pure module `app/games-runtime.mjs`
+  (`describeGameRow`) + its unit tests, so the truthfulness rules are testable instead of buried
+  in JSX; home rows, the `/replay` filter ternary and the shared validation error prefix updated
+  as below.
 
 ## Final implementation
 
@@ -126,6 +139,71 @@ Front-end (`apps/replay-studio`):
 - `trace-runtime.mjs`: shared validation error prefix `Invalid AnalysisTraceV1 at` →
   `Invalid replay data at` (no test depends on the old string).
 
+## Owner review of `e125c2c` and Repair 1
+
+The owner's independent review ran `9573141 → e125c2c` and returned:
+
+```text
+Replay Studio Product Shell @ e125c2c
+
+Architecture direction:     APPROVED
+Games home:                 PASS
+Historical replay endpoint: PASS
+Reviewer-free View replay:  PASS
+Legacy V1 isolation:        PASS
+sessionStorage removal:     PASS
+
+VERDICT:  REPAIR_REQUIRED
+P0 = 0   P1 = 1   P2 = 3
+Repair scope: VERY SMALL
+```
+
+P1 (the only blocker) — **the history row presented an unknown human seat as P0**. `recent_games`
+sets `human_seat` from the optional `.meta.json`, so it is legitimately nullable for older
+replays, and `HistoricalReplayArchiveV2` preserves that `Option<u8>`. The home page nevertheless
+wrote `const seat = game.human_seat ?? 0` and then derived `You P0`, `Victory`/`Defeat` and
+`/review?…&seat=0` from it — inventing three user-visible facts. The owner folded a second
+trust problem into the same P1: an `invalid` replay kept returning `scores`/`winners`, and the row
+rendered them as a trusted result with only the buttons disabled.
+
+Repair scope authorized (Games/history presentation only): unknown seat stays unknown; no
+inferred Victory/Defeat; Review URL omits `seat`; unverified replay shows no trusted result;
+clean the `/replay` filter ternary; optionally restore the precise validation error prefix;
+targeted frontend tests; commit/push then STOP. P2 items 1–2 were folded in; P2 item 3 (full
+`cargo test -p splendor-cli` blocked by the owner's running Studio Host) was explicitly accepted
+as a non-blocker to be rerun at the next natural host restart.
+
+### Repair 1 implementation (lead-direct, 2026-09-10)
+
+- `app/games-runtime.mjs` (new): pure `describeGameRow(game)` owns the row facts. `seat` is
+  `number | null` (never defaulted); `seatLabel` is `Seat unknown` when absent; `outcome` is
+  `Invalid replay` when unverified, `—` when verified but seat-less or winner-less, and only
+  `Victory`/`Defeat` when both a verified replay and a known seat licence it; `scoreLine` is
+  `Result unavailable` when unverified and the real score otherwise; `reviewHref` appends `seat`
+  only when it is known (the Host's `/review` already treats a missing seat as `all`). Extracted
+  rather than inlined so the rules are unit-testable and cannot silently regress.
+- `app/page.tsx`: consumes `describeGameRow`; the row's `You P{seat}`/`Victory`/`Defeat`/
+  `&seat=` derivations and the now-redundant "Unavailable: this replay failed verification."
+  line are gone. An unverified row reads `Invalid replay` / `Result unavailable` with no actions,
+  matching the owner's target rendering.
+- `app/replay/page.tsx`: `setFilter(next.human_seat === null ? "all" : "all")` →
+  `setFilter("all")` (editing residue; both branches were `"all"`, so behaviour is unchanged).
+- `app/trace-runtime.mjs`: the shared `fail()` prefix `Invalid replay data at` →
+  `Invalid analysis trace at`. The owner suggested restoring the old `Invalid AnalysisTraceV1`
+  wording, but `fail()` is shared with `validateReviewTrace` (V2 review bundles), so naming V1
+  would have introduced a new mislabel in the `/review` error path; the version-neutral form is
+  accurate for both consumers (both are `effective-splendor-analysis-trace` documents).
+- `tests/games-runtime.test.mjs` (new, 8 tests): known-seat win/loss from the human seat rather
+  than seat 0; `null` **and** `undefined` seat stay unknown with no `seat=` in the review URL;
+  a no-metadata legacy replay never claims `You P0`/`Victory`; an `invalid` replay reports no
+  trusted outcome or score; an unreadable entry (`error: unreadable replay`) degrades the same
+  way; verified-but-outcome-less games report `—`; session ids are URL-encoded in both links.
+- `package.json`: `test` script now includes `tests/games-runtime.test.mjs`.
+
+Not done, deliberately: no Host/Rust change (the `scores`/`winners` fields stay on the wire and are
+simply no longer presented as trusted), no archive reconstruction change, no `/review`, S3, upload,
+pagination, deletion or UI redesign work.
+
 ## Validation and evidence
 
 All commands run 2026-09-10 on `main` (worktree = this round's changes on `9573141`):
@@ -148,6 +226,20 @@ All commands run 2026-09-10 on `main` (worktree = this round's changes on `95731
   `target/debug/splendor.exe` locked (full-suite rerun command for the owner:
   `cargo test -p splendor-cli` once the host is stopped).
 
+### Repair 1 re-validation (2026-09-10, worktree = this round + Repair 1)
+
+- `node --test tests/games-runtime.test.mjs` → **8 passed / 0 failed**.
+- `npm test` (build + all six `node --test` files) → **45 passed / 0 failed** (`37` before the
+  repair + the 8 new row-truthfulness tests).
+- `npx tsc --noEmit` → 8 errors, byte-for-byte the same pre-existing set (5 `experiments/page.tsx`,
+  3 `review/page.tsx`); **0 new**, none in `page.tsx`, `replay/page.tsx`, `games-runtime.mjs`,
+  `trace-runtime.mjs` or the new test.
+- `npx eslint` on the five touched files → clean.
+- `git diff --check` → clean (CRLF notices only, pre-existing repo line-ending behaviour).
+- Rust was intentionally not rebuilt or re-run: Repair 1 changed no Rust file and the endpoint's
+  evidence from the original run still stands. Full `cargo test -p splendor-cli` remains deferred
+  to the next natural Studio Host restart (owner-accepted non-blocker).
+
 ## Result and decision
 
 - Product shell re-ordered exactly per the owner's frozen scope; acceptance checklist:
@@ -166,6 +258,10 @@ All commands run 2026-09-10 on `main` (worktree = this round's changes on `95731
   7. `npm test` 37/0 and relevant CLI tests green (above).
 - Round status: `IMPLEMENTED` / `VERIFIED`. Not `ACCEPTED` — product closure review is the
   owner's next gate.
+- Owner review of `e125c2c` → `REPAIR_REQUIRED` (P0 = 0 / P1 = 1 / P2 = 3) on 2026-09-10; the
+  single P1 (history-row truthfulness) and P2 items 1–2 were repaired in Repair 1, whose focused
+  evidence is the re-validation block above. The owner's stated expectation is that this closes
+  the round without a Product Shell Repair 2. Final status remains the owner's call.
 
 ## Known limitations
 
@@ -176,8 +272,13 @@ All commands run 2026-09-10 on `main` (worktree = this round's changes on `95731
 - External ReplayV1 ingestion (upload, identity, lifecycle) is explicitly out of scope and
   remains a separate future feature.
 - Full `cargo test -p splendor-cli` could not relink while the owner's Studio Host was running;
-  rerun it (or restart the host) for the complete suite evidence.
+
+  rerun it (or restart the host) for the complete suite evidence. The owner reviewed this gap and
+  accepted it as a non-blocker for this round; it is due at the next natural host restart, not as a
+  dedicated stop-the-service ceremony.
 
 ## Next authorized gate
 
-Product closure review of this round by the owner. No follow-on work authorized beyond that.
+Owner closure verdict on this round **including Repair 1** (`REPAIR_REQUIRED` has been addressed;
+no further repair was authorized or performed). The owner stated the expectation that the round can
+close without a Product Shell Repair 2. No other follow-on work is authorized.

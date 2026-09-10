@@ -68,7 +68,7 @@ export default function ReplayPage() {
           setArchive(next);
           setFrameIndex(0);
           setReveal(false);
-          setFilter(next.human_seat === null ? "all" : "all");
+          setFilter("all");
           setError("");
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : String(reason));

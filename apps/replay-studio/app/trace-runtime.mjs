@@ -4,7 +4,10 @@ const BONUSES = ["White", "Blue", "Green", "Red", "Black"];
 const HASH = /^[0-9a-f]{64}$/;
 
 function fail(path, message) {
-  throw new Error(`Invalid replay data at ${path}: ${message}`);
+  // Shared by validateAnalysisTrace (V1) and validateReviewTrace (V2 review
+  // bundles); both are analysis-trace documents, so the prefix stays
+  // version-neutral instead of naming either version.
+  throw new Error(`Invalid analysis trace at ${path}: ${message}`);
 }
 
 function object(value, path) {
