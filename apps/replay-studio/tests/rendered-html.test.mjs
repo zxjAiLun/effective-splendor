@@ -17,14 +17,34 @@ test("server-renders the Replay Studio product shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>Replay Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Replay Studio/);
-  assert.match(html, /Player view/);
-  assert.match(html, /Referee reveal/);
-  assert.match(html, /ACTION ANALYSIS/);
-  assert.match(html, /Load replay \+ analysis/);
-  assert.match(html, /Rating Studio/);
-  assert.match(html, /Purchase cost/);
-  assert.match(html, /permanent bonus/);
+  assert.match(html, /GAMES/);
+  assert.match(html, /Saved human vs engine games/);
+  assert.match(html, /Play vs S3/);
+  assert.match(html, /Legacy AnalysisTraceV1 viewer/);
+  assert.doesNotMatch(html, /Load replay \+ analysis/);
+  assert.doesNotMatch(html, /Player view/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+});
+
+test("server-renders the legacy AnalysisTraceV1 viewer route", async () => {
+  const response = await render("/advanced");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /LEGACY DIAGNOSTIC VIEWER/);
+  assert.match(html, /AnalysisTraceV1/);
+  assert.match(html, /Requires an/);
+  assert.match(html, /identity binding/);
+  assert.doesNotMatch(html, /Load replay \+ analysis/);
+});
+
+test("server-renders the /replay viewer route shell", async () => {
+  const response = await render("/replay?session=human-test");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Replay Studio/);
+  assert.match(html, /NO ANALYSIS/);
+  assert.match(html, /Rebuilding the replay/);
+  assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
 
 test("server-renders the M16 Rating Studio route", async () => {
@@ -61,7 +81,7 @@ test("server-renders the M23 one-click review route", async () => {
   assert.match(html, /<title>Replay Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Replay Studio/);
   assert.match(html, /ONE-CLICK REVIEW/);
-  assert.match(html, /Advanced import/);
+  assert.match(html, /Games/);
 });
 
 test("server-renders the M36A experiments route shell", async () => {

@@ -11,7 +11,6 @@ type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
 type Gems = Record<GemName, number>;
 type Agent = { id:string; display_name:string; class:string; policy_version:string; model_version:string|null; checkpoint_hash:string|null };
 type Reviewer = { id:string; display_name:string; description:string; competitive_status:"champion"|"experimental"|"rejected"; result_kind:"root_determinization"|"neural_ismcts"|"policy_recommendation"; supported_player_counts:number[]; default_for_player_counts:number[]; available_metrics:string[]; estimated_cost:string };
-type RecentGame = { session_id:string; opponent?:string|null; human_seat?:number|null; scores?:number[]; winners?:number[]; timestamp?:number|null; verification?:"verified"|"invalid"; available_reviews?:string[]; error?:string };
 type Catalog = { cards:DevelopmentCardData[]; nobles:Array<{id:number;prestige:number;requirements:number[]}> };
 type NobleData = Catalog["nobles"][number];
 type Player = { id:number; tokens:Gems; bonuses:number[]; prestige:number; reserved_count:number; public_reserved:number[]; purchased:number[]; nobles:number[] };
@@ -99,7 +98,6 @@ export default function HumanPlayPage() {
   const [state,setState] = useState<State|null>(null);
   const [agents,setAgents] = useState<Agent[]>([]);
   const [reviewers,setReviewers] = useState<Reviewer[]>([]);
-  const [recentGames,setRecentGames] = useState<RecentGame[]>([]);
   const [showReviewers,setShowReviewers] = useState(false);
   const [catalog,setCatalog] = useState<Catalog|null>(null);
   const [agentId,setAgentId] = useState("s3-rollout");
@@ -125,14 +123,13 @@ export default function HumanPlayPage() {
       setAgentId(current=>value.agents.some(agent=>agent.id===current)?current:(value.agents[0]?.id??""));
       const stateResponse=await fetch(`${API}/state`); if(stateResponse.ok)setState(await stateResponse.json());
       try { const reviewerResponse=await fetch(`${API}/reviewers`); if(reviewerResponse.ok){ const reviewerValue=await reviewerResponse.json() as {reviewers:Reviewer[]}; setReviewers(reviewerValue.reviewers); } } catch { /* reviewers optional */ }
-      try { const recentResponse=await fetch(`${API}/recent-games`); if(recentResponse.ok){ const recentValue=await recentResponse.json() as {games:RecentGame[]}; setRecentGames(recentValue.games); } } catch { /* recent games optional */ }
     } catch(reason){ setHostOnline(false); setError(`Studio Host is not running. Launch the project once with Start Splendor Studio.cmd. ${reason instanceof Error?reason.message:String(reason)}`); }
   })()); },[]);
 
   function clearPending(){ setPendingTake(EMPTY_GEMS); setSelectedCard(null); setContextActions([]); }
   async function startGame(){ setBusy(true); try { const response=await fetch(`${API}/games`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({agent_id:agentId,human_seat:humanSeat,seed})}); const value=await response.json(); if(!response.ok)throw new Error(value.error??`Studio Host ${response.status}`); setState(value); clearPending(); setError(""); } catch(reason){ setError(reason instanceof Error?reason.message:String(reason)); } finally{setBusy(false);} }
   async function play(action:Action){ setBusy(true); try { const response=await fetch(`${API}/action`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(action)}); const value=await response.json(); if(!response.ok) throw new Error(value.error??`Studio Host ${response.status}`); setState(value); clearPending(); setError(""); } catch(reason){ setError(reason instanceof Error?reason.message:String(reason)); } finally { setBusy(false); } }
-  async function openReplay(){ setBusy(true); try { const response=await fetch(`${API}/archive`); const value=await response.json(); if(!response.ok) throw new Error(value.error??`Studio Host ${response.status}`); sessionStorage.setItem("effective-splendor-human-replay",JSON.stringify(value)); window.location.assign("/?humanReplay=1"); } catch(reason){ setError(reason instanceof Error?reason.message:String(reason)); setBusy(false); } }
+  function openReplay(){ if(!state) return; window.location.assign(`/replay?session=${encodeURIComponent(state.session_id)}`); }
 
   function changePendingGem(gem:GemName,delta:number){
     const candidate={...pendingTake,[gem]:Math.max(0,pendingTake[gem]+delta)};
@@ -182,6 +179,6 @@ export default function HumanPlayPage() {
         </>}
       </aside>
     </section>:null}
-    {!state?<><section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint and start immediately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={humanSeat} onChange={event=>setHumanSeat(Number(event.target.value))} disabled={!hostOnline||busy}><option value={0}>P0 · first</option><option value={1}>P1 · second</option></select></label><label>Game seed<input type="number" min="0" value={seed} onChange={event=>setSeed(Number(event.target.value))} disabled={!hostOnline||busy}/></label><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Start Splendor Studio.cmd in the project folder.`}</small></section><section className="recent-games"><span className="section-kicker">RECENT VERIFIED GAMES</span><h2>Review an earlier game</h2>{recentGames.length?<div className="recent-game-list">{recentGames.slice(0,8).map(game=><article key={game.session_id}><div><strong>{game.session_id}</strong><small>{game.error??`${game.scores?.join(" – ")??"—"} · ${game.opponent??"unknown opponent"}`}</small></div><div><span>{game.verification??"unreadable"}</span><small>{game.available_reviews?.length??0} cached reviews</small>{game.verification==="verified"?<Link href={`/review?session=${encodeURIComponent(game.session_id)}&seat=${game.human_seat??0}`}>Review →</Link>:null}</div></article>)}</div>:<p>No verified local games yet.</p>}</section></>:null}
+    {!state?<><section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint and start immediately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={humanSeat} onChange={event=>setHumanSeat(Number(event.target.value))} disabled={!hostOnline||busy}><option value={0}>P0 · first</option><option value={1}>P1 · second</option></select></label><label>Game seed<input type="number" min="0" value={seed} onChange={event=>setSeed(Number(event.target.value))} disabled={!hostOnline||busy}/></label><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Start Splendor Studio.cmd in the project folder.`}</small></section><section className="recent-games"><span className="section-kicker">HISTORY</span><h2>Earlier games</h2><p>All saved human vs engine games — view or review them — live on the <Link href="/">Games</Link> page.</p></section></>:null}
   </main>;
 }

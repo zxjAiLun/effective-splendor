@@ -12,8 +12,8 @@ use splendor_agent::{
 };
 use splendor_analysis::{
     analyze_replay_determinization_v2_with_progress, analyze_replay_neural_v2_with_progress,
-    analyze_replay_s3_v2_with_progress, review_cache_key_v2, AnalysisTraceV2, ReviewerConfigV2,
-    ReviewerIdentityV2, ReviewerRegistryV1,
+    analyze_replay_s3_v2_with_progress, review_cache_key_v2, AnalysisTraceV2, RefereeRevealV1,
+    ReviewerConfigV2, ReviewerIdentityV2, ReviewerRegistryV1,
 };
 use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, InboundEvent};
 use splendor_catalog::{all_cards, all_nobles, CardId, GemColor, NobleId, Tier};
@@ -29,8 +29,10 @@ use splendor_protocol::{
     parse_client_line, ClientMessage, ObservationMeta, RecipientMeta, RequestMeta, ServerMessage,
     ServerMeta, PROTOCOL_VERSION,
 };
-use splendor_replay::{replay_document_hash_v1, verify_replay, ReplayRecorder, ReplayV1};
-use splendor_search::SearchConfigV1;
+use splendor_replay::{
+    replay_document_hash_v1, verify_replay, verify_replay_trace, ReplayRecorder, ReplayV1,
+};
+use splendor_search::{canonical_order, SearchConfigV1};
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
@@ -349,6 +351,40 @@ struct HumanReplayArchiveV1<'a> {
     catalog: PublicCatalogV1,
 }
 
+/// One reconstructed decision frame of a historical human replay.
+///
+/// Rebuilt from the verified ReplayV1 alone: the player view is the recorded
+/// actor's own observation, the legal actions are canonical, and the referee
+/// reveal is display-only data that must never be fed to an agent.
+#[derive(Debug, serde::Serialize)]
+struct HistoricalReplayFrameV1 {
+    ply: u32,
+    actor: PlayerId,
+    player_view: Observation,
+    legal_actions: Vec<Action>,
+    recorded_action: Action,
+    referee_reveal: RefereeRevealV1,
+}
+
+/// Read-only bundle for `GET /replays/{session_id}` (archive v2).
+///
+/// The reviewer-free counterpart of the in-session [`HumanReplayArchiveV1`]:
+/// every frame is reconstructed from the authoritative ReplayV1 verifier, so
+/// the viewer never depends on UI frames saved at play time.
+#[derive(Debug, serde::Serialize)]
+struct HistoricalReplayArchiveV2<'a> {
+    format: &'static str,
+    version: u32,
+    session_id: &'a str,
+    opponent: Option<String>,
+    human_seat: Option<u8>,
+    player_count: u8,
+    replay_document_hash: String,
+    replay: &'a ReplayV1,
+    frames: Vec<HistoricalReplayFrameV1>,
+    catalog: PublicCatalogV1,
+}
+
 #[derive(Debug, serde::Serialize)]
 struct PublicCatalogCardV1 {
     id: CardId,
@@ -392,6 +428,68 @@ fn public_catalog() -> PublicCatalogV1 {
             })
             .collect(),
     }
+}
+
+/// Rebuild every display frame from the ReplayV1 alone. Pure: no filesystem,
+/// no reviewer and no AI — the only computation is the authoritative replay
+/// verification, and the recorded action of every frame is re-checked against
+/// the engine's canonical legal set.
+fn build_historical_replay_archive<'a>(
+    replay: &'a ReplayV1,
+    session_id: &'a str,
+    opponent: Option<String>,
+    human_seat: Option<u8>,
+) -> Result<HistoricalReplayArchiveV2<'a>, String> {
+    let verified = verify_replay_trace(replay)
+        .map_err(|error| format!("replay verification failed: {error}"))?;
+    if verified.positions.len() != replay.steps.len() {
+        return Err("verified trace length differs from replay".into());
+    }
+    let replay_document_hash =
+        replay_document_hash_v1(replay).map_err(|error| error.to_string())?;
+    let mut frames = Vec::with_capacity(verified.positions.len());
+    for position in &verified.positions {
+        if position.state.is_terminal() {
+            return Err(format!("replay position {} is terminal", position.ply));
+        }
+        if position.state.current_player != position.recorded_actor {
+            return Err(format!(
+                "replay position {} actor does not match its state",
+                position.ply
+            ));
+        }
+        let legal_actions = canonical_order(&position.state.legal_actions());
+        if !legal_actions.contains(&position.recorded_action) {
+            return Err(format!(
+                "recorded action at ply {} is not in the legal set",
+                position.ply
+            ));
+        }
+        frames.push(HistoricalReplayFrameV1 {
+            ply: position.ply,
+            actor: position.recorded_actor,
+            player_view: position.state.observation(position.recorded_actor),
+            legal_actions,
+            recorded_action: position.recorded_action,
+            referee_reveal: RefereeRevealV1 {
+                seed: position.state.seed,
+                decks: position.state.decks.clone(),
+                players: position.state.players.clone(),
+            },
+        });
+    }
+    Ok(HistoricalReplayArchiveV2 {
+        format: "effective-splendor-human-replay-archive",
+        version: 2,
+        session_id,
+        opponent,
+        human_seat,
+        player_count: replay.player_count,
+        replay_document_hash,
+        replay,
+        frames,
+        catalog: public_catalog(),
+    })
 }
 
 #[derive(serde::Serialize)]
@@ -1099,6 +1197,32 @@ impl StudioHost {
         }))
         .map_err(|error| error.to_string())
     }
+
+    /// Reconstruct one historical replay from disk for the read-only viewer.
+    /// Never runs a reviewer and never reads stored UI frames: the ReplayV1 is
+    /// re-verified and every frame is rebuilt from it.
+    fn historical_replay(&self, session_id: &str) -> Result<String, String> {
+        let session_id = sanitize_session_id(session_id)?;
+        let human_play_dir = Path::new(HUMAN_PLAY_DIR);
+        let replay_path = human_play_dir.join(format!("{session_id}.replay.json"));
+        if !replay_path.is_file() {
+            return Err(format!("unknown session `{session_id}`"));
+        }
+        let replay = read_replay_file(&replay_path)?;
+        let meta = read_human_meta(&human_play_dir.join(format!("{session_id}.meta.json")));
+        let opponent = meta
+            .as_ref()
+            .and_then(|value| value.get("opponent"))
+            .and_then(|value| value.as_str())
+            .map(str::to_string);
+        let human_seat = meta
+            .as_ref()
+            .and_then(|value| value.get("human_seat"))
+            .and_then(|value| value.as_u64())
+            .and_then(|value| u8::try_from(value).ok());
+        let archive = build_historical_replay_archive(&replay, &session_id, opponent, human_seat)?;
+        serde_json::to_string(&archive).map_err(|error| error.to_string())
+    }
 }
 
 pub fn run_studio_host(args: &[String]) -> i32 {
@@ -1720,6 +1844,10 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         "GET" if request.path == "/recent-games" => {
             return respond_result(&mut stream, host.recent_games());
         }
+        "GET" if request.path.starts_with("/replays/") => {
+            let session_id = &request.path["/replays/".len()..];
+            return respond_result(&mut stream, host.historical_replay(session_id));
+        }
         "GET" if request.path == "/experiment-replays" => {
             return respond_result(&mut stream, host.experiment_replays_index());
         }
@@ -2302,8 +2430,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            session_default.frames[0].recorded_action,
-            standalone_first_action,
+            session_default.frames[0].recorded_action, standalone_first_action,
             "session default S3 first action must equal standalone S3"
         );
 
@@ -2498,6 +2625,50 @@ mod tests {
     }
 
     #[test]
+    fn historical_replay_archive_rebuilds_every_frame_from_the_replay() {
+        let (_, replay) = splendor_replay::record_random_game(2, 42, 9).unwrap();
+        let archive = build_historical_replay_archive(
+            &replay,
+            "human-test-session",
+            Some("Test Opponent".into()),
+            Some(1),
+        )
+        .unwrap();
+        assert_eq!(archive.format, "effective-splendor-human-replay-archive");
+        assert_eq!(archive.version, 2);
+        assert_eq!(archive.player_count, 2);
+        assert_eq!(archive.frames.len(), replay.steps.len());
+        for (index, frame) in archive.frames.iter().enumerate() {
+            let step = &replay.steps[index];
+            assert_eq!(frame.ply, index as u32);
+            assert_eq!(frame.actor, step.actor);
+            assert_eq!(frame.recorded_action, step.action);
+            assert_eq!(frame.player_view.viewer, frame.actor);
+            assert!(frame.legal_actions.contains(&frame.recorded_action));
+            assert_eq!(frame.referee_reveal.seed, replay.seed);
+            assert_eq!(
+                frame.referee_reveal.players.len(),
+                replay.player_count as usize
+            );
+        }
+        // The bundle must serialize for the wire without loss.
+        let value = serde_json::to_value(&archive).unwrap();
+        assert_eq!(
+            value["frames"].as_array().unwrap().len(),
+            replay.steps.len()
+        );
+    }
+
+    #[test]
+    fn historical_replay_archive_rejects_a_tampered_replay() {
+        let (_, mut replay) = splendor_replay::record_random_game(2, 42, 9).unwrap();
+        replay.steps[0].action = Action::Pass;
+        let error =
+            build_historical_replay_archive(&replay, "human-test-session", None, None).unwrap_err();
+        assert!(error.contains("replay verification failed"), "{error}");
+    }
+
+    #[test]
     fn review_creation_fails_closed_for_unsupported_player_counts() {
         // 2p -> S3 default; 3/4p -> M07 default; an explicit S3 selection on
         // a 3/4p replay must be rejected by the host BEFORE any job starts.
@@ -2527,7 +2698,10 @@ mod tests {
         let m07 = registry.entry("m07-determinization-champion").unwrap();
 
         assert!(ensure_reviewer_supported(s3, 2).is_ok());
-        assert_eq!(registry.default_entry(2).unwrap().id, splendor_analysis::S3_REVIEWER_ID);
+        assert_eq!(
+            registry.default_entry(2).unwrap().id,
+            splendor_analysis::S3_REVIEWER_ID
+        );
         for player_count in [3u8, 4] {
             let error = ensure_reviewer_supported(s3, player_count).unwrap_err();
             assert!(

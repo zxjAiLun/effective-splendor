@@ -4,7 +4,7 @@ const BONUSES = ["White", "Blue", "Green", "Red", "Black"];
 const HASH = /^[0-9a-f]{64}$/;
 
 function fail(path, message) {
-  throw new Error(`Invalid AnalysisTraceV1 at ${path}: ${message}`);
+  throw new Error(`Invalid replay data at ${path}: ${message}`);
 }
 
 function object(value, path) {

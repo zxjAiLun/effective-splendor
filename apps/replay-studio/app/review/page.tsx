@@ -314,7 +314,7 @@ export default function ReviewPage() {
         <div className="header-actions">
           <a className="studio-link" href="/play">Play vs AI</a>
           <a className="studio-link" href="/ratings">Rating Studio</a>
-          <Link className="studio-link" href="/">Advanced import</Link>
+          <Link className="studio-link" href="/">Games</Link>
           <button className="icon-button" onClick={() => changeFrame(frameIndex - 1)} disabled={frameIndex === 0} aria-label="Previous ply">←</button>
           <button className="icon-button" onClick={() => changeFrame(frameIndex + 1)} disabled={frameIndex >= frames.length - 1} aria-label="Next ply">→</button>
         </div>
