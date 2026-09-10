@@ -6,6 +6,7 @@
 - **Owner**: PI Coding Agent  
 - **Date**: 2026-09-10  
 - **Implementation baseline**: `6abc3fa` (pre-change `main` == `origin/main`); the working tree already carried the additive `S3Decision` field change and this document as untracked.
+- **Code commit**: `0a4d6e8` ("S3 Review Integration v1"), pushed to `origin/main`; test-cleanup follow-up `905ef5f` (unused test bindings only, no behavior change). All suites below were re-run green after the cleanup.
 - **Original round baseline**: `d8b3557` (Play closed, Review untouched)
 - **Design direction**: Lean, honest S3 policy recommendation only (no new Arena, no new strength research)  
 - **Implementation contract**: Use existing S3 decision API (`s3_decide`, `s3_comparison`), minimal `AnalysisTraceV2` extension, sequential per-seat RNG, information-safe inputs only.
