@@ -8,10 +8,6 @@ mod arena_command;
 mod atomic_output;
 mod branch_command;
 mod determinization_analysis_command;
-mod s1_probe_command;
-mod s2b_scope_command;
-mod s3_decide_command;
-mod s2_census_command;
 mod eval_command;
 mod evaluation_analysis_command;
 pub mod experiment_replays;
@@ -29,9 +25,13 @@ mod m47s_residual_command;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
+mod s1_probe_command;
+mod s2_census_command;
+mod s2b_scope_command;
+mod s3_decide_command;
 mod search_command;
-mod studio_league_command;
 mod self_play_v2_command;
+mod studio_league_command;
 mod teacher_target_command;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -162,8 +162,11 @@ fn main() {
         Some("rating-run") => std::process::exit(rating_command::run_rating_run(&argv[2..])),
         Some("rating-report") => std::process::exit(rating_command::run_rating_report(&argv[2..])),
         Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
-        Some("studio-league-inventory") => {
-            std::process::exit(studio_league_command::run_studio_league_inventory(&argv[2..]))
+        Some("studio-league-inventory") => std::process::exit(
+            studio_league_command::run_studio_league_inventory(&argv[2..]),
+        ),
+        Some("studio-league-dry-run") => {
+            std::process::exit(studio_league_command::run_studio_league_dry_run(&argv[2..]))
         }
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("train-policy-value") => {
@@ -194,9 +197,7 @@ fn main() {
         Some("s2-census") => std::process::exit(s2_census_command::run_s2_census(&argv[2..])),
         Some("s2b-scope") => std::process::exit(s2b_scope_command::run_s2b_scope(&argv[2..])),
         Some("s3-decide") => std::process::exit(s3_decide_command::run_s3_decide(&argv[2..])),
-        Some("agent-s3-rollout") => {
-            std::process::exit(arena_command::agent_s3_rollout(&argv[2..]))
-        }
+        Some("agent-s3-rollout") => std::process::exit(arena_command::agent_s3_rollout(&argv[2..])),
         Some("agent-s3-rollout-profile") => {
             std::process::exit(profile_agent::agent_s3_rollout_profile(&argv[2..]))
         }

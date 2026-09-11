@@ -18,8 +18,8 @@
 //! `skip_segments` prunes corpora that are irrelevant to the ledger.
 
 use crate::error::Result;
+use crate::replay_index::{collect_corpus_files, CorpusFile, CorpusRoot, ReplayContentIndexV1};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -132,33 +132,6 @@ impl InventoryReportV1 {
     }
 }
 
-fn is_skipped(path: &Path, skip_segments: &[String]) -> bool {
-    path.components().any(|component| {
-        let text = component.as_os_str().to_string_lossy();
-        skip_segments
-            .iter()
-            .any(|skip| text.contains(skip.as_str()))
-    })
-}
-
-fn collect_json(root: &Path, config: &InventoryScanConfig, out: &mut Vec<PathBuf>) {
-    let entries = match std::fs::read_dir(root) {
-        Ok(entries) => entries,
-        Err(_) => return,
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if is_skipped(&path, &config.skip_segments) {
-            continue;
-        }
-        if path.is_dir() {
-            collect_json(&path, config, out);
-        } else if path.extension().and_then(|e| e.to_str()) == Some("json") {
-            out.push(path);
-        }
-    }
-}
-
 fn as_string(value: &serde_json::Value, key: &str) -> Option<String> {
     value.get(key).and_then(|v| v.as_str()).map(str::to_string)
 }
@@ -167,18 +140,14 @@ fn as_u64(value: &serde_json::Value, key: &str) -> Option<u64> {
     value.get(key).and_then(|v| v.as_u64())
 }
 
-fn display_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
-}
-
 /// Read a document, honouring the size bound.
 fn read_document(path: &Path, config: &InventoryScanConfig) -> Option<serde_json::Value> {
     let size = std::fs::metadata(path).ok()?.len();
     if size > config.max_document_bytes {
         return None;
     }
-    let text = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str(&text).ok()
+    let bytes = std::fs::read(path).ok()?;
+    serde_json::from_slice(&bytes).ok()
 }
 
 /// Walk the configured roots and summarise every match-shaped document found.
@@ -189,20 +158,22 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
         roots: config.roots.clone(),
         ..Default::default()
     };
-    let mut paths: Vec<PathBuf> = Vec::new();
-    for root in &config.roots {
-        collect_json(Path::new(root), config, &mut paths);
-    }
-    paths.sort();
-    report.documents_seen = paths.len() as u64;
+    let corpus_roots: Vec<CorpusRoot> = config
+        .roots
+        .iter()
+        .map(|s| CorpusRoot::from_spec(s))
+        .collect();
+    let files = collect_corpus_files(&corpus_roots, &config.skip_segments)?;
+    report.documents_seen = files.len() as u64;
 
-    // ---- pass 1: index the corpus, and build the replay binding index ----
-    let mut replay_final_index: BTreeMap<String, PathBuf> = BTreeMap::new();
-    let mut replay_shas: BTreeSet<String> = BTreeSet::new();
-    let mut arena_paths: Vec<PathBuf> = Vec::new();
+    // ---- pass 1: identify report documents and build the duplicate-preserving
+    // ReplayV1 content index used by historical migration. This is the same
+    // corpus traversal as the inventory scan: no second 143k-file walk. ----
+    let mut replay_index = ReplayContentIndexV1::default();
+    let mut arena_files: Vec<CorpusFile> = Vec::new();
 
-    for path in &paths {
-        let size = match std::fs::metadata(path) {
+    for file in &files {
+        let size = match std::fs::metadata(&file.filesystem_path) {
             Ok(meta) => meta.len(),
             Err(_) => continue,
         };
@@ -210,14 +181,14 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
             report.documents_skipped_too_large += 1;
             continue;
         }
-        let text = match std::fs::read_to_string(path) {
-            Ok(text) => text,
+        let bytes = match std::fs::read(&file.filesystem_path) {
+            Ok(bytes) => bytes,
             Err(_) => {
                 report.documents_unparseable += 1;
                 continue;
             }
         };
-        let value: serde_json::Value = match serde_json::from_str(&text) {
+        let value: serde_json::Value = match serde_json::from_slice(&bytes) {
             Ok(value) => value,
             Err(_) => {
                 report.documents_unparseable += 1;
@@ -228,31 +199,34 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
         match value.get("format").and_then(|v| v.as_str()).unwrap_or("") {
             REPLAY_FORMAT => {
                 report.replay_documents += 1;
-                replay_shas.insert(hex::encode(Sha256::digest(text.as_bytes())));
-                if let Some(hash) = value.get("final_state_hash").and_then(|v| v.as_str()) {
-                    // First writer wins; duplicates are counted elsewhere.
-                    replay_final_index
-                        .entry(hash.to_string())
-                        .or_insert_with(|| path.clone());
-                }
+                replay_index.index_replay_document(
+                    &file.logical_path,
+                    Some(&file.filesystem_path),
+                    &bytes,
+                )?;
             }
             EVALUATION_REPORT_FORMAT => report.evaluation_report_documents += 1,
             ARENA_REPORT_FORMAT => {
                 report.arena_report_documents += 1;
-                arena_paths.push(path.clone());
+                arena_files.push(file.clone());
             }
             _ => {}
         }
     }
-    report.distinct_replay_document_sha256 = replay_shas.len() as u64;
-    report.distinct_replay_document_final_hash = replay_final_index.len() as u64;
+    replay_index.finish();
+    report.distinct_replay_document_sha256 = replay_index
+        .entries()
+        .flat_map(|(_, candidates)| candidates.iter().map(|item| item.document_sha256.as_str()))
+        .collect::<BTreeSet<_>>()
+        .len() as u64;
+    report.distinct_replay_document_final_hash = replay_index.distinct_final_state_hashes() as u64;
 
     // ---- pass 2: per-match rows and joins ----
     let mut replay_final_hashes: BTreeMap<String, u64> = BTreeMap::new();
     let mut game_ids: BTreeMap<String, u64> = BTreeMap::new();
 
-    for path in &arena_paths {
-        let Some(value) = read_document(path, config) else {
+    for file in &arena_files {
+        let Some(value) = read_document(&file.filesystem_path, config) else {
             continue;
         };
         let outcome = value
@@ -365,21 +339,24 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
             .unwrap_or_default();
 
         // (a) colocated convention: `<stem>.report.json` beside `<stem>.replay.json`.
-        let colocated = path
+        let colocated = file
+            .filesystem_path
             .file_name()
             .and_then(|name| name.to_str())
             .and_then(|name| name.strip_suffix(".report.json"))
-            .map(|stem| path.with_file_name(format!("{stem}.replay.json")))
+            .map(|stem| {
+                file.filesystem_path
+                    .with_file_name(format!("{stem}.replay.json"))
+            })
             .filter(|candidate| candidate.is_file());
 
         // (b) the binding that actually matters: content join on final_state_hash.
+        // A terminal hash can have several exact ReplayV1 documents. Inventory
+        // reports one deterministic representative for compatibility, while the
+        // migration resolver consumes the full candidate list.
         let bound = replay_final_hash
-            .as_ref()
-            .and_then(|hash| replay_final_index.get(hash).cloned());
-        let bound_sha = bound
-            .as_ref()
-            .and_then(|path| std::fs::read(path).ok())
-            .map(|bytes| hex::encode(Sha256::digest(&bytes)));
+            .as_deref()
+            .and_then(|hash| replay_index.candidates(hash).first());
 
         match (&colocated, &bound) {
             (Some(_), _) => {
@@ -402,8 +379,16 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
             }
         }
 
+        let colocated_logical = colocated.map(|_| {
+            if file.logical_path.ends_with(".report.json") {
+                file.logical_path.replace(".report.json", ".replay.json")
+            } else {
+                file.logical_path.clone()
+            }
+        });
+
         report.rows.push(InventoryMatchRowV1 {
-            report_path: display_path(path),
+            report_path: file.logical_path.clone(),
             game_id,
             status: Some(status),
             player_count: player_count.map(|v| v as u8),
@@ -414,9 +399,9 @@ pub fn scan(config: &InventoryScanConfig) -> Result<InventoryReportV1> {
             completed_plies,
             scores,
             winners,
-            colocated_replay_path: colocated.as_ref().map(|p| display_path(p)),
-            replay_document_path: bound.as_ref().map(|p| display_path(p)),
-            replay_document_sha256: bound_sha,
+            colocated_replay_path: colocated_logical,
+            replay_document_path: bound.map(|candidate| candidate.logical_path.clone()),
+            replay_document_sha256: bound.map(|candidate| candidate.document_sha256.clone()),
         });
     }
 

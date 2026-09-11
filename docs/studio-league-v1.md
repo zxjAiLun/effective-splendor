@@ -1,14 +1,14 @@
 # Studio League v1 — Participant + Match Ledger + Studio Elo + statistics
 
-- **Status**: `AUTHORIZED` (owner pre-authorized implementation end-to-end: "直接授权实施，不需要再回来问设计确认").
-  **Commit A** landed as `9f88aca`; the owner's first review returned **`REPAIR_REQUIRED`**
-  (P0=0, P1=5) and **Repair 1** landed as `714bc5f`. The owner's re-review of `714bc5f` again
-  returned **`REPAIR_REQUIRED`** (P0=0, P1=4, P2=1) on authority / ingestion seams, and
-  **Commit A Repair 2 is `IMPLEMENTED` / `VERIFIED`**. The owner's review of `2501fe0`
-  confirmed its four principal repairs and returned a narrow **close patch / Repair 2b
-  `REPAIR_REQUIRED`** (P0=0, P1=3, P2=1); Repair 2b is now `IMPLEMENTED` / `VERIFIED` — see below.
-  Commits B–E are not started. Nothing here is `ACCEPTED`.
-- **Baseline**: `3468046` (`main == origin/main`; Replay Studio Product Shell / History v1 ACCEPTED/CLOSED).
+- **Status**: `AUTHORIZED`.
+  **Commit A** landed as `9f88aca` → Repair 1 `714bc5f` → Repair 2 `2501fe0` → Repair 2b `44c704b`.
+  The owner independently reviewed `44c704b` and declared **Commit A — ACCEPTED / CLOSED**
+  (P0=0/P1=0).
+  **Commit B — Historical Migration** authorized: Slice 1 (ReplayV1 duplicate-preserving content index,
+  portable logical source paths, content-only arena report resolver, canonical record builder outside
+  `ledger.rs`, read-only 48,273-match dry-run, and forward/reverse root-order determinism digest gate)
+  is now `IMPLEMENTED` / `VERIFIED`. No derived SQLite database has been created or modified yet.
+- **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
 
@@ -260,6 +260,18 @@ Additional invariants introduced by this round:
   could be mistaken for first launch; aliases could target another alias; and two public write APIs
   bypassed the manifest/protocol authorities. Repair 2b seals those three boundaries, adds exactly
   two targeted tests, fixes the duplicated invariant numbering, and does not start commit B.
+- 2026-09-11 (owner final review of `44c704b`): **Commit A ACCEPTED / CLOSED** (P0=0 / P1=0).
+  Authoritative closure statements confirmed: corrupt identity evidence never creates a new identity;
+  every accepted alias points directly to one canonical identity; authored identity / Elo mutation
+  has no normal public bypass. Commit B authorized.
+- 2026-09-11: **Commit B Slice 1 (Content Index + Resolver + Canonical Record Builder + Full Dry-Run)**
+  implemented and verified. Replay content index preserves all candidates per `final_state_hash`;
+  source identity uses portable `logical namespace + normalized relative path` (no machine drive letters
+  or repo roots); resolver verifies ReplayV1 strictly by content and binds candidates deterministically
+  by `(document_sha256, logical_path)` without filename fallback; aborted/truncated remain valid
+  result-only records; canonical builder lives outside `ledger.rs`; full read-only dry-run executed on
+  all 48,273 historical reports with 0 builder failures and 0 malformed records; root-order determinism
+  gate proven identical between forward and reverse directory traversals.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -486,9 +498,41 @@ Repair 1 procedure.
 GitHub had no status checks / workflow runs for `2501fe0`, so this section reports local evidence
 only and makes no cloud-CI claim.
 
+### Commit B Slice 1 — Full Historical Canonical Record Dry-Run (2026-09-11)
+
+| Gate / Characteristic | Actual | Expected / Notes | Verdict |
+| --- | ---: | ---: | :---: |
+| source reports | 48,273 | 48,273 | **PASS** |
+| canonical records built | 48,273 | 48,273 | **PASS** |
+| builder failures | 0 | 0 | **PASS** |
+| completed matches | 48,050 | 48,050 | **PASS** |
+| completed + Verified replay | 48,050 | 48,050 | **PASS** |
+| completed replay unresolved | 0 | 0 | **PASS** |
+| aborted matches | 221 | 221 | **PASS** |
+| truncated matches | 2 | 2 | **PASS** |
+| unavailable replay | 223 | 223 | **PASS** |
+| malformed canonical records | 0 | 0 | **PASS** |
+| completed with >1 index candidate | 15,682 | reported | informational |
+| completed with >1 verified candidate | 15,682 | reported | informational |
+| selected distinct replay document SHA | 37,655 | reported | informational |
+| distinct source document SHA | 42,521 | reported | informational |
+| source-document SHA duplicates | 5,752 | reported | informational |
+| unmapped seats | 406 | reported (214 matches) | informational |
+| self-matches (1v1 same participant) | 31,598 | reported | informational |
+| exact participant identities | 68 | reported | informational |
+| canonical-record-set digest (forward) | `7a1ffd615bad76a1753959d602cc055005d757f895cfd24c67b54e628d153e57` | stable projection | **PASS** |
+| reverse-root order digest | `7a1ffd615bad76a1753959d602cc055005d757f895cfd24c67b54e628d153e57` | identical | **PASS** |
+
+Targeted test suite:
+- `cargo test -p splendor-studio-league`: **32 passed / 0 failed** (historical_resolver: 3, league_core: 26, replay_index: 3).
+- `cargo test -p splendor-cli --bin splendor`: **89 passed / 0 failed**.
+- `cargo fmt --check -p splendor-studio-league`: clean.
+
 ## Result and decision
 
-`AUTHORIZED`; implementation in progress. No verdict is claimed.
+Commit A: `ACCEPTED / CLOSED` @ `44c704b`.
+Commit B Slice 1: `IMPLEMENTED / VERIFIED`. Dry-run gates and root-order determinism pass completely.
+Next step: proceed to migration CLI (`ingest_batch_canonical`) on an empty database.
 
 ## Known limitations
 
@@ -504,6 +548,10 @@ only and makes no cloud-CI claim.
 - An alias declared *after* matches were ingested does not retroactively reassign those matches yet;
   Repair 1 makes the mapping load order-independent and makes an alias resolvable before its target
   exists, but reassigning already-ingested history remains commit B's job.
+- 5,752 historical arena reports share byte-for-byte identical document content with another report
+  occurrence, confirming that `(source_kind, source_identity)` with normalized logical path must be
+  the occurrence identity, while `source_document_hash` provides mandatory same-content / idempotency
+  enforcement.
 - `participant_aliases` stores `alias_key -> canonical_identity_key` with no foreign key: the
   manifest is its authority, and an alias target may legitimately be unseen until the corpus
   provides it. The participant id is derived from the canonical key, so nothing has to be
@@ -523,7 +571,6 @@ only and makes no cloud-CI claim.
 
 ## Next authorized gate
 
-Owner re-review of Commit A close patch. If the three closure statements above are accepted,
-Commit A may close and the next authorized implementation is **Commit B historical migration**:
-first build the `final_state_hash` ReplayV1 content index, then bind/import arena reports. This patch
-itself does not start B.
+Full dry-run gate completed and verified (48,273 / 48,050 / 223 / 0 failures / 0 malformed / forward-reverse digest identical).
+Next authorized step: implement migration CLI command to perform `ingest_batch_canonical()` on an
+initially empty derived SQLite database and report post-migration eligibility / rating reconciliation.

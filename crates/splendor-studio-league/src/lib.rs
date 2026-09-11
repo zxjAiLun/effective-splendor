@@ -19,11 +19,13 @@
 pub mod eligibility;
 pub mod elo;
 pub mod error;
+pub mod historical_import;
 pub mod identity_manifest;
 pub mod inventory;
 pub mod ledger;
 pub mod match_record;
 pub mod participant;
+pub mod replay_index;
 pub mod schema;
 
 pub use eligibility::{
@@ -33,6 +35,11 @@ pub use eligibility::{
 };
 pub use elo::{elo_delta, elo_expected_score, pair_score_a, plan_pair_update, PairEloUpdate};
 pub use error::{Result, StudioLeagueError};
+pub use historical_import::{
+    arena_report_to_match_record, compute_canonical_set_digest, parse_arena_report,
+    resolve_arena_report_replay, run_historical_dry_run, HistoricalDryRunConfig,
+    HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
+};
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
     DEFAULT_IDENTITY_MANIFEST_PATH, IDENTITY_MANIFEST_FORMAT, IDENTITY_MANIFEST_VERSION,
@@ -60,6 +67,10 @@ pub use participant::{
     participant, resolve_engine_participant, sync_identity_manifest, unassigned_human_participant,
     EngineIdentityV1, ParticipantKind, ParticipantRow, LOCAL_HUMAN_META_KEY,
     PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
+};
+pub use replay_index::{
+    build_replay_content_index, build_replay_content_index_roots, collect_corpus_files, CorpusFile,
+    CorpusRoot, ReplayContentCandidateV1, ReplayContentIndexV1,
 };
 pub use schema::{
     get_meta, initialise, open_in_memory, open_league, schema_version, set_meta,
