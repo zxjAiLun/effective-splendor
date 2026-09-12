@@ -731,17 +731,21 @@ Studio Elo, not a chronology and not a strength baseline.
   disambiguate, so all 614 unmapped seats (309 matches) stay explicitly unmapped — the ledger
   never guesses an identity to make a match rateable. (Slice 1 inventory values — 223 and
   406/214 — describe the pre-dedup scan and are superseded by the Distinct-Document policy.)
-- `game_id` is not unique (25,979 duplicates), so ingest keys on content identity
-  (`replay_final_hash` / replay document hash) plus source path — never on `game_id`.
+- `game_id` is not unique (25,979 duplicates) and is never a ledger or join key. A historical
+  report's source identity is the document-SHA-derived `historical-sha256:<source_document_hash>`;
+  the replay binds by `replay_final_hash` content, and paths are recorded as provenance only.
 - Replay binding must be by `final_state_hash` content join, not by filename; only 7.4% of matches
   use the colocated naming convention.
-- An alias declared *after* matches were ingested does not retroactively reassign those matches yet;
-  Repair 1 makes the mapping load order-independent and makes an alias resolvable before its target
-  exists, but reassigning already-ingested history remains commit B's job.
-- 5,752 historical arena reports share byte-for-byte identical document content with another report
-  occurrence, confirming that `(source_kind, source_identity)` with normalized logical path must be
-  the occurrence identity, while `source_document_hash` provides mandatory same-content / idempotency
-  enforcement.
+- Alias projection changes never retroactively mutate a non-empty derived database. The manifest is
+  the authority for `participant_aliases`, an alias is resolvable before its target exists, and the
+  mapping is load-order-independent — but applying a manifest change means rebuilding the derived
+  database from the corpus plus the updated manifest; an altered manifest hash on a non-empty ledger
+  is rejected fail-closed.
+- 5,752 historical arena reports are byte-for-byte identical copies of another report document.
+  Under the Distinct-Document Evidence Policy these are provenance copies, not independent
+  occurrences: one distinct document hash is one canonical record, so identical content can never
+  be double-weighted, and `source_document_hash` stays mandatory schema evidence for every
+  ingestable source.
 - `participant_aliases` stores `alias_key -> canonical_identity_key` with no foreign key: the
   manifest is its authority, and an alias target may legitimately be unseen until the corpus
   provides it. The participant id is derived from the canonical key, so nothing has to be
