@@ -6,11 +6,11 @@
 //! - H2: Successor observation is strictly player-view from root_actor perspective
 //! - H3: Blind-information boundary: real hidden-state mutations (ReserveDeck, BuyMarket, ReserveMarket, opponent blind reserve)
 
-use std::path::Path;
 use splendor_core::{
     full_state_hash, observation_hash, Action, GameConfig, Gems, PlayerId, Ruleset, Tier,
 };
 use splendor_replay::{verify_replay, ReplayRecorder, ReplayV1};
+use std::path::Path;
 
 #[test]
 fn test_h0_h1_h2_branch_reconstruction() {
@@ -23,11 +23,13 @@ fn test_h0_h1_h2_branch_reconstruction() {
     );
 
     let probe_val: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(state_dir.join("state-probe.json")).expect("read state-probe.json"),
+        &std::fs::read_to_string(state_dir.join("state-probe.json"))
+            .expect("read state-probe.json"),
     )
     .unwrap();
     let manifest_val: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(state_dir.join("state-manifest.json")).expect("read state-manifest.json"),
+        &std::fs::read_to_string(state_dir.join("state-manifest.json"))
+            .expect("read state-manifest.json"),
     )
     .unwrap();
 
@@ -66,12 +68,14 @@ fn test_h0_h1_h2_branch_reconstruction() {
 
     // H1 and H2 check across actions
     let actions = manifest_val["actions"].as_array().unwrap();
-    assert!(!actions.is_empty(), "H0 fail-closed: actions must not be empty");
+    assert!(
+        !actions.is_empty(),
+        "H0 fail-closed: actions must not be empty"
+    );
 
     for item in actions {
         let action_index = item["action_index"].as_u64().unwrap() as usize;
-        let forced_action: Action =
-            serde_json::from_value(item["forced_action"].clone()).unwrap();
+        let forced_action: Action = serde_json::from_value(item["forced_action"].clone()).unwrap();
 
         let mut child = source_state.clone();
         child.apply(forced_action).unwrap();
@@ -138,7 +142,10 @@ fn test_h3_blind_information_boundary() {
     // Mutation 1A: Mutate deeper unseen cards (swap bottom two cards in Tier 1 deck)
     let mut s_deeper = state.clone();
     let dlen = s_deeper.decks[0].len();
-    assert!(dlen >= 3, "deck must have >= 3 cards for deeper mutation test");
+    assert!(
+        dlen >= 3,
+        "deck must have >= 3 cards for deeper mutation test"
+    );
     s_deeper.decks[0].swap(0, 1); // swap bottom two cards
     s_deeper.apply(act_reserve_deck).unwrap();
     let obs_deeper = s_deeper.observation(PlayerId(0));
@@ -181,7 +188,8 @@ fn test_h3_blind_information_boundary() {
     s2_deeper.apply(act_reserve_market).unwrap();
     let obs_rm_deeper = s2_deeper.observation(PlayerId(0));
     assert_eq!(
-        hash_rm_base, observation_hash(&obs_rm_deeper),
+        hash_rm_base,
+        observation_hash(&obs_rm_deeper),
         "H3 fail: deeper deck mutation leaked in ReserveMarket"
     );
 
@@ -191,7 +199,8 @@ fn test_h3_blind_information_boundary() {
     s2_refill.apply(act_reserve_market).unwrap();
     let obs_rm_refill = s2_refill.observation(PlayerId(0));
     assert_ne!(
-        hash_rm_base, observation_hash(&obs_rm_refill),
+        hash_rm_base,
+        observation_hash(&obs_rm_refill),
         "H3 fail: market refill card mutation must change player-view observation"
     );
 
@@ -217,7 +226,8 @@ fn test_h3_blind_information_boundary() {
     s_bm_deeper.apply(act_buy_market).unwrap();
     let obs_bm_deeper = s_bm_deeper.observation(PlayerId(0));
     assert_eq!(
-        hash_bm_base, observation_hash(&obs_bm_deeper),
+        hash_bm_base,
+        observation_hash(&obs_bm_deeper),
         "H3 fail: deeper deck mutation leaked in BuyMarket"
     );
 
@@ -227,7 +237,8 @@ fn test_h3_blind_information_boundary() {
     s_bm_refill.apply(act_buy_market).unwrap();
     let obs_bm_refill = s_bm_refill.observation(PlayerId(0));
     assert_ne!(
-        hash_bm_base, observation_hash(&obs_bm_refill),
+        hash_bm_base,
+        observation_hash(&obs_bm_refill),
         "H3 fail: BuyMarket refill card mutation must change player-view observation"
     );
 
@@ -236,14 +247,18 @@ fn test_h3_blind_information_boundary() {
     // -----------------------------------------------------------------------
     // State where Player 1 (opponent) has a blind reserve card
     let mut s_opp = state.clone();
-    s_opp.apply(Action::TakeTokens {
-        take: Gems::from_colors([1, 1, 1, 0, 0]),
-        give_back: Gems::ZERO,
-    }).unwrap(); // P0 takes tokens
-    s_opp.apply(Action::ReserveDeck {
-        tier: Tier::One,
-        give_back: Gems::ZERO,
-    }).unwrap(); // P1 blind reserves
+    s_opp
+        .apply(Action::TakeTokens {
+            take: Gems::from_colors([1, 1, 1, 0, 0]),
+            give_back: Gems::ZERO,
+        })
+        .unwrap(); // P0 takes tokens
+    s_opp
+        .apply(Action::ReserveDeck {
+            tier: Tier::One,
+            give_back: Gems::ZERO,
+        })
+        .unwrap(); // P1 blind reserves
 
     let obs_p0_base = s_opp.observation(PlayerId(0));
     let hash_p0_base = observation_hash(&obs_p0_base);

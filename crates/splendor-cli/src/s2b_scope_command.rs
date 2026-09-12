@@ -61,12 +61,12 @@ fn run(args: &[String]) -> Result<(), String> {
             "--out" => &mut out,
             "--game-id" => &mut game_id,
             "--n1-seat" => &mut n1_seat,
-            other if other.starts_with('-') => {
-                return Err(format!("unknown flag `{other}`"))
-            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         };
-        let value = args.get(i + 1).ok_or_else(|| format!("{arg} requires a value"))?;
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{arg} requires a value"))?;
         if slot.is_some() {
             return Err(format!("{arg} given more than once"));
         }
@@ -90,14 +90,12 @@ fn run(args: &[String]) -> Result<(), String> {
             max_nodes: 1,
         },
     };
-    config
-        .validate()
-        .map_err(|e| format!("n1 config: {e}"))?;
+    config.validate().map_err(|e| format!("n1 config: {e}"))?;
 
     let replay_text = std::fs::read_to_string(&input)
         .map_err(|error| format!("cannot read replay {input}: {error}"))?;
-    let replay: ReplayV1 = serde_json::from_str(&replay_text)
-        .map_err(|error| format!("invalid replay: {error}"))?;
+    let replay: ReplayV1 =
+        serde_json::from_str(&replay_text).map_err(|error| format!("invalid replay: {error}"))?;
     let verified =
         verify_replay_trace(&replay).map_err(|error| format!("replay verification: {error}"))?;
 
@@ -107,12 +105,7 @@ fn run(args: &[String]) -> Result<(), String> {
         .open(&out)
         .map_err(|error| format!("cannot open rows file {out}: {error}"))?;
 
-    let winners: Vec<u8> = replay
-        .result
-        .winners
-        .iter()
-        .map(|w| u8::from(*w))
-        .collect();
+    let winners: Vec<u8> = replay.result.winners.iter().map(|w| u8::from(*w)).collect();
 
     let mut policy = DeterminizationAgentPolicyV1::new(config).map_err(|e| e.to_string())?;
 
@@ -185,8 +178,7 @@ fn run(args: &[String]) -> Result<(), String> {
             "legal_action_count": legal.len(),
             "winners": winners,
         });
-        writeln!(rows_file, "{row}")
-            .map_err(|error| format!("write row: {error}"))?;
+        writeln!(rows_file, "{row}").map_err(|error| format!("write row: {error}"))?;
     }
     Ok(())
 }

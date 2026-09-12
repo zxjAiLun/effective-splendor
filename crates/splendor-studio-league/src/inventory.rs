@@ -21,7 +21,7 @@ use crate::error::Result;
 use crate::replay_index::{collect_corpus_files, CorpusFile, CorpusRoot, ReplayContentIndexV1};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub const INVENTORY_REPORT_FORMAT: &str = "effective-splendor-studio-league-inventory";
 pub const INVENTORY_REPORT_VERSION: u32 = 1;

@@ -102,3 +102,59 @@ fn a_document_claiming_replay_v1_but_failing_its_schema_is_rejected() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn logical_path_collision_fails_closed_and_overlapping_root_dedups() {
+    let dir = temp_dir("collision-check");
+    let _ = std::fs::remove_dir_all(&dir);
+    let root1 = dir.join("dir1");
+    let root2 = dir.join("dir2");
+    std::fs::create_dir_all(&root1).unwrap();
+    std::fs::create_dir_all(&root2).unwrap();
+
+    let (_, replay1) = record_random_game(2, 61, 81).unwrap();
+    let (_, replay2) = record_random_game(2, 62, 82).unwrap();
+    // Write distinct files with the exact same relative filename in both roots
+    std::fs::write(
+        root1.join("same.json"),
+        serde_json::to_vec(&replay1).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        root2.join("same.json"),
+        serde_json::to_vec(&replay2).unwrap(),
+    )
+    .unwrap();
+
+    // Configure both roots to map to the SAME logical namespace "shared"
+    let roots_colliding = vec![
+        splendor_studio_league::CorpusRoot::new("shared", &root1),
+        splendor_studio_league::CorpusRoot::new("shared", &root2),
+    ];
+    let err =
+        splendor_studio_league::build_replay_content_index_roots(&roots_colliding, 1_000_000, &[])
+            .unwrap_err();
+    assert!(
+        matches!(err, StudioLeagueError::Invalid(_)),
+        "distinct physical files mapping to same logical path must fail closed, got {err}"
+    );
+
+    // Overlapping roots pointing to the identical physical file must dedup safely
+    let roots_overlapping = vec![
+        splendor_studio_league::CorpusRoot::new("shared", &root1),
+        splendor_studio_league::CorpusRoot::new("shared", &root1),
+    ];
+    let ok = splendor_studio_league::build_replay_content_index_roots(
+        &roots_overlapping,
+        1_000_000,
+        &[],
+    )
+    .unwrap();
+    assert_eq!(
+        ok.documents_indexed(),
+        1,
+        "overlapping roots for identical file must dedup to exactly 1"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}

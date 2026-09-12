@@ -21,7 +21,10 @@ use crate::eligibility::{evaluate_eligibility, EligibilityInput, RatingEligibili
 use crate::elo::{pair_score_a, plan_pair_update};
 use crate::error::{Result, StudioLeagueError};
 use crate::match_record::{ReplayVerification, StudioMatchRecordV1};
-use crate::participant::{derived_participant_id, resolve_engine_participant, ParticipantKind};
+use crate::participant::{
+    derived_participant_id, resolve_engine_participant, resolve_engine_participant_with_key,
+    ParticipantKind,
+};
 use crate::schema::{get_meta, set_meta, RATING_CONFIG_META_KEY};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
@@ -370,7 +373,16 @@ fn ingest_match_in_tx(
                     .display_name
                     .clone()
                     .unwrap_or_else(|| identity.agent_name.clone());
-                Some(resolve_engine_participant(tx, identity, &name, now)?)
+                // The exact policy identity from the arena's `match-config.json`
+                // (when available) is strictly more specific than the handshake
+                // runtime identity: it also covers the search configuration. Two
+                // seats that ran the same binary with different budgets are two
+                // participants, never a fabricated self-match.
+                let id = match &seat.policy_identity_key {
+                    Some(key) => resolve_engine_participant_with_key(tx, key, &name, now)?,
+                    None => resolve_engine_participant(tx, identity, &name, now)?,
+                };
+                Some(id)
             }
             (None, None) => None,
         };

@@ -30,14 +30,13 @@ use splendor_replay::{verify_replay, verify_rollout_prefix};
 
 use crate::atomic_output;
 use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
+use splendor_determinization_agent::run_n1_buy_overlay_agent_v1;
+use splendor_determinization_agent::s3_agent::run_s3_agent_v1;
 use splendor_determinization_agent::{
     run_determinization_agent_attribution_v1, run_determinization_agent_with_identity_v1,
     run_determinization_agent_with_stats_v1, DETERMINIZATION_AGENT_NAME,
     DETERMINIZATION_AGENT_VERSION,
 };
-use splendor_determinization_agent::run_n1_buy_overlay_agent_v1;
-use splendor_determinization_agent::s3_agent::run_s3_agent_v1;
-use splendor_search::AttributionProfile;
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_ismcts::IsmctsConfigV1;
 use splendor_ismcts_agent::run_ismcts_agent_v1;
@@ -47,6 +46,7 @@ use splendor_neural_agent::{
     run_neural_ismcts_agent_v1, GpuInferenceConfigV1,
 };
 use splendor_neural_search::{NeuralAblationModeV1, NeuralIsmctsConfigV1};
+use splendor_search::AttributionProfile;
 use splendor_search::SearchConfigV1;
 
 /// Maximum size of an arena config document, in bytes. A larger file is
@@ -770,16 +770,23 @@ pub fn agent_determinization(args: &[String]) -> i32 {
         print_stdout(AGENT_DETERMINIZATION_USAGE);
         return 0;
     }
-    let (config, runtime_name, runtime_version, attribution_profile, stats_out, emit_depth_histogram, heuristic_buy_overlay) =
-        match parse_agent_determinization_args(args) {
-            Ok(parsed) => parsed,
-            Err(msg) => {
-                let mut stderr = io::stderr().lock();
-                let _ = writeln!(stderr, "error: {msg}");
-                let _ = stderr.flush();
-                return 1;
-            }
-        };
+    let (
+        config,
+        runtime_name,
+        runtime_version,
+        attribution_profile,
+        stats_out,
+        emit_depth_histogram,
+        heuristic_buy_overlay,
+    ) = match parse_agent_determinization_args(args) {
+        Ok(parsed) => parsed,
+        Err(msg) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {msg}");
+            let _ = stderr.flush();
+            return 1;
+        }
+    };
 
     let stdin = io::stdin();
     let input = BufReader::new(stdin.lock());
@@ -848,13 +855,7 @@ pub fn agent_determinization(args: &[String]) -> i32 {
             identity,
         )
     } else {
-        run_determinization_agent_with_identity_v1(
-            input,
-            output,
-            diagnostics,
-            config,
-            identity,
-        )
+        run_determinization_agent_with_identity_v1(input, output, diagnostics, config, identity)
     };
 
     match res {
@@ -868,13 +869,15 @@ pub fn agent_determinization(args: &[String]) -> i32 {
 /// frozen (root seed 20260812, D=4, P=120, the frozen proposal set).
 pub fn agent_s3_rollout(args: &[String]) -> i32 {
     if wants_help(args) {
-        print_stdout("Usage: splendor agent-s3-rollout
+        print_stdout(
+            "Usage: splendor agent-s3-rollout
 
 The frozen S3 rollout-enhanced heuristic candidate. No flags; identity
 is fully frozen (persistent root RNG seed 20260812 = the standalone
 heuristic stream; fast paths return the ACTUAL standalone heuristic
 action including RNG tie-breaks).
-");
+",
+        );
         return 0;
     }
     if !args.is_empty() {

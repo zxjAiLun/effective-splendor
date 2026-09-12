@@ -25,6 +25,10 @@ pub const UNASSIGNED_HUMAN_KEY: &str = "unassigned-human";
 /// `league_meta` key holding the single local human participant id.
 pub const LOCAL_HUMAN_META_KEY: &str = "local_human_participant_id";
 
+/// `league_meta` key holding the SHA-256 integrity hash of the identity manifest
+/// used to project this derived database.
+pub const IDENTITY_MANIFEST_HASH_META_KEY: &str = "identity_manifest_hash";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ParticipantKind {
@@ -153,8 +157,25 @@ pub fn resolve_engine_participant(
     display_name: &str,
     now: i64,
 ) -> Result<String> {
-    let key = identity.key();
-    let canonical_key = canonical_identity_key(conn, &key)?;
+    resolve_engine_participant_with_key(conn, &identity.key(), display_name, now)
+}
+
+/// Resolve (creating if needed) the engine participant identified by an exact
+/// policy identity `key`.
+///
+/// `resolve_engine_participant` uses the handshake runtime identity
+/// (`agent_name@agent_version`). When the arena's `match-config.json` is
+/// available the league has a strictly better identity — the *policy* identity,
+/// which also covers the search configuration — and passes it here instead. The
+/// two paths share this one implementation so alias resolution and id derivation
+/// can never diverge between them.
+pub fn resolve_engine_participant_with_key(
+    conn: &Connection,
+    key: &str,
+    display_name: &str,
+    now: i64,
+) -> Result<String> {
+    let canonical_key = canonical_identity_key(conn, key)?;
     let participant_id = derived_participant_id(&canonical_key);
     if participant_row_exists(conn, &participant_id)? {
         return Ok(participant_id);
@@ -259,6 +280,17 @@ pub fn local_human_participant(conn: &Connection) -> Result<Option<String>> {
         .optional()?)
 }
 
+/// The identity manifest hash recorded as DB integrity evidence, if one exists.
+pub fn stored_identity_manifest_hash(conn: &Connection) -> Result<Option<String>> {
+    Ok(conn
+        .query_row(
+            "SELECT value FROM league_meta WHERE key = ?1",
+            params![IDENTITY_MANIFEST_HASH_META_KEY],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?)
+}
+
 /// Create the local human profile with an id supplied by the manifest.
 ///
 /// The id is a parameter precisely so it comes from durable user-authored state
@@ -289,12 +321,37 @@ pub(crate) fn ensure_local_human(
 
 /// Project the durable manifest into the derived index: the local human identity
 /// and every explicit alias. Idempotent, and safe to call before any ingest.
+///
+/// Authority invariant: if the ledger already contains historical matches,
+/// an altered manifest hash is rejected. Alias or identity projection cannot
+/// be mutated under existing matches without rebuilding the derived index.
 pub fn sync_identity_manifest(
     conn: &Connection,
     manifest: &IdentityManifestV1,
     now: i64,
 ) -> Result<()> {
     manifest.validate()?;
+    let manifest_hash = manifest.hash()?;
+
+    let match_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM matches", [], |row| row.get(0))
+        .unwrap_or(0);
+    if match_count > 0 {
+        match stored_identity_manifest_hash(conn)? {
+            Some(stored) if stored == manifest_hash => {}
+            Some(stored) => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "identity manifest hash `{manifest_hash}` disagrees with stored database evidence `{stored}` on a non-empty ledger; rebuild the derived database to apply identity or alias changes"
+                )));
+            }
+            None => {
+                return Err(StudioLeagueError::Invalid(
+                    "database is non-empty but has no identity manifest hash integrity evidence; rebuild the derived database".to_string(),
+                ));
+            }
+        }
+    }
+
     if let Some(local) = &manifest.local_human {
         match local_human_participant(conn)? {
             Some(existing) if existing == local.participant_id => {
@@ -324,6 +381,10 @@ pub fn sync_identity_manifest(
             &alias.note,
         )?;
     }
+    conn.execute(
+        "INSERT OR REPLACE INTO league_meta (key, value) VALUES (?1, ?2)",
+        params![IDENTITY_MANIFEST_HASH_META_KEY, manifest_hash],
+    )?;
     Ok(())
 }
 

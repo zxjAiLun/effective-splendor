@@ -8,6 +8,9 @@
 //! Source identity is portable across machines and platforms:
 //! `<logical-namespace>/<relative-path>`, never machine-specific physical paths.
 
+use crate::agent_configuration::{
+    is_diagnostic_configuration, parse_match_configuration, MatchConfigurationV1,
+};
 use crate::canonical_league_order;
 use crate::error::{Result, StudioLeagueError};
 use crate::match_record::{
@@ -124,6 +127,28 @@ pub fn build_match_record_from_parsed(
     report: &ArenaReportV1,
     resolution: HistoricalReplayResolutionV1,
 ) -> Result<StudioMatchRecordV1> {
+    build_match_record_with_configuration(
+        logical_source_path,
+        report_bytes,
+        report,
+        resolution,
+        None,
+    )
+}
+
+/// Build the ledger record, optionally with the arena's `match-config.json`
+/// resolved into a per-seat **policy** identity and an evidence-based study
+/// classification (P1 of the Commit B review).
+///
+/// When `configuration` is `None` the seat identity is the handshake runtime
+/// identity and the match is non-diagnostic, exactly as before.
+pub fn build_match_record_with_configuration(
+    logical_source_path: &str,
+    report_bytes: &[u8],
+    report: &ArenaReportV1,
+    resolution: HistoricalReplayResolutionV1,
+    configuration: Option<&MatchConfigurationV1>,
+) -> Result<StudioMatchRecordV1> {
     if report.agents.len() != report.player_count as usize {
         return Err(StudioLeagueError::Invalid(format!(
             "arena report `{logical_source_path}` declares {} players but carries {} agent seats",
@@ -191,19 +216,28 @@ pub fn build_match_record_from_parsed(
                 )))
             }
         };
+        // When the arena's `match-config.json` was available, its per-seat
+        // *policy* identity (search configuration included) supersedes the
+        // handshake runtime identity, which collapses distinct search budgets
+        // into one string. `configuration` is keyed by `game_id`, so a seat
+        // position maps directly to its resolved identity.
+        let policy_identity_key = configuration
+            .and_then(|c| c.seats.get(seat as usize))
+            .and_then(|s| s.resolved())
+            .map(|identity| identity.key());
         seats.push(StudioMatchSeatV1 {
             seat,
-            display_name: identity
-                .as_ref()
-                .map(|identity| identity.agent_name.clone()),
+            display_name: policy_identity_key
+                .clone()
+                .or_else(|| identity.as_ref().map(|i| i.agent_name.clone())),
             identity,
+            policy_identity_key,
             participant_id: None,
             score: scores.get(seat as usize).copied(),
             rank: ranks.get(seat as usize).copied(),
             won: winners.contains(&seat),
         });
     }
-    seats.sort_by_key(|seat| seat.seat);
 
     let replay = match resolution {
         HistoricalReplayResolutionV1::Verified { candidate, .. } => ReplayBindingV1 {
@@ -216,11 +250,17 @@ pub fn build_match_record_from_parsed(
         HistoricalReplayResolutionV1::ResultOnly => ReplayBindingV1::default(),
     };
 
+    let source_document_hash = hex::encode(Sha256::digest(report_bytes));
+    let source_identity = format!("historical-sha256:{source_document_hash}");
+
     let record = StudioMatchRecordV1 {
         source_kind: "arena_report".to_string(),
-        source_identity: logical_source_path.to_string(),
+        // Historical arena reports use content-derived identity (`historical-sha256:<hash>`)
+        // so identity and canonical league ordering are invariant to archive file location.
+        // `source_path` records the lexicographically first logical path for provenance/debugging.
+        source_identity,
         source_path: Some(logical_source_path.to_string()),
-        source_document_hash: hex::encode(Sha256::digest(report_bytes)),
+        source_document_hash,
         played_at: None,
         ruleset_fingerprint: report.ruleset_fingerprint.clone(),
         engine_version: Some(report.engine_version.clone()),
@@ -230,10 +270,22 @@ pub fn build_match_record_from_parsed(
         completed_plies,
         main_turn_count: None,
         replay,
-        diagnostic: false,
+        diagnostic: configuration.is_some_and(configuration_is_diagnostic),
     };
     record.validate_for_ingest()?;
     Ok(record)
+}
+
+/// True when any seat in the configuration is a diagnostic / altered policy.
+///
+/// The eligibility rule is per-match: one study seat contaminates the match
+/// result, so the whole match leaves the default rating pool.
+fn configuration_is_diagnostic(configuration: &MatchConfigurationV1) -> bool {
+    configuration
+        .seats
+        .iter()
+        .filter_map(|seat| seat.resolved())
+        .any(is_diagnostic_configuration)
 }
 
 #[derive(Debug, Clone)]
@@ -417,6 +469,7 @@ pub struct HistoricalDryRunConfig {
     pub roots: Vec<String>,
     pub max_document_bytes: u64,
     pub skip_segments: Vec<String>,
+    pub dedup_source_hash: bool,
 }
 
 impl Default for HistoricalDryRunConfig {
@@ -432,6 +485,7 @@ impl Default for HistoricalDryRunConfig {
                 "splendor-runtime-architecture".to_string(),
                 "visual-check".to_string(),
             ],
+            dedup_source_hash: true,
         }
     }
 }
@@ -441,6 +495,7 @@ impl Default for HistoricalDryRunConfig {
 pub struct HistoricalDryRunReportV1 {
     pub roots: Vec<String>,
     pub source_reports_seen: usize,
+    pub duplicate_source_reports_skipped: usize,
     pub canonical_records_built: usize,
     pub builder_failures: usize,
     pub failure_samples: Vec<String>,
@@ -461,6 +516,12 @@ pub struct HistoricalDryRunReportV1 {
     pub source_document_sha_duplicates: usize,
     pub unmapped_seats: usize,
     pub matches_with_unmapped_seat: usize,
+    // Identity provenance for the P1 review: how many matches got an exact
+    // policy identity from a `match-config.json`, and how many fell back to the
+    // (coarser) handshake runtime identity because no config was found.
+    pub matches_with_policy_identity: usize,
+    pub matches_without_policy_identity: usize,
+    pub diagnostic_matches: usize,
     pub self_matches: usize,
     pub distinct_participant_identities: usize,
 
@@ -468,8 +529,13 @@ pub struct HistoricalDryRunReportV1 {
     pub canonical_set_digest: String,
 }
 
-/// Execute a read-only historical dry-run across the corpus without touching SQLite.
-pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<HistoricalDryRunReportV1> {
+/// Build the full set of canonical match records across the corpus.
+///
+/// Returns the validation and reconciliation report alongside the verified
+/// canonical records ready for ingestion.
+pub fn build_historical_corpus(
+    config: &HistoricalDryRunConfig,
+) -> Result<(HistoricalDryRunReportV1, Vec<StudioMatchRecordV1>)> {
     let corpus_roots: Vec<CorpusRoot> = config
         .roots
         .iter()
@@ -479,6 +545,7 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
 
     let mut replay_index = ReplayContentIndexV1::default();
     let mut arena_files = Vec::new();
+    let mut configurations_by_game_id: BTreeMap<String, MatchConfigurationV1> = BTreeMap::new();
 
     // Pass 1: scan replays and identify arena reports
     for file in &files {
@@ -497,6 +564,15 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
             Ok(v) => v,
             Err(_) => continue,
         };
+        // `match-config.json` has no `format` tag: it is recognised by its
+        // `game_id` + `agents[].args` shape alone, which is exactly what the
+        // typed resolver accepts. Anything else that merely parses as JSON is
+        // left untouched.
+        if let Some(parsed) = parse_match_configuration(&bytes)? {
+            configurations_by_game_id
+                .entry(parsed.game_id.clone())
+                .or_insert(parsed);
+        }
         match value.get("format").and_then(|v| v.as_str()).unwrap_or("") {
             splendor_replay::REPLAY_FORMAT => {
                 replay_index.index_replay_document(
@@ -526,6 +602,7 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
     > = HashMap::new();
     let mut selected_replay_shas = BTreeSet::new();
     let mut source_sha_counts = BTreeMap::new();
+    let mut seen_source_hashes = BTreeSet::new();
     let mut distinct_participants = BTreeSet::new();
 
     // Pass 2: build canonical records
@@ -541,7 +618,14 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
             }
         };
         let source_sha = hex::encode(Sha256::digest(&bytes));
-        *source_sha_counts.entry(source_sha).or_insert(0usize) += 1;
+        *source_sha_counts
+            .entry(source_sha.clone())
+            .or_insert(0usize) += 1;
+
+        if config.dedup_source_hash && !seen_source_hashes.insert(source_sha.clone()) {
+            report.duplicate_source_reports_skipped += 1;
+            continue;
+        }
 
         let arena_report = match parse_arena_report(&file.logical_path, &bytes) {
             Ok(r) => r,
@@ -625,11 +709,12 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
             }
         };
 
-        let record = match build_match_record_from_parsed(
+        let record = match build_match_record_with_configuration(
             &file.logical_path,
             &bytes,
             &arena_report,
             resolution,
+            configurations_by_game_id.get(&arena_report.game_id),
         ) {
             Ok(rec) => rec,
             Err(e) => {
@@ -651,22 +736,50 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
         }
 
         let mut match_has_unmapped = false;
+        let mut match_has_policy_identity = false;
         for seat in &record.seats {
-            if let Some(identity) = &seat.identity {
-                distinct_participants.insert(identity.key());
-            } else {
-                report.unmapped_seats += 1;
-                match_has_unmapped = true;
+            // Prefer the exact policy identity from the arena config; fall back
+            // to the handshake runtime identity only when no config was found.
+            let effective_key = seat
+                .policy_identity_key
+                .clone()
+                .or_else(|| seat.identity.as_ref().map(|identity| identity.key()));
+            if seat.policy_identity_key.is_some() {
+                match_has_policy_identity = true;
+            }
+            match effective_key {
+                Some(key) => {
+                    distinct_participants.insert(key);
+                }
+                None => {
+                    report.unmapped_seats += 1;
+                    match_has_unmapped = true;
+                }
             }
         }
         if match_has_unmapped {
             report.matches_with_unmapped_seat += 1;
         }
-        if record.seats.len() == 2
-            && record.seats[0].identity.is_some()
-            && record.seats[0].identity == record.seats[1].identity
-        {
-            report.self_matches += 1;
+        if match_has_policy_identity {
+            report.matches_with_policy_identity += 1;
+        } else {
+            report.matches_without_policy_identity += 1;
+        }
+        if record.diagnostic {
+            report.diagnostic_matches += 1;
+        }
+        if record.seats.len() == 2 {
+            let first = record.seats[0]
+                .policy_identity_key
+                .clone()
+                .or_else(|| record.seats[0].identity.as_ref().map(|i| i.key()));
+            let second = record.seats[1]
+                .policy_identity_key
+                .clone()
+                .or_else(|| record.seats[1].identity.as_ref().map(|i| i.key()));
+            if first.is_some() && first == second {
+                report.self_matches += 1;
+            }
         }
 
         records.push(record);
@@ -682,5 +795,11 @@ pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<Histori
     report.distinct_participant_identities = distinct_participants.len();
     report.canonical_set_digest = compute_canonical_set_digest(&records);
 
+    Ok((report, records))
+}
+
+/// Execute a read-only historical dry-run across the corpus without touching SQLite.
+pub fn run_historical_dry_run(config: &HistoricalDryRunConfig) -> Result<HistoricalDryRunReportV1> {
+    let (report, _) = build_historical_corpus(config)?;
     Ok(report)
 }

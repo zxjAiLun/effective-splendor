@@ -141,6 +141,16 @@ pub struct StudioMatchSeatV1 {
     pub seat: u8,
     /// Exact engine identity as recorded by the source, when it has one.
     pub identity: Option<EngineIdentityV1>,
+    /// The exact **policy** identity recovered from the arena's
+    /// `match-config.json`, when one was available.
+    ///
+    /// The handshake runtime name/version in `identity` collapses distinct
+    /// search configurations (for example `--max-nodes 2000` versus
+    /// `--max-nodes 1`) into one string, which fabricated self-matches and hid
+    /// real head-to-head results from Elo. When this key is present the league
+    /// resolves the participant from it, so two differently configured seats are
+    /// two participants; `identity` is then only the display name.
+    pub policy_identity_key: Option<String>,
     /// Resolved league participant, filled in during ingestion.
     pub participant_id: Option<String>,
     pub display_name: Option<String>,

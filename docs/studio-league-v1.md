@@ -1,13 +1,18 @@
 # Studio League v1 — Participant + Match Ledger + Studio Elo + statistics
 
-- **Status**: `AUTHORIZED`.
+- **Status**: Commit B historical migration **COMPLETE** (Slices 1–2; rebuild determinism gate PASS,
+  derived database rebuilt from scratch and promoted — see "Result and decision").
   **Commit A** landed as `9f88aca` → Repair 1 `714bc5f` → Repair 2 `2501fe0` → Repair 2b `44c704b`.
   The owner independently reviewed `44c704b` and declared **Commit A — ACCEPTED / CLOSED**
   (P0=0/P1=0).
-  **Commit B — Historical Migration** authorized: Slice 1 (ReplayV1 duplicate-preserving content index,
+  **Commit B — Historical Migration**: Slice 1 (ReplayV1 duplicate-preserving content index,
   portable logical source paths, content-only arena report resolver, canonical record builder outside
   `ledger.rs`, read-only 48,273-match dry-run, and forward/reverse root-order determinism digest gate)
-  is now `IMPLEMENTED` / `VERIFIED`. No derived SQLite database has been created or modified yet.
+  is `IMPLEMENTED` / `VERIFIED`; Slice 2 (config-level policy identity, diagnostic classification,
+  checked evidence writes, corrected full migration, rebuild determinism gate) is
+  `IMPLEMENTED` / `VERIFIED`, with the owner accepting the corrected reconciliation numbers and
+  pre-authorizing promotion + closure on gate PASS (2026-09-12). The derived database exists as
+  `local-artifacts/studio-league/league.sqlite3` (local-only, ignored).
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -80,6 +85,10 @@ identity: distinct participants 68 · unmapped seats 406 · matches with an unma
 
 The scan skips `node_modules`, `.git`, `.uv-cache`, `m24-torch-cu124`, and the architecture-html
 artifacts, and skips documents above 40 MB (37 of them).
+
+(Handshake-identity scan of 2026-09-11, recorded verbatim; the participant-identity and
+eligibility semantics were superseded by Commit B Slice 2's config-level policy identity —
+see the corrected dry-run and rebuild determinism gate below.)
 
 ## Initial design
 
@@ -160,7 +169,11 @@ The owner's frozen boundaries, verbatim in intent:
 9. **Studio Elo ≠ `official_elo`** (order-independent batch Bradley–Terry on a frozen pool). Both
    names are kept distinct in code, JSON, and UI.
 10. **Elo order is determined by a stable `league_seq`**, not by thread/arrival order, so Elo
-    history is reproducible after a rebuild.
+    history is reproducible after a rebuild. For historical batches `league_seq` is
+    content-derived: `canonical_league_order` sorts historical entries (whose `played_at` is
+    `None`) by their `historical-sha256:<…>` source identity. The resulting Studio Elo is a
+    **deterministic historical canonical-order Elo** — **not a chronology** and **not a
+    strength-timeline verdict**.
 
 Additional invariants introduced by this round:
 
@@ -272,6 +285,70 @@ Additional invariants introduced by this round:
   result-only records; canonical builder lives outside `ledger.rs`; full read-only dry-run executed on
   all 48,273 historical reports with 0 builder failures and 0 malformed records; root-order determinism
   gate proven identical between forward and reverse directory traversals.
+
+- 2026-09-12 (Commit B Slice 2 P1 repair): configuration-level policy identity and diagnostic classification were added to the real historical import path. `match-config.json` is joined to arena reports by `game_id`; semantic strategy parameters are retained while run-only paths/seeds are excluded; unresolved seats remain explicitly unresolved and fall back only to the handshake identity for legacy reports without configuration. Explicit non-`full` attribution profiles are diagnostic. Regression coverage proves S0 `n1 vs M07` is not a self-match, M44A `drop_convertibility` is diagnostic while `full` is competitive, and no-config reports do not invent a policy identity. The migration report now returns failure when JSON evidence cannot be written.
+
+## Commit B Slice 2 — P1 repair validation (2026-09-12)
+
+The corrected full-corpus dry-run used the existing `benchmarks` and `local-artifacts` roots and produced the local-only evidence file `local-artifacts/studio-league/historical-migration-dry-run.json`.
+
+| Gate / characteristic | Actual | Verdict |
+| --- | ---: | :---: |
+| source reports | 48,273 | PASS |
+| canonical records | 42,521 | PASS under Distinct-Document policy |
+| completed / verified replays | 42,303 / 42,303 | PASS |
+| aborted / truncated / unavailable | 216 / 2 / 218 | PASS |
+| builder failures / malformed records | 0 / 0 | PASS |
+| config-resolved policy matches | 21,276 | measured |
+| handshake-only matches | 21,245 | measured, no config evidence |
+| diagnostic matches | 1,664 | measured and excluded by eligibility |
+| exact participant identities | 79 | measured; replaces the old 68-count claim |
+| self-matches | 26,892 | measured after policy identity resolution |
+| unmapped seats / matches | 388 / 196 | measured |
+| forward/reverse canonical digest | `ed00b68e46dc914e4860e9cf296793a559c99d92b55ec579020ab68064407d4d` | PASS |
+
+Targeted validation: `cargo test -p splendor-studio-league --test policy_identity` passed 3/3; the full crate passed 45/45 across its unit and integration suites; `cargo test -p splendor-cli --bin splendor` passed 89/89; `cargo fmt --check -p splendor-studio-league -p splendor-cli` passed. A negative write-path check against an invalid JSON destination returned exit 2 with an explicit error instead of reporting success.
+
+These are implementation and migration-evidence results, not an accepted public strength ranking.
+The derived database has since been rebuilt from these corrected records and passed the rebuild
+determinism gate below; the counts recorded there are the accepted derived-state record.
+
+### Rebuild determinism gate and promotion (2026-09-12)
+
+The derived database was rebuilt **from scratch** — same corpus roots (`benchmarks`,
+`local-artifacts`), same identity manifest (`identity.json`), same code — into a fresh
+`league.rebuild.sqlite3` (`studio-league-migrate`, 42,521 records ingested in atomic canonical
+order), and compared against the corrected migration on **semantic state only**. SQLite file
+bytes were deliberately not compared: page layout, freelist, and write-order details are not
+league semantics.
+
+Counting gates (expected value held in both databases): matches **42,521** · completed
+**42,303** · aborted **216** · truncated **2** · exact policy identities (engine participants)
+**79** · participants **80** (79 engine + local human) · self-match **26,892** · diagnostic
+**1,664** · eligible **13,747** · rating events **27,494**. Arithmetic closure:
+26,892 + 1,664 + 13,747 = 42,303 completed; 216 + 2 + 42,303 = 42,521; 27,494 = 2 × 13,747.
+
+Semantic digests (SHA-256 over the canonical order defined per digest; **identical across the
+two databases**):
+
+| Digest | Rows | Value |
+| --- | ---: | --- |
+| match digest (`league_seq` → `match_id`, `source_identity`, `source_document_hash`, eligibility, reason) | 42,521 | `3135e949d2fcdf3bc82adb60f3aafd14469bbaea1f2b7da2f1f99d2597b5938c` |
+| rating-event digest (`league_seq, participant_id` → `match_id`, `participant_id`, `opponent_id`, `elo_before`, `elo_after`, `delta`, `score`) | 27,494 | `c80892b8efc2120e84637c0e0eb80c46282514482d190cb6f88d854ae7fcc18d` |
+| leaderboard digest (`participant_id` → elo, rated games, W/T/L, recorded games, provisional) | 80 | `4c165448c9c4037295019a6c86019d4ad2a808f20e004b135a5d37ec76b941a9` |
+
+`PRAGMA integrity_check` returned `ok` and `PRAGMA foreign_key_check` returned 0 rows on **both**
+databases; the identity manifest hash recorded in both is
+`572faa16c70693d5778f3ad9e3cfdb5262ae50bfaff560717b2a9af7172e17e4`. Evidence:
+`local-artifacts/studio-league/rebuild-determinism-report.json` (comparison result),
+`historical-migration-rebuild.json` (rebuild reconciliation), `rebuild_determinism_gate.py`
+(gate definitions).
+
+On gate PASS the rebuild database was deleted, the corrected database was promoted to
+`local-artifacts/studio-league/league.sqlite3`, and the superseded pre-policy-fix database was
+deleted rather than archived: the gate proves it is exactly reproducible from the same evidence +
+manifest + code, so keeping it would only invite treating a known-wrong derived state as
+authoritative.
 
 ## Deviations (decided under the owner's standing pre-authorization)
 
@@ -532,15 +609,25 @@ Targeted test suite:
 
 Commit A: `ACCEPTED / CLOSED` @ `44c704b`.
 Commit B Slice 1: `IMPLEMENTED / VERIFIED`. Dry-run gates and root-order determinism pass completely.
-Next step: proceed to migration CLI (`ingest_batch_canonical`) on an empty database.
+Commit B Slice 2 P1 repair: `IMPLEMENTED / VERIFIED` — config-level policy identity, diagnostic
+classification, checked evidence writes, the corrected full migration, and the rebuild determinism
+gate all pass. The owner accepted the corrected reconciliation numbers (2026-09-12; arithmetic
+closure 26,892 + 1,664 + 13,747 = 42,303 completed, 216 + 2 + 42,303 = 42,521, 27,494 = 2 × 13,747)
+and pre-authorized the finish sequence on gate PASS. The rebuild determinism gate passed with all
+three semantic digests identical, so the rebuild database was deleted, the corrected database was
+promoted to `local-artifacts/studio-league/league.sqlite3`, and the superseded pre-policy-fix
+database was deleted (exactly reproducible from the same evidence + manifest + code, hence worth
+no archive). Historical migration (Commit B Slices 1–2) is **COMPLETE**; the leaderboard is a
+deterministic historical canonical-order Studio Elo, not a chronology and not a strength baseline.
 
 ## Known limitations
 
 - The inventory is a point-in-time scan of this machine's `local-artifacts/`; corpora are
   local-only and not part of the repository.
-- 223 matches have no replay binding and 406 seats carry no identity; these must stay visible as
-  `RESULT_ONLY` / `unmapped` rather than being guessed. The 223 are exactly the aborted and
-  truncated matches.
+- 218 canonical matches have no replay binding and 388 seats across 196 matches carry no
+  identity; these must stay visible as `RESULT_ONLY` / `unmapped` rather than being guessed. The
+  218 are exactly the 216 aborted and 2 truncated matches. (Slice 1 inventory values — 223 and
+  406/214 — describe the pre-dedup scan and are superseded by the Distinct-Document policy.)
 - `game_id` is not unique (25,979 duplicates), so ingest keys on content identity
   (`replay_final_hash` / replay document hash) plus source path — never on `game_id`.
 - Replay binding must be by `final_state_hash` content join, not by filename; only 7.4% of matches
@@ -571,6 +658,15 @@ Next step: proceed to migration CLI (`ingest_batch_canonical`) on an empty datab
 
 ## Next authorized gate
 
-Full dry-run gate completed and verified (48,273 / 48,050 / 223 / 0 failures / 0 malformed / forward-reverse digest identical).
-Next authorized step: implement migration CLI command to perform `ingest_batch_canonical()` on an
-initially empty derived SQLite database and report post-migration eligibility / rating reconciliation.
+The historical-migration round (Commit B Slices 1–2) is closed. The derived database
+`local-artifacts/studio-league/league.sqlite3` (local-only, ignored) contains 42,521 canonical
+matches (85,042 seats), 79 exact policy identities plus the local human participant (80 total),
+13,747 eligible matches, and 27,494 rating events; SQLite integrity and foreign-key checks pass,
+and the rebuild determinism gate proves that the same evidence + manifest + code rebuild the
+identical semantic state. The leaderboard is a **deterministic historical canonical-order Studio
+Elo** — historical entries are ordered by source-document SHA-256, so it is not a chronology and
+not a strength-timeline verdict; it is not comparable to `official_elo` pools and is not accepted
+as a strength baseline. The next authorized work is the previously identified hardening round:
+remove the remaining unvalidated `.unwrap()` calls on the historical replay/import path so that
+corrupt or malformed replay data degrades to explicit errors instead of panics. Commit C (runtime
+ingestion) design remains a separate future decision.

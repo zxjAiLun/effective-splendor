@@ -95,14 +95,15 @@ fn completed_report_resolves_only_by_final_hash_and_verifies_replay() {
 
     let report = completed_report(&replay);
     let report_bytes = serde_json::to_vec(&report).unwrap();
+    let expected_hash = hex::encode(Sha256::digest(&report_bytes));
     let logical_path = "benchmarks/m41a-corpus/train/game-0000/arena-report.json";
     let record = arena_report_to_match_record(logical_path, &report_bytes, &index).unwrap();
-    assert_eq!(record.source_identity, logical_path);
-    assert_eq!(record.source_path.as_deref(), Some(logical_path));
     assert_eq!(
-        record.source_document_hash,
-        hex::encode(Sha256::digest(&report_bytes))
+        record.source_identity,
+        format!("historical-sha256:{expected_hash}")
     );
+    assert_eq!(record.source_path.as_deref(), Some(logical_path));
+    assert_eq!(record.source_document_hash, expected_hash);
     assert_eq!(record.status, MatchStatus::Completed);
     assert_eq!(record.completed_plies, Some(replay.steps.len() as u32));
     assert_eq!(
@@ -182,8 +183,13 @@ fn aborted_and_truncated_reports_remain_legal_result_only_records() {
         ),
     ] {
         let bytes = serde_json::to_vec(&report).unwrap();
+        let expected_hash = hex::encode(Sha256::digest(&bytes));
         let record = arena_report_to_match_record(logical_path, &bytes, &empty_index).unwrap();
-        assert_eq!(record.source_identity, logical_path);
+        assert_eq!(
+            record.source_identity,
+            format!("historical-sha256:{expected_hash}")
+        );
+        assert_eq!(record.source_path.as_deref(), Some(logical_path));
         assert_eq!(record.status, status);
         assert_eq!(
             record.replay.verification(),

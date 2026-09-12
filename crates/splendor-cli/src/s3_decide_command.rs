@@ -8,10 +8,10 @@ use std::time::Instant;
 
 use splendor_agent::AgentPolicy;
 use splendor_core::{Audience, Ruleset};
+use splendor_determinization_agent::s3_rollout;
 use splendor_determinization_agent::s3_rollout::{
     loo_agreement, s3_decide, s3_m07_config, s3_n1_config, S3Path,
 };
-use splendor_determinization_agent::s3_rollout;
 use splendor_determinization_agent::DeterminizationAgentPolicyV1;
 use splendor_replay::{verify_replay_trace, ReplayV1};
 use splendor_search::canonical_order;
@@ -54,12 +54,12 @@ fn run(args: &[String]) -> Result<(), String> {
             "--input" => &mut input,
             "--ply" => &mut ply,
             "--out" => &mut out,
-            other if other.starts_with('-') => {
-                return Err(format!("unknown flag `{other}`"))
-            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         };
-        let value = args.get(i + 1).ok_or_else(|| format!("{arg} requires a value"))?;
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{arg} requires a value"))?;
         if slot.is_some() {
             return Err(format!("{arg} given more than once"));
         }
@@ -75,8 +75,8 @@ fn run(args: &[String]) -> Result<(), String> {
 
     let replay_text = std::fs::read_to_string(&input)
         .map_err(|error| format!("cannot read replay {input}: {error}"))?;
-    let replay: ReplayV1 = serde_json::from_str(&replay_text)
-        .map_err(|error| format!("invalid replay: {error}"))?;
+    let replay: ReplayV1 =
+        serde_json::from_str(&replay_text).map_err(|error| format!("invalid replay: {error}"))?;
     let verified =
         verify_replay_trace(&replay).map_err(|error| format!("replay verification: {error}"))?;
     let position = verified
@@ -123,7 +123,10 @@ fn run(args: &[String]) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?
     };
-    timings.insert("n1_ms".into(), serde_json::json!(t_n1.elapsed().as_millis()));
+    timings.insert(
+        "n1_ms".into(),
+        serde_json::json!(t_n1.elapsed().as_millis()),
+    );
 
     let t_m07 = Instant::now();
     let mut m07_policy =
@@ -146,7 +149,10 @@ fn run(args: &[String]) -> Result<(), String> {
             })
             .map_err(|e| e.to_string())?
     };
-    timings.insert("m07_ms".into(), serde_json::json!(t_m07.elapsed().as_millis()));
+    timings.insert(
+        "m07_ms".into(),
+        serde_json::json!(t_m07.elapsed().as_millis()),
+    );
 
     // Full S3 decision (a_H generation + worlds + rollouts + selection).
     let t_decide = Instant::now();
@@ -164,8 +170,14 @@ fn run(args: &[String]) -> Result<(), String> {
     let hs = s3_rollout::h_star(&observation, &legal);
     let a_h = hs[0];
     let loo = loo_agreement(&decision, a_h);
-    timings.insert("s3_decide_ms".into(), serde_json::json!(t_decide.elapsed().as_millis()));
-    timings.insert("full_ms".into(), serde_json::json!(t_all.elapsed().as_millis()));
+    timings.insert(
+        "s3_decide_ms".into(),
+        serde_json::json!(t_decide.elapsed().as_millis()),
+    );
+    timings.insert(
+        "full_ms".into(),
+        serde_json::json!(t_all.elapsed().as_millis()),
+    );
 
     let path = match decision.path {
         S3Path::HeuristicFastPath => "heuristic_fast_path",

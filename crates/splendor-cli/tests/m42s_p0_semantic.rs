@@ -47,7 +47,10 @@ fn test_h0_config_boundary() {
         max_depth_turns: 1,
         max_nodes: 0,
     };
-    assert!(matches!(bad_search_cfg.validate(), Err(SearchError::InvalidConfig(_))));
+    assert!(matches!(
+        bad_search_cfg.validate(),
+        Err(SearchError::InvalidConfig(_))
+    ));
 
     let bad_root_cfg = RootDeterminizationConfigV1 {
         sample_seed: M07_SAMPLE_SEED,
@@ -82,7 +85,8 @@ fn test_h1_n1_fallback_semantics() {
         max_nodes: 1,
     };
 
-    let result = search_maxn_v1(&state, search_cfg_n1).expect("search_maxn_v1 should succeed with n1");
+    let result =
+        search_maxn_v1(&state, search_cfg_n1).expect("search_maxn_v1 should succeed with n1");
     assert_eq!(result.completed_depth_turns, 0);
     assert_eq!(result.stop_reason, SearchStopReasonV1::NodeBudgetReached);
 
@@ -125,7 +129,10 @@ fn test_h3_m07_identity() {
     // and verified as a formal acceptance gate in `m42s_final_audit.py`.
     let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let corpus_path = repo_root.join("benchmarks/m07-determinization-v1.corpus.json");
-    assert!(corpus_path.exists(), "frozen M07 benchmark corpus must exist at benchmarks/m07-determinization-v1.corpus.json");
+    assert!(
+        corpus_path.exists(),
+        "frozen M07 benchmark corpus must exist at benchmarks/m07-determinization-v1.corpus.json"
+    );
 
     let corpus_bytes = std::fs::read(&corpus_path).expect("read M07 corpus");
     let file_sha = {
@@ -135,8 +142,7 @@ fn test_h3_m07_identity() {
         format!("{:x}", hasher.finalize())
     };
     assert_eq!(
-        file_sha,
-        "46de7c957ae974355aa7c4798e997b8e4da98864739cad475d69985f0abfd03f",
+        file_sha, "46de7c957ae974355aa7c4798e997b8e4da98864739cad475d69985f0abfd03f",
         "file SHA of benchmarks/m07-determinization-v1.corpus.json mismatch"
     );
 

@@ -43,6 +43,7 @@ fn seat(index: u8, name: &str, version: &str, won: bool, score: i32) -> StudioMa
     StudioMatchSeatV1 {
         seat: index,
         identity: Some(EngineIdentityV1::new(name, version)),
+        policy_identity_key: None,
         participant_id: None,
         display_name: None,
         score: Some(score),
@@ -455,6 +456,7 @@ fn ineligible_matches_are_recorded_but_rate_nobody() {
             StudioMatchSeatV1 {
                 seat: 1,
                 identity: None,
+                policy_identity_key: None,
                 participant_id: None,
                 display_name: None,
                 score: Some(12),
@@ -950,17 +952,19 @@ fn explicit_aliases_merge_identities_and_nothing_else_does() {
         "display/name variants are never auto-merged"
     );
 
-    // Only an explicit, manifest-authored alias merges it. (Retroactively
-    // reassigning already-ingested matches is commit B's job, not this one's.)
+    // Only an explicit, manifest-authored alias merges it. The manifest
+    // projection is derived state, so it is synced on a clean connection
+    // (a non-empty ledger refuses altered manifests to prevent desync).
+    let conn_merged = open_in_memory().unwrap();
     let mut manifest = IdentityManifestV1::new();
     manifest.declare_alias(
         "s3-rollout-v1@1",
         "effective-splendor-s3-rollout-v1@1",
         "historical rename",
     );
-    sync_identity_manifest(&conn, &manifest, NOW).unwrap();
+    sync_identity_manifest(&conn_merged, &manifest, NOW).unwrap();
     let merged = resolve_engine_participant(
-        &conn,
+        &conn_merged,
         &EngineIdentityV1::new("s3-rollout-v1", "1"),
         "whatever",
         NOW,
@@ -1249,5 +1253,59 @@ fn non_terminal_and_cyclic_aliases_are_rejected() {
     assert!(
         matches!(cycle_error, StudioLeagueError::Invalid(_)),
         "an alias cycle must be rejected, got {cycle_error}"
+    );
+}
+
+#[test]
+fn sync_identity_manifest_on_non_empty_ledger_rejects_altered_manifest_and_requires_rebuild() {
+    let mut conn = open_in_memory().unwrap();
+    let mut manifest = IdentityManifestV1::new();
+    manifest.ensure_local_human("Alice");
+    manifest.declare_alias("engine-old@1", "engine-a@1", "initial alias");
+    sync_identity_manifest(&conn, &manifest, NOW).unwrap();
+
+    let stored_hash = league::stored_identity_manifest_hash(&conn)
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored_hash, manifest.hash().unwrap());
+
+    // Ingest one match into the ledger
+    let match_record = pair("benchmarks/test/match-0.json", true);
+    ingest_match(&mut conn, &match_record).unwrap();
+
+    // Re-sync with the IDENTICAL manifest succeeds
+    sync_identity_manifest(&conn, &manifest, NOW).unwrap();
+
+    // Now alter the manifest (add an alias)
+    manifest.declare_alias("engine-legacy@1", "engine-b@1", "new alias");
+    assert_ne!(manifest.hash().unwrap(), stored_hash);
+
+    // Syncing an altered manifest into a non-empty ledger MUST fail closed
+    let err = sync_identity_manifest(&conn, &manifest, NOW).unwrap_err();
+    assert!(
+        matches!(err, StudioLeagueError::Invalid(_)),
+        "altered manifest on non-empty ledger must fail closed, got {err}"
+    );
+}
+
+#[test]
+fn sync_identity_manifest_on_non_empty_ledger_rejects_missing_stored_manifest_hash() {
+    let mut conn = open_in_memory().unwrap();
+    let match_record = pair("benchmarks/test/match-legacy.json", true);
+    ingest_match(&mut conn, &match_record).unwrap();
+
+    // The database has matches but was never synced with an identity manifest,
+    // so `identity_manifest_hash` is missing.
+    assert!(league::stored_identity_manifest_hash(&conn)
+        .unwrap()
+        .is_none());
+
+    let mut manifest = IdentityManifestV1::new();
+    manifest.ensure_local_human("Bob");
+
+    let err = sync_identity_manifest(&conn, &manifest, NOW).unwrap_err();
+    assert!(
+        matches!(err, StudioLeagueError::Invalid(_)),
+        "non-empty DB with missing manifest hash must fail closed, got {err}"
     );
 }

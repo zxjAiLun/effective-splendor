@@ -13,9 +13,7 @@ use std::io::Write;
 
 use splendor_agent::{AgentPolicy, DecisionContext, PublicRequestMeta, StableRng};
 use splendor_core::{observation_hash, Audience, PlayerId};
-use splendor_determinization_agent::{
-    DeterminizationAgentPolicyV1, PerDecisionStatsV1,
-};
+use splendor_determinization_agent::{DeterminizationAgentPolicyV1, PerDecisionStatsV1};
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_replay::{verify_replay_trace, ReplayV1};
 use splendor_search::{canonical_order, SearchConfigV1};
@@ -68,12 +66,12 @@ fn run(args: &[String]) -> Result<(), String> {
             "--max-depth-turns" => &mut max_depth_turns,
             "--max-nodes" => &mut max_nodes,
             "--stats-out" => &mut stats_out,
-            other if other.starts_with('-') => {
-                return Err(format!("unknown flag `{other}`"))
-            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         };
-        let value = args.get(i + 1).ok_or_else(|| format!("{arg} requires a value"))?;
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{arg} requires a value"))?;
         if slot.is_some() {
             return Err(format!("{arg} given more than once"));
         }
@@ -102,8 +100,8 @@ fn run(args: &[String]) -> Result<(), String> {
 
     let replay_text = std::fs::read_to_string(&input)
         .map_err(|error| format!("cannot read replay {input}: {error}"))?;
-    let replay: ReplayV1 = serde_json::from_str(&replay_text)
-        .map_err(|error| format!("invalid replay: {error}"))?;
+    let replay: ReplayV1 =
+        serde_json::from_str(&replay_text).map_err(|error| format!("invalid replay: {error}"))?;
     let verified =
         verify_replay_trace(&replay).map_err(|error| format!("replay verification: {error}"))?;
     let position = verified

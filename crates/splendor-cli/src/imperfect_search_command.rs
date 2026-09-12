@@ -434,7 +434,11 @@ fn parse_analyze_player_view_args(args: &[String]) -> Result<AnalyzePlayerViewAr
                 args.get(index + 1),
             )?,
             "--max-nodes" => set_flag(&mut max_nodes, "--max-nodes", args.get(index + 1))?,
-            "--attribution-profile" => set_flag(&mut attribution_profile, "--attribution-profile", args.get(index + 1))?,
+            "--attribution-profile" => set_flag(
+                &mut attribution_profile,
+                "--attribution-profile",
+                args.get(index + 1),
+            )?,
             "--out" => set_flag(&mut out, "--out", args.get(index + 1))?,
             other if other.starts_with('-') => {
                 return Err(format!("unknown flag `{other}`"));

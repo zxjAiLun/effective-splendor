@@ -18,9 +18,7 @@ use splendor_agent::{
     HEURISTIC_AGENT_NAME, HEURISTIC_AGENT_VERSION,
 };
 use splendor_core::Action;
-use splendor_determinization_agent::s3_agent::{
-    S3RolloutAgentPolicy, S3_AGENT_NAME, S3_ROOT_SEED,
-};
+use splendor_determinization_agent::s3_agent::{S3RolloutAgentPolicy, S3_AGENT_NAME, S3_ROOT_SEED};
 
 /// JSONL telemetry line schema for operational profile decisions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

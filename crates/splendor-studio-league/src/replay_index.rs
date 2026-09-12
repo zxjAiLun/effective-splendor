@@ -43,7 +43,7 @@ impl CorpusRoot {
         }
     }
 
-    pub fn resolve_logical_path(&self, file_path: &Path) -> String {
+    pub fn resolve_logical_path(&self, file_path: &Path) -> Result<String> {
         let rel = match file_path.strip_prefix(&self.path) {
             Ok(rel) => rel,
             Err(_) => {
@@ -51,13 +51,17 @@ impl CorpusRoot {
                     (file_path.canonicalize(), self.path.canonicalize())
                 {
                     if let Ok(rel) = canon_file.strip_prefix(&canon_root) {
-                        return format_logical(&self.namespace, rel);
+                        return Ok(format_logical(&self.namespace, rel));
                     }
                 }
-                file_path
+                return Err(StudioLeagueError::Invalid(format!(
+                    "file path `{}` is not inside corpus root `{}`",
+                    file_path.display(),
+                    self.path.display()
+                )));
             }
         };
-        format_logical(&self.namespace, rel)
+        Ok(format_logical(&self.namespace, rel))
     }
 }
 
@@ -204,6 +208,10 @@ impl ReplayContentIndexV1 {
 }
 
 /// Collect JSON documents from roots and sort by portable logical path.
+///
+/// Fail-closed against collisions: if two distinct physical files map to the
+/// same logical path, this returns an error rather than silently picking one.
+/// Overlapping roots pointing to the identical physical file are safely deduplicated.
 pub fn collect_corpus_files(
     roots: &[CorpusRoot],
     skip_segments: &[String],
@@ -213,8 +221,37 @@ pub fn collect_corpus_files(
         collect_root_json(root, &root.path, skip_segments, &mut files)?;
     }
     files.sort_by(|left, right| left.logical_path.cmp(&right.logical_path));
-    files.dedup_by(|left, right| left.logical_path == right.logical_path);
-    Ok(files)
+
+    let mut deduped: Vec<CorpusFile> = Vec::with_capacity(files.len());
+    for file in files {
+        if let Some(last) = deduped.last() {
+            if last.logical_path == file.logical_path {
+                if same_physical_file(&last.filesystem_path, &file.filesystem_path) {
+                    // Overlapping roots pointing to the same file: safe to deduplicate.
+                    continue;
+                } else {
+                    return Err(StudioLeagueError::Invalid(format!(
+                        "logical path collision on `{}` between distinct files `{}` and `{}`",
+                        file.logical_path,
+                        last.filesystem_path.display(),
+                        file.filesystem_path.display()
+                    )));
+                }
+            }
+        }
+        deduped.push(file);
+    }
+    Ok(deduped)
+}
+
+fn same_physical_file(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(l), Ok(r)) => l == r,
+        _ => false,
+    }
 }
 
 fn collect_root_json(
@@ -237,7 +274,7 @@ fn collect_root_json(
             collect_root_json(root, &path, skip_segments, out)?;
         } else if path.extension().and_then(|extension| extension.to_str()) == Some("json") {
             out.push(CorpusFile {
-                logical_path: root.resolve_logical_path(&path),
+                logical_path: root.resolve_logical_path(&path)?,
                 filesystem_path: path,
             });
         }

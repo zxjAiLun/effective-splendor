@@ -16,6 +16,7 @@
 //! The crate is named `splendor-studio-league` because `crates/splendor-league` is
 //! already the M11 research self-play league (deviation D1).
 
+pub mod agent_configuration;
 pub mod eligibility;
 pub mod elo;
 pub mod error;
@@ -28,6 +29,10 @@ pub mod participant;
 pub mod replay_index;
 pub mod schema;
 
+pub use agent_configuration::{
+    is_diagnostic_configuration, parse_match_configuration, AgentPolicyIdentityV1,
+    MatchConfigurationV1, SeatConfigurationIdentityV1,
+};
 pub use eligibility::{
     evaluate_eligibility, EligibilityInput, RatingEligibility, REASON_ABORTED, REASON_DIAGNOSTIC,
     REASON_INCOMPLETE_SEATS, REASON_PLAYER_COUNT, REASON_REPLAY, REASON_RULESET, REASON_SELF_MATCH,
@@ -36,9 +41,9 @@ pub use eligibility::{
 pub use elo::{elo_delta, elo_expected_score, pair_score_a, plan_pair_update, PairEloUpdate};
 pub use error::{Result, StudioLeagueError};
 pub use historical_import::{
-    arena_report_to_match_record, compute_canonical_set_digest, parse_arena_report,
-    resolve_arena_report_replay, run_historical_dry_run, HistoricalDryRunConfig,
-    HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
+    arena_report_to_match_record, build_historical_corpus, compute_canonical_set_digest,
+    parse_arena_report, resolve_arena_report_replay, run_historical_dry_run,
+    HistoricalDryRunConfig, HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
@@ -64,9 +69,10 @@ pub use match_record::{
 };
 pub use participant::{
     canonical_identity_key, derived_participant_id, local_human_participant, new_participant_id,
-    participant, resolve_engine_participant, sync_identity_manifest, unassigned_human_participant,
-    EngineIdentityV1, ParticipantKind, ParticipantRow, LOCAL_HUMAN_META_KEY,
-    PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
+    participant, resolve_engine_participant, resolve_engine_participant_with_key,
+    stored_identity_manifest_hash, sync_identity_manifest, unassigned_human_participant,
+    EngineIdentityV1, ParticipantKind, ParticipantRow, IDENTITY_MANIFEST_HASH_META_KEY,
+    LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
 };
 pub use replay_index::{
     build_replay_content_index, build_replay_content_index_roots, collect_corpus_files, CorpusFile,

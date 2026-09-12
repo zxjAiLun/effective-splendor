@@ -66,25 +66,32 @@ pub fn run_export_successors(args: &[String]) -> i32 {
     }
 }
 
-fn export_state_successors_inner(state_dir: &Path, source_replay_path: &Path) -> Result<String, String> {
+fn export_state_successors_inner(
+    state_dir: &Path,
+    source_replay_path: &Path,
+) -> Result<String, String> {
     let probe_file = state_dir.join("state-probe.json");
     let manifest_file = state_dir.join("state-manifest.json");
 
     if !probe_file.is_file() {
-        return Err(format!("missing state-probe.json in {}", state_dir.display()));
+        return Err(format!(
+            "missing state-probe.json in {}",
+            state_dir.display()
+        ));
     }
     if !manifest_file.is_file() {
-        return Err(format!("missing state-manifest.json in {}", state_dir.display()));
+        return Err(format!(
+            "missing state-manifest.json in {}",
+            state_dir.display()
+        ));
     }
 
-    let probe_val: Value = serde_json::from_str(
-        &std::fs::read_to_string(&probe_file).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
-    let manifest_val: Value = serde_json::from_str(
-        &std::fs::read_to_string(&manifest_file).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
+    let probe_val: Value =
+        serde_json::from_str(&std::fs::read_to_string(&probe_file).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
+    let manifest_val: Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_file).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
 
     let branch_ply = probe_val["branch_ply"]
         .as_u64()
@@ -114,7 +121,8 @@ fn export_state_successors_inner(state_dir: &Path, source_replay_path: &Path) ->
     .map_err(|e| format!("rebuild setup failed: {e}"))?;
 
     for step in &source_replay.steps[..branch_ply as usize] {
-        rec.apply(step.action).map_err(|e| format!("replay step failed: {e}"))?;
+        rec.apply(step.action)
+            .map_err(|e| format!("replay step failed: {e}"))?;
     }
     let source_state = rec.state();
     let rebuilt_state_hash = full_state_hash(source_state);

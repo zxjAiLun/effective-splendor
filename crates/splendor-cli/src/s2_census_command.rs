@@ -75,12 +75,12 @@ fn run(args: &[String]) -> Result<(), String> {
                 i += 1;
                 continue;
             }
-            other if other.starts_with('-') => {
-                return Err(format!("unknown flag `{other}`"))
-            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
             other => return Err(format!("unexpected positional argument `{other}`")),
         };
-        let value = args.get(i + 1).ok_or_else(|| format!("{arg} requires a value"))?;
+        let value = args
+            .get(i + 1)
+            .ok_or_else(|| format!("{arg} requires a value"))?;
         if slot.is_some() {
             return Err(format!("{arg} given more than once"));
         }
@@ -115,23 +115,22 @@ fn run(args: &[String]) -> Result<(), String> {
             max_nodes: N2000_NODES,
         },
     };
-    n1_config.validate().map_err(|e| format!("n1 config: {e}"))?;
-    m07_config.validate().map_err(|e| format!("m07 config: {e}"))?;
+    n1_config
+        .validate()
+        .map_err(|e| format!("n1 config: {e}"))?;
+    m07_config
+        .validate()
+        .map_err(|e| format!("m07 config: {e}"))?;
 
     let replay_text = std::fs::read_to_string(&input)
         .map_err(|error| format!("cannot read replay {input}: {error}"))?;
-    let replay: ReplayV1 = serde_json::from_str(&replay_text)
-        .map_err(|error| format!("invalid replay: {error}"))?;
+    let replay: ReplayV1 =
+        serde_json::from_str(&replay_text).map_err(|error| format!("invalid replay: {error}"))?;
     let verified =
         verify_replay_trace(&replay).map_err(|error| format!("replay verification: {error}"))?;
 
     // Final outcome from the replay: winner seats.
-    let winners: Vec<u8> = replay
-        .result
-        .winners
-        .iter()
-        .map(|w| u8::from(*w))
-        .collect();
+    let winners: Vec<u8> = replay.result.winners.iter().map(|w| u8::from(*w)).collect();
 
     let mut rows_file = std::fs::OpenOptions::new()
         .create(true)
@@ -221,8 +220,7 @@ fn run(args: &[String]) -> Result<(), String> {
             "gold_available": gold_available,
             "any_buy_legal": any_buy_legal,
         });
-        writeln!(rows_file, "{row}")
-            .map_err(|error| format!("write row: {error}"))?;
+        writeln!(rows_file, "{row}").map_err(|error| format!("write row: {error}"))?;
 
         if emit_terms {
             // Term-gap rows at STRICT divergences for BOTH search policies
@@ -230,12 +228,13 @@ fn run(args: &[String]) -> Result<(), String> {
             // |H*| == 1 and the given search action differs from the unique
             // H action. Signed per-term deltas h - s with the score gap.
             let h_action = row["h_star"][0].clone();
-            let term_of = |action: &serde_json::Value, want: &Action| -> Option<serde_json::Value> {
-                // find the term vector for `want` among legal actions
-                let idx = legal.iter().position(|a| a == want)?;
-                let _ = action;
-                serde_json::to_value(&term_scores[idx]).ok()
-            };
+            let term_of =
+                |action: &serde_json::Value, want: &Action| -> Option<serde_json::Value> {
+                    // find the term vector for `want` among legal actions
+                    let idx = legal.iter().position(|a| a == want)?;
+                    let _ = action;
+                    serde_json::to_value(&term_scores[idx]).ok()
+                };
             let h_terms = match term_of(&h_action, &h_star[0]) {
                 Some(v) => v,
                 None => continue,
@@ -250,10 +249,19 @@ fn run(args: &[String]) -> Result<(), String> {
                 };
                 let mut delta = serde_json::Map::new();
                 for field in [
-                    "category_base", "prestige", "noble_gain", "noble_direct",
-                    "bonus_usefulness", "cost_efficiency", "deficit_reduction",
-                    "new_target", "return_penalty", "gold_value", "reserve_proximity",
-                    "reserve_gold", "reserve_blind_gold",
+                    "category_base",
+                    "prestige",
+                    "noble_gain",
+                    "noble_direct",
+                    "bonus_usefulness",
+                    "cost_efficiency",
+                    "deficit_reduction",
+                    "new_target",
+                    "return_penalty",
+                    "gold_value",
+                    "reserve_proximity",
+                    "reserve_gold",
+                    "reserve_blind_gold",
                 ] {
                     let hv = h_terms[field].as_i64().unwrap_or(0);
                     let sv = s_terms[field].as_i64().unwrap_or(0);

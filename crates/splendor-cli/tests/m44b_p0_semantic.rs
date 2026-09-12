@@ -8,9 +8,7 @@
 //! - Section 11: Profile mask identity (DROP_CORE_ENGINE == FULL - CORE, DROP_NOBLE_PROGRESS == FULL - NOBLE)
 
 use splendor_catalog::all_nobles;
-use splendor_core::{
-    FullState, GameConfig, GemColor, PlayerId, Ruleset, TerminalReason,
-};
+use splendor_core::{FullState, GameConfig, GemColor, PlayerId, Ruleset, TerminalReason};
 use splendor_search::{
     terminal_rank_base, AttributionProfile, StaticEvaluatorAttributionV1, TERMINAL_RANK_UNIT,
 };
@@ -113,7 +111,10 @@ fn test_m44b_p0_core_engine_exact_fixtures() {
         let fp_mut = StaticEvaluatorAttributionV1::family_progress_for_all(&s);
 
         // Delta purchased count = 3 -> Delta CORE_ENGINE = 3 * 250_000 = 750_000 exact
-        assert_eq!(fp_mut[0].e1_core_engine - fp_base[0].e1_core_engine, 750_000);
+        assert_eq!(
+            fp_mut[0].e1_core_engine - fp_base[0].e1_core_engine,
+            750_000
+        );
         assert_eq!(fp_mut[0].e2_noble_progress, fp_base[0].e2_noble_progress);
         assert_eq!(fp_mut[0].f2_engine - fp_base[0].f2_engine, 750_000);
 
@@ -207,9 +208,11 @@ fn test_m44b_p0_profile_mask_identity() {
 
     let u_full = StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::Full).unwrap();
     let u_drop_core =
-        StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::DropCoreEngine).unwrap();
+        StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::DropCoreEngine)
+            .unwrap();
     let u_drop_noble =
-        StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::DropNobleProgress).unwrap();
+        StaticEvaluatorAttributionV1::utilities(&state, AttributionProfile::DropNobleProgress)
+            .unwrap();
 
     let fp = StaticEvaluatorAttributionV1::family_progress_for_all(&state);
 
@@ -234,11 +237,14 @@ fn test_m44b_p0_profile_mask_identity() {
     let u_term_full =
         StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::Full).unwrap();
     let u_term_core =
-        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropCoreEngine).unwrap();
+        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropCoreEngine)
+            .unwrap();
     let u_term_noble =
-        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropNobleProgress).unwrap();
+        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::DropNobleProgress)
+            .unwrap();
     let u_term_zero =
-        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::ZeroProgress).unwrap();
+        StaticEvaluatorAttributionV1::utilities(&term_state, AttributionProfile::ZeroProgress)
+            .unwrap();
 
     // Terminal rank base (+/- 1e12) dominates in all profiles and matches exact base:
     assert_eq!(u_term_zero[0], terminal_rank_base(0));
