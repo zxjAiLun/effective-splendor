@@ -16,6 +16,9 @@
   config association, three-state seat attribution, unclassified-argv fail-closed, manifest-guard
   fail-closed), and the final migration passed the five-digest determinism gate (2026-09-13). The
   derived database is `local-artifacts/studio-league/league.sqlite3` (local-only, ignored).
+  **Commit C — Runtime Ingestion** has started: Slice 1 (`IMPLEMENTED` / `VERIFIED` locally, pending
+  owner review) proves that one just-finished arena occurrence enters the league through the
+  existing authority chain with no corpus scan; no API/UI, no new Elo logic.
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -763,6 +766,46 @@ Studio Elo, not a chronology and not a strength baseline.
 - The Studio Elo pool is not comparable to `official_elo` pools; the two must never be rendered in
   one column.
 
+## Commit C — Runtime Ingestion, Slice 1 (2026-09-13)
+
+The owner authorized the first, deliberately narrow cut of runtime ingestion: **prove that one
+just-finished real arena occurrence can enter the Studio League through the existing authority
+chain — strict parse, replay verification, canonical record, the existing `ingest_match`,
+eligibility, and 0 or 2 Elo events — without any corpus scan.** Everything verified in Commits
+A/B is reused verbatim: participant resolution, the identity manifest, replay verification,
+eligibility precedence, self-match and diagnostic exclusion, the single Elo implementation, the
+ledger, and source idempotency. No API/UI; no new runtime Elo logic.
+
+Landed in this slice:
+
+- `runtime_match_record` builds the canonical record for one occurrence from its three
+  documents — the arena report, the recorded ReplayV1, and the run's own `match-config.json`.
+  The replay bytes are verified in place (full `verify_replay` plus the report/replay fact
+  agreement used by the historical resolver); the configuration is bound as exact evidence only
+  after its `game_id`, seat count, and `seed_commitment` reproduction all agree with the report.
+- Occurrence identity stays content-derived, with the ingestion era explicit:
+  `runtime-sha256:<report document sha256>` (`OccurrenceNamespaceV1`). `played_at` remains
+  `None` — the report and replay carry no wall-clock evidence and the rebuild contract forbids
+  machine-dependent timestamps — so a runtime match joins the same deterministic canonical league
+  order as the historical corpus (a canonical-order Studio Elo, **not a chronology**).
+- The ledger now rejects a document hash that was already ingested under **any** occurrence
+  identity: one physical document is one occurrence, so a historical corpus report re-offered
+  through the runtime path can never double-count Elo.
+- `splendor studio-league-ingest --report --replay --config [--identity --db --json]` drives the
+  chain end to end through the same authority seams as the migration (protocol rating config,
+  durable manifest with non-empty-ledger hash guard, single-match transaction) and writes a
+  receipt (occurrence identity, outcome, eligibility, per-seat Elo deltas) read back from the
+  ledger via `match_receipt`.
+- Replay storage is `in_place_reference` in this slice; the content-addressed archive copy is a
+  later Commit C slice.
+
+Validation (local evidence): `cargo test -p splendor-studio-league` **53/53** including the new
+`runtime_ingest` gates — end-to-end ingest of a fresh occurrence yields exactly 2 Elo events and
+an eligible receipt, a re-offered occurrence is `AlreadyPresent` with no extra events, a tampered
+replay/report and a foreign configuration are rejected fail-closed, and the same document under a
+second occurrence identity is refused. `cargo test -p splendor-cli --bin splendor` **89/89**;
+`cargo fmt --check` clean.
+
 ## Next authorized gate
 
 Commit B (historical migration) is **CLOSED**. The derived database
@@ -775,7 +818,11 @@ proves that document set, policy attribution, derived ledger, Elo history, and l
 all independent of root traversal order. The leaderboard is a **deterministic historical
 canonical-order Studio Elo** — historical entries are ordered by source-document SHA-256, so it
 is not a chronology and not a strength-timeline verdict; it is not comparable to `official_elo`
-pools and is not accepted as a strength baseline. The next authorized work is the previously
-identified hardening round: remove the remaining unvalidated `.unwrap()` calls on the historical
-replay/import path so that corrupt or malformed replay data degrades to explicit errors instead
-of panics. Commit C (runtime ingestion) design remains a separate future decision.
+pools and is not accepted as a strength baseline. The panic-hardening round that followed closure ran as a read-only static census and closed with
+**no code change**: zero externally triggerable panic sites exist on the scoped historical
+replay/import production path (strict parsing, `Result` propagation, and explicit guards already
+fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
+Commit C Slice 1 (runtime ingestion of one fresh occurrence) is `IMPLEMENTED` / `VERIFIED` locally
+and awaits owner review; further Commit C slices — the content-addressed replay archive, the
+central arena/evaluation completion outlet, and the Studio Host APIs — are **not authorized** yet
+and need the owner's review of this slice first.

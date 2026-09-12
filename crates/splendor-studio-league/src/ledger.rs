@@ -327,6 +327,30 @@ fn ingest_match_in_tx(
         });
     }
 
+    // One physical document is one occurrence (Distinct-Document policy,
+    // enforced across occurrence namespaces too): the same document bytes must
+    // never enter the ledger a second time under a different identity, e.g. a
+    // historical corpus report re-offered through the runtime path.
+    let duplicate_document: Option<String> = tx
+        .query_row(
+            "SELECT source_identity FROM ingest_sources
+              WHERE source_document_hash = ?1
+                AND NOT (source_kind = ?2 AND source_identity = ?3)",
+            params![
+                record.source_document_hash,
+                record.source_kind,
+                record.source_identity
+            ],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if let Some(existing_identity) = duplicate_document {
+        return Err(StudioLeagueError::Invalid(format!(
+            "document `{}` was already ingested as `{existing_identity}`; the same document bytes cannot become a second occurrence `{}`",
+            record.source_document_hash, record.source_identity
+        )));
+    }
+
     let now = now_epoch_seconds();
     let match_id = record.match_id();
 
@@ -853,4 +877,65 @@ pub fn preview_eligibility(
         },
         &protocol_rating_config(),
     )
+}
+
+/// The post-ingest receipt of one recorded match: its rating eligibility and
+/// the Elo events it produced (Commit C Slice 1).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MatchReceiptV1 {
+    pub match_id: String,
+    /// `None` when the match is rating-eligible; otherwise the frozen reason.
+    pub rating_ineligible_reason: Option<String>,
+    pub elo_events: Vec<MatchEloEventV1>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MatchEloEventV1 {
+    pub participant_id: String,
+    pub elo_before: f64,
+    pub elo_after: f64,
+}
+
+/// Read the receipt of one match from the ledger. `Ok(None)` when the match is
+/// not recorded at all.
+pub fn match_receipt(conn: &Connection, match_id: &str) -> Result<Option<MatchReceiptV1>> {
+    use rusqlite::OptionalExtension;
+
+    let recorded: Option<String> = conn
+        .query_row(
+            "SELECT match_id FROM matches WHERE match_id = ?1",
+            [match_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if recorded.is_none() {
+        return Ok(None);
+    }
+    let rating_ineligible_reason: Option<String> = conn
+        .query_row(
+            "SELECT rating_ineligible_reason FROM matches WHERE match_id = ?1",
+            [match_id],
+            // An eligible match legitimately stores NULL here.
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten();
+    let mut statement = conn.prepare(
+        "SELECT participant_id, elo_before, elo_after FROM rating_events
+          WHERE match_id = ?1 ORDER BY participant_id",
+    )?;
+    let elo_events = statement
+        .query_map([match_id], |row| {
+            Ok(MatchEloEventV1 {
+                participant_id: row.get(0)?,
+                elo_before: row.get(1)?,
+                elo_after: row.get(2)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(Some(MatchReceiptV1 {
+        match_id: match_id.to_string(),
+        rating_ineligible_reason,
+        elo_events,
+    }))
 }

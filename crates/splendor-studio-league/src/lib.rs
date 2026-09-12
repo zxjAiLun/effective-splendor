@@ -43,9 +43,9 @@ pub use error::{Result, StudioLeagueError};
 pub use historical_import::{
     arena_report_to_match_record, associate_configuration, build_historical_corpus,
     compute_canonical_set_digest, compute_policy_attribution_digest, parse_arena_report,
-    resolve_arena_report_replay, run_historical_dry_run, ConfigAssociationV1,
+    resolve_arena_report_replay, run_historical_dry_run, runtime_match_record, ConfigAssociationV1,
     ConfigurationCandidateV1, HistoricalDryRunConfig, HistoricalDryRunReportV1,
-    HistoricalReplayResolutionV1,
+    HistoricalReplayResolutionV1, OccurrenceNamespaceV1,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
@@ -58,10 +58,11 @@ pub use inventory::{
 pub use ledger::{
     aliases, canonical_league_order, eligible_match_count, ensure_rating_config, identity_index,
     ineligible_reason_counts, ingest_batch_canonical, ingest_match, ingest_match_ordered,
-    is_rating_quality_replay, leaderboard, league_order, match_count, participant_elo,
-    participant_id_for_identity, preview_eligibility, protocol_rating_config, rating_event_count,
-    rating_history, rebuild_ratings, stored_rating_config, IngestOrder, IngestOutcome,
-    LeaderboardRow, RatingEventRow, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    is_rating_quality_replay, leaderboard, league_order, match_count, match_receipt,
+    participant_elo, participant_id_for_identity, preview_eligibility, protocol_rating_config,
+    rating_event_count, rating_history, rebuild_ratings, stored_rating_config, IngestOrder,
+    IngestOutcome, LeaderboardRow, MatchEloEventV1, MatchReceiptV1, RatingEventRow,
+    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };

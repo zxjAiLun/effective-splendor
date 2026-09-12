@@ -137,7 +137,148 @@ pub fn build_match_record_from_parsed(
         report,
         resolution,
         ConfigAssociationV1::NoConfigEvidence,
+        OccurrenceNamespaceV1::Historical,
     )
+}
+
+/// Build the ledger record for **one just-finished arena occurrence**
+/// (Commit C Slice 1), without any corpus scan.
+///
+/// The caller hands in the three documents the arena harness wrote for this
+/// single match: the arena report, the recorded ReplayV1, and the run's own
+/// `match-config.json`. The existing authority chain is reused verbatim:
+/// strict report parsing, full `verify_replay` of the provided replay bytes
+/// plus report/replay fact agreement, the exact configuration bound as
+/// companion evidence (with a `seed_commitment` cross-check that the config
+/// really is this match's), and the shared per-seat policy attribution.
+///
+/// Occurrence identity is content-derived
+/// (`runtime-sha256:<report document sha256>`); `played_at` stays `None`, so
+/// the match joins the same deterministic canonical league order as the
+/// historical corpus (a canonical-order Studio Elo, not a chronology).
+pub fn runtime_match_record(
+    report_bytes: &[u8],
+    replay_bytes: &[u8],
+    config_bytes: &[u8],
+    replay_storage_path: &str,
+) -> Result<StudioMatchRecordV1> {
+    let report = parse_arena_report("<runtime-occurrence>", report_bytes)?;
+    let (result, completed_plies, final_hash) = match &report.outcome {
+        ArenaOutcomeV1::Completed {
+            result,
+            completed_plies,
+            replay_final_hash,
+        } => (result, *completed_plies, replay_final_hash.as_str()),
+        ArenaOutcomeV1::Aborted { .. } | ArenaOutcomeV1::Truncated { .. } => {
+            return Err(StudioLeagueError::Invalid(
+                "runtime ingestion requires a completed arena report; aborted and truncated occurrences are recorded result-only by the arena and carry no rateable result".to_string(),
+            ));
+        }
+    };
+
+    // Verify the provided replay bytes in place: parse, full verification, and
+    // document-hash agreement. No content index and no filename is involved.
+    let replay: ReplayV1 = serde_json::from_slice(replay_bytes).map_err(|error| {
+        StudioLeagueError::Invalid(format!(
+            "runtime replay document failed strict schema parsing: {error}"
+        ))
+    })?;
+    let verified = verify_replay(&replay).map_err(|error| {
+        StudioLeagueError::Invalid(format!("runtime replay failed verification: {error}"))
+    })?;
+    let replay_document_sha = hex::encode(Sha256::digest(replay_bytes));
+    let candidate = ReplayContentCandidateV1 {
+        final_state_hash: final_hash.to_string(),
+        document_sha256: replay_document_sha,
+        logical_path: replay_storage_path.to_string(),
+        filesystem_path: None,
+    };
+    check_candidate_facts(
+        &report,
+        result,
+        completed_plies,
+        final_hash,
+        &candidate,
+        &CachedReplayVerification {
+            final_state_hash: verified.final_state_hash,
+            steps: verified.steps,
+            player_count: replay.player_count,
+            ruleset_fingerprint: replay.ruleset_fingerprint.as_str().to_string(),
+            scores: replay.result.scores.iter().map(|s| *s as i32).collect(),
+            ranks: replay.result.ranks.iter().map(|r| *r as i32).collect(),
+            winners: replay.result.winners.iter().map(|w| *w as u8).collect(),
+        },
+    )?;
+
+    // The run's own configuration document is the exact evidence for this
+    // occurrence; it must agree with the report it claims to configure.
+    let config = parse_match_configuration(config_bytes)?.ok_or_else(|| {
+        StudioLeagueError::Invalid(
+            "runtime configuration document is not an arena config".to_string(),
+        )
+    })?;
+    if config.game_id != report.game_id {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime configuration names game_id `{}` but the report names `{}`",
+            config.game_id, report.game_id
+        )));
+    }
+    if config.seats.len() != report.player_count as usize {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime configuration carries {} seats but the report declares {} players",
+            config.seats.len(),
+            report.player_count
+        )));
+    }
+    if let Some(seed) = config.seed {
+        let fingerprint =
+            RulesetFingerprint::from_str(&report.ruleset_fingerprint).map_err(|error| {
+                StudioLeagueError::Invalid(format!("invalid ruleset fingerprint: {error}"))
+            })?;
+        if seed_commitment_v1(&report.game_id, report.player_count, seed, &fingerprint).as_str()
+            != report.seed_commitment.as_str()
+        {
+            return Err(StudioLeagueError::Invalid(
+                "runtime configuration's seed does not reproduce the report's seed commitment; this configuration is not evidence for this occurrence".to_string(),
+            ));
+        }
+    }
+
+    build_match_record_with_configuration(
+        replay_storage_path,
+        report_bytes,
+        &report,
+        HistoricalReplayResolutionV1::Verified {
+            candidate,
+            completed_plies,
+        },
+        ConfigAssociationV1::Bound(&config),
+        OccurrenceNamespaceV1::Runtime,
+    )
+}
+
+/// The occurrence-identity namespace of a built record.
+///
+/// Both namespaces use the same content-derived scheme (SHA-256 of the report
+/// document bytes); the prefix keeps the ingestion era explicit so a historical
+/// corpus document re-offered through the runtime path can never silently
+/// become a "new" match (the ledger additionally rejects a document hash that
+/// was already ingested under any identity).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OccurrenceNamespaceV1 {
+    /// A document discovered by scanning the historical corpus.
+    Historical,
+    /// A single just-finished arena occurrence handed in directly.
+    Runtime,
+}
+
+impl OccurrenceNamespaceV1 {
+    pub fn prefix(self) -> &'static str {
+        match self {
+            OccurrenceNamespaceV1::Historical => "historical-sha256:",
+            OccurrenceNamespaceV1::Runtime => "runtime-sha256:",
+        }
+    }
 }
 
 /// Build the ledger record, with the arena's `match-config.json` evidence
@@ -158,6 +299,7 @@ pub fn build_match_record_with_configuration(
     report: &ArenaReportV1,
     resolution: HistoricalReplayResolutionV1,
     association: ConfigAssociationV1<'_>,
+    namespace: OccurrenceNamespaceV1,
 ) -> Result<StudioMatchRecordV1> {
     if report.agents.len() != report.player_count as usize {
         return Err(StudioLeagueError::Invalid(format!(
@@ -282,13 +424,13 @@ pub fn build_match_record_with_configuration(
     };
 
     let source_document_hash = hex::encode(Sha256::digest(report_bytes));
-    let source_identity = format!("historical-sha256:{source_document_hash}");
+    let source_identity = format!("{}{source_document_hash}", namespace.prefix());
 
     let record = StudioMatchRecordV1 {
         source_kind: "arena_report".to_string(),
-        // Historical arena reports use content-derived identity (`historical-sha256:<hash>`)
-        // so identity and canonical league ordering are invariant to archive file location.
-        // `source_path` records the lexicographically first logical path for provenance/debugging.
+        // Content-derived occurrence identity, invariant to archive file
+        // location. `source_path` records the lexicographically first logical
+        // path for provenance/debugging.
         source_identity,
         source_path: Some(logical_source_path.to_string()),
         source_document_hash,
@@ -980,6 +1122,7 @@ pub fn build_historical_corpus(
             &arena_report,
             resolution,
             association,
+            OccurrenceNamespaceV1::Historical,
         ) {
             Ok(rec) => rec,
             Err(e) => {

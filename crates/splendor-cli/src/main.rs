@@ -171,6 +171,9 @@ fn main() {
         Some("studio-league-migrate") => {
             std::process::exit(studio_league_command::run_studio_league_migrate(&argv[2..]))
         }
+        Some("studio-league-ingest") => {
+            std::process::exit(studio_league_command::run_studio_league_ingest(&argv[2..]))
+        }
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("train-policy-value") => {
             std::process::exit(learning_command::run_train_policy_value(&argv[2..]))

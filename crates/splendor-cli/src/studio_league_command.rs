@@ -5,11 +5,11 @@
 //! corpus is duplicated. It never opens a database and never writes a ledger row.
 
 use splendor_studio_league::{
-    build_historical_corpus, ensure_rating_config, ingest_batch_canonical, initialise, leaderboard,
-    open_league, protocol_rating_config, run_historical_dry_run, scan,
-    stored_identity_manifest_hash, sync_identity_manifest, write_jsonl, HistoricalDryRunConfig,
-    HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1, InventoryScanConfig,
-    DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT, STUDIO_LEAGUE_DB_FILE,
+    build_historical_corpus, ensure_rating_config, ingest_batch_canonical, ingest_match,
+    initialise, leaderboard, match_receipt, open_league, run_historical_dry_run,
+    runtime_match_record, scan, stored_identity_manifest_hash, sync_identity_manifest, write_jsonl,
+    HistoricalDryRunConfig, HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1,
+    InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT, STUDIO_LEAGUE_DB_FILE,
     STUDIO_LEAGUE_IDENTITY_FILE,
 };
 use std::collections::HashSet;
@@ -1044,4 +1044,223 @@ fn fail_migrate(message: &str) -> i32 {
     eprintln!();
     eprintln!("{MIGRATE_USAGE}");
     2
+}
+
+const INGEST_USAGE: &str = "\
+studio-league-ingest: ingest one just-finished arena occurrence into the Studio League
+through the existing authority chain (strict parse -> replay verification -> canonical
+record -> ingest_match -> eligibility -> 0 or 2 Elo events), with no corpus scan.
+
+Options:
+  --report <path>         The arena report document of the finished match
+  --replay <path>         The recorded ReplayV1 document of the same match
+  --config <path>         The run's own match-config.json (exact configuration evidence)
+  --identity <path>       Path to identity.json (default: local-artifacts/studio-league/identity.json)
+  --db <path>             Path to the league database (default: local-artifacts/studio-league/league.sqlite3)
+  --json <path>           Write an ingestion receipt JSON here
+  --help                  Print this help
+";
+
+fn fail_ingest(message: &str) -> i32 {
+    eprintln!("studio-league-ingest: {message}");
+    eprintln!();
+    eprintln!("{INGEST_USAGE}");
+    2
+}
+
+/// Ingest a single fresh arena occurrence (Commit C Slice 1).
+///
+/// Every authority from Commits A/B is reused as-is: strict document parsing,
+/// full replay verification with report/replay fact agreement, the run's own
+/// configuration as exact policy evidence, the durable identity manifest, the
+/// single Elo implementation, and the ledger's idempotency and duplicate
+/// document guards. Nothing here scans the corpus.
+pub fn run_studio_league_ingest(args: &[String]) -> i32 {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        println!("{INGEST_USAGE}");
+        return 0;
+    }
+    let mut report_path: Option<PathBuf> = None;
+    let mut replay_path: Option<PathBuf> = None;
+    let mut config_path: Option<PathBuf> = None;
+    let mut identity_path = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
+    let mut db_path = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut json_out: Option<PathBuf> = None;
+
+    let mut index = 0;
+    while index < args.len() {
+        let value = || args.get(index + 1);
+        match args[index].as_str() {
+            "--report" => match value() {
+                Some(path) => report_path = Some(PathBuf::from(path)),
+                None => return fail_ingest("--report needs a path"),
+            },
+            "--replay" => match value() {
+                Some(path) => replay_path = Some(PathBuf::from(path)),
+                None => return fail_ingest("--replay needs a path"),
+            },
+            "--config" => match value() {
+                Some(path) => config_path = Some(PathBuf::from(path)),
+                None => return fail_ingest("--config needs a path"),
+            },
+            "--identity" => match value() {
+                Some(path) => identity_path = PathBuf::from(path),
+                None => return fail_ingest("--identity needs a path"),
+            },
+            "--db" => match value() {
+                Some(path) => db_path = PathBuf::from(path),
+                None => return fail_ingest("--db needs a path"),
+            },
+            "--json" => match value() {
+                Some(path) => json_out = Some(PathBuf::from(path)),
+                None => return fail_ingest("--json needs a path"),
+            },
+            other => return fail_ingest(&format!("unexpected argument `{other}`")),
+        }
+        index += 2;
+    }
+    let (report_path, replay_path, config_path) = match (report_path, replay_path, config_path) {
+        (Some(report), Some(replay), Some(config)) => (report, replay, config),
+        _ => return fail_ingest("--report, --replay and --config are all required"),
+    };
+
+    // Step 1: read the three occurrence documents.
+    let read = |path: &Path, label: &str| -> std::result::Result<Vec<u8>, String> {
+        std::fs::read(path)
+            .map_err(|error| format!("cannot read {label} `{}`: {error}", path.display()))
+    };
+    let report_bytes = match read(&report_path, "arena report") {
+        Ok(bytes) => bytes,
+        Err(error) => return fail_ingest(&error),
+    };
+    let replay_bytes = match read(&replay_path, "replay") {
+        Ok(bytes) => bytes,
+        Err(error) => return fail_ingest(&error),
+    };
+    let config_bytes = match read(&config_path, "match config") {
+        Ok(bytes) => bytes,
+        Err(error) => return fail_ingest(&error),
+    };
+
+    // Step 2: the existing verify -> canonical record chain.
+    let replay_logical_path = replay_path.to_string_lossy().replace('\\', "/");
+    let record = match runtime_match_record(
+        &report_bytes,
+        &replay_bytes,
+        &config_bytes,
+        &replay_logical_path,
+    ) {
+        Ok(record) => record,
+        Err(error) => return fail_ingest(&format!("occurrence rejected: {error}")),
+    };
+
+    // Step 3: open the league through the same authority seams as the
+    // migration: schema, protocol rating config, and the durable manifest.
+    let mut conn = match open_league(&db_path) {
+        Ok(conn) => conn,
+        Err(error) => return fail_ingest(&format!("cannot open league database: {error}")),
+    };
+    if let Err(error) = initialise(&conn) {
+        return fail_ingest(&format!("failed to initialise schema: {error}"));
+    }
+    if let Err(error) = ensure_rating_config(&conn) {
+        return fail_ingest(&format!("rating config mismatch: {error}"));
+    }
+    let manifest = match IdentityManifestV1::load_or_recover(&identity_path) {
+        Ok(Some(manifest)) => manifest,
+        Ok(None) => return fail_ingest(
+            "identity manifest does not exist; initialize it with `studio-league-migrate` first",
+        ),
+        Err(error) => return fail_ingest(&format!("failed to load identity manifest: {error}")),
+    };
+    if let Err(error) = manifest.validate() {
+        return fail_ingest(&format!("identity manifest is invalid: {error}"));
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0);
+    if let Err(error) = sync_identity_manifest(&conn, &manifest, now) {
+        return fail_ingest(&format!("failed to sync identity manifest: {error}"));
+    }
+
+    // Step 4: the single-match authority entry point.
+    let outcome = match ingest_match(&mut conn, &record) {
+        Ok(outcome) => outcome,
+        Err(error) => return fail_ingest(&format!("ingest failed (rolled back): {error}")),
+    };
+
+    // Step 5: receipt — what the ledger actually recorded.
+    let match_id = record.match_id();
+    let receipt = match match_receipt(&conn, &match_id) {
+        Ok(receipt) => receipt,
+        Err(error) => {
+            return fail_ingest(&format!("failed to read the ingestion receipt: {error}"))
+        }
+    };
+    let receipt = match receipt {
+        Some(receipt) => receipt,
+        None => return fail_ingest("ingest reported success but the match is not in the ledger"),
+    };
+    let eligibility_text = match &receipt.rating_ineligible_reason {
+        Some(reason) => format!("ineligible ({reason})"),
+        None => "eligible".to_string(),
+    };
+    println!(
+        "studio-league-ingest: recorded occurrence `{}`",
+        record.source_identity
+    );
+    println!("  match_id:    {}", receipt.match_id);
+    println!("  outcome:     {outcome:?}");
+    println!("  eligibility: {eligibility_text}");
+    for event in &receipt.elo_events {
+        println!(
+            "  elo:         {}: {:.1} -> {:.1}",
+            event.participant_id, event.elo_before, event.elo_after
+        );
+    }
+
+    if let Some(out_json_path) = json_out {
+        let (outcome_kind, event_count) = match &outcome {
+            splendor_studio_league::IngestOutcome::Inserted { rating_events, .. } => {
+                ("inserted", *rating_events)
+            }
+            splendor_studio_league::IngestOutcome::AlreadyPresent { .. } => ("already_present", 0),
+        };
+        let receipt_json = serde_json::json!({
+            "source_kind": record.source_kind,
+            "source_identity": record.source_identity,
+            "source_document_hash": record.source_document_hash,
+            "match_id": receipt.match_id,
+            "outcome": {
+                "kind": outcome_kind,
+                "rating_events": event_count,
+            },
+            "eligibility": eligibility_text,
+            "elo": receipt
+                .elo_events
+                .iter()
+                .map(|event| {
+                    serde_json::json!({
+                        "participant_id": event.participant_id,
+                        "elo_before": event.elo_before,
+                        "elo_after": event.elo_after,
+                    })
+                })
+                .collect::<Vec<_>>(),
+        });
+        if let Err(error) = write_json_report(&out_json_path, &receipt_json) {
+            eprintln!(
+                "studio-league-ingest: failed to write receipt JSON to {}: {error}",
+                out_json_path.display()
+            );
+            return 1;
+        }
+        println!(
+            "Wrote ingestion receipt JSON to {}",
+            out_json_path.display()
+        );
+    }
+
+    0
 }
