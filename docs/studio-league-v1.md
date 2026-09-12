@@ -16,9 +16,11 @@
   config association, three-state seat attribution, unclassified-argv fail-closed, manifest-guard
   fail-closed), and the final migration passed the five-digest determinism gate (2026-09-13). The
   derived database is `local-artifacts/studio-league/league.sqlite3` (local-only, ignored).
-  **Commit C — Runtime Ingestion** has started: Slice 1 (`IMPLEMENTED` / `VERIFIED` locally, pending
-  owner review) proves that one just-finished arena occurrence enters the league through the
-  existing authority chain with no corpus scan; no API/UI, no new Elo logic.
+  **Commit C — Runtime Ingestion** has started: Slice 1 (`2c9da0e`) was reviewed
+  `REPAIR_REQUIRED` (P0=0/P1=3/P2=1 — runtime occurrence authority was not yet established), and
+  Slice 1 Repair 1 (`IMPLEMENTED` / `VERIFIED` locally, pending owner review) landed the durable
+  occurrence envelope: `runtime:<occurrence_id>` identity, `completed_at` as Elo-ordering
+  evidence, and rebuild-equivalent live append. No API/UI; no new Elo logic.
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -783,15 +785,15 @@ Landed in this slice:
   The replay bytes are verified in place (full `verify_replay` plus the report/replay fact
   agreement used by the historical resolver); the configuration is bound as exact evidence only
   after its `game_id`, seat count, and `seed_commitment` reproduction all agree with the report.
-- Occurrence identity stays content-derived, with the ingestion era explicit:
-  `runtime-sha256:<report document sha256>` (`OccurrenceNamespaceV1`). `played_at` remains
-  `None` — the report and replay carry no wall-clock evidence and the rebuild contract forbids
-  machine-dependent timestamps — so a runtime match joins the same deterministic canonical league
-  order as the historical corpus (a canonical-order Studio Elo, **not a chronology**).
-- The ledger now rejects a document hash that was already ingested under **any** occurrence
-  identity: one physical document is one occurrence, so a historical corpus report re-offered
-  through the runtime path can never double-count Elo.
-- `splendor studio-league-ingest --report --replay --config [--identity --db --json]` drives the
+- ~~Occurrence identity stays content-derived (`runtime-sha256:<…>`); `played_at` remains
+  `None`.~~ **Superseded by Repair 1** — see below: identity now comes from a durable occurrence
+  envelope, and `played_at` comes from its `completed_at`.
+- ~~The ledger rejects a document hash already ingested under any occurrence identity.~~
+  **Superseded by Repair 1**: that rule over-applied the historical Distinct-Document policy to
+  the general ledger and was removed; occurrence authority is exactly `(source_kind,
+  source_identity)`.
+- `splendor studio-league-ingest --occurrence --report --replay --config [--identity --db --json]`
+  drives the
   chain end to end through the same authority seams as the migration (protocol rating config,
   durable manifest with non-empty-ledger hash guard, single-match transaction) and writes a
   receipt (occurrence identity, outcome, eligibility, per-seat Elo deltas) read back from the
@@ -805,6 +807,48 @@ an eligible receipt, a re-offered occurrence is `AlreadyPresent` with no extra e
 replay/report and a foreign configuration are rejected fail-closed, and the same document under a
 second occurrence identity is refused. `cargo test -p splendor-cli --bin splendor` **89/89**;
 `cargo fmt --check` clean.
+
+### Commit C Slice 1 Repair 1 — runtime occurrence authority (2026-09-13)
+
+The owner's review of `2c9da0e` returned **`REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1)**: the chain
+worked, but "what makes a runtime occurrence" was not yet established. Repairs:
+
+1. **P1-1 — the historical Distinct-Document rule had been promoted to a global ledger
+   invariant.** Content equality is not occurrence equality: two genuinely played deterministic
+   matches may produce byte-identical documents and are still two occurrences. The ledger-wide
+   `source_document_hash` duplicate rejection was removed; the ledger's occurrence/idempotency
+   authority is exactly Commit A's `(source_kind, source_identity)` (same identity + same
+   document → `AlreadyPresent`; same identity + changed document → `SourceConflict`; different
+   occurrence identities coexist). The Distinct-Document dedup stays where it belongs: the
+   historical corpus builder, which lacks occurrence evidence.
+2. **P1-2 — the runtime append order existed only in SQLite.** A durable
+   [`RuntimeOccurrenceV1`] envelope is now the occurrence evidence, written by the harness at
+   match completion: `occurrence_id` (harness-authored; `source_identity = runtime:<id>`, never
+   content-derived) and `completed_at` (recorded once at completion, never invented at ingest
+   time), plus the report/replay/config document SHAs which must match the provided bytes. The
+   record's `played_at` is the envelope's `completed_at` — the Elo-ordering evidence that
+   survives a database delete — and `build_historical_corpus` now discovers occurrence envelopes
+   in the corpus roots, excludes their claimed report/config documents from the historical pass,
+   and rebuilds runtime records from colocated evidence. A narrow tail guard rejects an
+   incremental append whose `completed_at` is not strictly after the ledger's last occurrence
+   (live append order == canonical rebuild order); out-of-order arrival requires a rebuild. The
+   `studio-league-migrate` preflight still expects exactly the 42,521 historical records, so it
+   fail-closed refuses once runtime occurrences enter its roots.
+3. **P1-3 — the "triple config binding" allowed a missing seed to bypass the `seed_commitment`
+   check.** A fresh runtime configuration must carry its `seed`; `seed = None` is rejected.
+4. **P2 — a receipt export failure after the DB commit** now prints explicitly that the match
+   was committed successfully and only the receipt export failed (re-offering the occurrence is
+   a no-op), instead of implying a rollback.
+
+Targeted gates: two different occurrence ids with byte-identical documents both enter the ledger
+(4 rating events, two match identities); the same occurrence id is idempotent with the same bytes
+and conflicts with changed bytes; deleting the database and rebuilding from the same occurrence
+evidence reproduces the live ingest exactly (league_seq assignment, full Elo history, and
+leaderboard identical, over a 3-fixture corpus); a seedless runtime configuration, a wrong seed,
+and a tampered replay are rejected; an out-of-order append is rejected. A CLI smoke over a real
+corpus match directory recorded `runtime:smoke-occ-1` with exactly 2 Elo events into a scratch
+database. `cargo test -p splendor-studio-league` **56/56**; `cargo test -p splendor-cli --bin
+splendor` **89/89**; `cargo fmt --check` clean.
 
 ## Next authorized gate
 

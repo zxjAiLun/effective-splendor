@@ -327,28 +327,37 @@ fn ingest_match_in_tx(
         });
     }
 
-    // One physical document is one occurrence (Distinct-Document policy,
-    // enforced across occurrence namespaces too): the same document bytes must
-    // never enter the ledger a second time under a different identity, e.g. a
-    // historical corpus report re-offered through the runtime path.
-    let duplicate_document: Option<String> = tx
-        .query_row(
-            "SELECT source_identity FROM ingest_sources
-              WHERE source_document_hash = ?1
-                AND NOT (source_kind = ?2 AND source_identity = ?3)",
-            params![
-                record.source_document_hash,
-                record.source_kind,
+    // Occurrence authority is exactly `(source_kind, source_identity)` (Commit
+    // A): the same identity with the same document is idempotent, the same
+    // identity with a changed document is a conflict, and two different
+    // authoritative occurrence identities may coexist even when deterministic
+    // execution produced byte-identical documents. Document equality is not
+    // occurrence equality; the Distinct-Document dedup lives in the historical
+    // corpus builder, which lacks occurrence evidence, never here.
+
+    // A runtime occurrence appends only at the ledger's tail (Commit C Slice 1
+    // Repair 1, P1-2): `played_at` is the durable Elo-ordering evidence
+    // recorded in the occurrence envelope, and an out-of-order arrival would
+    // make the live append order diverge from the canonical rebuild order.
+    // The guard is scoped to runtime occurrences: Commit A's non-runtime
+    // ingest semantics (which carry no occurrence evidence) are untouched.
+    if record.source_identity.starts_with("runtime:") {
+        let completed_at = record.played_at.ok_or_else(|| {
+            StudioLeagueError::Invalid(format!(
+                "runtime occurrence `{}` carries no played_at; the occurrence envelope's completed_at is the Elo-ordering evidence",
                 record.source_identity
-            ],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if let Some(existing_identity) = duplicate_document {
-        return Err(StudioLeagueError::Invalid(format!(
-            "document `{}` was already ingested as `{existing_identity}`; the same document bytes cannot become a second occurrence `{}`",
-            record.source_document_hash, record.source_identity
-        )));
+            ))
+        })?;
+        let last_played_at: Option<i64> =
+            tx.query_row("SELECT MAX(played_at) FROM matches", [], |row| row.get(0))?;
+        if let Some(last) = last_played_at {
+            if completed_at <= last {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "runtime occurrence `{}` completed at {completed_at} does not append after the ledger's last occurrence ({last}); incremental append would diverge from the canonical rebuild order — rebuild the derived database from the occurrence evidence instead",
+                    record.source_identity
+                )));
+            }
+        }
     }
 
     let now = now_epoch_seconds();

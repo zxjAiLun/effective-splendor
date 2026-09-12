@@ -43,9 +43,10 @@ pub use error::{Result, StudioLeagueError};
 pub use historical_import::{
     arena_report_to_match_record, associate_configuration, build_historical_corpus,
     compute_canonical_set_digest, compute_policy_attribution_digest, parse_arena_report,
-    resolve_arena_report_replay, run_historical_dry_run, runtime_match_record, ConfigAssociationV1,
-    ConfigurationCandidateV1, HistoricalDryRunConfig, HistoricalDryRunReportV1,
-    HistoricalReplayResolutionV1, OccurrenceNamespaceV1,
+    parse_runtime_occurrence, resolve_arena_report_replay, run_historical_dry_run,
+    runtime_match_record, ConfigAssociationV1, ConfigurationCandidateV1, HistoricalDryRunConfig,
+    HistoricalDryRunReportV1, HistoricalReplayResolutionV1, OccurrenceIdentityV1,
+    RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,

@@ -6,10 +6,11 @@
 
 use splendor_studio_league::{
     build_historical_corpus, ensure_rating_config, ingest_batch_canonical, ingest_match,
-    initialise, leaderboard, match_receipt, open_league, run_historical_dry_run,
-    runtime_match_record, scan, stored_identity_manifest_hash, sync_identity_manifest, write_jsonl,
-    HistoricalDryRunConfig, HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1,
-    InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT, STUDIO_LEAGUE_DB_FILE,
+    initialise, leaderboard, match_receipt, open_league, parse_runtime_occurrence,
+    run_historical_dry_run, runtime_match_record, scan, stored_identity_manifest_hash,
+    sync_identity_manifest, write_jsonl, HistoricalDryRunConfig, HistoricalDryRunReportV1,
+    IdentityManifestV1, InventoryReportV1, InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME,
+    INVENTORY_REPORT_FORMAT, RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_DB_FILE,
     STUDIO_LEAGUE_IDENTITY_FILE,
 };
 use std::collections::HashSet;
@@ -1052,6 +1053,8 @@ through the existing authority chain (strict parse -> replay verification -> can
 record -> ingest_match -> eligibility -> 0 or 2 Elo events), with no corpus scan.
 
 Options:
+  --occurrence <path>     The durable runtime-occurrence envelope the harness wrote at
+                          match completion (occurrence_id, completed_at, document SHAs)
   --report <path>         The arena report document of the finished match
   --replay <path>         The recorded ReplayV1 document of the same match
   --config <path>         The run's own match-config.json (exact configuration evidence)
@@ -1080,6 +1083,7 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         println!("{INGEST_USAGE}");
         return 0;
     }
+    let mut occurrence_path: Option<PathBuf> = None;
     let mut report_path: Option<PathBuf> = None;
     let mut replay_path: Option<PathBuf> = None;
     let mut config_path: Option<PathBuf> = None;
@@ -1091,6 +1095,10 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     while index < args.len() {
         let value = || args.get(index + 1);
         match args[index].as_str() {
+            "--occurrence" => match value() {
+                Some(path) => occurrence_path = Some(PathBuf::from(path)),
+                None => return fail_ingest("--occurrence needs a path"),
+            },
             "--report" => match value() {
                 Some(path) => report_path = Some(PathBuf::from(path)),
                 None => return fail_ingest("--report needs a path"),
@@ -1119,15 +1127,37 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         }
         index += 2;
     }
-    let (report_path, replay_path, config_path) = match (report_path, replay_path, config_path) {
-        (Some(report), Some(replay), Some(config)) => (report, replay, config),
-        _ => return fail_ingest("--report, --replay and --config are all required"),
-    };
+    let (occurrence_path, report_path, replay_path, config_path) =
+        match (occurrence_path, report_path, replay_path, config_path) {
+            (Some(occurrence), Some(report), Some(replay), Some(config)) => {
+                (occurrence, report, replay, config)
+            }
+            _ => {
+                return fail_ingest(
+                    "--occurrence, --report, --replay and --config are all required",
+                )
+            }
+        };
 
-    // Step 1: read the three occurrence documents.
+    // Step 1: read the occurrence envelope and the three documents it covers.
     let read = |path: &Path, label: &str| -> std::result::Result<Vec<u8>, String> {
         std::fs::read(path)
             .map_err(|error| format!("cannot read {label} `{}`: {error}", path.display()))
+    };
+    let occurrence_bytes = match read(&occurrence_path, "runtime occurrence envelope") {
+        Ok(bytes) => bytes,
+        Err(error) => return fail_ingest(&error),
+    };
+    let occurrence = match parse_runtime_occurrence(&occurrence_bytes) {
+        Ok(Some(occurrence)) => occurrence,
+        Ok(None) => {
+            return fail_ingest(&format!(
+                "`{}` is not a runtime occurrence envelope (format `{}`)",
+                occurrence_path.display(),
+                RUNTIME_OCCURRENCE_FORMAT
+            ))
+        }
+        Err(error) => return fail_ingest(&format!("invalid runtime occurrence envelope: {error}")),
     };
     let report_bytes = match read(&report_path, "arena report") {
         Ok(bytes) => bytes,
@@ -1142,9 +1172,11 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         Err(error) => return fail_ingest(&error),
     };
 
-    // Step 2: the existing verify -> canonical record chain.
+    // Step 2: the existing verify -> canonical record chain, authored by the
+    // occurrence envelope (identity + Elo-ordering evidence).
     let replay_logical_path = replay_path.to_string_lossy().replace('\\', "/");
     let record = match runtime_match_record(
+        &occurrence,
         &report_bytes,
         &replay_bytes,
         &config_bytes,
@@ -1251,7 +1283,7 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         });
         if let Err(error) = write_json_report(&out_json_path, &receipt_json) {
             eprintln!(
-                "studio-league-ingest: failed to write receipt JSON to {}: {error}",
+                "studio-league-ingest: the match WAS committed successfully; only the receipt export failed ({}: {error}). Re-offering the same occurrence is a no-op, so the receipt can be re-derived safely",
                 out_json_path.display()
             );
             return 1;

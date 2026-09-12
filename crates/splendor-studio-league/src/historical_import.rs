@@ -19,7 +19,7 @@ use crate::match_record::{
 };
 use crate::participant::EngineIdentityV1;
 use crate::replay_index::{
-    collect_corpus_files, CorpusRoot, ReplayContentCandidateV1, ReplayContentIndexV1,
+    collect_corpus_files, CorpusFile, CorpusRoot, ReplayContentCandidateV1, ReplayContentIndexV1,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -137,31 +137,59 @@ pub fn build_match_record_from_parsed(
         report,
         resolution,
         ConfigAssociationV1::NoConfigEvidence,
-        OccurrenceNamespaceV1::Historical,
+        &OccurrenceIdentityV1::Historical,
+        None,
     )
 }
 
 /// Build the ledger record for **one just-finished arena occurrence**
 /// (Commit C Slice 1), without any corpus scan.
 ///
-/// The caller hands in the three documents the arena harness wrote for this
-/// single match: the arena report, the recorded ReplayV1, and the run's own
-/// `match-config.json`. The existing authority chain is reused verbatim:
-/// strict report parsing, full `verify_replay` of the provided replay bytes
-/// plus report/replay fact agreement, the exact configuration bound as
-/// companion evidence (with a `seed_commitment` cross-check that the config
-/// really is this match's), and the shared per-seat policy attribution.
+/// The caller hands in the durable occurrence envelope the harness wrote at
+/// match completion plus the three documents it covers: the arena report, the
+/// recorded ReplayV1, and the run's own `match-config.json`. The existing
+/// authority chain is reused verbatim: strict report parsing, full
+/// `verify_replay` of the provided replay bytes plus report/replay fact
+/// agreement, the exact configuration bound as companion evidence, and the
+/// shared per-seat policy attribution.
 ///
-/// Occurrence identity is content-derived
-/// (`runtime-sha256:<report document sha256>`); `played_at` stays `None`, so
-/// the match joins the same deterministic canonical league order as the
-/// historical corpus (a canonical-order Studio Elo, not a chronology).
+/// The envelope is the occurrence authority: `source_identity` is
+/// `runtime:<occurrence_id>` (never content-derived), `played_at` is the
+/// envelope's `completed_at` (the durable Elo-ordering evidence), and all
+/// three document SHAs in the envelope must match the provided bytes. A fresh
+/// runtime configuration must carry its `seed`; a configuration whose seed
+/// does not reproduce the report's `seed_commitment` is not evidence for this
+/// occurrence.
 pub fn runtime_match_record(
+    occurrence: &RuntimeOccurrenceV1,
     report_bytes: &[u8],
     replay_bytes: &[u8],
     config_bytes: &[u8],
     replay_storage_path: &str,
 ) -> Result<StudioMatchRecordV1> {
+    // The envelope must describe exactly these documents.
+    let report_sha = hex::encode(Sha256::digest(report_bytes));
+    let replay_sha = hex::encode(Sha256::digest(replay_bytes));
+    let config_sha = hex::encode(Sha256::digest(config_bytes));
+    if occurrence.report_sha256 != report_sha {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime occurrence `{}` envelopes report sha `{}`, but the provided report document is `{report_sha}`",
+            occurrence.occurrence_id, occurrence.report_sha256
+        )));
+    }
+    if occurrence.replay_sha256 != replay_sha {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime occurrence `{}` envelopes replay sha `{}`, but the provided replay document is `{replay_sha}`",
+            occurrence.occurrence_id, occurrence.replay_sha256
+        )));
+    }
+    if occurrence.config_sha256 != config_sha {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime occurrence `{}` envelopes config sha `{}`, but the provided configuration document is `{config_sha}`",
+            occurrence.occurrence_id, occurrence.config_sha256
+        )));
+    }
+
     let report = parse_arena_report("<runtime-occurrence>", report_bytes)?;
     let (result, completed_plies, final_hash) = match &report.outcome {
         ArenaOutcomeV1::Completed {
@@ -230,18 +258,25 @@ pub fn runtime_match_record(
             report.player_count
         )));
     }
-    if let Some(seed) = config.seed {
-        let fingerprint =
-            RulesetFingerprint::from_str(&report.ruleset_fingerprint).map_err(|error| {
-                StudioLeagueError::Invalid(format!("invalid ruleset fingerprint: {error}"))
-            })?;
-        if seed_commitment_v1(&report.game_id, report.player_count, seed, &fingerprint).as_str()
-            != report.seed_commitment.as_str()
-        {
-            return Err(StudioLeagueError::Invalid(
-                "runtime configuration's seed does not reproduce the report's seed commitment; this configuration is not evidence for this occurrence".to_string(),
-            ));
-        }
+    // P1-3: fresh runtime exact evidence has no historical-compatibility
+    // escape hatch — the seed is required, and it must reproduce the report's
+    // seed commitment.
+    let seed = config.seed.ok_or_else(|| {
+        StudioLeagueError::Invalid(format!(
+            "runtime configuration for `{}` carries no seed; a fresh runtime occurrence requires complete seed evidence",
+            report.game_id
+        ))
+    })?;
+    let fingerprint =
+        RulesetFingerprint::from_str(&report.ruleset_fingerprint).map_err(|error| {
+            StudioLeagueError::Invalid(format!("invalid ruleset fingerprint: {error}"))
+        })?;
+    if seed_commitment_v1(&report.game_id, report.player_count, seed, &fingerprint).as_str()
+        != report.seed_commitment.as_str()
+    {
+        return Err(StudioLeagueError::Invalid(
+            "runtime configuration's seed does not reproduce the report's seed commitment; this configuration is not evidence for this occurrence".to_string(),
+        ));
     }
 
     build_match_record_with_configuration(
@@ -253,32 +288,119 @@ pub fn runtime_match_record(
             completed_plies,
         },
         ConfigAssociationV1::Bound(&config),
-        OccurrenceNamespaceV1::Runtime,
+        &OccurrenceIdentityV1::Runtime {
+            occurrence_id: occurrence.occurrence_id.clone(),
+        },
+        Some(occurrence.completed_at),
     )
 }
 
-/// The occurrence-identity namespace of a built record.
+/// The occurrence-identity authority of a built record.
 ///
-/// Both namespaces use the same content-derived scheme (SHA-256 of the report
-/// document bytes); the prefix keeps the ingestion era explicit so a historical
-/// corpus document re-offered through the runtime path can never silently
-/// become a "new" match (the ledger additionally rejects a document hash that
-/// was already ingested under any identity).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OccurrenceNamespaceV1 {
-    /// A document discovered by scanning the historical corpus.
+/// Historical corpus documents carry no independent occurrence evidence, so
+/// their identity is the conservative document-SHA reading
+/// (`historical-sha256:<report document sha256>`), deduplicated by the
+/// historical corpus builder under the Distinct-Document policy. A runtime
+/// occurrence carries a durable [`RuntimeOccurrenceV1`] envelope authored by
+/// the harness at match completion; its identity is `runtime:<occurrence_id>`.
+/// Two genuinely played matches are two occurrences even when deterministic
+/// execution produced byte-identical documents: **content equality is not
+/// occurrence equality**.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OccurrenceIdentityV1 {
     Historical,
-    /// A single just-finished arena occurrence handed in directly.
-    Runtime,
+    Runtime { occurrence_id: String },
 }
 
-impl OccurrenceNamespaceV1 {
-    pub fn prefix(self) -> &'static str {
+impl OccurrenceIdentityV1 {
+    pub fn source_identity(&self, report_document_hash: &str) -> String {
         match self {
-            OccurrenceNamespaceV1::Historical => "historical-sha256:",
-            OccurrenceNamespaceV1::Runtime => "runtime-sha256:",
+            OccurrenceIdentityV1::Historical => {
+                format!("historical-sha256:{report_document_hash}")
+            }
+            OccurrenceIdentityV1::Runtime { occurrence_id } => {
+                format!("runtime:{occurrence_id}")
+            }
         }
     }
+}
+
+/// Format tag of the durable runtime occurrence envelope.
+pub const RUNTIME_OCCURRENCE_FORMAT: &str = "effective-splendor-runtime-occurrence";
+/// Version of the runtime occurrence envelope.
+pub const RUNTIME_OCCURRENCE_VERSION: u32 = 1;
+
+/// The durable occurrence evidence a harness writes when a match completes
+/// (Commit C Slice 1 Repair 1, P1-2). This is what makes a runtime match
+/// rebuildable: `occurrence_id` is the occurrence identity (never derived from
+/// content), and `completed_at` is the Elo-ordering evidence, recorded once at
+/// match completion - never invented at ingest time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeOccurrenceV1 {
+    pub format: String,
+    pub version: u32,
+    /// Harness-authored occurrence identity. `source_identity` is
+    /// `runtime:<occurrence_id>`.
+    pub occurrence_id: String,
+    /// Unix seconds at match completion; becomes the record's `played_at` and
+    /// therefore the canonical Elo-ordering evidence.
+    pub completed_at: i64,
+    /// SHA-256 of the exact report document this occurrence produced.
+    pub report_sha256: String,
+    /// SHA-256 of the exact replay document this occurrence produced.
+    pub replay_sha256: String,
+    /// SHA-256 of the exact configuration document of this occurrence.
+    pub config_sha256: String,
+}
+
+/// Parse a runtime occurrence envelope. `Ok(None)` when the document is not a
+/// runtime occurrence (different or absent format) so callers can keep
+/// scanning; `Err` when it claims to be one but is malformed.
+pub fn parse_runtime_occurrence(bytes: &[u8]) -> Result<Option<RuntimeOccurrenceV1>> {
+    let value: serde_json::Value = match serde_json::from_slice(bytes) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    match value.get("format").and_then(|v| v.as_str()) {
+        Some(RUNTIME_OCCURRENCE_FORMAT) => {}
+        _ => return Ok(None),
+    }
+    let occurrence: RuntimeOccurrenceV1 = serde_json::from_value(value).map_err(|error| {
+        StudioLeagueError::Invalid(format!("runtime occurrence envelope is malformed: {error}"))
+    })?;
+    if occurrence.version != RUNTIME_OCCURRENCE_VERSION {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime occurrence envelope version {} is not supported (expected {RUNTIME_OCCURRENCE_VERSION})",
+            occurrence.version
+        )));
+    }
+    if occurrence.occurrence_id.trim().is_empty()
+        || occurrence.occurrence_id.chars().any(|c| c.is_control())
+    {
+        return Err(StudioLeagueError::Invalid(
+            "runtime occurrence envelope carries an empty or control-character occurrence_id"
+                .to_string(),
+        ));
+    }
+    if occurrence.completed_at < 0 {
+        return Err(StudioLeagueError::Invalid(format!(
+            "runtime occurrence `{}` carries a negative completed_at",
+            occurrence.occurrence_id
+        )));
+    }
+    for (field, sha) in [
+        ("report_sha256", &occurrence.report_sha256),
+        ("replay_sha256", &occurrence.replay_sha256),
+        ("config_sha256", &occurrence.config_sha256),
+    ] {
+        if !crate::match_record::is_lowercase_hex64(sha) {
+            return Err(StudioLeagueError::Invalid(format!(
+                "runtime occurrence `{}` carries an invalid {field}",
+                occurrence.occurrence_id
+            )));
+        }
+    }
+    Ok(Some(occurrence))
 }
 
 /// Build the ledger record, with the arena's `match-config.json` evidence
@@ -299,7 +421,8 @@ pub fn build_match_record_with_configuration(
     report: &ArenaReportV1,
     resolution: HistoricalReplayResolutionV1,
     association: ConfigAssociationV1<'_>,
-    namespace: OccurrenceNamespaceV1,
+    identity: &OccurrenceIdentityV1,
+    played_at: Option<i64>,
 ) -> Result<StudioMatchRecordV1> {
     if report.agents.len() != report.player_count as usize {
         return Err(StudioLeagueError::Invalid(format!(
@@ -424,7 +547,7 @@ pub fn build_match_record_with_configuration(
     };
 
     let source_document_hash = hex::encode(Sha256::digest(report_bytes));
-    let source_identity = format!("{}{source_document_hash}", namespace.prefix());
+    let source_identity = identity.source_identity(&source_document_hash);
 
     let record = StudioMatchRecordV1 {
         source_kind: "arena_report".to_string(),
@@ -434,7 +557,7 @@ pub fn build_match_record_with_configuration(
         source_identity,
         source_path: Some(logical_source_path.to_string()),
         source_document_hash,
-        played_at: None,
+        played_at,
         ruleset_fingerprint: report.ruleset_fingerprint.clone(),
         engine_version: Some(report.engine_version.clone()),
         player_count: report.player_count,
@@ -873,6 +996,8 @@ pub struct HistoricalDryRunReportV1 {
     // attributed (ambiguous candidates, unclassified argv).
     pub config_documents_seen: usize,
     pub game_ids_with_config_conflicts: usize,
+    pub runtime_occurrences_seen: usize,
+    pub runtime_occurrences_built: usize,
     pub matches_resolved_from_conflicting_game_ids: usize,
     pub matches_with_policy_identity: usize,
     pub matches_without_config_evidence: usize,
@@ -894,6 +1019,75 @@ pub struct HistoricalDryRunReportV1 {
 ///
 /// Returns the validation and reconciliation report alongside the verified
 /// canonical records ready for ingestion.
+/// One scanned report/replay/config document in a directory, for resolving a
+/// runtime occurrence envelope's siblings by content hash.
+struct DirDoc {
+    sha: String,
+    logical_path: String,
+    filesystem_path: std::path::PathBuf,
+}
+
+/// Attribute the per-record counters (participant identities, unmapped seats,
+/// policy resolution, diagnostic, self-match) for one built record. Shared by
+/// the historical and the runtime build passes so both produce identical
+/// attribution bookkeeping.
+fn account_built_record(
+    report: &mut HistoricalDryRunReportV1,
+    distinct_participants: &mut BTreeSet<String>,
+    record: &StudioMatchRecordV1,
+) {
+    let mut match_has_unmapped = false;
+    let mut match_has_policy_identity = false;
+    let mut match_has_unresolved_policy = false;
+    // Effective attribution per seat: only `Resolved` proves the exact
+    // policy participant; `NoConfigEvidence` may fall back to the
+    // handshake runtime identity; `Unresolved` is never guessed.
+    let effective_key = |seat: &StudioMatchSeatV1| match &seat.policy_identity {
+        SeatPolicyIdentityV1::Resolved { policy_key } => Some(policy_key.clone()),
+        SeatPolicyIdentityV1::NoConfigEvidence => {
+            seat.identity.as_ref().map(|identity| identity.key())
+        }
+        SeatPolicyIdentityV1::Unresolved { .. } => None,
+    };
+    for seat in &record.seats {
+        match &seat.policy_identity {
+            SeatPolicyIdentityV1::Resolved { .. } => match_has_policy_identity = true,
+            SeatPolicyIdentityV1::Unresolved { .. } => match_has_unresolved_policy = true,
+            SeatPolicyIdentityV1::NoConfigEvidence => {}
+        }
+        match effective_key(seat) {
+            Some(key) => {
+                distinct_participants.insert(key);
+            }
+            None => {
+                report.unmapped_seats += 1;
+                match_has_unmapped = true;
+            }
+        }
+    }
+    if match_has_unmapped {
+        report.matches_with_unmapped_seat += 1;
+    }
+    if match_has_unresolved_policy {
+        report.matches_with_unresolved_policy_seat += 1;
+    }
+    if match_has_policy_identity {
+        report.matches_with_policy_identity += 1;
+    } else {
+        report.matches_without_policy_identity += 1;
+    }
+    if record.diagnostic {
+        report.diagnostic_matches += 1;
+    }
+    if record.seats.len() == 2 {
+        let first = effective_key(&record.seats[0]);
+        let second = effective_key(&record.seats[1]);
+        if first.is_some() && first == second {
+            report.self_matches += 1;
+        }
+    }
+}
+
 pub fn build_historical_corpus(
     config: &HistoricalDryRunConfig,
 ) -> Result<(HistoricalDryRunReportV1, Vec<StudioMatchRecordV1>)> {
@@ -905,15 +1099,20 @@ pub fn build_historical_corpus(
     let files = collect_corpus_files(&corpus_roots, &config.skip_segments)?;
 
     let mut replay_index = ReplayContentIndexV1::default();
-    let mut arena_files = Vec::new();
+    // Arena reports with their document SHA (resolved after runtime-occurrence
+    // claims are known).
+    let mut arena_files: Vec<(CorpusFile, String)> = Vec::new();
     // Every parsed configuration is kept: `game_id` is not a unique key, so a
     // later pass must resolve conflicts by evidence, not by scan order
     // (Commit B Slice 2 Repair 1, P1-1).
-    let mut configurations_by_game_id: BTreeMap<String, Vec<ConfigurationCandidateV1>> =
-        BTreeMap::new();
-    let mut config_documents_seen = 0usize;
+    let mut parsed_configs: Vec<(String, MatchConfigurationV1, String)> = Vec::new();
+    // Per-directory document index used to resolve a runtime occurrence
+    // envelope's colocated report/replay/config by content hash.
+    let mut docs_by_dir: BTreeMap<String, Vec<DirDoc>> = BTreeMap::new();
+    // Durable runtime occurrence envelopes (Commit C Slice 1 Repair 1, P1-2).
+    let mut runtime_occurrence_docs: Vec<(String, RuntimeOccurrenceV1)> = Vec::new();
 
-    // Pass 1: scan replays and identify arena reports
+    // Pass 1: scan corpus documents
     for file in &files {
         let size = match std::fs::metadata(&file.filesystem_path) {
             Ok(meta) => meta.len(),
@@ -930,19 +1129,11 @@ pub fn build_historical_corpus(
             Ok(v) => v,
             Err(_) => continue,
         };
-        // `match-config.json` has no `format` tag: it is recognised by its
-        // `game_id` + `agents[].args` shape alone, which is exactly what the
-        // typed resolver accepts. Anything else that merely parses as JSON is
-        // left untouched.
-        if let Some(parsed) = parse_match_configuration(&bytes)? {
-            config_documents_seen += 1;
-            configurations_by_game_id
-                .entry(parsed.game_id.clone())
-                .or_default()
-                .push(ConfigurationCandidateV1 {
-                    logical_path: file.logical_path.clone(),
-                    configuration: parsed,
-                });
+        // A runtime occurrence envelope is the occurrence authority for its
+        // sibling documents; it is never a historical evidence document.
+        if let Some(occurrence) = parse_runtime_occurrence(&bytes)? {
+            runtime_occurrence_docs.push((file.logical_path.clone(), occurrence));
+            continue;
         }
         match value.get("format").and_then(|v| v.as_str()).unwrap_or("") {
             splendor_replay::REPLAY_FORMAT => {
@@ -951,14 +1142,80 @@ pub fn build_historical_corpus(
                     Some(&file.filesystem_path),
                     &bytes,
                 )?;
+                let sha = hex::encode(Sha256::digest(&bytes));
+                docs_by_dir
+                    .entry(parent_logical_dir(&file.logical_path).to_string())
+                    .or_default()
+                    .push(DirDoc {
+                        sha,
+                        logical_path: file.logical_path.clone(),
+                        filesystem_path: file.filesystem_path.clone(),
+                    });
             }
             splendor_arena::ARENA_REPORT_FORMAT => {
-                arena_files.push(file.clone());
+                let sha = hex::encode(Sha256::digest(&bytes));
+                docs_by_dir
+                    .entry(parent_logical_dir(&file.logical_path).to_string())
+                    .or_default()
+                    .push(DirDoc {
+                        sha: sha.clone(),
+                        logical_path: file.logical_path.clone(),
+                        filesystem_path: file.filesystem_path.clone(),
+                    });
+                arena_files.push((file.clone(), sha));
             }
             _ => {}
         }
+        // `match-config.json` has no `format` tag: it is recognised by its
+        // `game_id` + `agents[].args` shape alone, which is exactly what the
+        // typed resolver accepts. Anything else that merely parses as JSON is
+        // left untouched.
+        if let Some(parsed) = parse_match_configuration(&bytes)? {
+            let sha = hex::encode(Sha256::digest(&bytes));
+            docs_by_dir
+                .entry(parent_logical_dir(&file.logical_path).to_string())
+                .or_default()
+                .push(DirDoc {
+                    sha: sha.clone(),
+                    logical_path: file.logical_path.clone(),
+                    filesystem_path: file.filesystem_path.clone(),
+                });
+            parsed_configs.push((file.logical_path.clone(), parsed, sha));
+        }
     }
     replay_index.finish();
+
+    // Claimed documents: a runtime occurrence envelope is the occurrence
+    // authority for its report and configuration, so those documents must not
+    // also be interpreted as historical evidence. Claimed replays stay in the
+    // content index: they are real replay documents another report may share a
+    // terminal hash with, and index candidates are always verified.
+    let mut claimed_report_shas: BTreeSet<String> = BTreeSet::new();
+    let mut claimed_config_shas: BTreeSet<String> = BTreeSet::new();
+    for (_, occurrence) in &runtime_occurrence_docs {
+        claimed_report_shas.insert(occurrence.report_sha256.clone());
+        claimed_config_shas.insert(occurrence.config_sha256.clone());
+    }
+    arena_files.retain(|(_, sha)| !claimed_report_shas.contains(sha));
+
+    // Every parsed configuration is kept, except configurations claimed by a
+    // runtime occurrence (they are that occurrence's exact evidence).
+    let mut configurations_by_game_id: BTreeMap<String, Vec<ConfigurationCandidateV1>> =
+        BTreeMap::new();
+    let mut config_documents_seen = 0usize;
+    for (logical_path, parsed, sha) in &parsed_configs {
+        config_documents_seen += 1;
+        if claimed_config_shas.contains(sha) {
+            continue;
+        }
+        configurations_by_game_id
+            .entry(parsed.game_id.clone())
+            .or_default()
+            .push(ConfigurationCandidateV1 {
+                logical_path: logical_path.clone(),
+                configuration: parsed.clone(),
+            });
+    }
 
     // A `game_id` whose documents carry more than one distinct per-seat
     // configuration is a measured conflict surface; the per-report association
@@ -994,8 +1251,8 @@ pub fn build_historical_corpus(
     let mut seen_source_hashes = BTreeSet::new();
     let mut distinct_participants = BTreeSet::new();
 
-    // Pass 2: build canonical records
-    for file in &arena_files {
+    // Pass 2: build canonical records from the historical evidence
+    for (file, source_sha) in &arena_files {
         let bytes = match std::fs::read(&file.filesystem_path) {
             Ok(b) => b,
             Err(e) => {
@@ -1006,7 +1263,6 @@ pub fn build_historical_corpus(
                 continue;
             }
         };
-        let source_sha = hex::encode(Sha256::digest(&bytes));
         *source_sha_counts
             .entry(source_sha.clone())
             .or_insert(0usize) += 1;
@@ -1122,7 +1378,8 @@ pub fn build_historical_corpus(
             &arena_report,
             resolution,
             association,
-            OccurrenceNamespaceV1::Historical,
+            &OccurrenceIdentityV1::Historical,
+            None,
         ) {
             Ok(rec) => rec,
             Err(e) => {
@@ -1143,59 +1400,106 @@ pub fn build_historical_corpus(
             continue;
         }
 
-        let mut match_has_unmapped = false;
-        let mut match_has_policy_identity = false;
-        let mut match_has_unresolved_policy = false;
-        // Effective attribution per seat: only `Resolved` proves the exact
-        // policy participant; `NoConfigEvidence` may fall back to the
-        // handshake runtime identity; `Unresolved` is never guessed.
-        let effective_key = |seat: &StudioMatchSeatV1| match &seat.policy_identity {
-            SeatPolicyIdentityV1::Resolved { policy_key } => Some(policy_key.clone()),
-            SeatPolicyIdentityV1::NoConfigEvidence => {
-                seat.identity.as_ref().map(|identity| identity.key())
-            }
-            SeatPolicyIdentityV1::Unresolved { .. } => None,
-        };
-        for seat in &record.seats {
-            match &seat.policy_identity {
-                SeatPolicyIdentityV1::Resolved { .. } => match_has_policy_identity = true,
-                SeatPolicyIdentityV1::Unresolved { .. } => match_has_unresolved_policy = true,
-                SeatPolicyIdentityV1::NoConfigEvidence => {}
-            }
-            match effective_key(seat) {
-                Some(key) => {
-                    distinct_participants.insert(key);
-                }
-                None => {
-                    report.unmapped_seats += 1;
-                    match_has_unmapped = true;
-                }
-            }
-        }
-        if match_has_unmapped {
-            report.matches_with_unmapped_seat += 1;
-        }
-        if match_has_unresolved_policy {
-            report.matches_with_unresolved_policy_seat += 1;
-        }
-        if match_has_policy_identity {
-            report.matches_with_policy_identity += 1;
-        } else {
-            report.matches_without_policy_identity += 1;
-        }
-        if record.diagnostic {
-            report.diagnostic_matches += 1;
-        }
-        if record.seats.len() == 2 {
-            let first = effective_key(&record.seats[0]);
-            let second = effective_key(&record.seats[1]);
-            if first.is_some() && first == second {
-                report.self_matches += 1;
-            }
-        }
+        account_built_record(&mut report, &mut distinct_participants, &record);
 
         records.push(record);
         report.canonical_records_built += 1;
+    }
+
+    // Runtime occurrence pass: deduplicate envelopes by occurrence_id
+    // (identical envelopes collapse; a conflicting envelope pair is corrupt
+    // evidence), then build one record per occurrence from its colocated
+    // sibling documents, resolved by the envelope's content hashes.
+    let mut occurrences: BTreeMap<String, (String, RuntimeOccurrenceV1)> = BTreeMap::new();
+    report.runtime_occurrences_seen = runtime_occurrence_docs.len();
+    for (sidecar_logical_path, occurrence) in &runtime_occurrence_docs {
+        match occurrences.get(&occurrence.occurrence_id) {
+            Some((existing_path, existing)) if existing != occurrence => {
+                report.builder_failures += 1;
+                report.failure_samples.push(format!(
+                    "runtime occurrence `{}` carries conflicting envelopes (`{sidecar_logical_path}` vs `{existing_path}`)",
+                    occurrence.occurrence_id
+                ));
+            }
+            Some(_) => {}
+            None => {
+                occurrences.insert(
+                    occurrence.occurrence_id.clone(),
+                    (sidecar_logical_path.clone(), occurrence.clone()),
+                );
+            }
+        }
+    }
+    for (occurrence_id, (sidecar_logical_path, occurrence)) in &occurrences {
+        let dir = parent_logical_dir(sidecar_logical_path);
+        let empty: Vec<DirDoc> = Vec::new();
+        let siblings = docs_by_dir.get(dir).unwrap_or(&empty);
+        let resolve = |sha: &str| -> Option<(String, std::path::PathBuf)> {
+            siblings
+                .iter()
+                .filter(|entry| entry.sha == sha)
+                .map(|entry| (entry.logical_path.clone(), entry.filesystem_path.clone()))
+                .min()
+        };
+        let (report_entry, replay_entry, config_entry) = (
+            resolve(&occurrence.report_sha256),
+            resolve(&occurrence.replay_sha256),
+            resolve(&occurrence.config_sha256),
+        );
+        let (report_entry, replay_entry, config_entry) = match (
+            report_entry,
+            replay_entry,
+            config_entry,
+        ) {
+            (Some(report), Some(replay), Some(config)) => (report, replay, config),
+            _ => {
+                report.builder_failures += 1;
+                report.failure_samples.push(format!(
+                    "runtime occurrence `{occurrence_id}` at `{sidecar_logical_path}` lacks colocated report/replay/config documents matching its envelope SHAs"
+                ));
+                continue;
+            }
+        };
+        let read_document =
+            |entry: &(String, std::path::PathBuf)| -> std::result::Result<Vec<u8>, String> {
+                std::fs::read(&entry.1).map_err(|error| format!("{}: read error {error}", entry.0))
+            };
+        let (report_bytes, replay_bytes, config_bytes) = (
+            read_document(&report_entry),
+            read_document(&replay_entry),
+            read_document(&config_entry),
+        );
+        let (report_bytes, replay_bytes, config_bytes) =
+            match (report_bytes, replay_bytes, config_bytes) {
+                (Ok(report), Ok(replay), Ok(config)) => (report, replay, config),
+                (error @ Err(_), _, _) | (_, error @ Err(_), _) | (_, _, error @ Err(_)) => {
+                    report.builder_failures += 1;
+                    report.failure_samples.push(format!(
+                        "runtime occurrence `{occurrence_id}`: {}",
+                        error.unwrap_err()
+                    ));
+                    continue;
+                }
+            };
+        match runtime_match_record(
+            occurrence,
+            &report_bytes,
+            &replay_bytes,
+            &config_bytes,
+            &replay_entry.0,
+        ) {
+            Ok(record) => {
+                report.runtime_occurrences_built += 1;
+                account_built_record(&mut report, &mut distinct_participants, &record);
+                records.push(record);
+            }
+            Err(error) => {
+                report.builder_failures += 1;
+                report
+                    .failure_samples
+                    .push(format!("runtime occurrence `{occurrence_id}`: {error}"));
+            }
+        }
     }
 
     report.distinct_source_document_sha = source_sha_counts.len();
