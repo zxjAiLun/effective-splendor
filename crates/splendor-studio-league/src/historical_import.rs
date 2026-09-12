@@ -14,8 +14,8 @@ use crate::agent_configuration::{
 use crate::canonical_league_order;
 use crate::error::{Result, StudioLeagueError};
 use crate::match_record::{
-    MatchStatus, ReplayBindingV1, ReplayStorage, ReplayVerification, StudioMatchRecordV1,
-    StudioMatchSeatV1,
+    MatchStatus, ReplayBindingV1, ReplayStorage, ReplayVerification, SeatPolicyIdentityV1,
+    StudioMatchRecordV1, StudioMatchSeatV1,
 };
 use crate::participant::EngineIdentityV1;
 use crate::replay_index::{
@@ -23,10 +23,14 @@ use crate::replay_index::{
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use splendor_arena::{ArenaOutcomeV1, ArenaReportV1, ARENA_REPORT_FORMAT, ARENA_REPORT_VERSION};
+use splendor_arena::{
+    seed_commitment_v1, ArenaOutcomeV1, ArenaReportV1, ARENA_REPORT_FORMAT, ARENA_REPORT_VERSION,
+};
+use splendor_core::RulesetFingerprint;
 use splendor_replay::{verify_replay, ReplayV1};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HistoricalReplayResolutionV1 {
@@ -132,22 +136,28 @@ pub fn build_match_record_from_parsed(
         report_bytes,
         report,
         resolution,
-        None,
+        ConfigAssociationV1::NoConfigEvidence,
     )
 }
 
-/// Build the ledger record, optionally with the arena's `match-config.json`
-/// resolved into a per-seat **policy** identity and an evidence-based study
-/// classification (P1 of the Commit B review).
+/// Build the ledger record, with the arena's `match-config.json` evidence
+/// resolved into per-seat policy attribution and an evidence-based study
+/// classification (Commit B Slice 2 review P1-1/P1-2).
 ///
-/// When `configuration` is `None` the seat identity is the handshake runtime
-/// identity and the match is non-diagnostic, exactly as before.
+/// * [`ConfigAssociationV1::NoConfigEvidence`] — seats keep the handshake
+///   runtime identity (coarse but honest fallback).
+/// * [`ConfigAssociationV1::Bound`] — each seat is either resolved to the exact
+///   policy identity or explicitly unresolved (unclassified argv); a diagnostic
+///   seat marks the whole match.
+/// * [`ConfigAssociationV1::Ambiguous`] — configuration evidence exists but
+///   selects no winner: every seat is unresolved and the match can never enter
+///   Elo through a coarse identity.
 pub fn build_match_record_with_configuration(
     logical_source_path: &str,
     report_bytes: &[u8],
     report: &ArenaReportV1,
     resolution: HistoricalReplayResolutionV1,
-    configuration: Option<&MatchConfigurationV1>,
+    association: ConfigAssociationV1<'_>,
 ) -> Result<StudioMatchRecordV1> {
     if report.agents.len() != report.player_count as usize {
         return Err(StudioLeagueError::Invalid(format!(
@@ -216,22 +226,43 @@ pub fn build_match_record_with_configuration(
                 )))
             }
         };
-        // When the arena's `match-config.json` was available, its per-seat
-        // *policy* identity (search configuration included) supersedes the
-        // handshake runtime identity, which collapses distinct search budgets
-        // into one string. `configuration` is keyed by `game_id`, so a seat
-        // position maps directly to its resolved identity.
-        let policy_identity_key = configuration
-            .and_then(|c| c.seats.get(seat as usize))
-            .and_then(|s| s.resolved())
-            .map(|identity| identity.key());
+        // Per-seat attribution (Commit B Slice 2 Repair 1, P1-2): a bound
+        // configuration resolves the seat to an exact policy identity; absent
+        // configuration evidence may fall back to the handshake runtime
+        // identity; present-but-unattributable evidence (ambiguous candidates,
+        // unclassified argv) leaves the seat unresolved and is never guessed.
+        let policy_identity = match &association {
+            ConfigAssociationV1::NoConfigEvidence => SeatPolicyIdentityV1::NoConfigEvidence,
+            ConfigAssociationV1::Ambiguous { reason } => SeatPolicyIdentityV1::Unresolved {
+                reason: reason.clone(),
+            },
+            ConfigAssociationV1::Bound(configuration) => {
+                match configuration.seats.get(seat as usize) {
+                    Some(crate::agent_configuration::SeatConfigurationIdentityV1::Resolved(
+                        identity,
+                    )) => SeatPolicyIdentityV1::Resolved {
+                        policy_key: identity.key(),
+                    },
+                    Some(crate::agent_configuration::SeatConfigurationIdentityV1::Unresolved {
+                        reason,
+                    }) => SeatPolicyIdentityV1::Unresolved {
+                        reason: reason.clone(),
+                    },
+                    None => SeatPolicyIdentityV1::Unresolved {
+                        reason: "bound configuration carries no entry for this seat".to_string(),
+                    },
+                }
+            }
+        };
+        let display_name = match &policy_identity {
+            SeatPolicyIdentityV1::Resolved { policy_key } => Some(policy_key.clone()),
+            _ => identity.as_ref().map(|i| i.agent_name.clone()),
+        };
         seats.push(StudioMatchSeatV1 {
             seat,
-            display_name: policy_identity_key
-                .clone()
-                .or_else(|| identity.as_ref().map(|i| i.agent_name.clone())),
+            display_name,
             identity,
-            policy_identity_key,
+            policy_identity,
             participant_id: None,
             score: scores.get(seat as usize).copied(),
             rank: ranks.get(seat as usize).copied(),
@@ -270,7 +301,10 @@ pub fn build_match_record_with_configuration(
         completed_plies,
         main_turn_count: None,
         replay,
-        diagnostic: configuration.is_some_and(configuration_is_diagnostic),
+        diagnostic: match &association {
+            ConfigAssociationV1::Bound(configuration) => configuration_is_diagnostic(configuration),
+            _ => false,
+        },
     };
     record.validate_for_ingest()?;
     Ok(record)
@@ -297,6 +331,141 @@ pub struct CachedReplayVerification {
     pub scores: Vec<i32>,
     pub ranks: Vec<i32>,
     pub winners: Vec<u8>,
+}
+
+/// One `match-config.json` document found in the corpus, kept with its logical
+/// path so association can use document provenance instead of scan order
+/// (Commit B Slice 2 Repair 1, P1-1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConfigurationCandidateV1 {
+    pub logical_path: String,
+    pub configuration: MatchConfigurationV1,
+}
+
+/// How a report's configuration evidence was associated.
+///
+/// `game_id` is **not** a unique key — the measured inventory shows 22,294
+/// distinct `game_id`s across 48,273 reports — so a report only binds a
+/// configuration when companion provenance or content consistency selects
+/// exactly one distinct configuration. Nothing here compares scan order or path
+/// order to pick a winner; conflict fails closed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfigAssociationV1<'a> {
+    /// No configuration document names this report's `game_id`. The handshake
+    /// runtime identity is the only per-seat evidence and may be used.
+    NoConfigEvidence,
+    /// Exactly one distinct configuration applies to this report.
+    Bound(&'a MatchConfigurationV1),
+    /// Configuration documents exist for this `game_id` but they disagree with
+    /// each other or with the report's recorded shape, so no configuration is
+    /// authoritative. The report stays in the ledger with unresolved seats and
+    /// never enters Elo.
+    Ambiguous { reason: String },
+}
+
+fn parent_logical_dir(logical_path: &str) -> &str {
+    match logical_path.rfind('/') {
+        Some(index) => &logical_path[..index],
+        None => "",
+    }
+}
+
+fn distinct_seat_configurations<'a>(
+    candidates: &[&'a ConfigurationCandidateV1],
+) -> Vec<&'a MatchConfigurationV1> {
+    let mut distinct: Vec<&MatchConfigurationV1> = Vec::new();
+    for candidate in candidates {
+        if !distinct
+            .iter()
+            .any(|seen| seen.seats == candidate.configuration.seats)
+        {
+            distinct.push(&candidate.configuration);
+        }
+    }
+    distinct
+}
+
+/// Associate one arena report with at most one authoritative configuration.
+///
+/// Binding evidence, in order:
+///
+/// 1. **Companion provenance** — a candidate whose document lives in the same
+///    logical directory as the report (the corpus writes `match-config.json`
+///    beside `arena-report.json` per match). Companion evidence, when present,
+///    outranks the wider `game_id` candidate set.
+/// 2. **Shape consistency** — a candidate whose seat count disagrees with the
+///    report can never bind.
+/// 3. **Collapse or content selection** — the remaining candidates must either
+///    collapse to one distinct per-seat configuration, or the report's
+///    `seed_commitment` (recomputed from each candidate's recorded seed) must
+///    select exactly one.
+///
+/// Conflicting candidates are never resolved by "first seen" or by path order:
+/// the association fails closed to [`ConfigAssociationV1::Ambiguous`].
+pub fn associate_configuration<'a>(
+    report_logical_path: &str,
+    report: &ArenaReportV1,
+    configs: &'a BTreeMap<String, Vec<ConfigurationCandidateV1>>,
+) -> ConfigAssociationV1<'a> {
+    let Some(candidates) = configs.get(&report.game_id) else {
+        return ConfigAssociationV1::NoConfigEvidence;
+    };
+    let compatible: Vec<&ConfigurationCandidateV1> = candidates
+        .iter()
+        .filter(|candidate| candidate.configuration.seats.len() == report.player_count as usize)
+        .collect();
+    if compatible.is_empty() {
+        return ConfigAssociationV1::Ambiguous {
+            reason: format!(
+                "{} configuration document(s) name game_id `{}` but none carries {} seats",
+                candidates.len(),
+                report.game_id,
+                report.player_count
+            ),
+        };
+    }
+    let report_dir = parent_logical_dir(report_logical_path);
+    let companions: Vec<&ConfigurationCandidateV1> = compatible
+        .iter()
+        .copied()
+        .filter(|candidate| parent_logical_dir(&candidate.logical_path) == report_dir)
+        .collect();
+    let pool: Vec<&ConfigurationCandidateV1> = if companions.is_empty() {
+        compatible
+    } else {
+        companions
+    };
+    let mut distinct = distinct_seat_configurations(&pool);
+    if distinct.len() == 1 {
+        return ConfigAssociationV1::Bound(distinct.remove(0));
+    }
+    // The candidates disagree. The report's seed commitment is the only content
+    // evidence that can select one of them; if it cannot, the association fails
+    // closed instead of guessing.
+    let distinct_count = distinct.len();
+    let seed_selects = |configuration: &MatchConfigurationV1| {
+        configuration.seed.is_some_and(|seed| {
+            RulesetFingerprint::from_str(&report.ruleset_fingerprint).is_ok_and(|fingerprint| {
+                seed_commitment_v1(&report.game_id, report.player_count, seed, &fingerprint)
+                    .as_str()
+                    == report.seed_commitment.as_str()
+            })
+        })
+    };
+    let agreeing: Vec<&MatchConfigurationV1> = distinct
+        .iter()
+        .copied()
+        .filter(|c| seed_selects(c))
+        .collect();
+    match agreeing.len() {
+        1 => ConfigAssociationV1::Bound(agreeing[0]),
+        _ => ConfigAssociationV1::Ambiguous {
+            reason: format!(
+                "{distinct_count} distinct configuration(s) name game_id `{}` and the report's seed commitment does not select exactly one of them",
+                report.game_id
+            ),
+        },
+    }
 }
 
 fn load_and_verify_candidate(
@@ -464,6 +633,46 @@ pub fn compute_canonical_set_digest(records: &[StudioMatchRecordV1]) -> String {
     hex::encode(hasher.finalize())
 }
 
+/// Deterministic digest over the **policy attribution** of every seat.
+///
+/// One line per seat, ordered by `source_identity` (then seat) so the digest is
+/// independent of corpus traversal order. Fields per line: source identity,
+/// diagnostic flag, seat, policy-resolution state (`no_config` / `resolved` /
+/// `unresolved`), and the effective policy key — filled only in the `resolved`
+/// state.
+///
+/// The human-readable unresolved *reasons* are deliberately excluded: the
+/// stable contract is the three-state resolution and the resolved keys, not
+/// prose that may be reworded. Together with
+/// [`compute_canonical_set_digest`] this separates the two evidence layers:
+/// the evidence/document set (unchanged by attribution repairs) and the
+/// attribution read from that evidence.
+pub fn compute_policy_attribution_digest(records: &[StudioMatchRecordV1]) -> String {
+    let mut order: Vec<usize> = (0..records.len()).collect();
+    order.sort_by(|left, right| {
+        records[*left]
+            .source_identity
+            .cmp(&records[*right].source_identity)
+    });
+    let mut hasher = Sha256::new();
+    for index in order {
+        let record = &records[index];
+        for seat in &record.seats {
+            let (state, key) = match &seat.policy_identity {
+                SeatPolicyIdentityV1::NoConfigEvidence => ("no_config", ""),
+                SeatPolicyIdentityV1::Resolved { policy_key } => ("resolved", policy_key.as_str()),
+                SeatPolicyIdentityV1::Unresolved { .. } => ("unresolved", ""),
+            };
+            let line = format!(
+                "{}\t{}\t{}\t{}\t{}\n",
+                record.source_identity, record.diagnostic as u8, seat.seat, state, key
+            );
+            hasher.update(line.as_bytes());
+        }
+    }
+    hex::encode(hasher.finalize())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HistoricalDryRunConfig {
     pub roots: Vec<String>,
@@ -517,16 +726,26 @@ pub struct HistoricalDryRunReportV1 {
     pub unmapped_seats: usize,
     pub matches_with_unmapped_seat: usize,
     // Identity provenance for the P1 review: how many matches got an exact
-    // policy identity from a `match-config.json`, and how many fell back to the
-    // (coarser) handshake runtime identity because no config was found.
+    // policy identity from a `match-config.json`, how many had no config
+    // evidence at all, and how many had config evidence that could not be
+    // attributed (ambiguous candidates, unclassified argv).
+    pub config_documents_seen: usize,
+    pub game_ids_with_config_conflicts: usize,
+    pub matches_resolved_from_conflicting_game_ids: usize,
     pub matches_with_policy_identity: usize,
+    pub matches_without_config_evidence: usize,
+    pub matches_with_ambiguous_config: usize,
+    pub matches_with_unresolved_policy_seat: usize,
     pub matches_without_policy_identity: usize,
     pub diagnostic_matches: usize,
     pub self_matches: usize,
     pub distinct_participant_identities: usize,
 
-    // Determinism gate digest:
+    // Determinism gate digests. `canonical_set_digest` proves the historical
+    // evidence/document set did not drift; `policy_attribution_digest` proves
+    // the same evidence was resolved into the same policy attribution.
     pub canonical_set_digest: String,
+    pub policy_attribution_digest: String,
 }
 
 /// Build the full set of canonical match records across the corpus.
@@ -545,7 +764,12 @@ pub fn build_historical_corpus(
 
     let mut replay_index = ReplayContentIndexV1::default();
     let mut arena_files = Vec::new();
-    let mut configurations_by_game_id: BTreeMap<String, MatchConfigurationV1> = BTreeMap::new();
+    // Every parsed configuration is kept: `game_id` is not a unique key, so a
+    // later pass must resolve conflicts by evidence, not by scan order
+    // (Commit B Slice 2 Repair 1, P1-1).
+    let mut configurations_by_game_id: BTreeMap<String, Vec<ConfigurationCandidateV1>> =
+        BTreeMap::new();
+    let mut config_documents_seen = 0usize;
 
     // Pass 1: scan replays and identify arena reports
     for file in &files {
@@ -569,9 +793,14 @@ pub fn build_historical_corpus(
         // typed resolver accepts. Anything else that merely parses as JSON is
         // left untouched.
         if let Some(parsed) = parse_match_configuration(&bytes)? {
+            config_documents_seen += 1;
             configurations_by_game_id
                 .entry(parsed.game_id.clone())
-                .or_insert(parsed);
+                .or_default()
+                .push(ConfigurationCandidateV1 {
+                    logical_path: file.logical_path.clone(),
+                    configuration: parsed,
+                });
         }
         match value.get("format").and_then(|v| v.as_str()).unwrap_or("") {
             splendor_replay::REPLAY_FORMAT => {
@@ -589,11 +818,29 @@ pub fn build_historical_corpus(
     }
     replay_index.finish();
 
+    // A `game_id` whose documents carry more than one distinct per-seat
+    // configuration is a measured conflict surface; the per-report association
+    // below resolves each report by evidence or leaves it unresolved.
+    let conflicting_game_ids: BTreeSet<String> = configurations_by_game_id
+        .iter()
+        .filter_map(|(game_id, candidates)| {
+            let refs: Vec<&ConfigurationCandidateV1> = candidates.iter().collect();
+            if distinct_seat_configurations(&refs).len() > 1 {
+                Some(game_id.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    let game_ids_with_config_conflicts = conflicting_game_ids.len();
+
     let mut report = HistoricalDryRunReportV1 {
         roots: config.roots.clone(),
         source_reports_seen: arena_files.len(),
         ..Default::default()
     };
+    report.config_documents_seen = config_documents_seen;
+    report.game_ids_with_config_conflicts = game_ids_with_config_conflicts;
 
     let mut records: Vec<StudioMatchRecordV1> = Vec::with_capacity(arena_files.len());
     let mut verification_cache: HashMap<
@@ -709,12 +956,30 @@ pub fn build_historical_corpus(
             }
         };
 
+        let association = associate_configuration(
+            &file.logical_path,
+            &arena_report,
+            &configurations_by_game_id,
+        );
+        match &association {
+            ConfigAssociationV1::NoConfigEvidence => report.matches_without_config_evidence += 1,
+            ConfigAssociationV1::Ambiguous { .. } => report.matches_with_ambiguous_config += 1,
+            ConfigAssociationV1::Bound(_) => {
+                // Audit breakdown: a report whose game_id belongs to the
+                // conflict surface but that companion/seed evidence still
+                // resolved deterministically.
+                if conflicting_game_ids.contains(&arena_report.game_id) {
+                    report.matches_resolved_from_conflicting_game_ids += 1;
+                }
+            }
+        }
+
         let record = match build_match_record_with_configuration(
             &file.logical_path,
             &bytes,
             &arena_report,
             resolution,
-            configurations_by_game_id.get(&arena_report.game_id),
+            association,
         ) {
             Ok(rec) => rec,
             Err(e) => {
@@ -737,17 +1002,24 @@ pub fn build_historical_corpus(
 
         let mut match_has_unmapped = false;
         let mut match_has_policy_identity = false;
-        for seat in &record.seats {
-            // Prefer the exact policy identity from the arena config; fall back
-            // to the handshake runtime identity only when no config was found.
-            let effective_key = seat
-                .policy_identity_key
-                .clone()
-                .or_else(|| seat.identity.as_ref().map(|identity| identity.key()));
-            if seat.policy_identity_key.is_some() {
-                match_has_policy_identity = true;
+        let mut match_has_unresolved_policy = false;
+        // Effective attribution per seat: only `Resolved` proves the exact
+        // policy participant; `NoConfigEvidence` may fall back to the
+        // handshake runtime identity; `Unresolved` is never guessed.
+        let effective_key = |seat: &StudioMatchSeatV1| match &seat.policy_identity {
+            SeatPolicyIdentityV1::Resolved { policy_key } => Some(policy_key.clone()),
+            SeatPolicyIdentityV1::NoConfigEvidence => {
+                seat.identity.as_ref().map(|identity| identity.key())
             }
-            match effective_key {
+            SeatPolicyIdentityV1::Unresolved { .. } => None,
+        };
+        for seat in &record.seats {
+            match &seat.policy_identity {
+                SeatPolicyIdentityV1::Resolved { .. } => match_has_policy_identity = true,
+                SeatPolicyIdentityV1::Unresolved { .. } => match_has_unresolved_policy = true,
+                SeatPolicyIdentityV1::NoConfigEvidence => {}
+            }
+            match effective_key(seat) {
                 Some(key) => {
                     distinct_participants.insert(key);
                 }
@@ -760,6 +1032,9 @@ pub fn build_historical_corpus(
         if match_has_unmapped {
             report.matches_with_unmapped_seat += 1;
         }
+        if match_has_unresolved_policy {
+            report.matches_with_unresolved_policy_seat += 1;
+        }
         if match_has_policy_identity {
             report.matches_with_policy_identity += 1;
         } else {
@@ -769,14 +1044,8 @@ pub fn build_historical_corpus(
             report.diagnostic_matches += 1;
         }
         if record.seats.len() == 2 {
-            let first = record.seats[0]
-                .policy_identity_key
-                .clone()
-                .or_else(|| record.seats[0].identity.as_ref().map(|i| i.key()));
-            let second = record.seats[1]
-                .policy_identity_key
-                .clone()
-                .or_else(|| record.seats[1].identity.as_ref().map(|i| i.key()));
+            let first = effective_key(&record.seats[0]);
+            let second = effective_key(&record.seats[1]);
             if first.is_some() && first == second {
                 report.self_matches += 1;
             }
@@ -794,6 +1063,7 @@ pub fn build_historical_corpus(
     report.selected_distinct_replay_document_sha = selected_replay_shas.len();
     report.distinct_participant_identities = distinct_participants.len();
     report.canonical_set_digest = compute_canonical_set_digest(&records);
+    report.policy_attribution_digest = compute_policy_attribution_digest(&records);
 
     Ok((report, records))
 }

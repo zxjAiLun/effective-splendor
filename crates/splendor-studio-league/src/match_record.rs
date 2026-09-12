@@ -136,21 +136,39 @@ impl ReplayBindingV1 {
     }
 }
 
+/// How a seat's league participant may be attributed (Commit B Slice 2
+/// Repair 1, P1-2). Three states, never a silent fallback:
+///
+/// * configuration evidence exists and resolves the seat exactly;
+/// * configuration evidence is **absent**, so the handshake runtime identity in
+///   `identity` is the only evidence and may be used (coarse fallback);
+/// * configuration evidence exists but **cannot attribute** this seat
+///   (unclassified argv switch, no entry point, conflicting candidate
+///   configurations). The seat is left unmapped rather than guessed, so the
+///   match can never enter Elo through a coarse identity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SeatPolicyIdentityV1 {
+    NoConfigEvidence,
+    Resolved { policy_key: String },
+    Unresolved { reason: String },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StudioMatchSeatV1 {
     pub seat: u8,
     /// Exact engine identity as recorded by the source, when it has one.
     pub identity: Option<EngineIdentityV1>,
-    /// The exact **policy** identity recovered from the arena's
-    /// `match-config.json`, when one was available.
+    /// The seat's policy-level attribution state, recovered from the arena's
+    /// `match-config.json` when one was available.
     ///
     /// The handshake runtime name/version in `identity` collapses distinct
     /// search configurations (for example `--max-nodes 2000` versus
     /// `--max-nodes 1`) into one string, which fabricated self-matches and hid
-    /// real head-to-head results from Elo. When this key is present the league
-    /// resolves the participant from it, so two differently configured seats are
-    /// two participants; `identity` is then only the display name.
-    pub policy_identity_key: Option<String>,
+    /// real head-to-head results from Elo. Only
+    /// [`SeatPolicyIdentityV1::Resolved`] proves an exact policy participant;
+    /// [`SeatPolicyIdentityV1::Unresolved`] must stay unmapped, never fall
+    /// back to `identity`.
+    pub policy_identity: SeatPolicyIdentityV1,
     /// Resolved league participant, filled in during ingestion.
     pub participant_id: Option<String>,
     pub display_name: Option<String>,

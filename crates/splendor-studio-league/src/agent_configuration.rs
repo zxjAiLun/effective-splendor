@@ -101,14 +101,18 @@ struct RawAgentCommand {
 struct RawMatchConfig {
     game_id: String,
     #[serde(default)]
+    seed: Option<u64>,
+    #[serde(default)]
     agents: Vec<RawAgentCommand>,
 }
 
 /// A fully resolved `match-config.json`: its game id (the join key to the arena
-/// report) and the per-seat policy identity.
+/// report), its recorded seed (content-consistency evidence, never identity),
+/// and the per-seat policy identity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchConfigurationV1 {
     pub game_id: String,
+    pub seed: Option<u64>,
     pub seats: Vec<SeatConfigurationIdentityV1>,
 }
 
@@ -145,11 +149,18 @@ pub fn parse_match_configuration(bytes: &[u8]) -> Result<Option<MatchConfigurati
         .collect::<Vec<_>>();
     Ok(Some(MatchConfigurationV1 {
         game_id: raw.game_id,
+        seed: raw.seed,
         seats,
     }))
 }
 
 /// Recover one seat's policy identity from its recorded argv.
+///
+/// Fail-closed rule: every `-`-prefixed argv switch must be classified. An
+/// unclassified switch means "this argv changes the policy in a way this
+/// resolver cannot see", so the seat cannot be proven identical to any other
+/// and stays [`SeatConfigurationIdentityV1::Unresolved`] — it is never
+/// silently ignored.
 fn resolve_seat_identity(agent: &RawAgentCommand) -> SeatConfigurationIdentityV1 {
     let args = &agent.args;
     let program = agent
@@ -179,7 +190,53 @@ fn resolve_seat_identity(agent: &RawAgentCommand) -> SeatConfigurationIdentityV1
         };
     }
 
-    let parameters = semantic_parameters(args, &entry_point);
+    let mut parameters = BTreeMap::new();
+    let mut index = 0;
+    while index < args.len() {
+        let token = args[index].as_str();
+        if !token.starts_with('-') {
+            index += 1;
+            continue;
+        }
+        let name = token.trim_start_matches('-');
+        let value = args.get(index + 1);
+        match classify_switch(token) {
+            SwitchClass::Semantic => {
+                // A value is any following token that is not itself a `--`
+                // switch (single-dash values such as negative numbers are
+                // values, not switches).
+                if let Some(value) = value.filter(|v| !v.starts_with("--")) {
+                    parameters.insert(name.to_string(), value.clone());
+                    index += 2;
+                } else {
+                    // A boolean-valued semantic switch.
+                    parameters.insert(name.to_string(), "true".to_string());
+                    index += 1;
+                }
+            }
+            SwitchClass::RunOnly | SwitchClass::Structural => {
+                // Consume a value if the switch takes one.
+                if value.is_some() && !value.unwrap().starts_with("--") {
+                    index += 2;
+                } else {
+                    index += 1;
+                }
+            }
+            SwitchClass::Unclassified => {
+                return SeatConfigurationIdentityV1::Unresolved {
+                    reason: format!(
+                        "argv switch `{token}` is not classified as semantic or run-only; the exact policy identity cannot be proven"
+                    ),
+                };
+            }
+        }
+    }
+
+    // `python -m module` carries the entry point as the first token; record it as
+    // a parameter so the key stays stable.
+    if entry_point.starts_with("splendor_") {
+        parameters.insert("entry-module".to_string(), entry_point.to_string());
+    }
     SeatConfigurationIdentityV1::Resolved(AgentPolicyIdentityV1 {
         program,
         entry_point,
@@ -187,21 +244,33 @@ fn resolve_seat_identity(agent: &RawAgentCommand) -> SeatConfigurationIdentityV1
     })
 }
 
-/// Extract the argv tokens that change what the policy does.
+/// How one argv switch participates in the policy identity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SwitchClass {
+    /// The switch's value changes what the policy does and is part of the
+    /// identity.
+    Semantic,
+    /// The switch only records where/how a run is kept or scheduled; two runs
+    /// differing only here are the same policy.
+    RunOnly,
+    /// A structural token (the `-m` module switch) whose value is the entry
+    /// point itself.
+    Structural,
+    /// Not in the frozen vocabulary: identity resolution must fail closed
+    /// instead of silently dropping a potentially policy-changing token.
+    Unclassified,
+}
+
+/// Classify one argv switch.
 ///
-/// The allow/exclude lists are explicit. Run-only details — output paths, time
-/// budgets, seeds that select which games are played — are excluded so that two
-/// executions of the same policy collapse to one identity.
-fn semantic_parameters(args: &[String], entry_point: &str) -> BTreeMap<String, String> {
-    // Switches whose *value* changes the resulting policy.
-    //
-    // `--runtime-name` / `--runtime-version` are the operator's declared labels
-    // for the policy. They are part of the identity: two runs that declare
-    // different runtime names are different named policies even if their search
-    // budgets happen to coincide, and a runtime name is the only semantic label
-    // older corpora carry. They are still combined with the search parameters
-    // below so a name reused across budgets does not merge them.
-    const MEANINGFUL: &[&str] = &[
+/// The lists are explicit and frozen, and they cover every switch measured in
+/// the historical corpus (2026-09-12 vocabulary census: 26 distinct `--`
+/// switches + the `-m` structural token). `--runtime-name` /
+/// `--runtime-version` are the operator's declared labels for the policy and
+/// are part of the identity: two runs that declare different runtime names are
+/// different named policies even if their search budgets happen to coincide.
+pub fn classify_switch(token: &str) -> SwitchClass {
+    const SEMANTIC: &[&str] = &[
         "--runtime-name",
         "--runtime-version",
         "--max-nodes",
@@ -213,47 +282,43 @@ fn semantic_parameters(args: &[String], entry_point: &str) -> BTreeMap<String, S
         "--device",
         "--catalog",
         "--heuristic-buy-overlay",
+        // Which model / model family plays the seat.
+        "--checkpoint",
+        "--checkpoint-hash",
+        "--checkpoint-sha256",
+        // How the policy turns its scores into actions (argmax vs sampling)
+        // and which A/B arm of a pipeline it plays.
+        "--action-selection",
+        "--arm",
+        // Search parameters of the M10/M13/M15 ISMCTS family.
+        "--simulations",
+        "--puct-exploration-milli",
     ];
-    // Switches that only describe where/how a run is recorded or scheduled.
-    const RUN_ONLY: &[&str] = &["--stats-out", "--sample-seed", "--seed", "--log", "--out"];
-
-    let mut parameters = BTreeMap::new();
-    let mut index = 0;
-    while index < args.len() {
-        let token = args[index].as_str();
-        if !token.starts_with("--") {
-            index += 1;
-            continue;
-        }
-        let name = token.trim_start_matches('-');
-        let value = args.get(index + 1);
-        if RUN_ONLY.contains(&token) {
-            // Consume a value if the run-only switch takes one.
-            if value.is_some() && !value.unwrap().starts_with("--") {
-                index += 2;
-            } else {
-                index += 1;
-            }
-            continue;
-        }
-        if MEANINGFUL.contains(&token) {
-            if let Some(value) = value.filter(|v| !v.starts_with("--")) {
-                parameters.insert(name.to_string(), value.clone());
-                index += 2;
-                continue;
-            }
-            // A boolean-valued meaningful switch.
-            parameters.insert(name.to_string(), "true".to_string());
-        }
-        index += 1;
+    const RUN_ONLY: &[&str] = &[
+        "--stats-out",
+        "--sample-seed",
+        "--seed",
+        "--log",
+        "--out",
+        // Where/how a run is recorded, scheduled, or reached over IPC.
+        "--sidecar-out",
+        "--game-index",
+        "--server-url",
+        "--server-ready",
+        "--plan-hash",
+        "--module-root",
+        "--python",
+    ];
+    const STRUCTURAL: &[&str] = &["-m"];
+    if SEMANTIC.contains(&token) {
+        SwitchClass::Semantic
+    } else if RUN_ONLY.contains(&token) {
+        SwitchClass::RunOnly
+    } else if STRUCTURAL.contains(&token) {
+        SwitchClass::Structural
+    } else {
+        SwitchClass::Unclassified
     }
-
-    // `python -m module` carries the entry point as the first token; record it as
-    // a parameter so the key stays stable.
-    if entry_point.starts_with("splendor_") {
-        parameters.insert("entry-module".to_string(), entry_point.to_string());
-    }
-    parameters
 }
 
 /// True when the resolved parameters denote a diagnostic or deliberately altered
@@ -485,5 +550,41 @@ mod tests {
         assert!(!is_diagnostic_configuration(
             parsed.seats[0].resolved().unwrap()
         ));
+    }
+
+    #[test]
+    fn an_unclassified_switch_fails_closed() {
+        // A switch outside the frozen vocabulary could change what the policy
+        // does; the resolver must say "I cannot prove these policies are the
+        // same" instead of silently dropping it from the identity.
+        let bytes = config(&[&[
+            "agent-determinization",
+            "--max-nodes",
+            "1",
+            "--future-policy-knob",
+            "7",
+        ]]);
+        let parsed = parse_match_configuration(&bytes).unwrap().unwrap();
+        match &parsed.seats[0] {
+            SeatConfigurationIdentityV1::Unresolved { reason } => {
+                assert!(
+                    reason.contains("not classified"),
+                    "reason must name the classification failure: {reason}"
+                );
+                assert!(reason.contains("--future-policy-knob"));
+            }
+            other => panic!("an unclassified switch must not resolve: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_negative_numeric_value_is_a_value_not_a_switch() {
+        let bytes = config(&[&["agent-determinization", "--max-nodes", "-1"]]);
+        let parsed = parse_match_configuration(&bytes).unwrap().unwrap();
+        let identity = parsed.seats[0].resolved().unwrap();
+        assert_eq!(
+            identity.parameters.get("max-nodes"),
+            Some(&"-1".to_string())
+        );
     }
 }

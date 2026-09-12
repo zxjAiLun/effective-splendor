@@ -396,6 +396,10 @@ fn print_dry_run_summary(report: &HistoricalDryRunReportV1, reverse_digest: Opti
         "  canonical-record-set digest: {}",
         report.canonical_set_digest
     );
+    println!(
+        "  policy-attribution digest:   {}",
+        report.policy_attribution_digest
+    );
     if let Some(rev) = reverse_digest {
         println!("  reverse-root order digest:   {}", rev);
         let match_str = if rev == report.canonical_set_digest {
@@ -900,6 +904,16 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
             "raw_corpus_matches_without_policy_identity": dry_run_report.matches_without_policy_identity,
             "raw_corpus_diagnostic_matches": dry_run_report.diagnostic_matches,
             "raw_corpus_distinct_participant_identities": dry_run_report.distinct_participant_identities,
+            "raw_corpus_config_documents_seen": dry_run_report.config_documents_seen,
+            "raw_corpus_game_ids_with_config_conflicts": dry_run_report.game_ids_with_config_conflicts,
+            "raw_corpus_matches_resolved_from_conflicting_game_ids": dry_run_report.matches_resolved_from_conflicting_game_ids,
+            "raw_corpus_matches_without_config_evidence": dry_run_report.matches_without_config_evidence,
+            "raw_corpus_matches_with_ambiguous_config": dry_run_report.matches_with_ambiguous_config,
+            "raw_corpus_matches_with_unresolved_policy_seat": dry_run_report.matches_with_unresolved_policy_seat,
+            "raw_corpus_unmapped_seats": dry_run_report.unmapped_seats,
+            "raw_corpus_matches_with_unmapped_seat": dry_run_report.matches_with_unmapped_seat,
+            "canonical_set_digest": dry_run_report.canonical_set_digest,
+            "policy_attribution_digest": dry_run_report.policy_attribution_digest,
             "eligibility_reasons": reason_rows,
             "leaderboard_total": board.len(),
             "provisional_count": provisional_count,

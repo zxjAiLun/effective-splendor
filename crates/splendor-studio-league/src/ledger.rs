@@ -366,23 +366,28 @@ fn ingest_match_in_tx(
             (Some(explicit), _) => Some(explicit.clone()),
             (None, Some(identity)) => {
                 // Always the single canonical path: an alias is followed inside
-                // `resolve_engine_participant`, so there is no second, divergent
-                // resolution order that could disagree with it
-                // (Commit A Repair 2, P1-1).
+                // the resolver, so there is no second, divergent resolution
+                // order that could disagree with it (Commit A Repair 2, P1-1).
                 let name = seat
                     .display_name
                     .clone()
                     .unwrap_or_else(|| identity.agent_name.clone());
-                // The exact policy identity from the arena's `match-config.json`
-                // (when available) is strictly more specific than the handshake
-                // runtime identity: it also covers the search configuration. Two
-                // seats that ran the same binary with different budgets are two
-                // participants, never a fabricated self-match.
-                let id = match &seat.policy_identity_key {
-                    Some(key) => resolve_engine_participant_with_key(tx, key, &name, now)?,
-                    None => resolve_engine_participant(tx, identity, &name, now)?,
-                };
-                Some(id)
+                // Three-state policy attribution (Commit B Slice 2 Repair 1,
+                // P1-2): a bound configuration resolves the exact policy
+                // participant; absent configuration evidence may fall back to
+                // the handshake runtime identity; present-but-unattributable
+                // evidence (ambiguous candidates, unclassified argv) stays
+                // unmapped so the match can never enter Elo through a coarse
+                // identity.
+                match &seat.policy_identity {
+                    crate::match_record::SeatPolicyIdentityV1::Resolved { policy_key } => Some(
+                        resolve_engine_participant_with_key(tx, policy_key, &name, now)?,
+                    ),
+                    crate::match_record::SeatPolicyIdentityV1::NoConfigEvidence => {
+                        Some(resolve_engine_participant(tx, identity, &name, now)?)
+                    }
+                    crate::match_record::SeatPolicyIdentityV1::Unresolved { .. } => None,
+                }
             }
             (None, None) => None,
         };

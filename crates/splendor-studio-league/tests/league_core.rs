@@ -43,7 +43,7 @@ fn seat(index: u8, name: &str, version: &str, won: bool, score: i32) -> StudioMa
     StudioMatchSeatV1 {
         seat: index,
         identity: Some(EngineIdentityV1::new(name, version)),
-        policy_identity_key: None,
+        policy_identity: league::SeatPolicyIdentityV1::NoConfigEvidence,
         participant_id: None,
         display_name: None,
         score: Some(score),
@@ -456,7 +456,7 @@ fn ineligible_matches_are_recorded_but_rate_nobody() {
             StudioMatchSeatV1 {
                 seat: 1,
                 identity: None,
-                policy_identity_key: None,
+                policy_identity: league::SeatPolicyIdentityV1::NoConfigEvidence,
                 participant_id: None,
                 display_name: None,
                 score: Some(12),
@@ -1307,5 +1307,37 @@ fn sync_identity_manifest_on_non_empty_ledger_rejects_missing_stored_manifest_ha
     assert!(
         matches!(err, StudioLeagueError::Invalid(_)),
         "non-empty DB with missing manifest hash must fail closed, got {err}"
+    );
+}
+
+#[test]
+fn sync_identity_manifest_fails_closed_when_the_ledger_cannot_be_read() {
+    // Commit B Slice 2 Repair 1, P1-3: "cannot read the ledger" is not
+    // "the ledger is empty". Completes the fail-closed triangle with the two
+    // non-empty manifest-hash gates: a damaged `matches` table must abort the
+    // sync before any identity, alias or hash mutation.
+    let mut manifest = IdentityManifestV1::new();
+    manifest.ensure_local_human("Nick");
+    let conn = open_in_memory().unwrap();
+    conn.execute("DROP TABLE matches", []).unwrap();
+
+    let result = sync_identity_manifest(&conn, &manifest, NOW);
+    assert!(
+        result.is_err(),
+        "an unreadable ledger must abort the manifest sync"
+    );
+    assert!(
+        league::stored_identity_manifest_hash(&conn)
+            .unwrap()
+            .is_none(),
+        "no manifest hash may be projected over an unreadable ledger"
+    );
+    assert!(
+        local_human_participant(&conn).unwrap().is_none(),
+        "no identity may be inserted before the ledger is proven readable"
+    );
+    assert!(
+        aliases(&conn).unwrap().is_empty(),
+        "no alias may be declared over an unreadable ledger"
     );
 }

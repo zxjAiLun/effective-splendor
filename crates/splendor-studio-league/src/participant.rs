@@ -333,9 +333,11 @@ pub fn sync_identity_manifest(
     manifest.validate()?;
     let manifest_hash = manifest.hash()?;
 
-    let match_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM matches", [], |row| row.get(0))
-        .unwrap_or(0);
+    // Fail-closed (Commit B Slice 2 Repair 1, P1-3): "cannot read the ledger"
+    // is not "the ledger is empty". A damaged or missing `matches` table must
+    // abort the sync before any identity or alias mutation, never project the
+    // manifest hash over an unreadable ledger.
+    let match_count: i64 = conn.query_row("SELECT COUNT(*) FROM matches", [], |row| row.get(0))?;
     if match_count > 0 {
         match stored_identity_manifest_hash(conn)? {
             Some(stored) if stored == manifest_hash => {}

@@ -30,8 +30,8 @@ pub mod replay_index;
 pub mod schema;
 
 pub use agent_configuration::{
-    is_diagnostic_configuration, parse_match_configuration, AgentPolicyIdentityV1,
-    MatchConfigurationV1, SeatConfigurationIdentityV1,
+    classify_switch, is_diagnostic_configuration, parse_match_configuration, AgentPolicyIdentityV1,
+    MatchConfigurationV1, SeatConfigurationIdentityV1, SwitchClass,
 };
 pub use eligibility::{
     evaluate_eligibility, EligibilityInput, RatingEligibility, REASON_ABORTED, REASON_DIAGNOSTIC,
@@ -41,9 +41,11 @@ pub use eligibility::{
 pub use elo::{elo_delta, elo_expected_score, pair_score_a, plan_pair_update, PairEloUpdate};
 pub use error::{Result, StudioLeagueError};
 pub use historical_import::{
-    arena_report_to_match_record, build_historical_corpus, compute_canonical_set_digest,
-    parse_arena_report, resolve_arena_report_replay, run_historical_dry_run,
-    HistoricalDryRunConfig, HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
+    arena_report_to_match_record, associate_configuration, build_historical_corpus,
+    compute_canonical_set_digest, compute_policy_attribution_digest, parse_arena_report,
+    resolve_arena_report_replay, run_historical_dry_run, ConfigAssociationV1,
+    ConfigurationCandidateV1, HistoricalDryRunConfig, HistoricalDryRunReportV1,
+    HistoricalReplayResolutionV1,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
@@ -65,7 +67,7 @@ pub use ledger::{
 };
 pub use match_record::{
     is_lowercase_hex64, MatchStatus, ReplayBindingV1, ReplayStorage, ReplayVerification,
-    StudioMatchRecordV1, StudioMatchSeatV1,
+    SeatPolicyIdentityV1, StudioMatchRecordV1, StudioMatchSeatV1,
 };
 pub use participant::{
     canonical_identity_key, derived_participant_id, local_human_participant, new_participant_id,
