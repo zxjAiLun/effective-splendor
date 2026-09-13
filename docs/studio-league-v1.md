@@ -957,15 +957,22 @@ pools and is not accepted as a strength baseline. The panic-hardening round that
 **no code change**: zero externally triggerable panic sites exist on the scoped historical
 replay/import production path (strict parsing, `Result` propagation, and explicit guards already
 fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
-Commit C Slice 2 (content-addressed replay archive) is `IMPLEMENTED` / `VERIFIED` locally and
-awaits the owner's re-review of Repair 2, the bind-time revalidation close patch (`P1-1` opaque
-handle, `P1-2` fixed protocol archive root, reader re-hash, and now `verify_present()` before the
-ledger records `archive`). The concurrency `P2` from the earlier review remains open and must be
-fixed before the central completion outlet is built. Commit C Slice 1 (runtime ingestion
+Commit C Slice 2 (content-addressed replay archive) is **CLOSED** @ `85c15ed`
+(`ACCEPTED`, P0=0 / P1=0 / P2=1 deferred): the archive writes an immutable content-addressed
+object, binds it through an opaque handle revalidated at bind time, records
+`ReplayStorage::Archive` plus a content-relative path under the protocol root, and re-hashes on
+read. The deferred concurrency `P2` was then closed, so the archive now publishes safely from
+concurrent producers. Commit C Slice 1 (runtime ingestion
 of one fresh occurrence) is **CLOSED** @ `1011607`
 (`ACCEPTED`, P0=0 / P1=0 / P2=0): fresh occurrence evidence -> durable occurrence identity/order ->
 strict report/replay/config verification -> exact policy attribution -> existing eligibility/Elo ->
 append -> delete the database and rebuild the same league from corpus + envelopes + manifest.
+
+**Commit C Slice 3 — Central Completion Outlet is AUTHORIZED** (owner, 2026-09-13), with the
+explicit constraint that its first cut must **not** connect to the Arena yet. The prerequisite was
+the archive concurrency repair (above), which is now done; the corrected publish path is the one
+the concurrent outlet will use. The Arena connection, the Studio Host APIs, and any UI remain
+**not authorized** until the owner reviews that first cut.
 
 **Commit C Slice 2 — Content-Addressed Replay Archive is AUTHORIZED** (owner, 2026-09-13), with a
 deliberately narrow first cut:
@@ -1187,12 +1194,52 @@ Targeted gates (`tests/replay_archive.rs`):
 Baseline: `splendor-studio-league` **72/72**; `splendor-cli` bin **89/89**; `cargo fmt --check`
 clean; `git diff --check` clean. No 42k migration was re-run.
 
-**P2 follow-up (open, not fixed this round):** the archive temp-file name and the
-`check-absent -> write -> rename` publish step are not concurrency-safe. This must be fixed
-**before** the central arena/evaluation completion outlet is built, because that outlet is the
-first concurrent producer. The intended fix is a unique nonce/counter temp name plus a
-`rename`-failure path that re-reads the target and reports `AlreadyPresent` when its bytes
-already hash to the expected address (only a genuine byte mismatch stays an error).
+**P2 at the time of this repair (since fixed):** the archive temp-file name and the
+`check-absent -> write -> rename` publish step were not concurrency-safe. It was fixed as the
+prerequisite for Commit C Slice 3, below.
+
+**Owner re-review of `85c15ed` (2026-09-13): `ACCEPTED / CLOSED` — P0=0 / P1=0 / P2=1 (deferred).**
+The remaining P1 is closed: `bind_archived_replay` calls `archived.verify_present()?` before it
+records `ReplayStorage::Archive`, and that method re-reads the handle's filesystem object and
+requires its bytes to still hash to the handle's content address (both the deleted and the
+overwritten states have regressions). The owner accepted the residual window between
+`verify_present()` and the SQLite commit as out of scope (closing it would need cross
+filesystem + SQLite transaction semantics) and accepted the scope as a lean iteration
+(`f579b2a -> 85c15ed`, one commit, archive bind/revalidation + two targeted tests + docs, with
+occurrence, ledger Elo, and historical migration untouched). **Commit C Slice 2 is CLOSED.** The
+archive concurrency P2 stayed open and was fixed as the prerequisite in the next section.
+
+### Archive concurrency prerequisite (2026-09-13)
+
+The owner authorized **Commit C Slice 3 / Central Completion Outlet** but ruled that its first
+cut must not connect to the Arena yet: the archive concurrency P2 had to be closed first, because
+the completion outlet is the first **concurrent** producer. The P2 was:
+
+1. **Not thread-unique temp name.** `.{sha}.{pid}.tmp` is identical for two threads of one
+   process, so they share (and `File::create`-truncate) the same temporary file.
+2. **TOCTOU between `target absent` and `rename`.** With multiple producers, the loser's
+   `rename` fails on Windows even when the winner already published a byte-identical object, so
+a legitimate concurrent producer was reported as a failure.
+
+Fix (archive module only):
+
+- `create_unique_temp` builds the temp name from the process id **and a per-process atomic
+  counter**, and opens it with `create_new(true)` so an existing path is never reused (retrying
+  on the rare `AlreadyExists`). Two threads can no longer share a temp file.
+- On a `rename` failure the writer **re-reads the target** and accepts it only when its bytes
+  still hash to the expected address (`AlreadyPresent`); a genuine byte mismatch, or a target
+  that cannot be read, still fails closed. `object_present` centralises this check so the
+  idempotent path, the publish-race path, and the corruption path share one rule.
+
+Gate (`tests/replay_archive.rs`): `concurrent_producers_of_one_sha_publish_exactly_one_correct_object`
+lines up 16 producers on a barrier across 25 rounds, each racing to archive the same content
+address. Every producer must return `Stored` or `AlreadyPresent`, at least one must be `Stored`,
+and exactly one byte-correct object must exist with no `.tmp` residue. The repeated rounds make
+the race reliable rather than schedule-dependent: against the pre-P2 code the gate failed
+**5/5** runs, and against the fix it passed 5/5 runs.
+
+Baseline: `splendor-studio-league` **73/73**; `splendor-cli` bin **89/89**; `cargo fmt --check`
+clean; `git diff --check` clean. No 42k migration was re-run.
 
 **Superseded next-step text** (kept for the record): the earlier version of this section said
 Slice 1 awaited owner review and that the content-addressed replay archive, the central

@@ -27,6 +27,12 @@ use crate::error::{Result, StudioLeagueError};
 use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// Per-process counter that keeps concurrent temporary file names distinct, so
+/// two threads of one process publishing the same content address never fight
+/// over the same temp path.
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Outcome of archiving one replay document.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,6 +73,22 @@ pub struct ArchivedReplayV1 {
 }
 
 impl ArchivedReplayV1 {
+    /// The only constructor; reached solely from [`archive_replay`] once the
+    /// object is known to be published.
+    fn published(
+        document_sha256: &str,
+        logical_path: String,
+        filesystem_path: PathBuf,
+        outcome: ArchiveOutcome,
+    ) -> Self {
+        Self {
+            document_sha256: document_sha256.to_string(),
+            logical_path,
+            filesystem_path,
+            outcome,
+        }
+    }
+
     /// SHA-256 of the archived bytes (the content address, 64 lowercase hex).
     pub fn document_sha256(&self) -> &str {
         &self.document_sha256
@@ -139,6 +161,57 @@ pub fn replay_document_sha256(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
 }
 
+/// Inspect whatever currently occupies a content address.
+///
+/// `Ok(true)` when a byte-identical object is already published, `Ok(false)`
+/// when the address is empty, and `Err` when it holds different bytes (corrupt
+/// evidence that must never be overwritten) or cannot be read.
+fn object_present(target: &Path, expected_sha256: &str) -> Result<bool> {
+    match std::fs::read(target) {
+        Ok(existing) => {
+            let existing_hash = replay_document_sha256(&existing);
+            if existing_hash == expected_sha256 {
+                Ok(true)
+            } else {
+                Err(StudioLeagueError::Invalid(format!(
+                    "archive target `{}` already holds different bytes (found {existing_hash}, expected {expected_sha256}); refusing to overwrite an immutable object",
+                    target.display()
+                )))
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(StudioLeagueError::Invalid(format!(
+            "cannot read archive target `{}`: {error}",
+            target.display()
+        ))),
+    }
+}
+
+/// Create a fresh temporary file next to the content address. The name embeds
+/// the process id and a per-process atomic counter, and `create_new` refuses to
+/// reuse an existing path, so concurrent writers never share a temp file (the
+/// previous `.{sha}.{pid}.tmp` name collided across threads of one process).
+fn create_unique_temp(directory: &Path, sha256: &str) -> Result<(PathBuf, std::fs::File)> {
+    loop {
+        let nonce = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let candidate = directory.join(format!(".{sha256}.{}.{nonce}.tmp", std::process::id()));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(file) => return Ok((candidate, file)),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "cannot create archive temp file `{}`: {error}",
+                    candidate.display()
+                )))
+            }
+        }
+    }
+}
+
 /// Archive one verified replay document.
 ///
 /// `archive_root` is the archive directory (created if absent). `bytes` must be
@@ -173,57 +246,59 @@ pub fn archive_replay(
     // Idempotency / conflict: re-hash whatever already occupies the content
     // address. Identical bytes are a no-op; different bytes are corrupt
     // evidence and must never be overwritten.
-    match std::fs::read(&target) {
-        Ok(existing) => {
-            let existing_hash = replay_document_sha256(&existing);
-            if existing_hash == expected_sha256 {
-                return Ok(ArchivedReplayV1 {
-                    document_sha256: expected_sha256.to_string(),
-                    logical_path,
-                    filesystem_path: target,
-                    outcome: ArchiveOutcome::AlreadyPresent,
-                });
-            }
-            return Err(StudioLeagueError::Invalid(format!(
-                "archive target `{}` already holds different bytes (found {existing_hash}, expected {expected_sha256}); refusing to overwrite an immutable object",
-                target.display()
-            )));
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(StudioLeagueError::Invalid(format!(
-                "cannot read archive target `{}`: {error}",
-                target.display()
-            )))
-        }
+    if object_present(&target, expected_sha256)? {
+        return Ok(ArchivedReplayV1::published(
+            expected_sha256,
+            logical_path,
+            target,
+            ArchiveOutcome::AlreadyPresent,
+        ));
     }
 
     // Write to a unique temporary file in the same directory, flush it, then
     // publish atomically. A crash leaves at most an orphan `.tmp`, never a
     // half-written object under a content address.
-    let temp = directory.join(format!(".{expected_sha256}.{}.tmp", std::process::id()));
-    {
-        let mut file = std::fs::File::create(&temp)?;
+    let (temp, mut file) = create_unique_temp(&directory, expected_sha256)?;
+    let write_result = (|| -> std::io::Result<()> {
         file.write_all(bytes)?;
-        file.sync_all()?;
-    }
-    match std::fs::rename(&temp, &target) {
-        Ok(()) => {}
-        Err(error) => {
-            let _ = std::fs::remove_file(&temp);
-            return Err(StudioLeagueError::Invalid(format!(
-                "failed to publish archived replay to `{}`: {error}",
-                target.display()
-            )));
-        }
+        file.sync_all()
+    })();
+    drop(file);
+    if let Err(error) = write_result {
+        // Do not leave a partial temp file behind on a write failure.
+        let _ = std::fs::remove_file(&temp);
+        return Err(error.into());
     }
 
-    Ok(ArchivedReplayV1 {
-        document_sha256: expected_sha256.to_string(),
-        logical_path,
-        filesystem_path: target,
-        outcome: ArchiveOutcome::Stored,
-    })
+    match std::fs::rename(&temp, &target) {
+        Ok(()) => Ok(ArchivedReplayV1::published(
+            expected_sha256,
+            logical_path,
+            target,
+            ArchiveOutcome::Stored,
+        )),
+        Err(rename_error) => {
+            let _ = std::fs::remove_file(&temp);
+            // Concurrency: another producer may have published the identical
+            // object between the check above and this rename (on Windows the
+            // loser's rename fails with an existing target). Accept the object
+            // only when its bytes still hash to the expected address; anything
+            // else must fail closed.
+            match object_present(&target, expected_sha256) {
+                Ok(true) => Ok(ArchivedReplayV1::published(
+                    expected_sha256,
+                    logical_path,
+                    target,
+                    ArchiveOutcome::AlreadyPresent,
+                )),
+                Ok(false) => Err(StudioLeagueError::Invalid(format!(
+                    "failed to publish archived replay to `{}`: {rename_error}",
+                    target.display()
+                ))),
+                Err(mismatch) => Err(mismatch),
+            }
+        }
+    }
 }
 
 /// Read an archived replay back by its content address.

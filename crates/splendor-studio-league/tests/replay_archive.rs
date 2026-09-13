@@ -16,8 +16,8 @@ use splendor_replay::{record_random_game, verify_replay, ReplayV1};
 use splendor_studio_league::{
     archive_replay, bind_archived_replay, ensure_rating_config, ingest_match, initialise,
     open_league, parse_runtime_occurrence, read_archived_replay, replay_document_sha256,
-    runtime_match_record, sync_identity_manifest, IdentityManifestV1, IngestOutcome, ReplayStorage,
-    RUNTIME_OCCURRENCE_FORMAT,
+    runtime_match_record, sync_identity_manifest, ArchiveOutcome, IdentityManifestV1,
+    IngestOutcome, ReplayStorage, RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
 
@@ -448,4 +448,92 @@ fn binding_a_handle_whose_object_was_overwritten_fails_closed() {
     );
 
     let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn concurrent_producers_of_one_sha_publish_exactly_one_correct_object() {
+    // P2 prerequisite for the central completion outlet: several producers may
+    // archive the same content address at once. Every one must succeed with
+    // Stored or AlreadyPresent, and exactly one byte-correct object must exist
+    // afterwards, with no temporary residue. Repeated over many rounds so the
+    // check-absent -> write -> rename window is exercised reliably rather than
+    // depending on one lucky schedule.
+    use std::sync::{Arc, Barrier};
+
+    const PRODUCERS: usize = 16;
+    const ROUNDS: usize = 25;
+
+    for round in 0..ROUNDS {
+        let tmp = tempdir(&format!("concurrent-{round}"));
+        let archive_root = tmp.join("replays");
+        // `archive_replay` only needs bytes and their content address, so a
+        // distinct synthetic payload per round is enough.
+        let payload = format!("{{\"round\":{round},\"payload\":\"concurrent\"}}").into_bytes();
+        let replay_sha = replay_document_sha256(&payload);
+
+        let barrier = Arc::new(Barrier::new(PRODUCERS));
+        let mut handles = Vec::new();
+        for _ in 0..PRODUCERS {
+            let barrier = Arc::clone(&barrier);
+            let archive_root = archive_root.clone();
+            let payload = payload.clone();
+            let replay_sha = replay_sha.clone();
+            handles.push(std::thread::spawn(move || {
+                // Line every producer up so they race on the publish step.
+                barrier.wait();
+                archive_replay(&archive_root, &replay_sha, &payload)
+            }));
+        }
+
+        let mut stored = 0usize;
+        let mut already = 0usize;
+        for handle in handles {
+            let archived = handle
+                .join()
+                .expect("producer thread must not panic")
+                .unwrap_or_else(|error| {
+                    panic!("round {round}: every concurrent producer of identical bytes must succeed, got {error}")
+                });
+            match archived.outcome() {
+                ArchiveOutcome::Stored => stored += 1,
+                ArchiveOutcome::AlreadyPresent => already += 1,
+            }
+            assert_eq!(archived.document_sha256(), replay_sha);
+        }
+        assert_eq!(stored + already, PRODUCERS);
+        assert!(
+            stored >= 1,
+            "round {round}: at least one producer must publish"
+        );
+
+        let directory = archive_root.join(&replay_sha[..2]);
+        let objects: Vec<String> = std::fs::read_dir(&directory)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            objects
+                .iter()
+                .filter(|name| *name == &format!("{replay_sha}.json"))
+                .count(),
+            1,
+            "round {round}: exactly one object: {objects:?}"
+        );
+        assert!(
+            objects.iter().all(|name| !name.ends_with(".tmp")),
+            "round {round}: no temporary residue may remain: {objects:?}"
+        );
+        assert_eq!(
+            std::fs::read(
+                archive_root
+                    .join(&replay_sha[..2])
+                    .join(format!("{replay_sha}.json"))
+            )
+            .unwrap(),
+            payload
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
 }
