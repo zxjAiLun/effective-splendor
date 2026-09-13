@@ -18,11 +18,13 @@ use sha2::{Digest, Sha256};
 use splendor_arena::{seed_commitment_v1, AgentIdentity, ArenaOutcomeV1, ArenaReportV1, PlayerId};
 use splendor_core::{ruleset_fingerprint, FullState, GameConfig, Ruleset};
 use splendor_replay::record_random_game;
-use splendor_studio_league::{
+
+use crate::historical_import::runtime_match_record;
+use crate::{
     build_historical_corpus, ensure_rating_config, ingest_batch_canonical, ingest_match,
     initialise, leaderboard, match_receipt, open_league, parse_runtime_occurrence,
-    runtime_match_record, runtime_occurrence_evidence_hash, sync_identity_manifest,
-    HistoricalDryRunConfig, IdentityManifestV1, IngestOutcome, ReplayStorage, ReplayVerification,
+    runtime_occurrence_evidence_hash, sync_identity_manifest, HistoricalDryRunConfig,
+    IdentityManifestV1, IngestOutcome, ReplayStorage, ReplayVerification,
     RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
@@ -145,7 +147,7 @@ fn build_record(
     report: &[u8],
     replay: &[u8],
     config: &[u8],
-) -> splendor_studio_league::StudioMatchRecordV1 {
+) -> crate::StudioMatchRecordV1 {
     let envelope_bytes = occurrence_envelope(occurrence_id, completed_at, report, replay, config);
     let envelope = parse_runtime_occurrence(&envelope_bytes)
         .unwrap()

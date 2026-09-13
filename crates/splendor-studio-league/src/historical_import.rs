@@ -160,7 +160,7 @@ pub fn build_match_record_from_parsed(
 /// runtime configuration must carry its `seed`; a configuration whose seed
 /// does not reproduce the report's `seed_commitment` is not evidence for this
 /// occurrence.
-pub fn runtime_match_record(
+pub(crate) fn runtime_match_record(
     occurrence: &RuntimeOccurrenceV1,
     report_bytes: &[u8],
     replay_bytes: &[u8],
@@ -305,7 +305,7 @@ pub fn runtime_match_record(
 /// kind and path after the bytes have been archived. The archive key must be
 /// exactly the replay document hash the record already carries — the occurrence
 /// evidence, the archive object, and the ledger binding all name one content.
-pub fn bind_archived_replay(
+pub(crate) fn bind_archived_replay(
     mut record: StudioMatchRecordV1,
     archived: &crate::replay_archive::ArchivedReplayV1,
 ) -> Result<StudioMatchRecordV1> {

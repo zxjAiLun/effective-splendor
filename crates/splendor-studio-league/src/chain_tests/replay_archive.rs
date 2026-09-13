@@ -11,14 +11,14 @@
 //! 4. an archive collision with different bytes fails closed;
 //! 5. a runtime record can only be bound to an archive object that names its own
 //!    verified replay document hash.
+use crate::historical_import::{bind_archived_replay, runtime_match_record};
+use crate::{
+    archive_replay, ensure_rating_config, ingest_match, initialise, open_league,
+    parse_runtime_occurrence, read_archived_replay, replay_document_sha256, sync_identity_manifest,
+    ArchiveOutcome, IdentityManifestV1, IngestOutcome, ReplayStorage, RUNTIME_OCCURRENCE_FORMAT,
+};
 use rusqlite::Connection;
 use splendor_replay::{record_random_game, verify_replay, ReplayV1};
-use splendor_studio_league::{
-    archive_replay, bind_archived_replay, ensure_rating_config, ingest_match, initialise,
-    open_league, parse_runtime_occurrence, read_archived_replay, replay_document_sha256,
-    runtime_match_record, sync_identity_manifest, ArchiveOutcome, IdentityManifestV1,
-    IngestOutcome, ReplayStorage, RUNTIME_OCCURRENCE_FORMAT,
-};
 use std::path::{Path, PathBuf};
 
 fn tempdir(label: &str) -> PathBuf {
@@ -115,7 +115,7 @@ fn parse(
     occurrence_id: &str,
     completed_at: i64,
     docs: &(Vec<u8>, Vec<u8>, Vec<u8>),
-) -> splendor_studio_league::RuntimeOccurrenceV1 {
+) -> crate::RuntimeOccurrenceV1 {
     let (report, replay, config) = docs;
     let envelope = occurrence_envelope(occurrence_id, completed_at, report, replay, config);
     parse_runtime_occurrence(&envelope)
@@ -124,7 +124,7 @@ fn parse(
 }
 
 fn fresh_league(path: &Path, manifest: &IdentityManifestV1) {
-    let mut conn = open_league(path).unwrap();
+    let conn = open_league(path).unwrap();
     initialise(&conn).unwrap();
     ensure_rating_config(&conn).unwrap();
     sync_identity_manifest(&conn, manifest, 1_700_000_000).unwrap();

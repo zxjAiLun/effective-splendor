@@ -1540,3 +1540,145 @@ migration was re-run. There are no cloud status checks for this commit and no CI
 
 Owner review of this repair. Arena wiring, the Studio Host APIs, and any UI remain **not
 authorized**.
+
+> **Update (2026-09-13).** The owner's review confirmed both repairs here (evidence hash:
+> CLOSED; opaque session and fixed protocol root: PASS) and raised one further finding: the crate's
+> public surface still re-exported `runtime_match_record` and `bind_archived_replay`, so the outlet
+> was the official path only by convention. See *Commit C Slice 3 Repair 2* below.
+
+---
+
+## Commit C Slice 3 Repair 2 — the public surface stops offering the shortcut (2026-09-13)
+
+Status: **IMPLEMENTED + locally VERIFIED**, awaiting owner review. Baseline `257ccb6`.
+Owner review of `257ccb6` = **REPAIR_REQUIRED (P0=0 / P1=1 / P2=0)**. Both repairs from the
+previous round were confirmed: the occurrence evidence hash is **CLOSED**, and the opaque session
+plus fixed protocol root **PASS**. The remaining finding is that the *crate's public surface* still
+re-exported the whole old chain, so the completion outlet was only the official path by convention.
+
+### P1: the old chain was still publicly re-exported
+
+`lib.rs` still exported `open_league`, `ingest_match`, `archive_replay`, **`runtime_match_record`**
+and **`bind_archived_replay`**, and `historical_import` is a `pub mod`. An external crate — the
+future Arena crate among them — could therefore still write:
+
+```rust
+let mut conn = open_league(db)?;
+let record = runtime_match_record(&occurrence, report, replay, config, source_path)?;
+let archived = archive_replay(Path::new("some-other-root"), replay_sha, replay)?;
+let record = bind_archived_replay(record, &archived)?;
+ingest_match(&mut conn, &record)?;
+```
+
+which re-acquires everything the outlet exists to remove: no `CompletionLeagueV1`, no manifest
+session gate, an arbitrary archive root, and a direct ledger ingest. The claim in the module docs
+and in the Repair 1 section — "a second producer cannot complete an occurrence through a
+shortcut" — was true of the *type* and false of the *crate*.
+
+### Fix
+
+Only the two runtime-specific completion primitives are narrowed:
+
+```rust
+pub(crate) fn runtime_match_record(...)   // was pub, re-exported
+pub(crate) fn bind_archived_replay(...)   // was pub, re-exported
+```
+
+and both are removed from `lib.rs`'s `pub use historical_import::{...}`. `completion.rs` and
+`historical_import.rs` keep calling them internally. `archive_replay`, `read_archived_replay`,
+`open_league`, `ingest_match`, `ingest_batch_canonical` and `runtime_occurrence_evidence_hash`
+stay public: they are generic ledger/archive tools, and the goal is to close the *official runtime
+completion shortcut*, not to turn the crate into a sandbox. `StudioMatchRecordV1` keeps its public
+fields. No `*_for_test` public escape hatch was added.
+
+**Negative control (compile-time, as this class of gate must be).** From an external crate:
+
+```text
+error[E0432]: unresolved imports `splendor_studio_league::bind_archived_replay`,
+              `splendor_studio_league::runtime_match_record`
+error[E0603]: function `runtime_match_record` is private
+error[E0603]: function `bind_archived_replay` is private
+```
+
+The first is the direct re-export path, the second the module path
+(`splendor_studio_league::historical_import::…`), so both routes are closed.
+
+### Where the primitive tests went
+
+`tests/replay_archive.rs` and `tests/runtime_ingest.rs` exercise exactly these primitives, so they
+can no longer be integration tests. They moved, unchanged in substance, into a crate-internal test
+module:
+
+```text
+src/chain_tests.rs
+src/chain_tests/replay_archive.rs     (was tests/replay_archive.rs, 10 tests)
+src/chain_tests/runtime_ingest.rs     (was tests/runtime_ingest.rs, 7 tests)
+```
+
+declared as `#[cfg(test)] mod chain_tests;`. They keep their original temp-directory label prefixes
+(`splendor-replay-archive-*`, `splendor-runtime-ingest-*`), so they cannot collide with each other
+or with the unit tests in `src/replay_archive.rs` inside the one lib test process. The alternative —
+rewriting every assertion to go through the outlet — was rejected because it would have quietly
+deleted the primitive-level gates (bind-mismatch, deleted object, overwritten object) that the
+outlet's single call cannot express, and because the public surface keeps its own integration
+coverage regardless.
+
+`tests/archive_protocol_root.rs` used the primitives too, but its subject is public behaviour, so it
+was **rewritten through the completion outlet** instead of moved: it now completes an occurrence
+with the process working directory inside a temp sandbox, reads the row back, and asserts that
+`STUDIO_LEAGUE_REPLAY_DIR + replay_path` resolves to an object whose bytes hash to the recorded
+`document_hash`, and that the recorded path is not absolute. That is a strictly stronger version of
+the same gate, because the caller no longer supplies a root anywhere.
+
+### Validation and evidence
+
+| Gate | Where | What it proves |
+|---|---|---|
+| surface closed (compile) | external-crate probe | neither the re-export nor the module path resolves to the two primitives |
+| protocol root, public path | `tests/archive_protocol_root.rs` | the recorded relative path resolves under the protocol root alone, driven through the outlet |
+| outlet gates A/B/C, 2b, 3a/3b/3c | `tests/completion_outlet.rs` | unchanged |
+| CLI equivalence | `splendor-cli/tests/completion_equivalence.rs` | unchanged |
+| primitive archive/chain gates | `src/chain_tests/*` (17 tests) | relocated verbatim, still passing |
+
+Results (local evidence): `splendor-studio-league` **80/80** — 31 in the lib binary (14 unit + 17
+relocated chain tests) + `archive_protocol_root` 1 + `completion_outlet` 7 + `historical_resolver` 3
++ `league_core` 29 + `policy_identity` 5 + `replay_index` 4. The whole `splendor-cli` suite passes
+(43 test binaries, 268 tests, `--bin splendor` 89/89, `completion_equivalence` 1/1). `git diff
+--check` clean; `rustfmt` run on the touched files only. No 42k migration was re-run. There are no
+cloud status checks for this commit and no CI is claimed.
+
+### Upgrade note — earlier runtime rows carry a different `source_document_hash`
+
+Repair 1 changed what the ledger compares under `(source_kind, source_identity)` for a runtime
+source: previously the arena-report SHA-256, now the whole-occurrence evidence hash. A derived
+database written by a build *before* Repair 1 may therefore hold a runtime row whose
+`source_document_hash` is the report SHA. If the same occurrence is offered again, the ledger
+reports `SourceConflict` rather than `AlreadyPresent`.
+
+That is correct and intended, not corruption: the two hashes are genuinely different evidence
+records for the same key, and `SourceConflict` is the fail-closed answer. The SQLite index is
+derived state, so the remedy is to **rebuild** it (`studio-league-migrate` plus the occurrence
+envelopes), not to add a compatibility fallback that would let a changed occurrence be swallowed as
+a no-op. No accepted artifact is affected: the official `league.sqlite3` holds 42,521 historical
+matches and no runtime matches.
+
+### Result and decision
+
+`IMPLEMENTED` / locally `VERIFIED`. Not `ACCEPTED`: the owner's review of this repair is the gate.
+
+### Known limitations
+
+- The narrowing is scoped to the two runtime-specific primitives; `archive_replay`,
+  `open_league`, `ingest_match` and friends stay public by design, so a determined external caller
+  can still assemble a chain by hand from generic tools. What is closed is the *official* runtime
+  completion path, which is the owner's stated contract — a Rust crate is not a security boundary.
+- The relocated suites no longer exercise the public surface directly. Their replacements on the
+  public surface are the outlet, protocol-root, and CLI-equivalence suites listed above.
+- `src/chain_tests/runtime_ingest.rs` keeps its Slice 1 framing (it drives `ingest_match` directly to
+  isolate the ledger from the archive); that isolation is deliberate and is why it moved rather than
+  being rewritten onto the outlet.
+
+### Next authorized gate
+
+Owner review of this repair. Arena wiring, the Studio Host APIs, and any UI remain **not
+authorized**.

@@ -28,6 +28,14 @@
 //! resolve; letting a caller choose one would reintroduce exactly the
 //! un-locatable binding Commit C Slice 2 Repair 1 closed.
 //!
+//! The chain's primitives — [`runtime_match_record`] and
+//! [`bind_archived_replay`] — are crate-private for the same reason (Commit C
+//! Slice 3 Repair 2). Re-exporting them publicly would hand an external producer
+//! the exact shortcut this module removes: build a legitimate runtime canonical
+//! record, bind it to an object on a root of its own choosing, and ingest it
+//! directly. The generic ledger and archive tools stay public; the *official
+//! runtime completion path* is this outlet.
+//!
 //! ## Fixed properties
 //!
 //! * **Verification is never optional.** The replay is strictly parsed, fully
