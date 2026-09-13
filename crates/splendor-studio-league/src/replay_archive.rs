@@ -47,15 +47,41 @@ impl ArchiveOutcome {
 }
 
 /// A verified replay document placed in the content-addressed archive.
+///
+/// This is an **opaque handle**: its fields are private and the only way to
+/// obtain one is [`archive_replay`], which has already published the object (or
+/// confirmed a byte-identical one is present) under the content address.
+/// Holding a handle is therefore evidence that the object exists; no caller can
+/// fabricate one and make the ledger claim an archive object that is not there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchivedReplayV1 {
+    document_sha256: String,
+    logical_path: String,
+    filesystem_path: PathBuf,
+    outcome: ArchiveOutcome,
+}
+
+impl ArchivedReplayV1 {
     /// SHA-256 of the archived bytes (the content address, 64 lowercase hex).
-    pub document_sha256: String,
+    pub fn document_sha256(&self) -> &str {
+        &self.document_sha256
+    }
+
     /// Portable, `/`-separated logical path of the object inside the archive.
-    pub logical_path: String,
+    /// This is exactly what the ledger records as `replay_path`.
+    pub fn logical_path(&self) -> &str {
+        &self.logical_path
+    }
+
     /// Filesystem path of the object, for the caller that actually reads it.
-    pub filesystem_path: PathBuf,
-    pub outcome: ArchiveOutcome,
+    pub fn filesystem_path(&self) -> &Path {
+        &self.filesystem_path
+    }
+
+    /// Whether the object was newly written or already present.
+    pub fn outcome(&self) -> ArchiveOutcome {
+        self.outcome.clone()
+    }
 }
 
 /// The two-character fan-out directory for a content address.
@@ -168,19 +194,31 @@ pub fn archive_replay(
     })
 }
 
-/// Read an archived replay back by its content address. Used to prove the
-/// archive survives deletion of the original run directory.
+/// Read an archived replay back by its content address.
+///
+/// The bytes are re-hashed and refused unless they still hash to the requested
+/// address, so on-disk corruption fails closed instead of handing back bytes
+/// that do not match the record's `document_hash`. Used to prove the archive
+/// survives deletion of the original run directory.
 pub fn read_archived_replay(archive_root: &Path, document_sha256: &str) -> Result<Vec<u8>> {
     validated_sha256(document_sha256)?;
     let target = archive_root
         .join(fanout(document_sha256))
         .join(format!("{document_sha256}.json"));
-    std::fs::read(&target).map_err(|error| {
+    let bytes = std::fs::read(&target).map_err(|error| {
         StudioLeagueError::Invalid(format!(
             "archived replay `{document_sha256}` is not readable at `{}`: {error}",
             target.display()
         ))
-    })
+    })?;
+    let actual = replay_document_sha256(&bytes);
+    if actual != document_sha256 {
+        return Err(StudioLeagueError::Invalid(format!(
+            "archived replay at `{}` hashes to {actual}, not its content address {document_sha256}; the archive object is corrupt",
+            target.display()
+        )));
+    }
+    Ok(bytes)
 }
 
 #[cfg(test)]
@@ -202,15 +240,15 @@ mod tests {
         let sha = replay_document_sha256(&bytes);
 
         let first = archive_replay(&root, &sha, &bytes).unwrap();
-        assert_eq!(first.outcome, ArchiveOutcome::Stored);
+        assert_eq!(first.outcome(), ArchiveOutcome::Stored);
         assert_eq!(
-            first.logical_path,
+            first.logical_path(),
             format!("{}/{}", &sha[..2], format_args!("{sha}.json"))
         );
 
         let second = archive_replay(&root, &sha, &bytes).unwrap();
-        assert_eq!(second.outcome, ArchiveOutcome::AlreadyPresent);
-        assert_eq!(second.filesystem_path, first.filesystem_path);
+        assert_eq!(second.outcome(), ArchiveOutcome::AlreadyPresent);
+        assert_eq!(second.filesystem_path(), first.filesystem_path());
 
         // Exactly one object exists.
         let objects: Vec<_> = std::fs::read_dir(root.join(&sha[..2]))
@@ -286,7 +324,7 @@ mod tests {
 
         let from_archive = read_archived_replay(&root, &sha).unwrap();
         assert_eq!(from_archive, bytes);
-        assert!(archived.filesystem_path.exists());
+        assert!(archived.filesystem_path().exists());
         let _ = std::fs::remove_dir_all(&root);
     }
 }

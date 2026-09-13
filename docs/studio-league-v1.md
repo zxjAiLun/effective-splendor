@@ -957,7 +957,11 @@ pools and is not accepted as a strength baseline. The panic-hardening round that
 **no code change**: zero externally triggerable panic sites exist on the scoped historical
 replay/import production path (strict parsing, `Result` propagation, and explicit guards already
 fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
-Commit C Slice 1 (runtime ingestion of one fresh occurrence) is **CLOSED** @ `1011607`
+Commit C Slice 2 (content-addressed replay archive) is `IMPLEMENTED` / `VERIFIED` locally and
+awaits the owner's re-review of Repair 1 (`P1-1` opaque handle, `P1-2` fixed protocol archive
+root, reader re-hash). The concurrency `P2` in that review is recorded as an open follow-up and
+must be fixed before the central completion outlet is built. Commit C Slice 1 (runtime ingestion
+of one fresh occurrence) is **CLOSED** @ `1011607`
 (`ACCEPTED`, P0=0 / P1=0 / P2=0): fresh occurrence evidence -> durable occurrence identity/order ->
 strict report/replay/config verification -> exact policy attribution -> existing eligibility/Elo ->
 append -> delete the database and rebuild the same league from corpus + envelopes + manifest.
@@ -1084,6 +1088,71 @@ Validation (local evidence):
 - Baseline: `splendor-studio-league` **68/68** (14 lib + 3 + 29 + 5 + 6 + 4 + 7); `splendor-cli`
   bin **89/89**; `cargo fmt --check` clean; `git diff --check` clean. No real 42k migration was
   re-run; historical bindings keep `in_place_reference`.
+
+### Commit C Slice 2 Repair 1 — the archive binding becomes real League authority (2026-09-13)
+
+The owner's review of `806a989` confirmed the four normal-path archive contracts and the CLI
+verify -> archive -> bind -> ingest ordering, and accepted the orphan-object trade-off, but
+returned **`REPAIR_REQUIRED` (P0=0 / P1=2 / P2=1)** on two authority seams:
+
+1. **P1-1 — an `archive` binding could be fabricated without a real object.** `ArchivedReplayV1`
+   had four public fields, so any caller could construct one by hand (a real
+   `document_sha256` plus a nonexistent path) and `bind_archived_replay` would accept it after
+   checking only the hash and `Verified`. The ledger could then claim
+   `archive` / `verified` / a path where nothing exists — exactly the product truth Slice 2 is
+   supposed to guarantee.
+2. **P1-2 — `--archive-root` made the recorded binding un-locatable.** The ledger stores only the
+   content-relative `replay_path`, and the root is not recorded in `matches`, `league_meta`, or
+   the occurrence envelope; letting the CLI choose an arbitrary root meant a later process
+   holding only the database could not know where the object lives.
+3. **P2 — the "unique" temp file was not unique and the publish step is not concurrency-safe.**
+   `.{sha}.{pid}.tmp` collides for two threads of one process, and `check-absent -> write ->
+   rename` is a TOCTOU: on Windows a second writer's `rename` can fail even when the first
+   published a byte-identical object. Single-threaded CLI ingest is fine, but a concurrent
+   central completion outlet must not inherit this.
+
+Repair (narrow; envelope format, `ledger.rs` semantics, runtime occurrence identity/order, and
+Elo are untouched):
+
+- **P1-1:** `ArchivedReplayV1` is now an **opaque handle** — all four fields are private and the
+  only constructor is `archive_replay`. Read-only getters (`document_sha256`, `logical_path`,
+  `filesystem_path`, `outcome`) replace direct field access. Fabricating a handle is now a
+  compile error, so holding one is evidence the object was published or confirmed present.
+- **P1-2:** the production `studio-league-ingest` no longer accepts `--archive-root` (it is now an
+  unexpected argument); it always archives under the protocol constant
+  `STUDIO_LEAGUE_REPLAY_DIR` and records only the content-relative path. The library
+  `archive_replay(root, ..)` stays parameterised so tests can use a temp directory. `storage =
+  archive` + relative `replay_path` + `STUDIO_LEAGUE_REPLAY_DIR` is now a fixed protocol, so the
+  recorded path is locatable from the database alone.
+- **Reader hardening (folded into P1-1):** `read_archived_replay` now re-hashes the bytes it read
+  and refuses an object that no longer matches its content address, so on-disk corruption fails
+  closed instead of returning bytes that disagree with the record's `document_hash`.
+
+Targeted gates:
+
+- `reading_a_tampered_archive_object_fails_closed` (`tests/replay_archive.rs`): corrupting an
+  archived object on disk makes `read_archived_replay` return `Err` naming the corruption.
+  Verified to fail against the pre-patch reader (it returned `Ok`) and to pass after.
+- `the_recorded_archive_path_resolves_under_the_protocol_root_alone`
+  (`tests/archive_protocol_root.rs`, its own binary because it changes the process cwd): a
+  record archived under `STUDIO_LEAGUE_REPLAY_DIR`, bound and ingested into a database, is
+  located by that constant joined with the recorded `replay_path`, and the located bytes hash to
+  the recorded `document_hash` — nothing else about the ingest invocation is needed.
+- Real CLI smoke (M39a `baseline-M07-5000000-r0`): `--archive-root` is rejected with
+  "unexpected argument" (exit 2); the default run archives `f66a1685...b052`, records
+  `runtime:smoke-r1-occ` with 2 Elo events, and the row's `replay_path` resolves under
+  `STUDIO_LEAGUE_REPLAY_DIR` with the bytes hashing to the recorded `document_hash`. Scratch
+  artifacts were removed afterwards.
+
+Baseline: `splendor-studio-league` **70/70**; `splendor-cli` bin **89/89**; `cargo fmt --check`
+clean; `git diff --check` clean. No 42k migration was re-run.
+
+**P2 follow-up (open, not fixed this round):** the archive temp-file name and the
+`check-absent -> write -> rename` publish step are not concurrency-safe. This must be fixed
+**before** the central arena/evaluation completion outlet is built, because that outlet is the
+first concurrent producer. The intended fix is a unique nonce/counter temp name plus a
+`rename`-failure path that re-reads the target and reports `AlreadyPresent` when its bytes
+already hash to the expected address (only a genuine byte mismatch stays an error).
 
 **Superseded next-step text** (kept for the record): the earlier version of this section said
 Slice 1 awaited owner review and that the content-addressed replay archive, the central

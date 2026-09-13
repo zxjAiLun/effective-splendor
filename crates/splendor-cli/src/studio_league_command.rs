@@ -1083,8 +1083,6 @@ Options:
   --config <path>         The run's own match-config.json (exact configuration evidence)
   --identity <path>       Path to identity.json (default: local-artifacts/studio-league/identity.json)
   --db <path>             Path to the league database (default: local-artifacts/studio-league/league.sqlite3)
-  --archive-root <path>   Content-addressed replay archive root, keyed by the verified
-                          replay document SHA-256 (default: local-artifacts/studio-league/replays)
   --json <path>           Write an ingestion receipt JSON here
   --help                  Print this help
 ";
@@ -1114,7 +1112,6 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     let mut config_path: Option<PathBuf> = None;
     let mut identity_path = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
     let mut db_path = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
-    let mut archive_root = PathBuf::from(STUDIO_LEAGUE_REPLAY_DIR);
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -1144,10 +1141,6 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
             "--db" => match value() {
                 Some(path) => db_path = PathBuf::from(path),
                 None => return fail_ingest("--db needs a path"),
-            },
-            "--archive-root" => match value() {
-                Some(path) => archive_root = PathBuf::from(path),
-                None => return fail_ingest("--archive-root needs a path"),
             },
             "--json" => match value() {
                 Some(path) => json_out = Some(PathBuf::from(path)),
@@ -1235,7 +1228,15 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
             )
         }
     };
-    let archived = match archive_replay(&archive_root, &replay_sha, &replay_bytes) {
+    // The archive root is a protocol constant, not a per-run choice: the
+    // ledger records only the content-relative path, so a League must have one
+    // fixed root for those paths to resolve. A caller cannot redirect the
+    // archive to an arbitrary directory and strand the recorded path.
+    let archived = match archive_replay(
+        Path::new(STUDIO_LEAGUE_REPLAY_DIR),
+        &replay_sha,
+        &replay_bytes,
+    ) {
         Ok(archived) => archived,
         Err(error) => return fail_ingest(&format!("failed to archive the replay: {error}")),
     };
@@ -1245,8 +1246,8 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     };
     println!(
         "studio-league-ingest: archived replay {} ({})",
-        archived.document_sha256,
-        archived.outcome.as_str()
+        archived.document_sha256(),
+        archived.outcome().as_str()
     );
 
     // Step 3: open the league through the same authority seams as the
@@ -1331,7 +1332,7 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
                 "storage": record.replay.storage().as_str(),
                 "document_hash": record.replay.document_hash,
                 "path": record.replay.path,
-                "archive_outcome": archived.outcome.as_str(),
+                "archive_outcome": archived.outcome().as_str(),
             },
             "outcome": {
                 "kind": outcome_kind,

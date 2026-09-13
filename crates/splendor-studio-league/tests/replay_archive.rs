@@ -167,10 +167,7 @@ fn a_verified_occurrence_is_archived_and_the_ledger_points_at_the_object() {
     let archived = archive_replay(&archive_root, &replay_sha, replay).unwrap();
     let record = bind_archived_replay(record, &archived).unwrap();
     assert_eq!(record.replay.storage(), ReplayStorage::Archive);
-    assert_eq!(
-        record.replay.path.as_deref(),
-        Some(archived.logical_path.as_str())
-    );
+    assert_eq!(record.replay.path.as_deref(), Some(archived.logical_path()));
     assert_eq!(record.replay.storage().as_str(), "archive");
 
     let manifest = test_manifest();
@@ -185,11 +182,11 @@ fn a_verified_occurrence_is_archived_and_the_ledger_points_at_the_object() {
     let (storage, path, document_hash) = replay_binding(&conn, &record.match_id());
     assert_eq!(storage, "archive");
     assert_eq!(document_hash, replay_sha);
-    assert_eq!(path, archived.logical_path);
+    assert_eq!(path, archived.logical_path());
     // The recorded logical path really resolves under the archive root.
     assert_eq!(
         archive_root.join(path.replace('/', std::path::MAIN_SEPARATOR_STR)),
-        archived.filesystem_path
+        archived.filesystem_path().to_path_buf()
     );
 
     let _ = std::fs::remove_dir_all(&tmp);
@@ -208,9 +205,9 @@ fn re_archiving_and_re_offering_the_same_occurrence_is_idempotent() {
     let replay_sha = record.replay.document_hash.clone().unwrap();
     let first = archive_replay(&archive_root, &replay_sha, replay).unwrap();
     let second = archive_replay(&archive_root, &replay_sha, replay).unwrap();
-    assert_eq!(first.outcome.as_str(), "stored");
-    assert_eq!(second.outcome.as_str(), "already_present");
-    assert_eq!(first.filesystem_path, second.filesystem_path);
+    assert_eq!(first.outcome().as_str(), "stored");
+    assert_eq!(second.outcome().as_str(), "already_present");
+    assert_eq!(first.filesystem_path(), second.filesystem_path());
 
     let record = bind_archived_replay(record, &first).unwrap();
     let manifest = test_manifest();
@@ -362,6 +359,37 @@ fn an_unverified_replay_is_rejected_before_any_archive_write() {
         !archive_root.exists() || std::fs::read_dir(&archive_root).unwrap().next().is_none(),
         "an unverified replay must not create an archive object"
     );
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn reading_a_tampered_archive_object_fails_closed() {
+    // Repair 1 hardening: the public read helper re-hashes what it reads, so an
+    // object that no longer matches its content address is refused instead of
+    // being handed back as if it were the verified replay.
+    let tmp = tempdir("tamper-read");
+    let docs = occurrence_documents("runtime-archive-7", 7_700_036);
+    let (_, replay, _) = &docs;
+    let archive_root = tmp.join("replays");
+    let replay_sha = replay_document_sha256(replay);
+
+    let archived = archive_replay(&archive_root, &replay_sha, replay).unwrap();
+    // Sanity: an intact object reads back.
+    assert_eq!(
+        read_archived_replay(&archive_root, &replay_sha).unwrap(),
+        *replay
+    );
+
+    // Corrupt the object on disk, keeping the same size.
+    let target = archived.filesystem_path();
+    let mut corrupted = std::fs::read(target).unwrap();
+    let last = corrupted.len() - 3;
+    corrupted[last] = if corrupted[last] == b'0' { b'1' } else { b'0' };
+    std::fs::write(target, &corrupted).unwrap();
+
+    let error = read_archived_replay(&archive_root, &replay_sha).unwrap_err();
+    assert!(error.to_string().contains("corrupt"), "{error}");
 
     let _ = std::fs::remove_dir_all(&tmp);
 }

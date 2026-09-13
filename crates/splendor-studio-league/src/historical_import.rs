@@ -309,10 +309,10 @@ pub fn bind_archived_replay(
     archived: &crate::replay_archive::ArchivedReplayV1,
 ) -> Result<StudioMatchRecordV1> {
     let bound = record.replay.document_hash.as_deref().unwrap_or_default();
-    if bound != archived.document_sha256 {
+    if bound != archived.document_sha256() {
         return Err(StudioLeagueError::Invalid(format!(
             "archived replay {} does not match the record's verified replay document hash `{bound}`",
-            archived.document_sha256
+            archived.document_sha256()
         )));
     }
     if record.replay.verification() != ReplayVerification::Verified {
@@ -321,7 +321,7 @@ pub fn bind_archived_replay(
         ));
     }
     record.replay.storage = Some(ReplayStorage::Archive);
-    record.replay.path = Some(archived.logical_path.clone());
+    record.replay.path = Some(archived.logical_path().to_string());
     Ok(record)
 }
 
