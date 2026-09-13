@@ -532,7 +532,23 @@ pub(crate) fn read_config(path: &Path) -> Result<ArenaConfig, RunMatchError> {
             "config exceeds {MAX_ARENA_CONFIG_BYTES} bytes"
         )));
     }
-    let text = String::from_utf8(raw)
+    parse_config_bytes(&raw)
+}
+
+/// Strictly deserialize an arena config from bytes that have already been read.
+///
+/// Split out from [`read_config`] so a caller that must hash the *exact bytes the
+/// runner consumed* can read once, parse those same bytes, and hash them — rather
+/// than reading the file twice and risking a change in between. The limits and
+/// the strict parsing (unknown fields denied, no trailing data) are identical to
+/// the path-based entry point.
+pub(crate) fn parse_config_bytes(raw: &[u8]) -> Result<ArenaConfig, RunMatchError> {
+    if raw.len() as u64 > MAX_ARENA_CONFIG_BYTES {
+        return Err(RunMatchError::ConfigRead(format!(
+            "config exceeds {MAX_ARENA_CONFIG_BYTES} bytes"
+        )));
+    }
+    let text = String::from_utf8(raw.to_vec())
         .map_err(|_| RunMatchError::ConfigRead("config is not valid UTF-8".to_string()))?;
 
     // Strict deserialize: ArenaConfig denies unknown fields; reject trailing

@@ -1975,3 +1975,146 @@ Host API and UI remain not authorized.
 ### Next authorized gate
 
 Owner review of this slice. Host API and UI remain **not authorized**.
+
+> **Update (2026-09-13).** The owner's review accepted the architecture, the layering and the
+> structural retry property, and raised two P1s plus one P2: the config was still the caller's input
+> file rather than producer-persisted evidence (and was read twice), the receipt export could
+> overwrite evidence or the database, and exit code `2` meant both "arena aborted" and "bad usage".
+> The claim above that four documents were durably persisted was therefore true for only three. See
+> *Commit C Next Slice Repair 1* below.
+
+---
+
+## Commit C Next Slice Repair 1 — the fourth evidence document was never persisted (2026-09-13)
+
+Status: **IMPLEMENTED + locally VERIFIED**, awaiting owner review. Baseline `2b06d7f`.
+Owner review of `2b06d7f` = **REPAIR_REQUIRED (P0=0 / P1=2 / P2=1)**. The architecture was
+accepted: the layering (no `splendor-arena` → `splendor-studio-league` edge), the untouched frozen
+`run-match`, and the structural "retry cannot re-run a match" property all stand.
+
+### P1-1: the config was an input file, not producer-persisted evidence
+
+The slice claimed report + replay + config + envelope as four durable evidence documents. Only
+three were actually published by the producer: the report, the replay and the envelope. The config
+was the caller's **original `--config` input file**, re-read after the match to be hashed.
+
+Two consequences, both real:
+
+1. **The retry was not self-contained.** If completion failed (exit `3`) and the user then moved,
+   edited or deleted the original `--config`, report/replay/envelope were intact but the exact
+   config evidence was gone. The envelope records a `config_sha256`, which can prove what is
+   missing but cannot restore the bytes.
+2. **The hash could describe a file the runner never consumed.** The code read the config twice —
+   `read_config(&parsed.config)` to parse, then `fs::read(&parsed.config)` to hash. A change between
+   the two reads would make `config_sha256` attest to bytes that did not produce the match.
+
+**Fix.** `--config-out` is now required, and the config is read **once**:
+
+```text
+read config bytes ONCE
+  -> parse ArenaConfig from those same bytes        (parse_config_bytes)
+  -> ArenaRunner::run(parsed config)
+  -> persist the exact bytes to --config-out
+  -> envelope.config_sha256 = SHA256(those bytes)
+```
+
+`read_config` keeps its path-based signature and now delegates to the new
+`arena_command::parse_config_bytes`, so `run-match`'s limits, strictness and error messages are
+byte-for-byte unchanged (a pure refactor; `arena_cli` 24/24 and `--bin splendor` 89/89 still pass).
+
+Publish order is now **config snapshot → replay → report (commit marker) → envelope**, with every
+already-written document rolled back if a later step fails, so an incomplete evidence set can never
+be left looking finished. The retry hint printed on a completion failure names `--config-out`, never
+the original input.
+
+**Gate.** Gate 2 now **deletes the original `--config`** after the exit-3 failure and then retries
+from the persisted four documents alone. Negative control: making the retry depend on the original
+input instead fails with `cannot read config … os error 2` — i.e. the gate really does test the
+durability of the fourth document.
+
+### P1-2: the receipt export could destroy the evidence, or the league
+
+The receipt export ended in `fs::write(path, text)`, which overwrites. Nothing stopped `--json` from
+naming `--report-out`, `--replay-out`, `--occurrence-out`, `--config-out`, `--db` or `--identity`.
+Because the receipt is written *after* the occurrence is booked, an aliased path would have replaced
+the very evidence the booking depends on — or, if `--db` was targeted, the league itself — with a
+JSON receipt. A successful completion destroying its own durable state is precisely the truthfulness
+property this slice exists to establish.
+
+**Fix, two layers:**
+
+1. The receipt is published with `atomic_output::commit_single`, which is create-if-absent and
+   **never overwrites**. This is the real backstop; it holds even for an alias the parser cannot see.
+2. `--json` is additionally rejected at parse time when it aliases any evidence document, the config
+   input, the database or the identity manifest (`reject_receipt_alias` / `paths_alias`, which
+   compares raw paths and then canonicalised parents). The four outputs are also now required to be
+   pairwise distinct and distinct from `--config`. This layer exists so an obvious mistake is an
+   immediate usage error rather than a silent refusal after the fact.
+
+**Gate.** Gate 4 points `--json` at every evidence document, the DB and the identity manifest, and
+also at two routes the parser provably cannot detect — a `sub/../report.json` spelling and a
+**hardlink** to the report — then asserts that every byte of evidence, the identity manifest and the
+logical league state are unchanged, and that the DB is still a real SQLite file rather than a
+receipt. It also asserts that a *non-colliding* `--json` still writes normally, so the primitive is
+not simply refusing everything.
+
+Negative control: reverting `commit_single` to `fs::write` makes gate 4 **fail** on the hardlink
+route. That control was essential, because the gate's first version passed even with the destructive
+write — the parse-time alias check alone was catching the obvious cases. The gate as shipped tests
+the primitive, not just the parser.
+
+### P2: exit code `2` meant two different things
+
+`studio-league-complete-match`'s help documented `2 = bad usage`, but the aborted-match branch also
+returned `2`. Since this command deliberately mirrors `run-match`, where `2` is the frozen meaning of
+"arena aborted", automation could not distinguish "the match aborted" from "you typed a flag wrong".
+
+**Fix.** The match half now uses `run-match`'s frozen meanings exactly, and usage gets its own code:
+
+| Code | Meaning |
+|---|---|
+| `0` | match completed and Studio completion fine |
+| `3` | match completed, Studio completion failed (evidence intact) |
+| `2` | arena aborted (same as `run-match`) |
+| `1` | config / I/O / internal producer error |
+| `64` | bad usage (`EX_USAGE`) |
+
+`studio-league-complete` keeps its own smaller space: `0` success/idempotent, `1` completion
+failure, `64` bad usage.
+
+### Validation and evidence
+
+| Gate | Command | Result |
+|---|---|---|
+| 1 | `cargo test -p splendor-cli --test completion_wiring a_real_match_completion_enters_the_ledger_and_the_archive` | PASS |
+| 2 | `… a_completion_failure_preserves_the_match_and_can_be_retried_alone` | PASS (original config deleted before retry) |
+| 3 | `… triggering_the_same_completion_twice_is_idempotent_and_adds_no_elo` | PASS |
+| 4 | `… a_receipt_export_can_never_overwrite_evidence_or_league_state` | PASS |
+
+Manual exit-code check: usage error → **64**, bad flag → **64**, `--help` → **0**, forced abort → **2**
+with only the report written (no snapshot, occurrence, replay or league). Negative controls run and
+reverted: destructive `fs::write` → gate 4 fails (hardlink route); retry depending on the original
+config → gate 2 fails (`os error 2`).
+
+Baselines: `splendor-studio-league` **80/80** unchanged; whole `splendor-cli` suite **44 test
+binaries / 272 tests, 0 failed** (was 271; gate 4 added), `--bin splendor` 89/89, `arena_cli` 24/24,
+`completion_equivalence` 1/1. `git diff --check` exit 0; `rustfmt --edition 2021` on the touched
+files only. The 42k migration was not re-run. No cloud status checks exist for this commit and none
+are claimed.
+
+### Known limitations
+
+- `parse_config_bytes` duplicates the size/UTF-8 checks with `read_config`; the shapes differ only in
+  that the path entry point bounds its read first. Kept deliberately so `run-match`'s existing
+  messages are untouched.
+- The parse-time alias check is a convenience, not the guarantee: a path reached through a route it
+  cannot canonicalise (or a different filesystem view) is still safe because the publish primitive
+  refuses to overwrite. The guarantee is the primitive.
+- Gate 4 compares the league database logically (header + row counts + rating-event count) rather
+  than byte-for-byte, because the colliding attempts are still legitimate completion calls and a
+  session legitimately touches its own metadata. Byte equality would have been a wrong assertion,
+  not a stronger one.
+
+### Next authorized gate
+
+Owner review of this repair. Host API and UI remain **not authorized**.

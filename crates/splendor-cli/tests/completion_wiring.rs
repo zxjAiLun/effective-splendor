@@ -1,17 +1,21 @@
 //! Commit C Next Slice gate: the completion producer wiring.
 //!
-//! These are the three gates the owner prescribed for the first real runtime
-//! completion path. They run **real arena matches** with real subprocess agents
-//! and go through the process boundary (`splendor studio-league-complete-match`
-//! / `splendor studio-league-complete`), not through library calls:
+//! These are the gates for the first real runtime completion path. They run
+//! **real arena matches** with real subprocess agents and go through the process
+//! boundary (`splendor studio-league-complete-match` /
+//! `splendor studio-league-complete`), not through library calls:
 //!
 //! 1. a real runner completes -> all four evidence documents exist -> the
 //!    occurrence enters the Studio ledger and the content-addressed archive;
-//! 2. completion is forced to fail -> the match evidence is still complete and
-//!    unmodified, the ledger holds no fake success, and retrying **completion
-//!    alone** books it, without re-running the match;
+//! 2. completion is forced to fail -> the match evidence (including the
+//!    producer-persisted config snapshot) is still complete and unmodified, the
+//!    ledger holds no fake success, and retrying **completion alone** books it,
+//!    without re-running the match and *after the original config input has been
+//!    deleted* (Repair 1, P1-1);
 //! 3. the same completion is triggered twice -> `already_present`, no duplicate
-//!    Elo.
+//!    Elo;
+//! 4. a receipt export can never overwrite the evidence it describes, nor the
+//!    league database or the identity manifest (Repair 1, P1-2).
 //!
 //! The essential property under test is that a completed match and a successful
 //! Studio completion are two independent facts: nothing here may let a
@@ -179,10 +183,13 @@ fn complete_match(
     let report = sandbox.root.join("report.json");
     let replay = sandbox.root.join("replay.json");
     let occurrence = sandbox.root.join("occurrence.json");
+    let snapshot = sandbox.root.join("config-snapshot.json");
     let mut args: Vec<String> = vec![
         "studio-league-complete-match".into(),
         "--config".into(),
         config.to_string_lossy().into_owned(),
+        "--config-out".into(),
+        snapshot.to_string_lossy().into_owned(),
         "--report-out".into(),
         report.to_string_lossy().into_owned(),
         "--replay-out".into(),
@@ -223,9 +230,10 @@ fn complete_only(sandbox: &Sandbox, extra: &[&str]) -> Outcome {
             .to_string_lossy()
             .into_owned(),
         "--config".into(),
+        // The persisted snapshot, never the original input file.
         sandbox
             .root
-            .join("config.json")
+            .join("config-snapshot.json")
             .to_string_lossy()
             .into_owned(),
         "--identity".into(),
@@ -244,7 +252,7 @@ fn assert_evidence_present(sandbox: &Sandbox) {
         "report.json",
         "replay.json",
         "occurrence.json",
-        "config.json",
+        "config-snapshot.json",
     ] {
         assert!(
             sandbox.root.join(name).is_file(),
@@ -286,9 +294,18 @@ fn a_real_match_completion_enters_the_ledger_and_the_archive() {
         occurrence.replay_sha256,
         sha256_hex(&std::fs::read(sandbox.root.join("replay.json")).unwrap())
     );
+    // The config evidence is the producer's snapshot, and it must be
+    // byte-identical to the input the match actually ran with.
+    let snapshot = std::fs::read(sandbox.root.join("config-snapshot.json")).unwrap();
     assert_eq!(
         occurrence.config_sha256,
-        sha256_hex(&std::fs::read(sandbox.root.join("config.json")).unwrap())
+        sha256_hex(&snapshot),
+        "the envelope must hash the persisted config snapshot"
+    );
+    assert_eq!(
+        snapshot,
+        std::fs::read(sandbox.root.join("config.json")).unwrap(),
+        "the snapshot must be the exact bytes the runner consumed"
     );
 
     // (c) the occurrence is in the ledger, bound to a content-addressed archive
@@ -354,12 +371,15 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
     let report = sandbox.root.join("report.json");
     let replay = sandbox.root.join("replay.json");
     let occurrence = sandbox.root.join("occurrence.json");
+    let snapshot = sandbox.root.join("config-snapshot.json");
     let out = run_in(
         &sandbox,
         &[
             "studio-league-complete-match",
             "--config",
             &config.to_string_lossy(),
+            "--config-out",
+            &snapshot.to_string_lossy(),
             "--report-out",
             &report.to_string_lossy(),
             "--replay-out",
@@ -393,11 +413,19 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
         out.stderr
     );
 
-    // The evidence is intact and was not rewritten by the failure.
+    // The evidence is intact and was not rewritten by the failure. All FOUR
+    // documents are compared, config snapshot included: that is what makes the
+    // fourth document a durable artifact rather than a pre-existing input file.
     assert_evidence_present(&sandbox);
     let report_before = std::fs::read(&report).unwrap();
     let replay_before = std::fs::read(&replay).unwrap();
     let occurrence_before = std::fs::read(&occurrence).unwrap();
+    let snapshot_before = std::fs::read(&snapshot).unwrap();
+    assert_eq!(
+        snapshot_before,
+        std::fs::read(&config).unwrap(),
+        "the snapshot must be the exact bytes the runner consumed"
+    );
 
     // No fake success: nothing was booked.
     assert!(
@@ -405,17 +433,32 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
         "a failed completion must not book a match"
     );
 
-    // Retry completion alone, against a usable database. The match must not be
-    // re-run: the evidence must be byte-identical afterwards.
+    // THE POINT OF THIS GATE: the original `--config` input is now gone, and the
+    // retry must still succeed. A retry that depended on the original input file
+    // would fail here, which is exactly the recovery hole this proves is closed.
+    std::fs::remove_file(&config).expect("remove the original config input");
+    assert!(
+        !config.exists(),
+        "the original config must be gone before the retry"
+    );
+
+    // Retry completion alone, against a usable database, using only the four
+    // persisted evidence documents. The match must not be re-run: the evidence
+    // must be byte-identical afterwards.
     let retry = complete_only(&sandbox, &[]);
     assert_eq!(
         retry.code, 0,
-        "completion-only retry should succeed; stderr={}",
+        "completion-only retry should succeed from the persisted evidence alone; stderr={}",
         retry.stderr
+    );
+    assert!(
+        !config.exists(),
+        "the retry must not resurrect the original config input"
     );
     assert_eq!(std::fs::read(&report).unwrap(), report_before);
     assert_eq!(std::fs::read(&replay).unwrap(), replay_before);
     assert_eq!(std::fs::read(&occurrence).unwrap(), occurrence_before);
+    assert_eq!(std::fs::read(&snapshot).unwrap(), snapshot_before);
 
     let rows = sandbox.match_rows();
     assert_eq!(rows.len(), 1, "the retry must book exactly one match");
@@ -463,4 +506,119 @@ fn triggering_the_same_completion_twice_is_idempotent_and_adds_no_elo() {
         events_after_first,
         "re-offering must not add rating events"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Gate 4: a receipt export can never destroy durable state
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
+    let sandbox = Sandbox::new("gate4");
+    let config = real_config(&sandbox.root, "wiring-gate4", 9_100_004, [34_001, 34_002]);
+
+    let first = complete_match(&sandbox, &config, "occ-gate4", &[]);
+    assert_eq!(first.code, 0, "first completion failed: {}", first.stderr);
+
+    // Snapshot every piece of durable state, then try to point --json at each of
+    // them in turn. The occurrence is already booked, so an overwrite here would
+    // destroy the evidence the booking depends on.
+    let report = sandbox.root.join("report.json");
+    let replay = sandbox.root.join("replay.json");
+    let occurrence = sandbox.root.join("occurrence.json");
+    let snapshot = sandbox.root.join("config-snapshot.json");
+
+    let report_before = std::fs::read(&report).unwrap();
+    let replay_before = std::fs::read(&replay).unwrap();
+    let occurrence_before = std::fs::read(&occurrence).unwrap();
+    let snapshot_before = std::fs::read(&snapshot).unwrap();
+    let identity_before = std::fs::read(&sandbox.identity).unwrap();
+    let rows_before = sandbox.match_rows();
+    let events_before = sandbox.rating_event_count();
+
+    // The database is checked logically rather than byte-wise: the colliding
+    // attempts below are still *legitimate* completion calls (the occurrence is
+    // already booked, so the ledger answers `already_present`), and a session
+    // legitimately touches its metadata. What must never happen is the database
+    // being replaced by a JSON receipt, which would destroy the league.
+    let db_header_before = {
+        let bytes = std::fs::read(&sandbox.db).unwrap();
+        bytes[..16.min(bytes.len())].to_vec()
+    };
+
+    // A path that reaches the same file through a route the parser's alias check
+    // cannot see. This is the case the no-overwrite publish primitive exists for:
+    // `--json ./sub/../report.json` is textually different and canonicalises to
+    // the same target only because the *file* already exists, so a parser-level
+    // comparison is not a sufficient guarantee.
+    let sneaky = sandbox.root.join("sub").join("..").join("report.json");
+    let mut collisions: Vec<PathBuf> = vec![
+        report.clone(),
+        replay.clone(),
+        occurrence.clone(),
+        snapshot.clone(),
+        sandbox.db.clone(),
+        sandbox.identity.clone(),
+        sneaky,
+    ];
+    // A hardlink to the report is another route the parser cannot detect.
+    let linked = sandbox.root.join("linked-report.json");
+    if std::fs::hard_link(&report, &linked).is_ok() {
+        collisions.push(linked);
+    }
+    // And a path that does not exist yet must still be publishable normally, so
+    // the primitive is not simply rejecting everything.
+    let fresh = sandbox.root.join("receipt-ok.json");
+    let fresh_out = complete_only(&sandbox, &["--json", &fresh.to_string_lossy()]);
+    assert_eq!(
+        fresh_out.code, 0,
+        "a non-colliding --json must still work: {}",
+        fresh_out.stderr
+    );
+    assert!(
+        fresh.is_file(),
+        "a non-colliding receipt must actually be written"
+    );
+
+    for collide in &collisions {
+        let out = complete_only(&sandbox, &["--json", &collide.to_string_lossy()]);
+        // Either a clean usage refusal (alias rejected up front) or a completed
+        // run whose export was refused — never a destructive write.
+        assert!(
+            out.code == 0 || out.code == 64,
+            "colliding --json {} must not be a hard failure; code={} stderr={}",
+            collide.display(),
+            out.code,
+            out.stderr
+        );
+        assert!(
+            !out.stdout.contains("Wrote completion receipt JSON"),
+            "--json must not claim to have written over {}",
+            collide.display()
+        );
+    }
+
+    // Nothing changed: not the evidence, not the identity manifest, not the DB.
+    assert_eq!(std::fs::read(&report).unwrap(), report_before);
+    assert_eq!(std::fs::read(&replay).unwrap(), replay_before);
+    assert_eq!(std::fs::read(&occurrence).unwrap(), occurrence_before);
+    assert_eq!(std::fs::read(&snapshot).unwrap(), snapshot_before);
+    assert_eq!(std::fs::read(&sandbox.identity).unwrap(), identity_before);
+    // Still a real SQLite league, still holding exactly the same logical state.
+    let db_after = std::fs::read(&sandbox.db).unwrap();
+    assert_eq!(
+        db_after[..16.min(db_after.len())],
+        db_header_before[..],
+        "the league database must still be a SQLite database, not a JSON receipt"
+    );
+    assert!(
+        db_after.len() > 1_000,
+        "the league database was truncated to {} bytes",
+        db_after.len()
+    );
+    assert_eq!(sandbox.match_rows(), rows_before);
+    assert_eq!(sandbox.rating_event_count(), events_before);
+
+    // And the evidence is still a valid, completable set.
+    assert_evidence_present(&sandbox);
 }
