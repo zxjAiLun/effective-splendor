@@ -295,6 +295,36 @@ pub fn runtime_match_record(
     )
 }
 
+/// Commit C Slice 2: point a verified runtime record's replay binding at the
+/// content-addressed archive object.
+///
+/// The record must already have passed [`runtime_match_record`] (strict parse,
+/// full `verify_replay`, report/replay fact agreement, exact config evidence),
+/// so verification is never skipped or doubled: this only rewrites the storage
+/// kind and path after the bytes have been archived. The archive key must be
+/// exactly the replay document hash the record already carries — the occurrence
+/// evidence, the archive object, and the ledger binding all name one content.
+pub fn bind_archived_replay(
+    mut record: StudioMatchRecordV1,
+    archived: &crate::replay_archive::ArchivedReplayV1,
+) -> Result<StudioMatchRecordV1> {
+    let bound = record.replay.document_hash.as_deref().unwrap_or_default();
+    if bound != archived.document_sha256 {
+        return Err(StudioLeagueError::Invalid(format!(
+            "archived replay {} does not match the record's verified replay document hash `{bound}`",
+            archived.document_sha256
+        )));
+    }
+    if record.replay.verification() != ReplayVerification::Verified {
+        return Err(StudioLeagueError::Invalid(
+            "only a verified replay binding may point at the archive".to_string(),
+        ));
+    }
+    record.replay.storage = Some(ReplayStorage::Archive);
+    record.replay.path = Some(archived.logical_path.clone());
+    Ok(record)
+}
+
 /// The occurrence-identity authority of a built record.
 ///
 /// Historical corpus documents carry no independent occurrence evidence, so

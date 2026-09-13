@@ -976,6 +976,115 @@ fail closed; (4) after the original runtime run directory is deleted, the league
 replay is still readable and still passes `verify_replay`. The central arena/evaluation completion
 outlet, the Studio Host APIs, and any UI remain **not authorized** for this slice.
 
+### Commit C Slice 2 design (2026-09-13)
+
+**Problem.** A verified runtime `ReplayV1` is currently bound with
+`replay_storage = in_place_reference` and the record's `replay.path` is the original run
+directory's file. Invariant 2 requires every eligible match to keep its ReplayV1; if that run
+directory is moved, cleaned, or its file is overwritten, the league's replay-backed evidence
+silently becomes unreachable even though the ledger still claims `verified`. This slice makes the
+verified bytes immutable and self-contained.
+
+**Design.**
+
+1. **Archive layout.** The archive root is a directory (default
+   `local-artifacts/studio-league/replays/`, ignored by Git with the rest of `local-artifacts/`).
+   A replay is stored at `<root>/<sha256[0..2]>/<sha256>.json`, where `<sha256>` is the verified
+   replay **document** hash — the same value already carried by
+   `ReplayBindingV1.document_hash`. The two-character fan-out keeps one directory from holding
+tens of thousands of entries; the object is identified by content alone, never by the original
+   filename or run directory.
+2. **Archive write is verify-then-copy, fail closed.** The bytes are written to a unique temporary
+   file in the target directory, `fsync`ed, and only then atomically linked/renamed into place. A
+   pre-existing object is never trusted on the strength of its name: on a hash-path collision the
+   existing bytes are re-hashed, and (2) identical bytes → idempotent no-op, (3) different bytes →
+   `Err` with zero mutation and no overwrite. The archive is append-only; nothing in this slice
+   deletes or rewrites an object.
+3. **The ledger binding points at the archive.** The ingested record carries
+   `storage = Some(ReplayStorage::Archive)` and `path = Some(<root>/<sha[0..2]>/<sha>.json)` (a
+   normalized, portable `/`-separated logical path). `document_hash`, `final_hash`, and
+   `verification = verified` are unchanged, so the schema and the whole eligibility chain are
+   untouched. The original run directory is **not** deleted by this slice — the archive is an
+   additional durable copy, and removing the source is the operator's separate decision.
+4. **Archiving never substitutes for verification.** The replay is verified exactly as it is today
+   (strict parse + full `verify_replay` + report/replay fact agreement) **before** any archive
+   write. A replay that does not verify is rejected and nothing is archived; the archive cannot
+   launder an unverified document into a `verified` binding. The archive path is also never used
+   as a content source: the bytes are always the ones just verified in memory.
+
+**Scope.**
+
+- In: a small archive module in `splendor-studio-league` (key derivation, idempotent/fail-closed
+  object write, archive path formatting); the runtime record's binding switched to `Archive`; the
+  `studio-league-ingest` CLI gaining an archive root option (defaulted) and archiving before
+  ingest; targeted tests.
+- Out: the central arena/evaluation completion outlet, Studio Host APIs, any UI, any change to
+  historical-migration bindings (historical records keep `in_place_reference`), any delete/move of
+  original run directories, any Garbage collection / pruning, and any change to `ledger.rs`
+  write semantics, the migrate reconciliation, or the envelope format.
+
+**Gates.**
+
+1. Archiving a verified runtime replay twice is an idempotent no-op (one object, one match, no
+   second copy) and the ledger binding reads `archive` with the content-addressed path.
+2. A target hash path already holding **different** bytes fails closed, mutates nothing, and leaves
+   the pre-existing object byte-identical.
+3. After the original runtime run directory is deleted, the archived replay is still readable at
+   the recorded path and still passes `verify_replay`.
+4. A non-verifying replay is rejected before any archive write (no orphan object appears).
+5. An archived runtime occurrence still rebuilds identically from corpus + envelopes + manifest
+   (archive bindings are deterministic), and no historical binding changed storage.
+
+### Commit C Slice 2 implementation (2026-09-13)
+
+Landed in this slice:
+
+- **`crates/splendor-studio-league/src/replay_archive.rs`** (new): `archive_replay(root, sha256,
+  bytes) -> ArchivedReplayV1`, `read_archived_replay(root, sha256)`, and
+  `replay_document_sha256(bytes)`. The object lives at `<root>/<sha[0..2]>/<sha>.json`. The
+  writer validates the claimed address is 64 lowercase hex, re-hashes the bytes against it, then
+  either returns `AlreadyPresent` (identical object) or fails closed (different bytes at the
+  address). A new object is written to a unique `.tmp`, `sync_all`ed, and `rename`d into place,
+  so a crash leaves at most an orphan temp file, never a half-written object under a content
+  address. `ArchiveOutcome::{Stored, AlreadyPresent}` is reported.
+- **`bind_archived_replay(record, archived)`** in `historical_import.rs`: after verification has
+  already succeeded (`runtime_match_record`), rewrites the binding to `ReplayStorage::Archive`
+  with the archive's portable logical path. It refuses unless the record's
+  `replay.document_hash` equals the archive key and the binding is `Verified`, so an object can
+  never be attached to a record it does not describe. The public `runtime_match_record` and its
+  historical counterpart are unchanged.
+- **`studio-league-ingest`** gained `--archive-root <path>` (default
+  `local-artifacts/studio-league/replays`, the pre-existing `STUDIO_LEAGUE_REPLAY_DIR`). The flow
+  is verify -> archive -> bind -> ingest, so the archive write only ever happens *after* the
+  replay verified. The receipt JSON now carries a `replay` block (`storage`, `document_hash`,
+  `path`, `archive_outcome`).
+
+Validation (local evidence):
+
+- Module unit tests (`replay_archive.rs`) **4**: idempotent double-archive leaves exactly one
+  object; a corrupt occupant (bytes that do not hash to their name) fails closed and is left
+  byte-identical; a mismatched claimed address is rejected before any write; an archived replay
+  survives deletion of its source directory.
+- Integration gates (`tests/replay_archive.rs`) **6**: a verified occurrence is archived and the
+  ledger row reads `archive` with the content-addressed path (and the recorded path resolves under
+  the archive root); re-archiving and re-offering is idempotent (one object, one match); after the
+  run directory is deleted the archived bytes are re-read and **pass `verify_replay`**; a collision
+  with different bytes fails closed and leaves no `.tmp`; a record cannot bind an archive object
+  naming a different replay; a tampered (non-verifying) replay is rejected before any archive
+  write and creates no object.
+- Real CLI smoke over a corpus match directory (M39a `baseline-M07-5000000-r0`): a synthesized
+  occurrence envelope drove `studio-league-ingest` to archive
+  `f66a1685…b052` (`stored`), record `runtime:smoke-occ-slice2` with 2 Elo events, and write
+  `replay_storage = archive`, `replay_path = f6/f66a1685…b052.json`, `replay_verification =
+  verified`. Re-offering the same occurrence printed `already_present`, left one object and one
+  match; a second occurrence with byte-identical replay content archived as `already_present` yet
+  produced a **second** match (content equality is not occurrence equality) and one shared
+  object; after deleting the run directory both matches' archived replays were still readable and
+  hashed to their recorded `document_hash`.
+- Baseline: `splendor-studio-league` **68/68** (14 lib + 3 + 29 + 5 + 6 + 4 + 7); `splendor-cli`
+  bin **89/89**; `cargo fmt --check` clean; `git diff --check` clean. No real 42k migration was
+  re-run; historical bindings keep `in_place_reference`.
+
 **Superseded next-step text** (kept for the record): the earlier version of this section said
 Slice 1 awaited owner review and that the content-addressed replay archive, the central
 completion outlet, and the Studio Host APIs were **not authorized** yet and needed the owner's

@@ -26,6 +26,7 @@ pub mod inventory;
 pub mod ledger;
 pub mod match_record;
 pub mod participant;
+pub mod replay_archive;
 pub mod replay_index;
 pub mod schema;
 
@@ -41,12 +42,13 @@ pub use eligibility::{
 pub use elo::{elo_delta, elo_expected_score, pair_score_a, plan_pair_update, PairEloUpdate};
 pub use error::{Result, StudioLeagueError};
 pub use historical_import::{
-    arena_report_to_match_record, associate_configuration, build_historical_corpus,
-    compute_canonical_set_digest, compute_policy_attribution_digest, parse_arena_report,
-    parse_runtime_occurrence, resolve_arena_report_replay, run_historical_dry_run,
-    runtime_match_record, ConfigAssociationV1, ConfigurationCandidateV1, HistoricalDryRunConfig,
-    HistoricalDryRunReportV1, HistoricalReplayResolutionV1, OccurrenceIdentityV1,
-    RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION,
+    arena_report_to_match_record, associate_configuration, bind_archived_replay,
+    build_historical_corpus, compute_canonical_set_digest, compute_policy_attribution_digest,
+    parse_arena_report, parse_runtime_occurrence, resolve_arena_report_replay,
+    run_historical_dry_run, runtime_match_record, ConfigAssociationV1, ConfigurationCandidateV1,
+    HistoricalDryRunConfig, HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
+    OccurrenceIdentityV1, RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT,
+    RUNTIME_OCCURRENCE_VERSION,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
@@ -77,6 +79,9 @@ pub use participant::{
     stored_identity_manifest_hash, sync_identity_manifest, unassigned_human_participant,
     EngineIdentityV1, ParticipantKind, ParticipantRow, IDENTITY_MANIFEST_HASH_META_KEY,
     LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
+};
+pub use replay_archive::{
+    archive_replay, read_archived_replay, replay_document_sha256, ArchiveOutcome, ArchivedReplayV1,
 };
 pub use replay_index::{
     build_replay_content_index, build_replay_content_index_roots, collect_corpus_files, CorpusFile,

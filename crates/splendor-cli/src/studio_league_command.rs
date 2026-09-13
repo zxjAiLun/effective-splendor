@@ -5,13 +5,13 @@
 //! corpus is duplicated. It never opens a database and never writes a ledger row.
 
 use splendor_studio_league::{
-    build_historical_corpus, ensure_rating_config, ingest_batch_canonical, ingest_match,
-    initialise, leaderboard, match_receipt, open_league, parse_runtime_occurrence,
-    run_historical_dry_run, runtime_match_record, scan, stored_identity_manifest_hash,
-    sync_identity_manifest, write_jsonl, HistoricalDryRunConfig, HistoricalDryRunReportV1,
-    IdentityManifestV1, InventoryReportV1, InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME,
-    INVENTORY_REPORT_FORMAT, RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_DB_FILE,
-    STUDIO_LEAGUE_IDENTITY_FILE,
+    archive_replay, bind_archived_replay, build_historical_corpus, ensure_rating_config,
+    ingest_batch_canonical, ingest_match, initialise, leaderboard, match_receipt, open_league,
+    parse_runtime_occurrence, run_historical_dry_run, runtime_match_record, scan,
+    stored_identity_manifest_hash, sync_identity_manifest, write_jsonl, HistoricalDryRunConfig,
+    HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1, InventoryScanConfig,
+    DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT, RUNTIME_OCCURRENCE_FORMAT,
+    STUDIO_LEAGUE_DB_FILE, STUDIO_LEAGUE_IDENTITY_FILE, STUDIO_LEAGUE_REPLAY_DIR,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -1083,6 +1083,8 @@ Options:
   --config <path>         The run's own match-config.json (exact configuration evidence)
   --identity <path>       Path to identity.json (default: local-artifacts/studio-league/identity.json)
   --db <path>             Path to the league database (default: local-artifacts/studio-league/league.sqlite3)
+  --archive-root <path>   Content-addressed replay archive root, keyed by the verified
+                          replay document SHA-256 (default: local-artifacts/studio-league/replays)
   --json <path>           Write an ingestion receipt JSON here
   --help                  Print this help
 ";
@@ -1112,6 +1114,7 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     let mut config_path: Option<PathBuf> = None;
     let mut identity_path = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
     let mut db_path = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut archive_root = PathBuf::from(STUDIO_LEAGUE_REPLAY_DIR);
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -1141,6 +1144,10 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
             "--db" => match value() {
                 Some(path) => db_path = PathBuf::from(path),
                 None => return fail_ingest("--db needs a path"),
+            },
+            "--archive-root" => match value() {
+                Some(path) => archive_root = PathBuf::from(path),
+                None => return fail_ingest("--archive-root needs a path"),
             },
             "--json" => match value() {
                 Some(path) => json_out = Some(PathBuf::from(path)),
@@ -1208,6 +1215,39 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         Ok(record) => record,
         Err(error) => return fail_ingest(&format!("occurrence rejected: {error}")),
     };
+
+    // Step 2b (Commit C Slice 2): archive the *verified* replay under its
+    // document SHA-256 and point the binding at the immutable copy. The
+    // archive is written only after verification succeeded, so an unverified
+    // document can never become an `archive`-backed `verified` binding, and
+    // the archive is keyed by the very hash the record already carries.
+    //
+    // Ordering: the object is published *before* the ledger write, so whenever
+    // a match row claims `archive` the object already exists. If a later step
+    // fails, the worst residue is an unreferenced immutable object; the
+    // opposite order could leave a match pointing at a replay that was never
+    // written.
+    let replay_sha = match record.replay.document_hash.as_deref() {
+        Some(sha) if splendor_studio_league::is_lowercase_hex64(sha) => sha.to_string(),
+        _ => {
+            return fail_ingest(
+                "the verified occurrence carries no replay document hash; nothing to archive",
+            )
+        }
+    };
+    let archived = match archive_replay(&archive_root, &replay_sha, &replay_bytes) {
+        Ok(archived) => archived,
+        Err(error) => return fail_ingest(&format!("failed to archive the replay: {error}")),
+    };
+    let record = match bind_archived_replay(record, &archived) {
+        Ok(record) => record,
+        Err(error) => return fail_ingest(&format!("failed to bind the archived replay: {error}")),
+    };
+    println!(
+        "studio-league-ingest: archived replay {} ({})",
+        archived.document_sha256,
+        archived.outcome.as_str()
+    );
 
     // Step 3: open the league through the same authority seams as the
     // migration: schema, protocol rating config, and the durable manifest.
@@ -1287,6 +1327,12 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
             "source_identity": record.source_identity,
             "source_document_hash": record.source_document_hash,
             "match_id": receipt.match_id,
+            "replay": {
+                "storage": record.replay.storage().as_str(),
+                "document_hash": record.replay.document_hash,
+                "path": record.replay.path,
+                "archive_outcome": archived.outcome.as_str(),
+            },
             "outcome": {
                 "kind": outcome_kind,
                 "rating_events": event_count,
