@@ -929,6 +929,18 @@ and `source_identity = runtime:occ-copy-1`. Verified to fail against the pre-pat
 `splendor-studio-league` **57/57**; `splendor-cli` bin **89/89**; `cargo fmt --check` clean;
 `git diff --check` clean.
 
+**Owner re-review of `1011607` (2026-09-13): `ACCEPTED / CLOSED` — P0=0 / P1=0 / P2=0.** The
+provenance-copy seam is closed: an occurrence now keeps its canonical envelope **and all** of its
+provenance sidecar paths, claims cover **every** provenance directory and **every** matching
+report/config sibling, and the runtime record is still built exactly once from the first complete
+provenance in deterministic path order. The owner confirmed the two symmetric rules now hold
+(`different occurrence + identical content => two matches`; `same occurrence + multiple copies =>
+one match`) and that the scope stayed clean (one commit, `e89ce8d -> 1011607`, only
+`historical_import.rs` / `runtime_ingest.rs` / this document; ledger, migrate reconciliation, and
+the envelope format were not re-disturbed). **Commit C Slice 1 is CLOSED.** 57/57, 89/89, fmt, and
+diff-check remain **local validation evidence**; there are no cloud status checks for this commit
+and no CI is claimed.
+
 ## Next authorized gate
 
 Commit B (historical migration) is **CLOSED**. The derived database
@@ -945,9 +957,26 @@ pools and is not accepted as a strength baseline. The panic-hardening round that
 **no code change**: zero externally triggerable panic sites exist on the scoped historical
 replay/import production path (strict parsing, `Result` propagation, and explicit guards already
 fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
-Commit C Slice 1 (runtime ingestion of one fresh occurrence) is `IMPLEMENTED` / `VERIFIED` locally
-(Repair 1 closed the three original P1s, Repair 2 closed the official-rebuild integration, and the
-Repair 3 close patch closed the duplicate-provenance double-count) and awaits the owner's
-re-review of the close patch; further Commit C slices — the content-addressed replay archive, the
-central arena/evaluation completion outlet, and the Studio Host APIs — are **not authorized** yet
-and need the owner's review of this slice first.
+Commit C Slice 1 (runtime ingestion of one fresh occurrence) is **CLOSED** @ `1011607`
+(`ACCEPTED`, P0=0 / P1=0 / P2=0): fresh occurrence evidence -> durable occurrence identity/order ->
+strict report/replay/config verification -> exact policy attribution -> existing eligibility/Elo ->
+append -> delete the database and rebuild the same league from corpus + envelopes + manifest.
+
+**Commit C Slice 2 — Content-Addressed Replay Archive is AUTHORIZED** (owner, 2026-09-13), with a
+deliberately narrow first cut:
+
+```text
+verified runtime ReplayV1 -> immutable content-addressed archive -> ledger binding points to the
+archived replay -> the archive survives deletion of the original run directory
+```
+
+Four contract points only: (1) archive key = verified replay document SHA-256; (2) same hash already
+present with identical bytes -> idempotent no-op; (3) same target hash/path with different bytes ->
+fail closed; (4) after the original runtime run directory is deleted, the league record's archived
+replay is still readable and still passes `verify_replay`. The central arena/evaluation completion
+outlet, the Studio Host APIs, and any UI remain **not authorized** for this slice.
+
+**Superseded next-step text** (kept for the record): the earlier version of this section said
+Slice 1 awaited owner review and that the content-addressed replay archive, the central
+completion outlet, and the Studio Host APIs were **not authorized** yet and needed the owner's
+review of this slice first.
