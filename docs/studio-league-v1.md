@@ -17,10 +17,13 @@
   fail-closed), and the final migration passed the five-digest determinism gate (2026-09-13). The
   derived database is `local-artifacts/studio-league/league.sqlite3` (local-only, ignored).
   **Commit C — Runtime Ingestion** has started: Slice 1 (`2c9da0e`) was reviewed
-  `REPAIR_REQUIRED` (P0=0/P1=3/P2=1 — runtime occurrence authority was not yet established), and
-  Slice 1 Repair 1 (`IMPLEMENTED` / `VERIFIED` locally, pending owner review) landed the durable
-  occurrence envelope: `runtime:<occurrence_id>` identity, `completed_at` as Elo-ordering
-  evidence, and rebuild-equivalent live append. No API/UI; no new Elo logic.
+  `REPAIR_REQUIRED` (P0=0/P1=3/P2=1 — runtime occurrence authority was not yet established);
+  Repair 1 (`ec2cb98`) landed the durable occurrence envelope and was reviewed
+  `REPAIR_REQUIRED` (P0=0/P1=2/P2=1 — the authority had not reached the official rebuild path);
+  Repair 2 (`IMPLEMENTED` / `VERIFIED` locally, pending owner review) extends occurrence claims
+  to exact sibling paths, makes the official `studio-league-migrate` rebuild
+  `42,521 historical + N runtime`, and compares the full canonical key in the tail guard.
+  No API/UI; no new Elo logic.
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -849,6 +852,40 @@ and a tampered replay are rejected; an out-of-order append is rejected. A CLI sm
 corpus match directory recorded `runtime:smoke-occ-1` with exactly 2 Elo events into a scratch
 database. `cargo test -p splendor-studio-league` **56/56**; `cargo test -p splendor-cli --bin
 splendor` **89/89**; `cargo fmt --check` clean.
+
+### Commit C Slice 1 Repair 2 — occurrence authority through the official rebuild (2026-09-13)
+
+The owner's review of the Repair 1 (`ec2cb98`) confirmed all three earlier P1s closed and
+returned **`REPAIR_REQUIRED` (P0=0 / P1=2 / P2=1)** on two rebuild-integration seams:
+
+1. **P1-1 — envelope claims were global by SHA.** A runtime envelope excluded *every* document
+   with its report/config SHA from the historical pass, so a byte-identical historical match
+   would have vanished from the rebuild. Claims are now resolved to the **exact sibling logical
+   paths** inside the envelope's own directory (by SHA, within that directory), and the
+   historical pass excludes only those exact paths. Content equality is not occurrence equality,
+   at claim time either.
+2. **P1-2 — the official `studio-league-migrate` still could not rebuild a league containing
+   runtime occurrences** (its preflight hard-coded 42,521). The preflight is now split: the
+   historical canonical record count stays locked at **42,521** (`historical_canonical_records_built`),
+   runtime occurrences add `runtime_occurrences_built` on top, and `expected_total =
+   42,521 + N` drives the record/unique-key gates. Post-migration reconciliation is total-aware:
+   matches, seats (`canonical_seat_count`), verified replays, completed matches, and the
+   eligibility breakdown sum reconcile against the report's totals, while the historical-only
+   invariants (aborted 216, truncated 2, unavailable 218) stay locked. The structural gates
+   (rating events = 2 x eligible, rated = eligible) are unchanged. A full rebuild of the official
+   database therefore becomes possible from corpus + occurrence evidence + manifest.
+3. **P2 — same-second occurrences were rejected outright.** The tail guard now compares the
+   **full canonical key** `(played_at, source_kind, source_identity)`: same-second occurrences
+   with a stable identity order append; only arrivals that would diverge from the canonical
+   rebuild order fail closed.
+
+Targeted tests (no 42k corpus run): the rebuild fixture now carries `old/` (a plain historical
+match) plus `new-a/` whose documents are **byte-identical** to `old/`'s and carry a runtime
+envelope - the rebuild returns 1 historical + 2 runtime records, all three present in the
+ledger, and live append equals canonical rebuild (league_seq, Elo history, leaderboard identical);
+the official migrate preflight split and total reconciliation follow the same counts; the
+canonical-key tail gate accepts same-second identity-ordered appends and rejects divergent ones.
+`splendor-studio-league` **56/56**; `splendor-cli` bin **89/89**; `cargo fmt --check` clean.
 
 ## Next authorized gate
 

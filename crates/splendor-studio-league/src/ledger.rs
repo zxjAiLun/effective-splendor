@@ -339,21 +339,44 @@ fn ingest_match_in_tx(
     // Repair 1, P1-2): `played_at` is the durable Elo-ordering evidence
     // recorded in the occurrence envelope, and an out-of-order arrival would
     // make the live append order diverge from the canonical rebuild order.
-    // The guard is scoped to runtime occurrences: Commit A's non-runtime
-    // ingest semantics (which carry no occurrence evidence) are untouched.
+    // The guard is scoped to runtime occurrences (Commit A's non-runtime
+    // ingest semantics carry no occurrence evidence and are untouched), and
+    // compares the **full canonical key** `(played_at, source_kind,
+    // source_identity)` so same-second occurrences with a stable identity
+    // order still append (Unix-second timestamps are not required to be
+    // unique; Repair 2, P2).
     if record.source_identity.starts_with("runtime:") {
+        use rusqlite::OptionalExtension;
+
         let completed_at = record.played_at.ok_or_else(|| {
             StudioLeagueError::Invalid(format!(
                 "runtime occurrence `{}` carries no played_at; the occurrence envelope's completed_at is the Elo-ordering evidence",
                 record.source_identity
             ))
         })?;
-        let last_played_at: Option<i64> =
-            tx.query_row("SELECT MAX(played_at) FROM matches", [], |row| row.get(0))?;
-        if let Some(last) = last_played_at {
-            if completed_at <= last {
+        let tail: Option<(Option<i64>, String, String)> = tx
+            .query_row(
+                "SELECT played_at, source_kind, source_identity FROM matches
+                  ORDER BY league_seq DESC LIMIT 1",
+                [],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<i64>>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                },
+            )
+            .optional()?;
+        let incoming = (
+            Some(completed_at),
+            record.source_kind.clone(),
+            record.source_identity.clone(),
+        );
+        if let Some(tail) = tail {
+            if incoming <= tail {
                 return Err(StudioLeagueError::Invalid(format!(
-                    "runtime occurrence `{}` completed at {completed_at} does not append after the ledger's last occurrence ({last}); incremental append would diverge from the canonical rebuild order — rebuild the derived database from the occurrence evidence instead",
+                    "runtime occurrence `{}` canonical key {incoming:?} does not append after the ledger's tail {tail:?}; incremental append would diverge from the canonical rebuild order — rebuild the derived database from the occurrence evidence instead",
                     record.source_identity
                 )));
             }

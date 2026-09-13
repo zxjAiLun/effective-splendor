@@ -584,13 +584,18 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
         .collect();
     let unique_match_ids: HashSet<String> = records.iter().map(|r| r.match_id()).collect();
 
-    let expected_records = if config.dedup_source_hash {
+    // Two preflight layers (Commit C Slice 1 Repair 2, P1-2): the historical
+    // canonical record count stays locked, and runtime occurrence envelopes
+    // add their own records on top. The official rebuild therefore accepts
+    // exactly `42,521 historical + N runtime` records.
+    let locked_historical_records = if config.dedup_source_hash {
         42521
     } else {
         48273
     };
+    let expected_records = locked_historical_records + dry_run_report.runtime_occurrences_built;
     let expected_verified = if config.dedup_source_hash {
-        dry_run_report.completed_verified_replay
+        dry_run_report.completed_verified_replay + dry_run_report.runtime_occurrences_built
     } else {
         48050
     };
@@ -599,10 +604,21 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     } else {
         223
     };
+    let expected_seats = dry_run_report.canonical_seat_count;
+    let expected_completed =
+        dry_run_report.completed_matches + dry_run_report.runtime_occurrences_built;
 
+    if dry_run_report.historical_canonical_records_built != locked_historical_records {
+        return fail_migrate(&format!(
+            "preflight: expected {locked_historical_records} historical canonical records, found {}",
+            dry_run_report.historical_canonical_records_built
+        ));
+    }
     if records.len() != expected_records {
         return fail_migrate(&format!(
-            "preflight: expected {expected_records} records, found {}",
+            "preflight: expected {expected_records} records ({} historical + {} runtime), found {}",
+            locked_historical_records,
+            dry_run_report.runtime_occurrences_built,
             records.len()
         ));
     }
@@ -683,7 +699,11 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     }
 
     // Step 6: Ingest batch in canonical historical order
-    println!("Ingesting {expected_records} records in atomic canonical order...");
+    println!(
+        "Ingesting {expected_records} records ({} historical + {} runtime) in atomic canonical order...",
+        dry_run_report.historical_canonical_records_built,
+        dry_run_report.runtime_occurrences_built
+    );
     let outcomes = match ingest_batch_canonical(&mut conn, &records) {
         Ok(outcomes) => outcomes,
         Err(e) => {
@@ -819,10 +839,13 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     };
     let provisional_count = board.iter().filter(|r| r.provisional).count();
 
-    // Check post-migration integrity gates
+    // Check post-migration integrity gates. Historical-only invariants
+    // (aborted/truncated/unavailable: a runtime occurrence is completed and
+    // verified by construction) stay locked; occurrence-dependent counts
+    // reconcile against the report's totals.
     let all_post_gates_pass = db_match_count == expected_records
-        && db_seat_count == expected_records * 2
-        && db_completed == dry_run_report.completed_matches
+        && db_seat_count == expected_seats
+        && db_completed == expected_completed
         && db_aborted == dry_run_report.aborted_matches
         && db_truncated == dry_run_report.truncated_matches
         && db_verified_replay == expected_verified
@@ -863,7 +886,7 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
         manifest.aliases.len(),
         expected_records,
         db_match_count,
-        dry_run_report.completed_matches,
+        expected_completed,
         db_completed,
         dry_run_report.aborted_matches,
         db_aborted,

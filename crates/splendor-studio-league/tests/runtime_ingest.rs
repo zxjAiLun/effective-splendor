@@ -333,67 +333,91 @@ fn same_occurrence_id_is_idempotent_or_conflicting() {
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
-/// Gate 3 (P1-2): deleting the database and rebuilding from the same durable
-/// occurrence evidence reproduces the live ingest exactly.
+/// Gate 3 (P1-2) plus the P1-1 regression: the corpus contains a historical
+/// match `H` and a runtime occurrence whose documents are **byte-identical**
+/// to `H`'s. Deleting the database and rebuilding from the corpus + occurrence
+/// evidence must reproduce the live ingest exactly - and must keep both the
+/// historical occurrence and the runtime occurrences (a runtime envelope
+/// claims only its exact sibling paths, never "every file with this SHA").
 #[test]
 fn rebuild_from_occurrence_evidence_reproduces_the_live_ingest() {
     let tmp = tempdir("gate3");
-    // Three fixtures, each with its four documents colocated; completed_at
-    // ascending so the canonical order is a, b, c.
-    let fixtures = [
-        ("occ-a", "runtime-game-a", 7_700_010u64, 1_730_000_100i64),
-        ("occ-b", "runtime-game-b", 7_700_011, 1_730_000_200),
-        ("occ-c", "runtime-game-c", 7_700_012, 1_730_000_300),
-    ];
-    let mut live_records = Vec::new();
-    for (occurrence_id, game_id, seed, completed_at) in &fixtures {
-        let (report, replay, config) = occurrence_documents(game_id, *seed);
-        let envelope = occurrence_envelope(occurrence_id, *completed_at, &report, &replay, &config);
-        write_file(&tmp, &format!("{occurrence_id}/arena-report.json"), &report);
-        write_file(&tmp, &format!("{occurrence_id}/match-replay.json"), &replay);
-        write_file(&tmp, &format!("{occurrence_id}/match-config.json"), &config);
-        write_file(
-            &tmp,
-            &format!("{occurrence_id}/runtime-occurrence.json"),
-            &envelope,
-        );
-        live_records.push(build_record(
-            occurrence_id,
-            *completed_at,
-            &report,
-            &replay,
-            &config,
-        ));
-    }
 
-    // Live ingest in completion order.
-    let manifest = test_manifest();
-    let live_db = tmp.join("live.sqlite3");
-    fresh_league(&live_db, &manifest);
-    let mut live_conn = open_league(&live_db).unwrap();
-    for record in &live_records {
-        ingest_match(&mut live_conn, record).unwrap();
-    }
+    // `old/` holds a plain historical match (no occurrence envelope).
+    let (h_report, h_replay, h_config) = occurrence_documents("runtime-game-a", 7_700_010);
+    write_file(&tmp, "old/arena-report.json", &h_report);
+    write_file(&tmp, "old/match-replay.json", &h_replay);
+    write_file(&tmp, "old/match-config.json", &h_config);
 
-    // Rebuild: scan the same occurrence evidence and ingest the canonical
-    // records into a fresh database.
+    // `new-a/` re-plays the exact same documents as a genuine new runtime
+    // occurrence: byte-identical report/replay/config, different occurrence
+    // identity. It must not erase the historical evidence.
+    let new_a_envelope =
+        occurrence_envelope("occ-new-a", 1_730_000_100, &h_report, &h_replay, &h_config);
+    write_file(&tmp, "new-a/arena-report.json", &h_report);
+    write_file(&tmp, "new-a/match-replay.json", &h_replay);
+    write_file(&tmp, "new-a/match-config.json", &h_config);
+    write_file(&tmp, "new-a/runtime-occurrence.json", &new_a_envelope);
+
+    // `b/` is an independent runtime occurrence of a different game.
+    let (b_report, b_replay, b_config) = occurrence_documents("runtime-game-b", 7_700_011);
+    let b_envelope = occurrence_envelope("occ-b", 1_730_000_200, &b_report, &b_replay, &b_config);
+    write_file(&tmp, "b/arena-report.json", &b_report);
+    write_file(&tmp, "b/match-replay.json", &b_replay);
+    write_file(&tmp, "b/match-config.json", &b_config);
+    write_file(&tmp, "b/runtime-occurrence.json", &b_envelope);
+
+    let runtime_a = build_record("occ-new-a", 1_730_000_100, &h_report, &h_replay, &h_config);
+    let runtime_b = build_record("occ-b", 1_730_000_200, &b_report, &b_replay, &b_config);
+
+    // Live ingest: the historical match enters through the scan (the only
+    // historical path), the runtime occurrences append one by one.
     let (report, records) = build_historical_corpus(&HistoricalDryRunConfig {
         roots: vec![tmp.to_string_lossy().to_string()],
         ..Default::default()
     })
     .unwrap();
     assert_eq!(report.builder_failures, 0, "{:?}", report.failure_samples);
-    assert_eq!(report.runtime_occurrences_seen, 3);
-    assert_eq!(report.runtime_occurrences_built, 3);
-    assert_eq!(records.len(), 3);
-    assert!(records
-        .iter()
-        .all(|record| record.source_identity.starts_with("runtime:")));
+    assert_eq!(report.runtime_occurrences_seen, 2);
+    assert_eq!(report.runtime_occurrences_built, 2);
+    assert_eq!(report.historical_canonical_records_built, 1);
+    assert_eq!(records.len(), 3, "1 historical + 2 runtime occurrences");
 
+    let historical = records
+        .iter()
+        .find(|record| record.source_identity.starts_with("historical-sha256:"))
+        .expect("the historical match must survive the rebuild");
+    assert_eq!(
+        historical.source_document_hash, runtime_a.source_document_hash,
+        "the historical and runtime reports are byte-identical"
+    );
+
+    let manifest = test_manifest();
+    let live_db = tmp.join("live.sqlite3");
+    fresh_league(&live_db, &manifest);
+    let mut live_conn = open_league(&live_db).unwrap();
+    ingest_match(&mut live_conn, historical).unwrap();
+    ingest_match(&mut live_conn, &runtime_a).unwrap();
+    ingest_match(&mut live_conn, &runtime_b).unwrap();
+
+    // Rebuild: ingest the same canonical records into a fresh database.
     let rebuild_db = tmp.join("rebuild.sqlite3");
     fresh_league(&rebuild_db, &manifest);
     let mut rebuild_conn = open_league(&rebuild_db).unwrap();
     ingest_batch_canonical(&mut rebuild_conn, &records).unwrap();
+
+    let (live_matches, _, _) = league_state(&live_conn);
+    assert_eq!(
+        live_matches.len(),
+        3,
+        "historical H and both runtime occurrences"
+    );
+    assert!(live_matches
+        .iter()
+        .any(|(match_id, _)| *match_id == historical.match_id()));
+    assert!(live_matches
+        .iter()
+        .any(|(match_id, _)| *match_id == runtime_a.match_id()));
 
     let live_state = league_state(&live_conn);
     let rebuild_state = league_state(&rebuild_conn);
@@ -413,7 +437,7 @@ fn rebuild_from_occurrence_evidence_reproduces_the_live_ingest() {
 }
 
 #[test]
-fn out_of_order_runtime_occurrences_are_rejected() {
+fn runtime_appends_follow_the_full_canonical_key() {
     let tmp = tempdir("order");
     let (report, replay, config) = occurrence_documents("runtime-game-9003", 7_700_004);
     let first = build_record("occ-first", 1_730_000_200, &report, &replay, &config);
@@ -423,20 +447,36 @@ fn out_of_order_runtime_occurrences_are_rejected() {
     let mut conn = open_league(&db_path).unwrap();
     ingest_match(&mut conn, &first).unwrap();
 
-    // A later-arriving occurrence completed *earlier* (or at the same second)
-    // would diverge from the canonical rebuild order: fail closed.
-    let simultaneous = build_record("occ-same-time", 1_730_000_200, &report, &replay, &config);
-    let error = ingest_match(&mut conn, &simultaneous).unwrap_err();
+    // Same second, lexicographically earlier identity: the canonical key is
+    // not after the tail, so the append would diverge from the canonical
+    // rebuild order - fail closed.
+    let earlier_identity = build_record("occ-a", 1_730_000_200, &report, &replay, &config);
+    let error = ingest_match(&mut conn, &earlier_identity).unwrap_err();
     assert!(
         error.to_string().contains("canonical rebuild order"),
         "unexpected error: {error}"
     );
-    let earlier = build_record("occ-earlier", 1_730_000_100, &report, &replay, &config);
-    let error = ingest_match(&mut conn, &earlier).unwrap_err();
+
+    // Same second, lexicographically later identity: a stable canonical order
+    // exists, so the append is accepted (Repair 2, P2 - Unix seconds need not
+    // be unique).
+    let later_identity = build_record("occ-z", 1_730_000_200, &report, &replay, &config);
+    ingest_match(&mut conn, &later_identity).unwrap();
+
+    // The tail is now `occ-z`; a same-second occurrence sorting before it is
+    // rejected again.
+    let middle = build_record("occ-m", 1_730_000_200, &report, &replay, &config);
+    let error = ingest_match(&mut conn, &middle).unwrap_err();
     assert!(
         error.to_string().contains("canonical rebuild order"),
         "unexpected error: {error}"
     );
+
+    // A later second always appends.
+    let next_second = build_record("occ-a", 1_730_000_300, &report, &replay, &config);
+    ingest_match(&mut conn, &next_second).unwrap();
+    let (matches, _, _) = league_state(&conn);
+    assert_eq!(matches.len(), 3);
     let _ = std::fs::remove_dir_all(&tmp);
 }
 

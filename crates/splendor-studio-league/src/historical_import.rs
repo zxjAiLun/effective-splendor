@@ -998,6 +998,12 @@ pub struct HistoricalDryRunReportV1 {
     pub game_ids_with_config_conflicts: usize,
     pub runtime_occurrences_seen: usize,
     pub runtime_occurrences_built: usize,
+    /// Canonical records built from historical evidence (excludes runtime
+    /// occurrences). The official migration locks this at 42,521.
+    pub historical_canonical_records_built: usize,
+    /// Total seats across every built record (historical + runtime); the
+    /// official migration reconciles the database seat count against it.
+    pub canonical_seat_count: usize,
     pub matches_resolved_from_conflicting_game_ids: usize,
     pub matches_with_policy_identity: usize,
     pub matches_without_config_evidence: usize,
@@ -1019,6 +1025,24 @@ pub struct HistoricalDryRunReportV1 {
 ///
 /// Returns the validation and reconciliation report alongside the verified
 /// canonical records ready for ingestion.
+/// Resolve one sibling document by its content SHA inside one logical
+/// directory; byte-identical duplicates collapse to the lexicographically
+/// first logical path (the content is identical, so only provenance differs).
+fn resolve_sibling(
+    dir_docs: &BTreeMap<String, Vec<DirDoc>>,
+    dir: &str,
+    sha: &str,
+) -> Option<(String, std::path::PathBuf)> {
+    let empty: Vec<DirDoc> = Vec::new();
+    dir_docs
+        .get(dir)
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|entry| entry.sha == sha)
+        .map(|entry| (entry.logical_path.clone(), entry.filesystem_path.clone()))
+        .min()
+}
+
 /// One scanned report/replay/config document in a directory, for resolving a
 /// runtime occurrence envelope's siblings by content hash.
 struct DirDoc {
@@ -1185,27 +1209,62 @@ pub fn build_historical_corpus(
     }
     replay_index.finish();
 
-    // Claimed documents: a runtime occurrence envelope is the occurrence
-    // authority for its report and configuration, so those documents must not
-    // also be interpreted as historical evidence. Claimed replays stay in the
-    // content index: they are real replay documents another report may share a
-    // terminal hash with, and index candidates are always verified.
-    let mut claimed_report_shas: BTreeSet<String> = BTreeSet::new();
-    let mut claimed_config_shas: BTreeSet<String> = BTreeSet::new();
-    for (_, occurrence) in &runtime_occurrence_docs {
-        claimed_report_shas.insert(occurrence.report_sha256.clone());
-        claimed_config_shas.insert(occurrence.config_sha256.clone());
+    // Deduplicate runtime occurrence envelopes by occurrence_id before
+    // resolving claims: identical envelopes collapse; a conflicting envelope
+    // pair is corrupt evidence and fails the run.
+    let mut occurrences: BTreeMap<String, (String, RuntimeOccurrenceV1)> = BTreeMap::new();
+    let mut runtime_occurrence_conflicts: Vec<String> = Vec::new();
+    for (sidecar_logical_path, occurrence) in &runtime_occurrence_docs {
+        match occurrences.get(&occurrence.occurrence_id) {
+            Some((existing_path, existing)) if existing != occurrence => {
+                runtime_occurrence_conflicts.push(format!(
+                    "runtime occurrence `{}` carries conflicting envelopes (`{sidecar_logical_path}` vs `{existing_path}`)",
+                    occurrence.occurrence_id
+                ));
+            }
+            Some(_) => {}
+            None => {
+                occurrences.insert(
+                    occurrence.occurrence_id.clone(),
+                    (sidecar_logical_path.clone(), occurrence.clone()),
+                );
+            }
+        }
     }
-    arena_files.retain(|(_, sha)| !claimed_report_shas.contains(sha));
 
-    // Every parsed configuration is kept, except configurations claimed by a
-    // runtime occurrence (they are that occurrence's exact evidence).
+    // Claimed documents: a runtime occurrence envelope is the occurrence
+    // authority for the **exact sibling documents in its own logical
+    // directory** that match its envelope SHAs - and for nothing else. A
+    // different document elsewhere with byte-identical content stays fully
+    // valid historical evidence (content equality is not occurrence equality).
+    // Claimed replays stay in the content index: they are real replay
+    // documents another report may share a terminal hash with, and index
+    // candidates are always verified.
+    let mut claimed_report_paths: BTreeSet<String> = BTreeSet::new();
+    let mut claimed_config_paths: BTreeSet<String> = BTreeSet::new();
+    for (_, (sidecar_logical_path, occurrence)) in &occurrences {
+        let dir = parent_logical_dir(sidecar_logical_path);
+        if let Some((logical_path, _)) =
+            resolve_sibling(&docs_by_dir, dir, &occurrence.report_sha256)
+        {
+            claimed_report_paths.insert(logical_path);
+        }
+        if let Some((logical_path, _)) =
+            resolve_sibling(&docs_by_dir, dir, &occurrence.config_sha256)
+        {
+            claimed_config_paths.insert(logical_path);
+        }
+    }
+    arena_files.retain(|(file, _)| !claimed_report_paths.contains(&file.logical_path));
+
+    // Every parsed configuration is kept, except the exact configuration
+    // documents claimed by a runtime occurrence.
     let mut configurations_by_game_id: BTreeMap<String, Vec<ConfigurationCandidateV1>> =
         BTreeMap::new();
     let mut config_documents_seen = 0usize;
-    for (logical_path, parsed, sha) in &parsed_configs {
+    for (logical_path, parsed, _sha) in &parsed_configs {
         config_documents_seen += 1;
-        if claimed_config_shas.contains(sha) {
+        if claimed_config_paths.contains(logical_path) {
             continue;
         }
         configurations_by_game_id
@@ -1401,50 +1460,27 @@ pub fn build_historical_corpus(
         }
 
         account_built_record(&mut report, &mut distinct_participants, &record);
+        report.canonical_seat_count += record.player_count as usize;
 
         records.push(record);
         report.canonical_records_built += 1;
+        report.historical_canonical_records_built += 1;
     }
 
-    // Runtime occurrence pass: deduplicate envelopes by occurrence_id
-    // (identical envelopes collapse; a conflicting envelope pair is corrupt
-    // evidence), then build one record per occurrence from its colocated
+    // Runtime occurrence pass: record the deferred envelope-conflict
+    // failures, then build one record per occurrence from its colocated
     // sibling documents, resolved by the envelope's content hashes.
-    let mut occurrences: BTreeMap<String, (String, RuntimeOccurrenceV1)> = BTreeMap::new();
     report.runtime_occurrences_seen = runtime_occurrence_docs.len();
-    for (sidecar_logical_path, occurrence) in &runtime_occurrence_docs {
-        match occurrences.get(&occurrence.occurrence_id) {
-            Some((existing_path, existing)) if existing != occurrence => {
-                report.builder_failures += 1;
-                report.failure_samples.push(format!(
-                    "runtime occurrence `{}` carries conflicting envelopes (`{sidecar_logical_path}` vs `{existing_path}`)",
-                    occurrence.occurrence_id
-                ));
-            }
-            Some(_) => {}
-            None => {
-                occurrences.insert(
-                    occurrence.occurrence_id.clone(),
-                    (sidecar_logical_path.clone(), occurrence.clone()),
-                );
-            }
-        }
-    }
+    report.builder_failures += runtime_occurrence_conflicts.len();
+    report
+        .failure_samples
+        .extend(runtime_occurrence_conflicts.iter().cloned());
     for (occurrence_id, (sidecar_logical_path, occurrence)) in &occurrences {
         let dir = parent_logical_dir(sidecar_logical_path);
-        let empty: Vec<DirDoc> = Vec::new();
-        let siblings = docs_by_dir.get(dir).unwrap_or(&empty);
-        let resolve = |sha: &str| -> Option<(String, std::path::PathBuf)> {
-            siblings
-                .iter()
-                .filter(|entry| entry.sha == sha)
-                .map(|entry| (entry.logical_path.clone(), entry.filesystem_path.clone()))
-                .min()
-        };
         let (report_entry, replay_entry, config_entry) = (
-            resolve(&occurrence.report_sha256),
-            resolve(&occurrence.replay_sha256),
-            resolve(&occurrence.config_sha256),
+            resolve_sibling(&docs_by_dir, dir, &occurrence.report_sha256),
+            resolve_sibling(&docs_by_dir, dir, &occurrence.replay_sha256),
+            resolve_sibling(&docs_by_dir, dir, &occurrence.config_sha256),
         );
         let (report_entry, replay_entry, config_entry) = match (
             report_entry,
@@ -1490,6 +1526,7 @@ pub fn build_historical_corpus(
         ) {
             Ok(record) => {
                 report.runtime_occurrences_built += 1;
+                report.canonical_seat_count += record.player_count as usize;
                 account_built_record(&mut report, &mut distinct_participants, &record);
                 records.push(record);
             }
