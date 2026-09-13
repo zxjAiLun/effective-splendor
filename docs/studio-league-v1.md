@@ -974,6 +974,11 @@ the archive concurrency repair (above), which is now done; the corrected publish
 the concurrent outlet will use. The Arena connection, the Studio Host APIs, and any UI remain
 **not authorized** until the owner reviews that first cut.
 
+> **Update (2026-09-13).** The first cut is now implemented on top of `5ca0c3a`: the chain lives in
+> `crates/splendor-studio-league/src/completion.rs` and `studio-league-ingest` is a thin adapter.
+> It is locally `VERIFIED` and awaiting owner review — see *Commit C Slice 3 — Central Completion
+> Outlet* at the end of this document. The Arena is still not connected.
+
 **Commit C Slice 2 — Content-Addressed Replay Archive is AUTHORIZED** (owner, 2026-09-13), with a
 deliberately narrow first cut:
 
@@ -1245,3 +1250,157 @@ clean; `git diff --check` clean. No 42k migration was re-run.
 Slice 1 awaited owner review and that the content-addressed replay archive, the central
 completion outlet, and the Studio Host APIs were **not authorized** yet and needed the owner's
 review of this slice first.
+
+---
+
+## Commit C Slice 3 — Central Completion Outlet (2026-09-13)
+
+Status: **IMPLEMENTED + locally VERIFIED**, awaiting owner review. Baseline
+`5ca0c3a` (archive concurrency prerequisite, already accepted as the prerequisite for this
+slice). Scope was authorized by the owner on 2026-09-13 with an explicit prohibition: this first
+cut must **not** connect to the Arena.
+
+### Problem and evidence
+
+Until this slice, the only way a finished occurrence became ledger state was the
+`studio-league-ingest` command, and the authority chain lived inline inside that command:
+
+```text
+runtime_match_record -> archive_replay -> bind_archived_replay -> ingest_match -> match_receipt
+```
+
+Two consequences followed. First, "how an occurrence enters the League" was a CLI implementation
+detail, so the next producer (Arena completion, a worker, a host API) would have had to re-derive
+the chain and could silently skip a gate. Second, the CLI already carried the *session* authority
+too — open database, enforce schema version, enforce the protocol rating config, load and validate
+the durable identity manifest, sync it — so those gates were also duplicated per caller.
+
+### Design
+
+One new module, `crates/splendor-studio-league/src/completion.rs`, owns the chain:
+
+```rust
+pub fn open_completion_league(db_path, identity_manifest_path, now) -> Result<Connection>
+pub fn complete_runtime_occurrence(conn, archive_root, request) -> Result<CompletionOutcomeV1>
+```
+
+`open_completion_league` is the session authority: it opens/creates the database, initialises the
+schema, enforces the protocol rating config, and loads → validates → syncs the durable identity
+manifest. A missing manifest is still an error, never a fresh identity, so a caller cannot
+complete an occurrence into a database that skipped one of those gates.
+
+`complete_runtime_occurrence` performs, in this order:
+
+1. `runtime_match_record` — strict envelope parse, full replay verification, report/replay fact
+   agreement, exact configuration evidence;
+2. the archive key, taken from the *verified* record's replay document hash;
+3. `archive_replay` then `bind_archived_replay` — object before ledger row;
+4. `ingest_match` — the single ledger entry point;
+5. `match_receipt` — read back what the ledger actually recorded.
+
+`CompletionOutcomeV1` returns the ingest outcome, the canonical record that was ingested, the
+opaque archive handle, and the receipt, so a caller never needs to re-derive provenance.
+
+`run_studio_league_ingest` is reduced to an adapter: parse the flags, read the envelope and the
+three documents, parse the envelope, call the outlet, print the receipt and the optional JSON
+receipt. `--archive-root` remains absent (a protocol constant, per Commit C Slice 2 Repair 1).
+
+### Contracts and invariants preserved
+
+- **Occurrence authority is unchanged.** Identity is still `runtime:<occurrence_id>` and
+  `played_at` is still the envelope's `completed_at`.
+- **The canonical-tail guard is untouched.** The outlet never reorders, never retries with a
+  different position, and never chooses a position itself; ordering is decided entirely inside
+  `ingest_match`. A non-canonical arrival still fails closed and still requires canonical-order
+  retry or a rebuild.
+- **Object before row.** A failure after the object is published leaves at most an unreferenced
+  immutable object; a match row can never claim a replay that was not written.
+- **The arena is not connected.** No Arena code path calls the outlet in this cut. No worker
+  queue, no Host API, no UI.
+
+### The one behavioural change: write transactions are `IMMEDIATE`
+
+Gate 2 (concurrent idempotency) exposed a real defect, not just a test artefact. The naive
+configuration — `busy_timeout` plus SQLite's default `DEFERRED` transactions — fails a legitimate
+concurrent producer with `SQLITE_BUSY`. A deferred transaction that *reads* before it *writes*
+holds a shared lock, and when another connection commits in between, the lock *upgrade* returns
+`SQLITE_BUSY` immediately without ever consulting the busy handler. Both the manifest sync
+(read then write) and incremental ingest (identity resolution and tail check, then insert) have
+exactly that shape, so concurrent producers of the same occurrence failed instead of serializing.
+
+Fix, and nothing else:
+
+- `ingest_match_ordered` opens its transaction with
+  `TransactionBehavior::Immediate`, so it takes the write lock up front and `busy_timeout`
+  actually serializes writers. Ordering semantics are unchanged — only lock-acquisition timing.
+- `open_completion_league` sets a 30-second `busy_timeout`, and runs the manifest sync inside an
+  `IMMEDIATE` transaction for the same reason.
+
+`ingest_match` is production-reachable only from the outlet; the historical batch path
+(`ingest_batch_canonical`) keeps its own single-writer transaction and is unchanged.
+
+### Validation and evidence
+
+New gates:
+
+- `crates/splendor-studio-league/tests/completion_outlet.rs` — 5 tests.
+  - gate 2a `completing_one_occurrence_twice_records_exactly_one_match`: second completion is
+    `AlreadyPresent` with 0 rating events, one match row, two rating events, one archive object.
+  - gate 2b `concurrent_producers_of_one_occurrence_record_exactly_one_match`: 8 independent
+    connections on one database, all completing the same occurrence. Exactly one reports
+    `Inserted` with 2 rating events; every producer resolves the same match id; exactly one match
+    row, exactly one rating-event pair, and exactly one archive object named `<sha>.json`.
+  - gate 3a `a_replay_that_fails_verification_leaves_no_ledger_row_and_no_object`: the step list
+    is emptied and the envelope is *recomputed over the tampered bytes*, so the only thing that can
+    reject it is strict replay verification; no match row, no rating event, no archive object.
+  - gate 3b `an_unusable_archive_root_leaves_no_ledger_row`: archive failure leaves no match row.
+  - gate 3c `a_non_canonical_arrival_fails_closed_and_leaves_only_an_orphan_object`: after a later
+    occurrence is recorded, an earlier one is rejected by the tail guard; the match row is absent,
+    the previously recorded match still claims its object, and the only residue is one additional
+    unreferenced object.
+- `crates/splendor-cli/tests/completion_equivalence.rs` — 1 test, gate 1
+  `the_cli_adapter_and_a_direct_outlet_call_agree`: the same fixture is completed once through the
+  process boundary (with the CLI's own protocol archive root, resolved from its working directory)
+  and once through a direct library call, into two databases, and the full ledger snapshots are
+  compared — match rows (identity, source hash, `league_seq`, `played_at`, replay storage, path,
+  document hash, final hash, verification, eligibility, reason), seat rows, rating events, and the
+  leaderboard. The test also asserts the comparison is non-vacuous (non-empty matches, seats,
+  exactly two Elo events, non-empty leaderboard) and that the exported receipt matches the ledger.
+  This gate needs `rusqlite` in `splendor-cli`'s **dev-dependencies** only; no CLI code path opens
+  a database.
+
+Results (local evidence): `splendor-studio-league` **78/78** (lib 14 + `archive_protocol_root` 1 +
+`completion_outlet` 5 + `historical_resolver` 3 + `league_core` 29 + `policy_identity` 5 +
+`replay_archive` 10 + `replay_index` 4 + `runtime_ingest` 7); the whole `splendor-cli` suite
+passes, including `--bin splendor` **89/89** and the new `completion_equivalence` 1/1. The
+concurrency gate was run 8 consecutive times with no flake. `git diff --check` clean. No 42k
+migration was re-run. There are no cloud status checks for this commit and no CI is claimed.
+
+### Result and decision
+
+`IMPLEMENTED` / locally `VERIFIED`. Not `ACCEPTED`: the owner's review of this cut is the gate.
+
+### Known limitations
+
+- **`IMMEDIATE` serializes writers; it does not make the league lock-free.** With SQLite's default
+  rollback journal, a long-running reader still blocks a writer, and beyond the 30-second busy
+  timeout a producer fails rather than waiting forever. WAL was deliberately not enabled: it would
+  change the on-disk shape of the official derived artifact.
+- **`archive_root` is still a parameter of the outlet.** Production passes the protocol constant
+  `STUDIO_LEAGUE_REPLAY_DIR` and the CLI exposes no flag for it, but a library caller could pass a
+  different root. The same residual was accepted for `archive_replay` in Commit C Slice 2.
+- **An ingest failure can leave an orphan archive object.** This is the deliberate
+  object-before-row trade-off, now visible as a test assertion rather than a comment.
+- The equivalence gate compares *this* fixture end to end. It is a strong adapter gate, not a
+  proof that every future CLI flag combination routes through the outlet.
+
+### Next authorized gate
+
+Owner review of Commit C Slice 3. Wiring Arena completion into the outlet, the Studio Host APIs,
+and any UI remain **not authorized** until that review. The open question for the next slice is
+whether the Arena should call the outlet in-process or hand the occurrence documents to a
+separate completion step; that decision is deliberately deferred.
+
+**Superseded next-step text** (kept for the record): the earlier version of this section said
+Slice 3 was authorized but not started, and that the archive concurrency prerequisite had to be
+closed first.

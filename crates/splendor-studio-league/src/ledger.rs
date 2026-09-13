@@ -286,7 +286,12 @@ pub fn ingest_match_ordered(
     record: &StudioMatchRecordV1,
     order: IngestOrder,
 ) -> Result<IngestOutcome> {
-    let tx = conn.transaction()?;
+    // IMMEDIATE, not DEFERRED: an incremental arrival is a write, and a
+    // deferred transaction that reads before it writes can hit SQLITE_BUSY
+    // immediately (no busy handler) when another producer commits in between.
+    // Taking the write lock up front lets `busy_timeout` serialize concurrent
+    // producers instead of failing one of them (Commit C Slice 3).
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     let outcome = ingest_match_in_tx(&tx, record, order)?;
     tx.commit()?;
     Ok(outcome)

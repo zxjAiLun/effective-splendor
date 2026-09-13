@@ -17,6 +17,7 @@
 //! already the M11 research self-play league (deviation D1).
 
 pub mod agent_configuration;
+pub mod completion;
 pub mod eligibility;
 pub mod elo;
 pub mod error;
@@ -33,6 +34,9 @@ pub mod schema;
 pub use agent_configuration::{
     classify_switch, is_diagnostic_configuration, parse_match_configuration, AgentPolicyIdentityV1,
     MatchConfigurationV1, SeatConfigurationIdentityV1, SwitchClass,
+};
+pub use completion::{
+    complete_runtime_occurrence, open_completion_league, CompletionOutcomeV1, CompletionRequestV1,
 };
 pub use eligibility::{
     evaluate_eligibility, EligibilityInput, RatingEligibility, REASON_ABORTED, REASON_DIAGNOSTIC,
@@ -62,10 +66,10 @@ pub use ledger::{
     aliases, canonical_league_order, eligible_match_count, ensure_rating_config, identity_index,
     ineligible_reason_counts, ingest_batch_canonical, ingest_match, ingest_match_ordered,
     is_rating_quality_replay, leaderboard, league_order, match_count, match_receipt,
-    participant_elo, participant_id_for_identity, preview_eligibility, protocol_rating_config,
-    rating_event_count, rating_history, rebuild_ratings, stored_rating_config, IngestOrder,
-    IngestOutcome, LeaderboardRow, MatchEloEventV1, MatchReceiptV1, RatingEventRow,
-    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    now_epoch_seconds, participant_elo, participant_id_for_identity, preview_eligibility,
+    protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
+    stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, MatchEloEventV1,
+    MatchReceiptV1, RatingEventRow, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };

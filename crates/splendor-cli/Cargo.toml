@@ -44,3 +44,8 @@ hex = { workspace = true }
 [dev-dependencies]
 # Test-only: hashes the frozen M06 benchmark corpus and the published search
 # analysis artifacts. Deliberately not a production dependency.
+#
+# `rusqlite` is test-only as well: the Commit C Slice 3 equivalence gate reads
+# the ledger the CLI wrote and compares it against a direct library call, so the
+# test needs to open the database even though no CLI code path does.
+rusqlite = { workspace = true }

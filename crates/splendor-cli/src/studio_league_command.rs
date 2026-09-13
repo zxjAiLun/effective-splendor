@@ -5,13 +5,14 @@
 //! corpus is duplicated. It never opens a database and never writes a ledger row.
 
 use splendor_studio_league::{
-    archive_replay, bind_archived_replay, build_historical_corpus, ensure_rating_config,
-    ingest_batch_canonical, ingest_match, initialise, leaderboard, match_receipt, open_league,
-    parse_runtime_occurrence, run_historical_dry_run, runtime_match_record, scan,
-    stored_identity_manifest_hash, sync_identity_manifest, write_jsonl, HistoricalDryRunConfig,
-    HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1, InventoryScanConfig,
-    DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT, RUNTIME_OCCURRENCE_FORMAT,
-    STUDIO_LEAGUE_DB_FILE, STUDIO_LEAGUE_IDENTITY_FILE, STUDIO_LEAGUE_REPLAY_DIR,
+    build_historical_corpus, complete_runtime_occurrence, ensure_rating_config,
+    ingest_batch_canonical, initialise, leaderboard, now_epoch_seconds, open_completion_league,
+    open_league, parse_runtime_occurrence, run_historical_dry_run, scan,
+    stored_identity_manifest_hash, sync_identity_manifest, write_jsonl, CompletionRequestV1,
+    HistoricalDryRunConfig, HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1,
+    InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT,
+    RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_DB_FILE, STUDIO_LEAGUE_IDENTITY_FILE,
+    STUDIO_LEAGUE_REPLAY_DIR,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -1195,109 +1196,44 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         Err(error) => return fail_ingest(&error),
     };
 
-    // Step 2: the existing verify -> canonical record chain, authored by the
-    // occurrence envelope (identity + Elo-ordering evidence).
+    // The completion outlet is the single authority for turning this occurrence
+    // into ledger state: verify -> archive -> bind -> ingest -> receipt. This
+    // command is only an adapter: it reads the documents, calls the outlet, and
+    // prints the result.
     let replay_logical_path = replay_path.to_string_lossy().replace('\\', "/");
-    let record = match runtime_match_record(
-        &occurrence,
-        &report_bytes,
-        &replay_bytes,
-        &config_bytes,
-        &replay_logical_path,
-    ) {
-        Ok(record) => record,
-        Err(error) => return fail_ingest(&format!("occurrence rejected: {error}")),
+    let request = CompletionRequestV1 {
+        occurrence: &occurrence,
+        report_bytes: &report_bytes,
+        replay_bytes: &replay_bytes,
+        config_bytes: &config_bytes,
+        replay_source_path: &replay_logical_path,
     };
 
-    // Step 2b (Commit C Slice 2): archive the *verified* replay under its
-    // document SHA-256 and point the binding at the immutable copy. The
-    // archive is written only after verification succeeded, so an unverified
-    // document can never become an `archive`-backed `verified` binding, and
-    // the archive is keyed by the very hash the record already carries.
-    //
-    // Ordering: the object is published *before* the ledger write, so whenever
-    // a match row claims `archive` the object already exists. If a later step
-    // fails, the worst residue is an unreferenced immutable object; the
-    // opposite order could leave a match pointing at a replay that was never
-    // written.
-    let replay_sha = match record.replay.document_hash.as_deref() {
-        Some(sha) if splendor_studio_league::is_lowercase_hex64(sha) => sha.to_string(),
-        _ => {
-            return fail_ingest(
-                "the verified occurrence carries no replay document hash; nothing to archive",
-            )
+    // The archive root is a protocol constant, not a per-run choice: the ledger
+    // records only the content-relative path, so a League must have one fixed
+    // root for those paths to resolve.
+    let mut conn = match open_completion_league(&db_path, &identity_path, now_epoch_seconds()) {
+        Ok(conn) => conn,
+        Err(error) => {
+            return fail_ingest(&format!("cannot open the league for completion: {error}"))
         }
     };
-    // The archive root is a protocol constant, not a per-run choice: the
-    // ledger records only the content-relative path, so a League must have one
-    // fixed root for those paths to resolve. A caller cannot redirect the
-    // archive to an arbitrary directory and strand the recorded path.
-    let archived = match archive_replay(
-        Path::new(STUDIO_LEAGUE_REPLAY_DIR),
-        &replay_sha,
-        &replay_bytes,
-    ) {
-        Ok(archived) => archived,
-        Err(error) => return fail_ingest(&format!("failed to archive the replay: {error}")),
-    };
-    let record = match bind_archived_replay(record, &archived) {
-        Ok(record) => record,
-        Err(error) => return fail_ingest(&format!("failed to bind the archived replay: {error}")),
-    };
+    let completion =
+        match complete_runtime_occurrence(&mut conn, Path::new(STUDIO_LEAGUE_REPLAY_DIR), &request)
+        {
+            Ok(completion) => completion,
+            Err(error) => return fail_ingest(&error.to_string()),
+        };
+
+    let record = &completion.record;
+    let archived = &completion.archived;
+    let outcome = &completion.ingest;
+    let receipt = &completion.receipt;
     println!(
         "studio-league-ingest: archived replay {} ({})",
         archived.document_sha256(),
         archived.outcome().as_str()
     );
-
-    // Step 3: open the league through the same authority seams as the
-    // migration: schema, protocol rating config, and the durable manifest.
-    let mut conn = match open_league(&db_path) {
-        Ok(conn) => conn,
-        Err(error) => return fail_ingest(&format!("cannot open league database: {error}")),
-    };
-    if let Err(error) = initialise(&conn) {
-        return fail_ingest(&format!("failed to initialise schema: {error}"));
-    }
-    if let Err(error) = ensure_rating_config(&conn) {
-        return fail_ingest(&format!("rating config mismatch: {error}"));
-    }
-    let manifest = match IdentityManifestV1::load_or_recover(&identity_path) {
-        Ok(Some(manifest)) => manifest,
-        Ok(None) => return fail_ingest(
-            "identity manifest does not exist; initialize it with `studio-league-migrate` first",
-        ),
-        Err(error) => return fail_ingest(&format!("failed to load identity manifest: {error}")),
-    };
-    if let Err(error) = manifest.validate() {
-        return fail_ingest(&format!("identity manifest is invalid: {error}"));
-    }
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs() as i64)
-        .unwrap_or(0);
-    if let Err(error) = sync_identity_manifest(&conn, &manifest, now) {
-        return fail_ingest(&format!("failed to sync identity manifest: {error}"));
-    }
-
-    // Step 4: the single-match authority entry point.
-    let outcome = match ingest_match(&mut conn, &record) {
-        Ok(outcome) => outcome,
-        Err(error) => return fail_ingest(&format!("ingest failed (rolled back): {error}")),
-    };
-
-    // Step 5: receipt — what the ledger actually recorded.
-    let match_id = record.match_id();
-    let receipt = match match_receipt(&conn, &match_id) {
-        Ok(receipt) => receipt,
-        Err(error) => {
-            return fail_ingest(&format!("failed to read the ingestion receipt: {error}"))
-        }
-    };
-    let receipt = match receipt {
-        Some(receipt) => receipt,
-        None => return fail_ingest("ingest reported success but the match is not in the ledger"),
-    };
     let eligibility_text = match &receipt.rating_ineligible_reason {
         Some(reason) => format!("ineligible ({reason})"),
         None => "eligible".to_string(),
