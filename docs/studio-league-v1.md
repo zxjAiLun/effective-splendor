@@ -1682,3 +1682,296 @@ matches and no runtime matches.
 
 Owner review of this repair. Arena wiring, the Studio Host APIs, and any UI remain **not
 authorized**.
+
+---
+
+## Commit C Next Slice — Completion Producer Wiring (design frozen before implementation)
+
+Status: **AUTHORIZED** by the owner, 2026-09-13, together with the closure of Commit C Slice 3.
+Baseline: `0c37335` (Commit C Slice 3 **ACCEPTED / CLOSED**, P0=0 / P1=0 / P2=0).
+
+### Problem and evidence
+
+Commit C Slice 3 ended with a working, gated completion authority:
+
+```text
+verify -> archive (object before row) -> bind -> ingest_match -> match_receipt
+```
+
+reachable through exactly one supported entry point (`open_completion_league` +
+`complete_runtime_occurrence`), with the archive root pinned to
+`STUDIO_LEAGUE_REPLAY_DIR`. But nothing in production ever calls it. The
+reconnaissance for this slice established three facts:
+
+1. **The occurrence producer does not exist.** Every `RuntimeOccurrenceV1`
+   envelope in the repository is hand-written inside a test
+   (`tests/completion_outlet.rs`, `tests/archive_protocol_root.rs`,
+   `crates/splendor-cli/tests/completion_equivalence.rs`). No command or runner
+   mints an `occurrence_id` or a `completed_at` and persists an envelope. The
+   durable evidence half of the contract is unimplemented.
+2. **The real match producer is `splendor run-match`.** `arena_command::run_match`
+   → `run_match_inner` → `commit_completed` → `publish_completed` is the only
+   command that runs one real arena match and publishes a report plus a replay.
+   The configuration is that run's own input file (`--config`).
+3. **The consumer already exists.** `splendor studio-league-ingest` reads the four
+   documents (envelope, report, replay, config) and drives the outlet, but it is
+   invoked by hand. Nothing connects production to it.
+
+So the missing work is a *producer* and an *orchestration edge*, not more
+authority.
+
+### Layering ruling (owner-frozen): no `splendor-arena` → `splendor-studio-league` edge
+
+Studio League already consumes `splendor-arena`'s report and config types. Adding
+the reverse dependency would create a cycle in spirit even where Cargo permits it.
+The frozen direction is:
+
+```text
+Arena / runner
+    |  persists report + replay + config + RuntimeOccurrenceV1
+    v
+upper orchestration / CLI harness
+    |  open_completion_league() + complete_runtime_occurrence()
+    v
+Studio League ledger + archive
+```
+
+**Arena produces durable occurrence evidence; Studio completion consumes it; the
+upper orchestrator joins them — never Arena core.** `splendor-arena` stays
+unaware of Studio League.
+
+### Scope
+
+In scope, exactly one real runtime completion path:
+
+- mint and durably persist the occurrence envelope for a completed arena match,
+  exactly once, at completion;
+- have the upper orchestration layer offer that persisted evidence to the
+  completion outlet;
+- make a completion failure visible without falsifying the match result.
+
+### Non-goals (explicitly not authorized)
+
+- No `splendor-arena` → `splendor-studio-league` dependency.
+- No evaluation wiring, no batch/worker wiring, no watcher, no Host API, no UI.
+- No change to the ledger, Elo, eligibility, archive or completion authority. The
+  frozen authorities are consumed as-is.
+- No re-run of the 42k historical migration; no new historical digest.
+- No new public surface in `splendor-studio-league`.
+
+### Contracts and invariants
+
+**C1 — the match is a fact, completion is a separate fact.**
+`run-match`'s frozen contract (exit `0` completed / `2` aborted / `1` error, no
+artifacts left behind on error, stdout exactly one outcome line) must not be
+reinterpreted. A *studio completion* failure is not an *arena match* failure. The
+observable outcome must distinguish "match completed, Studio completion failed"
+from "match failed".
+
+**C2 — the envelope is produced once, from persisted bytes.**
+`occurrence_id` and `completed_at` are minted at completion time and are never
+re-derived or re-minted by any consumer, retry, or rebuild. The orchestrator
+consumes the durable envelope; it does not construct one.
+
+**C3 — the four evidence documents are durable before completion is attempted.**
+report, replay, config and envelope must all be on disk (and, for report/replay,
+already through `run-match`'s atomic publish) before the outlet is called. The
+evidence must survive any completion failure unmodified.
+
+**C4 — retry replays documents, never matches.**
+Re-offering completion after a failure re-reads the same four documents. It must
+not re-run the game, re-serialize the report, or regenerate the envelope.
+
+**C5 — idempotency is the ledger's, not the wiring's.**
+A repeated trigger for one completion yields the ledger's own answer
+(`AlreadyPresent`, `0` rating events). The wiring must not add a second
+deduplication layer, and must not swallow `SourceConflict` — a changed document
+under an existing occurrence identity is a real conflict and stays fail-closed.
+
+**C6 — no hidden success.**
+A completion failure must never print or persist a receipt, must never leave a
+partial ledger row, and must be distinguishable by exit code and by machine-
+readable output.
+
+### Acceptance gates (frozen before implementation)
+
+1. **Real completion enters the league.**
+   A real runner completes a match, the four evidence documents exist on disk,
+   and the occurrence enters the Studio ledger plus the content-addressed
+   archive, with the expected rating events.
+
+2. **Completion failure is not match failure.**
+   With completion forced to fail, the match evidence is still complete and
+   unmodified, the ledger contains no fake success, and after the failing
+   condition is repaired, retrying *only* the completion step books the
+   occurrence — without re-running the match.
+
+3. **Repeated wiring is idempotent.**
+   Triggering the same completion twice yields `AlreadyPresent` on the second
+   attempt and produces no duplicate Elo events.
+
+Each gate is a real end-to-end test over on-disk documents, not a mock.
+
+### Open questions to settle during implementation
+
+- Whether the envelope is published by `run-match` itself (a new, explicitly
+  opt-in flag) or by a small separate harness command that runs the match and
+  then persists evidence. The owner's contract only requires that the evidence be
+  durably present *before* the outlet is called and that retry not re-run the
+  match; both shapes satisfy it. The deciding constraint is C1: `run-match`'s
+  published exit-code/stdout contract is frozen and heavily tested, so the
+  evidence must not change that contract's meaning.
+  *Settled before implementation, because it decides the whole shape: neither.*
+  `run-match` keeps its frozen contract untouched. It gains no Studio League
+  dependency and no new flag, because roughly fifteen end-to-end tests pin its
+  exit codes, its empty-stdout-on-error rule and its artifact-refusal rules, and
+  C1 forbids reinterpreting them.
+  Instead the whole slice lives in the **upper orchestration layer, which already
+  exists**: `splendor-cli`'s Studio League command family already depends on
+  `splendor-arena` *and* `splendor-studio-league`, which is precisely the "upper
+  orchestration / CLI harness" position the owner's layering diagram describes.
+  The producer mints and persists the envelope there, and the same layer offers it
+  to the completion outlet. Arena core stays unaware of the league, no new
+  cross-crate edge appears, and the frozen arena CLI contract is untouched.
+
+### Final implementation
+
+The slice is delivered in the **upper orchestration layer** and nowhere else.
+
+*New module* `crates/splendor-cli/src/completion_wiring_command.rs`, and two
+commands wired in `main.rs`:
+
+| Command | Role |
+|---|---|
+| `splendor studio-league-complete-match` | runs one real arena match, durably persists the four evidence documents, then offers them to the completion outlet |
+| `splendor studio-league-complete` | completion-only retry: re-reads the four persisted documents and offers them again |
+
+Nothing in `splendor-arena` changed, and `splendor-arena` still does not depend on
+`splendor-studio-league`. `run-match` is untouched — its exit codes, its
+one-line stdout and its artifact-refusal rules are frozen and remain covered by
+their existing end-to-end tests.
+
+**Envelope production.** `studio-league-complete-match` mints `occurrence_id`
+(from the caller, with the run) and `completed_at` (`now_epoch_seconds()`) exactly
+once, at completion, and persists the envelope after the report and replay have
+been published. The evidence hashes cover the **serialized published bytes**, not
+the in-memory values, so the envelope attests to what is actually on disk. The
+publish order is replay → report (the existing commit marker) → envelope; if the
+envelope cannot be written, report and replay are rolled back, so an occurrence
+whose evidence set is incomplete can never look finished.
+
+**Two facts, two exit codes.** This is the contract the owner asked for, made
+mechanical:
+
+| Situation | Exit | Meaning |
+|---|---|---|
+| match completed, completion succeeded | `0` | both facts are good |
+| match completed, completion failed | `3` | the **match** is a real completed match; only completion failed; evidence is intact |
+| match failed / aborted / bad evidence set | `1` or `2` | the failure belongs to the match half |
+| usage error | `2` | bad arguments |
+
+On a completion failure the message names the failing half explicitly and prints
+the exact retry command, and the evidence is left byte-for-byte untouched.
+
+**Retry cannot re-run a match, structurally.** The module contains exactly one
+`ArenaRunner::run` call site, inside `run_studio_league_complete_match`.
+`run_studio_league_complete` has no path to the runner at all — it reads four
+files and calls the outlet. This is a property of the call graph, not a
+convention.
+
+**No new public surface.** `RuntimeOccurrenceV1` already had public fields and was
+already exported, as was `replay_document_sha256`; the orchestrator builds and
+hashes the envelope with what already exists. `splendor-studio-league` was not
+modified at all in this slice.
+
+### Iteration log
+
+- **Envelope producer had to be written for real.** Reconnaissance found that
+  every `RuntimeOccurrenceV1` in the repository was hand-written inside a test;
+  no production code had ever minted one. This slice is therefore the first
+  production producer, and the first time the durable-evidence half of Commit C
+  is exercised by anything other than a fixture.
+- **Where the edge lives.** Decided against touching `run-match` (see the frozen
+  design's resolved question): roughly fifteen end-to-end tests pin its exit
+  codes and refusal rules, and the owner's C1 forbids reinterpreting them. The
+  `splendor-cli` Studio League family already sits in the exact "upper
+  orchestration" position and already depends on both crates.
+- **Gate 2's first forced failure did not fail.** The initial version broke the
+  completion half by pointing `--db` at a path whose parent did not exist. The
+  command exited `0`: `open_league` deliberately creates missing parent
+  directories (`schema.rs`), so that is not a failure at all. The gate now forces
+  a **missing identity manifest**, which `open_completion_league` genuinely
+  refuses (that refusal is one of the Slice 3 Repair 1 gates). Recorded here
+  because "the test's chosen failure was not actually a failure" is exactly the
+  kind of gate defect that would otherwise silently pass.
+- **Two seats of the same agent are a self-match.** The gates were first written
+  with `agent-random` in both seats. The occurrence was recorded, but
+  `rating_eligible = 0` with `rating_ineligible_reason = self_match`, so there
+  were **zero** rating events — and the idempotency gate became vacuous ("no
+  duplicate Elo" held because there was never any Elo). The gates now use
+  `agent-heuristic` vs `agent-random`, which report distinct runtime identities
+  (`splendor-cli-heuristic` / `splendor-cli-random`). Verified against the
+  database: `rating_eligible = 1`, two real events (1500 → 1516 / 1484).
+
+### Validation and evidence
+
+Three end-to-end gates in `crates/splendor-cli/tests/completion_wiring.rs`, all
+driving real subprocess agents through the process boundary:
+
+1. `a_real_match_completion_enters_the_ledger_and_the_archive` — the match
+   completes; all four documents exist; the envelope hashes match the bytes on
+   disk; the ledger row is `runtime:occ-gate1` with `storage = archive` and a
+   **relative** path; `STUDIO_LEAGUE_REPLAY_DIR + path` resolves to an object
+   hashing to the envelope's `replay_sha256`; two rating events are recorded.
+2. `a_completion_failure_preserves_the_match_and_can_be_retried_alone` — with the
+   identity manifest absent, the exit code is `3`, stdout records that the match
+   completed, stderr says the match is unaffected, no match is booked, and the
+   three evidence documents are byte-identical afterwards. Retrying completion
+   alone then books it, with the evidence still byte-identical.
+3. `triggering_the_same_completion_twice_is_idempotent_and_adds_no_elo` —
+   re-offering yields `already_present`, exactly one match row, and an unchanged
+   rating-event count.
+
+**Negative controls (all run, then reverted):**
+
+| Control | Result |
+|---|---|
+| collapse the two facts (return `1` instead of `3` on completion failure, dropping the "match is unaffected" message) | gate 2 **FAILS** |
+| assert `rating_events == after + 1` on re-offer | gate 3 **FAILS** — the ledger really does not double-book |
+
+One further structural check: `ArenaRunner::run` appears exactly once in the
+module, in the match entry point; the completion-only entry point cannot reach it.
+
+**Results.** `splendor-studio-league` **80/80** unchanged. Whole `splendor-cli`
+suite **44 test binaries / 271 tests, 0 failed** (was 43 / 268 — the three new
+gates), `--bin splendor` 89/89, `arena_cli` 24/24 and `completion_equivalence`
+1/1 unchanged. `git diff --check` exit 0; `rustfmt --edition 2021` on the three
+touched files only. The 42k historical migration was not re-run. There are no
+cloud status checks for this commit; none are claimed.
+
+### Result and decision
+
+`IMPLEMENTED` / locally `VERIFIED`. Not `ACCEPTED`: the owner's review is the gate.
+Arena/runner wiring is now exercised by one real runtime completion path;
+Host API and UI remain not authorized.
+
+### Known limitations
+
+- Exactly one completion path is wired, as instructed. Evaluation runs, batch
+  workers, watchers, the Host API and the UI are deliberately untouched.
+- The wiring inherits the documented slice-3 boundary: generic ledger/archive
+  tools stay public, so a determined external caller can still assemble a chain
+  by hand. What this slice closes is that the **production** path now goes
+  through the outlet, not that the crate is a sandbox.
+- `studio-league-complete-match` reports an aborted match with exit `2` (the
+  arena CLI's own convention for "aborted") and writes only the report. No
+  occurrence evidence exists for an aborted match, because the occurrence never
+  happened.
+- The archive root remains the relative protocol constant, so these commands must
+  run with the project root as their working directory. The gates set `cwd`
+  explicitly; a future Host/launcher must unify project-root resolution (already
+  recorded as a deferred slice-3 note).
+
+### Next authorized gate
+
+Owner review of this slice. Host API and UI remain **not authorized**.

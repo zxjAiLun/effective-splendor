@@ -7,6 +7,7 @@ mod analysis_command;
 mod arena_command;
 mod atomic_output;
 mod branch_command;
+mod completion_wiring_command;
 mod determinization_analysis_command;
 mod eval_command;
 mod evaluation_analysis_command;
@@ -174,6 +175,12 @@ fn main() {
         Some("studio-league-ingest") => {
             std::process::exit(studio_league_command::run_studio_league_ingest(&argv[2..]))
         }
+        Some("studio-league-complete-match") => std::process::exit(
+            completion_wiring_command::run_studio_league_complete_match(&argv[2..]),
+        ),
+        Some("studio-league-complete") => std::process::exit(
+            completion_wiring_command::run_studio_league_complete(&argv[2..]),
+        ),
         Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
         Some("train-policy-value") => {
             std::process::exit(learning_command::run_train_policy_value(&argv[2..]))
