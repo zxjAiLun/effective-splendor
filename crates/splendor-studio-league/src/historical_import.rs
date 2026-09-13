@@ -1025,22 +1025,26 @@ pub struct HistoricalDryRunReportV1 {
 ///
 /// Returns the validation and reconciliation report alongside the verified
 /// canonical records ready for ingestion.
-/// Resolve one sibling document by its content SHA inside one logical
-/// directory; byte-identical duplicates collapse to the lexicographically
-/// first logical path (the content is identical, so only provenance differs).
-fn resolve_sibling(
+/// Resolve every sibling document with the given content SHA inside one
+/// logical directory. Byte-identical duplicates are all returned in logical
+/// path order: only the first is read, but every one of them belongs to the
+/// same occurrence and must be claimed, or a duplicate provenance copy would
+/// leak back into the historical pass and double-count the occurrence.
+fn resolve_siblings(
     dir_docs: &BTreeMap<String, Vec<DirDoc>>,
     dir: &str,
     sha: &str,
-) -> Option<(String, std::path::PathBuf)> {
+) -> Vec<(String, std::path::PathBuf)> {
     let empty: Vec<DirDoc> = Vec::new();
-    dir_docs
+    let mut matches: Vec<(String, std::path::PathBuf)> = dir_docs
         .get(dir)
         .unwrap_or(&empty)
         .iter()
         .filter(|entry| entry.sha == sha)
         .map(|entry| (entry.logical_path.clone(), entry.filesystem_path.clone()))
-        .min()
+        .collect();
+    matches.sort();
+    matches
 }
 
 /// One scanned report/replay/config document in a directory, for resolving a
@@ -1210,26 +1214,35 @@ pub fn build_historical_corpus(
     replay_index.finish();
 
     // Deduplicate runtime occurrence envelopes by occurrence_id before
-    // resolving claims: identical envelopes collapse; a conflicting envelope
-    // pair is corrupt evidence and fails the run.
-    let mut occurrences: BTreeMap<String, (String, RuntimeOccurrenceV1)> = BTreeMap::new();
+    // resolving claims: identical envelopes collapse into one occurrence that
+    // keeps **every** provenance sidecar path (an archived or mirrored copy of
+    // the run directory is the same occurrence, not a second match); a
+    // conflicting envelope pair is corrupt evidence and fails the run.
+    let mut occurrences: BTreeMap<String, RuntimeOccurrenceV1> = BTreeMap::new();
+    let mut occurrence_sidecars: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut runtime_occurrence_conflicts: Vec<String> = Vec::new();
     for (sidecar_logical_path, occurrence) in &runtime_occurrence_docs {
         match occurrences.get(&occurrence.occurrence_id) {
-            Some((existing_path, existing)) if existing != occurrence => {
+            Some(existing) if existing != occurrence => {
                 runtime_occurrence_conflicts.push(format!(
-                    "runtime occurrence `{}` carries conflicting envelopes (`{sidecar_logical_path}` vs `{existing_path}`)",
-                    occurrence.occurrence_id
+                    "runtime occurrence `{}` carries conflicting envelopes (`{sidecar_logical_path}` vs `{}`)",
+                    occurrence.occurrence_id,
+                    occurrence_sidecars
+                        .get(&occurrence.occurrence_id)
+                        .and_then(|paths| paths.iter().next())
+                        .map(String::as_str)
+                        .unwrap_or("<unknown>")
                 ));
             }
             Some(_) => {}
             None => {
-                occurrences.insert(
-                    occurrence.occurrence_id.clone(),
-                    (sidecar_logical_path.clone(), occurrence.clone()),
-                );
+                occurrences.insert(occurrence.occurrence_id.clone(), occurrence.clone());
             }
         }
+        occurrence_sidecars
+            .entry(occurrence.occurrence_id.clone())
+            .or_default()
+            .insert(sidecar_logical_path.clone());
     }
 
     // Claimed documents: a runtime occurrence envelope is the occurrence
@@ -1240,19 +1253,27 @@ pub fn build_historical_corpus(
     // Claimed replays stay in the content index: they are real replay
     // documents another report may share a terminal hash with, and index
     // candidates are always verified.
+    // Every provenance directory is claimed, not just the first: an archived
+    // copy of a runtime run directory carries the same occurrence's report and
+    // config documents, and letting those leak into the historical pass would
+    // build a second, spurious `historical-sha256:` match for one real
+    // occurrence (the rebuild double-count this patch closes).
     let mut claimed_report_paths: BTreeSet<String> = BTreeSet::new();
     let mut claimed_config_paths: BTreeSet<String> = BTreeSet::new();
-    for (_, (sidecar_logical_path, occurrence)) in &occurrences {
-        let dir = parent_logical_dir(sidecar_logical_path);
-        if let Some((logical_path, _)) =
-            resolve_sibling(&docs_by_dir, dir, &occurrence.report_sha256)
-        {
-            claimed_report_paths.insert(logical_path);
-        }
-        if let Some((logical_path, _)) =
-            resolve_sibling(&docs_by_dir, dir, &occurrence.config_sha256)
-        {
-            claimed_config_paths.insert(logical_path);
+    for (occurrence_id, occurrence) in &occurrences {
+        let dirs: BTreeSet<&str> = occurrence_sidecars
+            .get(occurrence_id)
+            .map(|paths| paths.iter().map(|path| parent_logical_dir(path)).collect())
+            .unwrap_or_default();
+        for dir in dirs {
+            for (logical_path, _) in resolve_siblings(&docs_by_dir, dir, &occurrence.report_sha256)
+            {
+                claimed_report_paths.insert(logical_path);
+            }
+            for (logical_path, _) in resolve_siblings(&docs_by_dir, dir, &occurrence.config_sha256)
+            {
+                claimed_config_paths.insert(logical_path);
+            }
         }
     }
     arena_files.retain(|(file, _)| !claimed_report_paths.contains(&file.logical_path));
@@ -1475,23 +1496,46 @@ pub fn build_historical_corpus(
     report
         .failure_samples
         .extend(runtime_occurrence_conflicts.iter().cloned());
-    for (occurrence_id, (sidecar_logical_path, occurrence)) in &occurrences {
-        let dir = parent_logical_dir(sidecar_logical_path);
-        let (report_entry, replay_entry, config_entry) = (
-            resolve_sibling(&docs_by_dir, dir, &occurrence.report_sha256),
-            resolve_sibling(&docs_by_dir, dir, &occurrence.replay_sha256),
-            resolve_sibling(&docs_by_dir, dir, &occurrence.config_sha256),
-        );
-        let (report_entry, replay_entry, config_entry) = match (
-            report_entry,
-            replay_entry,
-            config_entry,
-        ) {
-            (Some(report), Some(replay), Some(config)) => (report, replay, config),
-            _ => {
+    let empty_sidecars: BTreeSet<String> = BTreeSet::new();
+    for (occurrence_id, occurrence) in &occurrences {
+        let dirs: BTreeSet<&str> = occurrence_sidecars
+            .get(occurrence_id)
+            .unwrap_or(&empty_sidecars)
+            .iter()
+            .map(|path| parent_logical_dir(path))
+            .collect();
+        // Build exactly one record per occurrence. Provenance copies are the
+        // same occurrence, so the first complete provenance (logical path
+        // order, deterministic) supplies the bytes; a copy is never a second
+        // match.
+        let mut resolved: Option<(
+            (String, std::path::PathBuf),
+            (String, std::path::PathBuf),
+            (String, std::path::PathBuf),
+        )> = None;
+        for dir in &dirs {
+            let report_entry = resolve_siblings(&docs_by_dir, dir, &occurrence.report_sha256)
+                .into_iter()
+                .next();
+            let replay_entry = resolve_siblings(&docs_by_dir, dir, &occurrence.replay_sha256)
+                .into_iter()
+                .next();
+            let config_entry = resolve_siblings(&docs_by_dir, dir, &occurrence.config_sha256)
+                .into_iter()
+                .next();
+            if let (Some(report), Some(replay), Some(config)) =
+                (report_entry, replay_entry, config_entry)
+            {
+                resolved = Some((report, replay, config));
+                break;
+            }
+        }
+        let (report_entry, replay_entry, config_entry) = match resolved {
+            Some(entries) => entries,
+            None => {
                 report.builder_failures += 1;
                 report.failure_samples.push(format!(
-                    "runtime occurrence `{occurrence_id}` at `{sidecar_logical_path}` lacks colocated report/replay/config documents matching its envelope SHAs"
+                    "runtime occurrence `{occurrence_id}` lacks any provenance directory holding report/replay/config documents matching its envelope SHAs"
                 ));
                 continue;
             }

@@ -535,3 +535,63 @@ fn incomplete_or_mismatched_occurrence_evidence_is_rejected() {
     );
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+/// Repair 2 close patch: provenance copies of one runtime occurrence must not
+/// become a second match.
+///
+/// The inverse of the historical-vs-runtime gate above: an archived/mirrored
+/// copy of the same run directory carries the *same* occurrence id and the
+/// same report/config bytes. Those copies are the same occurrence, so the
+/// rebuild must build exactly one `runtime:X` record and claim every copy's
+/// report/config so none of them leaks back into the historical pass as a
+/// spurious `historical-sha256:` match.
+#[test]
+fn archived_provenance_copies_of_one_occurrence_build_one_match() {
+    let tmp = tempdir("provenance");
+
+    let (report, replay, config) = occurrence_documents("runtime-game-copy", 7_700_020);
+    let envelope = occurrence_envelope("occ-copy-1", 1_730_000_100, &report, &replay, &config);
+
+    // copy-a/ is the original run directory; it also holds a byte-identical
+    // duplicate of the report under a different name (same-directory duplicate
+    // sibling must be claimed too, not just the lexicographically first path).
+    write_file(&tmp, "copy-a/runtime-occurrence.json", &envelope);
+    write_file(&tmp, "copy-a/arena-report.json", &report);
+    write_file(&tmp, "copy-a/arena-report-copy.json", &report);
+    write_file(&tmp, "copy-a/match-replay.json", &replay);
+    write_file(&tmp, "copy-a/match-config.json", &config);
+
+    // copy-b/ is an archive/mirror copy of the very same occurrence.
+    write_file(&tmp, "copy-b/runtime-occurrence.json", &envelope);
+    write_file(&tmp, "copy-b/arena-report.json", &report);
+    write_file(&tmp, "copy-b/match-replay.json", &replay);
+    write_file(&tmp, "copy-b/match-config.json", &config);
+
+    let (dry_run, records) = build_historical_corpus(&HistoricalDryRunConfig {
+        roots: vec![tmp.to_string_lossy().to_string()],
+        ..Default::default()
+    })
+    .unwrap();
+
+    assert_eq!(dry_run.builder_failures, 0, "{:?}", dry_run.failure_samples);
+    assert_eq!(
+        dry_run.runtime_occurrences_seen, 2,
+        "both provenance copies are seen"
+    );
+    assert_eq!(
+        dry_run.runtime_occurrences_built, 1,
+        "provenance copies are one occurrence, not two"
+    );
+    assert_eq!(
+        dry_run.historical_canonical_records_built, 0,
+        "no copy may leak back into the historical pass"
+    );
+    assert_eq!(records.len(), 1, "exactly one match for one occurrence");
+    assert_eq!(records[0].source_identity, "runtime:occ-copy-1");
+    assert_eq!(
+        records[0].match_id(),
+        build_record("occ-copy-1", 1_730_000_100, &report, &replay, &config,).match_id()
+    );
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}

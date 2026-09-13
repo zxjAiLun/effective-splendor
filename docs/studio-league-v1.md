@@ -887,6 +887,48 @@ the official migrate preflight split and total reconciliation follow the same co
 canonical-key tail gate accepts same-second identity-ordered appends and rejects divergent ones.
 `splendor-studio-league` **56/56**; `splendor-cli` bin **89/89**; `cargo fmt --check` clean.
 
+### Commit C Slice 1 Repair 3 / close patch — provenance copies are one occurrence (2026-09-13)
+
+The owner's review of `e89ce8d` confirmed both Repair 2 main repairs (**PASS**: the official
+`42,521 + N runtime` rebuild and the full canonical-key append guard) and returned
+**`REPAIR_REQUIRED` (P0=0 / P1=1 / P2=0)** on one narrow remaining seam that would cause a
+**rebuild double-count**:
+
+1. **P1 — a duplicate runtime provenance copy leaked back into the historical pass.** The
+   envelope dedup collapsed an occurrence to a *single* sidecar path, and claims were resolved
+   only inside that one directory with the lexicographically first matching sibling. If a whole
+   runtime run directory was archived or mirrored (`run-a/` plus `archive/run-a-copy/`, same
+   `occurrence_id`, same report/config bytes), only the first directory was claimed; the copy's
+   report/config fell through to the historical scan, the Distinct-Document rule counted that
+   SHA as historical evidence, and the runtime pass separately built `runtime:X` - turning one
+   real occurrence into two matches (`historical-sha256:H` + `runtime:X`). The same defect could
+   trigger with two byte-identical report/config siblings in one directory.
+
+Close patch (historical builder only; envelope format, `ledger.rs`, and the official migrate
+reconciliation are untouched):
+
+- `resolve_sibling` -> `resolve_siblings`, returning **every** matching sibling in logical path
+  order instead of the single lexicographically first one.
+- The occurrence map now carries the canonical envelope plus **all** provenance sidecar paths
+  (`occurrences` + `occurrence_sidecars`); identical envelopes are provenance copies, a
+  different envelope under the same id remains a builder failure.
+- Claims iterate **every** provenance directory and claim **every** matching report/config
+  path in each, so no copy can re-enter the historical pass.
+- The runtime record is still built **exactly once** per occurrence; the bytes come
+  deterministically from the first complete provenance copy (logical path order).
+
+Contract now satisfied in both directions: different occurrence + identical content => two
+matches; same occurrence + multiple provenance copies => one match.
+
+Targeted gate (`archived_provenance_copies_of_one_occurrence_build_one_match`): a corpus with
+`copy-a/` (occurrence envelope + a byte-identical duplicate report sibling) and `copy-b/`
+(archive copy of the same occurrence) must report `runtime_occurrences_seen = 2`,
+`runtime_occurrences_built = 1`, `historical_canonical_records_built = 0`, `records.len() = 1`,
+and `source_identity = runtime:occ-copy-1`. Verified to fail against the pre-patch logic
+(`historical_canonical_records_built` was `1`) and to pass after it.
+`splendor-studio-league` **57/57**; `splendor-cli` bin **89/89**; `cargo fmt --check` clean;
+`git diff --check` clean.
+
 ## Next authorized gate
 
 Commit B (historical migration) is **CLOSED**. The derived database
@@ -904,6 +946,8 @@ pools and is not accepted as a strength baseline. The panic-hardening round that
 replay/import production path (strict parsing, `Result` propagation, and explicit guards already
 fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
 Commit C Slice 1 (runtime ingestion of one fresh occurrence) is `IMPLEMENTED` / `VERIFIED` locally
-and awaits owner review; further Commit C slices — the content-addressed replay archive, the
+(Repair 1 closed the three original P1s, Repair 2 closed the official-rebuild integration, and the
+Repair 3 close patch closed the duplicate-provenance double-count) and awaits the owner's
+re-review of the close patch; further Commit C slices — the content-addressed replay archive, the
 central arena/evaluation completion outlet, and the Studio Host APIs — are **not authorized** yet
 and need the owner's review of this slice first.
