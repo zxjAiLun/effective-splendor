@@ -36,7 +36,8 @@ pub use agent_configuration::{
     MatchConfigurationV1, SeatConfigurationIdentityV1, SwitchClass,
 };
 pub use completion::{
-    complete_runtime_occurrence, open_completion_league, CompletionOutcomeV1, CompletionRequestV1,
+    complete_runtime_occurrence, open_completion_league, CompletionLeagueV1, CompletionOutcomeV1,
+    CompletionRequestV1,
 };
 pub use eligibility::{
     evaluate_eligibility, EligibilityInput, RatingEligibility, REASON_ABORTED, REASON_DIAGNOSTIC,
@@ -49,10 +50,10 @@ pub use historical_import::{
     arena_report_to_match_record, associate_configuration, bind_archived_replay,
     build_historical_corpus, compute_canonical_set_digest, compute_policy_attribution_digest,
     parse_arena_report, parse_runtime_occurrence, resolve_arena_report_replay,
-    run_historical_dry_run, runtime_match_record, ConfigAssociationV1, ConfigurationCandidateV1,
-    HistoricalDryRunConfig, HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
-    OccurrenceIdentityV1, RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT,
-    RUNTIME_OCCURRENCE_VERSION,
+    run_historical_dry_run, runtime_match_record, runtime_occurrence_evidence_hash,
+    ConfigAssociationV1, ConfigurationCandidateV1, HistoricalDryRunConfig,
+    HistoricalDryRunReportV1, HistoricalReplayResolutionV1, OccurrenceIdentityV1,
+    RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,

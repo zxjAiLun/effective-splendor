@@ -21,8 +21,9 @@ use splendor_replay::record_random_game;
 use splendor_studio_league::{
     build_historical_corpus, ensure_rating_config, ingest_batch_canonical, ingest_match,
     initialise, leaderboard, match_receipt, open_league, parse_runtime_occurrence,
-    runtime_match_record, sync_identity_manifest, HistoricalDryRunConfig, IdentityManifestV1,
-    IngestOutcome, ReplayStorage, ReplayVerification, RUNTIME_OCCURRENCE_FORMAT,
+    runtime_match_record, runtime_occurrence_evidence_hash, sync_identity_manifest,
+    HistoricalDryRunConfig, IdentityManifestV1, IngestOutcome, ReplayStorage, ReplayVerification,
+    RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
 
@@ -160,7 +161,7 @@ fn build_record(
 }
 
 fn fresh_league(path: &Path, manifest: &IdentityManifestV1) {
-    let mut conn = open_league(path).unwrap();
+    let conn = open_league(path).unwrap();
     initialise(&conn).unwrap();
     ensure_rating_config(&conn).unwrap();
     sync_identity_manifest(&conn, manifest, 1_700_000_000).unwrap();
@@ -387,10 +388,36 @@ fn rebuild_from_occurrence_evidence_reproduces_the_live_ingest() {
         .iter()
         .find(|record| record.source_identity.starts_with("historical-sha256:"))
         .expect("the historical match must survive the rebuild");
-    assert_eq!(
+    // The historical and runtime reports are byte-identical, yet the two
+    // evidence hashes must differ: a runtime source keys idempotency on its
+    // whole occurrence envelope, not on the arena report bytes (Commit C
+    // Slice 3 Repair 1, P1-2). A historical source is unchanged.
+    assert_ne!(
         historical.source_document_hash, runtime_a.source_document_hash,
-        "the historical and runtime reports are byte-identical"
+        "a runtime source's evidence hash is not the report document hash"
     );
+    assert_eq!(
+        historical.source_document_hash,
+        sha256(&h_report),
+        "a historical source still keys idempotency on its report bytes"
+    );
+    // The corpus rebuild and the live path must share one evidence hash, so a
+    // rebuild can never disagree with live ingest about what one occurrence is.
+    for (envelope, live) in [(&new_a_envelope, &runtime_a), (&b_envelope, &runtime_b)] {
+        let rebuilt = records
+            .iter()
+            .find(|record| record.source_identity == live.source_identity)
+            .expect("the runtime occurrence must survive the rebuild");
+        let parsed = parse_runtime_occurrence(envelope)
+            .unwrap()
+            .expect("a well-formed envelope");
+        assert_eq!(
+            rebuilt.source_document_hash,
+            runtime_occurrence_evidence_hash(&parsed),
+            "the corpus builder and the live builder must share one evidence hash"
+        );
+        assert_eq!(rebuilt.source_document_hash, live.source_document_hash);
+    }
 
     let manifest = test_manifest();
     let live_db = tmp.join("live.sqlite3");

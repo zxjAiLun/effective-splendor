@@ -12,7 +12,6 @@ use splendor_studio_league::{
     HistoricalDryRunConfig, HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1,
     InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT,
     RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_DB_FILE, STUDIO_LEAGUE_IDENTITY_FILE,
-    STUDIO_LEAGUE_REPLAY_DIR,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -1209,21 +1208,19 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         replay_source_path: &replay_logical_path,
     };
 
-    // The archive root is a protocol constant, not a per-run choice: the ledger
-    // records only the content-relative path, so a League must have one fixed
-    // root for those paths to resolve.
-    let mut conn = match open_completion_league(&db_path, &identity_path, now_epoch_seconds()) {
-        Ok(conn) => conn,
+    // The completion session owns the archive root (a protocol constant, never
+    // a per-run choice) and the league gates, so this command cannot open a
+    // league that skipped them, and cannot strand a recorded replay path.
+    let mut league = match open_completion_league(&db_path, &identity_path, now_epoch_seconds()) {
+        Ok(league) => league,
         Err(error) => {
             return fail_ingest(&format!("cannot open the league for completion: {error}"))
         }
     };
-    let completion =
-        match complete_runtime_occurrence(&mut conn, Path::new(STUDIO_LEAGUE_REPLAY_DIR), &request)
-        {
-            Ok(completion) => completion,
-            Err(error) => return fail_ingest(&error.to_string()),
-        };
+    let completion = match complete_runtime_occurrence(&mut league, &request) {
+        Ok(completion) => completion,
+        Err(error) => return fail_ingest(&error.to_string()),
+    };
 
     let record = &completion.record;
     let archived = &completion.archived;

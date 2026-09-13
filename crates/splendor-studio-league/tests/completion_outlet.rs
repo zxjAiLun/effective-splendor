@@ -1,27 +1,43 @@
 //! Commit C Slice 3: the central runtime completion outlet.
 //!
-//! Three gates:
-//! 1. *(CLI equivalence lives in `crates/splendor-cli/tests/`.)*
-//! 2. **Idempotency** — completing the same occurrence twice, sequentially or
-//!    concurrently from independent connections, yields exactly one match row,
-//!    one archive object, and one set of rating events.
-//! 3. **Failure isolation** — a verification, archive, or bind failure leaves
-//!    no ledger row at all; an ingest failure leaves at most an unreferenced
-//!    immutable archive object.
+//! Gates:
 //!
-//! Plus the preserved ordering contract: the outlet never bypasses the
-//! canonical-tail guard, so a non-canonical arrival fails closed and needs a
-//! canonical-order retry or a rebuild.
+//! * **A — the completion authority cannot be bypassed** (CLI equivalence is
+//!   `crates/splendor-cli/tests/completion_equivalence.rs`). Structurally, the
+//!   outlet takes an opaque [`CompletionLeagueV1`] session and never an archive
+//!   root, so a second producer cannot open a league that skipped the session
+//!   gates or strand the recorded path. At runtime this binary pins the two
+//!   consequences: objects land under the protocol root with a content-relative
+//!   ledger path, and a league with no identity evidence refuses to open.
+//! * **B — same occurrence, same evidence**: idempotent, one match, one object,
+//!   one rating-event pair.
+//! * **C — same occurrence, changed evidence**: a conflict, with no new match
+//!   row and no new rating event. This is the seam Commit C Slice 3 Repair 1
+//!   closed: the runtime source's idempotency evidence is the *whole* occurrence
+//!   envelope, not just the arena report bytes.
+//! * **2b — concurrent producers** of one occurrence still record exactly one
+//!   match, one object, and one rating-event pair.
+//! * **3 — failure isolation**: a verification, archive, or ordering failure
+//!   leaves no ledger row (an ordering failure leaves at most an unreferenced
+//!   immutable object).
+//!
+//! The outlet resolves its archive root from the process working directory, so
+//! this binary sandboxes once and every test runs inside that sandbox. That is
+//! why the per-object assertions address objects by content address instead of
+//! counting files: tests share one protocol root and run in parallel.
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 use splendor_arena::{seed_commitment_v1, AgentIdentity, ArenaOutcomeV1, ArenaReportV1, PlayerId};
 use splendor_core::{ruleset_fingerprint, FullState, GameConfig, Ruleset};
 use splendor_replay::record_random_game;
 use splendor_studio_league::{
-    complete_runtime_occurrence, open_completion_league, parse_runtime_occurrence,
-    CompletionRequestV1, IdentityManifestV1, RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT,
+    complete_runtime_occurrence, open_completion_league, open_league, parse_runtime_occurrence,
+    runtime_occurrence_evidence_hash, CompletionLeagueV1, CompletionOutcomeV1, CompletionRequestV1,
+    IdentityManifestV1, RuntimeOccurrenceV1, StudioLeagueError, RUNTIME_OCCURRENCE_FORMAT,
+    STUDIO_LEAGUE_REPLAY_DIR,
 };
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 fn tempdir(label: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!(
@@ -32,6 +48,27 @@ fn tempdir(label: &str) -> PathBuf {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
+}
+
+/// The outlet archives under `STUDIO_LEAGUE_REPLAY_DIR` relative to the process
+/// working directory. A process-wide cwd change must not race other tests, so
+/// this binary does it exactly once and every test shares the sandbox.
+fn sandbox() -> &'static PathBuf {
+    static SANDBOX: OnceLock<PathBuf> = OnceLock::new();
+    SANDBOX.get_or_init(|| {
+        let dir = tempdir("sandbox");
+        std::env::set_current_dir(&dir).expect("enter the sandbox");
+        dir
+    })
+}
+
+fn archive_root() -> PathBuf {
+    sandbox().join(STUDIO_LEAGUE_REPLAY_DIR)
+}
+
+/// Where the protocol root says one content address lives.
+fn object_path(sha: &str) -> PathBuf {
+    archive_root().join(&sha[..2]).join(format!("{sha}.json"))
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -152,153 +189,243 @@ impl Fixture {
             replay_source_path: source_path,
         }
     }
+
+    fn replay_sha(&self) -> String {
+        sha256(&self.replay)
+    }
 }
 
 /// A test league: an existing manifest plus an already-created database.
 struct League {
-    archive_root: PathBuf,
     db_path: PathBuf,
     identity_path: PathBuf,
 }
 
 impl League {
     fn new(label: &str) -> Self {
-        let root = tempdir(label);
+        sandbox();
+        let dir = tempdir(label);
         let league = Self {
-            archive_root: root.join("replays"),
-            db_path: root.join("league.sqlite3"),
-            identity_path: root.join("identity.json"),
+            db_path: dir.join("league.sqlite3"),
+            identity_path: dir.join("identity.json"),
         };
         let mut manifest = IdentityManifestV1::new();
         manifest.ensure_local_human("Nick");
         manifest.save(&league.identity_path).unwrap();
         // Create the database once, single-threaded, so concurrent producers
         // contend on completion rather than on schema creation.
-        let conn =
-            open_completion_league(&league.db_path, &league.identity_path, 1_700_000_000).unwrap();
-        drop(conn);
+        league.session();
         league
     }
 
-    fn open(&self) -> Connection {
-        open_completion_league(&self.db_path, &self.identity_path, 1_700_000_000).unwrap()
+    fn session(&self) -> CompletionLeagueV1 {
+        open_completion_league(&self.db_path, &self.identity_path, 1_700_000_000)
+            .expect("open a completion session")
     }
 
-    fn complete(
-        &self,
-        fixture: &Fixture,
-    ) -> splendor_studio_league::Result<splendor_studio_league::CompletionOutcomeV1> {
-        let mut conn = self.open();
-        complete_runtime_occurrence(
-            &mut conn,
-            &self.archive_root,
-            &fixture.request("replay.json"),
-        )
+    fn complete(&self, fixture: &Fixture) -> splendor_studio_league::Result<CompletionOutcomeV1> {
+        let mut session = self.session();
+        complete_runtime_occurrence(&mut session, &fixture.request("replay.json"))
+    }
+
+    /// A read-only connection for assertions. Reading the ledger is not the
+    /// authority path; writing through it is impossible.
+    fn inspect(&self) -> Connection {
+        open_league(&self.db_path).unwrap()
+    }
+
+    fn count(&self, sql: &str) -> i64 {
+        self.inspect().query_row(sql, [], |row| row.get(0)).unwrap()
     }
 
     fn match_count(&self) -> i64 {
-        self.open()
-            .query_row("SELECT COUNT(*) FROM matches", [], |row| row.get(0))
-            .unwrap()
+        self.count("SELECT COUNT(*) FROM matches")
     }
 
     fn event_count(&self) -> i64 {
-        self.open()
-            .query_row("SELECT COUNT(*) FROM rating_events", [], |row| row.get(0))
-            .unwrap()
+        self.count("SELECT COUNT(*) FROM rating_events")
     }
 
-    /// Every immutable archive object on disk (temp files are not objects).
-    fn archive_objects(&self) -> Vec<PathBuf> {
-        fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
-            let Ok(entries) = std::fs::read_dir(dir) else {
-                return;
-            };
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    walk(&path, out);
-                } else if path.extension().and_then(|ext| ext.to_str()) == Some("json") {
-                    out.push(path);
-                }
-            }
-        }
-        let mut out = Vec::new();
-        walk(&self.archive_root, &mut out);
-        out.sort();
-        out
+    fn stored_replay_paths(&self) -> Vec<String> {
+        let conn = self.inspect();
+        let mut statement = conn
+            .prepare("SELECT replay_path FROM matches ORDER BY league_seq")
+            .unwrap();
+        let rows = statement
+            .query_map([], |row| row.get::<_, Option<String>>(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        rows.into_iter().flatten().collect()
     }
 }
 
-/// Gate 2a: the same occurrence completed twice is one match.
+/// Gate A: the authority is the session, and the archive root is the protocol's.
 #[test]
-fn completing_one_occurrence_twice_records_exactly_one_match() {
-    let league = League::new("idempotent");
-    let fixture = Fixture::new("occ-idempotent", 1_800_000_000, 7);
+fn the_completion_authority_cannot_be_bypassed() {
+    let league = League::new("authority");
+    let fixture = Fixture::new("occ-authority", 1_800_000_600, 29);
+    let sha = fixture.replay_sha();
+
+    let outcome = league.complete(&fixture).unwrap();
+    assert!(outcome.was_inserted());
+
+    // The caller supplied no root, yet the object landed under the protocol
+    // root, and the ledger holds only the content-relative path that resolves
+    // there and nowhere else.
+    assert!(
+        object_path(&sha).exists(),
+        "the object must be published under the protocol root"
+    );
+    assert_eq!(
+        std::fs::canonicalize(outcome.archived.filesystem_path()).unwrap(),
+        std::fs::canonicalize(object_path(&sha)).unwrap(),
+        "the handle names the object under the protocol root"
+    );
+    let stored = league.stored_replay_paths();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0], format!("{}/{sha}.json", &sha[..2]));
+    assert!(!Path::new(&stored[0]).is_absolute());
+
+    // A league with no identity evidence cannot open a completion session, so a
+    // producer cannot reach the ledger by opening a connection itself.
+    let empty = sandbox().join("no-identity-evidence");
+    std::fs::create_dir_all(&empty).unwrap();
+    let error = open_completion_league(
+        &empty.join("league.sqlite3"),
+        &empty.join("identity.json"),
+        1_700_000_000,
+    )
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("identity manifest does not exist"),
+        "the session gate must be unskippable, got: {error}"
+    );
+}
+
+/// Gate B: the same occurrence with the same evidence is a no-op.
+#[test]
+fn the_same_occurrence_with_the_same_evidence_is_idempotent() {
+    let league = League::new("evidence-same");
+    let fixture = Fixture::new("occ-evidence-same", 1_800_000_700, 31);
+    let sha = fixture.replay_sha();
 
     let first = league.complete(&fixture).unwrap();
-    assert!(first.was_inserted(), "first completion inserts");
+    assert!(first.was_inserted());
     assert_eq!(first.rating_events(), 2);
-    assert!(first.receipt.rating_ineligible_reason.is_none());
 
     let second = league.complete(&fixture).unwrap();
-    assert!(!second.was_inserted(), "second completion is idempotent");
+    assert!(!second.was_inserted(), "identical evidence is idempotent");
     assert_eq!(second.rating_events(), 0);
     assert_eq!(first.match_id(), second.match_id());
-
+    assert_eq!(
+        first.record.source_document_hash, second.record.source_document_hash,
+        "the evidence hash is deterministic"
+    );
     assert_eq!(league.match_count(), 1);
     assert_eq!(league.event_count(), 2, "rating events are not duplicated");
-    assert_eq!(league.archive_objects().len(), 1, "one archive object");
+    assert_eq!(second.archived.outcome().as_str(), "already_present");
+
+    // The idempotency evidence is the whole occurrence envelope, and the shared
+    // computation is the one the record carries.
+    assert_eq!(
+        runtime_occurrence_evidence_hash(&fixture.occurrence),
+        first.record.source_document_hash
+    );
+    assert_ne!(
+        first.record.source_document_hash,
+        sha256(&fixture.report),
+        "a runtime source cannot key idempotency on the arena report bytes alone"
+    );
+    assert_ne!(first.record.source_document_hash, sha);
 }
 
-/// Gate 2b: concurrent producers of the same occurrence still record one match.
+/// Gate C: the same occurrence id carrying different evidence is a conflict.
+#[test]
+fn the_same_occurrence_with_changed_evidence_is_a_conflict() {
+    let league = League::new("evidence-changed");
+    let base = Fixture::new("occ-evidence-changed", 1_800_000_800, 37);
+    assert!(league.complete(&base).unwrap().was_inserted());
+
+    // (i) same occurrence id, same report, same replay, but a different
+    //     configuration document — still a complete, self-consistent occurrence,
+    //     so only the evidence hash can reject it.
+    let mut config: serde_json::Value = serde_json::from_slice(&base.config).unwrap();
+    config["agents"][1]["args"][5] = serde_json::json!("7");
+    let changed_config = Fixture::from_documents(
+        "occ-evidence-changed",
+        1_800_000_800,
+        base.report.clone(),
+        base.replay.clone(),
+        serde_json::to_vec(&config).unwrap(),
+    );
+    let error = league.complete(&changed_config).unwrap_err();
+    assert!(
+        matches!(error, StudioLeagueError::SourceConflict { .. }),
+        "changed configuration evidence must conflict, got: {error}"
+    );
+
+    // (ii) same occurrence id and same `completed_at`, but genuinely different
+    //      documents (a different match).
+    let changed_match = Fixture::new("occ-evidence-changed", 1_800_000_800, 43);
+    let error = league.complete(&changed_match).unwrap_err();
+    assert!(
+        matches!(error, StudioLeagueError::SourceConflict { .. }),
+        "changed occurrence evidence must conflict, got: {error}"
+    );
+
+    assert_eq!(league.match_count(), 1, "no new match row");
+    assert_eq!(league.event_count(), 2, "no new rating event");
+    // The recorded match still names its own object, and the conflicting
+    // occurrence's replay is at most an orphan immutable object.
+    assert_eq!(
+        league.stored_replay_paths(),
+        vec![format!(
+            "{}/{}.json",
+            &base.replay_sha()[..2],
+            base.replay_sha()
+        )]
+    );
+    assert!(object_path(&changed_match.replay_sha()).exists());
+}
+
+/// Gate 2b: concurrent producers of the same occurrence record one match.
 #[test]
 fn concurrent_producers_of_one_occurrence_record_exactly_one_match() {
     const PRODUCERS: usize = 8;
     let league = League::new("concurrent");
     let fixture = Fixture::new("occ-concurrent", 1_800_000_100, 11);
-    let expected_sha = sha256(&fixture.replay);
+    let sha = fixture.replay_sha();
 
-    let handles: Vec<_> = (0..PRODUCERS)
-        .map(|_| {
-            let db_path = league.db_path.clone();
-            let identity_path = league.identity_path.clone();
-            let archive_root = league.archive_root.clone();
-            let report = fixture.report.clone();
-            let replay = fixture.replay.clone();
-            let config = fixture.config.clone();
-            let occurrence_id = fixture.occurrence.occurrence_id.clone();
-            let completed_at = fixture.occurrence.completed_at;
-            std::thread::spawn(move || {
-                let fixture = Fixture {
-                    occurrence: RuntimeOccurrenceV1 {
-                        format: RUNTIME_OCCURRENCE_FORMAT.to_string(),
-                        version: 1,
-                        occurrence_id,
-                        completed_at,
-                        report_sha256: sha256(&report),
-                        replay_sha256: sha256(&replay),
-                        config_sha256: sha256(&config),
-                    },
-                    report,
-                    replay,
-                    config,
-                };
-                let mut conn =
-                    open_completion_league(&db_path, &identity_path, 1_700_000_000).unwrap();
-                complete_runtime_occurrence(
-                    &mut conn,
-                    &archive_root,
-                    &fixture.request("replay.json"),
-                )
-            })
-        })
-        .collect();
+    let db_path: &Path = &league.db_path;
+    let identity_path: &Path = &league.identity_path;
+    let fixture_ref = &fixture;
+    let outcomes: Vec<splendor_studio_league::Result<CompletionOutcomeV1>> =
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..PRODUCERS)
+                .map(|_| {
+                    scope.spawn(move || {
+                        let mut session =
+                            open_completion_league(db_path, identity_path, 1_700_000_000)?;
+                        complete_runtime_occurrence(
+                            &mut session,
+                            &fixture_ref.request("replay.json"),
+                        )
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|handle| handle.join().expect("producer thread"))
+                .collect()
+        });
 
     let mut match_ids = Vec::new();
     let mut inserted = 0;
-    for handle in handles {
-        let outcome = handle.join().expect("producer thread").expect("completion");
+    for outcome in outcomes {
+        let outcome = outcome.expect("completion");
         assert!(outcome.rating_events() <= 2, "no double-rated events");
         if outcome.was_inserted() {
             inserted += 1;
@@ -314,16 +441,15 @@ fn concurrent_producers_of_one_occurrence_record_exactly_one_match() {
     );
     assert_eq!(league.match_count(), 1);
     assert_eq!(league.event_count(), 2);
-    let objects = league.archive_objects();
-    assert_eq!(objects.len(), 1, "exactly one archive object");
     assert_eq!(
-        objects[0].file_name().unwrap().to_str().unwrap(),
-        format!("{expected_sha}.json")
+        object_path(&sha),
+        archive_root().join(&sha[..2]).join(format!("{sha}.json"))
     );
+    assert!(object_path(&sha).exists());
+    assert_eq!(league.stored_replay_paths().len(), 1);
 }
 
-/// Gate 3a: a replay that fails strict verification writes neither a match row
-/// nor an archive object.
+/// Gate 3a: a replay that fails strict verification writes nothing.
 #[test]
 fn a_replay_that_fails_verification_leaves_no_ledger_row_and_no_object() {
     let league = League::new("verify-failure");
@@ -346,36 +472,50 @@ fn a_replay_that_fails_verification_leaves_no_ledger_row_and_no_object() {
     assert!(!error.to_string().is_empty());
     assert_eq!(league.match_count(), 0, "no ledger row");
     assert_eq!(league.event_count(), 0);
-    assert!(league.archive_objects().is_empty(), "no archive object");
+    assert!(
+        !object_path(&tampered.replay_sha()).exists(),
+        "no archive object for a replay that never verified"
+    );
 }
 
-/// Gate 3b: an archive root that cannot be created writes no ledger row.
+/// Gate 3b: an archive that cannot be published writes no ledger row, and never
+/// overwrites the immutable object that is already there.
 #[test]
-fn an_unusable_archive_root_leaves_no_ledger_row() {
+fn an_unpublishable_archive_leaves_no_ledger_row_and_no_overwrite() {
     let league = League::new("archive-failure");
     let fixture = Fixture::new("occ-archive-failure", 1_800_000_300, 17);
+    let target = object_path(&fixture.replay_sha());
 
-    // A *file* where the archive root must be a directory.
-    std::fs::write(&league.archive_root, b"not a directory").unwrap();
+    // Occupy the content address with different bytes: this is the corruption
+    // case the archive must fail closed on.
+    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+    let squatter = b"not the replay that belongs at this address";
+    std::fs::write(&target, squatter).unwrap();
 
     let error = league.complete(&fixture).unwrap_err();
-    assert!(!error.to_string().is_empty());
+    assert!(
+        error.to_string().contains("refusing to overwrite"),
+        "the archive must fail closed on a collision, got: {error}"
+    );
     assert_eq!(league.match_count(), 0, "no ledger row");
     assert_eq!(league.event_count(), 0);
+    assert_eq!(
+        std::fs::read(&target).unwrap(),
+        squatter,
+        "the pre-existing object is left byte-identical"
+    );
 }
 
 /// Gate 3c + the preserved ordering contract: an out-of-order occurrence fails
 /// closed on the canonical-tail guard; the only residue is an unreferenced
-/// immutable archive object.
+/// immutable object.
 #[test]
 fn a_non_canonical_arrival_fails_closed_and_leaves_only_an_orphan_object() {
     let league = League::new("order");
     let later = Fixture::new("occ-later", 1_800_000_500, 19);
     let earlier = Fixture::new("occ-earlier", 1_800_000_400, 23);
 
-    let first = league.complete(&later).unwrap();
-    assert!(first.was_inserted());
-    let objects_after_first = league.archive_objects().len();
+    assert!(league.complete(&later).unwrap().was_inserted());
 
     let error = league.complete(&earlier).unwrap_err();
     let message = error.to_string();
@@ -388,18 +528,14 @@ fn a_non_canonical_arrival_fails_closed_and_leaves_only_an_orphan_object() {
     assert_eq!(league.event_count(), 2);
     // The object was published before the ledger write: the residue is an
     // unreferenced immutable object, never a match pointing at nothing.
+    assert!(object_path(&earlier.replay_sha()).exists());
     assert_eq!(
-        league.archive_objects().len(),
-        objects_after_first + 1,
-        "at most an orphan archive object"
+        league.stored_replay_paths(),
+        vec![format!(
+            "{}/{}.json",
+            &later.replay_sha()[..2],
+            later.replay_sha()
+        )],
+        "only the recorded match claims an object"
     );
-    let conn = league.open();
-    let referenced: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM matches WHERE replay_storage = 'archive'",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap();
-    assert_eq!(referenced, 1, "only the recorded match claims an object");
 }

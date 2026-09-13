@@ -14,7 +14,21 @@
 //! to an adapter that reads documents, calls [`complete_runtime_occurrence`],
 //! and prints the result.
 //!
-//! Fixed properties of the outlet:
+//! ## The authority is the session type, not a convention
+//!
+//! [`CompletionLeagueV1`] is **opaque**: its only constructor is
+//! [`open_completion_league`], it holds its connection privately, and it exposes
+//! no method that returns that connection. [`complete_runtime_occurrence`] takes
+//! the session, never a bare `rusqlite::Connection`, so a producer cannot open a
+//! league itself and skip the session gates — the compiler refuses.
+//!
+//! The archive root is likewise not a parameter: it is the protocol constant
+//! [`STUDIO_LEAGUE_REPLAY_DIR`]. The ledger stores only a content-relative
+//! `replay_path`, so a League must have exactly one root for those paths to
+//! resolve; letting a caller choose one would reintroduce exactly the
+//! un-locatable binding Commit C Slice 2 Repair 1 closed.
+//!
+//! ## Fixed properties
 //!
 //! * **Verification is never optional.** The replay is strictly parsed, fully
 //!   verified, and reconciled against the report before anything is written.
@@ -28,7 +42,7 @@
 //!   a rebuild.
 //! * **Occurrence authority is unchanged.** Identity and ordering still come
 //!   from the durable occurrence envelope (`runtime:<occurrence_id>`,
-//!   `completed_at`), exactly as in Commit C Slice 1.
+//!   `completed_at`).
 
 use crate::error::{Result, StudioLeagueError};
 use crate::historical_import::{bind_archived_replay, runtime_match_record, RuntimeOccurrenceV1};
@@ -40,6 +54,7 @@ use crate::match_record::StudioMatchRecordV1;
 use crate::participant::sync_identity_manifest;
 use crate::replay_archive::{archive_replay, ArchivedReplayV1};
 use crate::schema::open_league;
+use crate::STUDIO_LEAGUE_REPLAY_DIR;
 use rusqlite::Connection;
 use std::path::Path;
 use std::time::Duration;
@@ -62,6 +77,46 @@ pub struct CompletionRequestV1<'a> {
     /// the record is built (and in diagnostics); the ledger ends up pointing at
     /// the archive object.
     pub replay_source_path: &'a str,
+}
+
+/// An opened League that has passed the completion authority seams.
+///
+/// Deliberately opaque: private connection, one constructor, no accessors. The
+/// only thing a caller can do with one is offer it an occurrence.
+#[derive(Debug)]
+pub struct CompletionLeagueV1 {
+    conn: Connection,
+}
+
+/// Open the league through the completion authority seams.
+///
+/// Schema version, protocol rating config, and the durable identity manifest
+/// are all enforced here, so every completion runs against a league that passed
+/// the same gates. The manifest must already exist (created by
+/// `studio-league-migrate`); a missing manifest is an error, never a fresh
+/// identity.
+pub fn open_completion_league(
+    db_path: &Path,
+    identity_manifest_path: &Path,
+    now: i64,
+) -> Result<CompletionLeagueV1> {
+    let mut conn = open_league(db_path)?;
+    conn.busy_timeout(COMPLETION_BUSY_TIMEOUT)?;
+    ensure_rating_config(&conn)?;
+    let manifest = match IdentityManifestV1::load_or_recover(identity_manifest_path)? {
+        Some(manifest) => manifest,
+        None => return Err(StudioLeagueError::Invalid(
+            "identity manifest does not exist; initialize it with `studio-league-migrate` first"
+                .to_string(),
+        )),
+    };
+    manifest.validate()?;
+    // The manifest sync reads and then writes, so it runs IMMEDIATE to serialize
+    // with other producers rather than racing on a lock upgrade.
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    sync_identity_manifest(&tx, &manifest, now)?;
+    tx.commit()?;
+    Ok(CompletionLeagueV1 { conn })
 }
 
 /// What the league did with one occurrence.
@@ -93,51 +148,21 @@ impl CompletionOutcomeV1 {
     }
 }
 
-/// Open the league through the completion authority seams.
-///
-/// Schema version, protocol rating config, and the durable identity manifest
-/// are all enforced here, so every completion runs against a league that passed
-/// the same gates — a caller cannot complete an occurrence into a database that
-/// skipped one. The manifest must already exist (created by
-/// `studio-league-migrate`); a missing manifest is an error, never a fresh
-/// identity.
-pub fn open_completion_league(
-    db_path: &Path,
-    identity_manifest_path: &Path,
-    now: i64,
-) -> Result<Connection> {
-    let mut conn = open_league(db_path)?;
-    conn.busy_timeout(COMPLETION_BUSY_TIMEOUT)?;
-    ensure_rating_config(&conn)?;
-    let manifest = match IdentityManifestV1::load_or_recover(identity_manifest_path)? {
-        Some(manifest) => manifest,
-        None => return Err(StudioLeagueError::Invalid(
-            "identity manifest does not exist; initialize it with `studio-league-migrate` first"
-                .to_string(),
-        )),
-    };
-    manifest.validate()?;
-    // Same reasoning as the ingest transaction: the manifest sync reads and
-    // then writes, so it runs IMMEDIATE to serialize with other producers
-    // rather than racing on a lock upgrade.
-    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-    sync_identity_manifest(&tx, &manifest, now)?;
-    tx.commit()?;
-    Ok(conn)
-}
-
 /// Complete one runtime occurrence: verify, archive, bind, ingest, receipt.
 ///
 /// This is the single authority for turning a finished occurrence into ledger
 /// state. It is safe to call concurrently for the same occurrence: the archive
 /// publish is content-addressed and the ledger entry is keyed by
-/// `(source_kind, source_identity)`, so at most one match row, one archive
-/// object, and one set of rating events result.
+/// `(source_kind, source_identity)` with the occurrence's full evidence hash as
+/// its collision evidence, so at most one match row, one archive object, and one
+/// set of rating events result — and the same occurrence id carrying *different*
+/// evidence is a conflict, not a silent no-op.
 pub fn complete_runtime_occurrence(
-    conn: &mut Connection,
-    archive_root: &Path,
+    league: &mut CompletionLeagueV1,
     request: &CompletionRequestV1<'_>,
 ) -> Result<CompletionOutcomeV1> {
+    let conn = &mut league.conn;
+
     // 1. Strict parse, full replay verification, report/replay fact agreement,
     //    and exact configuration evidence. A failure here writes nothing.
     let record = runtime_match_record(
@@ -149,7 +174,7 @@ pub fn complete_runtime_occurrence(
     )?;
 
     // 2. The archive key is exactly the verified replay document hash the
-    //    record already carries.
+    //    record already carries, under the protocol root. No caller chooses it.
     let replay_sha = record
         .replay
         .document_hash
@@ -165,7 +190,11 @@ pub fn complete_runtime_occurrence(
 
     // 3. Publish the immutable object, then bind the record to it. Both happen
     //    before the ledger write, so a failure in either leaves no match row.
-    let archived = archive_replay(archive_root, &replay_sha, request.replay_bytes)?;
+    let archived = archive_replay(
+        Path::new(STUDIO_LEAGUE_REPLAY_DIR),
+        &replay_sha,
+        request.replay_bytes,
+    )?;
     let record = bind_archived_replay(record, &archived)?;
 
     // 4. The single ledger entry point. The canonical-tail guard lives inside

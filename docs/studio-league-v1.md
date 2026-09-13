@@ -1389,6 +1389,9 @@ migration was re-run. There are no cloud status checks for this commit and no CI
 - **`archive_root` is still a parameter of the outlet.** Production passes the protocol constant
   `STUDIO_LEAGUE_REPLAY_DIR` and the CLI exposes no flag for it, but a library caller could pass a
   different root. The same residual was accepted for `archive_replay` in Commit C Slice 2.
+  **Superseded by Commit C Slice 3 Repair 1 (below):** the outlet no longer accepts an
+  `archive_root` at all, and `complete_runtime_occurrence` no longer accepts a raw
+  `rusqlite::Connection`; the session type is the authority. See that section.
 - **An ingest failure can leave an orphan archive object.** This is the deliberate
   object-before-row trade-off, now visible as a test assertion rather than a comment.
 - The equivalence gate compares *this* fixture end to end. It is a strong adapter gate, not a
@@ -1404,3 +1407,136 @@ separate completion step; that decision is deliberately deferred.
 **Superseded next-step text** (kept for the record): the earlier version of this section said
 Slice 3 was authorized but not started, and that the archive concurrency prerequisite had to be
 closed first.
+
+---
+
+## Commit C Slice 3 Repair 1 — the outlet owns its authority (2026-09-13)
+
+Status: **IMPLEMENTED + locally VERIFIED**, awaiting owner review. Baseline `ff9ad91`.
+Owner review of `ff9ad91` = **REPAIR_REQUIRED (P0=0 / P1=2 / P2=0)**. Both findings are authority
+seams that a previous round had already closed once, and that this slice reopened by moving the
+chain into public API.
+
+### P1-1: the central outlet did not own its authority
+
+`open_completion_league` returned a bare `rusqlite::Connection`, and
+`complete_runtime_occurrence` accepted a `&mut Connection` **plus** an `archive_root: &Path`. A
+future producer could therefore (a) pass an arbitrary archive root — reintroducing exactly the
+un-locatable binding Commit C Slice 2 Repair 1 closed, since the ledger stores only a
+content-relative `replay_path` — or (b) call `open_league` itself and hand the raw connection to
+the outlet, skipping the manifest, rating-config, and schema session gates this slice had just
+extracted. The module comment claimed a second producer could not take a shortcut; the signatures
+allowed two.
+
+Fix — the authority is now the type, not a convention:
+
+```rust
+pub struct CompletionLeagueV1 { conn: Connection }   // private field, one constructor, no accessor
+pub fn open_completion_league(db_path, identity_manifest_path, now) -> Result<CompletionLeagueV1>
+pub fn complete_runtime_occurrence(
+    league: &mut CompletionLeagueV1,
+    request: &CompletionRequestV1<'_>,
+) -> Result<CompletionOutcomeV1>
+```
+
+`CompletionLeagueV1` has no method that yields its connection, so a caller cannot obtain one and
+hand it to the outlet; the archive root is the protocol constant `STUDIO_LEAGUE_REPLAY_DIR` bound
+inside the outlet, and no public function accepts a root at all. The CLI still rejects
+`--archive-root` (`unexpected argument`, exit 2).
+
+Honest scoping of gate A: the "the session cannot be constructed any other way" half is a
+**compile-time** property and cannot be asserted at runtime. What the gate asserts is the two
+consequences an integrator would actually hit: an occurrence completed through the outlet lands
+under the protocol root with a content-relative ledger path that resolves there
+(`the_completion_authority_cannot_be_bypassed`), and a league with no identity evidence refuses to
+open a session. The negative control for the API half is a compile error, not a failing assertion.
+
+Tests keep temporary archive roots without reopening the production seam:
+`tests/completion_outlet.rs` now sandboxes the **process working directory** once — it is its own
+test binary, so the process-wide cwd change cannot race another binary — and addresses objects by
+content address instead of counting files, since all of its tests now share one protocol root.
+
+### P1-2: idempotency evidence did not cover the occurrence
+
+`runtime_match_record` set `source_document_hash` to `SHA256(arena-report bytes)`, while the ledger
+decides idempotency on `(source_kind, source_identity, source_document_hash)`. A runtime
+occurrence's durable authority is the whole envelope — `occurrence_id`, `completed_at`,
+`report_sha256`, `replay_sha256`, `config_sha256`. So the same `occurrence_id` with a changed
+replay, configuration, or `completed_at`, where the new triple still verified on its own, produced:
+
+```text
+build a new candidate record -> (maybe) archive a new object -> ingest_match returns AlreadyPresent
+-> CompletionOutcomeV1 { record: <the candidate>, archived: <this object>, receipt: <the old row's> }
+```
+
+The outcome then described a replay binding that was never written into the ledger, and the CLI
+printed it. Worse, the rebuild path treats two envelopes sharing one `occurrence_id` as two
+distinct pieces of evidence, so live ingest could disagree with a rebuild of the same corpus — a
+live/rebuild inconsistency of exactly the kind Slice 1 Repair 2/3 closed.
+
+Fix — the idempotency evidence, not the return value.
+`runtime_occurrence_evidence_hash()` covers `format`, `version`, `occurrence_id`, `completed_at`,
+`report_sha256`, `replay_sha256`, `config_sha256`, under a domain separator and with every field
+length-prefixed in a fixed order, so shifting bytes between fields cannot collide and a future
+envelope format cannot reproduce an earlier format's hash. `OccurrenceIdentityV1::Runtime` now
+carries it, and `build_match_record_with_configuration` keys `source_document_hash` on it for
+runtime sources while historical sources keep the arena-report SHA-256 — the Distinct-Document
+policy and the historical digests are untouched. Live ingest and the corpus rebuild both build
+runtime records through `runtime_match_record`, so both use the one computation by construction.
+
+The consequence:
+
+```text
+same occurrence + same complete evidence      -> AlreadyPresent
+same occurrence + changed replay/config/time  -> SourceConflict, no new match, no new rating event
+```
+
+### Validation and evidence
+
+| Gate | Where | What it proves |
+|---|---|---|
+| A | `completion_outlet::the_completion_authority_cannot_be_bypassed` | the protocol root is fixed and actually used; a league with no identity evidence cannot open a session |
+| B | `completion_outlet::the_same_occurrence_with_the_same_evidence_is_idempotent` | identical evidence is a no-op; the record's evidence hash equals `runtime_occurrence_evidence_hash` and differs from both the report SHA and the replay SHA |
+| C | `completion_outlet::the_same_occurrence_with_changed_evidence_is_a_conflict` | changed configuration evidence, and changed documents, both give `SourceConflict` with no new match row and no new rating event |
+| 2b | `completion_outlet::concurrent_producers_of_one_occurrence_record_exactly_one_match` | 8 concurrent sessions on one database → one match, one object, one rating-event pair |
+| 3a/3b/3c | `completion_outlet::{a_replay_that_fails_verification…, an_unpublishable_archive…, a_non_canonical_arrival…}` | no ledger row; a colliding object is never overwritten; ordering still fails closed with only an orphan object |
+| builder agreement | `runtime_ingest::rebuild_from_occurrence_evidence_reproduces_the_live_ingest` | the corpus-built and live-built records for one envelope carry the same evidence hash |
+| CLI equivalence | `splendor-cli/tests/completion_equivalence.rs` | the thin adapter and a direct outlet call still produce identical ledger snapshots, both archiving under the protocol root |
+
+**Negative control.** Reverting only the line that keys the hash — making
+`OccurrenceIdentityV1::source_document_hash` return the report document hash again — fails
+**three** gates: B (the `assert_ne!(evidence, report sha)` assertion), C (variant (i) returns
+`AlreadyPresent` instead of `SourceConflict`), and the `runtime_ingest` builder-agreement assertion.
+The gates are not vacuous.
+
+Results (local evidence): `splendor-studio-league` **80/80** (lib 14 + `archive_protocol_root` 1 +
+`completion_outlet` 7 + `historical_resolver` 3 + `league_core` 29 + `policy_identity` 5 +
+`replay_archive` 10 + `replay_index` 4 + `runtime_ingest` 7); the whole `splendor-cli` suite passes
+(43 test binaries, `--bin splendor` 89/89, `completion_equivalence` 1/1); the completion outlet
+binary ran 6 consecutive times with no flake. `git diff --check` clean; `rustfmt` was applied to the
+touched files only, and it reported no diff in the large untouched files
+(`historical_import.rs`, `match_record.rs`, `runtime_ingest.rs`, `studio_league_command.rs`). No 42k
+migration was re-run. There are no cloud status checks for this commit and no CI is claimed.
+
+### Result and decision
+
+`IMPLEMENTED` / locally `VERIFIED`. Not `ACCEPTED`: the owner's review of this repair is the gate.
+
+### Known limitations
+
+- Gate A's "the session cannot be constructed another way" half is a compile-time property; only its
+  runtime consequences are asserted.
+- `CompletionLeagueV1` derives `Debug` (so `Result::unwrap_err` and error contexts work for
+  callers). It reveals the database path, which the caller supplied anyway.
+- The object-before-row trade-off is unchanged: a rejected occurrence can still leave an
+  unreferenced immutable archive object (asserted in gate C and gate 3c).
+- The runtime evidence hash is a *new* value in `source_document_hash` for runtime records. No
+  accepted artifact contains runtime records (the official `league.sqlite3` holds 42,521 historical
+  matches and no runtime matches), so no locked digest changes; a future corpus with runtime
+  occurrences will produce a different canonical-set digest, as it must, because the record set
+  differs.
+
+### Next authorized gate
+
+Owner review of this repair. Arena wiring, the Studio Host APIs, and any UI remain **not
+authorized**.

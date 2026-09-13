@@ -290,6 +290,7 @@ pub fn runtime_match_record(
         ConfigAssociationV1::Bound(&config),
         &OccurrenceIdentityV1::Runtime {
             occurrence_id: occurrence.occurrence_id.clone(),
+            evidence_hash: runtime_occurrence_evidence_hash(occurrence),
         },
         Some(occurrence.completed_at),
     )
@@ -341,10 +342,20 @@ pub fn bind_archived_replay(
 /// Two genuinely played matches are two occurrences even when deterministic
 /// execution produced byte-identical documents: **content equality is not
 /// occurrence equality**.
+///
+/// Identity and idempotency evidence are two facets of the same occurrence, so
+/// they travel together: [`Self::source_identity`] is the key and
+/// [`Self::source_document_hash`] is the evidence the ledger compares under that
+/// key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OccurrenceIdentityV1 {
     Historical,
-    Runtime { occurrence_id: String },
+    Runtime {
+        occurrence_id: String,
+        /// SHA-256 over the **complete** durable occurrence evidence
+        /// ([`runtime_occurrence_evidence_hash`]).
+        evidence_hash: String,
+    },
 }
 
 impl OccurrenceIdentityV1 {
@@ -353,11 +364,68 @@ impl OccurrenceIdentityV1 {
             OccurrenceIdentityV1::Historical => {
                 format!("historical-sha256:{report_document_hash}")
             }
-            OccurrenceIdentityV1::Runtime { occurrence_id } => {
+            OccurrenceIdentityV1::Runtime { occurrence_id, .. } => {
                 format!("runtime:{occurrence_id}")
             }
         }
     }
+
+    /// The `source_document_hash` the ledger keys idempotency on.
+    ///
+    /// A historical document carries no occurrence evidence beyond its own
+    /// bytes, so its evidence hash is the report document SHA-256: the
+    /// Distinct-Document policy is unchanged. A runtime occurrence *does* carry
+    /// durable evidence, so its hash has to cover **all** of it. Hashing only
+    /// the arena report (as this did before Commit C Slice 3 Repair 1) meant
+    /// that the same `occurrence_id` with a changed replay, configuration, or
+    /// `completed_at` still compared equal to the recorded row and was swallowed
+    /// as `AlreadyPresent`: live ingest would then disagree with a rebuild of
+    /// the same corpus, which sees two different pieces of evidence for one
+    /// occurrence.
+    pub fn source_document_hash(&self, report_document_hash: &str) -> String {
+        match self {
+            OccurrenceIdentityV1::Historical => report_document_hash.to_string(),
+            OccurrenceIdentityV1::Runtime { evidence_hash, .. } => evidence_hash.clone(),
+        }
+    }
+}
+
+/// Domain separator for [`runtime_occurrence_evidence_hash`], so an occurrence
+/// evidence hash can never be mistaken for a plain document SHA-256.
+const RUNTIME_OCCURRENCE_EVIDENCE_DOMAIN: &[u8] =
+    b"effective-splendor-runtime-occurrence-evidence-v1";
+
+/// The stable hash of a runtime occurrence's **complete** durable evidence.
+///
+/// This is the single computation shared by live ingest and by the corpus
+/// rebuild (`build_historical_corpus` builds runtime records through
+/// [`runtime_match_record`] as well), so the two paths can never disagree about
+/// whether two pieces of occurrence evidence are the same evidence.
+///
+/// The envelope fields are hashed in a fixed order and every field is
+/// length-prefixed, so shifting bytes between fields cannot collide. `format`
+/// and `version` are covered too, so a future envelope format cannot reproduce
+/// an earlier format's evidence hash.
+pub fn runtime_occurrence_evidence_hash(occurrence: &RuntimeOccurrenceV1) -> String {
+    let version = occurrence.version.to_string();
+    let completed_at = occurrence.completed_at.to_string();
+    let fields = [
+        occurrence.format.as_str(),
+        version.as_str(),
+        occurrence.occurrence_id.as_str(),
+        completed_at.as_str(),
+        occurrence.report_sha256.as_str(),
+        occurrence.replay_sha256.as_str(),
+        occurrence.config_sha256.as_str(),
+    ];
+    let mut hasher = Sha256::new();
+    hasher.update(RUNTIME_OCCURRENCE_EVIDENCE_DOMAIN);
+    hasher.update([0u8]);
+    for field in fields {
+        hasher.update((field.len() as u64).to_be_bytes());
+        hasher.update(field.as_bytes());
+    }
+    hex::encode(hasher.finalize())
 }
 
 /// Format tag of the durable runtime occurrence envelope.
@@ -581,8 +649,12 @@ pub fn build_match_record_with_configuration(
         HistoricalReplayResolutionV1::ResultOnly => ReplayBindingV1::default(),
     };
 
-    let source_document_hash = hex::encode(Sha256::digest(report_bytes));
-    let source_identity = identity.source_identity(&source_document_hash);
+    let report_document_hash = hex::encode(Sha256::digest(report_bytes));
+    // Historical sources key idempotency on the report bytes; runtime sources
+    // key it on the whole occurrence evidence (see
+    // [`OccurrenceIdentityV1::source_document_hash`]).
+    let source_document_hash = identity.source_document_hash(&report_document_hash);
+    let source_identity = identity.source_identity(&report_document_hash);
 
     let record = StudioMatchRecordV1 {
         source_kind: "arena_report".to_string(),

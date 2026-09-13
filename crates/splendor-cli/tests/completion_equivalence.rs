@@ -243,11 +243,23 @@ fn the_cli_adapter_and_a_direct_outlet_call_agree() {
         config_bytes: &config,
         replay_source_path: "replay.json",
     };
-    let mut conn = open_completion_league(&direct_db, &identity_path, completed_at).unwrap();
-    let direct =
-        complete_runtime_occurrence(&mut conn, &root.join(STUDIO_LEAGUE_REPLAY_DIR), &request)
-            .unwrap();
+    // The outlet resolves its archive root from the process working directory,
+    // so the library path runs from the same sandbox the CLI child ran in.
+    std::env::set_current_dir(&root).expect("enter the sandbox");
+    let mut session = open_completion_league(&direct_db, &identity_path, completed_at).unwrap();
+    let direct = complete_runtime_occurrence(&mut session, &request).unwrap();
     assert!(direct.was_inserted(), "the direct path inserts");
+
+    // Neither path was told where to archive; both landed under the protocol root.
+    let replay_sha = sha256(&replay);
+    let archived_object = root
+        .join(STUDIO_LEAGUE_REPLAY_DIR)
+        .join(&replay_sha[..2])
+        .join(format!("{replay_sha}.json"));
+    assert!(
+        archived_object.exists(),
+        "the object lives under the protocol root"
+    );
 
     let cli = snapshot(&cli_db);
     let library = snapshot(&direct_db);

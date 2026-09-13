@@ -185,9 +185,17 @@ pub struct StudioMatchRecordV1 {
     /// Stable within `source_kind`; together they form the ingest key.
     pub source_identity: String,
     pub source_path: Option<String>,
-    /// SHA-256 of the source document itself. Idempotency compares this, so a
-    /// changed document under an unchanged key is a conflict, never a silent
+    /// SHA-256 of the source's own content evidence. Idempotency compares this,
+    /// so changed evidence under an unchanged key is a conflict, never a silent
     /// no-op (P1 of the Commit A review).
+    ///
+    /// What "the source's own content" means depends on what the source can
+    /// prove. A historical corpus document is identified by its bytes alone, so
+    /// this is the arena report's SHA-256. A runtime occurrence carries a
+    /// durable [`crate::RuntimeOccurrenceV1`] envelope, so this is the SHA-256
+    /// over the whole occurrence evidence
+    /// ([`crate::runtime_occurrence_evidence_hash`]) and not merely the report
+    /// bytes (Commit C Slice 3 Repair 1, P1-2).
     ///
     /// **Required**: `None == None` would let two different hashless documents
     /// share one key and be swallowed as `AlreadyPresent`, so every ingestable
