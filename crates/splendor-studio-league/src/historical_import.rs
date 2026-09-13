@@ -320,6 +320,11 @@ pub fn bind_archived_replay(
             "only a verified replay binding may point at the archive".to_string(),
         ));
     }
+    // The handle only proves the object existed when it was created. Re-validate
+    // that it is still present and still matches its content address right
+    // before the ledger records `archive`, so a row can never claim an archive
+    // object that has since been deleted or overwritten.
+    archived.verify_present()?;
     record.replay.storage = Some(ReplayStorage::Archive);
     record.replay.path = Some(archived.logical_path().to_string());
     Ok(record)

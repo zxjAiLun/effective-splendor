@@ -958,9 +958,10 @@ pools and is not accepted as a strength baseline. The panic-hardening round that
 replay/import production path (strict parsing, `Result` propagation, and explicit guards already
 fail closed); the few internally guarded `unwrap/expect` sites were deliberately left as-is.
 Commit C Slice 2 (content-addressed replay archive) is `IMPLEMENTED` / `VERIFIED` locally and
-awaits the owner's re-review of Repair 1 (`P1-1` opaque handle, `P1-2` fixed protocol archive
-root, reader re-hash). The concurrency `P2` in that review is recorded as an open follow-up and
-must be fixed before the central completion outlet is built. Commit C Slice 1 (runtime ingestion
+awaits the owner's re-review of Repair 2, the bind-time revalidation close patch (`P1-1` opaque
+handle, `P1-2` fixed protocol archive root, reader re-hash, and now `verify_present()` before the
+ledger records `archive`). The concurrency `P2` from the earlier review remains open and must be
+fixed before the central completion outlet is built. Commit C Slice 1 (runtime ingestion
 of one fresh occurrence) is **CLOSED** @ `1011607`
 (`ACCEPTED`, P0=0 / P1=0 / P2=0): fresh occurrence evidence -> durable occurrence identity/order ->
 strict report/replay/config verification -> exact policy attribution -> existing eligibility/Elo ->
@@ -1145,6 +1146,45 @@ Targeted gates:
   artifacts were removed afterwards.
 
 Baseline: `splendor-studio-league` **70/70**; `splendor-cli` bin **89/89**; `cargo fmt --check`
+clean; `git diff --check` clean. No 42k migration was re-run.
+
+### Commit C Slice 2 Repair 2 / close patch — bind-time revalidation (2026-09-13)
+
+The owner's review of `f579b2a` closed the previous P1-2 (the CLI no longer accepts an archive
+root; the reader re-hashes) and confirmed the opaque handle stops a caller fabricating a handle,
+but returned **`REPAIR_REQUIRED` (P0=0 / P1=1 / P2=1)** on one remaining seam:
+
+1. **P1 — an opaque handle only proves the object existed when it was created, not when it is
+   bound.** `bind_archived_replay` checked the hash match and `Verified` and then wrote
+   `storage = archive` / `path`, without re-reading the object. A caller that obtained a valid
+   handle could delete or overwrite `archived.filesystem_path()` and then bind successfully, so
+   the ledger could still record `archive` + `verified` + a path whose object no longer exists
+   (or no longer hashes to the recorded `document_hash`). The earlier comment ("holding a handle
+   is evidence that the object exists") was therefore too strong.
+
+Close patch (historical builder + archive module only):
+
+- `ArchivedReplayV1::verify_present()` re-reads the object at the handle's `filesystem_path` and
+  requires it to exist **and** still hash to the handle's content address, naming either failure
+  explicitly.
+- `bind_archived_replay` now does: hash-identity check -> `Verified` check -> `verify_present()`
+  -> set `Archive`/path. A ledger row can no longer claim an archive object that has since been
+  deleted or overwritten.
+- The doc comment on `ArchivedReplayV1` was corrected to say a handle proves the object existed
+  at creation and that binding must call `verify_present` first.
+
+Targeted gates (`tests/replay_archive.rs`):
+
+- `binding_a_handle_whose_object_was_deleted_fails_closed`: archive -> delete the object ->
+  `bind_archived_replay` must `Err` ("no longer readable").
+- `binding_a_handle_whose_object_was_overwritten_fails_closed`: archive -> overwrite the object
+  with corrupt bytes -> `bind_archived_replay` must `Err` ("changed after it was written").
+- Both verified to fail against the pre-patch bind (which returned `Ok`) and to pass after.
+- Real CLI smoke (M39a `baseline-M07-5000000-r0`): the happy path still archives
+  `f66a1685...b052`, records `runtime:smoke-r2-occ` with 2 Elo events, and exits 0; scratch
+  artifacts were removed afterwards.
+
+Baseline: `splendor-studio-league` **72/72**; `splendor-cli` bin **89/89**; `cargo fmt --check`
 clean; `git diff --check` clean. No 42k migration was re-run.
 
 **P2 follow-up (open, not fixed this round):** the archive temp-file name and the

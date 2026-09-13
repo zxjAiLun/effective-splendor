@@ -393,3 +393,59 @@ fn reading_a_tampered_archive_object_fails_closed() {
 
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+#[test]
+fn binding_a_handle_whose_object_was_deleted_fails_closed() {
+    // Repair 2: an opaque handle only proves the object existed when it was
+    // created. Deleting it before bind must be refused, so the ledger can never
+    // record `archive` for an object that is no longer there.
+    let tmp = tempdir("bind-deleted");
+    let docs = occurrence_documents("runtime-archive-8", 7_700_037);
+    let (report, replay, config) = &docs;
+    let occurrence = parse("occ-archive-8", 1_730_000_600, &docs);
+    let archive_root = tmp.join("replays");
+
+    let record =
+        runtime_match_record(&occurrence, report, replay, config, "x/replay.json").unwrap();
+    let replay_sha = record.replay.document_hash.clone().unwrap();
+    let archived = archive_replay(&archive_root, &replay_sha, replay).unwrap();
+
+    // The object exists at handle creation, then vanishes.
+    std::fs::remove_file(archived.filesystem_path()).unwrap();
+    assert!(!archived.filesystem_path().exists());
+
+    let error = bind_archived_replay(record, &archived).unwrap_err();
+    assert!(error.to_string().contains("no longer readable"), "{error}");
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[test]
+fn binding_a_handle_whose_object_was_overwritten_fails_closed() {
+    // The tamper variant: same path, different bytes. The content address no
+    // longer describes the object, so bind must refuse.
+    let tmp = tempdir("bind-tampered");
+    let docs = occurrence_documents("runtime-archive-9", 7_700_038);
+    let (report, replay, config) = &docs;
+    let occurrence = parse("occ-archive-9", 1_730_000_700, &docs);
+    let archive_root = tmp.join("replays");
+
+    let record =
+        runtime_match_record(&occurrence, report, replay, config, "x/replay.json").unwrap();
+    let replay_sha = record.replay.document_hash.clone().unwrap();
+    let archived = archive_replay(&archive_root, &replay_sha, replay).unwrap();
+
+    // Overwrite the object with bytes that do not hash to its address.
+    let mut corrupt = std::fs::read(archived.filesystem_path()).unwrap();
+    let last = corrupt.len() - 3;
+    corrupt[last] = if corrupt[last] == b'0' { b'1' } else { b'0' };
+    std::fs::write(archived.filesystem_path(), &corrupt).unwrap();
+
+    let error = bind_archived_replay(record, &archived).unwrap_err();
+    assert!(
+        error.to_string().contains("changed after it was written"),
+        "{error}"
+    );
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}

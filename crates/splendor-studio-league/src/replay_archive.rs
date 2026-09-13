@@ -50,9 +50,14 @@ impl ArchiveOutcome {
 ///
 /// This is an **opaque handle**: its fields are private and the only way to
 /// obtain one is [`archive_replay`], which has already published the object (or
-/// confirmed a byte-identical one is present) under the content address.
-/// Holding a handle is therefore evidence that the object exists; no caller can
-/// fabricate one and make the ledger claim an archive object that is not there.
+/// confirmed a byte-identical one is present) under the content address. No
+/// caller can fabricate a handle and make the ledger claim an archive object
+/// that was never written.
+///
+/// A handle proves the object existed **when it was created**. Because the
+/// filesystem can change afterwards, a caller that is about to record
+/// `ReplayStorage::Archive` must first call [`ArchivedReplayV1::verify_present`],
+/// which re-reads the object and re-checks it against the content address.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchivedReplayV1 {
     document_sha256: String,
@@ -81,6 +86,33 @@ impl ArchivedReplayV1 {
     /// Whether the object was newly written or already present.
     pub fn outcome(&self) -> ArchiveOutcome {
         self.outcome.clone()
+    }
+
+    /// Re-validate that the object this handle names is present **right now**
+    /// and still hashes to the handle's content address.
+    ///
+    /// Creating a handle only proves the object existed when [`archive_replay`]
+    /// returned; the filesystem can change afterwards. Any caller about to
+    /// record `ReplayStorage::Archive` on the strength of this handle must call
+    /// this first, so a ledger row can never claim an archive object that has
+    /// since been deleted or overwritten with different bytes.
+    pub fn verify_present(&self) -> Result<()> {
+        let bytes = std::fs::read(&self.filesystem_path).map_err(|error| {
+            StudioLeagueError::Invalid(format!(
+                "archived replay `{}` is no longer readable at `{}`: {error}",
+                self.document_sha256,
+                self.filesystem_path.display()
+            ))
+        })?;
+        let actual = replay_document_sha256(&bytes);
+        if actual != self.document_sha256 {
+            return Err(StudioLeagueError::Invalid(format!(
+                "archived replay at `{}` hashes to {actual}, not its content address {}; the archive object changed after it was written",
+                self.filesystem_path.display(),
+                self.document_sha256
+            )));
+        }
+        Ok(())
     }
 }
 
