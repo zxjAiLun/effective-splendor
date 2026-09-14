@@ -3320,3 +3320,204 @@ than before. `ACCEPTED` is not claimed; owner review is the gate.
 Owner review of this repair. On acceptance the owner expects **Host API Slice 1** to close, after which
 the next authorized step is the **Host Completion API / match orchestration**, then the UI. **UI remains
 not authorized.**
+
+## Commit E — Host Completion API / match orchestration, Slice 1 (2026-09-14)
+
+- **Status**: **`AUTHORIZED`** by the owner, 2026-09-14. The design below is frozen **before**
+  implementation; nothing in this section is implemented or verified yet. It will be filled in as the
+  round proceeds.
+- **Baseline**: `73090cee856701a9d25504150c7bd89493a0193a`. **Host API Slice 1 is ACCEPTED / CLOSED**
+  there (P0=0 / P1=0 / P2=1 deferred — `archived_replay_present`'s `is_file()` classification extreme,
+  to be closed later as one archive three-state, not by another predicate).
+- **Authorization**: the Host Completion API / match orchestration. **UI remains not authorized.**
+
+The owner's contract for this slice: the Host becomes an **upper orchestration adapter** over the
+already-closed producer and completion authority — it does not reimplement `complete-match`:
+
+```text
+POST /league/matches
+        ↓
+real Arena producer
+        ↓
+durable report + replay + config snapshot + RuntimeOccurrenceV1
+        ↓
+complete_runtime_occurrence()
+        ↓
+existing archive + ledger + Elo authority
+```
+
+with: (1) no hand-written ledger SQL, no direct archive, no Elo arithmetic in the Host; (2) a match
+that completed while Studio completion failed must say exactly that, never present the whole match as
+failed; (3) all four evidence documents durable *before* completion is attempted; (4) retry consumes
+the original four documents and never re-runs the match; (5) occurrence id and `completed_at` are
+minted once by the producer, never reconstructed; (6) one single-match real Arena path only — no worker
+queue, watcher, scheduler or batch; (7) no identity editing, migration, deletion or UI.
+
+### Problem and evidence
+
+Read at `73090ce`:
+
+1. **The producer and completion authority already exist and are closed** — as CLI commands.
+   `crates/splendor-cli/src/completion_wiring_command.rs` (911 lines) holds
+   `run_studio_league_complete_match` (producer + completion) and `run_studio_league_complete`
+   (completion-only retry). The chain is: read the config **once** → `parse_config_bytes` →
+   `ArenaRunner::run` → aborted? persist the report and stop → `persist_completed_evidence`
+   (config snapshot → replay + report via `commit_completed_with` → envelope last, rolling back
+   everything already written on failure) → `complete_persisted` → `open_completion_league(paths, now)`
+   + `complete_runtime_occurrence`. Exit codes: `0` completed, `3` completed-but-completion-failed,
+   `2` arena aborted, `1` config/IO/internal, `64` usage.
+2. **That authority is callable in-process, but it is not yet a callable unit.** It is fused to CLI
+   arguments (`CompleteArgs` carries the four output paths plus `json_out`), to exit codes, and to
+   `println!`. There is no function the Host can call that returns a *typed outcome*.
+3. **`StudioHost` holds the reader and the registry but not `StudioLeaguePathsV1`.** The completion
+   outlet needs `&StudioLeaguePathsV1`, and the reader keeps `replay_root`/`identity_path` private on
+   purpose, so the write route cannot borrow a location from it: the resolved bundle has to be stored
+   alongside the reader, exactly as it is resolved once at startup today.
+4. **The Host already resolves agent ids to spawn commands and never accepts a program.** The rating
+   registry carries `RatedAgentV1.command: AgentCommand` (a ready arena spawn command), `StudioHost`
+   already holds `registry: RatingRegistryV1`, and the existing `POST /games` takes an `agent_id` which
+   is validated against the registry and resolved to a command from it. **The product surface already
+   never lets a client name an executable.**
+5. **`ArenaConfig` is strict** (`deny_unknown_fields`, requires `game_id` / `seed` /
+   `handshake_timeout_ms` / `move_timeout_ms` / `shutdown_grace_ms` / 2–4 `agents`), and
+   `parse_config_bytes` is `pub(crate)` in this same crate, bounded by `MAX_ARENA_CONFIG_BYTES` (1 MiB).
+6. **The Host's HTTP layer is minimal.** `HttpRequest { method, path, body: Vec<u8> }`; `read_request`
+   honours `Content-Length` only and **caps the body at 64 KiB** (no chunked encoding); the league
+   routes use `respond_league` (200/404/503) while pre-existing routes use `respond_result`
+   (Ok → 200 / Err → 400).
+7. **The accept loop is serial**: `for connection in listener.incoming() { handle_host(stream, &mut host) }`.
+   One request is handled at a time, so a match-running POST blocks every other request until it
+   returns.
+8. **`HostArgs` has no handshake or shutdown-grace timeout** — only `--move-timeout-ms`.
+
+### Initial design
+
+**Route.** One write entry, `POST /league/matches`, additive; every existing route stays byte-identical.
+
+**Request.** `deny_unknown_fields`, so an unexpected key is a 400 rather than a silently ignored field:
+
+```json
+{ "occurrence_id": "occ-2026-09-14-a", "game_id": "studio-host-1", "seed": 9200001,
+  "seats": ["heuristic-v1", "s3-rollout"] }
+```
+
+**The Host builds the `ArenaConfig` itself** from its own registry: `seats` are registry **agent ids**,
+resolved to `AgentCommand`s exactly as `POST /games` already does, and the timeouts come from
+`HostArgs`. The client cannot supply `program`, `args`, or the timeouts. The built config is serialized
+once, and **those bytes are the bytes that are parsed, run, and persisted** — the CLI's "read once"
+invariant becomes "derive once", and `config_sha256` still attests exactly the configuration the runner
+consumed.
+
+**Evidence location.** A new accessor on `StudioLeaguePathsV1` derives
+`<root>/local-artifacts/studio-league/occurrences/<occurrence_id>/` holding `config.json`, `replay.json`,
+`report.json` and `occurrence.json`. Keeping this in `paths.rs` preserves the single-composer rule; the
+`occurrence_id` is validated as **one safe path component** before any side effect.
+
+**Retry through the same route.** Re-POSTing the same body: if a complete envelope already exists for
+that occurrence id, the match is **not** re-run and the request goes straight to completion; if the
+presented config bytes disagree with the envelope's recorded `config_sha256`, the request is refused
+without running anything. That satisfies "retry must consume the original four documents" while keeping
+exactly one write entry.
+
+**The orchestration core is extracted, not duplicated.** The chain in `completion_wiring_command.rs`
+becomes a shared function returning a typed outcome, and both callers become adapters: the CLI maps the
+outcome to its frozen exit codes, the Host maps it to HTTP. The core keeps calling
+`complete_runtime_occurrence` through `open_completion_league` — **no new authority is created.**
+
+**Status codes** (the completed / completion-failed distinction is the point):
+
+```text
+200  match completed, completion ok            body carries inserted | already_present
+409  match aborted                             a settled, non-completed occurrence; nothing booked
+503  match completed, Studio completion failed evidence intact; the request is retryable
+400  bad request                               bad JSON, unsafe occurrence id, unknown agent id, bad config
+500  internal failure                          runner/IO error
+```
+
+### Scope and non-goals
+
+**In scope**: the single `POST /league/matches` route; the extracted shared orchestration core; the
+occurrence evidence location; a `paths` bundle on `StudioHost`; three gates.
+
+**Explicitly out of scope**: worker queue, watcher, scheduler, batch orchestration; identity or alias
+editing; migration; match deletion; a separate completion-only retry route; any change to the read API;
+authentication; and the UI.
+
+### Contracts and invariants
+
+- **E1 — No new authority.** The Host never writes ledger SQL, never archives directly, never computes
+  Elo. It calls the completion outlet, exactly as the CLI does.
+- **E2 — The client names agents, never executables.** `seats` are registry agent ids. A request can
+  never introduce a `program` or `argv`. Without this, an unauthenticated POST on a 127.0.0.1-bound
+  server would be a local arbitrary-binary-execution surface, which the existing product surface
+  deliberately avoids.
+- **E3 — The occurrence id is one safe path component.** It is validated before any side effect, because
+  it becomes a directory name; anything else is a 400 with nothing written.
+- **E4 — Evidence before completion.** All four documents are durable before completion is attempted, so
+  a completion failure always leaves a retryable, complete evidence set.
+- **E5 — Two facts are reported separately.** A match that completed while completion failed is reported
+  as exactly that; it is never presented as a whole-match failure, and never as a success.
+- **E6 — Retry never re-runs the match.** A retry consumes the persisted four documents. The gate proves
+  it by bytes, not by timing.
+- **E7 — Minted once.** `occurrence_id` (from the caller, as in the CLI) and `completed_at` (minted by
+  the producer) are never reconstructed on retry; the persisted envelope is authoritative.
+- **E8 — Additive.** Existing routes stay byte-identical, and the CLI's exit codes and behaviour are
+  unchanged — the five existing wiring gates are the guard.
+
+### Decisions I want confirmed before I write code
+
+These are the contract-level choices in this slice. Each has a default I believe is right; flagging them
+because they are the kind of seam that has needed repair in this slice family.
+
+- **D1 — agent ids, not programs** (E2). Chosen because the alternative would add a remote
+  code-execution surface to an unauthenticated server; also consistent with `POST /games`. Consequence:
+  a match can only use agents already in `--registry`.
+- **D2 — evidence under `occurrences/<id>/`, id strictly validated.** Alternative would be a new CLI
+  flag or client-supplied paths; both would let a caller choose a filesystem location, which is the class
+  the project-root slice closed. Consequence: one new layout constant and one accessor in `paths.rs`.
+- **D3 — status codes as tabulated above**, in particular **409 for an aborted match** (a real, settled
+  fact, not a client error) and **503 for completed-but-completion-failed** (mirroring the read API's
+  "league unavailable"). Alternative: always 200 with the facts in the body, or 500 for both failures.
+- **D4 — retry is a re-POST of the same body**, with "a complete envelope already exists" as the
+  completion-only trigger. The alternative is a second `POST /league/occurrences/{id}/complete` route,
+  which contradicts "one write entry".
+- **D5 — extracting the shared core, touching the frozen CLI file.** `completion_wiring_command.rs` is
+  currently frozen by five gates; the extraction keeps its observable behaviour identical. If you would
+  rather the Host call the CLI's internals without refactoring, say so — I would not recommend it,
+  because that path leads to two implementations of the publish order.
+- **D6 — handshake/shutdown timeouts for the Host.** `HostArgs` has only `--move-timeout-ms`. Default is
+  to add two Host options mirroring the arena's own defaults rather than inventing new numbers; the
+  client cannot set them either way.
+
+### Acceptance gates (frozen before implementation)
+
+Three gates, as specified, each driving the real binary over a real socket with the real producer:
+
+- **G1 — a normal POST is registered.** `POST /league/matches` returns 200; the match then appears in
+  `GET /league/leaderboard` and in `GET /league/matches/{match_id}`, with exactly two rating events and
+  the replay readable at its content address from the write response's `document_sha256`.
+- **G2 — completion can fail while the match succeeded.** Completion is forced to fail; the response says
+  match completed / completion failed and is not a whole-match failure; all four evidence documents
+  exist and are byte-identical after the failure; a retry then succeeds **without re-running the match**
+  (proved by the four documents still hashing to the same bytes).
+- **G3 — re-triggering the same occurrence books nothing twice.** A third POST of the same body reports
+  `already_present`, adds no rating events, and leaves the ledger's match and event counts unchanged.
+
+### Implementation plan
+
+1. Freeze this design (this section) and mark the round in progress in `handoff.md`.
+2. Refactor: extract the orchestration core out of `completion_wiring_command.rs` into a shared function
+   with a typed outcome; make the CLI an adapter that maps the outcome to its existing exit codes. Run
+   the five existing wiring gates to prove the CLI contract is unchanged.
+3. `paths.rs`: add the occurrence evidence directory accessor plus the id-validation rule, with unit
+   tests next to the existing three.
+4. `StudioHost`: store the resolved `StudioLeaguePathsV1`; add the route, request/response types, the
+   registry-seat resolution, and the status mapping.
+5. Write G1–G3, including the negative controls (below), then the full baselines.
+6. Record validation, evidence and limitations in this document; update `handoff.md`; commit and push.
+
+**Negative controls to run and revert** (each gate must be shown to be sensitive to the fix it guards):
+ignoring the occurrence-id validation must fail the "unsafe id" case with no side effect; treating a
+completion failure as a whole-match failure must fail G2; re-running the match on retry must fail G2's
+byte-identity assertion; and skipping the "envelope already exists" check must make G3 report
+`inserted` instead of `already_present`.
