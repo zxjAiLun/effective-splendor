@@ -4,8 +4,9 @@
 Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
 Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
 D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
-Code revision: the commit carrying this document update; its hash is recorded in the local-only
-`handoff.md`, not invented here.
+Code revision: `b7a29d7` (the implementation, pushed to `origin/main`). This anchor was added in the
+one-line follow-up commit that immediately follows it, because a commit cannot contain its own hash;
+the document describes revision `b7a29d7`, not the commit it is read from.
 Owner direction (2026-09-15): stop widening the backend; make a lean vertical slice a player can
 actually walk — open Studio → see the league → pick two registered agents → start one match → see
 the result on the same page → open that match's replay. Statistics and the Review repair backlog
