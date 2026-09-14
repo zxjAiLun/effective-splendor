@@ -22,8 +22,9 @@
 //! the session, never a bare `rusqlite::Connection`, so a producer cannot open a
 //! league itself and skip the session gates — the compiler refuses.
 //!
-//! The archive root is likewise not a parameter: it is the protocol constant
-//! [`StudioLeaguePathsV1`]. The ledger stores only a content-relative
+//! The archive root is likewise not a parameter: it is captured from the
+//! resolved [`StudioLeaguePathsV1`] when the completion session is opened, and
+//! is never a per-call choice. The ledger stores only a content-relative
 //! `replay_path`, so a League must have exactly one root for those paths to
 //! resolve; letting a caller choose one would reintroduce exactly the
 //! un-locatable binding Commit C Slice 2 Repair 1 closed.

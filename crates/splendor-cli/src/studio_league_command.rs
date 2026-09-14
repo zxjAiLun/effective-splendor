@@ -452,7 +452,7 @@ Options:
   --max-bytes <n>         Skip documents larger than n bytes (default: 41943040)
   --project-root <dir>    Root every Studio League path derives from: identity.json,
                           league.sqlite3 and the replay archive all live under
-                          <dir>/local-artifacts/studio-league
+                          <dir>/{league-dir}
                           (default: the current working directory)
   --json <path>           Write post-migration reconciliation report JSON here
   --help                  Print this help
@@ -460,7 +460,7 @@ Options:
 
 pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{MIGRATE_USAGE}");
+        println!("{}", render_usage(MIGRATE_USAGE));
         return 0;
     }
     let mut config = HistoricalDryRunConfig::default();
@@ -1067,7 +1067,7 @@ fn print_migration_report(
 fn fail_migrate(message: &str) -> i32 {
     eprintln!("studio-league-migrate: {message}");
     eprintln!();
-    eprintln!("{MIGRATE_USAGE}");
+    eprintln!("{}", render_usage(MIGRATE_USAGE));
     2
 }
 
@@ -1084,16 +1084,36 @@ Options:
   --config <path>         The run's own match-config.json (exact configuration evidence)
   --project-root <dir>    Root every Studio League path derives from: identity.json,
                           league.sqlite3 and the replay archive all live under
-                          <dir>/local-artifacts/studio-league
+                          <dir>/{league-dir}
                           (default: the current working directory)
   --json <path>           Write an ingestion receipt JSON here
   --help                  Print this help
 ";
 
+/// The `--help` spelling of the protocol directory a caller gets when no
+/// `--project-root` is given.
+///
+/// Rendered from [`StudioLeaguePathsV1`] rather than restated, so the help text
+/// cannot drift from the layout: if the layout moves, this moves with it. This
+/// is the only reason the CLI needs to know the directory at all -- it never
+/// composes a league path itself.
+pub(crate) fn protocol_dir_hint() -> String {
+    StudioLeaguePathsV1::resolve(None)
+        .dir()
+        .display()
+        .to_string()
+}
+
+/// Substitute the layout placeholder in a usage string. A usage string without
+/// the placeholder is returned unchanged.
+pub(crate) fn render_usage(text: &str) -> String {
+    text.replace("{league-dir}", &protocol_dir_hint())
+}
+
 fn fail_ingest(message: &str) -> i32 {
     eprintln!("studio-league-ingest: {message}");
     eprintln!();
-    eprintln!("{INGEST_USAGE}");
+    eprintln!("{}", render_usage(INGEST_USAGE));
     2
 }
 
@@ -1106,7 +1126,7 @@ fn fail_ingest(message: &str) -> i32 {
 /// document guards. Nothing here scans the corpus.
 pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{INGEST_USAGE}");
+        println!("{}", render_usage(INGEST_USAGE));
         return 0;
     }
     let mut occurrence_path: Option<PathBuf> = None;

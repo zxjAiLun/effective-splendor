@@ -32,6 +32,12 @@
   on the four league-path commands; the completion session captures the root at open, and
   `complete_runtime_occurrence` still takes no path. Authority (ledger / Elo / eligibility / archive)
   unchanged; Host API and UI still **not authorized**.
+  **Repair 1 (2026-09-14)** — owner review of the above = `REPAIR_REQUIRED` (P0=0/P1=1/P2=1): the
+  crate root still published a second path authority (`DEFAULT_IDENTITY_MANIFEST_PATH`, now deleted,
+  plus the four layout names). All five removed from the public surface; the layout is now defined
+  once, privately, in `paths.rs`, and the three full location literals appear nowhere else in the
+  workspace. Locating a league is exactly `StudioLeaguePathsV1::resolve(..)` plus `db()` /
+  `identity()` / `replay_root()`. `83/83` and CLI `273/273` unchanged.
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -2366,6 +2372,9 @@ no re-run of the 42k migration; no auto-discovery of the project root.
 `lib.rs` — the three parallel path literals became `STUDIO_LEAGUE_DB_NAME`,
 `STUDIO_LEAGUE_IDENTITY_NAME`, `STUDIO_LEAGUE_REPLAY_DIR_NAME`; `pub mod paths;` and
 `pub use paths::StudioLeaguePathsV1;`. `STUDIO_LEAGUE_DIR` is now actually used (by `from_root`).
+*(Repair 1 later moved these four names into `paths.rs` as private constants and removed them from
+the crate root, because publishing them was itself a second path authority — see the Repair 1
+section.)*
 
 `completion.rs` — `CompletionLeagueV1 { conn, replay_root }`; `open_completion_league(paths, now)`
 uses `paths.db()` / `paths.identity()` and captures `paths.replay_root().to_path_buf()`. In
@@ -2480,3 +2489,158 @@ need to change the process cwd at all.
 Owner review of this slice. On acceptance, the remaining product-surface decision recorded at the
 previous gate is the **Host API** (root resolution having now been settled first, which was the point
 of the ordering). Host API and UI remain **not authorized** until that decision.
+
+*Review outcome:* `REPAIR_REQUIRED` (P0=0 / P1=1 / P2=1) — the design was accepted, but the crate
+root still published a second path authority. See the following section.
+
+## Commit C Next Slice Repair 1 — one path authority on the public surface (2026-09-14)
+
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally, pending owner review.
+- **Baseline**: `3bd5fe57dcfb47707ed21878dfa04fcbe99fbdd7`. Owner review of that commit =
+  **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**.
+
+The owner accepted the core of the slice: `StudioLeaguePathsV1` binds `root` / `dir` / `db` /
+`identity` / `replay_root` together behind private fields, `resolve(None)` keeps the old bare relative
+layout, the completion session receives the whole bundle at open and privately captures the replay
+root, and `complete_runtime_occurrence()` did **not** regain an archive-root parameter. The CLI
+migration to a single `--project-root` (with `migrate`'s corpus `--root` keeping its own meaning) was
+also accepted, as was the new cwd-independence gate for actually starting the command from an
+unrelated working directory.
+
+### P1: the public API still carried a second path authority
+
+`paths.rs` claims `from_root` is the one composer, but the crate still *published* a second, equally
+official way to answer "relative to what?":
+
+```rust
+// still public, still re-exported from the crate root
+pub const DEFAULT_IDENTITY_MANIFEST_PATH: &str = "local-artifacts/studio-league/identity.json";
+pub const STUDIO_LEAGUE_DIR: &str              = "local-artifacts/studio-league";
+pub const STUDIO_LEAGUE_DB_NAME: &str          = "league.sqlite3";
+pub const STUDIO_LEAGUE_IDENTITY_NAME: &str    = "identity.json";
+pub const STUDIO_LEAGUE_REPLAY_DIR_NAME: &str  = "replays";
+```
+
+A future Host or launcher could therefore legally write
+`use splendor_studio_league::DEFAULT_IDENTITY_MANIFEST_PATH;` and be back to a cwd-relative identity
+path, while the database and archive came from `StudioLeaguePathsV1` — the exact drift this slice
+exists to prevent reorganised one layer up. The owner's framing is the same lesson the completion
+outlet already taught: **if the goal is that the next layer has one supported entry point, do not
+simultaneously publish another convenient composer.**
+
+### Fix (narrow, as prescribed)
+
+- The four layout names moved into `paths.rs` as **private module constants**, next to the only code
+  that uses them. They are gone from the crate root: `splendor_studio_league::STUDIO_LEAGUE_DIR` no
+  longer exists. The layout is now defined in exactly one place.
+- `DEFAULT_IDENTITY_MANIFEST_PATH` was **deleted**. It turned out to have **zero users anywhere in the
+  repository** beyond its own re-export — dead surface that only invited hand-composition.
+- The resulting supported way to locate a league is exactly one call:
+
+```rust
+let paths = StudioLeaguePathsV1::resolve(explicit_root);
+paths.db();  paths.identity();  paths.replay_root();
+```
+
+The generic filesystem APIs are untouched and still public (`archive_replay`,
+`read_archived_replay`, `open_league`, `ingest_match`, ...). As recorded for the previous slice, a
+Rust crate is not a security sandbox; what is closed here is the **published Studio League location
+surface**, not the crate.
+
+### P2: one doc comment described the wrong mechanism
+
+`completion.rs` said the archive root "is the protocol constant [`StudioLeaguePathsV1`]" —
+`StudioLeaguePathsV1` is a *resolved value object*, not a constant, and the sentence contradicted the
+paragraph immediately below it. It now reads:
+
+```text
+The archive root is likewise not a parameter: it is captured from the resolved
+[`StudioLeaguePathsV1`] when the completion session is opened, and is never a
+per-call choice.
+```
+
+(The other `protocol constant` usages in `ledger.rs` refer to the rating config, which genuinely is a
+constant, and were left alone.)
+
+### Close patch: the default-layout assertion now covers all three locations
+
+The requested assertion was added to `the_default_resolution_is_the_bare_protocol_relative_layout`:
+
+```rust
+assert_eq!(
+    paths.identity(),
+    Path::new(STUDIO_LEAGUE_DIR).join(STUDIO_LEAGUE_IDENTITY_NAME)
+);
+```
+
+This was a real gap rather than a formality: that test already pinned `dir()`, `db()` and
+`replay_root()`, but **not** `identity()` — the one leaf that had the second public definition being
+removed. `assert!(paths.identity().is_relative())` was added alongside it, so all three leaves are
+now asserted to stay relative under the default.
+
+### Static census
+
+Run over all Rust source in `crates/`. The three full location literals now appear in exactly one
+file:
+
+```text
+crates/splendor-studio-league/src/paths.rs:15-17   doc comment describing the OLD duplicated layout
+crates/splendor-studio-league/src/paths.rs:42-49   the single layout definition (private consts)
+```
+
+Nothing else — neither production code nor tests — restates `local-artifacts/studio-league/league.sqlite3`,
+`.../identity.json` or `.../replays` as a full path. One residual was worth tightening rather than
+arguing about: the four `--help` texts spelled the protocol directory out as literal text. They are
+not a composer, but they *were* a second copy of the layout that could silently go stale. They now
+carry a `{league-dir}` placeholder substituted at print time from
+`StudioLeaguePathsV1::resolve(None).dir()`, so the help text is rendered from the single source of
+truth. Verified byte-identical: all four commands still print
+`<dir>/local-artifacts/studio-league`, and no placeholder leaks into any output.
+
+### Validation and evidence
+
+- **Negative control, both routes (run, then deleted).** An integration test is an external crate, so
+  a throwaway `tests/zz_surface_probe.rs` saw exactly the surface a future Host would see.
+  - *Closed route 1 (crate root):* `use splendor_studio_league::{DEFAULT_IDENTITY_MANIFEST_PATH,
+    STUDIO_LEAGUE_DB_NAME, STUDIO_LEAGUE_DIR, STUDIO_LEAGUE_IDENTITY_NAME,
+    STUDIO_LEAGUE_REPLAY_DIR_NAME};` → `error[E0432]: unresolved imports ...` for all five names.
+  - *Closed route 2 (module path):* `splendor_studio_league::identity_manifest::DEFAULT_IDENTITY_MANIFEST_PATH`
+    → `error[E0432]: unresolved import` (the item no longer exists, so the path cannot resolve either).
+  - *Positive control, same external-crate viewpoint:* `StudioLeaguePathsV1::resolve(None)` plus
+    `db()` / `identity()` / `replay_root()` compiles and asserts the three historical relative paths
+    exactly. So the one supported surface is sufficient to locate a league — it is not merely
+    "everything else was removed". The probe file was deleted after the run.
+- **Baselines unchanged**: `splendor-studio-league` **83/83**, whole `splendor-cli` **273 passed / 0
+  failed** across 44 binaries. Nothing failed when the constants were privatised, which is itself
+  evidence that no internal caller depended on the published names.
+- Static: `git diff --check` exit 0; NUL 0; CRLF 0; `rustfmt --edition 2021` on the six touched files
+  only, `git status --porcelain` showing exactly those six. Build warnings remain limited to the
+  pre-existing `s2_census_command.rs` and `studio_league_command.rs` sites.
+- The 42k historical migration was **not** re-run. No cloud status checks exist for this commit and
+  none are claimed; every number above is local evidence.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. The public surface now offers exactly one way to locate a Studio
+League, and the layout is defined in one private place. `ACCEPTED` is **not** claimed; that is the
+owner's verdict.
+
+### Known limitations
+
+- The four layout names still exist as constants — they are private to `paths` rather than deleted,
+  because `from_root` needs them. Only their *publication* was removed, which is what the owner asked
+  for.
+- `from_root` remains public, so a library caller can still point a session at any project root. As
+  recorded for the parent slice, that is the intended surface (choose the root once, at session open);
+  what remains closed is choosing a root at completion time.
+- The `{league-dir}` placeholder is substituted only by `render_usage`. A future caller that prints a
+  usage constant directly, without rendering, would leak the placeholder into its output. Every
+  current site renders, and the four commands were re-run and checked.
+- `read_archived_replay` still has no production caller; invariant I4 is validated through the ledger
+  row, not through a read surface.
+
+### Next authorized gate
+
+Owner review of this repair. On acceptance the project-root slice is expected to close, and the Host
+API — the surface this slice was ordered *before* — becomes the next thing to authorize. Host API and
+UI remain **not authorized** until then.

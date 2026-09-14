@@ -54,6 +54,7 @@ use splendor_studio_league::{
 
 use crate::arena_command::{parent_dir_exists, parse_config_bytes, to_pretty_line};
 use crate::atomic_output;
+use crate::studio_league_command::render_usage;
 
 /// Exit code for "the match completed and its evidence is durable, but the
 /// Studio completion failed". Deliberately distinct from both `0` (all fine) and
@@ -112,7 +113,7 @@ Options:
                          caller with the run, never re-derived from content.
   --project-root <dir>   Root every Studio League path derives from: the league
                          database, the identity manifest and the replay archive
-                         all live under <dir>/local-artifacts/studio-league.
+                         all live under <dir>/{league-dir}.
                          Default: the current working directory.
   --json <path>          Write a completion receipt JSON here (only on success).
                          Published without overwriting: an existing file is left
@@ -173,7 +174,7 @@ struct CompleteArgs {
 fn fail_usage(usage: &str, message: &str) -> i32 {
     eprintln!("studio-league-complete-match: {message}");
     eprintln!();
-    eprintln!("{usage}");
+    eprintln!("{}", render_usage(usage));
     EXIT_USAGE
 }
 
@@ -182,14 +183,14 @@ fn fail_usage(usage: &str, message: &str) -> i32 {
 fn fail_usage_complete(usage: &str, message: &str) -> i32 {
     eprintln!("studio-league-complete: {message}");
     eprintln!();
-    eprintln!("{usage}");
+    eprintln!("{}", render_usage(usage));
     EXIT_USAGE
 }
 
 /// Entry point for `splendor studio-league-complete-match`. Returns the exit code.
 pub fn run_studio_league_complete_match(args: &[String]) -> i32 {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{COMPLETE_MATCH_USAGE}");
+        println!("{}", render_usage(COMPLETE_MATCH_USAGE));
         return 0;
     }
     let parsed = match parse_complete_match_args(args) {
@@ -350,7 +351,7 @@ Repair the condition and retry with `studio-league-complete --occurrence {} --re
 /// Entry point for `splendor studio-league-complete`: completion-only retry.
 pub fn run_studio_league_complete(args: &[String]) -> i32 {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{COMPLETE_USAGE}");
+        println!("{}", render_usage(COMPLETE_USAGE));
         return 0;
     }
     let mut occurrence_path: Option<PathBuf> = None;

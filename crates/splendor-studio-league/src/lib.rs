@@ -62,7 +62,7 @@ pub use historical_import::{
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,
-    DEFAULT_IDENTITY_MANIFEST_PATH, IDENTITY_MANIFEST_FORMAT, IDENTITY_MANIFEST_VERSION,
+    IDENTITY_MANIFEST_FORMAT, IDENTITY_MANIFEST_VERSION,
 };
 pub use inventory::{
     scan, write_jsonl, InventoryMatchRowV1, InventoryReportV1, InventoryScanConfig,
@@ -103,19 +103,10 @@ pub use schema::{
     SCHEMA_VERSION_META_KEY, STUDIO_LEAGUE_SCHEMA_VERSION,
 };
 
-/// Default location of the derived league index.
-///
-/// This is the **one** root-relative directory every league path derives from.
-/// Nothing should compose a league path from these names directly: build a
-/// [`StudioLeaguePathsV1`] instead, which is the single place where "relative to
-/// what?" is answered.
-pub const STUDIO_LEAGUE_DIR: &str = "local-artifacts/studio-league";
-/// File name of the derived index database inside [`STUDIO_LEAGUE_DIR`].
-pub const STUDIO_LEAGUE_DB_NAME: &str = "league.sqlite3";
-/// File name of the durable identity manifest inside [`STUDIO_LEAGUE_DIR`].
-pub const STUDIO_LEAGUE_IDENTITY_NAME: &str = "identity.json";
-/// Directory name of the content-addressed replay archive inside
-/// [`STUDIO_LEAGUE_DIR`] (`<document sha256>.json`).
-pub const STUDIO_LEAGUE_REPLAY_DIR_NAME: &str = "replays";
+// The league layout (the root-relative directory and the three leaf names) is
+// private to `paths`, because [`StudioLeaguePathsV1`] is the only supported way
+// to locate a league: exposing the names would let an external crate compose a
+// league path without ever mentioning the type that keeps the three locations
+// together.
 /// Default local human display name, used only when the profile is first created.
 pub const DEFAULT_LOCAL_HUMAN_NAME: &str = "You";

@@ -29,8 +29,6 @@ use std::path::{Path, PathBuf};
 pub const IDENTITY_MANIFEST_FORMAT: &str = "effective-splendor-studio-league-identity";
 /// v2 stores `canonical_identity_key` in an alias instead of `participant_id`.
 pub const IDENTITY_MANIFEST_VERSION: u32 = 2;
-/// Default location of the manifest, beside the derived database.
-pub const DEFAULT_IDENTITY_MANIFEST_PATH: &str = "local-artifacts/studio-league/identity.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalHumanIdentityV1 {

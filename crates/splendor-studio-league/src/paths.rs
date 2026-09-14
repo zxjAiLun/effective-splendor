@@ -31,10 +31,22 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::{
-    STUDIO_LEAGUE_DB_NAME, STUDIO_LEAGUE_DIR, STUDIO_LEAGUE_IDENTITY_NAME,
-    STUDIO_LEAGUE_REPLAY_DIR_NAME,
-};
+/// The single root-relative directory every league path derives from.
+///
+/// Private on purpose. These four names are the layout; exposing them would give
+/// an external crate a second, equally official way to answer "relative to
+/// what?" — one that composes a league path without ever mentioning
+/// [`StudioLeaguePathsV1`]. The supported way to locate a league is
+/// `StudioLeaguePathsV1::resolve(..)` followed by `db()` / `identity()` /
+/// `replay_root()`.
+const STUDIO_LEAGUE_DIR: &str = "local-artifacts/studio-league";
+/// File name of the derived index database inside [`STUDIO_LEAGUE_DIR`].
+const STUDIO_LEAGUE_DB_NAME: &str = "league.sqlite3";
+/// File name of the durable identity manifest inside [`STUDIO_LEAGUE_DIR`].
+const STUDIO_LEAGUE_IDENTITY_NAME: &str = "identity.json";
+/// Directory name of the content-addressed replay archive inside
+/// [`STUDIO_LEAGUE_DIR`] (`<document sha256>.json`).
+const STUDIO_LEAGUE_REPLAY_DIR_NAME: &str = "replays";
 
 /// The resolved on-disk locations of one Studio League installation.
 ///
@@ -155,11 +167,21 @@ mod tests {
             paths.db(),
             Path::new(STUDIO_LEAGUE_DIR).join(STUDIO_LEAGUE_DB_NAME)
         );
+        // The identity manifest is pinned here too. It is the leaf that used to
+        // have a second, independently public definition (the deleted
+        // `DEFAULT_IDENTITY_MANIFEST_PATH`), so the default layout is asserted
+        // for all three locations rather than only for the database and archive.
+        assert_eq!(
+            paths.identity(),
+            Path::new(STUDIO_LEAGUE_DIR).join(STUDIO_LEAGUE_IDENTITY_NAME)
+        );
         assert_eq!(
             paths.replay_root(),
             Path::new(STUDIO_LEAGUE_DIR).join(STUDIO_LEAGUE_REPLAY_DIR_NAME)
         );
         assert!(paths.db().is_relative());
+        assert!(paths.identity().is_relative());
+        assert!(paths.replay_root().is_relative());
     }
 
     #[test]
