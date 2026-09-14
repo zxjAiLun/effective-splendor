@@ -15,7 +15,8 @@ use splendor_analysis::{
     analyze_replay_s3_v2_with_progress, review_cache_key_v2, AnalysisTraceV2, RefereeRevealV1,
     ReviewerConfigV2, ReviewerIdentityV2, ReviewerRegistryV1,
 };
-use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, InboundEvent};
+use splendor_arena::config::MAX_TIMEOUT_MS;
+use splendor_arena::{seed_commitment_v1, spawn_agent, AgentProcess, ArenaConfig, InboundEvent};
 use splendor_catalog::{all_cards, all_nobles, CardId, GemColor, NobleId, Tier};
 use splendor_core::{
     observation_hash, ruleset_fingerprint, visible_events, Action, Audience, FullState, GameConfig,
@@ -34,13 +35,25 @@ use splendor_replay::{
 };
 use splendor_search::{canonical_order, SearchConfigV1};
 use splendor_studio_league::{
-    open_studio_league_reader, StudioLeaguePathsV1, StudioLeagueReaderV1,
+    open_studio_league_reader, CompletionOutcomeV1, IngestOutcome, StudioLeaguePathsV1,
+    StudioLeagueReaderV1,
+};
+
+use crate::runtime_orchestration::{
+    complete_persisted_occurrence, completion_receipt_json, occurrence_slot, produce_and_complete,
+    OccurrenceEvidence, OccurrenceSlotV1, RuntimeOrchestrationError, RuntimeOrchestrationOutcome,
 };
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
-    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>] [--project-root <dir>]";
+    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--handshake-timeout-ms <u64>] [--move-timeout-ms <u64>] [--shutdown-grace-ms <u64>] [--replay-sources <sources.json>] [--project-root <dir>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
+/// Studio Host default for the agent handshake timeout. The arena has no defaults
+/// of its own -- every `ArenaConfig` timeout is a mandatory field -- so this is a
+/// decision the Host makes on the operator's behalf, not an arena fallback.
+const DEFAULT_HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
+/// Studio Host default grace before a spawned agent is killed. Same reasoning.
+const DEFAULT_SHUTDOWN_GRACE_MS: u64 = 2_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
 const REVIEWS_DIR: &str = "reviews";
@@ -740,7 +753,11 @@ struct HostArgs {
     registry: PathBuf,
     reviewer_registry: PathBuf,
     port: u16,
+    /// The three match timeouts. Host-owned settings, never client-settable: a
+    /// request body may name agents and a seed, but not how long the Host waits.
+    handshake_timeout_ms: u64,
     move_timeout_ms: u64,
+    shutdown_grace_ms: u64,
     replay_sources: Option<PathBuf>,
     /// The root every Studio League path derives from. Resolved exactly once, at
     /// startup: no handler may re-derive a league location from the cwd.
@@ -852,10 +869,16 @@ struct StudioHost {
     /// (non-league) Host keeps working exactly as before.
     league: Option<StudioLeagueReaderV1>,
     league_error: Option<String>,
+    /// The resolved league locations, kept so the completion outlet can be opened
+    /// for a match. The reader keeps its own copy private, and no handler may
+    /// re-derive a league location from the cwd.
+    paths: StudioLeaguePathsV1,
     registry_path: PathBuf,
     registry: RatingRegistryV1,
     reviewer_registry: ReviewerRegistryV1,
+    handshake_timeout_ms: u64,
     move_timeout_ms: u64,
+    shutdown_grace_ms: u64,
     next_session_number: u64,
     session: Option<Session>,
     jobs: ReviewJobManager,
@@ -1793,10 +1816,13 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
     let mut host = StudioHost {
         league,
         league_error,
+        paths: league_paths,
         registry_path: args.registry,
         registry,
         reviewer_registry,
+        handshake_timeout_ms: args.handshake_timeout_ms,
         move_timeout_ms: args.move_timeout_ms,
+        shutdown_grace_ms: args.shutdown_grace_ms,
         next_session_number: 1,
         session: None,
         jobs: ReviewJobManager::default(),
@@ -1975,6 +2001,212 @@ impl StudioHost {
     }
 }
 
+/// One match to run and book, addressed by occurrence identity.
+///
+/// `seats` are **registry agent ids**. The body deliberately cannot express a
+/// program, argv, an `AgentCommand` or an `ArenaConfig`: an unauthenticated POST
+/// on `127.0.0.1` must never be able to name an executable, so the Host resolves
+/// each id to the trusted command the registry already holds. The three timeouts
+/// are Host settings for the same reason — a client cannot ask for a shorter or a
+/// longer one. `deny_unknown_fields` is what makes "cannot express a program"
+/// structural instead of a promise about the parser.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LeagueMatchRequest {
+    occurrence_id: String,
+    game_id: String,
+    seed: u64,
+    seats: Vec<String>,
+}
+
+/// The outcome of one league write, in the shape the HTTP layer must not conflate.
+///
+/// The two facts — what the match did, and what the league did with it — travel
+/// separately all the way to the status line, because collapsing them is the
+/// mistake this slice exists to prevent.
+enum LeagueWrite {
+    /// The occurrence is booked, or was already booked: `200`.
+    Completed(Box<CompletionOutcomeV1>),
+    /// The arena settled the match without a completed occurrence: `200`.
+    Aborted { match_status: &'static str },
+    /// The request is unusable, including an unsafe occurrence id: `400`.
+    Invalid(String),
+    /// The occurrence slot holds state that is neither empty nor complete: `409`.
+    Conflict(String),
+    /// The match completed and its evidence is intact, but completion failed:
+    /// `503`. Retryable, and the retry will not re-run the match.
+    CompletionFailed(String),
+    /// The producer or the filesystem failed before a settled fact existed: `500`.
+    Fault(String),
+}
+
+fn respond_league_write(stream: &mut TcpStream, write: LeagueWrite) -> Result<(), String> {
+    let body = |value: serde_json::Value| value.to_string();
+    match write {
+        LeagueWrite::Completed(completion) => {
+            let body = body(serde_json::json!({
+                "format": "effective-splendor-studio-league-match-result",
+                "version": 1,
+                "match_status": "completed",
+                "completion_status": match &completion.ingest {
+                    IngestOutcome::Inserted { .. } => "inserted",
+                    IngestOutcome::AlreadyPresent { .. } => "already_present",
+                },
+                "receipt": completion_receipt_json(&completion),
+            }));
+            respond(stream, 200, "application/json", &body)
+        }
+        // A settled, non-completed match is a normal outcome of asking for a
+        // match, not an error and not a client mistake.
+        LeagueWrite::Aborted { match_status } => {
+            let body = body(serde_json::json!({
+                "format": "effective-splendor-studio-league-match-result",
+                "version": 1,
+                "match_status": match_status,
+                "completion_status": "not_applicable",
+            }));
+            respond(stream, 200, "application/json", &body)
+        }
+        LeagueWrite::CompletionFailed(message) => {
+            let body = body(serde_json::json!({
+                "format": "effective-splendor-studio-league-match-result",
+                "version": 1,
+                "match_status": "completed",
+                "completion_status": "failed",
+                "error": message,
+            }));
+            respond(stream, 503, "application/json", &body)
+        }
+        LeagueWrite::Invalid(message) => respond(
+            stream,
+            400,
+            "application/json",
+            &body(serde_json::json!({ "error": message })),
+        ),
+        LeagueWrite::Conflict(message) => respond(
+            stream,
+            409,
+            "application/json",
+            &body(serde_json::json!({ "error": message })),
+        ),
+        LeagueWrite::Fault(message) => respond(
+            stream,
+            500,
+            "application/json",
+            &body(serde_json::json!({ "error": message })),
+        ),
+    }
+}
+
+impl StudioHost {
+    /// Run one match and book it, or report what the occurrence slot already holds.
+    ///
+    /// The order below is the contract, not an optimisation. Persisted evidence is
+    /// consulted **before** the registry, because an occurrence id names a match
+    /// that happened: re-offering it is a retry, and a retry must neither re-run
+    /// the arena nor depend on the registry this process happens to hold now.
+    fn run_league_match(&mut self, request: LeagueMatchRequest) -> LeagueWrite {
+        // The id becomes a path component only after the one composer has
+        // validated it, and nothing is created, read or run before that.
+        let dir = match self.paths.occurrence_dir(&request.occurrence_id) {
+            Ok(dir) => dir,
+            Err(error) => return LeagueWrite::Invalid(error.to_string()),
+        };
+        let evidence = OccurrenceEvidence::in_dir(&dir);
+
+        match occurrence_slot(&evidence) {
+            // Already complete: complete it from the documents on disk, and never
+            // resolve a seat or run a match. This is what makes a retry survive a
+            // Host restart with a changed registry, timeout or agent build.
+            OccurrenceSlotV1::Complete => {
+                return match complete_persisted_occurrence(&evidence, &self.paths) {
+                    Ok(completion) => LeagueWrite::Completed(Box::new(completion)),
+                    Err(RuntimeOrchestrationError::Failed(message)) => {
+                        LeagueWrite::CompletionFailed(message)
+                    }
+                    Err(other) => LeagueWrite::Conflict(other.to_string()),
+                };
+            }
+            // Already settled without completing: report the recorded fact.
+            OccurrenceSlotV1::SettledWithoutCompletion { match_status } => {
+                return LeagueWrite::Aborted { match_status };
+            }
+            // Neither empty nor complete: running here would either overwrite
+            // evidence or book a second match for one occurrence.
+            OccurrenceSlotV1::Ambiguous(why) => return LeagueWrite::Conflict(why),
+            OccurrenceSlotV1::Empty => {}
+        }
+
+        // A fresh occurrence. Only now is the registry consulted, and only to turn
+        // agent ids into trusted commands.
+        let config = match self.build_league_match_config(&request) {
+            Ok(config) => config,
+            Err(message) => return LeagueWrite::Invalid(message),
+        };
+        let config_bytes = match serde_json::to_vec(&config) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return LeagueWrite::Fault(format!("cannot serialize the arena config: {error}"))
+            }
+        };
+        if let Err(error) = fs::create_dir_all(&dir) {
+            return LeagueWrite::Fault(format!(
+                "cannot create the occurrence slot {}: {error}",
+                dir.display()
+            ));
+        }
+
+        let occurrence_id = request.occurrence_id.clone();
+        match produce_and_complete(&evidence, &config_bytes, &occurrence_id, &self.paths) {
+            Ok(RuntimeOrchestrationOutcome::Completed { completion, .. }) => {
+                LeagueWrite::Completed(completion)
+            }
+            Ok(RuntimeOrchestrationOutcome::CompletionFailed { message, .. }) => {
+                LeagueWrite::CompletionFailed(message)
+            }
+            Ok(RuntimeOrchestrationOutcome::Aborted { match_status, .. }) => {
+                LeagueWrite::Aborted { match_status }
+            }
+            Err(RuntimeOrchestrationError::Invalid(message)) => LeagueWrite::Invalid(message),
+            Err(RuntimeOrchestrationError::Conflict(message)) => LeagueWrite::Conflict(message),
+            Err(RuntimeOrchestrationError::Failed(message)) => LeagueWrite::Fault(message),
+        }
+    }
+
+    /// Turn registry agent ids into the arena configuration this Host will run.
+    ///
+    /// The commands come from `self.registry`; the request contributes ids, the
+    /// two plain match parameters, and nothing else that can be executed or
+    /// resolved. `ArenaConfig::validate()` stays authoritative for the seat count
+    /// and every other arena invariant, so there is exactly one definition of a
+    /// runnable configuration — the arena's.
+    fn build_league_match_config(
+        &self,
+        request: &LeagueMatchRequest,
+    ) -> Result<ArenaConfig, String> {
+        let mut agents = Vec::with_capacity(request.seats.len());
+        for id in &request.seats {
+            let agent = self
+                .registry
+                .agents
+                .iter()
+                .find(|agent| &agent.id == id)
+                .ok_or_else(|| format!("agent id `{id}` is not in the Studio registry"))?;
+            agents.push(agent.command.clone());
+        }
+        let config = ArenaConfig {
+            game_id: request.game_id.clone(),
+            seed: request.seed,
+            handshake_timeout_ms: self.handshake_timeout_ms,
+            move_timeout_ms: self.move_timeout_ms,
+            shutdown_grace_ms: self.shutdown_grace_ms,
+            agents,
+        };
+        config.validate().map_err(|error| error.to_string())?;
+        Ok(config)
+    }
+}
+
 fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), String> {
     let request = read_request(&stream)?;
     if request.method == "OPTIONS" {
@@ -1990,7 +2222,7 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
             return respond_result(&mut stream, host.recent_games());
         }
         // ---- Studio League, read-only (Commit D Slice 1). --------------------
-        // These three are the whole league surface: no write route exists here.
+        // These three are the read surface. The one write route follows them.
         "GET" if request.path == "/league/leaderboard" => {
             return respond_league(&mut stream, host.league_leaderboard());
         }
@@ -2001,6 +2233,18 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         "GET" if request.path.starts_with("/league/replays/") => {
             let sha256 = request.path["/league/replays/".len()..].to_string();
             return respond_league(&mut stream, host.league_replay(&sha256));
+        }
+        // ---- Studio League, one write entry (Commit E Slice 1). --------------
+        // A single write route, and a retry is the same request again. The Host
+        // never reimplements completion: it delegates to the shared producer.
+        "POST" if request.path == "/league/matches" => {
+            let parsed: Result<LeagueMatchRequest, String> = serde_json::from_slice(&request.body)
+                .map_err(|error| format!("invalid match JSON: {error}"));
+            let write = match parsed {
+                Ok(request) => host.run_league_match(request),
+                Err(message) => LeagueWrite::Invalid(message),
+            };
+            return respond_league_write(&mut stream, write);
         }
         "GET" if request.path.starts_with("/replays/") => {
             let session_id = &request.path["/replays/".len()..];
@@ -2240,11 +2484,30 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     })
 }
 
+/// Parse one Host-owned timeout, applying its Studio Host default and the arena's
+/// own ceiling. The three timeouts differ only in their default and their flag
+/// name, so they share one rule instead of three copies of it.
+fn parse_host_timeout(raw: Option<String>, default: u64, flag: &str) -> Result<u64, String> {
+    let value = raw
+        .unwrap_or_else(|| default.to_string())
+        .parse::<u64>()
+        .map_err(|_| format!("{flag} must be u64"))?;
+    if value == 0 || value > MAX_TIMEOUT_MS {
+        return Err(format!(
+            "{flag} must be in 1..={}",
+            MAX_TIMEOUT_MS
+        ));
+    }
+    Ok(value)
+}
+
 fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     let mut registry = None;
     let mut reviewer_registry = None;
     let mut port = None;
+    let mut handshake_timeout_ms = None;
     let mut move_timeout_ms = None;
+    let mut shutdown_grace_ms = None;
     let mut replay_sources = None;
     let mut project_root = None;
     let mut index = 0;
@@ -2261,7 +2524,13 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
                 "--reviewer-registry",
             )?,
             "--port" => set_once(&mut port, value, "--port")?,
+            "--handshake-timeout-ms" => {
+                set_once(&mut handshake_timeout_ms, value, "--handshake-timeout-ms")?
+            }
             "--move-timeout-ms" => set_once(&mut move_timeout_ms, value, "--move-timeout-ms")?,
+            "--shutdown-grace-ms" => {
+                set_once(&mut shutdown_grace_ms, value, "--shutdown-grace-ms")?
+            }
             "--replay-sources" => set_once(
                 &mut replay_sources,
                 PathBuf::from(value),
@@ -2281,19 +2550,29 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     if port == 0 {
         return Err("--port must be nonzero".into());
     }
-    let move_timeout_ms = move_timeout_ms
-        .unwrap_or_else(|| DEFAULT_MOVE_TIMEOUT_MS.to_string())
-        .parse::<u64>()
-        .map_err(|_| "--move-timeout-ms must be u64")?;
-    if move_timeout_ms == 0 || move_timeout_ms > 24 * 60 * 60 * 1_000 {
-        return Err("--move-timeout-ms must be in 1..=86400000".into());
-    }
+    let handshake_timeout_ms = parse_host_timeout(
+        handshake_timeout_ms,
+        DEFAULT_HANDSHAKE_TIMEOUT_MS,
+        "--handshake-timeout-ms",
+    )?;
+    let move_timeout_ms = parse_host_timeout(
+        move_timeout_ms,
+        DEFAULT_MOVE_TIMEOUT_MS,
+        "--move-timeout-ms",
+    )?;
+    let shutdown_grace_ms = parse_host_timeout(
+        shutdown_grace_ms,
+        DEFAULT_SHUTDOWN_GRACE_MS,
+        "--shutdown-grace-ms",
+    )?;
     Ok(HostArgs {
         registry: registry.ok_or("missing --registry")?,
         reviewer_registry: reviewer_registry
             .unwrap_or_else(|| PathBuf::from("benchmarks/studio-reviewers.registry.json")),
         port,
+        handshake_timeout_ms,
         move_timeout_ms,
+        shutdown_grace_ms,
         replay_sources,
         project_root,
     })
@@ -2501,10 +2780,13 @@ mod tests {
             // This unit test exercises the agents JSON only; no league is opened.
             league: None,
             league_error: None,
+            paths: StudioLeaguePathsV1::resolve(None),
             registry_path: PathBuf::from("private/registry.json"),
             registry,
             reviewer_registry: test_reviewer_registry(),
+            handshake_timeout_ms: DEFAULT_HANDSHAKE_TIMEOUT_MS,
             move_timeout_ms: DEFAULT_MOVE_TIMEOUT_MS,
+            shutdown_grace_ms: DEFAULT_SHUTDOWN_GRACE_MS,
             next_session_number: 1,
             session: None,
             jobs: ReviewJobManager::default(),

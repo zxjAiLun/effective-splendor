@@ -31,6 +31,8 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::error::StudioLeagueError;
+
 /// The single root-relative directory every league path derives from.
 ///
 /// Private on purpose. These four names are the layout; exposing them would give
@@ -47,6 +49,17 @@ const STUDIO_LEAGUE_IDENTITY_NAME: &str = "identity.json";
 /// Directory name of the content-addressed replay archive inside
 /// [`STUDIO_LEAGUE_DIR`] (`<document sha256>.json`).
 const STUDIO_LEAGUE_REPLAY_DIR_NAME: &str = "replays";
+
+/// Directory name of the per-occurrence evidence slots inside
+/// [`STUDIO_LEAGUE_DIR`] (`occurrences/<occurrence id>/`).
+const STUDIO_LEAGUE_OCCURRENCE_DIR_NAME: &str = "occurrences";
+
+/// The longest occurrence id the composer will turn into a path component.
+///
+/// Bounded because the id arrives from outside the process (a CLI argument or an
+/// HTTP body) and because every filesystem has a component limit; 128 bytes is
+/// far above any real id and far below any platform's.
+const MAX_OCCURRENCE_ID_BYTES: usize = 128;
 
 /// The resolved on-disk locations of one Studio League installation.
 ///
@@ -131,6 +144,73 @@ impl StudioLeaguePathsV1 {
     pub fn replay_root(&self) -> &Path {
         &self.replay_root
     }
+
+    /// The evidence slot of one occurrence: `dir()/occurrences/<occurrence_id>`.
+    ///
+    /// The id is validated **here**, by the one composer, before it can become a
+    /// path component. A client-supplied string that reaches `Path::join`
+    /// unchecked is a directory-traversal primitive, and the check must not live
+    /// in whichever caller happens to sit nearest the network. The rule is
+    /// deliberately narrow and cross-platform:
+    ///
+    /// * non-empty, and at most [`MAX_OCCURRENCE_ID_BYTES`] bytes;
+    /// * not `.` and not `..`;
+    /// * no leading or trailing `.` — Win32 silently strips a trailing dot, so
+    ///   `x.` and `x` would address the same slot;
+    /// * every byte in `[A-Za-z0-9._-]`.
+    ///
+    /// The charset is what carries the weight: it excludes both path separators,
+    /// the Windows `:` volume separator, NUL and every control character, and it
+    /// keeps the rule identical on every platform rather than compiling a
+    /// different one per target.
+    ///
+    /// Two residual hazards are accepted rather than papered over. A
+    /// case-insensitive filesystem folds ids that differ only in case onto one
+    /// slot, and a Windows reserved device name (`CON`, `LPT1`) is refused by the
+    /// filesystem rather than by this rule. Both fail closed: an id that collides
+    /// with an existing complete occurrence returns that occurrence's recorded
+    /// fact instead of running a match, and a name the filesystem rejects
+    /// surfaces as an I/O error. An occurrence id is an occurrence's *identity*,
+    /// not a per-request token — see the Studio League Host documentation.
+    pub fn occurrence_dir(&self, occurrence_id: &str) -> Result<PathBuf, StudioLeagueError> {
+        validate_occurrence_id(occurrence_id)?;
+        Ok(self
+            .dir
+            .join(STUDIO_LEAGUE_OCCURRENCE_DIR_NAME)
+            .join(occurrence_id))
+    }
+}
+
+/// The occurrence-id rule documented on
+/// [`StudioLeaguePathsV1::occurrence_dir`].
+fn validate_occurrence_id(occurrence_id: &str) -> Result<(), StudioLeagueError> {
+    let reject = |why: &str| {
+        Err(StudioLeagueError::Invalid(format!(
+            "unsafe occurrence id `{occurrence_id}`: {why}"
+        )))
+    };
+    if occurrence_id.is_empty() {
+        return reject("it is empty");
+    }
+    if occurrence_id.len() > MAX_OCCURRENCE_ID_BYTES {
+        return reject("it is longer than the protocol allows");
+    }
+    if occurrence_id == "." || occurrence_id == ".." {
+        return reject("it is a relative path component");
+    }
+    if occurrence_id.starts_with('.') || occurrence_id.ends_with('.') {
+        return reject("it starts or ends with a dot");
+    }
+    if let Some(byte) = occurrence_id
+        .bytes()
+        .find(|byte| !matches!(byte, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'.' | b'_' | b'-'))
+    {
+        return reject(&format!(
+            "it contains `{}`, which is outside `[A-Za-z0-9._-]`",
+            char::from(byte).escape_default()
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -182,6 +262,84 @@ mod tests {
         assert!(paths.db().is_relative());
         assert!(paths.identity().is_relative());
         assert!(paths.replay_root().is_relative());
+    }
+
+    #[test]
+    fn one_occurrence_slot_lives_under_the_league_dir() {
+        let paths = StudioLeaguePathsV1::from_root("/srv/league");
+        let dir = paths
+            .occurrence_dir("run-001")
+            .expect("a safe id is accepted");
+        assert_eq!(
+            dir,
+            paths
+                .dir()
+                .join(STUDIO_LEAGUE_OCCURRENCE_DIR_NAME)
+                .join("run-001")
+        );
+        // A sibling of the archive root, never inside it: occurrence evidence and
+        // archived replay documents are different authorities.
+        assert!(dir.starts_with(paths.dir()));
+        assert!(!dir.starts_with(paths.replay_root()));
+    }
+
+    #[test]
+    fn an_occurrence_id_can_never_address_anything_but_its_own_slot() {
+        // Every one of these is a real way to escape, alias or break a path
+        // component, so each must be refused by the composer before any caller can
+        // join it.
+        let too_long = "x".repeat(MAX_OCCURRENCE_ID_BYTES + 1);
+        let unsafe_ids = [
+            "",
+            ".",
+            "..",
+            "...",
+            ".hidden",
+            "trailing.",
+            "a/b",
+            r"a\b",
+            "a:b",
+            "C:",
+            r"C:\league",
+            "/etc/passwd",
+            r"..\escape",
+            "a\u{0}b",
+            "a\nb",
+            "a\u{7f}b",
+            "a b",
+            "h\u{e9}llo",
+            too_long.as_str(),
+        ];
+        for unsafe_id in unsafe_ids {
+            let error = paths()
+                .occurrence_dir(unsafe_id)
+                .expect_err("an unsafe occurrence id must be refused");
+            assert!(
+                matches!(error, StudioLeagueError::Invalid(_)),
+                "`{unsafe_id}` should be an Invalid error, got {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_charset_admits_every_id_the_protocol_actually_uses() {
+        // The rule must not be so tight that a legitimate id becomes unusable.
+        for good in [
+            "a",
+            "run-001",
+            "s15.selfplay_0001",
+            "20260915T101500Z-4f9a",
+            "a.b.c",
+            "A.B_c-9",
+        ] {
+            assert!(paths().occurrence_dir(good).is_ok(), "`{good}` was refused");
+        }
+    }
+
+    /// The default (cwd-relative) resolution: the id rule is independent of the
+    /// root, so these unit tests need no real filesystem.
+    fn paths() -> StudioLeaguePathsV1 {
+        StudioLeaguePathsV1::resolve(None)
     }
 
     #[test]

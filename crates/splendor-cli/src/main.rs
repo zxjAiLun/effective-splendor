@@ -26,6 +26,7 @@ mod m47s_residual_command;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
+mod runtime_orchestration;
 mod s1_probe_command;
 mod s2_census_command;
 mod s2b_scope_command;

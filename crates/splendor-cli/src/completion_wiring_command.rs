@@ -44,16 +44,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use splendor_arena::{ArenaRun, ArenaRunner};
-use splendor_replay::ReplayV1;
-use splendor_studio_league::{
-    complete_runtime_occurrence, now_epoch_seconds, open_completion_league, replay_document_sha256,
-    CompletionRequestV1, IngestOutcome, RuntimeOccurrenceV1, StudioLeagueError,
-    StudioLeaguePathsV1, RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION,
-};
+use splendor_studio_league::{CompletionOutcomeV1, IngestOutcome, StudioLeaguePathsV1};
 
-use crate::arena_command::{parent_dir_exists, parse_config_bytes, to_pretty_line};
+use crate::arena_command::parent_dir_exists;
 use crate::atomic_output;
+use crate::runtime_orchestration::{
+    complete_persisted_occurrence, completion_receipt_json, produce_and_complete,
+    OccurrenceEvidence, RuntimeOrchestrationOutcome,
+};
 use crate::studio_league_command::render_usage;
 
 /// Exit code for "the match completed and its evidence is durable, but the
@@ -248,11 +246,11 @@ pub fn run_studio_league_complete_match(args: &[String]) -> i32 {
     }
 
     // ---- The config is read exactly ONCE. ------------------------------------
-    // The bytes read here are the bytes the runner parses and the bytes
-    // `--config-out` persists, so the envelope's `config_sha256` cannot describe
-    // a different configuration than the one that produced the match. Reading
-    // the file twice (once to parse, once to hash) would leave a window in which
-    // the two could disagree.
+    // The bytes read here are the bytes the runner parses and the bytes the
+    // config snapshot persists, so the envelope's `config_sha256` cannot describe
+    // a different configuration than the one that produced the match. Reading the
+    // file twice (once to parse, once to hash) would leave a window in which the
+    // two could disagree.
     let config_bytes = match read_config_bytes(&parsed.config) {
         Ok(bytes) => bytes,
         Err(error) => {
@@ -260,94 +258,132 @@ pub fn run_studio_league_complete_match(args: &[String]) -> i32 {
             return EXIT_MATCH_FAILED;
         }
     };
-    let config = match parse_config_bytes(&config_bytes) {
-        Ok(config) => config,
+
+    // Everything below is the shared producer authority; this entry point is only
+    // an adapter that turns its typed outcome into the frozen CLI facts.
+    let evidence = OccurrenceEvidence {
+        config: parsed.config_out.clone(),
+        replay: parsed.replay_out.clone(),
+        report: parsed.report_out.clone(),
+        occurrence: parsed.occurrence_out.clone(),
+    };
+    let outcome = match produce_and_complete(
+        &evidence,
+        &config_bytes,
+        &parsed.occurrence_id,
+        &parsed.paths,
+    ) {
+        Ok(outcome) => outcome,
         Err(error) => {
             eprintln!("studio-league-complete-match: error: {error}");
             return EXIT_MATCH_FAILED;
         }
     };
 
-    let run: ArenaRun = match ArenaRunner::run(config) {
-        Ok(run) => run,
-        Err(error) => {
-            eprintln!("studio-league-complete-match: error: the match failed: {error}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-
-    let replay = match run.replay {
-        Some(replay) => replay,
-        None => {
-            // Aborted: the occurrence never happened, so there is no occurrence
-            // evidence to produce and nothing for the league to book. Persist
-            // the report exactly like `run-match` does and stop.
-            return match persist_aborted_report(&parsed, &run.report) {
-                Ok(()) => {
-                    eprintln!(
-                        "studio-league-complete-match: the match aborted; wrote {} and no occurrence evidence",
-                        parsed.report_out.display()
-                    );
-                    // An aborted match is a real, finished, non-completed fact;
-                    // it is not a Studio completion failure.
-                    EXIT_MATCH_ABORTED
-                }
-                Err(error) => {
-                    eprintln!("studio-league-complete-match: error: {error}");
-                    EXIT_MATCH_FAILED
-                }
-            };
-        }
-    };
-
-    let evidence = match persist_completed_evidence(&parsed, &run.report, &replay, &config_bytes) {
-        Ok(evidence) => evidence,
-        Err(error) => {
-            eprintln!("studio-league-complete-match: error: {error}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
+    // From here on the match is a settled fact, and the two facts are reported
+    // separately: a completion failure must never look like a match failure.
+    if let RuntimeOrchestrationOutcome::Aborted { match_status, .. } = &outcome {
+        eprintln!(
+            "studio-league-complete-match: the match {match_status}; wrote {} and no occurrence evidence",
+            outcome.evidence().report.display()
+        );
+        // A settled, non-completed match is not a Studio completion failure.
+        return EXIT_MATCH_ABORTED;
+    }
 
     println!(
         "studio-league-complete-match: match completed; evidence written to {}, {}, {}, {}",
-        parsed.report_out.display(),
-        parsed.replay_out.display(),
-        parsed.config_out.display(),
-        parsed.occurrence_out.display()
+        outcome.evidence().report.display(),
+        outcome.evidence().replay.display(),
+        outcome.evidence().config.display(),
+        outcome.evidence().occurrence.display()
     );
 
-    // ---- Half two: the Studio completion. ------------------------------------
-    // From here on the match is a settled fact. A failure below is reported as a
-    // completion failure and must leave the evidence untouched.
-    match complete_persisted(
-        &evidence.occurrence,
-        &evidence.report_bytes,
-        &evidence.replay_bytes,
-        &config_bytes,
-        &parsed.replay_out,
-        &parsed.paths,
-        parsed.json_out.as_ref(),
-        "studio-league-complete-match",
-    ) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("studio-league-complete-match: {message}");
-            // The retry command names the PERSISTED snapshot, never the original
-            // `--config` input: after this returns, that input is not part of the
-            // evidence set and may legitimately have been moved or deleted.
-            eprintln!(
-                "studio-league-complete-match: the MATCH completed and its evidence is intact; only the Studio completion failed. \
+    if let RuntimeOrchestrationOutcome::CompletionFailed { message, .. } = &outcome {
+        eprintln!("studio-league-complete-match: {message}");
+        // The retry command names the PERSISTED snapshot, never the original
+        // `--config` input: after this returns, that input is not part of the
+        // evidence set and may legitimately have been moved or deleted.
+        eprintln!(
+            "studio-league-complete-match: the MATCH completed and its evidence is intact; only the Studio completion failed. \
 Repair the condition and retry with `studio-league-complete --occurrence {} --report {} --replay {} --config {}`; the match will not be re-run.",
-                parsed.occurrence_out.display(),
-                parsed.report_out.display(),
-                parsed.replay_out.display(),
-                parsed.config_out.display()
+            parsed.occurrence_out.display(),
+            parsed.report_out.display(),
+            parsed.replay_out.display(),
+            parsed.config_out.display()
+        );
+        return EXIT_COMPLETION_FAILED;
+    }
+
+    if let Some(completion) = outcome.completion() {
+        report_completion(
+            completion,
+            "studio-league-complete-match",
+            parsed.json_out.as_ref(),
+        );
+    }
+    0
+}
+
+/// Print the completion facts for one booked occurrence.
+///
+/// Shared by both CLI entry points so the two commands cannot describe the same
+/// booking differently. It prints; the shared producer authority does not.
+fn report_completion(
+    completion: &CompletionOutcomeV1,
+    command: &str,
+    json_out: Option<&PathBuf>,
+) {
+    let archived = &completion.archived;
+    let receipt = &completion.receipt;
+    println!(
+        "{command}: archived replay {} ({})",
+        archived.document_sha256(),
+        archived.outcome().as_str()
+    );
+    let eligibility_text = match &receipt.rating_ineligible_reason {
+        Some(reason) => format!("ineligible ({reason})"),
+        None => "eligible".to_string(),
+    };
+    println!(
+        "{command}: recorded occurrence `{}`",
+        completion.record.source_identity
+    );
+    println!("  match_id:    {}", receipt.match_id);
+    match &completion.ingest {
+        IngestOutcome::Inserted { rating_events, .. } => {
+            println!("  outcome:     inserted ({rating_events} rating events)");
+        }
+        IngestOutcome::AlreadyPresent { .. } => {
+            println!("  outcome:     already_present (no new Elo)");
+        }
+    }
+    println!("  eligibility: {eligibility_text}");
+    for event in &receipt.elo_events {
+        println!(
+            "  elo:         {}: {:.1} -> {:.1}",
+            event.participant_id, event.elo_before, event.elo_after
+        );
+    }
+
+    if let Some(out_json_path) = json_out {
+        let receipt_json = completion_receipt_json(completion);
+        if let Err(error) = write_json_report(out_json_path, &receipt_json) {
+            // The occurrence IS booked; only the export failed. Re-offering is
+            // idempotent, so this is reported as a success with a warning.
+            eprintln!(
+                "{command}: the occurrence WAS committed; only the receipt export failed ({}: {error}). \
+Re-offering the same occurrence is a no-op, so the receipt can be re-derived safely",
+                out_json_path.display()
             );
-            EXIT_COMPLETION_FAILED
+        } else {
+            println!(
+                "Wrote completion receipt JSON to {}",
+                out_json_path.display()
+            );
         }
     }
 }
-
 /// Entry point for `splendor studio-league-complete`: completion-only retry.
 pub fn run_studio_league_complete(args: &[String]) -> i32 {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
@@ -433,178 +469,25 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
         }
     }
 
-    let read = |path: &Path, label: &str| match fs::read(path) {
-        Ok(bytes) => Ok(bytes),
-        Err(error) => Err(format!("cannot read {label} `{}`: {error}", path.display())),
+    // The four persisted documents ARE the occurrence's authority: this reads
+    // them, verifies them against the envelope's own hashes, and never runs a
+    // match or consults a configuration of its own.
+    let evidence = OccurrenceEvidence {
+        config: config_path.clone(),
+        replay: replay_path.clone(),
+        report: report_path.clone(),
+        occurrence: occurrence_path.clone(),
     };
-    let occurrence_bytes = match read(&occurrence_path, "occurrence envelope") {
-        Ok(bytes) => bytes,
-        Err(message) => {
-            eprintln!("studio-league-complete: {message}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-    let occurrence = match splendor_studio_league::parse_runtime_occurrence(&occurrence_bytes) {
-        Ok(Some(occurrence)) => occurrence,
-        Ok(None) => {
-            eprintln!(
-                    "studio-league-complete: `{}` is not an occurrence envelope (format `{RUNTIME_OCCURRENCE_FORMAT}`)",
-                    occurrence_path.display()
-                );
-            return EXIT_MATCH_FAILED;
+    match complete_persisted_occurrence(&evidence, &paths) {
+        Ok(completion) => {
+            report_completion(&completion, "studio-league-complete", json_out.as_ref());
+            0
         }
         Err(error) => {
-            eprintln!("studio-league-complete: invalid occurrence envelope: {error}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-    let report_bytes = match read(&report_path, "arena report") {
-        Ok(bytes) => bytes,
-        Err(message) => {
-            eprintln!("studio-league-complete: {message}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-    let replay_bytes = match read(&replay_path, "replay") {
-        Ok(bytes) => bytes,
-        Err(message) => {
-            eprintln!("studio-league-complete: {message}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-    let config_bytes = match read(&config_path, "config") {
-        Ok(bytes) => bytes,
-        Err(message) => {
-            eprintln!("studio-league-complete: {message}");
-            return EXIT_MATCH_FAILED;
-        }
-    };
-
-    match complete_persisted(
-        &occurrence,
-        &report_bytes,
-        &replay_bytes,
-        &config_bytes,
-        &replay_path,
-        &paths,
-        json_out.as_ref(),
-        "studio-league-complete",
-    ) {
-        Ok(()) => 0,
-        Err(message) => {
-            eprintln!("studio-league-complete: {message}");
+            eprintln!("studio-league-complete: {error}");
             EXIT_MATCH_FAILED
         }
     }
-}
-
-/// The four documents of a finished occurrence, as persisted.
-struct PersistedEvidence {
-    occurrence: RuntimeOccurrenceV1,
-    report_bytes: Vec<u8>,
-    replay_bytes: Vec<u8>,
-}
-
-/// Publish report + replay + envelope for a completed match, in that order.
-///
-/// The report is published last (it is `run-match`'s commit marker), and the
-/// envelope only after both are on disk. If the envelope cannot be written, the
-/// report and replay are rolled back too: an occurrence whose evidence is
-/// incomplete must not look complete, or a later retry would be ambiguous.
-fn persist_completed_evidence(
-    parsed: &CompleteArgs,
-    report: &splendor_arena::ArenaReportV1,
-    replay: &ReplayV1,
-    config_bytes: &[u8],
-) -> Result<PersistedEvidence, String> {
-    // Same binding checks `run-match` performs before publishing anything.
-    let replay_final_hash = match &report.outcome {
-        splendor_arena::ArenaOutcomeV1::Completed {
-            replay_final_hash, ..
-        } => replay_final_hash.clone(),
-        _ => {
-            return Err("runner returned a replay for a non-completed outcome".to_string());
-        }
-    };
-    if replay_final_hash != replay.final_state_hash.as_str() {
-        return Err("report replay_final_hash does not match replay final_state_hash".to_string());
-    }
-    splendor_replay::verify_replay(replay)
-        .map_err(|error| format!("replay failed verification: {error}"))?;
-
-    let report_json =
-        to_pretty_line(report).map_err(|error| format!("serialize report failed: {error}"))?;
-    let replay_json =
-        to_pretty_line(replay).map_err(|error| format!("serialize replay failed: {error}"))?;
-
-    // The evidence hashes must cover the exact published bytes, so hash the
-    // serialized documents rather than the in-memory values.
-    let report_bytes = report_json.as_bytes().to_vec();
-    let replay_bytes = replay_json.as_bytes().to_vec();
-    let occurrence = RuntimeOccurrenceV1 {
-        format: RUNTIME_OCCURRENCE_FORMAT.to_string(),
-        version: RUNTIME_OCCURRENCE_VERSION,
-        occurrence_id: parsed.occurrence_id.clone(),
-        completed_at: now_epoch_seconds(),
-        report_sha256: replay_document_sha256(&report_bytes),
-        replay_sha256: replay_document_sha256(&replay_bytes),
-        config_sha256: replay_document_sha256(config_bytes),
-    };
-    let occurrence_json = to_pretty_line(&occurrence)
-        .map_err(|error| format!("serialize occurrence envelope failed: {error}"))?;
-
-    // Publish the evidence set in a fixed order, rolling back everything already
-    // written if any step fails: an occurrence whose evidence is incomplete must
-    // never be left looking finished.
-    //
-    //   1. the config snapshot (an exact copy of the bytes the runner consumed)
-    //   2. the replay
-    //   3. the report (the commit marker, as in `run-match`)
-    //   4. the envelope
-    //
-    // The envelope goes last because it attests to the other three.
-    //
-    // All four go through the same atomic publish machinery, so every document
-    // is durable on return and its final path only ever appears as a complete
-    // document. In particular nothing here leaves a partially written JSON at a
-    // final path: the config snapshot and the envelope use
-    // `atomic_output::commit_single` (temp -> write -> flush -> sync_all ->
-    // create-if-absent publish), exactly like the report/replay pair, and like
-    // the receipt export.
-    let config_text = std::str::from_utf8(config_bytes).map_err(|_| {
-        "config bytes are not valid UTF-8; cannot persist the config snapshot".to_string()
-    })?;
-    if let Err(error) = atomic_output::commit_single(&parsed.config_out, config_text) {
-        return Err(format!("could not persist the config snapshot: {error}"));
-    }
-
-    if let Err(error) = atomic_output::commit_completed_with(
-        &parsed.replay_out,
-        &replay_json,
-        &parsed.report_out,
-        &report_json,
-        atomic_output::publish_new,
-    ) {
-        let _ = fs::remove_file(&parsed.config_out);
-        return Err(format!(
-            "could not publish report and replay (config snapshot rolled back): {error}"
-        ));
-    }
-
-    if let Err(error) = atomic_output::commit_single(&parsed.occurrence_out, &occurrence_json) {
-        let _ = fs::remove_file(&parsed.report_out);
-        let _ = fs::remove_file(&parsed.replay_out);
-        let _ = fs::remove_file(&parsed.config_out);
-        return Err(format!(
-            "could not publish the occurrence envelope; report, replay and config snapshot rolled back: {error}"
-        ));
-    }
-
-    Ok(PersistedEvidence {
-        occurrence,
-        report_bytes,
-        replay_bytes,
-    })
 }
 
 /// Read the config document once, bounded by the bytes actually read.
@@ -627,139 +510,6 @@ fn read_config_bytes(path: &Path) -> Result<Vec<u8>, String> {
         ));
     }
     Ok(raw)
-}
-
-/// Publish an aborted match's report only (the occurrence never happened).
-fn persist_aborted_report(
-    parsed: &CompleteArgs,
-    report: &splendor_arena::ArenaReportV1,
-) -> Result<(), String> {
-    let report_json =
-        to_pretty_line(report).map_err(|error| format!("serialize report failed: {error}"))?;
-    atomic_output::commit_aborted_with(&parsed.report_out, &report_json, atomic_output::publish_new)
-        .map_err(|error| format!("could not publish aborted report: {error}"))
-}
-
-/// Call the completion authority on already-persisted evidence.
-///
-/// This is the only place either entry point touches the outlet. It reads
-/// nothing from disk itself and never runs a match: the caller hands it the
-/// durable documents.
-#[allow(clippy::too_many_arguments)]
-fn complete_persisted(
-    occurrence: &RuntimeOccurrenceV1,
-    report_bytes: &[u8],
-    replay_bytes: &[u8],
-    config_bytes: &[u8],
-    replay_source_path: &Path,
-    paths: &StudioLeaguePathsV1,
-    json_out: Option<&PathBuf>,
-    command: &str,
-) -> Result<(), String> {
-    // The archive root is captured by the session from the resolved paths when it
-    // is opened; the replay's logical path here is recorded for provenance only.
-    let replay_logical_path = replay_source_path.to_string_lossy().replace('\\', "/");
-    let request = CompletionRequestV1 {
-        occurrence,
-        report_bytes,
-        replay_bytes,
-        config_bytes,
-        replay_source_path: &replay_logical_path,
-    };
-
-    let mut league = open_completion_league(paths, now_epoch_seconds())
-        .map_err(|error| format!("cannot open the league for completion: {error}"))?;
-    let completion = complete_runtime_occurrence(&mut league, &request)
-        .map_err(|error| describe_completion_error(&error))?;
-
-    let record = &completion.record;
-    let archived = &completion.archived;
-    let receipt = &completion.receipt;
-    println!(
-        "{command}: archived replay {} ({})",
-        archived.document_sha256(),
-        archived.outcome().as_str()
-    );
-    let eligibility_text = match &receipt.rating_ineligible_reason {
-        Some(reason) => format!("ineligible ({reason})"),
-        None => "eligible".to_string(),
-    };
-    println!(
-        "{command}: recorded occurrence `{}`",
-        record.source_identity
-    );
-    println!("  match_id:    {}", receipt.match_id);
-    match &completion.ingest {
-        IngestOutcome::Inserted { rating_events, .. } => {
-            println!("  outcome:     inserted ({rating_events} rating events)");
-        }
-        IngestOutcome::AlreadyPresent { .. } => {
-            println!("  outcome:     already_present (no new Elo)");
-        }
-    }
-    println!("  eligibility: {eligibility_text}");
-    for event in &receipt.elo_events {
-        println!(
-            "  elo:         {}: {:.1} -> {:.1}",
-            event.participant_id, event.elo_before, event.elo_after
-        );
-    }
-
-    if let Some(out_json_path) = json_out {
-        let (outcome_kind, event_count) = match &completion.ingest {
-            IngestOutcome::Inserted { rating_events, .. } => ("inserted", *rating_events),
-            IngestOutcome::AlreadyPresent { .. } => ("already_present", 0),
-        };
-        let receipt_json = serde_json::json!({
-            "source_kind": record.source_kind,
-            "source_identity": record.source_identity,
-            "source_document_hash": record.source_document_hash,
-            "match_id": receipt.match_id,
-            "replay": {
-                "storage": record.replay.storage().as_str(),
-                "document_hash": record.replay.document_hash,
-                "path": record.replay.path,
-                "archive_outcome": archived.outcome().as_str(),
-            },
-            "outcome": {
-                "kind": outcome_kind,
-                "rating_events": event_count,
-            },
-            "eligibility": eligibility_text,
-            "elo": receipt
-                .elo_events
-                .iter()
-                .map(|event| {
-                    serde_json::json!({
-                        "participant_id": event.participant_id,
-                        "elo_before": event.elo_before,
-                        "elo_after": event.elo_after,
-                    })
-                })
-                .collect::<Vec<_>>(),
-        });
-        if let Err(error) = write_json_report(out_json_path, &receipt_json) {
-            // The occurrence IS booked; only the export failed. Re-offering is
-            // idempotent, so this is reported as a success with a warning.
-            eprintln!(
-                "{command}: the occurrence WAS committed; only the receipt export failed ({}: {error}). \
-Re-offering the same occurrence is a no-op, so the receipt can be re-derived safely",
-                out_json_path.display()
-            );
-        } else {
-            println!(
-                "Wrote completion receipt JSON to {}",
-                out_json_path.display()
-            );
-        }
-    }
-
-    Ok(())
-}
-
-/// Turn a completion error into a message that names the failing half.
-fn describe_completion_error(error: &StudioLeagueError) -> String {
-    format!("Studio completion failed (the match itself is unaffected): {error}")
 }
 
 /// Refuse a receipt path that aliases a piece of durable state.

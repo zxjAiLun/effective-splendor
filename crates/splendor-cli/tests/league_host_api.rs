@@ -1,10 +1,15 @@
 //! Commit D Slice 1 — the read-only Studio League Host API.
 //!
-//! Eight gates, deliberately few: root authority, leaderboard truth, match-detail
-//! truth, replay content-addressing, and four fail-closed gates for the evidence a
-//! read must respect — durable identity, the rating protocol identity, a corrupt
-//! archive object, and evidence that moved *after* the host was already running. They drive the real binary over a real socket, because
-//! the thing under test is a process surface, not a library.
+//! Twelve gates, deliberately few. Eight are the read surface (Commit D Slice 1):
+//! root authority, leaderboard truth, match-detail truth, replay content-addressing,
+//! and four fail-closed gates for the evidence a read must respect — durable
+//! identity, the rating protocol identity, a corrupt archive object, and evidence
+//! that moved *after* the host was already running. Four are the one write route
+//! (Commit E Slice 1): the normal round trip, a completion failure and its retry,
+//! the idempotent re-post, and the request surface's refusals.
+//!
+//! They drive the real binary over a real socket against real matches, because the
+//! thing under test is a process surface, not a library.
 //!
 //! The HTTP client is hand-rolled over `std::net` on purpose: this repository has
 //! no web stack, and a read-only API gate is not a reason to acquire one.
@@ -106,15 +111,21 @@ struct HostProcess {
 }
 
 impl HostProcess {
-    /// Start the host with an explicit project root, from an unrelated cwd.
+    /// Start the host with the workspace registry, from an unrelated cwd.
     fn start(root: &Path, cwd: &Path) -> Self {
+        Self::start_with_registry(root, cwd, &rating_registry())
+    }
+
+    /// Start the host with an explicit registry, so a write gate can decide what a
+    /// seat id resolves to.
+    fn start_with_registry(root: &Path, cwd: &Path, registry: &Path) -> Self {
         let port = free_port();
         let child = Command::new(bin())
             .current_dir(cwd)
             .args([
                 "studio-host",
                 "--registry",
-                &rating_registry().to_string_lossy(),
+                &registry.to_string_lossy(),
                 "--reviewer-registry",
                 &reviewer_registry().to_string_lossy(),
                 "--port",
@@ -169,6 +180,20 @@ stderr={stderr}"
             panic!(
                 "GET {path} returned {code} with a non-JSON body: {error}\n{}",
                 String::from_utf8_lossy(&body)
+            )
+        });
+        (code, json)
+    }
+
+    /// One POST, with the JSON body the write route accepts.
+    fn post_json(&self, path: &str, body: &serde_json::Value) -> (u16, serde_json::Value) {
+        let (status, raw) = http_post_json(self.port, path, body).expect("POST");
+        let code = status_code(&status);
+        let json = serde_json::from_slice(&raw).unwrap_or_else(|error| {
+            panic!(
+                "POST {path} returned {code} with a non-JSON body: {error}
+{}",
+                String::from_utf8_lossy(&raw)
             )
         });
         (code, json)
@@ -729,4 +754,598 @@ fn a_league_that_goes_stale_while_the_host_is_running_stops_being_served() {
         200,
         "/health must still answer while the league is stale"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Commit E Slice 1 — the Host write surface.
+//
+// Four gates drive `POST /league/matches` over a real socket against real
+// matches: the normal round trip, a completion failure and its retry, the
+// idempotent re-post, and the request surface's refusals. They are deliberately
+// few: the producer's own publish order is already frozen by the CLI wiring
+// gates, and these gates exist to prove the Host *reuses* it rather than
+// reimplements it.
+// ---------------------------------------------------------------------------
+
+/// One POST. A match can take seconds, so the read timeout is generous; the
+/// assertion is on the outcome, never on elapsed time.
+fn http_post_json(
+    port: u16,
+    path: &str,
+    body: &serde_json::Value,
+) -> std::io::Result<(String, Vec<u8>)> {
+    let bytes = serde_json::to_vec(body).expect("serialize the request body");
+    let mut stream = TcpStream::connect(("127.0.0.1", port))?;
+    stream.set_read_timeout(Some(Duration::from_secs(600)))?;
+    write!(
+        stream,
+        "POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        bytes.len()
+    )?;
+    stream.write_all(&bytes)?;
+    stream.flush()?;
+    let mut buffer = Vec::new();
+    stream.read_to_end(&mut buffer)?;
+    let split = buffer
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .expect("a complete response has a header terminator")
+        + 4;
+    let head = String::from_utf8_lossy(&buffer[..split]).to_string();
+    let status = head.lines().next().unwrap_or_default().to_string();
+    Ok((status, buffer[split..].to_vec()))
+}
+
+/// A real, empty league installation: the directory, the durable identity
+/// manifest, and the schema. Write gates start from one of these.
+fn new_league(dir: &Path) -> (PathBuf, StudioLeaguePathsV1) {
+    let root = dir.join("root");
+    let paths = StudioLeaguePathsV1::from_root(&root);
+    std::fs::create_dir_all(paths.dir()).expect("create the league directory");
+    let mut manifest = IdentityManifestV1::new();
+    manifest.ensure_local_human("Nick");
+    manifest
+        .save(paths.identity())
+        .expect("save identity manifest");
+    // Opening the league creates the schema; the durable identity is already there.
+    drop(open_league(&paths.db()).expect("create the league schema"));
+    (root, paths)
+}
+
+/// A league that has served at least one completion.
+///
+/// The read session validates the stored rating protocol identity and the durable
+/// identity hash, and those are written by a completion. A gate that reads the
+/// league back through HTTP therefore has to start from a league that has already
+/// booked a match.
+fn primed_league(dir: &Path) -> (PathBuf, StudioLeaguePathsV1) {
+    let (root, paths) = new_league(dir);
+    complete_match(
+        dir,
+        &root,
+        "prime",
+        "occ-gate-prime",
+        9_100_001,
+        [["agent-heuristic", "91101"], ["agent-random", "91102"]],
+    );
+    (root, paths)
+}
+
+/// A registry the gate owns, so it can decide what a seat id resolves to.
+///
+/// The Host is the party that resolves a seat to a command, and it copies that
+/// command out of the registry — never out of the request. Pointing `program` at
+/// a path the gate can delete is what makes "the retry did not re-run the match"
+/// observable rather than merely plausible.
+fn host_registry(dir: &Path, entries: &[(&str, PathBuf, Vec<&str>)]) -> PathBuf {
+    let agents = entries
+        .iter()
+        .enumerate()
+        .map(|(index, (id, program, args))| {
+            serde_json::json!({
+                "id": id,
+                "display_name": format!("Gate agent {id} ({index})"),
+                "class": "search",
+                "policy_version": format!("gate-policy-{index}"),
+                "model_version": null,
+                "checkpoint_hash": null,
+                "runtime_name": format!("gate-runtime-{id}"),
+                "runtime_version": "1",
+                "command": { "program": program.to_string_lossy(), "args": args },
+            })
+        })
+        .collect::<Vec<_>>();
+    let registry = serde_json::json!({
+        "format": "effective-splendor-rating-registry",
+        "version": 1,
+        "registry_id": "gate-host-write-registry",
+        "agents": agents,
+    });
+    write_file(
+        dir,
+        "gate-registry.json",
+        &serde_json::to_string_pretty(&registry).expect("serialize registry"),
+    )
+}
+
+/// The seats every write gate uses: the arena binary itself, driven as an agent,
+/// exactly the way the CLI wiring fixture drives it.
+///
+/// `gate-offline` is that binary asked to do something that is not agent-protocol
+/// work, so it exits without a handshake. That is the cheapest honest way to
+/// produce a settled *aborted* match -- the arena's other non-completed outcome --
+/// without waiting out a handshake timeout.
+fn gate_seats(program: &Path) -> Vec<(&'static str, PathBuf, Vec<&'static str>)> {
+    vec![
+        (
+            "gate-heuristic",
+            program.to_path_buf(),
+            vec!["agent-heuristic", "--seed", "7"],
+        ),
+        (
+            "gate-random",
+            program.to_path_buf(),
+            vec!["agent-random", "--seed", "8"],
+        ),
+        ("gate-offline", program.to_path_buf(), vec!["--version"]),
+    ]
+}
+
+fn count_rows(conn: &rusqlite::Connection, sql: &str) -> i64 {
+    conn.query_row(sql, [], |row| row.get(0))
+        .unwrap_or_else(|error| panic!("query `{sql}` failed: {error}"))
+}
+
+/// Gate I — a POST runs one real match and books it end to end.
+///
+/// The normal round trip: the Host builds the arena configuration from registry
+/// ids, runs the real arena, publishes all four documents into the occurrence
+/// slot, completes the occurrence, and the read surface then serves exactly the
+/// match that was booked. Nothing here is mocked: this is the same producer the
+/// CLI uses, reached through the one write route.
+#[test]
+fn a_post_runs_one_real_match_and_books_it_end_to_end() {
+    let dir = tmp_dir("gate-i");
+    let (root, paths) = primed_league(&dir);
+    let registry = host_registry(&dir, &gate_seats(&bin()));
+    let elsewhere = dir.join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).expect("create an unrelated cwd");
+    let host = HostProcess::start_with_registry(&root, &elsewhere, &registry);
+
+    let (code, board) = host.get_json("/league/leaderboard");
+    assert_eq!(code, 200, "the primed league must be served: {board}");
+
+    let request = serde_json::json!({
+        "occurrence_id": "gate-i-0001",
+        "game_id": "gate-i-game",
+        "seed": 7_100_001u64,
+        "seats": ["gate-heuristic", "gate-random"],
+    });
+    let (code, response) = host.post_json("/league/matches", &request);
+    assert_eq!(code, 200, "a normal POST must be served: {response}");
+    assert_eq!(response["match_status"], "completed");
+    assert_eq!(response["completion_status"], "inserted");
+    let receipt = &response["receipt"];
+    assert_eq!(receipt["source_identity"], "runtime:gate-i-0001");
+    let match_id = receipt["match_id"]
+        .as_str()
+        .expect("the response names the booked match")
+        .to_string();
+    assert!(!match_id.is_empty());
+    assert_eq!(
+        receipt["elo"].as_array().expect("elo events").len(),
+        2,
+        "a rated two-seat match records two events: {response}"
+    );
+
+    // All four documents are durable in the occurrence slot, under the protocol
+    // file names.
+    let slot = paths
+        .occurrence_dir("gate-i-0001")
+        .expect("a safe occurrence id");
+    for name in [
+        "config.json",
+        "replay.json",
+        "report.json",
+        "occurrence.json",
+    ] {
+        assert!(
+            slot.join(name).is_file(),
+            "{name} must be durable after a POST; {} holds {:?}",
+            slot.display(),
+            std::fs::read_dir(&slot)
+                .map(|entries| entries
+                    .filter_map(|entry| entry.ok())
+                    .map(|entry| entry.file_name().to_string_lossy().into_owned())
+                    .collect::<Vec<_>>())
+                .unwrap_or_default()
+        );
+    }
+
+    // The read surface serves exactly the match the POST booked.
+    let (code, detail) = host.get_json(&format!("/league/matches/{match_id}"));
+    assert_eq!(code, 200, "the booked match must be readable: {detail}");
+    assert_eq!(detail["match"]["match_id"], match_id.as_str());
+    assert_eq!(detail["match"]["status"], "completed");
+    assert_eq!(detail["match"]["player_count"], 2);
+
+    // And its replay is retrievable by content address.
+    let document_hash = receipt["replay"]["document_hash"]
+        .as_str()
+        .expect("the receipt names the archived document");
+    let (code, archived) = host.get_json(&format!("/league/replays/{document_hash}"));
+    assert_eq!(
+        code, 200,
+        "the archived replay must be readable by content address: {archived}"
+    );
+    assert_eq!(
+        archived["final_state_hash"]
+            .as_str()
+            .expect("the archived document is a replay")
+            .len(),
+        64
+    );
+
+    // The other settled outcome: a match the arena could not play to a terminal
+    // state. It is a 200 with two facts, never an error and never a booking, and
+    // re-offering it reports the recorded fact instead of trying again -- which the
+    // create-if-absent report publish would turn into a failure if it re-ran.
+    let aborted_slot = paths
+        .occurrence_dir("gate-i-aborted")
+        .expect("a safe occurrence id");
+    let aborted_request = serde_json::json!({
+        "occurrence_id": "gate-i-aborted",
+        "game_id": "gate-i-aborted-game",
+        "seed": 7_100_002u64,
+        "seats": ["gate-offline", "gate-offline"],
+    });
+    let (code, aborted) = host.post_json("/league/matches", &aborted_request);
+    assert_eq!(
+        code, 200,
+        "a settled aborted match is a normal outcome: {aborted}"
+    );
+    assert_eq!(aborted["match_status"], "aborted");
+    assert_eq!(aborted["completion_status"], "not_applicable");
+    assert!(
+        aborted.get("receipt").is_none() || aborted["receipt"].is_null(),
+        "an aborted match has no booking to report: {aborted}"
+    );
+    let report_before =
+        std::fs::read(aborted_slot.join("report.json")).expect("the aborted report is durable");
+    for name in ["config.json", "replay.json", "occurrence.json"] {
+        assert!(
+            !aborted_slot.join(name).exists(),
+            "{name} must not exist for a settled, non-completed match"
+        );
+    }
+
+    let (code, again) = host.post_json("/league/matches", &aborted_request);
+    assert_eq!(code, 200, "the settled fact can be re-read: {again}");
+    assert_eq!(again["match_status"], "aborted");
+    assert_eq!(again["completion_status"], "not_applicable");
+    assert_eq!(
+        std::fs::read(aborted_slot.join("report.json")).expect("the aborted report"),
+        report_before,
+        "a settled aborted match must not be produced again"
+    );
+
+    // Nothing was created relative to the working directory.
+    assert!(
+        !elsewhere.join("local-artifacts").exists(),
+        "the write route must not create league state under the process working directory"
+    );
+}
+
+/// Gate J — a completion failure is reported as two facts, and the retry does not
+/// re-run the match.
+///
+/// The occurrence is produced and made durable while completion is impossible, so
+/// the response must say *the match completed* and *completion failed*, never
+/// anything that reads as one failed thing. The retry is then proved not to have
+/// re-run the arena twice over: the agent program no longer exists, so a re-run
+/// could not have succeeded, and the four documents are byte-identical, so
+/// nothing was re-minted.
+#[test]
+fn a_retry_after_a_completion_failure_never_reruns_the_match() {
+    let dir = tmp_dir("gate-j");
+    let (root, paths) = new_league(&dir);
+
+    // The agent program is a copy this gate owns. Taking it away later is how the
+    // gate makes "the retry did not spawn anything" observable.
+    let agents = dir.join("agents");
+    std::fs::create_dir_all(&agents).expect("create the agent directory");
+    let agent_program = agents.join(if cfg!(windows) {
+        "splendor-agent.exe"
+    } else {
+        "splendor-agent"
+    });
+    std::fs::copy(bin(), &agent_program).expect("copy the agent program");
+    let registry = host_registry(&dir, &gate_seats(&agent_program));
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+
+    // Make completion impossible: the durable identity moves away, which is the
+    // condition the CLI's completion error describes.
+    std::fs::remove_file(paths.identity()).expect("remove the identity manifest");
+
+    let request = serde_json::json!({
+        "occurrence_id": "gate-j-0001",
+        "game_id": "gate-j-game",
+        "seed": 7_200_001u64,
+        "seats": ["gate-heuristic", "gate-random"],
+    });
+    let (code, response) = host.post_json("/league/matches", &request);
+    assert_eq!(
+        code, 503,
+        "a completion failure is retryable and server-side: {response}"
+    );
+    assert_eq!(
+        response["match_status"], "completed",
+        "the MATCH completed; only completion failed: {response}"
+    );
+    assert_eq!(response["completion_status"], "failed");
+    assert!(
+        response["error"]
+            .as_str()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains("completion"),
+        "the error must name the failing half: {response}"
+    );
+
+    // All four documents are durable even though completion failed.
+    let slot = paths
+        .occurrence_dir("gate-j-0001")
+        .expect("a safe occurrence id");
+    let names = [
+        "config.json",
+        "replay.json",
+        "report.json",
+        "occurrence.json",
+    ];
+    let before = names
+        .iter()
+        .map(|name| {
+            std::fs::read(slot.join(name))
+                .unwrap_or_else(|error| panic!("{name} must be durable: {error}"))
+        })
+        .collect::<Vec<_>>();
+
+    // Repair the condition, and remove the ability to re-run the match.
+    let mut manifest = IdentityManifestV1::new();
+    manifest.ensure_local_human("Nick");
+    manifest
+        .save(paths.identity())
+        .expect("restore the identity manifest");
+    std::fs::remove_file(&agent_program).expect("remove the agent program");
+    assert!(!agent_program.exists());
+
+    let (code, response) = host.post_json("/league/matches", &request);
+    assert_eq!(
+        code, 200,
+        "the retry must complete the recorded occurrence: {response}"
+    );
+    assert_eq!(response["match_status"], "completed");
+    assert_eq!(response["completion_status"], "inserted");
+
+    for (index, name) in names.iter().enumerate() {
+        assert_eq!(
+            std::fs::read(slot.join(name)).expect("the document is still there"),
+            before[index],
+            "{name} must be byte-identical after the retry; a re-run would have re-minted it"
+        );
+    }
+    assert!(
+        !agent_program.exists(),
+        "the retry must not have spawned an agent"
+    );
+}
+
+/// Gate K — the same occurrence is booked once, however often it is posted.
+///
+/// An occurrence id is an occurrence's identity, not a per-request token. The
+/// second POST is answered from the documents on disk: no second match row, no
+/// second Elo booking, no re-written evidence.
+#[test]
+fn re_posting_a_booked_occurrence_adds_no_second_match_and_no_elo() {
+    let dir = tmp_dir("gate-k");
+    let (root, paths) = primed_league(&dir);
+    let agents = dir.join("agents");
+    std::fs::create_dir_all(&agents).expect("create the agent directory");
+    let agent_program = agents.join(if cfg!(windows) {
+        "splendor-agent.exe"
+    } else {
+        "splendor-agent"
+    });
+    std::fs::copy(bin(), &agent_program).expect("copy the agent program");
+    let registry = host_registry(&dir, &gate_seats(&agent_program));
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+
+    let request = serde_json::json!({
+        "occurrence_id": "gate-k-0001",
+        "game_id": "gate-k-game",
+        "seed": 7_300_001u64,
+        "seats": ["gate-heuristic", "gate-random"],
+    });
+    let (code, first) = host.post_json("/league/matches", &request);
+    assert_eq!(
+        code, 200,
+        "the first POST must book the occurrence: {first}"
+    );
+    assert_eq!(first["completion_status"], "inserted");
+    let match_id = first["receipt"]["match_id"]
+        .as_str()
+        .expect("a match id")
+        .to_string();
+
+    let conn = open_league(&paths.db()).expect("open the league");
+    let matches_before = count_rows(&conn, "SELECT COUNT(*) FROM matches");
+    let events_before = count_rows(&conn, "SELECT COUNT(*) FROM rating_events");
+    drop(conn);
+    let (_, board_before) = host.get_json("/league/leaderboard");
+
+    let slot = paths
+        .occurrence_dir("gate-k-0001")
+        .expect("a safe occurrence id");
+    let envelope_before = std::fs::read(slot.join("occurrence.json")).expect("the envelope");
+    let report_before = std::fs::read(slot.join("report.json")).expect("the report");
+
+    // The arena can no longer be run at all, so a re-trigger that ran it would
+    // fail loudly instead of quietly booking a second match.
+    std::fs::remove_file(&agent_program).expect("remove the agent program");
+
+    let (code, second) = host.post_json("/league/matches", &request);
+    assert_eq!(
+        code, 200,
+        "the same occurrence is a retry, not a second match: {second}"
+    );
+    assert_eq!(second["match_status"], "completed");
+    assert_eq!(
+        second["completion_status"], "already_present",
+        "the occurrence was already booked: {second}"
+    );
+    assert_eq!(second["receipt"]["match_id"], match_id.as_str());
+
+    let conn = open_league(&paths.db()).expect("open the league");
+    assert_eq!(
+        count_rows(&conn, "SELECT COUNT(*) FROM matches"),
+        matches_before,
+        "no second match row"
+    );
+    assert_eq!(
+        count_rows(&conn, "SELECT COUNT(*) FROM rating_events"),
+        events_before,
+        "no second Elo booking"
+    );
+    assert_eq!(
+        count_rows(
+            &conn,
+            "SELECT COUNT(*) FROM matches WHERE source_identity = 'runtime:gate-k-0001'"
+        ),
+        1,
+        "exactly one match for the occurrence"
+    );
+    drop(conn);
+
+    let (_, board_after) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        board_before, board_after,
+        "the leaderboard must not move on a repeat"
+    );
+    assert_eq!(
+        std::fs::read(slot.join("occurrence.json")).expect("the envelope"),
+        envelope_before,
+        "the occurrence must not be re-minted"
+    );
+    assert_eq!(
+        std::fs::read(slot.join("report.json")).expect("the report"),
+        report_before,
+        "the report must not be rewritten"
+    );
+}
+
+/// Gate L — the request surface's refusals, and the absence of side effects.
+///
+/// Four independent refusals in one gate because they share one assertion: none of
+/// them may run a match, create a slot, or write a row. The unsafe id is the
+/// security one; the `agents` body is the reason the route cannot become a local
+/// arbitrary-execution surface; the seat bounds are the arena's own rule, not a
+/// second copy of it.
+#[test]
+fn the_match_request_cannot_name_a_program_or_an_unsafe_occurrence_id() {
+    let dir = tmp_dir("gate-l");
+    let (root, paths) = primed_league(&dir);
+    let registry = host_registry(&dir, &gate_seats(&bin()));
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+
+    let request = |id: &str| {
+        serde_json::json!({
+            "occurrence_id": id,
+            "game_id": "gate-l-game",
+            "seed": 7_400_001u64,
+            "seats": ["gate-heuristic", "gate-random"],
+        })
+    };
+
+    // 1. An unsafe occurrence id never becomes a path component.
+    for unsafe_id in ["../escape", "a/b", "a\\b", ".", "..", "C:", ""] {
+        let body = request(unsafe_id);
+        let (code, response) = host.post_json("/league/matches", &body);
+        assert_eq!(
+            code, 400,
+            "occurrence id `{unsafe_id}` must be refused: {response}"
+        );
+    }
+
+    // 2. The body cannot express a program, an argv, or an `ArenaConfig`. A nested
+    //    `agents` array is the realistic attempt: it is the arena's own field name.
+    for extra in [
+        serde_json::json!({"program": "evil.exe"}),
+        serde_json::json!({"agents": [{"program": "evil.exe", "args": []}]}),
+        serde_json::json!({"handshake_timeout_ms": 1}),
+        serde_json::json!({"move_timeout_ms": 1}),
+        serde_json::json!({"shutdown_grace_ms": 1}),
+    ] {
+        let mut body = request("gate-l-unknown-field");
+        let object = body.as_object_mut().expect("an object");
+        for (key, value) in extra.as_object().expect("an object") {
+            object.insert(key.clone(), value.clone());
+        }
+        let (code, response) = host.post_json("/league/matches", &body);
+        assert_eq!(
+            code, 400,
+            "a body carrying `{extra}` must be refused: {response}"
+        );
+    }
+
+    // 3. The seat count is the arena's rule: 1 and 5 are both refused, and the
+    //    refusal happens before anything is created.
+    for seats in [
+        serde_json::json!(["gate-heuristic"]),
+        serde_json::json!([
+            "gate-heuristic",
+            "gate-random",
+            "gate-heuristic",
+            "gate-random",
+            "gate-heuristic"
+        ]),
+    ] {
+        let mut body = request("gate-l-seat-count");
+        body["seats"] = seats.clone();
+        let (code, response) = host.post_json("/league/matches", &body);
+        assert_eq!(code, 400, "seats {seats} must be refused: {response}");
+    }
+
+    // 4. An id no seat can resolve is refused.
+    let mut body = request("gate-l-unknown-agent");
+    body["seats"] = serde_json::json!(["gate-heuristic", "not-a-registry-agent"]);
+    let (code, response) = host.post_json("/league/matches", &body);
+    assert_eq!(code, 400, "an unknown agent id must be refused: {response}");
+
+    // 5. None of the above ran a match, created a slot, or wrote a row.
+    assert!(
+        !paths.dir().join("occurrences").exists(),
+        "no occurrence slot may be created for a refused request"
+    );
+    let conn = open_league(&paths.db()).expect("open the league");
+    assert_eq!(
+        count_rows(
+            &conn,
+            "SELECT COUNT(*) FROM matches WHERE source_identity LIKE 'runtime:gate-l%'"
+        ),
+        0,
+        "a refused request must not book anything"
+    );
+    assert_eq!(
+        count_rows(&conn, "SELECT COUNT(*) FROM rating_events"),
+        count_rows(
+            &conn,
+            "SELECT COUNT(*) FROM rating_events WHERE participant_id IS NOT NULL"
+        ),
+        "no rating event was written by a refused request"
+    );
+    drop(conn);
+
+    // And the host survived all of it.
+    let (code, health) = host.get_json("/health");
+    assert_eq!(code, 200, "the host must still be serving: {health}");
 }

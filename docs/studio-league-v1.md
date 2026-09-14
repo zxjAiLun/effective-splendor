@@ -3521,3 +3521,150 @@ ignoring the occurrence-id validation must fail the "unsafe id" case with no sid
 completion failure as a whole-match failure must fail G2; re-running the match on retry must fail G2's
 byte-identity assertion; and skipping the "envelope already exists" check must make G3 report
 `inserted` instead of `already_present`.
+
+## Commit E Slice 1 — implementation and validation (2026-09-15)
+
+Status: **IMPLEMENTED / VERIFIED (local evidence only; no cloud status checks exist in
+this repository)**. Baseline commit `a6a4298` (design-only freeze). This section records
+what was built, the three owner corrections, the deviations, and the evidence.
+
+### Owner corrections applied
+
+- **D3 (modified):** a settled **aborted** match is `200`, not `409`. The frozen mapping is
+  `200` completed+completion ok / `200` aborted / `503` completed+completion failed / `400`
+  malformed, unsafe id, unknown agent, invalid config / `409` occurrence slot neither empty
+  nor complete / `500` producer, runner or I/O failure before a settled fact.
+- **D4 (modified, and this is the branch that matters):** the retry path checks **persisted
+  evidence first**. The order in `StudioHost::run_league_match` is now: parse the body →
+  validate the occurrence id and derive the slot → classify the slot → **if complete**,
+  read the four documents, verify them against the envelope's own hashes, and complete (the
+  registry is never consulted, no configuration is rebuilt, the runner is never called) →
+  **if settled without completion**, report the recorded fact → **if ambiguous**, `409` →
+  only then resolve seats, build the configuration, run the Arena, publish and complete. The
+  earlier "rebuild the config and compare its hash on retry" design is **deleted**, not
+  merely unused: retry integrity is now `persisted config bytes` ↔ `envelope.config_sha256`.
+  A registry, timeout or agent-build change after a restart therefore cannot block retrying
+  an occurrence that already happened.
+- **D6 (modified):** `--handshake-timeout-ms` (Studio Host default `30_000`) and
+  `--shutdown-grace-ms` (default `2_000`) join the existing `--move-timeout-ms` (default
+  `120_000`). All three are parsed by one shared `parse_host_timeout`, bounded by the arena's
+  own `MAX_TIMEOUT_MS`, and are **Host-owned settings**: the request body cannot express a
+  timeout. The Arena has no defaults of its own — every `ArenaConfig` timeout is a mandatory
+  field — so these are called Studio Host defaults and `ArenaConfig::validate()` remains
+  authoritative.
+- **D1 / D2 / D5 confirmed as designed**: seats are registry ids and the request type cannot
+  express a program; the `occurrences/<id>/` layout and its validation live in the path
+  composer; the shared core was extracted and `completion_wiring_command.rs` was edited.
+
+### What was built
+
+1. **`crates/splendor-cli/src/runtime_orchestration.rs` (new, `pub(crate)`) — the shared
+   producer authority.** `OccurrenceEvidence` (the four documents as one value),
+   `OccurrenceSlotV1` + `occurrence_slot()` (pure inspection: `Empty` / `Complete` /
+   `SettledWithoutCompletion { match_status }` / `Ambiguous`), `RuntimeOrchestrationOutcome`
+   (`Completed` / `CompletionFailed` / `Aborted`), `RuntimeOrchestrationError`
+   (`Invalid` / `Conflict` / `Failed`), `produce_and_complete()`,
+   `complete_persisted_occurrence()`, `completion_receipt_json()`. It does not print, and it
+   knows nothing about exit codes, `CompleteArgs`, `--json`, HTTP or command names.
+2. **`completion_wiring_command.rs` became two adapters.** The fused chain, the four
+   `persist_*`/`complete_persisted`/`describe_completion_error` functions and the
+   `PersistedEvidence` struct were **removed** (`-516/+…` in the diff); both entry points now
+   build an `OccurrenceEvidence`, call the shared core, and map the typed outcome onto the
+   frozen stdout/stderr/exit `0/3/2/1/64`. Argument handling, the alias and distinctness
+   checks, `reject_receipt_alias`, `write_json_report` and the usage texts stayed in the CLI.
+3. **`paths.rs`: one new accessor, and the id rule inside it.** `occurrence_dir(id) ->
+   Result<PathBuf>` validates and composes; the validator is private, so the rule belongs to
+   the composer rather than to the network-facing caller. The rule is non-empty, ≤ 128 bytes,
+   not `.` or `..`, no leading or trailing dot, and every byte in `[A-Za-z0-9._-]`. Three
+   unit tests (one of which enumerates 19 real escape/alias shapes).
+4. **`human_play_command.rs`: `StudioHost.paths`, the route, and the mapping.** The resolved
+   `StudioLeaguePathsV1` is stored at startup (the reader keeps its own copy private);
+   `POST /league/matches` is the single write route; `LeagueMatchRequest` is
+   `deny_unknown_fields` with `{occurrence_id, game_id, seed, seats}`; `build_league_match_config`
+   turns registry ids into the trusted commands and lets `ArenaConfig::validate()` own every
+   arena invariant; `respond_league_write` maps the four settled facts and the three failures
+   onto the frozen status codes. The eight read gates are untouched.
+
+### Deviations from the frozen design, and why
+
+- **Completion now reads the documents back from disk.** `produce_and_complete` publishes all
+  four, then calls `complete_persisted_occurrence`, which reads them and checks them against
+  the envelope's hashes. The CLI previously handed the completion outlet its in-memory bytes.
+  The change makes "all four documents are durable *before* completion is attempted"
+  structural rather than a matter of call ordering, at the cost of one read-back per match.
+  It is strictly stricter: a document that cannot be read back can no longer be completed.
+- **One completion implementation.** There is exactly one place that opens the completion
+  outlet and one place that verifies the evidence set, shared by the fresh produce path and
+  the retry path. The alternative — in-memory completion for a fresh produce, disk completion
+  for a retry — would have been two verification paths that could drift.
+- **The settled status is read from the report, not asserted.** `ArenaRunner::run` can only
+  yield `Aborted` (a `Truncated` report comes from the capped entry point, which this
+  pipeline does not call), but the status word is taken from the report's own outcome so the
+  Host can never label a truncated match "aborted".
+- **G1 carries a second phase for the aborted case.** D3 froze `200` for a settled aborted
+  match and no gate covered it, so the aborted round trip (including "re-offering a settled
+  aborted occurrence reports the recorded fact and does not produce it again") was folded into
+  G1 rather than left as a frozen-but-unmeasured mapping. The gate count stays at four new gates.
+- **The write gates prime the league through the CLI.** The read session validates the stored
+  rating protocol identity and the durable identity hash, and a completion is what writes
+  them, so a gate that reads the league back over HTTP has to start from a league that has
+  already booked a match.
+
+### Validation and evidence (local)
+
+- `cargo test -p splendor-studio-league` → **86 passed, 0 failed** (8 test binaries; was 83,
+  +3 `paths.rs` unit tests).
+- `cargo test -p splendor-cli` → **285 passed, 0 failed, 2 ignored** (46 test binaries; was
+  281, +4 gates). Definitive run recorded after the revert of every negative control.
+- `cargo test -p splendor-cli --test league_host_api` → **12 passed, 0 failed**
+  (8 read gates + `a_post_runs_one_real_match_and_books_it_end_to_end`,
+  `a_retry_after_a_completion_failure_never_reruns_the_match`,
+  `re_posting_a_booked_occurrence_adds_no_second_match_and_no_elo`,
+  `the_match_request_cannot_name_a_program_or_an_unsafe_occurrence_id`).
+- `cargo test -p splendor-cli --test completion_wiring --test completion_equivalence` →
+  **5 + 1 passed, 0 failed**: the frozen CLI contract survived the extraction of the core.
+- **Honest note:** the first full `cargo test -p splendor-cli` run reported 7 `atomic_output::`
+  and `arena_command::` unit failures. They pass in isolation and on re-running the same
+  target, the code paths are untouched by this slice, and the definitive full run is 285/0.
+  It is recorded here as an unexplained transient rather than as a pass-by-default.
+
+### Gates and their negative controls
+
+Three negative controls were applied, run, and reverted. Each gate was shown to be sensitive
+to the fix it guards:
+
+| Control | Expectation | Observed |
+| --- | --- | --- |
+| `occurrence_slot`: `is_complete()` no longer decides `Complete` | G2 and G3 must fail | both failed; the retry fell through to the safety net and answered `409 a completed arena report exists without its occurrence envelope` |
+| `respond_league_write`: `Aborted` answered `409` instead of `200` | G1 must fail | only G1 failed, on the aborted phase: `left: 409, right: 200` |
+| `run_league_match`: the id validator's error is ignored and the raw id is joined | the refusal gate must fail | it failed on `../escape`, which ran a full match, booked `runtime:../escape`, and wrote its evidence outside the occurrence directory |
+
+### Known limitations (all accepted, none silent)
+
+- The accept loop is serial, so a POST that runs a match blocks `/health` and the read routes
+  for the duration of that match. A worker queue is explicitly out of scope for this slice.
+- The HTTP layer caps a request body at 64 KiB, well below `MAX_ARENA_CONFIG_BYTES` (1 MiB);
+  the effective cap for this route is 64 KiB. The bodies here are a few hundred bytes.
+- The league routes are unauthenticated and bound to `127.0.0.1`. This slice adds no auth and
+  does not widen the bind address; the security property relied on is that the request cannot
+  name a program.
+- An occurrence id is an occurrence's **identity**, not a per-request token. Re-using an id
+  returns the recorded fact and never runs a new match. On a case-insensitive filesystem two
+  ids differing only in case address one slot, and a Windows reserved device name is refused
+  by the filesystem rather than by the validator.
+- `--registry` remains required, and the three timeouts apply to the Host, not per request.
+- The league must already hold a completion before the read surface serves it (the reader
+  checks the stored rating protocol identity and the durable identity hash).
+
+### Result and decision
+
+Commit E Slice 1 is **IMPLEMENTED and VERIFIED locally**: one write route, one shared producer
+authority, the retry path driven by persisted evidence, and the four frozen status families
+each with a gate and a negative control. The CLI's five wiring gates and the eight read gates
+are unchanged and green. No capability claim is made beyond these commands.
+
+### Next authorized gate
+
+Owner review of Commit E Slice 1 before any further scope. UI, worker queue, watcher,
+scheduler and batch remain **not authorized**. The deferred P2 from Commit D Slice 1 (one
+archive three-state instead of `is_file()` classification) is still open and unchanged.
