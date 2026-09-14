@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE as API } from "../api-base.mjs";
 import {
   BoardSurface,
   ReplayTimeline,
@@ -14,8 +15,6 @@ import {
   type PlayerId,
 } from "../components/replay-board";
 import { type DevelopmentCardData } from "../development-card";
-
-const API = "http://127.0.0.1:43120";
 
 type ArchiveFrame = {
   ply: number;
@@ -45,6 +44,13 @@ type ReplayArchive = {
 export default function ReplayPage() {
   const [archive, setArchive] = useState<ReplayArchive | null>(null);
   const [error, setError] = useState("");
+  /**
+   * `true` when this board was opened by content address (`?league=<sha256>`).
+   *
+   * A league replay has no human session behind it, so the human-only actions
+   * ("mine" filtering, "Review this game") are not offered for it.
+   */
+  const [leagueSource, setLeagueSource] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [filter, setFilter] = useState<"mine" | "all">("all");
   const [frameIndex, setFrameIndex] = useState(0);
@@ -52,13 +58,23 @@ export default function ReplayPage() {
   useEffect(() => {
     queueMicrotask(() =>
       void (async () => {
-        const session = new URLSearchParams(window.location.search).get("session") ?? "";
-        if (!session) {
-          setError("Missing session id in the replay URL.");
+        const params = new URLSearchParams(window.location.search);
+        const session = params.get("session") ?? "";
+        const league = params.get("league") ?? "";
+        if (!session && !league) {
+          setError("Missing session id or league content hash in the replay URL.");
           return;
         }
         try {
-          const response = await fetch(`${API}/replays/${encodeURIComponent(session)}`);
+          // A league match is addressed by the content hash of its verified
+          // replay and read through the League reader's own authority: the
+          // route refuses a stale league and reports an unknown address as
+          // absent, exactly like every other league read.
+          const url = league
+            ? `${API}/league/replays/${encodeURIComponent(league)}/archive`
+            : `${API}/replays/${encodeURIComponent(session)}`;
+          setLeagueSource(Boolean(league));
+          const response = await fetch(url);
           const value = await response.json();
           if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
           const next = value as ReplayArchive;
@@ -136,7 +152,7 @@ export default function ReplayPage() {
           <Link className="studio-link" href="/play">
             Play vs S3
           </Link>
-          {archive ? (
+          {archive && !leagueSource ? (
             <Link
               className="studio-link"
               href={`/review?session=${encodeURIComponent(archive.session_id)}${seat === null ? "" : `&seat=${seat}`}`}

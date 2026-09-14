@@ -1,7 +1,11 @@
 # Replay Studio — League Play page v1 (first player-facing round trip)
 
-**Status: DESIGNED / PROPOSED — not authorized. No code written.**
-Baseline: `506f46f` (docs closure of Commit E Slice 1); accepted code revision `0b69dfe`.
+**Status: IMPLEMENTED — not yet reviewed, not accepted.**
+Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
+Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
+D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
+Code revision: the commit carrying this document update; its hash is recorded in the local-only
+`handoff.md`, not invented here.
 Owner direction (2026-09-15): stop widening the backend; make a lean vertical slice a player can
 actually walk — open Studio → see the league → pick two registered agents → start one match → see
 the result on the same page → open that match's replay. Statistics and the Review repair backlog
@@ -149,13 +153,134 @@ additive route in D3; hand-editing `dist/**`; packaging/deployment.
   → G1 fails; (c) let an unsafe occurrence id through `validateStart` → G1 fails (the Host's own
   refusal is already gated by Commit E Slice 1's gate L).
 
+## Iteration log
+
+Append-only. Material decisions and deviations only.
+
+1. **Recon before writing.** Verified in-tree (not from documentation) that the four league routes
+   exist at `human_play_command.rs:2260-2282`; that `grep -rniE 'league|leaderboard|elo'` over
+   `apps/replay-studio/app` returns only card markup; that the seam is `/play` being human-seat
+   driven; that `/replay?session=` consumes a **different** document shape than the league archive
+   holds. All three facts held.
+2. **The archive adapter's chain is the security property, not a detail.**
+   `build_historical_replay_archive` was read before use: it calls `verify_replay_trace` internally
+   and checks `verified.positions.len() == replay.steps.len()`, so the frames the board receives are
+   rebuilt from a *checked* replay. The handler therefore only had to get one thing right — obtain
+   the document through `StudioLeagueReaderV1::read_replay`, never from a path — and the rest of the
+   authority follows. Negative control D is what tests this.
+3. **Route ordering is load-bearing.** `GET /league/replays/{sha}` is matched by a bare
+   `starts_with("/league/replays/")` prefix arm. The new `/archive` arm had to be placed **before**
+   it, or `"{sha}/archive"` would have been read as the content address. Recorded because the
+   failure mode (`404 no archived replay at content address …/archive`) looks like a data problem.
+4. **D6 could not be implemented as written, and this is a deviation the owner must see.** The
+   pickers are `GET /agents` — registry ids (`gate-heuristic`) — and leaderboard rows are identified
+   by participant id (`eng-<hash>`, derived from engine identity). The two closed read routes
+   **share no join key**, and the ledger's `display_name` is a participant label, not a registry id.
+   Attaching Elo to a picker option would have meant guessing by display name and attributing a
+   rating to the wrong agent, which the league's identity discipline forbids. So the picker lists
+   registry agents plainly and the leaderboard table carries the Elo, with the page saying so in one
+   sentence. Closing this properly needs **one additive field** on `GET /agents` (a derived
+   `participant_id`) — a deliberate backend change this round was not authorized to make. Recorded
+   as a limitation rather than smuggled in.
+5. **`python3` on this machine is the Microsoft Store stub** (exits 49, prints nothing, applies
+   nothing). The first pass of negative controls A/B/C/E therefore "passed" while proving nothing.
+   The controls were re-run with the real `python` (`C:/Python312/python`) plus a hard
+   `assert anchor in source` guard, and all four then failed their intended gates. **A control that
+   cannot fail is not a control** — and a control whose patch silently did not apply is worse than
+   no control, because it reports success.
+6. **One naive assertion was corrected, not worked around.** The `/league` SSR test initially
+   asserted `href="/league"` on the league page itself, which does not link to itself; the assertion
+   belongs in the home-shell test, where the nav link actually is.
+
+## Final implementation
+
+```text
+apps/replay-studio/app/api-base.mjs                          new  — the one API base constant
+apps/replay-studio/app/league-runtime.mjs                    new  — the decisions, pure and testable
+apps/replay-studio/app/league/page.tsx                       new  — the page (a client of the closed authority)
+apps/replay-studio/app/league/layout.tsx                     new  — route metadata
+apps/replay-studio/app/{page,play,replay,review,experiments}/page.tsx   API base imported, not copied
+apps/replay-studio/app/replay/page.tsx                       + `?league=<sha256>` opens a league replay
+apps/replay-studio/app/page.tsx                              + League nav link
+apps/replay-studio/app/play/page.tsx                         + League nav link
+apps/replay-studio/tests/league-runtime.test.mjs             new  — G1 (14 tests)
+apps/replay-studio/tests/fixtures/league-match-request.json  new  — G3's one shared document
+apps/replay-studio/tests/rendered-html.test.mjs              + G2 (2 tests)
+apps/replay-studio/package.json                              + the new test file in the test script
+crates/splendor-cli/src/human_play_command.rs                + league_replay_archive + its route arm
+crates/splendor-cli/tests/league_host_api.rs                 + G3-Rust and D3 gates (12 -> 14)
+```
+
+Decided and implemented:
+
+- **D1 (yes, rated).** The button is `Start rated match` and goes to `POST /league/matches`. The form
+  states, before the click, that it writes a ledger row, Elo events and an archived replay and that
+  Elo may change. No confirmation modal.
+- **D2 (own page).** `/league` is a new page; `/` stays the human Games history and `/ratings` stays
+  the static m19/m22 report. The nav gained one `League` link on `/` and `/play`; the shell was not
+  restructured.
+- **D3 (yes, with the contract).** `GET /league/replays/{sha256}/archive` is a **presentation
+  adapter**: `sha256 → StudioLeagueReaderV1::read_replay() → authority evidence revalidation →
+  content address match → deserialize ReplayV1 → build_historical_replay_archive(…, None, None) →
+  archive-v2 JSON`. No `path → fs::read → builder` chain exists anywhere. The board is the existing
+  `/replay` page reached as `?league=<sha256>`; a league replay has `session_id` = the content hash
+  and no opponent or human seat, and the human-only affordances (`mine` filter, "Review this game")
+  are hidden for it rather than guessed at.
+- **D4 (modified).** The occurrence id is an identity: `studio-<epoch-ms>-<4 hex>`, minted once,
+  rendered, copyable, **not editable**, and re-sent unchanged by Retry. The pending request holds the
+  exact four-field body; `New match` mints the next attempt. No reload recovery.
+- **D5 (yes).** `idle → running → completed / aborted / completion-failed / error` only. No polling,
+  no progress, no cancel. The page does not touch the league while a POST is outstanding — it
+  refreshes the leaderboard once, after the booking returned.
+- **D6 (yes, with the join limitation below).** Pickers come from `GET /agents`; duplicates are
+  allowed with a self-match note (the league records it as ineligible); no eligibility is inferred
+  client-side and no rating is defaulted to 1500.
+- **D7 (yes).** `app/api-base.mjs` exports the constant; the five existing copies now import it.
+- **D8 (yes).** One checked-in fixture, asserted by the JS module test and posted verbatim by a Rust
+  Host gate.
+
 ## Validation and evidence
 
-To be filled at implementation. This round's honest evidence ceiling is: unit tests + SSR render
-tests + the shared contract fixture + the owner's manual walkthrough. There is no browser runner in
-this repository, so no automated gate may claim "a player clicked the button"; the walkthrough
-recipe and its result will be recorded as the acceptance evidence, and any part of the flow that
-only a human can confirm will be labelled as such.
+Local execution only. This repository has **no cloud CI and no status checks**, so nothing below is a
+CI result; and there is **no browser runner**, so no gate claims a player clicked anything.
+
+```text
+apps/replay-studio            npm test                              -> 61 tests, 61 pass, 0 fail (7 files; league file = 14)
+apps/replay-studio            npm run lint                          -> clean
+crates/splendor-cli           cargo test -p splendor-cli            -> 287 passed, 0 failed, 3 ignored (45 targets)
+crates/splendor-studio-league cargo test -p splendor-studio-league  -> 86 passed, 0 failed
+crates/splendor-cli           cargo test -p splendor-cli --test league_host_api -> 14 passed (8 read + 4 write + 2 page seams)
+repo root                     git diff --check                      -> clean
+```
+
+The three ignored tests are pre-existing, explicitly-ignored benchmark targets
+(`m05_fixed_benchmark_meets_strength_gate` and the M30A/M32A probes); none is in this round's scope,
+and this round marked nothing ignored. An earlier record of this suite noted `2 ignored`; the delta
+is in those pre-existing ignored benchmarks and is recorded as measured, not explained away.
+
+**Negative controls (six, each run before commit and reverted with `cp` from a `/tmp` copy).**
+
+| # | Control | What must fail | Result |
+|---|---------|----------------|--------|
+| A | collapse the two facts into one sentence in `describeResult` | G1 "a completed match whose booking failed stays two facts" | 3 failed, exit 1 |
+| B | `startRequestBody` spreads its input (an extra key can reach the wire) | G1 fixture / key-set test | 5 failed, exit 1 |
+| C | `occurrenceIdError` returns `null` (an unsafe id is accepted) | G1 host-rule mirror + validation tests | 5 failed, exit 1 |
+| D | the archive handler reads the object **by path** instead of via `read_replay` | the D3 gate's stale-league assertion | gate failed: `left: 200, right: 503` |
+| E | `retryRequest` mints a new occurrence id | G1 "minted once and survives a retry unchanged" | 3 failed, exit 1 |
+| F | the shared fixture grows a key the Host does not know | G3, both sides | JS 3 failed; Rust gate `400` — `unknown field timeout_ms, expected one of occurrence_id, game_id, seed, seats` |
+
+Control D is the one that justifies the D3 contract: with a path-based read, the stale league served
+**200**, which is precisely the failure mode the adapter chain exists to prevent.
+
+Two gates exist because the alternative was a false claim:
+
+- **G3 is cross-language.** The Rust gate posts the fixture file's **bytes** (not a re-serialization),
+  so a field added on the JS side alone is refused by `deny_unknown_fields`, and a field added to the
+  fixture alone is caught by the JS side. Control F exercises exactly that.
+- **G2 is a shell assertion, not a click.** It proves `/league` server-renders its shell, the rated
+  notice, the standings heading and "Preparing an occurrence id…" (the id cannot exist server-side),
+  and that the page renders **no** invented rating (`/1500/` and `/Unrated/` must not appear).
+  Everything after a click is covered by the pure module's tests, not by an automated click.
 
 ## Known limitations
 
@@ -170,44 +295,63 @@ only a human can confirm will be labelled as such.
   bridge was deleted deliberately in the product-shell round). The occurrence id is displayed so it
   can be re-sent by hand.
 
+**Added by this round (all accepted, none hidden):**
+
+- **The pickers cannot show Elo.** D6's join has no key: registry ids vs participant ids
+  (`eng-<hash>`). The leaderboard table is the authoritative Elo view, and the result panel carries
+  the authoritative deltas for the match just booked. Closing this needs one additive field on
+  `GET /agents` — a deliberate, separately authorized backend change, not a page-side guess.
+- **`/league` has no automated click coverage.** There is no browser runner in this repository. The
+  visible outcome states (result panel, Retry, the two-fact wording, the single leaderboard refresh)
+  are covered by `league-runtime.mjs` unit tests plus the owner's walkthrough; an automated claim that
+  the button works would be false.
+- **The archive adapter rebuilds on every request** (verify + reconstruct). Correct and cheap for one
+  match; it is deliberately stateless and is not a cache.
+- **The page shows only matches it started.** The result panel is page state; a league match *list*
+  is a different, unauthorized backend surface.
+
+## Run recipe (the acceptance walkthrough)
+
+Two processes, both local:
+
+```bash
+# 1) the Host, on the port the page expects, with a real registry
+cargo run -p splendor-cli -- studio-host --registry private/registry.json --port 43120
+
+# 2) the Studio app
+cd apps/replay-studio && npm run dev     # serves 127.0.0.1:4173, the only allowed CORS origin
+```
+
+1. Open `http://127.0.0.1:4173/league`.
+2. Confirm the roster and the standings load. If the Host is not running, the page must say so and
+   show the exact command, not fail silently.
+3. Pick two agents in the seats. Confirm the page says **Rated** and that Elo may change, and that
+   picking the same agent twice shows the self-match note rather than a validation error.
+4. Read the displayed occurrence id (copyable, not editable) and the seed.
+5. Press **Start rated match** and wait — the Host is serial, so the page must stay in `running`
+   without polling, and a long wait is not a failure.
+6. On the result, read `match_status` and `completion_status` as two facts, plus the Elo deltas. A
+   completion failure must read as "the match completed, booking failed, safe to retry".
+7. Confirm the leaderboard refreshed once and that the two participants' Elo moved by exactly the
+   deltas the receipt showed.
+8. Press **Open replay** and, in the replay board, step and drag through the plies of that match.
+   **This step is the acceptance evidence this round cannot automate.**
+
 ## Result and decision
 
-`PROPOSED`. Awaiting owner confirmation of D1–D8 below before any code is written.
+`IMPLEMENTED`. Code exists, all local gates pass, six negative controls each failed their intended
+gate, and the tree is clean. This is **not** `VERIFIED`/`ACCEPTED`: no review has happened yet, and
+the only evidence that a player can actually walk the flow is the owner's walkthrough above.
+
+Deviations from the authorized request, stated plainly:
+
+1. **D6's Elo-beside-the-picker is not implemented.** No join key exists in the closed surface, and a
+   guess would misattribute ratings. Everything else in D6 is implemented.
+2. **The nav link is on `/` and `/play`.** There is no shared shell component — each page carries its
+   own topbar nav — so "add a League link" means those two, not a restructured header.
 
 ## Next authorized gate
 
-Owner confirmation of the decisions below. Nothing in this document is authorized yet.
-
-## Decisions to confirm
-
-- **D1 — is the player's button a *rated* league match?** Recommendation: **yes, rated**, through
-  `POST /league/matches`, because it is the closed write path and the only agent-vs-agent route;
-  the alternative (an unrated exhibition) would require a second execution path the owner has
-  consistently refused. Consequence to accept: one click mutates the official league (ledger row,
-  Elo events, archived replay). If that is too sharp for a first cut, say so explicitly and I will
-  propose the exhibition path as its own round instead of smuggling it in here.
-- **D2 — where the page lives.** Recommendation: a new `/league` page plus a nav link; leave `/`
-  (Games history) untouched. Alternative: extend `/`.
-- **D3 — how "Open replay" gets a renderable document.** Recommendation: **one additive read-only
-  route** on the Host, e.g. `GET /league/replays/{document_sha256}/archive`, returning the same
-  `effective-splendor-human-replay-archive` v2 shape by calling `build_historical_replay_archive`
-  verbatim on the already-verified archived `ReplayV1`; then `/league` links to
-  `/replay?archive=<sha>` (or a small `/league/replay?sha=` page). Commit D's read surface was
-  frozen at three routes, so this needs your explicit approval; the alternative is a new board
-  component that renders raw `ReplayV1`, which duplicates the renderer.
-- **D4 — who mints the occurrence id, and its shape.** Recommendation: the page mints it
-  (`studio-<epoch-ms>-<4 hex>`, editable in the form), displays it with the result, and retries by
-  re-sending the identical body.
-- **D5 — see the match while it runs.** Recommendation for this cut: a running state showing the
-  occurrence id, no cancellation, no streaming; keep the Host's Studio-default timeouts
-  (handshake 30 s / move 120 s / shutdown grace 2 s).
-- **D6 — which agents the pickers offer.** Recommendation: `GET /agents` (the Host registry is the
-  roster the write route accepts), with Elo shown alongside when a participant exists in the
-  leaderboard; no filtering and no new roster route.
-- **D7 — the API base constant.** Recommendation: extract the single constant into
-  `app/api-base.mjs`, import it in the new page **and** migrate the five existing one-line copies
-  in the same commit (mechanical; the SSR render tests cover the affected pages), so there is one
-  source of truth. Alternative: leave the five copies alone and add a sixth.
-- **D8 — G3's shared fixture.** Recommendation: yes — one checked-in request-body fixture asserted
-  by both the JS module test and a Rust Host gate. Alternative: two independent literals, which can
-  drift silently.
+Owner review of this implementation revision, then the 8-step walkthrough. On acceptance: record the
+closure in `docs/studio-league-v1.md` + `handoff.md`, and decide separately whether to authorize the
+one-field `GET /agents` follow-up that would let the pickers show Elo.

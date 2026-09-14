@@ -20,6 +20,7 @@ test("server-renders the Replay Studio product shell", async () => {
   assert.match(html, /GAMES/);
   assert.match(html, /Saved human vs engine games/);
   assert.match(html, /Play vs S3/);
+  assert.match(html, /href="\/league"/);
   assert.match(html, /Legacy AnalysisTraceV1 viewer/);
   assert.doesNotMatch(html, /Load replay \+ analysis/);
   assert.doesNotMatch(html, /Player view/);
@@ -95,4 +96,32 @@ test("server-renders the M36A experiments route shell", async () => {
   assert.match(html, /No match selected/);
   assert.match(html, /Filter pairings/);
   assert.match(html, /Play vs AI/);
+});
+
+// League Play v1. There is no browser runner in this repository, so these gates
+// assert the server-rendered shell only: the wording a player is told before a
+// rated match, and that nothing is claimed about a rating before one is read.
+test("server-renders the League Play route shell", async () => {
+  const response = await render("/league");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>League · Effective Splendor<\/title>/i);
+  assert.match(html, /League Play/);
+  assert.match(html, /RATED MATCHES/);
+  assert.match(html, /Elo may change/);
+  assert.match(html, /Start rated match/);
+  assert.match(html, /Studio League standings/);
+  assert.match(html, /Preparing an occurrence id/);
+  assert.match(html, /href="\/ratings"/);
+  // No rating is invented before one is read, and no default is shown as a fact.
+  assert.doesNotMatch(html, /1500/);
+  assert.doesNotMatch(html, /Unrated/);
+});
+
+test("server-renders the replay board opened by league content hash", async () => {
+  const response = await render(`/replay?league=${"ab".repeat(32)}`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Rebuilding the replay/);
+  assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });

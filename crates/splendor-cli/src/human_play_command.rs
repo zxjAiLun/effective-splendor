@@ -1999,6 +1999,60 @@ impl StudioHost {
             Err(error) => LeagueRead::Unavailable(error.to_string()),
         }
     }
+
+    /// One archived match replay, rebuilt for the replay board.
+    ///
+    /// This is a **presentation adapter**, never a second authority. The document
+    /// is obtained through `read_replay`, exactly like the raw league replay route
+    /// above, so a stale league is refused here too and an unknown address is
+    /// absent here too. Only behind that gate does the adapter deserialize the
+    /// verified `ReplayV1` and rebuild the frame-by-frame archive the board
+    /// renders. No file path is ever read directly: a path-based read would serve
+    /// an archive with no authority attached to it.
+    ///
+    /// A league match is agent versus agent, so there is no human seat and no
+    /// opponent label to attach. Both are stated as absent rather than guessed.
+    fn league_replay_archive(&self, document_sha256: &str) -> LeagueRead {
+        if document_sha256.is_empty() {
+            return LeagueRead::NotFound("no document sha256 in the request path".to_string());
+        }
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        // The reader owns absence and refusal; the adapter only consumes its
+        // answer, so "this league cannot be trusted" can never be reported as
+        // "this replay does not exist".
+        let bytes = match reader.read_replay(document_sha256) {
+            Ok(Some(bytes)) => bytes,
+            Ok(None) => {
+                return LeagueRead::NotFound(format!(
+                    "no archived replay at content address `{document_sha256}`"
+                ))
+            }
+            Err(error) => return LeagueRead::Unavailable(error.to_string()),
+        };
+        let replay: ReplayV1 = match serde_json::from_slice(&bytes) {
+            Ok(replay) => replay,
+            Err(error) => {
+                return LeagueRead::Unavailable(format!(
+                    "the archived document is not a ReplayV1 replay: {error}"
+                ))
+            }
+        };
+        // The builder re-verifies the replay trace itself, so the frames the
+        // board receives are reconstructed from a checked replay, not trusted
+        // because they were found.
+        match build_historical_replay_archive(&replay, document_sha256, None, None) {
+            Ok(archive) => match serde_json::to_string(&archive) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Err(message) => LeagueRead::Unavailable(format!(
+                "the archived replay cannot be rebuilt for the board: {message}"
+            )),
+        }
+    }
 }
 
 /// One match to run and book, addressed by occurrence identity.
@@ -2263,6 +2317,17 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         "GET" if request.path.starts_with("/league/matches/") => {
             let match_id = request.path["/league/matches/".len()..].to_string();
             return respond_league(&mut stream, host.league_match(&match_id));
+        }
+        // The presentation adapter must be matched before the bare prefix below,
+        // which would otherwise read `"<sha256>/archive"` as a content address.
+        "GET"
+            if request.path.starts_with("/league/replays/")
+                && request.path.ends_with("/archive") =>
+        {
+            let sha256 = request.path
+                ["/league/replays/".len()..request.path.len() - "/archive".len()]
+                .to_string();
+            return respond_league(&mut stream, host.league_replay_archive(&sha256));
         }
         "GET" if request.path.starts_with("/league/replays/") => {
             let sha256 = request.path["/league/replays/".len()..].to_string();

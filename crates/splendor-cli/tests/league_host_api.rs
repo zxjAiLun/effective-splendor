@@ -1,12 +1,17 @@
-//! Commit D Slice 1 — the read-only Studio League Host API.
+//! Commit D Slice 1 — the read-only Studio League Host API, and Commit E Slice 1's
+//! one write route.
 //!
-//! Twelve gates, deliberately few. Eight are the read surface (Commit D Slice 1):
-//! root authority, leaderboard truth, match-detail truth, replay content-addressing,
-//! and four fail-closed gates for the evidence a read must respect — durable
-//! identity, the rating protocol identity, a corrupt archive object, and evidence
-//! that moved *after* the host was already running. Four are the one write route
-//! (Commit E Slice 1): the normal round trip, a completion failure and its retry,
-//! the idempotent re-post, and the request surface's refusals.
+//! Fourteen gates, deliberately few. Eight are the read surface (Commit D Slice
+//! 1): root authority, leaderboard truth, match-detail truth, replay
+//! content-addressing, and four fail-closed gates for the evidence a read must
+//! respect — durable identity, the rating protocol identity, a corrupt archive
+//! object, and evidence that moved *after* the host was already running. Four are
+//! the one write route (Commit E Slice 1): the normal round trip, a completion
+//! failure and its retry, the idempotent re-post, and the request surface's
+//! refusals. Two are the League Play page's seams: the shared request fixture both
+//! the page and the Host must agree on, and the archive route the replay board
+//! consumes — which must be an adapter over the reader's authority and not a
+//! second, path-based way in.
 //!
 //! They drive the real binary over a real socket against real matches, because the
 //! thing under test is a process surface, not a library.
@@ -775,6 +780,14 @@ fn http_post_json(
     body: &serde_json::Value,
 ) -> std::io::Result<(String, Vec<u8>)> {
     let bytes = serde_json::to_vec(body).expect("serialize the request body");
+    http_post_raw(port, path, &bytes)
+}
+
+/// One POST of exact bytes.
+///
+/// The shared page fixture is posted through this verbatim, so the gate proves the
+/// Host accepts *that document* rather than a convenient re-serialization of it.
+fn http_post_raw(port: u16, path: &str, bytes: &[u8]) -> std::io::Result<(String, Vec<u8>)> {
     let mut stream = TcpStream::connect(("127.0.0.1", port))?;
     stream.set_read_timeout(Some(Duration::from_secs(600)))?;
     write!(
@@ -1417,4 +1430,127 @@ fn the_match_request_cannot_name_a_program_or_an_unsafe_occurrence_id() {
     // And the host survived all of it.
     let (code, health) = host.get_json("/health");
     assert_eq!(code, 200, "the host must still be serving: {health}");
+}
+
+// ---------------------------------------------------------------------------
+// League Play v1 — the page's two seams.
+//
+// The page is a browser surface and this repository has no browser runner, so no
+// gate here claims a player clicked anything. These two gates cover what a browser
+// could not: that the request shape the page builds is exactly the document this
+// Host accepts, and that the archive route the replay board opens is an adapter
+// over the League reader's authority rather than a second way in.
+// ---------------------------------------------------------------------------
+
+/// Gate N — the page's own fixture is a request this Host accepts.
+///
+/// `apps/replay-studio/tests/fixtures/league-match-request.json` is read by the
+/// page's unit test in JavaScript and posted here as raw bytes in Rust. One
+/// document, two languages: a key added on either side without the other stops
+/// agreeing, and `deny_unknown_fields` is what makes that visible rather than
+/// silently tolerated.
+#[test]
+fn the_page_fixture_is_a_request_this_host_accepts() {
+    let dir = tmp_dir("gate-page-fixture");
+    let (root, _paths) = new_league(&dir);
+    let registry = host_registry(&dir, &gate_seats(&bin()));
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+
+    let fixture_path =
+        workspace_path("apps/replay-studio/tests/fixtures/league-match-request.json");
+    let bytes = std::fs::read(&fixture_path)
+        .unwrap_or_else(|error| panic!("read {}: {error}", fixture_path.display()));
+
+    let (status, body) =
+        http_post_raw(host.port, "/league/matches", &bytes).expect("POST the page fixture");
+    assert_eq!(
+        status_code(&status),
+        200,
+        "the shared page fixture must be served as-is: {}",
+        String::from_utf8_lossy(&body)
+    );
+
+    let response: serde_json::Value =
+        serde_json::from_slice(&body).expect("a JSON booking response");
+    assert_eq!(response["match_status"], "completed");
+    assert_eq!(response["completion_status"], "inserted");
+    assert_eq!(
+        response["receipt"]["source_identity"],
+        "runtime:studio-fixture-0001",
+        "the occurrence the fixture names is the occurrence that was booked"
+    );
+    assert!(
+        response["receipt"]["replay"]["document_hash"].is_string(),
+        "a booked match must have an archived replay to open: {response}"
+    );
+}
+
+/// Gate O — the archive route is an adapter over the read authority.
+///
+/// The replay board needs the frame-by-frame archive, and this route rebuilds it
+/// from the document the *reader* returns. So a stale league must refuse an
+/// archive that is still sitting on disk — which is exactly what a path-based read
+/// could not do, and why the negative control for this gate is "read the archive
+/// file directly".
+#[test]
+fn the_archive_route_is_an_adapter_over_the_league_read_authority() {
+    let fixture = fixture();
+    let root = copied_root("league-archive-adapter");
+    let paths = StudioLeaguePathsV1::from_root(&root);
+    let host = HostProcess::start(&root, &root);
+    let sha = fixture.eligible_replay_sha.to_string();
+
+    // The source document, through the raw content-addressed route.
+    let (code, source) = host.get_json(&format!("/league/replays/{sha}"));
+    assert_eq!(code, 200, "the fixture replay must be readable: {source}");
+    let steps = source["steps"]
+        .as_array()
+        .expect("a ReplayV1 document records steps")
+        .len();
+    assert!(steps > 0, "the fixture replay is not empty");
+
+    // The board's archive is that same replay, reconstructed.
+    let (code, archive) = host.get_json(&format!("/league/replays/{sha}/archive"));
+    assert_eq!(
+        code, 200,
+        "a known content address must serve an archive: {archive}"
+    );
+    assert_eq!(archive["session_id"], sha.as_str());
+    assert_eq!(
+        archive["human_seat"],
+        serde_json::Value::Null,
+        "a league match is agent versus agent: it has no human seat to claim"
+    );
+    assert_eq!(archive["opponent"], serde_json::Value::Null);
+    let frames = archive["frames"].as_array().expect("a frames array");
+    assert_eq!(
+        frames.len(),
+        steps,
+        "the archive rebuilds every recorded step, not a subset of them"
+    );
+    let cards = archive["catalog"]["cards"]
+        .as_array()
+        .expect("the catalog the board renders from");
+    assert!(!cards.is_empty(), "the board cannot render without its catalog");
+
+    // An address that was never archived is absent, not a fault.
+    let (code, body) = host.get_json(&format!("/league/replays/{}/archive", "0".repeat(64)));
+    assert_eq!(code, 404, "an unarchived address is absent: {body}");
+
+    // The authority gate still comes first: the archived object is untouched on
+    // disk, and the league has gone stale, so this route must stop answering.
+    let mut manifest = IdentityManifestV1::load(paths.identity())
+        .expect("load the identity manifest")
+        .expect("the fixture has one");
+    manifest
+        .rename_local_human("Nick Renamed")
+        .expect("rename the local human");
+    manifest
+        .save(paths.identity())
+        .expect("save the identity manifest");
+    let (code, body) = host.get_json(&format!("/league/replays/{sha}/archive"));
+    assert_eq!(
+        code, 503,
+        "a stale league must not serve an archive whose object is still on disk: {body}"
+    );
 }

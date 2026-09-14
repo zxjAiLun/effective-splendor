@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { API_BASE as API } from "../api-base.mjs";
 import {
   actionKey,
   buildReviewRows,
@@ -126,8 +127,6 @@ type Job = {
   error: string | null;
   cached: boolean;
 };
-
-const API = "http://127.0.0.1:43120";
 
 const S3_PATH_LABELS: Record<string, string> = {
   heuristic_fast_path: "Heuristic fast path",

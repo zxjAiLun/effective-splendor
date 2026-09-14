@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { API_BASE as API } from "./api-base.mjs";
 import { describeGameRow } from "./games-runtime.mjs";
-
-const API = "http://127.0.0.1:43120";
 
 type RecentGame = {
   session_id: string;
@@ -61,6 +60,9 @@ export default function GamesHome() {
         <div className="header-actions">
           <Link className="studio-link" href="/play">
             Play vs S3
+          </Link>
+          <Link className="studio-link" href="/league">
+            League
           </Link>
           <Link className="studio-link" href="/advanced">
             Legacy AnalysisTraceV1 viewer

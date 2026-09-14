@@ -1,0 +1,6 @@
+{
+  "occurrence_id": "studio-fixture-0001",
+  "game_id": "studio-fixture-game",
+  "seed": 7400001,
+  "seats": ["gate-heuristic", "gate-random"]
+}

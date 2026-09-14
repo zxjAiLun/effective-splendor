@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE as API } from "../api-base.mjs";
 import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
 import { TokenTotal } from "../components/token-total";
 import { defaultReviewerIdFor, reviewerSupportsPlayerCount } from "../trace-runtime.mjs";
@@ -22,7 +23,6 @@ type State = {
   result:null|{scores:number[];ranks:number[];winners:number[];reason:string}; replay_ready:boolean; replay_document_hash:string|null;
 };
 
-const API = "http://127.0.0.1:43120";
 const TIERS = ["One", "Two", "Three"];
 const GEM_NAMES: GemName[] = ["white", "blue", "green", "red", "black", "gold"];
 const TAKE_GEMS: GemName[] = ["white", "blue", "green", "red", "black"];
@@ -152,7 +152,7 @@ export default function HumanPlayPage() {
   const pendingCount=TAKE_GEMS.reduce((sum,gem)=>sum+pendingTake[gem],0);
   const defaultReviewerId=defaultReviewerIdFor(reviewers,state?.observation.public.player_count??2);
   return <main className="human-studio">
-    <header className="human-topbar"><div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div><div className="human-status"><span className={`status-dot ${hostOnline?"":"offline"}`} />{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</div><nav><Link href="/">Replay Studio</Link><Link href="/ratings">Ratings</Link>{state?<button onClick={()=>{setState(null);clearPending();}}>New game</button>:null}</nav></header>
+    <header className="human-topbar"><div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div><div className="human-status"><span className={`status-dot ${hostOnline?"":"offline"}`} />{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</div><nav><Link href="/">Replay Studio</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link>{state?<button onClick={()=>{setState(null);clearPending();}}>New game</button>:null}</nav></header>
     {error?<div className="error-banner" role="alert">{error}</div>:null}
     {state?<section className="human-workspace">
       <article className="human-board">

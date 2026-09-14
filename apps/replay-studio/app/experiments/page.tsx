@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { API_BASE as API } from "../api-base.mjs";
 import {
   BoardPanel,
   ReplayTimeline,
@@ -25,7 +26,6 @@ import {
   validateExperimentBundle,
 } from "../experiment-runtime.mjs";
 
-const API = "http://127.0.0.1:43120";
 const CATALOG_URL = `${API}/catalog`;
 
 type Availability = "valid" | "excluded_prefix" | "nontermination" | "not_started";
