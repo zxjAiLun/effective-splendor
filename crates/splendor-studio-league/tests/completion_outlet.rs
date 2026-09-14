@@ -33,11 +33,10 @@ use splendor_replay::record_random_game;
 use splendor_studio_league::{
     complete_runtime_occurrence, open_completion_league, open_league, parse_runtime_occurrence,
     runtime_occurrence_evidence_hash, CompletionLeagueV1, CompletionOutcomeV1, CompletionRequestV1,
-    IdentityManifestV1, RuntimeOccurrenceV1, StudioLeagueError, RUNTIME_OCCURRENCE_FORMAT,
-    STUDIO_LEAGUE_REPLAY_DIR,
+    IdentityManifestV1, RuntimeOccurrenceV1, StudioLeagueError, StudioLeaguePathsV1,
+    RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 fn tempdir(label: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!(
@@ -50,27 +49,7 @@ fn tempdir(label: &str) -> PathBuf {
     dir
 }
 
-/// The outlet archives under `STUDIO_LEAGUE_REPLAY_DIR` relative to the process
-/// working directory. A process-wide cwd change must not race other tests, so
-/// this binary does it exactly once and every test shares the sandbox.
-fn sandbox() -> &'static PathBuf {
-    static SANDBOX: OnceLock<PathBuf> = OnceLock::new();
-    SANDBOX.get_or_init(|| {
-        let dir = tempdir("sandbox");
-        std::env::set_current_dir(&dir).expect("enter the sandbox");
-        dir
-    })
-}
-
-fn archive_root() -> PathBuf {
-    sandbox().join(STUDIO_LEAGUE_REPLAY_DIR)
-}
-
-/// Where the protocol root says one content address lives.
-fn object_path(sha: &str) -> PathBuf {
-    archive_root().join(&sha[..2]).join(format!("{sha}.json"))
-}
-
+/**/
 fn sha256(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
 }
@@ -197,30 +176,49 @@ impl Fixture {
 
 /// A test league: an existing manifest plus an already-created database.
 struct League {
-    db_path: PathBuf,
-    identity_path: PathBuf,
+    /// This league's own root; every path below derives from it, so two tests
+    /// never share state and no process-wide cwd change is needed.
+    root: PathBuf,
+    paths: StudioLeaguePathsV1,
 }
 
 impl League {
     fn new(label: &str) -> Self {
-        sandbox();
-        let dir = tempdir(label);
-        let league = Self {
-            db_path: dir.join("league.sqlite3"),
-            identity_path: dir.join("identity.json"),
-        };
+        let root = tempdir(label);
+        let paths = StudioLeaguePathsV1::from_root(&root);
+        std::fs::create_dir_all(paths.dir()).unwrap();
         let mut manifest = IdentityManifestV1::new();
         manifest.ensure_local_human("Nick");
-        manifest.save(&league.identity_path).unwrap();
+        manifest.save(paths.identity()).unwrap();
+        let league = Self { root, paths };
         // Create the database once, single-threaded, so concurrent producers
         // contend on completion rather than on schema creation.
         league.session();
         league
     }
 
+    fn root(&self) -> &Path {
+        &self.root
+    }
+
+    fn paths(&self) -> &StudioLeaguePathsV1 {
+        &self.paths
+    }
+
+    /// The archive root the ledger's content-relative paths resolve against.
+    fn archive_root(&self) -> &Path {
+        self.paths.replay_root()
+    }
+
+    /// Where the protocol root says one content address lives.
+    fn object_path(&self, sha: &str) -> PathBuf {
+        self.archive_root()
+            .join(&sha[..2])
+            .join(format!("{sha}.json"))
+    }
+
     fn session(&self) -> CompletionLeagueV1 {
-        open_completion_league(&self.db_path, &self.identity_path, 1_700_000_000)
-            .expect("open a completion session")
+        open_completion_league(&self.paths, 1_700_000_000).expect("open a completion session")
     }
 
     fn complete(&self, fixture: &Fixture) -> splendor_studio_league::Result<CompletionOutcomeV1> {
@@ -231,7 +229,7 @@ impl League {
     /// A read-only connection for assertions. Reading the ledger is not the
     /// authority path; writing through it is impossible.
     fn inspect(&self) -> Connection {
-        open_league(&self.db_path).unwrap()
+        open_league(self.paths.db()).unwrap()
     }
 
     fn count(&self, sql: &str) -> i64 {
@@ -274,12 +272,12 @@ fn the_completion_authority_cannot_be_bypassed() {
     // root, and the ledger holds only the content-relative path that resolves
     // there and nowhere else.
     assert!(
-        object_path(&sha).exists(),
+        league.object_path(&sha).exists(),
         "the object must be published under the protocol root"
     );
     assert_eq!(
         std::fs::canonicalize(outcome.archived.filesystem_path()).unwrap(),
-        std::fs::canonicalize(object_path(&sha)).unwrap(),
+        std::fs::canonicalize(league.object_path(&sha)).unwrap(),
         "the handle names the object under the protocol root"
     );
     let stored = league.stored_replay_paths();
@@ -289,14 +287,9 @@ fn the_completion_authority_cannot_be_bypassed() {
 
     // A league with no identity evidence cannot open a completion session, so a
     // producer cannot reach the ledger by opening a connection itself.
-    let empty = sandbox().join("no-identity-evidence");
-    std::fs::create_dir_all(&empty).unwrap();
-    let error = open_completion_league(
-        &empty.join("league.sqlite3"),
-        &empty.join("identity.json"),
-        1_700_000_000,
-    )
-    .unwrap_err();
+    let empty_root = tempdir("no-identity-evidence");
+    let empty_paths = StudioLeaguePathsV1::from_root(&empty_root);
+    let error = open_completion_league(&empty_paths, 1_700_000_000).unwrap_err();
     assert!(
         error
             .to_string()
@@ -388,7 +381,7 @@ fn the_same_occurrence_with_changed_evidence_is_a_conflict() {
             base.replay_sha()
         )]
     );
-    assert!(object_path(&changed_match.replay_sha()).exists());
+    assert!(league.object_path(&changed_match.replay_sha()).exists());
 }
 
 /// Gate 2b: concurrent producers of the same occurrence record one match.
@@ -399,16 +392,15 @@ fn concurrent_producers_of_one_occurrence_record_exactly_one_match() {
     let fixture = Fixture::new("occ-concurrent", 1_800_000_100, 11);
     let sha = fixture.replay_sha();
 
-    let db_path: &Path = &league.db_path;
-    let identity_path: &Path = &league.identity_path;
+    // A shared reference is Copy, so every spawned producer can capture it.
+    let producer_paths: &StudioLeaguePathsV1 = league.paths();
     let fixture_ref = &fixture;
     let outcomes: Vec<splendor_studio_league::Result<CompletionOutcomeV1>> =
         std::thread::scope(|scope| {
             let handles: Vec<_> = (0..PRODUCERS)
                 .map(|_| {
                     scope.spawn(move || {
-                        let mut session =
-                            open_completion_league(db_path, identity_path, 1_700_000_000)?;
+                        let mut session = open_completion_league(producer_paths, 1_700_000_000)?;
                         complete_runtime_occurrence(
                             &mut session,
                             &fixture_ref.request("replay.json"),
@@ -442,10 +434,13 @@ fn concurrent_producers_of_one_occurrence_record_exactly_one_match() {
     assert_eq!(league.match_count(), 1);
     assert_eq!(league.event_count(), 2);
     assert_eq!(
-        object_path(&sha),
-        archive_root().join(&sha[..2]).join(format!("{sha}.json"))
+        league.object_path(&sha),
+        league
+            .archive_root()
+            .join(&sha[..2])
+            .join(format!("{sha}.json"))
     );
-    assert!(object_path(&sha).exists());
+    assert!(league.object_path(&sha).exists());
     assert_eq!(league.stored_replay_paths().len(), 1);
 }
 
@@ -473,7 +468,7 @@ fn a_replay_that_fails_verification_leaves_no_ledger_row_and_no_object() {
     assert_eq!(league.match_count(), 0, "no ledger row");
     assert_eq!(league.event_count(), 0);
     assert!(
-        !object_path(&tampered.replay_sha()).exists(),
+        !league.object_path(&tampered.replay_sha()).exists(),
         "no archive object for a replay that never verified"
     );
 }
@@ -484,7 +479,7 @@ fn a_replay_that_fails_verification_leaves_no_ledger_row_and_no_object() {
 fn an_unpublishable_archive_leaves_no_ledger_row_and_no_overwrite() {
     let league = League::new("archive-failure");
     let fixture = Fixture::new("occ-archive-failure", 1_800_000_300, 17);
-    let target = object_path(&fixture.replay_sha());
+    let target = league.object_path(&fixture.replay_sha());
 
     // Occupy the content address with different bytes: this is the corruption
     // case the archive must fail closed on.
@@ -528,7 +523,7 @@ fn a_non_canonical_arrival_fails_closed_and_leaves_only_an_orphan_object() {
     assert_eq!(league.event_count(), 2);
     // The object was published before the ledger write: the residue is an
     // unreferenced immutable object, never a match pointing at nothing.
-    assert!(object_path(&earlier.replay_sha()).exists());
+    assert!(league.object_path(&earlier.replay_sha()).exists());
     assert_eq!(
         league.stored_replay_paths(),
         vec![format!(

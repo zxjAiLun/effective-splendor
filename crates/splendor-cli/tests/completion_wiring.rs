@@ -23,9 +23,7 @@
 //! wiring invent a second way to book an occurrence.
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
-use splendor_studio_league::{
-    parse_runtime_occurrence, IdentityManifestV1, STUDIO_LEAGUE_REPLAY_DIR,
-};
+use splendor_studio_league::{parse_runtime_occurrence, IdentityManifestV1, StudioLeaguePathsV1};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -93,37 +91,43 @@ fn real_config(dir: &Path, game_id: &str, seed: u64, seat_seeds: [u64; 2]) -> Pa
     )
 }
 
-/// A sandbox holding the league database, the identity manifest, and the
-/// protocol archive root, so one test never sees another test's league.
+/// A sandbox holding a project root: the league database, the identity manifest
+/// and the replay archive all derive from it, so one test never sees another
+/// test's league.
 struct Sandbox {
     root: PathBuf,
-    db: PathBuf,
-    identity: PathBuf,
+    paths: StudioLeaguePathsV1,
 }
 
 impl Sandbox {
     fn new(label: &str) -> Self {
         let root = tmp_dir(label);
-        let identity = root.join("identity.json");
+        let paths = StudioLeaguePathsV1::from_root(&root);
+        std::fs::create_dir_all(paths.dir()).expect("create the league directory");
         let mut manifest = IdentityManifestV1::new();
         manifest.ensure_local_human("Nick");
-        manifest.save(&identity).expect("save identity manifest");
-        Self {
-            db: root.join("league.sqlite3"),
-            identity,
-            root,
-        }
+        manifest
+            .save(paths.identity())
+            .expect("save identity manifest");
+        Self { root, paths }
     }
 
-    /// The archive root the protocol constant names, resolved inside this
-    /// sandbox. The commands under test run with `cwd` set to `root`, so the
-    /// relative protocol root lands here.
+    fn db(&self) -> &Path {
+        self.paths.db()
+    }
+
+    fn identity(&self) -> &Path {
+        self.paths.identity()
+    }
+
+    /// The archive root this sandbox's project root resolves the protocol
+    /// directory against.
     fn archive_root(&self) -> PathBuf {
-        self.root.join(STUDIO_LEAGUE_REPLAY_DIR)
+        self.paths.replay_root().to_path_buf()
     }
 
     fn open_db(&self) -> Connection {
-        Connection::open(&self.db).expect("open league db")
+        Connection::open(self.db()).expect("open league db")
     }
 
     fn match_rows(&self) -> Vec<(String, String, String)> {
@@ -162,9 +166,14 @@ struct Outcome {
 
 /// Run one command in the sandbox working directory.
 fn run_in(sandbox: &Sandbox, args: &[&str]) -> Outcome {
+    run_in_cwd(&sandbox.root, args)
+}
+
+/// Run one command from an arbitrary working directory.
+fn run_in_cwd(cwd: &Path, args: &[&str]) -> Outcome {
     let output = Command::new(bin())
         .args(args)
-        .current_dir(&sandbox.root)
+        .current_dir(cwd)
         .output()
         .expect("spawn command");
     Outcome {
@@ -180,6 +189,19 @@ fn complete_match(
     occurrence_id: &str,
     extra: &[&str],
 ) -> Outcome {
+    let owned = complete_match_args(sandbox, config, occurrence_id, extra);
+    let borrowed: Vec<&str> = owned.iter().map(|value| value.as_str()).collect();
+    run_in(sandbox, &borrowed)
+}
+
+/// The exact argv `complete_match` sends, so a gate can send the same command
+/// from a different working directory.
+fn complete_match_args(
+    sandbox: &Sandbox,
+    config: &Path,
+    occurrence_id: &str,
+    extra: &[&str],
+) -> Vec<String> {
     let report = sandbox.root.join("report.json");
     let replay = sandbox.root.join("replay.json");
     let occurrence = sandbox.root.join("occurrence.json");
@@ -198,14 +220,11 @@ fn complete_match(
         occurrence.to_string_lossy().into_owned(),
         "--occurrence-id".into(),
         occurrence_id.into(),
-        "--identity".into(),
-        sandbox.identity.to_string_lossy().into_owned(),
-        "--db".into(),
-        sandbox.db.to_string_lossy().into_owned(),
+        "--project-root".into(),
+        sandbox.root.to_string_lossy().into_owned(),
     ];
     args.extend(extra.iter().map(|value| value.to_string()));
-    let borrowed: Vec<&str> = args.iter().map(|value| value.as_str()).collect();
-    run_in(sandbox, &borrowed)
+    args
 }
 
 fn complete_only(sandbox: &Sandbox, extra: &[&str]) -> Outcome {
@@ -236,10 +255,8 @@ fn complete_only(sandbox: &Sandbox, extra: &[&str]) -> Outcome {
             .join("config-snapshot.json")
             .to_string_lossy()
             .into_owned(),
-        "--identity".into(),
-        sandbox.identity.to_string_lossy().into_owned(),
-        "--db".into(),
-        sandbox.db.to_string_lossy().into_owned(),
+        "--project-root".into(),
+        sandbox.root.to_string_lossy().into_owned(),
     ];
     args.extend(extra.iter().map(|value| value.to_string()));
     let borrowed: Vec<&str> = args.iter().map(|value| value.as_str()).collect();
@@ -363,9 +380,11 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
     //
     // A bad database path would NOT work as the failure: `open_league` creates
     // missing parent directories by design, so that path succeeds.
-    let missing_identity = sandbox.root.join("no-such-identity.json");
+    // A project root that carries no identity manifest at all.
+    let empty_root = sandbox.root.join("root-without-identity");
+    let empty_paths = StudioLeaguePathsV1::from_root(&empty_root);
     assert!(
-        !missing_identity.exists(),
+        !empty_paths.identity().exists(),
         "the forced failure needs the manifest to be absent"
     );
     let report = sandbox.root.join("report.json");
@@ -388,10 +407,8 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
             &occurrence.to_string_lossy(),
             "--occurrence-id",
             "occ-gate2",
-            "--identity",
-            &missing_identity.to_string_lossy(),
-            "--db",
-            &sandbox.db.to_string_lossy(),
+            "--project-root",
+            &empty_root.to_string_lossy(),
         ],
     );
 
@@ -429,7 +446,7 @@ fn a_completion_failure_preserves_the_match_and_can_be_retried_alone() {
 
     // No fake success: nothing was booked.
     assert!(
-        !sandbox.db.exists() || sandbox.match_rows().is_empty(),
+        !sandbox.db().exists() || sandbox.match_rows().is_empty(),
         "a failed completion must not book a match"
     );
 
@@ -532,7 +549,7 @@ fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
     let replay_before = std::fs::read(&replay).unwrap();
     let occurrence_before = std::fs::read(&occurrence).unwrap();
     let snapshot_before = std::fs::read(&snapshot).unwrap();
-    let identity_before = std::fs::read(&sandbox.identity).unwrap();
+    let identity_before = std::fs::read(sandbox.identity()).unwrap();
     let rows_before = sandbox.match_rows();
     let events_before = sandbox.rating_event_count();
 
@@ -542,7 +559,7 @@ fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
     // legitimately touches its metadata. What must never happen is the database
     // being replaced by a JSON receipt, which would destroy the league.
     let db_header_before = {
-        let bytes = std::fs::read(&sandbox.db).unwrap();
+        let bytes = std::fs::read(sandbox.db()).unwrap();
         bytes[..16.min(bytes.len())].to_vec()
     };
 
@@ -557,8 +574,8 @@ fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
         replay.clone(),
         occurrence.clone(),
         snapshot.clone(),
-        sandbox.db.clone(),
-        sandbox.identity.clone(),
+        sandbox.db().to_path_buf(),
+        sandbox.identity().to_path_buf(),
         sneaky,
     ];
     // A hardlink to the report is another route the parser cannot detect.
@@ -603,9 +620,9 @@ fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
     assert_eq!(std::fs::read(&replay).unwrap(), replay_before);
     assert_eq!(std::fs::read(&occurrence).unwrap(), occurrence_before);
     assert_eq!(std::fs::read(&snapshot).unwrap(), snapshot_before);
-    assert_eq!(std::fs::read(&sandbox.identity).unwrap(), identity_before);
+    assert_eq!(std::fs::read(sandbox.identity()).unwrap(), identity_before);
     // Still a real SQLite league, still holding exactly the same logical state.
-    let db_after = std::fs::read(&sandbox.db).unwrap();
+    let db_after = std::fs::read(&sandbox.db()).unwrap();
     assert_eq!(
         db_after[..16.min(db_after.len())],
         db_header_before[..],
@@ -621,4 +638,43 @@ fn a_receipt_export_can_never_overwrite_evidence_or_league_state() {
 
     // And the evidence is still a valid, completable set.
     assert_evidence_present(&sandbox);
+}
+
+/// An explicit `--project-root` decides where everything lands, so the commands
+/// can be run from any working directory. Without this the protocol directory
+/// (and the archive root bound inside the completion session) would silently
+/// mean "relative to wherever the process happened to start", and a later
+/// launcher or Host could no longer be pointed at one league.
+#[test]
+fn an_explicit_project_root_decides_the_location_regardless_of_the_cwd() {
+    let sandbox = Sandbox::new("gate-cwd");
+    // A working directory that is neither the project root nor inside it, and
+    // which must stay completely untouched.
+    let elsewhere = tmp_dir("gate-cwd-elsewhere");
+    let config = real_config(&elsewhere, "wiring-gate-cwd", 9_100_005, [35_001, 35_002]);
+
+    let owned = complete_match_args(&sandbox, &config, "occ-gate-cwd", &[]);
+    let borrowed: Vec<&str> = owned.iter().map(|value| value.as_str()).collect();
+    let out = run_in_cwd(&elsewhere, &borrowed);
+    assert_eq!(
+        out.code, 0,
+        "expected success from an unrelated cwd; stderr={}",
+        out.stderr
+    );
+
+    // The occurrence is booked in the sandbox league...
+    let rows = sandbox.match_rows();
+    assert_eq!(rows.len(), 1, "exactly one match row");
+    assert_eq!(rows[0].0, "runtime:occ-gate-cwd");
+    assert_eq!(rows[0].1, "archive");
+    assert!(
+        sandbox.archive_root().join(&rows[0].2).is_file(),
+        "the recorded archive path must resolve under the chosen project root"
+    );
+
+    // ...and nothing at all was created relative to the working directory.
+    assert!(
+        !elsewhere.join("local-artifacts").exists(),
+        "nothing may be written relative to the process working directory"
+    );
 }

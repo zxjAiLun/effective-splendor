@@ -14,7 +14,7 @@ use splendor_core::{ruleset_fingerprint, FullState, GameConfig, Ruleset};
 use splendor_replay::record_random_game;
 use splendor_studio_league::{
     complete_runtime_occurrence, leaderboard, open_completion_league, parse_runtime_occurrence,
-    CompletionRequestV1, IdentityManifestV1, RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_REPLAY_DIR,
+    CompletionRequestV1, IdentityManifestV1, StudioLeaguePathsV1, RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -171,15 +171,21 @@ fn snapshot(db_path: &Path) -> LedgerSnapshot {
 #[test]
 fn the_cli_adapter_and_a_direct_outlet_call_agree() {
     let root = tempdir("equivalence");
-    // The CLI resolves its archive root relative to its working directory, so
-    // running it here keeps the protocol root inside the sandbox.
-    let cli_db = root.join("cli.sqlite3");
-    let direct_db = root.join("direct.sqlite3");
-    let identity_path = root.join("identity.json");
-
+    // Each path gets its own explicit project root. Both are exercised from a
+    // cwd that is neither of them, so agreement cannot come from the process
+    // working directory.
+    let cli_root = root.join("cli-root");
+    let direct_root = root.join("direct-root");
+    let cli_paths = StudioLeaguePathsV1::from_root(&cli_root);
+    let direct_paths = StudioLeaguePathsV1::from_root(&direct_root);
+    // One manifest, published into both roots: the comparison must be about the
+    // archived evidence and the ledger, not about two freshly minted local ids.
     let mut manifest = IdentityManifestV1::new();
     manifest.ensure_local_human("Nick");
-    manifest.save(&identity_path).unwrap();
+    for paths in [&cli_paths, &direct_paths] {
+        std::fs::create_dir_all(paths.dir()).unwrap();
+        manifest.save(paths.identity()).unwrap();
+    }
 
     let (report, replay, config) = occurrence_documents("game-equivalence", 31);
     let completed_at: i64 = 1_800_001_000;
@@ -216,10 +222,8 @@ fn the_cli_adapter_and_a_direct_outlet_call_agree() {
             replay_sidecar.to_str().unwrap(),
             "--config",
             config_sidecar.to_str().unwrap(),
-            "--identity",
-            identity_path.to_str().unwrap(),
-            "--db",
-            cli_db.to_str().unwrap(),
+            "--project-root",
+            cli_root.to_str().unwrap(),
             "--json",
             receipt_path.to_str().unwrap(),
         ])
@@ -243,26 +247,34 @@ fn the_cli_adapter_and_a_direct_outlet_call_agree() {
         config_bytes: &config,
         replay_source_path: "replay.json",
     };
-    // The outlet resolves its archive root from the process working directory,
-    // so the library path runs from the same sandbox the CLI child ran in.
-    std::env::set_current_dir(&root).expect("enter the sandbox");
-    let mut session = open_completion_league(&direct_db, &identity_path, completed_at).unwrap();
+    let mut session = open_completion_league(&direct_paths, completed_at).unwrap();
     let direct = complete_runtime_occurrence(&mut session, &request).unwrap();
     assert!(direct.was_inserted(), "the direct path inserts");
 
-    // Neither path was told where to archive; both landed under the protocol root.
+    // Neither path was told where to archive beyond its own project root; each
+    // landed under its own root, not under the cwd.
     let replay_sha = sha256(&replay);
-    let archived_object = root
-        .join(STUDIO_LEAGUE_REPLAY_DIR)
-        .join(&replay_sha[..2])
-        .join(format!("{replay_sha}.json"));
+    let object_in = |paths: &StudioLeaguePathsV1| {
+        paths
+            .replay_root()
+            .join(&replay_sha[..2])
+            .join(format!("{replay_sha}.json"))
+    };
     assert!(
-        archived_object.exists(),
-        "the object lives under the protocol root"
+        object_in(&cli_paths).exists(),
+        "the CLI archived under its own project root"
+    );
+    assert!(
+        object_in(&direct_paths).exists(),
+        "the direct outlet archived under its own project root"
+    );
+    assert!(
+        !root.join("local-artifacts").join("studio-league").exists(),
+        "nothing may be archived relative to the process working directory"
     );
 
-    let cli = snapshot(&cli_db);
-    let library = snapshot(&direct_db);
+    let cli = snapshot(cli_paths.db());
+    let library = snapshot(direct_paths.db());
     assert_eq!(cli.matches, library.matches, "match rows agree");
     assert_eq!(cli.seats, library.seats, "seat rows agree");
     assert_eq!(

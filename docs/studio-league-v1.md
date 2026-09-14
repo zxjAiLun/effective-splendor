@@ -24,6 +24,14 @@
   to exact sibling paths, makes the official `studio-league-migrate` rebuild
   `42,521 historical + N runtime`, and compares the full canonical key in the tail guard.
   No API/UI; no new Elo logic.
+  **Commit C Next Slice — Completion Producer Wiring: ACCEPTED / CLOSED @ `6170c7c`**
+  (P0=0/P1=0/P2=0). **Commit C Next Slice — Project-Root / Launcher Resolution (2026-09-14)**:
+  `IMPLEMENTED` / `VERIFIED` locally, pending owner review. One `StudioLeaguePathsV1` resolves
+  `db` / `identity` / `replay_root` from a single project root, so the database, the identity manifest
+  and the replay archive can no longer be chosen apart; `--project-root` replaces `--db`/`--identity`
+  on the four league-path commands; the completion session captures the root at open, and
+  `complete_runtime_occurrence` still takes no path. Authority (ledger / Elo / eligibility / archive)
+  unchanged; Host API and UI still **not authorized**.
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -2248,3 +2256,227 @@ not re-run. No cloud status checks exist for this commit and none are claimed.
 Owner review of this repair. Expected outcome on acceptance: **Completion Producer Wiring ACCEPTED /
 CLOSED**, then a decision on whether the next product surface is the Host API or unified
 project-root / launcher path resolution. Host API and UI remain **not authorized** until then.
+
+*Settled:* the owner accepted / closed Completion Producer Wiring at `6170c7c` and chose
+**project-root / launcher path resolution** as the next slice, explicitly *before* the Host API and
+explicitly not the Host API. See the following section.
+
+## Commit C Next Slice — Project-Root / Launcher Resolution (2026-09-14)
+
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally, pending owner review.
+- **Baseline**: `6170c7c2abd6937fcd094d3c7b1710062357d2da`. The owner formally closed the previous
+  slice there — **Completion Producer Wiring ACCEPTED / CLOSED (P0=0 / P1=0 / P2=0)** — and corrected
+  the delivery description: GitHub records **two tracked files** for `6170c7c`
+  (`crates/splendor-cli/src/completion_wiring_command.rs` and `docs/studio-league-v1.md`), the code
+  file being only `+11/-14`; the repository has **no cloud status checks**, so the four wiring gates,
+  `--bin splendor` 89/89, `splendor-studio-league` 80/80 and the 272-test CLI suite are **local
+  evidence only**.
+- **Round type**: product milestone plumbing. No authority change.
+
+### Problem and evidence
+
+Every Studio League location was an independent string literal, and the one location that could not be
+supplied by a caller was silently defined relative to the process working directory.
+
+Read directly at `6170c7c`:
+
+1. `crates/splendor-studio-league/src/lib.rs` declared **four parallel literals** with an unenforced
+   repeated prefix `local-artifacts/studio-league`: `STUDIO_LEAGUE_DIR`, `STUDIO_LEAGUE_DB_FILE`,
+   `STUDIO_LEAGUE_IDENTITY_FILE`, `STUDIO_LEAGUE_REPLAY_DIR`. `STUDIO_LEAGUE_DIR` was referenced by
+   **nothing** — the shared prefix existed only as text repeated three times.
+2. `crates/splendor-studio-league/src/completion.rs` bound `Path::new(STUDIO_LEAGUE_REPLAY_DIR)`
+   **inside** the outlet. That was deliberate (Slice 3 Repair 1 had just closed the `--archive-root`
+   seam), but it left exactly one meaning for the replay root: *the literal resolved against the
+   process cwd*. The ledger stores only content-relative `replay_path` values, so "relative to what"
+   was a property of how the process happened to start.
+3. Three test files were forced to change the process working directory to make that work:
+   `crates/splendor-studio-league/tests/archive_protocol_root.rs`,
+   `crates/splendor-studio-league/tests/completion_outlet.rs` (a `OnceLock` sandbox, because a
+   process-wide cwd change would race other tests in the same binary), and
+   `crates/splendor-cli/tests/completion_equivalence.rs`.
+4. `open_completion_league` had ~8 call sites, each choosing a database path and an identity path
+   separately (production: `completion_wiring_command.rs`, `studio_league_command.rs`).
+5. Naming: `--root` was **already taken** on `studio-league-inventory`, `studio-league-dry-run` and
+   `studio-league-migrate` (a repeatable corpus-scan root), so the new concept needed a different name.
+
+The owner's reason for doing this **before** the Host API: the ledger stores content-relative replay
+paths, and changing "relative to what" later would force the Host, the launcher, the CLI and the
+replay reader to be reworked together. Settling root resolution first keeps that blast radius at zero.
+
+### Initial design
+
+One value object owns the derivation, and nothing else composes paths:
+
+```rust
+pub struct StudioLeaguePathsV1 { root, dir, db, identity, replay_root }
+impl StudioLeaguePathsV1 {
+    pub fn from_root(root: &Path) -> Self;              // the only composer
+    pub fn resolve(explicit: Option<&Path>) -> Self;    // Some = explicit; None = today's default
+    pub fn root/dir/db/identity/replay_root(&self) -> &Path;
+}
+```
+
+- `from_root` derives `dir = root/local-artifacts/studio-league` and then the three leaf paths from
+  `dir`, so the prefix exists **once**, in code.
+- `resolve(None)` is `from_root(Path::new(""))`, which reproduces today's bare relative paths
+  byte-for-byte. That is what makes the default a no-regression: existing commands behave identically
+  when no root is given.
+- Threading decision: `open_completion_league(paths: &StudioLeaguePathsV1, now: i64)`, and
+  `CompletionLeagueV1` privately stores the replay root it captured at session open.
+  **`complete_runtime_occurrence(league, request)` keeps its signature** — no path parameter is added.
+  This is the point that preserves Slice 3 Repair 1: a caller still cannot choose an arbitrary archive
+  root *at completion time*; it chooses a project root **once**, when it opens the session, and every
+  recorded relative path is then resolvable against the root that session was opened with.
+- Constants: keep `STUDIO_LEAGUE_DIR`; replace the three parallel path literals with
+  `STUDIO_LEAGUE_DB_NAME`, `STUDIO_LEAGUE_IDENTITY_NAME`, `STUDIO_LEAGUE_REPLAY_DIR_NAME`.
+- CLI surface: a single `--project-root <dir>` on the four league-path commands
+  (`studio-league-migrate`, `studio-league-ingest`, `studio-league-complete-match`,
+  `studio-league-complete`), **replacing** their `--db` / `--identity` flags. Corpus `--root` untouched.
+
+### Scope and non-goals
+
+In scope: the path value object and its constants in `splendor-studio-league`; threading it through
+the completion session; `--project-root` on the four commands; migrating the tests off cwd sandboxes.
+
+Non-goals, explicitly not authorized: Host API, UI, any launcher, any new read surface; **no authority
+change** (ledger, Elo, eligibility, archive, completion semantics all untouched); no layout change
+(the protocol layout is still `local-artifacts/studio-league/{league.sqlite3,identity.json,replays}`);
+no re-run of the 42k migration; no auto-discovery of the project root.
+
+### Contracts and invariants
+
+- **I1 — one derivation.** Every protocol path is produced by `from_root`; no other code joins the
+  prefix. Four literals become three leaf names plus one directory name.
+- **I2 — cwd independence.** Given the same explicit root, evidence and league state are identical no
+  matter which directory the process runs in, and everything lands under that root.
+- **I3 — no regression at the default.** `resolve(None)` must reproduce the previous behaviour
+  exactly, including the exact relative strings.
+- **I4 — the reader contract survives.** A row's `replay_path` must still be resolvable as
+  `replay root + relative path`, hashing to the recorded `replay_document_hash`.
+- **I5 — no authority reopened.** The project root is chosen once, at session open. Completion still
+  receives no root, and a session still refuses to open without identity evidence.
+
+### Final implementation
+
+`crates/splendor-studio-league/src/paths.rs` (new) — `StudioLeaguePathsV1` with `from_root`,
+`resolve`, and five getters, plus three unit tests: `all_protocol_paths_derive_from_one_root`,
+`the_default_resolution_is_the_bare_protocol_relative_layout`,
+`an_explicit_root_wins_over_the_default`.
+
+`lib.rs` — the three parallel path literals became `STUDIO_LEAGUE_DB_NAME`,
+`STUDIO_LEAGUE_IDENTITY_NAME`, `STUDIO_LEAGUE_REPLAY_DIR_NAME`; `pub mod paths;` and
+`pub use paths::StudioLeaguePathsV1;`. `STUDIO_LEAGUE_DIR` is now actually used (by `from_root`).
+
+`completion.rs` — `CompletionLeagueV1 { conn, replay_root }`; `open_completion_league(paths, now)`
+uses `paths.db()` / `paths.identity()` and captures `paths.replay_root().to_path_buf()`. In
+`complete_runtime_occurrence` the replay root is cloned **before** `league.conn` is mutably borrowed,
+then passed to `archive_replay`.
+
+`crates/splendor-cli/src/completion_wiring_command.rs` — `CompleteArgs.identity/db` became
+`paths: StudioLeaguePathsV1`; `--identity`/`--db` parsing replaced by `--project-root`, resolved once
+via `StudioLeaguePathsV1::resolve(project_root.as_deref())`; `complete_persisted(...)` now takes
+`paths: &StudioLeaguePathsV1`; the receipt-alias check now compares against `paths.db()`,
+`paths.identity()` and `paths.replay_root()`.
+
+`crates/splendor-cli/src/studio_league_command.rs` — same flag change on `studio-league-migrate` and
+`studio-league-ingest`. `migrate` keeps its local `identity_path` / `db_path` names (it uses them
+throughout its staging/rename/reconciliation body) but derives them from the resolved paths.
+
+Tests — all three cwd sandboxes are gone or repurposed:
+
+- `completion_outlet.rs`: the `OnceLock` cwd sandbox and the `std::env::set_current_dir` call were
+  **deleted**. Each `League` now owns a root and a `StudioLeaguePathsV1`; `object_path` /
+  `archive_root` became methods on that league, so per-test isolation comes from each test's own root
+  rather than from a shared process cwd.
+- `archive_protocol_root.rs`: now builds `StudioLeaguePathsV1::from_root(&root)` and, as a stronger
+  form of the same assertion, deliberately runs from an **unrelated** working directory, then asserts
+  the object is under the chosen root and that nothing was created relative to the cwd.
+- `completion_equivalence.rs`: the CLI child and the direct outlet call now use **two different
+  explicit roots**, from a cwd that is neither of them; both objects are asserted under their own
+  root, and the two ledgers are still compared field-by-field.
+- `completion_wiring.rs`: the sandbox identity/db pair became `--project-root`; a new fifth gate
+  (below) runs the identical argv from an unrelated cwd.
+
+### Iteration log
+
+- **`--root` was unavailable**, so the flag is `--project-root`. Recorded here because it is the kind
+  of naming collision that silently changes an unrelated command's meaning.
+- **The `--db`/`--identity` removal is a deliberate breaking change** to the four league-path commands.
+  Keeping both would have allowed a state where the database lives under root A while the session
+  archives under root B — exactly the drift this slice exists to prevent. No compatibility shim was
+  added; the affected commands are still unreleased local surfaces.
+- **`complete_runtime_occurrence` was deliberately left with no path parameter.** The obvious
+  "simplification" (pass the replay root straight into completion) would reopen Slice 3 Repair 1's
+  seam one round after it was closed. The root belongs to the session, not to the call.
+- **Per-test isolation forced the test refactor.** With paths derived from a single root, two tests
+  sharing one root would share one database; that is why `object_path` had to become root-aware
+  instead of staying a sandbox-global helper. The chdir removal is a consequence, not the goal.
+- **`completion_equivalence` initially failed on the leaderboard.** Each root minted its own identity
+  manifest, so the two runs differed by one freshly generated local participant id (`58a7acd6...`
+  vs `9910f9ac...`) — the comparison was measuring identity minting, not evidence handling. Fixed by
+  minting one manifest and publishing it into both roots.
+- **`completion_outlet`'s first repair attempt did not compile**: the concurrent-producer gate moved
+  the shared paths into an `FnMut` closure. Fixed by capturing a shared reference
+  (`&StudioLeaguePathsV1` is `Copy`), which is also what the previous `&Path` capture did.
+- **Two pre-existing gates also caught the regression during the negative control** (see below),
+  which is a sign the wiring gates were already exercising the session honestly.
+
+### Validation and evidence
+
+- `cargo test -p splendor-studio-league`: **83 passed / 0 failed** (was 80/80; +3 new `paths` unit
+  tests). Breakdown: lib 34 (17 unit incl. 3 new + 17 relocated chain tests), `archive_protocol_root`
+  1, `completion_outlet` 7, `historical_resolver` 3, `league_core` 29, `policy_identity` 5,
+  `replay_index` 4.
+- `cargo test -p splendor-cli`: **273 passed / 0 failed** across 44 test binaries (was 272; +1 new
+  gate). `--bin splendor` 89/89, `arena_cli` 24/24, `completion_equivalence` 1/1, `completion_wiring`
+  4 -> **5**.
+- **New gate** (`crates/splendor-cli/tests/completion_wiring.rs`):
+  `an_explicit_project_root_decides_the_location_regardless_of_the_cwd` — runs
+  `studio-league-complete-match` with `--project-root <sandbox>` from a working directory that is
+  neither the root nor inside it, asserts exit 0, exactly one ledger row
+  (`runtime:occ-gate-cwd`, `storage = archive`), that the recorded relative path resolves under the
+  chosen root, and that **nothing** was created at `<cwd>/local-artifacts`.
+- **Negative control (run, then reverted):** `StudioLeaguePathsV1::resolve` was patched to ignore its
+  explicit argument and always return the default. Result: the crate unit test
+  `an_explicit_root_wins_over_the_default` **FAILED**; the new CLI gate **FAILED** with the exact
+  diagnostic `cannot open the league for completion: invalid studio league document: identity manifest
+  does not exist` (the explicit root had been ignored and the cwd consulted), and the pre-existing
+  forced-failure gate `a_completion_failure_preserves_the_match_and_can_be_retried_alone` **FAILED**
+  too, because the root that was supposed to hold no identity was no longer being consulted. After
+  restoring the file, all of the above is green again.
+- Static: `git diff --check` exit 0; NUL bytes 0; CRLF 0; `rustfmt --edition 2021` run on the nine
+  touched files only, and `git status --porcelain` shows exactly those nine paths (no unrelated
+  reflow). Build warnings are limited to the pre-existing `s2_census_command.rs` and
+  `studio_league_command.rs` sites.
+- The 42k historical migration was **not** re-run. There are **no cloud status checks**; every number
+  above is local evidence.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. The default resolution is byte-identical to the previous layout,
+so no existing behaviour changes unless a caller opts into `--project-root`; when it does, the
+database, the identity manifest and the replay archive can no longer be chosen apart, and the process
+working directory stops deciding where a league lives. Two crate-internal test binaries no longer
+need to change the process cwd at all.
+
+`ACCEPTED` is **not** claimed; that is the owner's verdict after review.
+
+### Known limitations
+
+- `StudioLeaguePathsV1::from_root` is public, so a library caller can still point a session at any
+  project root. That is the intended surface of this slice (choosing the root once, at session open);
+  it is not a sandbox, exactly as recorded for the previous slice. What remains closed is choosing a
+  root at completion time.
+- Root resolution is explicit only: there is no discovery, no environment variable, and no search
+  upward for a project marker. A launcher must know its root, or run from it.
+- `--db` / `--identity` were removed rather than deprecated, so any existing local script that passes
+  them now gets exit `64` (usage). That is deliberate and recorded above.
+- The protocol layout itself is unchanged; this slice only makes "relative to what" explicit.
+- `read_archived_replay` still has no production caller. Invariant I4 is therefore validated through
+  the ledger row (`archive_protocol_root`), not through a read surface.
+
+### Next authorized gate
+
+Owner review of this slice. On acceptance, the remaining product-surface decision recorded at the
+previous gate is the **Host API** (root resolution having now been settled first, which was the point
+of the ordering). Host API and UI remain **not authorized** until that decision.

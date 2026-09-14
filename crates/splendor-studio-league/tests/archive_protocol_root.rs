@@ -4,7 +4,7 @@
 //! Commit C Slice 3 Repair 2 tightened this: the completion outlet no longer
 //! accepts an archive root at all, so there is no per-run choice left to make.
 //! This binary proves the consequence end to end at the process boundary: given
-//! a database row that says `storage = archive`, `STUDIO_LEAGUE_REPLAY_DIR +
+//! a database row that says `storage = archive`, and that replay root +
 //! replay_path` resolves to an object whose bytes hash to the recorded
 //! `document_hash` — nothing else about the completion invocation is needed, and
 //! the caller never supplied a root.
@@ -18,7 +18,7 @@ use splendor_replay::record_random_game;
 use splendor_studio_league::{
     complete_runtime_occurrence, open_completion_league, open_league, parse_runtime_occurrence,
     replay_document_sha256, CompletionRequestV1, IdentityManifestV1, ReplayStorage,
-    RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_REPLAY_DIR,
+    StudioLeaguePathsV1, RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::path::{Path, PathBuf};
 
@@ -104,11 +104,15 @@ fn envelope(occurrence_id: &str, completed_at: i64, docs: &(Vec<u8>, Vec<u8>, Ve
 
 #[test]
 fn the_recorded_archive_path_resolves_under_the_protocol_root_alone() {
-    // The outlet resolves its archive root from the working directory, and a
-    // process-wide cwd change must not race other tests, so this binary does it
-    // once for the whole process.
-    let sandbox = tempdir("locatable");
-    std::env::set_current_dir(&sandbox).unwrap();
+    let root = tempdir("locatable");
+    // Run from an unrelated directory on purpose: the object must be located by
+    // the resolved root plus the recorded content-relative path, never by the
+    // process working directory.
+    let elsewhere = tempdir("elsewhere");
+    std::env::set_current_dir(&elsewhere).unwrap();
+
+    let paths = StudioLeaguePathsV1::from_root(&root);
+    std::fs::create_dir_all(paths.dir()).unwrap();
 
     let docs = occurrence_documents("runtime-protocol-root", 7_700_040);
     let (report, replay, config) = &docs;
@@ -118,12 +122,11 @@ fn the_recorded_archive_path_resolves_under_the_protocol_root_alone() {
 
     let mut manifest = IdentityManifestV1::new();
     manifest.ensure_local_human("Nick");
-    let identity_path = sandbox.join("identity.json");
-    manifest.save(&identity_path).unwrap();
+    manifest.save(paths.identity()).unwrap();
 
-    // The database lives at an absolute path; nothing else is configured.
-    let db = sandbox.join("league.sqlite3");
-    let mut session = open_completion_league(&db, &identity_path, 1_700_000_000).unwrap();
+    // One root is the only thing configured; the session derives the database,
+    // the identity manifest and the archive root from it.
+    let mut session = open_completion_league(&paths, 1_700_000_000).unwrap();
     let request = CompletionRequestV1 {
         occurrence: &occurrence,
         report_bytes: report,
@@ -135,7 +138,7 @@ fn the_recorded_archive_path_resolves_under_the_protocol_root_alone() {
     assert_eq!(outcome.record.replay.storage(), ReplayStorage::Archive);
 
     // The only things a later process needs are the row and the protocol root.
-    let conn = open_league(&db).unwrap();
+    let conn = open_league(paths.db()).unwrap();
     let (storage, path, document_hash): (String, String, String) = conn
         .query_row(
             "SELECT replay_storage, replay_path, replay_document_hash FROM matches",
@@ -149,11 +152,21 @@ fn the_recorded_archive_path_resolves_under_the_protocol_root_alone() {
         "the ledger must record a content-relative path, got `{path}`"
     );
 
-    let resolved = Path::new(STUDIO_LEAGUE_REPLAY_DIR).join(&path);
+    let resolved = paths.replay_root().join(&path);
     assert!(
         resolved.is_file(),
-        "STUDIO_LEAGUE_REPLAY_DIR + replay_path must locate the object, tried {}",
+        "the resolved replay root + replay_path must locate the object, tried {}",
         resolved.display()
+    );
+    // ...and it must be under the chosen root, not under the process cwd.
+    assert!(
+        resolved.starts_with(&root),
+        "the object must live under the resolved root, got {}",
+        resolved.display()
+    );
+    assert!(
+        !elsewhere.join(&path).exists(),
+        "nothing may be archived relative to the process working directory"
     );
     assert_eq!(
         replay_document_sha256(&std::fs::read(&resolved).unwrap()),

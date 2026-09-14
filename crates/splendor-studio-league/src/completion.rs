@@ -23,7 +23,7 @@
 //! league itself and skip the session gates — the compiler refuses.
 //!
 //! The archive root is likewise not a parameter: it is the protocol constant
-//! [`STUDIO_LEAGUE_REPLAY_DIR`]. The ledger stores only a content-relative
+//! [`StudioLeaguePathsV1`]. The ledger stores only a content-relative
 //! `replay_path`, so a League must have exactly one root for those paths to
 //! resolve; letting a caller choose one would reintroduce exactly the
 //! un-locatable binding Commit C Slice 2 Repair 1 closed.
@@ -60,11 +60,11 @@ use crate::ledger::{
 };
 use crate::match_record::StudioMatchRecordV1;
 use crate::participant::sync_identity_manifest;
+use crate::paths::StudioLeaguePathsV1;
 use crate::replay_archive::{archive_replay, ArchivedReplayV1};
 use crate::schema::open_league;
-use crate::STUDIO_LEAGUE_REPLAY_DIR;
 use rusqlite::Connection;
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 
 /// How long a completion waits for another writer to release the league
@@ -91,9 +91,15 @@ pub struct CompletionRequestV1<'a> {
 ///
 /// Deliberately opaque: private connection, one constructor, no accessors. The
 /// only thing a caller can do with one is offer it an occurrence.
+///
+/// The replay archive root is captured here, at session open, from the resolved
+/// [`StudioLeaguePathsV1`] — so a completion can never be pointed at a different
+/// root than the session that accepted it, and [`complete_runtime_occurrence`]
+/// needs no path parameter at all.
 #[derive(Debug)]
 pub struct CompletionLeagueV1 {
     conn: Connection,
+    replay_root: PathBuf,
 }
 
 /// Open the league through the completion authority seams.
@@ -103,15 +109,15 @@ pub struct CompletionLeagueV1 {
 /// the same gates. The manifest must already exist (created by
 /// `studio-league-migrate`); a missing manifest is an error, never a fresh
 /// identity.
-pub fn open_completion_league(
-    db_path: &Path,
-    identity_manifest_path: &Path,
-    now: i64,
-) -> Result<CompletionLeagueV1> {
-    let mut conn = open_league(db_path)?;
+///
+/// `paths` is resolved once by the caller (launcher, CLI, harness) and carries
+/// the database, the identity manifest and the replay archive root together, so
+/// the three cannot be chosen independently.
+pub fn open_completion_league(paths: &StudioLeaguePathsV1, now: i64) -> Result<CompletionLeagueV1> {
+    let mut conn = open_league(paths.db())?;
     conn.busy_timeout(COMPLETION_BUSY_TIMEOUT)?;
     ensure_rating_config(&conn)?;
-    let manifest = match IdentityManifestV1::load_or_recover(identity_manifest_path)? {
+    let manifest = match IdentityManifestV1::load_or_recover(paths.identity())? {
         Some(manifest) => manifest,
         None => return Err(StudioLeagueError::Invalid(
             "identity manifest does not exist; initialize it with `studio-league-migrate` first"
@@ -124,7 +130,10 @@ pub fn open_completion_league(
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     sync_identity_manifest(&tx, &manifest, now)?;
     tx.commit()?;
-    Ok(CompletionLeagueV1 { conn })
+    Ok(CompletionLeagueV1 {
+        conn,
+        replay_root: paths.replay_root().to_path_buf(),
+    })
 }
 
 /// What the league did with one occurrence.
@@ -169,6 +178,9 @@ pub fn complete_runtime_occurrence(
     league: &mut CompletionLeagueV1,
     request: &CompletionRequestV1<'_>,
 ) -> Result<CompletionOutcomeV1> {
+    // Capture the session's archive root before borrowing the connection, so the
+    // publish below uses the same root the session was opened with.
+    let replay_root = league.replay_root.clone();
     let conn = &mut league.conn;
 
     // 1. Strict parse, full replay verification, report/replay fact agreement,
@@ -198,11 +210,13 @@ pub fn complete_runtime_occurrence(
 
     // 3. Publish the immutable object, then bind the record to it. Both happen
     //    before the ledger write, so a failure in either leaves no match row.
-    let archived = archive_replay(
-        Path::new(STUDIO_LEAGUE_REPLAY_DIR),
-        &replay_sha,
-        request.replay_bytes,
-    )?;
+    //
+    //    The root comes from the session, which captured it from the resolved
+    //    `StudioLeaguePathsV1` when it was opened. It is deliberately not a
+    //    parameter of this call: a caller must not be able to publish an
+    //    occurrence's replay somewhere other than where the session's league
+    //    resolves its recorded relative paths.
+    let archived = archive_replay(&replay_root, &replay_sha, request.replay_bytes)?;
     let record = bind_archived_replay(record, &archived)?;
 
     // 4. The single ledger entry point. The canonical-tail guard lives inside

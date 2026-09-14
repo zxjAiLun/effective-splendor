@@ -10,8 +10,8 @@ use splendor_studio_league::{
     open_league, parse_runtime_occurrence, run_historical_dry_run, scan,
     stored_identity_manifest_hash, sync_identity_manifest, write_jsonl, CompletionRequestV1,
     HistoricalDryRunConfig, HistoricalDryRunReportV1, IdentityManifestV1, InventoryReportV1,
-    InventoryScanConfig, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT,
-    RUNTIME_OCCURRENCE_FORMAT, STUDIO_LEAGUE_DB_FILE, STUDIO_LEAGUE_IDENTITY_FILE,
+    InventoryScanConfig, StudioLeaguePathsV1, DEFAULT_LOCAL_HUMAN_NAME, INVENTORY_REPORT_FORMAT,
+    RUNTIME_OCCURRENCE_FORMAT,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -450,8 +450,10 @@ runs post-migration reconciliation, and atomically publishes league.sqlite3.
 Options:
   --root <dir>            Root to scan (repeatable; default: benchmarks, local-artifacts)
   --max-bytes <n>         Skip documents larger than n bytes (default: 41943040)
-  --identity <path>       Path to identity.json (default: local-artifacts/studio-league/identity.json)
-  --db <path>             Path to target league.sqlite3 (default: local-artifacts/studio-league/league.sqlite3)
+  --project-root <dir>    Root every Studio League path derives from: identity.json,
+                          league.sqlite3 and the replay archive all live under
+                          <dir>/local-artifacts/studio-league
+                          (default: the current working directory)
   --json <path>           Write post-migration reconciliation report JSON here
   --help                  Print this help
 "#;
@@ -463,8 +465,7 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     }
     let mut config = HistoricalDryRunConfig::default();
     let mut explicit_roots: Vec<String> = Vec::new();
-    let mut identity_path = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
-    let mut db_path = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut project_root: Option<PathBuf> = None;
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -484,18 +485,11 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
                     None => return fail_migrate("--max-bytes needs an integer"),
                 }
             }
-            "--identity" => {
+            "--project-root" => {
                 index += 1;
                 match args.get(index) {
-                    Some(value) => identity_path = PathBuf::from(value),
-                    None => return fail_migrate("--identity needs a path"),
-                }
-            }
-            "--db" => {
-                index += 1;
-                match args.get(index) {
-                    Some(value) => db_path = PathBuf::from(value),
-                    None => return fail_migrate("--db needs a path"),
+                    Some(value) => project_root = Some(PathBuf::from(value)),
+                    None => return fail_migrate("--project-root needs a directory"),
                 }
             }
             "--json" => {
@@ -515,6 +509,13 @@ pub fn run_studio_league_migrate(args: &[String]) -> i32 {
     if !explicit_roots.is_empty() {
         config.roots = explicit_roots;
     }
+
+    // Resolve the league locations once. Everything below (and the archive root
+    // the completion session binds) derives from this one root, so the database,
+    // the identity manifest and the replay archive can never be chosen apart.
+    let paths = StudioLeaguePathsV1::resolve(project_root.as_deref());
+    let identity_path = paths.identity().to_path_buf();
+    let db_path = paths.db().to_path_buf();
 
     // Step 1: Destination database check
     if db_path.exists() {
@@ -1081,8 +1082,10 @@ Options:
   --report <path>         The arena report document of the finished match
   --replay <path>         The recorded ReplayV1 document of the same match
   --config <path>         The run's own match-config.json (exact configuration evidence)
-  --identity <path>       Path to identity.json (default: local-artifacts/studio-league/identity.json)
-  --db <path>             Path to the league database (default: local-artifacts/studio-league/league.sqlite3)
+  --project-root <dir>    Root every Studio League path derives from: identity.json,
+                          league.sqlite3 and the replay archive all live under
+                          <dir>/local-artifacts/studio-league
+                          (default: the current working directory)
   --json <path>           Write an ingestion receipt JSON here
   --help                  Print this help
 ";
@@ -1110,8 +1113,7 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
     let mut report_path: Option<PathBuf> = None;
     let mut replay_path: Option<PathBuf> = None;
     let mut config_path: Option<PathBuf> = None;
-    let mut identity_path = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
-    let mut db_path = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut project_root: Option<PathBuf> = None;
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -1134,13 +1136,9 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
                 Some(path) => config_path = Some(PathBuf::from(path)),
                 None => return fail_ingest("--config needs a path"),
             },
-            "--identity" => match value() {
-                Some(path) => identity_path = PathBuf::from(path),
-                None => return fail_ingest("--identity needs a path"),
-            },
-            "--db" => match value() {
-                Some(path) => db_path = PathBuf::from(path),
-                None => return fail_ingest("--db needs a path"),
+            "--project-root" => match value() {
+                Some(path) => project_root = Some(PathBuf::from(path)),
+                None => return fail_ingest("--project-root needs a directory"),
             },
             "--json" => match value() {
                 Some(path) => json_out = Some(PathBuf::from(path)),
@@ -1161,6 +1159,10 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
                 )
             }
         };
+
+    // Resolve the league locations once; the session below binds the replay
+    // archive root from the same root these came from.
+    let paths = StudioLeaguePathsV1::resolve(project_root.as_deref());
 
     // Step 1: read the occurrence envelope and the three documents it covers.
     let read = |path: &Path, label: &str| -> std::result::Result<Vec<u8>, String> {
@@ -1208,10 +1210,10 @@ pub fn run_studio_league_ingest(args: &[String]) -> i32 {
         replay_source_path: &replay_logical_path,
     };
 
-    // The completion session owns the archive root (a protocol constant, never
-    // a per-run choice) and the league gates, so this command cannot open a
-    // league that skipped them, and cannot strand a recorded replay path.
-    let mut league = match open_completion_league(&db_path, &identity_path, now_epoch_seconds()) {
+    // The completion session captures the archive root from the resolved paths
+    // and enforces the league gates, so this command cannot open a league that
+    // skipped them, and cannot strand a recorded replay path.
+    let mut league = match open_completion_league(&paths, now_epoch_seconds()) {
         Ok(league) => league,
         Err(error) => {
             return fail_ingest(&format!("cannot open the league for completion: {error}"))

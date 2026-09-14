@@ -27,6 +27,7 @@ pub mod inventory;
 pub mod ledger;
 pub mod match_record;
 pub mod participant;
+pub mod paths;
 pub mod replay_archive;
 pub mod replay_index;
 pub mod schema;
@@ -89,6 +90,7 @@ pub use participant::{
     EngineIdentityV1, ParticipantKind, ParticipantRow, IDENTITY_MANIFEST_HASH_META_KEY,
     LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
 };
+pub use paths::StudioLeaguePathsV1;
 pub use replay_archive::{
     archive_replay, read_archived_replay, replay_document_sha256, ArchiveOutcome, ArchivedReplayV1,
 };
@@ -102,11 +104,18 @@ pub use schema::{
 };
 
 /// Default location of the derived league index.
+///
+/// This is the **one** root-relative directory every league path derives from.
+/// Nothing should compose a league path from these names directly: build a
+/// [`StudioLeaguePathsV1`] instead, which is the single place where "relative to
+/// what?" is answered.
 pub const STUDIO_LEAGUE_DIR: &str = "local-artifacts/studio-league";
-pub const STUDIO_LEAGUE_DB_FILE: &str = "local-artifacts/studio-league/league.sqlite3";
-/// Durable user-authored identity state; the index is rebuildable from it.
-pub const STUDIO_LEAGUE_IDENTITY_FILE: &str = "local-artifacts/studio-league/identity.json";
-/// Content-addressed replay archive root (`<document sha256>.json`).
-pub const STUDIO_LEAGUE_REPLAY_DIR: &str = "local-artifacts/studio-league/replays";
+/// File name of the derived index database inside [`STUDIO_LEAGUE_DIR`].
+pub const STUDIO_LEAGUE_DB_NAME: &str = "league.sqlite3";
+/// File name of the durable identity manifest inside [`STUDIO_LEAGUE_DIR`].
+pub const STUDIO_LEAGUE_IDENTITY_NAME: &str = "identity.json";
+/// Directory name of the content-addressed replay archive inside
+/// [`STUDIO_LEAGUE_DIR`] (`<document sha256>.json`).
+pub const STUDIO_LEAGUE_REPLAY_DIR_NAME: &str = "replays";
 /// Default local human display name, used only when the profile is first created.
 pub const DEFAULT_LOCAL_HUMAN_NAME: &str = "You";

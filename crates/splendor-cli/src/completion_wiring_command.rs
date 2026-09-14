@@ -49,8 +49,7 @@ use splendor_replay::ReplayV1;
 use splendor_studio_league::{
     complete_runtime_occurrence, now_epoch_seconds, open_completion_league, replay_document_sha256,
     CompletionRequestV1, IngestOutcome, RuntimeOccurrenceV1, StudioLeagueError,
-    RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION, STUDIO_LEAGUE_DB_FILE,
-    STUDIO_LEAGUE_IDENTITY_FILE,
+    StudioLeaguePathsV1, RUNTIME_OCCURRENCE_FORMAT, RUNTIME_OCCURRENCE_VERSION,
 };
 
 use crate::arena_command::{parent_dir_exists, parse_config_bytes, to_pretty_line};
@@ -111,8 +110,10 @@ Options:
                          not exist.
   --occurrence-id <id>   Harness-authored occurrence identity. Minted by the
                          caller with the run, never re-derived from content.
-  --identity <path>      identity.json (default: local-artifacts/studio-league/identity.json)
-  --db <path>            League database (default: local-artifacts/studio-league/league.sqlite3)
+  --project-root <dir>   Root every Studio League path derives from: the league
+                         database, the identity manifest and the replay archive
+                         all live under <dir>/local-artifacts/studio-league.
+                         Default: the current working directory.
   --json <path>          Write a completion receipt JSON here (only on success).
                          Published without overwriting: an existing file is left
                          untouched and reported, never replaced.
@@ -142,8 +143,9 @@ Options:
   --config <path>        The run's own config snapshot the envelope attests to
                          (the file `studio-league-complete-match --config-out`
                          wrote, NOT the original invocation input).
-  --identity <path>      identity.json (default: local-artifacts/studio-league/identity.json)
-  --db <path>            League database (default: local-artifacts/studio-league/league.sqlite3)
+  --project-root <dir>   Root every Studio League path derives from (same meaning
+                         as for studio-league-complete-match). Default: the
+                         current working directory.
   --json <path>          Write a completion receipt JSON here. Published without
                          overwriting: an existing file is left untouched.
   -h, --help             Print this help and exit 0.
@@ -162,8 +164,9 @@ struct CompleteArgs {
     /// bytes the runner consumed. This is the fourth durable evidence document.
     config_out: PathBuf,
     occurrence_id: String,
-    identity: PathBuf,
-    db: PathBuf,
+    /// Resolved once, here, and threaded through unchanged: the database, the
+    /// identity manifest and the replay archive root are never chosen apart.
+    paths: StudioLeaguePathsV1,
     json_out: Option<PathBuf>,
 }
 
@@ -321,8 +324,7 @@ pub fn run_studio_league_complete_match(args: &[String]) -> i32 {
         &evidence.replay_bytes,
         &config_bytes,
         &parsed.replay_out,
-        &parsed.db,
-        &parsed.identity,
+        &parsed.paths,
         parsed.json_out.as_ref(),
         "studio-league-complete-match",
     ) {
@@ -355,8 +357,7 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
     let mut report_path: Option<PathBuf> = None;
     let mut replay_path: Option<PathBuf> = None;
     let mut config_path: Option<PathBuf> = None;
-    let mut identity = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
-    let mut db = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut project_root: Option<PathBuf> = None;
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -379,13 +380,11 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
                 Some(path) => config_path = Some(PathBuf::from(path)),
                 None => return fail_usage_complete(COMPLETE_USAGE, "--config needs a path"),
             },
-            "--identity" => match value() {
-                Some(path) => identity = PathBuf::from(path),
-                None => return fail_usage_complete(COMPLETE_USAGE, "--identity needs a path"),
-            },
-            "--db" => match value() {
-                Some(path) => db = PathBuf::from(path),
-                None => return fail_usage_complete(COMPLETE_USAGE, "--db needs a path"),
+            "--project-root" => match value() {
+                Some(path) => project_root = Some(PathBuf::from(path)),
+                None => {
+                    return fail_usage_complete(COMPLETE_USAGE, "--project-root needs a directory")
+                }
             },
             "--json" => match value() {
                 Some(path) => json_out = Some(PathBuf::from(path)),
@@ -411,6 +410,9 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
             }
         };
 
+    // Resolve the league locations once; everything below uses these.
+    let paths = StudioLeaguePathsV1::resolve(project_root.as_deref());
+
     // The receipt export must never be able to overwrite the evidence it
     // describes, nor the league authority state.
     if let Some(json_out) = &json_out {
@@ -421,8 +423,9 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
                 ("--report", &report_path),
                 ("--replay", &replay_path),
                 ("--config", &config_path),
-                ("--db", &db),
-                ("--identity", &identity),
+                ("--project-root database", paths.db()),
+                ("--project-root identity", paths.identity()),
+                ("--project-root archive", paths.replay_root()),
             ],
         ) {
             return fail_usage_complete(COMPLETE_USAGE, &message);
@@ -482,8 +485,7 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
         &replay_bytes,
         &config_bytes,
         &replay_path,
-        &db,
-        &identity,
+        &paths,
         json_out.as_ref(),
         "studio-league-complete",
     ) {
@@ -649,13 +651,12 @@ fn complete_persisted(
     replay_bytes: &[u8],
     config_bytes: &[u8],
     replay_source_path: &Path,
-    db: &Path,
-    identity: &Path,
+    paths: &StudioLeaguePathsV1,
     json_out: Option<&PathBuf>,
     command: &str,
 ) -> Result<(), String> {
-    // The archive root is the protocol constant bound inside the outlet; the
-    // replay's logical path is recorded for provenance only.
+    // The archive root is captured by the session from the resolved paths when it
+    // is opened; the replay's logical path here is recorded for provenance only.
     let replay_logical_path = replay_source_path.to_string_lossy().replace('\\', "/");
     let request = CompletionRequestV1 {
         occurrence,
@@ -665,7 +666,7 @@ fn complete_persisted(
         replay_source_path: &replay_logical_path,
     };
 
-    let mut league = open_completion_league(db, identity, now_epoch_seconds())
+    let mut league = open_completion_league(paths, now_epoch_seconds())
         .map_err(|error| format!("cannot open the league for completion: {error}"))?;
     let completion = complete_runtime_occurrence(&mut league, &request)
         .map_err(|error| describe_completion_error(&error))?;
@@ -826,8 +827,7 @@ fn parse_complete_match_args(args: &[String]) -> Result<CompleteArgs, String> {
     let mut replay_out: Option<String> = None;
     let mut occurrence_out: Option<String> = None;
     let mut occurrence_id: Option<String> = None;
-    let mut identity = PathBuf::from(STUDIO_LEAGUE_IDENTITY_FILE);
-    let mut db = PathBuf::from(STUDIO_LEAGUE_DB_FILE);
+    let mut project_root: Option<PathBuf> = None;
     let mut json_out: Option<PathBuf> = None;
 
     let mut index = 0;
@@ -840,13 +840,9 @@ fn parse_complete_match_args(args: &[String]) -> Result<CompleteArgs, String> {
             "--replay-out" => set_once(&mut replay_out, "--replay-out", value())?,
             "--occurrence-out" => set_once(&mut occurrence_out, "--occurrence-out", value())?,
             "--occurrence-id" => set_once(&mut occurrence_id, "--occurrence-id", value())?,
-            "--identity" => match value() {
-                Some(path) => identity = PathBuf::from(path),
-                None => return Err("--identity needs a path".to_string()),
-            },
-            "--db" => match value() {
-                Some(path) => db = PathBuf::from(path),
-                None => return Err("--db needs a path".to_string()),
+            "--project-root" => match value() {
+                Some(path) => project_root = Some(PathBuf::from(path)),
+                None => return Err("--project-root needs a directory".to_string()),
             },
             "--json" => match value() {
                 Some(path) => json_out = Some(PathBuf::from(path)),
@@ -874,8 +870,7 @@ fn parse_complete_match_args(args: &[String]) -> Result<CompleteArgs, String> {
         occurrence_out: PathBuf::from(occurrence_out),
         config_out: PathBuf::from(config_out),
         occurrence_id,
-        identity,
-        db,
+        paths: StudioLeaguePathsV1::resolve(project_root.as_deref()),
         json_out,
     };
 
@@ -890,8 +885,9 @@ fn parse_complete_match_args(args: &[String]) -> Result<CompleteArgs, String> {
                 ("--occurrence-out", &parsed.occurrence_out),
                 ("--config-out", &parsed.config_out),
                 ("--config (input)", &parsed.config),
-                ("--db", &parsed.db),
-                ("--identity", &parsed.identity),
+                ("--project-root database", parsed.paths.db()),
+                ("--project-root identity", parsed.paths.identity()),
+                ("--project-root archive", parsed.paths.replay_root()),
             ],
         )?;
     }
