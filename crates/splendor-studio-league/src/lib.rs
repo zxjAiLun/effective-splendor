@@ -28,6 +28,7 @@ pub mod ledger;
 pub mod match_record;
 pub mod participant;
 pub mod paths;
+pub mod reader;
 pub mod replay_archive;
 pub mod replay_index;
 pub mod schema;
@@ -71,11 +72,12 @@ pub use inventory::{
 pub use ledger::{
     aliases, canonical_league_order, eligible_match_count, ensure_rating_config, identity_index,
     ineligible_reason_counts, ingest_batch_canonical, ingest_match, ingest_match_ordered,
-    is_rating_quality_replay, leaderboard, league_order, match_count, match_receipt,
+    is_rating_quality_replay, leaderboard, league_order, match_count, match_detail, match_receipt,
     now_epoch_seconds, participant_elo, participant_id_for_identity, preview_eligibility,
     protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
-    stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, MatchEloEventV1,
-    MatchReceiptV1, RatingEventRow, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, MatchDetailV1,
+    MatchEloEventV1, MatchReceiptV1, MatchSeatDetailV1, RatingEventRow, ReplayBindingSummaryV1,
+    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };
@@ -91,6 +93,7 @@ pub use participant::{
     LOCAL_HUMAN_META_KEY, PROVISIONAL_MATCH_THRESHOLD, UNASSIGNED_HUMAN_KEY,
 };
 pub use paths::StudioLeaguePathsV1;
+pub use reader::{open_studio_league_reader, StudioLeagueReaderV1};
 pub use replay_archive::{
     archive_replay, read_archived_replay, replay_document_sha256, ArchiveOutcome, ArchivedReplayV1,
 };

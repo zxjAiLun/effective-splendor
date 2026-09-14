@@ -33,10 +33,13 @@ use splendor_replay::{
     replay_document_hash_v1, verify_replay, verify_replay_trace, ReplayRecorder, ReplayV1,
 };
 use splendor_search::{canonical_order, SearchConfigV1};
+use splendor_studio_league::{
+    open_studio_league_reader, StudioLeaguePathsV1, StudioLeagueReaderV1,
+};
 
 const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
-    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>]";
+    "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--move-timeout-ms <u64>] [--replay-sources <sources.json>] [--project-root <dir>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
@@ -739,6 +742,9 @@ struct HostArgs {
     port: u16,
     move_timeout_ms: u64,
     replay_sources: Option<PathBuf>,
+    /// The root every Studio League path derives from. Resolved exactly once, at
+    /// startup: no handler may re-derive a league location from the cwd.
+    project_root: Option<PathBuf>,
 }
 
 #[derive(serde::Deserialize)]
@@ -840,6 +846,12 @@ impl ReviewJobManager {
 }
 
 struct StudioHost {
+    /// The one resolved league root, and the read-only session opened from it.
+    /// The session is opened once at startup. When the league is missing the
+    /// error is remembered and the league routes answer with it, so an unrelated
+    /// (non-league) Host keeps working exactly as before.
+    league: Option<StudioLeagueReaderV1>,
+    league_error: Option<String>,
     registry_path: PathBuf,
     registry: RatingRegistryV1,
     reviewer_registry: ReviewerRegistryV1,
@@ -1766,7 +1778,21 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
         )?),
         None => None,
     };
+    // The Studio League root is resolved exactly once, here, and the read-only
+    // session is opened once from it. Everything the league routes answer comes
+    // from this bundle; no handler re-derives a location from the cwd.
+    let league_paths = StudioLeaguePathsV1::resolve(args.project_root.as_deref());
+    let (league, league_error) = match open_studio_league_reader(&league_paths) {
+        Ok(reader) => (Some(reader), None),
+        Err(error) => (None, Some(error.to_string())),
+    };
+    match &league_error {
+        None => println!("studio_league={}", league_paths.db().display()),
+        Some(error) => eprintln!("studio_league unavailable: {error}"),
+    }
     let mut host = StudioHost {
+        league,
+        league_error,
         registry_path: args.registry,
         registry,
         reviewer_registry,
@@ -1830,6 +1856,117 @@ fn read_request(stream: &TcpStream) -> Result<HttpRequest, String> {
     Ok(HttpRequest { method, path, body })
 }
 
+/// A Studio League read, with the three outcomes the HTTP layer must tell apart.
+///
+/// The existing routes answer 400 for every error, which is fine for a command
+/// surface but wrong for a read API: "this match does not exist" is not a client
+/// mistake. The league routes therefore carry their own small response type,
+/// and the pre-existing routes are left byte-identical.
+enum LeagueRead {
+    Json(String),
+    Document(Vec<u8>),
+    NotFound(String),
+    Unavailable(String),
+}
+
+fn respond_league(stream: &mut TcpStream, read: LeagueRead) -> Result<(), String> {
+    let error_body = |message: String| serde_json::json!({ "error": message }).to_string();
+    match read {
+        LeagueRead::Json(body) => respond(stream, 200, "application/json", &body),
+        // `read_archived_replay` returns the archived document bytes verbatim.
+        LeagueRead::Document(bytes) => match std::str::from_utf8(&bytes) {
+            Ok(text) => respond(stream, 200, "application/json", text),
+            Err(error) => respond(
+                stream,
+                503,
+                "application/json",
+                &error_body(format!("the archived document is not a JSON text: {error}")),
+            ),
+        },
+        LeagueRead::NotFound(message) => {
+            respond(stream, 404, "application/json", &error_body(message))
+        }
+        LeagueRead::Unavailable(message) => {
+            respond(stream, 503, "application/json", &error_body(message))
+        }
+    }
+}
+
+impl StudioHost {
+    /// The read-only league session, or the reason it is not open.
+    fn league(&self) -> std::result::Result<&StudioLeagueReaderV1, String> {
+        match (&self.league, &self.league_error) {
+            (Some(reader), _) => Ok(reader),
+            (None, Some(error)) => Err(error.clone()),
+            (None, None) => Err("no Studio League reader is open".to_string()),
+        }
+    }
+
+    /// The league table, straight from the ledger. Nothing is recomputed.
+    fn league_leaderboard(&self) -> LeagueRead {
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.leaderboard() {
+            Ok(rows) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-leaderboard",
+                "version": 1,
+                "rows": rows,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
+    /// One match, exactly as the ledger recorded it.
+    fn league_match(&self, match_id: &str) -> LeagueRead {
+        if match_id.is_empty() {
+            return LeagueRead::NotFound("no match id in the request path".to_string());
+        }
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.match_detail(match_id) {
+            Ok(Some(detail)) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-match",
+                "version": 1,
+                "match": detail,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Ok(None) => {
+                LeagueRead::NotFound(format!("no match `{match_id}` is recorded in the ledger"))
+            }
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
+    /// The archived ReplayV1 document for a content address.
+    ///
+    /// The client supplies a document SHA-256 and nothing else. A malformed or
+    /// unknown address is an absent resource: `read_archived_replay` validates
+    /// the shape first and locates the object by archive root plus content
+    /// address, so there is no route through which a request can name a path.
+    fn league_replay(&self, document_sha256: &str) -> LeagueRead {
+        if document_sha256.is_empty() {
+            return LeagueRead::NotFound("no document sha256 in the request path".to_string());
+        }
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.read_replay(document_sha256) {
+            Ok(bytes) => LeagueRead::Document(bytes),
+            Err(error) => LeagueRead::NotFound(error.to_string()),
+        }
+    }
+}
+
 fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), String> {
     let request = read_request(&stream)?;
     if request.method == "OPTIONS" {
@@ -1843,6 +1980,19 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         }
         "GET" if request.path == "/recent-games" => {
             return respond_result(&mut stream, host.recent_games());
+        }
+        // ---- Studio League, read-only (Commit D Slice 1). --------------------
+        // These three are the whole league surface: no write route exists here.
+        "GET" if request.path == "/league/leaderboard" => {
+            return respond_league(&mut stream, host.league_leaderboard());
+        }
+        "GET" if request.path.starts_with("/league/matches/") => {
+            let match_id = request.path["/league/matches/".len()..].to_string();
+            return respond_league(&mut stream, host.league_match(&match_id));
+        }
+        "GET" if request.path.starts_with("/league/replays/") => {
+            let sha256 = request.path["/league/replays/".len()..].to_string();
+            return respond_league(&mut stream, host.league_replay(&sha256));
         }
         "GET" if request.path.starts_with("/replays/") => {
             let session_id = &request.path["/replays/".len()..];
@@ -2010,6 +2160,8 @@ fn respond(
         200 => "OK",
         204 => "No Content",
         400 => "Bad Request",
+        404 => "Not Found",
+        503 => "Service Unavailable",
         _ => "Not Found",
     };
     write!(stream, "HTTP/1.1 {status} {reason}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: http://127.0.0.1:4173\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n{body}", body.len()).map_err(|error| error.to_string())
@@ -2086,6 +2238,7 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
     let mut port = None;
     let mut move_timeout_ms = None;
     let mut replay_sources = None;
+    let mut project_root = None;
     let mut index = 0;
     while index < args.len() {
         let value = args
@@ -2106,6 +2259,9 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
                 PathBuf::from(value),
                 "--replay-sources",
             )?,
+            "--project-root" => {
+                set_once(&mut project_root, PathBuf::from(value), "--project-root")?
+            }
             other => return Err(format!("unknown argument `{other}`; {HOST_USAGE}")),
         }
         index += 2;
@@ -2131,6 +2287,7 @@ fn parse_host_args(args: &[String]) -> Result<HostArgs, String> {
         port,
         move_timeout_ms,
         replay_sources,
+        project_root,
     })
 }
 
@@ -2333,6 +2490,9 @@ mod tests {
         }))
         .unwrap();
         let host = StudioHost {
+            // This unit test exercises the agents JSON only; no league is opened.
+            league: None,
+            league_error: None,
             registry_path: PathBuf::from("private/registry.json"),
             registry,
             reviewer_registry: test_reviewer_registry(),

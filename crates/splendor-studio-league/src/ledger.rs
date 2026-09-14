@@ -20,7 +20,7 @@
 use crate::eligibility::{evaluate_eligibility, EligibilityInput, RatingEligibility};
 use crate::elo::{pair_score_a, plan_pair_update};
 use crate::error::{Result, StudioLeagueError};
-use crate::match_record::{ReplayVerification, StudioMatchRecordV1};
+use crate::match_record::{MatchStatus, ReplayStorage, ReplayVerification, StudioMatchRecordV1};
 use crate::participant::{
     derived_participant_id, resolve_engine_participant, resolve_engine_participant_with_key,
     ParticipantKind,
@@ -926,7 +926,7 @@ pub struct MatchReceiptV1 {
     pub elo_events: Vec<MatchEloEventV1>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MatchEloEventV1 {
     pub participant_id: String,
     pub elo_before: f64,
@@ -974,5 +974,204 @@ pub fn match_receipt(conn: &Connection, match_id: &str) -> Result<Option<MatchRe
         match_id: match_id.to_string(),
         rating_ineligible_reason,
         elo_events,
+    }))
+}
+
+/// One recorded match, exactly as the ledger recorded it.
+///
+/// This is the match-detail read behind the read-only Host API. It reuses the
+/// ledger's own view of the row, its seats and its rating events, and adds no
+/// interpretation: it never derives a winner from a replay document, never
+/// derives an identity from a filename, and never recomputes Elo.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MatchDetailV1 {
+    pub match_id: String,
+    pub source_kind: String,
+    pub source_identity: String,
+    pub status: MatchStatus,
+    pub played_at: Option<i64>,
+    pub league_seq: i64,
+    pub player_count: u32,
+    pub rating_eligible: bool,
+    /// `None` when the match is rating-eligible; otherwise the frozen reason.
+    pub rating_ineligible_reason: Option<String>,
+    pub replay: ReplayBindingSummaryV1,
+    pub seats: Vec<MatchSeatDetailV1>,
+    pub rating_events: Vec<MatchEloEventV1>,
+}
+
+/// What the ledger records about one match's replay document.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ReplayBindingSummaryV1 {
+    /// The verified ReplayV1 document SHA-256, when the ledger recorded one.
+    ///
+    /// This is the content address the replay route accepts. It is an identity,
+    /// never a path.
+    pub document_sha256: Option<String>,
+    pub storage: ReplayStorage,
+    pub verification: ReplayVerification,
+    /// The recorded provenance path, reported for transparency only.
+    ///
+    /// The bytes are located by archive root plus content address; this string
+    /// never locates anything, and it is never accepted from a client.
+    pub path: Option<String>,
+    /// Whether the ledger records a usable content-addressed archive object.
+    /// This is ledger state, not a filesystem probe: the replay route is the
+    /// authority on whether the object can actually be read.
+    pub archived: bool,
+}
+
+/// One seat of a recorded match.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MatchSeatDetailV1 {
+    pub seat: u32,
+    pub participant_id: Option<String>,
+    pub display_name: Option<String>,
+    pub agent_name: Option<String>,
+    pub score: Option<i64>,
+    pub rank: Option<i64>,
+    pub won: bool,
+}
+
+/// Read one match in full from the ledger.
+///
+/// `Ok(None)` when the match is not recorded at all, so a caller answers "not
+/// found" rather than inventing a row.
+pub fn match_detail(conn: &Connection, match_id: &str) -> Result<Option<MatchDetailV1>> {
+    use rusqlite::OptionalExtension;
+
+    let header = conn
+        .query_row(
+            "SELECT match_id, source_kind, source_identity, status, played_at, league_seq,
+                    player_count, rating_eligible, rating_ineligible_reason,
+                    replay_document_hash, replay_storage, replay_path, replay_verification
+               FROM matches WHERE match_id = ?1",
+            [match_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, Option<i64>>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, i64>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<String>>(8)?,
+                    row.get::<_, Option<String>>(9)?,
+                    row.get::<_, String>(10)?,
+                    row.get::<_, Option<String>>(11)?,
+                    row.get::<_, String>(12)?,
+                ))
+            },
+        )
+        .optional()?;
+    let Some((
+        match_id,
+        source_kind,
+        source_identity,
+        status,
+        played_at,
+        league_seq,
+        player_count,
+        rating_eligible,
+        rating_ineligible_reason,
+        replay_document_hash,
+        replay_storage,
+        replay_path,
+        replay_verification,
+    )) = header
+    else {
+        return Ok(None);
+    };
+
+    let status = match status.as_str() {
+        "completed" => MatchStatus::Completed,
+        "aborted" => MatchStatus::Aborted,
+        "truncated" => MatchStatus::Truncated,
+        other => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "match `{match_id}` has unknown status `{other}`"
+            )))
+        }
+    };
+    let storage = match replay_storage.as_str() {
+        "archive" => ReplayStorage::Archive,
+        "in_place_reference" => ReplayStorage::InPlaceReference,
+        "absent" => ReplayStorage::Absent,
+        other => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "match `{match_id}` has unknown replay storage `{other}`"
+            )))
+        }
+    };
+    let verification = match replay_verification.as_str() {
+        "verified" => ReplayVerification::Verified,
+        "invalid" => ReplayVerification::Invalid,
+        "unavailable" => ReplayVerification::Unavailable,
+        other => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "match `{match_id}` has unknown replay verification `{other}`"
+            )))
+        }
+    };
+
+    let mut seats_statement = conn.prepare(
+        "SELECT seat, participant_id, display_name, agent_name, score, rank, won
+           FROM match_seats WHERE match_id = ?1 ORDER BY seat",
+    )?;
+    let seats = seats_statement
+        .query_map([match_id.as_str()], |row| {
+            Ok(MatchSeatDetailV1 {
+                seat: row.get::<_, i64>(0)? as u32,
+                participant_id: row.get(1)?,
+                display_name: row.get(2)?,
+                agent_name: row.get(3)?,
+                score: row.get(4)?,
+                rank: row.get(5)?,
+                won: row.get::<_, i64>(6)? != 0,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let mut events_statement = conn.prepare(
+        "SELECT participant_id, elo_before, elo_after FROM rating_events
+          WHERE match_id = ?1 ORDER BY participant_id",
+    )?;
+    let rating_events = events_statement
+        .query_map([match_id.as_str()], |row| {
+            Ok(MatchEloEventV1 {
+                participant_id: row.get(0)?,
+                elo_before: row.get(1)?,
+                elo_after: row.get(2)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    // "Archived" is a statement about what the ledger recorded, not about the
+    // filesystem: a recorded, verified, content-addressed object.
+    let archived = storage == ReplayStorage::Archive
+        && verification == ReplayVerification::Verified
+        && replay_document_hash.is_some();
+
+    Ok(Some(MatchDetailV1 {
+        match_id,
+        source_kind,
+        source_identity,
+        status,
+        played_at,
+        league_seq,
+        player_count: player_count as u32,
+        rating_eligible: rating_eligible != 0,
+        rating_ineligible_reason,
+        replay: ReplayBindingSummaryV1 {
+            document_sha256: replay_document_hash,
+            storage,
+            verification,
+            path: replay_path,
+            archived,
+        },
+        seats,
+        rating_events,
     }))
 }

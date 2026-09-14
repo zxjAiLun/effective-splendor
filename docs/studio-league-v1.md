@@ -38,6 +38,15 @@
   once, privately, in `paths.rs`, and the three full location literals appear nowhere else in the
   workspace. Locating a league is exactly `StudioLeaguePathsV1::resolve(..)` plus `db()` /
   `identity()` / `replay_root()`. `83/83` and CLI `273/273` unchanged.
+  **Project-Root / Launcher Resolution: ACCEPTED / CLOSED @ `1ecb343` (P0=0/P1=0/P2=0).**
+  **Commit D — Host API Slice 1 (read-only) (2026-09-14)**: `IMPLEMENTED` / `VERIFIED` locally,
+  pending owner review. Three read-only routes on the existing `studio-host`
+  (`GET /league/leaderboard`, `/league/matches/{match_id}`, `/league/replays/{document_sha256}`),
+  served from a new opaque **read-only** `StudioLeagueReaderV1` (opened `SQLITE_OPEN_READ_ONLY`,
+  schema-checked, fails closed) that keeps the ledger the sole owner of its queries. Project root
+  resolved once at startup from `--project-root`. No write authority, no new table, no Elo
+  recomputation. Gate baselines: `83/83` and CLI **277/277** (44 → 45 binaries). **UI still not
+  authorized.**
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -2644,3 +2653,257 @@ owner's verdict.
 Owner review of this repair. On acceptance the project-root slice is expected to close, and the Host
 API — the surface this slice was ordered *before* — becomes the next thing to authorize. Host API and
 UI remain **not authorized** until then.
+
+## Commit D — Host API Slice 1 (read-only) (2026-09-14)
+
+- **Status**: design frozen before implementation; `AUTHORIZED` by the owner.
+- **Baseline**: `1ecb34365642ad534e6a20caa1d281eb8e530806`. Project-Root / Launcher Resolution was
+  **ACCEPTED / CLOSED** there (P0=0 / P1=0 / P2=0). The owner accepted the recorded `{league-dir}`
+  help-rendering limitation as *not* a problem (every current output path renders; a future caller
+  printing a private usage constant directly is a future mistake, not a present seam).
+- **Authorization**: the read-only Host API. UI is **still not authorized**.
+
+The owner's contract: serve three product reads — leaderboard, match detail, replay document — from a
+Host that resolves the project root **once**, reuses the existing ledger authority instead of
+recomputing anything, reads replay bytes only through archive root + content address, and adds **no
+write** authority (no run-match, no completion POST, no identity/alias mutation, no migrate/rebuild,
+no delete, no WebSocket, no UI).
+
+### Problem and evidence
+
+Read at `1ecb343`:
+
+1. **A Host already exists.** `splendor studio-host` (`run_studio_host` → `serve_studio_host` →
+   `StudioHost` → `handle_host`, all in `crates/splendor-cli/src/human_play_command.rs`) is a
+   hand-rolled HTTP/1.1 server over `std::net`, serving `/health`, `/agents`, `/catalog`, `/state`,
+   `/games`, `/action`, `/archive`, `/reviewers`, `/recent-games`, `/replays/*`,
+   `/experiment-replays*`, `/reviews`, `/reviews/*`. It has **no Studio League routes**.
+2. **There is no web stack in the workspace at all.** No `axum`, `tokio`, `hyper`, `warp`, `actix`,
+   `tiny_http`, `rouille`: `grep` over every `Cargo.toml` is empty. The repository deliberately
+   hand-rolls HTTP rather than pulling in an async runtime.
+3. **`rusqlite` is a test-only dependency of `splendor-cli`** (Cargo.toml, with a comment saying so).
+   So the Host can neither name a `rusqlite::Connection` in a struct field nor hand-write SQL over the
+   ledger — the second of which would make the Host a **second ledger authority**, the exact class of
+   defect this project has spent several rounds closing.
+4. The ledger already exposes the reads this slice needs: `leaderboard(conn) -> Vec<LeaderboardRow>`,
+   `match_receipt(conn, match_id) -> Option<MatchReceiptV1>`, `read_archived_replay(archive_root, sha)`,
+   plus `MatchStatus` / `ReplayStorage` / `ReplayVerification` value enums with `as_str()`.
+5. `match_receipt` returns only `{match_id, rating_ineligible_reason, elo_events}` — **not** the seats,
+   status, source identity, or replay binding the match-detail requirement asks for. The `matches` and
+   `match_seats` tables hold all of it, but nothing reads it today.
+6. `open_league` calls `initialise` (PRAGMA + DDL + meta version), i.e. it **writes**. Using it to
+   serve reads would mean a "read-only" Host that mutates the database on every request, and one that
+   silently creates an empty league when the database is missing.
+7. There is **no HTTP test harness** in the repository: no test drives `studio-host` over the wire.
+
+### Two design deviations, stated before implementation
+
+**D1 — extend the existing `studio-host`; do not add a second Host.** The owner's contract describes
+"a Host", and one already exists with the plumbing (request parsing, CORS headers, `Connection: close`
+responses), the process model, and an unrelated read surface. A new binary would duplicate all of that
+and split "the Host" in two. The league routes therefore join `handle_host`.
+
+**D2 — add an opaque, read-only league session to `splendor-studio-league`.** This is the one
+decision that adds **public surface**, so it is called out for review. The Host must serve ledger
+reads, but (finding 3) `splendor-cli` cannot hold a connection and (finding 4/5) the match-detail
+query does not exist yet. The options were:
+
+| Option | Consequence |
+| --- | --- |
+| Promote `rusqlite` to a production dependency of `splendor-cli` | The Host gains raw SQL over the ledger — a **second ledger authority**, and precisely the shortcut class closed in Slice 3 Repair 2 |
+| Open the league per request via `open_league` | Writes on every request (finding 6) and silently creates an empty league; still needs new query code for match detail |
+| **An opaque read-only session owned by the ledger crate** | The ledger keeps sole ownership of its queries; the Host holds a value it cannot name, mutate, or bypass |
+
+The third option is taken. It is deliberately **symmetric with `CompletionLeagueV1`**, the opaque
+session the owner accepted in Slice 3 Repair 1: one constructor, private connection, no accessor.
+The difference is that this one is read-only by construction — it opens the database with
+`SQLITE_OPEN_READ_ONLY`, so it *cannot* write, and it **fails closed** when the database is absent
+rather than creating an empty league.
+
+New public surface (flagged for the owner: this is the whole of it):
+
+```rust
+pub struct StudioLeagueReaderV1;                 // opaque: private conn + paths
+pub fn open_studio_league_reader(paths: &StudioLeaguePathsV1) -> Result<StudioLeagueReaderV1>;
+pub struct MatchDetailV1;                        // + MatchSeatDetailV1 / ReplayBindingSummaryV1
+impl StudioLeagueReaderV1 {
+    pub fn leaderboard(&self) -> Result<Vec<LeaderboardRow>>;
+    pub fn match_detail(&self, match_id: &str) -> Result<Option<MatchDetailV1>>;
+    pub fn read_replay(&self, document_sha256: &str) -> Result<Vec<u8>>;
+}
+```
+
+The backing ledger query is one new function, `match_detail(conn, match_id)`, reading the existing
+`matches` / `match_seats` / `rating_events` tables. **No schema change, no new table, no write path,
+and no new authority**: the reader answers only with facts the ledger already recorded, and
+`MatchEloEventV1` is reused rather than redefined.
+
+### Scope and non-goals
+
+In scope: the read-only reader type + `match_detail` query in `splendor-studio-league`; `--project-root`
+on `studio-host`; three GET routes; the four gates below.
+
+Not authorized in this slice: run match, completion POST, identity mutation, alias editing,
+migrate/rebuild, delete match, WebSocket, UI, any write endpoint, any new table, and any
+recomputation of Elo / wins / provisional values in the Host.
+
+### Endpoints
+
+Naming follows the existing Host (bare paths; the owner explicitly allowed adapting the literal URLs):
+
+```text
+GET /league/leaderboard
+GET /league/matches/{match_id}
+GET /league/replays/{document_sha256}
+```
+
+The owner's `/api/studio/...` sketch was adapted rather than copied, because no existing Host route
+uses an `/api` prefix and consistency with the neighbouring routes is worth more than the literal
+spelling. The capability scope is exactly the owner's.
+
+### Contracts and invariants
+
+- **H1 — one root, resolved once.** `StudioHost` stores `StudioLeaguePathsV1` resolved from
+  `--project-root` at startup. No handler joins `local-artifacts/...`, and none re-derives from cwd.
+- **H2 — ledger truth only.** Leaderboard, seats, eligibility, and rating events come from the ledger
+  through `leaderboard()` / `match_detail()`. The Host computes nothing and infers nothing: no win is
+  guessed from a replay, no identity from a filename.
+- **H3 — replay by content address only.** The replay route calls `read_archived_replay(paths.replay_root(), sha)`.
+  A client supplies a SHA-256, never a path; `replay_path` is never taken from a request.
+- **H4 — structurally read-only.** The reader opens `SQLITE_OPEN_READ_ONLY`; it cannot create a
+  database, create a table, or write a row. A missing league fails closed at startup.
+- **H5 — unknown input fails closed.** Unknown `match_id` → 404. Malformed or unknown SHA → 404.
+  Neither returns placeholder data.
+
+### Acceptance gates (frozen before implementation)
+
+Four gates, as the owner specified — not a schema-test suite:
+
+- **A — root authority.** Start `studio-host` from a working directory unrelated to the project root,
+  with an explicit `--project-root`. `/league/leaderboard` must return the league in that root, and
+  **nothing** may be created at `<cwd>/local-artifacts`.
+- **B — leaderboard truth.** `/league/leaderboard` must agree with a direct `leaderboard()` call on the
+  same database, field for field.
+- **C — match detail truth.** An eligible match returns its real Elo events (two, for a two-seat rated
+  match); an ineligible match returns its reason and **no fabricated events**.
+- **D — replay content-addressing.** The correct SHA returns the exact archived `ReplayV1` bytes; an
+  unknown SHA and a malformed SHA both fail closed; no request can name an arbitrary filesystem path.
+
+### Resolved open questions
+
+- *Which Host?* The existing `studio-host` (D1).
+- *How does a Host without `rusqlite` read the ledger?* An opaque read-only session in the ledger
+  crate (D2).
+- *Should `--registry` / `--reviewer-registry` stop being required?* No. They are existing required
+  arguments of a command this slice is not authorized to redefine; the gates supply minimal valid
+  registries instead.
+- *Fail-fast or lazy league open?* The root is resolved once at startup and the reader is opened once
+  at startup. If the league database is missing, the Host still starts (existing non-league users are
+  unaffected) and the league routes answer with a clear error rather than an empty league.
+- *Status codes.* Existing routes answer 400 for every error. The new read routes need 404 for
+  genuinely absent resources, so they get a small typed response path of their own; existing routes
+  are left byte-identical.
+
+### Final implementation
+
+`crates/splendor-studio-league/src/ledger.rs` — new read: `match_detail(conn, match_id)` plus the typed
+`MatchDetailV1`, `ReplayBindingSummaryV1`, `MatchSeatDetailV1`. It reads the existing `matches`,
+`match_seats` and `rating_events` tables, reuses `MatchEloEventV1` rather than redefining it, and
+rejects an unknown stored `status` / `replay_storage` / `replay_verification` with an error instead of
+guessing. `archived` is a statement about the **ledger's** record (archive + verified + a recorded
+document hash), not a filesystem probe — the replay route remains the authority on whether the object
+can actually be read. `MatchEloEventV1` gained the `Deserialize` derive so the read types round-trip,
+matching `MatchReceiptV1`; that is the only change to a pre-existing type in this slice.
+
+`crates/splendor-studio-league/src/reader.rs` (new) — `StudioLeagueReaderV1` and
+`open_studio_league_reader(paths)`. Private connection, no accessor, one constructor; opened with
+`SQLITE_OPEN_READ_ONLY`, then the schema version is checked, so a missing file, a foreign SQLite
+database, or a stale schema all fail closed at startup rather than being served as an empty league.
+
+`crates/splendor-cli/src/human_play_command.rs` — `HostArgs.project_root`, the `--project-root` flag,
+two new `StudioHost` fields, the one-time resolve-and-open in `serve_studio_host`, the three routes in
+`handle_host`, the `LeagueRead` / `respond_league` response type, and the three `StudioHost` read
+methods. `respond` gained explicit `404` and `503` reason phrases; its existing cases are unchanged.
+The in-file unit test that builds a `StudioHost` now passes `league: None, league_error: None`.
+
+Response shapes carry the repository's usual envelope:
+`{"format":"effective-splendor-studio-league-leaderboard","version":1,"rows":[...]}` and
+`{"format":"effective-splendor-studio-league-match","version":1,"match":{...}}`. The replay route
+serves the archived document itself.
+
+### Iteration log
+
+- **The reviewer-registry default is cwd-relative.** The first smoke run started the host from an
+  unrelated cwd without `--reviewer-registry`; its default (`benchmarks/studio-reviewers.registry.json`)
+  resolved against that cwd and the host exited before binding. The gates therefore pass both registry
+  paths as absolute. This is pre-existing behaviour, not introduced here, but it is the same class of
+  cwd-drift the previous slice closed for league paths, and it is worth recording.
+- **A missing league must not break the existing Host.** Opening the reader at startup could have made
+  `studio-host` unusable for every current non-league caller. The failure is instead remembered and
+  reported by the league routes only.
+- **Gate B is deliberately insensitive to the root.** Under the root negative control it still passes,
+  because it starts the host with cwd equal to the root. That is correct: gate B is about agreement
+  with the ledger, and gate A is the gate that owns root authority. Both are needed.
+- **`workspace_path` uses `CARGO_MANIFEST_DIR`,** not a walk up from `current_exe`: the first attempt
+  popped one level too few and looked for `target/benchmarks/...`, which failed every host start.
+
+### Validation and evidence
+
+- `cargo test -p splendor-studio-league`: **83 passed / 0 failed** (unchanged).
+- `cargo test -p splendor-cli`: **277 passed / 0 failed** across 45 test binaries (was 273 across 44;
+  the new `league_host_api` binary contributes the four gates).
+- **New gates** (`crates/splendor-cli/tests/league_host_api.rs`, 4 tests, ~2.3s): they build a real
+  league by running the real producer twice (one rated pair, one self-match), start the real binary as
+  a subprocess from a real unrelated cwd, and speak HTTP over `std::net` — there is no web stack in this
+  repository and this slice did not add one.
+  - **A** `the_league_comes_from_the_explicit_project_root_not_the_working_directory` — leaderboard is
+    served from the explicit root, and `<cwd>/local-artifacts` does not exist afterwards.
+  - **B** `the_leaderboard_agrees_with_the_ledger_itself` — every row matches a direct `leaderboard()`
+    call on the same database across `participant_id`, `display_name`, `elo`, `rated_games`,
+    `recorded_games`, W/T/L and `provisional`.
+  - **C** `match_detail_reports_recorded_facts_and_never_fabricates_events` — the rated match reports
+    `status`, `player_count`, source identity, two attributed seats and exactly two Elo events starting
+    from the protocol initial 1500; the self-match reports `self_match` and **zero** events; an unknown
+    id is 404.
+  - **D** `replays_are_read_by_content_address_only` — the served body is byte-identical to the archived
+    object on disk; a malformed address, an unknown address and a path-shaped request all 404.
+- **Behavioural probe (manual, before the gates).** Real league, real matches: leaderboard 200 with the
+  expected 1516 / 1500 / 1484 rows; match detail with both seats and two real events; replay body
+  **byte-identical** to the archived file (28,730 bytes); `unknown match` / `not-a-sha` /
+  `0000…0000` / `../../etc/passwd` all 404; `elsewhere/local-artifacts` never created.
+- **Negative controls (run, then reverted).** Two independent injections into the Host:
+  1. ignore `--project-root` and resolve the default instead → **gate A FAILED**;
+  2. let the replay route serve whatever `read_replay` returns instead of failing closed →
+     **gate D FAILED**.
+  Gates B and C correctly stayed green under (1), because gate B runs with cwd equal to the root and
+  gate C's subject is the detail payload. Both injections were reverted and the suite is green again.
+- Static: `git diff --check` exit 0; NUL 0; CRLF 0; `rustfmt --edition 2021` on the touched files.
+  Build warnings remain the pre-existing `s2_census_command.rs` and `studio_league_command.rs` sites.
+  The 42k historical migration was not re-run. There are no cloud status checks; every number above is
+  local evidence.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. Three read-only endpoints answer from the existing ledger and the
+existing archive, with the project root resolved once at startup, and the Host holds no way to write.
+No new authority was created: the only new capability is a read-only session over data the ledger
+already owned. `ACCEPTED` is **not** claimed.
+
+### Known limitations
+
+- The reader type and `MatchDetailV1` are **new public surface** in `splendor-studio-league`. It is
+  read-only and it prevents a worse outcome (raw SQL in the Host), but it is public surface, and the
+  owner should weigh it as such.
+- `read_archived_replay` returns 404 for a malformed address as well as an unknown one. Both fail
+  closed; the distinction is not surfaced.
+- League routes are unauthenticated and the Host binds `127.0.0.1` only. That is the existing Host's
+  posture and this slice does not change it.
+- The league routes are served by the same process as the existing command/registry surface, so the
+  process as a whole is not read-only — only the league reader is.
+- `--registry` remains a required argument, so serving league reads needs a rating registry file even
+  though the league reads do not use it.
+
+### Next authorized gate
+
+Owner review of this slice. Per the owner's stated ordering, if the read-only Host is accepted the next
+step is the Host completion API / match orchestration, then the UI. **UI remains not authorized.**
