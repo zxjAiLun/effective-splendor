@@ -2656,7 +2656,10 @@ UI remain **not authorized** until then.
 
 ## Commit D — Host API Slice 1 (read-only) (2026-09-14)
 
-- **Status**: design frozen before implementation; `AUTHORIZED` by the owner.
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally as `59ffe9b1c826f6e1b430284f6260884b6ff06cbd`.
+  Owner review found **REPAIR_REQUIRED (P0=0 / P1=1 / P2=2)**; see *Repair 1* below. The design and the
+  structure were accepted, and the P1 was that a read must also respect the authority evidence the
+  write paths already enforce.
 - **Baseline**: `1ecb34365642ad534e6a20caa1d281eb8e530806`. Project-Root / Launcher Resolution was
   **ACCEPTED / CLOSED** there (P0=0 / P1=0 / P2=0). The owner accepted the recorded `{league-dir}`
   help-rendering limitation as *not* a problem (every current output path renders; a future caller
@@ -2907,3 +2910,136 @@ already owned. `ACCEPTED` is **not** claimed.
 
 Owner review of this slice. Per the owner's stated ordering, if the read-only Host is accepted the next
 step is the Host completion API / match orchestration, then the UI. **UI remains not authorized.**
+
+## Commit D Slice 1 Repair 1 — reading respects the authority evidence (2026-09-14)
+
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally; awaiting owner review. `ACCEPTED` is not claimed.
+- **Baseline**: `59ffe9b1c826f6e1b430284f6260884b6ff06cbd`, owner verdict
+  **REPAIR_REQUIRED (P0=0 / P1=1 / P2=2)**.
+- **Prescribed scope**: (1) stored rating config must equal this build's protocol config, pure read;
+  (2) strict identity manifest load plus stored-hash equality; (3) two fail-closed gates;
+  (4) `match_detail(conn, …)` becomes crate-internal; (5) corrupt/unreadable replay becomes 503 if
+  small. Explicitly not in scope: schema changes, new endpoints, write APIs, UI.
+
+The verdict accepted the design, the reuse of `studio-host`, the single root resolution at startup, the
+physical read-only-ness of the session, and the content-addressed replay route. What it rejected was
+narrower and correct: **the reader validated the schema version and nothing else.**
+
+### P1 — a stronger integrity contract than the schema was not checked
+
+`open_studio_league_reader()` did `open READ_ONLY` → `schema_version()` → compare → serve. But two
+higher-level contracts were already frozen for this database, and both were enforced on every write
+path while being ignored on the read path:
+
+1. **The rating protocol identity.** `ensure_rating_config` fails closed when the persisted
+   `studio_rating_config` evidence disagrees with `protocol_rating_config()`: a derived database
+   written by another Studio Elo protocol must be rebuilt. A reader that skipped this could serve one
+   protocol's Elo as if the current build stood behind it, while `complete-match` refused the very
+   same database.
+2. **The durable identity authority.** `sync_identity_manifest` requires, on a non-empty ledger, that
+   the recorded manifest hash equals the hash of the manifest on disk, and fails closed when the
+   evidence is missing. `identity.json` is *authored* state and the SQLite index is *derived*; a user
+   may legally rename themselves or add an alias before any rebuild. The reader did not read
+   `paths.identity()` at all, so it would serve superseded participants and aliases as current fact.
+
+That is the boundary this project has held throughout: **SQLite is derived state; the durable manifest
+is the authored identity authority.** A read surface that does not check it is not a product entry
+point to ledger truth, it is a view of a stale index.
+
+### Fix
+
+Both checks are pure reads, with zero mutation and no new dependency on the write path:
+
+- `stored_rating_config(&conn)` → `ok_or_else` when missing, then `!= protocol_rating_config()` fails
+  with `StudioLeagueError::RatingConfig`, reusing the same "the index is derived, so rebuild it"
+  message the write path uses.
+- `IdentityManifestV1::load(paths.identity())` — deliberately **not** `load_or_recover`, which can
+  heal the primary and therefore writes, and therefore has no place in a read-only session. Missing
+  manifest, missing stored hash, and mismatched hash all fail closed.
+
+Both failures reach the client through the `league_error → 503` path that already existed, so the HTTP
+architecture did not change: a league that cannot be trusted is unavailable, not silently empty.
+
+### P2-1 — the backing primitive was also external API
+
+`match_detail(conn, …)` was newly added and re-exported from the crate root. It grants no write
+authority and the generic `leaderboard(&Connection)` family was already public, so it was not a
+blocker — but it contradicted the stated point of this slice, which is that a consumer does not need a
+raw connection *or* a query seam. It is now `pub(crate)` and removed from the re-export. The DTOs stay
+public because they are the read session's return type.
+
+### P2-2 — corruption was reported as absence
+
+The replay route mapped every `read_replay` error to 404. But that function fails both when there is no
+object and when there is one it cannot serve (unreadable, or bytes that no longer hash to their
+address). Telling a client "this replay does not exist" when the archive has lost it is not honest,
+least of all in a slice that just introduced `Unavailable → 503` for the league itself. A present
+object that fails to read is now 503; only an address that was never archived is 404.
+
+This was done without a new error taxonomy, as prescribed: crate-internal
+`content_address_path` / `archived_replay_present` in `replay_archive.rs`, and one public predicate
+`StudioLeagueReaderV1::replay_present()` that says whether the archive holds an object at an address
+(existence only — a later failed read of a present object is still server-side corruption).
+
+### Validation and evidence
+
+- `cargo test -p splendor-studio-league`: **83 passed / 0 failed** (unchanged: 34 lib + 1 + 7 + 3 + 29
+  + 5 + 4).
+- `cargo test -p splendor-cli`: **280 passed / 0 failed** across 45 test binaries (was 277 across 45;
+  the three new gates).
+- **New gates** (`crates/splendor-cli/tests/league_host_api.rs`, now 7 tests, ~3.3–7.4 s). Each copies
+  the fixture league first, because it has to damage evidence that the other gates share.
+  - `a_league_whose_durable_identity_moved_on_is_not_served` — rename the local human through the
+    public manifest API (the hash is canonical over the whole document) → leaderboard **503**, and
+    `/health` still **200**.
+  - `a_league_built_by_another_rating_protocol_is_not_served` — rewrite the persisted rating config
+    with a different `k_factor` *keeping the schema version intact*, so a schema check provably cannot
+    see the difference → **503**, `/health` still **200**.
+  - `a_corrupt_archive_object_is_a_server_fault_not_a_missing_replay` — flip one byte of a copied
+    archived object (same length, still readable, no longer its content address) → **503**; an address
+    that was never archived stays **404**.
+- **Negative controls (run, then reverted).**
+  1. Make both authority gates no-ops → the durable-identity gate and the rating-protocol gate
+     **FAILED**, while the corrupt-object gate and all four original gates stayed green.
+  2. Restore `Err(error) => NotFound` in the replay route → the corrupt-object gate **FAILED**,
+     everything else green.
+- **Surface probe (throwaway, deleted).** From an external crate:
+  `use splendor_studio_league::match_detail;` → **`error[E0432]`**: no `match_detail` in the root.
+  Positive control from the same viewpoint: `StudioLeagueReaderV1` + `MatchDetailV1` /
+  `MatchSeatDetailV1` / `ReplayBindingSummaryV1` compile and the session method is callable.
+- Static: `git diff --check` exit 0; NUL 0; `rustfmt --edition 2021` on the six touched files; diff is
+  `6 files changed, 284 insertions(+), 8 deletions(-)` with no whole-file churn. Build warnings remain
+  the pre-existing `s2_census_command.rs` and `studio_league_command.rs` sites. The 42k historical
+  migration was not re-run. There are no cloud status checks; every number here is local evidence.
+
+**Correction to an earlier hygiene claim.** Previous rounds recorded `CRLF 0` on touched files as
+evidence. That number was an artifact of this work's own editing (whole-file rewrites emitted LF), not
+a repository invariant: `core.autocrlf=true`, the repo's working tree is normally CRLF, and the index
+stores LF either way. The check that means something is `git diff --check` plus a diff with no
+whole-file churn; both are recorded above.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. The read session now enforces, on the read side, the same two
+integrity contracts the write side already enforces — with no schema change, no new endpoint, no write
+authority, and no new dependency, so a read can no longer present derived state that the ledger would
+refuse to accept. `ACCEPTED` is not claimed: owner review is the gate.
+
+### Known limitations
+
+- `StudioLeagueReaderV1` remains **new public surface** (now plus `replay_present`). The reviewer
+  accepted the abstraction and explicitly asked that the P1 not be fixed by retreating from it toward
+  raw SQL in the Host.
+- A league with **no** integrity evidence at all (for instance an empty database created by
+  `open_league` and never completed into) is also refused — 503, not an empty leaderboard. That is the
+  strict reading of "fail closed on missing evidence" and it is deliberate.
+- The distinction between a malformed address and an unknown one is still not surfaced; both are 404,
+  which the owner accepted.
+- League routes remain unauthenticated, bound to `127.0.0.1`; `--registry` remains required even though
+  league reads do not use it; and the process as a whole is still not read-only.
+
+### Next authorized gate
+
+Owner review of this repair. Per the owner's stated ordering, acceptance closes **Host API Slice 1**,
+after which the next authorized step is the **Host Completion API / match orchestration**, then the UI.
+**UI remains not authorized.**

@@ -1037,7 +1037,13 @@ pub struct MatchSeatDetailV1 {
 ///
 /// `Ok(None)` when the match is not recorded at all, so a caller answers "not
 /// found" rather than inventing a row.
-pub fn match_detail(conn: &Connection, match_id: &str) -> Result<Option<MatchDetailV1>> {
+///
+/// Crate-internal on purpose: this is the backing primitive behind
+/// [`StudioLeagueReaderV1::match_detail`](crate::StudioLeagueReaderV1::match_detail),
+/// and the whole point of that read session is that a consumer does not need a
+/// raw connection or a query seam. The DTOs stay public because they are the
+/// session method's return type.
+pub(crate) fn match_detail(conn: &Connection, match_id: &str) -> Result<Option<MatchDetailV1>> {
     use rusqlite::OptionalExtension;
 
     let header = conn

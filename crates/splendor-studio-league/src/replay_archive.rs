@@ -145,6 +145,26 @@ fn fanout(sha256: &str) -> &str {
     &sha256[..2]
 }
 
+/// The file a content address lives in, or `None` when the address is malformed.
+pub(crate) fn content_address_path(archive_root: &Path, document_sha256: &str) -> Option<PathBuf> {
+    crate::match_record::is_lowercase_hex64(document_sha256).then(|| {
+        archive_root
+            .join(fanout(document_sha256))
+            .join(format!("{document_sha256}.json"))
+    })
+}
+
+/// Whether the archive holds an object at this content address.
+///
+/// Existence only: it does not read or verify the bytes. A malformed address is
+/// not present, and a caller must still treat a later failed read of a present
+/// object as server-side corruption rather than an absence.
+pub(crate) fn archived_replay_present(archive_root: &Path, document_sha256: &str) -> bool {
+    content_address_path(archive_root, document_sha256)
+        .map(|target| target.is_file())
+        .unwrap_or(false)
+}
+
 /// Validate a claimed content address: exactly 64 lowercase hex characters.
 fn validated_sha256(document_sha256: &str) -> Result<()> {
     if !crate::match_record::is_lowercase_hex64(document_sha256) {

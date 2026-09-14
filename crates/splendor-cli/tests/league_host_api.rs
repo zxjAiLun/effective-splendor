@@ -1,8 +1,10 @@
 //! Commit D Slice 1 — the read-only Studio League Host API.
 //!
-//! Four gates, deliberately few: root authority, leaderboard truth, match-detail
-//! truth, and replay content-addressing. They drive the real binary over a real
-//! socket, because the thing under test is a process surface, not a library.
+//! Seven gates, deliberately few: root authority, leaderboard truth, match-detail
+//! truth, replay content-addressing, and three fail-closed gates for the evidence
+//! a read must respect — durable identity, the rating protocol identity, and a
+//! corrupt archive object. They drive the real binary over a real socket, because
+//! the thing under test is a process surface, not a library.
 //!
 //! The HTTP client is hand-rolled over `std::net` on purpose: this repository has
 //! no web stack, and a read-only API gate is not a reason to acquire one.
@@ -509,4 +511,157 @@ fn replays_are_read_by_content_address_only() {
             String::from_utf8_lossy(&body)
         );
     }
+}
+
+/// A private copy of the fixture league.
+///
+/// The gates below have to damage derived state or authority evidence to observe
+/// what a read does about it. The shared fixture is read-only and used by the
+/// other gates, so each of these gets its own copy.
+fn copied_root(label: &str) -> PathBuf {
+    let fixture = fixture();
+    let root = tmp_dir(label).join("root");
+    copy_tree(&fixture.root, &root);
+    root
+}
+
+fn copy_tree(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).expect("create destination directory");
+    for entry in std::fs::read_dir(from).expect("read source directory") {
+        let entry = entry.expect("directory entry");
+        let target = to.join(entry.file_name());
+        if entry.file_type().expect("file type").is_dir() {
+            copy_tree(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), &target).expect("copy file");
+        }
+    }
+}
+
+/// Gate — a stale durable identity is not served as current truth.
+///
+/// `identity.json` is authored state and the database is derived from it. A user
+/// may legally rename themselves or add an alias; `sync_identity_manifest` then
+/// refuses to project that into a non-empty ledger and demands a rebuild. A read
+/// path that checked only the schema version would happily serve the old
+/// participants and the old leaderboard as if nothing had happened.
+#[test]
+fn a_league_whose_durable_identity_moved_on_is_not_served() {
+    let root = copied_root("identity-drift");
+    let paths = StudioLeaguePathsV1::from_root(&root);
+
+    let mut manifest = IdentityManifestV1::load(paths.identity())
+        .expect("load the identity manifest")
+        .expect("the fixture has one");
+    // The manifest hash is canonical over the whole document, so a rename is
+    // exactly the class of edit this evidence exists to catch.
+    manifest
+        .rename_local_human("Nick Renamed")
+        .expect("rename the local human");
+    manifest
+        .save(paths.identity())
+        .expect("save the identity manifest");
+
+    let host = HostProcess::start(&root, &root);
+    let (status, body) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        status, 503,
+        "a leaderboard derived from a superseded identity must fail closed, got {status}: {body}"
+    );
+
+    // The league being unavailable is not the host being unavailable: the
+    // pre-existing routes keep working.
+    let (status, _) = http_get(host.port, "/health").expect("GET /health");
+    assert_eq!(
+        status_code(&status),
+        200,
+        "/health must still answer while the league reader is closed"
+    );
+}
+
+/// Gate — a database built by another rating protocol is not served.
+///
+/// The persisted `studio_rating_config` is integrity evidence, not a setting.
+/// This gate keeps the schema version intact and changes only that evidence, so a
+/// schema check alone provably cannot see the difference.
+#[test]
+fn a_league_built_by_another_rating_protocol_is_not_served() {
+    let root = copied_root("rating-drift");
+    let paths = StudioLeaguePathsV1::from_root(&root);
+
+    let conn = open_league(&paths.db()).expect("open the league for the gate");
+    let recorded: String = conn
+        .query_row(
+            "SELECT value FROM league_meta WHERE value LIKE '%\"k_factor\"%'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("the rating config is recorded as integrity evidence");
+    let mut value: serde_json::Value = serde_json::from_str(&recorded).expect("parse the config");
+    let k_factor = value["k_factor"].as_u64().expect("k_factor is recorded");
+    value["k_factor"] = serde_json::json!(k_factor + 1);
+    let altered = serde_json::to_string(&value).expect("serialize the altered config");
+    assert_ne!(
+        altered, recorded,
+        "the gate must actually change the recorded evidence"
+    );
+    conn.execute(
+        "UPDATE league_meta SET value = ?1 WHERE value = ?2",
+        rusqlite::params![altered, recorded],
+    )
+    .expect("rewrite the rating config evidence");
+    drop(conn);
+
+    let host = HostProcess::start(&root, &root);
+    let (status, body) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        status, 503,
+        "another protocol's Elo must not be served as this build's leaderboard, got {status}: {body}"
+    );
+
+    let (status, _) = http_get(host.port, "/health").expect("GET /health");
+    assert_eq!(status_code(&status), 200, "/health must still answer");
+}
+
+/// Gate — a corrupt archive object is a server fault, not a missing replay.
+///
+/// `read_archived_replay` fails both for "there is no such object" and for "there
+/// is one, and it is not servable". Answering 404 to the second tells the client
+/// the replay does not exist when in fact the archive lost it, so only an
+/// address that was never archived may be a 404.
+#[test]
+fn a_corrupt_archive_object_is_a_server_fault_not_a_missing_replay() {
+    let fixture = fixture();
+    let root = copied_root("archive-corrupt");
+    let object = root
+        .join("local-artifacts/studio-league/replays")
+        .join(&fixture.eligible_replay_sha[..2])
+        .join(format!("{}.json", fixture.eligible_replay_sha));
+
+    // Same length, still readable, no longer the bytes that hash to its address.
+    let mut bytes = std::fs::read(&object).expect("read the archived object");
+    bytes[0] ^= 0xff;
+    std::fs::write(&object, &bytes).expect("write the corrupted object");
+
+    let host = HostProcess::start(&root, &root);
+    let (status, body) = http_get(
+        host.port,
+        &format!("/league/replays/{}", fixture.eligible_replay_sha),
+    )
+    .expect("GET the corrupt replay");
+    assert_eq!(
+        status_code(&status),
+        503,
+        "the archive holds this object and cannot serve it; that is not an absence: {}",
+        String::from_utf8_lossy(&body)
+    );
+
+    // An address that was never archived stays a plain absence.
+    let (status, _) = http_get(host.port, &format!("/league/replays/{}", "0".repeat(64)))
+        .expect("GET an unknown replay");
+    assert_eq!(
+        status_code(&status),
+        404,
+        "an address that was never archived is a genuine 404"
+    );
 }

@@ -1960,9 +1960,20 @@ impl StudioHost {
             Ok(reader) => reader,
             Err(error) => return LeagueRead::Unavailable(error),
         };
+        // `read_replay` fails both for "no such object" and for "the archive
+        // holds an object it cannot serve" (unreadable, or bytes that no longer
+        // hash to their content address). Only the first is an absence; blaming
+        // the client with 404 for the second would report server-side corruption
+        // as a missing resource, so a present object that fails to read is 503.
         match reader.read_replay(document_sha256) {
             Ok(bytes) => LeagueRead::Document(bytes),
-            Err(error) => LeagueRead::NotFound(error.to_string()),
+            Err(error) => {
+                if reader.replay_present(document_sha256) {
+                    LeagueRead::Unavailable(error.to_string())
+                } else {
+                    LeagueRead::NotFound(error.to_string())
+                }
+            }
         }
     }
 }

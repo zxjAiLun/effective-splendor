@@ -72,7 +72,7 @@ pub use inventory::{
 pub use ledger::{
     aliases, canonical_league_order, eligible_match_count, ensure_rating_config, identity_index,
     ineligible_reason_counts, ingest_batch_canonical, ingest_match, ingest_match_ordered,
-    is_rating_quality_replay, leaderboard, league_order, match_count, match_detail, match_receipt,
+    is_rating_quality_replay, leaderboard, league_order, match_count, match_receipt,
     now_epoch_seconds, participant_elo, participant_id_for_identity, preview_eligibility,
     protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
     stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, MatchDetailV1,
