@@ -1,9 +1,9 @@
 //! Commit D Slice 1 — the read-only Studio League Host API.
 //!
-//! Seven gates, deliberately few: root authority, leaderboard truth, match-detail
-//! truth, replay content-addressing, and three fail-closed gates for the evidence
-//! a read must respect — durable identity, the rating protocol identity, and a
-//! corrupt archive object. They drive the real binary over a real socket, because
+//! Eight gates, deliberately few: root authority, leaderboard truth, match-detail
+//! truth, replay content-addressing, and four fail-closed gates for the evidence a
+//! read must respect — durable identity, the rating protocol identity, a corrupt
+//! archive object, and evidence that moved *after* the host was already running. They drive the real binary over a real socket, because
 //! the thing under test is a process surface, not a library.
 //!
 //! The HTTP client is hand-rolled over `std::net` on purpose: this repository has
@@ -663,5 +663,66 @@ fn a_corrupt_archive_object_is_a_server_fault_not_a_missing_replay() {
         status_code(&status),
         404,
         "an address that was never archived is a genuine 404"
+    );
+}
+
+/// Gate — the authority evidence is revalidated on every read, not once at boot.
+///
+/// The gates above change evidence and then start a host, so they only prove the
+/// check happens at startup. `studio-host` is a long-running process, and the
+/// owner may legally edit the authored identity authority at any moment without
+/// rebuilding: the derived index is stale from that instant. A server that
+/// validated only at startup would keep answering with the superseded identity
+/// for the rest of its life, on the same port, with no restart to mark the change.
+#[test]
+fn a_league_that_goes_stale_while_the_host_is_running_stops_being_served() {
+    let fixture = fixture();
+    let root = copied_root("authority-goes-stale");
+    let paths = StudioLeaguePathsV1::from_root(&root);
+    let host = HostProcess::start(&root, &root);
+
+    // While the evidence holds, the league answers.
+    let (status, _) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        status, 200,
+        "the league must be served while its authority evidence holds"
+    );
+
+    // The user renames themselves. Nothing is rebuilt and nothing restarts.
+    let mut manifest = IdentityManifestV1::load(paths.identity())
+        .expect("load the identity manifest")
+        .expect("the fixture has one");
+    manifest
+        .rename_local_human("Nick Renamed")
+        .expect("rename the local human");
+    manifest
+        .save(paths.identity())
+        .expect("save the identity manifest");
+
+    // Same process, same port, next request: every league read must fail closed.
+    for (path, label) in [
+        ("/league/leaderboard".to_string(), "the leaderboard"),
+        (
+            format!("/league/matches/{}", fixture.eligible_match),
+            "match detail",
+        ),
+        (
+            format!("/league/replays/{}", fixture.eligible_replay_sha),
+            "the replay",
+        ),
+    ] {
+        let (status, body) = host.get_json(&path);
+        assert_eq!(
+            status, 503,
+            "{label} must stop being served once the identity authority moved on, got {status}: {body}"
+        );
+    }
+
+    // The league going stale is not the host failing.
+    let (status, _) = http_get(host.port, "/health").expect("GET /health");
+    assert_eq!(
+        status_code(&status),
+        200,
+        "/health must still answer while the league is stale"
     );
 }

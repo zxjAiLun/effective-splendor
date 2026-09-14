@@ -2913,7 +2913,10 @@ step is the Host completion API / match orchestration, then the UI. **UI remains
 
 ## Commit D Slice 1 Repair 1 — reading respects the authority evidence (2026-09-14)
 
-- **Status**: `IMPLEMENTED` / `VERIFIED` locally; awaiting owner review. `ACCEPTED` is not claimed.
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally. Owner review of this repair found a remaining
+  temporal seam — the check ran once at startup while the Host is long-running — and returned
+  **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**; see *Repair 2* below. The logical content of this repair
+  was accepted as correct.
 - **Baseline**: `59ffe9b1c826f6e1b430284f6260884b6ff06cbd`, owner verdict
   **REPAIR_REQUIRED (P0=0 / P1=1 / P2=2)**.
 - **Prescribed scope**: (1) stored rating config must equal this build's protocol config, pure read;
@@ -3043,3 +3046,135 @@ refuse to accept. `ACCEPTED` is not claimed: owner review is the gate.
 Owner review of this repair. Per the owner's stated ordering, acceptance closes **Host API Slice 1**,
 after which the next authorized step is the **Host Completion API / match orchestration**, then the UI.
 **UI remains not authorized.**
+
+## Commit D Slice 1 Repair 2 — authority evidence is revalidated on every read (2026-09-14)
+
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally; awaiting owner review. `ACCEPTED` is not claimed.
+- **Baseline**: `6927500bf488b9b76b26acee75149227188df40a`, owner verdict
+  **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**.
+- **Prescribed scope**: (1) move the rating + identity integrity comparison into a private
+  `StudioLeagueReaderV1` helper; (2) every public read revalidates before it answers; (3) one new gate
+  for "host already running → manifest edited → next request 503"; (4) no new endpoint, no watcher, no
+  write API, no UI; (5) the `is_file()` classification extreme stays P2.
+
+Repair 1 was accepted as correct — schema, stored rating config versus protocol config, and manifest
+hash versus stored hash, all through the non-healing `IdentityManifestV1::load()`. The shortfall was
+temporal, not logical.
+
+### P1 — the check ran once, at boot, and this Host does not restart
+
+The opener validated the evidences once, then `StudioHost` entered its long-lived accept loop holding
+just `conn` and `replay_root`. No read re-checked anything, so this sequence was still possible:
+
+```text
+host starts            → reader validates the identity hash : PASS
+user legally edits identity.json (rename, alias change)
+host does not restart
+GET /league/leaderboard → 200, with the superseded display name and attribution
+```
+
+That is the same state Repair 1's gate was written to forbid, reached by a path the Repair 1 gate
+cannot see: it edits the manifest and *then* starts a host. The two are not equivalent, because the
+lifetime differs. For a one-shot completion session, "validated when the session opened" is
+whole-life. `studio-host` runs indefinitely, so for it the correct contract is not *this league was
+valid when it was opened* but *this answer is still backed by authority evidence*.
+
+### Fix — one helper, run by every read
+
+`validate_authority_evidence(&self)` is now the only implementation of the comparison, and reads call
+it before querying:
+
+```rust
+pub fn leaderboard(&self) -> Result<Vec<LeaderboardRow>> {
+    self.validate_authority_evidence()?;
+    leaderboard(&self.conn)
+}
+```
+
+`match_detail` and `read_replay` do the same. The reader therefore stores `identity_path` alongside
+`conn` and `replay_root`, and the **opener calls the very same helper** before returning — so opening
+can never be laxer than reading, and there is exactly one copy of the comparison to drift out of sync.
+The failure still travels the existing `league_error → 503` route; the Host knows nothing about
+authority rules. All of it remains pure reading: two `league_meta` lookups and one strict manifest
+load per read, with no mutation and no watcher.
+
+### Why `replay_present()` deliberately does not revalidate
+
+The owner suggested `read_replay()` join the contract, and it does. `replay_present()` is left out on
+purpose: it is a `bool`, so it cannot report "unavailable", and having a drifted league make it return
+`false` would turn authority drift into a 404 — exactly the dishonest classification Repair 1 removed
+for corruption. It also serves no league state; it only answers what the archive holds. A drifted
+league still cannot hand back any bytes, because `read_replay()` revalidates first and fails, and a
+present object then classifies as 503 through the existing path.
+
+### P2 (deferred, as prescribed) — `replay_present` classification is not yet a full split
+
+`replay_present()` is implemented as `target.is_file()`. That covers the gate's case (a regular file
+exists and the bytes no longer match), but a content-address path occupied by a directory, or a
+metadata/traversal failure, would report `false` and could fall back to 404. It still fails closed and
+never serves a wrong replay; only the HTTP classification is imprecise. Deferred by the owner: the
+eventual shape is a three-state archive answer (`Absent` / `Present` / `InspectionFailed`) or a typed
+read error, and neither belongs in this repair.
+
+### Owner decision recorded — a league with no integrity evidence stays refused
+
+Repair 1 refused a database that has a schema but no `studio_rating_config`, no
+`identity_manifest_hash` and no durable `identity.json`, answering 503 instead of
+`200 {"rows": []}`. The owner accepted this as a **deliberate strictness, not a defect**: such a
+database is "a SQLite shell whose product authority was never established", and serving it would make
+the two states indistinguishable to a user:
+
+```text
+properly initialised, genuinely zero matches
+versus
+a shell was created and no authority evidence was ever written
+```
+
+Formal completion/migration paths write that evidence, so if an empty product league is ever wanted,
+it needs an explicit initialisation flow rather than a reader guessing that missing evidence means
+"probably just empty". Retained.
+
+### Validation and evidence
+
+- `cargo test -p splendor-studio-league`: **83 passed / 0 failed** (unchanged).
+- `cargo test -p splendor-cli`: **281 passed / 0 failed** across 45 test binaries (was 280; the one new
+  gate).
+- **New gate** `a_league_that_goes_stale_while_the_host_is_running_stops_being_served`
+  (`crates/splendor-cli/tests/league_host_api.rs`, now 8 tests, ~1.5–2.2 s): start the host on a copied
+  league, confirm `/league/leaderboard` is 200, rename the local human through the public manifest API
+  **while that process keeps running**, then on the same process and port assert 503 for the
+  leaderboard, for match detail and for the replay, with `/health` still 200. The three routes are
+  asserted in one gate because they are one contract: a stale session stops answering league reads.
+- **Negative control (decisive).** Remove only the three per-read calls, leaving the startup check
+  intact → `a_league_that_goes_stale_while_the_host_is_running_stops_being_served` **FAILED**, while
+  `a_league_whose_durable_identity_moved_on_is_not_served` — the Repair 1 gate that edits the manifest
+  and *then* starts a host — **stayed green**. That is the evidence that the two gates are not
+  redundant and that the old one structurally cannot cover this seam. Reverted; suite green again.
+- Static: `git diff --check` exit 0; NUL 0; `rustfmt --edition 2021` on the two touched files; diff is
+  `2 files changed, 140 insertions(+), 51 deletions(-)` with no whole-file churn. Build warnings remain
+  the pre-existing `s2_census_command.rs` / `studio_league_command.rs` sites. The 42k historical
+  migration was not re-run. No cloud status checks: every number is local evidence.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. `StudioLeagueReaderV1` now carries the session contract directly —
+*while authority evidence has moved, this session serves no league reads* — with one private
+implementation shared by open and by every read, no new endpoint, no watcher, and no new authority.
+`ACCEPTED` is not claimed; owner review is the gate.
+
+### Known limitations
+
+- Revalidation costs two `league_meta` reads, one manifest load and one JSON parse per request. That is
+  nothing against an HTTP round trip, and it avoids a watcher, but it is not free and it is not cached:
+  a cache would have to be invalidated, and an invalidation bug is the exact failure mode this repair
+  exists to remove.
+- `replay_present()`'s classification extreme remains P2, deferred above.
+- Unchanged from Repair 1: the reader is still new public surface; league routes are unauthenticated and
+  bound to `127.0.0.1`; `--registry` is still required though league reads do not use it; the process as
+  a whole is not read-only.
+
+### Next authorized gate
+
+Owner review of this repair. On acceptance **Host API Slice 1** closes, and per the owner's ordering the
+next authorized step is the **Host Completion API / match orchestration**, then the UI. **UI remains not
+authorized.**

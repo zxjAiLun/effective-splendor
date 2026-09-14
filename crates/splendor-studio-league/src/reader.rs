@@ -42,6 +42,16 @@
 //!
 //! Both are the same comparisons [`sync_identity_manifest`] already enforces on
 //! the write side, so the read and write paths agree on what this database is.
+//!
+//! # ... and they are re-checked on every read
+//!
+//! Checking once, when the session opens, would be enough for a one-shot
+//! completion session but not for a server: `StudioHost` runs indefinitely, and
+//! the owner may legally edit the manifest at any moment without rebuilding. A
+//! league that was trustworthy at startup can be stale by the next request, so
+//! every read revalidates both evidences before it answers. The session's
+//! contract is not "this league was valid when it was opened" but "this answer is
+//! still backed by authority evidence".
 
 use rusqlite::{Connection, OpenFlags};
 use std::path::PathBuf;
@@ -61,6 +71,7 @@ use crate::schema::{schema_version, STUDIO_LEAGUE_SCHEMA_VERSION};
 #[derive(Debug)]
 pub struct StudioLeagueReaderV1 {
     conn: Connection,
+    identity_path: PathBuf,
     replay_root: PathBuf,
 }
 
@@ -89,66 +100,76 @@ pub fn open_studio_league_reader(paths: &StudioLeaguePathsV1) -> Result<StudioLe
             db.display()
         )));
     }
-    // The rating protocol identity is integrity evidence, not a setting: a
-    // database written by another protocol must be rebuilt rather than served.
-    let stored = stored_rating_config(&conn)?.ok_or_else(|| {
-        StudioLeagueError::Invalid(format!(
-            "`{}` has no Studio rating config integrity evidence; rebuild the derived database",
-            db.display()
-        ))
-    })?;
-    let protocol = protocol_rating_config();
-    if stored != protocol {
-        return Err(StudioLeagueError::RatingConfig(format!(
-            "`{}` was built with {} but this build's Studio Elo protocol is {}; the index is derived, so rebuild it",
-            db.display(),
-            stored.to_json()?,
-            protocol.to_json()?
-        )));
-    }
-
-    // The durable manifest is the authored identity authority and this database
-    // is derived from it, so the recorded hash must still match the manifest on
-    // disk. `load` is the strict pure read; `load_or_recover` could heal the
-    // primary, which a read-only session must not do.
-    let identity_path = paths.identity();
-    let manifest = IdentityManifestV1::load(identity_path)?.ok_or_else(|| {
-        StudioLeagueError::Invalid(format!(
-            "identity manifest `{}` does not exist; rebuild the derived database",
-            identity_path.display()
-        ))
-    })?;
-    let expected_hash = manifest.hash()?;
-    match stored_identity_manifest_hash(&conn)? {
-        Some(stored) if stored == expected_hash => {}
-        Some(stored) => {
-            return Err(StudioLeagueError::Invalid(format!(
-                "identity manifest hash `{expected_hash}` disagrees with stored database evidence `{stored}`; rebuild the derived database to apply identity or alias changes"
-            )));
-        }
-        None => {
-            return Err(StudioLeagueError::Invalid(format!(
-                "`{}` has no identity manifest hash integrity evidence; rebuild the derived database",
-                db.display()
-            )));
-        }
-    }
-
-    Ok(StudioLeagueReaderV1 {
+    let reader = StudioLeagueReaderV1 {
         conn,
+        identity_path: paths.identity().to_path_buf(),
         replay_root: paths.replay_root().to_path_buf(),
-    })
+    };
+    // The very same check every read runs, so opening can never be laxer than
+    // reading: a league is refused here for the same reason it would be refused
+    // on the ten-thousandth request.
+    reader.validate_authority_evidence()?;
+    Ok(reader)
 }
 
 impl StudioLeagueReaderV1 {
+    /// Re-check the authority evidences this session may only answer while they
+    /// hold, and refuse the read otherwise.
+    ///
+    /// Every read runs this first, because the evidences can move while the
+    /// process is up. All of it is pure reading: two `league_meta` lookups and
+    /// one strict manifest load, with no mutation, and deliberately not
+    /// [`IdentityManifestV1::load_or_recover`], which can heal the primary and
+    /// therefore writes.
+    fn validate_authority_evidence(&self) -> Result<()> {
+        // The rating protocol identity is integrity evidence, not a setting: a
+        // database written by another protocol must be rebuilt, not served.
+        let stored = stored_rating_config(&self.conn)?.ok_or_else(|| {
+            StudioLeagueError::Invalid(
+                "no Studio rating config integrity evidence is recorded; rebuild the derived database"
+                    .to_string(),
+            )
+        })?;
+        let protocol = protocol_rating_config();
+        if stored != protocol {
+            return Err(StudioLeagueError::RatingConfig(format!(
+                "the derived database was built with {} but this build's Studio Elo protocol is {}; the index is derived, so rebuild it",
+                stored.to_json()?,
+                protocol.to_json()?
+            )));
+        }
+
+        // The durable manifest is the authored identity authority and this
+        // database is derived from it, so the recorded hash must still match the
+        // manifest on disk.
+        let manifest = IdentityManifestV1::load(&self.identity_path)?.ok_or_else(|| {
+            StudioLeagueError::Invalid(format!(
+                "identity manifest `{}` does not exist; rebuild the derived database",
+                self.identity_path.display()
+            ))
+        })?;
+        let expected_hash = manifest.hash()?;
+        match stored_identity_manifest_hash(&self.conn)? {
+            Some(stored) if stored == expected_hash => Ok(()),
+            Some(stored) => Err(StudioLeagueError::Invalid(format!(
+                "identity manifest hash `{expected_hash}` disagrees with stored database evidence `{stored}`; rebuild the derived database to apply identity or alias changes"
+            ))),
+            None => Err(StudioLeagueError::Invalid(
+                "no identity manifest hash integrity evidence is recorded; rebuild the derived database"
+                    .to_string(),
+            )),
+        }
+    }
     /// The league table, exactly as the ledger derives it. Nothing is
     /// recomputed here: no Elo, no wins, no provisional flag.
     pub fn leaderboard(&self) -> Result<Vec<LeaderboardRow>> {
+        self.validate_authority_evidence()?;
         leaderboard(&self.conn)
     }
 
     /// One match in full. `Ok(None)` when it is not recorded at all.
     pub fn match_detail(&self, match_id: &str) -> Result<Option<MatchDetailV1>> {
+        self.validate_authority_evidence()?;
         match_detail(&self.conn, match_id)
     }
 
@@ -158,6 +179,7 @@ impl StudioLeagueReaderV1 {
     /// by replay root plus content address, so a caller cannot ask for an
     /// arbitrary path.
     pub fn read_replay(&self, document_sha256: &str) -> Result<Vec<u8>> {
+        self.validate_authority_evidence()?;
         read_archived_replay(&self.replay_root, document_sha256)
     }
 
@@ -169,6 +191,12 @@ impl StudioLeagueReaderV1 {
     /// server-side corruption honestly needs to tell them apart, and this is that
     /// distinction without widening the error taxonomy. A malformed address is
     /// not present.
+    ///
+    /// This answers only what the archive holds. It serves no league state, and
+    /// it deliberately does not revalidate the authority evidences, because a
+    /// predicate cannot report "unavailable": a drifted league still cannot hand
+    /// back bytes, since [`read_replay`](Self::read_replay) revalidates first and
+    /// fails.
     pub fn replay_present(&self, document_sha256: &str) -> bool {
         archived_replay_present(&self.replay_root, document_sha256)
     }
