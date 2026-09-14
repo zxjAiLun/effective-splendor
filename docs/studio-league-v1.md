@@ -2118,3 +2118,133 @@ are claimed.
 ### Next authorized gate
 
 Owner review of this repair. Host API and UI remain **not authorized**.
+
+> **Update (2026-09-13).** The owner's review confirmed both P1s here as genuinely fixed (single-read
+> config with a persisted snapshot, and a receipt export that cannot overwrite). Two narrower findings
+> remained: the config snapshot and the occurrence envelope were still published by a private
+> `create_new` + `write_all` + `flush` helper rather than the shared atomic machinery, and the
+> completion-only path printed the other command's name on a missing-argument error. See
+> *Commit C Next Slice Repair 2* below.
+
+---
+
+## Commit C Next Slice Repair 2 — the last two evidence documents publish atomically (2026-09-13)
+
+Status: **IMPLEMENTED + locally VERIFIED**, awaiting owner review. Baseline `80b0403`.
+Owner review of `80b0403` = **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**. Both original P1s were
+confirmed fixed: the config is genuinely single-read (same bytes parsed, run, hashed, persisted) and
+Gate 2 deletes the original `--config` before retrying from the four persisted documents; the receipt
+export is genuinely non-destructive via `commit_single`, with Gate 4's hardlink route proving it tests
+the primitive rather than the parser. This round is a narrow close patch.
+
+### P1: the config snapshot and the occurrence envelope did not publish atomically
+
+`persist_completed_evidence` published in the right order — config → replay → report → envelope — but
+steps 1 and 4 went through a private helper, `write_new_file`, that was not in the same class as the
+report/replay machinery:
+
+```rust
+// before
+fn write_new_file(path: &Path, contents: &str) -> io::Result<()> {
+    let mut file = OpenOptions::new().write(true).create_new(true).open(path)?;
+    file.write_all(contents.as_bytes())?;
+    file.flush()
+}
+```
+
+Two defects:
+
+1. **`create_new` guarantees "does not overwrite", not "completes atomically".** If `write_all` failed
+   part-way (ENOSPC, I/O error), the *final path* already existed holding a half-written config or
+   envelope. `create_new` prevents clobbering; it does not prevent a truncated artifact at the real
+   name.
+2. **It only `flush`ed.** No `sync_all`, so the document was not durable on return — weaker than the
+   `atomic_output` machinery the rest of the evidence set (and this round's own claims) rely on.
+
+The error handling compounded it. The config branch returned without removing a possibly-created
+target, and the envelope branch removed report/replay/config but **not** `--occurrence-out` — so an
+extreme I/O failure could leave a final-path partial occurrence envelope. That directly contradicts the
+invariant this slice exists to hold: *a producer error must never leave something that looks like a
+half-published occurrence.*
+
+**Fix.** Use the primitive that already exists and that this round's receipt export already adopted:
+
+```rust
+atomic_output::commit_single(&parsed.config_out, config_text)
+atomic_output::commit_single(&parsed.occurrence_out, &occurrence_json)
+```
+
+`write_new_file` is deleted, along with the now-unused `use std::io::{self, Write};`.
+
+`commit_single` is `temp → write → flush → sync_all → create-if-absent publish`, where the publish is
+a `hard_link` (the true commit point, failing if the target exists) followed by best-effort temp
+unlink. So every one of the four evidence documents now has identical publish semantics:
+
+| Document | Publish |
+|---|---|
+| config snapshot | `commit_single` |
+| replay | `commit_completed_with` (same machinery) |
+| report | `commit_completed_with` (commit marker) |
+| envelope | `commit_single` |
+
+Rollback stays best-effort `remove_file` (unchanged). The residual state after an external filesystem
+fault is now at worst a **complete, atomically published** artifact rather than a truncated
+final-path JSON — and with no envelope, the occurrence is not treated as complete. That is the
+boundary the owner accepted.
+
+**No new test was added, deliberately.** The primitive's own gates already cover exactly this
+behaviour and run in the same suite (`--bin splendor`, 89/89):
+
+- `atomic_output::tests::single_commit_publish_failure_leaves_no_residue` — the "no partial final
+  path" guarantee, which is the P1 itself;
+- `atomic_output::tests::single_commit_writes_target_with_no_residue`;
+- `atomic_output::tests::single_commit_refuses_to_overwrite_and_preserves_sentinel`;
+- `atomic_output::tests::single_commit_unlink_failure_still_commits_target`.
+
+### P2: the completion-only path printed the wrong command name
+
+The missing-required-arguments branch of `studio-league-complete` called `fail_usage`, whose message
+prefix is `studio-league-complete-match:`, so the error named a command the user had not run. The exit
+code was already correct (64); only the text was wrong. Changed to `fail_usage_complete`, giving
+`studio-league-complete:`.
+
+### Validation and evidence
+
+| Check | Command | Result |
+|---|---|---|
+| 4 wiring gates | `cargo test -p splendor-cli --test completion_wiring` | 4 passed |
+| frozen arena contract | `cargo test -p splendor-cli --test arena_cli` | 24 passed |
+| CLI ↔ outlet equivalence | `cargo test -p splendor-cli --test completion_equivalence` | 1 passed |
+| binary suite (primitive gates) | `cargo test -p splendor-cli --bin splendor` | 89 passed |
+| studio league | `cargo test -p splendor-studio-league` | 80 passed |
+| whole CLI suite | `cargo test -p splendor-cli` | 44 binaries / 272 tests, 0 failed |
+
+Behavioural probe over a real match (temporary directory, real subprocess agents):
+
+- exit `0`; all four documents parse as JSON; the config snapshot is **byte-identical** to the input;
+- **zero `*.tmp` residue** in the output tree, confirming the create-if-absent publish unlinks its temp;
+- with a pre-existing `--config-out`, the command exits `64`, leaves that file **untouched**, and
+  writes **neither** report nor envelope — so a refused publish leaves no partial set.
+
+Exit-code spot checks after the patch: `studio-league-complete` with no arguments prints
+`studio-league-complete: --occurrence, --report, --replay and --config are all required` and exits
+`64`.
+
+`git diff --check` exit 0; `rustfmt --edition 2021` on the single touched file. The 42k migration was
+not re-run. No cloud status checks exist for this commit and none are claimed.
+
+### Known limitations
+
+- Rollback after a successful publish remains best-effort `remove_file`. If the filesystem itself is
+  failing, a complete artifact may survive alongside the error. That is deliberate and is the accepted
+  boundary: a surviving artifact is always complete and atomically published, and without the envelope
+  the set is not read as a finished occurrence.
+- A `commit_single` that fails mid-`write_all` can leave its sibling temp file behind if the process
+  dies before cleanup. This is the same trade-off the existing report/replay machinery already makes;
+  the guarantee that matters is that the **final path** is never partial.
+
+### Next authorized gate
+
+Owner review of this repair. Expected outcome on acceptance: **Completion Producer Wiring ACCEPTED /
+CLOSED**, then a decision on whether the next product surface is the Host API or unified
+project-root / launcher path resolution. Host API and UI remain **not authorized** until then.

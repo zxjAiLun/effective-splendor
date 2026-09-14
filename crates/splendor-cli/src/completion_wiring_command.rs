@@ -42,7 +42,6 @@
 //! documents and never re-runs the match.
 
 use std::fs;
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use splendor_arena::{ArenaRun, ArenaRunner};
@@ -405,7 +404,7 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
         match (occurrence_path, report_path, replay_path, config_path) {
             (Some(a), Some(b), Some(c), Some(d)) => (a, b, c, d),
             _ => {
-                return fail_usage(
+                return fail_usage_complete(
                     COMPLETE_USAGE,
                     "--occurrence, --report, --replay and --config are all required",
                 )
@@ -561,10 +560,18 @@ fn persist_completed_evidence(
     //   4. the envelope
     //
     // The envelope goes last because it attests to the other three.
+    //
+    // All four go through the same atomic publish machinery, so every document
+    // is durable on return and its final path only ever appears as a complete
+    // document. In particular nothing here leaves a partially written JSON at a
+    // final path: the config snapshot and the envelope use
+    // `atomic_output::commit_single` (temp -> write -> flush -> sync_all ->
+    // create-if-absent publish), exactly like the report/replay pair, and like
+    // the receipt export.
     let config_text = std::str::from_utf8(config_bytes).map_err(|_| {
         "config bytes are not valid UTF-8; cannot persist the config snapshot".to_string()
     })?;
-    if let Err(error) = write_new_file(&parsed.config_out, config_text) {
+    if let Err(error) = atomic_output::commit_single(&parsed.config_out, config_text) {
         return Err(format!("could not persist the config snapshot: {error}"));
     }
 
@@ -581,7 +588,7 @@ fn persist_completed_evidence(
         ));
     }
 
-    if let Err(error) = write_new_file(&parsed.occurrence_out, &occurrence_json) {
+    if let Err(error) = atomic_output::commit_single(&parsed.occurrence_out, &occurrence_json) {
         let _ = fs::remove_file(&parsed.report_out);
         let _ = fs::remove_file(&parsed.replay_out);
         let _ = fs::remove_file(&parsed.config_out);
@@ -628,16 +635,6 @@ fn persist_aborted_report(
         to_pretty_line(report).map_err(|error| format!("serialize report failed: {error}"))?;
     atomic_output::commit_aborted_with(&parsed.report_out, &report_json, atomic_output::publish_new)
         .map_err(|error| format!("could not publish aborted report: {error}"))
-}
-
-/// Create a new file, refusing to overwrite an existing one.
-fn write_new_file(path: &Path, contents: &str) -> io::Result<()> {
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)?;
-    file.write_all(contents.as_bytes())?;
-    file.flush()
 }
 
 /// Call the completion authority on already-persisted evidence.
