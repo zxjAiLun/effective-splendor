@@ -2106,6 +2106,36 @@ impl StudioHost {
     /// that happened: re-offering it is a retry, and a retry must neither re-run
     /// the arena nor depend on the registry this process happens to hold now.
     fn run_league_match(&mut self, request: LeagueMatchRequest) -> LeagueWrite {
+        let write = self.run_league_match_once(request);
+        if matches!(write, LeagueWrite::Completed(_)) {
+            // A booking is what can make a league readable for the first time: the
+            // completion is what writes the stored rating protocol identity and the
+            // durable identity hash that a read session validates. The session is
+            // opened once at startup, so a Host that started on a fresh league would
+            // otherwise keep answering 503 until it was restarted — and the write
+            // route is precisely the initialisation flow that resolves that state.
+            // A refresh failure is recorded for the read routes and never
+            // reinterprets a booking that already succeeded.
+            self.reopen_read_session_if_unavailable();
+        }
+        write
+    }
+
+    /// Open the read session once a booking may have made one possible.
+    fn reopen_read_session_if_unavailable(&mut self) {
+        if self.league.is_some() {
+            return;
+        }
+        match open_studio_league_reader(&self.paths) {
+            Ok(reader) => {
+                self.league = Some(reader);
+                self.league_error = None;
+            }
+            Err(error) => self.league_error = Some(error.to_string()),
+        }
+    }
+
+    fn run_league_match_once(&mut self, request: LeagueMatchRequest) -> LeagueWrite {
         // The id becomes a path component only after the one composer has
         // validated it, and nothing is created, read or run before that.
         let dir = match self.paths.occurrence_dir(&request.occurrence_id) {
@@ -2119,7 +2149,11 @@ impl StudioHost {
             // resolve a seat or run a match. This is what makes a retry survive a
             // Host restart with a changed registry, timeout or agent build.
             OccurrenceSlotV1::Complete => {
-                return match complete_persisted_occurrence(&evidence, &self.paths) {
+                return match complete_persisted_occurrence(
+                    &evidence,
+                    &self.paths,
+                    Some(&request.occurrence_id),
+                ) {
                     Ok(completion) => LeagueWrite::Completed(Box::new(completion)),
                     Err(RuntimeOrchestrationError::Failed(message)) => {
                         LeagueWrite::CompletionFailed(message)
@@ -2413,6 +2447,8 @@ fn respond(
         204 => "No Content",
         400 => "Bad Request",
         404 => "Not Found",
+        409 => "Conflict",
+        500 => "Internal Server Error",
         503 => "Service Unavailable",
         _ => "Not Found",
     };
@@ -2493,10 +2529,7 @@ fn parse_host_timeout(raw: Option<String>, default: u64, flag: &str) -> Result<u
         .parse::<u64>()
         .map_err(|_| format!("{flag} must be u64"))?;
     if value == 0 || value > MAX_TIMEOUT_MS {
-        return Err(format!(
-            "{flag} must be in 1..={}",
-            MAX_TIMEOUT_MS
-        ));
+        return Err(format!("{flag} must be in 1..={}", MAX_TIMEOUT_MS));
     }
     Ok(value)
 }

@@ -329,11 +329,7 @@ Repair the condition and retry with `studio-league-complete --occurrence {} --re
 ///
 /// Shared by both CLI entry points so the two commands cannot describe the same
 /// booking differently. It prints; the shared producer authority does not.
-fn report_completion(
-    completion: &CompletionOutcomeV1,
-    command: &str,
-    json_out: Option<&PathBuf>,
-) {
+fn report_completion(completion: &CompletionOutcomeV1, command: &str, json_out: Option<&PathBuf>) {
     let archived = &completion.archived;
     let receipt = &completion.receipt;
     println!(
@@ -478,7 +474,10 @@ pub fn run_studio_league_complete(args: &[String]) -> i32 {
         report: report_path.clone(),
         occurrence: occurrence_path.clone(),
     };
-    match complete_persisted_occurrence(&evidence, &paths) {
+    // `None`: this command's authority is the four documents the operator named, not
+    // an occurrence slot, so it completes whatever envelope they point at. The Host
+    // route, which addresses a slot by id, binds that id instead.
+    match complete_persisted_occurrence(&evidence, &paths, None) {
         Ok(completion) => {
             report_completion(&completion, "studio-league-complete", json_out.as_ref());
             0

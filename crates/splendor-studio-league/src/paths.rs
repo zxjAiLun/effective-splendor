@@ -167,11 +167,12 @@ impl StudioLeaguePathsV1 {
     /// Two residual hazards are accepted rather than papered over. A
     /// case-insensitive filesystem folds ids that differ only in case onto one
     /// slot, and a Windows reserved device name (`CON`, `LPT1`) is refused by the
-    /// filesystem rather than by this rule. Both fail closed: an id that collides
-    /// with an existing complete occurrence returns that occurrence's recorded
-    /// fact instead of running a match, and a name the filesystem rejects
-    /// surfaces as an I/O error. An occurrence id is an occurrence's *identity*,
-    /// not a per-request token — see the Studio League Host documentation.
+    /// filesystem rather than by this rule. A name the filesystem rejects surfaces
+    /// as an I/O error, and a folded id is refused as a conflict: the slot's
+    /// evidence names its own occurrence id, and a caller that locates a slot by id
+    /// gets a mismatch error rather than another occurrence's recorded fact (see
+    /// the Studio League Host documentation). An occurrence id is an occurrence's
+    /// *identity*, not a per-request token.
     pub fn occurrence_dir(&self, occurrence_id: &str) -> Result<PathBuf, StudioLeagueError> {
         validate_occurrence_id(occurrence_id)?;
         Ok(self

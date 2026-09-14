@@ -3668,3 +3668,97 @@ are unchanged and green. No capability claim is made beyond these commands.
 Owner review of Commit E Slice 1 before any further scope. UI, worker queue, watcher,
 scheduler and batch remain **not authorized**. The deferred P2 from Commit D Slice 1 (one
 archive three-state instead of `is_file()` classification) is still open and unchanged.
+
+## Commit E Slice 1 — Repair 1: three state/identity seams (2026-09-15)
+
+Status: **IMPLEMENTED / VERIFIED (local evidence only)**. An independent review of
+`91afb01` returned **REPAIR_REQUIRED** with **P0 = 0 / P1 = 3 / P2 = 1**. The review
+accepted the extraction of the shared core (one authority for the Arena run, the four
+documents, the persisted retry and the completion outlet; the CLI reduced to an adapter
+with no second `ArenaRunner + publish + completion`), the D4 ordering (the slot is
+classified before the registry is consulted, and only `Empty` reaches
+`build_league_match_config`), and D1/D2 (four fields, `deny_unknown_fields`, registry ids
+only, path-component validation inside the composer).
+
+### P1-1 — the first successful completion now activates the read session
+
+The read session was opened once at startup and its failure cached, so on a fresh league
+the Host answered `503` for the read routes **forever**: `run_league_match` never
+re-opened it. The write route is precisely the initialisation flow that creates the
+stored rating protocol identity and the durable identity hash a read session validates, so
+a Host had to be restarted before it could serve the match it had just booked.
+
+`run_league_match` is now a wrapper around `run_league_match_once`, and a booking triggers
+`reopen_read_session_if_unavailable()` — which only acts when no reader is open, and whose
+failure is recorded for the read routes rather than allowed to reinterpret a booking that
+already succeeded. G1 was rebuilt as a genuine first-match bootstrap
+(`new_league` → Host → `503` → POST → `200` → **same process** → leaderboard `200` with the
+booked participants → match `200` → replay `200`); it previously used `primed_league`, which
+is why it could not see this.
+
+### P1-2 — a settled, non-completed match is a report-only slot
+
+`occurrence_slot()` parsed any readable aborted report as `SettledWithoutCompletion`
+without requiring that the report be the *only* document in the slot. A leftover
+`config.json`, or a stray `occurrence.json`, therefore produced `200
+match_status=aborted` out of an evidence set that was not the normal aborted shape. The
+frozen D3 order says a settled aborted report is a recorded fact *only* then, and anything
+else is a conflict. The slot now refuses any stray document beside the report as
+`Ambiguous` (409), naming the documents it found.
+
+### P1-3 — the request's occurrence id is bound to the persisted envelope
+
+`complete_persisted_occurrence` verified that the documents agreed with **each other** and
+then completed whatever occurrence the envelope named. It never knew which occurrence the
+caller had asked for, so a byte-for-byte copy of a complete slot under a second id was
+answered `200 already_present` with the *first* occurrence's `source_identity` — a caller
+receiving a match it never named. Internal consistency is not identity.
+
+The function takes `expected_occurrence_id: Option<&str>`. The Host passes the request's
+id, the fresh path passes the id it minted (so both paths share one invariant), and the
+completion-only CLI command passes `None` because its authority is the four documents the
+operator names rather than a slot. A mismatch is a conflict, not a recorded fact.
+
+This also **retracts the case-folding claim** in the previous section of this document: on
+a case-insensitive filesystem two ids differing only in case address one slot, and that is
+now a conflict rather than another occurrence's recorded fact. `paths.rs`' documentation
+was corrected accordingly. Cross-platform identity semantics no longer drift with the
+filesystem.
+
+### P2 — 409 and 500 reason phrases
+
+`respond()`'s reason table knew only 200/204/400/404/503, so the new `409` and `500`
+responses went out on the wire as `HTTP/1.1 409 Not Found` / `500 Not Found`. Both phrases
+were added; the status codes themselves were already correct.
+
+### Validation and evidence (local)
+
+- `cargo test -p splendor-cli --test league_host_api` → **12 passed, 0 failed** (G1 now
+  covers the first-match bootstrap, the aborted round trip, the report-only rule and the
+  stray-document conflict; G3 covers the copied-slot conflict).
+- `cargo test -p splendor-studio-league` → **86 passed, 0 failed**.
+- `cargo test -p splendor-cli` → **285 passed, 0 failed, 2 ignored** (46 test binaries).
+- `cargo test -p splendor-cli --test completion_wiring --test completion_equivalence` →
+  **5 + 1 passed**: the frozen CLI contract is unchanged, including the `None` binding.
+
+### Negative controls (applied, failed their gate, reverted)
+
+| Control | Expectation | Observed |
+| --- | --- | --- |
+| the booking does not refresh the read session (P1-1) | G1 must fail | G1 failed: after a successful POST the same Host still answered `503 no Studio rating config integrity evidence is recorded` |
+| the stray-document guard is removed (P1-2) | G1 must fail | G1 failed: report plus a stray `config.json` was answered `200 match_status=aborted` instead of `409` |
+| the Host does not bind the request id (P1-3) | G3 must fail | G3 failed: POST `gate-k-0002` was answered `200 already_present` with `source_identity: runtime:gate-k-0001` |
+
+### Known limitations (updated)
+
+The limitation list of the previous section stands, with one correction: a case-insensitive
+filesystem folding two ids onto one slot is now a **conflict**, not another occurrence's
+recorded fact. Everything else is unchanged — a serial accept loop, a 64 KiB body cap,
+unauthenticated `127.0.0.1`-bound routes, `--registry` required, and a read surface that
+needs a league with at least one completed (or settled-and-refused) match.
+
+### Next authorized gate
+
+Owner re-review of Commit E Slice 1 with Repair 1, on the evidence above. No scope was
+added: still no concurrency, worker queue, authentication, UI, batch, watcher, archive
+three-state or new error framework.

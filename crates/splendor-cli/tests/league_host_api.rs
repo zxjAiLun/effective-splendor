@@ -906,14 +906,20 @@ fn count_rows(conn: &rusqlite::Connection, sql: &str) -> i64 {
 #[test]
 fn a_post_runs_one_real_match_and_books_it_end_to_end() {
     let dir = tmp_dir("gate-i");
-    let (root, paths) = primed_league(&dir);
+    let (root, paths) = new_league(&dir);
     let registry = host_registry(&dir, &gate_seats(&bin()));
     let elsewhere = dir.join("elsewhere");
     std::fs::create_dir_all(&elsewhere).expect("create an unrelated cwd");
     let host = HostProcess::start_with_registry(&root, &elsewhere, &registry);
 
-    let (code, board) = host.get_json("/league/leaderboard");
-    assert_eq!(code, 200, "the primed league must be served: {board}");
+    // A genuinely fresh league. A read session needs the stored rating protocol
+    // identity and the durable identity hash, and those are written by a
+    // completion -- so before the first match this Host has nothing to serve.
+    let (code, unavailable) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        code, 503,
+        "a fresh league has no integrity evidence to serve yet: {unavailable}"
+    );
 
     let request = serde_json::json!({
         "occurrence_id": "gate-i-0001",
@@ -962,7 +968,23 @@ fn a_post_runs_one_real_match_and_books_it_end_to_end() {
         );
     }
 
-    // The read surface serves exactly the match the POST booked.
+    // The read surface is now available on the SAME Host, and serves exactly the
+    // match that POST booked: the first successful completion is what made the
+    // league readable, without restarting the process.
+    let (code, board) = host.get_json("/league/leaderboard");
+    assert_eq!(
+        code, 200,
+        "the first booking must make the league readable: {board}"
+    );
+    let rows = board["rows"].as_array().expect("rows array");
+    for event in receipt["elo"].as_array().expect("elo events") {
+        let participant = event["participant_id"].as_str().expect("a participant id");
+        assert!(
+            rows.iter().any(|row| row["participant_id"] == participant),
+            "the booked match must appear in the leaderboard as `{participant}`: {board}"
+        );
+    }
+
     let (code, detail) = host.get_json(&format!("/league/matches/{match_id}"));
     assert_eq!(code, 200, "the booked match must be readable: {detail}");
     assert_eq!(detail["match"]["match_id"], match_id.as_str());
@@ -1027,6 +1049,22 @@ fn a_post_runs_one_real_match_and_books_it_end_to_end() {
         std::fs::read(aborted_slot.join("report.json")).expect("the aborted report"),
         report_before,
         "a settled aborted match must not be produced again"
+    );
+
+    // A settled aborted slot is settled only while the report is the ONLY document
+    // in it. One stray document makes the slot a partial evidence set, which is a
+    // conflict rather than a recordable fact: reading it as "aborted" would answer
+    // for a match that was never settled in that shape.
+    std::fs::write(aborted_slot.join("config.json"), b"{}\n").expect("plant a stray document");
+    let (code, conflicted) = host.post_json("/league/matches", &aborted_request);
+    assert_eq!(
+        code, 409,
+        "the report plus a stray document is an ambiguous slot: {conflicted}"
+    );
+    assert_eq!(
+        std::fs::read(aborted_slot.join("report.json")).expect("the aborted report"),
+        report_before,
+        "a conflicted slot must not be rewritten either"
     );
 
     // Nothing was created relative to the working directory.
@@ -1240,6 +1278,37 @@ fn re_posting_a_booked_occurrence_adds_no_second_match_and_no_elo() {
         std::fs::read(slot.join("report.json")).expect("the report"),
         report_before,
         "the report must not be rewritten"
+    );
+
+    // Internal consistency is not identity. A byte-for-byte copy of a complete slot
+    // under another occurrence id verifies against itself perfectly, and answering
+    // it would hand back a match the request never named -- that is a conflict, not
+    // a recorded fact.
+    let impostor = paths
+        .occurrence_dir("gate-k-0002")
+        .expect("a safe occurrence id");
+    std::fs::create_dir_all(&impostor).expect("create the second slot");
+    for name in [
+        "config.json",
+        "replay.json",
+        "report.json",
+        "occurrence.json",
+    ] {
+        std::fs::copy(slot.join(name), impostor.join(name)).expect("copy the evidence");
+    }
+    let mut impostor_request = request.clone();
+    impostor_request["occurrence_id"] = serde_json::json!("gate-k-0002");
+    let (code, refused) = host.post_json("/league/matches", &impostor_request);
+    assert_eq!(
+        code, 409,
+        "a copied evidence set is not this occurrence's: {refused}"
+    );
+
+    let conn = open_league(&paths.db()).expect("open the league");
+    assert_eq!(
+        count_rows(&conn, "SELECT COUNT(*) FROM matches"),
+        matches_before,
+        "a refused slot must not book anything"
     );
 }
 

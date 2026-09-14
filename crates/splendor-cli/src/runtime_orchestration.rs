@@ -27,9 +27,9 @@ use std::path::{Path, PathBuf};
 use splendor_arena::{ArenaOutcomeV1, ArenaReportV1, ArenaRunner};
 use splendor_replay::ReplayV1;
 use splendor_studio_league::{
-    complete_runtime_occurrence, now_epoch_seconds, open_completion_league, parse_runtime_occurrence,
-    replay_document_sha256, CompletionOutcomeV1, CompletionRequestV1, IngestOutcome,
-    RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT, StudioLeaguePathsV1,
+    complete_runtime_occurrence, now_epoch_seconds, open_completion_league,
+    parse_runtime_occurrence, replay_document_sha256, CompletionOutcomeV1, CompletionRequestV1,
+    IngestOutcome, RuntimeOccurrenceV1, StudioLeaguePathsV1, RUNTIME_OCCURRENCE_FORMAT,
 };
 
 use crate::atomic_output;
@@ -68,12 +68,7 @@ impl OccurrenceEvidence {
 
     /// Every document path, in publish order.
     pub(crate) fn all(&self) -> [&Path; 4] {
-        [
-            &self.config,
-            &self.replay,
-            &self.report,
-            &self.occurrence,
-        ]
+        [&self.config, &self.replay, &self.report, &self.occurrence]
     }
 
     /// `true` when all four documents are present, i.e. the occurrence is
@@ -99,8 +94,9 @@ pub(crate) enum OccurrenceSlotV1 {
     Empty,
     /// All four documents are there: complete from them, never re-run.
     Complete,
-    /// A settled report and no envelope: the arena already decided this
+    /// A settled report and **nothing else**: the arena already decided this
     /// occurrence without completing it. Report the recorded fact, never re-run.
+    /// Any other document beside the report makes the slot ambiguous instead.
     SettledWithoutCompletion { match_status: &'static str },
     /// Anything else — a partial or unrecognised set. Nothing may be run, and
     /// nothing may be overwritten.
@@ -114,6 +110,26 @@ pub(crate) fn occurrence_slot(evidence: &OccurrenceEvidence) -> OccurrenceSlotV1
     }
     if evidence.is_complete() {
         return OccurrenceSlotV1::Complete;
+    }
+    // A settled, non-completed match is only settled when the report is the **only**
+    // document in the slot. The moment any other document is present the slot is no
+    // longer the normal aborted shape: it is a partial evidence set, and reading it
+    // as a recorded fact would answer a request for a match that was never settled
+    // in that shape. It must be refused instead.
+    let strays = [
+        ("config.json", &evidence.config),
+        ("replay.json", &evidence.replay),
+        ("occurrence.json", &evidence.occurrence),
+    ]
+    .into_iter()
+    .filter(|(_, path)| path.exists())
+    .map(|(name, _)| name)
+    .collect::<Vec<_>>();
+    if !strays.is_empty() {
+        return OccurrenceSlotV1::Ambiguous(format!(
+            "the occurrence slot holds a partial evidence set ({} present alongside the report); it is neither a complete occurrence nor a settled, non-completed match",
+            strays.join(", ")
+        ));
     }
     match std::fs::read(&evidence.report) {
         Ok(bytes) => match serde_json::from_slice::<ArenaReportV1>(&bytes) {
@@ -139,12 +155,7 @@ pub(crate) fn occurrence_slot(evidence: &OccurrenceEvidence) -> OccurrenceSlotV1
             )),
         },
         Err(error) => OccurrenceSlotV1::Ambiguous(format!(
-            "the occurrence slot holds an incomplete evidence set ({} exists, `{}` does not read: {error})",
-            evidence
-                .all()
-                .iter()
-                .filter(|path| path.exists())
-                .count(),
+            "cannot read the settled match report at `{}`: {error}",
             evidence.report.display()
         )),
     }
@@ -252,7 +263,7 @@ pub(crate) fn produce_and_complete(
     // durable cannot be completed.
     publish_completed_evidence(evidence, occurrence_id, &run.report, &replay, config_bytes)?;
 
-    match complete_persisted_occurrence(evidence, paths) {
+    match complete_persisted_occurrence(evidence, paths, Some(occurrence_id)) {
         Ok(completion) => Ok(RuntimeOrchestrationOutcome::Completed {
             completion: Box::new(completion),
             evidence: evidence.clone(),
@@ -278,9 +289,18 @@ pub(crate) fn produce_and_complete(
 /// reads nothing but the evidence set — so a retry after a Host restart, with a
 /// different registry, different agent commands or different timeouts, still
 /// completes exactly the occurrence that happened.
+///
+/// `expected_occurrence_id` binds the evidence to the occurrence the caller asked
+/// for. Internal consistency is not identity: a slot can hold four documents that
+/// verify against each other perfectly and still belong to a *different*
+/// occurrence. A caller that locates a slot by id therefore passes that id, and a
+/// mismatch is a conflict rather than a recorded fact. A caller whose authority is
+/// the four documents themselves — the completion-only CLI command, which takes
+/// explicit paths rather than a slot — passes `None`.
 pub(crate) fn complete_persisted_occurrence(
     evidence: &OccurrenceEvidence,
     paths: &StudioLeaguePathsV1,
+    expected_occurrence_id: Option<&str>,
 ) -> Result<CompletionOutcomeV1, RuntimeOrchestrationError> {
     let occurrence_bytes = read_evidence(&evidence.occurrence, "occurrence envelope")?;
     let occurrence = match parse_runtime_occurrence(&occurrence_bytes) {
@@ -298,6 +318,15 @@ pub(crate) fn complete_persisted_occurrence(
             )))
         }
     };
+    if let Some(expected) = expected_occurrence_id {
+        if occurrence.occurrence_id != expected {
+            return Err(RuntimeOrchestrationError::Conflict(format!(
+                "this slot's evidence belongs to occurrence `{}`, not to `{expected}`: the documents are internally consistent, but they are not this occurrence's",
+                occurrence.occurrence_id
+            )));
+        }
+    }
+
     let report_bytes = read_evidence(&evidence.report, "arena report")?;
     let replay_bytes = read_evidence(&evidence.replay, "replay")?;
     let config_bytes = read_evidence(&evidence.config, "config snapshot")?;
@@ -489,9 +518,7 @@ fn publish_completed_evidence(
         config_sha256: replay_document_sha256(config_bytes),
     };
     let occurrence_json = crate::arena_command::to_pretty_line(&occurrence).map_err(|error| {
-        RuntimeOrchestrationError::Failed(format!(
-            "serialize occurrence envelope failed: {error}"
-        ))
+        RuntimeOrchestrationError::Failed(format!("serialize occurrence envelope failed: {error}"))
     })?;
 
     let config_text = std::str::from_utf8(config_bytes).map_err(|_| {
