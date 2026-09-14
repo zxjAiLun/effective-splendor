@@ -3703,8 +3703,10 @@ without requiring that the report be the *only* document in the slot. A leftover
 `config.json`, or a stray `occurrence.json`, therefore produced `200
 match_status=aborted` out of an evidence set that was not the normal aborted shape. The
 frozen D3 order says a settled aborted report is a recorded fact *only* then, and anything
-else is a conflict. The slot now refuses any stray document beside the report as
-`Ambiguous` (409), naming the documents it found.
+else is a conflict. The slot now refuses the presence of any of the other three protocol
+evidence documents beside the report as `Ambiguous` (409), naming the files it found. The
+check covers those three protocol positions; it does not scan the directory for arbitrary
+extra files.
 
 ### P1-3 — the request's occurrence id is bound to the persisted envelope
 
@@ -3762,3 +3764,50 @@ needs a league with at least one completed (or settled-and-refused) match.
 Owner re-review of Commit E Slice 1 with Repair 1, on the evidence above. No scope was
 added: still no concurrency, worker queue, authentication, UI, batch, watcher, archive
 three-state or new error framework.
+
+### Repair 1 terminal review — ACCEPTED / CLOSED (2026-09-15)
+
+```text
+Commit E Slice 1 @ 0b69dfe
+APPROVED / ACCEPTED / CLOSED
+
+P0 = 0
+P1 = 0
+P2 = 0
+Further repair = NONE
+
+Commit D's registered archive three-state P2: still DEFERRED, not folded into this round
+```
+
+An independent review of `91afb01 → 0b69dfe` confirmed all three P1s and the P2 as fixed, verified
+HEAD, a clean work tree and `main == origin/main`, and re-ran the gates locally:
+`league_host_api` 12/12, `completion_wiring` 5/5, `completion_equivalence` 1/1, the
+`splendor-studio-league` suite, and `git diff --check` on the commit's diff. The full CLI run
+(285 passed / 2 ignored) and the three negative controls were not re-executed by the reviewer and
+remain recorded as **local execution evidence**. The first-run seven transient unit-test failures
+stay recorded as an unexplained transient: not a new defect, and not described as diagnosed.
+
+What the review singled out as the repair's value is that it protects two different layers of fact at
+once: four documents may agree with each other and still have to belong to the match the request
+named, and a booking that has already succeeded must not be rewritten into a failure because a read
+session could not be re-opened. The shared implementation stayed whole — the Host and the fresh
+producer both bind the expected occurrence id, the completion-only CLI command keeps `None`, and the
+retry still consumes persisted evidence first, reaching the registry and the Arena only from an empty
+slot.
+
+**Correction recorded in this document (wording narrowed, no behaviour changed).** The P1-2 prose
+above said the slot "refuses any stray document beside the report". What the code actually checks is
+the three other **protocol evidence positions** — `config.json`, `replay.json`, `occurrence.json` —
+and it does not scan the directory for arbitrary extra files. Corrected reading: a settled,
+non-completed match is settled only while the report is the sole protocol evidence document in the
+slot; the presence of any of the other three protocol documents is a conflict (409). The code comment
+inside `OccurrenceEvidence`'s own vocabulary ("document" = one of the four protocol documents) remains
+accurate in context, so no code was touched for this and no directory-scanning capability was added.
+
+### Result and next stage
+
+The background chain **Host starts an Arena match → evidence is durable → completion → archive,
+ledger and Elo → the same process reads the result back** is closed. This is *not* the same as the
+seven original product requirements being met: the next stage turns to what a player actually uses —
+the pages and the onboarding flow — and the UI, statistics and Review repair backlog remain
+undelivered. This round closes here.
