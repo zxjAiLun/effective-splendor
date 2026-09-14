@@ -1960,20 +1960,17 @@ impl StudioHost {
             Ok(reader) => reader,
             Err(error) => return LeagueRead::Unavailable(error),
         };
-        // `read_replay` fails both for "no such object" and for "the archive
-        // holds an object it cannot serve" (unreadable, or bytes that no longer
-        // hash to their content address). Only the first is an absence; blaming
-        // the client with 404 for the second would report server-side corruption
-        // as a missing resource, so a present object that fails to read is 503.
+        // The reader decides absence versus refusal. Ordering it here instead
+        // would let a stale league be reported as "this replay does not exist":
+        // `read_replay` fails on the authority evidence first, and a second
+        // existence call would then answer `false` for an address that was never
+        // archived, turning "this league cannot be trusted" into a 404.
         match reader.read_replay(document_sha256) {
-            Ok(bytes) => LeagueRead::Document(bytes),
-            Err(error) => {
-                if reader.replay_present(document_sha256) {
-                    LeagueRead::Unavailable(error.to_string())
-                } else {
-                    LeagueRead::NotFound(error.to_string())
-                }
-            }
+            Ok(Some(bytes)) => LeagueRead::Document(bytes),
+            Ok(None) => LeagueRead::NotFound(format!(
+                "no archived replay at content address `{document_sha256}`"
+            )),
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
         }
     }
 }

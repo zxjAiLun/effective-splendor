@@ -710,6 +710,10 @@ fn a_league_that_goes_stale_while_the_host_is_running_stops_being_served() {
             format!("/league/replays/{}", fixture.eligible_replay_sha),
             "the replay",
         ),
+        (
+            format!("/league/replays/{}", "0".repeat(64)),
+            "a replay that was never archived",
+        ),
     ] {
         let (status, body) = host.get_json(&path);
         assert_eq!(

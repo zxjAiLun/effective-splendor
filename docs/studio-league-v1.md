@@ -3049,7 +3049,9 @@ after which the next authorized step is the **Host Completion API / match orches
 
 ## Commit D Slice 1 Repair 2 — authority evidence is revalidated on every read (2026-09-14)
 
-- **Status**: `IMPLEMENTED` / `VERIFIED` locally; awaiting owner review. `ACCEPTED` is not claimed.
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally. The temporal seam this repair addressed was confirmed
+  closed, but the owner found a remaining consequence of how the replay route reached its status code
+  and returned **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**; see *Repair 3* below.
 - **Baseline**: `6927500bf488b9b76b26acee75149227188df40a`, owner verdict
   **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1)**.
 - **Prescribed scope**: (1) move the rating + identity integrity comparison into a private
@@ -3106,6 +3108,14 @@ purpose: it is a `bool`, so it cannot report "unavailable", and having a drifted
 for corruption. It also serves no league state; it only answers what the archive holds. A drifted
 league still cannot hand back any bytes, because `read_replay()` revalidates first and fails, and a
 present object then classifies as 503 through the existing path.
+
+**Correction (Repair 3).** The reasoning in that section is wrong and the deviation did not have the
+effect claimed. Leaving `replay_present()` without revalidation does **not** stop authority drift from
+becoming a 404: `read_replay()` fails on the authority evidence *first*, and the predicate is consulted
+afterwards, so for an address that was never archived it answers `false` and the client is told "this
+replay does not exist" while the league is in fact untrustworthy. Repair 3 removes the predicate from the
+public API and moves the absence decision inside `read_replay()`, where the authority check owns the
+result. See *Repair 3* below.
 
 ### P2 (deferred, as prescribed) — `replay_present` classification is not yet a full split
 
@@ -3178,3 +3188,135 @@ implementation shared by open and by every read, no new endpoint, no watcher, an
 Owner review of this repair. On acceptance **Host API Slice 1** closes, and per the owner's ordering the
 next authorized step is the **Host Completion API / match orchestration**, then the UI. **UI remains not
 authorized.**
+
+## Commit D Slice 1 Repair 3 — one owner for absence and refusal (2026-09-14)
+
+- **Status**: `IMPLEMENTED` / `VERIFIED` locally; awaiting owner review. `ACCEPTED` is not claimed.
+- **Baseline**: `fc36e6652bd3db6b33257e7598c1b22cc13d372b`, owner verdict
+  **REPAIR_REQUIRED (P0=0 / P1=1 / P2=1, the original deferred one)**.
+- **Scope**: the replay-result ownership only. No endpoint, no write Host, no UI, no new error
+  taxonomy.
+
+Repair 2's substance was accepted: `validate_authority_evidence()` is the single implementation, the
+opener calls it, and all three reads call it, so a manifest edit during the host's life is now caught.
+The new gate was accepted as genuinely different from the earlier one. What remained was a specific
+consequence of how the replay route reached its status code.
+
+### P1 — the classification predicate ran *after* the authority gate
+
+Repair 2 kept `read_replay()` revalidating first, and left the absence/refusal decision to the Host:
+
+```rust
+Err(error) => if reader.replay_present(sha) { 503 } else { 404 }
+```
+
+So for a stale league and an address that was **never archived**:
+
+```text
+read_replay()          -> authority validation fails
+replay_present(unknown) -> false
+HTTP                    -> 404
+```
+
+The server knows the League cannot be trusted and answers "this replay does not exist". That is
+precisely the authority-drift-becomes-404 outcome Repair 2 claimed to have avoided, and the claim was
+wrong: omitting revalidation from the predicate does not prevent it, because the predicate's `false`
+is consulted *after* the authority failure has already happened. Repair 2's gate missed it because it
+requested a replay that **exists**, so `replay_present()` returned `true` and the 503 came out right
+for the wrong reason.
+
+### Fix — `read_replay` owns the distinction
+
+```rust
+pub fn read_replay(&self, document_sha256: &str) -> Result<Option<Vec<u8>>> {
+    self.validate_authority_evidence()?;
+    if !archived_replay_present(&self.replay_root, document_sha256) {
+        return Ok(None);
+    }
+    read_archived_replay(&self.replay_root, document_sha256).map(Some)
+}
+```
+
+and the Host collapses to three arms: `Ok(Some)` → 200, `Ok(None)` → 404, `Err` → 503. Ordering is
+now structural rather than a convention the caller must respect, giving the four cases the owner
+specified:
+
+```text
+authority invalid                          -> Err            -> 503
+authority valid + malformed/unknown SHA    -> Ok(None)       -> 404
+authority valid + present valid object     -> Ok(Some)       -> 200
+authority valid + present unservable object-> Err            -> 503
+```
+
+The public `replay_present()` is **deleted**. It was grown in Repair 1 to let the Host classify a read
+error, and once the reader owns that decision it has no reason to remain a long-term part of the API:
+this repair shrinks the public surface rather than growing it. `archived_replay_present` stays
+crate-internal.
+
+### Gate and its negative control
+
+The existing stale-league gate gained exactly one case, the one that matters:
+
+```text
+host running -> manifest drift -> GET existing replay = 503
+                               -> GET valid SHA that was never archived = 503
+```
+
+Run **before** the fix on `fc36e66`, that added case failed with
+
+```text
+got 404: {"error":"invalid studio league document: identity manifest hash `c30c68…` disagrees with
+stored database evidence `489333…`; rebuild the derived database to apply identity or alias changes"}
+```
+
+— the status code saying "not found" while the body carries the authority failure. After the fix the
+same case is 503 and the whole gate passes. The reverse-order probe is also confirmed: the
+never-archived address is still 404 on a *healthy* league (`replays_are_read_by_content_address_only`
+and the corrupt-object gate both still pass), so the fix moved only the stale case.
+
+### Surface probe (throwaway, deleted)
+
+From an external crate: `reader.replay_present("x")` → **`error[E0599]`**: no method named
+`replay_present` found for reference `&StudioLeagueReaderV1` — the temporary predicate is gone from the
+public API. Positive control from the same viewpoint: `let got: Result<Option<Vec<u8>>, StudioLeagueError>
+= r.read_replay("x");` compiles, pinning the new contract at the type level.
+
+### Validation and evidence
+
+- `cargo test -p splendor-studio-league`: **83 passed / 0 failed** (unchanged).
+- `cargo test -p splendor-cli`: **281 passed / 0 failed** across 45 test binaries (unchanged count: this
+  repair extends an existing gate rather than adding one).
+- Static: `git diff --check` exit 0; NUL 0; `rustfmt --edition 2021` on the three touched files; diff is
+  `3 files changed, 27 insertions(+), 33 deletions(-)` — net negative, no whole-file churn. Build
+  warnings remain the pre-existing `s2_census_command.rs` / `studio_league_command.rs` sites. The 42k
+  historical migration was not re-run. No cloud status checks: every number is local evidence.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` locally. A stale session can no longer be reported as an absent resource,
+because the authority check owns the result and the absence decision happens inside the same call, in a
+fixed order. No new endpoint, no write authority, no new error taxonomy, and one fewer public method
+than before. `ACCEPTED` is not claimed; owner review is the gate.
+
+### Known limitations
+
+- `archived_replay_present` still decides existence with `Path::is_file()`, so a content-address path
+  occupied by a directory, or a metadata-inspection failure, could still be classified as absence. This
+  is the same **P2 (deferred)** as before: it fails closed and never serves a wrong replay; only the
+  HTTP classification is imprecise. The eventual shape remains a three-state archive answer
+  (`Absent` / `Present` / `InspectionFailed`) or a typed read error, deliberately not in this repair.
+- The 404 body for an absent object is now the reader's own message
+  (`no archived replay at content address \`…\``) rather than the archive-layer path detail. The Host
+  no longer echoes an internal path for a client-caused absence, which is an improvement, but it is a
+  user-visible wording change.
+- `read_replay` still returns `Ok(None)` for a **malformed** address as well as an unknown one; the two
+  remain indistinguishable to a client, as the owner accepted in Repair 1.
+- Unchanged: the reader is new public surface (one method smaller now); league routes are unauthenticated
+  and bound to `127.0.0.1`; `--registry` is still required though league reads do not use it; the
+  process as a whole is not read-only.
+
+### Next authorized gate
+
+Owner review of this repair. On acceptance the owner expects **Host API Slice 1** to close, after which
+the next authorized step is the **Host Completion API / match orchestration**, then the UI. **UI remains
+not authorized.**

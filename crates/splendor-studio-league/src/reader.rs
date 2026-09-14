@@ -178,26 +178,19 @@ impl StudioLeagueReaderV1 {
     /// The argument is a document SHA-256 and nothing else: the bytes are located
     /// by replay root plus content address, so a caller cannot ask for an
     /// arbitrary path.
-    pub fn read_replay(&self, document_sha256: &str) -> Result<Vec<u8>> {
+    ///
+    /// `Ok(None)` means the archive holds no object at this address (which
+    /// includes a malformed address); `Err` means the session refused to answer,
+    /// or the archive holds something it cannot serve. The order matters: the
+    /// authority check runs first and owns the result, so a league that has gone
+    /// stale can never be reported as "this replay does not exist" — the
+    /// distinction between absence and refusal is decided here, once, rather than
+    /// left to the caller to re-derive with a second call.
+    pub fn read_replay(&self, document_sha256: &str) -> Result<Option<Vec<u8>>> {
         self.validate_authority_evidence()?;
-        read_archived_replay(&self.replay_root, document_sha256)
-    }
-
-    /// Whether the archive holds an object at this content address.
-    ///
-    /// [`read_replay`](Self::read_replay) fails both when there is no such object
-    /// and when the archive holds one it cannot serve. Only the first is an
-    /// absence from the client's point of view, so a caller that wants to report
-    /// server-side corruption honestly needs to tell them apart, and this is that
-    /// distinction without widening the error taxonomy. A malformed address is
-    /// not present.
-    ///
-    /// This answers only what the archive holds. It serves no league state, and
-    /// it deliberately does not revalidate the authority evidences, because a
-    /// predicate cannot report "unavailable": a drifted league still cannot hand
-    /// back bytes, since [`read_replay`](Self::read_replay) revalidates first and
-    /// fails.
-    pub fn replay_present(&self, document_sha256: &str) -> bool {
-        archived_replay_present(&self.replay_root, document_sha256)
+        if !archived_replay_present(&self.replay_root, document_sha256) {
+            return Ok(None);
+        }
+        read_archived_replay(&self.replay_root, document_sha256).map(Some)
     }
 }
