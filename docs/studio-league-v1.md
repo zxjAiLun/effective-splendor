@@ -57,7 +57,14 @@
   `ready`。本轮修三处（集合式聚合 19.7 s → 1.1 s 且逐字段一致；
   `set_read_timeout(2s)`/`set_write_timeout(5s)` 于两个 accept 循环共用的边界；
   `/league` 三态就绪 + 首屏读 5 s `AbortController`），加一条中型 fixture 回归门，
-  并把启动器降级回普通双击脚本。详见 `docs/studio-league-real-scale-repair.md`。
+  并把启动器降级回普通双击脚本。
+  **`06f949b` 的终审 = `REPAIR_REQUIRED`**（P0=0 / P1=1 / P2=1）：主体 PASS，
+  但首屏在 `checking` 时还渲染了一个「The request was refused」横幅
+  —— 未获得事实前就宣布失败，与之前的 premature `ready` 是同一个错误的两个方向。
+  已修为「只在 settled failure 时创建 banner」，并补 SSR 首屏真相 gate。
+  `LEADERBOARD_SQL` 的公共面登记为 **P2 deferred — test-driven public surface**
+  （以后收回 `pub(crate)`，本轮不为它搬测试）。
+  详见 `docs/studio-league-real-scale-repair.md`。
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.

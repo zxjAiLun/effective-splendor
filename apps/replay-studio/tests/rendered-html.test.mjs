@@ -124,6 +124,21 @@ test("server-renders the League Play route shell", async () => {
   assert.match(html, /Checking Studio Host/);
   assert.doesNotMatch(html, /Studio Host ready/);
   assert.match(html, /Loading the agent roster/);
+  // ...and the checking state must not announce a *failure* either. A pending read is
+  // not a refused one: `describeHostBanner` describes failures and treats anything it
+  // does not recognise as a refusal, so feeding it the pending state rendered
+  // "The request was refused: ." directly beside "Checking Studio Host…". That is the
+  // same lie as a premature "ready", told in the opposite direction.
+  assert.doesNotMatch(
+    html,
+    /The request was refused/,
+    "a pending roster read must not be reported as a refusal",
+  );
+  assert.doesNotMatch(
+    html,
+    /error-banner/,
+    "no failure banner may exist before any read has settled",
+  );
 });
 
 test("server-renders the replay board opened by league content hash", async () => {

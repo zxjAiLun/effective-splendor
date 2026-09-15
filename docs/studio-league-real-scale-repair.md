@@ -282,6 +282,45 @@ readJson("/league/leaderboard", 10000)    // 聚合读，取真实冷启动裕�
 `page.tsx`：`readJson(path, timeoutMs)` 用 `AbortController`，拒绝被标为 `readKind = READ_REFUSED`；
 状态模型拆成 `rosterRead`/`rosterMessage` 与 `leagueRead`/`leagueMessage`，两路独立。
 
+### 第 3 步 ter —— 修掉 checking 首屏的「被拒绝」横幅（owner 终审 P1）
+
+owner 对 `06f949b` 的终审：`REPAIR_REQUIRED`（P0=0 / P1=1 / P2=1），
+主体（backend/SQL/socket/launcher）**PASS**，但首屏仍有一个 truthfulness 缺陷。
+
+**缺陷**：roster banner 写成 `rosterRead === READ_OK ? null : describeHostBanner(...)`，
+而初始态是 `HOST_CHECKING`。`describeHostBanner` 只认识 `READ_TIMED_OUT`/
+`READ_UNREACHABLE`，**其它全部落到默认的 refusal 分支**，于是在首屏同时渲染：
+
+```text
+Checking Studio Host…
+[error banner] The request was refused: .
+Loading the agent roster from the Studio Host…
+```
+
+**修复前已先复现**（不靠推断）：
+`describeHostBanner(HOST_CHECKING, "")` → `"The request was refused: ."`
+——连那个空 message 导致的末尾 `: .` 都一模一样。
+
+**修法**（owner 指定，不扩展模型）：页面只在**已落定失败**时创建 banner；
+pending 与 success 都是「无可报告」。
+让 `describeHostBanner(HOST_CHECKING)` 返回一个假 banner 的方案被否决 ——
+那个函数的职责就是描述失败。
+
+**这条与 `ready` 是同一个错误的两个方向**：先前是「未确认就宣布就绪」，
+这次是「未确认就宣布失败」——两者都是**未被证据支持的关于 Host 的断言**。
+
+### 第 3 步 quater —— `LEADERBOARD_SQL` 的公共面（owner 登记 P2 deferred）
+
+owner 指出：`pub const LEADERBOARD_SQL` + 在 `lib.rs` 再导出，
+是一个**纯粹为了 integration test 而新增的生产 public surface**，
+与之前收过的那些测试逃生口同性质：查询不是消费者应该依赖的 API，
+未来换 SQL shape 也不应该形成兼容义务。
+
+**登记为 `P2 deferred — test-driven public surface`**：以后整理测试时把
+`LEADERBOARD_SQL` 收回 `pub(crate)`，并把 scale gate 搬进 crate 内部的
+`#[cfg(test)]` 模块。**本轮不为了这个搬 365 行测试制造 churn**
+（owner 明确：不影响玩家路径正确性，不拿它阻 walkthrough）。
+
 ### 第 4 步 —— 中型 fixture 回归门
 
 新增 `crates/splendor-studio-league/tests/leaderboard_scale.rs`，四条：
@@ -407,7 +446,7 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
 | `cargo test -p splendor-studio-league` | **90 passed / 0 failed**（含新门 4 条） |
 | `cargo test -p splendor-cli` | **288 passed / 0 failed / 3 ignored**（45 targets；+1 = socket liveness gate） |
 | `league_host_api` | **15** 条 gate（14 + 1） |
-| `apps/replay-studio/npm test` | **73/73**（+5 就绪 +1 读预算裕量） |
+| `apps/replay-studio/npm test` | **73/73**（+5 就绪 +1 读预算裕量 +1 SSR 首屏真相） |
 | lint | clean（8 条 `tsc` 错误是既有的、在未改动的 `experiments/page.tsx` 与 `review/page.tsx`） |
 
 **修复后现场复验**（真实 42k 库）：
@@ -418,6 +457,10 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
   之后 Host 仍正常服务；
 - 页面 SSR：`/league` 含 **`Checking Studio Host` ×1**、**`Studio Host ready` ×0**、
   `Loading the agent roster` ×1、`Loading the standings` ×1。
+- **首屏真相（P1 修复后，直接读真实渲染输出，非源码正则）**：
+  `Checking Studio Host…` ✓ / `Loading the agent roster…` ✓ /
+  **`The request was refused` ✗（已消失）** / **`error-banner` ✗（已消失）**。
+  修复前这两项都是 ✓，即那个自相矛盾的首屏。
 
 **负向对照 1（已完成并还原）**：把生产 SQL 换回旧的相关子查询版本 ——
 `scale_gate_the_production_plan_does_not_follow_the_participant_count` 失败，
@@ -445,7 +488,7 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
   并从 patched state 逐字节还原。**
 - **owner 的手工走查**：仍是本轮唯一能提供的验收证据，且**尚未执行**。
   修复前它**在第 2 步被阻塞**（真实规模 leaderboard 延迟 + Host 活性缺陷被发现），
-  走查因此中止。**修复后必须从第 1 步重新走。**
+  走查因此中止。**owner 指示：收掉首屏真相的 P1 后再从第 1 步重走。**
 - **启动器**：第一版被安全软件查杀并锁定（见上）；收窄版已落盘为 **`Splendor Studio.cmd`**
   并做了真实验烟（cold 3.0 s / warm 1.0 s 读完整 42k 榜单，100 行）。
   **仓库收口为 `D Start Splendor Studio.cmd` + `A Splendor Studio.cmd`**（index-only，不碰被锁文件），
@@ -469,10 +512,14 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
 7. **`/league` 的读预算分两档**：普通首屏读 5 s，**leaderboard 10 s**（取真实冷启动 3 s 的裕量）；
    写路径**没有**任何 UI 超时（刻意）。
 8. **D6 的 participant-id join 仍未做**，选择器仍不显示 Elo。
+9. **`P2 deferred — test-driven public surface`**：`LEADERBOARD_SQL` 是一个纯粹为
+   integration test 新增的生产公共面（且被 re-export 到 crate root）。
+   它**不影响玩家路径正确性**，故不阻本轮；以后整理测试时收回 `pub(crate)`
+   并把 scale gate 搬进 `#[cfg(test)]` 模块。
 
 ## Next authorized gate（下一道授权门）
 
-1. owner 复审本轮的代码改动；
+1. owner 复审本 repair commit；
 2. **从第 1 步重新执行 8 步手工走查** —— 第 8 步（在回放棋盘里实际拖动、逐手走过各 ply）
    仍是本轮无法自动化的那份验收证据；
 3. 走查通过后，在 `docs/studio-league-v1.md` 与 `handoff.md` 记录关闭；

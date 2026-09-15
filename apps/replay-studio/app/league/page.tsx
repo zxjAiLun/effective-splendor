@@ -313,7 +313,16 @@ export default function LeaguePage() {
   }
 
   const hostState = hostStateOf({ roster: rosterRead, league: leagueRead });
-  const rosterBanner = rosterRead === READ_OK ? null : describeHostBanner(rosterRead, rosterMessage);
+  // A banner is a claim that something failed, so it may only exist once a read has
+  // actually settled. `describeHostBanner` describes failures and treats anything it
+  // does not recognise as a refusal, so feeding it the *pending* state produced
+  // "The request was refused: ." beside "Checking Studio Host…" — the page announcing
+  // a refusal it had no evidence for, which is the same class of lie as a premature
+  // "ready". Pending and success both mean "nothing to report".
+  const rosterBanner =
+    rosterRead === HOST_CHECKING || rosterRead === READ_OK
+      ? null
+      : describeHostBanner(rosterRead, rosterMessage);
 
   const hostLine = running
     ? "Match running · the local Host takes one request at a time"
