@@ -457,18 +457,42 @@ changed files        apps/replay-studio/app/league-runtime.mjs
 
 ## Run recipe (the acceptance walkthrough)（运行配方：验收走查）
 
-两个进程，都在本地：
+两个进程，都在本地。
+
+> **修订（2026-09-15，真实走查发现本配方原本跑不起来）。** 本节原先写的是
+> `cargo run -p splendor-cli -- studio-host --registry private/registry.json --port 43120`，
+> 这条命令有两处错，两者都在第一次真实走查中当场暴露：
+>
+> 1. `private/registry.json` **不存在**（`private/` 目录本身就不存在）；
+> 2. 漏了 `--bin splendor`，于是 `cargo run` 直接失败：
+>    ``error: `cargo run` could not determine which binary to run. Use the `--bin` option ...
+>    available binaries: m30a_probe, m32a_export_sidecar, splendor``。
+>
+> 原文保留在上面的引用里，不改写历史。可执行的形态以本节下面的代码块为准。
+> 背景与两条被证实的缺陷（真实规模 leaderboard 延迟、Host 活性）见
+> `docs/studio-league-real-scale-repair.md`。
+
+也可以直接双击 `Start Splendor Studio.cmd`：它就是把下面两条命令各开一个可见窗口，
+再打开 `http://127.0.0.1:4173/league`。窗口就是日志，关掉窗口就是停掉对应进程。
 
 ```bash
 # 1) the Host, on the port the page expects, with a real registry
-cargo run -p splendor-cli -- studio-host --registry private/registry.json --port 43120
+cargo run -p splendor-cli --bin splendor -- studio-host \
+  --registry benchmarks/studio-1v1.registry.json \
+  --reviewer-registry benchmarks/studio-reviewers.registry.json \
+  --port 43120 --project-root .
 
 # 2) the Studio app
-cd apps/replay-studio && npm run dev     # serves 127.0.0.1:4173, the only allowed CORS origin
+cd apps/replay-studio && npm run dev -- --host 127.0.0.1 --port 4173
 ```
 
 1. 打开 `http://127.0.0.1:4173/league`。
-2. 确认名单与榜单能加载。若 Host 没在跑，页面必须说明这一点并给出确切命令，而不是静默失败。
+2. 确认名单与榜单能加载。**Host 的状态有四态，而不是两态**（本轮修订）：
+   `checking`（正在确认，页面写 “Checking Studio Host…”）、`ready`、
+   **connection-refused**（Host 没在跑）、
+   **listening-but-not-responding**（Host 在监听但不回应）。后两态必须与前者可区分 ——
+   第一次真实走查撞上的正是第四态，而当时的配方从未描述过它。
+   任何情况下，**未确认可用时页面不得写 `ready`**，也不得留下一个没有任何解释的禁用选择器。
 3. 在两个座位上各选一个 agent。确认页面写着 **Rated**、且 Elo 可能变化；并且同一个 agent
    选两次时显示 self-match 提示，而不是校验错误。
 4. 读取显示的 occurrence id（可复制、不可编辑）与 seed。

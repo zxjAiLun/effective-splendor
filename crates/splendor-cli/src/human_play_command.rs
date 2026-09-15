@@ -1590,6 +1590,10 @@ fn serve(args: &[String]) -> Result<(), String> {
     println!("opponent={}", session.opponent.label());
     for connection in listener.incoming() {
         let stream = connection.map_err(|error| error.to_string())?;
+        if let Err(error) = prepare_connection(&stream) {
+            eprintln!("request error: {error}");
+            continue;
+        }
         if let Err(error) = handle_session(stream, &mut session) {
             eprintln!("request error: {error}");
         }
@@ -1837,6 +1841,10 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
     println!("studio_host=http://127.0.0.1:{}", args.port);
     for connection in listener.incoming() {
         let stream = connection.map_err(|error| error.to_string())?;
+        if let Err(error) = prepare_connection(&stream) {
+            eprintln!("Studio Host request error: {error}");
+            continue;
+        }
         if let Err(error) = handle_host(stream, &mut host) {
             eprintln!("Studio Host request error: {error}");
         }
@@ -1848,6 +1856,36 @@ struct HttpRequest {
     method: String,
     path: String,
     body: Vec<u8>,
+}
+
+/// The deadline every accepted HTTP connection runs under.
+///
+/// Both servers accept **serially**, and until this existed a socket had no read
+/// deadline at all: a connection that opened and then sent nothing owned the whole
+/// surface for as long as it stayed open. Measured on this Host, one idle TCP
+/// connection — a browser's preconnect socket is enough, no malice required — left
+/// `/health` and every read route unanswerable indefinitely, at ~0% CPU (so it did
+/// not even look busy), and closing that socket restored service in milliseconds.
+///
+/// The bounds are deliberately generous for a loopback JSON API, because what they
+/// have to buy is *finiteness*, not low latency: a stalled peer must cost seconds,
+/// never the process.
+const HTTP_READ_TIMEOUT: Duration = Duration::from_secs(2);
+const HTTP_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Give one accepted connection its deadlines.
+///
+/// A timeout is deliberately *not* a service failure: the caller logs one request
+/// error, drops the socket, and keeps accepting, which is why this returns an
+/// error instead of tearing the loop down.
+fn prepare_connection(stream: &TcpStream) -> Result<(), String> {
+    stream
+        .set_read_timeout(Some(HTTP_READ_TIMEOUT))
+        .map_err(|error| format!("cannot set the request read deadline: {error}"))?;
+    stream
+        .set_write_timeout(Some(HTTP_WRITE_TIMEOUT))
+        .map_err(|error| format!("cannot set the response write deadline: {error}"))?;
+    Ok(())
 }
 
 fn read_request(stream: &TcpStream) -> Result<HttpRequest, String> {

@@ -116,6 +116,14 @@ test("server-renders the League Play route shell", async () => {
   // No rating is invented before one is read, and no default is shown as a fact.
   assert.doesNotMatch(html, /1500/);
   assert.doesNotMatch(html, /Unrated/);
+  // Readiness truthfulness: the server can only ever render the *checking* state, so
+  // a page that claims the Host is ready here would be claiming something no read has
+  // confirmed. This is the assertion that the first real walkthrough's page failed in
+  // the browser (it said ready while both pickers were disabled and every read was
+  // hanging).
+  assert.match(html, /Checking Studio Host/);
+  assert.doesNotMatch(html, /Studio Host ready/);
+  assert.match(html, /Loading the agent roster/);
 });
 
 test("server-renders the replay board opened by league content hash", async () => {

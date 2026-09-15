@@ -743,29 +743,59 @@ pub fn rating_history(conn: &Connection, participant_id: &str) -> Result<Vec<Rat
 /// W/T/L count **rated** matches only, so an aborted, truncated, unmapped or
 /// self match can never be presented as a loss; `recorded_games` counts distinct
 /// matches separately.
+///
+/// The set-based shape below is a **real-scale fix, not a stylistic one.** The
+/// previous version asked for the same five aggregates with a correlated subquery
+/// per participant. That is instant on a fixture league and pathological on the
+/// real one: `match_seats` has no index on `participant_id`, so every subquery was
+/// a full scan of the whole seat table **per participant** — on the official
+/// 42,521-match ledger (85,042 seats, 100 participants) SQLite chose
+/// `SCAN s` × 5 × 100, the query took 19.7 s, and because the Host's accept loop is
+/// serial that single request made every route (including `/health`) unanswerable
+/// for its whole duration.
+///
+/// The aggregates now run **once** over the join, and are attached to the
+/// participants by `participant_id`: the official ledger answers in 1.1 s, and the
+/// query plan no longer contains a per-participant scan of `match_seats`. The
+/// numbers are unchanged — every participant's Elo, rated/recorded counts and
+/// W/T/L were compared field by field against the previous query on the real
+/// ledger before this replacement (0 differences across all 100 rows), and the
+/// fixture-level semantics stay pinned by `tests/league_core.rs`.
+///
+/// A `match_seats(participant_id)` index was **not** added: measuring the set-based
+/// shape first showed it is not needed, and inventing schema churn for a faster
+/// number on one machine is not a reason to migrate a derived database.
+/// The production leaderboard query.
+///
+/// Public so the real-scale gate can `EXPLAIN QUERY PLAN` **this** string rather than
+/// a copy of it: a regression back to an aggregate-per-participant scan has to be
+/// catchable, and a gate that pins a duplicate would drift away from the query it is
+/// supposed to protect.
+pub const LEADERBOARD_SQL: &str = "WITH rec AS (
+             SELECT participant_id, COUNT(DISTINCT match_id) AS recorded
+             FROM match_seats GROUP BY participant_id),
+         winners AS (
+             SELECT match_id, COUNT(*) AS winners
+             FROM match_seats WHERE won = 1 GROUP BY match_id),
+         rat AS (
+             SELECT s.participant_id,
+                    COUNT(*) AS rated,
+                    SUM(CASE WHEN s.won = 1 AND w.winners = 1 THEN 1 ELSE 0 END) AS wins,
+                    SUM(CASE WHEN s.won = 1 AND w.winners > 1 THEN 1 ELSE 0 END) AS ties
+             FROM match_seats s
+             JOIN matches m ON m.match_id = s.match_id AND m.rating_eligible = 1
+             LEFT JOIN winners w ON w.match_id = s.match_id
+             GROUP BY s.participant_id)
+         SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
+                COALESCE(rec.recorded, 0), COALESCE(rat.rated, 0),
+                COALESCE(rat.wins, 0), COALESCE(rat.ties, 0)
+         FROM participants p
+         LEFT JOIN rec ON rec.participant_id = p.participant_id
+         LEFT JOIN rat ON rat.participant_id = p.participant_id";
+
 pub fn leaderboard(conn: &Connection) -> Result<Vec<LeaderboardRow>> {
     let config = protocol_rating_config();
-    let mut stmt = conn.prepare(
-        "SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
-                (SELECT COUNT(DISTINCT s.match_id) FROM match_seats s
-                  WHERE s.participant_id = p.participant_id),
-                (SELECT COUNT(*) FROM match_seats s
-                   JOIN matches m ON m.match_id = s.match_id
-                  WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1),
-                (SELECT COUNT(*) FROM match_seats s
-                   JOIN matches m ON m.match_id = s.match_id
-                  WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1
-                    AND s.won = 1
-                    AND (SELECT COUNT(*) FROM match_seats s2
-                          WHERE s2.match_id = s.match_id AND s2.won = 1) = 1),
-                (SELECT COUNT(*) FROM match_seats s
-                   JOIN matches m ON m.match_id = s.match_id
-                  WHERE s.participant_id = p.participant_id AND m.rating_eligible = 1
-                    AND s.won = 1
-                    AND (SELECT COUNT(*) FROM match_seats s2
-                          WHERE s2.match_id = s.match_id AND s2.won = 1) > 1)
-           FROM participants p",
-    )?;
+    let mut stmt = conn.prepare(LEADERBOARD_SQL)?;
     let mut rows: Vec<LeaderboardRow> = stmt
         .query_map([], |row| {
             Ok((

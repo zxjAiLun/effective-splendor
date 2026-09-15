@@ -47,6 +47,17 @@
   resolved once at startup from `--project-root`. No write authority, no new table, no Elo
   recomputation. Gate baselines: `83/83` and CLI **277/277** (44 → 45 binaries). **UI still not
   authorized.**
+  **League Play v1**: design `ea98798` → `b7a29d7` → Repair 1 `50a4f3b`（锚点 `0a1f7b9`）→
+  close patch `cf587d2`（锚点 `b569fa2`）→ 中文改写 `c41143c`。首个面向玩家的完整往返页面。
+  **Real-Scale Walkthrough Blocker Repair (2026-09-15)**: `IMPLEMENTED` / `VERIFIED`（本地），
+  **尚未 `ACCEPTED`**。第一次真实手工走查在第 2 步被两个独立缺陷卡死：真实 42k 库上
+  leaderboard 查询是 O(参与者 × 座位全表扫描 × 5)（约 4,200 万次行访问，实测 19.7 s，
+  且因 accept 串行而让*所有*路由包括 `/health` 一起不可用），以及公共 HTTP 边界没有任何
+  socket 超时（一条空闲连接即可永久卡死 Host）。同时页面在未确认 Host 可用时就写了
+  `ready`。本轮修三处（集合式聚合 19.7 s → 1.1 s 且逐字段一致；
+  `set_read_timeout(2s)`/`set_write_timeout(5s)` 于两个 accept 循环共用的边界；
+  `/league` 三态就绪 + 首屏读 5 s `AbortController`），加一条中型 fixture 回归门，
+  并把启动器降级回普通双击脚本。详见 `docs/studio-league-real-scale-repair.md`。
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.

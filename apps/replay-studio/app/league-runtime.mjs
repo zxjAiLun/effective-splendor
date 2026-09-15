@@ -387,3 +387,131 @@ export function describeAgentOptions(agents) {
     policyVersion: agent?.policy_version ?? null,
   }));
 }
+
+/**
+ * The three states the page may report about the Studio Host.
+ *
+ * There is no fourth state, and in particular there is no "unknown but let us say
+ * ready": the first real walkthrough found the page claiming "Studio Host ready"
+ * while both pickers were disabled and every read was hanging, because a pending
+ * request and a failed request were indistinguishable in its model.
+ */
+export const HOST_CHECKING = "checking";
+export const HOST_READY = "ready";
+export const HOST_NOT_RESPONDING = "not_responding";
+
+/** What each state is allowed to say. Kept here so no panel can phrase it itself. */
+export const HOST_STATUS_TEXT = {
+  [HOST_CHECKING]: "Checking Studio Host…",
+  [HOST_READY]: "Studio Host ready",
+  [HOST_NOT_RESPONDING]: "Studio Host not responding",
+};
+
+/**
+ * The UI budget for the ordinary **first-screen reads**.
+ *
+ * It deliberately does not apply to `POST /league/matches`: a real match can take a
+ * long time, and that request already has its own occurrence-id ambiguity/retry
+ * contract. Aborting it would manufacture `OUTCOME UNKNOWN` panels for matches that
+ * were running normally, so the write path keeps no client-side deadline at all.
+ */
+export const FIRST_SCREEN_READ_TIMEOUT_MS = 5000;
+
+/**
+ * The budget for the **leaderboard** read, which is deliberately larger.
+ *
+ * The leaderboard is an aggregate over the whole league, so its first request after
+ * the Host starts is a genuine cold read of the real database: measured at **3.0 s**
+ * against the 42k-match league, falling to ~1.0 s once SQLite's page cache is warm.
+ * A 5 s budget would leave barely two seconds of margin, and the things that eat
+ * margin on a developer machine — on-access antivirus scanning, a cold filesystem
+ * cache, a background `cargo` build, a laptop on a power-saving profile — are all
+ * ordinary rather than exceptional.
+ *
+ * Raising this is the honest alternative to pretending the read is fast: the Host
+ * still fails in a bounded time when it really is not answering, and a legitimate
+ * cold read no longer gets mislabelled as "not responding".
+ */
+export const LEADERBOARD_READ_TIMEOUT_MS = 10000;
+
+/** The read outcomes one first-screen read can end in. */
+export const READ_OK = "ok";
+export const READ_REFUSED = "refused";
+export const READ_TIMED_OUT = "timed_out";
+export const READ_UNREACHABLE = "unreachable";
+
+/**
+ * Classify a failed first-screen read.
+ *
+ * A timeout and a refused read are different facts: the first says the Host accepted
+ * the connection and said nothing, the second says the Host answered and the answer
+ * was no. Only the first is a Host liveness problem, and only the second may be
+ * described as the league/registry refusing.
+ */
+export function describeReadFailure(reason, timeoutMs = FIRST_SCREEN_READ_TIMEOUT_MS) {
+  if (reason?.readKind === READ_REFUSED) {
+    return {
+      kind: READ_REFUSED,
+      message: reason instanceof Error ? reason.message : String(reason),
+    };
+  }
+  const name = reason?.name;
+  if (name === "AbortError" || name === "TimeoutError") {
+    return {
+      kind: READ_TIMED_OUT,
+      message: `no answer within ${timeoutMs / 1000} seconds`,
+    };
+  }
+  return {
+    kind: READ_UNREACHABLE,
+    message: reason instanceof Error ? reason.message : String(reason),
+  };
+}
+
+/**
+ * The Host state, from the two independent first-screen reads.
+ *
+ * `checking` wins over everything, and an *unset* reading counts as checking: not
+ * having heard back is never evidence of readiness. A refusal (`503` from a stale
+ * league, say) is **not** a liveness problem — the Host answered — so it must not
+ * be reported as "not responding".
+ */
+export function hostStateOf(readings) {
+  const states = [readings?.roster, readings?.league];
+  if (states.some((state) => state === undefined || state === HOST_CHECKING)) {
+    return HOST_CHECKING;
+  }
+  if (states.some((state) => state === READ_TIMED_OUT || state === READ_UNREACHABLE)) {
+    return HOST_NOT_RESPONDING;
+  }
+  return HOST_READY;
+}
+
+/** The one line the header may show for a state. */
+export function hostStatusText(state) {
+  return HOST_STATUS_TEXT[state] ?? HOST_STATUS_TEXT[HOST_CHECKING];
+}
+
+/**
+ * What to say about a first-screen read that did not succeed.
+ *
+ * `advice` is only filled where the advice is true: telling somebody to start a Host
+ * that is running and merely slow is exactly the kind of confident, wrong sentence
+ * this page is not allowed to print.
+ */
+export function describeHostBanner(kind, message) {
+  if (kind === READ_TIMED_OUT) {
+    return {
+      headline: `The Studio Host answered the connection but did not answer the request: ${message}.`,
+      advice:
+        "It is probably running a slow request — the Host answers one request at a time — so it is not necessarily down.",
+    };
+  }
+  if (kind === READ_UNREACHABLE) {
+    return {
+      headline: `The Studio Host could not be reached: ${message}.`,
+      advice: "Start it, then reload",
+    };
+  }
+  return { headline: `The request was refused: ${message}.`, advice: null };
+}

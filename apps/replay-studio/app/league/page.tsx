@@ -6,10 +6,19 @@ import { API_BASE } from "../api-base.mjs";
 import {
   classifyBookingResponse,
   describeAgentOptions,
+  describeHostBanner,
   describeLeaderboard,
+  describeReadFailure,
+  FIRST_SCREEN_READ_TIMEOUT_MS,
   gameIdFor,
+  HOST_CHECKING,
+  hostStateOf,
+  hostStatusText,
+  LEADERBOARD_READ_TIMEOUT_MS,
   newOccurrenceId,
   randomSalt,
+  READ_OK,
+  READ_REFUSED,
   retryRequest,
   startRequestBody,
   validateStart,
@@ -105,12 +114,30 @@ type LeaderRow = {
 const MAX_SEATS = 4;
 const SEED_CEILING = 2 ** 31;
 
-/** Native `fetch` does not report an unreachable Host as a status, so we say so. */
-async function readJson(path: string) {
-  const response = await fetch(`${API_BASE}${path}`);
+/**
+ * Read one JSON document the first screen needs.
+ *
+ * `timeoutMs` is the UI budget for a *read*, and it is passed in rather than baked in
+ * so that the booking `POST` — which can legitimately run a real match for minutes —
+ * cannot inherit it by accident. A read that is refused is tagged, because "the Host
+ * answered no" and "the Host never answered" are different facts.
+ */
+async function readJson(path: string, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   const value = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(value?.error ?? `Studio Host ${response.status}`);
+    const refused = new Error(value?.error ?? `Studio Host ${response.status}`) as Error & {
+      readKind?: string;
+    };
+    refused.readKind = READ_REFUSED;
+    throw refused;
   }
   return value;
 }
@@ -131,9 +158,12 @@ function reasonText(reason: unknown) {
 export default function LeaguePage() {
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [rows, setRows] = useState<LeaderRow[]>([]);
-  const [rosterProblem, setRosterProblem] = useState("");
-  const [rosterLoading, setRosterLoading] = useState(true);
-  const [leagueProblem, setLeagueProblem] = useState("");
+  // `checking` until a read actually answers: an unheard request is never evidence
+  // that the Host is fine, so readiness has to be earned by an answer.
+  const [rosterRead, setRosterRead] = useState<string>(HOST_CHECKING);
+  const [rosterMessage, setRosterMessage] = useState("");
+  const [leagueRead, setLeagueRead] = useState<string>(HOST_CHECKING);
+  const [leagueMessage, setLeagueMessage] = useState("");
   const [seats, setSeats] = useState<string[]>(["", ""]);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [notes, setNotes] = useState<string[]>([]);
@@ -151,24 +181,34 @@ export default function LeaguePage() {
    * roster, and an unreadable roster must not look like an unreadable league.
    */
   const loadRoster = useCallback(async () => {
+    setRosterRead(HOST_CHECKING);
     try {
-      const body = await readJson("/agents");
+      const budget = FIRST_SCREEN_READ_TIMEOUT_MS;
+      const body = await readJson("/agents", budget);
       setAgents(describeAgentOptions(body.agents) as AgentOption[]);
-      setRosterProblem("");
+      setRosterRead(READ_OK);
+      setRosterMessage("");
     } catch (reason) {
-      setRosterProblem(reasonText(reason));
-    } finally {
-      setRosterLoading(false);
+      const failure = describeReadFailure(reason, FIRST_SCREEN_READ_TIMEOUT_MS);
+      setRosterRead(failure.kind);
+      setRosterMessage(failure.message);
     }
   }, []);
 
   const loadLeaderboard = useCallback(async () => {
+    setLeagueRead(HOST_CHECKING);
     try {
-      const body = await readJson("/league/leaderboard");
+      // The leaderboard aggregates the whole league, so a cold first read is
+      // legitimately slower than the roster; it gets its own, larger budget.
+      const budget = LEADERBOARD_READ_TIMEOUT_MS;
+      const body = await readJson("/league/leaderboard", budget);
       setRows(describeLeaderboard(body.rows) as LeaderRow[]);
-      setLeagueProblem("");
+      setLeagueRead(READ_OK);
+      setLeagueMessage("");
     } catch (reason) {
-      setLeagueProblem(reasonText(reason));
+      const failure = describeReadFailure(reason, LEADERBOARD_READ_TIMEOUT_MS);
+      setLeagueRead(failure.kind);
+      setLeagueMessage(failure.message);
     }
   }, []);
 
@@ -272,11 +312,12 @@ export default function LeaguePage() {
     }
   }
 
+  const hostState = hostStateOf({ roster: rosterRead, league: leagueRead });
+  const rosterBanner = rosterRead === READ_OK ? null : describeHostBanner(rosterRead, rosterMessage);
+
   const hostLine = running
     ? "Match running · the local Host takes one request at a time"
-    : rosterProblem
-      ? "Studio Host not reachable"
-      : "Studio Host ready";
+    : hostStatusText(hostState);
 
   return (
     <main className="human-studio">
@@ -286,7 +327,7 @@ export default function LeaguePage() {
           <h1>League Play</h1>
         </div>
         <div className="human-status">
-          <span className={`status-dot ${rosterProblem ? "offline" : ""}`} />
+          <span className={`status-dot ${hostState === "not_responding" ? "offline" : ""}`} />
           {hostLine}
         </div>
         <nav>
@@ -296,10 +337,14 @@ export default function LeaguePage() {
         </nav>
       </header>
 
-      {rosterProblem ? (
+      {rosterBanner ? (
         <div className="error-banner" role="alert">
-          The Studio Host could not be read: {rosterProblem}. Start it with{" "}
-          <code>splendor studio-host --registry &lt;registry.json&gt; --port 43120</code>.
+          {rosterBanner.headline} {rosterBanner.advice}{" "}
+          {rosterRead === "unreachable" ? (
+            <>
+              with <code>splendor studio-host --registry &lt;registry.json&gt; --port 43120</code>.
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -332,12 +377,20 @@ export default function LeaguePage() {
           <small>Fixed with the occurrence id; a retry replays this seed, it does not re-roll one.</small>
         </p>
 
-        {seats.map((seat, index) => (
+        {rosterRead !== READ_OK ? (
+        <p>
+          {rosterRead === HOST_CHECKING
+            ? "Loading the agent roster from the Studio Host…"
+            : "No agent can be picked: the roster could not be read from the Studio Host."}
+        </p>
+      ) : null}
+
+      {seats.map((seat, index) => (
           <label key={index}>
             Seat {index + 1}
             <select
               value={seat}
-              disabled={running || rosterLoading}
+              disabled={running || rosterRead !== READ_OK}
               onChange={(event) => {
                 const next = [...seats];
                 next[index] = event.target.value;
@@ -457,13 +510,17 @@ export default function LeaguePage() {
       <section className="recent-games">
         <span className="section-kicker">LEADERBOARD</span>
         <h2>Studio League standings</h2>
-        {leagueProblem ? (
+        {leagueRead !== READ_OK ? (
           <p role="alert">
-            The league could not be read: {leagueProblem}. The Host serves it from{" "}
-            <code>&lt;project-root&gt;/local-artifacts/studio-league/league.sqlite3</code>.
+            {leagueRead === HOST_CHECKING
+              ? "Loading the standings from the Studio Host…"
+              : `The league could not be read: ${leagueMessage}. The Host serves it from `}
+            {leagueRead === HOST_CHECKING ? null : (
+              <code>&lt;project-root&gt;/local-artifacts/studio-league/league.sqlite3</code>
+            )}
           </p>
         ) : null}
-        {!leagueProblem && rows.length === 0 ? <p>No league rows yet.</p> : null}
+        {leagueRead === READ_OK && rows.length === 0 ? <p>No league rows yet.</p> : null}
         {rows.length ? (
           <div className="recent-game-list">
             {rows.map((row, index) => (

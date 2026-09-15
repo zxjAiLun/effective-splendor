@@ -77,7 +77,7 @@ pub use ledger::{
     protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
     stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, MatchDetailV1,
     MatchEloEventV1, MatchReceiptV1, MatchSeatDetailV1, RatingEventRow, ReplayBindingSummaryV1,
-    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR, LEADERBOARD_SQL,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
     STUDIO_RATING_CONFIG_VERSION,
 };

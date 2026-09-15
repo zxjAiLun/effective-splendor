@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   MAX_OCCURRENCE_ID_BYTES,
+  LEADERBOARD_READ_TIMEOUT_MS,
   classifyBookingResponse,
   describeAgentOptions,
   describeFailure,
@@ -19,6 +20,18 @@ import {
   seatsError,
   startRequestBody,
   validateStart,
+  HOST_CHECKING,
+  HOST_NOT_RESPONDING,
+  HOST_READY,
+  READ_OK,
+  READ_REFUSED,
+  READ_TIMED_OUT,
+  READ_UNREACHABLE,
+  describeHostBanner,
+  describeReadFailure,
+  hostStateOf,
+  hostStatusText,
+  FIRST_SCREEN_READ_TIMEOUT_MS,
 } from "../app/league-runtime.mjs";
 
 const fixture = JSON.parse(
@@ -409,4 +422,119 @@ test("G1 the replay link is content-addressed", () => {
   assert.equal(replayHref("abc"), "/replay?league=abc");
   assert.equal(replayHref(null), null);
   assert.equal(replayHref(""), null);
+});
+
+test("G1 readiness: checking is never reported as ready", () => {
+  // The page has three states and used to express two: a pending read and a failed
+  // read both looked like "no problem yet", so it said "Studio Host ready" while both
+  // pickers were disabled and every read was hanging. Readiness has to be earned by an
+  // answer, so `checking` outranks everything and an unset reading counts as checking.
+  assert.equal(hostStateOf({ roster: HOST_CHECKING, league: READ_OK }), HOST_CHECKING);
+  assert.equal(hostStateOf({ roster: READ_OK, league: HOST_CHECKING }), HOST_CHECKING);
+  assert.equal(hostStateOf({}), HOST_CHECKING, "an unset reading is not evidence of readiness");
+  assert.doesNotMatch(hostStatusText(HOST_CHECKING), /ready/i);
+  assert.notEqual(hostStatusText(HOST_CHECKING), hostStatusText(HOST_READY));
+  assert.equal(hostStateOf({ roster: READ_OK, league: READ_OK }), HOST_READY);
+  assert.equal(hostStatusText(HOST_READY), "Studio Host ready");
+});
+
+test("G1 readiness: a silent Host is not an unreachable one, and neither is ready", () => {
+  const timedOut = describeReadFailure(Object.assign(new Error("aborted"), { name: "AbortError" }));
+  assert.equal(timedOut.kind, READ_TIMED_OUT);
+  assert.equal(hostStateOf({ roster: READ_TIMED_OUT, league: READ_OK }), HOST_NOT_RESPONDING);
+  assert.equal(hostStatusText(HOST_NOT_RESPONDING), "Studio Host not responding");
+
+  const unreachable = describeReadFailure(new TypeError("Failed to fetch"));
+  assert.equal(unreachable.kind, READ_UNREACHABLE);
+  assert.equal(
+    hostStateOf({ roster: READ_UNREACHABLE, league: READ_UNREACHABLE }),
+    HOST_NOT_RESPONDING,
+  );
+
+  // The advice has to be true for the state it is given: a Host that accepted the
+  // connection and stayed silent is not a Host that needs starting.
+  const slow = describeHostBanner(timedOut.kind, timedOut.message);
+  assert.match(slow.headline, /did not answer the request/);
+  assert.doesNotMatch(slow.headline, /could not be reached/);
+  assert.match(slow.advice, /one request at a time/);
+  assert.doesNotMatch(slow.advice, /Start it/);
+
+  const down = describeHostBanner(unreachable.kind, unreachable.message);
+  assert.match(down.headline, /could not be reached/);
+  assert.match(down.advice, /Start it/);
+});
+
+test("G1 readiness: a refusal means the Host answered, so it is not a liveness failure", () => {
+  const refused = Object.assign(new Error("the league is unavailable"), { readKind: READ_REFUSED });
+  const failure = describeReadFailure(refused);
+  assert.equal(failure.kind, READ_REFUSED);
+  assert.match(failure.message, /league is unavailable/);
+  assert.equal(
+    hostStateOf({ roster: READ_OK, league: READ_REFUSED }),
+    HOST_READY,
+    "a Host that answered 503 is answering, not missing",
+  );
+});
+
+test("G1 the read deadline is the reads', and the booking POST keeps none", () => {
+  // There is no browser runner here, so this is a source-level guard on the one line
+  // that matters: the UI budget belongs to the first-screen reads. Copying any of it
+  // onto `POST /league/matches` would abort matches that are running normally and
+  // manufacture OUTCOME UNKNOWN panels — the opposite of what this round is for.
+  const page = readFileSync(new URL("../app/league/page.tsx", import.meta.url), "utf8");
+  assert.equal(FIRST_SCREEN_READ_TIMEOUT_MS, 5000);
+  assert.match(page, /readJson\("\/agents", budget\)/);
+  assert.match(page, /readJson\("\/league\/leaderboard", budget\)/);
+
+  const start = page.indexOf("async function send");
+  const end = page.indexOf("function start()");
+  assert.ok(start > 0 && end > start, "the write path is findable in the page source");
+  const send = page.slice(start, end).replace(/\/\/[^\n]*/g, "");
+  assert.match(send, /fetch\(`\$\{API_BASE\}\/league\/matches`/);
+  assert.doesNotMatch(
+    send,
+    /AbortController|signal|setTimeout/,
+    "the booking POST must not carry a UI deadline",
+  );
+});
+
+test("G1 the leaderboard read gets real cold-start margin over the measured 3 s", () => {
+  // Measured on the real 42k league: 3.0 s cold, ~1.0 s warm. The point of this gate is
+  // that the aggregate read must not share the roster's budget, because a legitimate
+  // cold read mislabelled as "not responding" is exactly the class of lie this round
+  // exists to remove.
+  const page = readFileSync(new URL("../app/league/page.tsx", import.meta.url), "utf8");
+  assert.ok(
+    LEADERBOARD_READ_TIMEOUT_MS > FIRST_SCREEN_READ_TIMEOUT_MS,
+    "the aggregate read must have more room than an ordinary one",
+  );
+  assert.ok(
+    LEADERBOARD_READ_TIMEOUT_MS >= 3000 * 2,
+    `a cold read measured at 3 s must keep real margin, not ${LEADERBOARD_READ_TIMEOUT_MS} ms`,
+  );
+
+  // The message a player sees must quote the budget that actually elapsed, not a
+  // constant chosen elsewhere — otherwise the page misreports why it gave up. The
+  // page must thread the *same* budget into both the read and its failure text; a
+  // budget used only for the abort would make the panel lie about the wait.
+  assert.match(
+    page,
+    /readJson\("\/agents", budget\)[\s\S]{0,400}?describeReadFailure\(reason, FIRST_SCREEN_READ_TIMEOUT_MS\)/,
+  );
+  assert.match(
+    page,
+    /readJson\("\/league\/leaderboard", budget\)[\s\S]{0,400}?describeReadFailure\(reason, LEADERBOARD_READ_TIMEOUT_MS\)/,
+    "the leaderboard failure text must quote the leaderboard budget",
+  );
+
+  const timedOut = Object.assign(new Error("aborted"), { name: "AbortError" });
+  assert.match(describeReadFailure(timedOut, LEADERBOARD_READ_TIMEOUT_MS).message, /10 seconds/);
+  assert.match(describeReadFailure(timedOut, FIRST_SCREEN_READ_TIMEOUT_MS).message, /5 seconds/);
+});
+
+test("G1 the picker explains a pending or unreadable roster instead of looking usable", () => {
+  const page = readFileSync(new URL("../app/league/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /disabled=\{running \|\| rosterRead !== READ_OK\}/);
+  assert.match(page, /Loading the agent roster from the Studio Host/);
+  assert.match(page, /the roster could not be read from the Studio Host/);
 });

@@ -75,8 +75,17 @@ fn write_file(dir: &Path, name: &str, contents: &str) -> PathBuf {
 
 /// One GET, read to EOF (the host answers `Connection: close`).
 fn http_get(port: u16, path: &str) -> std::io::Result<(String, Vec<u8>)> {
+    http_get_within(port, path, Duration::from_secs(60))
+}
+
+/// The same GET under a caller-chosen deadline.
+///
+/// A liveness gate has to assert that an answer arrived *bounded*, not merely that
+/// one eventually arrived, so the client deadline is a parameter rather than a
+/// constant the gate cannot see.
+fn http_get_within(port: u16, path: &str, timeout: Duration) -> std::io::Result<(String, Vec<u8>)> {
     let mut stream = TcpStream::connect(("127.0.0.1", port))?;
-    stream.set_read_timeout(Some(Duration::from_secs(60)))?;
+    stream.set_read_timeout(Some(timeout))?;
     write!(
         stream,
         "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
@@ -1475,8 +1484,7 @@ fn the_page_fixture_is_a_request_this_host_accepts() {
     assert_eq!(response["match_status"], "completed");
     assert_eq!(response["completion_status"], "inserted");
     assert_eq!(
-        response["receipt"]["source_identity"],
-        "runtime:studio-fixture-0001",
+        response["receipt"]["source_identity"], "runtime:studio-fixture-0001",
         "the occurrence the fixture names is the occurrence that was booked"
     );
     assert!(
@@ -1531,7 +1539,10 @@ fn the_archive_route_is_an_adapter_over_the_league_read_authority() {
     let cards = archive["catalog"]["cards"]
         .as_array()
         .expect("the catalog the board renders from");
-    assert!(!cards.is_empty(), "the board cannot render without its catalog");
+    assert!(
+        !cards.is_empty(),
+        "the board cannot render without its catalog"
+    );
 
     // An address that was never archived is absent, not a fault.
     let (code, body) = host.get_json(&format!("/league/replays/{}/archive", "0".repeat(64)));
@@ -1567,5 +1578,56 @@ fn the_archive_route_is_an_adapter_over_the_league_read_authority() {
     assert_eq!(
         code, 503,
         "a stale league must not serve an archive whose object is still on disk: {body}"
+    );
+}
+
+/// GATE L (Studio Host liveness): a connection that says nothing may not own the
+/// Host.
+///
+/// Both servers accept **serially**, and the request reader had no deadline at all.
+/// One idle TCP connection — the kind a browser opens speculatively before it needs
+/// one, no malice required — therefore left `/health` and every read route
+/// unanswerable for as long as that socket stayed open, at ~0% CPU, so it did not
+/// even look busy. The first real walkthrough hit exactly this and was abandoned at
+/// step 2 because of it.
+///
+/// What is asserted is **boundedness, not latency**: a silent peer may cost seconds,
+/// and must never cost the process.
+#[test]
+fn gate_silent_connection_cannot_starve_the_host() {
+    let dir = tmp_dir("gate-liveness");
+    let (root, _paths) = new_league(&dir);
+    let host = HostProcess::start(&root, &dir);
+
+    // A socket that is connected and deliberately silent. It is opened first, so a
+    // serial accept loop meets it before it meets the request below.
+    let idle = TcpStream::connect(("127.0.0.1", host.port)).expect("open a silent connection");
+    std::thread::sleep(Duration::from_millis(300));
+
+    let bound = Duration::from_secs(10);
+    let started = Instant::now();
+    let (status, _) = http_get_within(host.port, "/health", bound)
+        .expect("the Host must answer /health while a silent peer is connected");
+    let elapsed = started.elapsed();
+    assert_eq!(
+        status_code(&status),
+        200,
+        "a silent peer must not starve /health (answered in {elapsed:?})"
+    );
+    assert!(
+        elapsed < bound,
+        "the answer must arrive inside the bound, not merely eventually: {elapsed:?}"
+    );
+
+    // The deadline is not a one-shot: once the silent peer is gone the Host is still
+    // accepting, and still answering. A "fix" that wedged the loop after the first
+    // timeout would pass the assertion above and fail this one.
+    drop(idle);
+    let (status, _) = http_get_within(host.port, "/health", bound)
+        .expect("the Host must still be accepting after the silent peer left");
+    assert_eq!(
+        status_code(&status),
+        200,
+        "the Host must still be alive and serving"
     );
 }
