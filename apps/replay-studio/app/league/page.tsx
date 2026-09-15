@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../api-base.mjs";
 import {
+  classifyBookingResponse,
   describeAgentOptions,
-  describeFailure,
   describeLeaderboard,
-  describeResult,
   gameIdFor,
   newOccurrenceId,
   randomSalt,
@@ -61,7 +60,8 @@ type BookingResult = {
   problem: string | null;
   retryable: boolean;
   sourceIdentity: string | null;
-  matchId: number | null;
+  /** The ledger's match id is a string (`IngestOutcome::match_id`), not a number. */
+  matchId: string | null;
   eligibility: string | null;
   elo: EloEvent[];
   documentSha256: string | null;
@@ -73,6 +73,19 @@ type BookingFailure = {
   headline: string;
   detail: string;
   retryable: boolean;
+};
+
+/**
+ * The outcome of classifying one write response.
+ *
+ * `settled` says a match fact exists. It is NOT the same as `response.ok`: a
+ * completed match whose booking failed arrives as HTTP 503 with both axes set, and
+ * it must reach the result panel with its retry.
+ */
+type BookingClassification = {
+  settled: boolean;
+  result: BookingResult | null;
+  failure: BookingFailure | null;
 };
 
 type LeaderRow = {
@@ -184,17 +197,29 @@ export default function LeaguePage() {
         body: JSON.stringify(body),
       });
       const value = await response.json().catch(() => null);
-      if (!response.ok) {
-        setFailure(describeFailure(response.status, value) as BookingFailure);
+      // Classified by the body, never by `response.ok`: a settled match arrives as
+      // 503 when its booking failed, and it must be rendered as the two facts it is.
+      const classified = classifyBookingResponse(response.status, value) as BookingClassification;
+      if (!classified.settled || !classified.result) {
+        setFailure(classified.failure);
         return;
       }
-      setResult(describeResult(value) as BookingResult);
-      // One refresh after the booking settled. The page never polls: the Host
-      // serves one request at a time, and polling during a match would queue
-      // behind it for no new information.
-      void loadLeaderboard();
+      const settled = classified.result;
+      setResult(settled);
+      // One refresh, and only when the league actually recorded something. A match
+      // whose booking failed changed nothing to refresh, and the page never polls:
+      // the Host serves one request at a time, so polling would only queue behind it.
+      if (settled.completionStatus === "inserted" || settled.completionStatus === "already_present") {
+        void loadLeaderboard();
+      }
     } catch (reason) {
-      setFailure(describeFailure(null, { error: reasonText(reason) }) as BookingFailure);
+      // A thrown fetch is ambiguous, not a plain refusal: it may mean the request
+      // never arrived, is still running, or completed with its response lost. The
+      // module decides that the retry re-sends the same body, never a new occurrence.
+      const ambiguous = classifyBookingResponse(null, {
+        error: reasonText(reason),
+      }) as BookingClassification;
+      setFailure(ambiguous.failure);
     } finally {
       setRunning(false);
     }

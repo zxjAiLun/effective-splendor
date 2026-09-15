@@ -1,6 +1,8 @@
 # Replay Studio — League Play page v1 (first player-facing round trip)
 
-**Status: IMPLEMENTED — not yet reviewed, not accepted.**
+**Status: IMPLEMENTED (Repair 1 applied) — not yet re-reviewed, not accepted.**
+Review of the first revision `b7a29d7`: `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1); all four
+findings are closed in Repair 1, see that section below.
 Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
 Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
 D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
@@ -193,6 +195,74 @@ Append-only. Material decisions and deviations only.
    asserted `href="/league"` on the league page itself, which does not link to itself; the assertion
    belongs in the home-shell test, where the nav link actually is.
 
+## Repair 1 (owner review of `b7a29d7`, 2026-09-15: P0=0 / P1=3 / P2=1)
+
+Owner confirmed the body of the slice — D3's adapter chain, D4's identity handling, the API-base
+de-duplication, the shared fixture, a picker that cannot name a program, and the reused replay
+renderer — and found four narrow **player-surface** seams. Nothing required redesigning anything.
+
+**P1-1 — a real `503 completed + completion failed` was demoted to a generic Host failure, so the UI
+merged the two facts.** The page branched on `response.ok` before ever reaching `describeResult()`,
+and `describeFailure(503, …)` answered "the Host could not answer for this league / not retryable".
+The pure module had the correct two-fact handling *and a unit test for it* — but the browser path
+could never reach it. This is the one invariant the slice exists to protect, which makes it the
+most serious finding of the round: **a unit test on a helper the real path never calls is not
+evidence about the real path.**
+
+*Fix*: the write-response decision moved into the pure module as `classifyBookingResponse(status, body)`.
+A settled fact is decided by **the shape of the body** (`match_status` *and* `completion_status`
+present), never by the status code:
+
+```text
+200 completed/inserted        -> settled, result panel
+200 completed/already_present -> settled, result panel (+ one leaderboard refresh)
+200 aborted/not_applicable    -> settled, result panel
+503 completed/failed          -> settled, result panel + "Retry the booking (same occurrence, same seed)"
+400 / 409 / 500 / 503-refusal -> refusal panel (500 and transport may retry; 400/409 may not)
+```
+
+The page consumes only that classification, and now refreshes the leaderboard **only** when
+`inserted`/`already_present` — a booking that failed changed nothing to refresh.
+
+**P1-2 — `GET /league/replays/archive` panicked the whole Host.** The archive arm tested
+`starts_with` *and* `ends_with` and then sliced `path[16..len-8]`; that path satisfies both tests, so
+the byte range inverts. Reproduced **before** fixing, by writing the assertion first and running it
+against the unfixed build:
+
+```text
+thread 'main' (29528) panicked at crates\splendor-cli\src\human_play_command.rs:2328:17:
+begin <= end (16 <= 15) when slicing `/league/replays/archive`
+```
+
+The panic is on the **`main` thread**. This Host has a serial accept loop and no per-request panic
+isolation, so one malformed GET ended the entire product surface — the client saw a 0-byte response
+and the process was gone. (It also left a `splendor.exe` holding `target/debug/splendor.exe`, which
+made the next build fail with a Windows sharing violation: a reminder that a crashed Host is not
+always a *quietly* crashed Host.)
+
+*Fix*: parse by stripping, never by index arithmetic —
+`strip_prefix("/league/replays/").and_then(|rest| rest.strip_suffix("/archive"))` with
+`unwrap_or_default()`. That path now yields the empty content address and the handler answers 404;
+other malformed shapes fall through to the bare replay route. `unwrap_or_default` is deliberately
+not an oversight: it is the landing spot for exactly this input.
+
+**P1-3 — a lost response, the case most in need of an exact retry, was the one case that forbade
+it.** `describeFailure(null, …)` returned `retryable: false`, so the only button left was
+`New match` — which mints a new occurrence, the worst case being a second rated match for an attempt
+that may already have happened. A thrown `fetch` cannot distinguish "never arrived", "still running",
+"completed with the response lost". All of those are safe with the *same* body, because the
+occurrence id was made an identity in the first place.
+*Fix*: the transport case is `retryable: true`, and its wording says the outcome is unknown from the
+browser and that Retry re-sends the same occurrence.
+
+**P2 — `matchId` was typed `number`.** The ledger's `IngestOutcome::match_id` is a `String`; an `as`
+cast hid the lie. Now `string | null`.
+
+**Not done, by instruction**: no D6 field, no statistics, no Review work, no browser harness, no extra
+test matrix. The D6 decision stands as accepted (see the owner's own correction: a registry id cannot
+be mapped to a Studio League participant id in the browser without an authority-derived field, so
+showing nothing is right and inventing a join is not) and is explicitly **not** part of this repair.
+
 ## Final implementation
 
 ```text
@@ -283,6 +353,37 @@ Two gates exist because the alternative was a false claim:
   and that the page renders **no** invented rating (`/1500/` and `/Unrated/` must not appear).
   Everything after a click is covered by the pure module's tests, not by an automated click.
 
+### Repair 1 validation
+
+```text
+apps/replay-studio            npm test                             -> 65 tests, 65 pass, 0 fail (was 61; +4)
+apps/replay-studio            npm run lint                         -> clean
+crates/splendor-cli           cargo test -p splendor-cli           -> 287 passed, 0 failed, 3 ignored (45 targets; count unchanged)
+crates/splendor-studio-league cargo test -p splendor-studio-league -> 86 passed, 0 failed
+crates/splendor-cli           league_host_api                      -> 14 gates (assertions added inside the existing D3 gate)
+repo root                     git diff --check                     -> clean
+```
+
+The malformed-path assertion lives inside the existing D3 gate on purpose: the instruction was "补一个
+gate … 不用扩测试矩阵", and the behaviour under test is the same route contract, so the gate count
+stays 14.
+
+**Repair 1 negative controls (four, each reverted with `cp` from a `/tmp` copy).**
+
+| # | Control | What must fail | Result |
+|---|---------|----------------|--------|
+| G | classify settled-ness by status code (`2xx`) instead of by the body | the 503-is-a-result tests | 5 failed, exit 1 |
+| H | `describeFailure(null, …)` back to `retryable: false` | the lost-response tests | 5 failed, exit 1 |
+| J | the page decides with `if (!response.ok)` again | the source-level structural guard | 3 failed, exit 1 |
+| I | restore the index-arithmetic slice | the malformed-path assertion (the Host dies) | gate FAILED: `a complete response has a header terminator` |
+
+Control J is a **source-level** guard and is labelled as one, in the test and here: this repository
+has no browser runner, so nothing in this round demonstrates a player clicking anything. It pins the
+single line that let P1-1 survive a green unit suite — the module's tests pass whether or not the
+page uses the module at all. Writing it also caught a flaw in itself: its first version matched the
+word `response.ok` inside the explanatory comment, so comments are now stripped before the code
+check. A gate that a comment can trip is not measuring code.
+
 ## Known limitations
 
 - A match run blocks the whole Host (serial accept loop) — `/health` and the read routes are
@@ -340,19 +441,43 @@ cd apps/replay-studio && npm run dev     # serves 127.0.0.1:4173, the only allow
 
 ## Result and decision
 
-`IMPLEMENTED`. Code exists, all local gates pass, six negative controls each failed their intended
-gate, and the tree is clean. This is **not** `VERIFIED`/`ACCEPTED`: no review has happened yet, and
-the only evidence that a player can actually walk the flow is the owner's walkthrough above.
+`IMPLEMENTED` — **Repair 1 applied; not yet `VERIFIED`/`ACCEPTED`.**
 
-Deviations from the authorized request, stated plainly:
+Round 1 (`b7a29d7`) was reviewed and returned `REPAIR_REQUIRED` with P0=0 / P1=3 / P2=1. The review
+accepted the design and the body of the work and found only player-surface seams; all four findings
+are closed in this revision, each with a gate that fails when the fix is reverted:
 
-1. **D6's Elo-beside-the-picker is not implemented.** No join key exists in the closed surface, and a
-   guess would misattribute ratings. Everything else in D6 is implemented.
-2. **The nav link is on `/` and `/play`.** There is no shared shell component — each page carries its
-   own topbar nav — so "add a League link" means those two, not a restructured header.
+| Finding | Closed by | Gate that fails without it |
+|---------|-----------|----------------------------|
+| P1-1: `503 completed + completion failed` rendered as a generic Host failure | `classifyBookingResponse` decides settled-ness by the body's shape; the page consumes only that | the 503-is-a-result unit tests; the source-level guard that the write path does not branch on `response.ok` |
+| P1-2: `/league/replays/archive` panicked the `main` thread and killed the Host | `strip_prefix`/`strip_suffix` parsing; the malformed path lands on the empty content address and 404s | the malformed-path assertion in the D3 gate |
+| P1-3: a lost response was the one case that forbade the exact retry | the transport case is `retryable: true` with same-body wording | the lost-response unit tests |
+| P2: `matchId` typed `number` for a `String` | `string \| null` | (type-level; no gate — see below) |
+
+**Honest ceiling on the evidence.** The two declarations below are the whole point of keeping status
+words strict:
+
+1. **No gate here demonstrates a player clicking anything.** There is no browser runner. P1-1's *fix*
+   is gated at the module level and, structurally, at the source level; the actual rendering of the
+   503 case in a browser remains covered by the owner's walkthrough only.
+2. **The P2 type fix has no automated gate.** `matchId: string | null` is enforced by the type
+   checker at build time (`npm test` builds first), not by an assertion — the previous `number` type
+   was never observable at runtime because the value came from JSON and was cast, which is exactly
+   why it went unnoticed.
+
+Unchanged deviations from the original authorization, both accepted by the owner in review:
+
+1. **D6's Elo-beside-the-picker is not implemented** — and the owner independently confirmed this is
+   correct rather than a shortcut: a registry id cannot be mapped to a Studio League `participant_id`
+   in the browser, and a field that closed the gap would have to be derived by the Host from the
+   Studio identity authority, not hashed client-side. It is deferred as its own authorization.
+2. **The nav link is on `/` and `/play`** — no shared shell component exists, so there is nothing
+   else to add a link to without restructuring the header.
 
 ## Next authorized gate
 
-Owner review of this implementation revision, then the 8-step walkthrough. On acceptance: record the
-closure in `docs/studio-league-v1.md` + `handoff.md`, and decide separately whether to authorize the
-one-field `GET /agents` follow-up that would let the pickers show Elo.
+Owner re-review of this Repair 1 revision, then the 8-step manual walkthrough in this document —
+**step 8, actually dragging and stepping through the replay board, is still the acceptance evidence
+this round cannot automate**. On acceptance: record the closure in `docs/studio-league-v1.md` +
+`handoff.md`, and only then decide whether to authorize the `GET /agents` follow-up that would let the
+pickers show Elo (which must be derived Host-side from the Studio identity authority).

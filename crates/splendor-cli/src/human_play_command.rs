@@ -2320,12 +2320,23 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         }
         // The presentation adapter must be matched before the bare prefix below,
         // which would otherwise read `"<sha256>/archive"` as a content address.
+        //
+        // Parsed by stripping, never by index arithmetic. `/league/replays/archive`
+        // satisfies both tests above, and `path[16..15]` is an inverted byte range:
+        // it panics on the `main` thread (reproduced: `begin <= end (16 <= 15)`),
+        // which ends the process, because this Host has a serial accept loop and no
+        // per-request panic isolation. `unwrap_or_default` is therefore not an
+        // oversight: it is where that malformed path lands, as the empty content
+        // address, and the handler answers 404 for it.
         "GET"
             if request.path.starts_with("/league/replays/")
                 && request.path.ends_with("/archive") =>
         {
-            let sha256 = request.path
-                ["/league/replays/".len()..request.path.len() - "/archive".len()]
+            let sha256 = request
+                .path
+                .strip_prefix("/league/replays/")
+                .and_then(|rest| rest.strip_suffix("/archive"))
+                .unwrap_or_default()
                 .to_string();
             return respond_league(&mut stream, host.league_replay_archive(&sha256));
         }

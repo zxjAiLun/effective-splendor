@@ -265,10 +265,15 @@ export function describeResult(response) {
 export function describeFailure(status, body) {
   const error = typeof body?.error === "string" ? body.error : null;
   if (status === null) {
+    // A thrown `fetch` cannot distinguish "never arrived", "still running" and
+    // "finished, response lost". All four possibilities are safe to retry with the
+    // *same* occurrence id, and this is the one case where the page would otherwise
+    // push the player toward `New match` — which mints a new occurrence and can run
+    // a second rated match for an attempt that may already have happened.
     return {
-      headline: "The Studio Host is not reachable.",
-      detail: `Start it with \`splendor studio-host --registry <registry.json> --port 43120\`. ${error ?? ""}`.trim(),
-      retryable: false,
+      headline: "The response was lost, or the Host connection ended.",
+      detail: `The match outcome is unknown from this browser: the request may never have arrived, may still be running, or may have completed with its response lost. Retry re-sends the same occurrence id, so it completes that attempt instead of booking a second one.${error ? ` (${error})` : ""}`,
+      retryable: true,
     };
   }
   if (status === 409) {
@@ -299,6 +304,29 @@ export function describeFailure(status, body) {
     detail: error ?? "No further detail was returned.",
     retryable: false,
   };
+}
+
+/**
+ * Classify one write response into a settled fact or a refusal.
+ *
+ * The Host answers a booking on **two independent axes** — what the match did and
+ * what the league did with it — and *whether a match settled is decided by the
+ * shape of the body, not by the status code*. `503 completed + completion failed`
+ * is a finished match whose booking failed: it belongs in the result panel, with
+ * its retry, and demoting it to a generic transport failure would merge exactly the
+ * two facts this slice exists to keep apart.
+ *
+ * A body carrying both axes is a settled fact whatever the status; anything else
+ * is a refusal (including a `503` that carries only an `error`, which is the league
+ * itself being unavailable).
+ */
+export function classifyBookingResponse(status, body) {
+  const settled =
+    typeof body?.match_status === "string" && typeof body?.completion_status === "string";
+  if (settled) {
+    return { settled: true, result: describeResult(body), failure: null };
+  }
+  return { settled: false, result: null, failure: describeFailure(status, body) };
 }
 
 /**

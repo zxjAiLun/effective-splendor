@@ -1537,6 +1537,21 @@ fn the_archive_route_is_an_adapter_over_the_league_read_authority() {
     let (code, body) = host.get_json(&format!("/league/replays/{}/archive", "0".repeat(64)));
     assert_eq!(code, 404, "an unarchived address is absent: {body}");
 
+    // A malformed path must not be able to take the Host down. `/league/replays/archive`
+    // satisfies both the prefix and the suffix test, and index arithmetic on it yields
+    // an inverted byte range. This Host has one serial accept loop and no per-request
+    // panic isolation, so a panic here would end the whole product surface.
+    let (code, body) = host.get_json("/league/replays/archive");
+    assert_eq!(
+        code, 404,
+        "a malformed archive path is absent, not fatal: {body}"
+    );
+    let (code, health) = host.get_json("/health");
+    assert_eq!(
+        code, 200,
+        "the Host must still be serving after a malformed archive path: {health}"
+    );
+
     // The authority gate still comes first: the archived object is untouched on
     // disk, and the league has gone stale, so this route must stop answering.
     let mut manifest = IdentityManifestV1::load(paths.identity())
