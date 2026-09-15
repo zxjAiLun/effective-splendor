@@ -4,8 +4,8 @@
 Review of `b7a29d7`: `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1) — all four closed in Repair 1.
 Review of `50a4f3b`: original findings **P0=0 / P1=0 / P2=0, all closed**; one new narrow P1
 (the failure panel's own label) — closed by the Repair 1 close patch below.
-Revisions: Repair 1 = `50a4f3b`; its close patch = the commit carrying this line (a one-line
-anchor commit follows it, since a commit cannot contain its own hash).
+Revisions: Repair 1 = `50a4f3b`; its close patch = `cf587d2` (this one-line anchor commit
+follows it, since a commit cannot contain its own hash).
 Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
 Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
 D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
