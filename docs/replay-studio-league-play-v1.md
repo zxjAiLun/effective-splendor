@@ -3,6 +3,8 @@
 **Status: IMPLEMENTED (Repair 1 applied) — not yet re-reviewed, not accepted.**
 Review of the first revision `b7a29d7`: `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1); all four
 findings are closed in Repair 1, see that section below.
+Repair 1 revision: `50a4f3b` (the Repair 1 commit; this one-line anchor follows it, since a
+commit cannot contain its own hash).
 Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
 Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
 D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
