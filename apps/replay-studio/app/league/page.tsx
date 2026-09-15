@@ -70,6 +70,8 @@ type BookingResult = {
 };
 
 type BookingFailure = {
+  /** The panel's own label: a claim about the ledger, decided by `describeFailure`. */
+  kicker: string;
   headline: string;
   detail: string;
   retryable: boolean;
@@ -396,7 +398,7 @@ export default function LeaguePage() {
 
       {failure ? (
         <section className="recent-games">
-          <span className="section-kicker">NOT BOOKED</span>
+          <span className="section-kicker">{failure.kicker}</span>
           <h2>{failure.headline}</h2>
           <p>{failure.detail}</p>
           {failure.retryable && pending ? (

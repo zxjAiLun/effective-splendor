@@ -1,10 +1,11 @@
 # Replay Studio — League Play page v1 (first player-facing round trip)
 
-**Status: IMPLEMENTED (Repair 1 applied) — not yet re-reviewed, not accepted.**
-Review of the first revision `b7a29d7`: `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1); all four
-findings are closed in Repair 1, see that section below.
-Repair 1 revision: `50a4f3b` (the Repair 1 commit; this one-line anchor follows it, since a
-commit cannot contain its own hash).
+**Status: IMPLEMENTED (Repair 1 + close patch) — not yet re-reviewed, not accepted.**
+Review of `b7a29d7`: `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1) — all four closed in Repair 1.
+Review of `50a4f3b`: original findings **P0=0 / P1=0 / P2=0, all closed**; one new narrow P1
+(the failure panel's own label) — closed by the Repair 1 close patch below.
+Revisions: Repair 1 = `50a4f3b`; its close patch = the commit carrying this line (a one-line
+anchor commit follows it, since a commit cannot contain its own hash).
 Baseline: `ea98798` (this document's design-only commit; kept unamended, per owner instruction).
 Authorization: owner, 2026-09-15 — `D1 YES / D2 YES / D3 YES-with-contract / D4 MODIFY / D5 YES /
 D6 YES / D7 YES / D8 YES`, implemented directly in this round without a second design round.
@@ -265,6 +266,52 @@ test matrix. The D6 decision stands as accepted (see the owner's own correction:
 be mapped to a Studio League participant id in the browser without an authority-derived field, so
 showing nothing is right and inventing a join is not) and is explicitly **not** part of this repair.
 
+## Repair 1 close patch (owner review of `50a4f3b`)
+
+Owner verdict: **the three P1s and the P2 of the previous round are closed** (P0=0 / P1=0 / P2=0),
+`0a1f7b9` confirmed docs-only, and the review accepted that `classifyBookingResponse` is now the real
+entry point of the write path rather than a test-only helper. One very narrow **truthfulness** seam
+remained. This patch closes it, and only it: no Host change, no browser harness, no design round.
+
+**P1 (new) — the failure panel's own label claimed an absence the page cannot know.** Repair 1 fixed
+the transport *body* (it says the outcome is unknown and asks for a same-occurrence retry), but every
+failure panel shared one hardcoded kicker:
+
+```text
+NOT BOOKED                    <- unverified, and possibly false
+The response was lost...
+The match outcome is unknown...
+Retry the same match
+```
+
+With the response lost, the match may well have completed — Arena finished, the completion was
+inserted, the response was lost on the way back. The first line therefore contradicted the paragraph
+directly beneath it, and it undercut the reason P1-3 was fixed at all: if the outcome is unknown, the
+panel may not announce absence. A wrong *body* was one defect; a wrong *label* is the same defect in
+the one place a reader trusts most.
+
+*Fix*: the kicker is part of the classification and lives in the runtime module beside the paragraph
+it labels.
+
+```text
+describeFailure(null, …)                          -> kicker "OUTCOME UNKNOWN", retryable
+describeFailure(400 / 409 / 500 / 503-refusal, …) -> kicker "NOT BOOKED"
+```
+
+The page renders `{failure.kicker}`. `NOT BOOKED` is sound where it is still printed because a refusal
+is a claim about absence and the Host emits every refusal *before* a settled fact can exist: the run
+either never started (400 / 409 / 503) or never settled (500). `500` remains retryable without being
+an ambiguous outcome, which is exactly why the label cannot be inferred from `retryable`.
+
+**Rejected alternative**: `{failure.retryable ? "OUTCOME UNKNOWN" : "NOT BOOKED"}`. A `500` is
+retryable while unambiguously meaning "nothing settled", and a `409` is unambiguous without being
+retryable, so retryability and the absence claim are independent questions; deriving the label from
+`retryable` would have re-introduced the same kind of lie pointing the other way.
+
+**`New match` stays available** next to `OUTCOME UNKNOWN`, deliberately: once a player has been told
+the outcome is unknown, knowingly starting another match is their call. The requirement is only that
+the UI must not claim the previous attempt did not happen.
+
 ## Final implementation
 
 ```text
@@ -386,6 +433,42 @@ page uses the module at all. Writing it also caught a flaw in itself: its first 
 word `response.ok` inside the explanatory comment, so comments are now stripped before the code
 check. A gate that a comment can trip is not measuring code.
 
+### Repair 1 close-patch validation
+
+```text
+apps/replay-studio   npm test        -> 67 tests, 67 pass, 0 fail (was 65; +2)
+apps/replay-studio   npm run lint    -> clean
+repo root            git diff --check -> clean
+changed files        apps/replay-studio/app/league-runtime.mjs
+                     apps/replay-studio/app/league/page.tsx
+                     apps/replay-studio/tests/league-runtime.test.mjs
+```
+
+No Rust file is touched by this patch, so the Rust suites were **not** re-run: a change confined to
+two `.mjs`/`.tsx` files cannot alter their result, and re-running them would add no evidence about
+this patch. The previous round's Rust results (287 passed / 0 failed / 3 ignored; 86/86; 14/14) stand
+as recorded there, as local execution evidence.
+
+**Close-patch negative controls (two, each reverted with `cp`).**
+
+| # | Control | What must fail | Result |
+|---|---------|----------------|--------|
+| 1 | transport kicker back to `NOT BOOKED` | the two kicker assertions | 2 failed, exit 1 |
+| 2 | the page hardcodes the label again | the page-source kicker guard | 1 failed, exit 1 |
+
+Control 2 is a **source-level** guard for the same reason as the `response.ok` one: there is no
+browser runner here, so it pins the property that the page owns no truth claim of its own, and it
+cannot demonstrate anything about a rendered panel.
+
+**A process defect this patch's own controls exposed, recorded because it is the dangerous kind.**
+While reverting control 1, `cp` was pointed at a backup taken *before* the patch was applied, so the
+"revert" deleted the fix instead of restoring it — and the following run then reported a failure that
+looked like the control still being in place. The suite caught it (unrelated kicker tests failing
+during control 2), but the general rule is: **a negative control's revert target must be the *patched*
+state, not the pre-round original. Otherwise a revert that has gone too far is indistinguishable from
+a control that was never reverted — and the "restored" tree is silently missing the fix.** Backups
+are now taken after the patch and verified with `diff -q` before any run is trusted.
+
 ## Known limitations
 
 - A match run blocks the whole Host (serial accept loop) — `/health` and the read routes are
@@ -443,43 +526,43 @@ cd apps/replay-studio && npm run dev     # serves 127.0.0.1:4173, the only allow
 
 ## Result and decision
 
-`IMPLEMENTED` — **Repair 1 applied; not yet `VERIFIED`/`ACCEPTED`.**
+`IMPLEMENTED` — **Repair 1 and its close patch applied; not yet re-reviewed, not `ACCEPTED`.**
 
-Round 1 (`b7a29d7`) was reviewed and returned `REPAIR_REQUIRED` with P0=0 / P1=3 / P2=1. The review
-accepted the design and the body of the work and found only player-surface seams; all four findings
-are closed in this revision, each with a gate that fails when the fix is reverted:
+Review of `b7a29d7` returned `REPAIR_REQUIRED` (P0=0 / P1=3 / P2=1); review of `50a4f3b` closed all
+four and raised one new narrow P1. Every finding is closed in this revision, each with a gate that
+fails when the fix is reverted:
 
 | Finding | Closed by | Gate that fails without it |
 |---------|-----------|----------------------------|
-| P1-1: `503 completed + completion failed` rendered as a generic Host failure | `classifyBookingResponse` decides settled-ness by the body's shape; the page consumes only that | the 503-is-a-result unit tests; the source-level guard that the write path does not branch on `response.ok` |
+| P1-1: `503 completed + completion failed` rendered as a generic Host failure | `classifyBookingResponse` decides settled-ness by the body's shape; the page consumes only that | the 503-is-a-result unit tests; the source-level guard that `send()` does not branch on `response.ok` |
 | P1-2: `/league/replays/archive` panicked the `main` thread and killed the Host | `strip_prefix`/`strip_suffix` parsing; the malformed path lands on the empty content address and 404s | the malformed-path assertion in the D3 gate |
 | P1-3: a lost response was the one case that forbade the exact retry | the transport case is `retryable: true` with same-body wording | the lost-response unit tests |
-| P2: `matchId` typed `number` for a `String` | `string \| null` | (type-level; no gate — see below) |
+| P2: `matchId` typed `number` for a `String` | `string \| null` | (type-level only; no gate — see the ceiling below) |
+| **P1 (new, review of `50a4f3b`): the failure panel printed `NOT BOOKED` over an unknown outcome** | the kicker is part of the classification (`OUTCOME UNKNOWN` for transport, `NOT BOOKED` for refusals) and the page renders `{failure.kicker}` | the two kicker assertions; the source-level guard that the page owns no absence claim |
 
-**Honest ceiling on the evidence.** The two declarations below are the whole point of keeping status
-words strict:
+**Honest ceiling on the evidence.** This is why status words stay strict here:
 
-1. **No gate here demonstrates a player clicking anything.** There is no browser runner. P1-1's *fix*
-   is gated at the module level and, structurally, at the source level; the actual rendering of the
-   503 case in a browser remains covered by the owner's walkthrough only.
-2. **The P2 type fix has no automated gate.** `matchId: string | null` is enforced by the type
-   checker at build time (`npm test` builds first), not by an assertion — the previous `number` type
-   was never observable at runtime because the value came from JSON and was cast, which is exactly
-   why it went unnoticed.
+1. **No gate demonstrates a player clicking anything.** There is no browser runner. The write-path
+   classification and the kicker are gated at the module level and, structurally, at the source level;
+   the actual rendering of a `503 completed + failed` panel and of an `OUTCOME UNKNOWN` panel in a
+   browser remains covered by the owner's walkthrough only.
+2. **The P2 type fix has no automated gate.** `matchId: string | null` is enforced by the type check at
+   build time, not by an assertion — the previous `number` was never observable at runtime (a JSON
+   value plus an `as` cast), which is exactly why it survived.
 
 Unchanged deviations from the original authorization, both accepted by the owner in review:
 
 1. **D6's Elo-beside-the-picker is not implemented** — and the owner independently confirmed this is
    correct rather than a shortcut: a registry id cannot be mapped to a Studio League `participant_id`
    in the browser, and a field that closed the gap would have to be derived by the Host from the
-   Studio identity authority, not hashed client-side. It is deferred as its own authorization.
-2. **The nav link is on `/` and `/play`** — no shared shell component exists, so there is nothing
-   else to add a link to without restructuring the header.
+   Studio identity authority, not hashed client-side. Deferred as its own authorization.
+2. **The nav link is on `/` and `/play`** — no shared shell component exists, so there is nothing else
+   to add a link to without restructuring the header.
 
 ## Next authorized gate
 
-Owner re-review of this Repair 1 revision, then the 8-step manual walkthrough in this document —
-**step 8, actually dragging and stepping through the replay board, is still the acceptance evidence
-this round cannot automate**. On acceptance: record the closure in `docs/studio-league-v1.md` +
-`handoff.md`, and only then decide whether to authorize the `GET /agents` follow-up that would let the
-pickers show Elo (which must be derived Host-side from the Studio identity authority).
+Owner review of this close patch, then the 8-step manual walkthrough in this document — **step 8,
+actually dragging and stepping through the replay board, is still the acceptance evidence this round
+cannot automate**. No further design round is in scope, and the D6 `GET /agents` follow-up is not to
+be started as part of this round. On acceptance: record the closure in `docs/studio-league-v1.md` +
+`handoff.md`.

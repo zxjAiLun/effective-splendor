@@ -204,6 +204,45 @@ test("G1 a lost response, a refusal and a Host fault stay distinct", () => {
 
   const fault = describeFailure(500, { error: "io error" });
   assert.equal(fault.retryable, true, "a fault before a settled fact may be started again");
+
+  // The panel's own kicker is a claim about the ledger, and only the transport case
+  // may not make one: with the response lost, the match may have completed and been
+  // recorded. Printing "NOT BOOKED" there would contradict the paragraph under it,
+  // and would undo the point of making a lost response retryable at all.
+  assert.equal(lost.kicker, "OUTCOME UNKNOWN");
+  assert.notEqual(lost.kicker, "NOT BOOKED", "a lost response must not claim absence");
+  assert.equal(conflict.kicker, "NOT BOOKED");
+  assert.equal(unavailable.kicker, "NOT BOOKED");
+  assert.equal(fault.kicker, "NOT BOOKED");
+  assert.equal(describeFailure(400, { error: "bad request" }).kicker, "NOT BOOKED");
+});
+
+test("G1 the failure kicker is the classification's, not a restatement of retryable", () => {
+  // Retryability and the absence claim are independent questions, so a label derived
+  // from `retryable` is wrong in both directions: a 500 is retryable without being an
+  // ambiguous outcome, and a 409 is unambiguous without being retryable.
+  const retryable = [describeFailure(null, null), describeFailure(500, { error: "io" })];
+  const refused = [
+    describeFailure(400, { error: "bad request" }),
+    describeFailure(409, { error: "occupied" }),
+    describeFailure(503, { error: "league unavailable" }),
+  ];
+  assert.deepEqual(
+    retryable.map((f) => f.retryable),
+    [true, true],
+  );
+  assert.deepEqual(
+    refused.map((f) => f.retryable),
+    [false, false, false],
+  );
+  assert.deepEqual(
+    retryable.map((f) => f.kicker),
+    ["OUTCOME UNKNOWN", "NOT BOOKED"],
+  );
+  assert.deepEqual(
+    refused.map((f) => f.kicker),
+    ["NOT BOOKED", "NOT BOOKED", "NOT BOOKED"],
+  );
 });
 
 test("G1 the leaderboard renderer invents nothing", () => {
@@ -350,6 +389,20 @@ test("G1 the write path classifies by the body, not by response.ok", () => {
     /response\.ok/,
     "the write path must not decide result-versus-failure from the status alone",
   );
+});
+
+test("G1 the failure panel's kicker is owned by the classification, not by the page", () => {
+  // A source-level guard, for the same reason as the one above: no browser runner.
+  // The kicker is a claim about the ledger, so it belongs to `describeFailure` beside
+  // the paragraph it labels. A hardcoded label is how this round's seam appeared — a
+  // lost response printed "NOT BOOKED" directly over "the match outcome is unknown".
+  const page = readFileSync(new URL("../app/league/page.tsx", import.meta.url), "utf8");
+  const code = page
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  assert.match(code, /\{failure\.kicker\}/, "the page renders the classified kicker");
+  assert.doesNotMatch(code, /NOT BOOKED/, "the page must not own the absence claim");
+  assert.doesNotMatch(code, /OUTCOME UNKNOWN/, "...nor the ambiguity claim");
 });
 
 test("G1 the replay link is content-addressed", () => {

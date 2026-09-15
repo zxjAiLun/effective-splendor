@@ -261,6 +261,16 @@ export function describeResult(response) {
  *
  * `status` is the HTTP status when there was one; `null` means the Host could not
  * be reached at all, which is a different problem from the Host refusing.
+ *
+ * Every description carries the `kicker` its panel is allowed to print, because
+ * the kicker is itself a claim about the ledger. A refusal is a claim about
+ * absence, and every refusal the Host produces is emitted before a settled fact
+ * can exist: the run either never started (400 / 409 / 503) or never settled (500).
+ * The transport case is the only one where the page **cannot know** — the match may
+ * have completed and been recorded with the response lost on the way back — so it
+ * is the only one that must not print an absence claim. Deriving this label from
+ * `retryable` would be wrong in both directions: a `500` is retryable but is not an
+ * ambiguous outcome, and a `409` is unambiguous but is not retryable.
  */
 export function describeFailure(status, body) {
   const error = typeof body?.error === "string" ? body.error : null;
@@ -271,6 +281,7 @@ export function describeFailure(status, body) {
     // push the player toward `New match` — which mints a new occurrence and can run
     // a second rated match for an attempt that may already have happened.
     return {
+      kicker: "OUTCOME UNKNOWN",
       headline: "The response was lost, or the Host connection ended.",
       detail: `The match outcome is unknown from this browser: the request may never have arrived, may still be running, or may have completed with its response lost. Retry re-sends the same occurrence id, so it completes that attempt instead of booking a second one.${error ? ` (${error})` : ""}`,
       retryable: true,
@@ -278,6 +289,7 @@ export function describeFailure(status, body) {
   }
   if (status === 409) {
     return {
+      kicker: "NOT BOOKED",
       headline: "This occurrence slot is not usable.",
       detail:
         error ??
@@ -287,6 +299,7 @@ export function describeFailure(status, body) {
   }
   if (status === 503) {
     return {
+      kicker: "NOT BOOKED",
       headline: "The Host could not answer for this league.",
       detail: error ?? "The league is unavailable or incomplete.",
       retryable: false,
@@ -294,12 +307,14 @@ export function describeFailure(status, body) {
   }
   if (status === 500) {
     return {
+      kicker: "NOT BOOKED",
       headline: "The Host failed before the match settled.",
       detail: error ?? "Nothing was recorded. It is safe to start again.",
       retryable: true,
     };
   }
   return {
+    kicker: "NOT BOOKED",
     headline: `The Host refused this request (HTTP ${status}).`,
     detail: error ?? "No further detail was returned.",
     retryable: false,
