@@ -54,6 +54,7 @@
   - **核心修复**：leaderboard 集合式 SQL 19.7s → 1.1s（冷 3.0s，0 字段差异，未加索引）；公共 socket 超时（read 2s / write 5s）；`/league` 三态就绪（5s roster / 10s leaderboard 读超时，写路径无超时，checking 首屏不显示假 refusal banner）；`D Start Splendor Studio.cmd` + `A Splendor Studio.cmd`（index-only，不碰被 AV 锁定实体）。
   - **P2 deferred**：`LEADERBOARD_SQL` 生产 public surface 登记为 test-driven public surface，后续收回 `pub(crate)`，不影响本轮关闭。
   - **明确边界**：Human Live League Integration（人类亲自下场打排位并结算主权 Elo）**NOT IMPLEMENTED / 作为下一刀独立产品纵切**。真实数据库确认 local human participant `b901a2ea-645d-4c45-b4b9-407f5b6f39b7`（You）席位为 0、Elo 事件为 0、current_elo 为 NULL，作为下一刀的 starting-state evidence。
+  - **下一刀已 `DESIGNED` / `AUTHORIZED`（设计冻结，未实现）**：`Human Live League Integration v1`，冻结设计见 **`docs/human-live-league-v1.md`**（D1–D9 + evidence schema + retry contract + 验收数字 + Recon 回执 Q1–Q7）。实现按 Slice A/B/C 依次进行。
   详见 `docs/studio-league-real-scale-repair.md` 与 `docs/replay-studio-league-play-v1.md`。
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
