@@ -47,24 +47,14 @@
   resolved once at startup from `--project-root`. No write authority, no new table, no Elo
   recomputation. Gate baselines: `83/83` and CLI **277/277** (44 → 45 binaries). **UI still not
   authorized.**
-  **League Play v1**: design `ea98798` → `b7a29d7` → Repair 1 `50a4f3b`（锚点 `0a1f7b9`）→
-  close patch `cf587d2`（锚点 `b569fa2`）→ 中文改写 `c41143c`。首个面向玩家的完整往返页面。
-  **Real-Scale Walkthrough Blocker Repair (2026-09-15)**: `IMPLEMENTED` / `VERIFIED`（本地），
-  **尚未 `ACCEPTED`**。第一次真实手工走查在第 2 步被两个独立缺陷卡死：真实 42k 库上
-  leaderboard 查询是 O(参与者 × 座位全表扫描 × 5)（约 4,200 万次行访问，实测 19.7 s，
-  且因 accept 串行而让*所有*路由包括 `/health` 一起不可用），以及公共 HTTP 边界没有任何
-  socket 超时（一条空闲连接即可永久卡死 Host）。同时页面在未确认 Host 可用时就写了
-  `ready`。本轮修三处（集合式聚合 19.7 s → 1.1 s 且逐字段一致；
-  `set_read_timeout(2s)`/`set_write_timeout(5s)` 于两个 accept 循环共用的边界；
-  `/league` 三态就绪 + 首屏读 5 s `AbortController`），加一条中型 fixture 回归门，
-  并把启动器降级回普通双击脚本。
-  **`06f949b` 的终审 = `REPAIR_REQUIRED`**（P0=0 / P1=1 / P2=1）：主体 PASS，
-  但首屏在 `checking` 时还渲染了一个「The request was refused」横幅
-  —— 未获得事实前就宣布失败，与之前的 premature `ready` 是同一个错误的两个方向。
-  已修为「只在 settled failure 时创建 banner」，并补 SSR 首屏真相 gate。
-  `LEADERBOARD_SQL` 的公共面登记为 **P2 deferred — test-driven public surface**
-  （以后收回 `pub(crate)`，本轮不为它搬测试）。
-  详见 `docs/studio-league-real-scale-repair.md`。
+  **League Play Page v1 / Real-scale Walkthrough Repair — ACCEPTED / CLOSED @ `38292a1`**
+  （P0=0 / P1=0 / P2=1 deferred；owner 8 步手工走查实测 PASS）。
+  - **通过的产品路径**：**Agent-vs-Agent Studio League orchestration 闭环完成**
+    （双可见终端启动器 `Splendor Studio.cmd` → `/league` 首屏真实 10s 裕量冷启动与 checking 真相 → 双 Agent 选人 → 后台 Arena 对战 → 证据不可变发布 → completion outlet 入账 → 真实 42k 库 Elo 变动 → Replay 拖拽复盘）。
+  - **核心修复**：leaderboard 集合式 SQL 19.7s → 1.1s（冷 3.0s，0 字段差异，未加索引）；公共 socket 超时（read 2s / write 5s）；`/league` 三态就绪（5s roster / 10s leaderboard 读超时，写路径无超时，checking 首屏不显示假 refusal banner）；`D Start Splendor Studio.cmd` + `A Splendor Studio.cmd`（index-only，不碰被 AV 锁定实体）。
+  - **P2 deferred**：`LEADERBOARD_SQL` 生产 public surface 登记为 test-driven public surface，后续收回 `pub(crate)`，不影响本轮关闭。
+  - **明确边界**：Human Live League Integration（人类亲自下场打排位并结算主权 Elo）**NOT IMPLEMENTED / 作为下一刀独立产品纵切**。真实数据库确认 local human participant `b901a2ea-645d-4c45-b4b9-407f5b6f39b7`（You）席位为 0、Elo 事件为 0、current_elo 为 NULL，作为下一刀的 starting-state evidence。
+  详见 `docs/studio-league-real-scale-repair.md` 与 `docs/replay-studio-league-play-v1.md`。
 - **Baseline**: `44c704b1c69f6e04b8c17484b362cd19051c8d09` (`main == origin/main`; Commit A ACCEPTED/CLOSED).
 - **Owner-date**: 2026-09-10, product owner, in the Studio League design conversation.
 - **Round type**: product milestone (not strength research). Explicit pause on S4 / D-P tuning / evaluator research continues.
@@ -3829,3 +3819,21 @@ ledger and Elo → the same process reads the result back** is closed. This is *
 seven original product requirements being met: the next stage turns to what a player actually uses —
 the pages and the onboarding flow — and the UI, statistics and Review repair backlog remain
 undelivered. This round closes here.
+
+## League Play Page v1 / Real-scale Walkthrough Repair — ACCEPTED / CLOSED (2026-09-16)
+
+- **Status**: `ACCEPTED / CLOSED`（P0=0 / P1=0 / P2=1 deferred）。
+- **Manual acceptance**: `PASS`（owner 完成全部 8 步手工走查）。
+- **Accepted product path**: **Agent-vs-Agent Studio League orchestration**（两名注册 Agent 的天梯排位对局、Elo 结算与录像归档闭环完成）。
+- **Real-match acceptance evidence**:
+  - `occurrence_id`: `studio-1789548461650-d5e7`
+  - `match_id`: `58d35011aa1530bcd66f45ef21a9474a0176fa7cde73e1e5c4b1c90b3c7a13a4`
+  - 全库比赛数：`42,521 → 42,522`（+1）
+  - 全库 Elo 事件数：`28,010 → 28,012`（+2）
+  - P0 (`agent-s3-rollout`): 得分 15，Elo `1939.83 → 1953.40` (+13.56，显示为 `1940 → 1953`)
+  - P1 (`agent-determinization`): 得分 11，Elo `1886.48 → 1872.92` (-13.56，显示为 `1886 → 1873`)
+  - Replay 归档：`local-artifacts/studio-league/replays/23/2365203b96b0de7d13fed24f44ebfb7c45b9958997619d785560768ecaa15a8a.json`（58 plies），交互式回放拖动步进验证一致。
+- **Starting-state evidence for next slice**:
+  - local human participant: `b901a2ea-645d-4c45-b4b9-407f5b6f39b7` (`You`)
+  - match seats = 0, rating events = 0, current_elo = NULL
+- **Next authorized gate**: **`Human Live League Integration v1`**（独立产品纵切：`/play` 交互对局终局接入 Completion Outlet，产生首批人类主权 Elo 事件）。

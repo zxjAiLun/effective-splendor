@@ -1,13 +1,12 @@
 # Studio League — Real-Scale Walkthrough Blocker Repair
 
-- **Status**: `IMPLEMENTED` / `VERIFIED`（本地证据；三处代码修复已落地并各有 gate）。
-  **尚未 `ACCEPTED`** —— 本轮的验收证据是 owner 的 8 步手工走查，而走查在修复前的第 2 步
-  就已经被真实规模的数据卡死，因此**修复后必须从第 1 步重新走**。启动器一项见「结果与决定」，
-  它是本轮唯一被 owner 当场收窄口径的条目。
-- **Baseline**: `c41143c`（`main` == `origin/main`，工作树干净）。本轮之前，League Play v1
-  的页面、Host 读写 API、completion 权威均已 `ACCEPTED/CLOSED`。
-- **Owner-authorised scope**: 事故驱动的一轮，**不是**更多 Studio League 功能。授权顺序被 owner
-  固定为六步，其中前三步是必修缺陷，第四步是回归门，第五步是启动器，第六步是文档。
+- **Status**: **League Play Page v1 / Real-scale Walkthrough Repair — ACCEPTED / CLOSED**
+  - **Verdict**: `P0=0 / P1=0 / P2=1 deferred`
+  - **Manual acceptance**: `PASS`（owner 8 步手工走查全绿）
+  - **Accepted product path**: **Agent-vs-Agent Studio League orchestration**（两名注册 Agent 的天梯排位对局、Elo 结算与录像归档闭环完成）
+  - **Human Live League Integration**: **NOT IMPLEMENTED / next product slice**（人类亲自下场打天梯并结算主权 Elo 未在本轮范围，留待下一刀产品纵切）
+- **Baseline**: `c41143c`（`main` == `origin/main`）；修补链 `06f949b`（repair commit）→ `38292a1`（P1 checking truthfulness repair）；关闭记录锚定 `HEAD`。
+- **Owner-authorised scope**: 事故驱动的一轮真实规模可用性修复（慢查询、socket deadline、首屏真相、回归门、可见双终端启动器、走查文档）。
 - **Non-goals（owner 明确排除）**: Host 线程池、独立 health 线程、async runtime、D6 的
   participant-id join、统计图表、Review 积压、鉴权、批量/监视器、Replay 渲染器、
   Commit D 的 archive 三态 P2。
@@ -481,26 +480,48 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
 （上一轮的教训：对照的还原目标必须是被打补丁之后的状态，否则「还原过了头」与
 「对照从未还原」不可区分）。
 
+### 8 步手工走查验收记录（2026-09-16，owner 现场实测 PASS）
+
+在 `38292a1` 状态下重新从第 1 步执行全部 8 步手工走查，全部验证通过：
+
+1. **启动器**：双击 `Splendor Studio.cmd`，两个可见终端窗口正常启动（Host 43120 + UI 4173）。
+2. **首屏真相与冷启动**：打开 `http://127.0.0.1:4173/league`，首屏干净显示 `Checking Studio Host…` 与 `Loading the agent roster…` / `Loading the standings…`，**无任何红色 refusal banner**。约 3 秒后真实 42k 榜单冷启动加载完成，状态平滑切至 `Studio Host ready`。
+3. **选人**：Seat 1 选 `agent-s3-rollout`，Seat 2 选 `agent-determinization`（heuristic）。
+4. **凭据**：页面生成唯一只读 `Occurrence id: studio-1789548461650-d5e7` 与固定 Seed。
+5. **对战**：点击 `Start rated match`，页面进入 `running` 状态，无轮询，后台 Arena 真实运行对局。
+6. **双事实结算面板**：完赛后 RESULT 面板如期弹出：
+   - `match_status: Completed`
+   - `completion_status: Inserted`
+   - 比分 15 - 11，S3 胜出。
+7. **榜单落盘与 Elo 变动**：Leaderboard 刷新，变动与面板完全吻合。真实数据库落盘证据：
+   - `occurrence_id`: `studio-1789548461650-d5e7`
+   - `match_id`: `58d35011aa1530bcd66f45ef21a9474a0176fa7cde73e1e5c4b1c90b3c7a13a4`
+   - 全库比赛数：`42,521 → 42,522`（+1）
+   - 全库 Elo 事件数：`28,010 → 28,012`（+2）
+   - P0（Seat 1，`agent-s3-rollout`）：得分 15，Elo `1939.83 → 1953.40`（**+13.56**，显示为 `1940 → 1953`）
+   - P1（Seat 2，`agent-determinization`）：得分 11，Elo `1886.48 → 1872.92`（**-13.56**，显示为 `1886 → 1873`）
+   - 归档 Replay：`local-artifacts/studio-league/replays/23/2365203b96b0de7d13fed24f44ebfb7c45b9958997619d785560768ecaa15a8a.json`（58 plies，final result `[15, 11]`, winners `[0]`）
+8. **Replay 棋盘拖拽验收**：点击 `Open replay` 跳转，在回放棋盘前后拖动时间轴进度条与单步步进多个 ply，桌面宝石、卡牌、行动历史与终盘状态完全吻合。**人工验收 PASS**。
+
 ## Result and decision（结果与决定）
 
-- **三处代码修复**：`IMPLEMENTED` / `VERIFIED`（本地）。查询有真实库的前后实测与逐字段比对；
-  socket 有受控实验与 gate；页面有单测 + SSR 断言。**三条负向对照均已执行、各自打中自己的门、
-  并从 patched state 逐字节还原。**
-- **owner 的手工走查**：仍是本轮唯一能提供的验收证据，且**尚未执行**。
-  修复前它**在第 2 步被阻塞**（真实规模 leaderboard 延迟 + Host 活性缺陷被发现），
-  走查因此中止。**owner 指示：收掉首屏真相的 P1 后再从第 1 步重走。**
-- **启动器**：第一版被安全软件查杀并锁定（见上）；收窄版已落盘为 **`Splendor Studio.cmd`**
-  并做了真实验烟（cold 3.0 s / warm 1.0 s 读完整 42k 榜单，100 行）。
-  **仓库收口为 `D Start Splendor Studio.cmd` + `A Splendor Studio.cmd`**（index-only，不碰被锁文件），
-  新 clone 只会看到一个 launcher。本机残留实体已 exclude，无仓库语义。
-- **新增跟踪文件**：本里程碑文档 + `crates/splendor-studio-league/tests/leaderboard_scale.rs`
-  + `Splendor Studio.cmd`（并删除 `Start Splendor Studio.cmd`）。
+- **裁决**：**`ACCEPTED / CLOSED`**（P0=0 / P1=0 / P2=1 deferred）。
+- **通过的产品切面**：**Agent-vs-Agent Studio League orchestration 闭环完成**。
+  从启动器、首屏真实现象、双 Agent 选择、后台 Arena 真实对战、不可变证据原子发布、Studio League completion outlet 入账、真实 42k 库 Elo 变动、到 ReplayV1 归档与交互式棋盘复盘，全链路实测闭环。
+- **P2 deferred**：`LEADERBOARD_SQL` 的生产 public surface 登记为 `P2 deferred — test-driven public surface`，留待后续清理测试时收回 `pub(crate)` 并移入内部模块，不影响本轮关闭。
+- **关于 Human 身份的明确边界声明（非本轮 defect，而是下一刀的 Starting-State Evidence）**：
+  查验真实数据库确认：
+  - local human participant: `b901a2ea-645d-4c45-b4b9-407f5b6f39b7`，`display_name = You`（由 `identity.json` 正确持久化在 `participants` 与 `league_meta` 中）。
+  - Studio League match seats = **0**
+  - Studio League rating events = **0**
+  - current_elo = **NULL**
+  这证明人类主权身份模型已经存在，但**人类交互式排位赛对局（Human → Live League Attribution）从未走通、亦不包含在 League Play v1 授权范围内**。绝不混淆声称“Studio League 完整闭环全部完成”，仅声明 **Agent-vs-Agent live League 闭环完成**。
 
 ## Known limitations（已知限制）
 
 1. **串行 accept 仍在**：一个真正在跑的慢请求仍会阻塞其它请求。本轮只消灭了两个已被证明的
    异常源；把 `/health` 挪到独立线程被 owner 明确排除。
-2. **没有浏览器 runner**：没有 gate 证明玩家点过任何东西；结果的可见渲染仍只由人工走查覆盖。
+2. **Replay 页面选手名显示**：ReplayV1 是纯引擎博弈日志，回放组件渲染 `P0`/`P1`，尚未在 URL/页面中关联 match seats 的选手名称（可作为后续 UX backlog）。
 3. **性能门不是基准**：它断言的是**计划性质**（代价不随参与者数增长）与语义等价，
    加上一个数量级宽松的时限；它**不**冻结任何机器的毫秒值。
 4. **未加索引**：`match_seats(participant_id)` 仍不存在。1.1 s 已被接受；若未来规模再涨，
@@ -508,7 +529,7 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
 5. **启动器无生命周期管理**（这是设计，不是缺陷）：进程随窗口关闭而结束，
    不记录 PID、不提供 stop 脚本。端口被占时由终端直接显示错误。
 6. **本机残留一个被锁的旧启动器实体**（已从 index 删除、已 exclude，**无仓库语义**）；
-   重启后应删除并把启动器名归一。新 clone 的人只会看到一个 launcher。
+   重启后应删除。新 clone 的人只会看到一个 launcher。
 7. **`/league` 的读预算分两档**：普通首屏读 5 s，**leaderboard 10 s**（取真实冷启动 3 s 的裕量）；
    写路径**没有**任何 UI 超时（刻意）。
 8. **D6 的 participant-id join 仍未做**，选择器仍不显示 Elo。
@@ -519,9 +540,9 @@ registry 存在性检查、`cargo build -p splendor-cli`、`node_modules` 缺失
 
 ## Next authorized gate（下一道授权门）
 
-1. owner 复审本 repair commit；
-2. **从第 1 步重新执行 8 步手工走查** —— 第 8 步（在回放棋盘里实际拖动、逐手走过各 ply）
-   仍是本轮无法自动化的那份验收证据；
-3. 走查通过后，在 `docs/studio-league-v1.md` 与 `handoff.md` 记录关闭；
-4. 重启后清理本机残留：删除被安全软件锁住的旧 `Start Splendor Studio.cmd` 实体，
-   并从 `.git/info/exclude` 移除对应条目（旧路径已不在 index 里，**无需**任何 Git 命令）。
+下一刀正式产品纵切：**`Human Live League Integration v1`**。
+目标：将 `/play` 的人机交互对局状态机与 Studio League Completion Outlet 接通。
+- 走通单场真实人机局：`/play` 使用 manifest 中的 local human profile（`b901a2ea-...`）对阵 registered agent，正常打完后同时保留原有人机 replay 并入账 Studio League；
+- Seat A participant_id == local human id，Seat B == engine participant；
+- 产生属于人类玩家的真实 2 条 Elo 事件，使 Leaderboard 榜单上首次出现 "You" 的真实积分与排名；
+- 重启后环境清理：删除本机被安全软件锁住的旧 `Start Splendor Studio.cmd` 实体，并从 `.git/info/exclude` 移除对应条目。
