@@ -1,6 +1,6 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地，待 owner review）；Slice C NOT AUTHORIZED**（D1–D9 与验收数字冻结）
+- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地）@ `7d9f603`，待 owner review；Slice C NOT AUTHORIZED**（D1–D9 与验收数字冻结）
   - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
     本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
     `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
@@ -572,7 +572,7 @@ UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/De
     `HumanSessionState.league_completion`、`/play` UI、Host vertical gate、Gate H 编排 seam。
     （A1 的共享 resolver 已为 Slice B 的 `RegisteredOpponent` 冻结身份就绪，但 Session freezing 属 B。）
 
-- **Slice B（2026-09-18，IMPLEMENTED / VERIFIED 本地，待 owner review）**：
+- **Slice B（2026-09-18，IMPLEMENTED / VERIFIED 本地，commit `7d9f603`，待 owner review）**：
   - 收口 A 两项 P2：`HumanCompletionContextV1` / `human_runtime_match_record()` 收为
     `pub(crate)` 并移除 root re-export；request 注释改为「携带 identity claims，但不携带
     league authority context」，不再声称请求里没有 participant id / manifest hash。
