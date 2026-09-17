@@ -19,6 +19,9 @@
 //! The HTTP client is hand-rolled over `std::net` on purpose: this repository has
 //! no web stack, and a read-only API gate is not a reason to acquire one.
 
+#[path = "human_league/gates.rs"]
+mod human_league;
+
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};

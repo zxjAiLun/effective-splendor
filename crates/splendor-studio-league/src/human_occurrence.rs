@@ -242,7 +242,7 @@ pub fn parse_human_runtime_occurrence(bytes: &[u8]) -> Result<Option<HumanRuntim
 ///
 /// Supplied by the completion outlet, which owns the league connection — this
 /// module never sees a `rusqlite::Connection`.
-pub struct HumanCompletionContextV1<'a> {
+pub(crate) struct HumanCompletionContextV1<'a> {
     /// The league's local human participant id (`local_human_participant`).
     pub local_human_participant_id: Option<&'a str>,
     /// The league's stored identity manifest hash.
@@ -262,7 +262,7 @@ pub struct HumanCompletionContextV1<'a> {
 /// * the **engine** seat carries the handshake runtime identity and a resolved
 ///   policy key — resolved exactly as the arena path resolves it, through the
 ///   one shared resolver.
-pub fn human_runtime_match_record(
+pub(crate) fn human_runtime_match_record(
     occurrence: &HumanRuntimeOccurrenceV1,
     replay_bytes: &[u8],
     context: &HumanCompletionContextV1<'_>,

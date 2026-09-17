@@ -1,11 +1,14 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGNED` / `AUTHORIZED`（设计冻结；**Slice A 已 IMPLEMENTED / VERIFIED 本地，待 owner 复审**；D1–D9 与验收数字冻结）
+- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地，待 owner review）；Slice C NOT AUTHORIZED**（D1–D9 与验收数字冻结）
   - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
     本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
     `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
     P2-1 handshake provenance 拆分 producer/completion 两层。详见「Iteration log」。
-  - Slice A **已 IMPLEMENTED / VERIFIED（本地）**，见「Iteration log」；Slice B / C 仍未授权。
+  - Slice A owner 复审通过（P0=0 / P1=0 / P2=2）；两项 visibility/comment P2 随 B 收口。
+  - B 基线核验：`main == origin/main == 7ce921bae41a3df44f457e8469299ae208c28b0f`，clean。
+    A 的实际 direct parent 是 `5ac93f5`，A-only diff 为 `5ac93f5..7ce921b`（6 files）；
+    `e081d55..7ce921b` 还含独立教学提交 `527bc19` / `5ac93f5`，不可称为 A-only。
 - **Baseline**: `dba11dd`（`main == origin/main`，工作树干净）。前一轮
   League Play Page v1 / Real-Scale Walkthrough Repair 已 `ACCEPTED / CLOSED`
   （`38292a1` 裁决 + `dba11dd` 关闭记录）。
@@ -305,7 +308,7 @@ opponent runtime_name / runtime_version 非空
 occurrence evidence hash 自洽
 ```
 
-訁诚实边界（P2 明写）：完成侧只剩 `occurrence.json + replay.json`，**不可能重新证明**
+诚实边界（P2 明写）：完成侧只剩 `occurrence.json + replay.json`，**不可能重新证明**
 “runtime_name/version 真的来自一次成功握手”——没有 handshake transcript。
 Completion **不**重新读 registry、**不**重新握手；“来自成功握手”是受信 Host producer
 对 occurrence envelope 的 durable attestation。这与 Arena 路径的信任模型一致。
@@ -526,7 +529,7 @@ UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/De
     “来自成功握手”是 Host producer 对 envelope 的 durable attestation。
   - **裁决**：`e081d55 — DESIGN ACCEPTED`；`Slice A AUTHORIZED`（P0=0 / P1=0）。
 
-- **Slice A（当前版本，IMPLEMENTED / VERIFIED 本地）**：按 owner 划定范围只做
+- **Slice A（交付时记录：IMPLEMENTED / VERIFIED 本地；后获 owner ACCEPTED @ `7ce921b`）**：按 owner 划定范围只做
   completion/evidence 四件，未碰 Host producer / 磁盘 retry / UI / 路由：
   - **A1 共享 resolver**：`agent_configuration.rs` 新增 **公共**
     `resolve_policy_identity(program, args)`，把原私有 `resolve_seat_identity()` 的全部逻辑
@@ -569,7 +572,73 @@ UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/De
     `HumanSessionState.league_completion`、`/play` UI、Host vertical gate、Gate H 编排 seam。
     （A1 的共享 resolver 已为 Slice B 的 `RegisteredOpponent` 冻结身份就绪，但 Session freezing 属 B。）
 
+- **Slice B（2026-09-18，IMPLEMENTED / VERIFIED 本地，待 owner review）**：
+  - 收口 A 两项 P2：`HumanCompletionContextV1` / `human_runtime_match_record()` 收为
+    `pub(crate)` 并移除 root re-export；request 注释改为「携带 identity claims，但不携带
+    league authority context」，不再声称请求里没有 participant id / manifest hash。
+  - Host clone 已验证 selected entry，`HumanGameAuthority::freeze()` 从严格 manifest load
+    取得 local human/hash，从共享 resolver 取得 exact policy；**不打开 DB**。同一 selected
+    entry 传入 `RegisteredOpponent::start()`，握手成功后才把 rated authority 安装进 Session。
+    移除 Host 的 `registry_path`；console 注册对手仍 load 一次，`rated=None`。
+  - Human filesystem orchestration 单列为 `human_runtime_orchestration.rs`，而非挤进现有
+    Arena 四件套模块；两者共用 atomic publisher 与 receipt serializer，不共享 evidence 类型。
+    这是文件布局偏离，不新增 completion authority。
+  - 终局保存 verified replay / terminal state 后，先原名写 legacy replay/meta，再原子、
+    no-overwrite 发布 Human replay/envelope（envelope LAST），最后调 disk-only completion。
+    **实际旧 meta 文件名是 `<id>.replay.meta.json`**（`with_extension("meta.json")`），
+    保持 writer/reader 原约定；D8 的 `<session>.meta.json` 是早期简写，不应据此改名。
+  - 修复同路径的终局错误顺序：原 recorder 已 take、IO 失败后 state 尚未保存，后续 `/state`
+    可 panic；现在先持有 terminal state，legacy / occurrence publication 失败返回完成的
+    `result` + `league_completion.failed`，不声称 evidence 已保存、不自动重建 evidence。
+    终局通知 Agent 失败只记录日志，不能抹掉已由 recorder 确认的终局；非终局协议错误仍报错。
+  - 首轮 7 条新 Host gate 全绿。补第 8 条 manifest 中途变化 gate 后，曾错误预期「恢复
+    manifest 即能入账」；实测 opener 已将替换身份投影到空 DB，既有 local-human guard
+    拒绝再次换人，要求 rebuild。**修正测试的错误预期，保留 production guard**：证据仍是
+    开局身份、0 match / 0 events、恢复 manifest 后依然 nonretryable/rebuild required。
+  - 第一次 CLI 全套在未改动的 `imperfect_search_cli` 两条 gate 失败：PID 37768 重用旧
+    TEMP 产物（两文件 mtime `2026-09-17 19:58:25`），no-overwrite 正确拒绝。未删旧文件、
+    未改旧 gate；每轮提供独立 TEMP/TMP 后该 target 7/7，最终整个 CLI 296/0/3 ignored。
+  - 更正 A 记录中的证据强度：「计数未变」本身不能推出所有 Arena 行为未变；依据是既有
+    suite 的实际 PASS 与 inspected diff。全部结果仍是本地执行，不是独立 CI。
+
 ---
+
+## Final implementation — Slice B
+
+生产链为：
+
+```text
+POST /games {agent_id,human_seat,seed}
+→ authored human identity + selected command/policy freeze（不依赖 DB 可用）
+→ exact selected entry spawn / handshake
+→ Session{rated:Some(...)}
+→ real actions → verified terminal replay
+→ legacy replay + meta（sync + atomic no-overwrite）
+→ Human replay.json → occurrence.json LAST
+→ complete_persisted_human_occurrence(..., expected_session_id)
+→ existing complete_human_runtime_occurrence → shared completion tail
+```
+
+`HumanOccurrenceSlot`：空目录/不存在为 Empty；只有两个普通文件且合法 Human envelope
+为 Complete（replay 的内容验证归 completion）；partial、外来文件、非普通文件或检查失败
+为 Ambiguous。拒绝已有 slot，不把 Arena 四件套当 Human，不把 partial 当可重跑。
+
+API 增量：
+
+- `HumanSessionState.league_completion` 非终局/console 为 `null`；终局为
+  `{status, retryable, receipt, error}`。`POST /action` 的成功对局响应仍为 **200**，
+  即使 booking 失败；客户端必须独立看 `result` 与 `league_completion`。
+- 空 body `POST /games/<session_id>/league-completion` 返回
+  `{session_id, league_completion}`；不要求当前 Session 存在，不依赖原 registry/Agent。
+  非空 body / 不安全 id = **400**；无 durable slot = **404**；ambiguous、identity、
+  policy、source conflict、canonical-tail = **409 / retryable=false**；DB/IO completion
+  错误 = **503 / retryable=true**（只是允许再 offer，不保证恢复）；inserted/already_present
+  = **200 / retryable=false**。`expected_session_id` 不等在打开 completion 之前拒绝。
+- 成功补账更新同 ID 活跃 terminal Session 的状态；初次 Human 入账后若 reader 原先不可用，
+  复用现有 reopen helper，让榜单马上可读。未添加 raw SQL、archive root 或第二评分出口。
+- legacy 或 occurrence 发布失败为 `failed / retryable=false`，因为不能证明完整 durable
+  evidence 存在；API 不用内存补造 envelope。`replay_ready` 仍只表示内存 replay 可读，
+  **不等价于磁盘已保存**，C 的文案不得混淆。
 
 ## Scope and non-goals
 
@@ -627,6 +696,61 @@ targeted tests
 ```
 
 ## Validation and evidence
+
+### Slice B executed checks（2026-09-18，本地，非 cloud CI）
+
+最终命令在独立 `TEMP` / `TMP` 下执行（完整环境路径写入本地 `validation.json`）：
+
+| Command | Exit | Result |
+|---|---:|---|
+| `cargo check -p splendor-cli --bin splendor` | 0 | PASS |
+| `cargo test -p splendor-studio-league` | 0 | **100 passed / 0 failed**，10 targets |
+| `cargo test -p splendor-cli` | 0 | **296 passed / 0 failed / 3 ignored**，45 targets |
+| `rustfmt --edition 2021 --config skip_children=true <8 touched Rust files>` | 0 | PASS，仅 touched files |
+| `git diff --check` | 0 | PASS |
+
+CLI 增量 **+8 Host gates**（`tests/human_league/gates.rs`，复用 `league_host_api.rs`
+fixture，不增 binary target）；既有 Host 15 + Human 8 = **23/23**。覆盖：
+
+1. 两个 human seats 各真实 `/games → /action → terminal`，1 match / 2 events、Human
+   恰 1 event、Elo 非 NULL；legacy 两文件逐字节保留、旧 replay/recent API 和榜单可读；
+   **在开局之前破坏磁盘 registry**仍成功，证明 Host 使用已验证快照而非 reread。
+2. DB 在开局前不可用，identity 有效可开局；终局 result 正常且 evidence durable；Host
+   重启、原 Agent exe 删除、registry 去掉原 entry 后仍可补账。篡改磁盘 replay 则拒绝，
+   恢复原字节后 Inserted，再 offer AlreadyPresent / 0 new events。
+3. **Gate H**：真实旧 Human pending → 更晚真实 Arena 入账 → 两次 retry 旧局均
+   409 / failed / retryable=false / canonical+rebuild；始终 1 match / 2 events，原证据不变。
+4. 非空 body、不安全 id、missing/partial/foreign/non-file slot、把合法证据复制到另一个
+   session slot、同 source 改 timestamp，全部拒绝；计数不变。
+5. missing / corrupt / 无 local-human manifest、unresolved policy、handshake 不匹配均
+   禁止开局；客户端多带 participant/policy/runtime/command/result/replay 均 400。
+6. legacy meta 路径被目录占用 / occurrence replay 已存在：终局仍可读，0 match / 0 events，
+   不覆盖已有 evidence；legacy 失败时 League slot 根本未创建。
+7. 对局中换 manifest：durable claims 仍为开局身份；completion 不把它归给新身份；恢复
+   manifest 不绕开既有 DB identity guard（仍失败，rebuild required）。
+8. console in-process 与 console registered 两条真实终局都 `league_completion=null`，
+   cwd 即隔离 League 的 project root，始终 0 match / 0 events、无 occurrence。
+
+四组**真实变异负向对照**（每组恰 1 个 targeted gate FAIL / exit 101）：去掉 requested-ID
+绑定、把 Invalid 一律设 retryable、跳过 evidence publication、中途重新读取 Human 身份。
+每次从 patched-state byte backup 恢复并断言字节一致，全部恢复后才跑最终全套。
+这些分别证明对应的绑定/分类/持久化必要性/冻结身份门会咬住变异；**不冒充 OS 掉电测试、
+全故障矩阵或独立 review**。本轮没有 UI 改动，未重跑 app suite、未进行真人验收。
+
+Local artifact root：`local-artifacts/studio-league/hll-b/`（ignored）。
+
+| Artifact | SHA-256 |
+|---|---|
+| `league-final.log` | `062efc007fc6f4d2d67ff5e2a81bc0f1602355c298503507ebf067359b16aa70` |
+| `cli-final.log` | `1cb964099c3c7bd5cf2c5ba0b664a13598b099c18ecabf74982e7cf04f680dd4` |
+| `negative-controls.json` | `be103ad7cf8df7ed00bdbaf0c682e25000e695108b1c188d45f404282c5adc04` |
+| `validation.json` | `6124cee5c6727f355b664362efa6d9d613f0fbedb1bb1242ad8a99508f960db8` |
+| `real-league-read-only-check.json` | `521cd4d2cb09a6709c0c0e047524f6965b7aceb2aea2b6728f53aa1cef9136e5` |
+
+失败日志亦保留在同目录：`hll-b-cli-full.log`（旧 TEMP 冲突）、
+`hll-b-cli-isolated-full.log`（新增 manifest 测试的错误恢复预期）、`nc-*.log`。
+真实库复查使用 SQLite URI **`mode=ro` + `PRAGMA query_only=ON`**：
+**42,522 matches / 28,012 events；You = 0 seats / 0 events / NULL Elo**，首局起点保留。
 
 ### 自动 Gates（不搞第二个大测试工程，不生成 42k fixture，不需要 browser runner）
 
@@ -709,6 +833,27 @@ exactly 2 events。
 
 ---
 
+## Result and decision
+
+**Slice B IMPLEMENTED / VERIFIED（本地），待 owner review；不是整轮 ACCEPTED。**
+评分/双 Engine/Human 审计已做（见下），没有以优化名义修改冻结范围。下一道门是审核 B 的
+实际 narrow diff；未获 C 授权前不改 UI，也不代替 owner 打真实首局。
+
+## Workflow audit — rating / two Engines / Human integration
+
+本节是 owner 请求的代码与本地 gate 审计，**不是性能 benchmark，也不授权新实现**。
+
+| Area | 已核实事实 | 处理与后续建议 |
+|---|---|---|
+| Elo 更新 | `ledger.rs::ingest_match_ordered` 的 IMMEDIATE transaction 原子更新比赛、两侧事件与 rating；`elo.rs::plan_pair_update` 共用 `splendor-eval` 算术，另一方 delta 为负值；相同 source+hash 先返回 AlreadyPresent | **不改 K=32 / initial=1500 或评分算法**。没有新证据说 Elo 算术是瓶颈；若调评分属于新协议/校准评估，不是本片优化。 |
+| Canonical pending | 新 runtime 必须晚于 canonical tail；Gate H 实证，重复 retry 不会治好顺序问题 | B 已诚实区分 nonretryable。将来如要提供 pending 列表/人工恢复，先设计含 Human evidence 的 canonical rebuild 与备份合同；不在本片自动重算、换 timestamp 或中插。 |
+| 两个 Engine 启动 | `ArenaRunner::run` 经 `spawn_agent` 为每席起独立进程；先向所有 seat 发 Hello，再设一个共同 handshake deadline；`AgentProcess` 有关闭与 Drop 回收 | 启动器两扇窗口是 **Host + UI**，不是两个 Engine 窗口。不可用「少启动一个进程」合并两席策略状态。进程池/复用仅在量到 spawn/model-load 占比后考虑，并先证明 reset/RNG/协议隔离；本片不改。 |
+| Host 阻塞 | 接收循环串行；一盘 Agent-vs-Agent POST 及 completion 的 DB 等待会占住 Host | 限制仍在。不为了提速开 worker/concurrency；将来先分段测 spawn/handshake/decision/publish/ingest，再按 owner 授权优化。 |
+| Human 生命周期 | 之前 registry 重读与终局 IO 状态丢失风险确实位于本片生产路径 | **B 已修**：同 entry freeze→spawn→handshake；terminal fact 在 IO 前保存；durable-first 与 disk retry。不能用显示名替代身份，不能用内存补账。 |
+| Timeout 一致性 | Arena 使用 Host 的 handshake/shutdown 配置；旧 Human `RegisteredOpponent` 仍固定 handshake **30s** / shutdown grace **1s**，仅 move timeout 由参数传入 | **DEFERRED，未改行为**。可另做配置贯通的小片，须同时覆盖 console 默认行为和 Host 覆盖值；不是这次身份/证据 gate 的前置条件。 |
+| 路径与旧消费者 | League 取 explicit project root；legacy human replay/recent/review 仍沿用进程 cwd 的 `local-artifacts/m20-human-play` | 有意保持兼容，launcher 本来把 cwd 指向项目。将来若统一路径，必须把所有旧 reader/writer 一起改，不能单改 publisher。 |
+| `/play` 展示 | B 只增加 API booking fact；当前页面还没有 Rated/Elo/Retry 展示 | **C 仍未授权**。下一片 UI 要按 status/error 的事实渲染，不能从 retryable 推断「一定未入账」或「一定可恢复」。 |
+
 ## Known limitations
 
 1. **只覆盖 Studio Host browser /play**：console casual 路径本就没有 League 语义，
@@ -725,10 +870,10 @@ exactly 2 events。
 
 ## Next authorized gate
 
-1. owner 复核本 design-only commit；
-2. 授权后按 **Slice A → B → C** 实现，每片一个窄 commit；
-3. Slice C 完成后执行上面的人工验收数字与 8 项人工确认；
-4. 通过后在本文件与 `handoff.md` 记录 `ACCEPTED / CLOSED`。
+1. owner 复核 Slice B 的实际 narrow commit/diff 与本地验证证据；
+2. B 通过后再由 owner 授权 **Slice C**（当前未授权）；
+3. Slice C 获授权并完成后执行上面的真人验收（B 自动测试不替代人工验收）；
+4. 通过后才在本文件与 `handoff.md` 记录整轮 `ACCEPTED / CLOSED`。
 
 ---
 

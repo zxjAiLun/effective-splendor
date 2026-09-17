@@ -198,10 +198,10 @@ pub fn complete_runtime_occurrence(
 
 /// One finished human-play game offered to the completion outlet.
 ///
-/// The request is the durable human occurrence plus the replay it attests to.
-/// It deliberately carries **no** league-derived fact (no participant id, no
-/// manifest hash) and no caller-built record: the outlet reads those from the
-/// league it holds, so a producer cannot name its own human identity.
+/// The request carries identity claims in its occurrence (participant id and
+/// manifest hash), but no authoritative league context or caller-built record.
+/// The outlet reads the authority from its own league and requires those claims
+/// to match it; a producer cannot choose the league's human identity.
 pub struct HumanCompletionRequestV1<'a> {
     pub occurrence: &'a HumanRuntimeOccurrenceV1,
     pub replay_bytes: &'a [u8],

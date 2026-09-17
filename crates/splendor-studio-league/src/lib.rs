@@ -64,8 +64,7 @@ pub use historical_import::{
     RUNTIME_OCCURRENCE_VERSION,
 };
 pub use human_occurrence::{
-    human_runtime_match_record, human_runtime_occurrence_evidence_hash,
-    parse_human_runtime_occurrence, HumanCompletionContextV1, HumanOccurrenceHumanV1,
+    human_runtime_occurrence_evidence_hash, parse_human_runtime_occurrence, HumanOccurrenceHumanV1,
     HumanOccurrenceOpponentV1, HumanRuntimeOccurrenceV1, HUMAN_PLAY_SOURCE_KIND,
     HUMAN_RUNTIME_OCCURRENCE_FORMAT, HUMAN_RUNTIME_OCCURRENCE_VERSION,
 };

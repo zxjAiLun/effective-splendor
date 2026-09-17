@@ -13,6 +13,7 @@ mod eval_command;
 mod evaluation_analysis_command;
 pub mod experiment_replays;
 mod human_play_command;
+mod human_runtime_orchestration;
 mod imperfect_search_command;
 mod league_command;
 mod learning_command;

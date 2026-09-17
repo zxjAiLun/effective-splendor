@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{Ipv4Addr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -23,7 +23,7 @@ use splendor_core::{
     GameResult, Observation, PlayerId, RefereeEvent, VisibleEvent, CATALOG_VERSION, ENGINE_VERSION,
 };
 use splendor_determinization_agent::DeterminizationAgentPolicyV1;
-use splendor_eval::RatingRegistryV1;
+use splendor_eval::{RatedAgentV1, RatingRegistryV1};
 use splendor_imperfect_search::RootDeterminizationConfigV1;
 use splendor_learning::PolicyValueCheckpointV1;
 use splendor_protocol::{
@@ -35,10 +35,14 @@ use splendor_replay::{
 };
 use splendor_search::{canonical_order, SearchConfigV1};
 use splendor_studio_league::{
-    open_studio_league_reader, CompletionOutcomeV1, IngestOutcome, StudioLeaguePathsV1,
-    StudioLeagueReaderV1,
+    now_epoch_seconds, open_studio_league_reader, CompletionOutcomeV1, IngestOutcome,
+    StudioLeaguePathsV1, StudioLeagueReaderV1,
 };
 
+use crate::human_runtime_orchestration::{
+    complete_persisted_human_occurrence, human_occurrence_slot, publish_human_evidence,
+    HumanGameAuthority, HumanLeagueCompletion, HumanOccurrenceEvidence, HumanOccurrenceSlot,
+};
 use crate::runtime_orchestration::{
     complete_persisted_occurrence, completion_receipt_json, occurrence_slot, produce_and_complete,
     OccurrenceEvidence, OccurrenceSlotV1, RuntimeOrchestrationError, RuntimeOrchestrationOutcome,
@@ -92,8 +96,7 @@ struct RegisteredOpponent {
 impl RegisteredOpponent {
     #[allow(clippy::too_many_arguments)]
     fn start(
-        registry_path: &PathBuf,
-        agent_id: &str,
+        selected: &RatedAgentV1,
         seat: PlayerId,
         game_id: &str,
         seed: u64,
@@ -101,20 +104,9 @@ impl RegisteredOpponent {
         setup_events: &[RefereeEvent],
         move_timeout_ms: u64,
     ) -> Result<Self, String> {
-        let bytes = fs::read(registry_path).map_err(|error| {
-            format!(
-                "cannot read rating registry {}: {error}",
-                registry_path.display()
-            )
-        })?;
-        let registry: RatingRegistryV1 = serde_json::from_slice(&bytes)
-            .map_err(|error| format!("invalid rating registry JSON: {error}"))?;
-        registry.validate()?;
-        let selected = registry
-            .agents
-            .iter()
-            .find(|agent| agent.id == agent_id)
-            .ok_or_else(|| format!("agent id `{agent_id}` is not in the rating registry"))?;
+        // The Host passes the exact entry whose evidence it froze. No second
+        // registry read is allowed between selection and spawning.
+        let agent_id = &selected.id;
         let (tx, rx) = mpsc::channel();
         let mut process = spawn_agent(seat, &selected.command, tx)
             .map_err(|error| format!("cannot spawn registered agent `{agent_id}`: {error}"))?;
@@ -522,6 +514,7 @@ struct HumanSessionState {
     result: Option<GameResult>,
     replay_ready: bool,
     replay_document_hash: Option<String>,
+    league_completion: Option<HumanLeagueCompletion>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -539,6 +532,8 @@ struct Session {
     replay: Option<ReplayV1>,
     replay_hash: Option<String>,
     replay_out: PathBuf,
+    rated: Option<HumanGameAuthority>,
+    league_completion: Option<HumanLeagueCompletion>,
     frames: Vec<HumanReplayFrameV1>,
     opponent: Opponent,
     opponent_rng: StableRng,
@@ -574,8 +569,17 @@ impl Session {
             .apply(action)
             .map_err(|error| error.to_string())?;
         self.ply = self.ply.checked_add(1).ok_or("ply overflow")?;
-        self.opponent.send_visible_events(&self.id, &step.events)?;
-        self.finish_if_terminal()
+        let notification = self.opponent.send_visible_events(&self.id, &step.events);
+        // A process exiting while receiving GameEnd cannot erase a game the
+        // recorder has already completed. Finalize even if that notification fails.
+        if self.state().is_terminal() {
+            if let Err(error) = notification {
+                eprintln!("terminal notification: {error}");
+            }
+            self.finish_if_terminal()
+        } else {
+            notification
+        }
     }
 
     fn finish_if_terminal(&mut self) -> Result<(), String> {
@@ -588,32 +592,35 @@ impl Session {
         }
         let recorder = self.recorder.take().expect("terminal recorder exists");
         let (state, replay) = recorder.finish().map_err(|error| error.to_string())?;
+        let completed_at = now_epoch_seconds();
+        // Keep the terminal fact BEFORE any fallible persistence. Otherwise an
+        // IO error after recorder.take() leaves /state with neither state owner.
+        self.terminal_state = Some(state);
         verify_replay(&replay)
             .map_err(|error| format!("recorded replay failed verification: {error}"))?;
-        let replay_hash = replay_document_hash_v1(&replay).map_err(|error| error.to_string())?;
-        if let Some(parent) = self.replay_out.parent() {
-            fs::create_dir_all(parent).map_err(|error| {
-                format!(
-                    "cannot create replay directory {}: {error}",
-                    parent.display()
-                )
-            })?;
-        }
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&self.replay_out)
-            .map_err(|error| {
-                format!(
-                    "cannot create replay {} without overwrite: {error}",
-                    self.replay_out.display()
-                )
-            })?;
-        serde_json::to_writer_pretty(&mut file, &replay)
-            .map_err(|error| format!("cannot serialize replay: {error}"))?;
-        file.write_all(b"\n")
-            .map_err(|error| format!("cannot finish replay file: {error}"))?;
+        self.replay_hash =
+            Some(replay_document_hash_v1(&replay).map_err(|error| error.to_string())?);
+        self.replay = Some(replay);
+        self.opponent.shutdown();
 
+        let persisted = self.persist_terminal(completed_at);
+        match (&self.rated, persisted) {
+            (_, Ok(completion)) => self.league_completion = completion,
+            (Some(_), Err(error)) => {
+                // No claim that durable evidence exists when publication failed.
+                self.league_completion = Some(HumanLeagueCompletion::failed(error, false));
+            }
+            (None, Err(error)) => return Err(error),
+        }
+        Ok(())
+    }
+
+    fn persist_terminal(&self, completed_at: i64) -> Result<Option<HumanLeagueCompletion>, String> {
+        let replay = self.replay.as_ref().expect("verified terminal replay");
+        let replay_json = format!(
+            "{}\n",
+            serde_json::to_string_pretty(replay).map_err(|e| e.to_string())?
+        );
         let meta = serde_json::json!({
             "format": "effective-splendor-human-meta",
             "version": 1,
@@ -621,28 +628,48 @@ impl Session {
             "opponent": self.opponent.label(),
             "human_seat": self.human_seat.0,
         });
-        let meta_path = self.replay_out.with_extension("meta.json");
-        let mut meta_file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&meta_path)
-            .map_err(|error| {
-                format!(
-                    "cannot create meta {} without overwrite: {error}",
-                    meta_path.display()
-                )
+        if let Some(parent) = self
+            .replay_out
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+        {
+            fs::create_dir_all(parent).map_err(|e| {
+                format!("legacy replay directory failed; no completion attempted: {e}")
             })?;
-        serde_json::to_writer_pretty(&mut meta_file, &meta)
-            .map_err(|error| format!("cannot serialize meta: {error}"))?;
-        meta_file
-            .write_all(b"\n")
-            .map_err(|error| format!("cannot finish meta file: {error}"))?;
+        }
+        let meta_json = format!("{meta:#}\n");
+        crate::atomic_output::commit_completed_with(
+            &self.replay_out,
+            &replay_json,
+            &self.replay_out.with_extension("meta.json"),
+            &meta_json,
+            crate::atomic_output::publish_new,
+        )
+        .map_err(|e| {
+            format!("legacy replay/meta publication failed; no completion attempted: {e}")
+        })?;
 
-        self.terminal_state = Some(state);
-        self.replay = Some(replay);
-        self.replay_hash = Some(replay_hash);
-        self.opponent.shutdown();
-        Ok(())
+        let Some(rated) = &self.rated else {
+            return Ok(None);
+        };
+        let dir = rated
+            .paths
+            .occurrence_dir(&self.id)
+            .map_err(|e| e.to_string())?;
+        let evidence = HumanOccurrenceEvidence::in_dir(&dir);
+        let occurrence = rated.occurrence(
+            &self.id,
+            self.human_seat.0,
+            replay,
+            replay_json.as_bytes(),
+            completed_at,
+        );
+        publish_human_evidence(&evidence, &occurrence, &replay_json)
+            .map_err(|e| format!("legacy replay/meta saved, but human evidence publication failed; no completion attempted: {e}"))?;
+        // The initial completion and every retry share this disk-only path.
+        Ok(Some(HumanLeagueCompletion::from_result(
+            complete_persisted_human_occurrence(&evidence, &rated.paths, &self.id),
+        )))
     }
 
     fn advance_opponent(&mut self) -> Result<(), String> {
@@ -698,6 +725,7 @@ impl Session {
             result: state.result.clone(),
             replay_ready: self.replay.is_some(),
             replay_document_hash: self.replay_hash.clone(),
+            league_completion: self.league_completion.clone(),
         }
     }
 
@@ -873,7 +901,6 @@ struct StudioHost {
     /// for a match. The reader keeps its own copy private, and no handler may
     /// re-derive a league location from the cwd.
     paths: StudioLeaguePathsV1,
-    registry_path: PathBuf,
     registry: RatingRegistryV1,
     reviewer_registry: ReviewerRegistryV1,
     handshake_timeout_ms: u64,
@@ -913,17 +940,19 @@ impl StudioHost {
         if request.human_seat > 1 {
             return Err("human_seat must be 0 or 1".into());
         }
-        if !self
+        let selected = self
             .registry
             .agents
             .iter()
-            .any(|agent| agent.id == request.agent_id)
-        {
-            return Err(format!(
-                "agent id `{}` is not in the Studio registry",
-                request.agent_id
-            ));
-        }
+            .find(|agent| agent.id == request.agent_id)
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "agent id `{}` is not in the Studio registry",
+                    request.agent_id
+                )
+            })?;
+        let rated = HumanGameAuthority::freeze(&self.paths, &self.registry.registry_id, &selected)?;
         let session_number = self.next_session_number;
         self.next_session_number = self
             .next_session_number
@@ -932,11 +961,11 @@ impl StudioHost {
         let session = build_registered_session(
             request.seed,
             request.human_seat,
-            &self.registry_path,
-            &request.agent_id,
+            &selected,
             self.move_timeout_ms,
             None,
             Some(session_number),
+            Some(rated),
         )?;
         self.session = Some(session);
         Ok(self
@@ -944,6 +973,57 @@ impl StudioHost {
             .as_ref()
             .expect("session was installed")
             .snapshot())
+    }
+
+    /// Empty-body, disk-only retry. Works after restart and without the old
+    /// registry entry or executable. An absent/ambiguous slot never starts a game.
+    fn retry_human_completion(
+        &mut self,
+        session_id: &str,
+        body: &[u8],
+    ) -> (u16, serde_json::Value) {
+        if !body.is_empty() {
+            return (
+                400,
+                serde_json::json!({"error": "league-completion requires an empty body"}),
+            );
+        }
+        let dir = match self.paths.occurrence_dir(session_id) {
+            Ok(dir) => dir,
+            Err(e) => return (400, serde_json::json!({"error": e.to_string()})),
+        };
+        let evidence = HumanOccurrenceEvidence::in_dir(&dir);
+        let completion = match human_occurrence_slot(&evidence) {
+            HumanOccurrenceSlot::Empty => {
+                return (
+                    404,
+                    serde_json::json!({"error": "no durable human occurrence evidence"}),
+                )
+            }
+            HumanOccurrenceSlot::Ambiguous(error) => HumanLeagueCompletion::failed(error, false),
+            HumanOccurrenceSlot::Complete => HumanLeagueCompletion::from_result(
+                complete_persisted_human_occurrence(&evidence, &self.paths, session_id),
+            ),
+        };
+        let code = match (completion.status, completion.retryable) {
+            ("failed", true) => 503,
+            ("failed", false) => 409,
+            _ => 200,
+        };
+        if let Some(session) = self
+            .session
+            .as_mut()
+            .filter(|s| s.id == session_id && s.state().is_terminal())
+        {
+            session.league_completion = Some(completion.clone());
+        }
+        if completion.status != "failed" {
+            self.reopen_read_session_if_unavailable();
+        }
+        (
+            code,
+            serde_json::json!({"session_id": session_id, "league_completion": completion}),
+        )
     }
 
     /// Reviewer discovery is player-count aware for the current replay: when
@@ -1604,13 +1684,15 @@ fn serve(args: &[String]) -> Result<(), String> {
 fn build_session(args: &Args) -> Result<Session, String> {
     if let (None, Some(registry), Some(agent_id)) = (&args.opponent, &args.registry, &args.agent_id)
     {
+        // Standalone registry games load once too, but never acquire rated authority.
+        let selected = load_standalone_agent(registry, agent_id)?;
         return build_registered_session(
             args.seed,
             args.human_seat,
-            registry,
-            agent_id,
+            &selected,
             args.move_timeout_ms,
             args.replay_out.clone(),
+            None,
             None,
         );
     }
@@ -1680,19 +1762,6 @@ fn build_session(args: &Args) -> Result<Session, String> {
                 "--opponent must be s3 (or s3-rollout/default), heuristic (or fast), or m07".into(),
             )
         }
-        (None, Some(registry_path), Some(agent_id)) => (
-            Opponent::Registered(RegisteredOpponent::start(
-                registry_path,
-                agent_id,
-                PlayerId(1 - args.human_seat),
-                &id,
-                args.seed,
-                recorder.state(),
-                &_setup.events,
-                args.move_timeout_ms,
-            )?),
-            args.seed ^ 0xa5a5_5a5a,
-        ),
         _ => {
             return Err(
                 "choose --opponent <s3|s3-rollout|default|heuristic|fast|m07> or --registry <path> --agent-id <id> (defaults to s3)"
@@ -1713,6 +1782,8 @@ fn build_session(args: &Args) -> Result<Session, String> {
         replay: None,
         replay_hash: None,
         replay_out,
+        rated: None,
+        league_completion: None,
         frames: Vec::new(),
         opponent,
         opponent_rng: StableRng::new(opponent_rng_seed),
@@ -1723,19 +1794,48 @@ fn build_session(args: &Args) -> Result<Session, String> {
     Ok(session)
 }
 
+fn load_standalone_agent(registry_path: &Path, agent_id: &str) -> Result<RatedAgentV1, String> {
+    let bytes = fs::read(registry_path).map_err(|e| {
+        format!(
+            "cannot read rating registry {}: {e}",
+            registry_path.display()
+        )
+    })?;
+    let registry: RatingRegistryV1 =
+        serde_json::from_slice(&bytes).map_err(|e| format!("invalid rating registry JSON: {e}"))?;
+    registry.validate()?;
+    registry
+        .agents
+        .into_iter()
+        .find(|agent| agent.id == agent_id)
+        .ok_or_else(|| format!("agent id `{agent_id}` is not in the rating registry"))
+}
+
+#[allow(clippy::too_many_arguments)]
 fn build_registered_session(
     seed: u64,
     human_seat: u8,
-    registry: &PathBuf,
-    agent_id: &str,
+    selected: &RatedAgentV1,
     move_timeout_ms: u64,
     replay_out: Option<PathBuf>,
     session_number: Option<u64>,
+    rated: Option<HumanGameAuthority>,
 ) -> Result<Session, String> {
     let id = match session_number {
         Some(number) => format!("human-{seed}-{human_seat}-{}-{number}", std::process::id()),
         None => format!("human-{seed}-{human_seat}-{}", std::process::id()),
     };
+    if let Some(authority) = &rated {
+        let dir = authority
+            .paths
+            .occurrence_dir(&id)
+            .map_err(|e| e.to_string())?;
+        if human_occurrence_slot(&HumanOccurrenceEvidence::in_dir(&dir))
+            != HumanOccurrenceSlot::Empty
+        {
+            return Err("human occurrence id already has evidence; no game was started".into());
+        }
+    }
     let (recorder, setup) = ReplayRecorder::new_with_setup(GameConfig {
         player_count: 2,
         seed,
@@ -1744,8 +1844,7 @@ fn build_registered_session(
     .map_err(|error| format!("cannot create replay recorder: {error}"))?;
     let opponent_seat = PlayerId(1 - human_seat);
     let opponent = Opponent::Registered(RegisteredOpponent::start(
-        registry,
-        agent_id,
+        selected,
         opponent_seat,
         &id,
         seed,
@@ -1766,6 +1865,8 @@ fn build_registered_session(
         replay: None,
         replay_hash: None,
         replay_out,
+        rated,
+        league_completion: None,
         frames: Vec::new(),
         opponent,
         opponent_rng: StableRng::new(seed ^ 0xa5a5_5a5a),
@@ -1821,7 +1922,6 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
         league,
         league_error,
         paths: league_paths,
-        registry_path: args.registry,
         registry,
         reviewer_registry,
         handshake_timeout_ms: args.handshake_timeout_ms,
@@ -2394,6 +2494,18 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
             };
             return respond_league_write(&mut stream, write);
         }
+        "POST"
+            if request.path.starts_with("/games/")
+                && request.path.ends_with("/league-completion") =>
+        {
+            let session_id = request
+                .path
+                .strip_prefix("/games/")
+                .and_then(|rest| rest.strip_suffix("/league-completion"))
+                .unwrap_or_default();
+            let (code, body) = host.retry_human_completion(session_id, &request.body);
+            return respond(&mut stream, code, "application/json", &body.to_string());
+        }
         "GET" if request.path.starts_with("/replays/") => {
             let session_id = &request.path["/replays/".len()..];
             return respond_result(&mut stream, host.historical_replay(session_id));
@@ -2481,18 +2593,29 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
             .map_err(|error| format!("invalid new-game JSON: {error}"))
             .and_then(|value| host.new_game(value))
             .and_then(|state| serde_json::to_string(&state).map_err(|e| e.to_string())),
-        ("POST", "/action") => host
-            .session
-            .as_mut()
-            .ok_or_else(|| "no active game".to_string())
-            .and_then(|session| {
-                serde_json::from_slice::<Action>(&request.body)
-                    .map_err(|error| format!("invalid action JSON: {error}"))
-                    .and_then(|action| session.human_action(action))
-                    .and_then(|()| {
-                        serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())
-                    })
-            }),
+        ("POST", "/action") => {
+            let result = host
+                .session
+                .as_mut()
+                .ok_or_else(|| "no active game".to_string())
+                .and_then(|session| {
+                    serde_json::from_slice::<Action>(&request.body)
+                        .map_err(|error| format!("invalid action JSON: {error}"))
+                        .and_then(|action| session.human_action(action))
+                        .and_then(|()| {
+                            serde_json::to_string(&session.snapshot()).map_err(|e| e.to_string())
+                        })
+                });
+            if host
+                .session
+                .as_ref()
+                .and_then(|s| s.league_completion.as_ref())
+                .is_some_and(|c| c.status != "failed")
+            {
+                host.reopen_read_session_if_unavailable();
+            }
+            result
+        }
         ("GET", "/archive") => host
             .session
             .as_ref()
@@ -2752,6 +2875,8 @@ mod tests {
             replay: None,
             replay_hash: None,
             replay_out: PathBuf::from("unused-test-replay.json"),
+            rated: None,
+            league_completion: None,
             frames: Vec::new(),
             opponent: Opponent::InProcess {
                 label: "Heuristic baseline",
@@ -2928,7 +3053,6 @@ mod tests {
             league: None,
             league_error: None,
             paths: StudioLeaguePathsV1::resolve(None),
-            registry_path: PathBuf::from("private/registry.json"),
             registry,
             reviewer_registry: test_reviewer_registry(),
             handshake_timeout_ms: DEFAULT_HANDSHAKE_TIMEOUT_MS,
