@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>术语与数据流速查 · Splendor 学习室</title><link rel="stylesheet" href="../assets/learning.css"></head>
+<body><a class="skip" href="#main">跳到正文</a><header class="topbar"><a class="brand" href="../lessons/index.html">◆ Splendor 学习室</a><nav aria-label="主导航"><a href="../lessons/index.html">学习目标</a><a href="glossary.html">随手查</a><a href="research-map.html">研究地图</a></nav></header>
+<main id="main" class="wrap reading"><header class="hero"><p class="eyebrow">Reference / 不必一次背完</p><h1>把名词放回<br>它负责的那个环节</h1><p class="lede">忘了时来查。能用一个 Splendor 例子解释，比背出英文全称更重要。</p></header>
+<section id="flow"><h2>两条不要混在一起的流水线</h2><h3>正在下这一盘</h3><div class="flow"><span>裁判状态</span><b>→</b><span>玩家观察 + 合法行动</span><b>→</b><span>策略 / 模型 / 搜索</span><b>→</b><span>行动</span><b>→</b><span>环境结算</span></div><h3>正在改进下一版</h3><div class="flow"><span>采集对局</span><b>→</b><span>构造训练目标</span><b>→</b><span>预测与损失</span><b>→</b><span>更新参数</span><b>→</b><span>新 checkpoint</span><b>→</b><span>独立评估</span></div><p>Self-play 可以提供对局；PPO、搜索目标训练或 Q 学习规定不同的更新方式。实战选招中的 rollout 不自动触发训练。</p></section>
+<section id="decisions"><h2>观察与决策</h2><dl>
+<dt id="state">State / FullState · 完整状态</dt><dd>裁判持有的完整棋局，包括隐藏信息。项目 live agent 不得直接获得它。<a href="../lessons/0001-observation.html">目标 01</a></dd>
+<dt id="observation">Observation · 玩家观察</dt><dd>某一玩家被允许知道的局面。可见历史也可能影响判断；不要把观察当成完整世界。</dd>
+<dt id="action">Action / legal actions · 行动 / 合法集合</dt><dd>买、拿、预留等具体选择及参数。规则负责合法性，策略负责偏好。</dd>
+<dt id="policy">Policy · 策略</dt><dd>从观察/历史到行动或行动分布的决策规则。可以是人工规则，也可以是神经网络，并不天然意味着“训练过”。</dd>
+<dt id="heuristic">Heuristic · 启发式</dt><dd>人工设计的经验判断。项目 heuristic policy 与供搜索使用的 StaticEvaluator 不要混称。</dd>
+<dt id="inference">Inference · 模型推理</dt><dd>使用固定参数计算输出，不是更新参数。整个选招流程还可能调用搜索。<a href="../lessons/0005-inference.html">目标 05</a></dd>
+<dt id="search">Search / successor · 搜索 / 后继局面</dt><dd>试走候选行动，再比较后果。到不了终局时可能需要价值估计。n1 也是根行动执行后的静态评分，不是只看原局面。<a href="../lessons/0003-search.html">目标 03</a></dd>
+<dt id="determinization">Determinization · 隐藏世界采样</dt><dd>基于已知信息构造可能完整世界用于模拟。采样世界不是现实真相；模拟玩家仍需遵守视角边界。</dd>
+<dt id="ismcts">ISMCTS · 信息集蒙特卡洛树搜索</dt><dd>在隐藏信息问题中按可区分的信息组织搜索，而非把完整裁判状态直接变成玩家知识。<a href="../lessons/0004-hidden-worlds.html">目标 04</a></dd>
+<dt id="puct">Prior / visits / PUCT-like · 先验 / 访问次数 / 选择规则</dt><dd>神经 policy 可提供搜索先验；搜索反复访问行动并累积价值判断。PUCT-like 规则结合价值与按先验分配的探索。项目有具体整数化规则，并非本表另定义一种算法。</dd>
+<dt id="rollout">Rollout · 模拟续走 / 采集轨迹</dt><dd>语义依上下文：S3 是候选后的策略模拟；RL 文献也常用这个词指采集一段环境交互。看到它先问“在模拟选招，还是在收集训练数据？”</dd>
+</dl></section>
+<section id="learning"><h2>训练与强化学习</h2><dl>
+<dt id="parameters">Parameters / checkpoint · 参数 / 检查点</dt><dd>模型内可调整的数值，以及保存它们和必要身份/配置的产物。参数更新发生在训练，不是每次选招都发生。</dd>
+<dt id="loss">Target / loss / gradient · 目标 / 损失 / 梯度</dt><dd>想让模型预测什么、当前差多少、局部往哪里改参数。目标错误或不适合决策时，损失降低也可能不改善棋力。<a href="../lessons/0006-supervised-training.html">目标 06</a></dd>
+<dt id="selfplay">Self-play · 自博弈</dt><dd>由智能体相互交手生成经验的安排。它不是 PPO 的同义词；可以配不同训练目标。<a href="../lessons/0007-self-play.html">目标 07</a></dd>
+<dt id="reward">Reward / return · 奖励 / 回报</dt><dd>环境给的数值信号 / 一段未来奖励的累计（可带折扣）。Splendor prestige 与 RL reward 不自动相等，须看任务合同。</dd>
+<dt id="value">V / Q · 局面价值 / 行动价值</dt><dd>某种继续策略下的期望回报；Q 还指定当前行动。都不天然是“绝对正确的答案”，数值解释依奖励与视角而定。</dd>
+<dt id="advantage">Advantage · 优势估计</dt><dd>某次行动相对基准预期的好坏估计。不是这张牌的分数，也不是“一赢就全盘行动为正”。</dd>
+<dt id="gae">GAE · 广义优势估计</dt><dd>将不同时间跨度的 TD 误差加权混合来估计优势。gamma 和 lambda 角色不同。<a href="../lessons/0009-rl-credit.html">目标 09</a></dd>
+<dt id="actorcritic">Actor / critic · 行动策略 / 价值评估者</dt><dd>前者决定怎么选，后者提供价值/优势的估计依据。critic 预测更准未必足以让整个训练更强，M40A 就检验过这一点。</dd>
+<dt id="ppo">PPO · 近端策略优化</dt><dd>使用新旧行动概率比率与优势构建较保守的更新目标。Clipping 限制本样本的额外改进激励，不硬锁真实概率。<a href="../lessons/0010-ppo.html">目标 10：可调算例</a></dd>
+<dt id="onpolicy">On-policy / replay · 当前策略采集 / 经验回放</dt><dd>PPO 通常基于当前采集策略的一批新数据做有限更新；DQN 类方法可从回放缓冲中反复取历史转移。不同算法对数据来源与旧策略身份的要求不同。</dd>
+<dt id="dqn">Double-DQN / target network</dt><dd>在线网络选后续行动，目标网络给该行动估值，减少单一 max 估计的高估倾向。目标网络是计算目标的工具，不是人类正确答案。</dd>
+<dt id="c51">C51 / prioritized replay</dt><dd>用 51 个支点表示回报的概率分布 / 按优先级抽取历史转移。分布型（distributional）不等于多机器分布式（distributed）。<a href="../lessons/0011-double-dqn.html">目标 11</a></dd>
+<dt id="representation">Representation / pooling · 表示 / 池化</dt><dd>如何编码局面实体、再汇总它们。要保留颜色—需求等决策关系，而不只记总量。<a href="../lessons/0012-representation.html">目标 12</a></dd>
+<dt id="residual">Residual · 残差修正</dt><dd>保留基线，让模型学习补充修正；有可学的目标、模型学会了、实战受益是三件事。<a href="../lessons/0014-residual.html">目标 14</a></dd>
+</dl></section>
+<section id="evidence"><h2>研究证据</h2><div class="table-scroll"><table><thead><tr><th>你看到的证据</th><th>直接回答的问题</th><th>不能自动推出</th></tr></thead><tbody>
+<tr><td>Smoke / 实现检查</td><td>这条流程能执行吗？</td><td>棋力提高</td></tr>
+<tr><td>Held-out / 留出评估</td><td>未训练例子上拟合如何？</td><td>独立对战优势</td></tr>
+<tr><td>Counterfactual / 反事实</td><td>改变关键因素会怎样？</td><td>所有真实局面都理解了</td></tr>
+<tr><td>Ablation / 消融</td><td>拿掉某因素影响多大？</td><td>它是唯一原因</td></tr>
+<tr><td>Arena / 对战</td><td>冻结条件下对特定对手表现怎样？</td><td>全世界最强</td></tr>
+<tr><td>Confidence interval / 区间</td><td>测量不确定性有多大？</td><td>区间跨平手就是完全等强</td></tr>
+<tr><td>Valid negative / 有效负向</td><td>正确执行的方案没过哪道门？</td><td>所有相似算法永远无效</td></tr>
+</tbody></table></div></section>
+<section class="sources"><h2>查证入口</h2><ul><li><a href="https://spinningup.openai.com/en/latest/spinningup/rl_intro.html">OpenAI：基础定义</a>；<a href="https://spinningup.openai.com/en/latest/algorithms/ppo.html">PPO 说明</a></li><li><a href="../docs/architecture.md">项目架构</a>；<a href="../docs/neural-search.md">神经搜索合同</a>；<a href="../docs/m18b-rainbow.md">M18B</a></li><li><a href="../RESOURCES.md">注释来源目录</a>；<a href="research-map.html">研究问题与历史记录</a></li></ul></section><nav class="pager"><a href="../lessons/index.html">← 返回课程</a><a href="research-map.html">按研究轮次查 →</a></nav><footer class="footer">2026-09-17 · 基线 e081d550 · 速查不代表已掌握。遇到不明白的词，带一个 Splendor 局面来问我。</footer></main></body></html>
