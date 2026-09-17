@@ -1,6 +1,11 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
 - **Status**: `DESIGNED` / `AUTHORIZED`（设计冻结；实现尚未开始，D1–D9 与验收数字冻结）
+  - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
+    本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
+    `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
+    P2-1 handshake provenance 拆分 producer/completion 两层。详见「Iteration log」。
+  - Slice A **仍暂缓**，待 owner 复核本修补后授权。
 - **Baseline**: `dba11dd`（`main == origin/main`，工作树干净）。前一轮
   League Play Page v1 / Real-Scale Walkthrough Repair 已 `ACCEPTED / CLOSED`
   （`38292a1` 裁决 + `dba11dd` 关闭记录）。
@@ -264,11 +269,23 @@ request 只能携带 Human occurrence evidence + replay bytes。
 
 ### D7 · Human builder 的 fail-closed 校验清单
 
-`human_runtime_match_record()` 逐项：
+`human_runtime_match_record()` 的校验按**职责层**拆成两栏（P2）：
+
+**Producer-time invariants**（开局定证据；completion 无法也不应重证）：
+
+```text
+RegisteredOpponent::start() 必须先通过握手校验：
+  agent_name    == selected.runtime_name
+  agent_version == selected.runtime_version
+只有握手成功后，Session 才保存 frozen opponent evidence，
+并允许终局生成 HumanRuntimeOccurrenceV1。
+```
+
+**Completion-time re-verifiable invariants**（仅凭磁盘 occurrence + replay 即可重证）
+逐项 fail closed：
 
 ```text
 human occurrence format/version 正确
-occurrence_id == requested / session id
 replay bytes SHA == occurrence.replay_sha256
 verify_replay(replay) PASS
 replay.player_count == 2
@@ -284,8 +301,17 @@ occurrence.human.identity_manifest_hash
 resolve_policy_identity(program, args)
     == occurrence.opponent.policy_key
 
-opponent runtime_name / runtime_version 非空且来自冻结握手 evidence
+opponent runtime_name / runtime_version 非空
+occurrence evidence hash 自洽
 ```
+
+訁诚实边界（P2 明写）：完成侧只剩 `occurrence.json + replay.json`，**不可能重新证明**
+“runtime_name/version 真的来自一次成功握手”——没有 handshake transcript。
+Completion **不**重新读 registry、**不**重新握手；“来自成功握手”是受信 Host producer
+对 occurrence envelope 的 durable attestation。这与 Arena 路径的信任模型一致。
+
+> `occurrence_id == expected session id` **不在**本清单：builder 拿不到 requested id。
+> 该绑定属于 orchestration 层，见 D8「persisted-evidence orchestration 绑定」。
 
 两个 seat：
 
@@ -304,15 +330,33 @@ Ledger 天然支持这种混合：显式 `participant_id` 优先（Human），en
 policy key 解析（`ledger.rs:426-449`）。**不改 participant model，不给 Human 伪造
 EngineIdentity。**
 
-Record：
+Record（P1-2 冻结，**全部强制**）：
 
 ```text
-source_kind     = human_play
-source_identity = runtime:<session_id>
-played_at       = completed_at
-status          = completed
-diagnostic      = false
+source_kind          = "human_play"
+source_identity      = "runtime:<session_id>"
+source_document_hash = human_runtime_occurrence_evidence_hash(occurrence)
+played_at            = occurrence.completed_at
+status               = completed
+diagnostic           = false
 ```
+
+ReplayBinding 同时冻结：
+
+```text
+document_hash = occurrence.replay_sha256
+final_hash    = verified ReplayV1 final-state hash
+verification  = Verified
+```
+
+随后 generic tail（`complete_verified_record()`）只负责 archive + bind archived
+path / storage。
+
+`source_document_hash` 必须是**整个 occurrence envelope 的 complete-evidence hash**
+（与新函数 `human_runtime_occurrence_evidence_hash()`——Slice A 内实现，冻结命名——
+与现有 runtime 路径同原则），**不是** replay 的 SHA-256。理由与 Arena 路径相同：
+同一 occurrence id 下换 replay / completed_at / 对手证据必须表现为 Conflict，
+不能被吞成 AlreadyPresent。**不允许实现者临场改用 replay sha。**
 
 score / rank / won 全部来自 verified ReplayV1 terminal result。
 
@@ -350,13 +394,15 @@ complete_human_runtime_occurrence()
 现有 Agent orchestration 正是靠这一点保证 retry 不 rerun
 （`complete_persisted_occurrence()`）。
 
-失败态：
+失败态（P1-1 收窄后的精确语义）：
 
 ```text
-game completed
-league completion failed
-evidence durable
-retryable = true
+durable completion failure
+→ evidence survives
+→ game NEVER reruns
+→ retry MAY be attempted
+
+但 retryable ≠ guaranteed eventual insertion。
 ```
 
 Retry：
@@ -382,6 +428,47 @@ POST /games/<session_id>/league-completion     # body 为空
 同一 evidence 第二次 offer → AlreadyPresent，0 new rating events
 同一 occurrence_id + 改变过的 evidence → Conflict
 ```
+
+**Persisted-evidence orchestration 绑定（P1-3）**：
+
+Slice B / CLI orchestration 镜像 Arena 的现有分层：
+
+```text
+complete_persisted_human_occurrence(evidence, paths, expected_session_id)
+  → 解析 occurrence.json
+  → occurrence.occurrence_id != expected_session_id ⇒ Conflict
+  → 通过后才调用 complete_human_runtime_occurrence(occurrence, replay_bytes)
+```
+
+`complete_human_runtime_occurrence()` 不接收、也不需要 `expected_session_id`：
+completion crate 不认识 HTTP route。理由与 Arena 一致（`complete_persisted_occurrence()`
+的同名检查）：**内部自洽不等于“它就是你请求的那个 occurrence”**——这个分层挡住
+“把 B 的 slot 里自洽的 occurrence 挪进 A 的目录、A 的 route 也接受”。
+
+**Canonical-tail（P1-1，必须如实暴露给 UI）**：
+
+ledger 对所有 `runtime:` occurrence 强制 canonical-tail guard（`ledger.rs:343-384`）：
+incoming key `(played_at, source_kind, source_identity)` 不晚于当前 tail 时**拒绝插入**，
+报错原文即 “rebuild the derived database from the occurrence evidence”——
+它**不会**靠反复 Retry 收敛成 Inserted，而是需要 canonical rebuild。
+
+现实序列：
+
+```text
+t1: Human A 完赛，evidence durable，DB 暂时失败，未入账
+t2: 另一场 runtime match 完赛并入账
+retry A → A.played_at 早于 ledger tail → canonical-tail rejection
+```
+
+此时（D9 的 `retryable: true | false` 本就覆盖，UI schema 不扩）：
+
+```text
+league_completion.status    = failed
+league_completion.retryable = false
+league_completion.error     = canonical order / rebuild required
+```
+
+v1 **不**为消灭该 limitation 改 ledger 支持中插，也不实现自动 rebuild。
 
 （`IngestOutcome::{Inserted{rating_events}, AlreadyPresent{match_id}}`，`ledger.rs:158`）
 
@@ -412,6 +499,31 @@ Retry booking
 
 UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/Defeat、Replay、Review
 下方增加 Elo/booking 区。**不改 `/league` Agent-v-Agent 页面。**
+
+---
+
+## Iteration log
+
+- **Design Repair 1（docs-only，当前版本）**：owner 对 `f6909c3` 裁
+  `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1，主架构 ACCEPTED，Slice A 暂缓）。
+  本版仅修订文档，未动 D1–D6 主架构、未动代码：
+  - **P1-1**（最重要）：durable pending 的 retry 语义收窄 —— evidence 存活、对局永不重跑、
+    retry 可以尝试，但 **retryable ≠ 保证最终插入**。撞 ledger canonical-tail guard
+    （`ledger.rs:343-384`，生产代码事实）时收敛为
+    `status=failed / retryable=false / error=canonical order / rebuild required`。
+    D9 的 `retryable` 布尔已够用，UI schema 不扩。v1 不为消灭此 limitation 去改 ledger
+    支持中插、不做自动 rebuild。新增负向 Gate H。
+  - **P1-2**：D7 Record 合同补死 `source_document_hash =
+    human_runtime_occurrence_evidence_hash(occurrence)`（沿用 runtime 路径
+    `runtime_occurrence_evidence_hash()` 先例，`historical_import.rs:293/409`）并冻结
+    ReplayBinding 三项；禁止临场改用 replay sha。
+  - **P1-3**：`occurrence_id == requested/session id` 从 Slice A builder 清单移到
+    orchestration 合同 `complete_persisted_human_occurrence(..., expected_session_id)`
+    （镜像 Arena `complete_persisted_occurrence()` 的同一分层，
+    `runtime_orchestration.rs:300-327`）；Slice A 的 completion crate 不认识 HTTP route。
+  - **P2**：D7 把 handshake provenance 拆成 producer-time invariants 与
+    completion-time re-verifiable invariants；明确 completion 不重读 registry、不重新握手，
+    “来自成功握手”是 Host producer 对 envelope 的 durable attestation。
 
 ---
 
@@ -508,6 +620,13 @@ G. Host vertical gate:
    → human occurrence slot exists
    → Studio League row exists
    → exact human UUID appears in match_seats
+
+H. canonical-tail fail-closed（P1-1 负向；落 Slice B 或现有 ledger tests 均可）:
+   older human occurrence durable
+   → later runtime occurrence inserted
+   → retry older human
+   → fail closed（canonical-tail rejection）
+   → 不产生重复 match 行、不产生新 rating events
 ```
 
 ### 最终人工验收数字（真实库，精确）
@@ -556,6 +675,9 @@ exactly 2 events。
 4. **League DB 暂时不可用时允许开局**：这类局变成 durable pending，靠 retry 收敛，
    不保证"开局即入账"。
 5. **`You` 的第一场 Elo 会非常稀疏**（provisional 阈值 20 场），不代表棋力结论。
+6. **pending occurrence 的收敛边界（P1-1）**：pending 的 human occurrence 若在其后
+   已有更晚 canonical runtime occurrence 入账，旧 occurrence retry 会 fail closed，
+   需要 canonical rebuild；v1 不实现自动中插或自动重算 Elo。
 
 ## Next authorized gate
 
