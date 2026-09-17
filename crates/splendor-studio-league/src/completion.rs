@@ -55,12 +55,17 @@
 
 use crate::error::{Result, StudioLeagueError};
 use crate::historical_import::{bind_archived_replay, runtime_match_record, RuntimeOccurrenceV1};
+use crate::human_occurrence::{
+    human_runtime_match_record, HumanCompletionContextV1, HumanRuntimeOccurrenceV1,
+};
 use crate::identity_manifest::IdentityManifestV1;
 use crate::ledger::{
     ensure_rating_config, ingest_match, match_receipt, IngestOutcome, MatchReceiptV1,
 };
 use crate::match_record::StudioMatchRecordV1;
-use crate::participant::sync_identity_manifest;
+use crate::participant::{
+    local_human_participant, stored_identity_manifest_hash, sync_identity_manifest,
+};
 use crate::paths::StudioLeaguePathsV1;
 use crate::replay_archive::{archive_replay, ArchivedReplayV1};
 use crate::schema::open_league;
@@ -179,13 +184,8 @@ pub fn complete_runtime_occurrence(
     league: &mut CompletionLeagueV1,
     request: &CompletionRequestV1<'_>,
 ) -> Result<CompletionOutcomeV1> {
-    // Capture the session's archive root before borrowing the connection, so the
-    // publish below uses the same root the session was opened with.
-    let replay_root = league.replay_root.clone();
-    let conn = &mut league.conn;
-
-    // 1. Strict parse, full replay verification, report/replay fact agreement,
-    //    and exact configuration evidence. A failure here writes nothing.
+    // Strict parse, full replay verification, report/replay fact agreement, and
+    // exact configuration evidence. A failure here writes nothing.
     let record = runtime_match_record(
         request.occurrence,
         request.report_bytes,
@@ -193,9 +193,79 @@ pub fn complete_runtime_occurrence(
         request.config_bytes,
         request.replay_source_path,
     )?;
+    complete_verified_record(league, record, request.replay_bytes)
+}
 
-    // 2. The archive key is exactly the verified replay document hash the
-    //    record already carries, under the protocol root. No caller chooses it.
+/// One finished human-play game offered to the completion outlet.
+///
+/// The request is the durable human occurrence plus the replay it attests to.
+/// It deliberately carries **no** league-derived fact (no participant id, no
+/// manifest hash) and no caller-built record: the outlet reads those from the
+/// league it holds, so a producer cannot name its own human identity.
+pub struct HumanCompletionRequestV1<'a> {
+    pub occurrence: &'a HumanRuntimeOccurrenceV1,
+    pub replay_bytes: &'a [u8],
+    /// Provenance label of the replay's original location, recorded only while
+    /// the record is built. The ledger ends up pointing at the archive object.
+    pub replay_source_path: &'a str,
+}
+
+/// Complete one human-play occurrence: verify, archive, bind, ingest, receipt.
+///
+/// The human counterpart of [`complete_runtime_occurrence`], and the second
+/// legitimate producer of the same completion authority. It differs only in how
+/// the verified record is built: the human occurrence envelope supplies the seat
+/// attribution (which seat is the local human, which policy the opponent ran),
+/// while the archive / ledger / receipt tail is shared verbatim.
+///
+/// The local human identity and the stored manifest hash are read from the
+/// league the session holds, never from the request, so a producer cannot
+/// attribute a match to an identity the league does not recognize.
+pub fn complete_human_runtime_occurrence(
+    league: &mut CompletionLeagueV1,
+    request: &HumanCompletionRequestV1<'_>,
+) -> Result<CompletionOutcomeV1> {
+    let (local_human, stored_manifest_hash): (Option<String>, Option<String>) = {
+        let conn = &league.conn;
+        (
+            local_human_participant(conn)?,
+            stored_identity_manifest_hash(conn)?,
+        )
+    };
+    let context = HumanCompletionContextV1 {
+        local_human_participant_id: local_human.as_deref(),
+        stored_identity_manifest_hash: stored_manifest_hash.as_deref(),
+    };
+    let record = human_runtime_match_record(
+        request.occurrence,
+        request.replay_bytes,
+        &context,
+        request.replay_source_path,
+    )?;
+    complete_verified_record(league, record, request.replay_bytes)
+}
+
+/// The shared completion tail: archive, bind, ingest, receipt.
+///
+/// `record` must already be a fully verified canonical record — built by the
+/// arena path or the human path, each of which owns its own verification. This
+/// function is deliberately **private**: it is the one place a record becomes
+/// ledger state, and it must never be reachable with a caller-constructed
+/// record. The archive root comes from the session, not from a parameter, and
+/// the ledger write goes through the single entry point [`ingest_match`], whose
+/// canonical-tail guard is never bypassed.
+pub(crate) fn complete_verified_record(
+    league: &mut CompletionLeagueV1,
+    record: StudioMatchRecordV1,
+    replay_bytes: &[u8],
+) -> Result<CompletionOutcomeV1> {
+    // Capture the session's archive root before borrowing the connection, so the
+    // publish below uses the same root the session was opened with.
+    let replay_root = league.replay_root.clone();
+    let conn = &mut league.conn;
+
+    // 1. The archive key is exactly the verified replay document hash the record
+    //    already carries, under the protocol root. No caller chooses it.
     let replay_sha = record
         .replay
         .document_hash
@@ -209,23 +279,17 @@ pub fn complete_runtime_occurrence(
         })?
         .to_string();
 
-    // 3. Publish the immutable object, then bind the record to it. Both happen
+    // 2. Publish the immutable object, then bind the record to it. Both happen
     //    before the ledger write, so a failure in either leaves no match row.
-    //
-    //    The root comes from the session, which captured it from the resolved
-    //    `StudioLeaguePathsV1` when it was opened. It is deliberately not a
-    //    parameter of this call: a caller must not be able to publish an
-    //    occurrence's replay somewhere other than where the session's league
-    //    resolves its recorded relative paths.
-    let archived = archive_replay(&replay_root, &replay_sha, request.replay_bytes)?;
+    let archived = archive_replay(&replay_root, &replay_sha, replay_bytes)?;
     let record = bind_archived_replay(record, &archived)?;
 
-    // 4. The single ledger entry point. The canonical-tail guard lives inside
+    // 3. The single ledger entry point. The canonical-tail guard lives inside
     //    `ingest_match` and is deliberately not bypassed: an occurrence whose
     //    canonical key does not append after the ledger tail fails closed here.
     let ingest = ingest_match(conn, &record)?;
 
-    // 5. Read back what the ledger actually recorded.
+    // 4. Read back what the ledger actually recorded.
     let match_id = record.match_id();
     let receipt = match_receipt(conn, &match_id)?.ok_or_else(|| {
         StudioLeagueError::Invalid(format!(

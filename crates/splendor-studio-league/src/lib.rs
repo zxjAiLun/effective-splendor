@@ -22,6 +22,7 @@ pub mod eligibility;
 pub mod elo;
 pub mod error;
 pub mod historical_import;
+pub mod human_occurrence;
 pub mod identity_manifest;
 pub mod inventory;
 pub mod ledger;
@@ -38,12 +39,13 @@ pub mod schema;
 mod chain_tests;
 
 pub use agent_configuration::{
-    classify_switch, is_diagnostic_configuration, parse_match_configuration, AgentPolicyIdentityV1,
-    MatchConfigurationV1, SeatConfigurationIdentityV1, SwitchClass,
+    classify_switch, is_diagnostic_configuration, parse_match_configuration,
+    resolve_policy_identity, AgentPolicyIdentityV1, MatchConfigurationV1,
+    SeatConfigurationIdentityV1, SwitchClass,
 };
 pub use completion::{
-    complete_runtime_occurrence, open_completion_league, CompletionLeagueV1, CompletionOutcomeV1,
-    CompletionRequestV1,
+    complete_human_runtime_occurrence, complete_runtime_occurrence, open_completion_league,
+    CompletionLeagueV1, CompletionOutcomeV1, CompletionRequestV1, HumanCompletionRequestV1,
 };
 pub use eligibility::{
     evaluate_eligibility, EligibilityInput, RatingEligibility, REASON_ABORTED, REASON_DIAGNOSTIC,
@@ -60,6 +62,12 @@ pub use historical_import::{
     HistoricalDryRunConfig, HistoricalDryRunReportV1, HistoricalReplayResolutionV1,
     OccurrenceIdentityV1, RuntimeOccurrenceV1, RUNTIME_OCCURRENCE_FORMAT,
     RUNTIME_OCCURRENCE_VERSION,
+};
+pub use human_occurrence::{
+    human_runtime_match_record, human_runtime_occurrence_evidence_hash,
+    parse_human_runtime_occurrence, HumanCompletionContextV1, HumanOccurrenceHumanV1,
+    HumanOccurrenceOpponentV1, HumanRuntimeOccurrenceV1, HUMAN_PLAY_SOURCE_KIND,
+    HUMAN_RUNTIME_OCCURRENCE_FORMAT, HUMAN_RUNTIME_OCCURRENCE_VERSION,
 };
 pub use identity_manifest::{
     backup_path, temp_path, AliasEntryV1, IdentityManifestV1, LocalHumanIdentityV1,

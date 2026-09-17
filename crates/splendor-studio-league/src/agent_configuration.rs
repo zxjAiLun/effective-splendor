@@ -162,10 +162,29 @@ pub fn parse_match_configuration(bytes: &[u8]) -> Result<Option<MatchConfigurati
 /// and stays [`SeatConfigurationIdentityV1::Unresolved`] — it is never
 /// silently ignored.
 fn resolve_seat_identity(agent: &RawAgentCommand) -> SeatConfigurationIdentityV1 {
-    let args = &agent.args;
-    let program = agent
-        .program
-        .as_deref()
+    resolve_policy_identity(agent.program.as_deref(), &agent.args)
+}
+
+/// Resolve the exact policy identity of one seat from its program and argv.
+///
+/// This is **the** production resolver: [`parse_match_configuration`] (the arena
+/// path) delegates here, and any other legitimate producer — the human-play
+/// completion outlet, a worker, a host API — must call this same function
+/// instead of writing a second parser or fabricating an arena configuration
+/// document to reach the arena path. There is deliberately one implementation of
+/// `program + args -> policy identity`, with one frozen switch vocabulary
+/// ([`classify_switch`]) and one fail-closed rule, so two producers can never
+/// disagree about whether two commands are the same policy.
+///
+/// Fail-closed rule: an entry point that cannot be determined, or an argv switch
+/// outside the frozen vocabulary, yields
+/// [`SeatConfigurationIdentityV1::Unresolved`] — never a guessed or silently
+/// narrowed identity.
+pub fn resolve_policy_identity(
+    program: Option<&str>,
+    args: &[String],
+) -> SeatConfigurationIdentityV1 {
+    let program = program
         .map(|p| {
             // Reduce to the final component so a relocated checkout is the same
             // program. Never used as a content source on its own.
@@ -489,6 +508,85 @@ mod tests {
             identity.parameters.get("model-id"),
             Some(&"M25-D2-v2".to_string())
         );
+    }
+
+    #[test]
+    fn the_shared_resolver_matches_the_arena_parser_for_every_command_shape() {
+        // The arena parser must delegate to the one production resolver, so a
+        // non-arena producer that calls `resolve_policy_identity` directly can
+        // never disagree with the arena path about a seat's policy identity.
+        let cases: &[&[&str]] = &[
+            &["agent-s3-rollout"],
+            &["agent-heuristic", "--seed", "20260812"],
+            &[
+                "agent-determinization",
+                "--sample-seed",
+                "20260810",
+                "--sample-count",
+                "4",
+                "--max-depth-turns",
+                "1",
+                "--max-nodes",
+                "2000",
+            ],
+            &[
+                "agent-ismcts",
+                "--simulations",
+                "64",
+                "--max-depth-turns",
+                "2",
+                "--exploration-bias",
+                "100000000",
+            ],
+            &[
+                "agent-determinization",
+                "--max-nodes",
+                "1",
+                "--runtime-name",
+                "m44a-full",
+                "--runtime-version",
+                "1",
+            ],
+            &[
+                "-m",
+                "splendor_gpu.m35a_agent",
+                "--model-id",
+                "M25-D2-v2",
+                "--device",
+                "cuda",
+            ],
+            // Fail-closed shapes must fail closed identically on both paths.
+            &["agent-determinization", "--future-policy-knob", "7"],
+            &["--max-nodes", "1"],
+        ];
+        for args in cases {
+            let owned: Vec<String> = args.iter().map(|a| (*a).to_string()).collect();
+            let bytes = config(&[args]);
+            let parsed = parse_match_configuration(&bytes).unwrap().unwrap();
+            assert_eq!(
+                parsed.seats[0],
+                resolve_policy_identity(Some("E:\\proj\\target\\release\\splendor.exe"), &owned),
+                "the arena parser and the shared resolver disagree for {args:?}"
+            );
+            // The program is reduced to its final component on both paths.
+            if let Some(identity) = parsed.seats[0].resolved() {
+                assert_eq!(identity.program.as_deref(), Some("splendor.exe"));
+            }
+        }
+    }
+
+    #[test]
+    fn the_shared_resolver_rejects_a_missing_program_without_changing_the_key() {
+        // A command with no program still resolves; only the program prefix is
+        // absent. This is the shape a human-play opponent snapshot has when the
+        // registry command omits it.
+        let args = vec!["agent-s3-rollout".to_string()];
+        let identity = resolve_policy_identity(None, &args)
+            .resolved()
+            .unwrap()
+            .clone();
+        assert_eq!(identity.program, None);
+        assert_eq!(identity.key(), "agent-s3-rollout");
     }
 
     #[test]

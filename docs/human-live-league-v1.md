@@ -1,11 +1,11 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGNED` / `AUTHORIZED`（设计冻结；实现尚未开始，D1–D9 与验收数字冻结）
+- **Status**: `DESIGNED` / `AUTHORIZED`（设计冻结；**Slice A 已 IMPLEMENTED / VERIFIED 本地，待 owner 复审**；D1–D9 与验收数字冻结）
   - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
     本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
     `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
     P2-1 handshake provenance 拆分 producer/completion 两层。详见「Iteration log」。
-  - Slice A **仍暂缓**，待 owner 复核本修补后授权。
+  - Slice A **已 IMPLEMENTED / VERIFIED（本地）**，见「Iteration log」；Slice B / C 仍未授权。
 - **Baseline**: `dba11dd`（`main == origin/main`，工作树干净）。前一轮
   League Play Page v1 / Real-Scale Walkthrough Repair 已 `ACCEPTED / CLOSED`
   （`38292a1` 裁决 + `dba11dd` 关闭记录）。
@@ -504,7 +504,7 @@ UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/De
 
 ## Iteration log
 
-- **Design Repair 1（docs-only，当前版本）**：owner 对 `f6909c3` 裁
+- **Design Repair 1（docs-only）**：owner 对 `f6909c3` 裁
   `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1，主架构 ACCEPTED，Slice A 暂缓）。
   本版仅修订文档，未动 D1–D6 主架构、未动代码：
   - **P1-1**（最重要）：durable pending 的 retry 语义收窄 —— evidence 存活、对局永不重跑、
@@ -524,6 +524,50 @@ UI 只改 `/play`：开局区固定 Rated 提示；终局区在原有 Victory/De
   - **P2**：D7 把 handshake provenance 拆成 producer-time invariants 与
     completion-time re-verifiable invariants；明确 completion 不重读 registry、不重新握手，
     “来自成功握手”是 Host producer 对 envelope 的 durable attestation。
+  - **裁决**：`e081d55 — DESIGN ACCEPTED`；`Slice A AUTHORIZED`（P0=0 / P1=0）。
+
+- **Slice A（当前版本，IMPLEMENTED / VERIFIED 本地）**：按 owner 划定范围只做
+  completion/evidence 四件，未碰 Host producer / 磁盘 retry / UI / 路由：
+  - **A1 共享 resolver**：`agent_configuration.rs` 新增 **公共**
+    `resolve_policy_identity(program, args)`，把原私有 `resolve_seat_identity()` 的全部逻辑
+    搬过去（同一 `classify_switch()` 词表、同一 fail-closed 语义、program 仍归约为末段），
+    `parse_match_configuration()` 改为**委派**它。**未造任何 synthetic Arena config**。
+    回归门 `the_shared_resolver_matches_the_arena_parser_for_every_command_shape`：对 8 种
+    command 形状（含 `-m` 模块、`--runtime-name`、未分类 switch、无 entry point）
+    断言两条路径产生**逐字段相等**的 `SeatConfigurationIdentityV1`。
+  - **A2 Human occurrence**：新文件 `crates/splendor-studio-league/src/human_occurrence.rs`
+    —— `HumanRuntimeOccurrenceV1`（format `effective-splendor-human-runtime-occurrence` v1）、
+    `HumanOccurrenceHumanV1` / `HumanOccurrenceOpponentV1`、`parse_human_runtime_occurrence()`、
+    `human_runtime_occurrence_evidence_hash()`（独立 domain separator + 固定顺序 +
+    length-prefix，**覆盖全部字段**，包括 `args` 逐项与 `format`/`version`）、
+    `human_runtime_match_record()`、`HumanCompletionContextV1`。本片**不含** filesystem
+    slot / publish / retry（属 Slice B）。
+  - **A3 builder fail-closed**：单一实现 `human_runtime_match_record()`，逐项拒收：
+    replay SHA ≠ envelope、replay 严格验证失败、非 2 人局、seed ≠ envelope、
+    human_seat ∉ {0,1}、无 winner、league 无 local human、human participant 不匹配、
+    manifest hash 不匹配、opponent command 重解析后 policy key 不一致、command 不可归因。
+    seat 形状：human = `participant_id Some(local human)` + `identity None` +
+    `policy_identity NoConfigEvidence`；engine = `identity Some(runtime_name/version)` +
+    `policy_identity Resolved(policy_key)` + `participant_id None`。**未改 participant model**。
+  - **A4 通用尾段**：`completion.rs` 私有 `complete_verified_record(league, record, replay_bytes)`
+    （archive → bind → `ingest_match` → `match_receipt`），`complete_runtime_occurrence()` 与
+    新增 `complete_human_runtime_occurrence(league, &HumanCompletionRequestV1)` 都只做各自的
+    verified-record builder 后调它。`HumanCompletionRequestV1` 只携带 envelope + replay bytes +
+    provenance label；human participant / manifest hash **由 outlet 从 league 读出**，
+    request 不能指定。`Connection` 仍未导出，archive root 仍来自 opaque session。
+  - **验证（本地；无 cloud CI）**：`splendor-studio-league` **100 passed / 0 failed**
+    （原 90，+2 resolver +8 human gates）；`splendor-cli` **288 passed / 0 failed / 3 ignored**
+    （45 targets，**计数未变** ⇒ 旧 Arena completion 行为未变）；`rustfmt --edition 2021`
+    五个改动文件全 OK；`git diff --check` clean。
+  - **两组负向对照（均从**已打补丁**状态 `cp` 还原、`diff -q` 验证字节一致）**：
+    ① 让 Arena 路径从共享 resolver **分叉** → 等价性门 + 6 条既有 resolver 门 FAIL（4 passed / 7 failed）；
+    ② 让 human 路径把 `source_document_hash` 改成 replay sha（即丢掉 complete-evidence 身份）
+    → `the_same_human_occurrence_is_idempotent_and_changed_evidence_conflicts` 与
+    `a_rated_human_match_rates_both_seats_exactly_once` FAIL（6 passed / 2 failed）。
+  - **未做（按 owner 划定）**：`human_play_command.rs` 终局 publish、`HumanOccurrenceEvidence`
+    filesystem 类型、`HumanOccurrenceSlot`、retry 路由、`RegisteredOpponent` TOCTOU wiring、
+    `HumanSessionState.league_completion`、`/play` UI、Host vertical gate、Gate H 编排 seam。
+    （A1 的共享 resolver 已为 Slice B 的 `RegisteredOpponent` 冻结身份就绪，但 Session freezing 属 B。）
 
 ---
 
