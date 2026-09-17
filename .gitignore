@@ -11,6 +11,10 @@ __pycache__/
 /.workbuddy/
 /handoff.md
 
+# Owner decision 2026-09-17: the teach-skill learning workspace is local-only
+# teaching material. Keep every generated lesson file out of Git.
+/lessons/
+
 # Generated learning data and model artifacts stay local. The already tracked
 # formal-2026-08-11 evidence is a historical exception.
 /local-artifacts/
