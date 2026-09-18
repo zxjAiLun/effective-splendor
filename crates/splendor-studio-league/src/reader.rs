@@ -59,8 +59,8 @@ use std::path::PathBuf;
 use crate::error::{Result, StudioLeagueError};
 use crate::identity_manifest::IdentityManifestV1;
 use crate::ledger::{
-    leaderboard, match_detail, protocol_rating_config, stored_rating_config, LeaderboardRow,
-    MatchDetailV1,
+    leaderboard, league_match_page, match_detail, protocol_rating_config, stored_rating_config,
+    LeaderboardRow, LeagueMatchPageRequestV1, LeagueMatchPageV1, MatchDetailV1,
 };
 use crate::participant::stored_identity_manifest_hash;
 use crate::paths::StudioLeaguePathsV1;
@@ -171,6 +171,26 @@ impl StudioLeagueReaderV1 {
     pub fn match_detail(&self, match_id: &str) -> Result<Option<MatchDetailV1>> {
         self.validate_authority_evidence()?;
         match_detail(&self.conn, match_id)
+    }
+
+    /// One bounded page of recorded matches, newest first.
+    ///
+    /// Why a page and not the whole list: the official league holds tens of
+    /// thousands of matches, and this Host answers requests serially, so an
+    /// unbounded read is how one request starves every other route. The limit is
+    /// clamped to `1..=`[`GAMES_PAGE_MAX_LIMIT`](crate::GAMES_PAGE_MAX_LIMIT), and
+    /// the cursor is a `league_seq`, never an offset — see
+    /// [`league_match_page`](crate::league_match_page) for why that distinction is
+    /// load-bearing under concurrent ingestion.
+    ///
+    /// The authority evidence is re-checked first, like every other read, so a
+    /// page is never served from a league that has gone stale.
+    pub fn league_match_page(
+        &self,
+        request: &LeagueMatchPageRequestV1,
+    ) -> Result<LeagueMatchPageV1> {
+        self.validate_authority_evidence()?;
+        league_match_page(&self.conn, request)
     }
 
     /// The archived ReplayV1 document for a verified content address.

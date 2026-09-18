@@ -1634,3 +1634,183 @@ fn gate_silent_connection_cannot_starve_the_host() {
         "the Host must still be alive and serving"
     );
 }
+
+/// Gate P — the bounded games list is a presenter over the ledger's own page read.
+///
+/// The Host must not sort, filter or count: it parses the query string and the
+/// ledger decides. This gate compares the served page against `league_match_page`
+/// on the same database, row for row, so a Host that grew its own SQL would have
+/// to disagree with the ledger to pass.
+#[test]
+fn the_games_page_agrees_with_the_ledger_itself() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    let (code, body) = host.get_json("/league/games");
+    assert_eq!(code, 200, "the games list must be served: {body}");
+    assert_eq!(body["format"], "effective-splendor-studio-league-games");
+    let served = body["matches"].as_array().expect("matches array");
+    assert!(!served.is_empty(), "the fixture league recorded matches");
+
+    let conn = open_league(&fixture.db).expect("open the league");
+    let expected = splendor_studio_league::league_match_page(
+        &conn,
+        &splendor_studio_league::LeagueMatchPageRequestV1 {
+            limit: None,
+            before_league_seq: None,
+            participant_id: None,
+        },
+    )
+    .expect("the ledger page read");
+
+    assert_eq!(served.len(), expected.matches.len(), "same number of rows");
+    for (index, (row, want)) in served.iter().zip(expected.matches.iter()).enumerate() {
+        assert_eq!(row["match_id"], want.match_id, "row {index} match_id");
+        assert_eq!(row["league_seq"], want.league_seq, "row {index} league_seq");
+        assert_eq!(
+            row["played_at"].as_i64(),
+            want.played_at,
+            "row {index} played_at"
+        );
+        assert_eq!(
+            row["rating_eligible"], want.rating_eligible,
+            "row {index} rating_eligible"
+        );
+        assert_eq!(
+            row["replay_document_sha256"],
+            want.replay_document_sha256.as_deref().unwrap_or(""),
+            "row {index} replay address"
+        );
+        // A list row must not carry the heavyweight detail.
+        assert!(
+            row.get("rating_events").is_none(),
+            "row {index} must not carry rating events"
+        );
+    }
+
+    // The cursor is the ledger's, not the Host's.
+    match expected.next_before_league_seq {
+        Some(cursor) => assert_eq!(body["next_before_league_seq"], cursor),
+        None => assert!(body["next_before_league_seq"].is_null()),
+    }
+}
+
+/// Gate Q — a malformed paging request is refused, and can never masquerade as an
+/// exhausted ledger.
+///
+/// `400` is the only honest answer to a cursor or limit that no retry can fix. The
+/// failure this gate exists for is the opposite behaviour: answering `200` with an
+/// empty list, which would tell the player "there are no more games" when the
+/// truth is "you asked wrong".
+#[test]
+fn a_malformed_games_request_is_refused_rather_than_answered_empty() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    for path in [
+        "/league/games?before=0",
+        "/league/games?before=-1",
+        "/league/games?before=not-a-number",
+        "/league/games?before=1.5",
+        "/league/games?limit=abc",
+        "/league/games?limit=-3",
+        "/league/games?participant_id=",
+    ] {
+        let (status, body) = http_get(host.port, path).expect("GET");
+        assert_eq!(
+            status_code(&status),
+            400,
+            "`{path}` must be refused as a bad request, got {status}: {}",
+            String::from_utf8_lossy(&body)
+        );
+        // And it must be an error body, never a page that happens to be empty.
+        let json: serde_json::Value = serde_json::from_slice(&body).expect("an error body is JSON");
+        assert!(
+            json["error"].is_string(),
+            "`{path}` must explain the refusal: {json}"
+        );
+        assert!(
+            json.get("matches").is_none(),
+            "`{path}` must not return a (empty) page: {json}"
+        );
+    }
+
+    // The control for the gate: the *same* route with a well-formed request is
+    // served, so the 400s above are the request's fault and not the route's.
+    let (code, body) = host.get_json("/league/games?before=1000000&limit=5");
+    assert_eq!(code, 200, "a well-formed page must be served: {body}");
+    assert!(body["matches"].is_array());
+}
+
+/// Gate R — paging through the Host walks the recording exactly once.
+///
+/// The end-to-end version of the ledger-level partition gate: it goes through
+/// HTTP, uses the cursor the Host itself returned, and asserts that the walk
+/// terminates with no repeat and no gap. A page boundary computed anywhere except
+/// the ledger's own cursor would show up here as a duplicated or missing row.
+#[test]
+fn walking_the_games_cursor_over_http_visits_every_match_once() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    let conn = open_league(&fixture.db).expect("open the league");
+    let total: i64 = conn
+        .query_row("SELECT COUNT(*) FROM matches", [], |row| row.get(0))
+        .expect("count matches");
+    assert!(total >= 2, "the fixture must record more than one match");
+
+    let mut seen: Vec<i64> = Vec::new();
+    let mut cursor: Option<i64> = None;
+    let mut hops = 0;
+    loop {
+        // One row per page, so every boundary is exercised.
+        let path = match cursor {
+            Some(value) => format!("/league/games?limit=1&before={value}"),
+            None => "/league/games?limit=1".to_string(),
+        };
+        let (code, body) = host.get_json(&path);
+        assert_eq!(code, 200, "`{path}` must be served: {body}");
+        let rows = body["matches"].as_array().expect("matches array");
+        // A limit of one means at most one row. It is **not** a promise of a row:
+        // the final hop past the oldest match is a legitimately empty page, and
+        // demanding a row here would be demanding a fabricated one.
+        assert!(
+            rows.len() <= 1,
+            "`{path}` returned more rows than the requested limit: {body}"
+        );
+        if rows.is_empty() {
+            assert!(
+                body["next_before_league_seq"].is_null(),
+                "an empty page has no next cursor: {body}"
+            );
+            break;
+        }
+        for row in rows {
+            let seq = row["league_seq"].as_i64().expect("a ledger position");
+            assert!(
+                cursor.is_none_or(|value| seq < value),
+                "the cursor is exclusive: {seq} must be below {cursor:?}"
+            );
+            seen.push(seq);
+        }
+        hops += 1;
+        assert!(hops <= 64, "the walk must terminate");
+        match body["next_before_league_seq"].as_i64() {
+            Some(next) => cursor = Some(next),
+            None => break,
+        }
+    }
+
+    assert_eq!(
+        seen.len() as i64,
+        total,
+        "walking the cursor must reach every recorded match"
+    );
+    let mut unique = seen.clone();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), seen.len(), "no match may be visited twice");
+    let mut descending = seen.clone();
+    descending.sort_unstable_by(|a, b| b.cmp(a));
+    assert_eq!(seen, descending, "the walk is newest-first throughout");
+}

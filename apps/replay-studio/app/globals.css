@@ -281,3 +281,9 @@ h2 { margin: 4px 0 0; font-size: var(--fs-xl); letter-spacing: -.025em; }
 .experiments-empty p{color:#7e8c9b;font-size:var(--fs-sm);line-height:1.6}
 @media(max-width:1400px){.experiments-grid{grid-template-columns:minmax(230px,.8fr) minmax(260px,1fr) minmax(560px,1.6fr)}}
 @media(max-width:1100px){.experiments-grid{grid-template-columns:1fr;min-height:auto}.experiments-column{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* Games home: the bounded Studio League list and the separate legacy history. */
+.legacy-games{margin-top:0}
+.games-more{margin-top:14px;min-height:40px;padding:0 18px;border:1px solid #347c84;border-radius:6px;background:#173c42;color:#d7ffff;cursor:pointer;font: 700 var(--fs-2xs) var(--font-geist-mono)}
+.games-more:disabled{cursor:progress;opacity:.55}
+.games-error{color:#ffd9d6!important}

@@ -36,7 +36,7 @@ use splendor_replay::{
 use splendor_search::{canonical_order, SearchConfigV1};
 use splendor_studio_league::{
     now_epoch_seconds, open_studio_league_reader, CompletionOutcomeV1, IngestOutcome,
-    StudioLeaguePathsV1, StudioLeagueReaderV1,
+    LeagueMatchPageRequestV1, StudioLeagueError, StudioLeaguePathsV1, StudioLeagueReaderV1,
 };
 
 use crate::human_runtime_orchestration::{
@@ -1431,6 +1431,22 @@ fn query_param(target: &str, key: &str) -> Option<String> {
     })
 }
 
+/// Read one query parameter that may legitimately be absent.
+///
+/// Deliberately distinct from [`query_param`], which answers `None` for many
+/// reasons at once. A route that must tell "absent" from "present but empty"
+/// cannot use a helper that folds the two together.
+fn query_param_optional(query: &str, key: &str) -> Option<String> {
+    let query = query.strip_prefix('?').unwrap_or(query);
+    if query.is_empty() {
+        return None;
+    }
+    query.split('&').find_map(|pair| {
+        let (name, value) = pair.split_once('=')?;
+        (name == key).then(|| value.to_owned())
+    })
+}
+
 fn read_replay_file(path: &Path) -> Result<ReplayV1, String> {
     read_json_file(path, 16 * 1024 * 1024, "replay")
 }
@@ -2033,6 +2049,10 @@ enum LeagueRead {
     Json(String),
     Document(Vec<u8>),
     NotFound(String),
+    /// The request itself is malformed, so no retry of it can succeed. Distinct
+    /// from `Unavailable` (the league cannot answer) and from `NotFound` (the
+    /// league answered, and the answer is "no such resource").
+    Invalid(String),
     Unavailable(String),
 }
 
@@ -2052,6 +2072,9 @@ fn respond_league(stream: &mut TcpStream, read: LeagueRead) -> Result<(), String
         },
         LeagueRead::NotFound(message) => {
             respond(stream, 404, "application/json", &error_body(message))
+        }
+        LeagueRead::Invalid(message) => {
+            respond(stream, 400, "application/json", &error_body(message))
         }
         LeagueRead::Unavailable(message) => {
             respond(stream, 503, "application/json", &error_body(message))
@@ -2109,6 +2132,78 @@ impl StudioHost {
             Ok(None) => {
                 LeagueRead::NotFound(format!("no match `{match_id}` is recorded in the ledger"))
             }
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
+    /// One bounded page of the recorded matches, newest first.
+    ///
+    /// The Host is a presenter here: it parses the query string into the frozen
+    /// request type, and the ledger clamps and orders. Nothing is sorted, filtered
+    /// or counted in this process, so there is exactly one implementation of what
+    /// "the games list" means.
+    ///
+    /// A malformed cursor or limit is the caller's mistake and answers `400`,
+    /// because it can never become correct by retrying. An unreadable league
+    /// remains `503`.
+    fn league_games(&self, query: &str) -> LeagueRead {
+        let limit = match query_param_optional(query, "limit") {
+            Some(text) => match text.parse::<u32>() {
+                Ok(value) => Some(value),
+                Err(_) => {
+                    return LeagueRead::Invalid(format!(
+                        "the games limit must be a non-negative integer, got `{text}`"
+                    ))
+                }
+            },
+            None => None,
+        };
+        let before_league_seq = match query_param_optional(query, "before") {
+            Some(text) => match text.parse::<i64>() {
+                Ok(value) => Some(value),
+                Err(_) => {
+                    return LeagueRead::Invalid(format!(
+                        "the games cursor must be an integer league_seq, got `{text}`"
+                    ))
+                }
+            },
+            None => None,
+        };
+        // An explicit but empty `participant_id` is a request for one participant
+        // whose id is the empty string, which no participant has. Treating it as
+        // "no filter" would answer a filtered question with the unfiltered list.
+        let participant_id = match query_param_optional(query, "participant_id") {
+            Some(text) if text.is_empty() => {
+                return LeagueRead::Invalid(
+                    "the participant_id filter must not be empty".to_string(),
+                )
+            }
+            Some(text) => Some(text),
+            None => None,
+        };
+
+        let request = LeagueMatchPageRequestV1 {
+            limit,
+            before_league_seq,
+            participant_id,
+        };
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.league_match_page(&request) {
+            Ok(page) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-games",
+                "version": 1,
+                "matches": page.matches,
+                "next_before_league_seq": page.next_before_league_seq,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            // A cursor the ledger refuses is a bad request, not a server fault, and
+            // not an absent resource: retrying it unchanged can never succeed.
+            Err(StudioLeagueError::Invalid(message)) => LeagueRead::Invalid(message),
             Err(error) => LeagueRead::Unavailable(error.to_string()),
         }
     }
@@ -2451,9 +2546,16 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
             return respond_result(&mut stream, host.recent_games());
         }
         // ---- Studio League, read-only (Commit D Slice 1). --------------------
-        // These three are the read surface. The one write route follows them.
+        // These four are the read surface. The one write route follows them.
         "GET" if request.path == "/league/leaderboard" => {
             return respond_league(&mut stream, host.league_leaderboard());
+        }
+        // The bounded games list. Matched by exact path, or by the path and its
+        // query string: `/league/games` is not a prefix of any other league route,
+        // and `/league/matches/` is, so this arm cannot shadow it.
+        "GET" if request.path == "/league/games" || request.path.starts_with("/league/games?") => {
+            let query = request.path["/league/games".len()..].to_string();
+            return respond_league(&mut stream, host.league_games(&query));
         }
         "GET" if request.path.starts_with("/league/matches/") => {
             let match_id = request.path["/league/matches/".len()..].to_string();

@@ -1211,3 +1211,249 @@ pub(crate) fn match_detail(conn: &Connection, match_id: &str) -> Result<Option<M
         rating_events,
     }))
 }
+
+/// The order authority for the games list, and the reason a cursor is not a page
+/// number.
+///
+/// `league_seq` is the ledger's monotonic position: it is assigned by an explicit
+/// canonical sort ([`canonical_league_order`]) and **is not a date**. Historical
+/// migration therefore produces a sequence that does not read like a calendar,
+/// which is exactly why nothing here orders by `played_at`: a list sorted by a
+/// wall clock that was backfilled out of order would interleave two eras, and a
+/// list paged by `OFFSET` over a table that is still being written to would drop
+/// or repeat rows every time a match arrives mid-scroll. Paging by
+/// `league_seq DESC` with `league_seq < before` is stable under concurrent
+/// ingestion by construction: new matches are appended *above* the cursor and the
+/// page below it can never move.
+pub const GAMES_PAGE_DEFAULT_LIMIT: u32 = 50;
+/// A hard ceiling, not a preference: the Host answers requests serially, so an
+/// unbounded page is how one request starves every other route.
+pub const GAMES_PAGE_MAX_LIMIT: u32 = 100;
+
+/// One page request over the recorded matches.
+///
+/// `before_league_seq` is the cursor: `None` asks for the newest page, and the
+/// value returned as [`LeagueMatchPageV1::next_before_league_seq`] asks for the
+/// page below it. It is deliberately *exclusive*, so the boundary row is not
+/// repeated.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LeagueMatchPageRequestV1 {
+    /// Clamped to `1..=GAMES_PAGE_MAX_LIMIT`; `None` means the default.
+    pub limit: Option<u32>,
+    /// Exclusive cursor. `None` means "from the newest match".
+    pub before_league_seq: Option<i64>,
+    /// Restrict to the matches one participant appears in. `None` means all.
+    pub participant_id: Option<String>,
+}
+
+/// One page of the games list, ordered by `league_seq` descending.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LeagueMatchPageV1 {
+    pub matches: Vec<LeagueMatchListRowV1>,
+    /// The cursor for the next page, or `None` when this page reached the end of
+    /// the recording.
+    ///
+    /// It is derived from the **last row returned**, not from the request, so a
+    /// page cannot hand back a cursor that pages past live data. `None` is a
+    /// statement about the ledger at the moment it was read and is not a promise
+    /// about the future: a match recorded later still belongs to a *newer* page,
+    /// which is what "one page below" means.
+    pub next_before_league_seq: Option<i64>,
+}
+
+/// One row of the games list — enough to render a row and reach a detail page.
+///
+/// This is deliberately **not** [`MatchDetailV1`]: a list page must not carry the
+/// full match detail of every row it lists, and the seats here are the recorded
+/// facts a row displays (who, on which seat, with what score, whether they won and
+/// where they placed). Nothing is recomputed: no Elo, no winner derived from a
+/// replay, no identity derived from a filename.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LeagueMatchListRowV1 {
+    pub match_id: String,
+    pub league_seq: i64,
+    pub played_at: Option<i64>,
+    pub source_kind: String,
+    pub status: MatchStatus,
+    pub rating_eligible: bool,
+    pub rating_ineligible_reason: Option<String>,
+    /// The verified ReplayV1 document SHA-256, when the ledger recorded one. This
+    /// is the content address the replay route accepts — an identity, not a path.
+    pub replay_document_sha256: Option<String>,
+    /// Whether the ledger records a usable content-addressed archive object. Ledger
+    /// state, not a filesystem probe; the replay route remains the authority on
+    /// whether the bytes can actually be served.
+    pub replay_archived: bool,
+    pub seats: Vec<LeagueMatchListSeatV1>,
+}
+
+/// One seat of a listed match.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LeagueMatchListSeatV1 {
+    pub seat: u32,
+    pub participant_id: Option<String>,
+    pub display_name: Option<String>,
+    pub score: Option<i64>,
+    pub rank: Option<i64>,
+    pub won: bool,
+}
+
+/// Read one page of recorded matches, newest `league_seq` first.
+///
+/// The limit is clamped rather than rejected here, because clamping is a property
+/// of the read surface and every caller (HTTP or Rust) gets the same one. The
+/// *only* failures this returns are real ones — a malformed cursor or a database
+/// error — so a caller never has to guess whether a short page meant "empty" or
+/// "rejected".
+pub fn league_match_page(
+    conn: &Connection,
+    request: &LeagueMatchPageRequestV1,
+) -> Result<LeagueMatchPageV1> {
+    let limit = request
+        .limit
+        .unwrap_or(GAMES_PAGE_DEFAULT_LIMIT)
+        .clamp(1, GAMES_PAGE_MAX_LIMIT);
+    let before = match request.before_league_seq {
+        Some(value) if value > 0 => value,
+        // A cursor of `0` can never match a row (`league_seq` starts at 1), which
+        // would silently answer `empty` for a well-formed request. A negative
+        // cursor is not a position at all. Both are the caller's mistake.
+        Some(value) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "the games cursor must be a positive league_seq, got {value}"
+            )))
+        }
+        None => i64::MAX,
+    };
+
+    // One statement, one shape. `matches_league_seq` (UNIQUE) drives the ordering
+    // and the cursor range; the seat join is a lookup on the `match_seats` primary
+    // key `(match_id, seat)`. The optional participant filter is an `EXISTS`, so it
+    // can only *narrow* the rows the cursor already selected — it can never
+    // reorder them or widen the page.
+    let sql = "SELECT m.match_id, m.league_seq, m.played_at, m.source_kind, m.status,
+                      m.rating_eligible, m.rating_ineligible_reason,
+                      m.replay_document_hash, m.replay_storage, m.replay_verification
+                 FROM matches m
+                WHERE m.league_seq < ?1
+                  AND (?2 IS NULL OR EXISTS (
+                        SELECT 1 FROM match_seats s
+                         WHERE s.match_id = m.match_id AND s.participant_id = ?2))
+                ORDER BY m.league_seq DESC
+                LIMIT ?3";
+    let mut statement = conn.prepare(sql)?;
+    let headers = statement
+        .query_map(
+            params![before, request.participant_id, limit as i64],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, Option<i64>>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, Option<String>>(6)?,
+                    row.get::<_, Option<String>>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, String>(9)?,
+                ))
+            },
+        )?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let mut matches = Vec::with_capacity(headers.len());
+    for (
+        match_id,
+        league_seq,
+        played_at,
+        source_kind,
+        status,
+        rating_eligible,
+        rating_ineligible_reason,
+        replay_document_hash,
+        replay_storage,
+        replay_verification,
+    ) in headers
+    {
+        let status = match status.as_str() {
+            "completed" => MatchStatus::Completed,
+            "aborted" => MatchStatus::Aborted,
+            "truncated" => MatchStatus::Truncated,
+            other => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "match `{match_id}` has unknown status `{other}`"
+                )))
+            }
+        };
+        let storage = match replay_storage.as_str() {
+            "archive" => ReplayStorage::Archive,
+            "in_place_reference" => ReplayStorage::InPlaceReference,
+            "absent" => ReplayStorage::Absent,
+            other => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "match `{match_id}` has unknown replay storage `{other}`"
+                )))
+            }
+        };
+        let verification = match replay_verification.as_str() {
+            "verified" => ReplayVerification::Verified,
+            "invalid" => ReplayVerification::Invalid,
+            "unavailable" => ReplayVerification::Unavailable,
+            other => {
+                return Err(StudioLeagueError::Invalid(format!(
+                    "match `{match_id}` has unknown replay verification `{other}`"
+                )))
+            }
+        };
+
+        let mut seat_statement = conn.prepare(
+            "SELECT seat, participant_id, display_name, score, rank, won
+               FROM match_seats WHERE match_id = ?1 ORDER BY seat",
+        )?;
+        let seats = seat_statement
+            .query_map([match_id.as_str()], |row| {
+                Ok(LeagueMatchListSeatV1 {
+                    seat: row.get::<_, i64>(0)? as u32,
+                    participant_id: row.get(1)?,
+                    display_name: row.get(2)?,
+                    score: row.get(3)?,
+                    rank: row.get(4)?,
+                    won: row.get::<_, i64>(5)? != 0,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        // "Archived" is ledger state — a recorded, verified, content-addressed
+        // object — and is never a filesystem probe.
+        let replay_archived = storage == ReplayStorage::Archive
+            && verification == ReplayVerification::Verified
+            && replay_document_hash.is_some();
+
+        matches.push(LeagueMatchListRowV1 {
+            match_id,
+            league_seq,
+            played_at,
+            source_kind,
+            status,
+            rating_eligible: rating_eligible != 0,
+            rating_ineligible_reason,
+            replay_document_sha256: replay_document_hash,
+            replay_archived,
+            seats,
+        });
+    }
+
+    let next_before_league_seq = if matches.len() as u32 == limit {
+        matches.last().map(|row| row.league_seq)
+    } else {
+        // A short page is the end of the recording. Answering with a cursor here
+        // would invite an endless tail of empty pages.
+        None
+    };
+
+    Ok(LeagueMatchPageV1 {
+        matches,
+        next_before_league_seq,
+    })
+}
