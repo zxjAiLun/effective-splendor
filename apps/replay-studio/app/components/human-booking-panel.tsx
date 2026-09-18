@@ -37,7 +37,8 @@ export function HumanBookingPanel({ completion, sessionId, humanSeat, busy, onRe
   const rows: Array<{ participantId: string; label: string; before: number; after: number; delta: number }> =
     humanEloRows(view.receipt, detail, sessionId, humanSeat);
   return <section className="human-booking" aria-live="polite" aria-label="Studio League booking">
-    <span className="section-kicker">STUDIO ELO · BOOKING</span>
+    <span className="section-kicker">STUDIO LEAGUE</span>
+    {view.kind === "booked" && <small>Booked into Studio League — Elo events below.</small>}
     <h3>{view.headline}</h3><p>{view.message}</p>
     {view.error ? <p role="alert">{view.error}</p> : null}
     {view.kind === "booked" ? <>

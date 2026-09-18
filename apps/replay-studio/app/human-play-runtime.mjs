@@ -46,19 +46,28 @@ export function bookingView(completion, sessionId) {
     typeof receipt?.match_id === "string" && /^[a-f0-9]{64}$/.test(receipt.match_id) &&
     receipt?.outcome?.kind === status;
   if (booked) return {
-    kind: "booked", headline: status === "inserted" ? "Recorded in Studio League" : "Already recorded",
-    message: status === "inserted" ? "This completed game was recorded once." : "No new rating events. The ratings below belong to the original booking, not another update.",
+    kind: "booked", headline: "Booked",
+    message: status === "inserted"
+      ? "This completed game is recorded in Studio League."
+      : "This occurrence was already recorded — no new rating events. The Elo below belongs to the original booking, not another update.",
     retryable: false, error: null, receipt,
     replayHref: /^[a-f0-9]{64}$/.test(receipt?.replay?.document_hash ?? "") ? replayHref(receipt.replay.document_hash) : null,
   };
-  if (status === "failed" && typeof completion.retryable === "boolean") return {
-    kind: "failed", headline: "League booking failed",
-    message: completion.retryable
-      ? "The game is finished. Retry offers the same saved evidence; it will not replay the game and does not guarantee insertion."
-      : "The game is finished. Automatic retry is not available. See the reason below; rebuilding may be required. Do not replay the game to repair its booking.",
-    retryable: completion.retryable, error: typeof completion.error === "string" ? completion.error : null,
-    receipt: null, replayHref: null,
-  };
+  if (status === "failed" && typeof completion.retryable === "boolean") {
+    const error = typeof completion.error === "string" ? completion.error : null;
+    return {
+      kind: "failed",
+      headline: completion.retryable ? "League booking pending" : "League booking requires repair",
+      // Frozen D9 copy. The extra sentence on the retryable path is the D9 honesty rule:
+      // retryable never promises eventual insertion.
+      message: completion.retryable
+        ? "The match is finished and its evidence is saved. Retry re-offers that saved evidence; it never replays the match and does not guarantee insertion."
+        : error ?? "Booking failed and automatic retry cannot repair it.",
+      retryable: completion.retryable,
+      error: completion.retryable ? error : null, // non-retryable carries the reason as its body
+      receipt: null, replayHref: null,
+    };
+  }
   return {
     kind: "unknown", headline: "League booking unconfirmed",
     message: "The game result is separate from booking. This page has no confirmed receipt; it does not know whether Elo changed.",

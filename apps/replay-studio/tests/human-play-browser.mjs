@@ -97,12 +97,14 @@ try {
   const request = await evaluate(`window.calls.find(c=>c.route==='/games')`);
   assert.equal(request.body, '{"agent_id":"test-agent","human_seat":1,"seed":18446744073709551615}');
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Pass turn').click()`);
-  await wait(`document.body.innerText.includes('League booking failed')`);
+  await wait(`document.body.innerText.includes('League booking pending')`);
   assert.match(await evaluate("document.body.innerText"), /VICTORY/);
+  assert.match(await evaluate("document.body.innerText"), /match is finished and its evidence is saved/);
   await evaluate(`window.bookingMode='transport';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Retry booking').click()`);
   await wait(`document.body.innerText.includes('League booking unconfirmed')`);
   await evaluate(`window.bookingMode='canonical';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Retry booking').click()`);
-  await wait(`document.body.innerText.includes('canonical order')`);
+  await wait(`document.body.innerText.includes('League booking requires repair')`);
+  assert.match(await evaluate("document.body.innerText"), /canonical order/);
   assert.equal(await evaluate(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent==='Retry booking')`), false);
   // Fresh page restores the real Host snapshot; use another finished fixture for success.
   await send("Page.reload");
@@ -111,11 +113,12 @@ try {
   await delay(60);await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Start new game').click()`);
   await wait(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent==='Pass turn')`);
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Pass turn').click()`);
-  await wait(`document.body.innerText.includes('League booking failed')`);
+  await wait(`document.body.innerText.includes('League booking pending')`);
   await evaluate(`window.bookingMode='already';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Retry booking').click()`);
   await wait(`document.body.innerText.includes('1516.0')`);
   const text = await evaluate("document.querySelector('.human-booking').innerText");
-  assert.match(text, /Already recorded/); assert.match(text, /You: 1500.0 → 1516.0 \(\+16.0\)/); assert.match(text, /Opponent: 1500.0 → 1484.0/);
+  assert.match(text, /Booked/); assert.match(text, /already recorded/); assert.match(text, /You: 1500.0 → 1516.0 \(\+16.0\)/); assert.match(text, /Opponent: 1500.0 → 1484.0/);
+  assert.doesNotMatch(text, /Retry booking/, "a booked occurrence must not offer retry");
   const calls = await evaluate("window.calls");
   assert.equal(calls.filter(c => c.route === "/games").length, 1);
   assert.ok(calls.filter(c => c.route.includes("league-completion")).every(c => c.method === "POST" && c.body === null));

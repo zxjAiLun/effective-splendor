@@ -1,6 +1,11 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地）@ `7d9f603`，待 owner review；Slice C IMPLEMENTED / VERIFIED（本地，真人验收待执行；见 [交付清单](studio-player-loop-v1.md)）**（D1–D9 与验收数字冻结）
+- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B ACCEPTED @ 7d9f603（P0=0/P1=0/P2=2 deferred）；Slice C IMPLEMENTED / VERIFIED 本地（真人验收未执行）**（D1–D9 与验收数字冻结）
+  - Slice B owner 复审通过：registry TOCTOU、durable-first、disk-only retry、canonical-tail 全部成立；
+    P2-1（RegisteredOpponent 固定 30s/1s timeout 与 Host 配置两套）与 P2-2（Database 全类=retryable）
+    **DEFERRED，不在 C 修**。GitHub 无 cloud checks，296/100 等计数继续记为本地执行证据。
+  - Slice C 冻结文案复核：净 UI 对齐为 `Booked` / `League booking pending` / `League booking requires repair`
+    （D9 原句），非重试态 error 即正文。**无后端 response shape 变更。**
   - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
     本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
     `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、

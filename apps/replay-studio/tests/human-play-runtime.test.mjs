@@ -35,15 +35,26 @@ test("result is independent from booking and tied winners are DRAW", () => {
   assert.equal(humanResult({ winners: [] }, 1), "RESULT UNAVAILABLE");
   for (const retryable of [true, false]) {
     const view = bookingView({ status: "failed", retryable, error: "canonical order; rebuild" }, id);
-    assert.equal(view.retryable, retryable); assert.match(view.message, /game is finished/);
+    assert.equal(view.retryable, retryable);
+    assert.equal(view.headline, retryable ? "League booking pending" : "League booking requires repair");
+    assert.doesNotMatch(view.headline, /failed/i);
     assert.doesNotMatch(view.headline, /match failed|not booked/i);
+    if (retryable) {
+      assert.match(view.message, /match is finished/);
+      assert.match(view.message, /evidence is saved/);
+    } else {
+      assert.equal(view.message, "canonical order; rebuild");
+      assert.equal(view.error, null, "non-retryable carries the reason as its message body, not a retry affordance");
+    }
   }
 });
 
 test("inserted and AlreadyPresent use the existing receipt; never invent default Elo", () => {
   assert.equal(bookingView(completion, id).kind, "booked");
   const existing = { ...completion, status: "already_present", receipt: { ...receipt, outcome: { kind: "already_present", rating_events: 0 } } };
-  assert.match(bookingView(existing, id).message, /No new rating events/);
+  assert.match(bookingView(existing, id).message, /already recorded/);
+  assert.equal(bookingView(completion, id).headline, "Booked");
+  assert.match(bookingView(completion, id).message, /recorded in Studio League/);
   assert.equal(bookingView(existing, id).retryable, false);
   assert.equal(bookingView({ ...completion, receipt: null }, id).kind, "unknown");
   assert.equal(bookingView(completion, "other-session").kind, "unknown");

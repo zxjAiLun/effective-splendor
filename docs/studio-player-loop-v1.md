@@ -72,6 +72,13 @@
 
 ### C/E — IMPLEMENTED / VERIFIED（本地，未真人验收）
 
+冻结文案（owner 确认 D1–D9，三种终态原文）：
+- booked: `Booked`（`STUDIO LEAGUE` kicker）
+- retryable failure: `League booking pending` + `The match is finished and its evidence is saved. Retry re-offers that saved evidence; it never replays the match and does not guarantee insertion.`
+- non-retryable: `League booking requires repair` + `<error>` 作为 body，**无 Retry 按钮**。
+delta `1c9c04e` 仅为此文案对齐，不改 Host shape。
+
+
 - `app/human-play-runtime.mjs` 是 Play 正在消费的 request/两事实/retry/seat→participant join 实现。
   `humanStartBody` 只输出三个冻结字段；u64 使用校验后的 JSON number literal，不更改 Host 输入类型。
 - `HumanBookingPanel` 消费 B 的 receipt，插入/已存在/失败/未知分别呈现；raw receipt 可展开，
