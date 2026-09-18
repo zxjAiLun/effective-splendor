@@ -505,6 +505,8 @@ struct HumanSessionState {
     format: &'static str,
     version: u32,
     session_id: String,
+    /// Decimal string: browser Number cannot represent every replay seed exactly.
+    seed: String,
     human_seat: PlayerId,
     opponent: String,
     ply: u32,
@@ -704,6 +706,7 @@ impl Session {
             format: "effective-splendor-human-session",
             version: 1,
             session_id: self.id.clone(),
+            seed: state.seed.to_string(),
             human_seat: self.human_seat,
             opponent: self.opponent.label().to_string(),
             ply: self.ply,
@@ -2895,7 +2898,10 @@ mod tests {
         assert!(json.contains("observation"));
         assert!(json.contains("legal_actions"));
         assert!(!json.contains("decks"));
-        assert!(!json.contains("seed\""));
+        let value = serde_json::to_value(session.snapshot()).unwrap();
+        assert_eq!(value["seed"], "20");
+        assert!(!value["observation"].to_string().contains("seed\""));
+        assert!(!value["action_history"].to_string().contains("seed\""));
     }
 
     #[test]
@@ -2914,7 +2920,9 @@ mod tests {
         assert_eq!(value["action_history"][0]["action"]["type"], "take_tokens");
         let json = value.to_string();
         assert!(!json.contains("decks"));
-        assert!(!json.contains("seed\""));
+        assert_eq!(value["seed"], "20");
+        assert!(!value["observation"].to_string().contains("seed\""));
+        assert!(!value["action_history"].to_string().contains("seed\""));
     }
 
     #[test]

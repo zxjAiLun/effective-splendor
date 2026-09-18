@@ -174,6 +174,11 @@ Core tables: `participants`, `participant_aliases`, `matches`, `match_seats`,
 
 ## Scope and non-goals
 
+> **2026-09-18 范围更新**：owner 重申 9/11 的七项玩家闭环并要求继续完成。
+> 原 A–E 不替换为新 League；补入 **F Review UX / cache switching** 与有界 Games 分页。
+> 下方 no-pagination 是初版历史范围，不再限制该已授权交付。完整剩余项与当前 C/E 切片见
+> [Studio Player Loop v1](studio-player-loop-v1.md)。既有身份、评分、证据和历史迁移裁决不改。
+
 Five natural commits, one product milestone (not five separately-approved rounds):
 
 - **A. League core** — Participant / Match Ledger / SQLite schema / rating eligibility /

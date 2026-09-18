@@ -28,6 +28,8 @@ fn start_game(host: &HostProcess, seat: u8, seed: u64) -> serde_json::Value {
     );
     assert_eq!(code, 200, "{state}");
     assert!(state["league_completion"].is_null());
+    assert_eq!(state["seed"], seed.to_string());
+    assert_eq!(state["human_seat"], seat);
     state
 }
 
@@ -117,7 +119,10 @@ fn human_host_books_both_seats_and_freezes_the_selected_registry_entry() {
         // Decisive TOCTOU control: the Host already validated its registry. A
         // reread in RegisteredOpponent::start would fail before the first move.
         std::fs::write(&registry, "not JSON anymore").unwrap();
-        let state = finish_game(&host, start_game(&host, seat, 810_000 + u64::from(seat)));
+        let seed = if seat == 0 { 810_000 } else { u64::MAX };
+        let state = finish_game(&host, start_game(&host, seat, seed));
+        assert_eq!(state["seed"], seed.to_string());
+        assert_eq!(host.get_json("/state").1["seed"], seed.to_string());
         let id = state["session_id"].as_str().unwrap();
         assert_eq!(state["league_completion"]["status"], "inserted", "{state}");
         assert_eq!(
@@ -126,6 +131,7 @@ fn human_host_books_both_seats_and_freezes_the_selected_registry_entry() {
         );
         assert_eq!(counts(&paths), (1, 2));
         let occurrence = envelope(&paths, id);
+        assert_eq!(occurrence["seed"].as_u64(), Some(seed));
         assert_eq!(occurrence["human"]["participant_id"], human.participant_id);
         assert_eq!(occurrence["human_seat"], seat);
         assert_eq!(

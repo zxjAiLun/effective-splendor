@@ -318,12 +318,12 @@ export default function ExperimentsPage() {
   const stepButton = stepPly;
 
   // ---- filters ----
-  const visiblePairings = useMemo(
+  const visiblePairings = useMemo<PairingIndexEntry[]>(
     () => (currentExperiment ? filterPairings(currentExperiment.pairings, { query: filterText, status: statusFilter }) : []),
     [currentExperiment, filterText, statusFilter],
   );
 
-  const visibleMatches = useMemo(
+  const visibleMatches = useMemo<MatchSlot[]>(
     () => (pairing ? filterMatches(pairing.matches, { status: statusFilter }) : []),
     [pairing, statusFilter],
   );

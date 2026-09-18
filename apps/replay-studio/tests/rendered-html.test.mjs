@@ -71,7 +71,12 @@ test("server-renders the M20 Human Play Studio route", async () => {
   assert.match(html, /Human Play Studio/);
   assert.match(html, /ONE CLICK · NO PORT SETUP/);
   assert.match(html, /Start new game/);
-  assert.match(html, /Start Splendor Studio\.cmd/);
+  assert.match(html, /Splendor Studio\.cmd/);
+  assert.match(html, /Rated Studio League match/);
+  assert.match(html, /Your Elo may change/);
+  assert.match(html, /Randomize seed/);
+  assert.match(html, /Random/);
+  assert.doesNotMatch(html, /Earlier games/);
   assert.doesNotMatch(html, /Connect to port/);
 });
 

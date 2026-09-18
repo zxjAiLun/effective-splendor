@@ -1,6 +1,6 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地）@ `7d9f603`，待 owner review；Slice C NOT AUTHORIZED**（D1–D9 与验收数字冻结）
+- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B IMPLEMENTED / VERIFIED（本地）@ `7d9f603`，待 owner review；Slice C IMPLEMENTED / VERIFIED（本地，真人验收待执行；见 [交付清单](studio-player-loop-v1.md)）**（D1–D9 与验收数字冻结）
   - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
     本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
     `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
@@ -835,6 +835,10 @@ exactly 2 events。
 
 ## Result and decision
 
+2026-09-18 继续交付更新：C/E 页面已 IMPLEMENTED / VERIFIED（本地），实际改动/失败修正/测试见
+[Studio Player Loop](studio-player-loop-v1.md)。真实首局尚未执行；全闭环仍未 ACCEPTED。
+下述为 B 交付时的历史结论：
+
 **Slice B IMPLEMENTED / VERIFIED（本地），待 owner review；不是整轮 ACCEPTED。**
 评分/双 Engine/Human 审计已做（见下），没有以优化名义修改冻结范围。下一道门是审核 B 的
 实际 narrow diff；未获 C 授权前不改 UI，也不代替 owner 打真实首局。
@@ -869,6 +873,10 @@ exactly 2 events。
    需要 canonical rebuild；v1 不实现自动中插或自动重算 Elo。
 
 ## Next authorized gate
+
+2026-09-18 更新：owner 授权继续完成玩家页面与接入，C/E → D → F 的完整清单见
+[Studio Player Loop](studio-player-loop-v1.md)。此为继续实施授权，不等同 B 独立 review 或整轮验收。
+以下是 B 交付时的历史 next-gate 记录，已由本更新取代：
 
 1. owner 复核 Slice B 的实际 narrow commit/diff 与本地验证证据；
 2. B 通过后再由 owner 授权 **Slice C**（当前未授权）；

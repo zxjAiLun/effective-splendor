@@ -338,7 +338,7 @@ function ReservedCards({
   );
 }
 
-export function ReplayTimeline({
+export function ReplayTimeline<T extends { ply: number; actor: PlayerId }>({
   frames,
   frameIndex,
   onSeek,
@@ -346,10 +346,10 @@ export function ReplayTimeline({
   title,
   footnote,
 }: {
-  frames: Array<{ ply: number; actor: PlayerId }>;
+  frames: T[];
   frameIndex: number;
   onSeek: (index: number) => void;
-  isCandidatePly?: (frame: { ply: number; actor: PlayerId }, index: number) => boolean;
+  isCandidatePly?: (frame: T, index: number) => boolean;
   title: string;
   footnote: string;
 }) {

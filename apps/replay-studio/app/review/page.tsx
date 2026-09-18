@@ -486,6 +486,7 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
     );
   }
   if (trace.reviewer.result_kind === "root_determinization") {
+    const scoredRows = rows as Array<{ action: Action; actual: boolean; recommended: boolean; meanUtility: number; utilityGap: number; actionRank: number }>;
     return (
       <div>
         <div className="analysis-header">
@@ -495,7 +496,7 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
         <div className="legend"><span><i className="actual-marker">★</i> actual</span><span><i className="best-marker">▲</i> recommended</span></div>
         <div className="analysis-table" role="table" aria-label="Root determinization analysis">
           <div className="analysis-row determinization table-head" role="row"><span>Action</span><span>Mean utility</span><span>Utility gap</span><span>Rank</span></div>
-          {rows.map((row) => (
+          {scoredRows.map((row) => (
             <div className={`analysis-row determinization ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={actionKey(row.action)}>
               <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{formatActionLabel(row.action, frame, cards)}</span>
               <span className="q-value">{row.meanUtility.toFixed(0)}</span>
@@ -512,6 +513,7 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
       </div>
     );
   }
+  const neuralRows = rows as Array<{ action: Action; actual: boolean; searchChoice: boolean; highestQ: boolean; prior: number; visit: number; q: number | null; qGap: number | null; unscored: boolean }>;
   return (
     <div>
       <div className="analysis-header">
@@ -522,13 +524,13 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
       <div className="legend"><span><i className="actual-marker">★</i> actual</span><span><i className="best-marker">▲</i> search choice</span><span><i className="best-marker">◆</i> highest visited Q</span></div>
       <div className="analysis-table" role="table" aria-label="Neural ISMCTS analysis">
         <div className="analysis-row table-head" role="row"><span>Action</span><span>Prior</span><span>Visit</span><span>Q(P{frame.actor})</span><span>Q gap</span></div>
-        {rows.map((row) => (
+        {neuralRows.map((row) => (
           <div className={`analysis-row ${row.actual ? "actual-row" : ""} ${row.searchChoice ? "best-row" : ""} ${row.highestQ ? "highest-q-row" : ""}`} role="row" key={actionKey(row.action)}>
             <span className="action-name"><i>{row.actual ? "★" : ""}{row.searchChoice ? "▲" : ""}{row.highestQ ? "◆" : ""}</i>{formatActionLabel(row.action, frame, cards)}</span>
             <MetricBar value={row.prior} tone="prior" />
             <MetricBar value={row.visit} tone="visit" />
-            <span className="q-value">{row.unscored ? "UNSCORED" : row.q.toFixed(3)}</span>
-            <span className="delta">{row.unscored ? "UNSCORED" : row.qGap === 0 ? "BEST" : row.qGap.toFixed(3)}</span>
+            <span className="q-value">{row.q === null ? "UNSCORED" : row.q.toFixed(3)}</span>
+            <span className="delta">{row.qGap === null ? "UNSCORED" : row.qGap === 0 ? "BEST" : row.qGap.toFixed(3)}</span>
           </div>
         ))}
       </div>

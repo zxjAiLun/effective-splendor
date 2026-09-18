@@ -659,6 +659,7 @@ export function buildReviewRows(trace, frame) {
   };
 }
 
+/** @param {object} trace @param {number|null} humanSeat */
 export function buildReviewSummary(trace, humanSeat = null) {
   const humanFrames = humanSeat === null
     ? trace.frames

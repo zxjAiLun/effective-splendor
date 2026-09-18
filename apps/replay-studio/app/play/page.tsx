@@ -6,6 +6,8 @@ import { API_BASE as API } from "../api-base.mjs";
 import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
 import { TokenTotal } from "../components/token-total";
 import { defaultReviewerIdFor, reviewerSupportsPlayerCount } from "../trace-runtime.mjs";
+import { humanResult, humanStartBody, randomSeed, resolveSeat, retryHumanBooking } from "../human-play-runtime.mjs";
+import { HumanBookingPanel, type HumanCompletion } from "../components/human-booking-panel";
 
 type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
@@ -21,6 +23,7 @@ type State = {
   observation:{ viewer:number; public:{ player_count:number; current_player:number; phase:string; bank:Gems; deck_counts:number[]; market:Array<Array<number|null>>; nobles:number[]; players:Player[] }; private:{reserved:Array<{slot:number;card:number;tier:string;from_deck:boolean}>} };
   legal_actions:Action[]; action_history:HistoryItem[];
   result:null|{scores:number[];ranks:number[];winners:number[];reason:string}; replay_ready:boolean; replay_document_hash:string|null;
+  seed?:string; league_completion?:HumanCompletion|null;
 };
 
 const TIERS = ["One", "Two", "Three"];
@@ -101,11 +104,12 @@ export default function HumanPlayPage() {
   const [showReviewers,setShowReviewers] = useState(false);
   const [catalog,setCatalog] = useState<Catalog|null>(null);
   const [agentId,setAgentId] = useState("s3-rollout");
-  const [humanSeat,setHumanSeat] = useState(0);
-  const [seed,setSeed] = useState(()=>Math.floor(Date.now()/1000));
+  const [seatChoice,setSeatChoice] = useState("random");
+  const [seed,setSeed] = useState("0");
   const [hostOnline,setHostOnline] = useState(false);
   const [error,setError] = useState("");
   const [busy,setBusy] = useState(false);
+  const [uncertain,setUncertain] = useState(false);
   const [pendingTake,setPendingTake] = useState<Gems>(EMPTY_GEMS);
   const [selectedCard,setSelectedCard] = useState<{tier:number;slot:number;cardId:number}|null>(null);
   const [contextActions,setContextActions] = useState<Action[]>([]);
@@ -116,6 +120,7 @@ export default function HumanPlayPage() {
 
   useEffect(()=>{ queueMicrotask(()=>void (async()=>{
     try {
+      setSeed(randomSeed());
       const [agentResponse,catalogResponse]=await Promise.all([fetch(`${API}/agents`),fetch(`${API}/catalog`)]);
       if(!agentResponse.ok)throw new Error(`Studio Host ${agentResponse.status}`); if(!catalogResponse.ok)throw new Error(`Catalog ${catalogResponse.status}`);
       const [value,catalogValue]=await Promise.all([agentResponse.json() as Promise<{agents:Agent[]}>,catalogResponse.json() as Promise<Catalog>]);
@@ -123,12 +128,52 @@ export default function HumanPlayPage() {
       setAgentId(current=>value.agents.some(agent=>agent.id===current)?current:(value.agents[0]?.id??""));
       const stateResponse=await fetch(`${API}/state`); if(stateResponse.ok)setState(await stateResponse.json());
       try { const reviewerResponse=await fetch(`${API}/reviewers`); if(reviewerResponse.ok){ const reviewerValue=await reviewerResponse.json() as {reviewers:Reviewer[]}; setReviewers(reviewerValue.reviewers); } } catch { /* reviewers optional */ }
-    } catch(reason){ setHostOnline(false); setError(`Studio Host is not running. Launch the project once with Start Splendor Studio.cmd. ${reason instanceof Error?reason.message:String(reason)}`); }
+    } catch(reason){ setHostOnline(false); setError(`Studio Host is not running. Launch the project once with Splendor Studio.cmd. ${reason instanceof Error?reason.message:String(reason)}`); }
   })()); },[]);
 
   function clearPending(){ setPendingTake(EMPTY_GEMS); setSelectedCard(null); setContextActions([]); }
-  async function startGame(){ setBusy(true); try { const response=await fetch(`${API}/games`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({agent_id:agentId,human_seat:humanSeat,seed})}); const value=await response.json(); if(!response.ok)throw new Error(value.error??`Studio Host ${response.status}`); setState(value); clearPending(); setError(""); } catch(reason){ setError(reason instanceof Error?reason.message:String(reason)); } finally{setBusy(false);} }
-  async function play(action:Action){ setBusy(true); try { const response=await fetch(`${API}/action`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(action)}); const value=await response.json(); if(!response.ok) throw new Error(value.error??`Studio Host ${response.status}`); setState(value); clearPending(); setError(""); } catch(reason){ setError(reason instanceof Error?reason.message:String(reason)); } finally { setBusy(false); } }
+  async function startGame(){
+    setBusy(true);
+    let sent=false;
+    try {
+      const body=humanStartBody(agentId,resolveSeat(seatChoice),seed);
+      sent=true;
+      const response=await fetch(`${API}/games`,{method:"POST",headers:{"Content-Type":"application/json"},body});
+      const value=await response.json();
+      if(!response.ok){sent=false;throw new Error(value.error??`Studio Host ${response.status}`);}
+      setState(value);setShowReviewers(false);clearPending();setError("");setUncertain(false);
+    } catch(reason){setUncertain(sent);setError(`${sent?"Start response unknown. Check the current session before starting another game. ":""}${reason instanceof Error?reason.message:String(reason)}`);}
+    finally{setBusy(false);}
+  }
+  async function play(action:Action){
+    if(busy||uncertain)return;
+    setBusy(true);
+    try {
+      const response=await fetch(`${API}/action`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(action)});
+      const value=await response.json();
+      if(!response.ok)throw new Error(value.error??`Studio Host ${response.status}`);
+      setState(value);clearPending();setError("");setUncertain(false);
+    } catch(reason){setUncertain(true);setError(`Action outcome unknown. Check the current session; do not resend the move. ${reason instanceof Error?reason.message:String(reason)}`);}
+    finally{setBusy(false);}
+  }
+  async function refreshSession(){
+    setBusy(true);
+    try{
+      const response=await fetch(`${API}/state`);const value=await response.json();
+      if(!response.ok)throw new Error(value.error??`Studio Host ${response.status}`);
+      setState(value);clearPending();setUncertain(false);setError("");
+    }catch(reason){setError(`Current session could not be confirmed. ${reason instanceof Error?reason.message:String(reason)}`);}
+    finally{setBusy(false);}
+  }
+  async function retryBooking(){
+    if(!state?.result)return;
+    const sessionId=state.session_id;
+    setBusy(true);
+    try{
+      const completion=await retryHumanBooking(fetch,API,sessionId);
+      setState(current=>current?.session_id===sessionId?{...current,league_completion:completion}:current);
+    }finally{setBusy(false);}
+  }
   function openReplay(){ if(!state) return; window.location.assign(`/replay?session=${encodeURIComponent(state.session_id)}`); }
 
   function changePendingGem(gem:GemName,delta:number){
@@ -152,8 +197,9 @@ export default function HumanPlayPage() {
   const pendingCount=TAKE_GEMS.reduce((sum,gem)=>sum+pendingTake[gem],0);
   const defaultReviewerId=defaultReviewerIdFor(reviewers,state?.observation.public.player_count??2);
   return <main className="human-studio">
-    <header className="human-topbar"><div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div><div className="human-status"><span className={`status-dot ${hostOnline?"":"offline"}`} />{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</div><nav><Link href="/">Replay Studio</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link>{state?<button onClick={()=>{setState(null);clearPending();}}>New game</button>:null}</nav></header>
-    {error?<div className="error-banner" role="alert">{error}</div>:null}
+    <header className="human-topbar"><div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div><div className="human-status"><span className={`status-dot ${hostOnline?"":"offline"}`} />{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</div><nav><Link href="/">Games</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link>{state?<button disabled={busy} onClick={()=>{setState(null);clearPending();setShowReviewers(false);}}>New game</button>:null}</nav></header>
+    {error?<div className="error-banner" role="alert">{error}{uncertain?<button disabled={busy} onClick={()=>void refreshSession()}>Check current session</button>:null}</div>:null}
+    {state?<p className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"} · Seed: <code>{state.seed??"Unavailable from this Host version"}</code></p>:null}
     {state?<section className="human-workspace">
       <article className="human-board">
         <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><PlayerResources player={item}/>{item.id!==state.human_seat?<OpponentReserve player={item} cards={cards}/>:null}{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>)}</div>
@@ -164,7 +210,7 @@ export default function HumanPlayPage() {
         <div className="human-private"><span>PLAYER-VIEW ONLY</span><p>Actions and token holdings are public. Blind-reserved card identities and deck order remain hidden.</p></div>
       </article>
       <aside className="human-actions">
-        {state.result?<div className="human-result"><strong>{state.result.winners.includes(state.human_seat)?"VICTORY":"DEFEAT"}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=>{const supported=reviewerSupportsPlayerCount(reviewer,state.observation.public.player_count);return <button key={reviewer.id} disabled={!supported} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}&seat=${state.human_seat}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.id===defaultReviewerId?" · recommended default":""}{supported?"":` · unavailable for ${state.observation.public.player_count}-player replays`}</small></button>;})}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}</div>:<>
+        {state.result?<div className="human-result"><strong>{humanResult(state.result,state.human_seat)}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=>{const supported=reviewerSupportsPlayerCount(reviewer,state.observation.public.player_count);return <button key={reviewer.id} disabled={!supported} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}&seat=${state.human_seat}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.id===defaultReviewerId?" · recommended default":""}{supported?"":` · unavailable for ${state.observation.public.player_count}-player replays`}</small></button>;})}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}<HumanBookingPanel key={state.session_id} completion={state.league_completion} sessionId={state.session_id} humanSeat={state.human_seat} busy={busy} onRetry={()=>void retryBooking()}/></div>:<>
           <section className="pending-panel"><span className="section-kicker">PENDING MOVE</span><h2>{pendingCount?"Take gems":selectedCard?`Card #${selectedCard.cardId}`:contextActions.some(action=>action.type==="reserve_deck")?"Blind reserve":"Select on the table"}</h2>
             {pendingCount?<><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div><p>{confirmTake?"Legal selection. Confirm to end your turn.":exactTakeActions.length>1?"Choose which gems to return below.":"Keep selecting a legal combination, or click a selected gem to return it."}</p></>:null}
             {selectedCard&&cards.has(selectedCard.cardId)?<div className="selected-card-preview"><DevelopmentCard card={cards.get(selectedCard.cardId)!} discount={humanBonuses}/></div>:null}
@@ -179,6 +225,6 @@ export default function HumanPlayPage() {
         </>}
       </aside>
     </section>:null}
-    {!state?<><section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint and start immediately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={humanSeat} onChange={event=>setHumanSeat(Number(event.target.value))} disabled={!hostOnline||busy}><option value={0}>P0 · first</option><option value={1}>P1 · second</option></select></label><label>Game seed<input type="number" min="0" value={seed} onChange={event=>setSeed(Number(event.target.value))} disabled={!hostOnline||busy}/></label><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Start Splendor Studio.cmd in the project folder.`}</small></section><section className="recent-games"><span className="section-kicker">HISTORY</span><h2>Earlier games</h2><p>All saved human vs engine games — view or review them — live on the <Link href="/">Games</Link> page.</p></section></>:null}
+    {!state?<section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint.</p><p className="rated-notice"><strong>Rated Studio League match</strong><br/>Your Elo may change. A finished game and its League booking are reported separately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={seatChoice} onChange={event=>setSeatChoice(event.target.value)} disabled={!hostOnline||busy}><option value="random">Random</option><option value="first">First · P0</option><option value="second">Second · P1</option></select></label><label>Game seed<input type="text" inputMode="numeric" value={seed} onChange={event=>setSeed(event.target.value)} disabled={!hostOnline||busy}/></label><button type="button" disabled={!hostOnline||busy} onClick={()=>setSeed(randomSeed())}>Randomize seed</button><small>Exact unsigned 64-bit decimal; no rounding. The actual seat and seed are shown after starting.</small><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy||uncertain}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Splendor Studio.cmd in the project folder.`}</small></section>:null}
   </main>;
 }
