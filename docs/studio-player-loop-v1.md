@@ -76,7 +76,7 @@
 - booked: `Booked`（`STUDIO LEAGUE` kicker）
 - retryable failure: `League booking pending` + `The match is finished and its evidence is saved. Retry re-offers that saved evidence; it never replays the match and does not guarantee insertion.`
 - non-retryable: `League booking requires repair` + `<error>` 作为 body，**无 Retry 按钮**。
-delta `1c9c04e` 仅为此文案对齐，不改 Host shape。
+delta `33d21b3` 仅为此文案对齐，不改 Host shape。
 
 
 - `app/human-play-runtime.mjs` 是 Play 正在消费的 request/两事实/retry/seat→participant join 实现。
