@@ -1,19 +1,14 @@
 # Human Live League Integration v1 — 冻结设计 / Evidence Contract
 
-- **Status**: `DESIGN ACCEPTED @ e081d55`；**Slice A ACCEPTED @ 7ce921b；Slice B ACCEPTED @ 7d9f603（P0=0/P1=0/P2=2 deferred）；Slice C IMPLEMENTED / VERIFIED 本地（真人验收未执行）**（D1–D9 与验收数字冻结）
-  - Slice B owner 复审通过：registry TOCTOU、durable-first、disk-only retry、canonical-tail 全部成立；
-    P2-1（RegisteredOpponent 固定 30s/1s timeout 与 Host 配置两套）与 P2-2（Database 全类=retryable）
-    **DEFERRED，不在 C 修**。GitHub 无 cloud checks，296/100 等计数继续记为本地执行证据。
-  - Slice C 冻结文案复核：净 UI 对齐为 `Booked` / `League booking pending` / `League booking requires repair`
-    （D9 原句），非重试态 error 即正文。**无后端 response shape 变更。**
-  - **设计复审**：`f6909c3` — `DESIGN_REPAIR_REQUIRED`（P0=0 / P1=3 / P2=1；主架构 ACCEPTED）。
-    本文件即 **Design Repair 1** 落点：P1-1 retry 语义收窄（canonical-tail）、P1-2 冻结
-    `source_document_hash` 映射、P1-3 `expected_session_id` 绑定上移到 orchestration 层、
-    P2-1 handshake provenance 拆分 producer/completion 两层。详见「Iteration log」。
-  - Slice A owner 复审通过（P0=0 / P1=0 / P2=2）；两项 visibility/comment P2 随 B 收口。
-  - B 基线核验：`main == origin/main == 7ce921bae41a3df44f457e8469299ae208c28b0f`，clean。
-    A 的实际 direct parent 是 `5ac93f5`，A-only diff 为 `5ac93f5..7ce921b`（6 files）；
-    `e081d55..7ce921b` 还含独立教学提交 `527bc19` / `5ac93f5`，不可称为 A-only。
+- **Status**: **ACCEPTED / CLOSED**（2026-09-18，owner 真人真实对局现场验收 PASS，首局身份闭环走通）
+  - **Recon**: `ACCEPTED`（见文末「Recon 回执」；owner 修正已并入 D4/D2）
+  - **Design**: `ACCEPTED @ e081d55`（Design Repair 1 冻结 D1–D9）
+  - **Slice A**: `ACCEPTED @ 7ce921b`（P0=0 / P1=0 / P2=2；共享 resolver + Human occurrence/builder + 通用尾段）
+  - **Slice B**: `ACCEPTED @ 7d9f603`（P0=0 / P1=0 / P2=2 deferred；Host 身份冻结 + durable-first + disk retry + Gate H）
+  - **Slice C**: `ACCEPTED`（`e7d1aff` + `33d21b3` D9 冻结文案净对齐；owner 真实对局现场验收 PASS）
+  - **真实验收对局**: session `human-9921689750950880821-0-37548-1`，match `c20e1f3b1c649c24ca59ffa30a6053c66b749a5c72d5fd10a03964790070eceb`，replay `ed567bff9d7441fbda65bbf98ac601f5cb96f1ba714d9cc769a2618e2497dd56`；17 – 6 获胜，You Elo 1500.0 → 1529.8 (+29.8)，全库 matches 42,522 → 42,523 (+1)，rating_events 28,012 → 28,014 (+2)。
+  - **两个 P2 deferred 保持**（不在此轮改动）：P2-1 RegisteredOpponent 超时配置固定 30s/1s，P2-2 Database retryable 分类较粗。
+  - **里程碑状态**: **ACCEPTED / CLOSED**。后续工作转入 [Studio Player Loop](studio-player-loop-v1.md) 的 D/F 清单。
 - **Baseline**: `dba11dd`（`main == origin/main`，工作树干净）。前一轮
   League Play Page v1 / Real-Scale Walkthrough Repair 已 `ACCEPTED / CLOSED`
   （`38292a1` 裁决 + `dba11dd` 关闭记录）。
@@ -802,51 +797,64 @@ H. canonical-tail fail-closed（P1-1 负向；落 Slice B 或现有 ledger tests
    → 不产生重复 match 行、不产生新 rating events
 ```
 
-### 最终人工验收数字（真实库，精确）
+### 最终人工验收数字（真实库现场验收 PASS · 2026-09-18）
 
-当前：
+owner 本人通过浏览器（`http://127.0.0.1:4173/play`）现场完整实战打完一盘 Rated 对局并成功入账：
 
-```text
-You: match_seats = 0, rating_events = 0, current_elo = NULL
-```
+- **UI 呈现**:
+  ```text
+  VICTORY
+  17 – 6 · prestige
+  STUDIO LEAGUE
+  Booked
+  This completed game is recorded in Studio League.
 
-第一场真正 Human rated match 完成后必须精确变成：
-
-```text
-human match_seats:     0 → 1
-human rating_events:   0 → 1
-total matches:         +1
-total rating_events:   +2
-human current_elo:     NULL → real Elo
-```
-
-**表述更正（owner 明确）**：之前"产生属于你的首批 2 条 Elo 事件"是错的。
-一盘 1v1 是 **Human 自己 +1、Opponent +1、全局 +2**；ledger 强制 eligible 1v1
-exactly 2 events。
-
-人工还要确认：
-
-```text
-/play 开局前明确 Rated
-→ 真人完整打一盘
-→ Victory / Defeat 正常
-→ Elo receipt 显示
-→ /league 出现 You 的真实 Elo / 1 rated game
-→ 旧 /play replay 仍能打开
-→ League archived replay 也能打开
-```
+  You: 1500.0 → 1529.8 (+29.8)
+  Opponent: 1953.4 → 1923.6 (-29.8)
+  This match’s Studio Elo event, not a claim about your current rating or the research official_elo.
+  human-9921689750950880821-0-37548-1
+  ```
+- **真实库复核**（SQLite URI `mode=ro` + `PRAGMA query_only=ON`）：
+  - `total_matches`: `42,522 → 42,523`（**恰好 +1**）
+  - `total_rating_events`: `28,012 → 28,014`（**恰好 +2**，You +1，Opponent +1）
+  - `human_seats`: `0 → 1`
+  - `human_events`: `0 → 1`
+  - `human_current_elo`: `NULL → 1529.8079938940307`（榜单显示 `1530`）
+  - `opponent_current_elo`: `1953.3963956086084 → 1923.5884017145777`（`-29.807993894030602`）
+  - `match_id`: `c20e1f3b1c649c24ca59ffa30a6053c66b749a5c72d5fd10a03964790070eceb`
+  - `source_kind`: `human_play`
+  - `source_identity`: `runtime:human-9921689750950880821-0-37548-1`
+  - `source_document_hash`: `40cb93a3d8cc2677b2efc4a9dfdc132ffe449ad7aacf13ff09144cd4eb081c8f`
+  - `replay_document_hash`: `ed567bff9d7441fbda65bbf98ac601f5cb96f1ba714d9cc769a2618e2497dd56`
+  - `status`: `completed`
+  - `played_at`: `1789742158`
+  - `league_seq`: `42523`
+  - `player_count`: 2
+  - `rating_eligible`: 1
+- **磁盘证据逐字节一致**：
+  - `local-artifacts/m20-human-play/human-9921689750950880821-0-37548-1.replay.json`（SHA `ed567bff...`）
+  - `local-artifacts/m20-human-play/human-9921689750950880821-0-37548-1.replay.meta.json`（`human_seat: 0`, `opponent: "S3 Rollout (Default · Strong)"`）
+  - `local-artifacts/studio-league/occurrences/human-9921689750950880821-0-37548-1/{replay.json, occurrence.json}`
+  - `local-artifacts/studio-league/replays/ed/ed567bff9d7441fbda65bbf98ac601f5cb96f1ba714d9cc769a2618e2497dd56.json`
+  - 三份 replay 物理字节完全相同。
+- **只读 Reader 复查通过**（`StudioLeagueReaderV1`）：
+  - 榜单读取 You：`1530` Elo，1 rated，1 recorded，1 win，0 loss，0 tie，provisional: true。
+  - `match_detail`: 可完整读出对局详情与双方座位。
+  - `read_replay`: 按 content address 可完整读出归档对象。
 
 ---
 
 ## Result and decision
 
-2026-09-18 继续交付更新：C/E 页面已 IMPLEMENTED / VERIFIED（本地），实际改动/失败修正/测试见
-[Studio Player Loop](studio-player-loop-v1.md)。真实首局尚未执行；全闭环仍未 ACCEPTED。
-下述为 B 交付时的历史结论：
+**Human Live League Integration v1 — ACCEPTED / CLOSED**（2026-09-18，owner 现场对局走查验收完成）。
 
-**Slice B IMPLEMENTED / VERIFIED（本地），待 owner review；不是整轮 ACCEPTED。**
-评分/双 Engine/Human 审计已做（见下），没有以优化名义修改冻结范围。下一道门是审核 B 的
-实际 narrow diff；未获 C 授权前不改 UI，也不代替 owner 打真实首局。
+- **Recon**: `ACCEPTED`
+- **Design**: `ACCEPTED @ e081d55`
+- **Slice A**: `ACCEPTED @ 7ce921b`
+- **Slice B**: `ACCEPTED @ 7d9f603`（P0=0 / P1=0 / P2=2 deferred）
+- **Slice C**: `ACCEPTED`（`e7d1aff` + `33d21b3` D9 文案对齐；真人走查 PASS）
+- **终局判定**：**Human → Live Studio League → Elo → Replay 的玩家身份闭环第一次在真实库上真正走通。**
+- Starting state 已诚实演变为第一个真实状态：You match_seats 0→1, rating_events 0→1, current_elo NULL→1530 (1529.8), total matches 42,522→42,523 (+1), total rating_events 28,012→28,014 (+2)。
 
 ## Workflow audit — rating / two Engines / Human integration
 
@@ -879,14 +887,12 @@ exactly 2 events。
 
 ## Next authorized gate
 
-2026-09-18 更新：owner 授权继续完成玩家页面与接入，C/E → D → F 的完整清单见
-[Studio Player Loop](studio-player-loop-v1.md)。此为继续实施授权，不等同 B 独立 review 或整轮验收。
-以下是 B 交付时的历史 next-gate 记录，已由本更新取代：
+本里程碑（**Human Live League Integration v1**）已 **ACCEPTED / CLOSED**。
 
-1. owner 复核 Slice B 的实际 narrow commit/diff 与本地验证证据；
-2. B 通过后再由 owner 授权 **Slice C**（当前未授权）；
-3. Slice C 获授权并完成后执行上面的真人验收（B 自动测试不替代人工验收）；
-4. 通过后才在本文件与 `handoff.md` 记录整轮 `ACCEPTED / CLOSED`。
+后续授权工作按 2026-09-18 owner 统筹意见与 [Studio Player Loop](studio-player-loop-v1.md) 清单继续推进：
+1. **D 项**：长期 Games 有界查询与分页（解决 42k 比赛列表有界加载）、`/ratings` 拆分为 Studio 排行榜与 `/ratings/reports` 研究报告、个人主页详细统计（W/T/L、座位、H2H、时长回合、VP 构成、行为比例、Elo 曲线）；
+2. **F 项**：Review 体验修复（元数据读取实际玩家座位、My decisions 严格单视角导航、三页统一玩家状态置顶、彩色结构化 action 组件、同配置完整 review 缓存不重复计算、切换保留状态）；
+3. **最终验收**：全链路（开局→入账→个人页/榜单即变→历史进 Replay→My decisions 过滤→切换 reviewer 缓存）一致性验收。
 
 ---
 

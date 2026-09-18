@@ -28,7 +28,7 @@
 | 项目 | 当前证据 / 状态 | 完成门 |
 |---|---|---|
 | 稳定 Participant / 双人 Elo / 历史账本 | 已有核心与迁移；不重开 | 保持既有幂等、身份、canonical-order 门 |
-| Human Live 接入 | B IMPLEMENTED / VERIFIED `7d9f603` | C 的页面事实 + 隔离测试；真实首局由 owner 执行 |
+| Human Live 接入 | **ACCEPTED / CLOSED**（2026-09-18） | owner 现场真实对局走通 PASS；session `human-9921689750950880821-0-37548-1`，match `c20e1f3b...`，You 1500.0 → 1529.8 (+29.8) |
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | 待实施，不取消 | 不全量向浏览器搬 42k；稳定排序、筛选、Replay 入口 |
@@ -70,7 +70,19 @@
 
 ## Final implementation
 
-### C/E — IMPLEMENTED / VERIFIED（本地，未真人验收）
+### C/E — ACCEPTED / CLOSED（2026-09-18，真人现场实操全绿走通）
+
+- 2026-09-18：owner 本人通过浏览器（`http://127.0.0.1:4173/play`）现场打完首场真实 Rated 对局，
+  session `human-9921689750950880821-0-37548-1`，17 – 6 击败 S3 Rollout，Booking 面板如实呈现 `Booked`、
+  `You: 1500.0 → 1529.8 (+29.8)`，`Opponent: 1953.4 → 1923.6 (-29.8)`。
+- 真实库通过 `mode=ro` + `PRAGMA query_only=ON` 复核：
+  - `total_matches`: `42,522 → 42,523` (+1)
+  - `total_rating_events`: `28,012 → 28,014` (+2)
+  - `You`：seats `0 → 1`，rating_events `0 → 1`，current_elo `NULL → 1529.808`（榜单 `1530`，provisional: true）。
+  - match `c20e1f3b1c649c24ca59ffa30a6053c66b749a5c72d5fd10a03964790070eceb`，replay `ed567bff...`。
+  - 三处 replay 文件（legacy m20、occurrence slot、archive 根 fanout）物理字节完全一致。
+  - `StudioLeagueReaderV1` 榜单、match_detail、read_replay 均能成功解析。
+- [Human Live League Integration v1](human-live-league-v1.md) 里程碑正式 **ACCEPTED / CLOSED**。
 
 冻结文案（owner 确认 D1–D9，三种终态原文）：
 - booked: `Booked`（`STUDIO LEAGUE` kicker）
@@ -129,14 +141,14 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 
 ## Result and decision
 
-C/E IMPLEMENTED / VERIFIED（本地），整个玩家闭环仍 IN PROGRESS，不是全产品 ACCEPTED。
-D/F 和真实首局保留为后续门，未以本片验收替换。
+C/E 已 **ACCEPTED / CLOSED**（人类首局现场实战走通，Human Live League Integration v1 整体关闭）。
+全产品七项闭环仍 IN PROGRESS，后续聚焦 D 项（有界 Games 与个人统计）与 F 项（Review 修复）。
 
 ## Known limitations
 
-真实首局验收未执行；Games/统计/F 当前仍缺交付。数据库重建必须含 live Human evidence，
+Games/统计/F 当前仍缺交付。数据库重建必须含 live Human evidence，
 不能把仅已验证 historical importer 当全量历史+live rebuild 工具；后续验收需单独核验此链。
 
 ## Next authorized gate
 
-C/E 本地已交付；继续 D 有界读面/统计 → F Review；最后 owner 真实链路验收。
+按计划推进 **D 项**（有界 Games / 分页 / 排行榜与 reports 拆分 / 个人统计）→ **F 项**（Review 修复）→ 综合一致性验收。
