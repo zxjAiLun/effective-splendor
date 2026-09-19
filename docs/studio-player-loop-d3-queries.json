@@ -1,0 +1,58 @@
+{
+  "sql": {
+    "profile": "WITH mine AS MATERIALIZED (SELECT match_id,seat FROM match_seats WHERE participant_id=:pid),\ngames AS MATERIALIZED (SELECT m.match_id,m.status,m.main_turn_count,m.completed_plies,m.detail_metrics_available FROM matches m WHERE m.match_id IN (SELECT match_id FROM mine)),\nseat_counts AS (SELECT count(*) seat_appearances,coalesce(sum(seat=0),0) seat0,coalesce(sum(seat=1),0) seat1,coalesce(sum(seat NOT IN (0,1)),0) other_seats FROM mine),\nrat AS (SELECT count(*) rated_games,coalesce(sum(score=1),0) rated_wins,coalesce(sum(score=0.5),0) rated_ties,coalesce(sum(score=0),0) rated_losses FROM rating_events WHERE participant_id=:pid),\nmetrics AS (SELECT coalesce(sum(g.metric_integrity='ok'),0) integrity_ok_seats,coalesce(sum(g.metric_integrity='failed'),0) integrity_failed_seats FROM mine s CROSS JOIN match_gameplay_stats g WHERE g.match_id=s.match_id AND g.seat=s.seat),\ngame_counts AS (SELECT count(*) recorded_games,coalesce(sum(status='completed'),0) completed_games,count(main_turn_count) main_turn_samples,avg(CASE WHEN status='completed' THEN main_turn_count END) avg_completed_main_turns,\ncount(CASE WHEN status='completed' THEN completed_plies END) completed_plies_samples,avg(CASE WHEN status='completed' THEN completed_plies END) avg_completed_plies,coalesce(sum(detail_metrics_available=1),0) detail_available_games FROM games),\nextras AS (SELECT (SELECT count(*) FROM (SELECT match_id FROM mine GROUP BY match_id HAVING count(*)>1)) multi_seat_games,\n(SELECT count(DISTINCT s.match_id) FROM mine s CROSS JOIN match_seats o WHERE o.match_id=s.match_id AND o.participant_id IS NULL) unknown_opponent_games)\nSELECT p.participant_id,p.kind,p.display_name,p.current_elo,game_counts.*,rat.*,seat_counts.*,metrics.*,extras.* FROM participants p CROSS JOIN game_counts CROSS JOIN rat CROSS JOIN seat_counts CROSS JOIN metrics CROSS JOIN extras WHERE p.participant_id=:pid",
+    "h2h": "WITH mine AS MATERIALIZED (SELECT match_id FROM match_seats WHERE participant_id=:pid),\npairs AS (SELECT DISTINCT s.match_id,o.participant_id opponent_id FROM mine s CROSS JOIN match_seats o WHERE o.match_id=s.match_id AND o.participant_id IS NOT NULL AND o.participant_id<>:pid),\nrec AS (SELECT opponent_id,count(*) recorded_games FROM pairs GROUP BY opponent_id),\nrat AS (SELECT opponent_id,count(*) rated_games,sum(score=1) rated_wins,sum(score=0.5) rated_ties,sum(score=0) rated_losses FROM rating_events WHERE participant_id=:pid GROUP BY opponent_id)\nSELECT r.opponent_id,p.display_name,r.recorded_games,coalesce(t.rated_games,0) rated_games,coalesce(t.rated_wins,0) rated_wins,coalesce(t.rated_ties,0) rated_ties,coalesce(t.rated_losses,0) rated_losses\nFROM rec r JOIN participants p ON p.participant_id=r.opponent_id LEFT JOIN rat t USING(opponent_id) WHERE r.opponent_id>:after ORDER BY r.opponent_id LIMIT :hlimit",
+    "ratings_cursor": "SELECT e.participant_id,e.league_seq,e.elo_before,e.elo_after,e.delta,e.opponent_id,e.match_id,m.played_at,p.display_name opponent_name\nFROM rating_events e JOIN matches m ON m.match_id=e.match_id JOIN participants p ON p.participant_id=e.opponent_id\nWHERE e.participant_id=:pid AND e.league_seq<:before ORDER BY e.league_seq DESC LIMIT :rlimit",
+    "games": "SELECT m.match_id, m.league_seq, m.played_at, m.source_kind, m.status,\n                      m.rating_eligible, m.rating_ineligible_reason,\n                      m.replay_document_hash, m.replay_storage, m.replay_verification\n                 FROM matches m\n                WHERE m.league_seq < ?1\n                  AND m.match_id IN (\n                        SELECT s.match_id FROM match_seats s\n                         WHERE s.participant_id = ?2)\n                ORDER BY m.league_seq DESC\n                LIMIT ?3",
+    "ratings_recent200": "SELECT participant_id,league_seq,elo_before,elo_after,delta,opponent_id,match_id FROM rating_events WHERE participant_id=:pid ORDER BY league_seq DESC LIMIT 200",
+    "ratings_downsample200": "WITH numbered AS (SELECT participant_id,league_seq,elo_before,elo_after,delta,opponent_id,match_id,row_number() OVER (ORDER BY league_seq) rn,count(*) OVER () n FROM rating_events WHERE participant_id=:pid)\nSELECT participant_id,league_seq,elo_before,elo_after,delta,opponent_id,match_id FROM numbered WHERE (rn-1)%max(1,cast((n+198)/199 AS INTEGER))=0 OR rn=n ORDER BY league_seq DESC LIMIT 200",
+    "games_seats": "SELECT match_id, seat, participant_id, display_name, score, rank, won FROM match_seats WHERE match_id IN ({placeholders}) ORDER BY match_id, seat"
+  },
+  "workload": [
+    "profile",
+    "h2h",
+    "ratings_cursor",
+    "games"
+  ],
+  "alternatives": [
+    "ratings_recent200",
+    "ratings_downsample200"
+  ],
+  "parameters": {
+    "you": {
+      "pid": "b901a2ea-645d-4c45-b4b9-407f5b6f39b7",
+      "before": 9223372036854775807,
+      "after": "",
+      "hlimit": 21,
+      "rlimit": 101
+    },
+    "busy": {
+      "pid": "eng-bbc4b64c4bc73d54525e0ba138ff5f6a",
+      "before": 9223372036854775807,
+      "after": "",
+      "hlimit": 21,
+      "rlimit": 101
+    },
+    "typical": {
+      "pid": "eng-f92e3f58fe34c2f645f2e84cef96075b",
+      "before": 9223372036854775807,
+      "after": "",
+      "hlimit": 21,
+      "rlimit": 101
+    },
+    "event_heavy": {
+      "pid": "eng-541b017cd03b505aaedd02d55264931b",
+      "before": 9223372036854775807,
+      "after": "",
+      "hlimit": 21,
+      "rlimit": 101
+    },
+    "unknown": {
+      "pid": "d3-nonexistent-participant",
+      "before": 9223372036854775807,
+      "after": "",
+      "hlimit": 21,
+      "rlimit": 101
+    }
+  }
+}
