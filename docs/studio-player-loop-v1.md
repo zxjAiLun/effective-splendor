@@ -1,8 +1,9 @@
 # Studio Player Loop v1 — League 页面与 Review 体验交付
 
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
-  - D1 bounded League Games — **REPAIR REQUIRED / IN PROGRESS（2026-09-19 复核 `4a20f95`）**；此前通过的测试只覆盖初版实现，不构成合同验收；
-  - D2 `/ratings` 产品语义切换 — NOT YET；D3 participant profile/stats — NOT YET；F Review — NOT YET。
+  - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
+  - D2 `/ratings` 产品切分 — **IMPLEMENTED / VERIFIED（2026-09-19，待 owner 复核真实 diff）**：`/ratings` = Studio League 榜单，研究报告原样迁 `/ratings/reports`；
+  - D3 participant profile/stats — NOT YET（owner 定：D2 通过后先做短 stats-query Recon）；F Review — NOT YET。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -35,7 +36,7 @@
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 IMPLEMENTED / VERIFIED after repair；待本轮最终复验与收口** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
-| `/ratings` 与个人统计 | 待实施，不取消 | rated W/T/L、scope、H2H/座位/曲线/得分/行为；无数据不造数 |
+| `/ratings` 与个人统计 | **D2 IMPLEMENTED / VERIFIED（待 owner 复核）**：`/ratings` 消费 `/league/leaderboard`（participant/kind/current Elo/rated/recorded/W-T-L/provisional，不算 Elo、不混 official_elo）；研究报告原样迁 `/ratings/reports`（M19/M22/Batch BT/matrix/upload 不变）。**D3 个人统计 NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；不修 leaderboard 1.2s 既有债务（已登记） |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -118,6 +119,32 @@ owner 授权由本助手判断收口及后续顺序。本轮是同一实现者�
 - scale gate 现在检查真实生产 SQL 的 plan：无过滤 `matches_league_seq`；过滤 `LIST SUBQUERY` / `match_seats`，且禁止 `CORRELATED SCALAR SUBQUERY`。
 - authority drift gate 现在覆盖 `/league/games` 无过滤与 participant filter，两者在同一 Host 进程中均 503。
 - UI malformed 200（缺少数组或 cursor 类型错误）现在是错误，不再伪装为空列表/结束；frontend runtime 新增 limit contract tests。
+
+### 2026-09-19 — D2 /ratings 产品切分（当前轮，IMPLEMENTED / VERIFIED 待 owner 复核）
+
+- **授权范围**：owner 确认 D1 收口（P0=0 / P1=0 / P2=1 participant-filter 性能留 D3），**明确仅授权 D2**；D3（个人页）与 F（Review）未授权。
+- **产品切分与隔离**：
+  1. `/ratings` 改为 **Studio League current leaderboard**，消费 Host `/league/leaderboard`。
+     仅展示 participant、kind（Human/Engine）、current Elo、rated/recorded、W-T-L、provisional。绝不重算 Elo，绝不混入 `official_elo`。
+  2. 既有研究 Rating Studio 整页**原样迁至 `/ratings/reports`**，保持 M22 默认报告、M19 切换、Batch BT、矩阵与报告上传功能与数据完全不变。
+  3. 页面视觉与文案强区分：`/ratings` 新增 Authority Note 明确标注与研究报告的不同体系；各页顶栏导航明确标注 `Ratings`（联赛）与 `Research reports`（研究）。
+  4. **未做个人统计页**，无 dead link；未借机改写 leaderboard 既有 1.2s 慢查询。
+- **源码与运行时隔离门**：
+  - 新增 `tests/ratings-authority-split.test.mjs`：静态断言 `/ratings` 与 `ratings-runtime.mjs` 绝对不包含 `m19-rating-report`、`m22-rating-report`、`official_elo` 或 research runtime；反向断言 `/ratings/reports` 与 `rating-runtime.mjs` 绝对不含任何 `/league/` 调用。
+  - 新增 `tests/ratings-runtime.test.mjs`：对首局人类实操真实数据（`You` 1530 / 1-0-0 / provisional）及各类缺省场景做纯函数渲染断言。
+  - 扩展 `app/league-runtime.mjs` 的 `describeLeaderboard` 支持返回 `kind` 字段，并在 `tests/league-runtime.test.mjs` 中补充断言。
+  - 更新 `tests/rendered-html.test.mjs`：拆分 `/ratings`（SSR 为 loading 态，无研究词汇与虚假 Elo）与 `/ratings/reports`（原样验证）。
+  - 新增 Chromium 本地门 `tests/ratings-page-browser.mjs`：验证 `/ratings` 仅打 1 次 `/league/leaderboard`，且 `/ratings/reports` 渲染、M19 切换、报告文件上传全过程产生 **0 次 league 调用**。
+- **真实 Host 验证**：
+  - 启动独立只读 Host 进程直连 42,523 场真实库（`mode=ro`），curl `/league/leaderboard` 验证 `You` 行字段完全吻合：
+    `display_name: "You"`, `elo: 1530`, `kind: "human"`, `rated_games: 1`, `recorded_games: 1`, `rated_wins: 1`, `provisional: true`。总计 100 行（99 engine, 1 human）。
+- **负向对照（3 组，全数击中并字节级还原）**：
+  1. `nc-studio-page-imports-research`：向 `/ratings` 引入 M22 报告导入，`ratings-authority-split` 立即 FAIL。
+  2. `nc-reports-page-reads-the-league`：向 `/ratings/reports` 注入 `/league/leaderboard` fetch，`ratings-authority-split` 立即 FAIL。
+  3. `nc-kind-mapping-dropped`：破坏 `describeLeaderboard` 的 `kind` 映射，`league-runtime` 与 `ratings-runtime` 门立即 FAIL。
+- **平台与环境发现**：
+  - 发现 vinext 1.0.0-beta.2 存在既有缺陷：客户端点击 Next `<Link>` 会因 `RSC prefetch setup error: TypeError: f is not a function` 导致客户端路由中断（在原版首页跳转 Play 同样稳定复现，与 D2 无关）。Chromium 测试对全页刷新使用 `Page.navigate`，对 Link 则在 DOM 层面断言 `href` 存在。
+  - 本轮未改动任何 Rust 文件，按惯例不重新运行 Rust 全套测试。
 
 ### 初版决策与历史记录（以下按初版 `4a20f95` 口径保留，结论须结合上面的修复更正读）
 
@@ -309,27 +336,28 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   合同面向：typed Reader page API、Host `GET /league/games`（非法 limit/cursor 400，authority refusal 503）、
   cursor 语义（非 OFFSET）、集合式 participant filter、批量 seats 装配、Games UI 有界分页 + 失败保留 + 页面级 Retry、
   legacy games 独立区块保留、真实 Chromium 分页门、真实库 re-measure、**未改 Elo / completion / Review、未改 schema**。
-- **本片明确未做**（owner 定点）：D2 `/ratings` 切换、D3 个人统计、F Review、任何 schema/index 变更、
-  任何 rating/completion 主链改动。
+- **D2 ratings product split：IMPLEMENTED / VERIFIED（2026-09-19）**，待 owner 复核真实 diff。
+  交付完全符合 owner 最小验收门：
+  - `/ratings` 呈现 Studio 榜单，`You` 行 1530 / 1-0-0 / rated 1 / recorded 1 / provisional，无 `official_elo` / M19 / M22 概念；
+  - `/ratings/reports` 承接原 Rating Studio，数值完全一致，支持切 M19，支持报告文件上传，H2H 矩阵完整保留；
+  - 源码级与运行时级双向隔离门通过：Studio 不 import 报告数据，Research 不请求 `/league/`；
+  - 导航明确区分 `Ratings` 与 `Research reports`。
+- **本片明确未做**：D3 个人统计（含 participant filter 索引改造）、F Review、leaderboard 1.2s 慢查改动、任何 schema 变更、任何 rating/completion 主链改动。
 - **遗留一个已量化的开放议题**（不冒充已决）：`participant_id` 过滤的形状/是否加 index，留待 D3 个人页需求时重开。
 
 ## Known limitations
 
 1. **`participant_id` 过滤不便宜**（集合式实测：You 28–32 ms、最忙 participant 167–178 ms、不存在 27–31 ms）。
-   当前未加 index；无 schema 变更。若将来要上个人页高频过滤，须随 D3 重开此议题。
-2. ~~未走浏览器 E2E 验证 Games UI~~ **已补**（2026-09-19 repair）：真实 Chromium 分页门
-   `tests/games-page-browser.mjs` PASS（cursor 翻页、失败保留行 + Retry、malformed 200 拒绝、legacy 保留、End marker）。
-   它是本地可选门（需本机 Chromium，不进 `npm test`）；UI 在真 Host 下的手工走查仍属 owner 现场验收。
-3. D2/D3/F 与统计仍缺交付。数据库重建必须含 live Human evidence，
+   当前未加 index；无 schema 变更。D3 之前**禁止在多个 dashboard widget 中大量并行并发使用此 filter**。
+2. **vinext 1.0.0-beta.2 的客户端 `<Link>` 预取报错中断路由**：在首页或任意页面点击 Next Link 会在控制台抛出
+   `RSC prefetch setup error: TypeError: f is not a function`，导致客户端跳转受阻。此为既有平台级问题（非 D2 引入），
+   全页刷新与地址栏直访完全正常，浏览器测试通过 `Page.navigate` 规避，待独立评估是否升级/修复 vinext。
+3. D3 个人统计与 F Review 待交付。数据库重建必须含 live Human evidence，
    不能把仅已验证 historical importer 当全量历史+live rebuild 工具；后续验收需单独核验此链。
 
 ## Next authorized gate
 
-owner 2026-09-19 委托本助手判断 D1 收口及后续顺序。据此：
-
-1. **D1 已按委托裁决 ACCEPTED / CLOSED**（见 Result）；owner 仍可随时复核 repair 真实 diff
-   （ledger/reader/lib + Host handler + page.tsx + games-page-runtime.mjs + games-page-browser.mjs + 测试）；
-2. 下一主线 **D2**（`/ratings` → Studio League 排行榜；`/ratings/reports` 保留研究报告原样）→ D3（个人统计，届时重开
-   participant filter index/形状议题）→ F（Review），各独立 commit，不混合；
-
-同时遵守 owner 约束：本轮之外不得修改 Human completion 主链，除非出现真实回归 evidence。
+按 owner 2026-09-19 指示：
+1. **owner 复核 D2 的真实 diff**（前端 ratings 页面、reports 迁移、ratings-runtime、导航改动、测试门）；
+2. D2 通过后，进入 **D3 个人统计**。先进行简短的 **stats-query Recon**（区分 Ledger-native / Rating-event-native / Replay-derived 三类不同成本数据，避免全表扫 42k replay），再进行 UI 实现与 index 选择；
+3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。

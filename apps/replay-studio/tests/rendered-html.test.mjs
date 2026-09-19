@@ -21,6 +21,9 @@ test("server-renders the Replay Studio product shell", async () => {
   assert.match(html, /Saved human vs engine games/);
   assert.match(html, /Play vs S3/);
   assert.match(html, /href="\/league"/);
+  assert.match(html, /href="\/ratings"/);
+  assert.match(html, /href="\/ratings\/reports"/);
+  assert.match(html, /Research reports/);
   assert.match(html, /Legacy AnalysisTraceV1 viewer/);
   assert.doesNotMatch(html, /Load replay \+ analysis/);
   assert.doesNotMatch(html, /Player view/);
@@ -48,8 +51,8 @@ test("server-renders the /replay viewer route shell", async () => {
   assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
 
-test("server-renders the M16 Rating Studio route", async () => {
-  const response = await render("/ratings");
+test("server-renders the M16 Rating Studio route (moved verbatim to /ratings/reports)", async () => {
+  const response = await render("/ratings/reports");
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<title>Rating Studio · Effective Splendor<\/title>/i);
@@ -61,6 +64,30 @@ test("server-renders the M16 Rating Studio route", async () => {
   assert.match(html, /M19 full pool/);
   assert.match(html, /Non-transitivity matrix/);
   assert.match(html, /Load rating report/);
+});
+
+// D2 — the Studio League ratings product page. The server can only render the
+// checking state, so the shell must claim nothing about any rating yet, and none
+// of the research corpus's vocabulary may appear here: no official Elo column,
+// no M19/M22, no Batch BT. Those live under /ratings/reports now.
+test("server-renders the Studio League ratings route shell", async () => {
+  const response = await render("/ratings");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Ratings · Effective Splendor<\/title>/i);
+  assert.match(html, /STUDIO LEAGUE · CURRENT STANDINGS/);
+  assert.match(html, /Loading the standings from the Studio Host/);
+  assert.match(html, /href="\/ratings\/reports"/);
+  assert.match(html, /Research reports/);
+  assert.match(html, /not<\/strong> the research reports/);
+  // No rating is invented before a read returned one.
+  assert.doesNotMatch(html, /1500/);
+  // No research-corpus concept crosses into the Studio page.
+  assert.doesNotMatch(html, /Rating Studio/);
+  assert.doesNotMatch(html, /official_elo|<span>Official<\/span>/i);
+  assert.doesNotMatch(html, /M19|M22|m19-|m22-|Batch BT/);
+  assert.doesNotMatch(html, /Non-transitivity matrix/);
+  assert.doesNotMatch(html, /Load rating report/);
 });
 
 test("server-renders the M20 Human Play Studio route", async () => {

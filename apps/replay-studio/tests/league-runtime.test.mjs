@@ -281,6 +281,17 @@ test("G1 the leaderboard renderer invents nothing", () => {
   assert.deepEqual(describeLeaderboard(null), []);
 });
 
+test("the leaderboard row carries the participant kind as the ledger recorded it", () => {
+  const [human, engine, unknown] = describeLeaderboard([
+    { participant_id: "you", kind: "human", display_name: "You", elo: 1530 },
+    { participant_id: "eng-a", kind: "engine", display_name: "S3 Rollout", elo: 1923 },
+    { participant_id: "eng-b" },
+  ]);
+  assert.equal(human.kind, "human");
+  assert.equal(engine.kind, "engine");
+  assert.equal(unknown.kind, null, "an unrecorded kind stays unknown, never guessed");
+});
+
 test("G1 the picker offers registry agents and attaches no rating to them", () => {
   const options = describeAgentOptions([
     { id: "gate-heuristic", display_name: "Gate Heuristic", class: "heuristic" },

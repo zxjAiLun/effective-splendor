@@ -336,6 +336,9 @@ export default function GamesHome() {
           <Link className="studio-link" href="/ratings">
             Ratings
           </Link>
+          <Link className="studio-link" href="/ratings/reports">
+            Research reports
+          </Link>
           <Link className="studio-link" href="/advanced">
             Legacy AnalysisTraceV1 viewer
           </Link>

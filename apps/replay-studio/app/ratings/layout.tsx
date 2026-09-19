@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Rating Studio · Effective Splendor",
-  description: "Provenance-bound 1v1 league ratings and head-to-head analysis.",
+  title: "Ratings · Effective Splendor",
+  description:
+    "Studio League current standings: the league's own Elo, read from the ledger. Research reports live under /ratings/reports.",
 };
 
 export default function RatingsLayout({ children }: Readonly<{ children: React.ReactNode }>) {

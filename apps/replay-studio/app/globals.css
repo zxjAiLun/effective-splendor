@@ -287,3 +287,23 @@ h2 { margin: 4px 0 0; font-size: var(--fs-xl); letter-spacing: -.025em; }
 .games-more{margin-top:14px;min-height:40px;padding:0 18px;border:1px solid #347c84;border-radius:6px;background:#173c42;color:#d7ffff;cursor:pointer;font: 700 var(--fs-2xs) var(--font-geist-mono)}
 .games-more:disabled{cursor:progress;opacity:.55}
 .games-error{color:#ffd9d6!important}
+
+/* D2 — the Studio League ratings page (/ratings), visually its own product and
+   deliberately not reusing the research Rating Studio chrome: the two rating
+   authorities must stay distinguishable at a glance. */
+.ratings-head{padding:26px 28px 6px;display:flex;flex-direction:column;gap:12px}
+.ratings-head p{margin:0;max-width:820px;color:#aeb9c6;font-size:var(--fs-md);line-height:1.65}
+.ratings-note{border:1px solid #3a4f63;border-left:3px solid var(--cyan);border-radius:8px;padding:12px 16px;background:#131b24e6;color:#c4cfdb!important}
+.ratings-note a{color:var(--cyan)}
+.ratings-state{padding:6px 28px;color:#7e8c9b;font-size:var(--fs-md)}
+.ratings-panel{margin:14px 28px 28px;border:1px solid var(--line);border-radius:9px;background:linear-gradient(160deg,#18202a,#11171e);overflow-x:auto}
+.ratings-table{min-width:640px;display:flex;flex-direction:column}
+.ratings-row{display:grid;grid-template-columns:minmax(230px,1.7fr) 90px 96px 150px 72px;gap:12px;align-items:center;padding:10px 18px;border-bottom:1px solid #252e38;font:var(--fs-sm) var(--font-geist-mono)}
+.ratings-row:last-child{border-bottom:0}
+.ratings-head-row{color:#667486;font:600 var(--fs-2xs) var(--font-geist-mono);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.ratings-row > span:first-child{display:flex;align-items:center;gap:12px}
+.ratings-row b{color:var(--cyan);font-size:var(--fs-lg)}
+.ratings-row i{display:flex;flex-direction:column;gap:4px;font:600 var(--fs-sm) var(--font-geist-sans);font-style:normal}
+.ratings-row small{color:#657284;font:var(--fs-2xs) var(--font-geist-mono)}
+.ratings-elo{color:var(--green);font-size:var(--fs-lg);font-weight:620}
+.ratings-footnote{margin:0;padding:12px 18px;color:#657284;font:var(--fs-2xs) var(--font-geist-mono);border-top:1px solid var(--line)}

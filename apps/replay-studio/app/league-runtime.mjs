@@ -355,6 +355,9 @@ export function describeLeaderboard(rows) {
   if (!Array.isArray(rows)) return [];
   return rows.map((row) => ({
     participantId: row?.participant_id ?? null,
+    // The participant kind is the ledger's own classification ("human" /
+    // "engine"), reported as recorded and never re-derived from a name.
+    kind: typeof row?.kind === "string" ? row.kind : null,
     displayName: row?.display_name ?? null,
     elo: typeof row?.elo === "number" ? row.elo : null,
     ratedGames: row?.rated_games ?? null,

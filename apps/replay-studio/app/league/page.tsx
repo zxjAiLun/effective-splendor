@@ -343,6 +343,7 @@ export default function LeaguePage() {
           <Link href="/">Games</Link>
           <Link href="/play">Play vs S3</Link>
           <Link href="/ratings">Ratings</Link>
+          <Link href="/ratings/reports">Research reports</Link>
         </nav>
       </header>
 
