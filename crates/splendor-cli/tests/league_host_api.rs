@@ -30,7 +30,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use splendor_studio_league::{leaderboard, open_league, IdentityManifestV1, StudioLeaguePathsV1};
+use splendor_studio_league::{
+    leaderboard, open_league, IdentityManifestV1, LeagueMatchPageRequestV1, StudioLeaguePathsV1,
+};
 
 fn bin() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_splendor"))
@@ -755,6 +757,14 @@ fn a_league_that_goes_stale_while_the_host_is_running_stops_being_served() {
         (
             format!("/league/replays/{}", "0".repeat(64)),
             "a replay that was never archived",
+        ),
+        (
+            "/league/games?limit=50".to_string(),
+            "the bounded games page",
+        ),
+        (
+            format!("/league/games?participant_id={}", "0".repeat(64)),
+            "the filtered games page",
         ),
     ] {
         let (status, body) = host.get_json(&path);
@@ -1652,16 +1662,17 @@ fn the_games_page_agrees_with_the_ledger_itself() {
     let served = body["matches"].as_array().expect("matches array");
     assert!(!served.is_empty(), "the fixture league recorded matches");
 
-    let conn = open_league(&fixture.db).expect("open the league");
-    let expected = splendor_studio_league::league_match_page(
-        &conn,
-        &splendor_studio_league::LeagueMatchPageRequestV1 {
+    let reader = splendor_studio_league::open_studio_league_reader(
+        &StudioLeaguePathsV1::from_root(&fixture.root),
+    )
+    .expect("open the read-only league reader");
+    let expected = reader
+        .league_match_page(&LeagueMatchPageRequestV1 {
             limit: None,
             before_league_seq: None,
             participant_id: None,
-        },
-    )
-    .expect("the ledger page read");
+        })
+        .expect("the reader page read");
 
     assert_eq!(served.len(), expected.matches.len(), "same number of rows");
     for (index, (row, want)) in served.iter().zip(expected.matches.iter()).enumerate() {
@@ -1708,6 +1719,9 @@ fn a_malformed_games_request_is_refused_rather_than_answered_empty() {
     let host = HostProcess::start(&fixture.root, &fixture.root);
 
     for path in [
+        "/league/games?limit=0",
+        "/league/games?limit=101",
+        "/league/games?limit=10000",
         "/league/games?before=0",
         "/league/games?before=-1",
         "/league/games?before=not-a-number",

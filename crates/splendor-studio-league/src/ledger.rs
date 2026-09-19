@@ -26,8 +26,9 @@ use crate::participant::{
     ParticipantKind,
 };
 use crate::schema::{get_meta, set_meta, RATING_CONFIG_META_KEY};
-use rusqlite::{params, Connection, OptionalExtension, Transaction};
+use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const STUDIO_ELO_ALGORITHM_V1: &str = "studio-elo-v1";
@@ -1212,8 +1213,27 @@ pub(crate) fn match_detail(conn: &Connection, match_id: &str) -> Result<Option<M
     }))
 }
 
-/// The order authority for the games list, and the reason a cursor is not a page
-/// number.
+pub(crate) const GAMES_PAGE_ALL_SQL: &str =
+    "SELECT m.match_id, m.league_seq, m.played_at, m.source_kind, m.status,
+                      m.rating_eligible, m.rating_ineligible_reason,
+                      m.replay_document_hash, m.replay_storage, m.replay_verification
+                 FROM matches m
+                WHERE m.league_seq < ?1
+                ORDER BY m.league_seq DESC
+                LIMIT ?2";
+
+pub(crate) const GAMES_PAGE_FILTERED_SQL: &str =
+    "SELECT m.match_id, m.league_seq, m.played_at, m.source_kind, m.status,
+                      m.rating_eligible, m.rating_ineligible_reason,
+                      m.replay_document_hash, m.replay_storage, m.replay_verification
+                 FROM matches m
+                WHERE m.league_seq < ?1
+                  AND m.match_id IN (
+                        SELECT s.match_id FROM match_seats s
+                         WHERE s.participant_id = ?2)
+                ORDER BY m.league_seq DESC
+                LIMIT ?3";
+
 ///
 /// `league_seq` is the ledger's monotonic position: it is assigned by an explicit
 /// canonical sort ([`canonical_league_order`]) and **is not a date**. Historical
@@ -1238,7 +1258,7 @@ pub const GAMES_PAGE_MAX_LIMIT: u32 = 100;
 /// repeated.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LeagueMatchPageRequestV1 {
-    /// Clamped to `1..=GAMES_PAGE_MAX_LIMIT`; `None` means the default.
+    /// Validated as `1..=GAMES_PAGE_MAX_LIMIT`; `None` means the default.
     pub limit: Option<u32>,
     /// Exclusive cursor. `None` means "from the newest match".
     pub before_league_seq: Option<i64>,
@@ -1300,19 +1320,22 @@ pub struct LeagueMatchListSeatV1 {
 
 /// Read one page of recorded matches, newest `league_seq` first.
 ///
-/// The limit is clamped rather than rejected here, because clamping is a property
-/// of the read surface and every caller (HTTP or Rust) gets the same one. The
-/// *only* failures this returns are real ones — a malformed cursor or a database
-/// error — so a caller never has to guess whether a short page meant "empty" or
-/// "rejected".
-pub fn league_match_page(
+/// The limit is validated by the read surface rather than clamped: a caller that
+/// asks for zero or above the ceiling made a bad request, and should receive 400
+/// at the HTTP adapter.
+pub(crate) fn league_match_page(
     conn: &Connection,
     request: &LeagueMatchPageRequestV1,
 ) -> Result<LeagueMatchPageV1> {
-    let limit = request
-        .limit
-        .unwrap_or(GAMES_PAGE_DEFAULT_LIMIT)
-        .clamp(1, GAMES_PAGE_MAX_LIMIT);
+    let limit = match request.limit {
+        None => GAMES_PAGE_DEFAULT_LIMIT,
+        Some(value) if (1..=GAMES_PAGE_MAX_LIMIT).contains(&value) => value,
+        Some(value) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "the games limit must be between 1 and {GAMES_PAGE_MAX_LIMIT}, got {value}"
+            )))
+        }
+    };
     let before = match request.before_league_seq {
         Some(value) if value > 0 => value,
         // A cursor of `0` can never match a row (`league_seq` starts at 1), which
@@ -1326,25 +1349,25 @@ pub fn league_match_page(
         None => i64::MAX,
     };
 
-    // One statement, one shape. `matches_league_seq` (UNIQUE) drives the ordering
-    // and the cursor range; the seat join is a lookup on the `match_seats` primary
-    // key `(match_id, seat)`. The optional participant filter is an `EXISTS`, so it
-    // can only *narrow* the rows the cursor already selected — it can never
-    // reorder them or widen the page.
-    let sql = "SELECT m.match_id, m.league_seq, m.played_at, m.source_kind, m.status,
-                      m.rating_eligible, m.rating_ineligible_reason,
-                      m.replay_document_hash, m.replay_storage, m.replay_verification
-                 FROM matches m
-                WHERE m.league_seq < ?1
-                  AND (?2 IS NULL OR EXISTS (
-                        SELECT 1 FROM match_seats s
-                         WHERE s.match_id = m.match_id AND s.participant_id = ?2))
-                ORDER BY m.league_seq DESC
-                LIMIT ?3";
+    // The match header query is set-based. An optional participant filter is a
+    // match_seats-driven subquery rather than a correlated probe for every match:
+    // rare participants stop at their own seat rows, while the unfiltered path
+    // remains driven by matches_league_seq.
+    let filtered = request.participant_id.is_some();
+    let sql = if filtered {
+        GAMES_PAGE_FILTERED_SQL
+    } else {
+        GAMES_PAGE_ALL_SQL
+    };
+    let mut bind_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(before)];
+    if let Some(participant_id) = &request.participant_id {
+        bind_values.push(Box::new(participant_id.clone()));
+    }
+    bind_values.push(Box::new(limit as i64 + 1));
     let mut statement = conn.prepare(sql)?;
     let headers = statement
         .query_map(
-            params![before, request.participant_id, limit as i64],
+            params_from_iter(bind_values.iter().map(|value| value.as_ref())),
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
@@ -1361,6 +1384,45 @@ pub fn league_match_page(
             },
         )?
         .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let header_ids: Vec<String> = headers.iter().map(|row| row.0.clone()).collect();
+    let mut seats_by_match: HashMap<String, Vec<LeagueMatchListSeatV1>> = HashMap::new();
+    if !header_ids.is_empty() {
+        let placeholders = std::iter::repeat("?")
+            .take(header_ids.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let seat_sql = format!(
+            "SELECT match_id, seat, participant_id, display_name, score, rank, won
+               FROM match_seats WHERE match_id IN ({placeholders}) ORDER BY match_id, seat"
+        );
+        let bind_ids: Vec<Box<dyn rusqlite::types::ToSql>> = header_ids
+            .iter()
+            .map(|id| Box::new(id.clone()) as Box<dyn rusqlite::types::ToSql>)
+            .collect();
+        let mut seat_statement = conn.prepare(&seat_sql)?;
+        let seat_rows = seat_statement
+            .query_map(
+                params_from_iter(bind_ids.iter().map(|value| value.as_ref())),
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        LeagueMatchListSeatV1 {
+                            seat: row.get::<_, i64>(1)? as u32,
+                            participant_id: row.get(2)?,
+                            display_name: row.get(3)?,
+                            score: row.get(4)?,
+                            rank: row.get(5)?,
+                            won: row.get::<_, i64>(6)? != 0,
+                        },
+                    ))
+                },
+            )?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        for (match_id, seat) in seat_rows {
+            seats_by_match.entry(match_id).or_default().push(seat);
+        }
+    }
 
     let mut matches = Vec::with_capacity(headers.len());
     for (
@@ -1407,22 +1469,7 @@ pub fn league_match_page(
             }
         };
 
-        let mut seat_statement = conn.prepare(
-            "SELECT seat, participant_id, display_name, score, rank, won
-               FROM match_seats WHERE match_id = ?1 ORDER BY seat",
-        )?;
-        let seats = seat_statement
-            .query_map([match_id.as_str()], |row| {
-                Ok(LeagueMatchListSeatV1 {
-                    seat: row.get::<_, i64>(0)? as u32,
-                    participant_id: row.get(1)?,
-                    display_name: row.get(2)?,
-                    score: row.get(3)?,
-                    rank: row.get(4)?,
-                    won: row.get::<_, i64>(5)? != 0,
-                })
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let seats = seats_by_match.remove(&match_id).unwrap_or_default();
 
         // "Archived" is ledger state — a recorded, verified, content-addressed
         // object — and is never a filesystem probe.
@@ -1444,11 +1491,10 @@ pub fn league_match_page(
         });
     }
 
-    let next_before_league_seq = if matches.len() as u32 == limit {
+    let next_before_league_seq = if matches.len() > limit as usize {
+        matches.pop();
         matches.last().map(|row| row.league_seq)
     } else {
-        // A short page is the end of the recording. Answering with a cursor here
-        // would invite an endless tail of empty pages.
         None
     };
 

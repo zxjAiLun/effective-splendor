@@ -178,7 +178,7 @@ impl StudioLeagueReaderV1 {
     /// Why a page and not the whole list: the official league holds tens of
     /// thousands of matches, and this Host answers requests serially, so an
     /// unbounded read is how one request starves every other route. The limit is
-    /// clamped to `1..=`[`GAMES_PAGE_MAX_LIMIT`](crate::GAMES_PAGE_MAX_LIMIT), and
+    /// validated to `1..=`[`GAMES_PAGE_MAX_LIMIT`](crate::GAMES_PAGE_MAX_LIMIT), and
     /// the cursor is a `league_seq`, never an offset — see
     /// [`league_match_page`](crate::league_match_page) for why that distinction is
     /// load-bearing under concurrent ingestion.

@@ -16,25 +16,25 @@
 //!    ordering key is the ledger's own monotonic position;
 //! 3. **filter** — `participant_id` narrows to that participant's matches and can
 //!    never reorder or widen the page;
-//! 4. **bounds** — the limit is clamped by the read surface itself, not by the
+//! 4. **bounds** — the limit is validated by the read surface itself, not by the
 //!    caller, so an unbounded request cannot be constructed by asking for one.
 //!
 //! None of this is a benchmark. The last gate states a *measured* real-scale fact
 //! (see `docs/studio-player-loop-v1.md`, D1) rather than a performance target: at
 //! 42,523 matches the unfiltered first page is index-driven, while a
-//! `participant_id` filter is a per-candidate seat probe whose cost follows how
+//! `participant_id` filter is a set-driven subquery whose cost follows how
 //! **rare** the participant is. That measurement is the reason the filter is not
 //! claimed to be cheap, and it is recorded here so a future change cannot quietly
 //! re-assert a shape this gate refuted.
 
-use league::{
-    ingest_match, league_match_page, open_in_memory, EngineIdentityV1, LeagueMatchPageRequestV1,
-    MatchStatus, ReplayStorage, ReplayVerification, SeatPolicyIdentityV1, StudioMatchRecordV1,
+use crate::ledger::league_match_page;
+use crate::{
+    ingest_match, open_in_memory, EngineIdentityV1, LeagueMatchPageRequestV1, MatchStatus,
+    ReplayStorage, ReplayVerification, SeatPolicyIdentityV1, StudioMatchRecordV1,
     StudioMatchSeatV1, GAMES_PAGE_DEFAULT_LIMIT, GAMES_PAGE_MAX_LIMIT,
     SPLENDOR_BASE_V1_RULESET_FINGERPRINT,
 };
 use rusqlite::Connection;
-use splendor_studio_league as league;
 
 const NOW: i64 = 1_700_000_000;
 
@@ -77,7 +77,7 @@ fn record(name: &str, seats: Vec<StudioMatchSeatV1>) -> StudioMatchRecordV1 {
         seats,
         completed_plies: Some(64),
         main_turn_count: Some(32),
-        replay: league::ReplayBindingV1 {
+        replay: crate::ReplayBindingV1 {
             document_hash: Some("a".repeat(64)),
             final_hash: Some(hex64(&format!("{name}-final"))),
             storage: Some(ReplayStorage::Archive),
@@ -115,7 +115,7 @@ fn page(
     limit: Option<u32>,
     before: Option<i64>,
     participant: Option<&str>,
-) -> league::LeagueMatchPageV1 {
+) -> crate::LeagueMatchPageV1 {
     league_match_page(
         conn,
         &LeagueMatchPageRequestV1 {
@@ -316,12 +316,22 @@ fn the_participant_filter_narrows_without_reordering_or_widening() {
 }
 
 #[test]
-fn the_limit_is_clamped_by_the_read_surface_not_the_caller() {
+fn the_limit_is_validated_by_the_read_surface_not_the_caller() {
     let conn = league_with(250);
 
-    // `0` and negative-as-zero: clamped up to one, never an unbounded or an
-    // empty-but-successful read.
-    assert_eq!(page(&conn, Some(0), None, None).matches.len(), 1);
+    // Zero and above-ceiling values are request errors; the Host maps these to
+    // HTTP 400. Clamping is not part of the typed contract.
+    for bad in [Some(0), Some(10_000)] {
+        let result = league_match_page(
+            &conn,
+            &LeagueMatchPageRequestV1 {
+                limit: bad,
+                before_league_seq: None,
+                participant_id: None,
+            },
+        );
+        assert!(result.is_err(), "limit {bad:?} must be refused");
+    }
     assert_eq!(page(&conn, Some(1), None, None).matches.len(), 1);
     assert_eq!(
         page(&conn, None, None, None).matches.len(),
@@ -334,16 +344,7 @@ fn the_limit_is_clamped_by_the_read_surface_not_the_caller() {
             .len(),
         GAMES_PAGE_MAX_LIMIT as usize
     );
-    // The ceiling is enforced here, so asking for more cannot widen the page.
-    assert_eq!(
-        page(&conn, Some(10_000), None, None).matches.len(),
-        GAMES_PAGE_MAX_LIMIT as usize,
-        "a request above the ceiling must be clamped, not honoured"
-    );
-    assert!(
-        GAMES_PAGE_DEFAULT_LIMIT <= GAMES_PAGE_MAX_LIMIT,
-        "the default must lie inside the ceiling, or a default request is refused"
-    );
+    assert!(GAMES_PAGE_DEFAULT_LIMIT <= GAMES_PAGE_MAX_LIMIT);
 }
 
 #[test]
@@ -358,17 +359,14 @@ fn a_page_that_reaches_the_end_reports_no_cursor() {
         "a page that returned fewer rows than it asked for is the end"
     );
 
-    // A full page still offers a cursor, and it is the last returned row.
+    // A full page that reaches exactly the end has no next cursor: the extra-row
+    // probe found no row below it.
     let full = page(&conn, Some(30), None, None);
     assert_eq!(full.matches.len(), 30);
-    assert_eq!(
-        full.next_before_league_seq,
-        full.matches.last().map(|row| row.league_seq),
-        "the cursor is derived from the returned rows, not from the request"
-    );
+    assert_eq!(full.next_before_league_seq, None);
 
-    // Walking from it lands on the end with nothing left.
-    let after = page(&conn, Some(30), full.next_before_league_seq, None);
+    // Asking below the oldest row remains an empty terminal page.
+    let after = page(&conn, Some(30), Some(1), None);
     assert!(after.matches.is_empty());
     assert_eq!(after.next_before_league_seq, None);
 }
@@ -449,30 +447,38 @@ fn a_listed_row_carries_the_recorded_facts_and_no_recomputation() {
 /// The real-scale fact this slice measured, stated as a test so it cannot drift
 /// silently: the **unfiltered** page is driven by the `league_seq` index and does
 /// not scale with the table, while a **participant filter** is a per-candidate
-/// seat probe.
+/// set-driven subquery.
 ///
 /// This is a structural assertion about the plan, not a benchmark: the property
 /// that matters is which access path the planner takes, and it holds regardless of
 /// how busy the machine is.
 #[test]
-fn the_unfiltered_page_is_index_driven_and_the_filter_is_a_per_candidate_probe() {
+fn the_unfiltered_page_is_index_driven_and_the_filter_is_a_set_driven_subquery() {
     let conn = league_with(200);
 
-    let head_sql = "SELECT m.match_id FROM matches m
-                     WHERE m.league_seq < ?1
-                       AND (?2 IS NULL OR EXISTS (
-                             SELECT 1 FROM match_seats s
-                              WHERE s.match_id = m.match_id AND s.participant_id = ?2))
-                     ORDER BY m.league_seq DESC LIMIT ?3";
-
-    let plan = |parameter: Option<&str>| -> Vec<String> {
+    let plan = |participant: Option<&str>| -> Vec<String> {
+        let (sql, params): (&str, Vec<Box<dyn rusqlite::types::ToSql>>) = match participant {
+            Some(value) => (
+                crate::ledger::GAMES_PAGE_FILTERED_SQL,
+                vec![
+                    Box::new(i64::MAX),
+                    Box::new(value.to_string()),
+                    Box::new(50_i64),
+                ],
+            ),
+            None => (
+                crate::ledger::GAMES_PAGE_ALL_SQL,
+                vec![Box::new(i64::MAX), Box::new(50_i64)],
+            ),
+        };
         let mut statement = conn
-            .prepare(&format!("EXPLAIN QUERY PLAN {head_sql}"))
+            .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
             .expect("explain the page query");
         statement
-            .query_map(rusqlite::params![i64::MAX, parameter, 50_i64], |row| {
-                row.get::<_, String>(3)
-            })
+            .query_map(
+                rusqlite::params_from_iter(params.iter().map(|value| value.as_ref())),
+                |row| row.get::<_, String>(3),
+            )
             .expect("explain rows")
             .collect::<std::result::Result<Vec<_>, _>>()
             .expect("collect the plan")
@@ -492,21 +498,24 @@ fn the_unfiltered_page_is_index_driven_and_the_filter_is_a_per_candidate_probe()
         unfiltered.join("\n")
     );
 
-    // With a filter the plan gains a correlated subquery over the seats — the
-    // measured per-candidate probe. This asserts the *shape* the real-scale
-    // measurement found; it deliberately does not assert a duration, because the
-    // cost follows how rare the participant is and a fixture cannot show that.
-    let filtered = plan(Some("eng-0000"));
+    // With a participant filter the production query is driven by the set of
+    // matching seat rows. It must not regress to a correlated probe per match.
+    let filtered = plan(Some("engine-00"));
     assert!(
-        filtered
-            .iter()
-            .any(|step| step.contains("CORRELATED SCALAR SUBQUERY")),
-        "the participant filter is expected to be a per-candidate probe:\n{}",
+        filtered.iter().any(|step| step.contains("LIST SUBQUERY")),
+        "the participant filter must be a set-based subquery:\n{}",
         filtered.join("\n")
     );
     assert!(
-        filtered.iter().any(|step| step.contains("match_seats")),
-        "the probe must consult the seat table:\n{}",
+        !filtered
+            .iter()
+            .any(|step| step.contains("CORRELATED SCALAR SUBQUERY")),
+        "the production filter must not regress to a correlated probe:\n{}",
+        filtered.join("\n")
+    );
+    assert!(
+        filtered.iter().any(|step| step.contains("SCAN s")),
+        "the set-based filter must consult the seat table:\n{}",
         filtered.join("\n")
     );
 }

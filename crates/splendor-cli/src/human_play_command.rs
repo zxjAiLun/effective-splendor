@@ -36,7 +36,7 @@ use splendor_replay::{
 use splendor_search::{canonical_order, SearchConfigV1};
 use splendor_studio_league::{
     now_epoch_seconds, open_studio_league_reader, CompletionOutcomeV1, IngestOutcome,
-    LeagueMatchPageRequestV1, StudioLeagueError, StudioLeaguePathsV1, StudioLeagueReaderV1,
+    LeagueMatchPageRequestV1, StudioLeaguePathsV1, StudioLeagueReaderV1, GAMES_PAGE_MAX_LIMIT,
 };
 
 use crate::human_runtime_orchestration::{
@@ -2149,7 +2149,12 @@ impl StudioHost {
     fn league_games(&self, query: &str) -> LeagueRead {
         let limit = match query_param_optional(query, "limit") {
             Some(text) => match text.parse::<u32>() {
-                Ok(value) => Some(value),
+                Ok(value) if (1..=GAMES_PAGE_MAX_LIMIT).contains(&value) => Some(value),
+                Ok(value) => {
+                    return LeagueRead::Invalid(format!(
+                        "the games limit must be between 1 and {GAMES_PAGE_MAX_LIMIT}, got {value}"
+                    ))
+                }
                 Err(_) => {
                     return LeagueRead::Invalid(format!(
                         "the games limit must be a non-negative integer, got `{text}`"
@@ -2160,7 +2165,12 @@ impl StudioHost {
         };
         let before_league_seq = match query_param_optional(query, "before") {
             Some(text) => match text.parse::<i64>() {
-                Ok(value) => Some(value),
+                Ok(value) if value > 0 => Some(value),
+                Ok(value) => {
+                    return LeagueRead::Invalid(format!(
+                        "the games cursor must be a positive league_seq, got {value}"
+                    ))
+                }
                 Err(_) => {
                     return LeagueRead::Invalid(format!(
                         "the games cursor must be an integer league_seq, got `{text}`"
@@ -2201,9 +2211,6 @@ impl StudioHost {
                 Ok(body) => LeagueRead::Json(body),
                 Err(error) => LeagueRead::Unavailable(error.to_string()),
             },
-            // A cursor the ledger refuses is a bad request, not a server fault, and
-            // not an absent resource: retrying it unchanged can never succeed.
-            Err(StudioLeagueError::Invalid(message)) => LeagueRead::Invalid(message),
             Err(error) => LeagueRead::Unavailable(error.to_string()),
         }
     }

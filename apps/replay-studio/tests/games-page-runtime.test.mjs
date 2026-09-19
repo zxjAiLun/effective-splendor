@@ -7,6 +7,7 @@ import {
   clampGamesLimit,
   describeGamesPage,
   describeLeagueGameRow,
+  gamesLimitError,
   nextGamesQuery,
 } from "../app/games-page-runtime.mjs";
 
@@ -141,10 +142,13 @@ test("no cursor means the end of the recording, not an error", () => {
   const page = describeGamesPage({ matches: [row()], next_before_league_seq: null });
   assert.equal(page.atEnd, true);
   assert.equal(page.nextBeforeLeagueSeq, null);
-  // A malformed body is an empty page, never a crash mid-render.
-  assert.deepEqual(describeGamesPage({}).rows, []);
-  assert.equal(describeGamesPage({}).atEnd, true);
+  // A malformed body is invalid, not an exhausted recording.
+  const malformed = describeGamesPage({});
+  assert.deepEqual(malformed.rows, []);
+  assert.equal(malformed.atEnd, false);
+  assert.equal(malformed.invalid, true);
   assert.deepEqual(describeGamesPage(null).rows, []);
+  assert.equal(describeGamesPage(null).invalid, true);
 });
 
 test("the next query is built from the Host cursor, never computed as an offset", () => {
@@ -154,11 +158,16 @@ test("the next query is built from the Host cursor, never computed as an offset"
   assert.equal(nextGamesQuery(undefined, 50), null);
 });
 
-test("the requested page size is clamped exactly like the ledger clamps it", () => {
+test("invalid page limits are rejected instead of silently clamped", () => {
+  assert.equal(gamesLimitError(0), "The page limit must be between 1 and 100.");
+  assert.equal(gamesLimitError(101), "The page limit must be between 1 and 100.");
+  assert.equal(gamesLimitError(50.5), "The page limit must be an integer.");
+  assert.equal(gamesLimitError("50"), "The page limit must be an integer.");
+  assert.equal(gamesLimitError(50), null);
+});
+
+test("valid page-size helper remains bounded for internal cursor construction", () => {
   assert.equal(clampGamesLimit(undefined), GAMES_PAGE_DEFAULT_LIMIT);
-  assert.equal(clampGamesLimit(0), 1);
-  assert.equal(clampGamesLimit(-5), 1);
-  assert.equal(clampGamesLimit(1), 1);
   assert.equal(clampGamesLimit(50), 50);
   assert.equal(clampGamesLimit(GAMES_PAGE_MAX_LIMIT), GAMES_PAGE_MAX_LIMIT);
   assert.equal(clampGamesLimit(10_000), GAMES_PAGE_MAX_LIMIT);

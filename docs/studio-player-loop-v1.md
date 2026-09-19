@@ -1,7 +1,7 @@
 # Studio Player Loop v1 — League 页面与 Review 体验交付
 
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
-  - D1 bounded League Games — **AUTHORIZED / IMPLEMENTED / VERIFIED（本地 + 真实 42,523 库）**；
+  - D1 bounded League Games — **REPAIR REQUIRED / IN PROGRESS（2026-09-19 复核 `4a20f95`）**；此前通过的测试只覆盖初版实现，不构成合同验收；
   - D2 `/ratings` 产品语义切换 — NOT YET；D3 participant profile/stats — NOT YET；F Review — NOT YET。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
@@ -34,7 +34,7 @@
 | Human Live 接入 | **ACCEPTED / CLOSED**（2026-09-18） | owner 现场真实对局走通 PASS；session `human-9921689750950880821-0-37548-1`，match `c20e1f3b...`，You 1500.0 → 1529.8 (+29.8) |
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
-| 长期 Games 有界查询/分页 | **D1 IMPLEMENTED / VERIFIED**：typed Reader page API + Host `GET /league/games` + cursor 语义 + UI 有界列表 + 8 项 ledger gate / 3 项 Host gate / 真实库 evidence | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；**实测**：无过滤首页 8.8 ms，`participant_id` 过滤 574 ms，**二者均快于既有 `/league/leaderboard`（1247 ms）** ⇒ 无 evidence 要求加 index，**未改 schema** |
+| 长期 Games 有界查询/分页 | **D1 IMPLEMENTED / VERIFIED after repair；待本轮最终复验与收口** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
 | `/ratings` 与个人统计 | 待实施，不取消 | rated W/T/L、scope、H2H/座位/曲线/得分/行为；无数据不造数 |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
@@ -66,6 +66,61 @@
 
 ## Iteration log
 
+### 2026-09-19 — D1 closeout review / repair（当前轮）
+
+owner 授权由本助手判断收口及后续顺序。本轮是同一实现者复核，不冒充独立 review。
+基线 `4a20f95048e4e9cfb55b1ca0f6ce1398f4d838b4`，main == origin/main，入场 clean。
+**裁决：暂不收口**；以下历史记录保留，但「九项全达成」与「比 leaderboard 快即可接受」撤回。
+
+已定位问题：
+1. owner 冻结非法 limit → 400，初版却 clamp；相应负向测试保护了错误合同。
+2. Host 把所有 `StudioLeagueError::Invalid` 映射成 400，混淆 request-invalid 与 authority-refused（应 503）。
+3. 新 `pub league_match_page(&Connection, ...)` 暴露未重验 authority 的新读旁路，应为 crate-private。
+4. 初版逐行读取 seats，且只比较 EXISTS/index/JOIN，没有验证无新 index 的集合式 participant 过滤；
+   EXPLAIN gate 使用复制 SQL，甚至固定必须存在 correlated subquery，不能保护生产查询。
+5. UI 读取失败后隐藏 Load more，且 malformed 200 被当成空页；没有真实浏览器分页证据。
+
+**修复门（执行前冻结）**：恢复严格请求校验；有效请求的 reader refusal 统一 503；raw SQL 仅 crate 内；
+集合式分页先选 limit+1 match 再批量联 seats，自匹配不重复、准确终止；真实 SQL 的 plan 和真实库 wall time
+同时测无过滤/You/繁忙 participant/不存在 participant，不添加 schema/index。
+补 fixture、Host（运行中 authority drift）、UI failure/malformed response、legacy 保留门。
+真实库只读、测试独立 TEMP/TMP/target，Human completion/Elo/Review 不改。
+**当前修复已达到这些门，复验全绿，D1 裁决 ACCEPTED / CLOSED**；下一主线选择独立 D2，再 D3，F 最后，不混合提交。
+
+**2026-09-19 repair 验证结果（同一实现者复核，非独立 review）**：
+
+- suite 复验（`CARGO_TARGET_DIR=E:\tmp\d1-repair`）：league crate 全套各目标绿（lib 47 + 集成 29/8/7/5/4/4/3/1/0），
+  `league_host_api` 26/26，UI runtime 14/14、全量 94/94，tsc 0 / lint 0；
+- 真实 42,523 库（sha `3941c305…ce`，`mode=ro` + `query_only`，6 次 warmup）：无过滤 best 0.05 ms（`matches_league_seq` 索引走）；
+  You best/median 28.5/32.0 ms；最忙 participant（36,416 seats）166.9/178.2 ms；不存在 participant 27.1/31.4 ms；
+  plan 均为 `LIST SUBQUERY` + `SCAN match_seats` + `TEMP B-TREE`；**未新增 schema/index**；
+- **真实 Chromium 分页门 `tests/games-page-browser.mjs` PASS**（本地可选门，模仿 `human-play-browser.mjs`，不进 `npm test`）：
+  两段区块各自渲染；Load more 按 Host 签发 cursor 翻页，调用序列恰好 `"", limit=50&before=150, limit=50&before=75 ×3`；
+  500 失败保留 4 行并出现页面级 Retry、retry 重发同一 cursor；malformed 200 当错误不当空页；末端准确显示 End marker，且零页面 JS 异常；
+- 负向对照（3 组修复面，全部击中目标门并字节级还原到修复后状态）：去掉 limit 严格校验
+  ⇒ `the_limit_is_validated_by_the_read_surface_not_the_caller` 失败；Host 把 `Invalid` 重新映射为 400
+  ⇒ `a_league_that_goes_stale_while_the_host_is_running_stops_being_served` 失败；生产 SQL 换回 correlated `EXISTS`
+  ⇒ `the_unfiltered_page_is_index_driven_and_the_filter_is_a_set_driven_subquery` 失败。
+  脚本与日志在 `local-artifacts/studio-league/player-loop/d1-repair-negative-controls.json` + 同名 `*.log`（含 restore sha256）；
+  中间两次脚本自身失败（路径常量写法和 mutating snippet 编译失败）已记录为无效对照后重做，不作为证据。
+- 收尾时发现并修掉的第二个门级缺陷：scale gate 此前 `EXPLAIN` 的是**逐字复制的 SQL**，改生产查询不会打到门。
+  现把两段生产 SQL 提为 crate-private 常量（`GAMES_PAGE_ALL_SQL`/`GAMES_PAGE_FILTERED_SQL`），reader 与 gate 共享同一文本，门保护的是生产查询本体。
+
+**裁决：D1 ACCEPTED / CLOSED（2026-09-19）**。
+
+### D1 修复实现（2026-09-19，复验全绿）
+
+- Reader page API 仍只通过 `StudioLeagueReaderV1` 对外；底层 `league_match_page(&Connection, ...)` 收回 `pub`，仅 crate 内测试/reader 可用。
+- `limit=None` 使用默认 50；显式 `limit < 1` 或 `limit > 100` 由 Host 在 HTTP 边界返回 400，**不再 clamp**。
+- `before <= 0` 由 Host 返回 400；authority/config/manifest/database 等 Reader refusal 统一走 503。
+- header 查询使用 `limit + 1` 判断是否有下一页；seats 通过一个 `IN (...)` 批量查询装配，移除每行一个 seat query 的 N+1。
+- participant filter 使用 `match_id IN (SELECT match_id FROM match_seats WHERE participant_id=?)` 的真实生产 SQL，避免旧 correlated `EXISTS`；无过滤路径仍走 `matches_league_seq`。
+- scale gate 现在检查真实生产 SQL 的 plan：无过滤 `matches_league_seq`；过滤 `LIST SUBQUERY` / `match_seats`，且禁止 `CORRELATED SCALAR SUBQUERY`。
+- authority drift gate 现在覆盖 `/league/games` 无过滤与 participant filter，两者在同一 Host 进程中均 503。
+- UI malformed 200（缺少数组或 cursor 类型错误）现在是错误，不再伪装为空列表/结束；frontend runtime 新增 limit contract tests。
+
+### 初版决策与历史记录（以下按初版 `4a20f95` 口径保留，结论须结合上面的修复更正读）
+
 - 2026-09-18：核验 baseline 并恢复完整交付表；原 Slice C/Review/pagination 的未授权限制被本次
   owner 指示按此顺序更新。B 的实现与验证历史保留，不虚构独立 review。
 - C/E 设计：receipt 只有 participant id、不含 seat；选择复用 GET /league/matches/:id 的 typed
@@ -88,7 +143,7 @@
 
 ## Final implementation
 
-### D1 — Bounded League Games Read — IMPLEMENTED / VERIFIED（本地 + 真实 42,523 库）
+### D1 初版 — Bounded League Games Read（`4a20f95` 的交付形态；其中 clamp/EXISTS/逐行 seats 等已被 2026-09-19 repair 取代，以下按初版记录保留）
 
 **Reader API**（`crates/splendor-studio-league/src/ledger.rs`，SQL 仍在 league crate，不进 CLI）：
 
@@ -173,7 +228,7 @@ delta `33d21b3` 仅为此文案对齐，不改 Host shape。
 | `git diff --check` | exit 0；`rustfmt --edition 2021` 仅 touched files |
 | `node tests/human-play-browser.mjs` | exit 0，真实 Chromium / built UI + **mock Host**；非实际真人/真实 Host E2E |
 
-#### D1 真实 42,523 库实测（`local-artifacts/studio-league/league.sqlite3`，全程 `mode=ro` + `PRAGMA query_only=ON`）
+#### D1 初版真实 42,523 库实测（per-candidate probe 口径；修复后的集合式实测见上 Iteration log，未重写此处）
 
 owner 要求：“一直 set-based query + real DB evidence；只有 evidence 证明需要 index，再单独加。”
 先量后决，证据如下（`local-artifacts/studio-league/player-loop/` 与 DB identity 见下）。
@@ -208,7 +263,7 @@ schema_version 3；42,523 matches / 85,046 match_seats / 28,014 rating_events / 
 证据文件（ignored artifact root）：`real-query-plan.txt`、`real-query-plan-index-candidate.txt`、
 `real-query-plan-index-measured.txt`、`real-query-plan-join-shape.txt`、`real-http-starvation.txt`、`real-host-first-page.txt`。
 
-#### D1 负向对照（4 组，全部击中目标 gate 并按 patched-state 字节级还原）
+#### D1 初版负向对照（4 组，初版 `4a20f95` 的门；其中 `nc-clamp-removed` 保护的是初版的 clamp 合同，修复后该门已改为断言严格拒绝。修复面的 3 组新对照见上 Iteration log）
 
 `local-artifacts/studio-league/player-loop/d1-negative-controls.json` + 各 `nc-*.log`：
 
@@ -248,30 +303,33 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 ## Result and decision
 
 - C/E **ACCEPTED / CLOSED**（人类首局现场实战走通，Human Live League Integration v1 整体关闭 @ `081c5dc`）。
-- **D1 bounded League Games：IMPLEMENTED / VERIFIED**（本地 gates + 真实 42,523 库实测），**待 owner 复核真实 diff**。
-  交付符合 owner 列的 9 项：typed Reader page API、Host `GET /league/games`、cursor 语义（非 OFFSET）、
-  participant filter、Games UI 改用有界 API、legacy games 不丢且明确分区、fixture 分页 gates、
-  真实库 query plan + wall time、**未改 Elo / completion / Review**。
+- **D1 bounded League Games：ACCEPTED / CLOSED（2026-09-19 repair round）**。初版 `4a20f95` 复核出 5 项合同缺陷
+  （clamp 违约、400/503 混淆、pub 旁路、逐行 seats + 复制 SQL 的 EXPLAIN 门、UI 失败后隐藏入口/畸形 200 当空页），
+  修复后全部冻结修复门复验绿（见 Iteration log）；owner 2026-09-19 委托本助手判断收口，本裁决即按委托作出。
+  合同面向：typed Reader page API、Host `GET /league/games`（非法 limit/cursor 400，authority refusal 503）、
+  cursor 语义（非 OFFSET）、集合式 participant filter、批量 seats 装配、Games UI 有界分页 + 失败保留 + 页面级 Retry、
+  legacy games 独立区块保留、真实 Chromium 分页门、真实库 re-measure、**未改 Elo / completion / Review、未改 schema**。
 - **本片明确未做**（owner 定点）：D2 `/ratings` 切换、D3 个人统计、F Review、任何 schema/index 变更、
   任何 rating/completion 主链改动。
-- **遗留一个已量化的开放议题**（不冒充已决）：`participant_id` 过滤的形状选择，见上表与“两种形状谁快反过来”。
+- **遗留一个已量化的开放议题**（不冒充已决）：`participant_id` 过滤的形状/是否加 index，留待 D3 个人页需求时重开。
 
 ## Known limitations
 
-1. **`participant_id` 过滤不便宜**，且代价随 participant 稀有度上升（You 仅 1 盘 ⇒ 全表走才算一页）。
-   当前未加 index；相对既有 leaderboard 仍更快，故未越线改动 schema。若将来要上个人页高频过滤，须重开此议题。
-2. **未走浏览器 E2E 验证 Games UI 的真实渲染**：本片 D1 evidence 是 Rust real-socket Host gates +
-   Node 单测 + 真实 Host 的 HTTP 直读；UI 在浏览器里的实际外观仍待 owner 手工走查（与 Review 如同此理）。
+1. **`participant_id` 过滤不便宜**（集合式实测：You 28–32 ms、最忙 participant 167–178 ms、不存在 27–31 ms）。
+   当前未加 index；无 schema 变更。若将来要上个人页高频过滤，须随 D3 重开此议题。
+2. ~~未走浏览器 E2E 验证 Games UI~~ **已补**（2026-09-19 repair）：真实 Chromium 分页门
+   `tests/games-page-browser.mjs` PASS（cursor 翻页、失败保留行 + Retry、malformed 200 拒绝、legacy 保留、End marker）。
+   它是本地可选门（需本机 Chromium，不进 `npm test`）；UI 在真 Host 下的手工走查仍属 owner 现场验收。
 3. D2/D3/F 与统计仍缺交付。数据库重建必须含 live Human evidence，
    不能把仅已验证 historical importer 当全量历史+live rebuild 工具；后续验收需单独核验此链。
 
 ## Next authorized gate
 
-owner 指示：**只授权 D1**；D2 / D3 / F 在看过 D1 真实 diff 之后由 owner 决定。
-因此本轮下一道门就是：
+owner 2026-09-19 委托本助手判断 D1 收口及后续顺序。据此：
 
-1. **owner 复核 D1 的真实 diff**（ledger/reader/lib + Host handler + page.tsx + games-page-runtime.mjs + 两组新测试文件）；
-2. owner 决定是否（a）D1 这样算收口，（b）是否把 participant_id 过滤的 index/形状改动加进 D1，还是留到 D3，（c）D2 是否随下一刀一起接 UI；
-3. D1 通过后由 owner 授权 **D2**（`/ratings` → Studio League 排行榜，`/ratings/reports` 保留研究报告原样）→ D3 → F。
+1. **D1 已按委托裁决 ACCEPTED / CLOSED**（见 Result）；owner 仍可随时复核 repair 真实 diff
+   （ledger/reader/lib + Host handler + page.tsx + games-page-runtime.mjs + games-page-browser.mjs + 测试）；
+2. 下一主线 **D2**（`/ratings` → Studio League 排行榜；`/ratings/reports` 保留研究报告原样）→ D3（个人统计，届时重开
+   participant filter index/形状议题）→ F（Review），各独立 commit，不混合；
 
 同时遵守 owner 约束：本轮之外不得修改 Human completion 主链，除非出现真实回归 evidence。

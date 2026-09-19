@@ -30,7 +30,15 @@ export const GAMES_PAGE_MAX_LIMIT = 100;
  * `null`/`undefined` means "no next page", and answering with a query in that
  * case would be a page request that can only come back empty. Returns `null`.
  */
-export function nextGamesQuery(nextBeforeLeagueSeq, limit) {
+export function gamesLimitError(limit) {
+  if (typeof limit !== "number" || !Number.isInteger(limit)) return "The page limit must be an integer.";
+  if (limit < 1 || limit > GAMES_PAGE_MAX_LIMIT) {
+    return `The page limit must be between 1 and ${GAMES_PAGE_MAX_LIMIT}.`;
+  }
+  return null;
+}
+
+export function nextGamesQuery(nextBeforeLeagueSeq, limit = GAMES_PAGE_DEFAULT_LIMIT) {
   if (typeof nextBeforeLeagueSeq !== "number" || !Number.isFinite(nextBeforeLeagueSeq)) {
     return null;
   }
@@ -38,7 +46,7 @@ export function nextGamesQuery(nextBeforeLeagueSeq, limit) {
   return `limit=${size}&before=${nextBeforeLeagueSeq}`;
 }
 
-/** Clamp a requested page size the same way the ledger does. */
+/** Keep a client-built query inside the Host's accepted range. The Host is the authority and rejects out-of-range limits with 400; this helper never widens an invalid request into a valid-looking one, because callers always pass the default. */
 export function clampGamesLimit(limit) {
   if (typeof limit !== "number" || !Number.isFinite(limit)) return GAMES_PAGE_DEFAULT_LIMIT;
   const whole = Math.trunc(limit);
@@ -132,11 +140,18 @@ function outcomeLabel(seats, winners) {
  * request returned few rows", and only the Host knows which.
  */
 export function describeGamesPage(body) {
-  const rows = Array.isArray(body?.matches) ? body.matches : [];
+  if (!Array.isArray(body?.matches)) {
+    return { rows: [], nextBeforeLeagueSeq: null, atEnd: false, invalid: true };
+  }
+  const rows = body.matches;
   const next = body?.next_before_league_seq;
+  if (next !== null && next !== undefined && (typeof next !== "number" || !Number.isInteger(next))) {
+    return { rows: [], nextBeforeLeagueSeq: null, atEnd: false, invalid: true };
+  }
   return {
     rows: rows.map(describeLeagueGameRow),
     nextBeforeLeagueSeq: typeof next === "number" ? next : null,
     atEnd: typeof next !== "number",
+    invalid: false,
   };
 }

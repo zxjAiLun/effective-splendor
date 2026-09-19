@@ -81,7 +81,14 @@ function StudioLeagueGames() {
     const response = await fetch(`${API}/league/games${suffix}`);
     const value = await response.json();
     if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-    return describeGamesPage(value) as { rows: LeagueGameRow[]; nextBeforeLeagueSeq: number | null; atEnd: boolean };
+    const page = describeGamesPage(value) as {
+      rows: LeagueGameRow[];
+      nextBeforeLeagueSeq: number | null;
+      atEnd: boolean;
+      invalid: boolean;
+    };
+    if (page.invalid) throw new Error("Studio Host returned an invalid games page.");
+    return page;
   };
 
   useEffect(() => {
@@ -128,6 +135,8 @@ function StudioLeagueGames() {
     })();
   };
 
+  const retryQuery = error ? (rows.length > 0 ? nextQuery : null) : null;
+
   return (
     <section className="recent-games">
       <span className="section-kicker">STUDIO LEAGUE GAMES</span>
@@ -137,9 +146,17 @@ function StudioLeagueGames() {
         scrolling stays stable while new matches are being booked.
       </p>
       {error ? (
-        <p role="alert" className="games-error">
-          {error}
-        </p>
+        <div className="games-error" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="games-more"
+            onClick={rows.length > 0 ? loadMore : () => window.location.reload()}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Retrying…" : rows.length > 0 && retryQuery ? "Retry page" : "Retry"}
+          </button>
+        </div>
       ) : null}
       {loading ? <p>Loading league games…</p> : null}
       {!loading && !error && rows.length === 0 ? (
