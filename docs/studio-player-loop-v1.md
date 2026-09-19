@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API IMPLEMENTED / VERIFIED（2026-09-19 本地，待 owner 复核真实 diff）**；D3B Profile UI 与 F Review **NOT AUTHORIZED**。
+  - D3 **D3A Reader + Host API — REPAIR 1 COMPLETED / VERIFIED 本地（2026-09-19，待 owner 复核）**；D3B Profile UI 与 F Review **NOT AUTHORIZED**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -36,7 +36,7 @@
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 ACCEPTED / CLOSED @ `3049642`** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
-| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A IMPLEMENTED / VERIFIED（待 owner 复核）**：Rust Reader typed reads + Host API（Profile / Ratings / Opponents / D1 Games 复用），真库首读中位 Busy 311ms / You 42ms，0 schema 变更；**D3B UI NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
+| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A Repair 1 COMPLETED / VERIFIED（待 owner 复核）**：Rust Reader typed reads + Host API（Profile / Ratings / Opponents / D1 Games 复用），真库首读中位 Busy 311ms / You 42ms，0 schema 变更；P1-1/P1-2/P1-3 全部关闭；**D3B UI NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -67,7 +67,32 @@
 
 ## Iteration log
 
-### D3A Reader + Host API — IMPLEMENTED / VERIFIED（2026-09-19，baseline `5eacfb3c44203e8fd9c6651095564271b5e3bf87`）
+### 2026-09-19 — D3A Review: REPAIR REQUIRED @ `3946f50`（owner 复核，P0=0 / P1=3 / P2=1）
+
+owner 复核 `3946f50` 真实 diff：Reader/Host 主体架构与真库性能测试结论通过（Busy profile warm ~311ms / You ~42ms，无持续多秒退化，维持 schema v3 0 索引裁决），但指出 3 项合同缺陷需要窄 Repair：
+1. **P1-1（initial Elo authority）**：未评级（rated=0）participant 当库中存在非 NULL `current_elo` 时（如 1234.0 或 NaN），旧逻辑直接返回该数值并打标 `origin: "initial"`，违背协议 initial=1500 由 rating config 唯一定义的准则。修法：rated=0 且 `current_elo` 存在但与 protocol initial 不等时，立即 fail-closed 抛错；仅当 `None` 或与 1500.0 相等时才作为合法 Initial 返回。
+2. **P1-2（SQL primitives 可见性）**：`PARTICIPANT_PROFILE_SQL`、`PARTICIPANT_RATING_HISTORY_SQL`、`PARTICIPANT_OPPONENTS_SQL` 曾标记为 `pub` 且在 `lib.rs` 被 re-export，破坏了 Reader 作为唯一权威读入口的封装契约。修法：改为 `pub(crate)`，并从 `lib.rs` 的 public re-export 中彻底删除。
+3. **P1-3（opponents after cursor 校验）**：Host 曾将 `?after=` 当作 `None` 静默回退为第一页，且 Reader/Host 缺乏 cursor 长度上限。修法：冻结 `OPPONENT_CURSOR_MAX_BYTES = 256`；`after` 为空字符串或超长时 Host 返回 400，Reader 返回 `Err(StudioLeagueError::Invalid)`。
+4. **P2（Busy 首读时延）**：首次冷读 Busy profile 约 1.56s，主要由 SQLite 页面冷起与大集合聚合导致。此项不阻塞 D3A；前端 D3B 必须严格按需分节请求（首屏仅 Profile，用户展开后才读 H2H/Ratings），禁止并发 fan-out。
+
+### 2026-09-19 — D3A Repair 1（当前轮，COMPLETED / VERIFIED 待 owner 复核）
+
+- **代码修复**：
+  - `crates/splendor-studio-league/src/ledger.rs`：三条 SQL 收敛为 `pub(crate)`；`participant_profile` 严格校验 rated=0 时 stored current_elo 必须等于 initial_elo（否则 fail-closed）；`participant_opponents` 引入 `OPPONENT_CURSOR_MAX_BYTES = 256` 并拒绝空字符串与超长 cursor；
+  - `crates/splendor-studio-league/src/lib.rs`：移除三条 SQL 的公网导出，保留 `OPPONENT_CURSOR_MAX_BYTES`；
+  - `crates/splendor-cli/src/human_play_command.rs`：Host 对 `/opponents` 的 `?after=` 进行严格校验，空串或超过 256 字节均返回 400 Bad Request；
+  - 测试扩展（`participant_profile_tests.rs`、`league_host_api.rs`）：增加针对 P1-1（rated=0 存 1234.0 报错、存 1500.0 容忍）、P1-3（空 after 400/Err、>256 字节 400/Err、恰好 256 字节 200/Ok）的严格断言。
+- **负向对照（Repair 1 NC1–NC3，全部通过且字节还原）**：
+  - NC1 (P1-1)：改回容忍 rated=0 存放任意 current_elo ⇒ 对应 gate 立即 FAIL（exit 101）；
+  - NC2 (P1-3 Host)：改回放行 `?after=` 为 None ⇒ 对应 Host gate 立即 FAIL（exit 101）；
+  - NC3 (P1-3 Reader)：移除 Reader 侧超长 cursor 校验 ⇒ 对应 Reader gate 立即 FAIL（exit 101）。
+- **验证通过**：
+  - `splendor-studio-league`：109 tests passed（0 failed）；
+  - `splendor-cli` `league_host_api`：29 tests passed（0 failed）；
+  - `apps/replay-studio`：102 tests passed（0 failed）；
+  - 真实 Host smoke：You profile (1530)、Busy profile (18496 games)、`?after=` (400) 运行核验通过。
+
+### D3A Reader + Host API — 初版实现记录 @ `3946f50`（2026-09-19，已由上述 Repair 1 替代）
 
 owner 终审接受 D3 Recon 并授权 D3A（不改 schema/index、不写 gameplay builder、不估算 duration）：
 - **实现细节**：
@@ -379,7 +404,7 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   - `/ratings/reports` 承接原 Rating Studio，数值完全一致，支持切 M19，支持报告文件上传，H2H 矩阵完整保留；
   - 源码级与运行时级双向隔离门通过：Studio 不 import 报告数据，Research 不请求 `/league/`；
   - 导航明确区分 `Ratings` 与 `Research reports`。
-- **D3A Reader + Host API：IMPLEMENTED / VERIFIED（2026-09-19 本地）**，待 owner 复核真实 diff。
+- **D3A Reader + Host API：REPAIR 1 COMPLETED / VERIFIED（2026-09-19 本地）**，待 owner 复核真实 diff。P1-1/P1-2/P1-3 全部关闭。
 - **本片明确未做**：D3B Profile UI、F Review、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
 - **保留 P2**：Busy profile/H2H 仍为数百毫秒级计算，当前依靠 UX 按需分节调度控制负载，不改 schema。
 
@@ -397,6 +422,6 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 ## Next authorized gate
 
 按 owner 2026-09-19 最新指示：
-1. D3A 已完成实现与本地验证（typed Reader + Host API，真库规模耗时验证通过，0 schema 变更），等待 owner 复核真实 diff；
-2. **D3B（Profile UI）与 F（Review）尚未授权**，owner 确认 D3A 真实 diff 与测试门后再推进前端页面；
+1. D3A Repair 1 已完成实现与本地验证（P1-1/P1-2/P1-3 修复，负向对照通过，全套测试绿），等待 owner 复核真实 diff；
+2. **D3B（Profile UI）与 F（Review）尚未授权**，owner 确认 D3A Repair 1 真实 diff 与测试门后再推进前端页面；
 3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。

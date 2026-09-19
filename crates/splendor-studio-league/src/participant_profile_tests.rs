@@ -10,13 +10,16 @@
 //!    the head-to-head record;
 //! 5. Production SQL constants are pinned and EXPLAIN-verified.
 
-use crate::ledger::{participant_opponents, participant_profile, participant_rating_history};
+use crate::ledger::{
+    participant_opponents, participant_profile, participant_rating_history,
+    OPPONENT_CURSOR_MAX_BYTES, PARTICIPANT_OPPONENTS_SQL, PARTICIPANT_PROFILE_SQL,
+    PARTICIPANT_RATING_HISTORY_SQL,
+};
 use crate::{
     ingest_match, open_in_memory, EngineIdentityV1, MatchStatus, ParticipantEloOriginV1,
     ParticipantOpponentPageRequestV1, ParticipantRatingHistoryRequestV1, ReplayStorage,
     ReplayVerification, SeatPolicyIdentityV1, StudioMatchRecordV1, StudioMatchSeatV1,
-    OPPONENTS_PAGE_DEFAULT_LIMIT, OPPONENTS_PAGE_MAX_LIMIT, PARTICIPANT_OPPONENTS_SQL,
-    PARTICIPANT_PROFILE_SQL, PARTICIPANT_RATING_HISTORY_SQL, RATING_HISTORY_DEFAULT_LIMIT,
+    OPPONENTS_PAGE_DEFAULT_LIMIT, OPPONENTS_PAGE_MAX_LIMIT, RATING_HISTORY_DEFAULT_LIMIT,
     RATING_HISTORY_MAX_LIMIT, SPLENDOR_BASE_V1_RULESET_FINGERPRINT,
 };
 use rusqlite::{params, Connection};
@@ -219,6 +222,31 @@ fn rated_zero_participant_has_initial_elo_and_rated_nonzero_with_missing_current
     assert_eq!(profile.completed_plies.availability, "unavailable");
     assert_eq!(profile.completed_plies.value, None);
 
+    // Unrated participant with redundant stored 1500.0 is tolerated as Initial
+    conn.execute(
+        "UPDATE participants SET current_elo = 1500.0 WHERE participant_id = ?1",
+        params![unrated_id],
+    )
+    .unwrap();
+    let profile_cached_initial = participant_profile(&conn, unrated_id).unwrap().unwrap();
+    assert_eq!(
+        profile_cached_initial.elo.origin,
+        ParticipantEloOriginV1::Initial
+    );
+    assert_eq!(profile_cached_initial.elo.value, 1500.0);
+
+    // P1-1: Unrated participant with stored current_elo != protocol initial MUST fail closed
+    conn.execute(
+        "UPDATE participants SET current_elo = 1234.0 WHERE participant_id = ?1",
+        params![unrated_id],
+    )
+    .unwrap();
+    let result_spurious_initial = participant_profile(&conn, unrated_id);
+    assert!(
+        result_spurious_initial.is_err(),
+        "unrated participant with current_elo != initial_elo must fail closed rather than returning spurious initial Elo"
+    );
+
     // Corrupt a rated participant's current_elo to NULL
     conn.execute(
         "UPDATE participants SET current_elo = NULL WHERE participant_id = ?1",
@@ -408,6 +436,41 @@ fn the_opponents_cursor_pages_strictly_and_excludes_self_and_unattributed() {
     )
     .unwrap()
     .is_none());
+
+    // P1-3: Strict cursor validation on after_opponent_id
+    // Empty cursor is invalid (must be None for first page)
+    assert!(participant_opponents(
+        &conn,
+        &ParticipantOpponentPageRequestV1 {
+            participant_id: alpha_id.clone(),
+            limit: None,
+            after_opponent_id: Some("".to_string()),
+        }
+    )
+    .is_err());
+
+    // Overlong cursor (> OPPONENT_CURSOR_MAX_BYTES) is invalid
+    assert!(participant_opponents(
+        &conn,
+        &ParticipantOpponentPageRequestV1 {
+            participant_id: alpha_id.clone(),
+            limit: None,
+            after_opponent_id: Some("a".repeat(OPPONENT_CURSOR_MAX_BYTES + 1)),
+        }
+    )
+    .is_err());
+
+    // Exact max bytes is accepted
+    assert!(participant_opponents(
+        &conn,
+        &ParticipantOpponentPageRequestV1 {
+            participant_id: alpha_id.clone(),
+            limit: None,
+            after_opponent_id: Some("a".repeat(OPPONENT_CURSOR_MAX_BYTES)),
+        }
+    )
+    .unwrap()
+    .is_some());
 }
 
 #[test]

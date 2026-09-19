@@ -2062,6 +2062,17 @@ fn participant_opponents_serves_bounded_opponents_and_excludes_self_matches() {
             format!("/league/participants/{self_match_pid}/opponents?limit=notanumber"),
             "limit text",
         ),
+        (
+            format!("/league/participants/{self_match_pid}/opponents?after="),
+            "empty after cursor",
+        ),
+        (
+            format!(
+                "/league/participants/{self_match_pid}/opponents?after={}",
+                "a".repeat(257)
+            ),
+            "overlong after cursor",
+        ),
     ] {
         let (status, body) = http_get(host.port, &path).expect("GET");
         assert_eq!(
@@ -2071,4 +2082,11 @@ fn participant_opponents_serves_bounded_opponents_and_excludes_self_matches() {
             String::from_utf8_lossy(&body)
         );
     }
+
+    // Exact 256 bytes cursor is accepted as well-formed
+    let (code, body) = host.get_json(&format!(
+        "/league/participants/{self_match_pid}/opponents?after={}",
+        "a".repeat(256)
+    ));
+    assert_eq!(code, 200, "256-byte cursor must be accepted: {body}");
 }

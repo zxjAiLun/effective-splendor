@@ -1504,7 +1504,7 @@ pub(crate) fn league_match_page(
     })
 }
 
-pub const PARTICIPANT_PROFILE_SQL: &str = "WITH mine AS MATERIALIZED (
+pub(crate) const PARTICIPANT_PROFILE_SQL: &str = "WITH mine AS MATERIALIZED (
     SELECT match_id, seat FROM match_seats WHERE participant_id = ?1
 ),
 games AS MATERIALIZED (
@@ -1545,7 +1545,7 @@ SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
  CROSS JOIN seat_counts
  WHERE p.participant_id = ?1";
 
-pub const PARTICIPANT_RATING_HISTORY_SQL: &str =
+pub(crate) const PARTICIPANT_RATING_HISTORY_SQL: &str =
     "SELECT e.participant_id, e.league_seq, e.match_id,
        e.elo_before, e.elo_after, e.delta,
        e.opponent_id, coalesce(p.display_name, e.opponent_id) AS opponent_name,
@@ -1558,7 +1558,7 @@ pub const PARTICIPANT_RATING_HISTORY_SQL: &str =
  ORDER BY e.league_seq DESC
  LIMIT ?3";
 
-pub const PARTICIPANT_OPPONENTS_SQL: &str = "WITH mine AS MATERIALIZED (
+pub(crate) const PARTICIPANT_OPPONENTS_SQL: &str = "WITH mine AS MATERIALIZED (
     SELECT match_id FROM match_seats WHERE participant_id = ?1
 ),
 pairs AS (
@@ -1603,6 +1603,7 @@ pub const RATING_HISTORY_MAX_LIMIT: u32 = 200;
 
 pub const OPPONENTS_PAGE_DEFAULT_LIMIT: u32 = 20;
 pub const OPPONENTS_PAGE_MAX_LIMIT: u32 = 50;
+pub const OPPONENT_CURSOR_MAX_BYTES: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1747,11 +1748,21 @@ pub(crate) fn participant_profile(
             display_rounded: config.initial_elo as i32,
             origin: ParticipantEloOriginV1::Initial,
         },
-        (0, Some(val)) => ParticipantProfileEloV1 {
-            value: val,
-            display_rounded: val.round() as i32,
-            origin: ParticipantEloOriginV1::Initial,
-        },
+        (0, Some(val))
+            if val.is_finite() && (val - config.initial_elo as f64).abs() < f64::EPSILON =>
+        {
+            ParticipantProfileEloV1 {
+                value: config.initial_elo as f64,
+                display_rounded: config.initial_elo as i32,
+                origin: ParticipantEloOriginV1::Initial,
+            }
+        }
+        (0, Some(val)) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "participant `{id}` has 0 rated games but stored current_elo `{val}` disagrees with protocol initial Elo {}",
+                config.initial_elo
+            )));
+        }
         (n, Some(val)) if n > 0 && val.is_finite() => ParticipantProfileEloV1 {
             value: val,
             display_rounded: val.round() as i32,
@@ -1904,7 +1915,21 @@ pub(crate) fn participant_opponents(
         }
     };
 
-    let after = request.after_opponent_id.as_deref().unwrap_or("");
+    let after = match &request.after_opponent_id {
+        None => "",
+        Some(s) if s.is_empty() => {
+            return Err(StudioLeagueError::Invalid(
+                "the opponents cursor must not be empty".to_string(),
+            ))
+        }
+        Some(s) if s.len() > OPPONENT_CURSOR_MAX_BYTES => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "the opponents cursor exceeds the maximum length of {OPPONENT_CURSOR_MAX_BYTES} bytes, got {} bytes",
+                s.len()
+            )))
+        }
+        Some(s) => s.as_str(),
+    };
 
     let mut stmt = conn.prepare(PARTICIPANT_OPPONENTS_SQL)?;
     let mut opponents: Vec<ParticipantOpponentRowV1> = stmt

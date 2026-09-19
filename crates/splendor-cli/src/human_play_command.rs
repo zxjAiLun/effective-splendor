@@ -38,7 +38,7 @@ use splendor_studio_league::{
     now_epoch_seconds, open_studio_league_reader, CompletionOutcomeV1, IngestOutcome,
     LeagueMatchPageRequestV1, ParticipantOpponentPageRequestV1, ParticipantRatingHistoryRequestV1,
     StudioLeaguePathsV1, StudioLeagueReaderV1, GAMES_PAGE_MAX_LIMIT, OPPONENTS_PAGE_MAX_LIMIT,
-    RATING_HISTORY_MAX_LIMIT,
+    OPPONENT_CURSOR_MAX_BYTES, RATING_HISTORY_MAX_LIMIT,
 };
 
 use crate::human_runtime_orchestration::{
@@ -2329,7 +2329,17 @@ impl StudioHost {
             None => None,
         };
         let after_opponent_id = match query_param_optional(query, "after") {
-            Some(text) if text.is_empty() => None,
+            Some(text) if text.is_empty() => {
+                return LeagueRead::Invalid(
+                    "the opponents cursor must not be empty".to_string(),
+                )
+            }
+            Some(text) if text.len() > OPPONENT_CURSOR_MAX_BYTES => {
+                return LeagueRead::Invalid(format!(
+                    "the opponents cursor exceeds the maximum length of {OPPONENT_CURSOR_MAX_BYTES} bytes, got {} bytes",
+                    text.len()
+                ))
+            }
             Some(text) => Some(text),
             None => None,
         };
