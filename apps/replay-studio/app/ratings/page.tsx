@@ -155,24 +155,38 @@ export default function RatingsPage() {
               <span>Games</span>
               <span>Elo</span>
             </div>
-            {rows.map((row, index) => (
-              <div className="ratings-row" key={row.participantId ?? `row-${index}`}>
-                <span>
-                  <b>{index + 1}</b>
-                  <i>
-                    {row.displayName ?? row.participantId ?? "Unknown participant"}
-                    <small>
-                      {row.participantId ?? "no participant id"}
-                      {provisionalText(row) ? " · provisional" : ""}
-                    </small>
-                  </i>
-                </span>
-                <span>{describeKind(row.kind) ?? "—"}</span>
-                <span>{recordText(row)}</span>
-                <span>{gamesText(row)}</span>
-                <span className="ratings-elo">{eloText(row)}</span>
-              </div>
-            ))}
+            {rows.map((row, index) => {
+              const hasValidId =
+                typeof row.participantId === "string" && row.participantId.length > 0;
+              const nameText = row.displayName ?? row.participantId ?? "Unknown participant";
+              return (
+                <div className="ratings-row" key={row.participantId ?? `row-${index}`}>
+                  <span>
+                    <b>{index + 1}</b>
+                    <i>
+                      {hasValidId ? (
+                        <Link
+                          href={`/ratings/${encodeURIComponent(row.participantId!)}`}
+                          className="profile-opponent-name"
+                        >
+                          {nameText}
+                        </Link>
+                      ) : (
+                        nameText
+                      )}
+                      <small>
+                        {row.participantId ?? "no participant id"}
+                        {provisionalText(row) ? " · provisional" : ""}
+                      </small>
+                    </i>
+                  </span>
+                  <span>{describeKind(row.kind) ?? "—"}</span>
+                  <span>{recordText(row)}</span>
+                  <span>{gamesText(row)}</span>
+                  <span className="ratings-elo">{eloText(row)}</span>
+                </div>
+              );
+            })}
           </div>
           <p className="ratings-footnote">
             Provisional rows have little rated history; the flag comes from the ledger, not from

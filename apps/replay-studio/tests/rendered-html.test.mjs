@@ -180,3 +180,21 @@ test("server-renders the replay board opened by league content hash", async () =
   assert.match(html, /Rebuilding the replay/);
   assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
+
+// D3B — Participant Profile route shell.
+test("server-renders the Participant Profile route shell", async () => {
+  const response = await render("/ratings/eng-test-agent");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Participant Profile · Effective Splendor<\/title>/i);
+  assert.match(html, /PARTICIPANT PROFILE/);
+  assert.match(html, /Back to Standings/);
+  assert.match(html, /Overview/);
+  assert.match(html, /Games/);
+  assert.match(html, /Rating history/);
+  assert.match(html, /Opponents/);
+  assert.match(html, /Loading participant profile from Studio Host/);
+  // No facts or ratings invented before fetch returns
+  assert.doesNotMatch(html, /1500/);
+  assert.doesNotMatch(html, /decision plies/);
+});

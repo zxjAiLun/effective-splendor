@@ -307,3 +307,45 @@ h2 { margin: 4px 0 0; font-size: var(--fs-xl); letter-spacing: -.025em; }
 .ratings-row small{color:#657284;font:var(--fs-2xs) var(--font-geist-mono)}
 .ratings-elo{color:var(--green);font-size:var(--fs-lg);font-weight:620}
 .ratings-footnote{margin:0;padding:12px 18px;color:#657284;font:var(--fs-2xs) var(--font-geist-mono);border-top:1px solid var(--line)}
+
+/* D3B — Participant Profile page (/ratings/[participant_id]) */
+.profile-header-area{padding:24px 28px 12px;display:flex;flex-direction:column;gap:12px}
+.profile-breadcrumbs{display:flex;align-items:center;gap:16px}
+.profile-back-link{color:var(--muted);text-decoration:none;font:var(--fs-sm) var(--font-geist-mono)}
+.profile-back-link:hover{color:var(--cyan)}
+.profile-hero{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0}
+.profile-hero-main h2{margin:0 0 8px;font-size:var(--fs-2xl);color:#f0f6fc}
+.profile-badges{display:flex;align-items:center;gap:8px}
+.profile-kind-badge{padding:3px 8px;border-radius:4px;background:#1b2633;border:1px solid #2f4359;color:#b2cce5;font:600 var(--fs-xs) var(--font-geist-mono)}
+.profile-provisional-badge{padding:3px 8px;border-radius:4px;background:#38271a;border:1px solid #6b4d32;color:#ffd9a0;font:600 var(--fs-xs) var(--font-geist-mono)}
+.profile-id-tag{color:#768390;font:var(--fs-xs) var(--font-geist-mono)}
+
+.profile-tabs{display:flex;gap:6px;padding:0 28px;border-bottom:1px solid var(--line)}
+.profile-tab-button{padding:10px 18px;border:0;background:transparent;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font:600 var(--fs-sm) var(--font-geist-mono);transition:color .15s}
+.profile-tab-button:hover{color:#fff}
+.profile-tab-button.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+
+.profile-tab-content{padding:20px 28px 40px}
+.profile-cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}
+.profile-card{padding:18px 20px;background:#121820;border:1px solid #252f3d;border-radius:8px;display:flex;flex-direction:column;gap:6px}
+.profile-card-muted{opacity:.75;background:#0e1319}
+.profile-card-title{color:#768390;font:600 var(--fs-xs) var(--font-geist-mono);letter-spacing:.05em;text-transform:uppercase}
+.profile-card-value{color:#f0f6fc;font:700 var(--fs-xl) var(--font-geist-mono)}
+.profile-card-subtext{color:#8b949e;font:var(--fs-xs) var(--font-geist-sans);line-height:1.4}
+.elo-highlight{color:var(--green);font-size:var(--fs-2xl)}
+.profile-notice{margin:12px 0 0;color:#6e7681;font:var(--fs-xs) var(--font-geist-sans);line-height:1.5}
+
+.profile-chart-box{margin-bottom:20px;padding:18px 20px;background:#121820;border:1px solid #252f3d;border-radius:8px}
+.profile-chart-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.profile-chart-header h3{margin:0;font-size:var(--fs-md);color:#e6edf3}
+.profile-chart-sub{color:#768390;font:var(--fs-xs) var(--font-geist-mono)}
+.profile-svg-container{width:100%;overflow-x:auto}
+.profile-chart-svg{width:100%;max-width:760px;height:auto;display:block}
+
+.opponents-grid{grid-template-columns:minmax(240px,2fr) 120px 120px 140px}
+.profile-opponent-name{color:#dbe5ee;text-decoration:none;font-weight:600}
+.profile-opponent-name:hover{color:var(--cyan);text-decoration:underline}
+
+.delta-pos{color:var(--green);font-weight:600}
+.delta-neg{color:#ff7b72;font-weight:600}
+.load-more-container{margin-top:16px;display:flex;justify-content:center}

@@ -54,7 +54,7 @@ try {
     if (value.exceptionDetails) throw new Error(JSON.stringify(value.exceptionDetails));
     return value.result.value;
   };
-  const wait = async expression => { for (let i = 0; i < 150; i++) { if (await evaluate(expression)) return; await delay(50); } const dump = await evaluate("JSON.stringify({calls: window.gamesCalls ?? null, body: document.body ? document.body.innerText.slice(0, 900) : null})"); throw new Error(`DOM timeout: ${expression}\n${dump}`); };
+  const wait = async expression => { for (let i = 0; i < 150; i++) { try { if (await evaluate(expression)) return; } catch {} await delay(50); } const dump = await evaluate("JSON.stringify({calls: window.gamesCalls ?? null, body: document.body ? document.body.innerText.slice(0, 900) : null})"); throw new Error(`DOM timeout: ${expression}\n${dump}`); };
   await send("Runtime.enable"); await send("Page.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
   // Mocked Host. Three league pages + a failure mode switch:

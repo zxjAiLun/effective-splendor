@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — REPAIR 1 COMPLETED / VERIFIED 本地（2026-09-19，待 owner 复核）**；D3B Profile UI 与 F Review **NOT AUTHORIZED**。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`（owner 复核，P0=0/P1=0/P2=1 deferred）**；**D3B Profile UI — IMPLEMENTED / VERIFIED 本地（2026-09-19，待 owner 复核真实 diff）**；F Review **NOT AUTHORIZED**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -36,7 +36,7 @@
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 ACCEPTED / CLOSED @ `3049642`** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
-| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A Repair 1 COMPLETED / VERIFIED（待 owner 复核）**：Rust Reader typed reads + Host API（Profile / Ratings / Opponents / D1 Games 复用），真库首读中位 Busy 311ms / You 42ms，0 schema 变更；P1-1/P1-2/P1-3 全部关闭；**D3B UI NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
+| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI IMPLEMENTED / VERIFIED 本地（待 owner 复核）**（`/ratings/[participant_id]` 严格按需加载、无并发 fan-out、SVG sequence 曲线、严格解码器）；**F Review NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -66,6 +66,37 @@
 之后逐片实现 D/F 并更新上表，不因 C/E 通过就宣布七项完成。每片跟踪实际测试证据和剩余项。
 
 ## Iteration log
+
+### 2026-09-19 — D3B Profile UI 交付（当前轮，IMPLEMENTED / VERIFIED 待 owner 复核）
+
+owner 2026-09-19 终审接受 D3A（`51bad22`，P0=0 / P1=0 / P2=1 deferred）并授权 D3B（Profile UI）。
+严格纯前端实现，0 Rust / Host / schema 修改：
+- **按需加载与会话级缓存（硬性调度契约）**：
+  - 页面 mount 时**仅请求 Profile**（`GET /league/participants/:id`），绝不向 ratings/opponents/games 并发 fan-out；
+  - 拆分 4 个 Section：`Overview`（首屏加载）、`Games`、`Rating history`、`Opponents`；
+  - 用户点开对应 tab 时才触发相应数据请求，且在页面当前生命周期内 session 缓存（来回切 tab 不重复发网络请求）；
+  - 分块独立 Retry：某分块加载失败仅重试当前分块，保留已成功的分块数据。
+- **真值呈现与格式化**：
+  - Initial Elo：rated=0 时显示 `1500 Initial Studio Elo` 与 `No rated games yet`；rated>0 时显示当前真实 Elo 与 Provisional 标识（<20 场）；严禁前端 `elo ?? 1500` 回退；
+  - Completed plies：诚实 3 态显示（`available` / `partial` / `unavailable`），unavailable 时明确渲染 `Not recorded`，绝不伪造 `0 decision plies`；
+  - Main turns 与 Gameplay breakdown：按 API 返回状态显示 `Not recorded` / `Not available`，绝不估算时长或伪造 VP / 行动比例；
+  - Rating history：自研轻量 SVG 折线图，x 轴明确标为 **League sequence**（单调递增账本序，绝不按 played_at 重排，不插入虚构起点）；单点参与者（如 You）真实绘制单点与参考线；列表显示 played_at（空则显示 `—`）；`Load earlier` 游标加载无重复追加；
+  - Opponents：严格区分 `Recorded Games` 与 `Rated Games`（及 `Rated W–T–L`），排除 self-match，提供指向对手个人页的安全链接，`Load more` 严格使用 Host 返回的 `next_after_opponent_id`；
+  - Personal Games：直接复用 D1 `GET /league/games?participant_id=:id`，无新路由。
+- **严格解码器（Fail Closed）**：
+  - 在 `app/participant-profile-runtime.mjs` 实现 `decodeParticipantProfile`、`decodeRatingHistoryPage`、`decodeOpponentsPage`；
+  - 严格校验 envelope format、version、participant_id 一致性、字段类型、数组与 cursor 格式；
+  - 遇到畸形 200 响应（如 array/non-object/mismatch）立即报 invalid 错误，绝不静默回退为空列表或初始值。
+- **排行榜安全链接**：
+  - `/ratings` 榜单仅为具备非空 participantId 的有效行生成指向 `/ratings/[participant_id]` 的超链接；
+  - `/ratings/reports` 研究报告页不提供任何 Studio 个人页链接，保持两套评级体系彻底隔离。
+- **验证通过**：
+  - `npm test`：**113 passed**（7 文件 + 本轮新增 `tests/participant-profile-runtime.test.mjs` 11 项纯函数/解码/错误测试 + `tests/rendered-html.test.mjs` 个人页服务端渲染断言，0 failed）；
+  - `npm run lint`：**0 errors, 0 warnings**（包含清理 `review/page.tsx` 存量 `<a href="/ratings/reports">` 链接警报）；
+  - CDP 真实浏览器交互门禁 `tests/participant-profile-browser.mjs`：真实 Chromium 运行通过，实测 mount 时 Host 仅拦截到 1 次 `/league/participants/:id` 请求；点击 Opponents 产生第 2 次；切回 Overview 再切回 Opponents 仍保持 2 次（证明缓存生效）；点击 Ratings 产生第 3 次并核验 SVG League sequence 轴；点击 Games 产生第 4 次；访问不存在 ID 正确显示 404 错误；
+  - 3 组负向对照（mount 并发 fan-out、malformed 200 伪造成功、容忍非 1500 initial Elo）均打中对应门禁失败并字节还原（见 `local-artifacts/studio-league/player-loop/d3b-negative-controls.json`）；
+  - Rust 套件保持全绿（`splendor-studio-league` 109 项、`league_host_api` 29 项）。
+- **当前状态与下一步**：D3B 已全部交付完成，等待 owner 复核真实 diff；关闭后可进入最后待交付的 F（Review 体验修复）。
 
 ### 2026-09-19 — D3A Review: REPAIR REQUIRED @ `3946f50`（owner 复核，P0=0 / P1=3 / P2=1）
 
@@ -404,8 +435,9 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   - `/ratings/reports` 承接原 Rating Studio，数值完全一致，支持切 M19，支持报告文件上传，H2H 矩阵完整保留；
   - 源码级与运行时级双向隔离门通过：Studio 不 import 报告数据，Research 不请求 `/league/`；
   - 导航明确区分 `Ratings` 与 `Research reports`。
-- **D3A Reader + Host API：REPAIR 1 COMPLETED / VERIFIED（2026-09-19 本地）**，待 owner 复核真实 diff。P1-1/P1-2/P1-3 全部关闭。
-- **本片明确未做**：D3B Profile UI、F Review、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
+- **D3A Reader + Host API：ACCEPTED / CLOSED @ `51bad22`（owner review 2026-09-19）**。P0=0/P1=0/P2=1 deferred；三项 Repair 全部关闭（P1-1 initial Elo 伪造守卫、P1-2 三条 SQL crate-private、P1-3 opponents after cursor 双层非空与 256B 上限校验）。
+- **D3B Profile UI：IMPLEMENTED / VERIFIED（2026-09-19 本地）**，待 owner 复核真实 diff。严格按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，SVG sequence 曲线，严格解码器。
+- **本片明确未做**：F Review、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
 - **保留 P2**：Busy profile/H2H 仍为数百毫秒级计算，当前依靠 UX 按需分节调度控制负载，不改 schema。
 
 ## Known limitations
@@ -422,6 +454,6 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 ## Next authorized gate
 
 按 owner 2026-09-19 最新指示：
-1. D3A Repair 1 已完成实现与本地验证（P1-1/P1-2/P1-3 修复，负向对照通过，全套测试绿），等待 owner 复核真实 diff；
-2. **D3B（Profile UI）与 F（Review）尚未授权**，owner 确认 D3A Repair 1 真实 diff 与测试门后再推进前端页面；
+1. D3B Profile UI 已完成实现与本地验证（纯前端交付，按需调度、SVG League sequence 曲线、严格解码器、浏览器门禁全绿），等待 owner 复核真实 diff；
+2. owner 确认 D3B 真实 diff 并关闭后，进入玩家闭环最后一项 **F Review 体验修复**（My decisions 座位鉴权、玩家状态共用且置于上方、结构化彩色行动、同配置缓存切换）；
 3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。
