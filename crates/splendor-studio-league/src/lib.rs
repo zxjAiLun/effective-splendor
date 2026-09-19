@@ -38,6 +38,10 @@ pub mod schema;
 #[path = "games_page_tests.rs"]
 mod games_page;
 
+#[cfg(test)]
+#[path = "participant_profile_tests.rs"]
+mod participant_profile_tests;
+
 /// Crate-internal gates over the runtime completion chain.
 #[cfg(test)]
 mod chain_tests;
@@ -88,10 +92,17 @@ pub use ledger::{
     protocol_rating_config, rating_event_count, rating_history, rebuild_ratings,
     stored_rating_config, IngestOrder, IngestOutcome, LeaderboardRow, LeagueMatchListRowV1,
     LeagueMatchListSeatV1, LeagueMatchPageRequestV1, LeagueMatchPageV1, MatchDetailV1,
-    MatchEloEventV1, MatchReceiptV1, MatchSeatDetailV1, RatingEventRow, ReplayBindingSummaryV1,
-    StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR, GAMES_PAGE_DEFAULT_LIMIT,
-    GAMES_PAGE_MAX_LIMIT, LEADERBOARD_SQL, SPLENDOR_BASE_V1_RULESET_FINGERPRINT,
-    STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1, STUDIO_RATING_CONFIG_VERSION,
+    MatchEloEventV1, MatchReceiptV1, MatchSeatDetailV1, ParticipantEloOriginV1,
+    ParticipantOpponentPageRequestV1, ParticipantOpponentPageV1, ParticipantOpponentRowV1,
+    ParticipantProfileEloV1, ParticipantProfilePlyAggregateV1, ParticipantProfileSeatsV1,
+    ParticipantProfileUnavailableMetricV1, ParticipantProfileV1, ParticipantRatingHistoryPageV1,
+    ParticipantRatingHistoryPointV1, ParticipantRatingHistoryRequestV1, RatingEventRow,
+    ReplayBindingSummaryV1, StudioRatingConfigV1, DEFAULT_INITIAL_ELO, DEFAULT_K_FACTOR,
+    GAMES_PAGE_DEFAULT_LIMIT, GAMES_PAGE_MAX_LIMIT, LEADERBOARD_SQL, OPPONENTS_PAGE_DEFAULT_LIMIT,
+    OPPONENTS_PAGE_MAX_LIMIT, PARTICIPANT_OPPONENTS_SQL, PARTICIPANT_PROFILE_SQL,
+    PARTICIPANT_RATING_HISTORY_SQL, RATING_HISTORY_DEFAULT_LIMIT, RATING_HISTORY_MAX_LIMIT,
+    SPLENDOR_BASE_V1_RULESET_FINGERPRINT, STUDIO_ELIGIBLE_PLAYER_COUNT, STUDIO_ELO_ALGORITHM_V1,
+    STUDIO_RATING_CONFIG_VERSION,
 };
 pub use match_record::{
     is_lowercase_hex64, MatchStatus, ReplayBindingV1, ReplayStorage, ReplayVerification,

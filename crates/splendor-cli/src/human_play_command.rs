@@ -36,7 +36,9 @@ use splendor_replay::{
 use splendor_search::{canonical_order, SearchConfigV1};
 use splendor_studio_league::{
     now_epoch_seconds, open_studio_league_reader, CompletionOutcomeV1, IngestOutcome,
-    LeagueMatchPageRequestV1, StudioLeaguePathsV1, StudioLeagueReaderV1, GAMES_PAGE_MAX_LIMIT,
+    LeagueMatchPageRequestV1, ParticipantOpponentPageRequestV1, ParticipantRatingHistoryRequestV1,
+    StudioLeaguePathsV1, StudioLeagueReaderV1, GAMES_PAGE_MAX_LIMIT, OPPONENTS_PAGE_MAX_LIMIT,
+    RATING_HISTORY_MAX_LIMIT,
 };
 
 use crate::human_runtime_orchestration::{
@@ -2215,6 +2217,150 @@ impl StudioHost {
         }
     }
 
+    /// One participant profile in full.
+    fn league_participant_profile(&self, participant_id: &str) -> LeagueRead {
+        if participant_id.is_empty() {
+            return LeagueRead::NotFound("no participant id in the request path".to_string());
+        }
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.participant_profile(participant_id) {
+            Ok(Some(profile)) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-participant",
+                "version": 1,
+                "profile": profile,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Ok(None) => LeagueRead::NotFound(format!(
+                "no participant `{participant_id}` is recorded in the ledger"
+            )),
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
+    /// One bounded page of a participant's Elo history.
+    fn league_participant_ratings(&self, participant_id: &str, query: &str) -> LeagueRead {
+        if participant_id.is_empty() {
+            return LeagueRead::NotFound("no participant id in the request path".to_string());
+        }
+        let limit = match query_param_optional(query, "limit") {
+            Some(text) => match text.parse::<u32>() {
+                Ok(value) if (1..=RATING_HISTORY_MAX_LIMIT).contains(&value) => Some(value),
+                Ok(value) => {
+                    return LeagueRead::Invalid(format!(
+                        "the rating history limit must be between 1 and {RATING_HISTORY_MAX_LIMIT}, got {value}"
+                    ))
+                }
+                Err(_) => {
+                    return LeagueRead::Invalid(format!(
+                        "the rating history limit must be a positive integer, got `{text}`"
+                    ))
+                }
+            },
+            None => None,
+        };
+        let before_league_seq = match query_param_optional(query, "before") {
+            Some(text) => match text.parse::<i64>() {
+                Ok(value) if value > 0 => Some(value),
+                Ok(value) => {
+                    return LeagueRead::Invalid(format!(
+                        "the rating history cursor must be a positive league_seq, got {value}"
+                    ))
+                }
+                Err(_) => {
+                    return LeagueRead::Invalid(format!(
+                        "the rating history cursor must be an integer league_seq, got `{text}`"
+                    ))
+                }
+            },
+            None => None,
+        };
+
+        let request = ParticipantRatingHistoryRequestV1 {
+            participant_id: participant_id.to_string(),
+            limit,
+            before_league_seq,
+        };
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.participant_rating_history(&request) {
+            Ok(Some(page)) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-participant-ratings",
+                "version": 1,
+                "participant_id": page.participant_id,
+                "points": page.points,
+                "next_before_league_seq": page.next_before_league_seq,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Ok(None) => LeagueRead::NotFound(format!(
+                "no participant `{participant_id}` is recorded in the ledger"
+            )),
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
+    /// One bounded page of a participant's head-to-head records.
+    fn league_participant_opponents(&self, participant_id: &str, query: &str) -> LeagueRead {
+        if participant_id.is_empty() {
+            return LeagueRead::NotFound("no participant id in the request path".to_string());
+        }
+        let limit = match query_param_optional(query, "limit") {
+            Some(text) => match text.parse::<u32>() {
+                Ok(value) if (1..=OPPONENTS_PAGE_MAX_LIMIT).contains(&value) => Some(value),
+                Ok(value) => {
+                    return LeagueRead::Invalid(format!(
+                        "the opponents limit must be between 1 and {OPPONENTS_PAGE_MAX_LIMIT}, got {value}"
+                    ))
+                }
+                Err(_) => {
+                    return LeagueRead::Invalid(format!(
+                        "the opponents limit must be a positive integer, got `{text}`"
+                    ))
+                }
+            },
+            None => None,
+        };
+        let after_opponent_id = match query_param_optional(query, "after") {
+            Some(text) if text.is_empty() => None,
+            Some(text) => Some(text),
+            None => None,
+        };
+
+        let request = ParticipantOpponentPageRequestV1 {
+            participant_id: participant_id.to_string(),
+            limit,
+            after_opponent_id,
+        };
+        let reader = match self.league() {
+            Ok(reader) => reader,
+            Err(error) => return LeagueRead::Unavailable(error),
+        };
+        match reader.participant_opponents(&request) {
+            Ok(Some(page)) => match serde_json::to_string(&serde_json::json!({
+                "format": "effective-splendor-studio-league-participant-opponents",
+                "version": 1,
+                "participant_id": page.participant_id,
+                "opponents": page.opponents,
+                "next_after_opponent_id": page.next_after_opponent_id,
+            })) {
+                Ok(body) => LeagueRead::Json(body),
+                Err(error) => LeagueRead::Unavailable(error.to_string()),
+            },
+            Ok(None) => LeagueRead::NotFound(format!(
+                "no participant `{participant_id}` is recorded in the ledger"
+            )),
+            Err(error) => LeagueRead::Unavailable(error.to_string()),
+        }
+    }
+
     /// The archived ReplayV1 document for a content address.
     ///
     /// The client supplies a document SHA-256 and nothing else. A malformed or
@@ -2567,6 +2713,33 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
         "GET" if request.path.starts_with("/league/matches/") => {
             let match_id = request.path["/league/matches/".len()..].to_string();
             return respond_league(&mut stream, host.league_match(&match_id));
+        }
+        "GET" if request.path.starts_with("/league/participants/") => {
+            let (path_only, query) = match request.path.split_once('?') {
+                Some((p, q)) => (p, q),
+                None => (request.path.as_str(), ""),
+            };
+            let rest = &path_only["/league/participants/".len()..];
+            if let Some(id) = rest.strip_suffix("/ratings") {
+                if !id.is_empty() && !id.contains('/') {
+                    return respond_league(&mut stream, host.league_participant_ratings(id, query));
+                }
+            } else if let Some(id) = rest.strip_suffix("/opponents") {
+                if !id.is_empty() && !id.contains('/') {
+                    return respond_league(
+                        &mut stream,
+                        host.league_participant_opponents(id, query),
+                    );
+                }
+            } else if !rest.is_empty() && !rest.contains('/') {
+                return respond_league(&mut stream, host.league_participant_profile(rest));
+            }
+            return respond(
+                &mut stream,
+                404,
+                "application/json",
+                "{\"error\":\"not found\"}",
+            );
         }
         // The presentation adapter must be matched before the bare prefix below,
         // which would otherwise read `"<sha256>/archive"` as a content address.

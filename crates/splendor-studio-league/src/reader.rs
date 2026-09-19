@@ -59,8 +59,11 @@ use std::path::PathBuf;
 use crate::error::{Result, StudioLeagueError};
 use crate::identity_manifest::IdentityManifestV1;
 use crate::ledger::{
-    leaderboard, league_match_page, match_detail, protocol_rating_config, stored_rating_config,
-    LeaderboardRow, LeagueMatchPageRequestV1, LeagueMatchPageV1, MatchDetailV1,
+    leaderboard, league_match_page, match_detail, participant_opponents, participant_profile,
+    participant_rating_history, protocol_rating_config, stored_rating_config, LeaderboardRow,
+    LeagueMatchPageRequestV1, LeagueMatchPageV1, MatchDetailV1, ParticipantOpponentPageRequestV1,
+    ParticipantOpponentPageV1, ParticipantProfileV1, ParticipantRatingHistoryPageV1,
+    ParticipantRatingHistoryRequestV1,
 };
 use crate::participant::stored_identity_manifest_hash;
 use crate::paths::StudioLeaguePathsV1;
@@ -212,5 +215,37 @@ impl StudioLeagueReaderV1 {
             return Ok(None);
         }
         read_archived_replay(&self.replay_root, document_sha256).map(Some)
+    }
+
+    /// One participant profile in full. `Ok(None)` when the participant is not
+    /// recorded in the league.
+    pub fn participant_profile(
+        &self,
+        participant_id: &str,
+    ) -> Result<Option<ParticipantProfileV1>> {
+        self.validate_authority_evidence()?;
+        participant_profile(&self.conn, participant_id)
+    }
+
+    /// One bounded page of a participant's Elo history, newest event first.
+    ///
+    /// `Ok(None)` when the participant is not recorded in the league.
+    pub fn participant_rating_history(
+        &self,
+        request: &ParticipantRatingHistoryRequestV1,
+    ) -> Result<Option<ParticipantRatingHistoryPageV1>> {
+        self.validate_authority_evidence()?;
+        participant_rating_history(&self.conn, request)
+    }
+
+    /// One bounded page of a participant's opponents and head-to-head record.
+    ///
+    /// `Ok(None)` when the participant is not recorded in the league.
+    pub fn participant_opponents(
+        &self,
+        request: &ParticipantOpponentPageRequestV1,
+    ) -> Result<Option<ParticipantOpponentPageV1>> {
+        self.validate_authority_evidence()?;
+        participant_opponents(&self.conn, request)
     }
 }

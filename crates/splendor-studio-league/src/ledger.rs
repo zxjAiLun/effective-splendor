@@ -1503,3 +1503,442 @@ pub(crate) fn league_match_page(
         next_before_league_seq,
     })
 }
+
+pub const PARTICIPANT_PROFILE_SQL: &str = "WITH mine AS MATERIALIZED (
+    SELECT match_id, seat FROM match_seats WHERE participant_id = ?1
+),
+games AS MATERIALIZED (
+    SELECT m.match_id, m.status, m.completed_plies
+      FROM matches m
+     WHERE m.match_id IN (SELECT match_id FROM mine)
+),
+seat_counts AS (
+    SELECT count(*) AS seat_appearances,
+           coalesce(sum(CASE WHEN seat = 0 THEN 1 ELSE 0 END), 0) AS seat0,
+           coalesce(sum(CASE WHEN seat = 1 THEN 1 ELSE 0 END), 0) AS seat1,
+           coalesce(sum(CASE WHEN seat NOT IN (0, 1) THEN 1 ELSE 0 END), 0) AS other_seats
+      FROM mine
+),
+rat AS (
+    SELECT count(*) AS rated_games,
+           coalesce(sum(CASE WHEN score = 1.0 THEN 1 ELSE 0 END), 0) AS rated_wins,
+           coalesce(sum(CASE WHEN score = 0.5 THEN 1 ELSE 0 END), 0) AS rated_ties,
+           coalesce(sum(CASE WHEN score = 0.0 THEN 1 ELSE 0 END), 0) AS rated_losses
+      FROM rating_events
+     WHERE participant_id = ?1
+),
+game_counts AS (
+    SELECT count(*) AS recorded_games,
+           coalesce(sum(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_games,
+           count(CASE WHEN status = 'completed' AND completed_plies IS NOT NULL THEN 1 END) AS completed_plies_samples,
+           avg(CASE WHEN status = 'completed' THEN completed_plies END) AS avg_completed_plies
+      FROM games
+)
+SELECT p.participant_id, p.kind, p.display_name, p.current_elo,
+       game_counts.recorded_games, game_counts.completed_games,
+       game_counts.completed_plies_samples, game_counts.avg_completed_plies,
+       rat.rated_games, rat.rated_wins, rat.rated_ties, rat.rated_losses,
+       seat_counts.seat_appearances, seat_counts.seat0, seat_counts.seat1, seat_counts.other_seats
+  FROM participants p
+ CROSS JOIN game_counts
+ CROSS JOIN rat
+ CROSS JOIN seat_counts
+ WHERE p.participant_id = ?1";
+
+pub const PARTICIPANT_RATING_HISTORY_SQL: &str =
+    "SELECT e.participant_id, e.league_seq, e.match_id,
+       e.elo_before, e.elo_after, e.delta,
+       e.opponent_id, coalesce(p.display_name, e.opponent_id) AS opponent_name,
+       m.played_at
+  FROM rating_events e
+  JOIN matches m ON m.match_id = e.match_id
+  LEFT JOIN participants p ON p.participant_id = e.opponent_id
+ WHERE e.participant_id = ?1
+   AND e.league_seq < ?2
+ ORDER BY e.league_seq DESC
+ LIMIT ?3";
+
+pub const PARTICIPANT_OPPONENTS_SQL: &str = "WITH mine AS MATERIALIZED (
+    SELECT match_id FROM match_seats WHERE participant_id = ?1
+),
+pairs AS (
+    SELECT DISTINCT s.match_id, o.participant_id AS opponent_id
+      FROM mine s
+     CROSS JOIN match_seats o
+     WHERE o.match_id = s.match_id
+       AND o.participant_id IS NOT NULL
+       AND o.participant_id <> ?1
+),
+rec AS (
+    SELECT opponent_id, count(*) AS recorded_games
+      FROM pairs
+     GROUP BY opponent_id
+),
+rat AS (
+    SELECT opponent_id,
+           count(*) AS rated_games,
+           coalesce(sum(CASE WHEN score = 1.0 THEN 1 ELSE 0 END), 0) AS rated_wins,
+           coalesce(sum(CASE WHEN score = 0.5 THEN 1 ELSE 0 END), 0) AS rated_ties,
+           coalesce(sum(CASE WHEN score = 0.0 THEN 1 ELSE 0 END), 0) AS rated_losses
+      FROM rating_events
+     WHERE participant_id = ?1
+     GROUP BY opponent_id
+)
+SELECT r.opponent_id,
+       p.display_name,
+       r.recorded_games,
+       coalesce(t.rated_games, 0) AS rated_games,
+       coalesce(t.rated_wins, 0) AS rated_wins,
+       coalesce(t.rated_ties, 0) AS rated_ties,
+       coalesce(t.rated_losses, 0) AS rated_losses
+  FROM rec r
+  JOIN participants p ON p.participant_id = r.opponent_id
+  LEFT JOIN rat t USING(opponent_id)
+ WHERE r.opponent_id > ?2
+ ORDER BY r.opponent_id ASC
+ LIMIT ?3";
+
+pub const RATING_HISTORY_DEFAULT_LIMIT: u32 = 100;
+pub const RATING_HISTORY_MAX_LIMIT: u32 = 200;
+
+pub const OPPONENTS_PAGE_DEFAULT_LIMIT: u32 = 20;
+pub const OPPONENTS_PAGE_MAX_LIMIT: u32 = 50;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ParticipantEloOriginV1 {
+    Rated,
+    Initial,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantProfileEloV1 {
+    pub value: f64,
+    pub display_rounded: i32,
+    pub origin: ParticipantEloOriginV1,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantProfileSeatsV1 {
+    pub appearances: u32,
+    pub seat0: u32,
+    pub seat1: u32,
+    pub other: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantProfilePlyAggregateV1 {
+    pub availability: String,
+    pub value: Option<f64>,
+    pub observed_completed_games: u32,
+    pub total_completed_games: u32,
+    pub unit: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantProfileUnavailableMetricV1 {
+    pub availability: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantProfileV1 {
+    pub participant_id: String,
+    pub kind: ParticipantKind,
+    pub display_name: String,
+    pub elo: ParticipantProfileEloV1,
+    pub provisional: bool,
+    pub recorded_games: u32,
+    pub rated_games: u32,
+    pub rated_wins: u32,
+    pub rated_ties: u32,
+    pub rated_losses: u32,
+    pub seats: ParticipantProfileSeatsV1,
+    pub completed_plies: ParticipantProfilePlyAggregateV1,
+    pub main_turns: ParticipantProfileUnavailableMetricV1,
+    pub gameplay: ParticipantProfileUnavailableMetricV1,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantRatingHistoryRequestV1 {
+    pub participant_id: String,
+    pub limit: Option<u32>,
+    pub before_league_seq: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantRatingHistoryPointV1 {
+    pub participant_id: String,
+    pub league_seq: i64,
+    pub match_id: String,
+    pub elo_before: f64,
+    pub elo_after: f64,
+    pub delta: f64,
+    pub opponent_id: String,
+    pub opponent_name: String,
+    pub played_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParticipantRatingHistoryPageV1 {
+    pub participant_id: String,
+    pub points: Vec<ParticipantRatingHistoryPointV1>,
+    pub next_before_league_seq: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantOpponentPageRequestV1 {
+    pub participant_id: String,
+    pub limit: Option<u32>,
+    pub after_opponent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantOpponentRowV1 {
+    pub opponent_id: String,
+    pub display_name: String,
+    pub recorded_games: u32,
+    pub rated_games: u32,
+    pub rated_wins: u32,
+    pub rated_ties: u32,
+    pub rated_losses: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ParticipantOpponentPageV1 {
+    pub participant_id: String,
+    pub opponents: Vec<ParticipantOpponentRowV1>,
+    pub next_after_opponent_id: Option<String>,
+}
+
+pub(crate) fn participant_profile(
+    conn: &Connection,
+    participant_id: &str,
+) -> Result<Option<ParticipantProfileV1>> {
+    let config = protocol_rating_config();
+    let mut stmt = conn.prepare(PARTICIPANT_PROFILE_SQL)?;
+    let mut rows = stmt.query(params![participant_id])?;
+    let row = match rows.next()? {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+
+    let id: String = row.get(0)?;
+    let kind_str: String = row.get(1)?;
+    let kind = ParticipantKind::from_db(&kind_str)?;
+    let display_name: String = row.get(2)?;
+    let raw_current_elo: Option<f64> = row.get(3)?;
+    let recorded_games: i64 = row.get(4)?;
+    let completed_games: i64 = row.get(5)?;
+    let completed_plies_samples: i64 = row.get(6)?;
+    let avg_completed_plies: Option<f64> = row.get(7)?;
+    let rated_games: i64 = row.get(8)?;
+    let rated_wins: i64 = row.get(9)?;
+    let rated_ties: i64 = row.get(10)?;
+    let rated_losses: i64 = row.get(11)?;
+    let seat_appearances: i64 = row.get(12)?;
+    let seat0: i64 = row.get(13)?;
+    let seat1: i64 = row.get(14)?;
+    let other_seats: i64 = row.get(15)?;
+
+    let elo = match (rated_games, raw_current_elo) {
+        (0, None) => ParticipantProfileEloV1 {
+            value: config.initial_elo as f64,
+            display_rounded: config.initial_elo as i32,
+            origin: ParticipantEloOriginV1::Initial,
+        },
+        (0, Some(val)) => ParticipantProfileEloV1 {
+            value: val,
+            display_rounded: val.round() as i32,
+            origin: ParticipantEloOriginV1::Initial,
+        },
+        (n, Some(val)) if n > 0 && val.is_finite() => ParticipantProfileEloV1 {
+            value: val,
+            display_rounded: val.round() as i32,
+            origin: ParticipantEloOriginV1::Rated,
+        },
+        (n, _) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "participant `{id}` has {n} rated games but non-finite or missing current_elo"
+            )));
+        }
+    };
+
+    let (plies_availability, plies_value) = if completed_games == 0 || completed_plies_samples == 0
+    {
+        ("unavailable", None)
+    } else if completed_plies_samples < completed_games {
+        ("partial", avg_completed_plies)
+    } else {
+        ("available", avg_completed_plies)
+    };
+
+    Ok(Some(ParticipantProfileV1 {
+        participant_id: id,
+        kind,
+        display_name,
+        elo,
+        provisional: (rated_games as u32) < config.provisional_threshold,
+        recorded_games: recorded_games as u32,
+        rated_games: rated_games as u32,
+        rated_wins: rated_wins as u32,
+        rated_ties: rated_ties as u32,
+        rated_losses: rated_losses as u32,
+        seats: ParticipantProfileSeatsV1 {
+            appearances: seat_appearances as u32,
+            seat0: seat0 as u32,
+            seat1: seat1 as u32,
+            other: other_seats as u32,
+        },
+        completed_plies: ParticipantProfilePlyAggregateV1 {
+            availability: plies_availability.to_string(),
+            value: plies_value,
+            observed_completed_games: completed_plies_samples as u32,
+            total_completed_games: completed_games as u32,
+            unit: "decision_plies".to_string(),
+        },
+        main_turns: ParticipantProfileUnavailableMetricV1 {
+            availability: "unavailable".to_string(),
+            reason: "not_recorded".to_string(),
+        },
+        gameplay: ParticipantProfileUnavailableMetricV1 {
+            availability: "unavailable".to_string(),
+            reason: "no_authoritative_builder".to_string(),
+        },
+    }))
+}
+
+pub(crate) fn participant_rating_history(
+    conn: &Connection,
+    request: &ParticipantRatingHistoryRequestV1,
+) -> Result<Option<ParticipantRatingHistoryPageV1>> {
+    let exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM participants WHERE participant_id = ?1",
+            params![request.participant_id],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if !exists {
+        return Ok(None);
+    }
+
+    let limit = match request.limit {
+        None => RATING_HISTORY_DEFAULT_LIMIT,
+        Some(val) if (1..=RATING_HISTORY_MAX_LIMIT).contains(&val) => val,
+        Some(val) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "rating history limit must be between 1 and {RATING_HISTORY_MAX_LIMIT}, got {val}"
+            )))
+        }
+    };
+
+    let before = match request.before_league_seq {
+        None => i64::MAX,
+        Some(val) if val > 0 => val,
+        Some(val) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "rating history cursor must be a positive league_seq, got {val}"
+            )))
+        }
+    };
+
+    let mut stmt = conn.prepare(PARTICIPANT_RATING_HISTORY_SQL)?;
+    let mut points: Vec<ParticipantRatingHistoryPointV1> = stmt
+        .query_map(
+            params![request.participant_id, before, (limit + 1) as i64],
+            |row| {
+                Ok(ParticipantRatingHistoryPointV1 {
+                    participant_id: row.get(0)?,
+                    league_seq: row.get(1)?,
+                    match_id: row.get(2)?,
+                    elo_before: row.get(3)?,
+                    elo_after: row.get(4)?,
+                    delta: row.get(5)?,
+                    opponent_id: row.get(6)?,
+                    opponent_name: row.get(7)?,
+                    played_at: row.get(8)?,
+                })
+            },
+        )?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let next_before_league_seq = if points.len() > limit as usize {
+        points.pop();
+        points.last().map(|p| p.league_seq)
+    } else {
+        None
+    };
+
+    Ok(Some(ParticipantRatingHistoryPageV1 {
+        participant_id: request.participant_id.clone(),
+        points,
+        next_before_league_seq,
+    }))
+}
+
+pub(crate) fn participant_opponents(
+    conn: &Connection,
+    request: &ParticipantOpponentPageRequestV1,
+) -> Result<Option<ParticipantOpponentPageV1>> {
+    let exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM participants WHERE participant_id = ?1",
+            params![request.participant_id],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
+    if !exists {
+        return Ok(None);
+    }
+
+    let limit = match request.limit {
+        None => OPPONENTS_PAGE_DEFAULT_LIMIT,
+        Some(val) if (1..=OPPONENTS_PAGE_MAX_LIMIT).contains(&val) => val,
+        Some(val) => {
+            return Err(StudioLeagueError::Invalid(format!(
+                "opponents limit must be between 1 and {OPPONENTS_PAGE_MAX_LIMIT}, got {val}"
+            )))
+        }
+    };
+
+    let after = request.after_opponent_id.as_deref().unwrap_or("");
+
+    let mut stmt = conn.prepare(PARTICIPANT_OPPONENTS_SQL)?;
+    let mut opponents: Vec<ParticipantOpponentRowV1> = stmt
+        .query_map(
+            params![request.participant_id, after, (limit + 1) as i64],
+            |row| {
+                let recorded: i64 = row.get(2)?;
+                let rated: i64 = row.get(3)?;
+                let wins: i64 = row.get(4)?;
+                let ties: i64 = row.get(5)?;
+                let losses: i64 = row.get(6)?;
+                Ok(ParticipantOpponentRowV1 {
+                    opponent_id: row.get(0)?,
+                    display_name: row.get(1)?,
+                    recorded_games: recorded as u32,
+                    rated_games: rated as u32,
+                    rated_wins: wins as u32,
+                    rated_ties: ties as u32,
+                    rated_losses: losses as u32,
+                })
+            },
+        )?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    let next_after_opponent_id = if opponents.len() > limit as usize {
+        opponents.pop();
+        opponents.last().map(|row| row.opponent_id.clone())
+    } else {
+        None
+    };
+
+    Ok(Some(ParticipantOpponentPageV1 {
+        participant_id: request.participant_id.clone(),
+        opponents,
+        next_after_opponent_id,
+    }))
+}

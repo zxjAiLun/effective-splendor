@@ -766,6 +766,18 @@ fn a_league_that_goes_stale_while_the_host_is_running_stops_being_served() {
             format!("/league/games?participant_id={}", "0".repeat(64)),
             "the filtered games page",
         ),
+        (
+            format!("/league/participants/{}", "0".repeat(64)),
+            "the participant profile",
+        ),
+        (
+            format!("/league/participants/{}/ratings", "0".repeat(64)),
+            "the participant ratings history",
+        ),
+        (
+            format!("/league/participants/{}/opponents", "0".repeat(64)),
+            "the participant opponents",
+        ),
     ] {
         let (status, body) = host.get_json(&path);
         assert_eq!(
@@ -1827,4 +1839,236 @@ fn walking_the_games_cursor_over_http_visits_every_match_once() {
     let mut descending = seen.clone();
     descending.sort_unstable_by(|a, b| b.cmp(a));
     assert_eq!(seen, descending, "the walk is newest-first throughout");
+}
+
+/// Gate — GET /league/participants/:id serves a truthful profile and 404s for unknown.
+#[test]
+fn participant_profile_serves_truthful_profile_and_rejects_unknown() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    let conn = open_league(&fixture.db).expect("open the league");
+    let board = leaderboard(&conn).expect("ledger leaderboard");
+    let rated = board
+        .iter()
+        .find(|p| p.rated_games > 0)
+        .expect("rated participant in fixture");
+    let human = board
+        .iter()
+        .find(|p| p.kind == splendor_studio_league::ParticipantKind::Human)
+        .expect("human participant in fixture");
+
+    // 1. Rated engine profile: rated match exists
+    let (code, body) = host.get_json(&format!("/league/participants/{}", rated.participant_id));
+    assert_eq!(code, 200, "known participant must be 200: {body}");
+    assert_eq!(
+        body["format"],
+        "effective-splendor-studio-league-participant"
+    );
+    assert_eq!(body["version"], 1);
+    let profile = &body["profile"];
+    assert_eq!(profile["participant_id"], rated.participant_id);
+    assert_eq!(profile["kind"], "engine");
+    assert_eq!(profile["recorded_games"], rated.recorded_games);
+    assert_eq!(profile["rated_games"], rated.rated_games);
+    assert_eq!(profile["elo"]["origin"], "rated");
+    assert!(profile["elo"]["value"].is_number());
+    assert_eq!(profile["completed_plies"]["availability"], "available");
+    assert_eq!(profile["completed_plies"]["unit"], "decision_plies");
+    assert_eq!(profile["main_turns"]["availability"], "unavailable");
+    assert_eq!(profile["main_turns"]["reason"], "not_recorded");
+    assert_eq!(profile["gameplay"]["availability"], "unavailable");
+    assert_eq!(profile["gameplay"]["reason"], "no_authoritative_builder");
+
+    // 2. Human profile: 0 rated games, must have initial Elo (1500) and provisional
+    let (code, body) = host.get_json(&format!("/league/participants/{}", human.participant_id));
+    assert_eq!(code, 200, "human participant must be 200: {body}");
+    let profile = &body["profile"];
+    assert_eq!(profile["kind"], "human");
+    assert_eq!(profile["recorded_games"], 0);
+    assert_eq!(profile["rated_games"], 0);
+    assert_eq!(profile["elo"]["origin"], "initial");
+    assert_eq!(profile["elo"]["value"], 1500.0);
+    assert_eq!(profile["elo"]["display_rounded"], 1500);
+    assert_eq!(profile["provisional"], true);
+    assert_eq!(profile["completed_plies"]["availability"], "unavailable");
+    assert!(profile["completed_plies"]["value"].is_null());
+
+    // 3. Unknown participant -> 404
+    let (code, body) = host.get_json("/league/participants/nonexistent-participant-id");
+    assert_eq!(code, 404, "unknown participant must answer 404: {body}");
+    assert!(body["error"].is_string());
+}
+
+/// Gate — GET /league/participants/:id/ratings serves bounded points and rejects bad requests.
+#[test]
+fn participant_ratings_history_serves_bounded_points_and_rejects_bad_requests() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    let conn = open_league(&fixture.db).expect("open the league");
+    let board = leaderboard(&conn).expect("ledger leaderboard");
+    let rated = board
+        .iter()
+        .find(|p| p.rated_games > 0)
+        .expect("rated participant in fixture");
+    let human = board
+        .iter()
+        .find(|p| p.kind == splendor_studio_league::ParticipantKind::Human)
+        .expect("human participant in fixture");
+
+    // 1. Rated engine ratings history: at least 1 event
+    let (code, body) = host.get_json(&format!(
+        "/league/participants/{}/ratings",
+        rated.participant_id
+    ));
+    assert_eq!(code, 200, "ratings history must be 200: {body}");
+    assert_eq!(
+        body["format"],
+        "effective-splendor-studio-league-participant-ratings"
+    );
+    assert_eq!(body["version"], 1);
+    assert_eq!(body["participant_id"], rated.participant_id);
+    let points = body["points"].as_array().expect("points array");
+    assert_eq!(points.len(), rated.rated_games as usize);
+    assert_eq!(points[0]["participant_id"], rated.participant_id);
+    assert!(points[0]["league_seq"].is_number());
+    assert!(points[0]["elo_before"].is_number());
+    assert!(points[0]["elo_after"].is_number());
+    assert!(points[0]["delta"].is_number());
+    assert!(points[0]["opponent_id"].is_string());
+    assert!(points[0]["opponent_name"].is_string());
+
+    // 2. Human with 0 events
+    let (code, body) = host.get_json(&format!(
+        "/league/participants/{}/ratings",
+        human.participant_id
+    ));
+    assert_eq!(code, 200, "human ratings history must be 200: {body}");
+    assert_eq!(body["points"].as_array().unwrap().len(), 0);
+    assert!(body["next_before_league_seq"].is_null());
+
+    // 3. Unknown participant -> 404
+    let (code, body) = host.get_json("/league/participants/nonexistent-participant-id/ratings");
+    assert_eq!(code, 404, "unknown participant must answer 404: {body}");
+
+    // 4. Bad requests: invalid limit and before
+    let pid = &rated.participant_id;
+    for (path, label) in [
+        (
+            format!("/league/participants/{pid}/ratings?limit=0"),
+            "limit 0",
+        ),
+        (
+            format!("/league/participants/{pid}/ratings?limit=201"),
+            "limit > 200",
+        ),
+        (
+            format!("/league/participants/{pid}/ratings?limit=abc"),
+            "limit text",
+        ),
+        (
+            format!("/league/participants/{pid}/ratings?before=0"),
+            "before 0",
+        ),
+        (
+            format!("/league/participants/{pid}/ratings?before=-5"),
+            "before negative",
+        ),
+        (
+            format!("/league/participants/{pid}/ratings?before=xyz"),
+            "before text",
+        ),
+    ] {
+        let (status, body) = http_get(host.port, &path).expect("GET");
+        assert_eq!(
+            status_code(&status),
+            400,
+            "`{label}` must answer 400, got {status}: {}",
+            String::from_utf8_lossy(&body)
+        );
+    }
+}
+
+/// Gate — GET /league/participants/:id/opponents serves bounded opponents and excludes self-matches.
+#[test]
+fn participant_opponents_serves_bounded_opponents_and_excludes_self_matches() {
+    let fixture = fixture();
+    let host = HostProcess::start(&fixture.root, &fixture.root);
+
+    let conn = open_league(&fixture.db).expect("open the league");
+    // Find a participant with a self-match
+    let self_match_pid: String = conn
+        .query_row(
+            "SELECT s.participant_id FROM match_seats s JOIN matches m USING(match_id)
+              WHERE m.rating_eligible = 0 AND s.participant_id IS NOT NULL LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .expect("find participant with self-match");
+
+    let human_id: String = conn
+        .query_row(
+            "SELECT participant_id FROM participants WHERE kind = 'human' LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .expect("find human participant");
+
+    // 1. Participant with self-match: self-match must be excluded from opponents list.
+    let (code, body) = host.get_json(&format!("/league/participants/{self_match_pid}/opponents"));
+    assert_eq!(code, 200, "opponents must be 200: {body}");
+    assert_eq!(
+        body["format"],
+        "effective-splendor-studio-league-participant-opponents"
+    );
+    assert_eq!(body["version"], 1);
+    assert_eq!(body["participant_id"], self_match_pid);
+    let opponents = body["opponents"].as_array().expect("opponents array");
+    for opp in opponents {
+        assert_ne!(
+            opp["opponent_id"].as_str().unwrap(),
+            self_match_pid.as_str(),
+            "self match must not be in opponents list"
+        );
+        let rec = opp["recorded_games"].as_u64().unwrap();
+        assert!(
+            rec >= 1,
+            "must have at least one recorded game against opponent"
+        );
+    }
+
+    // 2. Human with 0 opponents
+    let (code, body) = host.get_json(&format!("/league/participants/{human_id}/opponents"));
+    assert_eq!(code, 200, "human opponents must be 200: {body}");
+    assert_eq!(body["opponents"].as_array().unwrap().len(), 0);
+    assert!(body["next_after_opponent_id"].is_null());
+
+    // 3. Unknown participant -> 404
+    let (code, body) = host.get_json("/league/participants/nonexistent-participant-id/opponents");
+    assert_eq!(code, 404, "unknown participant must answer 404: {body}");
+
+    // 4. Bad requests
+    for (path, label) in [
+        (
+            format!("/league/participants/{self_match_pid}/opponents?limit=0"),
+            "limit 0",
+        ),
+        (
+            format!("/league/participants/{self_match_pid}/opponents?limit=51"),
+            "limit > 50",
+        ),
+        (
+            format!("/league/participants/{self_match_pid}/opponents?limit=notanumber"),
+            "limit text",
+        ),
+    ] {
+        let (status, body) = http_get(host.port, &path).expect("GET");
+        assert_eq!(
+            status_code(&status),
+            400,
+            "`{label}` must answer 400, got {status}: {}",
+            String::from_utf8_lossy(&body)
+        );
+    }
 }
