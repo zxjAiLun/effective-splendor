@@ -366,7 +366,7 @@ export default function ReviewPage() {
 
       {trace && activeReviewer && (
         <>
-          <ReviewSummaryBar trace={trace} reviewer={activeReviewer} summary={summary} job={job} />
+          <ReviewSummaryBar trace={trace} reviewer={activeReviewer} summary={summary} job={job} hasHumanSeat={hasHumanSeat} />
           <section className="workspace">
             <div className="board-panel">
               <div className="panel-heading">
@@ -419,8 +419,13 @@ export default function ReviewPage() {
   );
 }
 
-function ReviewSummaryBar({ trace, reviewer, summary, job }: { trace: ReviewTrace; reviewer: Reviewer; summary: ReturnType<typeof buildReviewSummary> | null; job: Job | null }) {
+function ReviewSummaryBar({ trace, reviewer, summary, job, hasHumanSeat }: { trace: ReviewTrace; reviewer: Reviewer; summary: ReturnType<typeof buildReviewSummary> | null; job: Job | null; hasHumanSeat: boolean }) {
   const cacheLabel = job?.cached ? "cached" : "generated";
+  // The decisions count follows whoever the count belongs to. With a recorded
+  // human seat it is that human's decisions; without one the summary covers every
+  // recorded decision, so calling them "human" would invent an attribution the
+  // session never made. The other figures never claimed a person, so they stay.
+  const decisionsLabel = hasHumanSeat ? "human decisions" : "reviewed decisions";
   return (
     <section className="review-summary">
       <div className="review-summary-title">
@@ -437,14 +442,14 @@ function ReviewSummaryBar({ trace, reviewer, summary, job }: { trace: ReviewTrac
       </dl>
       {summary && ("matches" in summary ? (
         <div className="review-summary-stats">
-          <span><b>{summary.decisions}</b> human decisions</span>
+          <span><b>{summary.decisions}</b> {decisionsLabel}</span>
           <span><b>{summary.matches}</b> matches S3 recommendation</span>
           <span><b>{summary.differs}</b> S3 recommends another action</span>
           <span><b>{summary.differsFromBase}</b> rollout differs from base heuristic</span>
         </div>
       ) : (
         <div className="review-summary-stats">
-          <span><b>{summary.decisions}</b> human decisions</span>
+          <span><b>{summary.decisions}</b> {decisionsLabel}</span>
           <span><b>{summary.scored}</b> scored</span>
           <span><b>{summary.unscored}</b> unscored</span>
           <span><b>{summary.agreements}</b> reviewer agreements</span>

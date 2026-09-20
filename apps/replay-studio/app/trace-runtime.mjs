@@ -422,15 +422,26 @@ export function decodeReviewersEnvelope(value) {
   }
   if (envelope.version !== 1) fail("reviewers.version", `unexpected version ${JSON.stringify(envelope.version)}`);
   array(envelope.reviewers, "reviewers.reviewers");
+  const playerCount = Number.isInteger(envelope.player_count) ? envelope.player_count : null;
   let humanSeat = null;
   const raw = envelope.human_seat;
   if (raw !== null && raw !== undefined) {
     if (!Number.isInteger(raw) || raw < 0 || raw > 3) {
       fail("reviewers.human_seat", `expected null or a seat index, got ${JSON.stringify(raw)}`);
     }
+    // A seat that cannot exist in this replay is not a human. The Host already
+    // refuses this combination, so seeing it here means a malformed 200: reject it
+    // rather than surfacing a My decisions control that could only select nothing.
+    // The test is `< player_count`, not `< 2` — seats 2 and 3 are valid in 3- and
+    // 4-player replays.
+    if (playerCount !== null && raw >= playerCount) {
+      fail(
+        "reviewers.human_seat",
+        `seat ${raw} is outside this ${playerCount}-player replay`,
+      );
+    }
     humanSeat = raw;
   }
-  const playerCount = Number.isInteger(envelope.player_count) ? envelope.player_count : null;
   return { reviewers: envelope.reviewers, playerCount, humanSeat };
 }
 

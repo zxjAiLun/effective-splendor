@@ -1048,11 +1048,12 @@ impl StudioHost {
             None => None,
         };
         // The authoritative human seat is durable session metadata written at play
-        // time (`<session>.meta.json`), never the URL. This is the same seam the
-        // recent-games list and the historical archive already read, so the Review
-        // page can learn who the human was without downloading the whole archive.
-        // Absent or malformed metadata is the `None` case: an agent-vs-agent replay
-        // has no human, and that must stay distinguishable from seat 0.
+        // time, never the URL. It is addressed through `human_meta_path_for_replay`,
+        // the one authority for that path (`<session>.replay.meta.json`). This is the
+        // same seam the recent-games list and the historical archive already read, so
+        // the Review page can learn who the human was without downloading the whole
+        // archive. Absent or malformed metadata is the `None` case: an agent-vs-agent
+        // replay has no human, and that must stay distinguishable from seat 0.
         let human_seat = match session {
             Some(session_id) => {
                 let session_id = sanitize_session_id(session_id)?;
@@ -1064,6 +1065,22 @@ impl StudioHost {
             }
             None => None,
         };
+        // A seat that cannot exist in this replay is not a human. `human_seat` and
+        // `player_count` come from two different files, so they can disagree: a
+        // metadata file could outlive a replay rewrite, or be hand-edited. Announcing
+        // `seat 3` for a 2-player game would put a My decisions control on screen that
+        // can only ever select zero frames. The consistency rule is `< player_count`,
+        // never `< 2`: seats 2 and 3 are legitimate in 3- and 4-player replays.
+        if let (Some(seat), Some(count)) = (human_seat, player_count) {
+            if seat >= count {
+                return Err(format!(
+                    "session `{}` records human seat {} but the replay has {} player(s); refusing to report an impossible seat",
+                    session.unwrap_or_default(),
+                    seat,
+                    count
+                ));
+            }
+        }
         let reviewers = self
             .reviewer_registry
             .reviewers

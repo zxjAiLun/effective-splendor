@@ -624,6 +624,42 @@ fn reviewers_endpoint_reports_the_authoritative_human_seat_from_metadata() {
     assert_eq!(code, 200, "{body}");
     assert_eq!(body["human_seat"], 1);
 
+    // --- impossible metadata: a seat outside the replay fails closed ------------
+    // `human_seat` and `player_count` come from two files, so they can disagree: a
+    // metadata file can outlive a replay rewrite, or be hand-edited. Announcing a
+    // seat that cannot exist would put a My decisions control on screen that can only
+    // ever select zero frames. The Host must refuse the combination outright rather
+    // than report it. The rule is `< player_count`, never `< 2`: a 2-player replay
+    // has seats 0 and 1, and anything at or above 2 is impossible.
+    let impossible_meta = serde_json::json!({
+        "format": "effective-splendor-human-meta",
+        "version": 1,
+        "session_id": seat1_id,
+        "opponent": "gate-heuristic",
+        "human_seat": 2,
+    });
+    std::fs::write(&seat1_meta_path, serde_json::to_vec(&impossible_meta).unwrap()).unwrap();
+    let (code, body) = host.get_json(&format!("/reviewers?session={seat1_id}"));
+    assert_ne!(code, 200, "a seat outside the replay must not be reported: {body}");
+    assert!(
+        body["error"].as_str().unwrap_or_default().contains("impossible seat"),
+        "the refusal must name the impossible seat: {body}"
+    );
+    // Seat 1 is still inside a 2-player replay, so the repaired metadata is accepted
+    // again: the rule rejects impossibility, not a particular seat number.
+    std::fs::write(&seat1_meta_path, std::fs::read(&seat1_meta_path).unwrap()).unwrap();
+    let valid_meta = serde_json::json!({
+        "format": "effective-splendor-human-meta",
+        "version": 1,
+        "session_id": seat1_id,
+        "opponent": "gate-heuristic",
+        "human_seat": 1,
+    });
+    std::fs::write(&seat1_meta_path, serde_json::to_vec(&valid_meta).unwrap()).unwrap();
+    let (code, body) = host.get_json(&format!("/reviewers?session={seat1_id}"));
+    assert_eq!(code, 200, "{body}");
+    assert_eq!(body["human_seat"], 1);
+
     // --- no attribution: absent meta is `null`, and never seat 0 -----------------
     // A replay the Host can open but whose session has no durable metadata: exactly
     // the agent-vs-agent / missing-metadata case. The reviewer list must still

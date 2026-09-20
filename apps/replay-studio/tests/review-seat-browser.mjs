@@ -146,7 +146,8 @@ try {
       const route = String(url).slice(${JSON.stringify(API)}.length);
       if (route === '/health') return reply({ status: 'ok' });
       if (route.startsWith('/reviewers')) {
-        return reply({ format: 'effective-splendor-studio-reviewers', version: 1, registry_id: 'studio-reviewers-2026-08-13', player_count: 2, human_seat: window.durableSeat, reviewers });
+        const impossible = window.localStorage.getItem('f1ImpossibleSeat') === '1';
+        return reply({ format: 'effective-splendor-studio-reviewers', version: 1, registry_id: 'studio-reviewers-2026-08-13', player_count: 2, human_seat: impossible ? 3 : window.durableSeat, reviewers });
       }
       if (route === '/reviews') {
         window.reviewCalls.push(JSON.parse(opts.body));
@@ -199,13 +200,27 @@ try {
   await delay(120);
   assert.equal(await currentIndex(), 1, "timeline click and keyboard share one index space");
 
-  // ---- TEST 3: no attribution -> no My decisions control, All still works ------
+  // ---- TEST 3 (Gate A): no attribution -> no My control, honest summary --------
   await stageSeat(null);
   await navigate(`/review?session=sess-f1&case=${caseId()}`);
   await wait(`document.querySelector('.timeline') !== null`);
   assert.deepEqual(await tabCount(), ["All decisions"], "an unknown seat must not offer a My decisions control");
   assert.equal(await activeFilter(), "All decisions");
   assert.equal((await timelineActors()).length, trace.frames.length, "All decisions shows the whole recording");
+  // The summary must not claim an attribution the session never recorded: with no
+  // human seat it counts every reviewed decision, not "human decisions".
+  await wait(`document.querySelector('.review-summary') !== null`);
+  const summaryText = await evaluate("document.querySelector('.review-summary').innerText");
+  assert.doesNotMatch(summaryText, /human decision/, `no seat must never say "human decisions": ${summaryText}`);
+  assert.match(summaryText, /reviewed decision/, `no seat must say "reviewed decisions": ${summaryText}`);
+
+  // With a recorded seat, the same figure is honestly the human's.
+  await stageSeat(1);
+  await navigate(`/review?session=sess-f1&case=${caseId()}`);
+  await wait(`document.querySelector('.review-summary') !== null`);
+  const humanSummary = await evaluate("document.querySelector('.review-summary').innerText");
+  assert.match(humanSummary, /human decision/, `a recorded seat keeps the human label: ${humanSummary}`);
+  assert.doesNotMatch(humanSummary, /reviewed decision/, `a recorded seat must not say "reviewed": ${humanSummary}`);
 
   // ---- TEST 4: URL seat disagrees with the recorded seat -> fail closed ---------
   await stageSeat(1);
@@ -230,8 +245,19 @@ try {
   const seat0 = await timelineActors();
   assert.ok(seat0.every((label) => label.endsWith("actor P0")), `durable seat 0 must filter to P0: ${seat0}`);
 
+  // ---- TEST (Gate B): an impossible seat is a malformed 200, not a UI state ----
+  // player_count 2 + human_seat 3 cannot be a human in this replay. The Host already
+  // refuses it; if such a body ever reaches the browser the decoder must reject it
+  // rather than render a My decisions control that could select nothing.
+  await evaluate(`window.localStorage.setItem('f1ImpossibleSeat', '1')`);
+  await navigate(`/review?session=sess-f1&case=${caseId()}`);
+  await wait(`document.querySelector('.error-banner') !== null`);
+  const malformed = await evaluate("document.body.innerText");
+  assert.match(malformed, /human_seat/, `an impossible seat must fail closed: ${malformed.slice(0, 400)}`);
+  assert.equal(await evaluate(`document.querySelector('.review-filter') !== null`), false, "no filter controls for a refused authority");
+
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
-  console.log("review-seat-browser: PASS (durable seat authority, seat 1 honoured, unknown seat has no My control, URL mismatch fails closed, one index space for timeline+keyboard)");
+  console.log("review-seat-browser: PASS (durable seat authority, seat 1 honoured, unknown seat has no My control and an honest summary, impossible seat refused, URL mismatch fails closed, one index space for timeline+keyboard)");
 } finally {
   try { ws?.close(); } catch { /* closing */ }
   child.kill();

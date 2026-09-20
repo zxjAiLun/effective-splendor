@@ -300,6 +300,27 @@ test("F1: a malformed reviewers envelope is rejected, not coerced", () => {
   assert.throws(() => decodeReviewersEnvelope({ ...base, reviewers: null }), /reviewers/);
 });
 
+// F1 Repair 1, Gate B/C: a seat that cannot exist in this replay is not a human.
+test("F1-R1 Gate B: a seat beyond the replay's player count is refused", () => {
+  const base = { format: "effective-splendor-studio-reviewers", version: 1, reviewers: [], player_count: 2 };
+  // player_count 2 + seat 3 is the impossible combination: it would render a My
+  // decisions control that can only ever select zero frames.
+  assert.throws(() => decodeReviewersEnvelope({ ...base, human_seat: 3 }), /human_seat/);
+  assert.throws(() => decodeReviewersEnvelope({ ...base, human_seat: 2 }), /human_seat/);
+  // The boundary itself is still legal.
+  assert.equal(decodeReviewersEnvelope({ ...base, human_seat: 1 }).humanSeat, 1);
+});
+
+test("F1-R1 Gate C: seats 2 and 3 stay legal in 3- and 4-player replays", () => {
+  const three = { format: "effective-splendor-studio-reviewers", version: 1, reviewers: [], player_count: 3 };
+  const four = { format: "effective-splendor-studio-reviewers", version: 1, reviewers: [], player_count: 4 };
+  assert.equal(decodeReviewersEnvelope({ ...three, human_seat: 2 }).humanSeat, 2);
+  assert.equal(decodeReviewersEnvelope({ ...four, human_seat: 2 }).humanSeat, 2);
+  assert.equal(decodeReviewersEnvelope({ ...four, human_seat: 3 }).humanSeat, 3);
+  assert.throws(() => decodeReviewersEnvelope({ ...three, human_seat: 3 }), /human_seat/);
+  assert.throws(() => decodeReviewersEnvelope({ ...four, human_seat: 4 }), /human_seat/);
+});
+
 test("F1: My decisions filtering keeps only the authoritative seat's frames", async () => {
   // The Rust fixtures are single-seat replays, so the two-seat case is built here:
   // the filter, the timeline and the keyboard all read the same frames array, and
