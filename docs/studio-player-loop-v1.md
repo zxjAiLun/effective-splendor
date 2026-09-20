@@ -69,6 +69,19 @@
 
 ## Iteration log
 
+### 2026-09-20 — F3 Repair 1 IMPLEMENTED / VERIFIED local（owner review pending）
+
+owner 远端复核 `f723bb9`：**F3 REPAIR REQUIRED，P0=0/P1=2/P2=0**；Host 三元组 job identity / Host-owned `cache_key` / 按 `frame.ply` 恢复 switch state 三条主设计 **ACCEPTED**，两个 async correctness seam OPEN。本轮按冻结合同窄修，**未改任何 Rust**（Host 不需再改）：
+
+- **P1-1（body-parse 后必须重检 generation）**：`bundle.json()` 与 status `response.json()` 都是真实 async boundary——`fetch()` 在 headers 就 resolve，晚到的 body 仍可覆盖新 reviewer。已在这两处 parse **之后**各加一次 `if (generation !== requestGeneration.current) return;`，且 catch 内的 `setError` 继续受同一 generation 约束。
+- **P1-2（poll 返回的后续 Job 重验 identity）**：新增纯函数 `jobUpdateMatchesInitial(initial, next)`（`trace-runtime.mjs`），要求 `id / session_id / reviewer_id / cache_key` 四者都不漂移；`poll()` 对每一个 status envelope 在写 state 前校验，失败即 fail closed（不 `setJob`、不取 bundle）。
+- **门禁加固**：`tests/review-switch-browser.mjs` 新增两条真实 Chromium 场景——TEST 6 delayed **body** race（A bundle headers 先到、body 晚到，期间切 B，B 必须存活）与 TEST 7 malformed poll envelope（POST 正常、首次 status 换 job/session/key 必须被拒且不请求 foreign bundle）。为使 TEST 6 可观测，reviewer B 的 trace 带**可见不同的终分**（否则覆盖与不覆盖 DOM 相同，gate 会假通过）。
+- **负向对照（`f3-negative-controls.py`，共 6 组全部击中并字节还原）**：NC5 去掉 bundle body-parse 后的 generation 重检 → TEST 6 FAIL（现场：`116 – 105` → `16 – 5`）；NC6 去掉 poll identity 校验 → TEST 7 FAIL。NC1–NC4 保持。
+- **真实浏览器 gate 抓到的假阳性（已修）**：第一版 TEST 6 在 A 已经渲染后才切换（等 `.timeline`），根本没进 race 窗口，去掉 guard 仍 PASS；改为等 A 的 bundle **请求已发出**（`window.f3.bundles.length > 0`）再切、并对 B 的可见终分断言后，NC5 才真正咬住。同类地，TEST 1 的 `currentPly()` 在 header 已切但 timeline 尚未重渲染时会返回 null，已把 wait 收紧为「header 与 `.timeline button.current` 同时就绪」，连跑 3 次稳定。
+- **Validation evidence（local, 2026-09-20）**：`npm --prefix apps/replay-studio test` **141 passed**（+1 `jobUpdateMatchesInitial` 单测）；lint **PASS**；`tests/review-switch-browser.mjs` 连跑 3 次 **PASS**；`tests/review-seat-browser.mjs` / `tests/human-play-browser.mjs` **PASS**；`f3-negative-controls.py` **NC1–NC6 全部 PASS**；`git diff --check` **PASS**。`npx tsc --noEmit` 仍为既有 11 项 D3B participant-profile 诊断。本轮 **0 Rust/Host/schema/trace/算法/cache-key 变更**。
+
+**Verdict**：F3 Repair 1 **IMPLEMENTED / VERIFIED local，待 owner review**；F3 与 Studio Player Loop v1 均未宣称 ACCEPTED/CLOSED。
+
 ### 2026-09-20 — F3 cache + reviewer switching AUTHORIZED（owner 远端终审 F2 ACCEPTED / CLOSED @ `a2885f0`）
 
 owner 复核远端 `a2885f0` 真实 diff：**F2 Shared Player State + Structured Actions ACCEPTED / CLOSED，P0=0/P1=0/P2=0（F2 scope）**；三个 Repair 点全部收掉（唯一 player-state presentation、三类 analysis row 共享 compact renderer、seat-aware action attribution），并明确 `138 passed` / lint / Chromium / negative controls 仍属本地执行证据（GitHub 无 cloud checks）；11 项 D3B TypeScript 诊断为既有债务，不算 F2 回归。**F3 正式 AUTHORIZED**。

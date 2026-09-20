@@ -10,6 +10,7 @@ import {
   defaultReviewerIdFor,
   isReviewTraceEnvelope,
   jobMatchesRequest,
+  jobUpdateMatchesInitial,
   parseUrlSeat,
   resolveHumanSeat,
   resolveSwitchIndex,
@@ -376,4 +377,19 @@ test("F3: a job for another session or reviewer is refused, not rendered", () =>
   assert.equal(jobMatchesRequest(job, "sess-a", "s3"), false, "another reviewer's job must not be rendered");
   assert.equal(jobMatchesRequest(null, "sess-a", "m07"), false);
   assert.equal(jobMatchesRequest(undefined, "sess-a", "m07"), false);
+});
+
+// ---- F3 Repair 1: polled status must not change job identity -------------------
+test("F3-R1: a status envelope that changes job identity is refused", () => {
+  const initial = { id: "review-1", session_id: "sess-a", reviewer_id: "m07", cache_key: "a".repeat(64) };
+  // The ordinary case: the same job progresses.
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, status: "running" }), true);
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, status: "completed" }), true);
+  // A different job id, session, reviewer, or cache_key is not this job.
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, id: "review-2" }), false, "a substituted job id is refused");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, session_id: "sess-b" }), false, "another session is refused");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, reviewer_id: "s3" }), false, "another reviewer is refused");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, cache_key: "b".repeat(64) }), false, "a drifting cache key is refused");
+  assert.equal(jobUpdateMatchesInitial(initial, null), false);
+  assert.equal(jobUpdateMatchesInitial(null, initial), false);
 });

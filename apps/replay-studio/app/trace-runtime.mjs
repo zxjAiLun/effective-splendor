@@ -841,3 +841,25 @@ export function resolveSwitchIndex(frames, intent, humanSeat) {
 export function jobMatchesRequest(job, sessionId, reviewerId) {
   return Boolean(job) && job.session_id === sessionId && job.reviewer_id === reviewerId;
 }
+
+/**
+ * Whether a polled status envelope still describes the job that was created.
+ *
+ * The initial POST is checked against the request, but polling is a second,
+ * independent trust boundary: every status answer is a fresh document from the
+ * Host, and a malformed one could otherwise hand the page a *different* job id,
+ * session, reviewer, or cache key mid-flight — after which the bundle route and
+ * the trace cache would both follow the substituted job.
+ *
+ * Job identity is therefore immutable across a poll: `id`, `session_id` and
+ * `reviewer_id` must never change, and `cache_key` must not drift either, since it
+ * is the content/config identity the trace cache is keyed on. A status envelope
+ * that disagrees with any of them is a refusal, not an update.
+ */
+export function jobUpdateMatchesInitial(initial, next) {
+  return Boolean(initial) && Boolean(next)
+    && next.id === initial.id
+    && next.session_id === initial.session_id
+    && next.reviewer_id === initial.reviewer_id
+    && next.cache_key === initial.cache_key;
+}

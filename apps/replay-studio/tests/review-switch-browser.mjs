@@ -56,7 +56,15 @@ const reviewerB = { ...reviewerA, id: "m07-b", display_name: "M07 Determinizatio
 // Each trace carries its reviewer identity, which is what the page uses to key and
 // label the restored state.
 const traceA = { ...baseTrace, reviewer: { ...baseTrace.reviewer, id: reviewerA.id, display_name: reviewerA.display_name } };
-const traceB = { ...baseTrace, reviewer: { ...baseTrace.reviewer, id: reviewerB.id, display_name: reviewerB.display_name } };
+// Reviewer B's trace must be *visibly* different from A's, otherwise a late A body
+// that overwrites B is undetectable in the DOM: the page would render identical
+// content and the race gate would pass for the wrong reason. B gets distinct
+// scores and a distinct recorded verdict.
+const traceB = {
+  ...baseTrace,
+  reviewer: { ...baseTrace.reviewer, id: reviewerB.id, display_name: reviewerB.display_name },
+  result: { ...baseTrace.result, scores: baseTrace.result.scores.map((value) => value + 100) },
+};
 
 const socket = net.createServer();
 await new Promise((resolve) => socket.listen(0, "127.0.0.1", resolve));
@@ -163,7 +171,10 @@ try {
           id,
           session_id: window.localStorage.getItem('f3ForeignSession') === '1' ? 'someone-else' : body.session_id,
           reviewer_id: window.localStorage.getItem('f3ForeignReviewer') === '1' ? 'someone-else' : reviewer,
-          status: 'completed', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null,
+          // f3PollForeign needs a non-terminal first status so the page actually
+          // polls a status envelope instead of jumping straight to the bundle.
+          status: window.localStorage.getItem('f3PollForeign') === '1' ? 'running' : 'completed',
+          processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null,
           cached: window.f3.jobs[id] === true,
           cache_key: window.localStorage.getItem('f3ChangedKey') === '1' ? 'c'.repeat(64) : cacheKeys[reviewer],
         };
@@ -173,11 +184,37 @@ try {
       if (route.endsWith('/bundle')) {
         const id = route.slice('/reviews/'.length, -'/bundle'.length);
         window.f3.bundles.push(id);
-        return reply(id.includes(${JSON.stringify(reviewerB.id)}) ? traceB : traceA);
+        const trace = id.includes(${JSON.stringify(reviewerB.id)}) ? traceB : traceA;
+        // f3DelayBodyA stages the exact race this repair closes: fetch resolves
+        // (headers arrive) immediately, but the body streams in after 1200ms. A
+        // switch to B during that window must still win.
+        if (id.includes(${JSON.stringify(reviewerA.id)}) && window.localStorage.getItem('f3DelayBodyA') === '1') {
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              setTimeout(() => {
+                controller.enqueue(encoder.encode(JSON.stringify(trace)));
+                controller.close();
+              }, 1200);
+            },
+          });
+          return Promise.resolve(new Response(stream, { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
+        return reply(trace);
       }
       if (route.startsWith('/reviews/')) {
         const id = route.slice('/reviews/'.length);
-        return reply({ id, session_id: 'sess-f3', reviewer_id: id.replace('job-', ''), status: 'completed', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null, cached: window.f3.jobs[id] === true, cache_key: 'a'.repeat(64) });
+        // f3PollForeign stages a malformed status envelope: the POST was honest,
+        // but the poll answer names a different job/session/reviewer/key.
+        const foreign = window.localStorage.getItem('f3PollForeign') === '1';
+        return reply({
+          id: foreign ? 'job-somewhere-else' : id,
+          session_id: foreign ? 'another-session' : 'sess-f3',
+          reviewer_id: id.replace('job-', ''),
+          status: 'completed', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null,
+          cached: window.f3.jobs[id] === true,
+          cache_key: foreign ? 'd'.repeat(64) : 'a'.repeat(64),
+        });
       }
       return reply({ error: 'unhandled test route ' + route }, 404);
     };
@@ -222,14 +259,14 @@ try {
   assert.equal(await revealActive(), true);
 
   await switchTo(reviewersB);
-  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('B')`);
+  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('B') && document.querySelector('.timeline button.current') !== null`);
   assert.equal(await currentPly(), plyBefore, "the recorded ply survives the reviewer switch");
   assert.equal(await revealActive(), true, "reveal survives the reviewer switch");
   assert.equal(await activeFilter(), "My decisions", "the filter survives the reviewer switch");
 
   const bundlesAfterB = await bundles();
   await switchTo(reviewersA);
-  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('Champion')`);
+  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('Champion') && document.querySelector('.timeline button.current') !== null`);
   await delay(200);
   const bundlesAfterReturn = await bundles();
   assert.equal(
@@ -277,14 +314,47 @@ try {
   await delay(100);
   // A's POST is in flight (1200ms). Switch to B immediately.
   await switchTo(reviewersB);
-  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('B')`);
+  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('B') && document.querySelector('.timeline button.current') !== null`);
   await delay(1400); // long enough for A's stale answer to have arrived
   assert.equal(await activeReviewer(), reviewersB, "A's late response must not overwrite B");
   assert.equal(await evaluate("document.querySelectorAll('.timeline button').length > 0"), true, "B's review stays rendered");
   await evaluate("window.localStorage.setItem('f3DelayA', '')");
 
+  // ---- TEST 6: a delayed bundle *body* cannot overwrite B -----------------------
+  // This is the sharper race: A's bundle fetch resolves (headers arrive), then its
+  // body streams in after 1200ms. The switch to B must happen *inside* that window,
+  // so the gate waits for A's bundle request to be issued (not for A to render) and
+  // switches immediately. `response.json()` is its own async boundary, so the page
+  // must re-check the generation after parsing, not only after `fetch` resolves.
+  await evaluate("window.localStorage.setItem('f3DelayBodyA', '1')");
+  await evaluate("window.f3.bundles.length = 0");
+  await navigate(`/review?session=sess-f3&case=${caseId()}`);
+  await wait(`document.querySelector('.reviewer-switch') !== null`);
+  // Wait until A's bundle request has actually been made, then switch before its
+  // body resolves.
+  await wait(`window.f3.bundles.length > 0`);
+  await switchTo(reviewersB);
+  await wait(`document.querySelector('.match-meta').lastElementChild.textContent.includes('B') && document.querySelector('.review-summary h2') !== null`);
+  const scoreB = await evaluate("document.querySelector('.review-summary h2') ? document.querySelector('.review-summary h2').textContent : null");
+  await delay(1600); // let A's delayed body resolve and (wrongly) try to apply
+  assert.equal(await activeReviewer(), reviewersB, "A's delayed bundle body must not overwrite B");
+  const scoreAfter = await evaluate("document.querySelector('.review-summary h2') ? document.querySelector('.review-summary h2').textContent : null");
+  assert.equal(scoreAfter, scoreB, `B's rendered trace must survive A's late body: ${scoreB} -> ${scoreAfter}`);
+  await evaluate("window.localStorage.setItem('f3DelayBodyA', '')");
+
+  // ---- TEST 7: a malformed poll envelope is refused ----------------------------
+  // The POST is honest; the first status answer names a different job/session/key.
+  await evaluate("window.localStorage.setItem('f3PollForeign', '1')");
+  await evaluate("window.f3.bundles.length = 0");
+  await navigate(`/review?session=sess-f3&case=${caseId()}`);
+  await wait(`document.querySelector('.error-banner') !== null || document.querySelector('.timeline') !== null`);
+  const pollRefused = await evaluate("document.body.innerText");
+  assert.match(pollRefused, /changed identity while polling/, `a substituted poll envelope must be refused: ${pollRefused.slice(0, 300)}`);
+  assert.equal(await evaluate("window.f3.bundles.length"), 0, "a refused poll must not request a foreign bundle");
+  await evaluate("window.localStorage.setItem('f3PollForeign', '')");
+
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
-  console.log("review-switch-browser: PASS (A->B->A reuses cache_key, ply+filter+reveal preserved, changed key reloads, foreign identity refused, stale response cannot overwrite)");
+  console.log("review-switch-browser: PASS (A->B->A reuses cache_key, ply+filter+reveal preserved, changed key reloads, foreign identity refused, stale POST/bundle-body cannot overwrite, malformed poll refused)");
 } finally {
   try { ws?.close(); } catch { /* closing */ }
   child.kill();

@@ -10,6 +10,7 @@ import {
   decodeReviewersEnvelope,
   defaultReviewerIdFor,
   jobMatchesRequest,
+  jobUpdateMatchesInitial,
   parseUrlSeat,
   resolveHumanSeat,
   resolveSwitchIndex,
@@ -208,6 +209,9 @@ export default function ReviewPage() {
         body: JSON.stringify({ session_id: session, reviewer_id: id }),
       });
       const value = (await response.json()) as Job;
+      // `json()` is a real async boundary (fetch resolves on headers), but both
+      // consumers here are already generation-scoped: the cache-hit branch checks
+      // it before applying, and `poll` re-checks it at entry.
       if (!response.ok) throw new Error((value as unknown as { error?: string }).error ?? `Studio Host ${response.status}`);
       // The Host's answer must describe the request that was made. A job record
       // for another session or reviewer is a refusal, not a result to render.
@@ -264,11 +268,17 @@ export default function ReviewPage() {
         if (generation !== requestGeneration.current) return;
         if (!bundle.ok) { setError(`bundle ${bundle.status}`); return; }
         const value = await bundle.json();
+        // `fetch` resolves on headers, so `json()` is its own async boundary: a
+        // switch during body parsing must still win. Without this check the old
+        // reviewer's trace would be applied *and* consume the new request's intent.
+        if (generation !== requestGeneration.current) return;
         try {
           const nextTrace = validateReviewTrace(value) as ReviewTrace;
           applyTrace(nextTrace, current.cache_key);
         } catch (reason) {
-          setError(reason instanceof Error ? reason.message : "Invalid review trace");
+          if (generation === requestGeneration.current) {
+            setError(reason instanceof Error ? reason.message : "Invalid review trace");
+          }
         }
         return;
       }
@@ -281,7 +291,18 @@ export default function ReviewPage() {
       const response = await fetch(`${API}/reviews/${current.id}`);
       if (generation !== requestGeneration.current) return;
       if (!response.ok) { setError(`status ${response.status}`); return; }
-      current = await response.json();
+      const next = (await response.json()) as Job;
+      // Same body-parse boundary as the bundle above.
+      if (generation !== requestGeneration.current) return;
+      // Polling is a second trust boundary: the POST was validated, but every
+      // status document is fresh and could name a different job. Job identity is
+      // immutable across a poll, so a substituted or drifting envelope is a
+      // refusal rather than an update.
+      if (!jobUpdateMatchesInitial(initial, next)) {
+        setError(`Review job ${next.id} changed identity while polling (session ${next.session_id} / reviewer ${next.reviewer_id} / key ${next.cache_key.slice(0, 8)}…), expected ${initial.id} for ${initial.session_id} / ${initial.reviewer_id}`);
+        return;
+      }
+      current = next;
       setJob(current);
     }
     setError("Review timed out");
