@@ -151,7 +151,7 @@ try {
       }
       if (route === '/reviews') {
         window.reviewCalls.push(JSON.parse(opts.body));
-        return reply({ id: 'job-1', session_id: 'sess-f1', reviewer_id: 'm07-determinization-champion', status: 'completed', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null, cached: false });
+        return reply({ id: 'job-1', session_id: 'sess-f1', reviewer_id: 'm07-determinization-champion', status: 'completed', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null, cached: false, cache_key: 'f1'.repeat(32) });
       }
       if (route === '/reviews/job-1/bundle') return reply(trace);
       if (route === '/reviews/job-1') return reply({ id: 'job-1', status: 'completed' });

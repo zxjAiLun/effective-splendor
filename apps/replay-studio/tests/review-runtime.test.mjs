@@ -377,6 +377,16 @@ test("F3: a job for another session or reviewer is refused, not rendered", () =>
   assert.equal(jobMatchesRequest(job, "sess-a", "s3"), false, "another reviewer's job must not be rendered");
   assert.equal(jobMatchesRequest(null, "sess-a", "m07"), false);
   assert.equal(jobMatchesRequest(undefined, "sess-a", "m07"), false);
+  // F3 keys the trace cache and bundle path on the Host-owned cache_key, so a job
+  // that omits it (or sends a non-string) is malformed rather than usable: it must
+  // be refused here instead of reaching poll/bundle as `undefined`.
+  assert.equal(jobMatchesRequest({ ...job, cache_key: undefined }, "sess-a", "m07"), false, "a missing cache_key is malformed");
+  assert.equal(jobMatchesRequest({ ...job, cache_key: "" }, "sess-a", "m07"), false, "an empty cache_key is malformed");
+  assert.equal(jobMatchesRequest({ ...job, cache_key: 12345 }, "sess-a", "m07"), false, "a non-string cache_key is malformed");
+  const keyless = { ...job };
+  delete keyless.cache_key;
+  assert.equal(jobMatchesRequest(keyless, "sess-a", "m07"), false, "an envelope with no cache_key field is malformed");
+  assert.equal(jobMatchesRequest({ ...job, id: "" }, "sess-a", "m07"), false, "an empty job id is malformed");
 });
 
 // ---- F3 Repair 1: polled status must not change job identity -------------------
@@ -392,4 +402,10 @@ test("F3-R1: a status envelope that changes job identity is refused", () => {
   assert.equal(jobUpdateMatchesInitial(initial, { ...initial, cache_key: "b".repeat(64) }), false, "a drifting cache key is refused");
   assert.equal(jobUpdateMatchesInitial(initial, null), false);
   assert.equal(jobUpdateMatchesInitial(null, initial), false);
+  // A structurally malformed envelope must fail *without* the caller being able to
+  // read its fields: the refusal path may not assume cache_key is a string.
+  assert.equal(jobUpdateMatchesInitial(initial, { id: "review-1", session_id: "sess-a", reviewer_id: "m07" }), false, "a missing cache_key is malformed");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, cache_key: undefined }), false, "an undefined cache_key is malformed");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, cache_key: 7 }), false, "a non-string cache_key is malformed");
+  assert.equal(jobUpdateMatchesInitial(initial, { ...initial, id: "" }), false, "an empty id is malformed");
 });

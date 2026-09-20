@@ -171,13 +171,16 @@ try {
           id,
           session_id: window.localStorage.getItem('f3ForeignSession') === '1' ? 'someone-else' : body.session_id,
           reviewer_id: window.localStorage.getItem('f3ForeignReviewer') === '1' ? 'someone-else' : reviewer,
-          // f3PollForeign needs a non-terminal first status so the page actually
-          // polls a status envelope instead of jumping straight to the bundle.
-          status: window.localStorage.getItem('f3PollForeign') === '1' ? 'running' : 'completed',
+          // f3PollForeign / f3PollNoKey need a non-terminal first status so the page
+          // actually polls a status envelope instead of jumping straight to the bundle.
+          status: (window.localStorage.getItem('f3PollForeign') === '1' || window.localStorage.getItem('f3PollNoKey') === '1') ? 'running' : 'completed',
           processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null,
           cached: window.f3.jobs[id] === true,
-          cache_key: window.localStorage.getItem('f3ChangedKey') === '1' ? 'c'.repeat(64) : cacheKeys[reviewer],
+          cache_key: window.localStorage.getItem('f3PostNoKey') === '1' ? undefined : (window.localStorage.getItem('f3ChangedKey') === '1' ? 'c'.repeat(64) : cacheKeys[reviewer]),
         };
+        // f3PostNoKey makes JSON.stringify drop the field entirely, i.e. a genuinely
+        // malformed job whose cache_key is missing rather than present-and-wrong.
+        if (window.localStorage.getItem('f3PostNoKey') === '1') delete job.cache_key;
         window.f3.jobs[id] = true;
         return new Promise((resolve) => setTimeout(() => resolve(reply(job)), delayMs));
       }
@@ -207,6 +210,11 @@ try {
         // f3PollForeign stages a malformed status envelope: the POST was honest,
         // but the poll answer names a different job/session/reviewer/key.
         const foreign = window.localStorage.getItem('f3PollForeign') === '1';
+        // f3PollNoKey stages a *structural* malformed envelope: the status answer
+        // omits cache_key entirely. The refusal path must not call a method on it.
+        if (window.localStorage.getItem('f3PollNoKey') === '1') {
+          return reply({ id, session_id: 'sess-f3', reviewer_id: id.replace('job-', ''), status: 'running', processed_decisions: 2, total_decisions: 2, current_ply: 0, error: null, cached: false });
+        }
         return reply({
           id: foreign ? 'job-somewhere-else' : id,
           session_id: foreign ? 'another-session' : 'sess-f3',
@@ -304,7 +312,7 @@ try {
   const foreignRendered = await evaluate("document.querySelector('.timeline') !== null");
   assert.equal(foreignRendered, false, "a job for another session must not render a review body");
   const foreign = await evaluate("document.body.innerText");
-  assert.match(foreign, /belongs to session/, `a job for another session must be refused: ${foreign.slice(0, 300)}`);
+  assert.match(foreign, /does not match the request/, `a job for another session must be refused: ${foreign.slice(0, 300)}`);
   await evaluate("window.localStorage.setItem('f3ForeignSession', '')");
 
   // ---- TEST 4: a stale A response cannot overwrite B ---------------------------
@@ -353,8 +361,38 @@ try {
   assert.equal(await evaluate("window.f3.bundles.length"), 0, "a refused poll must not request a foreign bundle");
   await evaluate("window.localStorage.setItem('f3PollForeign', '')");
 
+  // ---- TEST 7b: a structurally malformed poll envelope is refused honestly -----
+  // The status answer omits cache_key entirely. The refusal must be a visible
+  // fail-closed banner, not a TypeError thrown from inside the error path itself
+  // (poll() is fire-and-forget, so that would surface as an unhandled rejection).
+  const exceptionsBefore7b = exceptions.length;
+  await evaluate("window.localStorage.setItem('f3PollNoKey', '1')");
+  await evaluate("window.f3.bundles.length = 0");
+  await navigate(`/review?session=sess-f3&case=${caseId()}`);
+  await wait(`document.querySelector('.error-banner') !== null || document.querySelector('.timeline') !== null`);
+  assert.equal(await evaluate("document.querySelector('.error-banner') !== null"), true, "a malformed poll must show a fail-closed error banner");
+  assert.equal(await evaluate("document.querySelector('.timeline') !== null"), false, "a malformed poll must not render a review body");
+  assert.equal(await evaluate("window.f3.bundles.length"), 0, "a malformed poll must not fetch a bundle");
+  assert.equal(exceptions.length, exceptionsBefore7b, `the refusal path must not throw: ${JSON.stringify(exceptions.slice(exceptionsBefore7b))}`);
+  await evaluate("window.localStorage.setItem('f3PollNoKey', '')");
+
+  // ---- TEST 7c: an initial POST without a cache_key is refused -----------------
+  // F3 keys the trace cache and bundle path on the Host-owned key, so a job that
+  // omits it is malformed: it must be refused at the POST boundary rather than
+  // carried into poll/bundle as `undefined`.
+  const exceptionsBefore7c = exceptions.length;
+  await evaluate("window.localStorage.setItem('f3PostNoKey', '1')");
+  await evaluate("window.f3.bundles.length = 0");
+  await navigate(`/review?session=sess-f3&case=${caseId()}`);
+  await wait(`document.querySelector('.error-banner') !== null || document.querySelector('.timeline') !== null`);
+  assert.equal(await evaluate("document.querySelector('.error-banner') !== null"), true, "a POST without a cache_key must show a fail-closed error banner");
+  assert.equal(await evaluate("document.querySelector('.timeline') !== null"), false, "a POST without a cache_key must not render a review body");
+  assert.equal(await evaluate("window.f3.bundles.length"), 0, "a POST without a cache_key must not fetch a bundle");
+  assert.equal(exceptions.length, exceptionsBefore7c, `the refusal path must not throw: ${JSON.stringify(exceptions.slice(exceptionsBefore7c))}`);
+  await evaluate("window.localStorage.setItem('f3PostNoKey', '')");
+
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
-  console.log("review-switch-browser: PASS (A->B->A reuses cache_key, ply+filter+reveal preserved, changed key reloads, foreign identity refused, stale POST/bundle-body cannot overwrite, malformed poll refused)");
+  console.log("review-switch-browser: PASS (A->B->A reuses cache_key, ply+filter+reveal preserved, changed key reloads, foreign identity refused, stale POST/bundle-body cannot overwrite, malformed poll refused, malformed key envelopes refused without throwing)");
 } finally {
   try { ws?.close(); } catch { /* closing */ }
   child.kill();

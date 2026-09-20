@@ -214,9 +214,11 @@ export default function ReviewPage() {
       // it before applying, and `poll` re-checks it at entry.
       if (!response.ok) throw new Error((value as unknown as { error?: string }).error ?? `Studio Host ${response.status}`);
       // The Host's answer must describe the request that was made. A job record
-      // for another session or reviewer is a refusal, not a result to render.
+      // for another session or reviewer — or one missing the identity fields F3
+      // now depends on — is a refusal, not a result to render. Do not echo the
+      // untrusted envelope: this message is shown as-is to the user.
       if (!jobMatchesRequest(value, session, id)) {
-        throw new Error(`Review job ${value.id} belongs to session ${value.session_id} / reviewer ${value.reviewer_id}, not the requested ${session} / ${id}`);
+        throw new Error(`Studio Host returned a review job that does not match the request; expected ${id} for ${session}.`);
       }
       const cached = traceCache.current.get(value.cache_key);
       if (cached) {
@@ -299,7 +301,12 @@ export default function ReviewPage() {
       // immutable across a poll, so a substituted or drifting envelope is a
       // refusal rather than an update.
       if (!jobUpdateMatchesInitial(initial, next)) {
-        setError(`Review job ${next.id} changed identity while polling (session ${next.session_id} / reviewer ${next.reviewer_id} / key ${next.cache_key.slice(0, 8)}…), expected ${initial.id} for ${initial.session_id} / ${initial.reviewer_id}`);
+        // Never interpolate `next` here: this branch exists *because* the envelope
+        // is malformed, so reading `next.cache_key.slice(...)` would throw inside
+        // the error path itself (poll() is fire-and-forget, so that would surface
+        // as an unhandled rejection instead of a fail-closed banner). The user only
+        // needs to know the Host's status identity drifted, not the bad values.
+        setError(`Review job changed identity while polling; expected ${initial.id} for ${initial.session_id} / ${initial.reviewer_id}.`);
         return;
       }
       current = next;

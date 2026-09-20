@@ -69,6 +69,18 @@
 
 ## Iteration log
 
+### 2026-09-20 — F3 Repair 2 IMPLEMENTED / VERIFIED local（owner 远端复核 `701a7a0` 后 P0=0/P1=1/P2=0；本轮等待 review）
+
+owner 远端复核 `701a7a0`：两个原始 P1（body-parse 后 generation 重检、poll identity 冻结）**已修对**，TEST 6 已真实咬住 headers-已到/body-晚到竞态；仅剩 **1 个窄 P1**：**拒绝路径自身会崩**。本轮窄修，**依然 0 Rust**：
+
+- **P1（malformed poll 的拒绝路径读取未验证字段）**：原 `setError(\`... key ${next.cache_key.slice(0,8)}…\`)` —— `jobUpdateMatchesInitial()` 能正确判 malformed，但**紧接着**的文案假定 `next.cache_key` 是 string；Host 返回缺 `cache_key` 的 envelope 时 `slice()` 抛 TypeError，而 `poll()` 是 `void poll(...)`（无外层 catch）⇒ 页面不是 fail-closed banner，而是 unhandled rejection / 停在 ANALYZING。这正是本刀要防的「错误处理路径自己崩掉」。**采纳 owner 推荐的第二种写法**：拒绝文案不再回显任何 untrusted 字段——`Review job changed identity while polling; expected ${initial.id} for ${initial.session_id} / ${initial.reviewer_id}.`。同理把 POST 拒绝文案也改为不回显（`Studio Host returned a review job that does not match the request; expected ${id} for ${session}.`）。
+- **同源 hardening（不另开范围）**：`jobMatchesRequest()` 现在钉住 `id`（非空 string）+ `session_id` 精确 + `reviewer_id` 精确 + `cache_key`（非空 string）。此前缺 `cache_key` 的 POST 能通过校验，然后以 `undefined` cache key 进入 poll/bundle。`jobUpdateMatchesInitial()` 同样对 malformed 字段只返回 false（`typeof next.cache_key === "string" && length > 0`），拒绝路径不再调用其方法。
+- **门禁**：`tests/review-switch-browser.mjs` **TEST 7b**（status 缺 `cache_key` → banner 可见、`.timeline` 不存在、`bundles.length === 0`、无 `Runtime.exceptionThrown`）与 **TEST 7c**（初始 POST 缺 `cache_key` → 同上）。`review-seat-browser.mjs` 的 mock fixture 补上 `cache_key`（新 hardening 正确拒绝了旧的无 key fixture）。单测补 `jobMatchesRequest`/`jobUpdateMatchesInitial` 的 malformed 字段用例（全量 **141 passed**）。
+- **负向对照（`f3-negative-controls.py`，现共 8 组全部击中并字节还原）**：**NC7** 恢复旧拒绝文案 ⇒ gate 以 **DOM timeout** 失败（现场：页面停在 `ANALYZING`，无 banner——正是 owner 预测的形态）；**NC8** 把 `jobMatchesRequest` 退回只比 session+reviewer ⇒ 缺 key 的 POST 被接受，gate 失败。NC1–NC6 保持。
+- **Validation evidence（local, 2026-09-20）**：`npm --prefix apps/replay-studio test` **141 passed**；lint **PASS**；`review-switch-browser` **PASS ×2**；`review-seat-browser` **PASS**（fixture 修正后）；`human-play-browser` **PASS**；F3 negative controls **NC1–NC8 全部 PASS**；`npx tsc --noEmit` 仍 11 项既有 D3B 诊断。本轮 **0 Rust/Host/schema/trace/算法/cache-key 变更**。
+
+**Verdict**：F3 Repair 2 **IMPLEMENTED / VERIFIED local，待 owner review**；F3 与 Studio Player Loop v1 仍均未宣称 ACCEPTED/CLOSED。
+
 ### 2026-09-20 — F3 Repair 1 IMPLEMENTED / VERIFIED local（owner review pending）
 
 owner 远端复核 `f723bb9`：**F3 REPAIR REQUIRED，P0=0/P1=2/P2=0**；Host 三元组 job identity / Host-owned `cache_key` / 按 `frame.ply` 恢复 switch state 三条主设计 **ACCEPTED**，两个 async correctness seam OPEN。本轮按冻结合同窄修，**未改任何 Rust**（Host 不需再改）：

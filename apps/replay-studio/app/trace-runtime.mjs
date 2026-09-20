@@ -839,7 +839,16 @@ export function resolveSwitchIndex(frames, intent, humanSeat) {
  * session's job id and offer a bundle from another session's artifact path.
  */
 export function jobMatchesRequest(job, sessionId, reviewerId) {
-  return Boolean(job) && job.session_id === sessionId && job.reviewer_id === reviewerId;
+  return Boolean(job)
+    && typeof job.id === "string"
+    && job.id.length > 0
+    && job.session_id === sessionId
+    && job.reviewer_id === reviewerId
+    // F3 keys the trace cache and the bundle path on the Host-owned cache key, so
+    // a job that omits it (or sends a non-string) is malformed rather than usable:
+    // it must be refused here, not carried into poll/bundle as `undefined`.
+    && typeof job.cache_key === "string"
+    && job.cache_key.length > 0;
 }
 
 /**
@@ -858,8 +867,12 @@ export function jobMatchesRequest(job, sessionId, reviewerId) {
  */
 export function jobUpdateMatchesInitial(initial, next) {
   return Boolean(initial) && Boolean(next)
+    && typeof next.id === "string"
+    && next.id.length > 0
     && next.id === initial.id
     && next.session_id === initial.session_id
     && next.reviewer_id === initial.reviewer_id
+    && typeof next.cache_key === "string"
+    && next.cache_key.length > 0
     && next.cache_key === initial.cache_key;
 }
