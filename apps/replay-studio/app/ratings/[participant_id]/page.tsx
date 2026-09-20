@@ -283,7 +283,7 @@ export default function ParticipantProfilePage() {
 
   const loadMoreRatings = useCallback(async () => {
     if (!participantId || !ratingsState.nextBeforeLeagueSeq || ratingsState.loadingMore) return;
-    setRatingsState((prev) => ({ ...prev, loadingMore: true }));
+    setRatingsState((prev) => ({ ...prev, loadingMore: true, error: null }));
     try {
       const body = await readJson(
         `/league/participants/${encodeURIComponent(participantId)}/ratings?limit=${RATING_HISTORY_DEFAULT_LIMIT}&before=${ratingsState.nextBeforeLeagueSeq}`,
@@ -362,7 +362,7 @@ export default function ParticipantProfilePage() {
 
   const loadMoreOpponents = useCallback(async () => {
     if (!participantId || !opponentsState.nextAfterOpponentId || opponentsState.loadingMore) return;
-    setOpponentsState((prev) => ({ ...prev, loadingMore: true }));
+    setOpponentsState((prev) => ({ ...prev, loadingMore: true, error: null }));
     try {
       const body = await readJson(
         `/league/participants/${encodeURIComponent(participantId)}/opponents?limit=${OPPONENTS_DEFAULT_LIMIT}&after=${encodeURIComponent(opponentsState.nextAfterOpponentId)}`,
@@ -441,7 +441,7 @@ export default function ParticipantProfilePage() {
 
   const loadMoreGames = useCallback(async () => {
     if (!participantId || !gamesState.nextBeforeLeagueSeq || gamesState.loadingMore) return;
-    setGamesState((prev) => ({ ...prev, loadingMore: true }));
+    setGamesState((prev) => ({ ...prev, loadingMore: true, error: null }));
     try {
       const body = await readJson(
         `/league/games?participant_id=${encodeURIComponent(participantId)}&limit=${GAMES_DEFAULT_LIMIT}&before=${gamesState.nextBeforeLeagueSeq}`,
@@ -711,6 +711,15 @@ export default function ParticipantProfilePage() {
             <p className="ratings-state">No games recorded for this participant.</p>
           )}
 
+          {gamesState.matches.length > 0 && gamesState.error && (
+            <div className="error-banner" role="alert">
+              Could not load the next page: {gamesState.error?.message ?? "unknown error"}.{" "}
+              <button type="button" onClick={() => void loadMoreGames()}>
+                Retry
+              </button>
+            </div>
+          )}
+
           {gamesState.nextBeforeLeagueSeq !== null && (
             <div className="load-more-container">
               <button
@@ -840,9 +849,7 @@ export default function ParticipantProfilePage() {
                     <span>
                       <b>#{pt.league_seq}</b>
                       <i>
-                        <Link href={`/replay?league=${encodeURIComponent(pt.match_id)}`} className="studio-link">
-                          <code>{pt.match_id.slice(0, 8)}…</code>
-                        </Link>
+                        <code>{pt.match_id.slice(0, 8)}…</code>
                         <small>{pt.played_at ? new Date(pt.played_at * 1000).toLocaleDateString() : "—"}</small>
                       </i>
                     </span>
@@ -864,6 +871,15 @@ export default function ParticipantProfilePage() {
 
           {ratingsState.phase === "ok" && ratingsState.points.length === 0 && (
             <p className="ratings-state">No rating events recorded for this participant.</p>
+          )}
+
+          {ratingsState.points.length > 0 && ratingsState.error && (
+            <div className="error-banner" role="alert">
+              Could not load the next page: {ratingsState.error?.message ?? "unknown error"}.{" "}
+              <button type="button" onClick={() => void loadMoreRatings()}>
+                Retry
+              </button>
+            </div>
           )}
 
           {ratingsState.nextBeforeLeagueSeq !== null && (
@@ -925,6 +941,15 @@ export default function ParticipantProfilePage() {
 
           {opponentsState.phase === "ok" && opponentsState.opponents.length === 0 && (
             <p className="ratings-state">No opponent matches recorded for this participant.</p>
+          )}
+
+          {opponentsState.opponents.length > 0 && opponentsState.error && (
+            <div className="error-banner" role="alert">
+              Could not load the next page: {opponentsState.error?.message ?? "unknown error"}.{" "}
+              <button type="button" onClick={() => void loadMoreOpponents()}>
+                Retry
+              </button>
+            </div>
           )}
 
           {opponentsState.nextAfterOpponentId !== null && (

@@ -125,11 +125,19 @@ export function decodeParticipantProfile(payload, expectedId) {
   if (!p.elo || typeof p.elo !== "object" || typeof p.elo.value !== "number" || !Number.isFinite(p.elo.value)) {
     return { ok: false, error: "Profile missing or non-finite elo.value." };
   }
+  if (typeof p.elo.display_rounded !== "number" || !Number.isInteger(p.elo.display_rounded)) {
+    return { ok: false, error: "Profile elo.display_rounded must be a finite integer." };
+  }
   if (p.elo.origin !== "rated" && p.elo.origin !== "initial") {
     return { ok: false, error: `Profile invalid elo.origin: ${p.elo.origin}` };
   }
-  if (p.elo.origin === "initial" && p.elo.display_rounded !== 1500) {
-    return { ok: false, error: `Profile initial Elo must be 1500, got ${p.elo.display_rounded}` };
+  if (p.elo.origin === "initial") {
+    if (p.elo.value !== 1500 || p.elo.display_rounded !== 1500) {
+      return {
+        ok: false,
+        error: `Profile initial Elo must have value 1500 and display_rounded 1500, got value ${p.elo.value}, display ${p.elo.display_rounded}`,
+      };
+    }
   }
   if (typeof p.provisional !== "boolean") {
     return { ok: false, error: "Profile missing provisional boolean." };
@@ -139,15 +147,13 @@ export function decodeParticipantProfile(payload, expectedId) {
       return { ok: false, error: `Profile field ${field} must be a non-negative integer.` };
     }
   }
-  if (
-    !p.seats ||
-    typeof p.seats !== "object" ||
-    typeof p.seats.appearances !== "number" ||
-    typeof p.seats.seat0 !== "number" ||
-    typeof p.seats.seat1 !== "number" ||
-    typeof p.seats.other !== "number"
-  ) {
-    return { ok: false, error: "Profile missing or malformed seats breakdown." };
+  if (!p.seats || typeof p.seats !== "object") {
+    return { ok: false, error: "Profile missing seats breakdown object." };
+  }
+  for (const field of ["appearances", "seat0", "seat1", "other"]) {
+    if (typeof p.seats[field] !== "number" || !Number.isInteger(p.seats[field]) || p.seats[field] < 0) {
+      return { ok: false, error: `Profile seats.${field} must be a non-negative integer.` };
+    }
   }
   if (
     !p.completed_plies ||
@@ -156,11 +162,42 @@ export function decodeParticipantProfile(payload, expectedId) {
   ) {
     return { ok: false, error: "Profile missing or malformed completed_plies." };
   }
+  if (p.completed_plies.unit !== "decision_plies") {
+    return { ok: false, error: `Profile completed_plies.unit must be 'decision_plies', got '${p.completed_plies.unit}'` };
+  }
+  for (const field of ["observed_completed_games", "total_completed_games"]) {
+    if (
+      typeof p.completed_plies[field] !== "number" ||
+      !Number.isInteger(p.completed_plies[field]) ||
+      p.completed_plies[field] < 0
+    ) {
+      return { ok: false, error: `Profile completed_plies.${field} must be a non-negative integer.` };
+    }
+  }
   if (p.completed_plies.availability === "unavailable" && p.completed_plies.value !== null) {
     return { ok: false, error: "Unavailable completed_plies must have null value." };
   }
-  if (p.completed_plies.availability !== "unavailable" && (typeof p.completed_plies.value !== "number" || !Number.isFinite(p.completed_plies.value))) {
+  if (
+    p.completed_plies.availability !== "unavailable" &&
+    (typeof p.completed_plies.value !== "number" || !Number.isFinite(p.completed_plies.value))
+  ) {
     return { ok: false, error: "Available completed_plies must have finite numeric value." };
+  }
+  if (
+    !p.main_turns ||
+    typeof p.main_turns !== "object" ||
+    p.main_turns.availability !== "unavailable" ||
+    p.main_turns.reason !== "not_recorded"
+  ) {
+    return { ok: false, error: "Profile main_turns must be { availability: 'unavailable', reason: 'not_recorded' }." };
+  }
+  if (
+    !p.gameplay ||
+    typeof p.gameplay !== "object" ||
+    p.gameplay.availability !== "unavailable" ||
+    p.gameplay.reason !== "no_authoritative_builder"
+  ) {
+    return { ok: false, error: "Profile gameplay must be { availability: 'unavailable', reason: 'no_authoritative_builder' }." };
   }
 
   return { ok: true, profile: p };
@@ -193,9 +230,28 @@ export function decodeRatingHistoryPage(payload, expectedId) {
       typeof pt.delta !== "number" ||
       !Number.isFinite(pt.delta) ||
       typeof pt.opponent_id !== "string" ||
-      typeof pt.opponent_name !== "string"
+      !pt.opponent_id ||
+      typeof pt.opponent_name !== "string" ||
+      !pt.opponent_name ||
+      typeof pt.participant_id !== "string" ||
+      !pt.participant_id
     ) {
       return { ok: false, error: "Malformed rating point in points list." };
+    }
+    if (typeof expectedId === "string" && expectedId && pt.participant_id !== expectedId) {
+      return {
+        ok: false,
+        error: `Rating point participant_id '${pt.participant_id}' does not match expected participant '${expectedId}'.`,
+      };
+    }
+    if (payload.participant_id && pt.participant_id !== payload.participant_id) {
+      return {
+        ok: false,
+        error: `Rating point participant_id '${pt.participant_id}' does not match envelope '${payload.participant_id}'.`,
+      };
+    }
+    if (pt.played_at !== null && (typeof pt.played_at !== "number" || !Number.isInteger(pt.played_at))) {
+      return { ok: false, error: "Rating point played_at must be null or a finite integer timestamp." };
     }
   }
   const next = payload.next_before_league_seq;
@@ -233,10 +289,20 @@ export function decodeOpponentsPage(payload, expectedId) {
       opp.opponent_id === expectedId ||
       typeof opp.display_name !== "string" ||
       typeof opp.recorded_games !== "number" ||
+      !Number.isInteger(opp.recorded_games) ||
+      opp.recorded_games < 0 ||
       typeof opp.rated_games !== "number" ||
+      !Number.isInteger(opp.rated_games) ||
+      opp.rated_games < 0 ||
       typeof opp.rated_wins !== "number" ||
+      !Number.isInteger(opp.rated_wins) ||
+      opp.rated_wins < 0 ||
       typeof opp.rated_ties !== "number" ||
-      typeof opp.rated_losses !== "number"
+      !Number.isInteger(opp.rated_ties) ||
+      opp.rated_ties < 0 ||
+      typeof opp.rated_losses !== "number" ||
+      !Number.isInteger(opp.rated_losses) ||
+      opp.rated_losses < 0
     ) {
       return { ok: false, error: "Malformed opponent row in opponents list." };
     }

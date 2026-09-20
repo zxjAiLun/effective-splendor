@@ -216,6 +216,20 @@ try {
       }
 
       if (route.startsWith('/league/participants/eng-busy-1/opponents')) {
+        if (route.includes('after=cursor-1') && window.failNextOpponents) {
+          return reply({ error: 'simulated pagination failure' }, 503);
+        }
+        if (route.includes('after=cursor-1')) {
+          return reply({
+            format: 'effective-splendor-studio-league-participant-opponents',
+            version: 1,
+            participant_id: 'eng-busy-1',
+            opponents: [
+              { opponent_id: 'eng-opponent-b', display_name: 'Opponent Beta', recorded_games: 50, rated_games: 50, rated_wins: 30, rated_ties: 0, rated_losses: 20 },
+            ],
+            next_after_opponent_id: null,
+          });
+        }
         return reply({
           format: 'effective-splendor-studio-league-participant-opponents',
           version: 1,
@@ -223,7 +237,7 @@ try {
           opponents: [
             { opponent_id: 'eng-opponent-a', display_name: 'Opponent Alpha', recorded_games: 128, rated_games: 128, rated_wins: 100, rated_ties: 0, rated_losses: 28 },
           ],
-          next_after_opponent_id: null,
+          next_after_opponent_id: 'cursor-1',
         });
       }
 
@@ -301,30 +315,58 @@ try {
   assert.equal(callsAfterOpponents.length, 2);
   assert.match(callsAfterOpponents[1], /^\/league\/participants\/eng-busy-1\/opponents/);
 
+  // ---- TEST 2b (Gate B): Load more failure -> keep data + show error + retry appends
+  await evaluate("window.failNextOpponents = true");
+  await evaluate(`document.querySelector('.load-more-container button').click()`);
+  await wait(`document.body.innerText.includes('Could not load the next page')`);
+  const textAfterLoadFail = await bodyText();
+  assert.match(textAfterLoadFail, /Opponent Alpha/, "Existing page data must be preserved on pagination failure!");
+  assert.match(textAfterLoadFail, /Could not load the next page: simulated pagination failure/);
+
+  // Retry with same cursor
+  await evaluate("window.failNextOpponents = false");
+  await evaluate(`document.querySelector('.error-banner button').click()`);
+  await wait(`document.body.innerText.includes('Opponent Beta')`);
+  const textAfterRetry = await bodyText();
+  assert.match(textAfterRetry, /Opponent Alpha/, "Previous page data remains");
+  assert.match(textAfterRetry, /Opponent Beta/, "New page data appended successfully");
+  assert.doesNotMatch(textAfterRetry, /Could not load the next page/, "Error banner cleared on success");
+  const callsAfterRetry = await evaluate("window.hostCalls");
+  assert.match(callsAfterRetry[callsAfterRetry.length - 1], /after=cursor-1/, "Retry must re-request the exact same cursor");
+
   // ---- TEST 3: Switch back to Overview, then back to Opponents -> CACHED --------
+  const callsBeforeTabToggle = (await evaluate("window.hostCalls")).length;
   await evaluate(`document.querySelectorAll('.profile-tab-button')[0].click()`);
   await delay(100);
   await evaluate(`document.querySelectorAll('.profile-tab-button')[3].click()`);
   await delay(100);
   const callsAfterTabToggle = await evaluate("window.hostCalls");
-  assert.equal(callsAfterTabToggle.length, 2, "Re-visiting Opponents tab must be served from cache!");
+  assert.equal(callsAfterTabToggle.length, callsBeforeTabToggle, "Re-visiting Opponents tab must be served from cache!");
 
   // ---- TEST 4: Click Rating history -> requested on-demand and renders SVG ------
   await evaluate(`document.querySelectorAll('.profile-tab-button')[2].click()`);
   await wait(`document.body.innerText.includes('Rating progression')`);
   const callsAfterRatings = await evaluate("window.hostCalls");
-  assert.equal(callsAfterRatings.length, 3);
-  assert.match(callsAfterRatings[2], /^\/league\/participants\/eng-busy-1\/ratings/);
+  assert.equal(callsAfterRatings.length, callsBeforeTabToggle + 1);
+  assert.match(callsAfterRatings[callsAfterRatings.length - 1], /^\/league\/participants\/eng-busy-1\/ratings/);
   const ratingsText = await bodyText();
   assert.match(ratingsText, /x-axis: League sequence/);
   assert.match(ratingsText, /Protocol starting Elo: 1500/);
+
+  // Gate A: Assert that rating events row does NOT render /replay?league=<match_id> links
+  const links = await evaluate("Array.from(document.querySelectorAll('a')).map(a => a.href)");
+  assert.ok(
+    !links.some((h) => h.includes("/replay?league=m-")),
+    "Gate A: Rating history row must NOT generate /replay?league=<match_id> links!"
+  );
+  assert.match(ratingsText, /m-42500/, "Match ID is displayed as text");
 
   // ---- TEST 5: Click Games -> requested on-demand (reusing D1) ------------------
   await evaluate(`document.querySelectorAll('.profile-tab-button')[1].click()`);
   await wait(`document.body.innerText.includes('#42500')`);
   const callsAfterGames = await evaluate("window.hostCalls");
-  assert.equal(callsAfterGames.length, 4);
-  assert.match(callsAfterGames[3], /^\/league\/games\?participant_id=eng-busy-1/);
+  assert.equal(callsAfterGames.length, callsBeforeTabToggle + 2);
+  assert.match(callsAfterGames[callsAfterGames.length - 1], /^\/league\/games\?participant_id=eng-busy-1/);
 
   // ---- TEST 6: Unknown participant renders truthful 404 text --------------------
   await send("Page.navigate", { url: `http://127.0.0.1:${port}/ratings/nonexistent-id` });

@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`（owner 复核，P0=0/P1=0/P2=1 deferred）**；**D3B Profile UI — IMPLEMENTED / VERIFIED 本地（2026-09-19，待 owner 复核真实 diff）**；F Review **NOT AUTHORIZED**。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`（owner 复核，P0=0/P1=0/P2=1 deferred）**；**D3B Profile UI — REPAIR 1 COMPLETED / VERIFIED 本地（2026-09-20，待 owner 复核真实 diff）**；F Review **NOT AUTHORIZED**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -36,7 +36,7 @@
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 ACCEPTED / CLOSED @ `3049642`** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
-| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI IMPLEMENTED / VERIFIED 本地（待 owner 复核）**（`/ratings/[participant_id]` 严格按需加载、无并发 fan-out、SVG sequence 曲线、严格解码器）；**F Review NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
+| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI Repair 1 COMPLETED / VERIFIED 本地（待 owner 复核）**（P1-1 移除 match_id replay 假链接、P1-2 分页失败可见+Retry、P2 严格 initial 1500/1500 校验）；**F Review NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -67,7 +67,27 @@
 
 ## Iteration log
 
-### 2026-09-19 — D3B Profile UI 交付（当前轮，IMPLEMENTED / VERIFIED 待 owner 复核）
+### 2026-09-20 — D3B Review: REPAIR REQUIRED @ `d8d16f2`（owner 复核，P0=0 / P1=2 / P2=1）
+
+owner 复核 `d8d16f2` 真实 diff：纯前端实现、mount-only Profile、按需分节加载、session 缓存、D1 个人 games 复用、无并发 fan-out、SVG 曲线等主体通过，但指出两项 P1 缺陷及一项 P2 强化：
+1. **P1-1（Rating history Replay link 误用 identity）**：rating event row 曾使用 `match_id` 构造 `/replay?league=${encodeURIComponent(pt.match_id)}`，但 `/replay?league=` 期望的是 `replay_document_sha256`（event 中并无此 hash），导致点击必然 404。修法：D3B v1 移除该行 Replay 链接，`match_id` 作为纯文本 `<code>` 展示。
+2. **P1-2（分页失败在已有数据时完全不可见）**：Games、Ratings、Opponents 分区此前在已有第一页数据时，后续 load-more 失败因 `items.length > 0` 导致错误横幅被隐藏且无 Retry 按钮。修法：当已有数据且分页失败时，保留现有列表与当前游标，在下方显式渲染 "Could not load the next page: <error>" 及 [Retry] 按钮，点击 Retry 重试相同游标。
+3. **P2（解码器强化 initial Elo 严格相等）**：`decodeParticipantProfile` 增加 `origin === "initial"` 时 `value === 1500 && display_rounded === 1500` 双重严格断言（拒绝 1499.6 等伪装值）；补齐 `completed_plies.unit === "decision_plies"`、`played_at` null 或整型、各计数器非负整型、`main_turns` / `gameplay` unavailable 形状断言。
+
+### 2026-09-20 — D3B Repair 1（当前轮，COMPLETED / VERIFIED 待 owner 复核）
+
+- **代码修复**：
+  - `apps/replay-studio/app/ratings/[participant_id]/page.tsx`：移除 rating history 的 replay link，改为纯文本 `<code>`；在 Games、Ratings、Opponents 列表下方增加分页失败横幅与 [Retry] 按钮，load-more 开始时重置错误，失败时保留已有数据与 cursor；
+  - `apps/replay-studio/app/participant-profile-runtime.mjs`：收紧 initial Elo `value === 1500 && display_rounded === 1500`，并补齐各项结构完整性校验。
+- **门禁与测试验证**：
+  - **Gate A**：断言 rating events row 不生成 `/replay?league=m-` 链接（在 browser 测试与 DOM 中断言无此 href）；
+  - **Gate B**：`tests/participant-profile-browser.mjs` 交互模拟分页第二页失败，断言第一页数据保留、错误横幅与 Retry 可见，点击 Retry 发送相同 cursor 并成功追加新数据；
+  - **Gate C**：`tests/participant-profile-runtime.test.mjs` 断言 initial Elo 1500/1500 通过、1499.6/1500 拒绝；
+  - 3 组专属负向对照（Repair 1 NC1–NC3）全部打中门禁失败并字节还原（见 `local-artifacts/studio-league/player-loop/d3b-repair1-negative-controls.json`）；
+  - `npm test` 113 全绿，`npm run lint` 0 错误 0 警告，Rust 套件 109 + 29 全绿。
+- **当前状态与下一步**：D3B Repair 1 已完成，等待 owner 复核真实 diff；关闭后可正式推进最后待交付的 F（Review 体验修复）。
+
+### 2026-09-19 — D3B Profile UI 初版实现 @ `d8d16f2`（已由上述 Repair 1 替代）
 
 owner 2026-09-19 终审接受 D3A（`51bad22`，P0=0 / P1=0 / P2=1 deferred）并授权 D3B（Profile UI）。
 严格纯前端实现，0 Rust / Host / schema 修改：
@@ -436,7 +456,7 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   - 源码级与运行时级双向隔离门通过：Studio 不 import 报告数据，Research 不请求 `/league/`；
   - 导航明确区分 `Ratings` 与 `Research reports`。
 - **D3A Reader + Host API：ACCEPTED / CLOSED @ `51bad22`（owner review 2026-09-19）**。P0=0/P1=0/P2=1 deferred；三项 Repair 全部关闭（P1-1 initial Elo 伪造守卫、P1-2 三条 SQL crate-private、P1-3 opponents after cursor 双层非空与 256B 上限校验）。
-- **D3B Profile UI：IMPLEMENTED / VERIFIED（2026-09-19 本地）**，待 owner 复核真实 diff。严格按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，SVG sequence 曲线，严格解码器。
+- **D3B Profile UI：REPAIR 1 COMPLETED / VERIFIED（2026-09-20 本地）**，待 owner 复核真实 diff。P1-1/P1-2/P2 全部关闭。严格按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，分页失败保留数据与游标并显式提供 Retry，SVG sequence 曲线，严格解码器。
 - **本片明确未做**：F Review、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
 - **保留 P2**：Busy profile/H2H 仍为数百毫秒级计算，当前依靠 UX 按需分节调度控制负载，不改 schema。
 
@@ -453,7 +473,7 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 
 ## Next authorized gate
 
-按 owner 2026-09-19 最新指示：
-1. D3B Profile UI 已完成实现与本地验证（纯前端交付，按需调度、SVG League sequence 曲线、严格解码器、浏览器门禁全绿），等待 owner 复核真实 diff；
-2. owner 确认 D3B 真实 diff 并关闭后，进入玩家闭环最后一项 **F Review 体验修复**（My decisions 座位鉴权、玩家状态共用且置于上方、结构化彩色行动、同配置缓存切换）；
+按 owner 2026-09-20 最新指示：
+1. D3B Repair 1 已完成实现与本地验证（P1-1 移除 replay 假链接、P1-2 分页失败可见错误+Retry、P2 解码器 initial 严格校验，测试与负向对照全绿），等待 owner 复核真实 diff；
+2. owner 确认 D3B Repair 1 真实 diff 并关闭后，**D 线（Games / Ratings / Profile）整体正式关闭**，进入玩家闭环最后一项 **F Review 体验修复**（My decisions 座位鉴权、玩家状态共用且置于上方、结构化彩色行动、同配置缓存切换）；
 3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。

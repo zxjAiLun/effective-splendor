@@ -161,6 +161,15 @@ test("decodeParticipantProfile decodes valid profile and rejects malformed docum
   fakeInitial.profile.elo = { value: 1234.0, display_rounded: 1234, origin: "initial" };
   assert.equal(decodeParticipantProfile(fakeInitial, "test-participant-1").ok, false);
 
+  // Gate C: 1499.6 value with rounded 1500 MUST fail closed; exact 1500/1500 passes
+  const fakeInitialFloat = JSON.parse(JSON.stringify(valid));
+  fakeInitialFloat.profile.elo = { value: 1499.6, display_rounded: 1500, origin: "initial" };
+  assert.equal(decodeParticipantProfile(fakeInitialFloat, "test-participant-1").ok, false);
+
+  const validInitialExact = JSON.parse(JSON.stringify(valid));
+  validInitialExact.profile.elo = { value: 1500, display_rounded: 1500, origin: "initial" };
+  assert.equal(decodeParticipantProfile(validInitialExact, "test-participant-1").ok, true);
+
   // 4. Non-finite Elo fails closed
   const nonFinite = JSON.parse(JSON.stringify(valid));
   nonFinite.profile.elo.value = Infinity;
@@ -175,6 +184,20 @@ test("decodeParticipantProfile decodes valid profile and rejects malformed docum
   assert.equal(decodeParticipantProfile([], "test-participant-1").ok, false);
   assert.equal(decodeParticipantProfile(null, "test-participant-1").ok, false);
   assert.equal(decodeParticipantProfile({ format: valid.format, version: 1, profile: "broken" }, "test-participant-1").ok, false);
+
+  // 7. Completed plies unit must be decision_plies
+  const badUnit = JSON.parse(JSON.stringify(valid));
+  badUnit.profile.completed_plies.unit = "turns";
+  assert.equal(decodeParticipantProfile(badUnit, "test-participant-1").ok, false);
+
+  // 8. Main turns / gameplay unavailable shape must be exact
+  const badMainTurns = JSON.parse(JSON.stringify(valid));
+  badMainTurns.profile.main_turns = { availability: "available", value: 30 };
+  assert.equal(decodeParticipantProfile(badMainTurns, "test-participant-1").ok, false);
+
+  const badGameplay = JSON.parse(JSON.stringify(valid));
+  badGameplay.profile.gameplay = { availability: "available", value: {} };
+  assert.equal(decodeParticipantProfile(badGameplay, "test-participant-1").ok, false);
 });
 
 test("decodeRatingHistoryPage decodes valid points and rejects malformed envelope", () => {
@@ -216,6 +239,16 @@ test("decodeRatingHistoryPage decodes valid points and rejects malformed envelop
   const badCursor = JSON.parse(JSON.stringify(valid));
   badCursor.next_before_league_seq = -5;
   assert.equal(decodeRatingHistoryPage(badCursor, "test-participant-1").ok, false);
+
+  // Point participant_id mismatch
+  const badPtPid = JSON.parse(JSON.stringify(valid));
+  badPtPid.points[0].participant_id = "other-participant";
+  assert.equal(decodeRatingHistoryPage(badPtPid, "test-participant-1").ok, false);
+
+  // Invalid played_at (float or string)
+  const badPlayedAt = JSON.parse(JSON.stringify(valid));
+  badPlayedAt.points[0].played_at = 1700000000.5;
+  assert.equal(decodeRatingHistoryPage(badPlayedAt, "test-participant-1").ok, false);
 });
 
 test("decodeOpponentsPage decodes valid opponents and excludes self-match", () => {
@@ -259,6 +292,15 @@ test("decodeOpponentsPage decodes valid opponents and excludes self-match", () =
   const overlong = JSON.parse(JSON.stringify(valid));
   overlong.next_after_opponent_id = "a".repeat(257);
   assert.equal(decodeOpponentsPage(overlong, "test-participant-1").ok, false);
+
+  // Opponent negative or float counter fails closed
+  const badCounter = JSON.parse(JSON.stringify(valid));
+  badCounter.opponents[0].recorded_games = -1;
+  assert.equal(decodeOpponentsPage(badCounter, "test-participant-1").ok, false);
+
+  const floatCounter = JSON.parse(JSON.stringify(valid));
+  floatCounter.opponents[0].rated_wins = 2.5;
+  assert.equal(decodeOpponentsPage(floatCounter, "test-participant-1").ok, false);
 });
 
 test("buildEloChartData reverses DESC order to ASC without played_at reordering or synthetic points", () => {
