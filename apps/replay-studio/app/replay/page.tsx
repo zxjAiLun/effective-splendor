@@ -6,7 +6,6 @@ import { API_BASE as API } from "../api-base.mjs";
 import {
   BoardSurface,
   ReplayTimeline,
-  simpleActionLabel,
   usePlyNavigation,
   type Action,
   type BoardFrame,
@@ -14,6 +13,8 @@ import {
   type NobleId,
   type PlayerId,
 } from "../components/replay-board";
+import { PlayerStateStrip } from "../components/player-state-strip";
+import { StructuredAction, type ActionCatalog, type ActionPlayerView } from "../components/structured-action";
 import { type DevelopmentCardData } from "../development-card";
 
 type ArchiveFrame = {
@@ -220,32 +221,39 @@ export default function ReplayPage() {
                   {frame.actor} knew.
                 </div>
               ) : null}
+              <PlayerStateStrip playerView={frame.player_view} actor={frame.actor} humanSeat={seat} />
               <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={reveal} />
             </div>
             <aside className="analysis-panel">
               <div className="analysis-header">
                 <div>
                   <span className="section-kicker">RECORDED ACTION</span>
-                  <h2>{simpleActionLabel(frame.recorded_action)}</h2>
+                  <h2>Player {frame.actor}</h2>
                 </div>
                 <span className="budget">{archive.player_count}-player · verified ReplayV1</span>
               </div>
+              {/* The structured action is the product view. The raw enum stays
+                  available, but folded away: it is diagnostics, not the thing a
+                  reader came to the replay to understand. */}
+              <StructuredAction
+                action={frame.recorded_action}
+                playerView={frame.player_view as ActionPlayerView}
+                cards={cards as ActionCatalog["cards"]}
+                nobles={nobles as ActionCatalog["nobles"]}
+              />
               <div className="decision-summary">
                 <span>REPLAY VIEWER · NO ANALYSIS</span>
                 <p>
-                  Actor <strong>Player {frame.actor}</strong>
-                </p>
-                <p>
-                  Action <strong>{simpleActionLabel(frame.recorded_action)}</strong>
-                </p>
-                <p>
                   Final score <strong>{scores.join(" – ") || "—"}</strong>
                 </p>
+                <p>
+                  Chosen from <strong>{frame.legal_actions.length}</strong> canonical legal actions
+                </p>
               </div>
-              <div className="human-audit-action" style={{ marginTop: "14px" }}>
-                <small>Chosen from {frame.legal_actions.length} canonical legal actions</small>
+              <details className="action-raw">
+                <summary>Show raw action</summary>
                 <code>{JSON.stringify(frame.recorded_action, null, 2)}</code>
-              </div>
+              </details>
             </aside>
           </section>
 

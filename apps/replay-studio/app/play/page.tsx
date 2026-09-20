@@ -6,6 +6,8 @@ import { API_BASE as API } from "../api-base.mjs";
 import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
 import { TokenTotal } from "../components/token-total";
 import { defaultReviewerIdFor, reviewerSupportsPlayerCount } from "../trace-runtime.mjs";
+import { PlayerStateStrip, type StripPlayerView } from "../components/player-state-strip";
+import { StructuredAction, type ActionCatalog } from "../components/structured-action";
 import { humanResult, humanStartBody, randomSeed, resolveSeat, retryHumanBooking } from "../human-play-runtime.mjs";
 import { HumanBookingPanel, type HumanCompletion } from "../components/human-booking-panel";
 
@@ -74,16 +76,17 @@ function OpponentReserve({player,cards}:{player:Player;cards:Map<number,Developm
   </div>;
 }
 
-function HistoryText({item,humanSeat}:{item:HistoryItem;humanSeat:number}) {
-  const action=item.action;
+/**
+ * One history entry, through the shared action renderer.
+ *
+ * The public history stores only `{ply, actor, action}`, so there is no
+ * pre-action player view to resolve a card identity from; the renderer is given
+ * none and degrades to tier/slot. That is deliberate: naming a card from the
+ * *current* market would attribute today's slot to a past move.
+ */
+function HistoryText({item,humanSeat,cards,nobles}:{item:HistoryItem;humanSeat:number;cards:ActionCatalog["cards"];nobles:ActionCatalog["nobles"]}) {
   const actor=item.actor===humanSeat?"You":"Opponent";
-  if(action.type==="take_tokens") return <><strong>{actor}</strong><span>took</span><GemStrip gems={gemsOf(action.take)}/>{GEM_NAMES.some(gem=>gemsOf(action.return)[gem]>0)?<><span>and returned</span><GemStrip gems={gemsOf(action.return)}/></>:null}</>;
-  if(action.type==="buy_market") return <><strong>{actor}</strong><span>bought Tier {TIERS.indexOf(String(action.tier))+1}, slot {Number(action.slot)+1}</span></>;
-  if(action.type==="buy_reserved") return <><strong>{actor}</strong><span>bought a reserved card</span></>;
-  if(action.type==="reserve_market") return <><strong>{actor}</strong><span>reserved a face-up Tier {TIERS.indexOf(String(action.tier))+1} card</span></>;
-  if(action.type==="reserve_deck") return <><strong>{actor}</strong><span>blind-reserved from Tier {TIERS.indexOf(String(action.tier))+1}</span></>;
-  if(action.type==="choose_noble") return <><strong>{actor}</strong><span>welcomed noble #{String(action.noble)}</span></>;
-  return <><strong>{actor}</strong><span>{action.type.replaceAll("_"," ")}</span></>;
+  return <div className="history-entry"><strong>{actor}</strong><StructuredAction action={item.action} cards={cards} nobles={nobles} variant="compact"/></div>;
 }
 
 function GemStrip({gems}:{gems:Gems}) {
@@ -202,6 +205,7 @@ export default function HumanPlayPage() {
     {state?<p className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"} · Seed: <code>{state.seed??"Unavailable from this Host version"}</code></p>:null}
     {state?<section className="human-workspace">
       <article className="human-board">
+        <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} />
         <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><PlayerResources player={item}/>{item.id!==state.human_seat?<OpponentReserve player={item} cards={cards}/>:null}{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>)}</div>
         <div className="human-bank"><span><b>BANK</b><small>Click gems to build a legal take</small></span>{GEM_NAMES.map(gem=><GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={busy||gem==="gold"||state.result!==null} onClick={()=>changePendingGem(gem,1)} key={gem}/>)}</div>
         <section className="table-nobles"><div><b>NOBLES</b><small>{state.observation.public.nobles.length} available · requirements use permanent bonuses</small></div>{state.observation.public.nobles.map(id=>{const noble=nobles.get(id);const action=state.legal_actions.find(candidate=>candidate.type==="choose_noble"&&candidate.noble===id);return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||busy} onClick={()=>{if(action)void play(action);}} key={id}/>:null;})}</section>
@@ -210,7 +214,7 @@ export default function HumanPlayPage() {
         <div className="human-private"><span>PLAYER-VIEW ONLY</span><p>Actions and token holdings are public. Blind-reserved card identities and deck order remain hidden.</p></div>
       </article>
       <aside className="human-actions">
-        {state.result?<div className="human-result"><strong>{humanResult(state.result,state.human_seat)}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=>{const supported=reviewerSupportsPlayerCount(reviewer,state.observation.public.player_count);return <button key={reviewer.id} disabled={!supported} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}&seat=${state.human_seat}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.id===defaultReviewerId?" · recommended default":""}{supported?"":` · unavailable for ${state.observation.public.player_count}-player replays`}</small></button>;})}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}<HumanBookingPanel key={state.session_id} completion={state.league_completion} sessionId={state.session_id} humanSeat={state.human_seat} busy={busy} onRetry={()=>void retryBooking()}/></div>:<>
+        {state.result?<div className="human-result"><strong>{humanResult(state.result,state.human_seat)}</strong><span>{state.result.scores.join(" – ")} · {state.result.reason.replaceAll("_"," ")}</span>{state.replay_ready?<><button disabled={busy} onClick={()=>void openReplay()}>Open replay</button><button disabled={busy} onClick={()=>setShowReviewers(prev=>!prev)}>Review this game</button>{showReviewers?<div className="review-pick"><span className="section-kicker">CHOOSE A REVIEWER</span>{reviewers.map(reviewer=>{const supported=reviewerSupportsPlayerCount(reviewer,state.observation.public.player_count);return <button key={reviewer.id} disabled={!supported} onClick={()=>window.location.assign(`/review?session=${encodeURIComponent(state.session_id)}&reviewer=${encodeURIComponent(reviewer.id)}`)}><strong>{reviewer.display_name}</strong><small>{reviewer.competitive_status==="rejected"?"Experimental · Formal promotion rejected":reviewer.competitive_status} · {reviewer.estimated_cost==="cpu"?"CPU":reviewer.estimated_cost}{reviewer.id===defaultReviewerId?" · recommended default":""}{supported?"":` · unavailable for ${state.observation.public.player_count}-player replays`}</small></button>;})}{reviewers.length===0?<small>No reviewers registered.</small>:null}</div>:null}</>:null}{state.replay_document_hash?<code>{state.replay_document_hash.slice(0,12)}…</code>:null}<HumanBookingPanel key={state.session_id} completion={state.league_completion} sessionId={state.session_id} humanSeat={state.human_seat} busy={busy} onRetry={()=>void retryBooking()}/></div>:<>
           <section className="pending-panel"><span className="section-kicker">PENDING MOVE</span><h2>{pendingCount?"Take gems":selectedCard?`Card #${selectedCard.cardId}`:contextActions.some(action=>action.type==="reserve_deck")?"Blind reserve":"Select on the table"}</h2>
             {pendingCount?<><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div><p>{confirmTake?"Legal selection. Confirm to end your turn.":exactTakeActions.length>1?"Choose which gems to return below.":"Keep selecting a legal combination, or click a selected gem to return it."}</p></>:null}
             {selectedCard&&cards.has(selectedCard.cardId)?<div className="selected-card-preview"><DevelopmentCard card={cards.get(selectedCard.cardId)!} discount={humanBonuses}/></div>:null}
@@ -221,7 +225,7 @@ export default function HumanPlayPage() {
             {!pendingCount&&!selectedCard&&!contextActions.length&&state.legal_actions.some(action=>action.type==="pass")?<button className="confirm-move" onClick={()=>void play(state.legal_actions.find(action=>action.type==="pass")!)}>Pass turn</button>:null}
             {(pendingCount||selectedCard||contextActions.length)?<button className="cancel-move" onClick={clearPending}>Cancel selection</button>:null}
           </section>
-          <section className="history-panel"><span className="section-kicker">PUBLIC HISTORY</span><h2>Recent moves</h2>{state.action_history.length?<ol>{state.action_history.toReversed().slice(0,10).map(item=><li className={item.actor===state.human_seat?"mine":"opponent"} key={item.ply}><small>PLY {item.ply}</small><div><HistoryText item={item} humanSeat={state.human_seat}/></div></li>)}</ol>:<p>No moves yet. Your confirmed move will appear here.</p>}</section>
+          <section className="history-panel"><span className="section-kicker">PUBLIC HISTORY</span><h2>Recent moves</h2>{state.action_history.length?<ol>{state.action_history.toReversed().slice(0,10).map(item=><li className={item.actor===state.human_seat?"mine":"opponent"} key={item.ply}><small>PLY {item.ply}</small><div><HistoryText item={item} humanSeat={state.human_seat} cards={cards as ActionCatalog["cards"]} nobles={nobles as ActionCatalog["nobles"]}/></div></li>)}</ol>:<p>No moves yet. Your confirmed move will appear here.</p>}</section>
         </>}
       </aside>
     </section>:null}

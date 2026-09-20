@@ -349,3 +349,51 @@ h2 { margin: 4px 0 0; font-size: var(--fs-xl); letter-spacing: -.025em; }
 .delta-pos{color:var(--green);font-weight:600}
 .delta-neg{color:#ff7b72;font-weight:600}
 .load-more-container{margin-top:16px;display:flex;justify-content:center}
+
+/* ---- F2 shared presentation: player-state strip and structured actions -------
+   One presentation of "what each player holds" and "what an action was", used by
+   Play, Replay and Review. Keeping the two components' styles together here (and
+   out of the page-specific sections) is what stops the three pages drifting into
+   three different renderings again. */
+
+.player-state-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:12px 0}
+.state-card{background:#141a21;border:1px solid var(--line);border-radius:8px;padding:10px 11px}
+.state-card-actor{border-color:#347c84;box-shadow:inset 3px 0 var(--cyan)}
+.state-card-human .state-seat{color:var(--cyan)}
+.state-card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.state-seat{font:800 var(--fs-md) var(--font-geist-mono)}
+.state-identity{font:700 var(--fs-3xs) var(--font-geist-mono);font-style:normal;letter-spacing:.1em;color:var(--cyan);border:1px solid #347c84;border-radius:3px;padding:1px 5px}
+.state-vp{margin-left:auto;font:800 var(--fs-xl) var(--font-geist-mono)}
+.state-vp small{font-size:var(--fs-3xs);color:var(--muted)}
+.state-line{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:8px;margin:7px 0}
+.state-line>small{color:#697787;font:800 var(--fs-3xs) var(--font-geist-mono);letter-spacing:.07em}
+.state-gems{display:flex;gap:5px;flex-wrap:wrap}
+.state-gem{display:inline-flex;align-items:center;gap:3px;padding:1px 6px 1px 2px;border:1px solid #2c343d;border-radius:14px;background:#171e26}
+.state-gem i{width:1.6em;height:1.6em;display:grid;place-items:center;border-radius:50%;font:700 var(--fs-3xs) var(--font-geist-mono);font-style:normal}
+.state-gem b{font:700 var(--fs-sm) var(--font-geist-mono)}
+.state-gem-white i{background:#e4dfd4;color:#1b2026}.state-gem-blue i{background:#298dc9}.state-gem-green i{background:#2e9b66}.state-gem-red i{background:#c6534e}.state-gem-black i{background:#303740}.state-gem-gold i{background:#c99234}
+.state-bonus-total b{font:800 var(--fs-lg) var(--font-geist-mono);color:#dfeaf2}
+.state-counts{display:flex;gap:12px;margin-top:8px;color:var(--muted);font:600 var(--fs-xs) var(--font-geist-mono)}
+.structured-action{display:grid;gap:6px;padding:9px;border:1px solid #2c343d;border-radius:7px;background:#12171d}
+.structured-action-compact{padding:6px}
+.action-kicker{font:800 var(--fs-3xs) var(--font-geist-mono);letter-spacing:.1em;color:#8fa3b4}
+.action-body{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.action-verb{font:800 var(--fs-3xs) var(--font-geist-mono);letter-spacing:.08em;color:#8fa3b4}
+.action-meta{font:600 var(--fs-xs) var(--font-geist-mono);color:#9fb0c0}
+.action-gems{display:flex;gap:5px;flex-wrap:wrap}
+.action-gem{display:inline-flex;align-items:center;gap:3px;padding:1px 6px 1px 2px;border:1px solid #2c343d;border-radius:14px;background:#171e26}
+.action-gem i{width:1.6em;height:1.6em;display:grid;place-items:center;border-radius:50%;font:700 var(--fs-3xs) var(--font-geist-mono);font-style:normal}
+.action-gem b{font:700 var(--fs-sm) var(--font-geist-mono)}
+.action-gem-white i{background:#e4dfd4;color:#1b2026}.action-gem-blue i{background:#298dc9}.action-gem-green i{background:#2e9b66}.action-gem-red i{background:#c6534e}.action-gem-black i{background:#303740}.action-gem-gold i{background:#c99234}
+.action-noble{display:grid;gap:2px;padding:6px 8px;border:1px solid #7d735d;border-radius:6px;background:linear-gradient(145deg,#5b5548,#242a28);color:#fff4cf}
+.action-noble strong{font:900 var(--fs-xl) var(--font-geist-mono)}
+.action-noble span{font:700 var(--fs-3xs) var(--font-geist-mono);color:#b2a67f}
+.action-noble .mini-cost{display:flex;gap:3px;margin-top:3px}
+.action-duo{display:grid;gap:8px;margin-top:8px}
+.action-duo-row{display:grid;gap:5px}
+.action-verdict{font:800 var(--fs-3xs) var(--font-geist-mono);letter-spacing:.08em;padding:2px 6px;border-radius:3px;width:fit-content}
+.action-verdict.match{background:#173c2c;color:#8fe3b6}
+.action-verdict.differ{background:#3d2a18;color:#f6cf95}
+.action-raw{margin-top:8px}
+.action-raw summary{cursor:pointer;color:#8fa3b4;font:700 var(--fs-3xs) var(--font-geist-mono);letter-spacing:.06em}
+.action-raw code{display:block;margin-top:6px;white-space:pre-wrap}

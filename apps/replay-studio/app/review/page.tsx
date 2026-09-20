@@ -17,7 +17,12 @@ import {
   validateReviewTrace,
 } from "../trace-runtime.mjs";
 import { type DevelopmentCardData } from "../development-card";
-import { BoardSurface, usePlyNavigation } from "../components/replay-board";
+import {
+  BoardSurface,
+  usePlyNavigation,
+} from "../components/replay-board";
+import { PlayerStateStrip } from "../components/player-state-strip";
+import { StructuredAction, type ActionCatalog, type ActionPlayerView } from "../components/structured-action";
 
 type Action = { type: string; [key: string]: unknown };
 type GemName = "white" | "blue" | "green" | "red" | "black" | "gold";
@@ -255,21 +260,22 @@ export default function ReviewPage() {
         const raw = await response.json();
         if (!response.ok) throw new Error(raw.error ?? `Studio Host ${response.status}`);
         const { reviewers: list, playerCount: count, humanSeat: durableSeat } = decodeReviewersEnvelope(raw);
+        const reviewerList = list as Reviewer[];
         const decided = resolveHumanSeat(durableSeat, urlSeat);
         if (decided.error) { setError(decided.error); return; }
         const seat = decided.seat;
         setHumanSeat(seat);
         setFilter(seat === null ? "all" : "mine");
-        setReviewers(list);
+        setReviewers(reviewerList);
         setPlayerCount(count);
         if (count === null) { setError("The host did not report this replay's player count."); return; }
-        const requested = requestedReviewer ? list.find((r) => r.id === requestedReviewer) ?? null : null;
+        const requested = requestedReviewer ? reviewerList.find((r) => r.id === requestedReviewer) ?? null : null;
         if (requested && !reviewerSupportsPlayerCount(requested, count)) {
           // Fail closed in the UI too: never POST an unsupported reviewer.
           setError(`${requested.display_name} is unavailable for ${count}-player replays (the S3 rollout reviewer is frozen for 2 players). Choose a supported reviewer.`);
           return;
         }
-        const target = requested?.id ?? defaultReviewerIdFor(list, count);
+        const target = requested?.id ?? defaultReviewerIdFor(reviewerList, count);
         if (!target) { setError(`No reviewer is available for ${count}-player replays.`); return; }
         await startReview(session, target, seat);
       } catch (reason) {
@@ -385,10 +391,11 @@ export default function ReviewPage() {
                   Hidden reserves and future deck order are visible. Do not use this view to judge what P{frame?.actor} knew.
                 </div>
               )}
+              {frame && <PlayerStateStrip playerView={frame.player_view} actor={frame.actor} humanSeat={humanSeat} />}
               {frame && <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={reveal} />}
             </div>
             <aside className="analysis-panel">
-              <AnalysisPanel trace={trace} frame={frame} cards={cards} />
+              <AnalysisPanel trace={trace} frame={frame} cards={cards} nobles={nobles} />
             </aside>
           </section>
           <footer className="timeline-panel">
@@ -461,7 +468,7 @@ function ReviewSummaryBar({ trace, reviewer, summary, job, hasHumanSeat }: { tra
   );
 }
 
-function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: ReviewFrame | null; cards: Map<number, DevelopmentCardData> }) {
+function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; frame: ReviewFrame | null; cards: Map<number, DevelopmentCardData & { id: number }>; nobles: Map<number, { id: number; prestige: number; requirements: number[] }> }) {
   if (!frame) return null;
   const rows = buildReviewRows(trace, frame).rows;
   const recommended = reviewRecommendedAction(frame.review_result);
@@ -494,10 +501,15 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
             </div>
           ))}
         </div>
+        <ActionVerdict
+          frame={frame}
+          recommended={recommendedAction}
+          cards={cards}
+          nobles={nobles}
+          matchLabel="MATCHES S3 RECOMMENDATION"
+          differLabel="S3 RECOMMENDS ANOTHER ACTION"
+        />
         <div className="decision-summary">
-          <span className={frame.recommended_matches_recorded ? "match" : "mismatch"}>{frame.recommended_matches_recorded ? "MATCHES S3 RECOMMENDATION" : "S3 RECOMMENDS ANOTHER ACTION"}</span>
-          <p>Played <strong>{formatActionLabel(frame.recorded_action, frame, cards)}</strong></p>
-          <p>S3 recommends <strong>{formatActionLabel(recommendedAction, frame, cards)}</strong></p>
           <p>Decision path <strong>{pathLabel}</strong></p>
         </div>
       </div>
@@ -523,11 +535,14 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
             </div>
           ))}
         </div>
-        <div className="decision-summary">
-          <span className={frame.recommended_matches_recorded ? "match" : "mismatch"}>{frame.recommended_matches_recorded ? "REVIEWER AGREED" : "REVIEWER DISAGREED"}</span>
-          <p>Played <strong>{formatActionLabel(frame.recorded_action, frame, cards)}</strong></p>
-          <p>Recommended <strong>{formatActionLabel(recommended, frame, cards)}</strong></p>
-        </div>
+        <ActionVerdict
+          frame={frame}
+          recommended={recommended}
+          cards={cards}
+          nobles={nobles}
+          matchLabel="REVIEWER AGREED"
+          differLabel="REVIEWER DISAGREED"
+        />
       </div>
     );
   }
@@ -552,11 +567,59 @@ function AnalysisPanel({ trace, frame, cards }: { trace: ReviewTrace; frame: Rev
           </div>
         ))}
       </div>
-      <div className="decision-summary">
-        <span className={frame.recommended_matches_recorded ? "match" : "mismatch"}>{frame.recommended_matches_recorded ? "SEARCH AGREED" : "SEARCH DISAGREED"}</span>
-        <p>Played <strong>{formatActionLabel(frame.recorded_action, frame, cards)}</strong></p>
-        <p>Search choice <strong>{formatActionLabel(recommended, frame, cards)}</strong></p>
+      <ActionVerdict
+        frame={frame}
+        recommended={recommended}
+        cards={cards}
+        nobles={nobles}
+        matchLabel="SEARCH AGREED"
+        differLabel="SEARCH DISAGREED"
+      />
+    </div>
+  );
+}
+
+/**
+ * The recorded action and the reviewer's recommendation through one renderer.
+ *
+ * This is the point of the review page: "what you played" and "what S3 recommends"
+ * must be visually comparable. When the two used different renderers — a coloured
+ * card face on one side and the string "Buy T2 slot 3" on the other — the
+ * comparison the page exists to support was the hardest thing to read. Both sides
+ * now go through `StructuredAction` at the same variant, against the same
+ * pre-action player view, so identical actions produce identical DOM.
+ */
+function ActionVerdict({
+  frame,
+  recommended,
+  cards,
+  nobles,
+  matchLabel,
+  differLabel,
+}: {
+  frame: ReviewFrame;
+  recommended: Action | null;
+  cards: ActionCatalog["cards"];
+  nobles: ActionCatalog["nobles"];
+  matchLabel: string;
+  differLabel: string;
+}) {
+  const playerView = frame.player_view as ActionPlayerView;
+  return (
+    <div className="action-duo">
+      <div className="action-duo-row">
+        <span className="section-kicker">YOU PLAYED</span>
+        <StructuredAction action={frame.recorded_action} playerView={playerView} cards={cards} nobles={nobles} />
       </div>
+      {recommended ? (
+        <div className="action-duo-row">
+          <span className="section-kicker">REVIEWER RECOMMENDS</span>
+          <StructuredAction action={recommended} playerView={playerView} cards={cards} nobles={nobles} />
+        </div>
+      ) : null}
+      <span className={`action-verdict ${frame.recommended_matches_recorded ? "match" : "differ"}`}>
+        {frame.recommended_matches_recorded ? matchLabel : differLabel}
+      </span>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`（owner 复核，P0=0/P1=0）**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；F Review **F1 AUTHORIZED**（仅 F1 seat authority + My decisions；F2/F3 NOT YET）。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 shared state/actions — AUTHORIZED**；F3 cache/switch **NOT YET AUTHORIZED**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -37,7 +37,8 @@
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 ACCEPTED / CLOSED @ `3049642`** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
 | `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE ACCEPTED / CLOSED** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
-| F Review（My decisions 座位鉴权） | **F1 AUTHORIZED**（seat authority + My decisions navigation）；F2（共享玩家状态布局 + 结构化彩色行动）、F3（Review cache/switch）**NOT YET** | seat 来自 durable metadata authority（非 URL）；seat unknown 时不显示 My decisions；URL seat 仅作 integrity hint；不碰 Human completion 主链/schema |
+| F Review（My decisions 座位鉴权） | **F1 ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 shared state/actions AUTHORIZED（frontend-only）**；F3 **NOT YET** | seat 来自 durable metadata authority（非 URL）；seat unknown 时不显示 My decisions；durable seat 仅作 integrity hint；不碰 Human completion 主链/schema |
+| F2 共享 presentation | **AUTHORIZED**：Play/Replay/Review 共享 PlayerStateStrip（板上方，compact）+ 共享 StructuredAction renderer（接收 pre-action player_view） | 隐藏信息边界不得削平（blind reserve 仅在本人 private view / referee reveal）；Review actual/recommended 同 renderer；不改 review POST/cache/算法；不改 legal-action 控件 |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -68,7 +69,73 @@
 
 ## Iteration log
 
-### 2026-09-20 — F1 Review: REPAIR REQUIRED @ `a77cd09`（owner 复核，P0=0 / P1=2 / P2=1）
+### 2026-09-20 — F2 实现（当前轮，COMPLETED / VERIFIED 本地，待 owner 复核）
+
+**新增共享组件（frontend-only）**：
+- `app/components/player-state-strip.tsx`：`PlayerStateStrip` + `PlayerStateCard`。compact state summary：seat 标识（仅 durable humanSeat 存在时显示 YOU，否则仅 P{n}/ACTOR）、VP、tokens 真实颜色+数量、permanent discounts 真实颜色+数量、reserved/developments/nobles counts；每条均有 aria 文本。**不渲染 reserve 卡面**（留在各页既有 board section，避免重复 `ReservedCards` 逻辑）。
+- `app/components/structured-action.tsx` + `app/action-presentation.mjs`：`StructuredAction`（action + **pre-action player_view** + catalog + variant compact/detail）。纯逻辑（`resolveActionCardId` / `actionMayDiscloseCard` / `spokenActionSummary` / `actionKicker` / `gemEntries`）拆到 `.mjs` 以便 `node --test` 直接断言。
+- 关键数据边界：`buy_market`/`reserve_market` → `player_view.public.market[tier][slot]`；`buy_reserved` → `player_view.private.reserved[slot]`；无 view 时诚实降级为 tier/slot（不猜卡）；**`reserve_deck` 永不解析卡 identity**（组件根本不接受 referee_reveal，无可泄路径）；`choose_noble` 用 catalog prestige/requirements；`take_tokens` 用真实颜色+数量+非颜色 aria。
+
+**三页接入**：
+- Review：棋盘上方加 `PlayerStateStrip`；新增 `ActionVerdict` 使 `YOU PLAYED` 与 `REVIEWER RECOMMENDS` **用同一 `StructuredAction`**；S3 / root-determinization / neural 三分支均接入（研究指标 mean utility/gap/rank、visit/Q/prior 全部保留且算法未动）。
+- Replay：棋盘上方加 strip；`RECORDED ACTION` 面板改用 `StructuredAction`，raw JSON 降为 `<details>Show raw action</details>` diagnostics。
+- Play：棋盘上方加 strip；`HistoryText` 改用 `StructuredAction` variant=compact（公开 history 只有 `{ply, actor, action}`，无 pre-action view，故诚实降级为 tier/slot）；**legal-action 选择控件（changePendingGem / openCard / openDeck / openReserved / confirmTake / play）行为未变**；reviewer 链接去掉 `&seat=`（F1 authority cleanup）。
+
+**验证（本地执行证据，无 cloud checks）**：
+- 新增 11 项 F2 gate（`tests/f2-shared-presentation.test.mjs`）覆盖 owner 的 10 条最小验收门 + helper sanity：三页共用 strip；take_tokens 真实颜色+count+aria；market/private 解卡且随 view 变化；reserve_deck 即使带 referee_reveal 也返回 null 且 body 用 HiddenDevelopmentCard；Review 同 renderer 且旧 `formatActionLabel` 已从 verdict 移除；choose_noble 用 catalog；Play 控件存活；隐藏 reserve 三分支边界未削平且 strip 不渲染 reserve 卡面；无 cache/job 行为变更；Play 链接无 seat。
+- `npm test` **135 passed**（124 + 11）、`npm run lint` clean、`npx tsc --noEmit` 无新增错误（仍为 D3B profile page 的 11 项存量）。
+- 4 个 CDP 真实浏览器门禁全 PASS（participant-profile / ratings / games / review-seat）+ 真实 Chromium Play 页门禁 `human-play-browser.mjs` PASS（含 real Play buttons、u64 seed、VICTORY、transport unknown、canonical refusal）。
+- 2 组负向对照全捕获并字节还原（`f2-negative-controls.json`）：NC1 `reserve_deck` 偷用 referee_reveal → Gate 4 FAIL；NC2 Review recommended 改回 text-only → Gate 5 FAIL。
+
+### 2026-09-20 — F2 Recon（完成，设计已冻结）
+
+**三处 player state 现状（已核实漂移）**：
+- Play：`human-score` + 自创 `PlayerResources`（GemChip/table-gem）+ `OpponentReserve`；标签为 YOU/OPPONENT + VP + reserved/purchased/nobles counts。
+- Replay / Review：`BoardSurface` 内 `players-grid` + `player-card`（player-title P{n}/ACTOR + VP、TOKEN 行 + TokenTotal、DISCOUNTS 行 + bonus-line、`ReservedCards`）+ `GemSet`。
+- 两者 token/bonus 渲染器、aria 文本、reserve 语义均不同（`GemChip` vs `GemSet`；`table-gem` vs `token`）。
+
+**三处 action presentation 现状**：
+- Play `HistoryText`（“You took …”+ `GemStrip`；buy_market 只给 “Tier 2, slot 3”）；
+- Replay `simpleActionLabel` + **raw JSON** `JSON.stringify(frame.recorded_action, null, 2)` 为主展示；
+- Review `formatActionLabel`（已从 pre-action player_view 解卡：`market[tier][slot]` / `private.reserved[slot]`，但不渲染卡面，且 take_tokens 只有 `W2 U` 字符码）。
+
+**关键数据结构（已核实）**：action 自身只有 `tier`/`slot`/`noble`/`take`/`return`；卡牌 identity 必须从 action 发生前的 `frame.player_view` 解出：`public.market[tier][slot]`（buy_market/reserve_market）、`private.reserved[slot]`（buy_reserved）。`reserve_deck` 无任何卡 identity 字段——这是隐藏信息边界的关键。
+
+**隐藏信息边界（现有正确实现，F2 不得削平）**：`ReservedCards` 三分支——referee reveal → 全部 reserve（blind 标记）；own（`player.id === frame.actor`）→ `private.reserved`；opponent → 仅 `public_reserved` + `HiddenDevelopmentCard(count)`。**注意 `looksAt` 判定用的是 `player.id === frame.actor`（frame 的 actor），不是 humanSeat**，这个语义保持不变。
+
+**F2 设计决定（冻结）**：
+1. 新增 `PlayerStateStrip`（放 `components/`），接收 `playerView` + `actor` + 可选 `humanSeat` + `reveal`；**compact state summary**（seat 标识、VP、tokens 真实颜色、permanent discounts 真实颜色、reserved/developments/nobles counts）。**不搬 `ReservedCards`**（reserve 卡面留在各页既有 board section），因为那是重复两遍逻辑。human/actor 标识：仅当 `humanSeat !== null` 时显示 YOU；否则只显示 P{n} + ACTOR。
+2. 新增 `StructuredAction`（放 `components/`），签名 `{ action, playerView, cards, nobles, variant }`。`playerView` 必须是 action 发生前的视图。`reserve_deck` 只渲染 `Tier X deck`，**永不读 referee_reveal**。`take_tokens` 用 `GemSet`-同源颜色 + 数量 + aria 文本（“Blue ×2”），不得只靠颜色。`choose_noble` 用 catalog prestige/requirements。
+3. Replay 的 raw JSON 降为 `<details>` 折叠 diagnostics；Review/Replay/Play 的产品默认 action 展示全部走 `StructuredAction`。
+4. Review 的 `YOU PLAYED` / `S3 RECOMMENDS` 用同一 `StructuredAction`（同 variant），保留 MATCH/DIFFERENT；root_determinization / neural 的 action 列复用同 renderer，旁边保留 mean utility/gap/rank、visit/Q/prior。
+5. Play 只把 player state 与 `action_history` 改成复用新组件；**legal-action 选择控件与点击交互完全不变**。顺手去掉 reviewer 链接的 `&seat=`。
+
+### 2026-09-20 — F1 终审 ACCEPTED / CLOSED @ `cf91ba3`；F2 AUTHORIZED
+
+owner 复核 `cf91ba3` 远端真实 diff：**F1 Seat Authority + My Decisions ACCEPTED / CLOSED，P0=0 / P1=0 / P2=0（F1 scope）**。四项 seam 全部 CLOSED：durable seat authority、meta path drift（真实历史 bug）、summary truthfulness、seat/player-count integrity。owner 确认：`buildReviewSummary(trace, null)` 语义未改，改的是 `ReviewSummaryBar` 显式接 `hasHumanSeat`；`seat < player_count` 双层防线且未写死 `< 2`（与未来多人 Review 兼容）；meta 路径注释已指向唯一 authority。GitHub 仍无 cloud status checks，故 `npm 124`、Rust `113 + 30`、CDP 与 5 个 negative controls 继续属于**本地执行证据**。
+
+owner 同时记录一个不构成 blocker 的现状：Play 页 reviewer picker 仍生成 `/review?session=...&reviewer=...&seat=...`。因 `seat` 已是 integrity hint 且来自当前 authoritative session state，**不造成 correctness 问题**；**允许在 F2 顺手去掉（不单开 commit）**。
+
+**F2 正式授权（frontend-only）**：目标不是美化 Review 页，而是完成两个共享 presentation contract：
+```text
+Play / Replay / Review  → 共享 Player State presentation
+Recorded action / Recommended action  → 共享 Structured Action renderer
+```
+**不改**：Rust、Host、Replay format、Review trace、schema、reviewer 算法、cache。
+
+1. **Shared Player State（PlayerStateStrip）**：从 `replay-board.tsx` 抽真共享组件，置于**棋盘主体上方**；展示 seat 标识（有 authority 才显示）、VP、tokens（真实颜色）、permanent discounts（真实颜色）、reserved count、development count、noble count。**不新增游戏统计**。建议只做 **compact state summary**，reserve card faces 仍留在既有 board section（不把 `ReservedCards` 逻辑搬两遍）。**隐藏信息边界必须保持**：player 本人 private view 可见自己的 blind reserve identity；opponent 正常 view 只知道 `public_reserved`（blind reserve 只显数量/face-down）；仅 referee reveal 可显所有 reserve identity。
+2. **Structured Action renderer**：接收 `action` + **action 发生前的 `player_view`** + cards/nobles catalog，variant `compact | detail`。原因：action 自身通常只有 tier+slot，真正卡牌 identity 要从 `player_view.public.market[tier][slot]` 解出；`buy_reserved` 从 `player_view.private.reserved[slot]`；`reserve_deck` **只能显示 Tier X deck，不得因 referee reveal 存在就把盲抽卡放进 label**（本刀最重要的数据边界）。`choose_noble` 用 catalog 的 prestige/requirements。
+3. **Review actual/recommended 同一组件**：`YOU PLAYED` / `S3 RECOMMENDS` 视觉结构必须相同（不能一个彩色卡片、一个 "Buy T2 slot 3"），保留 MATCH/DIFFERENT；Root Determinization / Neural 的 action rows 也复用，旁边继续保留 mean utility/gap/rank、visit/Q/prior（算法与解释不变）。
+4. **Play 范围克制**：**不重写**已可玩的 click-to-take/card interaction；legal-action 选择区保持现状；F2 只让 player state 与 `action_history` 复用新 presentation。
+5. **Raw JSON**：Replay 的 `JSON.stringify(frame.recorded_action, null, 2)` 不再是主 presentation，降为折叠 diagnostics（Structured action + `[Show raw action ▸]`）；Review 同理。
+
+**允许修改**：`app/components/replay-board.tsx`、`app/play/page.tsx`、`app/replay/page.tsx`、`app/review/page.tsx`、`globals.css`、少量纯 presentation helper/tests、docs。**不需整页组件化**。**不得碰**：POST /reviews、cache_key、job.cached、review switching、frame/filter/reveal preservation、review 算法、Human completion、League schema（属 F3 或已关闭主线）。
+
+**F2 最小验收门（10 条）**：（1）同一 PlayerView fixture 在三页使用同一组件且 token/bonus/VP/reserve counts 语义一致；（2）`take_tokens` 用真实颜色/数量 + 非颜色 aria/text；（3）`buy_market`/`reserve_market` 从 pre-action market 解卡、`buy_reserved` 从 actor private reserve 解卡；（4）`reserve_deck` 永不显示隐藏抽牌 identity（即使带 `referee_reveal`）；（5）Review actual/recommended 同一 renderer 且同 action 的 DOM semantics 一致；（6）`choose_noble` 用 catalog prestige/requirements；（7）Play action history 复用 renderer 且 legal-action controls 行为不变；（8）Replay/Review 的 player-view vs referee-reveal hidden reserve gate 不回归；（9）无任何 review POST/cache 行为变化；（10）Play reviewer 链接可顺手去掉 `&seat=`（仅 F1 authority cleanup）。
+
+**负向对照仅两条**：NC1 `reserve_deck` renderer 偷用 referee reveal 显示实际 card → hidden-info gate FAIL；NC2 Review recommended action 改回 text-only / 不走共享 renderer → shared-renderer gate FAIL。
+
+### 2026-09-20 — F1 Review: REPAIR REQUIRED @ `a77cd09`（owner 复核，P0=0 / P1=2 / P2=1，现已 CLOSED）
 
 owner 复核 `a77cd09` 真实 diff：**seat authority 主体实现与 meta path 修复均 ACCEPTED**（`GET /reviewers` 复用 discovery 无新增 round trip；URL seat 降为 compatibility/integrity hint 且 mismatch 在创建 job 前失败；无 seat 时 My 控件消失；有 seat 时 timeline/按钮/键盘共用同一 filtered frames；Replay→Review 只带 session；meta 单一路径权威正确且未重写旧文件）。但指出两项同属 seat-authority correctness 的缺口，**F2 仍未授权**：
 
@@ -537,8 +604,9 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   - 导航明确区分 `Ratings` 与 `Research reports`。
 - **D3A Reader + Host API：ACCEPTED / CLOSED @ `51bad22`（owner review 2026-09-19）**。P0=0/P1=0/P2=1 deferred；三项 Repair 全部关闭（P1-1 initial Elo 伪造守卫、P1-2 三条 SQL crate-private、P1-3 opponents after cursor 双层非空与 256B 上限校验）。
 - **D3B Profile UI：ACCEPTED / CLOSED @ `9bbc121`（owner review 2026-09-20，P0=0/P1=0）**。P1-1/P1-2/P2 全部关闭。strict 按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，分页失败保留数据与游标并显式提供 Retry，SVG sequence 曲线，严格解码器。**D PLAYER DATA LINE 整体 ACCEPTED / CLOSED。**
-- **F1（seat authority + My decisions）：REPAIR 1 COMPLETED / VERIFIED（2026-09-20 本地），待 owner 复核。** owner 复核 `a77cd09` 确认 seat authority 主体与 meta path 修复均 ACCEPTED，但指出 P1-1（summary 伪称 human decisions）与 P1-2（seat < player_count 未校验）两项同属 seat-authority correctness 的缺口；均已在本轮窄修复中关闭。同时修复了一个实现中发现并独立验证的真实潜在缺陷（human meta 路径分歧，见 Iteration log）。
-- **本片明确未做**：F2（共享 PlayerState 布局 + 结构化彩色 action renderer）、F3（Review cache/switching-state）、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
+- **F1 seat authority + My decisions：ACCEPTED / CLOSED @ `cf91ba3`（owner review 2026-09-20，P0=0/P1=0/P2=0）。** 四项 seam 全部 CLOSED：durable seat authority、meta path drift（真实历史 bug）、summary truthfulness、seat/player-count integrity。
+- **F2 共享 presentation：COMPLETED / VERIFIED（2026-09-20 本地），待 owner 复核。** 新增 `PlayerStateStrip`（三页共用、置于棋盘上方、compact state summary）与 `StructuredAction`（接收 pre-action player_view、三页共用）；Review 的 recorded/recommended 使用同一 renderer；Replay raw JSON 降为折叠 diagnostics；Play 复用两者且 legal-action 控件未变、reviewer 链接去掉 `&seat=`。纯新增前端组件 + 3 处页面接入 + `action-presentation.mjs` 纯函数 + CSS；**0 Rust / Host / schema / reviewer 算法 / cache 变更**。
+- **本片明确未做**：F3（Review cache/switching-state）、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
 - **保留 P2**：Busy profile/H2H 仍为数百毫秒级计算，当前依靠 UX 按需分节调度控制负载，不改 schema。
 
 ## Known limitations
@@ -556,7 +624,6 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
 ## Next authorized gate
 
 按 owner 2026-09-20 最新指示：
-1. **F1 Repair 1 已完成实现与本地验证**（无归因时 summary 改用中性 `reviewed decisions`；Host 与 decoder 双向钒死 `human_seat < player_count`，不写死 0/1；修正 stale meta 路径注释），三条针对性 gate 与 5 组负向对照全绿；**等待 owner 复核真实 diff**；
-2. owner 确认后可 **F1 ACCEPTED / CLOSED → F2 AUTHORIZED**（无需新 Recon）：**F2** = Play/Replay/Review 共享 PlayerState presentation 置于棋盘上方 + 统一结构化彩色 Action renderer（宝石按颜色、卡牌真实卡面/成本、数量清晰）；
-3. **F3**（Review config cache + 切 reviewer 保留 frame/filter/reveal）在 F2 之后；
-4. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。
+1. **F2 已完成实现与本地验证**（共享 `PlayerStateStrip` 置于棋盘上方 + 共享 `StructuredAction`（接收 pre-action player_view）三页复用；Review recorded/recommended 同 renderer；Replay raw JSON 降为 diagnostics；Play 控件未变且链接去掉 seat），10 条 gate + 2 组负向对照全绿；**等待 owner 复核真实 diff**；
+2. owner 确认后可 **F2 ACCEPTED / CLOSED → F3 AUTHORIZED**：**F3** = Review config cache（同 session+reviewer+config 命中缓存）+ reviewer A→B→A 不重算 + 切换 reviewer 保留 frame/filter/reveal；
+3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。
