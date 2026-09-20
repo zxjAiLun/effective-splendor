@@ -1,9 +1,13 @@
 # Studio Player Loop v1 — League 页面与 Review 体验交付
 
-- **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
+- **Status**: **STUDIO PLAYER LOOP v1 — ACCEPTED / CLOSED（owner 远端终审 `f6e46e1`，2026-09-20，P0=0/P1=0/P2=0）**。**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件整条玩家闭环 D/F 均已收口：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 shared presentation — ACCEPTED / CLOSED @ `a2885f0`（owner 远端复核 P0=0/P1=0/P2=0；evidence docs `33a7ae8`）**；**F3 cache + switching — AUTHORIZED / IN PROGRESS**。
+  - D3 — **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；
+  - **F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；
+  - **F2 shared presentation — ACCEPTED / CLOSED @ `a2885f0`（owner 远端复核 P0=0/P1=0/P2=0；evidence docs `33a7ae8`）**；
+  - **F3 cache + switching — ACCEPTED / CLOSED @ `f6e46e1`（owner 远端终审 2026-09-20，P0=0/P1=0/P2=0）**。
+- **范围冻结**：owner 明确 **不再授权新的 Studio Player Loop v1 功能修改**；后续 Studio 工作需作为下一条新目标/新版本立项，不得继续在 F3 之后挂小修。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -69,7 +73,23 @@
 
 ## Iteration log
 
-### 2026-09-20 — F3 Repair 2 IMPLEMENTED / VERIFIED local（owner 远端复核 `701a7a0` 后 P0=0/P1=1/P2=0；本轮等待 review）
+### 2026-09-20 — F3 ACCEPTED / CLOSED @ `f6e46e1`；STUDIO PLAYER LOOP v1 ACCEPTED / CLOSED
+
+owner 远端终审 `f6e46e13775046e1c2d03a9bb462af7949d9c6a1`（父 `701a7a0`）: **P0 = 0 / P1 = 0 / P2 = 0（F3 scope）**。
+
+- owner 确认最后一处 fail-closed 缺口已完整关闭：拒绝路径不再读取 malformed envelope（"先判不可信，然后不再碰不可信数据"）；POST 拒绝也只回显我们自己的 expected request，不反射 Host 未验证字段。
+- owner 认为 `jobMatchesRequest()` 的 identity hardening（`id` 非空 string / `session_id` 精确 / `reviewer_id` 精确 / `cache_key` 非空 string）**足够完整**，F3 依赖的 browser cache identity 不再允许缺失/空/非 string 的 `cache_key` 或空 `id` 流入 poll/bundle。
+- owner 确认 `jobUpdateMatchesInitial()` **只显式 type-check `next` 是合理的**：`initial` 已经通过 `jobMatchesRequest()` 这个 POST trust boundary，无需重复一套 initial schema validation。
+- owner 认定 TEST 7b / 7c **真正有价值**（不是为了让测试过的放宽），且 `review-seat-browser` mock 补 `cache_key` 是**正确的 fixture 修复**：旧 fixture 已不符合 F3 后的 Host job contract。
+- 按约定，`141 passed` / Chromium gates / NC1–NC8 / lint 仍记录为**本地执行证据**；GitHub 仍无 cloud status checks，不作为独立 CI 结果声明。远端代码审查无新 blocker。
+
+**F3 最终 seam 逐项关闭**（owner 列表，全部 CLOSED）：Host job lookup（session+reviewer+cache_key）、same-content cross-session separation、Host-owned browser cache key、A→B→A 无重复 bundle、reviewer config/key 变更强制 reload、switch state（logical ply + filter + reveal）、stale POST 不可覆盖、stale bundle body 不可覆盖、poll identity drift fail closed、malformed POST/status fail closed 且错误路径不抛。
+
+**Verdict**：**F3 cache + reviewer switching ACCEPTED / CLOSED @ `f6e46e1`**；**STUDIO PLAYER LOOP v1 ACCEPTED / CLOSED**。闭环链路：Play → rated Human completion → Games → Studio ratings → Participant profile → Replay → Review → reviewer comparison/cache。
+
+**遗留（不属本主线未完成项，不因此重开）**：11 项既有 D3B TypeScript 诊断。owner 明确不为"形式上的全绿"重新打开已收口的主线。
+
+### 2026-09-20 — F3 Repair 2 IMPLEMENTED / VERIFIED local（owner 远端复核 `701a7a0` 后 P0=0/P1=1/P2=0；已由 `f6e46e1` 关闭）
 
 owner 远端复核 `701a7a0`：两个原始 P1（body-parse 后 generation 重检、poll identity 冻结）**已修对**，TEST 6 已真实咬住 headers-已到/body-晚到竞态；仅剩 **1 个窄 P1**：**拒绝路径自身会崩**。本轮窄修，**依然 0 Rust**：
 
