@@ -155,7 +155,9 @@ export default function ReplayPage() {
           {archive && !leagueSource ? (
             <Link
               className="studio-link"
-              href={`/review?session=${encodeURIComponent(archive.session_id)}${seat === null ? "" : `&seat=${seat}`}`}
+              // No seat: the review reads the authoritative human seat from durable
+              // session metadata, so the URL must not carry a second opinion.
+              href={`/review?session=${encodeURIComponent(archive.session_id)}`}
             >
               Review this game
             </Link>

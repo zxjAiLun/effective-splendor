@@ -545,3 +545,112 @@ fn standalone_human_play_remains_casual_even_beside_a_valid_league() {
             .is_file());
     }
 }
+
+/// F1 seat authority: the Review page must learn *who the human was* from durable
+/// session metadata, never from the URL. This gate pins the seam it reads —
+/// `GET /reviewers?session=<id>` — because the Review page already opens that
+/// endpoint on mount for its player count, so the authoritative seat rides along
+/// instead of forcing a second request (or, worse, the whole replay archive).
+///
+/// The three states are the whole correctness surface: seat 0, seat 1 (so a seat
+/// is never hardcoded), and no human at all. The last one must be `null` — an
+/// agent-vs-agent replay has no human, and a missing seat must never read as 0.
+///
+/// Every assertion below goes through the *reader*: the seeded meta is located by
+/// the writer's own derivation, but what the gate believes about the seat comes
+/// only from the Host's HTTP answer. That distinction is the whole point. A
+/// previous gate read the meta back with `with_extension("meta.json")` — the
+/// writer's convention — while the Host looked for `"<id>.meta.json"`. The two
+/// derivations silently disagreed, so `/recent-games` and `/replays/{id}` reported
+/// `human_seat: null` for every real session and no gate noticed. Asking only the
+/// reader is what makes that class of drift impossible here.
+#[test]
+fn reviewers_endpoint_reports_the_authoritative_human_seat_from_metadata() {
+    // --- seat 0: the durable meta names the human, so the Host reports 0 ---------
+    let dir = tmp_dir("f1-reviewers-seat0");
+    let (root, _paths) = new_league(&dir);
+    let registry = human_registry(&dir, &bin());
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+    let state = finish_game(&host, start_game(&host, 0, 810_080));
+    let seat0_id = state["session_id"].as_str().unwrap().to_string();
+    // The meta the play loop wrote is the authority this gate depends on. It is
+    // located by the writer's derivation (the replay path with its extension
+    // replaced) so this gate can seed the fixture without duplicating the Host's
+    // lookup — but the seat it asserts comes only from the HTTP answer below.
+    let meta_path = dir
+        .join("local-artifacts/m20-human-play")
+        .join(format!("{seat0_id}.replay.json"))
+        .with_extension("meta.json");
+    let meta: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&meta_path).unwrap()).unwrap();
+    assert_eq!(meta["human_seat"], 0);
+    let (code, body) = host.get_json(&format!("/reviewers?session={seat0_id}"));
+    assert_eq!(code, 200, "{body}");
+    assert_eq!(body["player_count"], 2);
+    assert_eq!(
+        body["human_seat"], 0,
+        "the Host must read the same meta file the play loop wrote: {body}"
+    );
+    // The same durable seat must reach the other two read surfaces that consume
+    // it. These are the surfaces that were silently null while the paths diverged.
+    let (code, archive) = host.get_json(&format!("/replays/{seat0_id}"));
+    assert_eq!(code, 200, "{archive}");
+    assert_eq!(archive["human_seat"], 0, "{archive}");
+    let (code, recent) = host.get_json("/recent-games");
+    assert_eq!(code, 200, "{recent}");
+    let row = recent["games"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|game| game["session_id"] == seat0_id.as_str())
+        .expect("the finished session is listed");
+    assert_eq!(row["human_seat"], 0, "{row}");
+
+    // --- seat 1: the same seam must follow the metadata, not assume 0 ------------
+    let dir = tmp_dir("f1-reviewers-seat1");
+    let (root, _paths) = new_league(&dir);
+    let registry = human_registry(&dir, &bin());
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+    let state = finish_game(&host, start_game(&host, 1, 810_081));
+    let seat1_id = state["session_id"].as_str().unwrap().to_string();
+    let seat1_meta_path = dir
+        .join("local-artifacts/m20-human-play")
+        .join(format!("{seat1_id}.replay.json"))
+        .with_extension("meta.json");
+    let meta: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&seat1_meta_path).unwrap()).unwrap();
+    assert_eq!(meta["human_seat"], 1);
+    let (code, body) = host.get_json(&format!("/reviewers?session={seat1_id}"));
+    assert_eq!(code, 200, "{body}");
+    assert_eq!(body["human_seat"], 1);
+
+    // --- no attribution: absent meta is `null`, and never seat 0 -----------------
+    // A replay the Host can open but whose session has no durable metadata: exactly
+    // the agent-vs-agent / missing-metadata case. The reviewer list must still
+    // answer (the page needs it) while the seat stays honestly unknown.
+    //
+    // This runs on a host that owns both its replay and its metadata, so removing
+    // the meta leaves a readable replay with no attribution rather than a session
+    // this host never had.
+    std::fs::remove_file(&seat1_meta_path).unwrap();
+    let (code, body) = host.get_json(&format!("/reviewers?session={seat1_id}"));
+    assert_eq!(code, 200, "{body}");
+    assert_eq!(body["player_count"], 2);
+    assert!(
+        body["human_seat"].is_null(),
+        "an unattributed replay must report a null seat, not 0: {body}"
+    );
+    // The other read surfaces must agree: no metadata means no seat, not "P0".
+    let (code, archive) = host.get_json(&format!("/replays/{seat1_id}"));
+    assert_eq!(code, 200, "{archive}");
+    assert!(archive["human_seat"].is_null(), "{archive}");
+    let (code, recent) = host.get_json("/recent-games");
+    assert_eq!(code, 200);
+    let row = recent["games"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|game| game["session_id"] == seat1_id.as_str())
+        .expect("the finished session is still listed");
+    assert!(row["human_seat"].is_null(), "{row}");
+}

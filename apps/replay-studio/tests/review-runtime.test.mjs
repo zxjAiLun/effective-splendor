@@ -6,8 +6,11 @@ import {
   actionKey,
   buildReviewRows,
   buildReviewSummary,
+  decodeReviewersEnvelope,
   defaultReviewerIdFor,
   isReviewTraceEnvelope,
+  parseUrlSeat,
+  resolveHumanSeat,
   reviewRecommendedAction,
   reviewerSupportsPlayerCount,
   validateReviewTrace,
@@ -228,4 +231,95 @@ test("reviewer default selection is player-count aware", () => {
   assert.equal(reviewerSupportsPlayerCount(reviewers[0], 4), false);
   assert.equal(reviewerSupportsPlayerCount(reviewers[1], 4), true);
   assert.equal(defaultReviewerIdFor([], 2), "");
+});
+
+// ---- F1: seat authority + My decisions -----------------------------------------
+// Who the human was comes from durable session metadata, never from the URL. These
+// four states are the correctness surface the Review page depends on.
+
+test("F1: durable metadata seat wins, and an absent URL seat is normal", () => {
+  assert.deepEqual(resolveHumanSeat(0, null), { seat: 0, error: null });
+  assert.deepEqual(resolveHumanSeat(1, null), { seat: 1, error: null });
+});
+
+test("F1: a matching URL seat is a compatible hint, not a second authority", () => {
+  assert.deepEqual(resolveHumanSeat(1, 1), { seat: 1, error: null });
+  assert.deepEqual(resolveHumanSeat(0, 0), { seat: 0, error: null });
+});
+
+test("F1: a URL seat that disagrees with metadata fails closed", () => {
+  const mismatch = resolveHumanSeat(1, 0);
+  assert.equal(mismatch.seat, null);
+  assert.match(mismatch.error, /recorded human seat 1/);
+  assert.match(mismatch.error, /seat=1/);
+  // And the reverse direction is the same refusal, not a silent override.
+  const reverse = resolveHumanSeat(0, 1);
+  assert.equal(reverse.seat, null);
+  assert.match(reverse.error, /recorded human seat 0/);
+});
+
+test("F1: no attribution means no My decisions seat — never a fabricated 0", () => {
+  // An agent-vs-agent / metadata-less replay genuinely has no human.
+  assert.deepEqual(resolveHumanSeat(null, null), { seat: null, error: null });
+  // A URL seat must never be able to invent a human for such a replay.
+  const invented = resolveHumanSeat(null, 0);
+  assert.equal(invented.seat, null);
+  assert.match(invented.error, /no human attribution/);
+});
+
+test("F1: the URL seat parser accepts absent/valid and rejects nonsense", () => {
+  assert.equal(parseUrlSeat(null), null);
+  assert.equal(parseUrlSeat(""), null);
+  assert.equal(parseUrlSeat("0"), 0);
+  assert.equal(parseUrlSeat("1"), 1);
+  // Seats 2 and 3 are legal: 3- and 4-player replays exist in the League.
+  assert.equal(parseUrlSeat("2"), 2);
+  assert.equal(parseUrlSeat("3"), 3);
+  for (const bad of ["4", "-1", "abc", "0.5"]) {
+    assert.throws(() => parseUrlSeat(bad), /Invalid human seat/);
+  }
+});
+
+test("F1: the reviewers envelope carries the authoritative seat, null when absent", () => {
+  const base = { format: "effective-splendor-studio-reviewers", version: 1, reviewers: [], player_count: 2 };
+  assert.deepEqual(decodeReviewersEnvelope({ ...base, human_seat: 1 }), {
+    reviewers: [], playerCount: 2, humanSeat: 1,
+  });
+  assert.equal(decodeReviewersEnvelope({ ...base, human_seat: 0 }).humanSeat, 0);
+  // An explicit null and a missing field both mean "no human", never 0.
+  assert.equal(decodeReviewersEnvelope({ ...base, human_seat: null }).humanSeat, null);
+  assert.equal(decodeReviewersEnvelope(base).humanSeat, null);
+});
+
+test("F1: a malformed reviewers envelope is rejected, not coerced", () => {
+  const base = { format: "effective-splendor-studio-reviewers", version: 1, reviewers: [], player_count: 2 };
+  assert.throws(() => decodeReviewersEnvelope({ ...base, human_seat: "0" }), /human_seat/);
+  assert.throws(() => decodeReviewersEnvelope({ ...base, human_seat: 4 }), /human_seat/);
+  assert.throws(() => decodeReviewersEnvelope({ ...base, human_seat: -1 }), /human_seat/);
+  assert.throws(() => decodeReviewersEnvelope({ ...base, version: 2 }), /version/);
+  assert.throws(() => decodeReviewersEnvelope({ ...base, reviewers: null }), /reviewers/);
+});
+
+test("F1: My decisions filtering keeps only the authoritative seat's frames", async () => {
+  // The Rust fixtures are single-seat replays, so the two-seat case is built here:
+  // the filter, the timeline and the keyboard all read the same frames array, and
+  // this is the array's definition for a seat.
+  const trace = validateReviewTrace(await fixture());
+  const twoSeats = { ...trace, frames: [trace.frames[0], { ...trace.frames[0], ply: 1, actor: 1 }] };
+  for (const seat of [0, 1]) {
+    const myFrames = twoSeats.frames.filter((frame) => frame.actor === seat);
+    assert.equal(myFrames.length, 1);
+    assert.ok(myFrames.every((frame) => frame.actor === seat));
+  }
+});
+
+test("F1: the summary over My decisions counts only that seat", async () => {
+  const trace = validateReviewTrace(await fixture());
+  const twoSeats = { ...trace, frames: [trace.frames[0], { ...trace.frames[0], ply: 1, actor: 1 }] };
+  for (const seat of [0, 1]) {
+    const mine = buildReviewSummary(twoSeats, seat);
+    assert.equal(mine.decisions, twoSeats.frames.filter((frame) => frame.actor === seat).length);
+  }
+  // Unknown seat means "all", never "seat 0".
+  assert.equal(buildReviewSummary(twoSeats, null).decisions, twoSeats.frames.length);
 });

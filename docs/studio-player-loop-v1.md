@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`（owner 复核，P0=0/P1=0/P2=1 deferred）**；**D3B Profile UI — REPAIR 1 COMPLETED / VERIFIED 本地（2026-09-20，待 owner 复核真实 diff）**；F Review **NOT AUTHORIZED**。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`（owner 复核，P0=0/P1=0）**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；F Review **F1 AUTHORIZED**（仅 F1 seat authority + My decisions；F2/F3 NOT YET）。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -36,7 +36,8 @@
 | Play Random/First/Second、Randomize seed | IMPLEMENTED / VERIFIED 本地 | random 一次、发实际 seat；禁止 seed 静默舍入 |
 | 去重复 Earlier games | IMPLEMENTED / VERIFIED 本地 | 历史入口统一 Games |
 | 长期 Games 有界查询/分页 | **D1 ACCEPTED / CLOSED @ `3049642`** | 不全量向浏览器搬 42k；稳定 `league_seq DESC` + `league_seq < before`；严格 limit 1..100 / 非法 400；authority refusal 503；集合式 participant filter；无 schema/index 变更 |
-| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI Repair 1 COMPLETED / VERIFIED 本地（待 owner 复核）**（P1-1 移除 match_id replay 假链接、P1-2 分页失败可见+Retry、P2 严格 initial 1500/1500 校验）；**F Review NOT YET** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
+| `/ratings` 与个人统计 | **D2 ACCEPTED / CLOSED @ `857250c`**；**D3A ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE ACCEPTED / CLOSED** | 两个 rating authority 代码层不互串；无数据不造数；不做 dead link；严格 limit/cursor 校验；不改 schema v3 |
+| F Review（My decisions 座位鉴权） | **F1 AUTHORIZED**（seat authority + My decisions navigation）；F2（共享玩家状态布局 + 结构化彩色行动）、F3（Review cache/switch）**NOT YET** | seat 来自 durable metadata authority（非 URL）；seat unknown 时不显示 My decisions；URL seat 仅作 integrity hint；不碰 Human completion 主链/schema |
 | Review My decisions | 待实施，不取消 | 从 meta 获 seat；未知禁 My；按钮/键盘同一 actor 过滤 |
 | 玩家状态共用且棋盘上方 | 待实施，不取消 | Play/Replay/Review 三处一致，保留隐藏信息界限 |
 | 彩色行动 | 待实施，不取消 | 结构化 action、实际/推荐共用、数量/卡片/可访问标签 |
@@ -66,6 +67,61 @@
 之后逐片实现 D/F 并更新上表，不因 C/E 通过就宣布七项完成。每片跟踪实际测试证据和剩余项。
 
 ## Iteration log
+
+### 2026-09-20 — F1 实现（当前轮，COMPLETED / VERIFIED 本地，待 owner 复核）
+
+**F1-1（Host 暴露 authoritative human_seat）**：
+- `GET /reviewers?session=<id>` 的 envelope 新增 `human_seat`（`null` 表示无人类归因），复用已有的 `read_human_meta` 读取面与 `read_replay_file` 已打开的同一 session，**未新建 API、未改 schema、未碰 completion 主链**；Review 页 mount 时已经调用此端点拿 `player_count`，故 seat 随同返回，不额外拉整个 replay archive。
+- 新增 Host socket 门禁 `reviewers_endpoint_reports_the_authoritative_human_seat_from_metadata`：seat=0 → My 只出现 P0；seat=1 → 只 P1（不写死 0）；无 metadata → `human_seat: null`（不得读作 0）；三态同时向 `/replays/{id}` 与 `/recent-games` 交叉核对。
+
+**F1-2（Review seat authority + My decisions gating）**：
+- 新增纯函数 `resolveHumanSeat(durableSeat, urlSeat)` 与 `parseUrlSeat(raw)`（`app/trace-runtime.mjs`），冻结语义：durable 有 seat → 它是 authority；URL 无 seat → 正常；URL == durable → 兼容 hint 但不赋权；URL != durable → fail closed（两个方向同拒，不静默采用 URL）；durable 无 seat 而 URL 有 seat → 拒绝（URL 不得凭白造出一个人类）。
+- 新增 `decodeReviewersEnvelope`：严格校验 format/version/reviewers 数组/`human_seat` 为 null 或 0–3 整数；畸形 envelope 报错而非回退。
+- `app/review/page.tsx`：seat 改由 reviewers envelope 的 durable `human_seat` 经 `resolveHumanSeat` 决定；mount 不再从 URL 推 seat；`hasHumanSeat = humanSeat !== null` 才渲染 `[My decisions]` 按钮（unknown seat 只留 `All decisions`，不渲染看似可用的 My 按钮）；`frames` 过滤与 timeline/keyboard 共享同一数组；切 filter 仍 `setFrameIndex(0)`（同-ply 映射留给 F3）。
+
+**F1-3（Replay → Review 链接）**：
+- `app/replay/page.tsx` 的 `Review this game` 改为 `/review?session=<id>`，不再携带 `seat`；legacy `?seat=` 仍按上述 compatibility/mismatch 规则解析。Replay 页自身的 My decisions 控件（基于 archive 的 seat）未改。
+
+**F1-4 门禁与证据**：
+- 单元（`tests/review-runtime.test.mjs`，22 项全绿）：`resolveHumanSeat` 五态、`parseUrlSeat` 接受 0–3 与拒绝 4/-1/abc/0.5、reviewers envelope 携带/null/畸形拒绝、My 过滤与 summary 只计该 seat；
+- 真实浏览器 CDP 门禁 `tests/review-seat-browser.mjs`（Pass）：durable seat=1 无 URL seat → My 只 P1；seat=0 → 只 P0；无归因 → **无 My 控件**且 All 正常；URL seat≠durable → fail closed 且**不发起 review job**；URL seat==durable → 兼容；filter=My 后 timeline 点击与→键盘走**同一 filtered 数组**（索引不得溢出到全量长度）；
+- fixture：`tests/fixtures/rust-analysis-trace-v2-m07-two-seat.json` 由**真实 Host（M07 reviewer）对真实 2 人 Human replay 跑出**并裁至前 6 ply（两 actor 各 3 决策），非手造 trace；
+- 负向对照 2 组（`local-artifacts/studio-league/player-loop/f1-negative-controls.json`，均捕获并字节还原）：NC1 恢复 URL seat authority ⇒ 浏览器门禁 FAIL（My 控件消失）；NC2 恢复 Host 读取方分歧 meta 路径 ⇒ Host 门禁 FAIL（`human_seat: null`）。
+- `npm test` 122 passed（+9）、`npm run lint` clean；`splendor-studio-league` 109、`league_host_api` 30（+1）。
+
+### 2026-09-20 — D line 整体关闭 + F1 授权 + F1 Recon
+
+owner 2026-09-20 复核 `9bbc121` 真实 diff：**D3B Profile UI ACCEPTED / CLOSED（P0=0 / P1=0）**，三项 Repair 真正闭环（rating history 不再冒充 replay hash、三类 load-more 保留旧数据与 cursor 并显错+Retry、decoder 要求 initial Elo `value===1500 && display_rounded===1500`）；commit 范围干净（6 文件，仅 Profile runtime/page + 测试 + 文档）。**D PLAYER DATA LINE（Games / Ratings / Participant Profile）整体 ACCEPTED / CLOSED**：未为页面扫 replay archive、未新建统计 authority、未扩 schema/index。
+
+owner 同时授权 **F Review**，但明确先做 **F1 only**（seat authority + My decisions navigation）；F2（共享玩家状态布局 + 结构化彩色行动 renderer）与 F3（Review config cache + switching-state preservation）看完 F1 diff 再开，避免 Review 页一次同时改数据来源/导航/布局/renderer/cache。
+
+**F1 问题（owner 确认的首个 correctness bug）**：`review/page.tsx` 仍以 URL `?seat=` 作为 human identity authority；且 `My decisions` / `All decisions` 无论是否有 human seat 都显示，而过滤逻辑 `if (filter === "all" || humanSeat === null) return trace.frames;` 导致 `humanSeat === null` 时点 My decisions 实际仍显示全部 decisions。
+
+**F1 Recon 结论（已核实 Host 读取面）**：
+- human seat 的 authority 源是玩局时写入的 `<session>.meta.json`（`human_seat` + `opponent`），由 `read_human_meta()` 读取；
+- 现有两个读取面已能拿到 seat：（1）`GET /replays/{session_id}`（`HistoricalReplayArchiveV2` 含 `human_seat: Option<u8>`）——但返回整个 replay + 所有 frames，对只要 seat 的 Review mount 过重；（2）`GET /reviewers?session=<id>`（`reviewers_json`）——Review 页 mount 时已经调用它拿 `player_count`，但它当前不返回 `human_seat`；
+- **最窄 seam**：`reviewers_json` 已以 session 为键打开同一 replay，在其中额外 `read_human_meta()` 读 `human_seat` 并随 Envelope 返回（version 保持 1 新增可选字段，或升版），即可避免浏览器拉整个 archive，也不新建 API。不让浏览器解析文件、不从 trace actor 分布推 seat、不从胜负/名称推 seat。
+
+**F1 契约冻结（待实现）**：
+- durable metadata 有 `human_seat` → 它是 authority；URL 无 seat → 正常工作用 metadata；URL seat == metadata → 兼容但不赋予 authority；URL seat != metadata → fail closed / 显示 mismatch；
+- 仅当 authoritative human seat 已知时才渲染 `[My decisions] [All decisions]`；seat unknown 时只有 `All decisions`（**不渲染看似可用的 My decisions 按钮**）；
+- `myFrames = trace.frames.filter(f => f.actor === authoritativeHumanSeat)`；按钮与键盘左右必须作用于同一 filtered `frames` 数组；
+- 切 filter 第一版仍 `setFrameIndex(0)`（All→My 去第一条 human decision，My→All 去第一条 all decision），不做同-ply 映射（留给 F3）；
+- Replay 页 `Review this game` 链接改为 `/review?session=<id>`（不再带 seat）；legacy `?seat=` 仍按 compatibility/mismatch 规则解析。
+
+**F1 测试规模（lean）**：(1) meta seat=0 + URL 无 seat → My = actor 0 only；(2) meta seat=1 → actor 1 only；(3) metadata 无 human seat → 无 My decisions 控件；(4) URL seat != metadata → fail closed；(5) filter=My 后点 timeline / 左右键→始终在 human frames 内；(6) Replay→Review 链接不再需 seat query；另一项负向对照：让 Review 恢复 URL seat authority → gate 必须失败。
+
+**F1 不碰**：共享 PlayerState 视觉布局、彩色 action renderer、recommendation renderer、review cache key/job reuse、切 reviewer 保留 frame/filter/reveal、CSS 大改、ReviewSummary redesign。不因 `review/page.tsx` 大就“组件化整页”。
+
+#### F1-1 实现中发现并修复的真实潜在缺陷（human meta 路径分歧）
+
+实现 `/reviewers` 暴露 authoritative seat 时发现：**写入方与读取方对 session metadata 的路径推导不一致**，导致真实数据上 human metadata 一直读不到：
+- 写入方（`human_play_command.rs` 发布 replay 时）：`self.replay_out.with_extension("meta.json")` → `<id>.replay.meta.json`；
+- 读取方（`recent_games` / `historical_replay`，及本次新增的 reviewers seat 读取）：`format!("{session_id}.meta.json")` → `<id>.meta.json`；
+- 后果：`GET /recent-games` 与 `GET /replays/{id}` 对**每一条真实 session** 都返回 `human_seat: null` / `opponent: null`。真实目录 11 个 session 中 8 个存在 `*.replay.meta.json` 而没有任何 `<id>.meta.json`（含 owner 真人验收局 `human-9921689750950880821-0-37548-1`）。Games 页的 “Seat unknown” 不是设计态，而是本缺陷的症状。
+- 旧 gate 未发现的原因：`human_league/gates.rs` 用**写入方的** `with_extension("meta.json")` 约定读回（因而总能读到），而从未向 Reader 求证；即“自我印证”而非验证读路径。
+- **修法**：引入单一路径权威 `human_meta_path_for_replay()` + `read_human_meta_for_session()`，读取方全部改走该权威；gate 改为**只向 Reader（HTTP）求证** seat，杜绝该类漂移。
+- 负向对照已执行：将读取方改回 `<id>.meta.json` 分叉约定 ⇒ gate 立即失败（`human_seat: null` vs `0`）；字节还原后重新通过。
 
 ### 2026-09-20 — D3B Review: REPAIR REQUIRED @ `d8d16f2`（owner 复核，P0=0 / P1=2 / P2=1）
 
@@ -456,8 +512,9 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
   - 源码级与运行时级双向隔离门通过：Studio 不 import 报告数据，Research 不请求 `/league/`；
   - 导航明确区分 `Ratings` 与 `Research reports`。
 - **D3A Reader + Host API：ACCEPTED / CLOSED @ `51bad22`（owner review 2026-09-19）**。P0=0/P1=0/P2=1 deferred；三项 Repair 全部关闭（P1-1 initial Elo 伪造守卫、P1-2 三条 SQL crate-private、P1-3 opponents after cursor 双层非空与 256B 上限校验）。
-- **D3B Profile UI：REPAIR 1 COMPLETED / VERIFIED（2026-09-20 本地）**，待 owner 复核真实 diff。P1-1/P1-2/P2 全部关闭。严格按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，分页失败保留数据与游标并显式提供 Retry，SVG sequence 曲线，严格解码器。
-- **本片明确未做**：F Review、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
+- **D3B Profile UI：ACCEPTED / CLOSED @ `9bbc121`（owner review 2026-09-20，P0=0/P1=0）**。P1-1/P1-2/P2 全部关闭。strict 按需调度，首屏仅 Profile，Games/Ratings/Opponents 点开加载并 session 缓存，分页失败保留数据与游标并显式提供 Retry，SVG sequence 曲线，严格解码器。**D PLAYER DATA LINE 整体 ACCEPTED / CLOSED。**
+- **F1（seat authority + My decisions）：COMPLETED / VERIFIED（2026-09-20 本地），待 owner 复核。** 同时修复了一个实现中发现并独立验证的真实潜在缺陷（human meta 路径分歧，见 Iteration log）。
+- **本片明确未做**：F2（共享 PlayerState 布局 + 结构化彩色 action renderer）、F3（Review cache/switching-state）、gameplay builder、replay backfill、duration 统计、任何 schema 变更（保持 schema v3，0 索引）。
 - **保留 P2**：Busy profile/H2H 仍为数百毫秒级计算，当前依靠 UX 按需分节调度控制负载，不改 schema。
 
 ## Known limitations
@@ -468,12 +525,14 @@ HTTP mocks 不会证明 Host 实现正确，后者由 Rust real-socket gates 单
    `RSC prefetch setup error: TypeError: f is not a function`，导致客户端跳转受阻。此为既有平台级问题（非 D2 引入），
    全页刷新与地址栏直访完全正常，浏览器测试通过 `Page.navigate` 规避，待独立评估是否升级/修复 vinext。
 3. **D2 malformed-200 truthfulness**：`describeLeaderboard(body.rows)` 在 `rows` 非 array 时会落入空列表显示；owner明确deferred至共享decoder，不在D3 Recon修。
-4. D3 个人统计与 F Review 待交付。数据库重建必须含 live Human evidence，
+4. F1 已完成，F2/F3 待授权。数据库重建必须含 live Human evidence，
    不能把仅已验证 historical importer 当全量历史+live rebuild 工具；后续验收需单独核验此链。
+5. **F1 修复的 human meta 路径分歧是真实存量数据缺陷**：修复前 /recent-games 与 /replays/{id} 对已入库的存量 session 一直返回 `human_seat: null`（读取方路径与写入方不一致）。修复后读取路径已统一，存量 `*.replay.meta.json`（8/11 真实 session）开始能被读到；未重写任何存量文件。
 
 ## Next authorized gate
 
 按 owner 2026-09-20 最新指示：
-1. D3B Repair 1 已完成实现与本地验证（P1-1 移除 replay 假链接、P1-2 分页失败可见错误+Retry、P2 解码器 initial 严格校验，测试与负向对照全绿），等待 owner 复核真实 diff；
-2. owner 确认 D3B Repair 1 真实 diff 并关闭后，**D 线（Games / Ratings / Profile）整体正式关闭**，进入玩家闭环最后一项 **F Review 体验修复**（My decisions 座位鉴权、玩家状态共用且置于上方、结构化彩色行动、同配置缓存切换）；
-3. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。
+1. **F1 seat authority + My decisions 已完成实现与本地验证**（durable metadata 成为 authority、URL seat 仅作 integrity hint、mismatch fail closed、unknown seat 不渲染 My decisions、timeline 与键盘共用同一 filtered frames、Replay→Review 链接不再带 seat），测试与 2 组负向对照全绿；**等待 owner 复核真实 diff**；
+2. owner 确认 F1 真实 diff 后，再授权 **F2**（Play/Replay/Review 共享 PlayerState presentation 置于棋盘上方 + 统一结构化彩色 Action renderer：宝石按颜色、卡牌真实卡面/成本、数量清晰）；
+3. **F3**（Review config cache + 切 reviewer 保留 frame/filter/reveal）在 F2 之后；
+4. 遵循独立 commit 纪律，各主线分立，不得修改 Human completion 主链。

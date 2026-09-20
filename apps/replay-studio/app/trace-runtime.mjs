@@ -358,6 +358,82 @@ export function reviewerSupportsPlayerCount(reviewer, playerCount) {
     && reviewer.supported_player_counts.includes(playerCount);
 }
 
+/**
+ * Resolve who the human was, from durable session metadata — never from the URL.
+ *
+ * The durable seat is the authority. A `?seat=` query parameter survives only so
+ * old links keep working, and it carries no authority of its own:
+ *   - no durable seat, no URL seat  ->  `{ seat: null }`  (agent-vs-agent replay)
+ *   - no durable seat, URL seat     ->  `{ error }`  (the URL cannot invent a human)
+ *   - durable seat,    no URL seat  ->  `{ seat }`
+ *   - durable seat,    same URL seat->  `{ seat }`  (compatible hint, no authority)
+ *   - durable seat,    other URL seat-> `{ error }`  (fail closed, never override)
+ *
+ * @param {number|null} durableSeat authoritative seat from the Host, or null
+ * @param {number|null} urlSeat seat parsed from the URL, or null
+ * @returns {{seat: number|null, error: string|null}}
+ */
+export function resolveHumanSeat(durableSeat, urlSeat) {
+  const durable = typeof durableSeat === "number" ? durableSeat : null;
+  const url = typeof urlSeat === "number" ? urlSeat : null;
+  if (durable === null) {
+    if (url !== null) {
+      return {
+        seat: null,
+        error:
+          `This replay has no human attribution, so the URL seat ${url} cannot be trusted. Open the review without a seat parameter.`,
+      };
+    }
+    return { seat: null, error: null };
+  }
+  if (url !== null && url !== durable) {
+    return {
+      seat: null,
+      error:
+        `The URL seat ${url} disagrees with this session's recorded human seat ${durable}. The recorded seat is authoritative; remove the seat parameter or use seat=${durable}.`,
+    };
+  }
+  return { seat: durable, error: null };
+}
+
+/**
+ * Parse a `seat` query value into a seat index, or null when absent.
+ * Invalid values throw, because a human is either a real seat or nothing at all.
+ */
+export function parseUrlSeat(raw) {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0 || value > 3) {
+    throw new Error("Invalid human seat in the review URL.");
+  }
+  return value;
+}
+
+/**
+ * Strictly read the reviewers envelope, including the authoritative seat.
+ *
+ * `human_seat` is `null` for a replay with no human: an agent-vs-agent game has
+ * no seat, and a missing seat must never be coerced to 0.
+ */
+export function decodeReviewersEnvelope(value) {
+  const envelope = object(value, "reviewers");
+  if (envelope.format !== "effective-splendor-studio-reviewers") {
+    fail("reviewers.format", `unexpected format ${JSON.stringify(envelope.format)}`);
+  }
+  if (envelope.version !== 1) fail("reviewers.version", `unexpected version ${JSON.stringify(envelope.version)}`);
+  array(envelope.reviewers, "reviewers.reviewers");
+  let humanSeat = null;
+  const raw = envelope.human_seat;
+  if (raw !== null && raw !== undefined) {
+    if (!Number.isInteger(raw) || raw < 0 || raw > 3) {
+      fail("reviewers.human_seat", `expected null or a seat index, got ${JSON.stringify(raw)}`);
+    }
+    humanSeat = raw;
+  }
+  const playerCount = Number.isInteger(envelope.player_count) ? envelope.player_count : null;
+  return { reviewers: envelope.reviewers, playerCount, humanSeat };
+}
+
 export function defaultReviewerIdFor(reviewers, playerCount) {
   const entry = (reviewers ?? []).find((reviewer) => reviewerSupportsPlayerCount(reviewer, playerCount)
     && Array.isArray(reviewer.default_for_player_counts)

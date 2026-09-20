@@ -7,8 +7,11 @@ import {
   actionKey,
   buildReviewRows,
   buildReviewSummary,
+  decodeReviewersEnvelope,
   defaultReviewerIdFor,
   formatActionLabel,
+  parseUrlSeat,
+  resolveHumanSeat,
   reviewRecommendedAction,
   reviewerSupportsPlayerCount,
   validateReviewTrace,
@@ -235,24 +238,28 @@ export default function ReviewPage() {
       const params = new URLSearchParams(window.location.search);
       const session = params.get("session") ?? "";
       const requestedReviewer = params.get("reviewer") ?? "";
-      const rawSeat = params.get("seat");
-      const seat = rawSeat === null || rawSeat === "" ? null : Number(rawSeat);
       if (!session) { setError("Missing session id in the review URL."); return; }
-      if (seat !== null && (!Number.isInteger(seat) || seat < 0 || seat > 3)) {
-        setError("Invalid human seat in the review URL.");
+      let urlSeat: number | null;
+      try {
+        urlSeat = parseUrlSeat(params.get("seat"));
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
         return;
       }
       setSessionId(session);
-      setHumanSeat(seat);
-      setFilter(seat === null ? "all" : "mine");
       try {
-        // Reviewer discovery resolves per-context defaults and availability
-        // from the replay itself (the host reads its player count).
+        // Reviewer discovery resolves per-context defaults and availability from
+        // the replay itself, and carries the *authoritative* human seat from the
+        // session's durable metadata. The URL remains only an integrity hint.
         const response = await fetch(`${API}/reviewers?session=${encodeURIComponent(session)}`);
-        const value = await response.json();
-        if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-        const list = value.reviewers as Reviewer[];
-        const count = typeof value.player_count === "number" ? value.player_count : null;
+        const raw = await response.json();
+        if (!response.ok) throw new Error(raw.error ?? `Studio Host ${response.status}`);
+        const { reviewers: list, playerCount: count, humanSeat: durableSeat } = decodeReviewersEnvelope(raw);
+        const decided = resolveHumanSeat(durableSeat, urlSeat);
+        if (decided.error) { setError(decided.error); return; }
+        const seat = decided.seat;
+        setHumanSeat(seat);
+        setFilter(seat === null ? "all" : "mine");
         setReviewers(list);
         setPlayerCount(count);
         if (count === null) { setError("The host did not report this replay's player count."); return; }
@@ -277,6 +284,10 @@ export default function ReviewPage() {
     if (filter === "all" || humanSeat === null) return trace.frames;
     return trace.frames.filter((frame) => frame.actor === humanSeat);
   }, [trace, filter, humanSeat]);
+
+  // The My decisions control exists only when the durable metadata names a human.
+  // An unknown seat is not a disabled button: there is nothing honest to show.
+  const hasHumanSeat = humanSeat !== null;
 
   const frame = frames[Math.min(frameIndex, frames.length - 1)] ?? null;
   const summary = useMemo(() => (trace ? buildReviewSummary(trace, humanSeat) : null), [trace, humanSeat]);
@@ -386,7 +397,9 @@ export default function ReviewPage() {
                 <span className="section-kicker">TIMELINE</span>
                 <strong>{frameIndex + 1} / {frames.length}</strong>
                 <span className="review-filter" role="group" aria-label="Decision filter">
-                  <button className={filter === "mine" ? "active" : ""} onClick={() => { setFilter("mine"); setFrameIndex(0); }}>My decisions</button>
+                  {hasHumanSeat && (
+                    <button className={filter === "mine" ? "active" : ""} onClick={() => { setFilter("mine"); setFrameIndex(0); }}>My decisions</button>
+                  )}
                   <button className={filter === "all" ? "active" : ""} onClick={() => { setFilter("all"); setFrameIndex(0); }}>All decisions</button>
                 </span>
               </div>

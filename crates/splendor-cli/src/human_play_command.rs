@@ -1047,6 +1047,23 @@ impl StudioHost {
             }
             None => None,
         };
+        // The authoritative human seat is durable session metadata written at play
+        // time (`<session>.meta.json`), never the URL. This is the same seam the
+        // recent-games list and the historical archive already read, so the Review
+        // page can learn who the human was without downloading the whole archive.
+        // Absent or malformed metadata is the `None` case: an agent-vs-agent replay
+        // has no human, and that must stay distinguishable from seat 0.
+        let human_seat = match session {
+            Some(session_id) => {
+                let session_id = sanitize_session_id(session_id)?;
+                read_human_meta_for_session(Path::new(HUMAN_PLAY_DIR), &session_id)
+                    .as_ref()
+                    .and_then(|value| value.get("human_seat"))
+                    .and_then(|value| value.as_u64())
+                    .and_then(|value| u8::try_from(value).ok())
+            }
+            None => None,
+        };
         let reviewers = self
             .reviewer_registry
             .reviewers
@@ -1071,6 +1088,7 @@ impl StudioHost {
             "version": 1,
             "registry_id": self.reviewer_registry.registry_id,
             "player_count": player_count,
+            "human_seat": human_seat,
             "reviewers": reviewers,
         }))
         .map_err(|error| error.to_string())
@@ -1289,7 +1307,7 @@ impl StudioHost {
                             .ok()
                             .map(|d| d.as_secs())
                     });
-                let meta = read_human_meta(&dir.join(format!("{session_id}.meta.json")));
+                let meta = read_human_meta_for_session(&dir, session_id);
                 let opponent = meta.as_ref().and_then(|m| m.get("opponent")).cloned();
                 let human_seat = meta.as_ref().and_then(|m| m.get("human_seat")).cloned();
                 entries.push(serde_json::json!({
@@ -1329,7 +1347,7 @@ impl StudioHost {
             return Err(format!("unknown session `{session_id}`"));
         }
         let replay = read_replay_file(&replay_path)?;
-        let meta = read_human_meta(&human_play_dir.join(format!("{session_id}.meta.json")));
+        let meta = read_human_meta_for_session(&human_play_dir, &session_id);
         let opponent = meta
             .as_ref()
             .and_then(|value| value.get("opponent"))
@@ -1571,6 +1589,28 @@ fn list_cached_reviewers(
 fn read_human_meta(path: &Path) -> Option<serde_json::Value> {
     let bytes = fs::read(path).ok()?;
     serde_json::from_slice::<serde_json::Value>(&bytes).ok()
+}
+
+/// The one authority for where a session's durable metadata lives.
+///
+/// The play loop publishes the replay to `<session>.replay.json` and the meta to
+/// the *same path* with its extension replaced (`<session>.replay.meta.json`), so
+/// every reader must derive the meta path the same way instead of re-deriving the
+/// filename from the session id. Those two derivations disagreed for several
+/// releases ("<session>.meta.json" vs "<session>.replay.meta.json"), which read as
+/// "no human metadata" for every real session, and no gate caught it because the
+/// gates re-derived the writer's convention rather than staying put and asking the
+/// reader.
+fn human_meta_path_for_replay(replay_path: &Path) -> PathBuf {
+    replay_path.with_extension("meta.json")
+}
+
+/// The durable metadata for one session, addressed by the session-relative path
+/// the play loop wrote. `None` means "no metadata" and must never be read as a
+/// seat of 0: an unreviewed agent-vs-agent replay genuinely has no human.
+fn read_human_meta_for_session(human_play_dir: &Path, session_id: &str) -> Option<serde_json::Value> {
+    let replay_path = human_play_dir.join(format!("{session_id}.replay.json"));
+    read_human_meta(&human_meta_path_for_replay(&replay_path))
 }
 
 fn spawn_review_job(
