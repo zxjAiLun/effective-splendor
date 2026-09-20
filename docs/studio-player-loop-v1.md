@@ -84,7 +84,7 @@ Owner 远端真实 diff review：**F2 REPAIR REQUIRED，P0=0/P1=3/P2=0**。入�
 
 共享 resolver/components 与 hidden-info boundary 已被 owner 接受，不重做；**0 Rust/Host/schema/review trace/算法/cache 变更，F3 未授权**。最终门未运行前不称 VERIFIED。
 
-### 2026-09-20 — F2 Repair 1 IMPLEMENTED / VERIFIED local（owner acceptance pending）
+### 2026-09-20 — F2 Repair 1 IMPLEMENTED / VERIFIED local（commit `a2885f0`；owner acceptance pending）
 
 按授权范围完成窄 presentation wiring repair，未修改 Rust、Host、replay/schema、review trace、review algorithm 或 cache：
 
