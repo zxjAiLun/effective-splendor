@@ -75,7 +75,7 @@ owner 复核远端 `a2885f0` 真实 diff：**F2 Shared Player State + Structured
 
 **F3 冻结合同**：不重写 cache algorithm（`review_cache_key_v2`、`POST /reviews`、session-local artifact path 全部保留）；只做三件事——① Host job reuse 绑定 `session_id + reviewer_id + cache_key`（cache key 本身不含 session）；② Browser 按 Host 返回的 `cache_key` 缓存 validated trace（POST 仍保留，因为只有 Host 知道完整 reviewer config）；③ reviewer 切换保留逻辑 `frame.ply + filter + reveal`，并用新 trace 的 filtered frames 按 ply 找回，找不到则 index 0。不碰 ReviewTrace/reviewer config/promotion/Human completion/League schema/Replay format/F2 presentation，也不建 global content-addressed cache。
 
-### 2026-09-20 — F3 实现 IMPLEMENTED / VERIFIED local（owner acceptance pending）
+### 2026-09-20 — F3 实现 IMPLEMENTED / VERIFIED local（commit `f723bb9`；owner acceptance pending）
 
 - **Host cache identity（Rust）**：`ReviewJobManager::id_for_cache_key`（全局按 cache key 找）收紧为 `id_for_request(session_id, reviewer_id, cache_key)`，三者一致才复用；新增 Host socket gate `review_jobs_are_reused_within_a_session_and_never_borrowed_across_sessions`：同 session 同 reviewer 连发两次 → 同一 job；把 replay 字节复制成第二个 session（相同 replay document hash ⇒ 相同 cache key）→ 不同 job、`session_id` 归各自 session，且旧 job id 仍答自己的 session。
 - **Browser cache + switching（frontend-only）**：`review/page.tsx` 新增 `traceCache`（`Map<cache_key, validated trace>`）；POST 仍发生但命中 `cache_key` 时直接 restore、不重复 `GET bundle`；切 reviewer 前由按钮 onClick 捕获 `{ply, filter, reveal}`，restore 时按 ply 找回并把 `reveal`/`filter` 一并恢复；Host 回答的 `session_id/reviewer_id` 与请求不符时 fail closed。抽出两个纯函数（`trace-runtime.mjs`）：`resolveSwitchIndex(frames, intent, humanSeat)`（按 `frame.ply` 而非 raw index）、`jobMatchesRequest(job, session, reviewer)`。
