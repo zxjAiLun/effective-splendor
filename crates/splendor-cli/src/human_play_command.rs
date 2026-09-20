@@ -887,8 +887,24 @@ impl ReviewJobManager {
         id
     }
 
-    fn id_for_cache_key(&self, cache_key: &str) -> Option<String> {
+    /// The job that already covers this exact request, if one is live.
+    ///
+    /// The cache key is derived from the replay document hash and the reviewer
+    /// identity/config, so it is *content* identity. It deliberately does not
+    /// include the session id, but job identity is not content identity: a job
+    /// record owns a `session_id` and a session-local artifact path, and those
+    /// must never be borrowed across sessions. Two different sessions with the
+    /// same replay document hash share a cache key; they must not share a job.
+    fn id_for_request(
+        &self,
+        session_id: &str,
+        reviewer_id: &str,
+        cache_key: &str,
+    ) -> Option<String> {
         self.jobs.values().find_map(|record| {
+            if record.session_id != session_id || record.reviewer_id != reviewer_id {
+                return None;
+            }
             let state = record.state.lock().ok()?;
             (state.cache_key == cache_key).then(|| record.id.clone())
         })
@@ -1158,7 +1174,10 @@ impl StudioHost {
             .join(&session_id)
             .join(format!("{}-{}.analysis.json", reviewer.id, cache_key));
 
-        if let Some(job_id) = self.jobs.id_for_cache_key(&cache_key) {
+        if let Some(job_id) = self
+            .jobs
+            .id_for_request(&session_id, &reviewer.id, &cache_key)
+        {
             return self.review_status(&job_id);
         }
 

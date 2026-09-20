@@ -690,3 +690,85 @@ fn reviewers_endpoint_reports_the_authoritative_human_seat_from_metadata() {
         .expect("the finished session is still listed");
     assert!(row["human_seat"].is_null(), "{row}");
 }
+
+/// F3 cache identity: reusing a cached review is a *content* decision, but a job
+/// record is not content.
+///
+/// The cache key binds replay document hash + reviewer identity/config and
+/// deliberately excludes the session id, so two sessions holding byte-identical
+/// replays derive the same key. That is correct for "do not recompute", and wrong
+/// for job identity: a job owns a `session_id` and a session-local artifact path,
+/// and answering session B with session A's job would report A's session and point
+/// at A's artifact directory.
+///
+/// So the same session must step on its own job (and its own artifact must make a
+/// later request `cached=true` rather than re-executing), while a second session
+/// with the same replay hash must get its *own* job record. The assertions are made
+/// against the HTTP answer, never against internals.
+#[test]
+fn review_jobs_are_reused_within_a_session_and_never_borrowed_across_sessions() {
+    let dir = tmp_dir("f3-review-cache-identity");
+    let (root, _paths) = new_league(&dir);
+    let registry = human_registry(&dir, &bin());
+    let host = HostProcess::start_with_registry(&root, &dir, &registry);
+
+    let review_body = |session: &str| {
+        serde_json::json!({
+            "session_id": session,
+            "reviewer_id": "m07-determinization-champion",
+        })
+    };
+    let post = |session: &str| host.post_json("/reviews", &review_body(session));
+
+    // --- same session + same reviewer + same config -> the same job -------------
+    let state = finish_game(&host, start_game(&host, 0, 810_100));
+    let session_a = state["session_id"].as_str().unwrap().to_string();
+    let (code, first) = post(&session_a);
+    assert_eq!(code, 200, "{first}");
+    assert_eq!(first["session_id"], session_a.as_str(), "{first}");
+    assert_eq!(first["reviewer_id"], "m07-determinization-champion");
+    let job_a = first["id"].as_str().unwrap().to_string();
+    let cache_key = first["cache_key"].as_str().unwrap().to_string();
+    assert_eq!(cache_key.len(), 64, "{first}");
+
+    let (code, again) = post(&session_a);
+    assert_eq!(code, 200, "{again}");
+    assert_eq!(
+        again["id"], job_a.as_str(),
+        "the same request must step on the same job: {again}"
+    );
+    assert_eq!(again["cache_key"], cache_key.as_str());
+    assert_eq!(again["session_id"], session_a.as_str());
+
+    // --- a second session whose replay bytes are identical ----------------------
+    // Copying the durable session files under a different id is exactly the
+    // condition that previously produced a shared job: same replay document hash,
+    // therefore the same cache key, but a different session.
+    let session_b = "f3-cache-identity-copy";
+    let play_dir = dir.join("local-artifacts/m20-human-play");
+    let from = play_dir.join(format!("{session_a}.replay.json"));
+    let to = play_dir.join(format!("{session_b}.replay.json"));
+    assert!(from.is_file(), "the finished session wrote its replay");
+    std::fs::copy(&from, &to).unwrap();
+
+    let (code, other) = post(session_b);
+    assert_eq!(code, 200, "{other}");
+    assert_ne!(
+        other["id"].as_str().unwrap(),
+        job_a.as_str(),
+        "a different session must not borrow session {session_a}'s job: {other}"
+    );
+    assert_eq!(
+        other["session_id"], session_b,
+        "the job record must name the session that asked for it: {other}"
+    );
+    assert_eq!(
+        other["cache_key"], cache_key.as_str(),
+        "the two sessions really do share one content key; only the job is separate"
+    );
+    // The borrowed record must not leak A's session through the status or bundle
+    // routes either: a job id answers for the session that owns it.
+    let (code, status) = host.get_json(&format!("/reviews/{job_a}"));
+    assert_eq!(code, 200, "{status}");
+    assert_eq!(status["session_id"], session_a.as_str(), "{status}");
+}

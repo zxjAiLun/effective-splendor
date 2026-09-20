@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 @ `802bb12` — REPAIR REQUIRED（P0=0/P1=3/P2=0）；Repair 1 IMPLEMENTED / VERIFIED local，owner review pending**；F3 cache/switch **NOT YET AUTHORIZED**。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 shared presentation — ACCEPTED / CLOSED @ `a2885f0`（owner 远端复核 P0=0/P1=0/P2=0；evidence docs `33a7ae8`）**；**F3 cache + switching — AUTHORIZED / IN PROGRESS**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -68,6 +68,23 @@
 之后逐片实现 D/F 并更新上表，不因 C/E 通过就宣布七项完成。每片跟踪实际测试证据和剩余项。
 
 ## Iteration log
+
+### 2026-09-20 — F3 cache + reviewer switching AUTHORIZED（owner 远端终审 F2 ACCEPTED / CLOSED @ `a2885f0`）
+
+owner 复核远端 `a2885f0` 真实 diff：**F2 Shared Player State + Structured Actions ACCEPTED / CLOSED，P0=0/P1=0/P2=0（F2 scope）**；三个 Repair 点全部收掉（唯一 player-state presentation、三类 analysis row 共享 compact renderer、seat-aware action attribution），并明确 `138 passed` / lint / Chromium / negative controls 仍属本地执行证据（GitHub 无 cloud checks）；11 项 D3B TypeScript 诊断为既有债务，不算 F2 回归。**F3 正式 AUTHORIZED**。
+
+**F3 冻结合同**：不重写 cache algorithm（`review_cache_key_v2`、`POST /reviews`、session-local artifact path 全部保留）；只做三件事——① Host job reuse 绑定 `session_id + reviewer_id + cache_key`（cache key 本身不含 session）；② Browser 按 Host 返回的 `cache_key` 缓存 validated trace（POST 仍保留，因为只有 Host 知道完整 reviewer config）；③ reviewer 切换保留逻辑 `frame.ply + filter + reveal`，并用新 trace 的 filtered frames 按 ply 找回，找不到则 index 0。不碰 ReviewTrace/reviewer config/promotion/Human completion/League schema/Replay format/F2 presentation，也不建 global content-addressed cache。
+
+### 2026-09-20 — F3 实现 IMPLEMENTED / VERIFIED local（owner acceptance pending）
+
+- **Host cache identity（Rust）**：`ReviewJobManager::id_for_cache_key`（全局按 cache key 找）收紧为 `id_for_request(session_id, reviewer_id, cache_key)`，三者一致才复用；新增 Host socket gate `review_jobs_are_reused_within_a_session_and_never_borrowed_across_sessions`：同 session 同 reviewer 连发两次 → 同一 job；把 replay 字节复制成第二个 session（相同 replay document hash ⇒ 相同 cache key）→ 不同 job、`session_id` 归各自 session，且旧 job id 仍答自己的 session。
+- **Browser cache + switching（frontend-only）**：`review/page.tsx` 新增 `traceCache`（`Map<cache_key, validated trace>`）；POST 仍发生但命中 `cache_key` 时直接 restore、不重复 `GET bundle`；切 reviewer 前由按钮 onClick 捕获 `{ply, filter, reveal}`，restore 时按 ply 找回并把 `reveal`/`filter` 一并恢复；Host 回答的 `session_id/reviewer_id` 与请求不符时 fail closed。抽出两个纯函数（`trace-runtime.mjs`）：`resolveSwitchIndex(frames, intent, humanSeat)`（按 `frame.ply` 而非 raw index）、`jobMatchesRequest(job, session, reviewer)`。
+- **真实浏览器 gate**：新增 `tests/review-switch-browser.mjs`（mocked Host、真实 Chromium）：A→B→A 不重复 fetch A bundle；同一 reviewer id 换 `cache_key` 必须重新加载；切换保留 ply+filter+reveal（含 round trip）；A 的延迟响应不能覆盖 B；foreign job identity 被拒且不渲染 review body。
+- **负向对照（`local-artifacts/studio-league/player-loop/f3-negative-controls.py`，4 组全部击中并字节还原）**：NC1 Host 改回只按 cache key 全局找 job → Host gate FAIL；NC2 browser cache 改按 reviewer id → reuse gate FAIL；NC3 切换恢复 `setFrameIndex(0)`/`setReveal(false)` → preserved-state gate FAIL；NC4 去掉 job identity 检查 → foreign-job gate FAIL。
+- **已有门禁调整（范围内）**：F2 Gate 9 原禁止页面出现任何 `cache_key/cacheKey`；F3 授权后该断言改为“review job surface 完整 + cache key 仍由 Host 拥有（无自建 cache key）”，把 cache 行为归给 F3 自己的 gate，避免 F2 门禁永久禁止后续授权的 F3 变更。
+- **Validation evidence（local, 2026-09-20）**：`cargo test --test league_host_api` **31 passed / 0 failed**；`cargo test`（splendor-cli）**304 passed / 0 failed**；`cargo test -p splendor-studio-league` 全绿；`npm --prefix apps/replay-studio test` **140 passed**；`npm --prefix apps/replay-studio run lint` **PASS**；`tests/review-switch-browser.mjs` / `tests/review-seat-browser.mjs` / `tests/human-play-browser.mjs` 三个真实 Chromium gate **PASS**；`git diff --check` **PASS**。`npx tsc --noEmit` 仍为既有 11 项 D3B participant-profile 诊断，本轮文件无新增。
+
+**Verdict**：F3 **IMPLEMENTED / VERIFIED local，待 owner review**；不宣称 ACCEPTED/CLOSED。
 
 ### 2026-09-20 — F2 Repair 1 AUTHORIZED / IN PROGRESS（baseline `802bb120a56bc163983c1de95e18428951ba5853`）
 

@@ -9,8 +9,10 @@ import {
   decodeReviewersEnvelope,
   defaultReviewerIdFor,
   isReviewTraceEnvelope,
+  jobMatchesRequest,
   parseUrlSeat,
   resolveHumanSeat,
+  resolveSwitchIndex,
   reviewRecommendedAction,
   reviewerSupportsPlayerCount,
   validateReviewTrace,
@@ -343,4 +345,35 @@ test("F1: the summary over My decisions counts only that seat", async () => {
   }
   // Unknown seat means "all", never "seat 0".
   assert.equal(buildReviewSummary(twoSeats, null).decisions, twoSeats.frames.length);
+});
+
+// ---- F3: reviewer switching preserves the logical position ---------------------
+test("F3: a reviewer switch re-finds the recorded ply, not the rendered index", () => {
+  const frames = [
+    { ply: 0, actor: 0 }, { ply: 1, actor: 1 }, { ply: 2, actor: 0 }, { ply: 3, actor: 1 },
+  ];
+  // Same filter: the ply is found at its own index.
+  assert.equal(resolveSwitchIndex(frames, { ply: 2, filter: "all" }, 0), 2);
+  // The ply, not the index: in My decisions for seat 0 the same ply sits at index 1,
+  // whereas reusing "all index 2" would land on ply 3 — a different decision.
+  assert.equal(resolveSwitchIndex(frames, { ply: 2, filter: "mine" }, 0), 1);
+  // My decisions for the other seat finds its own ply.
+  assert.equal(resolveSwitchIndex(frames, { ply: 3, filter: "mine" }, 1), 1);
+  // A ply the new frames do not contain starts honestly at the beginning instead of
+  // guessing a nearby decision.
+  assert.equal(resolveSwitchIndex(frames, { ply: 99, filter: "all" }, 0), 0);
+  // My decisions with no authoritative seat cannot pretend to filter.
+  assert.equal(resolveSwitchIndex(frames, { ply: 2, filter: "mine" }, null), 2);
+  // Nothing on screen before the switch -> the first frame, never a stale index.
+  assert.equal(resolveSwitchIndex(frames, null, 0), 0);
+});
+
+// ---- F3: a Host job must describe the request that produced it ------------------
+test("F3: a job for another session or reviewer is refused, not rendered", () => {
+  const job = { id: "review-1", session_id: "sess-a", reviewer_id: "m07", cache_key: "a".repeat(64) };
+  assert.equal(jobMatchesRequest(job, "sess-a", "m07"), true);
+  assert.equal(jobMatchesRequest(job, "sess-b", "m07"), false, "another session's job must not be rendered");
+  assert.equal(jobMatchesRequest(job, "sess-a", "s3"), false, "another reviewer's job must not be rendered");
+  assert.equal(jobMatchesRequest(null, "sess-a", "m07"), false);
+  assert.equal(jobMatchesRequest(undefined, "sess-a", "m07"), false);
 });

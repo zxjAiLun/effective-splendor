@@ -184,12 +184,17 @@ test("F2 Gate 8: the hidden-reserve boundary survives in the shared board", () =
   assert.doesNotMatch(playerStrip, /ReservedCards|public_reserved\.map/);
 });
 
-// ---- Gate 9: no review job or cache behaviour changed --------------------------
-test("F2 Gate 9: F2 does not change review job or cache behaviour", () => {
+// ---- Gate 9: F2 owns no review-cache authority ---------------------------------
+// F2's contract was that a *presentation* slice does not silently become a cache
+// change. F3 later gained the authorized reviewer-switch cache (owned and gated by
+// tests/review-switch-browser.mjs), so the durable assertion here is narrower: the
+// review POST and bundle fetch still exist, and the page never invents its own cache
+// key — the Host's cache_key is the only cache identity.
+test("F2 Gate 9: the review job surface is intact and its cache key stays Host-owned", () => {
   assert.match(reviewPage, /fetch\(`\$\{API\}\/reviews`/, "the review POST is intact");
   assert.match(reviewPage, /\/bundle`/, "the bundle fetch is intact");
-  // No cache key or reviewer-switching logic was introduced by F2.
-  for (const forbidden of ["cache_key", "cacheKey", "job.cached =", "reviewCacheKey"]) {
+  // No local, self-derived cache key: the cache is keyed by the Host's cache_key.
+  for (const forbidden of ["reviewCacheKey", "job.cached =", "cacheKeyFromTrace"]) {
     assert.equal(reviewPage.includes(forbidden), false, `F2 must not introduce ${forbidden}`);
   }
 });

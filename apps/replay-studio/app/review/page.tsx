@@ -9,8 +9,10 @@ import {
   buildReviewSummary,
   decodeReviewersEnvelope,
   defaultReviewerIdFor,
+  jobMatchesRequest,
   parseUrlSeat,
   resolveHumanSeat,
+  resolveSwitchIndex,
   reviewRecommendedAction,
   reviewerSupportsPlayerCount,
   validateReviewTrace,
@@ -133,6 +135,7 @@ type Job = {
   current_ply: number;
   error: string | null;
   cached: boolean;
+  cache_key: string;
 };
 
 const S3_PATH_LABELS: Record<string, string> = {
@@ -170,14 +173,28 @@ export default function ReviewPage() {
   const [filter, setFilter] = useState<"mine" | "all">("all");
   const [frameIndex, setFrameIndex] = useState(0);
   const requestGeneration = useRef(0);
+  // Validated traces already fetched in this page lifetime, keyed by the Host's
+  // cache key — the only identity that covers replay document + reviewer
+  // identity/config. Switching back to a reviewer steps on the same key and
+  // restores the trace without a second bundle fetch. Keying by reviewer id would
+  // be a lie: a reviewer whose config changed keeps its id and gets a new key.
+  const traceCache = useRef(new Map<string, ReviewTrace>());
+  // The logical position to preserve across a reviewer switch. It is the
+  // recorded ply, not a raw index: "All decisions index 17" and "My decisions
+  // index 17" are different plies, so an index would silently move the user.
+  const switchIntent = useRef<{ ply: number; filter: "mine" | "all"; reveal: boolean } | null>(null);
 
   const cards = useMemo(() => new Map((trace?.catalog.cards ?? []).map((card) => [card.id, card])), [trace]);
   const nobles = useMemo(() => new Map((trace?.catalog.nobles ?? []).map((noble) => [noble.id, noble])), [trace]);
 
-  const startReview = async (session: string, id: string, seat = humanSeat) => {
+  const startReview = async (session: string, id: string, seat = humanSeat, intent: { ply: number; filter: "mine" | "all"; reveal: boolean } | null = null) => {
     const generation = ++requestGeneration.current;
     setError("");
     setReviewerId(id);
+    // Preserve the logical position, not the rendered index, before the trace is
+    // replaced. Only a switch away from a rendered trace has a position to keep;
+    // the caller passes the position it captured at click time.
+    switchIntent.current = intent;
     setTrace(null);
     const url = new URL(window.location.href);
     url.searchParams.set("session", session);
@@ -190,14 +207,50 @@ export default function ReviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: session, reviewer_id: id }),
       });
-      const value = await response.json();
-      if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-      void poll(value as Job, generation);
+      const value = (await response.json()) as Job;
+      if (!response.ok) throw new Error((value as unknown as { error?: string }).error ?? `Studio Host ${response.status}`);
+      // The Host's answer must describe the request that was made. A job record
+      // for another session or reviewer is a refusal, not a result to render.
+      if (!jobMatchesRequest(value, session, id)) {
+        throw new Error(`Review job ${value.id} belongs to session ${value.session_id} / reviewer ${value.reviewer_id}, not the requested ${session} / ${id}`);
+      }
+      const cached = traceCache.current.get(value.cache_key);
+      if (cached) {
+        if (generation === requestGeneration.current) {
+          applyTrace(cached, value.cache_key);
+          setJob(value);
+        }
+        return;
+      }
+      void poll(value, generation);
     } catch (reason) {
       if (generation === requestGeneration.current) {
         setError(reason instanceof Error ? reason.message : String(reason));
       }
     }
+  };
+
+  /**
+   * Restore a validated trace and re-anchor the logical position it replaced.
+   *
+   * The cache key comes from the Host's job record, never from the trace: the trace
+   * is a pure analysis document and carries no cache identity. Keying the browser
+   * cache off the trace would silently fall back to the empty string and defeat the
+   * whole reuse contract.
+   */
+  const applyTrace = (nextTrace: ReviewTrace, cacheKey: string) => {
+    const intent = switchIntent.current;
+    switchIntent.current = null;
+    if (cacheKey) traceCache.current.set(cacheKey, nextTrace);
+    setTrace(nextTrace);
+    if (intent) {
+      setFilter(intent.filter);
+      setReveal(intent.reveal);
+      setFrameIndex(resolveSwitchIndex(nextTrace.frames, intent, humanSeat));
+    } else {
+      setFrameIndex(0);
+    }
+    setError("");
   };
 
   const poll = async (initial: Job, generation: number) => {
@@ -213,10 +266,7 @@ export default function ReviewPage() {
         const value = await bundle.json();
         try {
           const nextTrace = validateReviewTrace(value) as ReviewTrace;
-          setTrace(nextTrace);
-          setFrameIndex(0);
-          setReveal(false);
-          setError("");
+          applyTrace(nextTrace, current.cache_key);
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : "Invalid review trace");
         }
@@ -351,7 +401,7 @@ export default function ReviewPage() {
                 className={reviewer.id === reviewerId ? "active" : ""}
                 disabled={!supported}
                 title={supported ? undefined : `Unavailable for ${playerCount}-player replays`}
-                onClick={() => void startReview(sessionId, reviewer.id, humanSeat)}
+                onClick={() => void startReview(sessionId, reviewer.id, humanSeat, frame ? { ply: frame.ply, filter: filter === "mine" && humanSeat !== null ? "mine" : "all", reveal } : null)}
               >
                 <strong>{reviewer.display_name}</strong>
                 <small>{statusLabel}{reviewer.estimated_cost === "cpu" ? " · CPU" : ""}{supported ? "" : ` · unavailable for ${playerCount}-player replays`}</small>

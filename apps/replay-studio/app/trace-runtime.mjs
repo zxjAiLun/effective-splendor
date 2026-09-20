@@ -805,3 +805,39 @@ export function buildReviewSummary(trace, humanSeat = null) {
     medianActionRank: median(ranks),
   };
 }
+
+/**
+ * Where to land after a reviewer switch.
+ *
+ * The position that must survive a reviewer switch is the *recorded ply*, not the
+ * rendered index. "All decisions index 17" and "My decisions index 17" are
+ * different plies, so carrying an index across a filter or a reviewer would move
+ * the user to a decision they were not looking at. This resolves the target ply
+ * inside whatever frame list the new filter/view produces.
+ *
+ * `intent` is the position captured before the switch (`{ ply, filter }`), or null
+ * when there was nothing on screen to preserve. A ply that is not present in the
+ * new frames falls back to index 0 rather than inventing a "nearest" ply: the
+ * caller asked for a specific decision, and guessing a different one is worse than
+ * starting honestly.
+ */
+export function resolveSwitchIndex(frames, intent, humanSeat) {
+  if (!intent) return 0;
+  const scoped = intent.filter === "mine" && humanSeat !== null
+    ? frames.filter((frame) => frame.actor === humanSeat)
+    : frames;
+  const index = scoped.findIndex((frame) => frame.ply === intent.ply);
+  return index >= 0 ? index : 0;
+}
+
+/**
+ * Whether a Host answer may be rendered for the request that produced it.
+ *
+ * The Host computes the only real review identity (replay document + reviewer
+ * identity/config) as its cache key. A job that names a different session or
+ * reviewer than the one requested is a refusal: rendering it would show another
+ * session's job id and offer a bundle from another session's artifact path.
+ */
+export function jobMatchesRequest(job, sessionId, reviewerId) {
+  return Boolean(job) && job.session_id === sessionId && job.reviewer_id === reviewerId;
+}
