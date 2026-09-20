@@ -48,8 +48,8 @@ const view = {
   },
 };
 
-// ---- Gate 1: one player-state component, used by all three pages ---------------
-test("F2 Gate 1: Play, Replay and Review all render the shared PlayerStateStrip", () => {
+// ---- Gate A: one player-state presentation, used by all three pages -----------
+test("F2 Gate A: Play, Replay and Review use one player-state presentation", () => {
   for (const [name, source] of [["Play", playPage], ["Replay", replayPage], ["Review", reviewPage]]) {
     assert.match(source, /PlayerStateStrip/, `${name} must use the shared player-state component`);
     assert.match(source, /from "\.\.\/components\/player-state-strip"|from "\.\.\/app\/components\/player-state-strip"/, `${name} must import the shared strip`);
@@ -58,6 +58,21 @@ test("F2 Gate 1: Play, Replay and Review all render the shared PlayerStateStrip"
   for (const field of ["prestige", "tokens", "bonuses", "reserved_count", "purchased", "nobles"]) {
     assert.match(playerStrip, new RegExp(field), `the shared strip must present ${field}`);
   }
+  assert.doesNotMatch(playPage, /function PlayerResources|<PlayerResources/, "Play must not retain its old resource presentation");
+  const humanScore = playPage.slice(playPage.indexOf('className="human-score"'), playPage.indexOf('className="human-bank"'));
+  assert.doesNotMatch(humanScore, /item\.prestige|item\.tokens|item\.bonuses|reserved ·|developments/, "Play's old VP/resource/count summary must be gone");
+  assert.doesNotMatch(replayBoard, /player\.prestige|player\.tokens|player\.bonuses|<TokenTotal|bonus-line|TOKENS|DISCOUNTS/, "BoardSurface must not duplicate strip state");
+});
+
+
+// ---- Gate B: board area retains reserves and hidden-card boundaries ------------
+test("F2 Gate B: BoardSurface is reserve-only while hidden reserves stay hidden", () => {
+  assert.match(replayBoard, /<ReservedCards frame=\{frame\} player=\{player\} own=\{own\} reveal=\{reveal\} cards=\{cards\} \/>/);
+  assert.match(replayBoard, /referee_reveal\.players\.find/);
+  assert.match(replayBoard, /frame\.player_view\.private\.reserved/);
+  assert.match(replayBoard, /player\.public_reserved/);
+  assert.match(replayBoard, /HiddenDevelopmentCard/, "opponents' blind reserves stay face-down");
+  assert.doesNotMatch(playerStrip, /ReservedCards|public_reserved\.map/);
 });
 
 // ---- Gate 2: take_tokens uses real colours, counts, and a text label -----------
@@ -105,17 +120,40 @@ test("F2 Gate 4: reserve_deck never discloses a card identity", () => {
   assert.match(structuredAction, /reserve_deck[\s\S]*?HiddenDevelopmentCard/);
 });
 
-// ---- Gate 5: Review actual and recommended share one renderer ------------------
-test("F2 Gate 5: Review renders recorded and recommended actions with one component", () => {
-  // Both sides go through StructuredAction in the shared ActionVerdict helper.
+// ---- Gate C: every Review analysis action row uses StructuredAction compact ----
+test("F2 Gate C: Review verdict and all analysis tables share StructuredAction", () => {
   assert.match(reviewPage, /function ActionVerdict\(/);
+  const analysis = reviewPage.slice(reviewPage.indexOf("function AnalysisPanel("), reviewPage.indexOf("function ActionVerdict("));
+  assert.equal((analysis.match(/<StructuredAction[\s\S]*?variant="compact"/g) ?? []).length, 3, "S3, root, and neural rows must use compact StructuredAction");
+  assert.match(analysis, /proposalRows\.map/);
+  assert.match(analysis, /scoredRows\.map/);
+  assert.match(analysis, /neuralRows\.map/);
+  assert.doesNotMatch(analysis, /formatActionLabel/, "analysis rows must not use the old text renderer");
+
+  // Both sides go through StructuredAction in the shared ActionVerdict helper.
   const verdict = reviewPage.slice(reviewPage.indexOf("function ActionVerdict("));
   const body = verdict.slice(0, verdict.indexOf("function MetricBar("));
   assert.equal((body.match(/<StructuredAction/g) ?? []).length, 2, "both recorded and recommended use StructuredAction");
   assert.match(body, /frame\.recorded_action/);
   assert.match(body, /recommended/);
-  // The previous text-only rendering must be gone from the verdict.
   assert.doesNotMatch(body, /formatActionLabel/);
+});
+
+// ---- Gate D: actor attribution is authoritative, not inferred from the page ----
+test("F2 Gate D: an opponent frame cannot be labelled YOU PLAYED", () => {
+  const verdict = reviewPage.slice(reviewPage.indexOf("function ActionVerdict("));
+  assert.match(verdict, /humanSeat !== null && frame\.actor === humanSeat/);
+  assert.match(verdict, /`P\$\{frame\.actor\} PLAYED`/);
+  assert.match(reviewPage, /<AnalysisPanel trace=\{trace\} frame=\{frame\} cards=\{cards\} nobles=\{nobles\} humanSeat=\{humanSeat\}/);
+});
+
+// ---- Gate E: no human attribution means no YOU claim ---------------------------
+test("F2 Gate E: unattributed frames use a recorded-player label", () => {
+  const verdict = reviewPage.slice(reviewPage.indexOf("function ActionVerdict("));
+  const attribution = verdict.match(/<span className="section-kicker">\{[^\n]+<\/span>/)?.[0] ?? "";
+  assert.match(attribution, /humanSeat !== null/);
+  assert.match(attribution, /P\$\{frame\.actor\} PLAYED/);
+  assert.doesNotMatch(attribution, /YOU PLAYED<\/span>/, "YOU must only be one branch of the seat-aware label");
 });
 
 // ---- Gate 6: choose_noble uses the catalog, not a bare id ----------------------

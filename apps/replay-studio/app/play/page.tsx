@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE as API } from "../api-base.mjs";
 import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
-import { TokenTotal } from "../components/token-total";
 import { defaultReviewerIdFor, reviewerSupportsPlayerCount } from "../trace-runtime.mjs";
 import { PlayerStateStrip, type StripPlayerView } from "../components/player-state-strip";
 import { StructuredAction, type ActionCatalog } from "../components/structured-action";
@@ -48,14 +47,6 @@ function GemChip({gem,count,onClick,selected=false,disabled=false,source="token"
   const label=source==="bonus"?`${GEM_LABELS[gem]} permanent card bonuses ${count}`:`${GEM_LABELS[gem]} tokens ${count}`;
   const className=`table-gem table-gem-${gem} ${source==="bonus"?"card-bonus-gem":""} ${selected?"selected":""}`;
   return onClick ? <button type="button" className={className} disabled={disabled} onClick={onClick} aria-label={label}>{content}</button> : <span className={className} aria-label={label}>{content}</span>;
-}
-
-function PlayerResources({player}:{player:Player}) {
-  const bonusTotal=player.bonuses.reduce((sum,amount)=>sum+amount,0);
-  return <div className="player-resource-table">
-    <div className="player-resource-row"><span>TOKENS <b><TokenTotal tokens={player.tokens}/></b></span><div>{GEM_NAMES.map(gem=><GemChip gem={gem} count={player.tokens[gem]} key={gem}/>)}</div></div>
-    <div className="player-resource-row bonuses"><span>CARD BONUSES <b>{bonusTotal}</b></span><div>{TAKE_GEMS.map((gem,index)=><GemChip gem={gem} count={player.bonuses[index]??0} source="bonus" key={gem}/>)}</div></div>
-  </div>;
 }
 
 /**
@@ -206,7 +197,7 @@ export default function HumanPlayPage() {
     {state?<section className="human-workspace">
       <article className="human-board">
         <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} />
-        <div className="human-score">{state.observation.public.players.map(item=><div className={item.id===state.human_seat?"you":""} key={item.id}><span>{item.id===state.human_seat?"YOU":"OPPONENT"}</span><strong>{item.prestige}<small> VP</small></strong><small>{item.reserved_count} reserved · {item.purchased.length} developments · {item.nobles.length} nobles</small><PlayerResources player={item}/>{item.id!==state.human_seat?<OpponentReserve player={item} cards={cards}/>:null}{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>)}</div>
+        <div className="human-score">{state.observation.public.players.map(item=>{const hasOpponentReserve=item.id!==state.human_seat&&item.reserved_count>0;if(!hasOpponentReserve&&!item.nobles.length)return null;return <div key={item.id}>{hasOpponentReserve?<OpponentReserve player={item} cards={cards}/>:null}{item.nobles.length?<div className="owned-nobles">{item.nobles.map(id=>nobles.has(id)?<NobleTile noble={nobles.get(id)!} owned key={id}/>:null)}</div>:null}</div>;})}</div>
         <div className="human-bank"><span><b>BANK</b><small>Click gems to build a legal take</small></span>{GEM_NAMES.map(gem=><GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={busy||gem==="gold"||state.result!==null} onClick={()=>changePendingGem(gem,1)} key={gem}/>)}</div>
         <section className="table-nobles"><div><b>NOBLES</b><small>{state.observation.public.nobles.length} available · requirements use permanent bonuses</small></div>{state.observation.public.nobles.map(id=>{const noble=nobles.get(id);const action=state.legal_actions.find(candidate=>candidate.type==="choose_noble"&&candidate.noble===id);return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||busy} onClick={()=>{if(action)void play(action);}} key={id}/>:null;})}</section>
         {state.observation.private.reserved.length?<section className="reserved-tray"><span>YOUR RESERVE</span>{state.observation.private.reserved.map(reserved=>cards.has(reserved.card)?<DevelopmentCard card={cards.get(reserved.card)!} interactive affordable={(state.legal_actions).some(action=>action.type==="buy_reserved"&&action.slot===reserved.slot)} disabled={busy} onClick={()=>openReserved(reserved.slot,reserved.card)} slotLabel={`reserve ${reserved.slot+1}`} key={reserved.slot}/>:null)}</section>:null}

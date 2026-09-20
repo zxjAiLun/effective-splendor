@@ -9,7 +9,6 @@ import {
   buildReviewSummary,
   decodeReviewersEnvelope,
   defaultReviewerIdFor,
-  formatActionLabel,
   parseUrlSeat,
   resolveHumanSeat,
   reviewRecommendedAction,
@@ -395,7 +394,7 @@ export default function ReviewPage() {
               {frame && <BoardSurface frame={frame} cards={cards} nobles={nobles} reveal={reveal} />}
             </div>
             <aside className="analysis-panel">
-              <AnalysisPanel trace={trace} frame={frame} cards={cards} nobles={nobles} />
+              <AnalysisPanel trace={trace} frame={frame} cards={cards} nobles={nobles} humanSeat={humanSeat} />
             </aside>
           </section>
           <footer className="timeline-panel">
@@ -468,7 +467,7 @@ function ReviewSummaryBar({ trace, reviewer, summary, job, hasHumanSeat }: { tra
   );
 }
 
-function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; frame: ReviewFrame | null; cards: Map<number, DevelopmentCardData & { id: number }>; nobles: Map<number, { id: number; prestige: number; requirements: number[] }> }) {
+function AnalysisPanel({ trace, frame, cards, nobles, humanSeat }: { trace: ReviewTrace; frame: ReviewFrame | null; cards: Map<number, DevelopmentCardData & { id: number }>; nobles: Map<number, { id: number; prestige: number; requirements: number[] }>; humanSeat: number | null }) {
   if (!frame) return null;
   const rows = buildReviewRows(trace, frame).rows;
   const recommended = reviewRecommendedAction(frame.review_result);
@@ -495,7 +494,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
           {proposalRows.map((row) => (
             <div className={`analysis-row determinization ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={row.role}>
               <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{proposalLabels[row.role] ?? row.role}</span>
-              <span className="action-name">{row.action ? formatActionLabel(row.action, frame, cards) : "Not evaluated"}</span>
+              <div className="action-name">{row.action ? <StructuredAction action={row.action} playerView={frame.player_view} cards={cards} nobles={nobles} variant="compact" /> : "Not evaluated"}</div>
               <span className="q-value">{row.actual ? "★" : "—"}</span>
               <span className="q-value">{row.recommended ? "▲" : "—"}</span>
             </div>
@@ -503,6 +502,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
         </div>
         <ActionVerdict
           frame={frame}
+          humanSeat={humanSeat}
           recommended={recommendedAction}
           cards={cards}
           nobles={nobles}
@@ -528,7 +528,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
           <div className="analysis-row determinization table-head" role="row"><span>Action</span><span>Mean utility</span><span>Utility gap</span><span>Rank</span></div>
           {scoredRows.map((row) => (
             <div className={`analysis-row determinization ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={actionKey(row.action)}>
-              <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{formatActionLabel(row.action, frame, cards)}</span>
+              <div className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i><StructuredAction action={row.action} playerView={frame.player_view} cards={cards} nobles={nobles} variant="compact" /></div>
               <span className="q-value">{row.meanUtility.toFixed(0)}</span>
               <span className={`delta ${row.utilityGap === 0 ? "best" : ""}`}>{row.utilityGap === 0 ? "BEST" : row.utilityGap.toFixed(0)}</span>
               <span className="q-value">{row.actionRank} / {rows.length}</span>
@@ -537,6 +537,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
         </div>
         <ActionVerdict
           frame={frame}
+          humanSeat={humanSeat}
           recommended={recommended}
           cards={cards}
           nobles={nobles}
@@ -559,7 +560,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
         <div className="analysis-row table-head" role="row"><span>Action</span><span>Prior</span><span>Visit</span><span>Q(P{frame.actor})</span><span>Q gap</span></div>
         {neuralRows.map((row) => (
           <div className={`analysis-row ${row.actual ? "actual-row" : ""} ${row.searchChoice ? "best-row" : ""} ${row.highestQ ? "highest-q-row" : ""}`} role="row" key={actionKey(row.action)}>
-            <span className="action-name"><i>{row.actual ? "★" : ""}{row.searchChoice ? "▲" : ""}{row.highestQ ? "◆" : ""}</i>{formatActionLabel(row.action, frame, cards)}</span>
+            <div className="action-name"><i>{row.actual ? "★" : ""}{row.searchChoice ? "▲" : ""}{row.highestQ ? "◆" : ""}</i><StructuredAction action={row.action} playerView={frame.player_view} cards={cards} nobles={nobles} variant="compact" /></div>
             <MetricBar value={row.prior} tone="prior" />
             <MetricBar value={row.visit} tone="visit" />
             <span className="q-value">{row.q === null ? "UNSCORED" : row.q.toFixed(3)}</span>
@@ -569,6 +570,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
       </div>
       <ActionVerdict
         frame={frame}
+        humanSeat={humanSeat}
         recommended={recommended}
         cards={cards}
         nobles={nobles}
@@ -591,6 +593,7 @@ function AnalysisPanel({ trace, frame, cards, nobles }: { trace: ReviewTrace; fr
  */
 function ActionVerdict({
   frame,
+  humanSeat,
   recommended,
   cards,
   nobles,
@@ -598,6 +601,7 @@ function ActionVerdict({
   differLabel,
 }: {
   frame: ReviewFrame;
+  humanSeat: number | null;
   recommended: Action | null;
   cards: ActionCatalog["cards"];
   nobles: ActionCatalog["nobles"];
@@ -608,7 +612,7 @@ function ActionVerdict({
   return (
     <div className="action-duo">
       <div className="action-duo-row">
-        <span className="section-kicker">YOU PLAYED</span>
+        <span className="section-kicker">{humanSeat !== null && frame.actor === humanSeat ? "YOU PLAYED" : `P${frame.actor} PLAYED`}</span>
         <StructuredAction action={frame.recorded_action} playerView={playerView} cards={cards} nobles={nobles} />
       </div>
       {recommended ? (

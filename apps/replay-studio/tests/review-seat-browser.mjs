@@ -170,6 +170,8 @@ try {
   const tabCount = () => evaluate(`Array.from(document.querySelectorAll('.review-filter button')).map(b => b.textContent)`);
   const activeFilter = () => evaluate(`document.querySelector('.review-filter button.active') ? document.querySelector('.review-filter button.active').textContent : null`);
   const timelineActors = () => evaluate(`Array.from(document.querySelectorAll('.timeline button')).map(b => b.getAttribute('aria-label'))`);
+  const verdictLabels = () => evaluate(`Array.from(document.querySelectorAll('.action-duo .section-kicker')).map(node => node.textContent)`);
+  const compactActionRows = () => evaluate(`document.querySelectorAll('.analysis-table .structured-action-compact').length`);
 
   // ---- TEST 1: durable seat = 1, no URL seat -> My decisions = actor P1 only ----
   // Load the origin once so localStorage exists, then stage and re-enter.
@@ -183,6 +185,9 @@ try {
   const mine = await timelineActors();
   assert.equal(mine.length, seatFrames(1), "My decisions shows every seat-1 decision");
   assert.ok(mine.every((label) => label.endsWith("actor P1")), `My decisions must show only P1: ${mine}`);
+
+  assert.ok((await compactActionRows()) > 0, "root analysis rows must render compact StructuredAction in the real DOM");
+  assert.ok((await verdictLabels()).includes("YOU PLAYED"), "the authoritative human actor must be labelled YOU PLAYED");
 
   // ---- TEST 5: after filtering, the timeline and arrow keys share one array ----
   // Walk right with the keyboard: the visible index must advance inside the
@@ -207,6 +212,9 @@ try {
   assert.deepEqual(await tabCount(), ["All decisions"], "an unknown seat must not offer a My decisions control");
   assert.equal(await activeFilter(), "All decisions");
   assert.equal((await timelineActors()).length, trace.frames.length, "All decisions shows the whole recording");
+  const unattributedVerdict = (await verdictLabels()).join(" | ");
+  assert.match(unattributedVerdict, new RegExp(`P${trace.frames[0].actor} PLAYED`), "unattributed frames must name their recorded actor");
+  assert.doesNotMatch(unattributedVerdict, /YOU PLAYED/, "unattributed frames must never claim YOU");
   // The summary must not claim an attribution the session never recorded: with no
   // human seat it counts every reviewed decision, not "human decisions".
   await wait(`document.querySelector('.review-summary') !== null`);

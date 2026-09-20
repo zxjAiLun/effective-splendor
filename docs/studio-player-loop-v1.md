@@ -3,7 +3,7 @@
 - **Status**: IN PROGRESS；**Human Live League Integration v1 已 ACCEPTED / CLOSED（closeout `081c5dc`，owner 真人现场对局验收 PASS）**；本文件剩余范围为玩家闭环的 D/F：
   - D1 bounded League Games — **ACCEPTED / CLOSED**（owner 2026-09-19 复核通过；初版 `4a20f95` 经 2026-09-19 repair 后以 `3049642` 关闭）；
   - D2 `/ratings` 产品切分 — **ACCEPTED / CLOSED（owner 复核 `857250c`）**；P0=0/P1=0/P2=1（malformed-200 truthfulness，deferred，暂不修）；
-  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 shared state/actions — AUTHORIZED**；F3 cache/switch **NOT YET AUTHORIZED**。
+  - D3 **D3A Reader + Host API — ACCEPTED / CLOSED @ `51bad22`**；**D3B Profile UI — ACCEPTED / CLOSED @ `9bbc121`**；**D PLAYER DATA LINE — ACCEPTED / CLOSED**；**F1 seat authority + My decisions — ACCEPTED / CLOSED @ `cf91ba3`（P0=0/P1=0/P2=0）**；**F2 @ `802bb12` — REPAIR REQUIRED（P0=0/P1=3/P2=0）；Repair 1 IMPLEMENTED / VERIFIED local，owner review pending**；F3 cache/switch **NOT YET AUTHORIZED**。
 - **Baseline**（本轮 D1 起点）：`081c5dc61f2efd94b3f931b4e73f8d4c1883ff3f`，2026-09-18 核验 main / live origin/main 相同、worktree clean。
   下方旧的 `8093dd3` / “Slice C IMPLEMENTED / VERIFIED local” 表述（C/E 未验收时期的快照）已由本条取代。
 - **Owner-date**: 2026-09-18；owner 重申 9/11 七项闭环，明确继续完成玩家可用页面、接入、统计与 Review 修复；并**明确只授权下一轮做 D1**（D2/D3/F 待 D1 看过真实 diff 后再议）。
@@ -69,7 +69,37 @@
 
 ## Iteration log
 
-### 2026-09-20 — F2 实现（当前轮，COMPLETED / VERIFIED 本地，待 owner 复核）
+### 2026-09-20 — F2 Repair 1 AUTHORIZED / IN PROGRESS（baseline `802bb120a56bc163983c1de95e18428951ba5853`）
+
+Owner 远端真实 diff review：**F2 REPAIR REQUIRED，P0=0/P1=3/P2=0**。入场 main == origin/main == baseline，tracked worktree clean；`handoff.md` 仍 ignored。
+
+**更正上轮交付声明（保留历史测试结果，但撤回其覆盖充分性）**：Gate 1 只检查 strip 存在，漏掉 Play `human-score`/`PlayerResources` 与 BoardSurface 的第二套状态；Gate 5 只检查 ActionVerdict，漏掉 S3/root/neural action tables 的 `formatActionLabel`；无条件 `YOU PLAYED` 在 opponent frame 与无 human attribution 时错误。上轮 135 pass 与 5 个浏览器 smoke 不证明这些合同成立。
+
+**本轮冻结范围与顺序**：
+1. strip 唯一承载 VP/tokens/discounts/counts；旧 Play/Board 区只留 reserve faces/owned nobles/hidden boundary，不动 legal-action 控件。
+2. S3/root/neural 所有非空 action row 用 `StructuredAction variant="compact"`，pre-action view/catalog 同源；metrics/排序/算法不变。
+3. `humanSeat !== null && frame.actor === humanSeat` 才可写 `YOU PLAYED`，否则 `P{actor} PLAYED`。seat 从 page 的 durable authority 传到 AnalysisPanel/ActionVerdict，不从 filter 推断。
+
+**冻结 gates**：A Play 无第二套状态；B Board 无 prestige/tokens/bonuses 展示但 ReservedCards 三分支保留；C 三个 table 均共享 renderer 且不再调用 text formatter；D seat=0/actor=1 不冒充 YOU；E seat=null 时任何 action attribution 不冒充 YOU。收紧源码门并加真实浏览器 DOM/交互断言。NC1 恢复 Board tokens/discounts → uniqueness gate FAIL；NC2 root/neural 回 text formatter → action-row gate FAIL；均 patched-state byte restore 后复验。旧 reserve_deck 纯逻辑门保留。
+
+共享 resolver/components 与 hidden-info boundary 已被 owner 接受，不重做；**0 Rust/Host/schema/review trace/算法/cache 变更，F3 未授权**。最终门未运行前不称 VERIFIED。
+
+### 2026-09-20 — F2 Repair 1 IMPLEMENTED / VERIFIED local（owner acceptance pending）
+
+按授权范围完成窄 presentation wiring repair，未修改 Rust、Host、replay/schema、review trace、review algorithm 或 cache：
+
+- **P1-1 closed in code**：Play `human-score` 移除 VP、tokens、discounts 和 reserve/development/noble counts 的重复文本与 `PlayerResources`；Replay/Review `BoardSurface.players-grid` 收缩为 actor 标识 + `ReservedCards`，保留 referee/own-private/opponent-public 三分支和隐藏 reserve boundary。`PlayerStateStrip` 是 VP/tokens/discounts/counts 的唯一 summary presentation。
+- **P1-2 closed in code**：Review S3 proposal、root determinization、neural ISMCTS 三类非空 action rows 全部使用 `StructuredAction variant="compact"` 和当前 frame 的 pre-action `player_view`；metrics、排序、reviewer 算法未变；`formatActionLabel` 不再用于 product rows。
+- **P1-3 closed in code**：`humanSeat` 从 Review 页面 durable authority 传入 `AnalysisPanel`/`ActionVerdict`；仅 `humanSeat !== null && frame.actor === humanSeat` 显示 `YOU PLAYED`，其它情况显示 `P{actor} PLAYED`。
+- **门禁收紧**：`tests/f2-shared-presentation.test.mjs` 的 Gate A–E 分别覆盖唯一 state、reserve-only board/hidden boundary、三类 compact action rows、opponent attribution、null attribution；既有 resolver/interaction/cache gates 保留。
+- **真实 DOM 门禁**：`tests/review-seat-browser.mjs` 增加 compact row 与 seat-aware action label 断言；`human-play-browser.mjs` 既有 Play interaction gate 继续通过。
+- **负向对照**：`local-artifacts/studio-league/player-loop/f2-negative-controls.py` 的 NC1 恢复 Board token presentation、NC2 恢复 analysis `formatActionLabel`；两者均击中对应 gate，且字节级恢复后复绿。结果见 `f2-negative-controls.json`。
+
+**Validation evidence（local, 2026-09-20）**：`npm --prefix apps/replay-studio test` **138 passed**（含 vinext build）；`npm --prefix apps/replay-studio run lint` **PASS**；`node --test apps/replay-studio/tests/f2-shared-presentation.test.mjs` **14 passed**；`C:/Python312/python local-artifacts/studio-league/player-loop/f2-negative-controls.py` **PASS**；`cd apps/replay-studio && node tests/review-seat-browser.mjs` **PASS**；`cd apps/replay-studio && node tests/human-play-browser.mjs` **PASS**；`git diff --check` **PASS**。`cd apps/replay-studio && npx tsc --noEmit` 仍有 D3B participant profile 页面既存的 11 项 `undefined` 类型错误，本轮修改文件无新增诊断；不扩大 F2 修复范围。
+
+**Verdict**：F2 Repair 1 **IMPLEMENTED / VERIFIED local，待 owner review**；不宣称 ACCEPTED/CLOSED。F3 Review config cache/switching-state preservation 继续 **NOT YET AUTHORIZED**。
+
+### 2026-09-20 — F2 初版实现（历史交付声明，已由上述 owner review 更正）
 
 **新增共享组件（frontend-only）**：
 - `app/components/player-state-strip.tsx`：`PlayerStateStrip` + `PlayerStateCard`。compact state summary：seat 标识（仅 durable humanSeat 存在时显示 YOU，否则仅 P{n}/ACTOR）、VP、tokens 真实颜色+数量、permanent discounts 真实颜色+数量、reserved/developments/nobles counts；每条均有 aria 文本。**不渲染 reserve 卡面**（留在各页既有 board section，避免重复 `ReservedCards` 逻辑）。

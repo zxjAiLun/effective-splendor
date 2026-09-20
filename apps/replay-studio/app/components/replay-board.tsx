@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { DevelopmentCard, EmptyDevelopmentCard, HiddenDevelopmentCard, type DevelopmentCardData } from "../development-card";
-import { TokenTotal } from "./token-total";
 
 export type CardId = number;
 export type NobleId = number;
@@ -229,36 +228,7 @@ export function BoardSurface({
                   <span>P{player.id}</span>
                   {own && <em>ACTOR</em>}
                 </div>
-                <strong>
-                  {player.prestige}
-                  <small> VP</small>
-                </strong>
               </div>
-
-              <div className="player-resource-line">
-                <small>TOKENS</small>
-                <GemSet gems={player.tokens} compact />
-                <TokenTotal tokens={player.tokens} />
-              </div>
-
-              <div className="player-resource-line">
-                <small>DISCOUNTS</small>
-                <div className="bonus-line">
-                  {player.bonuses.map((amount, index) => (
-                    <span
-                      className={`bonus bonus-${COST_COLORS[index]}`}
-                      key={index}
-                      aria-label={`${amount} permanent ${COST_COLORS[index]} discount`}
-                    >
-                      {amount}
-                    </span>
-                  ))}
-                </div>
-                <span className="token-total">
-                  <b>{player.bonuses.reduce((sum, amount) => sum + amount, 0)}</b>
-                </span>
-              </div>
-
               <ReservedCards frame={frame} player={player} own={own} reveal={reveal} cards={cards} />
             </article>
           );
