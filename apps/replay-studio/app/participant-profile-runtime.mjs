@@ -98,7 +98,19 @@ export function describeCompletedPlies(plies) {
   };
 }
 
-/** Strict decoder for GET /league/participants/:id */
+/**
+ * @typedef {{ ok: false, error: string }} DecodeFailure
+ * @typedef {{ ok: true, profile: any }} ParticipantProfileSuccess
+ * @typedef {{ ok: true, participantId: string, points: any[], nextBeforeLeagueSeq: number | null, atEnd: boolean }} RatingHistorySuccess
+ * @typedef {{ ok: true, participantId: string, opponents: any[], nextAfterOpponentId: string | null, atEnd: boolean }} OpponentsSuccess
+ */
+
+/**
+ * Strict decoder for GET /league/participants/:id
+ * @param {unknown} payload
+ * @param {string} [expectedId]
+ * @returns {DecodeFailure | ParticipantProfileSuccess}
+ */
 export function decodeParticipantProfile(payload, expectedId) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, error: "Host returned a non-object participant response." };
@@ -203,7 +215,12 @@ export function decodeParticipantProfile(payload, expectedId) {
   return { ok: true, profile: p };
 }
 
-/** Strict decoder for GET /league/participants/:id/ratings */
+/**
+ * Strict decoder for GET /league/participants/:id/ratings
+ * @param {unknown} payload
+ * @param {string} [expectedId]
+ * @returns {DecodeFailure | RatingHistorySuccess}
+ */
 export function decodeRatingHistoryPage(payload, expectedId) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, error: "Host returned a non-object rating history response." };
@@ -268,7 +285,12 @@ export function decodeRatingHistoryPage(payload, expectedId) {
   };
 }
 
-/** Strict decoder for GET /league/participants/:id/opponents */
+/**
+ * Strict decoder for GET /league/participants/:id/opponents
+ * @param {unknown} payload
+ * @param {string} [expectedId]
+ * @returns {DecodeFailure | OpponentsSuccess}
+ */
 export function decodeOpponentsPage(payload, expectedId) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { ok: false, error: "Host returned a non-object opponents response." };
