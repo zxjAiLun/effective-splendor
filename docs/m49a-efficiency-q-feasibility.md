@@ -213,7 +213,9 @@ A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20, $\bar{\Delta} = -0.02$) sati
   - `encode_action_delta_v2(obs, action)`: exact 23-d deterministic feature vector matching engine post-purchase noble qualification semantics (checks all post-purchase qualified nobles, including leftover nobles from multi-noble choices).
   - `encode_combined_v1(obs, action)`: 427-d combined vector ($368 + 36 + 23$).
   - `ACTION_DELTA_FEATURES_V2 = 23`, `COMBINED_FEATURES_V1 = 427`.
-  - Unit test `test_python_rust_action_delta_parity_all_action_types` reading shared fixture `m49a_delta_parity_v1.json`, verifying floating-point parity ($< 10^{-5}$) against Python across all 7 action types plus the leftover-noble qualification case.
+  - Unit test `test_python_rust_action_delta_parity_all_action_types` reading shared fixture `m49a_delta_parity_v1.json`, verifying floating-point parity ($< 10^{-5}$) against Python across all 7 action types plus the leftover-noble semantic boundary case.
+- `crates/splendor-learning/tests/fixtures/m49a_delta_parity_v1.json`:
+  - Shared cross-language contract covering all 7 action types plus a targeted legal semantic boundary fixture (`leftover_noble_qualifies_post_purchase` testing post-purchase noble acquisition when qualified nobles remained from previous turns, without claiming full engine-reachable replay state history).
 - `training/m17_gpu/splendor_gpu/m25_delta_v2.py`:
   - Fixed noble qualification semantics to post-purchase matching engine.
   - Python test `training/m17_gpu/tests/test_m49a_delta_parity.py` reading the exact same shared fixture, verifying cross-language contract consistency.
@@ -222,9 +224,9 @@ A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20, $\bar{\Delta} = -0.02$) sati
   - `assert_seed_partitions_disjoint()` implementing invariant `I-SEED-01`.
   - `TransitionRecord` with `outcome` as single truth and strict `next_legal_actions` contract (non-empty on Running, empty on terminal).
   - `extract_input_features()` guaranteed to exclude `provenance`, `env_seed`, `trajectory_id`, and `next_observation`.
-  - `MaterializedTransitionV1` (P1-3 tensor bridge): materializes `input_features` (427-d) and `next_action_features` (Vec of 427-d) directly in Rust, allowing the Python trainer to consume canonical tensors without re-implementing encoders or game legality rules.
+  - `MaterializedTransitionV1` (P1-3 tensor bridge): materializes `input_features` (427-d) and `next_action_features` (Vec of 427-d) directly in Rust, calling `self.validate()?` fail-closed before tensor generation to ensure invalid records (e.g. Running with empty next legal actions, terminal with non-empty next actions, or mismatched step costs) can never enter the PyTorch trainer.
   - `CategoryBiasedPolicy` ($\varepsilon = 0.20$).
-  - `collect_solo15_trajectory()`: policy directly chooses action in both `Phase::Main` and `Phase::ChooseNoble` (P1-2), verified by test `test_collector_obeys_policy_choice_in_choose_noble_phase`.
+  - `collect_solo15_trajectory()`: policy directly chooses action in both `Phase::Main` and `Phase::ChooseNoble` (P1-2), verified by end-to-end integration test `test_collector_obeys_policy_choice_in_choose_noble_phase` on seed 1004049 where multi-noble choice is reached and policy selection of `legal[1]` is recorded into the trajectory.
   - `CoverageDiagnosticReport`.
 
 ### B. Empirical Coverage Diagnostic Report (32 Training Seeds per Source)

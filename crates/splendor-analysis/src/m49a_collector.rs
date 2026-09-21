@@ -167,6 +167,8 @@ impl TransitionRecord {
     /// GUARANTEE: raw provenance, environment seed, and trajectory identifiers NEVER
     /// enter this tensor payload.
     pub fn materialize(&self) -> Result<MaterializedTransitionV1, LearningError> {
+        self.validate().map_err(LearningError::InvalidDataset)?;
+
         let input_features = self.extract_input_features()?;
         let mut next_action_features = Vec::with_capacity(self.next_legal_actions.len());
         if self.outcome == Solo15Outcome::Running {

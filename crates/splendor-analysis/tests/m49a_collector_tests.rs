@@ -1,13 +1,12 @@
 use splendor_agent::{
-    AgentPolicy, DecisionContext, HeuristicAgentPolicy, PublicRequestMeta, RandomAgentPolicy,
-    StableRng,
+    AgentPolicy, DecisionContext, HeuristicAgentPolicy, RandomAgentPolicy, StableRng,
 };
 use splendor_analysis::m49a_collector::{
     assert_seed_partitions_disjoint, canonical_m49s_seeds, collect_solo15_trajectory,
     train_seeds_v1, validation_seeds_v1, CategoryBiasedPolicy, CoverageDiagnosticReport,
 };
-use splendor_analysis::solo15::{Solo15Environment, Solo15Outcome, SOLO15_CONTRACT_ID_V1};
-use splendor_core::{observation_hash, Action, Phase, PlayerId};
+use splendor_analysis::solo15::{Solo15Outcome, SOLO15_CONTRACT_ID_V1};
+use splendor_core::{Action, Phase};
 
 #[test]
 fn test_i_seed_01_partitions_disjointness_and_negative_control() {
@@ -77,16 +76,19 @@ fn test_transition_record_schema_and_invariants() {
     bad_running.outcome = Solo15Outcome::Running;
     bad_running.next_legal_actions.clear();
     assert!(bad_running.validate().is_err());
+    assert!(bad_running.materialize().is_err(), "materialize() MUST fail-closed when Running has empty next_legal_actions");
 
     // Negative control 2: Terminal state with non-empty next_legal_actions must fail
     let mut bad_terminal = last.clone();
     bad_terminal.next_legal_actions.push(Action::Pass);
     assert!(bad_terminal.validate().is_err());
+    assert!(bad_terminal.materialize().is_err(), "materialize() MUST fail-closed when terminal has non-empty next_legal_actions");
 
     // Negative control 3: Main action with wrong step_cost must fail
     let mut bad_cost = transitions[0].clone();
     bad_cost.step_cost = 0.0;
     assert!(bad_cost.validate().is_err());
+    assert!(bad_cost.materialize().is_err(), "materialize() MUST fail-closed when Main action has wrong step_cost");
 }
 
 #[test]
@@ -181,9 +183,19 @@ fn test_zero_leakage_feature_extraction() {
     assert!(mat_term.next_action_features.is_empty());
 }
 
-/// A policy that deliberately picks the second noble when multiple nobles are available,
-/// proving that collector does NOT hardcode `legal[0]`.
-struct SecondNoblePolicy;
+/// A policy that delegates Main actions to Heuristic but deliberately selects
+/// `legal[1]` whenever multiple nobles are available in `Phase::ChooseNoble`.
+struct SecondNoblePolicy {
+    heuristic: HeuristicAgentPolicy,
+}
+
+impl SecondNoblePolicy {
+    fn new() -> Self {
+        Self {
+            heuristic: HeuristicAgentPolicy::new(),
+        }
+    }
+}
 
 impl AgentPolicy for SecondNoblePolicy {
     type Error = std::convert::Infallible;
@@ -193,55 +205,68 @@ impl AgentPolicy for SecondNoblePolicy {
         if matches!(context.observation.public.phase, Phase::ChooseNoble) && legal.len() >= 2 {
             Ok(legal[1])
         } else {
-            Ok(legal[0])
+            self.heuristic.choose_action(context)
         }
     }
 }
 
 #[test]
 fn test_collector_obeys_policy_choice_in_choose_noble_phase() {
-    let mut policy = SecondNoblePolicy;
-    let mut rng = StableRng::new(0x4242_4242);
+    // Seed 1004049 is known to trigger Phase::ChooseNoble with 2 qualified nobles: [NobleId(7), NobleId(8)]
+    let seed = 1004049;
 
-    // Set up an environment directly into ChooseNoble with 2 nobles
-    let env = Solo15Environment::with_max_main_turns(1049, 10).expect("valid env");
+    // Run 1: Heuristic policy picks legal[0] (NobleId(7))
+    let mut rng_default = StableRng::new(0x1234_5678);
+    let mut default_policy = HeuristicAgentPolicy::new();
+    let (default_transitions, _) = collect_solo15_trajectory(
+        seed,
+        &mut default_policy,
+        "heuristic",
+        0,
+        100,
+        &mut rng_default,
+    )
+    .expect("collect default");
 
-    // Fast-forward state to ChooseNoble with 2 pending nobles
-    // Player has bonuses to satisfy both Noble 0 and Noble 1
-    let empty_history = Vec::new();
-    let mut obs = env.observation();
-    obs.public.phase = Phase::ChooseNoble;
-    let legal = vec![
-        Action::ChooseNoble {
-            noble: splendor_catalog::NobleId(0),
-        },
-        Action::ChooseNoble {
-            noble: splendor_catalog::NobleId(1),
-        },
-    ];
+    let default_noble_step = default_transitions
+        .iter()
+        .find(|t| matches!(t.action, Action::ChooseNoble { .. }))
+        .expect("seed 1004049 must produce a ChooseNoble transition");
 
-    let obs_h = observation_hash(&obs);
-    let ctx = DecisionContext {
-        observation: obs,
-        visible_history: &empty_history,
-        legal_actions: &legal,
-        meta: PublicRequestMeta {
-            game_id: SOLO15_CONTRACT_ID_V1.to_string(),
-            recipient_seat: PlayerId(0),
-            request_id: 0,
-            observation_hash: obs_h,
-        },
-        rng: &mut rng,
-    };
-
-    let chosen = policy.choose_action(ctx).unwrap();
     assert_eq!(
-        chosen,
+        default_noble_step.action,
         Action::ChooseNoble {
-            noble: splendor_catalog::NobleId(1),
+            noble: splendor_catalog::NobleId(7),
         },
-        "policy must be able to choose legal[1]"
+        "default policy should select legal[0] (Noble 7)"
     );
+
+    // Run 2: SecondNoblePolicy deliberately picks legal[1] (NobleId(8))
+    let mut rng_second = StableRng::new(0x1234_5678);
+    let mut second_policy = SecondNoblePolicy::new();
+    let (second_transitions, _) = collect_solo15_trajectory(
+        seed,
+        &mut second_policy,
+        "second_noble",
+        0,
+        100,
+        &mut rng_second,
+    )
+    .expect("collect second_noble");
+
+    let second_noble_step = second_transitions
+        .iter()
+        .find(|t| matches!(t.action, Action::ChooseNoble { .. }))
+        .expect("seed 1004049 must produce a ChooseNoble transition");
+
+    assert_eq!(
+        second_noble_step.action,
+        Action::ChooseNoble {
+            noble: splendor_catalog::NobleId(8),
+        },
+        "collector MUST record policy's choice of legal[1] (Noble 8) into the transition record"
+    );
+    assert_eq!(second_noble_step.step_cost, 0.0);
 }
 
 #[test]
