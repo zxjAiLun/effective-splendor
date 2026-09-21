@@ -1,17 +1,18 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: PROPOSED / DESIGN REPAIR 1 COMPLETED (owner terminal review pending)
+- **Status**: PROPOSED / DESIGN REPAIR 2 COMPLETED (owner terminal review pending)
 - **Baseline**: `116525c3ee874ee6fc64e40f96640d0bd90b2327` (M49S accepted/closed)
-- **Owner-date**: 2026-09-20; owner delivered M49A Design Review (P0=0/P1=3/P2=2), establishing strict mathematical consistency for Bellman targets, non-negative cost bounds, transition schema expansion, eval-split separation, and iterative data aggregation.
+- **Owner-date**: 2026-09-20; owner delivered M49A Design Review 2 (P0=0/P1=1/P2=2), resolving train/validation seed overlap, single-truth outcome schema, next-actions contract, and paired bootstrap sign convention.
 - **Scope**:
   1. Reusable representation infrastructure from M25 / M43 / M46 (state encoding 368-d, action encoding 36-d, action-conditioned delta features 23-d -> 427-d total).
   2. Parity requirement: Port M25 23-d delta encoder to canonical Rust implementation in `crates/splendor-learning`.
-  3. Teacher-free transition record schema `(o, a, c, o', next_legal_actions, outcome, provenance)` with zero seed / referee leakage.
-  4. Unified Bellman target: $y = c(a) + V(o')$, with $V(o') = 0$ for Reached15, $V(o') = 100$ for failure (Main failure $Q = 101$), and $V(o') = \min_{a' \in \mathcal{A}(o')} Q_{\text{target}}(o', a')$ for Running.
-  5. Non-negative Q output via Softplus activation to prevent negative cost extrapolation.
-  6. Iterative $Q$-policy $\varepsilon$-data aggregation (2–3 rounds) instead of static single-pass offline FQI.
-  7. Rigorous 3-way seed split: 256 Train seeds, 64 separate Validation seeds, 64 Canonical M49S benchmark seeds (strictly disjoint).
-  8. Two-tier evaluation gate: $<29.20$ feasibility floor vs meaningful paired improvement threshold.
+  3. Teacher-free transition record schema `(o, a, c, o', next_legal_actions, outcome, provenance)` with zero seed / referee leakage and single-truth `outcome`.
+  4. Contract for `next_legal_actions`: non-empty on `Running`, strictly empty `[]` on terminal outcomes.
+  5. Unified Bellman target: $y = c(a) + V(o')$, with $V(o') = 0$ for Reached15, $V(o') = 100$ for failure (Main failure $Q = 101$), and $V(o') = \min_{a' \in \text{next\_legal\_actions}} Q_{\text{target}}(o', a')$ for Running.
+  6. Non-negative Q output via Softplus activation to prevent negative cost extrapolation.
+  7. Iterative $Q$-policy $\varepsilon$-data aggregation (2–3 rounds) on the **same fixed 256 training seeds** (isolating policy improvement from environment shifts).
+  8. Rigorous 3-way disjoint seed partition: 256 Train seeds (`1_000_000 + i * 1000 + 49`), 64 separate Validation seeds (`2_000_000 + i * 1000 + 49`), 64 Canonical M49S benchmark seeds (`i * 1000 + 49`), with implementation assertions enforcing disjointness.
+  9. Two-tier evaluation gate with exact paired difference sign $\Delta_i = T_{\text{M49A}, i} - T_{\text{Heuristic}, i}$: $<29.20$ feasibility floor vs $\bar{\Delta} \le -0.50$ (or $\text{CI}_{95\%, \text{upper}}(\bar{\Delta}) < 0$) substantive improvement.
 - **Prohibitions**: Zero teacher labels (S3/M07/champion/heuristic), zero CE loss, zero referee successor peeking, zero arena/Elo/3P/4P scope expansion.
 
 ## 1. Problem and Root-Cause Analysis
@@ -62,8 +63,8 @@ Every step taken by the research environment generates a standardized transition
   "contract_id": "solo15_2p_supply_v1",
   "trajectory_id": "traj_00042_step_015",
   "provenance": {
-    "env_seed": 1049,
-    "behavior_policy": "progress_biased_eps_0.20",
+    "env_seed": 1001049,
+    "behavior_policy": "category_biased_eps_0.20",
     "step_index": 15
   },
   "observation": { ... },
@@ -71,16 +72,25 @@ Every step taken by the research environment generates a standardized transition
   "step_cost": 1,
   "next_observation": { ... },
   "next_legal_actions": [ ... ],
-  "terminal": false,
   "outcome": "running"
 }
 ```
 
 ### Strict Information Boundaries & Anti-Extrapolation Schema
-1. **`next_legal_actions` Explicitly Recorded (P1-3 Repair)**: The environment records the exact list of legal actions available at $o'$. The offline trainer computes $\min_{a' \in \text{next\_legal\_actions}} Q_{\text{target}}(o', a')$, without having to re-implement a fragile, drift-prone legality engine in Python.
-2. **Metadata Quarantine**: `provenance` (including `env_seed` and `behavior_policy`) is strictly metadata for dataset tracking and train/val splits; it is **forbidden from entering model tensors**.
-3. **No Teacher Fields**: No `chosen_by_teacher`, `teacher_prob`, `heuristic_score`, or `m07_score` fields exist.
-4. **Post-Action Chance Quarantine**: `next_observation` represents the state $o'$ **after** environment transition (incorporating the true market refill). It is used **only** as a sample for target computation in offline training, never as an input to $Q(o, a)$.
+1. **Single Truth Source for Termination (P2-1 Repair)**:
+   The `outcome` field is the sole authoritative indicator of terminal state:
+   - `"running"`: game in progress (non-terminal);
+   - `"reached_15"`: player achieved prestige >= 15 with noble resolution completed (terminal);
+   - `"stalled"`: main phase only permitted Pass (absorbing failure terminal);
+   - `"turn_cap"`: main turn limit reached without 15 prestige (terminal).
+   The redundant `terminal: bool` field is removed to prevent conflicting dual-truth states.
+2. **Contract for `next_legal_actions` (P2-1 Repair)**:
+   - If `outcome == "running"`, `next_legal_actions` **MUST be non-empty** (`len() > 0`).
+   - If `outcome != "running"` (terminal), `next_legal_actions` **MUST be empty** (`[]`).
+   The offline trainer computes $\min_{a' \in \text{next\_legal\_actions}} Q_{\text{target}}(o', a')$ only for running states, without having to re-implement a fragile, drift-prone legality engine in Python.
+3. **Metadata Quarantine**: `provenance` (including `env_seed` and `behavior_policy`) is strictly metadata for dataset tracking and train/val splits; it is **forbidden from entering model tensors**.
+4. **No Teacher Fields**: No `chosen_by_teacher`, `teacher_prob`, `heuristic_score`, or `m07_score` fields exist.
+5. **Post-Action Chance Quarantine**: `next_observation` represents the state $o'$ **after** environment transition (incorporating the true market refill). It is used **only** as a sample for target computation in offline training, never as an input to $Q(o, a)$.
 
 ## 4. Unified Bellman Target & Mathematical Consistency
 
@@ -152,30 +162,49 @@ Data coverage will be audited across diverse behavior sources:
 - **Uniform Random Exploration**: High-entropy rollouts ensuring coverage of boundary states (token hand limits, empty banks, pass boundaries).
 - *Discipline*: Initial mix ratio (e.g. 30/50/20) is an empirical proposal; data collector will generate and inspect a coverage diagnostic report (action distributions, outcomes, VP buckets, turn distributions) before locking the dataset.
 
-### B. Iterative Self-Improvement Pipeline (P1-3 Repair)
-To prevent the model from getting trapped in static offline coverage, M49A adopts iterative data aggregation:
-1. **Round 0**: Collect multi-source exploratory transitions $\mathcal{D}_0$ on 256 training seeds -> Train initial $Q_0$.
-2. **Round 1**: Roll out trajectories using $Q_0$-greedy policy with $\varepsilon = 0.15$ exploration on new training seeds -> Append new transitions $\mathcal{D}_1$ -> Train $Q_1$.
-3. **Round 2**: Roll out with $Q_1$-greedy ($\varepsilon = 0.10$) -> Append $\mathcal{D}_2$ -> Train $Q_2$.
-This ensures the model encounters and learns true environmental outcomes for the actions it actually prefers, directly resolving offline extrapolation.
+### B. Iterative Self-Improvement Pipeline (P1-3 & P1 Repair)
+To prevent the model from getting trapped in static offline coverage, M49A adopts iterative data aggregation over the **same fixed 256 training seeds**:
+1. **Round 0**: Collect exploratory transitions $\mathcal{D}_0$ on the 256 training seeds using multi-source behavior policies -> Train initial $Q_0$.
+2. **Round 1**: Roll out trajectories on the **same 256 training seeds** using $Q_0$-greedy policy with $\varepsilon = 0.15$ exploration -> Append new transitions $\mathcal{D}_1$ -> Train $Q_1$.
+3. **Round 2**: Roll out on the **same 256 training seeds** with $Q_1$-greedy ($\varepsilon = 0.10$) -> Append $\mathcal{D}_2$ -> Train $Q_2$.
+
+*Rationale*: Keeping the environment seed universe fixed across rounds ensures that performance differences across $Q_0 \to Q_1 \to Q_2$ isolate true policy self-improvement from stochastic environment distribution shifts.
 
 ## 7. Seed Partitioning & Evaluation Gates
 
-### A. Three-Way Disjoint Seed Partitioning (P2-1 Repair)
-To guarantee that the canonical evaluation baseline remains a true blind test and is not corrupted as a development set:
-1. **Training Set**: 256 deterministic seeds (`seed = 100000 + i * 1000 + 49`, $i \in 1..=256$).
-2. **Validation Set**: 64 separate deterministic seeds (`seed = 200000 + i * 1000 + 49`, $i \in 1..=64$). Used for hyperparameter tuning, learning rate scheduling, target update tuning, and checkpoint selection.
-3. **Canonical M49S Benchmark Set**: 64 frozen seeds (`seed = i * 1000 + 49`, $i \in 1..=64$). Evaluated **only once** on the frozen candidate model.
+### A. Three-Way Disjoint Seed Partitioning (P1 Repair)
+To guarantee that the canonical evaluation baseline remains a true blind test and is not corrupted as a development set, seeds are partitioned into three strictly separated non-overlapping ranges:
 
-### B. Two-Tier Evaluation Gate (P2-2 Repair)
-Evaluated on the 64 canonical M49S seeds (`solo15_2p_supply_v1`, cap = 100):
+1. **Canonical M49S Benchmark Set** (Frozen evaluation cohort):
+   $$\text{seed} = i \times 1000 + 49 \quad (i \in 1..=64) \implies [1\,049, \; 64\,049]$$
+   Evaluated **only once** on the frozen candidate model.
+2. **Training Set** (256 seeds):
+   $$\text{seed} = 1\,000\,000 + i \times 1000 + 49 \quad (i \in 1..=256) \implies [1\,001\,049, \; 1\,256\,049]$$
+   Used for Round 0/1/2 trajectory generation and fitted Q updates.
+3. **Validation Set** (64 seeds):
+   $$\text{seed} = 2\,000\,000 + i \times 1000 + 49 \quad (i \in 1..=64) \implies [2\,001\,049, \; 2\,064\,049]$$
+   Used during training for hyperparameter tuning, learning rate scheduling, target update tuning, and checkpoint selection.
+
+**Formal Verification Invariant (`I-SEED-01`)**:
+The data loader and evaluation harness must explicitly assert that all three sets are disjoint:
+```rust
+assert!(train_seeds.is_disjoint(&val_seeds));
+assert!(train_seeds.is_disjoint(&canonical_seeds));
+assert!(val_seeds.is_disjoint(&canonical_seeds));
+```
+
+### B. Two-Tier Evaluation Gate & Paired Delta Sign Convention (P2-2 Repair)
+Evaluated on the 64 canonical M49S seeds (`solo15_2p_supply_v1`, cap = 100).
+Define the paired per-seed turn difference as:
+$$\Delta_i = T_{\text{M49A}, i} - T_{\text{Heuristic}, i}$$
+where $\Delta_i < 0$ signifies that M49A required fewer turns than Heuristic on seed $i$.
 
 | Tier | Gate | Criteria |
 |---|---|---|
 | **Tier 1: Feasibility Floor** | Pass / Fail | - Success Rate: **64 / 64 (100.0%)**<br>- Mean Main Turns: **$< 29.20$** (Heuristic baseline: 29.20)<br>- P90 Main Turns: **$\le 32.0$** (Heuristic baseline: 32.0)<br>- Zero seed leakage and zero referee peeking. |
-| **Tier 2: Substantive Improvement** | Promoted / Baseline | - Paired Mean Turn Reduction: **$\ge 0.50$ turns** compared to Heuristic on the identical 64 seeds, OR paired bootstrap 95% upper CI $< 0$. |
+| **Tier 2: Substantive Improvement** | Promoted / Baseline | - Paired Mean Turn Reduction: **$\bar{\Delta} \le -0.50$ turns** compared to Heuristic on the identical 64 seeds, OR paired bootstrap 95% upper confidence interval bound $\text{CI}_{95\%, \text{upper}}(\bar{\Delta}) < 0.0$. |
 
-A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20) satisfies the feasibility floor to prove Q-learning convergence, but is transparently labeled as a feasibility pass rather than a substantive breakthrough.
+A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20, $\bar{\Delta} = -0.02$) satisfies the feasibility floor to prove Q-learning convergence, but is transparently labeled as a feasibility pass rather than a substantive breakthrough.
 
 ## 8. Next Authorized Step
 
