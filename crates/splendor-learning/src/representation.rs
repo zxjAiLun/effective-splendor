@@ -389,27 +389,30 @@ fn compute_buy_delta(
     delta_tokens[5] = -(total_gold_paid as f32) / 10.0;
     *gold_spent = total_gold_paid as f32 / 5.0;
 
-    // Check newly qualifying nobles
+    // Check post-purchase qualifying nobles matching engine after_purchase() semantics:
+    // Any noble on the board whose requirements are satisfied by the player's post-purchase bonuses
+    // is qualified, including nobles whose requirements were already satisfied prior to this purchase
+    // (e.g. from an earlier turn where multiple nobles qualified and only one was chosen).
     let mut new_bonuses = bonuses;
     new_bonuses[color_idx] = new_bonuses[color_idx].saturating_add(1);
 
     let all_n = splendor_catalog::all_nobles();
-    let mut qualifying_nobles_count = 0;
+    let mut qualifying_nobles: Vec<&splendor_catalog::NobleDef> = Vec::new();
     for &nid in visible_nobles {
         if nid.index() < all_n.len() {
             let n = &all_n[nid.index()];
-            let cur_met = (0..5).all(|c_idx| bonuses[c_idx] >= n.requirements[c_idx]);
-            let new_met = (0..5).all(|c_idx| new_bonuses[c_idx] >= n.requirements[c_idx]);
-            if !cur_met && new_met {
-                qualifying_nobles_count += 1;
+            let post_met = (0..5).all(|c_idx| new_bonuses[c_idx] >= n.requirements[c_idx]);
+            if post_met {
+                qualifying_nobles.push(n);
             }
         }
     }
 
-    if qualifying_nobles_count == 1 {
-        *delta_vp += 3.0 / 5.0;
+    if qualifying_nobles.len() == 1 {
+        let noble_prestige = qualifying_nobles[0].prestige as f32;
+        *delta_vp += noble_prestige / 5.0;
         *noble_delta = 1.0;
-    } else if qualifying_nobles_count > 1 {
+    } else if qualifying_nobles.len() > 1 {
         *noble_delta = 1.0;
     }
 }
@@ -819,127 +822,52 @@ mod tests {
 
     #[test]
     fn test_python_rust_action_delta_parity_all_action_types() {
+        let fixture_str = include_str!("../tests/fixtures/m49a_delta_parity_v1.json");
+        let fixture_json: serde_json::Value =
+            serde_json::from_str(fixture_str).expect("valid fixture json");
+        let cases = fixture_json["cases"].as_array().expect("cases array");
+
+        for c in cases {
+            let id = c["id"].as_str().unwrap();
+            let obs: Observation = serde_json::from_value(c["observation"].clone()).unwrap();
+            let act: Action = serde_json::from_value(c["action"].clone()).unwrap();
+            let expected_delta: Vec<f32> = c["expected_delta_23"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|v| v.as_f64().unwrap() as f32)
+                .collect();
+
+            let actual = encode_action_delta_v2(&obs, &act)
+                .unwrap_or_else(|e| panic!("failed encoding action for {id}: {e}"));
+
+            assert_eq!(actual.len(), 23);
+            for (i, (&a, &e)) in actual.iter().zip(expected_delta.iter()).enumerate() {
+                assert!(
+                    (a - e).abs() < 1e-5,
+                    "cross-language parity mismatch for case '{id}' at index {i}: actual {a}, expected {e}"
+                );
+            }
+        }
+
+        // Test combined vector (368 + 36 + 23 = 427)
         let obs = make_test_observation();
-
-        // 1. TakeTokens
-        let act_take = Action::TakeTokens {
-            take: Gems {
-                white: 1,
-                blue: 1,
-                green: 1,
-                red: 0,
-                black: 0,
-                gold: 0,
-            },
-            give_back: Gems {
-                white: 0,
-                blue: 0,
-                green: 0,
-                red: 1,
-                black: 0,
-                gold: 0,
-            },
-        };
-        let delta_take = encode_action_delta_v2(&obs, &act_take).unwrap();
-        assert_approx_eq(
-            &delta_take,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, -0.1, 0.0, 0.0,
-                0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            ],
-        );
-
-        // 2. BuyMarket
         let act_buy_m = Action::BuyMarket {
             tier: splendor_catalog::Tier::One,
             slot: 0,
         };
         let delta_buy_m = encode_action_delta_v2(&obs, &act_buy_m).unwrap();
-        assert_approx_eq(
-            &delta_buy_m,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.2,
-                0.5, 0.0, 0.0, 0.0, 0.0, 0.428571, 0.0, 0.4, 0.0,
-            ],
-        );
-
-        // 3. BuyReserved
-        let act_buy_r = Action::BuyReserved { slot: 0 };
-        let delta_buy_r = encode_action_delta_v2(&obs, &act_buy_r).unwrap();
-        assert_approx_eq(
-            &delta_buy_r,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.1, 0.0, -0.3,
-                0.3, 0.0, 0.142857, 0.428571, 0.142857, 0.0, 0.0, 0.6, 0.0,
-            ],
-        );
-
-        // 4. ReserveMarket
-        let act_res_m = Action::ReserveMarket {
-            tier: splendor_catalog::Tier::One,
-            slot: 1,
-            give_back: Gems::ZERO,
-        };
-        let delta_res_m = encode_action_delta_v2(&obs, &act_res_m).unwrap();
-        assert_approx_eq(
-            &delta_res_m,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,
-                0.8, 0.142857, 0.0, 0.0, 0.0, 0.285714, 0.0, 0.0, 0.0,
-            ],
-        );
-
-        // 5. ReserveDeck
-        let act_res_d = Action::ReserveDeck {
-            tier: splendor_catalog::Tier::Two,
-            give_back: Gems::ZERO,
-        };
-        let delta_res_d = encode_action_delta_v2(&obs, &act_res_d).unwrap();
-        assert_approx_eq(
-            &delta_res_d,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,
-                0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            ],
-        );
-
-        // 6. ChooseNoble
-        let act_noble = Action::ChooseNoble { noble: NobleId(0) };
-        let delta_noble = encode_action_delta_v2(&obs, &act_noble).unwrap();
-        assert_approx_eq(
-            &delta_noble,
-            &[
-                0.6, 0.466667, 0.533333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-            ],
-        );
-
-        // 7. Pass
-        let act_pass = Action::Pass;
-        let delta_pass = encode_action_delta_v2(&obs, &act_pass).unwrap();
-        assert_approx_eq(
-            &delta_pass,
-            &[
-                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            ],
-        );
-
-        // 8. Combined vector (368 + 36 + 23 = 427)
         let combined = encode_combined_v1(&obs, &act_buy_m).unwrap();
         assert_eq!(combined.len(), COMBINED_FEATURES_V1);
         assert_eq!(combined.len(), 427);
-        // Prefix is observation encoding
         assert_approx_eq(
             &combined[..OBSERVATION_FEATURES_V1],
             &encode_observation_v1(&obs).unwrap(),
         );
-        // Middle is action encoding
         assert_approx_eq(
             &combined[OBSERVATION_FEATURES_V1..OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1],
             &encode_action_v1(&act_buy_m).unwrap(),
         );
-        // Suffix is delta encoding
         assert_approx_eq(
             &combined[OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1..],
             &delta_buy_m,

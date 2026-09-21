@@ -49,7 +49,7 @@ pub use s3_review_trace::{analyze_replay_s3_v2, analyze_replay_s3_v2_with_progre
 pub use m49a_collector::{
     assert_seed_partitions_disjoint, canonical_m49s_seeds, collect_solo15_trajectory,
     train_seeds_v1, validation_seeds_v1, CategoryBiasedPolicy, CoverageDiagnosticReport,
-    TransitionProvenance, TransitionRecord,
+    MaterializedTransitionV1, TransitionProvenance, TransitionRecord,
 };
 pub use schema::{
     analysis_trace_hash_v1, AnalysisCardV1, AnalysisCatalogV1, AnalysisFrameV1, AnalysisNobleV1,

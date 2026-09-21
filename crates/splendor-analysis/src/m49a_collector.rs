@@ -153,6 +153,52 @@ impl TransitionRecord {
     pub fn extract_input_features(&self) -> Result<Vec<f32>, LearningError> {
         encode_combined_v1(&self.observation, &self.action)
     }
+
+    /// Materialize the transition into complete, canonical 427-dimensional tensors
+    /// for direct consumption by the PyTorch trainer.
+    ///
+    /// Contract:
+    /// - `input_features`: 427-d vector for $(o, a)$;
+    /// - `next_action_features`: vector of 427-d vectors for each $a' \in \text{next\_legal\_actions}$
+    ///   at $o'$; strictly empty if terminal;
+    /// - `step_cost`: 1.0 (Main) or 0.0 (ChooseNoble);
+    /// - `outcome`: single terminal truth.
+    ///
+    /// GUARANTEE: raw provenance, environment seed, and trajectory identifiers NEVER
+    /// enter this tensor payload.
+    pub fn materialize(&self) -> Result<MaterializedTransitionV1, LearningError> {
+        let input_features = self.extract_input_features()?;
+        let mut next_action_features = Vec::with_capacity(self.next_legal_actions.len());
+        if self.outcome == Solo15Outcome::Running {
+            for next_action in &self.next_legal_actions {
+                let next_feat = encode_combined_v1(&self.next_observation, next_action)?;
+                next_action_features.push(next_feat);
+            }
+        }
+        Ok(MaterializedTransitionV1 {
+            input_features,
+            next_action_features,
+            step_cost: self.step_cost,
+            outcome: self.outcome,
+        })
+    }
+}
+
+/// A fully materialized tensor transition sample ready for offline Bellman Q-training.
+///
+/// Python trainer directly consumes these tensors without re-implementing 368-d observation,
+/// 36-d action, 23-d delta encoding, or game legality engines.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MaterializedTransitionV1 {
+    /// 427-dimensional input feature vector $\mathbf{x}(o, a)$.
+    pub input_features: Vec<f32>,
+    /// List of 427-dimensional feature vectors $\mathbf{x}(o', a')$ for each $a' \in \mathcal{A}(o')$.
+    /// Strictly empty if `outcome != Solo15Outcome::Running`.
+    pub next_action_features: Vec<Vec<f32>>,
+    /// Step cost: 1.0 (Main) or 0.0 (ChooseNoble).
+    pub step_cost: f32,
+    /// Terminal outcome (Running, Reached15, Stalled, TurnCap).
+    pub outcome: Solo15Outcome,
 }
 
 /// Category-biased exploratory behavior policy.
@@ -255,7 +301,7 @@ pub fn collect_solo15_trajectory<P: AgentPolicy>(
         }
 
         let action = match env.phase() {
-            Phase::Main => {
+            Phase::Main | Phase::ChooseNoble => {
                 let obs_hash = observation_hash(&obs);
                 let ctx = DecisionContext {
                     observation: obs.clone(),
@@ -273,7 +319,6 @@ pub fn collect_solo15_trajectory<P: AgentPolicy>(
                     .choose_action(ctx)
                     .map_err(|e| format!("policy error: {e}"))?
             }
-            Phase::ChooseNoble => legal[0],
             Phase::GameOver => break,
         };
 

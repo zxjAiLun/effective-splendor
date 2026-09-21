@@ -60,23 +60,21 @@ def encode_action_delta_v2(observation: dict[str, Any], action: dict[str, Any], 
             delta_tokens[5] = -total_gold_paid / 10.0
             gold_spent = total_gold_paid / 5.0
 
-            # Noble visits:
-            # Check newly qualifying nobles.
-            # If exactly 1 noble qualifies, the engine immediately awards it (+3 VP, noble_delta=1).
-            # If multiple nobles qualify (>1), the engine transitions to choose_noble phase, so VP is NOT immediately awarded yet, but noble_delta=1 (noble opportunity unlocked).
+            # Noble visits matching engine after_purchase() semantics:
+            # Check all visible nobles that are qualified under post-purchase bonuses,
+            # including nobles already satisfied prior to this purchase.
             visible_nobles = [catalog["nobles"][int(nid)] for nid in public["nobles"] if int(nid) in catalog["nobles"]]
             new_bonuses = [b + (1 if c == color_idx else 0) for c, b in enumerate(bonuses)]
 
             qualifying_nobles = []
             for n in visible_nobles:
-                # Did not qualify before, but qualifies now
-                cur_met = all(bonuses[c] >= n["requirements"][c] for c in range(5))
-                new_met = all(new_bonuses[c] >= n["requirements"][c] for c in range(5))
-                if not cur_met and new_met:
+                post_met = all(new_bonuses[c] >= n["requirements"][c] for c in range(5))
+                if post_met:
                     qualifying_nobles.append(n)
 
             if len(qualifying_nobles) == 1:
-                delta_vp += 3.0 / 5.0
+                noble_p = float(qualifying_nobles[0].get("prestige", 3))
+                delta_vp += noble_p / 5.0
                 noble_delta = 1.0
             elif len(qualifying_nobles) > 1:
                 # Multiple nobles qualify -> phase becomes choose_noble; VP not added yet

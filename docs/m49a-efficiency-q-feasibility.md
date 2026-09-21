@@ -208,19 +208,24 @@ A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20, $\bar{\Delta} = -0.02$) sati
 
 ## 8. M49A-I Data Foundation Implementation & Evidence
 
-### A. Tracked Rust Code
+### A. Tracked Rust & Python Code
 - `crates/splendor-learning/src/representation.rs`:
-  - `encode_action_delta_v2(obs, action)`: exact 23-d deterministic feature vector.
+  - `encode_action_delta_v2(obs, action)`: exact 23-d deterministic feature vector matching engine post-purchase noble qualification semantics (checks all post-purchase qualified nobles, including leftover nobles from multi-noble choices).
   - `encode_combined_v1(obs, action)`: 427-d combined vector ($368 + 36 + 23$).
   - `ACTION_DELTA_FEATURES_V2 = 23`, `COMBINED_FEATURES_V1 = 427`.
-  - Unit test `test_python_rust_action_delta_parity_all_action_types` verifying floating-point parity ($< 10^{-5}$) against Python across all 7 action types (`TakeTokens`, `BuyMarket`, `BuyReserved`, `ReserveMarket`, `ReserveDeck`, `ChooseNoble`, `Pass`).
+  - Unit test `test_python_rust_action_delta_parity_all_action_types` reading shared fixture `m49a_delta_parity_v1.json`, verifying floating-point parity ($< 10^{-5}$) against Python across all 7 action types plus the leftover-noble qualification case.
+- `training/m17_gpu/splendor_gpu/m25_delta_v2.py`:
+  - Fixed noble qualification semantics to post-purchase matching engine.
+  - Python test `training/m17_gpu/tests/test_m49a_delta_parity.py` reading the exact same shared fixture, verifying cross-language contract consistency.
 - `crates/splendor-analysis/src/m49a_collector.rs`:
   - `train_seeds_v1()`, `validation_seeds_v1()`, `canonical_m49s_seeds()`.
   - `assert_seed_partitions_disjoint()` implementing invariant `I-SEED-01`.
   - `TransitionRecord` with `outcome` as single truth and strict `next_legal_actions` contract (non-empty on Running, empty on terminal).
   - `extract_input_features()` guaranteed to exclude `provenance`, `env_seed`, `trajectory_id`, and `next_observation`.
+  - `MaterializedTransitionV1` (P1-3 tensor bridge): materializes `input_features` (427-d) and `next_action_features` (Vec of 427-d) directly in Rust, allowing the Python trainer to consume canonical tensors without re-implementing encoders or game legality rules.
   - `CategoryBiasedPolicy` ($\varepsilon = 0.20$).
-  - `collect_solo15_trajectory()` and `CoverageDiagnosticReport`.
+  - `collect_solo15_trajectory()`: policy directly chooses action in both `Phase::Main` and `Phase::ChooseNoble` (P1-2), verified by test `test_collector_obeys_policy_choice_in_choose_noble_phase`.
+  - `CoverageDiagnosticReport`.
 
 ### B. Empirical Coverage Diagnostic Report (32 Training Seeds per Source)
 
@@ -238,12 +243,12 @@ VP Buckets:              {"0-2": 639, "3-5": 133, "6-8": 62, "9-11": 66, "12-14"
 Legal Actions Count:     Mean: 31.0, Median: 29.0, Min: 2, Max: 145
 
 --- [CATEGORY-BIASED EXPLORATION (eps = 0.20)] ---
-Trajectories: 32, Transitions: 1156, Success Rate: 100.0% (Reached15: 32, Stalled: 0, TurnCap: 0)
-Main Turns (successful): Mean: 35.84, Median: 36.0, P75: 37.0, P90: 41.0, Min: 31, Max: 43
-Purchased Cards:         Mean: 20.56, Median: 21.0
-Action Kinds:            {"BuyMarket": 580, "BuyReserved": 78, "ChooseNoble": 9, "ReserveDeck": 38, "ReserveMarket": 112, "TakeTokens": 339}
-VP Buckets:              {"0-2": 738, "3-5": 173, "6-8": 108, "9-11": 75, "12-14": 61, "15+": 1}
-Legal Actions Count:     Mean: 35.3, Median: 16.0, Min: 2, Max: 437
+Trajectories: 32, Transitions: 1160, Success Rate: 100.0% (Reached15: 32, Stalled: 0, TurnCap: 0)
+Main Turns (successful): Mean: 35.97, Median: 36.0, P75: 37.0, P90: 41.0, Min: 31, Max: 43
+Purchased Cards:         Mean: 20.62, Median: 21.0
+Action Kinds:            {"BuyMarket": 582, "BuyReserved": 78, "ChooseNoble": 9, "ReserveDeck": 39, "ReserveMarket": 111, "TakeTokens": 341}
+VP Buckets:              {"0-2": 738, "3-5": 173, "6-8": 107, "9-11": 75, "12-14": 66, "15+": 1}
+Legal Actions Count:     Mean: 35.2, Median: 16.0, Min: 2, Max: 437
 
 --- [UNIFORM RANDOM EXPLORATION] ---
 Trajectories: 32, Transitions: 3200, Success Rate: 0.0% (Reached15: 0, Stalled: 0, TurnCap: 32)

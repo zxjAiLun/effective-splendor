@@ -1,10 +1,13 @@
-use splendor_agent::{HeuristicAgentPolicy, RandomAgentPolicy, StableRng};
+use splendor_agent::{
+    AgentPolicy, DecisionContext, HeuristicAgentPolicy, PublicRequestMeta, RandomAgentPolicy,
+    StableRng,
+};
 use splendor_analysis::m49a_collector::{
     assert_seed_partitions_disjoint, canonical_m49s_seeds, collect_solo15_trajectory,
     train_seeds_v1, validation_seeds_v1, CategoryBiasedPolicy, CoverageDiagnosticReport,
 };
-use splendor_analysis::solo15::{Solo15Outcome, SOLO15_CONTRACT_ID_V1};
-use splendor_core::Action;
+use splendor_analysis::solo15::{Solo15Environment, Solo15Outcome, SOLO15_CONTRACT_ID_V1};
+use splendor_core::{observation_hash, Action, Phase, PlayerId};
 
 #[test]
 fn test_i_seed_01_partitions_disjointness_and_negative_control() {
@@ -134,6 +137,110 @@ fn test_zero_leakage_feature_extraction() {
         tampered.extract_input_features().unwrap(),
         original_features,
         "next_observation MUST NOT enter Q(o, a) input features"
+    );
+
+    // 5. Materialization test: MaterializedTransitionV1
+    let mat = record.materialize().expect("materialize");
+    assert_eq!(mat.input_features.len(), 427);
+    assert_eq!(mat.input_features, original_features);
+    assert_eq!(mat.step_cost, record.step_cost);
+    assert_eq!(mat.outcome, record.outcome);
+    assert_eq!(
+        mat.next_action_features.len(),
+        record.next_legal_actions.len()
+    );
+    for next_f in &mat.next_action_features {
+        assert_eq!(next_f.len(), 427);
+    }
+
+    // Mutating provenance MUST NOT change materialized tensors
+    let mut mat_tampered_prov = record.clone();
+    mat_tampered_prov.provenance.env_seed = 888_888;
+    let mat_after_prov = mat_tampered_prov.materialize().expect("materialize");
+    assert_eq!(mat_after_prov.input_features, mat.input_features);
+    assert_eq!(
+        mat_after_prov.next_action_features,
+        mat.next_action_features
+    );
+
+    // Mutating next_observation MUST change next_action_features but NOT input_features
+    let mut mat_tampered_next = record.clone();
+    mat_tampered_next.next_observation.public.bank.gold = 0;
+    let mat_after_next = mat_tampered_next.materialize().expect("materialize");
+    assert_eq!(mat_after_next.input_features, mat.input_features);
+    assert_ne!(
+        mat_after_next.next_action_features,
+        mat.next_action_features
+    );
+
+    // Terminal record must have empty next_action_features
+    let mut terminal_record = record.clone();
+    terminal_record.outcome = Solo15Outcome::Reached15;
+    terminal_record.next_legal_actions.clear();
+    let mat_term = terminal_record.materialize().expect("materialize terminal");
+    assert!(mat_term.next_action_features.is_empty());
+}
+
+/// A policy that deliberately picks the second noble when multiple nobles are available,
+/// proving that collector does NOT hardcode `legal[0]`.
+struct SecondNoblePolicy;
+
+impl AgentPolicy for SecondNoblePolicy {
+    type Error = std::convert::Infallible;
+
+    fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
+        let legal = context.legal_actions;
+        if matches!(context.observation.public.phase, Phase::ChooseNoble) && legal.len() >= 2 {
+            Ok(legal[1])
+        } else {
+            Ok(legal[0])
+        }
+    }
+}
+
+#[test]
+fn test_collector_obeys_policy_choice_in_choose_noble_phase() {
+    let mut policy = SecondNoblePolicy;
+    let mut rng = StableRng::new(0x4242_4242);
+
+    // Set up an environment directly into ChooseNoble with 2 nobles
+    let env = Solo15Environment::with_max_main_turns(1049, 10).expect("valid env");
+
+    // Fast-forward state to ChooseNoble with 2 pending nobles
+    // Player has bonuses to satisfy both Noble 0 and Noble 1
+    let empty_history = Vec::new();
+    let mut obs = env.observation();
+    obs.public.phase = Phase::ChooseNoble;
+    let legal = vec![
+        Action::ChooseNoble {
+            noble: splendor_catalog::NobleId(0),
+        },
+        Action::ChooseNoble {
+            noble: splendor_catalog::NobleId(1),
+        },
+    ];
+
+    let obs_h = observation_hash(&obs);
+    let ctx = DecisionContext {
+        observation: obs,
+        visible_history: &empty_history,
+        legal_actions: &legal,
+        meta: PublicRequestMeta {
+            game_id: SOLO15_CONTRACT_ID_V1.to_string(),
+            recipient_seat: PlayerId(0),
+            request_id: 0,
+            observation_hash: obs_h,
+        },
+        rng: &mut rng,
+    };
+
+    let chosen = policy.choose_action(ctx).unwrap();
+    assert_eq!(
+        chosen,
+        Action::ChooseNoble {
+            noble: splendor_catalog::NobleId(1),
+        },
+        "policy must be able to choose legal[1]"
     );
 }
 
