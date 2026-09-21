@@ -13,6 +13,7 @@ mod review_trace;
 mod reviewer_registry;
 mod s3_review_trace;
 mod schema;
+pub mod solo15;
 
 pub use determinization_trace::{
     analyze_replay_determinization_v2, analyze_replay_determinization_v2_with_progress,
@@ -47,4 +48,8 @@ pub use s3_review_trace::{analyze_replay_s3_v2, analyze_replay_s3_v2_with_progre
 pub use schema::{
     analysis_trace_hash_v1, AnalysisCardV1, AnalysisCatalogV1, AnalysisFrameV1, AnalysisNobleV1,
     AnalysisTraceV1, RefereeRevealV1, ANALYSIS_TRACE_FORMAT, ANALYSIS_TRACE_VERSION,
+};
+pub use solo15::{
+    run_solo15_evaluation, MetricDistribution, Solo15CohortReport, Solo15Environment,
+    Solo15Outcome, Solo15Step, Solo15Summary, DEFAULT_MAX_MAIN_TURNS, SOLO15_CONTRACT_ID_V1,
 };
