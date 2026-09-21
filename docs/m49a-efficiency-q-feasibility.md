@@ -1,8 +1,8 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: PROPOSED / DESIGN REPAIR 2 COMPLETED (owner terminal review pending)
-- **Baseline**: `116525c3ee874ee6fc64e40f96640d0bd90b2327` (M49S accepted/closed)
-- **Owner-date**: 2026-09-20; owner delivered M49A Design Review 2 (P0=0/P1=1/P2=2), resolving train/validation seed overlap, single-truth outcome schema, next-actions contract, and paired bootstrap sign convention.
+- **Status**: M49A-I DATA FOUNDATION IMPLEMENTED / VERIFIED local (owner terminal review pending)
+- **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
+- **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
   1. Reusable representation infrastructure from M25 / M43 / M46 (state encoding 368-d, action encoding 36-d, action-conditioned delta features 23-d -> 427-d total).
   2. Parity requirement: Port M25 23-d delta encoder to canonical Rust implementation in `crates/splendor-learning`.
@@ -206,10 +206,61 @@ where $\Delta_i < 0$ signifies that M49A required fewer turns than Heuristic on 
 
 A marginal drop of 0.02 turns (e.g. 29.18 vs 29.20, $\bar{\Delta} = -0.02$) satisfies the feasibility floor to prove Q-learning convergence, but is transparently labeled as a feasibility pass rather than a substantive breakthrough.
 
-## 8. Next Authorized Step
+## 8. M49A-I Data Foundation Implementation & Evidence
 
-- Await owner review and approval of M49A Design Repair 1.
-- Upon authorization:
-  1. Implement Rust parity encoder `encode_action_delta_v2` in `crates/splendor-learning`.
-  2. Implement teacher-free transition collector in `crates/splendor-analysis`.
-  3. Implement PyTorch training pipeline with Softplus Q-network, unified Bellman loss, and iterative aggregation.
+### A. Tracked Rust Code
+- `crates/splendor-learning/src/representation.rs`:
+  - `encode_action_delta_v2(obs, action)`: exact 23-d deterministic feature vector.
+  - `encode_combined_v1(obs, action)`: 427-d combined vector ($368 + 36 + 23$).
+  - `ACTION_DELTA_FEATURES_V2 = 23`, `COMBINED_FEATURES_V1 = 427`.
+  - Unit test `test_python_rust_action_delta_parity_all_action_types` verifying floating-point parity ($< 10^{-5}$) against Python across all 7 action types (`TakeTokens`, `BuyMarket`, `BuyReserved`, `ReserveMarket`, `ReserveDeck`, `ChooseNoble`, `Pass`).
+- `crates/splendor-analysis/src/m49a_collector.rs`:
+  - `train_seeds_v1()`, `validation_seeds_v1()`, `canonical_m49s_seeds()`.
+  - `assert_seed_partitions_disjoint()` implementing invariant `I-SEED-01`.
+  - `TransitionRecord` with `outcome` as single truth and strict `next_legal_actions` contract (non-empty on Running, empty on terminal).
+  - `extract_input_features()` guaranteed to exclude `provenance`, `env_seed`, `trajectory_id`, and `next_observation`.
+  - `CategoryBiasedPolicy` ($\varepsilon = 0.20$).
+  - `collect_solo15_trajectory()` and `CoverageDiagnosticReport`.
+
+### B. Empirical Coverage Diagnostic Report (32 Training Seeds per Source)
+
+```text
+==========================================================================
+M49A BEHAVIOR COVERAGE DIAGNOSTIC REPORT (32 TRAINING SEEDS PER SOURCE)
+==========================================================================
+
+--- [HEURISTIC (Warm-Start)] ---
+Trajectories: 32, Transitions: 965, Success Rate: 100.0% (Reached15: 32, Stalled: 0, TurnCap: 0)
+Main Turns (successful): Mean: 29.97, Median: 30.0, P75: 32.0, P90: 32.0, Min: 26, Max: 34
+Purchased Cards:         Mean: 21.25, Median: 21.0
+Action Kinds:            {"BuyMarket": 680, "ChooseNoble": 6, "TakeTokens": 279}
+VP Buckets:              {"0-2": 639, "3-5": 133, "6-8": 62, "9-11": 66, "12-14": 64, "15+": 1}
+Legal Actions Count:     Mean: 31.0, Median: 29.0, Min: 2, Max: 145
+
+--- [CATEGORY-BIASED EXPLORATION (eps = 0.20)] ---
+Trajectories: 32, Transitions: 1156, Success Rate: 100.0% (Reached15: 32, Stalled: 0, TurnCap: 0)
+Main Turns (successful): Mean: 35.84, Median: 36.0, P75: 37.0, P90: 41.0, Min: 31, Max: 43
+Purchased Cards:         Mean: 20.56, Median: 21.0
+Action Kinds:            {"BuyMarket": 580, "BuyReserved": 78, "ChooseNoble": 9, "ReserveDeck": 38, "ReserveMarket": 112, "TakeTokens": 339}
+VP Buckets:              {"0-2": 738, "3-5": 173, "6-8": 108, "9-11": 75, "12-14": 61, "15+": 1}
+Legal Actions Count:     Mean: 35.3, Median: 16.0, Min: 2, Max: 437
+
+--- [UNIFORM RANDOM EXPLORATION] ---
+Trajectories: 32, Transitions: 3200, Success Rate: 0.0% (Reached15: 0, Stalled: 0, TurnCap: 32)
+Main Turns (successful): N/A (0 trajectories reached 15)
+Purchased Cards:         Mean: 1.38, Median: 1.0
+Action Kinds:            {"BuyMarket": 38, "BuyReserved": 6, "ReserveDeck": 15, "ReserveMarket": 87, "TakeTokens": 3054}
+VP Buckets:              {"0-2": 3019, "3-5": 181}
+Legal Actions Count:     Mean: 181.6, Median: 124.0, Min: 6, Max: 573
+==========================================================================
+```
+
+#### Key Diagnostic Insights:
+1. **Heuristic has zero reserve coverage**: In 965 transitions, Heuristic executed **0** `BuyReserved`, **0** `ReserveMarket`, and **0** `ReserveDeck`. Training on Heuristic alone would blind the Q-network to reserve mechanics.
+2. **Category-Biased policy provides complete action coverage**: Reserving cards (`ReserveMarket`: 112, `ReserveDeck`: 38) and buying reserved cards (`BuyReserved`: 78) are richly sampled while still achieving 100% threshold success (mean 35.84 turns).
+3. **Random exploration is 95.4% token noise**: In 3,200 transitions, 3,054 are `TakeTokens` in 0-2 VP states, with 0% success. A 20% trajectory budget for Random would produce ~3.3x more transitions than Heuristic while contributing almost zero high-VP or purchase data. The data mix for Round 0 should weight category-biased and heuristic transitions much higher, capping uniform random to a modest noise budget.
+
+## 9. Next Authorized Step
+
+- Await owner review of **M49A-I Data Foundation**.
+- Upon acceptance: proceed to **M49A-II Efficiency-Q Training** (PyTorch Q-network, unified Bellman loss, validation early stopping, and Round 0 -> Round 1 -> Round 2 iterative aggregation on the fixed 256 training seeds).

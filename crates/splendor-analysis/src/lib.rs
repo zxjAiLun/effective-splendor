@@ -13,6 +13,7 @@ mod review_trace;
 mod reviewer_registry;
 mod s3_review_trace;
 mod schema;
+pub mod m49a_collector;
 pub mod solo15;
 
 pub use determinization_trace::{
@@ -45,6 +46,11 @@ pub use reviewer_registry::{
     REVIEWER_REGISTRY_FORMAT, REVIEWER_REGISTRY_VERSION,
 };
 pub use s3_review_trace::{analyze_replay_s3_v2, analyze_replay_s3_v2_with_progress};
+pub use m49a_collector::{
+    assert_seed_partitions_disjoint, canonical_m49s_seeds, collect_solo15_trajectory,
+    train_seeds_v1, validation_seeds_v1, CategoryBiasedPolicy, CoverageDiagnosticReport,
+    TransitionProvenance, TransitionRecord,
+};
 pub use schema::{
     analysis_trace_hash_v1, AnalysisCardV1, AnalysisCatalogV1, AnalysisFrameV1, AnalysisNobleV1,
     AnalysisTraceV1, RefereeRevealV1, ANALYSIS_TRACE_FORMAT, ANALYSIS_TRACE_VERSION,

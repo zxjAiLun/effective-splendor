@@ -176,6 +176,262 @@ pub fn encode_action_v1(action: &Action) -> Result<Vec<f32>, LearningError> {
     Ok(out)
 }
 
+/// Frozen M25/M49A deterministic action delta feature count.
+pub const ACTION_DELTA_FEATURES_V2: usize = 23;
+/// Combined input dimension for M49A Q-network (368 + 36 + 23 = 427).
+pub const COMBINED_FEATURES_V1: usize =
+    OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2;
+
+/// Exact post-action state delta encoding matching Splendor engine rules and Python M25 parity.
+///
+/// Computes 23 exact deterministic features without peeking at hidden deck cards:
+/// - [0]: delta_vp (VP change / 5.0)
+/// - [1]: post_vp (new VP / 15.0)
+/// - [2]: dist_15 (max(0, 15 - new VP) / 15.0)
+/// - [3..8]: delta_bonuses (5 gem colors [W, B, G, R, K], 1.0 if bought card has that bonus)
+/// - [8..14]: delta_tokens (6 gem colors [W, B, G, R, K, Gold], net change / 10.0)
+/// - [14]: post_tokens (total tokens / 10.0)
+/// - [15..20]: card_cost (5 gem colors [W, B, G, R, K], cost / 7.0)
+/// - [20]: card_prestige (card prestige / 5.0)
+/// - [21]: gold_spent (gold tokens paid / 5.0)
+/// - [22]: noble_delta (1.0 if 1 or >1 noble qualifies; 0.0 otherwise)
+pub fn encode_action_delta_v2(
+    observation: &Observation,
+    action: &Action,
+) -> Result<[f32; ACTION_DELTA_FEATURES_V2], LearningError> {
+    validate_observation_v1(observation)?;
+    validate_action_v1(action)?;
+
+    let viewer = observation.viewer.index();
+    let player = &observation.public.players[viewer];
+    let tokens = [
+        player.tokens.white,
+        player.tokens.blue,
+        player.tokens.green,
+        player.tokens.red,
+        player.tokens.black,
+        player.tokens.gold,
+    ];
+    let bonuses = player.bonuses;
+    let prestige = player.prestige;
+
+    let mut delta_vp = 0.0f32;
+    let mut delta_bonuses = [0.0f32; 5];
+    let mut delta_tokens = [0.0f32; 6];
+    let mut card_cost = [0.0f32; 5];
+    let mut card_prestige = 0.0f32;
+    let mut gold_spent = 0.0f32;
+    let mut noble_delta = 0.0f32;
+
+    match *action {
+        Action::TakeTokens { take, give_back } => {
+            let take_arr = [
+                take.white, take.blue, take.green, take.red, take.black, take.gold,
+            ];
+            let give_arr = [
+                give_back.white,
+                give_back.blue,
+                give_back.green,
+                give_back.red,
+                give_back.black,
+                give_back.gold,
+            ];
+            for i in 0..6 {
+                delta_tokens[i] = (take_arr[i] as f32 - give_arr[i] as f32) / 10.0;
+            }
+        }
+        Action::BuyMarket { tier, slot } => {
+            let slot_idx = slot as usize;
+            if slot_idx < 4 {
+                if let Some(card_id) = observation.public.market[tier.index()][slot_idx] {
+                    compute_buy_delta(
+                        card_id,
+                        bonuses,
+                        tokens,
+                        &observation.public.nobles,
+                        &mut delta_vp,
+                        &mut delta_bonuses,
+                        &mut delta_tokens,
+                        &mut card_cost,
+                        &mut card_prestige,
+                        &mut gold_spent,
+                        &mut noble_delta,
+                    );
+                }
+            }
+        }
+        Action::BuyReserved { slot } => {
+            let slot_idx = slot as usize;
+            let reserved = &observation.private.reserved;
+            if slot_idx < reserved.len() {
+                let card_id = reserved[slot_idx].card;
+                compute_buy_delta(
+                    card_id,
+                    bonuses,
+                    tokens,
+                    &observation.public.nobles,
+                    &mut delta_vp,
+                    &mut delta_bonuses,
+                    &mut delta_tokens,
+                    &mut card_cost,
+                    &mut card_prestige,
+                    &mut gold_spent,
+                    &mut noble_delta,
+                );
+            }
+        }
+        Action::ReserveMarket {
+            tier,
+            slot,
+            give_back,
+        } => {
+            let slot_idx = slot as usize;
+            if slot_idx < 4 {
+                if let Some(card_id) = observation.public.market[tier.index()][slot_idx] {
+                    let card_def = card(card_id);
+                    card_prestige = card_def.prestige as f32 / 5.0;
+                    for i in 0..5 {
+                        card_cost[i] = card_def.cost[i] as f32 / 7.0;
+                    }
+                }
+            }
+            let gold_taken = if observation.public.bank.gold > 0 { 1u8 } else { 0u8 };
+            let give_arr = [
+                give_back.white,
+                give_back.blue,
+                give_back.green,
+                give_back.red,
+                give_back.black,
+                give_back.gold,
+            ];
+            for i in 0..5 {
+                delta_tokens[i] = -(give_arr[i] as f32) / 10.0;
+            }
+            delta_tokens[5] = (gold_taken as f32 - give_arr[5] as f32) / 10.0;
+        }
+        Action::ReserveDeck {
+            tier: _,
+            give_back,
+        } => {
+            let gold_taken = if observation.public.bank.gold > 0 { 1u8 } else { 0u8 };
+            let give_arr = [
+                give_back.white,
+                give_back.blue,
+                give_back.green,
+                give_back.red,
+                give_back.black,
+                give_back.gold,
+            ];
+            for i in 0..5 {
+                delta_tokens[i] = -(give_arr[i] as f32) / 10.0;
+            }
+            delta_tokens[5] = (gold_taken as f32 - give_arr[5] as f32) / 10.0;
+        }
+        Action::ChooseNoble { .. } => {
+            delta_vp = 3.0 / 5.0;
+            noble_delta = 1.0;
+        }
+        Action::Pass => {}
+    }
+
+    let new_vp = prestige as f32 + delta_vp * 5.0;
+    let post_vp = new_vp / 15.0;
+    let dist_15 = (15.0 - new_vp).max(0.0) / 15.0;
+    let token_sum: f32 = tokens.iter().map(|&t| t as f32).sum();
+    let delta_token_sum: f32 = delta_tokens.iter().sum();
+    let post_tokens = (token_sum + delta_token_sum * 10.0) / 10.0;
+
+    let mut out = [0.0f32; ACTION_DELTA_FEATURES_V2];
+    out[0] = delta_vp;
+    out[1] = post_vp;
+    out[2] = dist_15;
+    out[3..8].copy_from_slice(&delta_bonuses);
+    out[8..14].copy_from_slice(&delta_tokens);
+    out[14] = post_tokens;
+    out[15..20].copy_from_slice(&card_cost);
+    out[20] = card_prestige;
+    out[21] = gold_spent;
+    out[22] = noble_delta;
+
+    Ok(out)
+}
+
+fn compute_buy_delta(
+    card_id: CardId,
+    bonuses: [u8; 5],
+    tokens: [u8; 6],
+    visible_nobles: &[NobleId],
+    delta_vp: &mut f32,
+    delta_bonuses: &mut [f32; 5],
+    delta_tokens: &mut [f32; 6],
+    card_cost: &mut [f32; 5],
+    card_prestige: &mut f32,
+    gold_spent: &mut f32,
+    noble_delta: &mut f32,
+) {
+    let c = card(card_id);
+    *card_prestige = c.prestige as f32 / 5.0;
+    *delta_vp = c.prestige as f32 / 5.0;
+    let color_idx = c.bonus.index();
+    delta_bonuses[color_idx] = 1.0;
+    for i in 0..5 {
+        card_cost[i] = c.cost[i] as f32 / 7.0;
+    }
+
+    let mut total_gold_paid: u8 = 0;
+    for i in 0..5 {
+        let needed = c.cost[i].saturating_sub(bonuses[i]);
+        let paid = tokens[i].min(needed);
+        let deficit = needed - paid;
+        total_gold_paid = total_gold_paid.saturating_add(deficit);
+        delta_tokens[i] = -(paid as f32) / 10.0;
+    }
+    delta_tokens[5] = -(total_gold_paid as f32) / 10.0;
+    *gold_spent = total_gold_paid as f32 / 5.0;
+
+    // Check newly qualifying nobles
+    let mut new_bonuses = bonuses;
+    new_bonuses[color_idx] = new_bonuses[color_idx].saturating_add(1);
+
+    let all_n = splendor_catalog::all_nobles();
+    let mut qualifying_nobles_count = 0;
+    for &nid in visible_nobles {
+        if nid.index() < all_n.len() {
+            let n = &all_n[nid.index()];
+            let cur_met = (0..5).all(|c_idx| bonuses[c_idx] >= n.requirements[c_idx]);
+            let new_met = (0..5).all(|c_idx| new_bonuses[c_idx] >= n.requirements[c_idx]);
+            if !cur_met && new_met {
+                qualifying_nobles_count += 1;
+            }
+        }
+    }
+
+    if qualifying_nobles_count == 1 {
+        *delta_vp += 3.0 / 5.0;
+        *noble_delta = 1.0;
+    } else if qualifying_nobles_count > 1 {
+        *noble_delta = 1.0;
+    }
+}
+
+/// Encode an observation and an action into the combined 427-dimensional feature vector.
+///
+/// Order: `[encode_observation_v1 (368), encode_action_v1 (36), encode_action_delta_v2 (23)]` = 427 features.
+pub fn encode_combined_v1(
+    observation: &Observation,
+    action: &Action,
+) -> Result<Vec<f32>, LearningError> {
+    let obs_f = encode_observation_v1(observation)?;
+    let act_f = encode_action_v1(action)?;
+    let delta_f = encode_action_delta_v2(observation, action)?;
+    let mut out = Vec::with_capacity(COMBINED_FEATURES_V1);
+    out.extend_from_slice(&obs_f);
+    out.extend_from_slice(&act_f);
+    out.extend_from_slice(&delta_f);
+    debug_assert_eq!(out.len(), COMBINED_FEATURES_V1);
+    Ok(out)
+}
+
 fn validate_observation_v1(observation: &Observation) -> Result<(), LearningError> {
     let player_count = observation.public.player_count as usize;
     if !(2..=MAX_PLAYERS_V1).contains(&player_count)
@@ -464,5 +720,229 @@ mod tests {
             }),
             Err(LearningError::InvalidDataset(_))
         ));
+    }
+
+    fn make_test_observation() -> Observation {
+        Observation {
+            viewer: PlayerId(0),
+            ruleset_fingerprint: splendor_core::ruleset_fingerprint(
+                &splendor_core::Ruleset::base_v1(),
+            ),
+            public: splendor_core::PublicState {
+                player_count: 2,
+                current_player: PlayerId(0),
+                phase: splendor_core::Phase::Main,
+                bank: Gems {
+                    white: 4,
+                    blue: 4,
+                    green: 4,
+                    red: 4,
+                    black: 4,
+                    gold: 5,
+                },
+                market: [
+                    [
+                        Some(CardId(0)),
+                        Some(CardId(1)),
+                        Some(CardId(2)),
+                        Some(CardId(3)),
+                    ],
+                    [
+                        Some(CardId(40)),
+                        Some(CardId(41)),
+                        Some(CardId(42)),
+                        Some(CardId(43)),
+                    ],
+                    [
+                        Some(CardId(70)),
+                        Some(CardId(71)),
+                        Some(CardId(72)),
+                        Some(CardId(73)),
+                    ],
+                ],
+                deck_counts: [36, 26, 16],
+                nobles: vec![NobleId(0), NobleId(1), NobleId(2)],
+                players: vec![
+                    splendor_core::PublicPlayerView {
+                        id: PlayerId(0),
+                        tokens: Gems {
+                            white: 2,
+                            blue: 1,
+                            green: 0,
+                            red: 3,
+                            black: 0,
+                            gold: 1,
+                        },
+                        bonuses: [1, 2, 0, 0, 1],
+                        prestige: 4,
+                        reserved_count: 1,
+                        public_reserved: vec![CardId(4)],
+                        purchased: vec![],
+                        nobles: vec![],
+                    },
+                    splendor_core::PublicPlayerView {
+                        id: PlayerId(1),
+                        tokens: Gems::ZERO,
+                        bonuses: [0, 0, 0, 0, 0],
+                        prestige: 0,
+                        reserved_count: 0,
+                        public_reserved: vec![],
+                        purchased: vec![],
+                        nobles: vec![],
+                    },
+                ],
+                end_game_triggered: false,
+                turns_remaining_in_final_round: None,
+                consecutive_forced_passes: 0,
+                pending_nobles: vec![],
+            },
+            private: splendor_core::PrivatePlayerView {
+                reserved: vec![splendor_core::ReservedView {
+                    slot: 0,
+                    card: CardId(4),
+                    tier: splendor_catalog::Tier::One,
+                    from_deck: false,
+                }],
+            },
+        }
+    }
+
+    fn assert_approx_eq(actual: &[f32], expected: &[f32]) {
+        assert_eq!(actual.len(), expected.len());
+        for (i, (&a, &e)) in actual.iter().zip(expected.iter()).enumerate() {
+            assert!(
+                (a - e).abs() < 1e-5,
+                "mismatch at index {i}: actual {a}, expected {e}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_python_rust_action_delta_parity_all_action_types() {
+        let obs = make_test_observation();
+
+        // 1. TakeTokens
+        let act_take = Action::TakeTokens {
+            take: Gems {
+                white: 1,
+                blue: 1,
+                green: 1,
+                red: 0,
+                black: 0,
+                gold: 0,
+            },
+            give_back: Gems {
+                white: 0,
+                blue: 0,
+                green: 0,
+                red: 1,
+                black: 0,
+                gold: 0,
+            },
+        };
+        let delta_take = encode_action_delta_v2(&obs, &act_take).unwrap();
+        assert_approx_eq(
+            &delta_take,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, -0.1, 0.0, 0.0,
+                0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+        );
+
+        // 2. BuyMarket
+        let act_buy_m = Action::BuyMarket {
+            tier: splendor_catalog::Tier::One,
+            slot: 0,
+        };
+        let delta_buy_m = encode_action_delta_v2(&obs, &act_buy_m).unwrap();
+        assert_approx_eq(
+            &delta_buy_m,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.2,
+                0.5, 0.0, 0.0, 0.0, 0.0, 0.428571, 0.0, 0.4, 0.0,
+            ],
+        );
+
+        // 3. BuyReserved
+        let act_buy_r = Action::BuyReserved { slot: 0 };
+        let delta_buy_r = encode_action_delta_v2(&obs, &act_buy_r).unwrap();
+        assert_approx_eq(
+            &delta_buy_r,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.1, 0.0, -0.3,
+                0.3, 0.0, 0.142857, 0.428571, 0.142857, 0.0, 0.0, 0.6, 0.0,
+            ],
+        );
+
+        // 4. ReserveMarket
+        let act_res_m = Action::ReserveMarket {
+            tier: splendor_catalog::Tier::One,
+            slot: 1,
+            give_back: Gems::ZERO,
+        };
+        let delta_res_m = encode_action_delta_v2(&obs, &act_res_m).unwrap();
+        assert_approx_eq(
+            &delta_res_m,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,
+                0.8, 0.142857, 0.0, 0.0, 0.0, 0.285714, 0.0, 0.0, 0.0,
+            ],
+        );
+
+        // 5. ReserveDeck
+        let act_res_d = Action::ReserveDeck {
+            tier: splendor_catalog::Tier::Two,
+            give_back: Gems::ZERO,
+        };
+        let delta_res_d = encode_action_delta_v2(&obs, &act_res_d).unwrap();
+        assert_approx_eq(
+            &delta_res_d,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1,
+                0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+        );
+
+        // 6. ChooseNoble
+        let act_noble = Action::ChooseNoble { noble: NobleId(0) };
+        let delta_noble = encode_action_delta_v2(&obs, &act_noble).unwrap();
+        assert_approx_eq(
+            &delta_noble,
+            &[
+                0.6, 0.466667, 0.533333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+            ],
+        );
+
+        // 7. Pass
+        let act_pass = Action::Pass;
+        let delta_pass = encode_action_delta_v2(&obs, &act_pass).unwrap();
+        assert_approx_eq(
+            &delta_pass,
+            &[
+                0.0, 0.266667, 0.733333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            ],
+        );
+
+        // 8. Combined vector (368 + 36 + 23 = 427)
+        let combined = encode_combined_v1(&obs, &act_buy_m).unwrap();
+        assert_eq!(combined.len(), COMBINED_FEATURES_V1);
+        assert_eq!(combined.len(), 427);
+        // Prefix is observation encoding
+        assert_approx_eq(
+            &combined[..OBSERVATION_FEATURES_V1],
+            &encode_observation_v1(&obs).unwrap(),
+        );
+        // Middle is action encoding
+        assert_approx_eq(
+            &combined[OBSERVATION_FEATURES_V1..OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1],
+            &encode_action_v1(&act_buy_m).unwrap(),
+        );
+        // Suffix is delta encoding
+        assert_approx_eq(
+            &combined[OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1..],
+            &delta_buy_m,
+        );
     }
 }
