@@ -181,6 +181,10 @@ pub const ACTION_DELTA_FEATURES_V2: usize = 23;
 /// Combined input dimension for M49A Q-network (368 + 36 + 23 = 427).
 pub const COMBINED_FEATURES_V1: usize =
     OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2;
+/// Additional normalized public remaining-main-turn feature for the horizon-aware bridge.
+pub const HORIZON_FEATURES_V1: usize = 1;
+/// Horizon-aware combined input dimension (427 + normalized remaining budget).
+pub const COMBINED_FEATURES_V2: usize = COMBINED_FEATURES_V1 + HORIZON_FEATURES_V1;
 
 /// Exact post-action state delta encoding matching Splendor engine rules and Python M25 parity.
 ///
@@ -432,6 +436,28 @@ pub fn encode_combined_v1(
     out.extend_from_slice(&act_f);
     out.extend_from_slice(&delta_f);
     debug_assert_eq!(out.len(), COMBINED_FEATURES_V1);
+    Ok(out)
+}
+
+/// Encode an observation and an action into the horizon-aware 428-dimensional feature vector.
+///
+/// The final feature is the normalized public remaining-main-turn budget. It is
+/// task state, not provenance: `remaining_main_turns` must be no greater than
+/// `max_main_turns`, and both values are supplied by the environment contract.
+pub fn encode_combined_v2(
+    observation: &Observation,
+    action: &Action,
+    remaining_main_turns: u32,
+    max_main_turns: u32,
+) -> Result<Vec<f32>, LearningError> {
+    if max_main_turns == 0 || remaining_main_turns > max_main_turns {
+        return Err(invalid_dataset(
+            "remaining-main-turn budget is outside the environment horizon",
+        ));
+    }
+    let mut out = encode_combined_v1(observation, action)?;
+    out.push(remaining_main_turns as f32 / max_main_turns as f32);
+    debug_assert_eq!(out.len(), COMBINED_FEATURES_V2);
     Ok(out)
 }
 

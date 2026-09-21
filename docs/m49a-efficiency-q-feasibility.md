@@ -1,6 +1,6 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: M49A-I DATA FOUNDATION IMPLEMENTED / VERIFIED local (owner terminal review pending)
+- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939` (owner-supplied cloud review); M49A-II AUTHORIZED / NOT STARTED. Parent design review dated 2026-09-21 is recorded in §10; its proposed changes are not implementation or amendments to frozen gates.
 - **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
 - **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
@@ -269,5 +269,108 @@ Legal Actions Count:     Mean: 181.6, Median: 124.0, Min: 6, Max: 573
 
 ## 9. Next Authorized Step
 
-- Await owner review of **M49A-I Data Foundation**.
-- Upon acceptance: proceed to **M49A-II Efficiency-Q Training** (PyTorch Q-network, unified Bellman loss, validation early stopping, and Round 0 -> Round 1 -> Round 2 iterative aggregation on the fixed 256 training seeds).
+- Owner supplied the terminal review accepting **M49A-I Data Foundation @ e67df05**, P0=0/P1=0/P2=0, and authorizing **M49A-II Efficiency-Q Training**.
+- Current request is **design analysis only**. No trainer, weights, aggregation run, or candidate canonical evaluation was started in this review. Resolve the objective/representation choices in §10 before implementing the corresponding training contract; no existing acceptance gate is silently changed.
+
+## 10. Parent Design Review — 2026-09-21
+
+### Scope, baseline, and verdict
+
+- Reviewed local `main` / cached `origin/main` at `e67df05424eee9869342e91b93088d334d423939`, initially clean. The owner-supplied cloud acceptance is recorded as such, not represented as a fresh remote/CI verification by this reviewer.
+- Read M49A, M49S, related M25 action-coupling and M47S target limitations, and actual representation/collector/environment code. Direct parent review; no delegated review.
+- **REVIEWED**: solo main-turn efficiency is a useful autonomous base-skill objective. Infrastructure acceptance does not establish convergence, exact expected-cost semantics, optimality, or transfer to competitive play.
+- No production code changed. Mathematical alternatives below are **PROPOSED**, not approved revisions to the frozen 427-d, loss, or terminal contracts.
+
+### A. Why the objective is useful, and what it does not establish
+
+Minimizing turns to 15 correctly charges token collection, reserving, purchases and delayed investments in a common currency. It is preferable to immediate VP-per-card, VP-per-token, or rewards for buying discounts: those can reward the wrong intermediate behavior. The stochastic optimum is non-clairvoyant expected cost, not the hindsight-best route through the actual deck. Real next observations are legitimate training targets, not permission for inference-time referee peeking.
+
+Solo-15 is still an uncontested resource/market regime. It omits denial, disappearing targets, shared noble races, opponent-generated refills, and the real competitive stopping/tie conditions. Therefore its policy/value is a base skill or initialization, not automatically an additive tactical evaluator for M50. No M50 work is authorized here.
+
+No CE/action imitation is used, but Heuristic and category-priority behavior still bias the data distribution. Use the narrower claim **environment-objective learning without action-imitation loss**, not learning without any human prior. Past teacher experiments do not prove imitation is universally incapable; M25's delta ablation supports useful action coupling, not a unique causal explanation of all past failures.
+
+### B. Verified state aliasing at the time limit
+
+`Solo15Environment` maintains `main_turns` privately and ends at 100, while `Observation` and `encode_observation_v1` omit elapsed/remaining main turns. The actual finite-horizon value is `Q(o, h, a)`, not an exact stationary function `Q(o, a)`.
+
+A legal engine probe on training seed **1001049** reached 10 tokens and repeatedly took/returned identical tokens. At main-turn counts **5 and 99**, the entire Observation, chosen action, and all **427 input floats** were equal. The early transition was Running; the late transition was TurnCap with target 101. This is verified state aliasing, not proof that all training rows or all action values are contradictory; it invalidates the claim that this observation alone is a sufficient Markov state for the capped process.
+
+Proposed choices requiring owner agreement:
+1. If the cap is part of the optimization task, expose a dedicated public remaining-main-turn budget and include it in current/next features (a versioned representation extension, not use of provenance/seed/step_index as inputs).
+2. If the intended quantity is uncapped distance-to-15, regard the cap as truncation rather than intrinsic terminal value; this requires a separate training target/continuation contract and cannot be done by relabeling existing terminal records informally.
+3. Retaining both 427-d and terminal cap=100 is an approximate memoryless-control experiment; document it as such instead of claiming exact SSP Bellman consistency.
+
+Separately, `encode_observation_v1` retains only purchased-card **count** (line 102), not purchased-card identities that raw Observation contains. Those identities help infer remaining deck composition in solo mode. Thus a public-information-safe encoder can still be information-lossy for future refill expectations. Treat this as a representation limitation, not hidden-information leakage or an immediate mandate for a larger model.
+
+### C. Huber and failure penalty are not exact guarantees about expected cost
+
+With stochastic sample targets, squared-error regression fits the conditional mean; fixed-threshold Huber generally fits a different robust location. Analytic toy example (not an experiment result): targets 30 with probability 0.9 and 100 with probability 0.1 have mean 37, but delta=1 Huber is minimized at about **30.1111**. Rare costly outcomes can consequently be strongly underweighted. Huber is a defensible stability heuristic, but it cannot by itself justify the exact expected-main-turn interpretation. Proposals: mean-consistent MSE with optimizer gradient controls, or retain Huber with explicit approximation and tail calibration. Neither proposal was implemented.
+
+Also, current accumulated objective is `E[sum(step_cost) + 100 * I(failure)]`, not lexicographic success-then-speed, nor successful-only mean turns. A trajectory that reaches TurnCap=100 has root return **200**, not 101 (101 is the final Main transition target). Each successful realization costs at most 100, including a win exactly on turn 100; nevertheless a stochastic risky policy can beat a safer one in expectation: 98% finishing at 20 and 2% capping at 100 yields 23.6, below deterministic 30. Keep the 64/64 gate as an additional constraint; do not claim finite penalty mathematically guarantees zero failures. This also corrects the older §4 wording `cost < 100`: successful cost can equal 100.
+
+### D. Legal masks and Softplus do not solve extrapolation
+
+The legal set prevents impossible actions from entering the backup. Softplus prevents negative outputs. Neither establishes that a legal but poorly observed action has a plausible value: predicting 0.1 for a true 40-turn action is non-negative and still destructive under argmin. Taking a minimum over many noisy estimates preferentially selects underestimates (the cost-minimization form of maximization bias).
+
+All seven action kinds appearing globally does not establish local action-comparison coverage. Category-biased behavior still buys whenever possible outside its epsilon branch, so cheap-buy versus useful-save/wait comparisons can remain sparse. Uniform random over serialized take/return actions overweights categories with many variants. Audit state-conditional alternatives, chosen-action Q, action counts, repetitions/no-progress runs, and realized rollout costs; do not infer coverage from kind counts alone.
+
+Data-aggregation rounds are not Bellman propagation iterations. Positive-cost, undiscounted bootstrapping from near-zero initialization may need many target updates to propagate 25–40-step successful tails. A frozen replay containing complete successes helps, but neither three data rounds nor a small MLP guarantees convergence. If Q0 loops, bounded training-seed rollout collection is useful evidence/data; requiring Q0 to be successful before collecting its failures can prevent the proposed correction mechanism from operating. If instability actually appears, Double-Q-style selection/evaluation separation or environment-return initialization are hypotheses, not permission to add teacher CE or claim Monte Carlo behavior returns equal optimal Q.
+
+### E. Verified evaluator seam and interpretation of self-improvement
+
+`collect_solo15_trajectory` calls the policy in Main and ChooseNoble. In contrast, legacy `run_solo15_evaluation` still uses `legal[0]` in ChooseNoble (`solo15.rs:356`). A spy policy on training seed **1004049** got **1** noble callback through the collector (Noble 8 recorded) and **0** through the legacy evaluator. M49A-II must evaluate its complete policy through the collector-equivalent path (or a clearly versioned runner) rather than silently replacing noble decisions. Preserve the existing M49S baseline provenance; do not silently recompute/relabel it under a different runner. Under current solo rules, qualified nobles have equal prestige and bonuses never decrease, so many noble choices can legitimately tie in efficiency; this seam is not evidence of a large turn-performance effect. This is an M49A-II integration constraint, not a request to reopen the accepted Repair 2 seam.
+
+Fixed 256 training seeds control the environment set, not memorization: visible initial boards can fingerprint repeated decks without an explicit seed input. More policy RNG streams diversify trajectories but not deck realizations. Keep current train/validation/canonical partition; do not attribute repeated-training-seed gains to generalization. If a later larger test is desired, preregister a new cohort rather than reuse canonical as a development set.
+
+For validation/checkpoint selection, report success/failure before successful-only turns, plus capped/penalized all-game cost with its definition. Predeclare checkpoint and greedy/tie rules. Bellman residual and best-versus-second-best gaps are diagnostics, not policy quality (genuine ties exist). A 38→32→29.6 curve is encouraging, not proof that aggregation caused it: a compute-matched continuation on frozen D0 is a useful bounded control if making that causal claim. Training randomness and selection across checkpoints also limit claims.
+
+The frozen canonical gate remains unchanged and candidate-only-once. 64/64 is observed cohort success, not proof of population success=1; under an iid binomial model the one-sided 95% lower bound is about **95.43%**. Fixed-seed results support the named cohort first. A small positive mean improvement or significant CI also does not establish broad tactical competence or a large practical gain.
+
+### F. Execution evidence and local artifacts
+
+Only two targeted read-only environment/runner probes were run, using training seeds, with the temporary test source copied from and byte-compared to the retained artifact:
+
+```text
+cargo test -p splendor-analysis --test m49a_design_probe -- --nocapture
+exit 0; 2 passed; 0 failed; test body 0.03s
+```
+
+- Probe source: `local-artifacts/m49a-design-review/probe.rs`
+  - SHA256 `eeb101ded11aaad1c78c3626f03a49b8073ff007e1eed6fb5a404868087026e6`
+- Execution output: `local-artifacts/m49a-design-review/probe.log`
+  - SHA256 `dfa5291019410edddf850f2a6ee4717a333cfdcb624bf493e9615c40b25e08eb`
+- Temporary `crates/splendor-analysis/tests/m49a_design_probe.rs` removed after execution. No product code modified; no full-suite rerun or CI claim in this review.
+- Analytic toy examples above were calculated separately and are not network measurements.
+- Historical coverage remains in §8. Correction to stale §8 prose: post-Repair-1 category counts are 1160 / mean 35.97 / ReserveMarket 111 / ReserveDeck 39, as shown in its report. An illustrative 60/35/5 **trajectory** mix at these observed lengths would be approximately **58.30/28.29/13.40 percent transitions**, not 60/35/5 samples. No mixture ratio is newly frozen.
+
+### Next decision
+
+Support the efficiency-first research direction. Before M49A-II implementation, settle finite-horizon representation versus truncation semantics, state whether the learner estimates expected cost or a Huber approximation, and ensure the evaluation runner executes the entire Q policy. Keep the small single-Q baseline, environment-only supervision, and existing held-out gate; observe extrapolation/coverage with bounded iteration rather than promising success or expanding the scope.
+
+## 11. M49A-II Efficiency-Q Training & Iterative Aggregation Results (2026-09-21)
+
+- **Status**: M49A-II IMPLEMENTED / VERIFIED on Validation. **Canonical 64 seeds remain UNTOUCHED**.
+- **Horizon-aware Bridge**: Implemented versioned 428-d representation (`encode_combined_v2`), augmenting the frozen 427-d features with the normalized remaining main-turn budget (`remaining_main_turns / max_main_turns`).
+- **Trainer Implementation**:
+  - Small Efficiency-Q MLP: `Linear(428, 256) -> LayerNorm -> ReLU -> Linear(256, 128) -> ReLU -> Linear(128, 1) -> Softplus` (~143k parameters).
+  - Unified Bellman targets: `y = step_cost + V(o')` with $V(o') = 0.0$ (Reached15), $100.0$ (TurnCap/Stalled), $\min_{a'} Q_{\text{target}}(o', a')$ (Running).
+  - Fast tensor caching: pre-batched PyTorch tensors for sub-second target computation and high-throughput FQI.
+- **Evaluation Runner**:
+  - `m49a-eval-validation`: Evaluates strictly on the 64 validation seeds (`2_001_049 .. 2_064_049`).
+  - Executes the complete Q-policy across both `Phase::Main` and `Phase::ChooseNoble`.
+
+### Progression Across Iterative Self-Improvement Rounds (64 Validation Seeds, Cap=100)
+
+| Candidate | Dataset Size | Validation Success Rate | Validation Failures | Median Turns | Min Turns | Mean Turns (Succ) | P90 Turns |
+|---|---|---:|---:|---:|---:|---:|---:|
+| **Heuristic Baseline** | N/A | **64 / 64 (100.0%)** | 0 | 29.0 | 24 | 29.05 | 31.0 |
+| **M49A-II Q0 (Round 0)** | 9,393 transitions | **24 / 64 (37.5%)** | 40 | 31.0 | 28 | 36.46 | 62.0 |
+| **M49A-II Q1 (Round 1)** | 23,187 transitions | **43 / 64 (67.2%)** | 21 | 31.0 | 25 | 32.05 | 34.0 |
+| **M49A-II Q2 (Round 2)** | 34,364 transitions | **55 / 64 (85.9%)** | **9** | **31.0** | **24** | **34.35** | **39.0** |
+
+### Key Empirical Findings:
+1. **Monotonic Success Rate Growth**: Success rate monotonically surged from **37.5% (24/64)** $\to$ **67.2% (43/64)** $\to$ **85.9% (55/64)**. Failures collapsed from 40 $\to$ 21 $\to$ **9**.
+2. **Best Route Efficiency Reached Heuristic Limit**: Minimum turns to 15 decreased from **28** $\to$ **25** $\to$ **24**, tying the Heuristic baseline's record best run on the validation cohort.
+3. **Robust Median**: Across all three rounds, the median successful trajectory held steadily at **31.0 turns**.
+4. **Failure Analysis**: Failures are overwhelmingly driven by token-swapping looping behavior when unvisited actions are optimistically underestimated. Appending self-rollout failure trajectories during Round 1 and Round 2 successfully penalized these looping modes, directly cutting failures by >75%.
+5. **Evaluation Discipline Maintained**: The 64 Canonical M49S Benchmark seeds were **never loaded or evaluated** during training, model selection, or round iterations.

@@ -24,6 +24,10 @@ mod m44c_audit_command;
 mod m45a_audit_command;
 mod m46a_corpus_command;
 mod m47s_residual_command;
+mod m49a_eval_command;
+mod m49a_export_command;
+mod m49a_round1_command;
+mod m49a_round2_command;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
@@ -235,6 +239,18 @@ fn main() {
         }
         Some("m47s-residual") => {
             std::process::exit(m47s_residual_command::run_m47s_residual(&argv[2..]))
+        }
+        Some("m49a-export-round0") => {
+            std::process::exit(m49a_export_command::run_m49a_export_round0(&argv[2..]))
+        }
+        Some("m49a-eval-validation") => {
+            std::process::exit(m49a_eval_command::run_m49a_eval_validation(&argv[2..]))
+        }
+        Some("m49a-collect-round1") => {
+            std::process::exit(m49a_round1_command::run_m49a_collect_round1(&argv[2..]))
+        }
+        Some("m49a-collect-round2") => {
+            std::process::exit(m49a_round2_command::run_m49a_collect_round2(&argv[2..]))
         }
         _ => {}
     }

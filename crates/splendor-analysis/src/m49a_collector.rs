@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
 use splendor_agent::{AgentPolicy, DecisionContext, PublicRequestMeta, StableRng};
 use splendor_core::{observation_hash, Action, Observation, Phase, PlayerId};
-use splendor_learning::{encode_combined_v1, LearningError};
+use splendor_learning::{encode_combined_v1, encode_combined_v2, LearningError};
 
 use crate::solo15::{
     MetricDistribution, Solo15Environment, Solo15Outcome, Solo15Summary, SOLO15_CONTRACT_ID_V1,
@@ -93,9 +93,17 @@ pub struct TransitionRecord {
     pub next_observation: Observation,
     pub next_legal_actions: Vec<Action>,
     pub outcome: Solo15Outcome,
+    /// Main turns already used when `action` was chosen (public task state).
+    pub main_turns: u32,
+    /// Turn cap in force for this trajectory (public task state).
+    pub max_main_turns: u32,
 }
 
 impl TransitionRecord {
+    /// Remaining main-turn budget derived from public task state.
+    pub fn remaining_main_turns(&self) -> u32 {
+        self.max_main_turns.saturating_sub(self.main_turns)
+    }
     /// Validates all contract invariants for a recorded transition.
     pub fn validate(&self) -> Result<(), String> {
         if self.contract_id != SOLO15_CONTRACT_ID_V1 {
@@ -167,13 +175,34 @@ impl TransitionRecord {
     /// GUARANTEE: raw provenance, environment seed, and trajectory identifiers NEVER
     /// enter this tensor payload.
     pub fn materialize(&self) -> Result<MaterializedTransitionV1, LearningError> {
+        self.materialize_v2()
+    }
+
+    /// Horizon-aware materialization used by the M49A-II trainer.
+    ///
+    /// Extends the frozen 427-d contract with one normalized public
+    /// remaining-main-turn budget feature (428-d total) so that the finite
+    /// cap is visible to the network without leaking any provenance.
+    pub fn materialize_v2(&self) -> Result<MaterializedTransitionV1, LearningError> {
         self.validate().map_err(LearningError::InvalidDataset)?;
 
-        let input_features = self.extract_input_features()?;
+        let remaining = self.remaining_main_turns();
+        let input_features = encode_combined_v2(
+            &self.observation,
+            &self.action,
+            remaining,
+            self.max_main_turns,
+        )?;
+        let next_remaining = remaining.saturating_sub(self.step_cost as u32);
         let mut next_action_features = Vec::with_capacity(self.next_legal_actions.len());
         if self.outcome == Solo15Outcome::Running {
             for next_action in &self.next_legal_actions {
-                let next_feat = encode_combined_v1(&self.next_observation, next_action)?;
+                let next_feat = encode_combined_v2(
+                    &self.next_observation,
+                    next_action,
+                    next_remaining,
+                    self.max_main_turns,
+                )?;
                 next_action_features.push(next_feat);
             }
         }
@@ -192,9 +221,10 @@ impl TransitionRecord {
 /// 36-d action, 23-d delta encoding, or game legality engines.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MaterializedTransitionV1 {
-    /// 427-dimensional input feature vector $\mathbf{x}(o, a)$.
+    /// Horizon-aware 428-d input feature vector $\mathbf{x}(o, a)$
+    /// (427 frozen features + normalized remaining-main-turn budget).
     pub input_features: Vec<f32>,
-    /// List of 427-dimensional feature vectors $\mathbf{x}(o', a')$ for each $a' \in \mathcal{A}(o')$.
+    /// List of 428-d feature vectors $\mathbf{x}(o', a')$ for each $a' \in \mathcal{A}(o')$.
     /// Strictly empty if `outcome != Solo15Outcome::Running`.
     pub next_action_features: Vec<Vec<f32>>,
     /// Step cost: 1.0 (Main) or 0.0 (ChooseNoble).
@@ -287,6 +317,7 @@ pub fn collect_solo15_trajectory<P: AgentPolicy>(
     max_turns: u32,
     policy_rng: &mut StableRng,
 ) -> Result<(Vec<TransitionRecord>, Solo15Summary), String> {
+    let max_main_turns = max_turns;
     let mut env =
         Solo15Environment::with_max_main_turns(env_seed, max_turns).map_err(|e| e.to_string())?;
     let empty_history = Vec::new();
@@ -343,6 +374,8 @@ pub fn collect_solo15_trajectory<P: AgentPolicy>(
             next_observation: next_obs,
             next_legal_actions: next_legal,
             outcome: step.outcome,
+            main_turns: step.main_turns - step.step_cost,
+            max_main_turns,
         };
 
         record.validate()?;

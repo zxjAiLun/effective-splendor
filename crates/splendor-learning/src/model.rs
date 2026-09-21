@@ -8,6 +8,76 @@ use crate::{
     OBSERVATION_FEATURES_V1, REPRESENTATION_VERSION_V1,
 };
 
+/// Frozen M49A Efficiency-Q network weights for native inference.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EfficiencyQWeightsV1 {
+    pub fc1_w: Vec<Vec<f32>>, // [256, 428]
+    pub fc1_b: Vec<f32>,      // [256]
+    pub ln1_w: Vec<f32>,      // [256]
+    pub ln1_b: Vec<f32>,      // [256]
+    pub fc2_w: Vec<Vec<f32>>, // [128, 256]
+    pub fc2_b: Vec<f32>,      // [128]
+    pub fc3_w: Vec<Vec<f32>>, // [1, 128]
+    pub fc3_b: Vec<f32>,      // [1]
+}
+
+impl EfficiencyQWeightsV1 {
+    /// Exact forward pass of the small Efficiency-Q MLP matching PyTorch:
+    /// x (428) -> Linear(256) -> LayerNorm(eps=1e-5) -> ReLU -> Linear(128) -> ReLU -> Linear(1) -> Softplus(beta=1, threshold=20)
+    pub fn forward(&self, x: &[f32]) -> f32 {
+        let in_dim = x.len();
+        debug_assert_eq!(in_dim, 428);
+
+        // Layer 1: Linear(428, 256)
+        let mut h1 = [0.0f32; 256];
+        for i in 0..256 {
+            let row = &self.fc1_w[i];
+            let mut sum = self.fc1_b[i];
+            for j in 0..in_dim {
+                sum += row[j] * x[j];
+            }
+            h1[i] = sum;
+        }
+
+        // LayerNorm(256, eps=1e-5)
+        let mean = h1.iter().sum::<f32>() / 256.0;
+        let var = h1.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / 256.0;
+        let std = (var + 1e-5).sqrt();
+        for i in 0..256 {
+            let norm = (h1[i] - mean) / std;
+            let val = norm * self.ln1_w[i] + self.ln1_b[i];
+            h1[i] = if val > 0.0 { val } else { 0.0 }; // ReLU
+        }
+
+        // Layer 2: Linear(256, 128) + ReLU
+        let mut h2 = [0.0f32; 128];
+        for i in 0..128 {
+            let row = &self.fc2_w[i];
+            let mut sum = self.fc2_b[i];
+            for j in 0..256 {
+                sum += row[j] * h1[j];
+            }
+            h2[i] = if sum > 0.0 { sum } else { 0.0 }; // ReLU
+        }
+
+        // Layer 3: Linear(128, 1) + Softplus
+        let mut sum = self.fc3_b[0];
+        let row = &self.fc3_w[0];
+        for j in 0..128 {
+            sum += row[j] * h2[j];
+        }
+
+        // Softplus: ln(1 + e^x) matching PyTorch Softplus(beta=1, threshold=20)
+        if sum > 20.0 {
+            sum
+        } else if sum < -20.0 {
+            sum.exp()
+        } else {
+            (1.0 + sum.exp()).ln()
+        }
+    }
+}
+
 pub const POLICY_VALUE_CHECKPOINT_FORMAT: &str = "effective-splendor-policy-value-checkpoint";
 pub const POLICY_VALUE_CHECKPOINT_VERSION: u32 = 1;
 
@@ -649,5 +719,30 @@ mod tests {
         let (state, _) = FullState::new(GameConfig::default()).unwrap();
         let result = model.predict(&state.observation(PlayerId(0)), &state.legal_actions());
         assert!(matches!(result, Err(LearningError::InvalidCheckpoint(_))));
+    }
+
+    #[test]
+    fn test_python_rust_q_forward_parity() {
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/m49a_q_forward_parity_v1.json");
+        let content = std::fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|e| panic!("failed to read fixture at {:?}: {}", fixture_path, e));
+
+        #[derive(Deserialize)]
+        struct ParityPayload {
+            weights: EfficiencyQWeightsV1,
+            inputs: Vec<Vec<f32>>,
+            outputs: Vec<f32>,
+        }
+
+        let payload: ParityPayload = serde_json::from_str(&content).expect("parse fixture");
+        for (idx, (inp, expected)) in payload.inputs.iter().zip(payload.outputs.iter()).enumerate() {
+            let actual = payload.weights.forward(inp);
+            let diff = (actual - expected).abs();
+            assert!(
+                diff < 1e-5,
+                "Sample {idx} mismatch: Rust={actual}, PyTorch={expected}, diff={diff}"
+            );
+        }
     }
 }

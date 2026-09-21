@@ -141,10 +141,12 @@ fn test_zero_leakage_feature_extraction() {
         "next_observation MUST NOT enter Q(o, a) input features"
     );
 
-    // 5. Materialization test: MaterializedTransitionV1
+    // 5. Materialization test: MaterializedTransitionV1 (horizon-aware 428-d)
     let mat = record.materialize().expect("materialize");
-    assert_eq!(mat.input_features.len(), 427);
-    assert_eq!(mat.input_features, original_features);
+    assert_eq!(mat.input_features.len(), 428);
+    assert_eq!(mat.input_features[..427], original_features[..]);
+    // The final feature is the normalized remaining-main-turn budget.
+    assert!((mat.input_features[427] - record.remaining_main_turns() as f32 / record.max_main_turns as f32).abs() < 1e-6);
     assert_eq!(mat.step_cost, record.step_cost);
     assert_eq!(mat.outcome, record.outcome);
     assert_eq!(
@@ -152,7 +154,7 @@ fn test_zero_leakage_feature_extraction() {
         record.next_legal_actions.len()
     );
     for next_f in &mat.next_action_features {
-        assert_eq!(next_f.len(), 427);
+        assert_eq!(next_f.len(), 428);
     }
 
     // Mutating provenance MUST NOT change materialized tensors
