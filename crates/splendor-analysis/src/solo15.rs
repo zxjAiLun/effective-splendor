@@ -53,6 +53,10 @@ pub const SOLO15_CONTRACT_ID_V1: &str = "solo15_2p_supply_v1";
 /// Default maximum main turns before censoring a solo run.
 pub const DEFAULT_MAX_MAIN_TURNS: u32 = 100;
 
+/// Default policy RNG seed for deterministic evaluation, completely independent
+/// of any environment shuffle seed to maintain strict information boundaries.
+pub const SOLO15_POLICY_RNG_SEED_V1: u64 = 0x5010_1515;
+
 /// The terminal outcome of a Solo-15 run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -257,13 +261,13 @@ impl Solo15Environment {
     fn refresh_outcome(&mut self) {
         let p0_prestige = self.state.players[0].prestige;
 
-        if p0_prestige >= 15 {
-            // Must complete noble resolution before declaring terminal!
-            if self.state.phase == Phase::ChooseNoble {
-                self.outcome = Solo15Outcome::Running;
-            } else {
-                self.outcome = Solo15Outcome::Reached15;
-            }
+        // Pending forced turn-resolution (multi-noble choice) must ALWAYS complete first!
+        // ChooseNoble has step_cost = 0 and is atomic with the triggering Main turn.
+        // Cap evaluation must occur at complete Main Turn boundaries, never mid-turn.
+        if self.state.phase == Phase::ChooseNoble {
+            self.outcome = Solo15Outcome::Running;
+        } else if p0_prestige >= 15 {
+            self.outcome = Solo15Outcome::Reached15;
         } else if self.main_turns >= self.max_main_turns {
             self.outcome = Solo15Outcome::TurnCap;
         } else if self.state.phase == Phase::Main {
@@ -332,7 +336,7 @@ pub fn run_solo15_evaluation<P: AgentPolicy>(
                     visible_history: &empty_history,
                     legal_actions: &legal,
                     meta: PublicRequestMeta {
-                        game_id: format!("solo15-{seed}"),
+                        game_id: SOLO15_CONTRACT_ID_V1.to_string(),
                         recipient_seat: PlayerId(0),
                         request_id: env.decision_plies() as u64,
                         observation_hash: obs_hash,
@@ -451,7 +455,7 @@ impl Solo15CohortReport {
 
         for &seed in seeds {
             let mut policy = policy_factory();
-            let mut rng = StableRng::new(seed ^ 0x5010_1515);
+            let mut rng = StableRng::new(SOLO15_POLICY_RNG_SEED_V1);
             let summary = run_solo15_evaluation(&mut policy, seed, max_main_turns, &mut rng)?;
 
             match summary.outcome {
@@ -496,5 +500,83 @@ impl Solo15CohortReport {
             nobles_taken: MetricDistribution::from_values(&all_nobles).unwrap(),
             summaries,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use splendor_catalog::{NobleId, Tier};
+    use splendor_core::Gems;
+
+    #[test]
+    fn test_turn_cap_atomicity_at_noble_resolution_boundary() {
+        // Setup cap = 5
+        let mut env = Solo15Environment::with_max_main_turns(1049, 5).expect("valid env");
+
+        // Fast-forward to 4 main turns (1 turn remaining before cap)
+        env.main_turns = 4;
+        env.decision_plies = 4;
+
+        // Stage Player 0: prestige = 12 (pre-noble prestige < 15)
+        // Bonuses: 3 White, 3 Blue, 2 Green, 3 Red, 0 Black
+        // Tokens: 1 Green
+        env.state.players[0].prestige = 12;
+        env.state.players[0].bonuses = [3, 3, 2, 3, 0];
+        env.state.players[0].tokens = Gems {
+            white: 0,
+            blue: 0,
+            green: 1,
+            red: 0,
+            black: 0,
+            gold: 0,
+        };
+
+        // Ensure board has Noble 0 (req 3,3,3,0,0) and Noble 1 (req 0,3,3,3,0)
+        env.state.nobles = vec![NobleId(0), NobleId(1)];
+
+        // Card 33 has Green bonus, 0 prestige, cost 2 White + 1 Blue.
+        // With Player 0 having 3 White and 3 Blue bonuses, it is completely free to purchase.
+        let green_card_id = splendor_catalog::CardId(33);
+
+        // Place this card at Market Tier 1 Slot 0
+        env.state.market[Tier::One.index()][0] = Some(green_card_id);
+
+        // Step 1: Execute BuyMarket on the 5th (and final allowed) main turn
+        let step = env
+            .step(Action::BuyMarket {
+                tier: Tier::One,
+                slot: 0,
+            })
+            .expect("buy step");
+
+        // Main action increments main_turns to 5 (= cap)
+        assert_eq!(step.step_cost, 1);
+        assert_eq!(step.main_turns, 5);
+        assert_eq!(step.decision_plies, 5);
+        assert_eq!(step.prestige, 12); // pre-noble prestige < 15
+        assert_eq!(step.phase, Phase::ChooseNoble);
+
+        // Crucial contract invariant: must remain Running despite main_turns == cap!
+        assert_eq!(step.outcome, Solo15Outcome::Running);
+        assert_eq!(env.is_terminal(), false);
+
+        // Step 2: Choose noble (step_cost must be 0)
+        let choose_step = env
+            .step(Action::ChooseNoble { noble: NobleId(0) })
+            .expect("choose noble step");
+        assert_eq!(choose_step.step_cost, 0);
+        assert_eq!(choose_step.main_turns, 5);
+        assert_eq!(choose_step.decision_plies, 6);
+        assert_eq!(choose_step.prestige, 15); // reached >= 15!
+        assert_eq!(choose_step.outcome, Solo15Outcome::Reached15);
+        assert_eq!(env.is_terminal(), true);
+
+        let summary = env.summary();
+        assert_eq!(summary.outcome, Solo15Outcome::Reached15);
+        assert_eq!(summary.reached_15, true);
+        assert_eq!(summary.main_turns_to_15, Some(5)); // Exactly equal to cap!
+        assert_eq!(summary.decision_plies_to_15, 6);
+        assert_eq!(summary.final_prestige, 15);
     }
 }

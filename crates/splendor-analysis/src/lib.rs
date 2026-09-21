@@ -52,4 +52,5 @@ pub use schema::{
 pub use solo15::{
     run_solo15_evaluation, MetricDistribution, Solo15CohortReport, Solo15Environment,
     Solo15Outcome, Solo15Step, Solo15Summary, DEFAULT_MAX_MAIN_TURNS, SOLO15_CONTRACT_ID_V1,
+    SOLO15_POLICY_RNG_SEED_V1,
 };

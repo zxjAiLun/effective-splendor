@@ -56,10 +56,10 @@ M49S establishes the research environment, metric definitions, and baseline dist
 - **Contract ID**: `solo15_2p_supply_v1`
 - **Default Cap**: `DEFAULT_MAX_MAIN_TURNS = 100`
 - **Invariants**:
-  - `I-SOLO-01 (Deck Order Privacy)`: `Observation` never leaks card IDs in hidden decks.
+  - `I-SOLO-01 (Deck Order Privacy)`: `Observation` never leaks card IDs in hidden decks, `PublicRequestMeta.game_id` never encodes the environment seed, and policy RNG is decoupled from environment shuffle seeds (`SOLO15_POLICY_RNG_SEED_V1`).
   - `I-SOLO-02 (No Successor Peeking)`: Environment provides no public method to evaluate post-action chance outcomes before an action is chosen.
-  - `I-SOLO-03 (Noble Resolution Non-Truncation)`: If buying a card reaches prestige >= 15 while entering `Phase::ChooseNoble`, the environment remains `Running` until the noble choice is executed, terminating only when the turn is fully resolved.
-  - `I-SOLO-04 (Zero Fake History)`: Evaluation runners provide `visible_history = &[]` to agents, never synthesizing fraudulent multi-player transcripts.
+  - `I-SOLO-03 (Noble Resolution Non-Truncation & Cap Atomicity)`: If buying a card enters `Phase::ChooseNoble`, the environment remains `Running` until the noble choice is executed, even at the turn cap boundary (`main_turns == max_main_turns`). Cap evaluation occurs strictly on complete Main Turn boundaries.
+  - `I-SOLO-04 (Zero Fake History & Scope Boundary)`: The canonical M49S evaluator is defined only for policies whose decision semantics depend on `Observation + legal_actions` and remain valid with empty `visible_history`; S3/M07 are unsupported and excluded. Evaluation runners provide `visible_history = &[]` to agents, never synthesizing fraudulent multi-player transcripts.
 
 ## Implementation plan
 
@@ -77,7 +77,10 @@ M49S establishes the research environment, metric definitions, and baseline dist
   2. *Metric correction*: Changed primary metric from `decision plies` to `main turns` (`step_cost = 1` for Main, `0` for ChooseNoble).
   3. *No successor peeking*: Excluded any `peek_successor` method to prevent clairvoyance during search.
   4. *Baseline discipline*: Dropped S3 from canonical baseline; restricted baseline to `Heuristic` and `Random` on identical 64 seeds.
-- **2026-09-20 (Canonical Implementation)**: Implemented `crates/splendor-analysis/src/solo15.rs` and `crates/splendor-analysis/tests/solo15_tests.rs`.
+- **2026-09-20 (Repair 1)**: Owner remote review of initial implementation identified 2 P1s and 2 P2s:
+  1. *P1-1 Seed Leak*: `PublicRequestMeta.game_id` encoded `solo15-{seed}` and `Solo15CohortReport` coupled policy RNG to `seed ^ constant`. Fixed by setting `game_id` to frozen opaque `SOLO15_CONTRACT_ID_V1` and using fixed independent `SOLO15_POLICY_RNG_SEED_V1` for policy RNG.
+  2. *P1-2 TurnCap Atomicity*: Fixed `refresh_outcome()` so `Phase::ChooseNoble` always takes priority over `TurnCap`, allowing 0-cost noble resolution to complete at the cap boundary. Added targeted unit test `test_turn_cap_atomicity_at_noble_resolution_boundary` with verified negative control (fails on pre-repair logic with `left: TurnCap, right: Running`).
+  3. *P2-1 / P2-2 Documentation Cleanup*: Removed ungrounded claims of "theoretical optimal rush routes" and "almost exclusively tier-1 cards". Scoped Random findings strictly to 64 seeds / cap=100. Clarified that history-sensitive policies (S3/M07) are unsupported rather than "physically isolated". Re-ran canonical 64-seed baseline with decoupled RNG.
 
 ## Final implementation
 
@@ -101,16 +104,16 @@ Executed command:
 ```bash
 cargo test -p splendor-analysis
 ```
-Result: **30 passed; 0 failed** (26 unit tests + 1 frontend fixture test + 3 solo15 tests).
+Result: **31 passed; 0 failed** (27 unit tests including `test_turn_cap_atomicity_at_noble_resolution_boundary` + 1 frontend fixture test + 3 solo15 integration tests).
 
-### Canonical 64-Seed Paired Baseline (`solo15_2p_supply_v1`)
+### Canonical 64-Seed Paired Baseline (`solo15_2p_supply_v1`, Decoupled Policy RNG)
 
 Executed command:
 ```bash
 cargo test -p splendor-analysis --test solo15_tests test_solo15_canonical_64_seed_paired_baseline -- --nocapture
 ```
 
-Cohort: 64 fixed deterministic seeds (`seed = i * 1000 + 49` for `i` in `1..=64`), `max_main_turns = 100`.
+Cohort: 64 fixed deterministic seeds (`seed = i * 1000 + 49` for `i` in `1..=64`), `max_main_turns = 100`, independent policy RNG seed `SOLO15_POLICY_RNG_SEED_V1`.
 
 #### 1. Heuristic Agent (`heuristic_v1`)
 
@@ -121,10 +124,10 @@ Cohort: 64 fixed deterministic seeds (`seed = i * 1000 + 49` for `i` in `1..=64`
 | **Success Rate** | **100.0%** |
 | Terminal Distribution | Reached15 = 64, Stalled = 0, TurnCap = 0 |
 | **Main Turns (Primary)** | **Mean: 29.20, Median: 29.0, P75: 31.0, P90: 32.0, Min: 25, Max: 35** |
-| Decision Plies (Diagnostic) | Mean: 29.48, Median: 29.0, P75: 31.0, P90: 33.0, Min: 25, Max: 36 |
-| Purchased Cards | Mean: 20.78, Median: 21.0 |
-| Final Prestige | Mean: 16.12, Median: 16.0 |
-| Nobles Taken | Mean: 2.25, Median: 2.0 |
+| Decision Plies (Diagnostic) | Mean: 29.53, Median: 30.0, P75: 31.0, P90: 33.0, Min: 25, Max: 35 |
+| Purchased Cards | Mean: 20.64, Median: 21.0 |
+| Final Prestige | Mean: 16.05, Median: 16.0 |
+| Nobles Taken | Mean: 2.33, Median: 3.0 |
 
 #### 2. Random Agent (`random_v1`)
 
@@ -136,18 +139,18 @@ Cohort: 64 fixed deterministic seeds (`seed = i * 1000 + 49` for `i` in `1..=64`
 | Terminal Distribution | Reached15 = 0, Stalled = 0, TurnCap = 64 |
 | **Main Turns (Primary)** | **N/A** (0/64 completed; 100% censored at 100 main turns) |
 | Decision Plies (Diagnostic) | N/A (censored at 100 plies) |
-| Purchased Cards | Mean: 1.25, Median: 1.0 |
-| Final Prestige | Mean: 0.31, Median: 0.0 |
+| Purchased Cards | Mean: 1.77, Median: 2.0 |
+| Final Prestige | Mean: 0.48, Median: 0.0 |
 | Nobles Taken | Mean: 0.00, Median: 0.0 |
 
 ## Result and decision
 
 - **M49S Verdict**: **IMPLEMENTED / VERIFIED local (owner terminal review pending)**.
 - **Key Empirical Takeaways**:
-  1. The Heuristic baseline exhibits a remarkably tight distribution on 64 seeds (mean 29.20, min 25, max 35).
-  2. However, Heuristic achieves this almost exclusively through low-tier volume: purchasing an average of **20.78 cards** and capturing **2.25 nobles**. It builds discounts rather than executing focused high-tier card rush routes.
-  3. Random completely fails to achieve 15 prestige within 100 turns (mean prestige 0.31), demonstrating that random exploration cannot stumble upon threshold victory by chance in 2P Splendor.
-  4. The gap between 29 turns (Heuristic card-volume route) and theoretical optimal card rush routes represents the target optimization surface for future neural learners (M49A).
+  1. The Heuristic baseline exhibits a remarkably tight main-turn distribution on 64 seeds (mean 29.20, median 29.0, min 25, max 35).
+  2. Heuristic requires a high purchase volume: mean 20.64 cards to reach threshold. The card tier composition and optimality gap were not measured in M49S.
+  3. Random reached 15 prestige on 0/64 canonical seeds within the 100-main-turn cap (mean prestige 0.48).
+  4. Decision plies (mean 29.53) slightly exceed main turns (mean 29.20) because multi-noble resolution adds decision steps with zero main turn cost, confirming correct accounting.
 
 ## Known limitations
 
