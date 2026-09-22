@@ -426,3 +426,42 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
     4. Fail-closed: Non-finite weights, empty actions on Running, or invalid records fail closed.
     5. Parity: Rust target builder exactly matches PyTorch / formulaic targets ($< 10^{-5}$).
   - Legacy `m49a_prepare_cache.py` removed from repository.
+  - **Parallel target computation**: `m49a-build-targets` parses all compact transitions into memory (compact = one next_obs + legal-action list, NOT expanded 428-d features), then computes the independent per-transition min-Q targets across all CPU worker threads via `std::thread::scope`. Release build + 20 threads reduced Round-1 target computation (~26k transitions) from single-threaded debug ~700s/iter to ~45s/iter.
+
+## 14. CLEAN Q0 → Q1 → Q2 Chain — Reproduced Self-Improvement on Verified Pipeline (2026-09-22)
+
+- **Status**: IMPLEMENTED / VERIFIED on Validation dev partition (64 seeds `2_001_049 .. 2_064_049`). **Canonical 64 seeds remain UNTOUCHED / HOLD**.
+- **Pipeline correctness**: Disjoint verified seed partitions (P1-1), live remaining horizon in aggregation (P1-2), RNG decoupled from env_seed (P1-3), fail-closed collection/validation (P2), streaming Rust on-demand Bellman targets (§13). No teacher/CE/imitation.
+
+### Critical Diagnostic: FQI iteration count dominates, undiscounted positive-cost propagation
+
+The first clean run used the historical default `fqi_iterations = 4`. Result: clean Q0 only **9.4%** success, Q1 **12.5%** — far below the provisional 37.5% → 67.2%. Root cause is NOT seed leakage but **under-propagation**: with undiscounted positive step costs and near-zero Softplus initialization, each FQI iteration back-propagates cost information only ~1 step from terminals, while successful trajectories are 30+ steps. At 4 iterations the network predicted `Q_med ≈ 4.5` when true cost is ~30 (severe underestimation).
+
+Controlled diagnostic on identical Round 0 data, changing only `fqi_iterations` 4 → 40:
+
+| FQI iters | Q_med | Q_max | Validation Success | $J_{\text{val}}$ |
+|---:|---:|---:|---:|---:|
+| 4 | 4.5 | 5.7 | 9.4% (6/64) | 95.66 |
+| 40 | 13.5 | 24.0 | **32.8% (21/64)** | **78.64** |
+
+Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data aggregation. The correct clean experiment requires enough FQI iterations (~40) for the Bellman fixed point to propagate, THEN measures whether data aggregation adds value on top.
+
+### Clean Chain Results (all rounds `fqi_iterations = 40`, `epochs_per_fqi = 8`, everything else fixed)
+
+| Candidate | Train Transitions | Round Collection Success | Validation Success | Failures | $J_{\text{val}}$ | Mean (Succ) | Median | Min | P90 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **Heuristic Baseline** | N/A | N/A | 64/64 (100.0%) | 0 | — | 29.05 | 29.0 | 25 | 31.0 |
+| **Clean Q0** (Round 0 only) | 9,491 | 60/35/5 mix | **21/64 (32.8%)** | 43 | **78.64** | 32.86 | 32.0 | 27 | 38.0 |
+| **Clean Q1** (+Round 1 @ ε=0.15) | 26,059 | 174/256 reached 15 | **51/64 (79.7%)** | 13 | **49.06** | 35.82 | 32.0 | 25 | 41.0 |
+| **Clean Q2** (+Round 2 @ ε=0.10) | 36,674 | 241/256 reached 15 | **55/64 (85.9%)** | **9** | **42.84** | 33.33 | 31.0 | **24** | 35.0 |
+
+### Key Findings:
+1. **Self-improvement reproduces on the corrected pipeline**: With proper FQI convergence, monotonic Validation success **32.8% → 79.7% → 85.9%**; failures collapse **43 → 13 → 9**; $J_{\text{val}}$ monotonically drops **78.64 → 49.06 → 42.84**.
+2. **Data aggregation adds real value on top of FQI convergence**: The largest jump (32.8% → 79.7%) comes from adding Round 1 self-play data collected by the *converged* Q0 policy (which itself reached 174/256 during collection). This is the teacher-free correction mechanism working: appending self-generated failure/success trajectories penalizes optimistically-underestimated loop states.
+3. **Best route ties heuristic**: Min turns to 15 improved **27 → 25 → 24**, tying the Heuristic baseline's best validation run (24).
+4. **Endpoint matches provisional**: Clean Q2 (85.9%) reproduces the provisional Q2 endpoint (85.9%), but now on verified-disjoint seeds, live horizon, decoupled RNG, and memory-safe streaming targets — establishing the result is a genuine teacher-free self-improvement signal, not a pipeline artifact.
+5. **Evaluation discipline maintained**: The 64 Canonical M49S seeds were never loaded during any training, aggregation, model selection, or diagnostic.
+
+### Residual observations (not blockers):
+- Q values plateau at `Q_med ≈ 14`, `Q_max ≈ 27` while true successful cost is ~31; the network still under-estimates the tail. Success remains at 85.9% (9 failures), so the 100% gate is not yet met.
+- Failures are concentrated in a residual set of hard seeds; further gains likely require exploration/loop-penalty changes (Round 3 hypotheses: ε=0.05, failure oversampling, Double-Q) — not yet authorized. Round 3 should only run if it targets the remaining 9 failures with a preregistered mechanism.

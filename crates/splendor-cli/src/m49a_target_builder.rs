@@ -131,7 +131,9 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
     };
     let mut writer = BufWriter::new(out_file);
 
-    let mut count = 0usize;
+    // Phase 1: parse all compact transitions into memory (compact: one next_obs +
+    // legal-action list per transition, NOT expanded 428-d feature vectors).
+    let mut transitions: Vec<M49ACompactTransitionV1> = Vec::new();
     for (line_idx, line_res) in reader.lines().enumerate() {
         let line = match line_res {
             Ok(l) => l,
@@ -144,7 +146,6 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
         if trimmed.is_empty() {
             continue;
         }
-
         let compact: M49ACompactTransitionV1 = match serde_json::from_str(trimmed) {
             Ok(c) => c,
             Err(e) => {
@@ -152,20 +153,61 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
                 return 1;
             }
         };
+        transitions.push(compact);
+    }
 
-        let target = match compact.compute_target(&weights, failure_penalty) {
-            Ok(t) => t,
-            Err(e) => {
-                eprintln!("error computing target for line {line_idx}: {e}");
-                return 1;
-            }
-        };
+    let n = transitions.len();
+    let mut targets = vec![0.0f32; n];
 
-        if !target.is_finite() {
-            eprintln!("error: non-finite target at line {line_idx}: {target}");
-            return 1;
+    // Phase 2: parallel target computation across worker threads. Each target is
+    // an independent read-only min over next legal actions; embarrassingly parallel.
+    let n_threads = std::thread::available_parallelism()
+        .map(|v| v.get())
+        .unwrap_or(1)
+        .min(n.max(1));
+    let chunk = n.div_ceil(n_threads.max(1));
+
+    let error_flag = std::sync::atomic::AtomicBool::new(false);
+    let weights_ref = &weights;
+    let error_ref = &error_flag;
+    std::thread::scope(|scope| {
+        let mut handles = Vec::new();
+        for (chunk_idx, out_chunk) in targets.chunks_mut(chunk.max(1)).enumerate() {
+            let base = chunk_idx * chunk.max(1);
+            let trans_slice = &transitions[base..base + out_chunk.len()];
+            handles.push(scope.spawn(move || {
+                for (i, compact) in trans_slice.iter().enumerate() {
+                    if error_ref.load(std::sync::atomic::Ordering::Relaxed) {
+                        return;
+                    }
+                    match compact.compute_target(weights_ref, failure_penalty) {
+                        Ok(t) if t.is_finite() => out_chunk[i] = t,
+                        Ok(t) => {
+                            eprintln!("error: non-finite target at index {}: {t}", base + i);
+                            error_ref.store(true, std::sync::atomic::Ordering::Relaxed);
+                            return;
+                        }
+                        Err(e) => {
+                            eprintln!("error computing target at index {}: {e}", base + i);
+                            error_ref.store(true, std::sync::atomic::Ordering::Relaxed);
+                            return;
+                        }
+                    }
+                }
+            }));
         }
+        for h in handles {
+            let _ = h.join();
+        }
+    });
 
+    if error_flag.load(std::sync::atomic::Ordering::Relaxed) {
+        return 1;
+    }
+
+    // Phase 3: write targets in original order.
+    let mut count = 0usize;
+    for target in &targets {
         if let Err(e) = writer.write_all(&target.to_le_bytes()) {
             eprintln!("error writing target to {out_targets:?}: {e}");
             return 1;
@@ -178,7 +220,7 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
         return 1;
     }
 
-    println!("Computed and wrote {count} targets to {out_targets:?}");
+    println!("Computed and wrote {count} targets to {out_targets:?} ({n_threads} threads)");
     0
 }
 
@@ -334,25 +376,37 @@ pub fn run_m49a_export_compact(args: &[String]) -> i32 {
                     };
 
                     // If it has next_observation & next_legal_actions directly:
-                    let compact = if val.get("next_observation").is_some() {
-                        match serde_json::from_value::<M49ACompactTransitionV1>(val.clone()) {
-                            Ok(c) => c,
-                            Err(e) => {
-                                eprintln!("failed parsing compact transition at line {line_idx}: {e}");
-                                return 1;
+                    let compact = match outcome {
+                        Solo15Outcome::Running => {
+                            let next_obs: Option<splendor_core::Observation> =
+                                serde_json::from_value(val["next_observation"].clone()).ok();
+                            let next_acts: Vec<splendor_core::Action> =
+                                serde_json::from_value(val["next_legal_actions"].clone()).unwrap_or_default();
+                            let next_remaining = val["next_remaining_main_turns"].as_u64().unwrap_or(0) as u32;
+                            let max_turns = val["max_main_turns"].as_u64().unwrap_or(35) as u32;
+                            M49ACompactTransitionV1 {
+                                step_cost,
+                                outcome,
+                                next_observation: next_obs,
+                                next_legal_actions: next_acts,
+                                next_remaining_main_turns: next_remaining,
+                                max_main_turns: max_turns,
                             }
                         }
-                    } else {
-                        // If it doesn't have next_observation, but is terminal:
-                        M49ACompactTransitionV1 {
+                        _ => M49ACompactTransitionV1 {
                             step_cost,
                             outcome,
                             next_observation: None,
                             next_legal_actions: Vec::new(),
                             next_remaining_main_turns: 0,
-                            max_main_turns: 35,
-                        }
+                            max_main_turns: val["max_main_turns"].as_u64().unwrap_or(35) as u32,
+                        },
                     };
+
+                    if let Err(e) = compact.validate() {
+                        eprintln!("invalid compact transition at line {line_idx}: {e}");
+                        return 1;
+                    }
 
                     (input_feats, step_cost, outcome, compact)
                 } else {

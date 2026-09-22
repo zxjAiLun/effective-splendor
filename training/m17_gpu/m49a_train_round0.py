@@ -16,8 +16,8 @@ RUN_DIR = REPO / "local-artifacts/m49a-round0-run"
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs-per-fqi", type=int, default=15)
-    parser.add_argument("--fqi-iterations", type=int, default=4)
+    parser.add_argument("--epochs-per-fqi", type=int, default=8)
+    parser.add_argument("--fqi-iterations", type=int, default=40)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--device", default="cpu")
