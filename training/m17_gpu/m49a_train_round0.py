@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compact-dir", type=str, default=str(COMPACT_DIR))
     parser.add_argument("--out-dir", type=str, default=str(RUN_DIR))
+    parser.add_argument("--checkpoint-every", type=int, default=0)
     args = parser.parse_args()
 
     compact_dir = Path(args.compact_dir)
@@ -38,12 +39,15 @@ def main():
 
     device = torch.device(args.device)
     print(f"Starting Streaming FQI training on {device}...")
+    out_dir = Path(args.out_dir)
     model, report = train_fqi_streaming(
         train_x_path=train_x,
         train_transitions_path=train_transitions,
         val_x_path=val_x,
         val_transitions_path=val_transitions,
         device=device,
+        checkpoint_dir=(out_dir / "checkpoints") if args.checkpoint_every > 0 else None,
+        checkpoint_every=args.checkpoint_every,
         epochs_per_fqi=args.epochs_per_fqi,
         fqi_iterations=args.fqi_iterations,
         batch_size=args.batch_size,

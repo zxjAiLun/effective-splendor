@@ -197,7 +197,10 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
             }));
         }
         for h in handles {
-            let _ = h.join();
+            if h.join().is_err() {
+                eprintln!("error: target worker thread panicked");
+                error_ref.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
         }
     });
 
@@ -361,29 +364,73 @@ pub fn run_m49a_export_compact(args: &[String]) -> i32 {
                     };
                     (mat.input_features, mat.step_cost, mat.outcome, compact)
                 } else if let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                    // ExportRow structure:
-                    // input_features, step_cost, outcome, next_action_features
-                    let input_feats: Vec<f32> = serde_json::from_value(val["input_features"].clone())
-                        .map_err(|e| format!("input_features: {e}"))
-                        .unwrap_or_default();
-                    let step_cost = val["step_cost"].as_f64().unwrap_or(1.0) as f32;
-                    let outcome_str = val["outcome"].as_str().unwrap_or("running");
+                    // ExportRow structure with required fields. No silent field
+                    // fallbacks: any missing/invalid required field is fatal.
+                    let input_feats: Vec<f32> =
+                        match serde_json::from_value(val["input_features"].clone()) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("missing/invalid input_features at line {line_idx} in {in_path:?}: {e}");
+                                return 1;
+                            }
+                        };
+                    let step_cost = match val["step_cost"].as_f64() {
+                        Some(v) => v as f32,
+                        None => {
+                            eprintln!("missing required field step_cost at line {line_idx} in {in_path:?}");
+                            return 1;
+                        }
+                    };
+                    let outcome_str = match val["outcome"].as_str() {
+                        Some(s) => s,
+                        None => {
+                            eprintln!("missing required field outcome at line {line_idx} in {in_path:?}");
+                            return 1;
+                        }
+                    };
                     let outcome = match outcome_str {
-                        "reached_15" => Solo15Outcome::Reached15,
+                        "reached_15" | "reached15" => Solo15Outcome::Reached15,
                         "stalled" => Solo15Outcome::Stalled,
                         "turn_cap" => Solo15Outcome::TurnCap,
-                        _ => Solo15Outcome::Running,
+                        "running" => Solo15Outcome::Running,
+                        other => {
+                            eprintln!("unknown outcome `{other}` at line {line_idx} in {in_path:?}");
+                            return 1;
+                        }
+                    };
+                    let max_turns = match val["max_main_turns"].as_u64() {
+                        Some(v) => v as u32,
+                        None => {
+                            eprintln!("missing required field max_main_turns at line {line_idx} in {in_path:?}");
+                            return 1;
+                        }
                     };
 
-                    // If it has next_observation & next_legal_actions directly:
                     let compact = match outcome {
                         Solo15Outcome::Running => {
                             let next_obs: Option<splendor_core::Observation> =
-                                serde_json::from_value(val["next_observation"].clone()).ok();
+                                match serde_json::from_value(val["next_observation"].clone()) {
+                                    Ok(v) => Some(v),
+                                    Err(e) => {
+                                        eprintln!("Running row missing/invalid next_observation at line {line_idx} in {in_path:?}: {e}");
+                                        return 1;
+                                    }
+                                };
                             let next_acts: Vec<splendor_core::Action> =
-                                serde_json::from_value(val["next_legal_actions"].clone()).unwrap_or_default();
-                            let next_remaining = val["next_remaining_main_turns"].as_u64().unwrap_or(0) as u32;
-                            let max_turns = val["max_main_turns"].as_u64().unwrap_or(35) as u32;
+                                match serde_json::from_value(val["next_legal_actions"].clone()) {
+                                    Ok(v) => v,
+                                    Err(e) => {
+                                        eprintln!("Running row missing/invalid next_legal_actions at line {line_idx} in {in_path:?}: {e}");
+                                        return 1;
+                                    }
+                                };
+                            let next_remaining = match val["next_remaining_main_turns"].as_u64() {
+                                Some(v) => v as u32,
+                                None => {
+                                    eprintln!("Running row missing next_remaining_main_turns at line {line_idx} in {in_path:?}");
+                                    return 1;
+                                }
+                            };
                             M49ACompactTransitionV1 {
                                 step_cost,
                                 outcome,
@@ -399,7 +446,7 @@ pub fn run_m49a_export_compact(args: &[String]) -> i32 {
                             next_observation: None,
                             next_legal_actions: Vec::new(),
                             next_remaining_main_turns: 0,
-                            max_main_turns: val["max_main_turns"].as_u64().unwrap_or(35) as u32,
+                            max_main_turns: max_turns,
                         },
                     };
 

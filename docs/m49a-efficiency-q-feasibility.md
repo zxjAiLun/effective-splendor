@@ -426,25 +426,27 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
     4. Fail-closed: Non-finite weights, empty actions on Running, or invalid records fail closed.
     5. Parity: Rust target builder exactly matches PyTorch / formulaic targets ($< 10^{-5}$).
   - Legacy `m49a_prepare_cache.py` removed from repository.
-  - **Parallel target computation**: `m49a-build-targets` parses all compact transitions into memory (compact = one next_obs + legal-action list, NOT expanded 428-d features), then computes the independent per-transition min-Q targets across all CPU worker threads via `std::thread::scope`. Release build + 20 threads reduced Round-1 target computation (~26k transitions) from single-threaded debug ~700s/iter to ~45s/iter.
+  - **Parallel target computation**: `m49a-build-targets` parses all compact transitions into memory (compact = one next_obs + legal-action list, NOT expanded 428-d features), then computes the independent per-transition min-Q targets across all CPU worker threads via `std::thread::scope`. This is a **compact in-memory + parallel on-demand target builder** (not strict line-by-line streaming), but the memory problem is already solved because compact transitions are orders of magnitude smaller than the expanded per-successor 428-d tensors. Worker-thread panics are fail-closed (join errors set the error flag; no zero-initialized target is silently written). Release build + 20 threads reduced Round-1 target computation (~26k transitions) from single-threaded debug ~700s/iter to ~45s/iter.
 
 ## 14. CLEAN Q0 → Q1 → Q2 Chain — Reproduced Self-Improvement on Verified Pipeline (2026-09-22)
 
 - **Status**: IMPLEMENTED / VERIFIED on Validation dev partition (64 seeds `2_001_049 .. 2_064_049`). **Canonical 64 seeds remain UNTOUCHED / HOLD**.
 - **Pipeline correctness**: Disjoint verified seed partitions (P1-1), live remaining horizon in aggregation (P1-2), RNG decoupled from env_seed (P1-3), fail-closed collection/validation (P2), streaming Rust on-demand Bellman targets (§13). No teacher/CE/imitation.
 
-### Critical Diagnostic: FQI iteration count dominates, undiscounted positive-cost propagation
+### Critical Diagnostic: FQI update count dominates (undiscounted positive-cost propagation)
 
-The first clean run used the historical default `fqi_iterations = 4`. Result: clean Q0 only **9.4%** success, Q1 **12.5%** — far below the provisional 37.5% → 67.2%. Root cause is NOT seed leakage but **under-propagation**: with undiscounted positive step costs and near-zero Softplus initialization, each FQI iteration back-propagates cost information only ~1 step from terminals, while successful trajectories are 30+ steps. At 4 iterations the network predicted `Q_med ≈ 4.5` when true cost is ~30 (severe underestimation).
+The first clean run used the historical default configuration `fqi_iterations = 4, epochs_per_fqi = 15`. Result: clean Q0 only **9.4%** success, Q1 **12.5%** — far below the provisional 37.5% → 67.2%. Root cause is NOT seed leakage but **under-propagation of cost**: with undiscounted positive step costs and near-zero Softplus initialization, one-step Bellman backups require many repeated FQI updates to propagate cost through 30+ step successful trajectories. At 4 updates the network predicted `Q_med ≈ 4.5` when true cost is ~30 (severe underestimation).
 
-Controlled diagnostic on identical Round 0 data, changing only `fqi_iterations` 4 → 40:
+The follow-up probe changed the configuration to `fqi_iterations = 40, epochs_per_fqi = 8`. **This is NOT a strict single-variable change** (both the FQI update count and the per-iteration epoch count differed from the historical 4×15 run); it establishes only that the 40×8 configuration substantially outperforms the historical shallow 4×15 configuration:
 
-| FQI iters | Q_med | Q_max | Validation Success | $J_{\text{val}}$ |
-|---:|---:|---:|---:|---:|
-| 4 | 4.5 | 5.7 | 9.4% (6/64) | 95.66 |
-| 40 | 13.5 | 24.0 | **32.8% (21/64)** | **78.64** |
+| Config | Q_med | Q_max | Validation Success | $J_{\text{val}}$ |
+|---|---:|---:|---:|---:|
+| historical 4×15 | 4.5 | 5.7 | 9.4% (6/64) | 95.66 |
+| 40×8 | 13.5 | 24.0 | **32.8% (21/64)** | **78.64** |
 
-Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data aggregation. The correct clean experiment requires enough FQI iterations (~40) for the Bellman fixed point to propagate, THEN measures whether data aggregation adds value on top.
+With function approximation and shared representation, a single FQI update can influence more than one graph-distance step via generalization, so the “~1 step per update” framing is an intuition, not a theorem. The empirical takeaway is: four updates were insufficient. A strict single-variable convergence isolation (fixed D2, fixed 8 epochs/FQI, only 40→80 updates) is authorized as the C1 probe (§15).
+
+Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data aggregation. The correct clean experiment requires enough FQI updates for the Bellman fixed point to propagate, THEN measures whether data aggregation adds value on top.
 
 ### Clean Chain Results (all rounds `fqi_iterations = 40`, `epochs_per_fqi = 8`, everything else fixed)
 
@@ -457,11 +459,33 @@ Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data ag
 
 ### Key Findings:
 1. **Self-improvement reproduces on the corrected pipeline**: With proper FQI convergence, monotonic Validation success **32.8% → 79.7% → 85.9%**; failures collapse **43 → 13 → 9**; $J_{\text{val}}$ monotonically drops **78.64 → 49.06 → 42.84**.
-2. **Data aggregation adds real value on top of FQI convergence**: The largest jump (32.8% → 79.7%) comes from adding Round 1 self-play data collected by the *converged* Q0 policy (which itself reached 174/256 during collection). This is the teacher-free correction mechanism working: appending self-generated failure/success trajectories penalizes optimistically-underestimated loop states.
+2. **Aggregated self-generated data is associated with a large additional improvement beyond clean Q0**: The largest jump (32.8% → 79.7%) coincides with adding Round 1 self-play data collected by the *converged* Q0 policy (which itself reached 174/256 during collection). The experiment supports the teacher-free correction mechanism, but has **not yet isolated its causal contribution** from additional dataset-size and optimization effects — no compute-matched frozen-D0 control was run. A fixed-D2 convergence probe (§15) is the authorized next step before any causal claim.
 3. **Best route ties heuristic**: Min turns to 15 improved **27 → 25 → 24**, tying the Heuristic baseline's best validation run (24).
 4. **Endpoint matches provisional**: Clean Q2 (85.9%) reproduces the provisional Q2 endpoint (85.9%), but now on verified-disjoint seeds, live horizon, decoupled RNG, and memory-safe streaming targets — establishing the result is a genuine teacher-free self-improvement signal, not a pipeline artifact.
 5. **Evaluation discipline maintained**: The 64 Canonical M49S seeds were never loaded during any training, aggregation, model selection, or diagnostic.
 
 ### Residual observations (not blockers):
-- Q values plateau at `Q_med ≈ 14`, `Q_max ≈ 27` while true successful cost is ~31; the network still under-estimates the tail. Success remains at 85.9% (9 failures), so the 100% gate is not yet met.
-- Failures are concentrated in a residual set of hard seeds; further gains likely require exploration/loop-penalty changes (Round 3 hypotheses: ε=0.05, failure oversampling, Double-Q) — not yet authorized. Round 3 should only run if it targets the remaining 9 failures with a preregistered mechanism.
+- Q values plateau at `Q_med ≈ 14`, `Q_max ≈ 27` while true successful cost is ~31; the network still under-estimates the tail. There is **no evidence yet that Q2 is near the Bellman fixed point**. Success remains at 85.9% (9 failures), so the 100% gate is not yet met.
+- Because the tail is still under-estimated, the most informative next experiment is a **fixed-D2 FQI convergence probe** (§15), NOT new exploration mechanisms. Round 3 (ε=0.05, failure oversampling, Double-Q) remains unauthorized until the convergence question is answered.
+
+## 15. C1 Fixed-D2 FQI Convergence Probe (2026-09-22)
+
+- **Status**: IMPLEMENTED / VERIFIED on Validation dev partition. **Canonical 64 seeds remain UNTOUCHED / HOLD**.
+- **Design**: Owner-authorized narrow convergence control. Fixed dataset D2 = 36,674 transitions (NO new trajectories generated). All hyperparameters fixed (network, Huber, lr, batch size, `epochs_per_fqi = 8`, training seed, failure penalty 100). Single variable: FQI updates run to 80, with a validation checkpoint exported every 10 updates and each evaluated on the 64 validation seeds.
+
+| FQI updates | Q_med | Q_max | Val success | Failures | $J_{\text{val}}$ |
+|---:|---:|---:|---:|---:|---:|
+| 10 | 10.2 | 22.6 | 29.7% (19/64) | 45 | 86.06 |
+| 20 | 13.1 | 19.8 | 81.2% (52/64) | 12 | 46.39 |
+| 30 | 14.4 | 24.9 | 90.6% (58/64) | 6 | 37.86 |
+| 40 | 14.0 | 26.9 | 85.9% (55/64) | 9 | 42.84 |
+| 50 | 13.9 | 27.7 | **92.2% (59/64)** | **5** | 40.27 |
+| 60 | 13.4 | 27.1 | 87.5% (56/64) | 8 | 44.81 |
+| 70 | 12.8 | 25.2 | 82.8% (53/64) | 11 | 52.59 |
+| 80 | 12.4 | 24.1 | 67.2% (43/64) | 21 | 60.95 |
+
+### Findings:
+1. **Neither pure plateau nor pure regression — it is: rapid rise → high-band oscillation (85–92%) → destabilization after ~60 updates.** Success does not keep climbing with more updates; past ~60 it degrades (67.2% at 80), and `val_huber` rises again in the tail.
+2. **The earlier “clean Q2 = 85.9%” was only the iter-40 final iterate — a low point inside the oscillation band, not the peak.** Best-on-D2 is **92.2% at iter 50** (both iter 30 and iter 50 exceed iter 40). The trainer previously saved only the final iterate with **no validation-based checkpoint selection** — a methodological gap now fixed by periodic checkpoint export (`--checkpoint-every`).
+3. **Answer to the owner's question**: the bottleneck is NOT “insufficient data” and NOT “insufficient Bellman propagation.” It is **convergence stability plus the absence of validation-based early stopping / best-checkpoint selection.** Therefore Round 3 data aggregation should NOT be the next step; the next lever is training stability (validation-based best-checkpoint selection, Polyak-averaged target network, Double-Q to reduce min-selection bias, or value clipping).
+4. **Discipline note**: 92.2% is a *validation-selected best-on-D2* number, NOT a generalization estimate. The Canonical 64 remains the only acceptance gate and stays untouched.

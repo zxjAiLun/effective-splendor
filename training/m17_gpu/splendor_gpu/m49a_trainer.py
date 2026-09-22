@@ -147,6 +147,8 @@ def train_fqi_streaming(
     lr: float = 1e-3,
     weight_decay: float = 1e-4,
     seed: int = 49000001,
+    checkpoint_dir: Path | None = None,
+    checkpoint_every: int = 0,
 ) -> tuple[EfficiencyQNet, dict[str, Any]]:
     """Runs Fitted Q-Iteration using memory-mapped current_x and on-demand streaming Rust targets."""
     torch.manual_seed(seed)
@@ -223,5 +225,15 @@ def train_fqi_streaming(
             print(f"FQI Iter {fqi_iter+1}/{fqi_iterations} (target {t_target:.1f}s, train {t_train:.1f}s): "
                   f"val_huber={rec['val_huber']:.4f}, val_mae={rec['val_mae']:.2f}, "
                   f"Q_med={rec['val_q_median']:.1f}, Q_range=[{rec['val_q_min']:.1f}, {rec['val_q_max']:.1f}]")
+
+            # Optional periodic checkpoint export for convergence-curve probing.
+            if checkpoint_dir is not None and checkpoint_every > 0:
+                it = fqi_iter + 1
+                if it % checkpoint_every == 0 or it == fqi_iterations:
+                    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                    ck = export_net_weights_dict(net)
+                    ck_path = checkpoint_dir / f"weights_iter{it:03d}.json"
+                    with open(ck_path, "w", encoding="utf-8") as f:
+                        json.dump(ck, f)
 
     return net, {"history": history, "final_val": val_m}
