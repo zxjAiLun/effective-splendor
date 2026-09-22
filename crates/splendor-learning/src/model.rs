@@ -22,11 +22,74 @@ pub struct EfficiencyQWeightsV1 {
 }
 
 impl EfficiencyQWeightsV1 {
+    /// Validates all layer dimensions and asserts that all parameters are finite.
+    pub fn validate(&self) -> Result<(), LearningError> {
+        if self.fc1_w.len() != 256 {
+            return Err(invalid_checkpoint(format!(
+                "fc1_w must have 256 rows, got {}",
+                self.fc1_w.len()
+            )));
+        }
+        for (i, row) in self.fc1_w.iter().enumerate() {
+            if row.len() != 428 {
+                return Err(invalid_checkpoint(format!(
+                    "fc1_w[{i}] must have 428 columns, got {}",
+                    row.len()
+                )));
+            }
+            if row.iter().any(|v| !v.is_finite()) {
+                return Err(invalid_checkpoint("fc1_w contains non-finite values"));
+            }
+        }
+        if self.fc1_b.len() != 256 || self.fc1_b.iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("fc1_b must have 256 finite values"));
+        }
+        if self.ln1_w.len() != 256 || self.ln1_w.iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("ln1_w must have 256 finite values"));
+        }
+        if self.ln1_b.len() != 256 || self.ln1_b.iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("ln1_b must have 256 finite values"));
+        }
+        if self.fc2_w.len() != 128 {
+            return Err(invalid_checkpoint(format!(
+                "fc2_w must have 128 rows, got {}",
+                self.fc2_w.len()
+            )));
+        }
+        for (i, row) in self.fc2_w.iter().enumerate() {
+            if row.len() != 256 {
+                return Err(invalid_checkpoint(format!(
+                    "fc2_w[{i}] must have 256 columns, got {}",
+                    row.len()
+                )));
+            }
+            if row.iter().any(|v| !v.is_finite()) {
+                return Err(invalid_checkpoint("fc2_w contains non-finite values"));
+            }
+        }
+        if self.fc2_b.len() != 128 || self.fc2_b.iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("fc2_b must have 128 finite values"));
+        }
+        if self.fc3_w.len() != 1 {
+            return Err(invalid_checkpoint(format!(
+                "fc3_w must have 1 row, got {}",
+                self.fc3_w.len()
+            )));
+        }
+        if self.fc3_w[0].len() != 128 || self.fc3_w[0].iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("fc3_w[0] must have 128 finite values"));
+        }
+        if self.fc3_b.len() != 1 || self.fc3_b.iter().any(|v| !v.is_finite()) {
+            return Err(invalid_checkpoint("fc3_b must have 1 finite value"));
+        }
+        Ok(())
+    }
+
     /// Exact forward pass of the small Efficiency-Q MLP matching PyTorch:
     /// x (428) -> Linear(256) -> LayerNorm(eps=1e-5) -> ReLU -> Linear(128) -> ReLU -> Linear(1) -> Softplus(beta=1, threshold=20)
     pub fn forward(&self, x: &[f32]) -> f32 {
+        assert_eq!(x.len(), 428, "input feature vector must have length 428");
         let in_dim = x.len();
-        debug_assert_eq!(in_dim, 428);
 
         // Layer 1: Linear(428, 256)
         let mut h1 = [0.0f32; 256];
@@ -736,6 +799,8 @@ mod tests {
         }
 
         let payload: ParityPayload = serde_json::from_str(&content).expect("parse fixture");
+        payload.weights.validate().expect("fixture weights must be valid");
+
         for (idx, (inp, expected)) in payload.inputs.iter().zip(payload.outputs.iter()).enumerate() {
             let actual = payload.weights.forward(inp);
             let diff = (actual - expected).abs();
@@ -744,5 +809,39 @@ mod tests {
                 "Sample {idx} mismatch: Rust={actual}, PyTorch={expected}, diff={diff}"
             );
         }
+    }
+
+    #[test]
+    fn test_efficiency_q_weights_validation_fails_closed() {
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/m49a_q_forward_parity_v1.json");
+        let content = std::fs::read_to_string(&fixture_path).expect("read fixture");
+
+        #[derive(Deserialize)]
+        struct ParityPayload {
+            weights: EfficiencyQWeightsV1,
+        }
+        let payload: ParityPayload = serde_json::from_str(&content).expect("parse fixture");
+        assert!(payload.weights.validate().is_ok());
+
+        // Negative control 1: wrong fc1 row count
+        let mut bad_fc1 = payload.weights.clone();
+        bad_fc1.fc1_w.pop();
+        assert!(bad_fc1.validate().is_err());
+
+        // Negative control 2: wrong fc1 column count
+        let mut bad_col = payload.weights.clone();
+        bad_col.fc1_w[0].pop();
+        assert!(bad_col.validate().is_err());
+
+        // Negative control 3: NaN in weights
+        let mut bad_nan = payload.weights.clone();
+        bad_nan.fc3_w[0][0] = f32::NAN;
+        assert!(bad_nan.validate().is_err());
+
+        // Negative control 4: Infinity in bias
+        let mut bad_inf = payload.weights.clone();
+        bad_inf.fc3_b[0] = f32::INFINITY;
+        assert!(bad_inf.validate().is_err());
     }
 }

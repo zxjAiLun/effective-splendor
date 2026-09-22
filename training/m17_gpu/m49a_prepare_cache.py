@@ -30,32 +30,41 @@ def process_split(split_name: str):
             if not line.strip():
                 continue
             r = json.loads(line)
-            input_feats.append(r["input_features"])
+            in_f = r["input_features"]
+            if len(in_f) != 428:
+                raise ValueError(f"Invalid input_features length {len(in_f)} at row {i}; expected 428")
+            input_feats.append(in_f)
             step_costs.append(float(r["step_cost"]))
 
             outcome = r["outcome"]
+            next_f = r.get("next_action_features", [])
+
             if outcome == "reached_15":
+                if next_f:
+                    raise ValueError(f"Terminal reached_15 row {i} has non-empty next_action_features ({len(next_f)})")
                 outcomes.append(0)
             elif outcome in ("stalled", "turn_cap"):
+                if next_f:
+                    raise ValueError(f"Terminal {outcome} row {i} has non-empty next_action_features ({len(next_f)})")
                 outcomes.append(1)
             elif outcome == "running":
-                outcomes.append(2)
-                next_f = r["next_action_features"]
                 if not next_f:
-                    # treat as stalled
-                    outcomes[-1] = 1
-                else:
-                    start = len(flat_next_feats)
-                    flat_next_feats.extend(next_f)
-                    offsets.append((start, len(flat_next_feats)))
-                    running_row_indices.append(i)
+                    raise ValueError(f"Running transition row {i} MUST have non-empty next_action_features")
+                outcomes.append(2)
+                start = len(flat_next_feats)
+                flat_next_feats.extend(next_f)
+                offsets.append((start, len(flat_next_feats)))
+                running_row_indices.append(i)
             else:
-                raise ValueError(f"Unknown outcome {outcome}")
+                raise ValueError(f"Unknown outcome {outcome} at row {i}")
 
     x = torch.tensor(input_feats, dtype=torch.float32)
+    assert torch.isfinite(x).all(), "x contains non-finite values"
     step_costs = torch.tensor(step_costs, dtype=torch.float32)
+    assert torch.isfinite(step_costs).all(), "step_costs contains non-finite values"
     outcomes = torch.tensor(outcomes, dtype=torch.long)
     flat_next = torch.tensor(flat_next_feats, dtype=torch.float32)
+    assert torch.isfinite(flat_next).all(), "flat_next contains non-finite values"
     offsets = torch.tensor(offsets, dtype=torch.long)
     running_indices = torch.tensor(running_row_indices, dtype=torch.long)
 

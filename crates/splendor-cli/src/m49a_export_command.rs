@@ -85,15 +85,16 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
     // this command never evaluates canonical seeds.
     assert_seed_partitions_disjoint(&train, &val, &[]);
 
-    // Per-seed deterministic policy RNG streams, distinct per behavior source.
-    let rng_for = |source: &str, seed: u64| -> StableRng {
+    // Deterministic policy RNG streams, distinct per behavior source and trajectory ordinal.
+    // STRICT DECOUPLING: depends only on behavior tag and trajectory ordinal, NEVER on env_seed.
+    let rng_for = |source: &str, ordinal: usize| -> StableRng {
         let tag: u64 = match source {
-            "category_biased" => 0x1000_0000,
-            "heuristic" => 0x2000_0000,
-            "random" => 0x3000_0000,
-            _ => 0x4000_0000,
+            "category_biased" => 0x1000_0000_0000_0000,
+            "heuristic" => 0x2000_0000_0000_0000,
+            "random" => 0x3000_0000_0000_0000,
+            _ => 0x4000_0000_0000_0000,
         };
-        StableRng::new(tag.wrapping_add(seed))
+        StableRng::new(tag.wrapping_add(ordinal as u64))
     };
 
     let mut rows_by_split: Vec<(String, Vec<ExportRow>)> =
@@ -105,7 +106,13 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
         let n_cat = ((n as f64) * ROUND0_TRAJECTORY_MIX[0].1).round() as usize;
         let n_heu = ((n as f64) * ROUND0_TRAJECTORY_MIX[1].1).round() as usize;
         let n_rand = n - n_cat - n_heu; // remainder: random budget
-        let quotas = [("category_biased", n_cat), ("heuristic", n_heu), ("random", n_rand)];
+
+        // P1-1 Fix: Non-overlapping disjoint slices ensure every seed is visited exactly once.
+        let slices: [(&str, &[u64]); 3] = [
+            ("category_biased", &seeds[0..n_cat]),
+            ("heuristic", &seeds[n_cat..n_cat + n_heu]),
+            ("random", &seeds[n_cat + n_heu..n]),
+        ];
 
         let rows = rows_by_split
             .iter_mut()
@@ -113,9 +120,18 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
             .map(|(_, v)| v)
             .expect("split row");
 
-        for (source, count) in quotas {
-            for &seed in seeds.iter().take(count) {
-                let mut rng = rng_for(source, seed);
+        let mut seen_seeds = std::collections::HashSet::new();
+        let mut total_trajectories = 0;
+
+        for (source, seed_slice) in slices {
+            for &seed in seed_slice {
+                let ordinal = total_trajectories;
+                total_trajectories += 1;
+                assert!(
+                    seen_seeds.insert(seed),
+                    "duplicate seed {seed} in {split_name} partition"
+                );
+                let mut rng = rng_for(source, ordinal);
                 let collected = match source {
                     "category_biased" => collect_solo15_trajectory(
                         seed,
@@ -167,6 +183,16 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
                 }
             }
         }
+
+        assert_eq!(
+            seen_seeds.len(),
+            n,
+            "P1-1 gate: all {n} {split_name} seeds must be uniquely sampled"
+        );
+        assert_eq!(
+            total_trajectories, n,
+            "P1-1 gate: trajectory count ({total_trajectories}) must equal seed count ({n})"
+        );
     }
 
     for (split_name, rows) in rows_by_split {

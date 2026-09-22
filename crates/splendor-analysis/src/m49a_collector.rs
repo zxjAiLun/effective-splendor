@@ -15,7 +15,9 @@ use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
 use splendor_agent::{AgentPolicy, DecisionContext, PublicRequestMeta, StableRng};
 use splendor_core::{observation_hash, Action, Observation, Phase, PlayerId};
-use splendor_learning::{encode_combined_v1, encode_combined_v2, LearningError};
+use splendor_learning::{
+    encode_combined_v1, encode_combined_v2, EfficiencyQWeightsV1, LearningError,
+};
 
 use crate::solo15::{
     MetricDistribution, Solo15Environment, Solo15Outcome, Solo15Summary, SOLO15_CONTRACT_ID_V1,
@@ -110,6 +112,17 @@ impl TransitionRecord {
             return Err(format!(
                 "contract_id mismatch: expected {}, got {}",
                 SOLO15_CONTRACT_ID_V1, self.contract_id
+            ));
+        }
+
+        // Horizon validity check
+        if self.max_main_turns == 0 {
+            return Err("max_main_turns must be positive".to_string());
+        }
+        if self.main_turns > self.max_main_turns {
+            return Err(format!(
+                "main_turns ({}) cannot exceed max_main_turns ({})",
+                self.main_turns, self.max_main_turns
             ));
         }
 
@@ -353,6 +366,106 @@ pub fn collect_solo15_trajectory<P: AgentPolicy>(
                     .map_err(|e| format!("policy error: {e}"))?
             }
             Phase::GameOver => break,
+        };
+
+        let step = env.step(action).map_err(|e| e.to_string())?;
+        let next_obs = env.observation();
+        let next_legal = env.legal_actions();
+
+        let record = TransitionRecord {
+            contract_id: SOLO15_CONTRACT_ID_V1.to_string(),
+            trajectory_id: trajectory_id.clone(),
+            provenance: TransitionProvenance {
+                env_seed,
+                behavior_policy: behavior_name.to_string(),
+                round,
+                step_index,
+            },
+            observation: obs,
+            action,
+            step_cost: step.step_cost as f32,
+            next_observation: next_obs,
+            next_legal_actions: next_legal,
+            outcome: step.outcome,
+            main_turns: step.main_turns - step.step_cost,
+            max_main_turns,
+        };
+
+        record.validate()?;
+        transitions.push(record);
+        step_index += 1;
+    }
+
+    Ok((transitions, env.summary()))
+}
+
+/// Collects an entire trajectory driven by an Efficiency-Q policy with epsilon exploration,
+/// maintaining live remaining main turns at each decision step.
+///
+/// Invariant:
+/// - Each decision step queries the network with `remaining = max_turns.saturating_sub(env.main_turns())`.
+/// - `Phase::Main` advances `main_turns` by 1; `Phase::ChooseNoble` leaves `main_turns` unchanged.
+/// - `policy_rng` is strictly passed from the caller, completely decoupled from `env_seed`.
+pub fn collect_solo15_q_trajectory(
+    env_seed: u64,
+    weights: &EfficiencyQWeightsV1,
+    epsilon: f64,
+    behavior_name: &str,
+    round: u32,
+    max_turns: u32,
+    policy_rng: &mut StableRng,
+) -> Result<(Vec<TransitionRecord>, Solo15Summary), String> {
+    let max_main_turns = max_turns;
+    let mut env =
+        Solo15Environment::with_max_main_turns(env_seed, max_turns).map_err(|e| e.to_string())?;
+    let trajectory_id = format!("traj_s{env_seed}_r{round}_{behavior_name}");
+
+    let mut transitions = Vec::new();
+    let mut step_index = 0;
+
+    while !env.is_terminal() {
+        let obs = env.observation();
+        let legal = env.legal_actions();
+        if legal.is_empty() {
+            break;
+        }
+
+        let remaining = max_turns.saturating_sub(env.main_turns());
+
+        // Action selection with live remaining horizon
+        let action = if legal.len() <= 1 {
+            legal[0]
+        } else {
+            let roll = (policy_rng.index(10000) as f64) / 10000.0;
+            if roll < epsilon {
+                let idx = policy_rng.index(legal.len());
+                legal[idx]
+            } else {
+                let mut best_q = f32::INFINITY;
+                let mut best_actions = Vec::new();
+
+                for &a in &legal {
+                    if let Ok(feat) = encode_combined_v2(&obs, &a, remaining, max_turns) {
+                        let q = weights.forward(&feat);
+                        if (q - best_q).abs() < 1e-4 {
+                            best_actions.push(a);
+                        } else if q < best_q {
+                            best_q = q;
+                            best_actions.clear();
+                            best_actions.push(a);
+                        }
+                    }
+                }
+
+                if best_actions.is_empty() {
+                    legal[0]
+                } else if best_actions.len() == 1 {
+                    best_actions[0]
+                } else {
+                    let idx = policy_rng.index(best_actions.len());
+                    best_actions[idx]
+                }
+            }
         };
 
         let step = env.step(action).map_err(|e| e.to_string())?;

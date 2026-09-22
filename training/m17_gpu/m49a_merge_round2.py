@@ -47,6 +47,10 @@ def main():
     combined_offsets = torch.cat([r1["offsets"], t_new_offsets], dim=0)
     combined_running = torch.cat([r1["running_indices"], t_new_running], dim=0)
 
+    assert torch.isfinite(combined_x).all(), "combined_x contains non-finite values"
+    assert torch.isfinite(combined_costs).all(), "combined_costs contains non-finite values"
+    assert torch.isfinite(combined_flat_next).all(), "combined_flat_next contains non-finite values"
+
     payload = {
         "x": combined_x,
         "step_costs": combined_costs,

@@ -125,7 +125,9 @@ pub fn run_m49a_eval_validation(args: &[String]) -> i32 {
             }
         };
 
-        let mut policy_rng = StableRng::new(0x5010_1515_u64.wrapping_add(seed));
+        // P1-3: Decouple policy RNG strictly from env_seed, indexing by validation cohort ordinal (0..63)
+        let mut policy_rng =
+            StableRng::new(0x5010_1515_0000_0000_u64.wrapping_add(idx as u64));
         let empty_history = Vec::new();
 
         while !env.is_terminal() {
@@ -188,6 +190,9 @@ pub fn run_m49a_eval_validation(args: &[String]) -> i32 {
     println!("RESULTS on 64 Validation Seeds:");
     println!("  Success Rate: {} / 64 ({:.1}%)", successes, successes as f64 / 64.0 * 100.0);
     println!("  Failures:     {}", failures);
+
+    let j_val = (main_turns_list.iter().sum::<f64>() + (failures as f64) * 101.0) / 64.0;
+    println!("  Failure-Aware J_val Score: {:.2}", j_val);
 
     if !main_turns_list.is_empty() {
         let mean = main_turns_list.iter().sum::<f64>() / main_turns_list.len() as f64;

@@ -89,6 +89,18 @@ fn test_transition_record_schema_and_invariants() {
     bad_cost.step_cost = 0.0;
     assert!(bad_cost.validate().is_err());
     assert!(bad_cost.materialize().is_err(), "materialize() MUST fail-closed when Main action has wrong step_cost");
+
+    // Negative control 4: max_main_turns == 0 must fail
+    let mut bad_max = transitions[0].clone();
+    bad_max.max_main_turns = 0;
+    assert!(bad_max.validate().is_err());
+    assert!(bad_max.materialize().is_err(), "materialize() MUST fail-closed when max_main_turns is 0");
+
+    // Negative control 5: main_turns > max_main_turns must fail
+    let mut bad_turns = transitions[0].clone();
+    bad_turns.main_turns = bad_turns.max_main_turns + 1;
+    assert!(bad_turns.validate().is_err());
+    assert!(bad_turns.materialize().is_err(), "materialize() MUST fail-closed when main_turns > max_main_turns");
 }
 
 #[test]
@@ -269,6 +281,57 @@ fn test_collector_obeys_policy_choice_in_choose_noble_phase() {
         "collector MUST record policy's choice of legal[1] (Noble 8) into the transition record"
     );
     assert_eq!(second_noble_step.step_cost, 0.0);
+}
+
+#[test]
+fn test_collect_solo15_q_trajectory_updates_live_horizon() {
+    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("splendor-learning/tests/fixtures/m49a_q_forward_parity_v1.json");
+    let content = std::fs::read_to_string(&fixture_path).expect("read fixture");
+    #[derive(serde::Deserialize)]
+    struct Payload {
+        weights: splendor_learning::EfficiencyQWeightsV1,
+    }
+    let payload: Payload = serde_json::from_str(&content).expect("parse fixture");
+
+    let seed = 1001049;
+    let mut rng = StableRng::new(0x1234_5678);
+    let (transitions, summary) = splendor_analysis::m49a_collector::collect_solo15_q_trajectory(
+        seed,
+        &payload.weights,
+        0.0, // pure greedy
+        "test_q",
+        0,
+        100,
+        &mut rng,
+    )
+    .expect("collect q trajectory");
+
+    assert!(!transitions.is_empty());
+    assert!(summary.max_main_turns == 100);
+
+    let mut expected_main_turns = 0;
+    for (idx, t) in transitions.iter().enumerate() {
+        assert_eq!(t.main_turns, expected_main_turns, "step {idx} main_turns mismatch");
+        assert_eq!(t.max_main_turns, 100);
+        let remaining = t.remaining_main_turns();
+        assert_eq!(remaining, 100 - expected_main_turns);
+
+        let m = t.materialize().expect("materialize");
+        assert_eq!(m.input_features.len(), 428);
+        let norm_budget = m.input_features[427];
+        let expected_norm = remaining as f32 / 100.0;
+        assert!(
+            (norm_budget - expected_norm).abs() < 1e-5,
+            "step {idx} feature[427] mismatch: got {norm_budget}, expected {expected_norm}"
+        );
+
+        if t.step_cost == 1.0 {
+            expected_main_turns += 1;
+        }
+    }
 }
 
 #[test]

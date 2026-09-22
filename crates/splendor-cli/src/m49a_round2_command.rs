@@ -1,74 +1,24 @@
 //! M49A-II Round 2 Data Aggregation:
 //! Run Q1 policy with epsilon=0.10 on the SAME 256 training seeds.
 //! Append new transitions to training set to train Q2.
+//!
+//! DISCIPLINE:
+//! - strictly on train_seeds_v1() (256 seeds)
+//! - zero validation seeds, zero canonical seeds
+//! - policy RNG decoupled from env seed (depends on behavior tag, round, and trajectory ordinal)
+//! - Q policy evaluated with live remaining main-turn budget at every step
 
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 
-use splendor_agent::{AgentPolicy, DecisionContext, StableRng};
-use splendor_analysis::m49a_collector::{collect_solo15_trajectory, train_seeds_v1};
+use splendor_agent::StableRng;
+use splendor_analysis::m49a_collector::{collect_solo15_q_trajectory, train_seeds_v1};
 use splendor_analysis::solo15::{Solo15Outcome, DEFAULT_MAX_MAIN_TURNS};
-use splendor_core::Action;
-use splendor_learning::encode_combined_v2;
 
-use crate::m49a_eval_command::{load_weights_from_json, QWeightsV1};
+use crate::m49a_eval_command::load_weights_from_json;
 
 const EXIT_USAGE: i32 = 2;
-
-struct EpsilonQPolicy<'a> {
-    weights: &'a QWeightsV1,
-    epsilon: f64,
-    remaining_turns: u32,
-    max_turns: u32,
-}
-
-impl<'a> AgentPolicy for EpsilonQPolicy<'a> {
-    type Error = std::convert::Infallible;
-
-    fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
-        let legal = context.legal_actions;
-        if legal.len() <= 1 {
-            return Ok(legal[0]);
-        }
-
-        let roll = (context.rng.index(10000) as f64) / 10000.0;
-        if roll < self.epsilon {
-            let idx = context.rng.index(legal.len());
-            return Ok(legal[idx]);
-        }
-
-        let mut best_q = f32::INFINITY;
-        let mut best_actions = Vec::new();
-
-        for &action in legal {
-            if let Ok(feat) = encode_combined_v2(
-                &context.observation,
-                &action,
-                self.remaining_turns,
-                self.max_turns,
-            ) {
-                let q = self.weights.forward(&feat);
-                if (q - best_q).abs() < 1e-4 {
-                    best_actions.push(action);
-                } else if q < best_q {
-                    best_q = q;
-                    best_actions.clear();
-                    best_actions.push(action);
-                }
-            }
-        }
-
-        if best_actions.is_empty() {
-            Ok(legal[0])
-        } else if best_actions.len() == 1 {
-            Ok(best_actions[0])
-        } else {
-            let idx = context.rng.index(best_actions.len());
-            Ok(best_actions[idx])
-        }
-    }
-}
 
 pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
     let mut weights_path: Option<PathBuf> = None;
@@ -138,22 +88,25 @@ pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
 
     let mut total_rows = 0;
     let mut successes = 0;
+    let behavior_name = format!("q1_eps_{epsilon:.2}");
 
-    println!("Collecting Round 2 trajectories on 256 training seeds (eps={epsilon})...");
+    println!("Collecting Round 2 trajectories on 256 training seeds ({behavior_name})...");
 
-    for (idx, &seed) in train_seeds.iter().enumerate() {
-        let mut policy_rng = StableRng::new(0x4000_0000_u64.wrapping_add(seed));
-        let mut pol = EpsilonQPolicy {
-            weights: &weights,
-            epsilon,
-            remaining_turns: max_turns,
-            max_turns,
-        };
+    let mut seen_seeds = std::collections::HashSet::new();
 
-        let collected = collect_solo15_trajectory(
+    for (ordinal, &seed) in train_seeds.iter().enumerate() {
+        assert!(seen_seeds.insert(seed), "duplicate train seed {seed}");
+
+        // P1-3: strictly decoupled from env_seed, depends on round tag and trajectory ordinal
+        let mut policy_rng =
+            StableRng::new(0x1002_0000_0000_0000_u64.wrapping_add(ordinal as u64));
+
+        // P1-2: collect_solo15_q_trajectory maintains live remaining main turns at every decision step
+        let collected = collect_solo15_q_trajectory(
             seed,
-            &mut pol,
-            "q1_eps_0.10",
+            &weights,
+            epsilon,
+            &behavior_name,
             2, // Round 2
             max_turns,
             &mut policy_rng,
@@ -168,7 +121,7 @@ pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
                     let row = serde_json::json!({
                         "split": "train",
                         "seed": seed,
-                        "behavior_policy": "q1_eps_0.10",
+                        "behavior_policy": behavior_name,
                         "step_index": step_idx,
                         "step_cost": m.step_cost,
                         "outcome": match m.outcome {
@@ -186,11 +139,13 @@ pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
                 }
             }
         }
-        if (idx + 1) % 64 == 0 {
+        if (ordinal + 1) % 64 == 0 {
             print!(".");
         }
     }
     let _ = writer.flush();
-    println!("\nWrote {total_rows} new transitions from 256 training seeds ({successes}/256 reached 15).");
+    println!(
+        "\nWrote {total_rows} new transitions from 256 training seeds ({successes}/256 reached 15)."
+    );
     0
 }
