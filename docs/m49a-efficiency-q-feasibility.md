@@ -1,6 +1,6 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II IMPLEMENTED / REPAIR 1a SUBMITTED FOR OWNER REVIEW. Canonical 64 seeds remain on HOLD.
+- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II Repair 1/1a ACCEPTED @ `06babda`; C1 ACCEPTED / CLOSED @ `efa42987979d13c14fd32555c457a31de7f20ca7`; C1a selection IMPLEMENTED / VERIFIED locally (§16), pending owner review. Canonical 64 seeds remain on HOLD. Earlier sections retain the design/iteration history; §16 is the current scope and next-gate authority.
 - **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
 - **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
@@ -433,9 +433,9 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
 - **Status**: IMPLEMENTED / VERIFIED on Validation dev partition (64 seeds `2_001_049 .. 2_064_049`). **Canonical 64 seeds remain UNTOUCHED / HOLD**.
 - **Pipeline correctness**: Disjoint verified seed partitions (P1-1), live remaining horizon in aggregation (P1-2), RNG decoupled from env_seed (P1-3), fail-closed collection/validation (P2), streaming Rust on-demand Bellman targets (§13). No teacher/CE/imitation.
 
-### Critical Diagnostic: FQI update count dominates (undiscounted positive-cost propagation)
+### Historical diagnostic: 40×8 versus 4×15 (not single-variable isolation)
 
-The first clean run used the historical default configuration `fqi_iterations = 4, epochs_per_fqi = 15`. Result: clean Q0 only **9.4%** success, Q1 **12.5%** — far below the provisional 37.5% → 67.2%. Root cause is NOT seed leakage but **under-propagation of cost**: with undiscounted positive step costs and near-zero Softplus initialization, one-step Bellman backups require many repeated FQI updates to propagate cost through 30+ step successful trajectories. At 4 updates the network predicted `Q_med ≈ 4.5` when true cost is ~30 (severe underestimation).
+The first clean run used the historical default configuration `fqi_iterations = 4, epochs_per_fqi = 15`. Result: clean Q0 only **9.4%** success, Q1 **12.5%** — below the provisional 37.5% → 67.2%. Limited Bellman propagation is a plausible explanation with undiscounted positive step costs and near-zero Softplus initialization, not an isolated root cause. The whole-dataset `Q_med ≈ 4.5` is a diagnostic over heterogeneous states; it cannot be calibrated directly against root rollout length.
 
 The follow-up probe changed the configuration to `fqi_iterations = 40, epochs_per_fqi = 8`. **This is NOT a strict single-variable change** (both the FQI update count and the per-iteration epoch count differed from the historical 4×15 run); it establishes only that the 40×8 configuration substantially outperforms the historical shallow 4×15 configuration:
 
@@ -444,9 +444,9 @@ The follow-up probe changed the configuration to `fqi_iterations = 40, epochs_pe
 | historical 4×15 | 4.5 | 5.7 | 9.4% (6/64) | 95.66 |
 | 40×8 | 13.5 | 24.0 | **32.8% (21/64)** | **78.64** |
 
-With function approximation and shared representation, a single FQI update can influence more than one graph-distance step via generalization, so the “~1 step per update” framing is an intuition, not a theorem. The empirical takeaway is: four updates were insufficient. A strict single-variable convergence isolation (fixed D2, fixed 8 epochs/FQI, only 40→80 updates) is authorized as the C1 probe (§15).
+With function approximation and shared representation, a single FQI update can influence more than one graph-distance step via generalization, so the “~1 step per update” framing is an intuition, not a theorem. The empirical takeaway is that the 4×15 configuration performed poorly and 40×8 improved it; neither the effect of update count alone nor convergence is established. C1 (§15) subsequently examined fixed D2 and fixed 8 epochs/FQI through 80 updates.
 
-Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data aggregation. The correct clean experiment requires enough FQI updates for the Bellman fixed point to propagate, THEN measures whether data aggregation adds value on top.
+Conclusion: these runs do not isolate optimization effects from data aggregation. A compute-matched frozen-D0 control was not run; gains associated with aggregation are not a causal estimate of aggregation alone.
 
 ### Clean Chain Results (all rounds `fqi_iterations = 40`, `epochs_per_fqi = 8`, everything else fixed)
 
@@ -458,20 +458,20 @@ Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data ag
 | **Clean Q2** (+Round 2 @ ε=0.10) | 36,674 | 241/256 reached 15 | **55/64 (85.9%)** | **9** | **42.84** | 33.33 | 31.0 | **24** | 35.0 |
 
 ### Key Findings:
-1. **Self-improvement reproduces on the corrected pipeline**: With proper FQI convergence, monotonic Validation success **32.8% → 79.7% → 85.9%**; failures collapse **43 → 13 → 9**; $J_{\text{val}}$ monotonically drops **78.64 → 49.06 → 42.84**.
-2. **Aggregated self-generated data is associated with a large additional improvement beyond clean Q0**: The largest jump (32.8% → 79.7%) coincides with adding Round 1 self-play data collected by the *converged* Q0 policy (which itself reached 174/256 during collection). The experiment supports the teacher-free correction mechanism, but has **not yet isolated its causal contribution** from additional dataset-size and optimization effects — no compute-matched frozen-D0 control was run. A fixed-D2 convergence probe (§15) is the authorized next step before any causal claim.
-3. **Best route ties heuristic**: Min turns to 15 improved **27 → 25 → 24**, tying the Heuristic baseline's best validation run (24).
+1. **Self-improvement reproduces on the corrected pipeline**: At the fixed 40×8 configuration, Validation success **32.8% → 79.7% → 85.9%**; failures **43 → 13 → 9**; $J_{\text{val}}$ **78.64 → 49.06 → 42.84**. This does not establish convergence of any round.
+2. **Aggregated self-generated data is associated with additional improvement beyond clean Q0**: The largest jump (32.8% → 79.7%) coincides with adding Round 1 data collected by the 40×8 Q0 policy (174/256 successes during collection). Its causal contribution remains unisolated from dataset-size and optimization effects without a compute-matched frozen-D0 control. C1's fixed-D2 curve does not substitute for that control.
+3. **Observed minimum turns**: The clean-chain minima improved **27 → 25 → 24**. These unpaired minima are diagnostic, not evidence of superiority over Heuristic.
 4. **Endpoint matches provisional**: Clean Q2 (85.9%) reproduces the provisional Q2 endpoint (85.9%), but now on verified-disjoint seeds, live horizon, decoupled RNG, and memory-safe streaming targets — establishing the result is a genuine teacher-free self-improvement signal, not a pipeline artifact.
 5. **Evaluation discipline maintained**: The 64 Canonical M49S seeds were never loaded during any training, aggregation, model selection, or diagnostic.
 
-### Residual observations (not blockers):
-- Q values plateau at `Q_med ≈ 14`, `Q_max ≈ 27` while true successful cost is ~31; the network still under-estimates the tail. There is **no evidence yet that Q2 is near the Bellman fixed point**. Success remains at 85.9% (9 failures), so the 100% gate is not yet met.
-- Because the tail is still under-estimated, the most informative next experiment is a **fixed-D2 FQI convergence probe** (§15), NOT new exploration mechanisms. Round 3 (ε=0.05, failure oversampling, Double-Q) remains unauthorized until the convergence question is answered.
+### Residual observations (interpretation corrected in C1a):
+- Whole-dataset `Q_med ≈ 14` and `Q_max ≈ 27` mix early, late, near-terminal, and zero-cost ChooseNoble rows. They cannot be directly compared with successful root rollout length (~31) to establish absolute underestimation. Root chosen-action Q versus realized cost, or remaining-turn buckets, would be more appropriate calibration diagnostics; not implemented here.
+- There is **no evidence that iter40 is near a Bellman fixed point**. It still has 9 failures. C1 (§15) exposes non-monotonic rollout performance; it does not establish sufficient data coverage or the cause of the remaining failures. Round3 remains unauthorized.
 
 ## 15. C1 Fixed-D2 FQI Convergence Probe (2026-09-22)
 
-- **Status**: IMPLEMENTED / VERIFIED on Validation dev partition. **Canonical 64 seeds remain UNTOUCHED / HOLD**.
-- **Design**: Owner-authorized narrow convergence control. Fixed dataset D2 = 36,674 transitions (NO new trajectories generated). All hyperparameters fixed (network, Huber, lr, batch size, `epochs_per_fqi = 8`, training seed, failure penalty 100). Single variable: FQI updates run to 80, with a validation checkpoint exported every 10 updates and each evaluated on the 64 validation seeds.
+- **Status**: ACCEPTED / CLOSED by owner @ `efa42987979d13c14fd32555c457a31de7f20ca7`. **Canonical 64 seeds remain UNTOUCHED / HOLD**.
+- **Design**: Owner-authorized narrow convergence control. Fixed dataset D2 = 36,674 transitions (NO new trajectories generated). All hyperparameters fixed (network, Huber, lr, batch size, `epochs_per_fqi = 8`, training seed, failure penalty 100). FQI training ran to 80 updates; weights were exported every 10 updates. Exports did not change the training trajectory. Rollout measurements were performed post-training on those eight checkpoints, not used for live early stopping.
 
 | FQI updates | Q_med | Q_max | Val success | Failures | $J_{\text{val}}$ |
 |---:|---:|---:|---:|---:|---:|
@@ -484,8 +484,100 @@ Conclusion: the provisional Q0→Q2 curve conflated FQI convergence with data ag
 | 70 | 12.8 | 25.2 | 82.8% (53/64) | 11 | 52.59 |
 | 80 | 12.4 | 24.1 | 67.2% (43/64) | 21 | 60.95 |
 
-### Findings:
-1. **Neither pure plateau nor pure regression — it is: rapid rise → high-band oscillation (85–92%) → destabilization after ~60 updates.** Success does not keep climbing with more updates; past ~60 it degrades (67.2% at 80), and `val_huber` rises again in the tail.
-2. **The earlier “clean Q2 = 85.9%” was only the iter-40 final iterate — a low point inside the oscillation band, not the peak.** Best-on-D2 is **92.2% at iter 50** (both iter 30 and iter 50 exceed iter 40). The trainer previously saved only the final iterate with **no validation-based checkpoint selection** — a methodological gap now fixed by periodic checkpoint export (`--checkpoint-every`).
-3. **Answer to the owner's question**: the bottleneck is NOT “insufficient data” and NOT “insufficient Bellman propagation.” It is **convergence stability plus the absence of validation-based early stopping / best-checkpoint selection.** Therefore Round 3 data aggregation should NOT be the next step; the next lever is training stability (validation-based best-checkpoint selection, Polyak-averaged target network, Double-Q to reduce min-selection bias, or value clipping).
-4. **Discipline note**: 92.2% is a *validation-selected best-on-D2* number, NOT a generalization estimate. The Canonical 64 remains the only acceptance gate and stays untouched.
+### Findings (C1a owner correction; original numeric evidence retained):
+1. **Rapid rise → high-band oscillation → late degradation.** More FQI updates do not monotonically resolve the remaining failures on this fixed D2: success falls from 59/64 at iter50 to 43/64 at iter80, while `val_huber` rises in the tail. Rollout success/J_val, not whole-dataset Q-to-root-turn comparisons, support this observation.
+2. **Iter50 maximizes success; iter30 minimizes J_val.** Iter50 is the **C1 selected checkpoint under `m49a_validation_select_v1`** (§16), not a metric-independent “best.” Iter30 retains **58/64, J_val=37.859375**, versus iter50 **59/64, J_val=40.265625**. A finite failure penalty and the success-first reliability objective need not rank policies identically.
+3. **Current visible concern: optimization / fitted-Q stability.** C1 does not prove that data is sufficient, exclude coverage holes, or isolate hard target replacement, min-selection bias, or any other cause. There is no basis to prioritize Round3 merely from this curve. Periodic checkpoint export only saved weights; C1a supplies a model-selection rule, **not** a stability treatment or online early stopping.
+4. **Scope of the result**: 59/64 (92.1875%) is selected on the development validation cohort, **not a generalization estimate or an acceptance-gate pass**. Canonical 64 remains on HOLD. Future authorized stability comparisons must use the same schedule and selection contract on both arms; comparing a hard-target final iterate with a Polyak-selected checkpoint would be confounded.
+
+## 16. C1a Validation Checkpoint Selection Contract
+
+### Authorization, scope, and frozen gates
+
+- **Status**: IMPLEMENTED / VERIFIED locally; pending owner review. Baseline `efa42987979d13c14fd32555c457a31de7f20ca7`. Owner accepted/closed C1 at that baseline and authorized C1a only.
+- Contract: `m49a_validation_select_v1`. Fixed schedule **[10,20,30,40,50,60,70,80]**; no denser sweep, no online rollout early stopping, no retraining. Selection happens after the fixed training trajectory ends.
+- Frozen lexicographic order: **max success_count → min J_val → min successful mean turns → earliest iteration**. This is a model-selection rule, not a convergence-stability fix. The rule is frozen by this owner decision after seeing C1; it is not retroactively described as preregistered before C1 training.
+- Expected application to retained C1 measurements: iter50 (59/64) selected over iter30 (58/64), despite iter30's lower J_val. Both points remain in evidence.
+- Implementation plan: pure selector over complete validation reports; fixed-schedule CLI; validated metrics and weight hashes; immutable selection report; four-level tie-break and negative-input tests; compare the existing C1 eight checkpoints without changing training or policy semantics.
+- Acceptance checks: deterministic choice/order independence; reject missing, duplicate, out-of-schedule or non-finite entries; no successful output on an evaluation/input failure; full report including selected iteration/path/key and the complete evaluated schedule.
+- **Not authorized in C1a**: C2/Polyak, Double-Q, Round3, new training data, Canonical evaluation. C2 is next in the owner's roadmap, not executed by this slice.
+
+### Implementation contract and information boundaries
+
+- `crates/splendor-cli/src/m49a_select_command.rs`: pure `select_checkpoint_v1()` validates a complete eight-row schedule and ranks it lexicographically. Empty, partial, duplicate, extra, or unscheduled sets are errors, not partial selections. Rows can arrive in any order; output rows are sorted by iteration.
+- CLI input is **exactly one** of:
+  - `--reports-json FILE`: consume saved evaluation reports; no rollout, inference, or training. Required envelope: `evaluation_contract`, `checkpoint_schedule`, `validation_seeds`, `max_main_turns`, `evaluated`. Each row contains iteration, weight path/SHA256, success/failure counts, unrounded J_val, and successful mean. Weight files must still be present and match their reported hashes. Relative paths resolve from the invocation cwd. Prior selection fields, if present, are ignored and recomputed.
+  - `--checkpoint-dir DIR`: convenience measurement adapter; preflight **all eight** `weights_iterNNN.json` files before any rollout, evaluate them with the shared validation evaluator, then pass their rows to the same selector. It does not enumerate arbitrary directory contents.
+- `--schedule`, if provided, must equal `10,20,30,40,50,60,70,80`; omitted means exactly the same schedule. No interval/range/sweep option. Unknown, duplicate, malformed, or missing CLI flags/values fail with usage exit 2. `--out-json` is required; existing reports are never overwritten. Publication uses the existing atomic create-only output helper; input/evaluation/write failures return nonzero without publishing a selection.
+- Evaluation identity: `m49a_validation_64_cap100_rng_ordinal_v1`, validation seeds `(1..=64)*1000 + 2_000_049`, cap 100, policy RNG `0x5010_1515_0000_0000 + cohort_ordinal` (not env_seed). `QPolicy` still uses live horizon-aware 428-d features, both Main/ChooseNoble callbacks, and the existing argmin/tie policy. No seed, provenance, future deck, or teacher labels enter network inputs.
+- `m49a_eval_command.rs` now supplies a shared `evaluate_weights_on_validation()` measurement function. Invalid weights, non-finite action Q, a nonterminal empty legal set/GameOver phase, or `env.step()` errors fail closed rather than falling back to a nominal failure/first action. SHA256 binds the exact bytes parsed for evaluation, not a later read of the path.
+- J_val is frozen as `(sum_successful_main_turns + 101 * failures) / 64`. It is a **reporting score with failure imputed as 101**, not the Bellman accumulated root return (which includes elapsed costs plus failure continuation 100). Successful mean is JSON `null` for zero successes; an all-failure cohort has J_val=101 and selects iter10 on the final tie-break. Counts must total 64, metrics must be finite/in-range and consistent to `1e-10`; rounded table metrics are not valid report inputs. With exact values and equal success/J_val, successful mean is algebraically tied; the tertiary rule is nevertheless implemented explicitly and frozen for comparisons.
+- Output includes `selection_contract`, `criterion`, the full evaluation envelope/rows, `selected_iteration`, `selected_weights_path`, `selected_weights_sha256`, and `selection_key`. Report replay checks identities and metric consistency; it is **not** cryptographic proof that the stated rollouts occurred. The fresh measurement below anchors this C1 result.
+- P2 cleanup: provided malformed/non-finite/negative `--failure-penalty` is a usage error; omission still defaults to 100. This changes no Bellman objective or C1 training run. The teacher-free `step_cost + V(next)` contract remains unchanged.
+
+### Iteration log and corrections (2026-09-22)
+
+1. Owner froze success-first selection **after observing C1**, resolving the iter30/iter50 metric conflict. This is the reusable rule for future runs, not a retroactive pre-C1 preregistration claim.
+2. Initial local selector only measured weights, allowed arbitrary schedules, and treated incomparable floats as ties. Before release it was narrowed to the frozen schedule, gained report replay and fail-closed metric/identity validation, and separated measurement from pure selection. No extra checkpoint was evaluated.
+3. Initial P2 negative tests lacked other required CLI inputs, so a generic usage error could mask bad parsing. They were strengthened to use valid weights/transitions/all required flags, assert the exact failure-penalty diagnostic and no output, and verify omitted/explicit/custom finite values produce 101/101/8 targets respectively.
+4. The first Python regression launch used a nonexistent Windows executable inside a Linux-shaped `.venv` and failed with ENOENT before any test ran. Re-executed with `C:/Python312/python.exe` (torch 2.6.0+cu124, pytest 9.0.2): all three tests passed.
+5. §14/§15 interpretation supersedes the older `efa4298` wording “bottleneck is NOT insufficient data,” “proper/converged FQI,” and “periodic export fixed selection.” Numeric results are unchanged. The historical 40×8 versus 4×15 comparison changed **both** update count and epochs/update; aggregation's causal contribution is unisolated. Whole-dataset Q median is not directly calibrated to root turns. Historical provisional §11 remains provisional, not causal evidence about failures.
+6. Kept generated reports under ignored `local-artifacts/`, including the pre-existing untracked result draft moved from `benchmarks/` to `local-artifacts/m49a-c1a/selection_draft_v1.json`. No weights/datasets/reports or local `handoff.md` are published; the tracked contract lives in code/tests and this document.
+
+### Validation and exact evidence
+
+All commands below ran from repository root; **exit 0** unless the explicitly described expected-negative CLI tests. Local logs are under `local-artifacts/m49a-c1a/`.
+
+```bash
+cargo test -p splendor-cli --bin splendor m49a_select_command
+# 8 passed (selector-unit.log)
+cargo test -p splendor-cli --test m49a_selection_cli
+# 6 passed (selector-cli.log)
+cargo test -p splendor-analysis --test m49a_target_builder_tests
+# 5 passed (builder.log)
+cargo test -p splendor-analysis --test m49a_collector_tests
+# 6 passed (collector.log)
+cargo build --release -p splendor-cli --bin splendor
+# PASS (release.log)
+PYTHONPATH=training/m17_gpu C:/Python312/python.exe -m pytest -q \
+  training/m17_gpu/tests/test_m49a_streaming_builder.py \
+  training/m17_gpu/tests/test_m49a_forward_parity.py \
+  training/m17_gpu/tests/test_m49a_delta_parity.py
+# 3 passed (python.log)
+
+target/release/splendor.exe m49a-select-checkpoint \
+  --checkpoint-dir local-artifacts/m49a-c1-curve/checkpoints \
+  --schedule 10,20,30,40,50,60,70,80 \
+  --out-json local-artifacts/m49a-c1a/selection_v1.json
+# All eight measurements match the retained historical C1 selection_v1.json.
+target/release/splendor.exe m49a-select-checkpoint \
+  --reports-json local-artifacts/m49a-c1a/selection_v1.json \
+  --out-json local-artifacts/m49a-c1a/selection_replayed.json
+# Report-only selection, byte-identical to the fresh measurement output.
+```
+
+- **Selector tests**: all four comparator levels, success-versus-J conflict, order-independent choice and serialized output, null mean/all-failure case, missing/duplicate/out-of-schedule records, corrupt/non-finite metrics, cohort/cap/contract/hash errors, missing weights, no partial-schedule rollout, no output overwrite, CLI malformed inputs. Synthetic report tests prove contract behavior, not policy strength.
+- **Fresh C1 measurement and replay**: `measure.log` / `replay.log`, both exit 0; exact selected key `success_count=59`, `j_val=40.265625`, `successful_mean_turns=35.11864406779661`, selected iteration **50**.
+- **Selected weights**: `local-artifacts/m49a-c1-curve/checkpoints/weights_iter050.json`; SHA256 `cfae5398860a0f02d2c8bccd4e4e638a126b64d83d22ff7ee38635ea3291be0a`.
+- **Full eight-row report**: `local-artifacts/m49a-c1a/selection_v1.json`; SHA256 `02851b031f4664882d772e46822e9c2545c82902427e812776a1fdacedafacff`. Replay and retained draft have the same bytes/hash. The historical pre-contract report at `local-artifacts/m49a-c1-curve/selection_v1.json` is preserved, not overwritten.
+- **Training-history provenance**: C1 `local-artifacts/m49a-c1-curve/q0_report.json`, 80 history rows; SHA256 `de3dcaa22e1e63f93c33620e4be5a385c0dad3381f8e163a2a6fe0b6865d69d0`. The wrapper's `q0_*` names do not mean this is D0; C1 trained on fixed D2.
+- **Input preservation**: before/after SHA256 comparison passed for 18 files: eight D2 train/val transport files, eight C1 checkpoints, C1 model and history. Manifest `local-artifacts/m49a-c1a/inputs-before.json`, SHA256 `8d93bacbf0aedd43788ddaa0b37da0581a18eb3fb7eb46d6808ae7f71b012671`.
+- **Repository hygiene**: `git diff --check` exit 0; 11 current contract/artifact references exist; ignore rules verified (`handoff.md`: `.gitignore:12`, `local-artifacts/`: `.gitignore:20`). Scoped `rustfmt --check --edition 2021 --config skip_children=true` passes for the shared evaluator, selector, selector unit tests, and CLI tests. A formatting pass initially produced churn/non-idempotent formatting in the untouched legacy exporter; that churn was removed and the builder diff is only the P2 parser. Final selector/CLI tests and release build were rerun successfully. Local summaries: `hygiene.log`, `verification.json`.
+- These are local implementation/regression and validation-selection checks, **not independent review, a new training experiment, or canonical acceptance**. No canonical benchmark test or candidate canonical rollout was run.
+
+### Result, hard-target baseline, limitations, and next gate
+
+**C1a IMPLEMENTED / VERIFIED locally; owner review pending.** The selection contract is frozen by the owner's decision, and its application selects iter50. The model remains imperfect (5 validation failures); no convergence/stability/generalization claim is licensed by selecting it.
+
+Reusable hard-target baseline:
+
+```text
+D2 = 36,674 transitions; 428→256→LayerNorm/ReLU→128→ReLU→1→Softplus
+Huber; AdamW lr=1e-3, weight_decay=1e-4; batch=256; grad_clip=1.0
+training seed=49000001; 8 epochs/FQI; 80 FQI updates
+hard target replacement once per FQI iteration
+checkpoint schedule=[10,20,30,40,50,60,70,80]
+m49a_validation_select_v1 → iter50 → 59/64, J_val=40.265625
+```
+
+Future stability controls must retain that schedule/selector on **both** arms. C2/Polyak is the proposed next experiment only after C1a review and explicit execution authorization; any tau/granularity belongs to that separate preregistered round. Double-Q and Round3 stay deferred/unapproved; no M50. No live validation early stopping, every-iteration rollout, or iter41–59 sweep. **Canonical 64: HOLD / UNTOUCHED.**

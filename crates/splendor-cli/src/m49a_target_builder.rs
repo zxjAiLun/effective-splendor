@@ -63,8 +63,18 @@ pub fn run_m49a_build_targets(args: &[String]) -> i32 {
                 i += 2;
             }
             "--failure-penalty" => {
-                if let Some(val) = args.get(i + 1).and_then(|s| s.parse::<f32>().ok()) {
-                    failure_penalty = val;
+                match args.get(i + 1) {
+                    Some(s) => match s.parse::<f32>() {
+                        Ok(val) if val.is_finite() && val >= 0.0 => failure_penalty = val,
+                        _ => {
+                            eprintln!("error: malformed --failure-penalty value `{s}`");
+                            return EXIT_USAGE;
+                        }
+                    },
+                    None => {
+                        eprintln!("error: --failure-penalty requires a value");
+                        return EXIT_USAGE;
+                    }
                 }
                 i += 2;
             }

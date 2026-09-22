@@ -28,6 +28,7 @@ mod m49a_eval_command;
 mod m49a_export_command;
 mod m49a_round1_command;
 mod m49a_round2_command;
+mod m49a_select_command;
 pub mod m49a_target_builder;
 mod profile_agent;
 mod promotion_command;
@@ -258,6 +259,9 @@ fn main() {
         }
         Some("m49a-export-compact") => {
             std::process::exit(m49a_target_builder::run_m49a_export_compact(&argv[2..]))
+        }
+        Some("m49a-select-checkpoint") => {
+            std::process::exit(m49a_select_command::run_m49a_select_checkpoint(&argv[2..]))
         }
         _ => {}
     }
