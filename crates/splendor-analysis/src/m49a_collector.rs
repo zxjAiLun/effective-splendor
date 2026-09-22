@@ -603,3 +603,136 @@ impl CoverageDiagnosticReport {
         }
     }
 }
+
+/// Compact representation of a transition for streaming target computation.
+///
+/// Contains ONLY:
+/// - `step_cost`: 1.0 (Main) or 0.0 (ChooseNoble)
+/// - `outcome`: single terminal truth
+/// - `next_observation`: observation at o' (only when outcome == Running)
+/// - `next_legal_actions`: legal actions at o' (only when outcome == Running)
+/// - `next_remaining_main_turns`: remaining budget at o' (only when outcome == Running)
+/// - `max_main_turns`: total budget cap (only when outcome == Running)
+///
+/// Quarantined: env_seed, provenance, trajectory_id, referee state, and future deck orders
+/// NEVER enter this target transition.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct M49ACompactTransitionV1 {
+    pub step_cost: f32,
+    pub outcome: Solo15Outcome,
+    pub next_observation: Option<Observation>,
+    pub next_legal_actions: Vec<Action>,
+    pub next_remaining_main_turns: u32,
+    pub max_main_turns: u32,
+}
+
+impl M49ACompactTransitionV1 {
+    /// Validates the compact transition invariants fail-closed.
+    pub fn validate(&self) -> Result<(), String> {
+        // Step cost check
+        if (self.step_cost - 0.0).abs() > 1e-5 && (self.step_cost - 1.0).abs() > 1e-5 {
+            return Err(format!("step_cost must be 0.0 or 1.0, got {}", self.step_cost));
+        }
+
+        match self.outcome {
+            Solo15Outcome::Running => {
+                if self.next_observation.is_none() {
+                    return Err("Running transition must have next_observation".to_string());
+                }
+                if self.next_legal_actions.is_empty() {
+                    return Err("Running transition must have non-empty next_legal_actions".to_string());
+                }
+                if self.max_main_turns == 0 {
+                    return Err("max_main_turns must be positive".to_string());
+                }
+                if self.next_remaining_main_turns > self.max_main_turns {
+                    return Err(format!(
+                        "next_remaining_main_turns ({}) cannot exceed max_main_turns ({})",
+                        self.next_remaining_main_turns, self.max_main_turns
+                    ));
+                }
+            }
+            Solo15Outcome::Reached15 | Solo15Outcome::Stalled | Solo15Outcome::TurnCap => {
+                if !self.next_legal_actions.is_empty() {
+                    return Err(format!(
+                        "Terminal outcome {:?} must have empty next_legal_actions, got {}",
+                        self.outcome,
+                        self.next_legal_actions.len()
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Evaluates the Bellman target:
+    /// y = step_cost + V(o')
+    /// where:
+    /// - V(o') = 0.0 if outcome == Reached15
+    /// - V(o') = failure_penalty (100.0) if outcome == Stalled | TurnCap
+    /// - V(o') = min_{a' \in next_legal_actions} Q_target(o', a') if outcome == Running
+    pub fn compute_target(
+        &self,
+        target_weights: &EfficiencyQWeightsV1,
+        failure_penalty: f32,
+    ) -> Result<f32, LearningError> {
+        self.validate().map_err(LearningError::InvalidDataset)?;
+
+        let v_next = match self.outcome {
+            Solo15Outcome::Reached15 => 0.0,
+            Solo15Outcome::Stalled | Solo15Outcome::TurnCap => failure_penalty,
+            Solo15Outcome::Running => {
+                let next_obs = self
+                    .next_observation
+                    .as_ref()
+                    .ok_or_else(|| LearningError::InvalidDataset("missing next_observation".to_string()))?;
+
+                let mut min_q = f32::INFINITY;
+                for a in &self.next_legal_actions {
+                    let feat = encode_combined_v2(
+                        next_obs,
+                        a,
+                        self.next_remaining_main_turns,
+                        self.max_main_turns,
+                    )?;
+                    let q = target_weights.forward(&feat);
+                    if !q.is_finite() {
+                        return Err(LearningError::InvalidDataset("target Q value is non-finite".to_string()));
+                    }
+                    if q < min_q {
+                        min_q = q;
+                    }
+                }
+                if !min_q.is_finite() {
+                    return Err(LearningError::InvalidDataset("min Q value is non-finite".to_string()));
+                }
+                min_q
+            }
+        };
+
+        Ok(self.step_cost + v_next)
+    }
+
+    /// Creates a compact transition from a full `TransitionRecord`.
+    pub fn from_record(record: &TransitionRecord) -> Result<Self, String> {
+        record.validate()?;
+        let remaining = record.remaining_main_turns();
+        let next_remaining = remaining.saturating_sub(record.step_cost as u32);
+
+        let (next_observation, next_legal_actions) = match record.outcome {
+            Solo15Outcome::Running => (Some(record.next_observation.clone()), record.next_legal_actions.clone()),
+            _ => (None, Vec::new()),
+        };
+
+        let compact = Self {
+            step_cost: record.step_cost,
+            outcome: record.outcome,
+            next_observation,
+            next_legal_actions,
+            next_remaining_main_turns: next_remaining,
+            max_main_turns: record.max_main_turns,
+        };
+        compact.validate()?;
+        Ok(compact)
+    }
+}

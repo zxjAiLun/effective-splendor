@@ -45,6 +45,12 @@ struct ExportRow<'a> {
     outcome: &'a str,
     input_features: Vec<f32>,
     next_action_features: Vec<Vec<f32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_observation: Option<splendor_core::Observation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    next_legal_actions: Vec<splendor_core::Action>,
+    next_remaining_main_turns: u32,
+    max_main_turns: u32,
 }
 
 pub fn run_m49a_export_round0(args: &[String]) -> i32 {
@@ -170,6 +176,14 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
                     let m = r
                         .materialize()
                         .map_err(|e| format!("materialize {source} seed {seed}: {e}"))?;
+                    let remaining = r.remaining_main_turns();
+                    let next_remaining = remaining.saturating_sub(r.step_cost as u32);
+                    let (next_obs, next_acts) = match r.outcome {
+                        splendor_analysis::Solo15Outcome::Running => {
+                            (Some(r.next_observation.clone()), r.next_legal_actions.clone())
+                        }
+                        _ => (None, Vec::new()),
+                    };
                     rows.push(ExportRow {
                         split: split_name,
                         seed,
@@ -179,6 +193,10 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
                         outcome: outcome_str(&m.outcome),
                         input_features: m.input_features,
                         next_action_features: m.next_action_features,
+                        next_observation: next_obs,
+                        next_legal_actions: next_acts,
+                        next_remaining_main_turns: next_remaining,
+                        max_main_turns: r.max_main_turns,
                     });
                 }
             }

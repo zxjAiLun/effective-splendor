@@ -131,6 +131,12 @@ pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
                     return 1;
                 }
             };
+            let remaining = r.remaining_main_turns();
+            let next_remaining = remaining.saturating_sub(r.step_cost as u32);
+            let (next_obs, next_acts) = match r.outcome {
+                Solo15Outcome::Running => (Some(r.next_observation.clone()), r.next_legal_actions.clone()),
+                _ => (None, Vec::new()),
+            };
             let row = serde_json::json!({
                 "split": "train",
                 "seed": seed,
@@ -145,6 +151,10 @@ pub fn run_m49a_collect_round2(args: &[String]) -> i32 {
                 },
                 "input_features": m.input_features,
                 "next_action_features": m.next_action_features,
+                "next_observation": next_obs,
+                "next_legal_actions": next_acts,
+                "next_remaining_main_turns": next_remaining,
+                "max_main_turns": r.max_main_turns,
             });
             let line = match serde_json::to_string(&row) {
                 Ok(l) => l,

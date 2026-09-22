@@ -28,6 +28,7 @@ mod m49a_eval_command;
 mod m49a_export_command;
 mod m49a_round1_command;
 mod m49a_round2_command;
+pub mod m49a_target_builder;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
@@ -251,6 +252,12 @@ fn main() {
         }
         Some("m49a-collect-round2") => {
             std::process::exit(m49a_round2_command::run_m49a_collect_round2(&argv[2..]))
+        }
+        Some("m49a-build-targets") => {
+            std::process::exit(m49a_target_builder::run_m49a_build_targets(&argv[2..]))
+        }
+        Some("m49a-export-compact") => {
+            std::process::exit(m49a_target_builder::run_m49a_export_compact(&argv[2..]))
         }
         _ => {}
     }

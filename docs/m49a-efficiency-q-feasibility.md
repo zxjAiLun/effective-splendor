@@ -347,19 +347,20 @@ exit 0; 2 passed; 0 failed; test body 0.03s
 
 Support the efficiency-first research direction. Before M49A-II implementation, settle finite-horizon representation versus truncation semantics, state whether the learner estimates expected cost or a Huber approximation, and ensure the evaluation runner executes the entire Q policy. Keep the small single-Q baseline, environment-only supervision, and existing held-out gate; observe extrapolation/coverage with bounded iteration rather than promising success or expanding the scope.
 
-## 11. M49A-II Efficiency-Q Training & Iterative Aggregation Results (2026-09-21)
+## 11. Historical Provisional M49A-II Q0→Q2 Results (2026-09-21)
 
-- **Status**: M49A-II IMPLEMENTED / VERIFIED on Validation. **Canonical 64 seeds remain UNTOUCHED**.
+- **Status**: HISTORICAL PROVISIONAL EXPERIMENT. Evaluated on Validation dev partition prior to Repair 1 / 1a. **Canonical 64 seeds remain UNTOUCHED**.
+- **Context**: This initial experiment demonstrated the directional feasibility of iterative Q-aggregation for solo-15 efficiency, but operated under provisional data collection/aggregation scripts (repaired in §12) and a legacy flat-next Python caching pipeline (retired in §13).
 - **Horizon-aware Bridge**: Implemented versioned 428-d representation (`encode_combined_v2`), augmenting the frozen 427-d features with the normalized remaining main-turn budget (`remaining_main_turns / max_main_turns`).
 - **Trainer Implementation**:
   - Small Efficiency-Q MLP: `Linear(428, 256) -> LayerNorm -> ReLU -> Linear(256, 128) -> ReLU -> Linear(128, 1) -> Softplus` (~143k parameters).
   - Unified Bellman targets: `y = step_cost + V(o')` with $V(o') = 0.0$ (Reached15), $100.0$ (TurnCap/Stalled), $\min_{a'} Q_{\text{target}}(o', a')$ (Running).
-  - Fast tensor caching: pre-batched PyTorch tensors for sub-second target computation and high-throughput FQI.
+  - Provisional Python flat-next tensor caching (historical; replaced by Streaming Rust Target Builder in §13).
 - **Evaluation Runner**:
   - `m49a-eval-validation`: Evaluates strictly on the 64 validation seeds (`2_001_049 .. 2_064_049`).
   - Executes the complete Q-policy across both `Phase::Main` and `Phase::ChooseNoble`.
 
-### Progression Across Iterative Self-Improvement Rounds (64 Validation Seeds, Cap=100)
+### Progression Across Iterative Self-Improvement Rounds (64 Validation Seeds, Cap=100) (Provisional Run)
 
 | Candidate | Dataset Size | Validation Success Rate | Validation Failures | Median Turns | Min Turns | Mean Turns (Succ) | P90 Turns |
 |---|---|---:|---:|---:|---:|---:|---:|
@@ -407,5 +408,21 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
    - Behavior policy provenance in `m49a_round1_command.rs` and `m49a_round2_command.rs` dynamically formats the true epsilon (e.g. `q0_eps_0.15`).
 
 ### Next Step:
-- Await owner review of M49A-II Repair 1a commit.
-- Upon approval: implement the streaming Rust on-demand Bellman target builder (eliminating large Python `flat_next` objects) and execute the clean, reproducible Q0 $\to$ Q1 $\to$ Q2 training chain on the verified seed partitions. Canonical 64 seeds remain strictly on HOLD.
+- M49A-II Repair 1 / 1a ACCEPTED / CLOSED @ 06babda.
+- Implement streaming on-demand Rust Bellman target builder (§13).
+- Execute clean Q0 $\to$ Q1 $\to$ Q2 chain on verified partitions. Canonical 64 seeds remain strictly on HOLD.
+
+## 13. Streaming Rust Bellman Target Builder & Compact Transport Architecture (2026-09-22)
+
+- **Status**: IMPLEMENTED / VERIFIED.
+- **Contract & Architecture**:
+  - Current-side feature matrix: Emits `current_x.f32` ([N, 428] float32 binary), `step_costs.f32` ([N] float32), and `outcomes.u8` ([N] u8). Consumed directly via `np.fromfile` / memory mapping in Python without large Python object overhead.
+  - Compact target-side transitions: `M49ACompactTransitionV1` serializes only terminal outcomes or $(o', \mathcal{A}(o'), r', r_{\text{max}})$ for Running transitions. Quarantined metadata (env_seed, provenance, trajectory_id, referee state, future decks) never enter this representation.
+  - On-Demand Target Evaluator: Rust CLI `splendor m49a-build-targets` computes $y = c + V(o')$ per FQI iteration using the latest exported `target_net` weights. Emits `targets.f32` (N * 4 bytes).
+  - Validation Gates:
+    1. Terminal targets: Main $\to$ Reached15: $1.0$, ChooseNoble $\to$ Reached15: $0.0$, Main $\to$ Stalled/TurnCap: $101.0$.
+    2. Running min: Hand-constructed actions match $1.0 + \min_{a'} Q_{\text{target}}(o', a')$.
+    3. Horizon awareness: Different remaining budgets on the same state yield different targets.
+    4. Fail-closed: Non-finite weights, empty actions on Running, or invalid records fail closed.
+    5. Parity: Rust target builder exactly matches PyTorch / formulaic targets ($< 10^{-5}$).
+  - Legacy `m49a_prepare_cache.py` removed from repository.

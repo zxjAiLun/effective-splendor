@@ -1,8 +1,19 @@
-"""M49A-II Efficiency-Q Trainer (Fast Tensor-Cache Implementation).
+"""M49A-II Efficiency-Q Trainer with Streaming Rust Bellman Target Builder.
 
-Uses pre-batched torch tensors for instantaneous target updates and training epochs.
+Consumes:
+- `current_x.f32`: [N, 428] float32 array (loaded via numpy memmap or torch)
+- `compact_transitions.jsonl`: NDJSON of M49ACompactTransitionV1
+
+Each FQI iteration:
+1. Exports current target_net weights to a temporary weights.json;
+2. Calls Rust CLI `splendor m49a-build-targets` to compute targets.f32 on-demand;
+3. Reads targets.f32 into torch.Tensor (size N * 4 bytes);
+4. Fits Q-network on (current_x, targets) with Huber loss.
 """
 
+import json
+import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -30,52 +41,61 @@ class EfficiencyQNet(nn.Module):
         return out.squeeze(-1)
 
 
-@torch.no_grad()
-def compute_targets_from_cache(
-    cache: dict[str, torch.Tensor],
+def export_net_weights_dict(net: EfficiencyQNet) -> dict[str, Any]:
+    state = net.state_dict()
+    return {
+        "fc1_w": state["fc1.weight"].cpu().numpy().tolist(),
+        "fc1_b": state["fc1.bias"].cpu().numpy().tolist(),
+        "ln1_w": state["ln1.weight"].cpu().numpy().tolist(),
+        "ln1_b": state["ln1.bias"].cpu().numpy().tolist(),
+        "fc2_w": state["fc2.weight"].cpu().numpy().tolist(),
+        "fc2_b": state["fc2.bias"].cpu().numpy().tolist(),
+        "fc3_w": state["fc3.weight"].cpu().numpy().tolist(),
+        "fc3_b": state["fc3.bias"].cpu().numpy().tolist(),
+    }
+
+
+def compute_targets_streaming(
+    transitions_jsonl: Path,
     target_net: EfficiencyQNet,
-    device: torch.device,
+    tmp_dir: Path,
     failure_penalty: float = 100.0,
-    sub_batch_size: int = 8192,
+    cargo_bin: str = "splendor",
 ) -> torch.Tensor:
-    target_net.eval()
-    x = cache["x"].to(device)
-    step_costs = cache["step_costs"].to(device)
-    outcomes = cache["outcomes"].to(device)
-    flat_next = cache["flat_next"].to(device)
-    offsets = cache["offsets"].to(device)
-    running_indices = cache["running_indices"].to(device)
+    """Invokes the streaming Rust target builder on compact transitions."""
+    weights_path = tmp_dir / "target_weights.json"
+    targets_path = tmp_dir / "targets.f32"
 
-    n = len(x)
-    targets = torch.zeros(n, dtype=torch.float32, device=device)
+    weights_dict = export_net_weights_dict(target_net)
+    with open(weights_path, "w", encoding="utf-8") as f:
+        json.dump(weights_dict, f)
 
-    # 1. Terminal outcomes
-    # outcome 0: reached_15 -> v = 0
-    mask_win = outcomes == 0
-    targets[mask_win] = step_costs[mask_win] + 0.0
+    cmd = [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "splendor-cli",
+        "--bin",
+        cargo_bin,
+        "--",
+        "m49a-build-targets",
+        "--transitions",
+        str(transitions_jsonl),
+        "--weights",
+        str(weights_path),
+        "--out-targets",
+        str(targets_path),
+        "--failure-penalty",
+        str(failure_penalty),
+    ]
 
-    # outcome 1: stalled or turn_cap -> v = failure_penalty
-    mask_fail = outcomes == 1
-    targets[mask_fail] = step_costs[mask_fail] + failure_penalty
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"Rust target builder failed: {res.stderr}\n{res.stdout}")
 
-    # 2. Running outcomes: min_{a'} Q_target(o', a')
-    if len(running_indices) > 0 and len(flat_next) > 0:
-        # Batch forward flat_next through target_net
-        all_q = []
-        for i in range(0, len(flat_next), sub_batch_size):
-            chunk = flat_next[i : i + sub_batch_size]
-            all_q.append(target_net(chunk))
-        q_flat = torch.cat(all_q, dim=0)
-
-        # Compute min for each slice
-        # offsets is (N_running, 2)
-        v_nexts = torch.zeros(len(running_indices), dtype=torch.float32, device=device)
-        for idx, (start, end) in enumerate(offsets):
-            v_nexts[idx] = q_flat[start:end].min()
-
-        targets[running_indices] = step_costs[running_indices] + v_nexts
-
-    return targets
+    targets_np = np.fromfile(str(targets_path), dtype=np.float32)
+    return torch.from_numpy(targets_np.copy())
 
 
 def evaluate_metrics(
@@ -114,9 +134,11 @@ def evaluate_metrics(
     }
 
 
-def train_fqi_from_cache(
-    train_cache: dict[str, torch.Tensor],
-    val_cache: dict[str, torch.Tensor],
+def train_fqi_streaming(
+    train_x_path: Path,
+    train_transitions_path: Path,
+    val_x_path: Path,
+    val_transitions_path: Path,
     device: torch.device,
     epochs_per_fqi: int = 15,
     fqi_iterations: int = 4,
@@ -125,11 +147,16 @@ def train_fqi_from_cache(
     weight_decay: float = 1e-4,
     seed: int = 49000001,
 ) -> tuple[EfficiencyQNet, dict[str, Any]]:
+    """Runs Fitted Q-Iteration using memory-mapped current_x and on-demand streaming Rust targets."""
     torch.manual_seed(seed)
     np.random.seed(seed % (2**32))
 
-    x_train = train_cache["x"].to(device)
-    x_val = val_cache["x"].to(device)
+    # Load current_x via memmap / fromfile
+    train_x_np = np.fromfile(str(train_x_path), dtype=np.float32).reshape(-1, 428)
+    val_x_np = np.fromfile(str(val_x_path), dtype=np.float32).reshape(-1, 428)
+
+    x_train = torch.from_numpy(train_x_np).to(device)
+    x_val = torch.from_numpy(val_x_np).to(device)
     n_train = len(x_train)
     in_features = x_train.shape[1]
 
@@ -141,56 +168,59 @@ def train_fqi_from_cache(
 
     history = []
 
-    for fqi_iter in range(fqi_iterations):
-        t0 = time.time()
-        # 1. Update targets using target_net
-        y_train = compute_targets_from_cache(train_cache, target_net, device)
-        y_val = compute_targets_from_cache(val_cache, target_net, device)
-        t_target = time.time() - t0
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = Path(tmpdir)
 
-        # 2. Fit network to y_train
-        net.train()
-        t_train_start = time.time()
-        for ep in range(epochs_per_fqi):
-            perm = torch.randperm(n_train, device=device)
-            for i in range(0, n_train, batch_size):
-                idx = perm[i : i + batch_size]
-                bx = x_train[idx]
-                by = y_train[idx]
+        for fqi_iter in range(fqi_iterations):
+            t0 = time.time()
+            # 1. Update targets using target_net via streaming Rust builder
+            y_train = compute_targets_streaming(train_transitions_path, target_net, tmp_dir).to(device)
+            y_val = compute_targets_streaming(val_transitions_path, target_net, tmp_dir).to(device)
+            t_target = time.time() - t0
 
-                pred = net(bx)
-                loss = F.smooth_l1_loss(pred, by)
+            # 2. Fit network to y_train
+            net.train()
+            t_train_start = time.time()
+            for ep in range(epochs_per_fqi):
+                perm = torch.randperm(n_train, device=device)
+                for i in range(0, n_train, batch_size):
+                    idx = perm[i : i + batch_size]
+                    bx = x_train[idx]
+                    by = y_train[idx]
 
-                optimizer.zero_grad()
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
-                optimizer.step()
+                    pred = net(bx)
+                    loss = F.smooth_l1_loss(pred, by)
 
-        t_train = time.time() - t_train_start
+                    optimizer.zero_grad()
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+                    optimizer.step()
 
-        # 3. Evaluate
-        train_m = evaluate_metrics(net, x_train, y_train, device)
-        val_m = evaluate_metrics(net, x_val, y_val, device)
+            t_train = time.time() - t_train_start
 
-        # 4. Polyak or hard target update
-        target_net.load_state_dict(net.state_dict())
+            # 3. Evaluate
+            train_m = evaluate_metrics(net, x_train, y_train, device)
+            val_m = evaluate_metrics(net, x_val, y_val, device)
 
-        rec = {
-            "iteration": fqi_iter + 1,
-            "target_calc_sec": round(t_target, 2),
-            "train_sec": round(t_train, 2),
-            "train_huber": train_m["huber"],
-            "val_huber": val_m["huber"],
-            "val_mae": val_m["mae"],
-            "val_q_min": val_m["q_min"],
-            "val_q_median": val_m["q_median"],
-            "val_q_p90": val_m["q_p90"],
-            "val_q_max": val_m["q_max"],
-            "val_q_mean": val_m["q_mean"],
-        }
-        history.append(rec)
-        print(f"FQI Iter {fqi_iter+1}/{fqi_iterations} (target {t_target:.1f}s, train {t_train:.1f}s): "
-              f"val_huber={rec['val_huber']:.4f}, val_mae={rec['val_mae']:.2f}, "
-              f"Q_med={rec['val_q_median']:.1f}, Q_range=[{rec['val_q_min']:.1f}, {rec['val_q_max']:.1f}]")
+            # 4. Update target network
+            target_net.load_state_dict(net.state_dict())
+
+            rec = {
+                "iteration": fqi_iter + 1,
+                "target_calc_sec": round(t_target, 2),
+                "train_sec": round(t_train, 2),
+                "train_huber": train_m["huber"],
+                "val_huber": val_m["huber"],
+                "val_mae": val_m["mae"],
+                "val_q_min": val_m["q_min"],
+                "val_q_median": val_m["q_median"],
+                "val_q_p90": val_m["q_p90"],
+                "val_q_max": val_m["q_max"],
+                "val_q_mean": val_m["q_mean"],
+            }
+            history.append(rec)
+            print(f"FQI Iter {fqi_iter+1}/{fqi_iterations} (target {t_target:.1f}s, train {t_train:.1f}s): "
+                  f"val_huber={rec['val_huber']:.4f}, val_mae={rec['val_mae']:.2f}, "
+                  f"Q_med={rec['val_q_median']:.1f}, Q_range=[{rec['val_q_min']:.1f}, {rec['val_q_max']:.1f}]")
 
     return net, {"history": history, "final_val": val_m}
