@@ -105,7 +105,7 @@ fn export_round0(out_dir: &PathBuf) -> Result<(), String> {
         // Trajectory quotas by behavior source, rounded deterministically.
         let n_cat = ((n as f64) * ROUND0_TRAJECTORY_MIX[0].1).round() as usize;
         let n_heu = ((n as f64) * ROUND0_TRAJECTORY_MIX[1].1).round() as usize;
-        let n_rand = n - n_cat - n_heu; // remainder: random budget
+        let _n_rand = n - n_cat - n_heu; // remainder: random budget
 
         // P1-1 Fix: Non-overlapping disjoint slices ensure every seed is visited exactly once.
         let slices: [(&str, &[u64]); 3] = [

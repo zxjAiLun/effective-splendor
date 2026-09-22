@@ -18,11 +18,14 @@ use splendor_learning::{encode_combined_v2, EfficiencyQWeightsV1};
 
 const EXIT_USAGE: i32 = 2;
 
-pub type QWeightsV1 = EfficiencyQWeightsV1;
-
 pub fn load_weights_from_json(path: &PathBuf) -> Result<EfficiencyQWeightsV1, String> {
     let content = fs::read_to_string(path).map_err(|e| format!("read {path:?}: {e}"))?;
-    serde_json::from_str(&content).map_err(|e| format!("parse weights JSON: {e}"))
+    let weights: EfficiencyQWeightsV1 =
+        serde_json::from_str(&content).map_err(|e| format!("parse weights JSON: {e}"))?;
+    weights
+        .validate()
+        .map_err(|e| format!("invalid weights in {path:?}: {e}"))?;
+    Ok(weights)
 }
 
 pub struct QPolicy<'a> {

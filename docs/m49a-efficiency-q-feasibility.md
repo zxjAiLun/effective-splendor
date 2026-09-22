@@ -1,6 +1,6 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939` (owner-supplied cloud review); M49A-II AUTHORIZED / NOT STARTED. Parent design review dated 2026-09-21 is recorded in §10; its proposed changes are not implementation or amendments to frozen gates.
+- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II IMPLEMENTED / REPAIR 1a SUBMITTED FOR OWNER REVIEW. Canonical 64 seeds remain on HOLD.
 - **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
 - **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
@@ -375,10 +375,10 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
 4. **Failure Analysis**: Failures are overwhelmingly driven by token-swapping looping behavior when unvisited actions are optimistically underestimated. Appending self-rollout failure trajectories during Round 1 and Round 2 successfully penalized these looping modes, directly cutting failures by >75%.
 5. **Evaluation Discipline Maintained**: The 64 Canonical M49S Benchmark seeds were **never loaded or evaluated** during training, model selection, or round iterations.
 
-## 12. M49A-II Repair 1 — Pipeline Disjointness, Live Horizon, and Fail-Closed Hardening (2026-09-21)
+## 12. M49A-II Repair 1 / 1a — Pipeline Disjointness, Live Horizon, Fail-Closed Hardening, and Legacy Cache Retirement (2026-09-21)
 
-- **Status**: M49A-II REPAIR 1 IMPLEMENTED / PUSHED FOR OWNER REVIEW. **Canonical 64 remains on HOLD**.
-- **Owner Review Context**: Following initial training review of commit `a67d687`, 3 P1 issues and 4 P2 issues were identified in the data collection and aggregation pipeline. The existing Q0 $\to$ Q2 trajectory is retained as **provisional positive evidence**, while the underlying contracts are strictly repaired before running the clean experimental chain.
+- **Status**: M49A-II REPAIR 1a IMPLEMENTED / PUSHED FOR OWNER REVIEW. **Canonical 64 remains on HOLD**.
+- **Owner Review Context**: Following initial training review of commit `a67d687` and subsequent Repair 1 review, critical collection, weighting, and data pipeline invariants were hardened. The existing provisional Q0 $\to$ Q2 trajectory is retained as **provisional positive evidence**, while the underlying contracts are strictly repaired before running the clean experimental chain.
 
 ### Repaired Invariants & Hardening Details:
 1. **P1-1: Seed Partition Disjointness & Full Unique Coverage**:
@@ -394,15 +394,18 @@ Support the efficiency-first research direction. Before M49A-II implementation, 
    - Targeted unit test `test_collect_solo15_q_trajectory_updates_live_horizon` asserts that every transition's normalized budget feature (`input_features[427]`) exactly tracks live remaining turns throughout the trajectory.
 3. **P1-3: Strict Decoupling of Policy RNG from Environment Seed**:
    - Round 0 export, Round 1 aggregation, Round 2 aggregation, and Validation evaluation now construct `StableRng` exclusively from behavior tags, round ordinals, and trajectory ordinals (e.g. `tag.wrapping_add(ordinal)`), completely eliminating any functional dependency on `env_seed`.
-4. **P2-1: Python Cache Compiler Fail-Closed Rejection**:
-   - `m49a_prepare_cache.py`: Removed silent rewriting of `Running + []` to failure. Now explicitly raises `ValueError` on empty running actions or non-empty terminal actions, and validates all tensor dimensions (428-d) and finiteness.
-5. **P2-2: Weight Structure & Finite Value Validation**:
-   - Implemented `EfficiencyQWeightsV1::validate()` in `crates/splendor-learning/src/model.rs`. Asserts exact layer dimensions (428 $\to$ 256 $\to$ 128 $\to$ 1) and verifies that all weights and biases are finite. Added 4 negative controls in unit tests.
-6. **P2-3: TransitionRecord Horizon Invariant Validation**:
+4. **P1 (Repair 1a Block): Fail-Closed Round 1 / Round 2 Trajectory Collection**:
+   - `m49a_round1_command.rs` and `m49a_round2_command.rs`: Replaced silent `if let Ok(...)` skipping with fail-closed error handling. Any failure in trajectory collection, transition materialization, JSON serialization, or file write/flush immediately halts execution with a non-zero exit code. Added post-collection assertion: `completed_trajectories == 256` and `seen_seeds.len() == 256`.
+5. **P2-1: Production Weight Validator Integration**:
+   - `crates/splendor-cli/src/m49a_eval_command.rs`: `load_weights_from_json()` now unconditionally invokes `weights.validate().map_err(...)` immediately upon deserialization, guaranteeing that malformed or non-finite weights fail closed in evaluation and aggregation before inference.
+6. **P2-2: Legacy Flat-Next Python Cache Pipeline Retired**:
+   - Retired legacy `m49a_prepare_round1_cache.py`, `m49a_merge_binary.py`, `m49a_merge_round2.py`, and multi-round Python flat-next scripts to prevent high-memory object expansion and duplicate data paths.
+   - Authorized successor path: Streaming Rust on-demand Bellman target builder.
+7. **P2-3: TransitionRecord Horizon Invariant Validation**:
    - `TransitionRecord::validate()` now asserts `max_main_turns > 0` and `main_turns <= max_main_turns`, backed by negative controls.
-7. **P2-4: Dynamic Epsilon Provenance**:
-   - Behavior policy provenance in `m49a_round1_command.rs` and `m49a_round2_command.rs` now dynamically formats the true epsilon (e.g. `q0_eps_0.15`).
+8. **P2-4: Dynamic Epsilon Provenance**:
+   - Behavior policy provenance in `m49a_round1_command.rs` and `m49a_round2_command.rs` dynamically formats the true epsilon (e.g. `q0_eps_0.15`).
 
 ### Next Step:
-- Await owner review of M49A-II Repair 1 commit.
+- Await owner review of M49A-II Repair 1a commit.
 - Upon approval: implement the streaming Rust on-demand Bellman target builder (eliminating large Python `flat_next` objects) and execute the clean, reproducible Q0 $\to$ Q1 $\to$ Q2 training chain on the verified seed partitions. Canonical 64 seeds remain strictly on HOLD.

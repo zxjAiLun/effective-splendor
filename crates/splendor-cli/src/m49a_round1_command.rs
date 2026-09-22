@@ -88,6 +88,7 @@ pub fn run_m49a_collect_round1(args: &[String]) -> i32 {
 
     let mut total_rows = 0;
     let mut successes = 0;
+    let mut completed_trajectories = 0;
     let behavior_name = format!("q0_eps_{epsilon:.2}");
 
     println!("Collecting Round 1 trajectories on 256 training seeds ({behavior_name})...");
@@ -102,7 +103,7 @@ pub fn run_m49a_collect_round1(args: &[String]) -> i32 {
             StableRng::new(0x1001_0000_0000_0000_u64.wrapping_add(ordinal as u64));
 
         // P1-2: collect_solo15_q_trajectory maintains live remaining main turns at every decision step
-        let collected = collect_solo15_q_trajectory(
+        let (records, summary) = match collect_solo15_q_trajectory(
             seed,
             &weights,
             epsilon,
@@ -110,42 +111,79 @@ pub fn run_m49a_collect_round1(args: &[String]) -> i32 {
             1, // Round 1
             max_turns,
             &mut policy_rng,
-        );
+        ) {
+            Ok(res) => res,
+            Err(e) => {
+                eprintln!("\nFATAL: failed to collect Round 1 trajectory on seed {seed} (ordinal {ordinal}): {e}");
+                return 1;
+            }
+        };
 
-        if let Ok((records, summary)) = collected {
-            if summary.outcome == Solo15Outcome::Reached15 {
-                successes += 1;
-            }
-            for (step_idx, r) in records.into_iter().enumerate() {
-                if let Ok(m) = r.materialize() {
-                    let row = serde_json::json!({
-                        "split": "train",
-                        "seed": seed,
-                        "behavior_policy": behavior_name,
-                        "step_index": step_idx,
-                        "step_cost": m.step_cost,
-                        "outcome": match m.outcome {
-                            Solo15Outcome::Running => "running",
-                            Solo15Outcome::Reached15 => "reached_15",
-                            Solo15Outcome::Stalled => "stalled",
-                            Solo15Outcome::TurnCap => "turn_cap",
-                        },
-                        "input_features": m.input_features,
-                        "next_action_features": m.next_action_features,
-                    });
-                    let line = serde_json::to_string(&row).unwrap();
-                    let _ = writeln!(writer, "{line}");
-                    total_rows += 1;
-                }
-            }
+        if summary.outcome == Solo15Outcome::Reached15 {
+            successes += 1;
         }
+
+        for (step_idx, r) in records.into_iter().enumerate() {
+            let m = match r.materialize() {
+                Ok(mat) => mat,
+                Err(e) => {
+                    eprintln!("\nFATAL: failed to materialize transition at seed {seed}, step {step_idx}: {e}");
+                    return 1;
+                }
+            };
+            let row = serde_json::json!({
+                "split": "train",
+                "seed": seed,
+                "behavior_policy": behavior_name,
+                "step_index": step_idx,
+                "step_cost": m.step_cost,
+                "outcome": match m.outcome {
+                    Solo15Outcome::Running => "running",
+                    Solo15Outcome::Reached15 => "reached_15",
+                    Solo15Outcome::Stalled => "stalled",
+                    Solo15Outcome::TurnCap => "turn_cap",
+                },
+                "input_features": m.input_features,
+                "next_action_features": m.next_action_features,
+            });
+            let line = match serde_json::to_string(&row) {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("\nFATAL: failed to serialize row at seed {seed}, step {step_idx}: {e}");
+                    return 1;
+                }
+            };
+            if let Err(e) = writeln!(writer, "{line}") {
+                eprintln!("\nFATAL: failed to write line to {out_file:?} at seed {seed}, step {step_idx}: {e}");
+                return 1;
+            }
+            total_rows += 1;
+        }
+
+        completed_trajectories += 1;
         if (ordinal + 1) % 64 == 0 {
             print!(".");
         }
     }
-    let _ = writer.flush();
+
+    if let Err(e) = writer.flush() {
+        eprintln!("\nFATAL: failed to flush writer for {out_file:?}: {e}");
+        return 1;
+    }
+
+    assert_eq!(
+        seen_seeds.len(),
+        256,
+        "FATAL: seen seeds count ({}) != 256",
+        seen_seeds.len()
+    );
+    assert_eq!(
+        completed_trajectories, 256,
+        "FATAL: completed trajectories count ({completed_trajectories}) != 256"
+    );
+
     println!(
-        "\nWrote {total_rows} new transitions from 256 training seeds ({successes}/256 reached 15)."
+        "\nWrote {total_rows} new transitions from exactly 256 training seeds ({successes}/256 reached 15)."
     );
     0
 }
