@@ -359,7 +359,7 @@ class RealBoundaryTests(unittest.TestCase):
                 self.assertEqual(match.main(), 0)
             manifest = json.loads((out/"manifest.json").read_text())
             self.assertEqual(manifest["max_api_calls"], 12)
-            self.assertEqual(manifest["agent_version"], "0.2.0")
+            self.assertEqual(manifest["agent_version"], "0.3.0")
             self.assertIn("jev/transport.py", manifest["source_sha256"])
             self.assertEqual(len(manifest["binary_sha256"]), 64)
             self.assertNotIn("SECRET_SENTINEL", (out/"manifest.json").read_text())
@@ -374,7 +374,8 @@ class RealBoundaryTests(unittest.TestCase):
                 " qid=next(iter(payload['questions'])); chosen=next(iter(payload['questions'][qid]['criteria']))\n"
                 " return {'model':'jev-test','answers':{qid:{'type':'choice','choice':chosen}},'usage':{'input_tokens':1,'output_tokens':1}}\n"
                 "agent.run(sys.stdin,call=fake)\n", encoding="utf-8")
-            config = dict(game_id="jev-offline-hardening", seed=20260926, handshake_timeout_ms=10000,
+            config = dict(game_id="jev-offline-hardening", run_trace_id="offline", seed=20260926,
+                          handshake_timeout_ms=10000,
                           move_timeout_ms=10000, shutdown_grace_ms=2000,
                           agents=[dict(program=sys.executable,args=[str(wrapper)]),
                                   dict(program=str(BINARY),args=["agent-heuristic","--seed","20260927"])])
@@ -394,6 +395,71 @@ class RealBoundaryTests(unittest.TestCase):
             self.assertEqual(metrics["api_calls"],4)
             self.assertNotIn("FAKE_KEY_UNUSED",(out/"metrics.jsonl").read_text())
             self.assertTrue((out/"prefix.json").is_file())
+
+            # The interaction trace must carry the ply and observation hash the
+            # arena actually sent, so a step can be addressed the same way here
+            # and in the GUI.
+            self.assertEqual(metrics["identity"], {"game_id":"jev-offline-hardening",
+                                                   "run_id":"offline", "seat":0})
+            records = [json.loads(line) for line in (out/"metrics.jsonl").read_text().splitlines()]
+            starts = [r for r in records if r["event"] == "decision_start"]
+            # Plies are match-global: in a two-player game the seat-0 agent decides
+            # on even plies. The GUI joins on this plus the observation hash.
+            self.assertEqual([r["ply"] for r in starts], [0, 2])
+            self.assertEqual({r["actor"] for r in starts}, {0})
+            self.assertTrue(all(isinstance(r.get("observation_hash"), str) for r in starts))
+            # The snapshot is the exact application payload, with no credential:
+            # the agent never receives one, so it can never be written down here.
+            requests = [r for r in records if r["event"] == "request_start"]
+            self.assertEqual(len(requests), 4)
+            for request in requests:
+                self.assertTrue(request["payload_snapshot_recorded"])
+                self.assertEqual(set(request["payload_snapshot"]), {"state", "model", "questions"})
+                self.assertEqual(request["payload_snapshot"]["model"], "jev-latest")
+            self.assertNotIn("FAKE_KEY_UNUSED", json.dumps(requests))
+
+    def test_trace_summary_joins_the_journal_to_the_verified_prefix(self):
+        import trace as trace_reader
+
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            wrapper = out/"offline_agent.py"
+            wrapper.write_text("import sys\nsys.path.insert(0," + repr(str(ROOT/'jev')) + ")\nimport agent\n"
+                "def fake(payload, **kw):\n"
+                " qid=next(iter(payload['questions'])); chosen=next(iter(payload['questions'][qid]['criteria']))\n"
+                " return {'model':'jev-test','answers':{qid:{'type':'choice','choice':chosen}},'usage':{'input_tokens':1,'output_tokens':1}}\n"
+                "agent.run(sys.stdin,call=fake)\n", encoding="utf-8")
+            config = dict(game_id="jev-offline-tracejoin", run_trace_id="offline", seed=20260928,
+                          handshake_timeout_ms=10000, move_timeout_ms=10000, shutdown_grace_ms=2000,
+                          agents=[dict(program=sys.executable,args=[str(wrapper)]),
+                                  dict(program=str(BINARY),args=["agent-heuristic","--seed","20260929"])])
+            (out/"config.json").write_text(json.dumps(config),encoding="utf-8")
+            env = dict(os.environ, JEV_SPLENDOR_BINARY=str(BINARY), JEV_METRICS_FILE=str(out/"metrics.json"),
+                       JEV_MAX_API_CALLS="10", TYPESAFE_API_KEY="FAKE_KEY_UNUSED")
+            result = subprocess.run([str(BINARY),"run-rollout","--config",str(out/"config.json"),"--max-plies","4",
+                                     "--report-out",str(out/"report.json"),"--replay-out",str(out/"replay.json"),
+                                     "--prefix-out",str(out/"prefix.json")], cwd=ROOT,env=env,capture_output=True,text=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr)
+            match.write_trace_summary(out)
+            summary = json.loads((out/"trace-summary.json").read_text())
+            self.assertEqual(summary["game_document"], "truncated_prefix")
+            self.assertEqual(summary["journal_decisions"], 2)
+            self.assertEqual(summary["ambiguous_plies"], [])
+            # Match-global plies: seat 0 decides on plies 0 and 2 in a 2-player game.
+            self.assertEqual(sorted(summary["decisions"]), ["0", "2"])
+            for ply in ("0", "2"):
+                entry = summary["decisions"][ply]
+                self.assertEqual(entry["actor"], 0)
+                self.assertTrue(entry["action_sent"])
+                # A non-forced decision has a local helper plus both Jev stages.
+                self.assertEqual([s["stage"] for s in entry["stages"]],
+                                 ["helper", "family", "move"])
+            # The summary is a projection of the same journal the reader loads, so
+            # both must agree on which plies carry a call.
+            read = trace_reader.read_run(out.name, out.parent)
+            indexed = trace_reader.index_by_ply(read["events"])
+            self.assertEqual(sorted(indexed), [0, 2])
+            self.assertEqual({e["actor"] for e in indexed[0]}, {0})
 
 
 if __name__ == "__main__":

@@ -75,6 +75,7 @@ fn server_transcript(
             meta: RecipientMeta::new(game_id, 1, recipient),
             player_count: state.player_count(),
             seed_commitment: format!("fixture-commitment-{game_id}"),
+            run_trace_id: None,
         },
         ServerMessage::Observation {
             meta: ObservationMeta::new(game_id, 2, recipient, observation_hash.clone()),
@@ -95,6 +96,7 @@ fn server_transcript(
         meta: RequestMeta::new(game_id, server_seq, recipient, request_id, observation_hash),
         deadline_ms: 1000,
         legal_actions: state.legal_actions(),
+        ply: None,
     });
 
     to_ndjson(&messages)

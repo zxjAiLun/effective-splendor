@@ -43,6 +43,7 @@ fn scenario() -> (String, Vec<String>) {
         meta: RecipientMeta::new(&game_id, 1, seat),
         player_count: 2,
         seed_commitment: "test-commitment".to_string(),
+        run_trace_id: None,
     };
     let observation = ServerMessage::Observation {
         meta: ObservationMeta::new(&game_id, 2, seat, obs_hash.clone()),
@@ -52,6 +53,7 @@ fn scenario() -> (String, Vec<String>) {
         meta: RequestMeta::new(&game_id, 3, seat, 1, obs_hash),
         deadline_ms: 1000,
         legal_actions: state.legal_actions(),
+        ply: None,
     };
     let end = ServerMessage::GameEnd {
         meta: RecipientMeta::new(&game_id, 4, seat),
@@ -328,6 +330,7 @@ fn runtime_exposes_cumulative_visible_event_history() {
             meta: RecipientMeta::new(game_id, 1, seat),
             player_count: 2,
             seed_commitment: "commitment".to_string(),
+            run_trace_id: None,
         },
         ServerMessage::Event {
             meta: RecipientMeta::new(game_id, 2, seat),
@@ -349,6 +352,7 @@ fn runtime_exposes_cumulative_visible_event_history() {
             meta: RequestMeta::new(game_id, 5, seat, 1, observation_hash),
             deadline_ms: 1_000,
             legal_actions: state.legal_actions(),
+            ply: None,
         },
         ServerMessage::GameEnd {
             meta: RecipientMeta::new(game_id, 6, seat),

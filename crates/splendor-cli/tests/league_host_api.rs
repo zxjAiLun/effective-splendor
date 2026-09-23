@@ -2090,3 +2090,238 @@ fn participant_opponents_serves_bounded_opponents_and_excludes_self_matches() {
     ));
     assert_eq!(code, 200, "256-byte cursor must be accepted: {body}");
 }
+
+// ---------------------------------------------------------------------------
+// Jev interaction trace (v0.3). The Jev agent writes a local JSONL journal next
+// to its arena output; these gates prove the Host serves that journal read-only,
+// from its own explicitly separate source, and never merges it into the League.
+// ---------------------------------------------------------------------------
+
+/// One Jev run directory, as `jev/match.py` lays it out. The journal is written
+/// by hand because these gates test the Host's *read* surface: whether the agent
+/// truly writes these events is covered by the Python suite against a real arena.
+fn write_jev_run(runs: &Path, run_id: &str, journal: &str, with_prefix: bool) -> PathBuf {
+    let dir = runs.join(run_id);
+    std::fs::create_dir_all(&dir).expect("create the run directory");
+    if !journal.is_empty() {
+        write_file(&dir, "metrics.jsonl", journal);
+    }
+    write_file(
+        &dir,
+        "metrics.json",
+        &serde_json::json!({
+            "schema_version": 3,
+            "agent_version": "0.3.0",
+            "status": "truncated",
+            "decisions": 2,
+            "api_calls": 4,
+            "models": ["jev-test"],
+            "identity": {"game_id": "gate", "run_id": run_id, "seat": 0},
+        })
+        .to_string(),
+    );
+    if with_prefix {
+        // A genuine capped prefix, produced by the real arena at a ply cap. Hand
+        // writing one would let this gate pass against a document the engine can
+        // never actually emit.
+        let out = dir.parent().expect("runs dir");
+        let program = bin().to_string_lossy().into_owned();
+        let config = serde_json::json!({
+            "game_id": format!("jev-{run_id}"),
+            "run_trace_id": run_id,
+            "seed": 4_242,
+            "handshake_timeout_ms": 10_000,
+            "move_timeout_ms": 10_000,
+            "shutdown_grace_ms": 2_000,
+            "agents": [
+                { "program": program, "args": ["agent-heuristic", "--seed", "1"] },
+                { "program": program, "args": ["agent-random", "--seed", "2"] },
+            ]
+        });
+        let config_path = write_file(
+            out,
+            &format!("{run_id}-config.json"),
+            &serde_json::to_string_pretty(&config).expect("serialize config"),
+        );
+        let output = Command::new(bin())
+            .current_dir(out)
+            .args([
+                "run-rollout",
+                "--config",
+                &config_path.to_string_lossy(),
+                "--max-plies",
+                "4",
+                "--report-out",
+                &dir.join("report.json").to_string_lossy(),
+                "--replay-out",
+                &dir.join("replay.json").to_string_lossy(),
+                "--prefix-out",
+                &dir.join("prefix.json").to_string_lossy(),
+            ])
+            .output()
+            .expect("run the arena");
+        assert!(
+            output.status.success(),
+            "arena failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        // `run-rollout` at a cap emits a prefix, never a completed replay.
+        assert!(
+            dir.join("prefix.json").is_file(),
+            "arena must write a prefix"
+        );
+    }
+    dir
+}
+
+fn jev_host(root: &Path, cwd: &Path) -> HostProcess {
+    HostProcess::start_with_registry(root, cwd, &rating_registry())
+}
+
+const JEV_JOURNAL: &str = concat!(
+    r#"{"event":"session_start","request_id":null,"elapsed_ms":0.0,"agent_version":"0.3.0"}"#,
+    "\n",
+    r#"{"event":"identity_bound","request_id":null,"identity":{"game_id":"gate","run_id":"gate-run","seat":0}}"#,
+    "\n",
+    r#"{"event":"decision_start","request_id":1,"ply":0,"actor":0,"observation_hash":"aa","legal_count":30}"#,
+    "\n",
+    r#"{"event":"request_start","request_id":1,"stage":"helper","attempt":1,"stage_request":true,"stage_response":true,"payload_snapshot_recorded":true,"payload_snapshot":{"state":"s","model":"jev-latest","questions":{"q":{"type":"choice","criteria":[]}}}}"#,
+    "\n",
+    r#"{"event":"action_sent","request_id":1}"#,
+    "\n",
+    r#"{"event":"decision_start","request_id":3,"ply":2,"actor":0,"observation_hash":"bb","legal_count":27}"#,
+    "\n",
+    r#"{"event":"request_start","request_id":3,"stage":"helper","attempt":1,"stage_request":true,"stage_response":true,"payload_snapshot_recorded":true,"payload_snapshot":{"state":"s","model":"jev-latest","questions":{"q":{"type":"choice","criteria":[]}}}}"#,
+    "\n",
+    r#"{"event":"action_sent","request_id":3}"#,
+    "\n",
+);
+
+#[test]
+fn the_jev_trace_routes_serve_a_local_journal_without_touching_the_league() {
+    let base = tmp_dir("jev-trace");
+    let root = base.join("root");
+    let runs = root.join("local-artifacts/jev");
+    std::fs::create_dir_all(&runs).expect("create the Jev runs directory");
+    // A League the Host also serves, to prove the two sources stay separate.
+    write_jev_run(&runs, "gate-run", JEV_JOURNAL, true);
+    write_jev_run(&runs, "gate-empty", "", false);
+    // The summary the index reads is produced by the real agent-side joiner, so
+    // this gate cannot pass against a shape that joiner would never emit.
+    let produced = Command::new("python")
+        .current_dir(&workspace_path("jev"))
+        .args([
+            "-c",
+            "import sys, pathlib\nsys.path.insert(0, '.')\nimport match\nfor run in sys.argv[1:]:\n    match.write_trace_summary(pathlib.Path(run))",
+        ])
+        .args([runs.join("gate-run").to_string_lossy().into_owned()])
+        .output();
+    match produced {
+        Ok(output) => assert!(
+            output.status.success(),
+            "write_trace_summary failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+        // Documented, not silent: the Python suite covers this join directly, so
+        // a missing interpreter narrows this gate instead of faking a summary.
+        Err(error) => eprintln!("skipping the summary join: python unavailable ({error})"),
+    }
+    let host = jev_host(&root, &base);
+
+    let (code, index) = host.get_json("/jev/runs");
+    assert_eq!(code, 200, "{index}");
+    let ids: Vec<&str> = index["runs"]
+        .as_array()
+        .expect("runs array")
+        .iter()
+        .map(|row| row["run_id"].as_str().expect("run id"))
+        .collect();
+    assert!(ids.contains(&"gate-run"), "{index}");
+    assert!(ids.contains(&"gate-empty"), "{index}");
+    assert!(
+        index["note"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("not league"),
+        "the index must say these reads are not League evidence: {index}"
+    );
+
+    let rows = index["runs"].as_array().expect("runs array");
+    let good = rows
+        .iter()
+        .find(|row| row["run_id"] == "gate-run")
+        .expect("gate-run row");
+    assert_eq!(good["journal_recorded"], true);
+    assert_eq!(good["agent_version"], "0.3.0");
+    assert_eq!(good["decisions"], 2);
+    assert_eq!(good["game_document"], "truncated_prefix");
+    // A run with no journal at all is *reported as unrecorded*, never guessed at.
+    let empty = rows
+        .iter()
+        .find(|row| row["run_id"] == "gate-empty")
+        .expect("gate-empty row");
+    assert_eq!(empty["journal_recorded"], false);
+    assert_eq!(empty["game_document"], "unavailable");
+    assert!(empty["decisions"].is_null(), "{empty}");
+
+    let (code, bundle) = host.get_json("/jev/runs/gate-run");
+    assert_eq!(code, 200, "{bundle}");
+    assert_eq!(bundle["format"], "effective-splendor-jev-run-trace");
+    assert_eq!(bundle["run_id"], "gate-run");
+    // The journal-derived projection is the run's own record: the GUI joins each
+    // ply on the observation hash the agent actually received.
+    let steps: Vec<(String, u64, u64, &str)> = bundle["trace"]["decisions"]
+        .as_object()
+        .expect("decisions map")
+        .iter()
+        .map(|(ply, entry)| {
+            assert!(entry["action_sent"].as_bool().expect("action_sent"));
+            (
+                ply.clone(),
+                entry["actor"].as_u64().expect("actor"),
+                entry["ply"].as_u64().expect("ply"),
+                entry["observation_hash"].as_str().unwrap_or("aa"),
+            )
+        })
+        .collect();
+    assert_eq!(steps.len(), 2, "{bundle}");
+    // Match-global plies, seat 0, in order.
+    assert_eq!(steps[0].0, "0");
+    assert_eq!(steps[1].0, "2");
+    assert!(steps.iter().all(|(_, actor, _, _)| *actor == 0));
+    // The game document is served verbatim, so the board a reader steps through
+    // is the one the engine produced, not a reconstruction from the journal.
+    assert_eq!(bundle["trace"]["game_document"], "truncated_prefix");
+    let prefix_steps = bundle["prefix"]["steps"].as_array().expect("prefix steps");
+    assert_eq!(prefix_steps.len(), 4);
+    assert_eq!(bundle["prefix"]["format"], "splendor-rollout-prefix");
+    // A prefix-only run must not claim a completed replay.
+    assert!(bundle["replay"].is_null(), "{bundle}");
+}
+
+#[test]
+fn a_jev_run_name_cannot_escape_the_runs_directory() {
+    let base = tmp_dir("jev-traversal");
+    let root = base.join("root");
+    std::fs::create_dir_all(root.join("local-artifacts/jev")).expect("runs dir");
+    let host = jev_host(&root, &base);
+
+    for bad in [
+        "../../etc/passwd",
+        "..%2F..%2Fetc",
+        "nope",
+        "gate-run/../..",
+        "",
+    ] {
+        let (status, _) = http_get(host.port, &format!("/jev/runs/{bad}")).expect("GET");
+        assert_eq!(
+            status_code(&status),
+            400,
+            "{bad:?} must be refused, not resolved"
+        );
+    }
+    // The traversal target itself must be untouched and unreachable.
+    let (status, _) =
+        http_get(host.port, "/jev/runs/....%2f...%2f...%2fetc%2fpasswd").expect("GET");
+    assert_eq!(status_code(&status), 400);
+}

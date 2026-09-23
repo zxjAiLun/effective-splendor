@@ -186,6 +186,11 @@ pub enum ServerMessage {
         meta: RecipientMeta,
         player_count: u8,
         seed_commitment: String,
+        /// Optional local exhibition trace binding, forwarded verbatim from the
+        /// arena config. Absent for ranked/league runs, so their bytes are
+        /// unchanged. Agents may record it; it grants no authority.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        run_trace_id: Option<String>,
     },
     Observation {
         #[serde(flatten)]
@@ -197,6 +202,13 @@ pub enum ServerMessage {
         meta: RequestMeta,
         deadline_ms: u64,
         legal_actions: Vec<Action>,
+        /// Zero-based ply this request decides, supplied by the referee that is
+        /// about to apply it. The arena's own request id is match-global and is
+        /// reset when a rollout resumes from a prefix, so a correlation that
+        /// must address one decision in one replay binds to the ply plus the
+        /// pre-action observation hash instead.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        ply: Option<u32>,
     },
     ActionApplied {
         #[serde(flatten)]
@@ -488,6 +500,7 @@ mod tests {
             meta: RequestMeta::new("g1", 1, PlayerId(0), 9, hash),
             deadline_ms: 3000,
             legal_actions: legal.clone(),
+            ply: None,
         };
         let line = msg.to_json_line().unwrap();
         assert!(line.contains("request_action"));

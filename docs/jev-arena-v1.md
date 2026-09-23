@@ -185,3 +185,71 @@ Observed integration points and gaps:
 Proposed minimal UI: per-ply stage 1 family candidates and result → stage 2 exact candidates and result → resulting game action; each attempt shows model, timing, known/unknown token usage and retry/failure status. Expandable diagnostics show the actual saved application request body (no Authorization/header/credential) and a clearly labeled allowlisted response projection. Forced stages show “no API call”, opponent turns show “not a Jev decision”, absent logs show “not recorded”. No fabricated rationale: Choice output is not an exposed internal reasoning transcript, and reported confidence is not calibrated strength.
 
 Keep existing viewer contracts from `docs/replay-studio-product-shell.md` and `docs/adr/0001-information-boundary.md`: opening/stepping a replay never invokes Jev or a reviewer; verified replay remains the game authority; agent-input snapshots contain only the acting seat's observation, never referee reveal/seed/deck order. Raw trace stays local-only. UI/host integration and safe snapshot/identity extension are the proposed next slice, pending implementation authorization; paid validation remains separate.
+
+## GUI interaction trace implementation — IMPLEMENTED / VERIFIED (2026-09-23)
+
+### Scope and contract
+
+Owner “开始做吧” authorized implementation against `main@f20432bee91dbb0d470f561281a137283cb2daa6`. v0.3 safe application-request snapshots and run/decision identity; the runner binds the journal to the exact replay/prefix bytes; read-only local Jev index/archive routes; the existing replay sidebar and timeline show stage/attempt/candidates/selection/usage. Completed ReplayV1 and verified truncated prefixes remain distinct. Old runs remain playable with “not recorded”; failed runs without a verified replay/prefix are listed without fabricating a board/winner. No heuristic/prompt strategy tuning, paid calls, training, league writes or publishing of generated logs.
+
+### What was built
+
+| Layer | Change |
+| --- | --- |
+| `crates/splendor-protocol` | Optional `run_trace_id` on `GameStart` and optional `ply` on `RequestAction`, both `skip_serializing_if = "Option::is_none"`, so ranked/league wire bytes are unchanged. |
+| `crates/splendor-arena` | `ArenaConfig::run_trace_id` (≤128 bytes, ASCII `[A-Za-z0-9_-]`, ≥1 alphanumeric, `InvalidRunTraceId` fail-closed). `RunCtx` broadcasts it on `GameStart` and stamps the acting ply on each `RequestAction`. |
+| `jev/runtime.py` | `METRICS_SCHEMA_VERSION = 3`. `safe_payload` allowlists exactly `state`/`model`/`questions`, ≤256 KiB, rejects sensitive keys. `safe_identity` accepts only scalar `game_id`/`run_id`/`seat`/`replay_document_hash`/`request_id`/`ply`, requires ≥1 surviving non-empty field. `Session.identify` emits `identity_bound`. |
+| `jev/agent.py` | Binds the run id from `game_start.run_trace_id`; `decision_start` carries `ply`, `observation_hash`, `actor`. |
+| `jev/trace.py` (new) | Read-only journal reader: bounded size, safe component checks, `read_run`, `index_by_ply` (duplicates marked ambiguous), `summarize` into the exact shape the UI renders. |
+| `jev/match.py` | Writes `run_trace_id = out.name`; `write_trace_summary` joins the journal to the verified replay/prefix and writes `trace-summary.json`. |
+| Studio Host | `GET /jev/runs` and `GET /jev/runs/{run_id}`, serving the run verbatim from a source resolved once from `--project-root`. `HistoricalReplayFrameV1` gained `observation_hash`. |
+| `apps/replay-studio` | `app/jev-trace-runtime.mjs` (pure derivations), `app/components/jev-interaction-panel.tsx` (read-only panel), a `JevRuns` section on the Games home, and `?jev=<run_id>` wiring on the replay page. |
+
+**Information boundary.** The snapshot is the application body only. The API credential lives in an HTTP header and is never part of `state`/`model`/`questions`, so it is structurally impossible for it to appear in the record. No referee reveal, seed, or deck order enters an agent-input snapshot. Opening or stepping a trace issues **only** `GET`s and touches no reviewer route; verified in real Chromium.
+
+### Iteration log
+
+1. **Identity binding silently did nothing.** The first real-arena probe produced no `identity_bound` event: the arena names the field `run_trace_id` while the agent read `run_id`. Caught only because the gate ran a real arena; a mock would have passed. Fixed to read `run_trace_id`.
+2. **`ply` is match-global, not per-seat.** Asserting `[0, 1]` failed against a real 2-player rollout that records `[0, 2]`. The arena was right and the expectation was wrong; both the Python and Rust gates now document match-global plies.
+3. **The Studio Host read runs from the process cwd, not the project root.** The League root is resolved once from `--project-root` with an explicit comment that no handler re-derives from the cwd, but `JEV_RUNS_DIR` used a bare relative constant. The Host now resolves `jev_runs_dir` once at startup, preserving the old cwd behavior when `--project-root` is absent. This was found by a real binary test, not by inspection.
+4. **The new UI test file was never executed.** `npm test` lists its test files by name and `jev-trace-runtime.test.mjs` was absent, so 11 tests passed silently by not running. Now wired in — the suite went 141 → 152.
+5. **A bulk `cargo fmt` reformatted unrelated M49A files.** Reverted `m49a_*` and `splendor-eval/src/lib.rs`; only this round's ~18 files are touched. `crates/splendor-cli/src/m49a_target_builder.rs` and `crates/splendor-agent/src/heuristic.rs` retain pre-existing formatting drift that is not this round's to change.
+
+### Validation and evidence
+
+All eight checks exited 0. Record: local (ignored) `local-artifacts/jev/trace-viewer/validation.json`, SHA-256 `875a59a2f5c2be375f03fa6e95bffb40e9346e3e9dd980101227d2bb2efb1e51`, binding 18 source hashes.
+
+| Check | Result |
+| --- | --- |
+| `cargo test --workspace` | **1012 passed / 0 failed / 3 ignored** |
+| `python -m unittest discover -s jev` | **50 passed** |
+| `npx tsc --noEmit` | clean |
+| `npm test` (replay-studio) | **152 passed / 0 failed** |
+| `npx eslint .` | clean |
+| real Chromium trace gate | **PASS** |
+| `python -m compileall -q jev` | clean |
+| `git diff --check` | clean |
+
+Notable gates, all against a real binary or a real browser — never a purely mocked seam:
+
+- `the_jev_trace_routes_serve_a_local_journal_without_touching_the_league` drives the real `studio-host` over a real socket. Its prefix comes from a real `run-rollout --max-plies 4` and its summary from the real `write_trace_summary`, so the route cannot be validated against a shape the engine never emits. It asserts the run is listed, an unrecorded run reports `journal_recorded: false` / `game_document: "unavailable"`, the served document is a `splendor-rollout-prefix`, and `replay` is `null` for a truncated run.
+- `a_jev_run_name_cannot_escape_the_runs_directory` refuses `../../etc/passwd`, `..%2F..%2Fetc`, `nope`, `gate-run/../..`, the empty id, and `....%2f...%2f...%2fetc%2fpasswd` with 400 rather than resolving them.
+- `jev/test_hardening.py` runs a **real local arena** with a test-owned fake decider (no production flag enables fake inference) and asserts the journal's plies and observation hashes match what the arena sent, that 4 request snapshots contain exactly `state`/`model`/`questions`, and that the fake key never appears anywhere in the record.
+- The Chromium gate drives the built UI against a real HTTP Host stub: it steps Gilded Replay frames, sees the three real stage labels, a retried attempt and its usage, an expanded request body marked “Application payload only”, an unrecorded-second-stage message, and confirms a missing run leaves the replay usable and is reported honestly.
+
+Boundary statement: **zero paid API calls, zero live model calls, zero training, zero league writes** this round. Every inference was a test-owned fake decider inside a real local arena.
+
+### Result and decision
+
+`IMPLEMENTED` / `VERIFIED` for the read-only interaction-trace surface. The frozen gates above were met. This is a **parent self-check**, not an independent review, and it makes **no strength claim** about the agent.
+
+### Known limitations
+
+- Historical runs `1790154627-seat0` and `1790162927-seat0` predate the journal and cannot be reconstructed; the UI reports them as “not recorded”.
+- `request_id` is match-global and reset by `with_completed_plies`, so it is never used as a ply key; the join is by ply plus observation hash and confirmed against the recorded action.
+- The trace records the application payload and an allowlisted answer projection. It is not a reasoning transcript, and reported confidence is not calibrated strength.
+- Verified offline with a fake decider only. A live service smoke with the real model remains unbudgeted and unclaimed.
+
+### Next authorized gate
+
+Await owner review, or a separately budgeted paid smoke. Any competitive claim still requires a paired facts-only vs facts+advice evaluation.

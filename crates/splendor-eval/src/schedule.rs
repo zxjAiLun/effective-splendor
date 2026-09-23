@@ -73,6 +73,7 @@ pub fn expand_schedule(
             }
             let arena_config = ArenaConfig {
                 game_id: game_id.clone(),
+                run_trace_id: None,
                 seed,
                 handshake_timeout_ms: plan.handshake_timeout_ms,
                 move_timeout_ms: plan.move_timeout_ms,

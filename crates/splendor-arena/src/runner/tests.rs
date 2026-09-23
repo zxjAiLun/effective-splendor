@@ -176,6 +176,7 @@ const ACTION_SEED: u64 = 7;
 fn test_config(player_count: usize, handshake_ms: u64, move_ms: u64) -> ArenaConfig {
     ArenaConfig {
         game_id: GAME_ID.to_string(),
+        run_trace_id: None,
         seed: SEED,
         handshake_timeout_ms: handshake_ms,
         move_timeout_ms: move_ms,

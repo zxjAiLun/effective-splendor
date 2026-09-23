@@ -22,6 +22,10 @@ pub enum ArenaConfigError {
     #[error("game_id contains a forbidden control character")]
     GameIdControlCharacter,
 
+    /// `run_trace_id` was empty, too long, or not a safe identifier.
+    #[error("run_trace_id must be 1..=128 ASCII letters, digits, '-' or '_'")]
+    InvalidRunTraceId,
+
     /// The agent list did not have between 2 and 4 entries.
     #[error("agent count must be 2..=4 (got {0})")]
     AgentCount(u8),

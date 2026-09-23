@@ -10,7 +10,13 @@ import re
 import subprocess
 import time
 
-AGENT_VERSION = "0.2.0"
+AGENT_VERSION = "0.3.0"
+# Lifecycle record schema. 3 adds safe request snapshots and run identity.
+METRICS_SCHEMA_VERSION = 3
+# A saved request may be replayed by a reader, so it is bounded and allowlisted.
+MAX_SNAPSHOT_BYTES = 262_144
+_SNAPSHOT_KEYS = frozenset(("state", "model", "questions"))
+_SENSITIVE_KEY = re.compile(r"(authorization|api[-_]?key|token|secret|password|credential|bearer)", re.I)
 
 
 class AgentFault(Exception):
@@ -37,6 +43,45 @@ def encode(value) -> str:
 
 def digest(value) -> str:
     return hashlib.sha256(encode(value).encode()).hexdigest()
+
+
+def safe_payload(payload) -> dict | None:
+    """Return the exact application request body, or None if it cannot be published safely.
+
+    This is the submitted prompt/state/options, not HTTP material: TypeSafe never
+    receives the credential in the body, and no header ever enters the journal.
+    A payload is only published when it is an object whose own top-level keys are
+    exactly the expected request keys; anything else (including a leaked field) is
+    dropped rather than partially copied, and the journal records only its hash.
+    """
+    if not isinstance(payload, dict) or set(payload) != _SNAPSHOT_KEYS:
+        return None
+    try:
+        if len(encode(payload).encode()) > MAX_SNAPSHOT_BYTES:
+            return None
+    except (TypeError, ValueError, UnicodeError):
+        return None
+    if any(_SENSITIVE_KEY.search(key) for key in payload):
+        return None
+    return payload
+
+
+def safe_identity(value, limit: int = 256) -> dict | None:
+    """Copy only allowlisted scalar identity fields, never arbitrary nested data.
+
+    At least one field must survive, so an empty or entirely unknown message
+    cannot be mistaken for a declaration of who is playing.
+    """
+    if not isinstance(value, dict):
+        return None
+    out = {}
+    for key in ("game_id", "run_id", "seat", "replay_document_hash", "request_id", "ply"):
+        item = value.get(key)
+        if type(item) is int:
+            out[key] = item
+        elif type(item) is str and 0 < len(item) <= limit:
+            out[key] = item
+    return out or None
 
 
 def atomic_json(path: Path, value) -> None:
@@ -105,8 +150,9 @@ class Session:
         self.summary_path = summary_path
         self.stream = None
         self.request_id = None
+        self.identity = None
         self.start = clock()
-        self.metrics = dict(schema_version=2, agent_version=AGENT_VERSION, status="running", model=model,
+        self.metrics = dict(schema_version=METRICS_SCHEMA_VERSION, agent_version=AGENT_VERSION, status="running", model=model,
                             model_version=None, model_versions=[], max_api_calls=max_calls,
                             api_calls=0, stage1_calls=0, stage2_calls=0, unknown_usage_attempts=0,
                             decisions=0, families_offered=0, options_offered=0, options_omitted=0,
@@ -135,6 +181,15 @@ class Session:
             if self.stream:
                 self.stream.close()
 
+    def identify(self, value):
+        """Bind every later record to the run/seat the runner declared, not to a guess."""
+        identity = safe_identity(value)
+        if identity is None:
+            raise AgentFault("invalid run identity", "invalid_identity")
+        self.identity = identity
+        self.metrics["identity"] = identity
+        self.emit("identity_bound", identity=identity)
+
     def ask(self, payload, deadline: Deadline, call):
         question_id = next(iter(payload["questions"]))
         criteria = payload["questions"][question_id]["criteria"]
@@ -147,9 +202,11 @@ class Session:
             self.metrics[stage] += 1
             self.metrics["unknown_usage_attempts"] += 1
             started = self.clock()
+            snapshot = safe_payload(payload)
             self.emit("request_start", stage=question_id, attempt=attempt+1,
                       payload_sha256=digest(payload), candidate_ids=list(criteria),
-                      candidates=criteria, requested_model=payload["model"])
+                      candidates=criteria, requested_model=payload["model"],
+                      payload_snapshot=snapshot, payload_snapshot_recorded=snapshot is not None)
             try:
                 response = call(payload, timeout=deadline.remaining(18.0))
             except ServiceFault as exc:

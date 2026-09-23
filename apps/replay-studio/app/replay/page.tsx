@@ -15,6 +15,8 @@ import {
 } from "../components/replay-board";
 import { PlayerStateStrip } from "../components/player-state-strip";
 import { StructuredAction, type ActionCatalog, type ActionPlayerView } from "../components/structured-action";
+import { JevInteractionPanel, type StepView } from "../components/jev-interaction-panel";
+import { describeStep } from "../jev-trace-runtime.mjs";
 import { type DevelopmentCardData } from "../development-card";
 
 type ArchiveFrame = {
@@ -24,6 +26,20 @@ type ArchiveFrame = {
   legal_actions: Action[];
   recorded_action: Action;
   referee_reveal: BoardFrame["referee_reveal"];
+  observation_hash?: string;
+};
+
+type JevTraceBundle = {
+  format?: string;
+  version?: number;
+  run_id?: string;
+  config?: { agents?: Array<{ program?: string; args?: string[] }> };
+  trace?: {
+    decisions?: Record<string, unknown>;
+    journal_recorded?: boolean;
+    game_document?: string;
+    game_plies?: number | null;
+  } | null;
 };
 
 type ReplayArchive = {
@@ -55,6 +71,14 @@ export default function ReplayPage() {
   const [reveal, setReveal] = useState(false);
   const [filter, setFilter] = useState<"mine" | "all">("all");
   const [frameIndex, setFrameIndex] = useState(0);
+  /**
+   * The optional local Jev interaction trace for this session (`?jev=<run_id>`).
+   *
+   * `undefined` means the query parameter was absent (no panel is offered at
+   * all); `null` means it was requested but could not be read, which is shown as
+   * unavailable rather than as "this run made no calls".
+   */
+  const [jevTrace, setJevTrace] = useState<JevTraceBundle | null | undefined>(undefined);
 
   useEffect(() => {
     queueMicrotask(() =>
@@ -89,6 +113,31 @@ export default function ReplayPage() {
           setError("");
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      })(),
+    );
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() =>
+      void (async () => {
+        const params = new URLSearchParams(window.location.search);
+        const jev = params.get("jev") ?? "";
+        if (!jev) {
+          setJevTrace(undefined);
+          return;
+        }
+        try {
+          // Read-only: this route serves the run's own journal projection and its
+          // verified game document. It never runs the agent or a reviewer.
+          const response = await fetch(`${API}/jev/runs/${encodeURIComponent(jev)}`);
+          const value = await response.json();
+          if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
+          setJevTrace(value as JevTraceBundle);
+        } catch {
+          // A missing or unreadable trace must not hide the replay itself; the
+          // panel reports the absence instead.
+          setJevTrace(null);
         }
       })(),
     );
@@ -241,6 +290,9 @@ export default function ReplayPage() {
                 cards={cards as ActionCatalog["cards"]}
                 nobles={nobles as ActionCatalog["nobles"]}
               />
+              {jevTrace === undefined ? null : (
+                <JevInteractionPanel step={describeStep(frame, jevTrace) as StepView} />
+              )}
               <div className="decision-summary">
                 <span>REPLAY VIEWER · NO ANALYSIS</span>
                 <p>

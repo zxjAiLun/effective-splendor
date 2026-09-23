@@ -19,6 +19,9 @@ pub const MAX_TIMEOUT_MS: u64 = 24 * 60 * 60 * 1_000;
 /// Maximum UTF-8 byte length of `game_id`.
 pub const MAX_GAME_ID_BYTES: usize = 128;
 
+/// Maximum UTF-8 byte length of the optional local trace binding.
+pub const MAX_RUN_TRACE_ID_BYTES: usize = 128;
+
 /// The arena configuration document.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -26,6 +29,14 @@ pub struct ArenaConfig {
     /// Stable, human-readable game identifier. Must be non-empty, fit within
     /// [`MAX_GAME_ID_BYTES`], and contain no `\r`, `\n`, or NUL.
     pub game_id: String,
+    /// Optional local interaction-trace address for an unrated exhibition run.
+    ///
+    /// When present it is forwarded verbatim on the wire so the agent can bind
+    /// its own records to the run that produced them. It is deliberately
+    /// optional: ranked and league configurations keep their exact previous
+    /// bytes, and no route derives authority from it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_trace_id: Option<String>,
     /// Seed for the deterministic match RNG.
     pub seed: u64,
     /// Max time allowed for an agent to complete the handshake.
@@ -67,6 +78,21 @@ impl ArenaConfig {
         // shell-adjacent handling.
         if bytes.iter().any(|b| *b < 0x20) {
             return Err(ArenaConfigError::GameIdControlCharacter);
+        }
+
+        if let Some(run_trace_id) = &self.run_trace_id {
+            // Shaped like an id, not merely printable: this value reaches agent
+            // stdout, local logs, and a file name, so spaces, separators, and dot
+            // segments are rejected up front rather than sanitized later.
+            let well_formed = !run_trace_id.is_empty()
+                && run_trace_id.len() <= MAX_RUN_TRACE_ID_BYTES
+                && run_trace_id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+                && run_trace_id.bytes().any(|b| b.is_ascii_alphanumeric());
+            if !well_formed {
+                return Err(ArenaConfigError::InvalidRunTraceId);
+            }
         }
 
         let count = self.agents.len();

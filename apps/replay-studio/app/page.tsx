@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { API_BASE as API } from "./api-base.mjs";
 import { describeGameRow } from "./games-runtime.mjs";
+import { describeRun } from "./jev-trace-runtime.mjs";
 import {
   GAMES_PAGE_DEFAULT_LIMIT,
   GAMES_PAGE_MAX_LIMIT,
@@ -295,6 +296,89 @@ function LegacyGames() {
   );
 }
 
+/**
+ * Local unrated Jev exhibition runs.
+ *
+ * A third corpus, alongside league matches and legacy human games. These are
+ * experiments written by `jev/match.py`, so the section states that plainly and
+ * never implies a rating; a run with no verified document is still listed, so a
+ * failed run stays visible, but it offers no replay link.
+ */
+function JevRuns() {
+  const [runs, setRuns] = useState<Array<Record<string, unknown>>>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    queueMicrotask(() =>
+      void (async () => {
+        try {
+          const response = await fetch(`${API}/jev/runs`);
+          const value = await response.json();
+          if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
+          setRuns((value.runs ?? []) as Array<Record<string, unknown>>);
+          setError("");
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : String(reason));
+        } finally {
+          setLoading(false);
+        }
+      })(),
+    );
+  }, []);
+
+  return (
+    <section className="recent-games jev-runs">
+      <span className="section-kicker">LOCAL / JEV EXHIBITIONS</span>
+      <h2>Jev arena runs</h2>
+      <p>
+        Unrated experiments run locally by the Jev agent. Not league matches and not human games. A
+        replay link carries the run&apos;s interaction trace, which is a record of the actual calls
+        made — never a reconstruction.
+      </p>
+      {error ? (
+        <p role="alert" className="games-error">
+          {error}
+        </p>
+      ) : null}
+      {loading ? <p>Loading runs…</p> : null}
+      {!loading && !error && runs.length === 0 ? (
+        <p>No Jev runs yet. Run `python jev/match.py` to produce one.</p>
+      ) : null}
+      <div className="recent-game-list">
+        {runs.map((run) => {
+          const row = describeRun(run);
+          return (
+            <article key={row.runId}>
+              <div>
+                <strong>{row.runId}</strong>
+                <small>{row.documentLabel}</small>
+                <small>
+                  {row.journalRecorded ? "interaction journal recorded" : "no interaction journal"}
+                  {row.agentVersion ? ` · agent ${row.agentVersion}` : ""}
+                  {row.modelVersions.length > 0 ? ` · ${row.modelVersions.join(", ")}` : ""}
+                  {row.status ? ` · ${row.status}` : ""}
+                </small>
+              </div>
+              <div>
+                <span>{row.decisions === null ? "—" : `${row.decisions} decisions`}</span>
+                <small>{row.traceSummary ? "trace summary present" : "no trace summary"}</small>
+                {row.playable ? (
+                  <Link href={`/replay?session=${encodeURIComponent(row.runId)}&jev=${encodeURIComponent(row.runId)}`}>
+                    View replay + Jev trace
+                  </Link>
+                ) : (
+                  <small>No verified replay or prefix to show</small>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function GamesHome() {
   const [hostError, setHostError] = useState("");
 
@@ -352,6 +436,7 @@ export default function GamesHome() {
       ) : null}
 
       <StudioLeagueGames />
+      <JevRuns />
       <LegacyGames />
     </main>
   );

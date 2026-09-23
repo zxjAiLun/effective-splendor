@@ -638,11 +638,21 @@ fn reviewers_endpoint_reports_the_authoritative_human_seat_from_metadata() {
         "opponent": "gate-heuristic",
         "human_seat": 2,
     });
-    std::fs::write(&seat1_meta_path, serde_json::to_vec(&impossible_meta).unwrap()).unwrap();
+    std::fs::write(
+        &seat1_meta_path,
+        serde_json::to_vec(&impossible_meta).unwrap(),
+    )
+    .unwrap();
     let (code, body) = host.get_json(&format!("/reviewers?session={seat1_id}"));
-    assert_ne!(code, 200, "a seat outside the replay must not be reported: {body}");
+    assert_ne!(
+        code, 200,
+        "a seat outside the replay must not be reported: {body}"
+    );
     assert!(
-        body["error"].as_str().unwrap_or_default().contains("impossible seat"),
+        body["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("impossible seat"),
         "the refusal must name the impossible seat: {body}"
     );
     // Seat 1 is still inside a 2-player replay, so the repaired metadata is accepted
@@ -734,7 +744,8 @@ fn review_jobs_are_reused_within_a_session_and_never_borrowed_across_sessions() 
     let (code, again) = post(&session_a);
     assert_eq!(code, 200, "{again}");
     assert_eq!(
-        again["id"], job_a.as_str(),
+        again["id"],
+        job_a.as_str(),
         "the same request must step on the same job: {again}"
     );
     assert_eq!(again["cache_key"], cache_key.as_str());
@@ -763,7 +774,8 @@ fn review_jobs_are_reused_within_a_session_and_never_borrowed_across_sessions() 
         "the job record must name the session that asked for it: {other}"
     );
     assert_eq!(
-        other["cache_key"], cache_key.as_str(),
+        other["cache_key"],
+        cache_key.as_str(),
         "the two sessions really do share one content key; only the job is separate"
     );
     // The borrowed record must not leak A's session through the status or bundle

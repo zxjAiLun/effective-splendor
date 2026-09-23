@@ -352,6 +352,12 @@ def drive(lines, call, term_provider, session):
             if seat is not None:
                 raise AgentFault("duplicate game_start")
             seat = msg["recipient_player_id"]
+            # The runner may pre-register a run trace id and seat before the game
+            # starts. The agent records the name it was actually given; it never
+            # invents one, and an unknown message type stays rejected below.
+            run_trace_id = msg.get("run_trace_id")
+            if run_trace_id is not None:
+                session.identify({"game_id": game_id, "run_id": run_trace_id, "seat": seat})
         elif kind == "observation":
             if seat is None or msg["recipient_player_id"] != seat:
                 raise AgentFault("observation recipient mismatch")
@@ -369,7 +375,8 @@ def drive(lines, call, term_provider, session):
             last_request = rid
             session.request_id = rid
             legal = msg["legal_actions"]
-            session.emit("decision_start", deadline_ms=msg["deadline_ms"], legal_count=len(legal))
+            session.emit("decision_start", deadline_ms=msg["deadline_ms"], legal_count=len(legal),
+                         observation_hash=obs_hash, actor=seat, ply=msg.get("ply"))
 
             def terms(o, actions):
                 started = session.clock()

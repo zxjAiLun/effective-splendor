@@ -166,6 +166,7 @@ fn strict_parser_accepts_v05_golden_messages() {
             meta: RecipientMeta::new("g1", 1, PlayerId(0)),
             player_count: 2,
             seed_commitment: "0".repeat(64),
+            run_trace_id: None,
         },
         ServerMessage::Observation {
             meta: ObservationMeta::new("g1", 2, PlayerId(0), obs_hash.clone()),
@@ -175,6 +176,7 @@ fn strict_parser_accepts_v05_golden_messages() {
             meta: RequestMeta::new("g1", 3, PlayerId(0), 1, obs_hash),
             deadline_ms: 1000,
             legal_actions: state.legal_actions(),
+            ply: None,
         },
         ServerMessage::ActionApplied {
             meta: RecipientMeta::new("g1", 4, PlayerId(1)),
@@ -246,4 +248,54 @@ fn missing_required_field_is_json_error() {
         parse_client_line(line),
         Err(ProtocolParseError::Json(_))
     ));
+}
+
+// ---- Optional interaction-trace binding ---------------------------------------
+
+#[test]
+fn trace_binding_fields_are_absent_unless_set() {
+    // Ranked and league runs must keep their exact previous wire bytes, so the
+    // optional trace fields may never appear when unset.
+    let game_start = ServerMessage::GameStart {
+        meta: RecipientMeta::new("g1", 1, PlayerId(0)),
+        player_count: 2,
+        seed_commitment: "0".repeat(64),
+        run_trace_id: None,
+    };
+    let line = serde_json::to_string(&game_start).unwrap();
+    assert!(!line.contains("run_trace_id"), "{line}");
+
+    let mut state = FullState::new(GameConfig {
+        seed: 11,
+        ..Default::default()
+    })
+    .unwrap()
+    .0;
+    let obs = state.observation(PlayerId(0));
+    let request = ServerMessage::RequestAction {
+        meta: RequestMeta::new("g1", 3, PlayerId(0), 1, observation_hash(&obs)),
+        deadline_ms: 1000,
+        legal_actions: state.legal_actions(),
+        ply: None,
+    };
+    let line = serde_json::to_string(&request).unwrap();
+    assert!(!line.contains("\"ply\""), "{line}");
+}
+
+#[test]
+fn trace_binding_round_trips_and_is_checked() {
+    let game_start = ServerMessage::GameStart {
+        meta: RecipientMeta::new("g1", 1, PlayerId(0)),
+        player_count: 2,
+        seed_commitment: "0".repeat(64),
+        run_trace_id: Some("jev-20260923-abcd".to_string()),
+    };
+    let line = serde_json::to_string(&game_start).unwrap();
+    assert!(line.contains("run_trace_id"));
+    match parse_server_line(&line).unwrap() {
+        ServerMessage::GameStart { run_trace_id, .. } => {
+            assert_eq!(run_trace_id.as_deref(), Some("jev-20260923-abcd"));
+        }
+        other => panic!("unexpected message: {other:?}"),
+    }
 }

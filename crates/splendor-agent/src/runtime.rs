@@ -393,6 +393,7 @@ mod tests {
             meta: RecipientMeta::new(&game_id, 1, seat),
             player_count: 2,
             seed_commitment: "test-commitment".to_string(),
+            run_trace_id: None,
         };
         let observation = ServerMessage::Observation {
             meta: ObservationMeta::new(&game_id, 2, seat, obs_hash.clone()),
@@ -402,6 +403,7 @@ mod tests {
             meta: RequestMeta::new(&game_id, 3, seat, 1, obs_hash),
             deadline_ms: 1000,
             legal_actions: state.legal_actions(),
+            ply: None,
         };
         let end = ServerMessage::GameEnd {
             meta: RecipientMeta::new(&game_id, 4, seat),
@@ -573,6 +575,7 @@ mod tests {
             meta: RecipientMeta::new(game_id, 1, seat),
             player_count: 2,
             seed_commitment: "c".to_string(),
+            run_trace_id: None,
         };
         let observation = ServerMessage::Observation {
             meta: ObservationMeta::new(game_id, 2, seat, real_hash),
@@ -582,6 +585,7 @@ mod tests {
             meta: RequestMeta::new(game_id, 3, seat, 1, wrong_hash),
             deadline_ms: 1000,
             legal_actions: state.legal_actions(),
+            ply: None,
         };
         let lines: Vec<String> = [hello, game_start, observation, request]
             .iter()
@@ -600,6 +604,7 @@ mod tests {
             meta: RecipientMeta::new("other-game", 1, PlayerId(0)),
             player_count: 2,
             seed_commitment: "c".to_string(),
+            run_trace_id: None,
         };
         lines[1] = bad.to_json_line().unwrap();
         let (_, err, res) = run_over(&lines, 7);

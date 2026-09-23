@@ -318,6 +318,7 @@ fn registry_spelled_path_completes_a_full_match() {
 
     let config = ArenaConfig {
         game_id: "resolve-exe-full-match".to_string(),
+        run_trace_id: None,
         seed: 42,
         // Generous budgets: spawning real subprocesses under parallel test
         // execution must not turn scheduling delay into a protocol timeout.

@@ -11,6 +11,7 @@ fn agent(program: &str) -> AgentCommand {
 fn valid_config() -> ArenaConfig {
     ArenaConfig {
         game_id: "g1".to_string(),
+        run_trace_id: None,
         seed: 1,
         handshake_timeout_ms: 1000,
         move_timeout_ms: 1000,
@@ -86,4 +87,39 @@ fn config_derives_player_count() {
     let mut four = valid_config();
     four.agents = (0..4).map(|i| agent(&format!("a{i}"))).collect();
     assert_eq!(four.player_count(), 4);
+}
+
+#[test]
+fn run_trace_id_is_optional_and_strictly_validated() {
+    // Absent by default, so ranked and league configs keep their previous bytes.
+    let json = serde_json::to_string(&valid_config()).unwrap();
+    assert!(!json.contains("run_trace_id"), "{json}");
+    assert!(valid_config().validate().is_ok());
+
+    // A well-formed binding survives the round trip verbatim.
+    let mut good = valid_config();
+    good.run_trace_id = Some("jev-20260923-abcd".to_string());
+    good.validate().expect("valid trace id");
+    let json = serde_json::to_string(&good).unwrap();
+    assert!(json.contains("jev-20260923-abcd"));
+    let parsed: ArenaConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.run_trace_id.as_deref(), Some("jev-20260923-abcd"));
+
+    // Anything that could corrupt framing, logs, or a path is rejected instead
+    // of being forwarded to an agent.
+    for bad in [
+        "",
+        "   ",
+        "has space",
+        "line\nbreak",
+        "../../etc/passwd",
+        &"x".repeat(129),
+    ] {
+        let mut config = valid_config();
+        config.run_trace_id = Some(bad.to_string());
+        assert!(
+            config.validate().is_err(),
+            "run_trace_id {bad:?} should be rejected"
+        );
+    }
 }

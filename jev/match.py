@@ -60,11 +60,15 @@ def main() -> int:
     env = os.environ.copy()
     env["JEV_METRICS_FILE"] = str(out / "metrics.json")
     env["JEV_SPLENDOR_BINARY"] = str(binary)
+    # The trace binding is the directory name, which the local viewer resolves
+    # inside one fixed root. It is an identifier, never a path.
+    run_trace_id = out.name
     # Secret stays in local file/env. No key, secret path or API response in config.
     python = {"program": sys.executable, "args": ["-u", str(ROOT / "jev/agent.py")]}
     heuristic = {"program": str(binary), "args": ["agent-heuristic", "--seed", str(args.seed + 1)]}
     agents = [python, heuristic] if args.jev_seat == 0 else [heuristic, python]
-    config = {"game_id": f"jev-v1-{args.seed}-seat{args.jev_seat}", "seed": args.seed,
+    config = {"game_id": f"jev-v1-{args.seed}-seat{args.jev_seat}", "run_trace_id": run_trace_id,
+              "seed": args.seed,
               "handshake_timeout_ms": 15000, "move_timeout_ms": 45000, "shutdown_grace_ms": 2000,
               "agents": agents}
     atomic_json(out / "config.json", config)
@@ -103,7 +107,52 @@ def main() -> int:
         print(f"verify-replay exit={check.returncode}")
         if check.returncode:
             return 1
+    write_trace_summary(out)
     return result.returncode
+
+
+def write_trace_summary(out: Path) -> None:
+    """Join the agent journal to the verified game document, honestly.
+
+    The summary is a projection for the local viewer: it states which game
+    document it was bound to, which plies carry a Jev decision, and which do
+    not. A missing or partial journal stays visible as missing; it is never
+    filled in with reconstructed prompts, and a run without a verified replay or
+    prefix is recorded as traceable-but-not-playable.
+    """
+    import trace as trace_reader
+
+    info = trace_reader.read_run(out.name, out.parent)
+    decisions = trace_reader.index_by_ply(info["events"])
+    replay_path = out / "replay.json"
+    prefix_path = out / "prefix.json"
+    if replay_path.is_file():
+        document, kind = replay_path, "completed_replay"
+    elif prefix_path.is_file():
+        document, kind = prefix_path, "truncated_prefix"
+    else:
+        document, kind = None, "unavailable"
+    game_plies = None
+    if document is not None:
+        try:
+            parsed = json.loads(document.read_text(encoding="utf-8"))
+            game_plies = len(parsed.get("steps", []))
+        except (ValueError, OSError):
+            game_plies = None
+    summaries = {}
+    ambiguous = []
+    for ply, entries in sorted(decisions.items()):
+        if len(entries) > 1:
+            ambiguous.append({"ply": ply, "count": len(entries)})
+        summaries[str(ply)] = trace_reader.summarize(entries[-1])
+    atomic_json(out / "trace-summary.json", {
+        "schema_version": 1, "run_id": out.name, "game_document": kind,
+        "game_plies": game_plies, "journal_decisions": len(decisions),
+        "ambiguous_plies": ambiguous,
+        "decisions": summaries,
+        "metrics": info["metrics"],
+        "journal_recorded": (out / "metrics.jsonl").is_file(),
+    })
 
 
 if __name__ == "__main__":

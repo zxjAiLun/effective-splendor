@@ -310,6 +310,7 @@ fn scenario() -> (String, Vec<String>) {
         meta: RecipientMeta::new(&game_id, 1, seat),
         player_count: 2,
         seed_commitment: "test-commitment".to_string(),
+        run_trace_id: None,
     };
     let observation = ServerMessage::Observation {
         meta: ObservationMeta::new(&game_id, 2, seat, obs_hash.clone()),
@@ -319,6 +320,7 @@ fn scenario() -> (String, Vec<String>) {
         meta: RequestMeta::new(&game_id, 3, seat, 1, obs_hash),
         deadline_ms: 1000,
         legal_actions: state.legal_actions(),
+        ply: None,
     };
     let end = ServerMessage::GameEnd {
         meta: RecipientMeta::new(&game_id, 4, seat),

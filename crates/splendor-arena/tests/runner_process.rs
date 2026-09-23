@@ -145,6 +145,7 @@ fn run_normal(game_id: &str, player_count: u8, seed: u64, action_seed: u64) -> A
     }
     let config = ArenaConfig {
         game_id: game_id.to_string(),
+        run_trace_id: None,
         seed,
         // Normal-completion helper: use a generous handshake/move budget so
         // subprocess-spawn oversubscription under `--all-targets` parallelism
@@ -170,6 +171,7 @@ fn run_fault(mode: &str) -> ArenaRun {
     agents.push(agent_cmd("scripted", &["--script", &script_str]));
     let config = ArenaConfig {
         game_id: format!("fault-{mode}"),
+        run_trace_id: None,
         seed: 42,
         handshake_timeout_ms: 500,
         move_timeout_ms: 500,
@@ -190,6 +192,7 @@ fn run_fault(mode: &str) -> ArenaRun {
 fn run_pair(game_id: &str, mode0: &str, mode1: &str) -> ArenaRun {
     let config = ArenaConfig {
         game_id: game_id.to_string(),
+        run_trace_id: None,
         seed: 42,
         handshake_timeout_ms: 500,
         move_timeout_ms: 500,
@@ -594,6 +597,7 @@ fn normal_match_with_stderr_flood_completes() {
     }
     let config = ArenaConfig {
         game_id: "stderr-flood-e2e".to_string(),
+        run_trace_id: None,
         seed: 42,
         // Normal-completion test: generous budget (see run_normal).
         handshake_timeout_ms: 10_000,
@@ -743,6 +747,7 @@ fn blind_reserve_information_isolation() {
     }
     let config = ArenaConfig {
         game_id: "blind-reserve-iso".to_string(),
+        run_trace_id: None,
         seed: 42,
         // Normal-completion test: generous budget (see run_normal).
         handshake_timeout_ms: 10_000,
@@ -832,6 +837,7 @@ fn transcript_files_are_reopenable_and_removable() {
     }
     let config = ArenaConfig {
         game_id: "transcript-lifecycle".to_string(),
+        run_trace_id: None,
         seed: 42,
         // Normal-completion test: generous budget (see run_normal).
         handshake_timeout_ms: 10_000,
@@ -894,6 +900,7 @@ fn process_cleanup_stderr_flood_returns() {
     }
     let config = ArenaConfig {
         game_id: "cleanup-stderr-flood".to_string(),
+        run_trace_id: None,
         seed: 42,
         // Normal-completion test: generous budget (see run_normal).
         handshake_timeout_ms: 10_000,
@@ -941,6 +948,7 @@ fn golden_illegal_2p() -> ArenaRun {
     ];
     let config = ArenaConfig {
         game_id: "golden-arena-illegal-2p".to_string(),
+        run_trace_id: None,
         seed: 42,
         handshake_timeout_ms: 500,
         move_timeout_ms: 500,

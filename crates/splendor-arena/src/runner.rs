@@ -88,6 +88,10 @@ struct RunCtx {
     fingerprint: splendor_core::RulesetFingerprint,
     seed_commitment: SeedCommitment,
     player_count: u8,
+    /// Optional local exhibition trace binding. Independent unrated Jev runs want
+    /// the interaction trace addressable by run id, so the runner is told one;
+    /// ranked/league runs leave it `None` and their wire bytes are unchanged.
+    run_trace_id: Option<String>,
 }
 
 /// Send one message and, on failure, surface the transport's bound seat.
@@ -472,6 +476,7 @@ impl ArenaRunner {
             fingerprint,
             seed_commitment,
             player_count,
+            run_trace_id: config.run_trace_id.clone(),
         };
 
         // Spawn transports in seat order.
@@ -651,6 +656,7 @@ impl ArenaRunner {
                 meta: RecipientMeta::new(ctx.game_id.clone(), seq, t.seat()),
                 player_count: ctx.player_count,
                 seed_commitment: ctx.seed_commitment.as_str().to_string(),
+                run_trace_id: ctx.run_trace_id.clone(),
             };
             if let Err(seat) = send_or_seat(t.as_mut(), &msg) {
                 game_start_failed = Some(seat);
@@ -821,6 +827,7 @@ impl ArenaRunner {
                     meta: RequestMeta::new(ctx.game_id.clone(), seq, current, request_id, obs_hash),
                     deadline_ms: config.move_timeout_ms,
                     legal_actions: legal.clone(),
+                    ply: Some(counters.completed_plies()),
                 };
                 // The move deadline may only start after a successful flush;
                 // a failed RequestAction send is AgentIo with this request's
