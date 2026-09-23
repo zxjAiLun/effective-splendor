@@ -17,7 +17,15 @@ from runtime import AGENT_VERSION, AgentFault, Deadline, Session, run_child
 from transport import API_URL, credential, evaluate
 
 HERE = Path(__file__).resolve().parent
-MODEL = "jev-latest"
+# The floating alias is resolved by the provider to a concrete model. Stage B
+# observed `jev-latest` resolving to `jev-1.13.0`, and a probe confirmed the
+# API accepts that concrete version directly. Pinning it keeps one experiment on
+# one model: if the alias drifted mid-run the 20 games would silently mix two
+# policies. Override with JEV_MODEL for a deliberate re-pin.
+MODEL = os.environ.get("JEV_MODEL", "jev-1.13.0")
+# When pinning, every response must come back as that same model; a different
+# identity means the experiment is no longer single-model and must stop.
+EXPECTED_MODEL = os.environ.get("JEV_EXPECTED_MODEL", "jev-1.13.0")
 PROTOCOL = "0.5"
 COLORS = ("white", "blue", "green", "red", "black")
 MAX_OPTIONS = 80  # Explicit bounded subset of the 255-option Choice API ceiling.
@@ -166,6 +174,68 @@ def description(action: dict, obs: dict, catalog: dict) -> dict:
     return label
 
 
+# Unambiguous single-letter gem codes for the compact stage-2 summary. Using
+# the first letter would collide: blue and black both start with `b`.
+GEM_CODE = {"white": "W", "blue": "U", "green": "G", "red": "R", "black": "K", "gold": "J"}
+
+
+def _cost_text(cost: dict) -> str:
+    """Compact cost, zero-cost colors omitted."""
+    parts = [f"{GEM_CODE[c]}{n}" for c in (*COLORS, "gold") if (n := cost.get(c, 0))]
+    return "".join(parts) or "0"
+
+
+def _gems_text(gems: dict) -> str:
+    """Compact gem summary, zero colors omitted."""
+    parts = [f"{GEM_CODE[c]}{n}" for c in (*COLORS, "gold") if (n := gems.get(c, 0))]
+    return "".join(parts) or "none"
+
+
+def compact_label(action: dict, obs: dict, catalog: dict) -> str:
+    """One-line, semantic-preserving action summary.
+
+    Replaces the nested `standard_action` structure with a single readable line
+    that still names the action, its target, its cost and its gem movement. The
+    full per-action effect object is dropped: every field in it is either
+    derivable from this line or a zero/null placeholder that carried no
+    information. Nothing about the move is hidden from the model.
+    """
+    kind = action["type"]
+    board = obs["public"]
+    cards = catalog["cards"]
+    if kind in ("buy_market", "reserve_market", "buy_reserved"):
+        slot = count(action["slot"])
+        if kind == "buy_reserved":
+            cid = obs["private"]["reserved"][slot]["card"]
+            where = f"reserved[{slot}]"
+        else:
+            tier = {"One": 0, "Two": 1, "Three": 2}[action["tier"]]
+            cid = board["market"][tier][slot]
+            where = f"{action['tier']}/S{slot}"
+        card = cards[cid]
+        base = (f"{kind} {where} card#{cid} VP{count(card['prestige'])} "
+                f"bonus={card['bonus']} cost={_cost_text(colors(card['cost']))}")
+        if kind.startswith("reserve"):
+            gold = "gold" if board["bank"]["gold"] > 0 else "no-gold"
+            base += f" {gold}"
+        returned = _gems_text(gems(action.get("return", {})))
+        return f"{base} return={returned}"
+    if kind == "reserve_deck":
+        returned = _gems_text(gems(action.get("return", {})))
+        gold = "gold" if board["bank"]["gold"] > 0 else "no-gold"
+        return f"reserve_deck {action['tier']} unknown-card {gold} return={returned}"
+    if kind == "take_tokens":
+        return (f"take_tokens take={_gems_text(gems(action['take']))} "
+                f"return={_gems_text(gems(action.get('return', {})))}")
+    if kind == "choose_noble":
+        noble = catalog["nobles"][count(action["noble"])]
+        return (f"choose_noble noble#{count(action['noble'])} VP{count(noble['prestige'])} "
+                f"need={_cost_text(colors(noble['requirements']))}")
+    if kind == "pass":
+        return "pass"
+    return kind
+
+
 def heuristic_terms(obs: dict, legal: list[dict], timeout: float = 5.0) -> list[dict]:
     """Get the exact existing Rust heuristic decomposition; do not reimplement it in Python."""
     configured = os.environ.get("JEV_SPLENDOR_BINARY")
@@ -210,6 +280,17 @@ def _term_view(terms: dict, *, family_prior=True) -> dict:
     return result
 
 
+def _compact_terms(terms: dict, *, family_prior=True) -> dict:
+    """Same numbers as `_term_view`, with zero-valued terms omitted.
+
+    The instructions declare once that an absent term is exactly zero, so
+    dropping them removes bytes without removing any value - and without
+    flattening the numbers into a positional array.
+    """
+    full = _term_view(terms, family_prior=family_prior)
+    return {k: v for k, v in full.items() if v != 0}
+
+
 def family_question(obs: dict, legal: list[dict], indices: list[int], terms: list[dict], catalog: dict) -> dict:
     grouped = {}
     for i in indices:
@@ -233,15 +314,18 @@ def family_question(obs: dict, legal: list[dict], indices: list[int], terms: lis
 def move_question(obs: dict, legal: list[dict], indices: list[int], terms: list[dict], catalog: dict, family: str) -> tuple[dict, list[int]]:
     if len(indices) > MAX_OPTIONS:
         indices = sorted(indices, key=lambda i: (-sum(terms[i][name] for name in TERM_NAMES), i))[:MAX_OPTIONS]
-    criteria = {f"a{j}": {"standard_action": description(legal[i], obs, catalog),
-                            "existing_heuristic_terms": _term_view(terms[i])}
+    criteria = {f"a{j}": {"move": compact_label(legal[i], obs, catalog),
+                            "heuristic": _compact_terms(terms[i])}
                 for j, i in enumerate(indices)}
     instructions = (
         f"Stage 2 of 2: select the single best legal move from the {FAMILY_NAMES[family]} family. "
         "Standard Splendor terms: Development Card means a purchased engine card; Prestige Points (VP) are victory points; "
         "Bonus is its permanent one-gem discount; Noble is a 3-point tile claimed when its color requirements are met; "
         "Gold Joker can substitute for any colored gem; market refill/deck draws are unknown. "
-        "Use the board and these canonical heuristic term definitions: " + json.dumps(TERM_GLOSSARY, ensure_ascii=False) +
+        "Each option gives `move`, a compact summary of the legal action, and `heuristic`, the current project "
+        "heuristic's weighted additive terms. In `heuristic`, a term that is absent is exactly zero; only nonzero "
+        "terms are listed. Gem colors use W/B/G/R/K (gold=J) and costs read like W2U0G3R0K1. "
+        "Canonical term meanings: " + json.dumps(TERM_GLOSSARY, ensure_ascii=False) +
         " Each numeric field is the current project heuristic's weighted additive term, not probability, points, "
         "or truth; the total is only an advisory baseline. You may disagree with it. Respect the exact action and do not invent parameters."
     )
@@ -314,7 +398,8 @@ def run(lines, call=evaluate, term_provider=heuristic_terms, *, session=None,
     if session is None:
         path = Path(os.environ["JEV_METRICS_FILE"]) if os.environ.get("JEV_METRICS_FILE") else None
         session = Session(MODEL, max_calls=int(os.environ.get("JEV_MAX_API_CALLS", "100")),
-                          summary_path=path, clock=clock, sleeper=sleeper)
+                          summary_path=path, clock=clock, sleeper=sleeper,
+                          expected_model=EXPECTED_MODEL)
     try:
         outcome = drive(lines, call, term_provider, session)
     except BaseException as exc:

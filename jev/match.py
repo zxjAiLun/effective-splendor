@@ -14,6 +14,9 @@ from pathlib import Path
 
 from runtime import AGENT_VERSION, atomic_json
 
+import agent as agent_module
+import transport
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -75,7 +78,13 @@ def main() -> int:
     sources = [ROOT / "jev" / name for name in ("agent.py", "runtime.py", "transport.py", "match.py", "catalog.json")]
     sources += [ROOT / "crates/splendor-cli/src/agent_terms_command.rs", ROOT / "crates/splendor-agent/src/heuristic.rs"]
     atomic_json(out / "manifest.json", {
-        "schema_version": 1, "agent_version": AGENT_VERSION, "requested_model": "jev-latest",
+        "schema_version": 1, "agent_version": AGENT_VERSION,
+        # The identity the experiment actually pins, read from the agent rather
+        # than restated here. A manifest claiming the floating alias while the
+        # code pins a concrete model would detach the record from the run.
+        "requested_model": agent_module.MODEL,
+        "expected_model": agent_module.EXPECTED_MODEL,
+        "max_request_bytes": transport.MAX_REQUEST_BYTES,
         "max_api_calls": int(env.get("JEV_MAX_API_CALLS", "100")), "max_attempts_per_stage": 2,
         "max_plies": args.max_plies, "arena_config": config,
         "source_sha256": {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},

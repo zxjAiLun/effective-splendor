@@ -44,8 +44,13 @@ class AgentTests(unittest.TestCase):
             self.assertNotIn("ruleset_fingerprint", text)
             self.assertNotIn("referee_deck", text)
             self.assertEqual(payload["state"]["market"][0][0]["id"], self.obs["public"]["market"][0][0])
-        self.assertEqual(set(stage2["questions"]["move"]["criteria"]["a0"]["existing_heuristic_terms"]),
-                         set(agent.TERM_NAMES) | {"heuristic_total"})
+        # The compact stage-2 view keeps every term NAME available in the
+        # glossary, drops zero-valued terms, and adds no positional encoding.
+        criteria = stage2["questions"]["move"]["criteria"]["a0"]
+        self.assertIn("move", criteria)
+        terms_view = criteria["heuristic"]
+        self.assertTrue(set(terms_view) <= set(agent.TERM_NAMES) | {"heuristic_total"})
+        self.assertTrue(all(value != 0 for value in terms_view.values()))
         self.assertIn("probability, points", stage2["questions"]["move"]["instructions"])
 
     def test_two_stage_category_then_exact_legal_action(self):

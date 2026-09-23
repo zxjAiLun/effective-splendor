@@ -143,10 +143,14 @@ def safe_model(value) -> str | None:
 
 class Session:
     def __init__(self, model: str, *, max_calls=100, summary_path: Path | None = None,
-                 clock=time.monotonic, sleeper=time.sleep):
+                 clock=time.monotonic, sleeper=time.sleep, expected_model: str | None = None):
         if type(max_calls) is not int or not 1 <= max_calls <= 10000:
             raise AgentFault("invalid API call budget", "invalid_budget")
         self.max_calls, self.clock, self.sleep = max_calls, clock, sleeper
+        # When the experiment pins a concrete model, a different returned
+        # identity means two policies would be mixed into one result set. That
+        # is an experiment-integrity failure, not a retryable transport error.
+        self.expected_model = expected_model
         self.summary_path = summary_path
         self.stream = None
         self.request_id = None
@@ -234,6 +238,11 @@ class Session:
                 for key, value in usage.items():
                     self.metrics[key] += value
             model = safe_model(response.get("model")) if isinstance(response, dict) else None
+            if self.expected_model is not None and model is not None and model != self.expected_model:
+                # Fail closed and loudly: continuing would blend two models.
+                self.emit("model_identity_drift", expected=self.expected_model, returned=model)
+                raise AgentFault("model identity drifted from the pinned experiment model",
+                                 "model_identity_drift")
             if model:
                 self.metrics["model_version"] = model
                 if model not in self.metrics["model_versions"]:

@@ -17,6 +17,15 @@ HERE = Path(__file__).resolve().parent
 API_URL = "https://api.typesafe.ai/v1/systemone"
 MAX_RESPONSE_BYTES = 256_000
 
+# The provider returns HTTP 400 for a request body above a hard ceiling that was
+# measured empirically at 76,133 bytes accepted / 76,134 rejected for the
+# stage-2 payload shape. That is a server-side rejection, not a retryable one,
+# so it is refused locally instead: a request that cannot possibly be accepted
+# is never sent, and never retried. The budget is deliberately conservative,
+# leaving margin for a future field or a wrapper change rather than sitting on
+# the measured edge.
+MAX_REQUEST_BYTES = 70_000
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -38,7 +47,12 @@ def credential() -> str:
 
 
 def https_request(payload: dict, timeout: float) -> dict:
-    request = urllib.request.Request(API_URL, data=encode(payload).encode(), method="POST", headers={
+    # Gate on the exact bytes this function is about to serialize, so the gate
+    # can never disagree with what is actually sent.
+    body = encode(payload)
+    if len(body.encode("utf-8")) > MAX_REQUEST_BYTES:
+        raise ServiceFault("request_payload_too_large", 0)
+    request = urllib.request.Request(API_URL, data=body.encode(), method="POST", headers={
         "Authorization": "Bearer " + credential(), "Content-Type": "application/json"})
     opener = urllib.request.build_opener(NoRedirect())  # Default SSL verification remains enabled.
     try:

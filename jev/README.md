@@ -62,6 +62,12 @@ ceiling**; use a smaller explicit cap when testing.
 - Exact no-op token takes are removed if alternatives exist. If the selected
   family has over 80 moves, keep the top 80 by canonical total (stable ties).
   This can remove a strong move; this is **not** a full-legal unbiased evaluator.
+- Stage 2 encodes each candidate as one compact line plus its nonzero heuristic
+  terms. Redundant nested effect structures, zero-valued terms and repeated
+  per-action boilerplate are dropped; nothing about the move is hidden. Absent
+  heuristic terms are exactly zero, declared once in the instructions. Gem codes
+  are `W/U/G/R/K` with `J` for gold (a first-letter scheme would collide blue and
+  black).
 - A forced stage makes no request. Only an offered ID maps back to the original
   certified action. Invalid responses never cause a silent heuristic fallback.
 
@@ -100,9 +106,26 @@ infer completion. The runner owns its process tree for timeout/cancellation.
 Direct `agent.py` execution also creates ignored metrics unless
 `JEV_METRICS_FILE` is supplied; programmatic `run()` may keep them in memory for
 tests. Existing output paths are rejected. Generated evidence may contain own
-private game information and remains local-only. `jev-latest` still floats:
-recorded returned versions and hashes aid attribution, but do not pin the remote
-model or make its choices reproducible.
+private game information and remains local-only.
+
+## Model pinning and the request-size gate
+
+The model is pinned to a concrete version (`jev-1.13.0` by default, overridable
+with `JEV_MODEL`) rather than the floating `jev-latest` alias, because the alias
+resolves server-side and could drift mid-experiment. Every successful response
+must report the pinned identity (`JEV_EXPECTED_MODEL`); a different returned
+model raises `model_identity_drift` and fails closed instead of blending two
+policies into one result set. Manifests read these values from the agent, so a
+recorded run cannot claim a model the code did not request.
+
+The provider rejects an oversized request body with HTTP 400, which is not
+retryable. The measured ceiling is shape-dependent and sat at 76,133 bytes
+accepted / 76,134 rejected for the stage-2 payload shape. Rather than discover
+that at the server, the payload is measured with the same encoder the transport
+sends and refused locally above `MAX_REQUEST_BYTES` (70,000) as
+`request_payload_too_large`: no request is sent and none is retried. This is a
+protocol guard, not a strategy change - candidate counts and heuristic values are
+untouched.
 
 No league/registry/Elo writes, no M49A cohort usage, no competitive promotion.
 A paired, seat-swapped evaluation with/without heuristic advice requires a new

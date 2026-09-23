@@ -253,3 +253,76 @@ Boundary statement: **zero paid API calls, zero live model calls, zero training,
 ### Next authorized gate
 
 Await owner review, or a separately budgeted paid smoke. Any competitive claim still requires a paired facts-only vs facts+advice evaluation.
+
+## B2 request-size repair and pinned-model rerun — IMPLEMENTED / VERIFIED (2026-09-24)
+
+### Problem and evidence
+
+Stage B ran 20 real-inference games against four fixed pool anchors and produced
+12 aborted games, all `HTTP 400` on the stage-2 `move` call. The cause was
+isolated by direct API probes, not inferred:
+
+- identical payload, only criteria count varied -> 48 accepted, 80 rejected;
+- **20 choices in 100 KB rejected** while **255 choices in 6.8 KB accepted**, so
+  the limit is size, not choice count;
+- bisection on the real payload shape: **76,133 B accepted / 76,134 B rejected**;
+- every rejected stage-2 payload was >= 78,886 B and every accepted one
+  <= 71,742 B, cleanly separable.
+
+Because v0.2.0 classifies 400 as non-retryable, each of these correctly failed
+closed and ended its game. That was the hardening working as designed.
+
+The 80 candidates were reserve-family: 72 `reserve_market` + 8 `reserve_deck`,
+where one market card expands into ~6 candidates differing only in which gem is
+returned. Those return variants carry byte-identical heuristic values, so the
+payload was mostly repeated structure rather than distinct information.
+
+### What changed (B2.1-B2.4)
+
+| Layer | Change |
+| --- | --- |
+| `jev/agent.py` | `compact_label()` renders one line per candidate; `_compact_terms()` omits zero-valued terms; `GEM_CODE` gives unambiguous `W/U/G/R/K/J` codes. |
+| `jev/transport.py` | `MAX_REQUEST_BYTES = 70_000`, measured with the same `encode()` the transport sends; oversize raises `request_payload_too_large` with no request and no retry. |
+| `jev/agent.py` / `jev/runtime.py` | `MODEL` pins `jev-1.13.0`; `EXPECTED_MODEL` drift gate raises `AgentFault("model_identity_drift")` if the provider returns another identity. |
+| `jev/match.py`, `jev/run_batch.py` | Manifests read the pinned identity from the agent instead of restating `jev-latest`. |
+| `jev/run_batch.py` (new) | Fixed-anchor batch runner; schedule frozen before game 1 and re-read on rerun. |
+
+Explicitly unchanged: `MAX_OPTIONS`, the candidate set, candidate ordering,
+heuristic values, two-stage routing, retry counts and prompt strategy.
+
+### Validation
+
+- 12/12 originally-rejected roots re-encoded offline: **77,140 B -> 25,787 B
+  (-67%)**, candidate count unchanged at 80, all 960 candidates' heuristic
+  values verified term-by-term, and every move label pairwise distinct.
+- One formerly-rejected root sent live: **HTTP 200**, a legal choice, and
+  `jev-1.13.0` returned.
+- Full 20-game rerun on the identical frozen schedule: **20/20 completed,
+  0 aborted**, 1177 requests (cap 1200), max payload **27,995 B**, 0 request
+  errors, 617 decisions with 0 outside the offered set, 20/20 replays verified,
+  and a single model identity across all 20 games.
+- Python **59/59**. No league/Elo/registry write; the league database and
+  identity manifest hashes were verified unchanged before and after.
+
+### Result
+
+**Jev 5-15** across the 20 games: 0-5 vs s3-rollout, 0-5 vs heuristic, 0-5 vs
+determinization-n2000, 5-0 vs random; 2-8 first / 3-7 second.
+
+This is the first complete, non-MNAR sample: completeness no longer correlates
+with legal-action count. It is still not a strength estimate (20 games, one seed
+each, no repeats). Game 00 also changed from a 15-13 win in Stage B to a 12-15
+loss under the compact representation, which is why the Stage B and B2 results
+must not be merged into one sample.
+
+Reserve return variants being heuristic-tied is recorded as a **strategy**
+observation, not folded into this transport repair: the heuristic not
+distinguishing them does not make them strategically equivalent, and merging
+them would hand a real action dimension to an arbitrary tie-break.
+
+### Next authorized gate
+
+Owner authorized B3, a zero-cost offline attribution audit over these 20 traces
+and replays (family routing, within-family heuristic rank/gap, reserve-return
+incidence, and a pure-heuristic control on the same schedule). No strategy code
+changes.

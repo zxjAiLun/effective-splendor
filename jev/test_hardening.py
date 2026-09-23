@@ -381,7 +381,10 @@ class RealBoundaryTests(unittest.TestCase):
                                   dict(program=str(BINARY),args=["agent-heuristic","--seed","20260927"])])
             (out/"config.json").write_text(json.dumps(config),encoding="utf-8")
             env = dict(os.environ, JEV_SPLENDOR_BINARY=str(BINARY), JEV_METRICS_FILE=str(out/"metrics.json"),
-                       JEV_MAX_API_CALLS="10", TYPESAFE_API_KEY="FAKE_KEY_UNUSED")
+                       JEV_MAX_API_CALLS="10", TYPESAFE_API_KEY="FAKE_KEY_UNUSED",
+                       # The fake decider reports its own identity; the drift
+                       # gate must be told which identity to expect.
+                       JEV_MODEL="jev-test", JEV_EXPECTED_MODEL="jev-test")
             result = subprocess.run([str(BINARY),"run-rollout","--config",str(out/"config.json"),"--max-plies","4",
                                      "--report-out",str(out/"report.json"),"--replay-out",str(out/"replay.json"),
                                      "--prefix-out",str(out/"prefix.json")], cwd=ROOT,env=env,capture_output=True,text=True,timeout=30)
@@ -415,7 +418,9 @@ class RealBoundaryTests(unittest.TestCase):
             for request in requests:
                 self.assertTrue(request["payload_snapshot_recorded"])
                 self.assertEqual(set(request["payload_snapshot"]), {"state", "model", "questions"})
-                self.assertEqual(request["payload_snapshot"]["model"], "jev-latest")
+                # The requested model is whatever this run pinned, never the
+                # floating alias unless the experiment deliberately asks for it.
+                self.assertEqual(request["payload_snapshot"]["model"], "jev-test")
             self.assertNotIn("FAKE_KEY_UNUSED", json.dumps(requests))
 
     def test_trace_summary_joins_the_journal_to_the_verified_prefix(self):
@@ -435,7 +440,10 @@ class RealBoundaryTests(unittest.TestCase):
                                   dict(program=str(BINARY),args=["agent-heuristic","--seed","20260929"])])
             (out/"config.json").write_text(json.dumps(config),encoding="utf-8")
             env = dict(os.environ, JEV_SPLENDOR_BINARY=str(BINARY), JEV_METRICS_FILE=str(out/"metrics.json"),
-                       JEV_MAX_API_CALLS="10", TYPESAFE_API_KEY="FAKE_KEY_UNUSED")
+                       JEV_MAX_API_CALLS="10", TYPESAFE_API_KEY="FAKE_KEY_UNUSED",
+                       # The fake decider reports its own identity; the drift
+                       # gate must be told which identity to expect.
+                       JEV_MODEL="jev-test", JEV_EXPECTED_MODEL="jev-test")
             result = subprocess.run([str(BINARY),"run-rollout","--config",str(out/"config.json"),"--max-plies","4",
                                      "--report-out",str(out/"report.json"),"--replay-out",str(out/"replay.json"),
                                      "--prefix-out",str(out/"prefix.json")], cwd=ROOT,env=env,capture_output=True,text=True,timeout=30)
