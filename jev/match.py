@@ -33,6 +33,7 @@ def main() -> int:
     out.mkdir(parents=True)
     env = os.environ.copy()
     env["JEV_METRICS_FILE"] = str(out / "metrics.json")
+    env["JEV_SPLENDOR_BINARY"] = str(binary)
     # Secret stays in local file/env. No key, secret path or API response in config.
     python = {"program": sys.executable, "args": ["-u", str(ROOT / "jev/agent.py")]}
     heuristic = {"program": str(binary), "args": ["agent-heuristic", "--seed", str(args.seed + 1)]}

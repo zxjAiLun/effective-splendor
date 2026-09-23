@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -18,6 +19,40 @@ MODEL = "jev-latest"
 PROTOCOL = "0.5"
 COLORS = ("white", "blue", "green", "red", "black")
 MAX_OPTIONS = 80  # Explicit bounded subset of the 255-option Choice API ceiling.
+TERM_NAMES = ("category_base", "prestige", "noble_gain", "noble_direct", "bonus_usefulness",
+              "cost_efficiency", "deficit_reduction", "new_target", "return_penalty", "gold_value",
+              "reserve_proximity", "reserve_gold", "reserve_blind_gold")
+FAMILIES = {
+    "buy": ("buy_market", "buy_reserved"), "take_tokens": ("take_tokens",),
+    "reserve": ("reserve_market", "reserve_deck"), "choose_noble": ("choose_noble",), "pass": ("pass",),
+}
+FAMILY_NAMES = {"buy": "Buy a development card", "take_tokens": "Take gems (resource collection)",
+                "reserve": "Reserve a card (visible or blind)", "choose_noble": "Claim a noble",
+                "pass": "Pass (forced only)"}
+ACTION_TERMS = {
+    "buy_market": "Buy a face-up Development Card from the market",
+    "buy_reserved": "Buy a Development Card from your own reserved row",
+    "take_tokens": "Take gem tokens from the bank (resource collection)",
+    "reserve_market": "Reserve a face-up Development Card; gain a Gold Joker if available",
+    "reserve_deck": "Reserve an unknown top card from a tier deck; gain a Gold Joker if available",
+    "choose_noble": "Claim one eligible Noble tile for prestige points",
+    "pass": "Pass only when the rules leave no productive move",
+}
+TERM_GLOSSARY = {
+    "category_base": "fixed heuristic preference for an action family; not outcome evidence",
+    "prestige": "heuristic weight for immediate prestige points gained from a card",
+    "noble_gain": "heuristic weight for a newly qualifying noble after a purchase",
+    "noble_direct": "heuristic weight for choosing a noble now",
+    "bonus_usefulness": "heuristic estimate of how a permanent color discount helps visible card targets",
+    "cost_efficiency": "heuristic penalty proportional to card gem cost",
+    "deficit_reduction": "heuristic value of reducing missing gems for current visible targets",
+    "new_target": "heuristic value for making a visible card affordable",
+    "return_penalty": "heuristic penalty for returning gems to the bank",
+    "gold_value": "heuristic value for gaining wild gold",
+    "reserve_proximity": "heuristic value for reserving a visible card near affordability",
+    "reserve_gold": "heuristic value of gold granted by reserving a visible card",
+    "reserve_blind_gold": "heuristic value of gold granted by blind-reserving a deck card",
+}
 
 
 class AgentFault(Exception):
@@ -48,7 +83,7 @@ def card_info(cards: list[dict], card_id: int) -> dict:
     card = cards[card_id]
     if card["id"] != card_id:
         raise AgentFault("catalog card id mismatch")
-    return card
+    return {**card, "cost_by_color": dict(zip(COLORS, card["cost"], strict=True))}
 
 
 def public_state(obs: dict, catalog: dict) -> dict:
@@ -72,60 +107,111 @@ def description(action: dict, obs: dict, catalog: dict) -> dict:
     kind = action["type"]
     board = obs["public"]
     cards = catalog["cards"]
+    standard_name = ACTION_TERMS[kind]
     if kind in ("buy_market", "reserve_market"):
         tier = {"One": 0, "Two": 1, "Three": 2}[action["tier"]]
         cid = board["market"][tier][action["slot"]]
-        label = {"action": kind, "card": card_info(cards, cid)}
+        label = {"action": kind, "standard_term": standard_name, "card": card_info(cards, cid)}
         if kind == "reserve_market":
             label["return_tokens"] = action.get("return", {})
         return label
     if kind == "buy_reserved":
         cid = obs["private"]["reserved"][action["slot"]]["card"]
-        return {"action": kind, "card": card_info(cards, cid)}
+        return {"action": kind, "standard_term": standard_name, "card": card_info(cards, cid)}
     if kind == "take_tokens":
-        return {"action": kind, "take": action["take"], "return_tokens": action.get("return", {})}
+        return {"action": kind, "standard_term": standard_name, "take": action["take"], "return_tokens": action.get("return", {})}
     if kind == "reserve_deck":
-        return {"action": kind, "tier": action["tier"], "unknown_card": True,
+        return {"action": kind, "standard_term": standard_name, "tier": action["tier"], "unknown_card": True,
                 "return_tokens": action.get("return", {})}
     if kind == "choose_noble":
-        return {"action": kind, "noble": catalog["nobles"][action["noble"]]}
+        noble = catalog["nobles"][action["noble"]]
+        return {"action": kind, "standard_term": standard_name, "noble": {**noble, "requirements_by_color": dict(zip(COLORS, noble["requirements"], strict=True))}}
     if kind == "pass":
-        return {"action": kind}
+        return {"action": kind, "standard_term": standard_name}
     raise AgentFault("unknown legal action type")
 
 
-def candidates(legal: list[dict]) -> list[dict]:
-    """Drop no-op takes; bound remaining choices, retaining buys and nobles.
+def heuristic_terms(obs: dict, legal: list[dict], timeout: float = 5.0) -> list[dict]:
+    """Get the exact existing Rust heuristic decomposition; do not reimplement it in Python."""
+    configured = os.environ.get("JEV_SPLENDOR_BINARY")
+    binary = Path(configured) if configured else next(
+        (p for p in (HERE.parent / "target/release/splendor.exe", HERE.parent / "target/release/splendor",
+                     HERE.parent / "target/debug/splendor.exe", HERE.parent / "target/debug/splendor") if p.is_file()), None)
+    if binary is None or not binary.is_file():
+        raise AgentFault("local heuristic term helper unavailable; build splendor-cli")
+    request = json.dumps({"observation": obs, "legal_actions": legal}, separators=(",", ":"))
+    try:
+        result = subprocess.run([str(binary), "agent-heuristic-terms"], input=request + "\n", text=True,
+                                capture_output=True, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise AgentFault("local heuristic term helper failed") from exc
+    if result.returncode != 0:
+        raise AgentFault("local heuristic term helper rejected state")
+    try:
+        terms = json.loads(result.stdout)["terms"]
+        if len(terms) != len(legal) or any(set(t) != set(TERM_NAMES) for t in terms):
+            raise ValueError("term schema mismatch")
+        if any(type(value) is not int for t in terms for value in t.values()):
+            raise ValueError("term value schema mismatch")
+        return terms
+    except (ValueError, KeyError, TypeError) as exc:
+        raise AgentFault("local heuristic term helper returned invalid terms") from exc
 
-    This is NOT a learned ranker: some legal moves are excluded if >80. We report
-    that omission as a limitation, never claim Jev evaluated the entire legal set.
-    """
-    useful = [a for a in legal if a["type"] != "take_tokens" or a["take"] != a.get("return")]
-    if not useful:  # Never invent an action; forced no-op is still legal.
-        useful = legal
-    if len(useful) <= MAX_OPTIONS:
-        return useful
-    priority = {"choose_noble": 0, "buy_market": 1, "buy_reserved": 1,
-                "reserve_market": 2, "reserve_deck": 3, "take_tokens": 4, "pass": 5}
-    def sort_key(pair: tuple[int, dict]) -> tuple:
-        index, action = pair
-        if action["type"] == "take_tokens":
-            take = action["take"]
-            total = sum(take.get(c, 0) for c in COLORS)
-            returned = sum(action.get("return", {}).values())
-            # Prefer 3 distinct colors (or 2 identical), avoid costly returns.
-            return (4, returned, -total, index)
-        return (priority[action["type"]], sum(action.get("return", {}).values()), 0, index)
-    return [a for _, a in sorted(enumerate(useful), key=sort_key)[:MAX_OPTIONS]]
+
+def action_family(action: dict) -> str:
+    for family, kinds in FAMILIES.items():
+        if action["type"] in kinds:
+            return family
+    raise AgentFault("unknown legal action type")
 
 
-def question(obs: dict, legal: list[dict], catalog: dict) -> tuple[dict, list[dict]]:
-    chosen = candidates(legal)
-    criteria = {f"a{i}": description(a, obs, catalog) for i, a in enumerate(chosen)}
+def candidate_indices(legal: list[dict]) -> list[int]:
+    indices = [i for i, a in enumerate(legal) if a["type"] != "take_tokens" or a["take"] != a.get("return")]
+    return indices or list(range(len(legal)))
+
+
+def _term_view(terms: dict) -> dict:
+    result = dict(terms)
+    result["heuristic_total"] = sum(terms[name] for name in TERM_NAMES)
+    return result
+
+
+def family_question(obs: dict, legal: list[dict], indices: list[int], terms: list[dict], catalog: dict) -> dict:
+    grouped = {}
+    for i in indices:
+        grouped.setdefault(action_family(legal[i]), []).append(i)
+    criteria = {}
+    for family, members in grouped.items():
+        strongest = max(members, key=lambda i: sum(terms[i][name] for name in TERM_NAMES if name != "category_base"))
+        criteria[family] = {
+            "family": FAMILY_NAMES[family], "available_legal_move_count": len(members),
+            "best_existing_heuristic_total_excluding_family_prior": sum(terms[strongest][name] for name in TERM_NAMES if name != "category_base"),
+            "best_move_example": description(legal[strongest], obs, catalog),
+            "best_move_heuristic_terms": _term_view(terms[strongest]),
+        }
     return {"state": public_state(obs, catalog), "model": MODEL,
-            "questions": {"move": {"type": "choice", "instructions":
-                "Choose the strongest legal move for the viewer to win Splendor. Consider affordable cards, permanent discounts, nobles, opponent scores, remaining turns and resource needs. Options are actions, not statements. Choose exactly one; do not assume unknown deck contents.",
-                "criteria": criteria}}}, chosen
+            "questions": {"family": {"type": "choice", "instructions":
+                "Stage 1 of 2: choose the move family most likely to help the viewer win Splendor. You will next choose one exact legal move in that family. Consider board, targets, engine building and opponent threat. The family prior category_base is omitted from the comparison value because it is a fixed cross-family bias. Other existing heuristic terms are named baseline signals, not ground truth.",
+                "criteria": criteria}}}
+
+
+def move_question(obs: dict, legal: list[dict], indices: list[int], terms: list[dict], catalog: dict, family: str) -> tuple[dict, list[int]]:
+    if len(indices) > MAX_OPTIONS:
+        indices = sorted(indices, key=lambda i: (-sum(terms[i][name] for name in TERM_NAMES), i))[:MAX_OPTIONS]
+    criteria = {f"a{j}": {"standard_action": description(legal[i], obs, catalog),
+                            "existing_heuristic_terms": _term_view(terms[i])}
+                for j, i in enumerate(indices)}
+    instructions = (
+        f"Stage 2 of 2: select the single best legal move from the {FAMILY_NAMES[family]} family. "
+        "Standard Splendor terms: Development Card means a purchased engine card; Prestige Points (VP) are victory points; "
+        "Bonus is its permanent one-gem discount; Noble is a 3-point tile claimed when its color requirements are met; "
+        "Gold Joker can substitute for any colored gem; market refill/deck draws are unknown. "
+        "Use the board and these canonical heuristic term definitions: " + json.dumps(TERM_GLOSSARY, ensure_ascii=False) +
+        " Each numeric field is the current project heuristic's weighted additive term, not probability, points, "
+        "or truth; the total is only an advisory baseline. You may disagree with it. Respect the exact action and do not invent parameters."
+    )
+    return {"state": public_state(obs, catalog), "model": MODEL,
+            "questions": {"move": {"type": "choice", "instructions": instructions, "criteria": criteria}}}, indices
 
 
 def evaluate(payload: dict, timeout: float = 18.0) -> dict:
@@ -148,27 +234,52 @@ def evaluate(payload: dict, timeout: float = 18.0) -> dict:
         raise AgentFault("TypeSafe returned invalid JSON") from exc
 
 
-def pick(obs: dict, legal: list[dict], catalog: dict, call: Callable[[dict], dict] = evaluate) -> tuple[dict, dict | None, int]:
-    if not legal:
-        raise AgentFault("empty legal actions")
-    if len(legal) == 1:
-        return legal[0], None, 1
-    payload, offered = question(obs, legal, catalog)
-    response = call(payload)
+def _choice(response: dict, question_id: str, allowed: set[str]) -> tuple[str, dict]:
     try:
-        answer = response["answers"]["move"]
+        answer = response["answers"][question_id]
         choice = answer["choice"]
-        if answer["type"] != "choice" or not isinstance(choice, str) or choice not in payload["questions"]["move"]["criteria"]:
+        if answer["type"] != "choice" or not isinstance(choice, str) or choice not in allowed:
             raise AgentFault("TypeSafe returned non-candidate Choice")
-        selected = offered[int(choice[1:])]
-        if selected not in legal:
-            raise AgentFault("TypeSafe selection not legal")
         usage = response.get("usage", {})
         if not isinstance(usage, dict):
             raise AgentFault("TypeSafe usage malformed")
-        return selected, usage, len(offered)
+        return choice, usage
     except (KeyError, TypeError, IndexError, ValueError) as exc:
         raise AgentFault("TypeSafe Choice response malformed") from exc
+
+
+def pick(obs: dict, legal: list[dict], catalog: dict, call: Callable[[dict], dict] = evaluate,
+         term_provider: Callable[[dict, list[dict]], list[dict]] = heuristic_terms) -> tuple[dict, dict | None, int, int]:
+    if not legal:
+        raise AgentFault("empty legal actions")
+    if len(legal) == 1:
+        return legal[0], None, 1, 0
+    terms = term_provider(obs, legal)
+    if len(terms) != len(legal):
+        raise AgentFault("heuristic term count does not match legal action count")
+    indices = candidate_indices(legal)
+    families = sorted({action_family(legal[i]) for i in indices})
+    family_choice = families[0]
+    usages = []
+    calls = 0
+    if len(families) > 1:
+        stage1 = family_question(obs, legal, indices, terms, catalog)
+        family_choice, usage = _choice(call(stage1), "family", set(families))
+        usages.append(usage)
+        calls += 1
+    scoped = [i for i in indices if action_family(legal[i]) == family_choice]
+    stage2, offered = move_question(obs, legal, scoped, terms, catalog, family_choice)
+    option = next(iter(stage2["questions"]["move"]["criteria"]))
+    if len(offered) > 1:
+        option, usage = _choice(call(stage2), "move", set(stage2["questions"]["move"]["criteria"]))
+        usages.append(usage)
+        calls += 1
+    selected = legal[offered[int(option[1:])]]
+    if selected not in legal or action_family(selected) != family_choice:
+        raise AgentFault("TypeSafe selection not legal in chosen family")
+    combined = {key: sum(u.get(key, 0) for u in usages if type(u.get(key, 0)) is int)
+                for key in ("input_tokens", "output_tokens")}
+    return selected, combined if calls else None, len(offered), calls
 
 
 def send(message: dict) -> None:
@@ -176,7 +287,8 @@ def send(message: dict) -> None:
     sys.stdout.flush()
 
 
-def run(lines, call: Callable[[dict], dict] = evaluate) -> dict:
+def run(lines, call: Callable[[dict], dict] = evaluate,
+        term_provider: Callable[[dict, list[dict]], list[dict]] = heuristic_terms) -> dict:
     catalog = load_catalog()
     game_id = None
     seat = None
@@ -186,9 +298,15 @@ def run(lines, call: Callable[[dict], dict] = evaluate) -> dict:
     max_calls = int(os.environ.get("JEV_MAX_API_CALLS", "100"))
     if max_calls < 1:
         raise AgentFault("JEV_MAX_API_CALLS must be positive")
-    metrics = {"api_calls": 0, "decisions": 0, "options_offered": 0, "options_omitted": 0,
+    metrics = {"api_calls": 0, "stage1_calls": 0, "stage2_calls": 0, "decisions": 0,
+               "families_offered": 0, "options_offered": 0, "options_omitted": 0,
                "input_tokens": 0, "output_tokens": 0, "model": MODEL, "model_version": None}
     def capture_call(payload: dict) -> dict:
+        if metrics["api_calls"] >= max_calls:
+            raise AgentFault("Jev API call budget exhausted")
+        metrics["api_calls"] += 1
+        stage = "stage1_calls" if "family" in payload.get("questions", {}) else "stage2_calls"
+        metrics[stage] += 1
         response = call(payload)
         if isinstance(response, dict) and isinstance(response.get("model"), str):
             metrics["model_version"] = response["model"]
@@ -228,14 +346,13 @@ def run(lines, call: Callable[[dict], dict] = evaluate) -> dict:
                 raise AgentFault("request id not increasing")
             last_request = rid
             legal = msg["legal_actions"]
-            if len(legal) > 1 and metrics["api_calls"] >= max_calls:
-                raise AgentFault("Jev API call budget exhausted")
-            action, usage, offered = pick(obs, legal, catalog, capture_call)
+            family_count = len({action_family(legal[i]) for i in candidate_indices(legal)})
+            action, usage, offered, _calls = pick(obs, legal, catalog, capture_call, term_provider)
             metrics["decisions"] += 1
+            metrics["families_offered"] += family_count
             metrics["options_offered"] += offered
             metrics["options_omitted"] += len(legal) - offered
             if usage is not None:
-                metrics["api_calls"] += 1
                 for k in ("input_tokens", "output_tokens"):
                     v = usage.get(k, 0)
                     if type(v) is int and v >= 0:
