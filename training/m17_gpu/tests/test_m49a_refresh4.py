@@ -6,6 +6,24 @@ import numpy as np
 import torch
 
 from splendor_gpu import m49a_trainer as T
+import m49a_train_c3_refresh4 as C3
+
+
+def test_wrapper_process_status_persists_exit_code_atomically(tmp_path, monkeypatch):
+    monkeypatch.setattr(C3, "RUN_DIR", tmp_path)
+    monkeypatch.setattr(C3, "RUN_ID", "test-c3-run")
+    monkeypatch.setattr(C3, "_RUN_STATUS_ENABLED", True)
+    monkeypatch.setattr(C3, "_RUN_STARTED_AT", "2026-09-23T00:00:00+00:00")
+
+    C3._write_process_status("completed", 0)
+
+    with open(tmp_path / "process-status.json", encoding="utf-8") as f:
+        status = json.load(f)
+    assert status["run_id"] == "test-c3-run"
+    assert status["state"] == "completed"
+    assert status["exit_code"] == 0
+    assert status["started_at_utc"] == "2026-09-23T00:00:00+00:00"
+    assert not (tmp_path / "process-status.json.tmp").exists()
 
 
 def _tiny_inputs(tmp_path, rows=16):

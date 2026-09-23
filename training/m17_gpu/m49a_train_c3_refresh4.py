@@ -10,7 +10,9 @@ extra training data, live validation stopping, or Canonical evaluation.
 
 import hashlib
 import json
+import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import torch
@@ -35,6 +37,8 @@ CHECKPOINT_EVERY = 10
 DEVICE = "cpu"
 TOTAL_OPTIMIZER_EPOCHS = FQI_ITERATIONS * EPOCHS_PER_FQI
 TOTAL_OPTIMIZER_STEPS = 92160  # ceil(36,674 / 256) * 640, no dropped tail.
+_RUN_STATUS_ENABLED = False
+_RUN_STARTED_AT = None
 
 # Exact D2 identity from the accepted C1/C2 manifest. Do not train on a
 # same-named but changed transport dataset.
@@ -58,7 +62,27 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _write_process_status(state: str, exit_code: int | None, error: str | None = None) -> None:
+    if not _RUN_STATUS_ENABLED:
+        return
+    path = RUN_DIR / "process-status.json"
+    temp_path = path.with_suffix(".json.tmp")
+    payload = {
+        "run_id": RUN_ID,
+        "pid": os.getpid(),
+        "state": state,
+        "exit_code": exit_code,
+        "started_at_utc": _RUN_STARTED_AT,
+        "updated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "error": error,
+    }
+    with open(temp_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    temp_path.replace(path)
+
+
 def main() -> None:
+    global _RUN_STATUS_ENABLED, _RUN_STARTED_AT
     train_x = COMPACT_DIR / "train" / "current_x.f32"
     train_transitions = COMPACT_DIR / "train" / "compact_transitions.jsonl"
     val_x = COMPACT_DIR / "val" / "current_x.f32"
@@ -94,6 +118,9 @@ def main() -> None:
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     checkpoint_dir = RUN_DIR / "checkpoints"
     checkpoint_dir.mkdir(exist_ok=True)
+    _RUN_STATUS_ENABLED = True
+    _RUN_STARTED_AT = datetime.now(timezone.utc).isoformat()
+    _write_process_status("running", None)
 
     print(
         f"C3 frozen contract: run_id={RUN_ID}, hard_refresh_epochs="
@@ -186,4 +213,14 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt as exc:
+        _write_process_status("interrupted", 130, f"{type(exc).__name__}: {exc}")
+        raise
+    except BaseException as exc:
+        exit_code = exc.code if isinstance(exc, SystemExit) and isinstance(exc.code, int) else 1
+        _write_process_status("failed", exit_code, f"{type(exc).__name__}: {exc}")
+        raise
+    else:
+        _write_process_status("completed", 0)
