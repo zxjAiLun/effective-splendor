@@ -26,6 +26,90 @@ def test_wrapper_process_status_persists_exit_code_atomically(tmp_path, monkeypa
     assert not (tmp_path / "process-status.json.tmp").exists()
 
 
+def test_c3_requires_frozen_target_builder(tmp_path, monkeypatch):
+    # No cargo fallback: a missing frozen executable must fail closed.
+    missing = tmp_path / "no-such-builder.exe"
+    monkeypatch.setattr(C3, "TARGET_BUILDER_EXE", missing)
+    try:
+        C3.assert_frozen_target_builder()
+        raise AssertionError("missing frozen builder accepted")
+    except FileNotFoundError:
+        pass
+
+    # Present but tampered content must be rejected against the pinned hash.
+    fake = tmp_path / "tampered.exe"
+    fake.write_bytes(b"not the frozen builder")
+    monkeypatch.setattr(C3, "TARGET_BUILDER_EXE", fake)
+    try:
+        C3.assert_frozen_target_builder()
+        raise AssertionError("tampered frozen builder accepted")
+    except RuntimeError as exc:
+        assert "hash mismatch" in str(exc)
+
+    monkeypatch.setattr(C3, "TARGET_BUILDER_SHA256", C3.sha256_file(fake))
+    resolved = C3.assert_frozen_target_builder()
+    assert resolved == C3.sha256_file(fake)
+
+
+def test_frozen_exe_mode_invokes_executable_directly(tmp_path, monkeypatch):
+    exe = tmp_path / "builder.exe"
+    exe.write_bytes(b"stub")
+    tmp_dir = tmp_path / "tmp"
+    tmp_dir.mkdir()
+    captured = {}
+
+    def fake_run(cmd, capture_output, text):
+        captured["cmd"] = cmd
+        np.zeros(4, dtype=np.float32).tofile(str(tmp_dir / "targets.f32"))
+
+        class Result:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        return Result()
+
+    monkeypatch.setattr(T.subprocess, "run", fake_run)
+    net = T.EfficiencyQNet(in_features=428)
+    targets = T.compute_targets_streaming(
+        tmp_path / "transitions.jsonl", net, tmp_dir, target_builder_exe=exe
+    )
+
+    assert captured["cmd"][0] == str(exe)
+    assert "cargo" not in captured["cmd"]
+    assert captured["cmd"][1] == "m49a-build-targets"
+    assert targets.shape == (4,)
+
+
+def test_frozen_exe_mode_rejects_missing_bytes_before_cargo_fallback(tmp_path):
+    net = T.EfficiencyQNet(in_features=428)
+    tmp_dir = tmp_path / "tmp"
+    tmp_dir.mkdir()
+    try:
+        T.compute_targets_streaming(
+            tmp_path / "transitions.jsonl",
+            net,
+            tmp_dir,
+            target_builder_exe=tmp_path / "absent.exe",
+        )
+        raise AssertionError("missing frozen executable accepted")
+    except FileNotFoundError:
+        pass
+
+
+def test_trainer_rejects_missing_frozen_exe_before_dataset_io(tmp_path):
+    dummy = tmp_path / "does-not-exist"
+    try:
+        T.train_fqi_streaming(
+            dummy, dummy, dummy, dummy,
+            device=torch.device("cpu"),
+            target_builder_exe=tmp_path / "absent.exe",
+        )
+        raise AssertionError("missing frozen executable accepted by trainer")
+    except FileNotFoundError:
+        pass
+
+
 def _tiny_inputs(tmp_path, rows=16):
     paths = {}
     values = np.linspace(-0.5, 0.5, rows * 428, dtype=np.float32).reshape(rows, 428)

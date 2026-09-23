@@ -6,6 +6,11 @@ after epochs 4 and 8, recomputing Bellman labels between segments. The trainer
 owns one seeded RNG and one AdamW optimizer for the full 80 x 8-epoch run.
 Saved/evaluated checkpoints remain ONLINE-net weights. No interval sweep,
 extra training data, live validation stopping, or Canonical evaluation.
+
+Runtime isolation (owner-authorized, after the mutable-worktree contamination):
+the Bellman-label target builder is a prebuilt, frozen executable whose SHA256
+is pinned here. Training never invokes cargo and never inspects git state, so
+unrelated commits to the main worktree cannot affect a running experiment.
 """
 
 import hashlib
@@ -37,6 +42,15 @@ CHECKPOINT_EVERY = 10
 DEVICE = "cpu"
 TOTAL_OPTIMIZER_EPOCHS = FQI_ITERATIONS * EPOCHS_PER_FQI
 TOTAL_OPTIMIZER_STEPS = 92160  # ceil(36,674 / 256) * 640, no dropped tail.
+
+# Frozen target-builder runtime. Built once from the C3 source snapshot commit
+# f2cb2bd (detached worktree), copied here, and hash-pinned. The training
+# process executes only this file; it never runs cargo and never reads git
+# state, so unrelated worktree activity cannot alter a long run.
+TARGET_BUILDER_SOURCE_COMMIT = "f2cb2bd5be09fce9d5d700b2c36ee523b2e09cfe"
+TARGET_BUILDER_EXE = REPO / "local-artifacts/m49a-c3-runtime/splendor-target-builder.exe"
+TARGET_BUILDER_SHA256 = "0e8534f620ba2f9a37a40fe108cc73ebfca64b5e8f89ccd7f14e42e8d3b31b3d"
+
 _RUN_STATUS_ENABLED = False
 _RUN_STARTED_AT = None
 
@@ -60,6 +74,27 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def assert_frozen_target_builder() -> str:
+    """Verify the frozen Bellman-label executable; return its SHA256.
+
+    Fail closed on both a missing file and a hash mismatch. There is
+    deliberately no fallback to ``cargo run``, so a running experiment can
+    never rebuild its own runtime from the mutable worktree.
+    """
+    if not TARGET_BUILDER_EXE.is_file():
+        raise FileNotFoundError(
+            f"frozen C3 target builder missing: {TARGET_BUILDER_EXE}; refusing C3 "
+            "(no cargo fallback)"
+        )
+    actual = sha256_file(TARGET_BUILDER_EXE)
+    if actual != TARGET_BUILDER_SHA256:
+        raise RuntimeError(
+            f"frozen C3 target builder hash mismatch: expected {TARGET_BUILDER_SHA256}, "
+            f"got {actual}; refusing C3"
+        )
+    return actual
 
 
 def _write_process_status(state: str, exit_code: int | None, error: str | None = None) -> None:
@@ -105,6 +140,11 @@ def main() -> None:
     input_hashes = {name: sha256_file(path) for name, path in input_paths.items()}
     if input_hashes != FROZEN_D2_SHA256:
         raise RuntimeError("D2 input hashes do not match the frozen C1 dataset; refusing C3")
+
+    # Fail closed on the frozen runtime. No cargo fallback is permitted, so a
+    # deleted/tampered executable stops the run instead of silently rebuilding
+    # from the worktree. No git state is read anywhere in this run path.
+    target_builder_sha256 = assert_frozen_target_builder()
     if train_x.stat().st_size != 36674 * 428 * 4:
         raise RuntimeError("D2 train current_x row count is not 36,674")
     if val_x.stat().st_size != 2402 * 428 * 4:
@@ -127,6 +167,8 @@ def main() -> None:
         f"{HARD_TARGET_REFRESH_EPOCHS}, FQI={FQI_ITERATIONS}, "
         f"epochs/FQI={EPOCHS_PER_FQI}, device={DEVICE}"
     )
+    print(f"Frozen target builder: {TARGET_BUILDER_EXE} sha256={TARGET_BUILDER_SHA256}")
+    print("Runtime isolation: frozen executable only; no cargo, no git state read.")
     print("Checkpoint/eval objects: ONLINE net only; target net = label source only.")
 
     model, report = train_fqi_streaming(
@@ -145,6 +187,7 @@ def main() -> None:
         checkpoint_every=CHECKPOINT_EVERY,
         target_update="hard",
         hard_target_refresh_epochs=HARD_TARGET_REFRESH_EPOCHS,
+        target_builder_exe=TARGET_BUILDER_EXE,
     )
 
     expected_config = {
@@ -158,6 +201,7 @@ def main() -> None:
         "seed": SEED,
         "device": DEVICE,
         "hard_target_refresh_epochs": HARD_TARGET_REFRESH_EPOCHS,
+        "target_builder_runtime": "frozen_exe",
     }
     if report.get("config") != expected_config:
         raise RuntimeError(f"trainer config drifted from frozen C3 contract: {report.get('config')}")
@@ -167,7 +211,10 @@ def main() -> None:
     final_input_hashes = {name: sha256_file(path) for name, path in input_paths.items()}
     if final_input_hashes != input_hashes or final_input_hashes != FROZEN_D2_SHA256:
         raise RuntimeError("C3 input files changed during training; refusing to publish run manifest")
-
+    if sha256_file(TARGET_BUILDER_EXE) != TARGET_BUILDER_SHA256:
+        raise RuntimeError(
+            "frozen C3 target builder changed during training; refusing to publish run manifest"
+        )
     expected_checkpoint_names = [f"weights_iter{it:03d}.json" for it in range(10, 81, 10)]
     checkpoint_hashes = {}
     for name in expected_checkpoint_names:
@@ -199,10 +246,17 @@ def main() -> None:
             "seed": SEED,
             "device": DEVICE,
             "minibatch_rng": "one seeded stream; same torch.randperm sequence as C1",
+            "target_builder_runtime": "frozen_exe",
+            "target_builder_source_commit": TARGET_BUILDER_SOURCE_COMMIT,
             "checkpoint_schedule": [10, 20, 30, 40, 50, 60, 70, 80],
             "checkpoint_object": "online_net",
         },
         "d2_input_sha256": input_hashes,
+        "frozen_target_builder": {
+            "path": "local-artifacts/m49a-c3-runtime/splendor-target-builder.exe",
+            "sha256": target_builder_sha256,
+            "source_commit": TARGET_BUILDER_SOURCE_COMMIT,
+        },
         "checkpoints": checkpoint_hashes,
     }
     with open(checkpoint_dir / "training_manifest.json", "w", encoding="utf-8") as f:

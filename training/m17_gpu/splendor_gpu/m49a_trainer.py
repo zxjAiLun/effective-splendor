@@ -86,8 +86,20 @@ def compute_targets_streaming(
     tmp_dir: Path,
     failure_penalty: float = 100.0,
     cargo_bin: str = "splendor",
+    target_builder_exe: Path | None = None,
 ) -> torch.Tensor:
-    """Invokes the streaming Rust target builder on compact transitions."""
+    """Invokes the streaming Rust target builder on compact transitions.
+
+    Two runtime modes:
+
+    - ``target_builder_exe`` is provided: execute that prebuilt, frozen
+      executable directly (``<exe> m49a-build-targets ...``). Long training
+      runs MUST use this mode so the Bellman-label runtime does not depend on
+      the mutable source tree (no cargo, no rebuild, no git state).
+    - omitted: legacy developer convenience path that shells out to
+      ``cargo run``. This recompiles from the live worktree on every call and
+      is therefore unsafe for long runs; it is kept only for dev/test use.
+    """
     weights_path = tmp_dir / "target_weights.json"
     targets_path = tmp_dir / "targets.f32"
 
@@ -95,16 +107,7 @@ def compute_targets_streaming(
     with open(weights_path, "w", encoding="utf-8") as f:
         json.dump(weights_dict, f)
 
-    cmd = [
-        "cargo",
-        "run",
-        "-q",
-        "--release",
-        "-p",
-        "splendor-cli",
-        "--bin",
-        cargo_bin,
-        "--",
+    builder_args = [
         "m49a-build-targets",
         "--transitions",
         str(transitions_jsonl),
@@ -116,9 +119,33 @@ def compute_targets_streaming(
         str(failure_penalty),
     ]
 
+    if target_builder_exe is not None:
+        exe = Path(target_builder_exe)
+        if not exe.is_file():
+            raise FileNotFoundError(f"frozen target builder executable is missing: {exe}")
+        cmd = [str(exe), *builder_args]
+        mode = "frozen_exe"
+    else:
+        cmd = [
+            "cargo",
+            "run",
+            "-q",
+            "--release",
+            "-p",
+            "splendor-cli",
+            "--bin",
+            cargo_bin,
+            "--",
+            *builder_args,
+        ]
+        mode = "cargo_run_dev_convenience"
+
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        raise RuntimeError(f"Rust target builder failed: {res.stderr}\n{res.stdout}")
+        raise RuntimeError(
+            f"Rust target builder failed (mode={mode}, cmd={cmd[0]}): "
+            f"{res.stderr}\n{res.stdout}"
+        )
 
     targets_np = np.fromfile(str(targets_path), dtype=np.float32)
     return torch.from_numpy(targets_np.copy())
@@ -177,6 +204,7 @@ def train_fqi_streaming(
     target_update: str = "hard",
     polyak_tau: float = 0.05,
     hard_target_refresh_epochs: int | None = None,
+    target_builder_exe: Path | None = None,
 ) -> tuple[EfficiencyQNet, dict[str, Any]]:
     """Runs Fitted Q-Iteration using memory-mapped current_x and on-demand streaming Rust targets."""
     if target_update not in ("hard", "polyak"):
@@ -185,6 +213,10 @@ def train_fqi_streaming(
         raise ValueError(f"polyak_tau must be in (0, 1], got {polyak_tau}")
     if epochs_per_fqi <= 0:
         raise ValueError(f"epochs_per_fqi must be positive, got {epochs_per_fqi}")
+    if target_builder_exe is not None and not Path(target_builder_exe).is_file():
+        raise FileNotFoundError(
+            f"frozen target builder executable is missing: {target_builder_exe}"
+        )
     if target_update == "hard":
         refresh_interval = (
             epochs_per_fqi
@@ -237,10 +269,12 @@ def train_fqi_streaming(
                 segment_end = min(segment_start + refresh_interval, epochs_per_fqi)
                 target_start = time.time()
                 y_train = compute_targets_streaming(
-                    train_transitions_path, target_net, tmp_dir
+                    train_transitions_path, target_net, tmp_dir,
+                    target_builder_exe=target_builder_exe,
                 ).to(device)
                 y_val = compute_targets_streaming(
-                    val_transitions_path, target_net, tmp_dir
+                    val_transitions_path, target_net, tmp_dir,
+                    target_builder_exe=target_builder_exe,
                 ).to(device)
                 t_target += time.time() - target_start
 
@@ -316,6 +350,9 @@ def train_fqi_streaming(
     }
     if hard_target_refresh_epochs is not None:
         config["hard_target_refresh_epochs"] = hard_target_refresh_epochs
+    config["target_builder_runtime"] = (
+        "frozen_exe" if target_builder_exe is not None else "cargo_run_dev_convenience"
+    )
 
     return net, {
         "history": history,
