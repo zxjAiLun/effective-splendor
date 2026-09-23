@@ -326,3 +326,109 @@ Owner authorized B3, a zero-cost offline attribution audit over these 20 traces
 and replays (family routing, within-family heuristic rank/gap, reserve-return
 incidence, and a pure-heuristic control on the same schedule). No strategy code
 changes.
+
+## B3 offline attribution audit — VERIFIED (2026-09-24)
+
+Zero-cost: reads the completed B2 traces/replays only, calls no API, writes
+nothing to the league. The league database and identity manifest hashes were
+verified unchanged after every step. Its purpose is to locate where Jev loses
+ground before any further strategy change is authorized.
+
+Standing caveat: **heuristic disagreement is not proof of error.** The heuristic
+is a fixed advice function, not ground truth. A deviation is a lead for review,
+not a counted mistake.
+
+### Q1 Stage-1 family routing — near-perfect, not the bottleneck
+
+595 multi-family decisions were parseable. Jev chose the heuristic's top family
+in **575 (96.6%)** of them; mean family gap **114** units, median **0**. Against
+the three non-random anchors specifically: 288 multi-family decisions,
+**9 mismatches (3.1%)**, mean foregone gain 3,385 units.
+
+Stage-1 is therefore not where the losses come from. Fixing routing could
+recover at most ~3% of decisions.
+
+### Q2 Within-family (stage-2) choice — Jev follows the advice almost exactly
+
+582 non-singleton stage-2 decisions: **524 (90.0%) took the heuristic's top
+ranked move**, 572 (98.3%) were within the top 3, mean percentile 95.8, and
+**551 had zero gap**. Only 26 decisions exceeded a 2,000-unit gap, and only
+3 of those were high-confidence (>= 0.5):
+
+| game | confidence | gap | rank | move |
+| --- | --- | --- | --- | --- |
+| 09-heuristic-s1-20261104 | 0.63 | 6,500 | 2/12 | take W1U1R1 |
+| 01-s3-rollout-s1-20261001 | 0.53 | 5,000 | 2/5 | take W1U1K1 |
+| 18-random-s0-20261303 | 0.51 | 2,750 | 2/7 | buy_market One/S1 #0 VP0 blue cost=K3 |
+
+This is the key structural finding: **Jev is not diverging from the heuristic it
+is shown.** Whatever is wrong is largely already wrong in the advice, or is
+invisible to a one-move heuristic (tempo, opponent modelling, planning) and thus
+also invisible to an agent that follows that advice 90% of the time.
+
+### Q3 Reserve-return incidence — too small to be worth a work item yet
+
+Reserve accounted for 80 of 613 decisions (13.1%), with a returned gem in 17.
+14 selected Reserve choices landed on targets chosen more than once, spread over
+62 distinct targets. Family distribution overall: take_tokens 290, buy 225,
+reserve 80.
+
+Reserve is **13.1% of decisions generally and 13.2% of losing-game decisions** —
+i.e. its incidence is essentially flat between wins and losses. There is no
+evidence here that it is leaking games disproportionately. Owner had already
+withheld authorization for return-variant merging on this basis; this measurement
+supports that choice.
+
+### Q4 Heuristic control — the decisive result
+
+Same 20 games, same opponents, same seeds, same seats: the Jev subprocess is
+replaced by the pure Rust `agent-heuristic`. No API, no league write. Note this
+control is *not* paired against Jev move-by-move; the opponent sees different
+play, so later states diverge.
+
+| anchor | games | heuristic | Jev |
+| --- | --- | --- | --- |
+| s3-rollout | 5 | **1**-4 | 0-5 |
+| heuristic | 5 | **2**-3 | 0-5 |
+| determinization-n2000 | 5 | **3**-2 | 0-5 |
+| random | 5 | 5-0 | 5-0 |
+| **total** | **20** | **11-9** | **5-15** |
+
+Non-random anchors: **heuristic 6/15, Jev 0/15**. Mean score margin +3.15 for
+the control vs +0.40 for Jev; across the 15 non-random games the control was
+strictly better in 9 and worse in 6, mean margin difference +3.60 VP.
+
+Game 00 is the sharpest single case: control 15-6 vs s3-rollout where Jev lost
+12-15.
+
+**Interpretation, stated conservatively.** The 0/15 vs 6/15 split is real and
+suggestive, but the per-game paired sign test over 15 non-random games gives
+**p = 0.61** — not significant. n=20 with one seed per game cannot carry a claim
+of "the LLM layer degrades decisions". What the control does establish is that
+the 5-15 result is **not** purely "the anchors are too strong and the schedule is
+hopeless": a plain heuristic takes 6 of those 15 games on the identical
+fixtures. So "Jev is facing impossible opposition" is ruled out, while "Jev is
+precisely X worse" is not yet measured.
+
+### What this points at, and what it rules out
+
+- **Ruled out as the main lever:** stage-1 routing (96.6% already optimal) and
+  stage-2 rebellion against the advice (90% top-ranked). Reducing heuristic
+  influence further cannot be the first move, because Jev already follows it.
+- **Not yet supported:** reserve-return work (13% incidence, flat between wins
+  and losses).
+- **Most consistent reading:** Jev has largely learned to imitate a one-move
+  heuristic, and the ceiling that imposes is the ceiling being measured. Any
+  gain would have to come from decisions the heuristic cannot express, not from
+  steering Jev closer to it.
+
+This is a qualitative signal, not an effect-size estimate. Both are 20-game
+single-seed samples; neither is paired move-by-move against the other. A paired,
+repeated-seed comparison would be needed before claiming the LLM layer is
+specifically harmful.
+
+### Next authorized gate
+
+None. Owner to decide among: pursuing plan/tempo beyond one-move heuristic
+advice, reducing heuristic牵引 despite the 90% agreement, reserve return policy,
+or stopping development on this configuration. No further API spend authorized.
