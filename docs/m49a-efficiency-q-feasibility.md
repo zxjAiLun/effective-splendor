@@ -1,6 +1,6 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II Repair 1/1a ACCEPTED @ `06babda`; C1 ACCEPTED / CLOSED @ `efa42987979d13c14fd32555c457a31de7f20ca7`; C1a ACCEPTED / CLOSED @ `fd9dfba465effa3223d0fd8d15375c1342abb11c`; C2 Polyak tau=0.05 IMPLEMENTED / VERIFIED locally; valid negative curve, owner review pending (§17). Canonical 64 seeds remain on HOLD. Earlier sections retain the design/iteration history; §17 is the current scope and next-gate authority.
+- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; Repair 1/1a ACCEPTED @ `06babda`; C1 ACCEPTED / CLOSED @ `efa4298`; C1a ACCEPTED / CLOSED @ `fd9dfba`; C2 Polyak tau=0.05 ACCEPTED / CLOSED by owner as valid negative evidence (§17). C1 hard-target iter50 remains the reference candidate. C3 hard-target refresh interval 4 epochs is AUTHORIZED / IN PROGRESS (§18). Canonical 64 remains HOLD / UNTOUCHED.
 - **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
 - **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
@@ -586,7 +586,7 @@ Future stability controls must retain that schedule/selector on **both** arms. C
 
 ### Problem, authorization, and frozen design
 
-- **Status**: C2 run IMPLEMENTED / VERIFIED locally; valid negative result, owner review pending (no C2 ACCEPTED/REJECTED verdict inferred). Baseline `fd9dfba465effa3223d0fd8d15375c1342abb11c`; implementation commit `f0ab9629d69026774b1bf77809f5a47978c`; run/documentation commit `1289b10`. Owner closed C1a with P0=0/P1=0/P2=1 and authorized exactly this control.
+- **Status**: **ACCEPTED / CLOSED by owner as valid negative evidence** after review of implementation `f0ab962`, contract `1289b10`, and result docs `d5ce0d635e4be017e8768912cc4f1c53ace95358`. Do not adopt C2 tau=0.05. C1 hard-target iter50 (59/64) remains current M49A-II reference candidate. C3 authorization is recorded in §18.
 - **Question**: Does smoothing the Bellman target network reduce the late instability observed in C1? Not merely whether another selected checkpoint exceeds 59/64.
 - **Only experimental change**: after each complete FQI iteration (after all 8 epochs), update all target parameters as `target = 0.95 * target + 0.05 * online`. Tau is **0.05**, not a CLI sweep parameter. Initialization still copies online to target exactly, as in C1.
 - **Everything else fixed**: D2 (36,674 train transitions; 2,402 offline validation rows), 428→256→LayerNorm/ReLU→128→ReLU→1→Softplus, Huber, AdamW lr=1e-3 / weight_decay=1e-4, batch256, clip1.0, seed49000001, 8 epochs/FQI, exactly 80 FQI updates. No trajectories generated or validation-failure seeds inserted into training.
@@ -613,10 +613,11 @@ Future stability controls must retain that schedule/selector on **both** arms. C
 - Pre-run regressions after source freeze: Rust selector unit **10 passed**, selector process **7 passed**, target-builder **5 passed**, collector **6 passed**; Python Polyak/target-builder/forward/delta **8 passed**. Release build, scoped `rustfmt --check`, and `git diff --check` PASS. Ruff was unavailable (`No module named ruff`); no Ruff pass is claimed.
 - C2 training ran once from `f0ab9629d69026774b1bf77809f5a47978c`, run ID `m49a-c2-polyak005-v1`, detached PID 31228; log `local-artifacts/m49a-c2-polyak005-training.log`. Log contains all 80 iteration records and `C2 complete`; model/report/weights/manifest were written and process exited. The detached parent exit code was not captured separately. Runtime used CPU, tau=0.05, 80×8, no curve-driven stop/extension.
 - Only after training completion, `target/release/splendor.exe m49a-select-checkpoint --checkpoint-dir local-artifacts/m49a-c2-polyak005/checkpoints --schedule 10,20,30,40,50,60,70,80 --out-json local-artifacts/m49a-c2-polyak005/selection_v1.json` exited 0 in 609s. It checked the training manifest and evaluated all eight online checkpoints on the validation cohort. Selected report replay also exited 0 and was byte-identical.
+- **Owner ruling (2026-09-23; correction to the original pending-review line)**: owner reviewed remote implementation `f0ab962`, frozen contract `1289b10`, and result record `main@d5ce0d635e4be017e8768912cc4f1c53ace95358`; C2 is **ACCEPTED / CLOSED as valid negative evidence**. C2 is not adopted; C1 hard-target iter50 remains reference. Owner explicitly authorized only C3 hard-target refresh granularity, specified in §18. Tau sweeps, Double-Q, Round3, and Canonical remain unauthorized/held.
 
 ### Final implementation / validation / result
 
-**C2 tau=0.05 — VALID NEGATIVE RESULT ON THE FROZEN C2 CONTRACT; owner review pending.** It did not improve selected validation performance or the predeclared late-tail variation summaries. This result does not reject every possible Polyak schedule, establish the cause of instability, or authorize a sweep/extension.
+**C2 tau=0.05 — ACCEPTED / CLOSED by owner as valid negative evidence; DO NOT ADOPT.** It did not improve selected validation performance or the predeclared late-tail variation summaries. This result does not reject every possible Polyak schedule, establish the cause of instability, or authorize a sweep/extension.
 
 | FQI update | C1 hard success | C1 failures | C1 J_val | C2 Polyak success | C2 failures | C2 J_val | C2 successful mean |
 |---:|---:|---:|---:|---:|---:|---:|---:|
@@ -660,8 +661,87 @@ git diff --check                                                   # PASS
 - **Rust**: selector 10 unit + 7 process tests; target builder 5; collector 6 = **28 passed**. **Python**: Polyak real-loop/target ownership + target-builder + forward + delta parity = **8 passed**. Ruff was unavailable (`No module named ruff`); no Ruff pass is claimed.
 - **Training provenance**: local run `local-artifacts/m49a-c2-polyak005/`; manifest binds run ID, config, eight D2 file hashes and eight online-checkpoint hashes. Pre/post D2 hashes equal the C1 baseline. `c2_report.json` has 80 iteration records; all eight checkpoint files match manifest SHA256. The report's `training_run_id` is `m49a-c2-polyak005-v1`.
 - **Selection command**: the frozen `m49a-select-checkpoint --checkpoint-dir ... --schedule 10,20,30,40,50,60,70,80 --out-json ...` invocation exited 0 in 609s; then `m49a-select-checkpoint --reports-json .../selection_v1.json --out-json .../selection_replayed.json` exited 0. `selection_v1.json` SHA256 `483cb28b2799cf7244d82c0b075014489a4ecd9b2c6ef6ad5e77c81c12892700`; replay is byte-identical. Selected iter40 online weights SHA256 `4a78c6228824f3fc87a72398fe22f590964684de02d4a34aec74b90d71bb43cd`. Manifest SHA256 `b7e64a75841ce0f3f76ea9bec573e95d62109195222cff71a47293034ee0da89`; C2 trainer report SHA256 `f2c9fc044d18e228917bcc010207f95c19d53282bcb962b2c58e24d6afcac36c`; training log SHA256 `3e0800f4348f20d6d46d7c203c4edfdd9af9762b8fe6f8d2fd528d40ad36a501`. Comparison summary `c1-c2-comparison.json` SHA256 `464b43f42af0d4bc7f98725e9101c56ba51ad3fb9bc69dcb034e8034a9fd5871`; consolidated evidence `evidence-summary.json`.
-- This is local validation-cohort evidence, **not independent CI, canonical evaluation, promotion, or owner acceptance**. No Canonical seed was loaded or rolled out; no new training trajectories were generated.
+- This remains local validation-cohort evidence, **not independent CI, canonical evaluation, or promotion**. Owner accepted it specifically as valid negative evidence, not as candidate adoption. No Canonical seed was loaded or rolled out; no new training trajectories were generated.
 
 ### Next authorized gate
 
-Stop for owner review of this bounded negative result. C1a remains ACCEPTED/CLOSED; C2 experiment is complete locally, but no owner acceptance/rejection is inferred. Double-Q, Round3, C2b/longer training, tau sweeps, and M50 remain **NOT AUTHORIZED**. Canonical 64 remains **HOLD / UNTOUCHED**.
+C2 is ACCEPTED / CLOSED as valid negative evidence; the negative result is specific to tau=0.05 once per 8-epoch block. C1 hard-target iter50 remains reference. The next and only authorized experiment is C3 in §18. Double-Q, Round3, C2b, all sweeps, and M50 remain NOT AUTHORIZED. Canonical 64 remains HOLD / UNTOUCHED.
+
+## 18. C3 Hard-Target Refresh Granularity Control
+
+```ini
+ROUND = M49A-II C3
+STATUS = AUTHORIZED / IN PROGRESS
+BASE_COMMIT = d5ce0d635e4be017e8768912cc4f1c53ace95358
+FINAL_COMMIT = <fill only after it exists>
+OWNER_DATE = 2026-09-23
+SCOPE = hard-target refresh every 4 of 8 epochs, preserving the 80×8 optimizer budget and fixed validation selector
+```
+
+### Problem and evidence
+
+- Owner's review accepted C2 `tau=0.05` as valid negative evidence and rejected that configuration for adoption. C1 hard-target iter50 (59/64) remains the M49A-II reference candidate. C2's selected checkpoint was 26/64; its 60/80 checkpoints had 0/64. Full same-cohort results remain in §17.
+- C2 changes target response timescale only once per complete 8-epoch block; that exact arm did not help. This does **not** prove all Polyak methods fail or prove that target lag caused the outcome.
+- C3 tests the distinct stale-label-fitting hypothesis: in C1, does online fitting for all 8 epochs against one frozen Bellman target set contribute to the observed non-monotonic curve? The authorized intervention shortens that hard-target interval to 4 epochs while preserving total optimization and comparison blocks.
+
+### Initial design
+
+Keep the same 80 comparison blocks, each containing exactly 8 optimizer epochs:
+
+```text
+C1 block: compute train/val Bellman labels → train 8 epochs → hard-copy target ← online
+C3 block: compute labels → train 4 epochs → hard-copy target ← online
+          recompute labels → train 4 epochs → hard-copy target ← online
+```
+
+One `train_fqi_streaming()` invocation owns model initialization, one AdamW optimizer, and the complete minibatch RNG stream. It must not restart optimizer state or reseed between the two 4-epoch segments. C3 performs 160 target hard refreshes across 80 blocks (excluding initial target initialization), versus C1's 80; total optimizer epochs and minibatch order remain 640 epochs / the same 640 `torch.randperm` draws. The D2 Rust target builder runs twice as often per block, so wall-clock/target-computation cost is expected to increase; only optimizer budget is matched.
+
+### Scope and non-goals
+
+**In scope**: add a fixed C3 entrypoint and a hard-target refresh interval control to the existing trainer; verify four-epoch boundary timing, exact permutation-stream parity against the default C1 interval in a deterministic real-loop test, unchanged optimizer persistence, and online checkpoint export. Run one CPU experiment, then evaluate the same 8 checkpoints.
+
+**Not in scope / not authorized**:
+- Any change to data, architecture, Huber loss, AdamW, learning rate, weight decay, batch size, clipping, Softplus, failure penalty, seed, device, total epochs, or checkpoint schedule.
+- 2-epoch/1-epoch/per-batch alternatives, refresh-interval sweeps, LR tuning, another Polyak arm, longer training, Double-Q, Round3/data aggregation, M50, or Canonical 64.
+- Validation-driven training, live early stopping, checkpoint densification, or feeding validation failures into training.
+
+### Contracts and invariants
+
+- Fixed D2 identity: all 8 SHA256 values from the accepted C1/C2 manifest; 36,674 training rows and 2,402 offline validation rows. Verify before and after training.
+- CPU; seed `49000001`; online network architecture `428→256→LayerNorm/ReLU→128→ReLU→1→Softplus`; Huber; AdamW `lr=1e-3`, `weight_decay=1e-4`; batch 256; gradient clip 1.0.
+- Exactly 80 comparison blocks × 8 epochs = 640 epochs. With 36,674 rows, each epoch consumes 144 batches (including the final partial batch), for 92,160 optimizer steps. Keep one optimizer and one RNG initialization for the complete run.
+- C3 hard-copies target from online after epochs 4 and 8 of every block: 160 refreshes total (not counting the initial copy). Recompute both train and validation Bellman labels before each 4-epoch segment. Do not change target labels within a segment.
+- Keep checkpoint schedule `[10,20,30,40,50,60,70,80]` in comparison-block units. Serialize and evaluate **online net** only; target net is a Bellman-label source. Selection uses the existing manifest-bound `m49a_validation_select_v1` without changes.
+- Run exactly once at `local-artifacts/m49a-c3-hard-refresh4/`. Bind run ID, config, the eight D2 hashes, and all eight online checkpoint hashes in `training_manifest.json`; capture the foreground process exit code. Keep all generated artifacts and full logs local-only.
+
+### Frozen comparison and evidence gates
+
+These are descriptive comparisons, not a newly invented pass threshold:
+
+1. Implementation contract: targeted tests prove two target refreshes per 8-epoch block, refreshed target labels between segments, 80-block checkpoint cadence, online checkpoint object, persistent optimizer, and the exact C1/C3 minibatch permutation stream under a shared seed.
+2. Run provenance: 80 completed blocks / 640 epochs, captured process exit status, unchanged D2 hashes, and complete manifest/checkpoint hash binding.
+3. Evaluation: only after training, measure exactly `[10,20,30,40,50,60,70,80]` with the frozen evaluator/selector; report-replay must be byte-identical.
+4. Compare all eight C3 validation success/J_val points with C1 and C2. Report selected iteration, success/failures/J_val, the 30–80 success range and mean absolute adjacent change, and `success80−success50` / `J80−J50`. For reference, C1 has tail success range 16, mean absolute adjacent change 4.6, `success80−success50 = −16`, `J80−J50 = +20.6875`; C2 values are in §17. The endpoint alone is not enough to call a low-performing curve stable.
+5. This experiment's result does not automatically change the C1 reference or authorize another training arm. Record the evidence and stop for owner review.
+
+### Implementation plan
+
+1. Implement optional `hard_target_refresh_epochs` with default equal to `epochs_per_fqi`, preserving C1/C2 call behavior; validate that the fixed interval is positive and divides the block. Restrict non-default interval use to the hard-target mode.
+2. Add a frozen `m49a_train_c3_refresh4.py` runner with literal constants, exact D2 hashes, empty-directory refusal, before/after integrity checks, and run-manifest binding.
+3. Add focused Python tests for refresh timing/label recomputation, RNG-stream identity vs 8-epoch hard mode, optimizer continuity and online checkpoint serialization; run existing C2 Polyak/parity/target-builder tests unchanged.
+4. Run scoped formatting, Python/Rust regressions, release build, input/device/config preflight and diff checks. Commit the frozen implementation before starting the sole training run.
+5. Run once on CPU; capture process exit status. After completion, use the existing release selector on the frozen 8-point schedule and replay its report.
+6. Record actual results/hashes, reconcile the C2 owner ruling and C3 status, update the ignored handoff, commit/push tracked docs, verify remote `main`, and stop.
+
+### Iteration log — 2026-09-23 (authorization)
+
+- Owner explicitly authorized C3 after reviewing C2 and ACCEPTED/CLOSED C2 as valid negative evidence. C1 hard-target iter50 remains the reference; do not adopt C2 tau=0.05.
+- Baseline verified: clean `main` at `d5ce0d635e4be017e8768912cc4f1c53ace95358`, equal to `origin/main`; C1 selection report identifies iter50 / 59 successes. C1 model tensors are CPU. All eight live D2 input files match the hashes in the C2 frozen manifest; dimensions are 36,674 train / 2,402 validation rows. Detailed C3 implementation/run outcomes append below without rewriting this authorization record.
+- **Implementation**: shared trainer now accepts `hard_target_refresh_epochs`; omitted/default retains one hard sync per whole FQI block and C2 Polyak remains once per block. C3 runner hardcodes interval 4, 80×8, CPU, seed/data/checkpoints, empty-output refusal and run-manifest binding. One AdamW optimizer / one seed initialization remain outside block/segment loops.
+- **Iteration correction**: the first C3 unit-test pass exposed an incorrect test expectation (it assumed the target immediately before block 2 equaled the target before block 1's second segment). The implementation correctly copies online after both segment ends; the test was corrected to assert against the captured epoch-4/epoch-8 copies. No training was run. Focused C3+C2 tests then passed 8/8; the complete Python set passed 11/11.
+- **Pre-run gates**: Python (refresh4, Polyak, streaming-builder, forward, delta) 11 passed; Rust selector unit 10, selector CLI 7, target-builder 5, collector 6 = 28 passed; release build, scoped rustfmt, and `git diff --check` all exit 0. Exact command logs and hashes are in ignored `local-artifacts/m49a-c3-preflight/summary.json`.
+- Runner D2 constants equal C2's eight frozen hashes; all live files match; C3 run directory was empty. Frozen schedule/budget constants checked: 80 blocks × 8 = 640 epochs, 92,160 optimizer steps. No C3 training or validation rollout has started at this point.
+
+### Next authorized gate
+
+Pre-run implementation and regression gates are complete. Commit the frozen C3 code/contract, run the single authorized interval-4 training job while capturing its foreground exit status, then evaluate the fixed eight checkpoints and return for owner review. C1 remains reference pending a later owner decision. Double-Q, Round3, all sweeps/other intervals, longer training, M50, and Canonical 64 remain NOT AUTHORIZED / HOLD.

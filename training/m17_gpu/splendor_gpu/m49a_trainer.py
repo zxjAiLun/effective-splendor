@@ -4,11 +4,13 @@ Consumes:
 - `current_x.f32`: [N, 428] float32 array (loaded via numpy memmap or torch)
 - `compact_transitions.jsonl`: NDJSON of M49ACompactTransitionV1
 
-Each FQI iteration:
+Each target-refresh segment:
 1. Exports current target_net weights to a temporary weights.json;
-2. Calls Rust CLI `splendor m49a-build-targets` to compute targets.f32 on-demand;
-3. Reads targets.f32 into torch.Tensor (size N * 4 bytes);
-4. Fits Q-network on (current_x, targets) with Huber loss.
+2. Calls Rust CLI `splendor m49a-build-targets` to compute train/val targets on-demand;
+3. Fits the online Q-network for the configured segment epochs with Huber loss;
+4. Hard mode copies online -> target at every segment boundary; Polyak remains
+   once per full FQI block. The default segment is the full block (C1/C2); C3
+   explicitly uses two 4-epoch segments inside each 8-epoch block.
 """
 
 import json
@@ -53,6 +55,13 @@ def export_net_weights_dict(net: EfficiencyQNet) -> dict[str, Any]:
         "fc3_w": state["fc3.weight"].cpu().numpy().tolist(),
         "fc3_b": state["fc3.bias"].cpu().numpy().tolist(),
     }
+
+
+def hard_update_target_net(
+    target_net: EfficiencyQNet, online_net: EfficiencyQNet
+) -> None:
+    """Hard-copy the online weights into the Bellman-label target network."""
+    target_net.load_state_dict(online_net.state_dict())
 
 
 def polyak_update_target_net(
@@ -167,12 +176,32 @@ def train_fqi_streaming(
     checkpoint_every: int = 0,
     target_update: str = "hard",
     polyak_tau: float = 0.05,
+    hard_target_refresh_epochs: int | None = None,
 ) -> tuple[EfficiencyQNet, dict[str, Any]]:
     """Runs Fitted Q-Iteration using memory-mapped current_x and on-demand streaming Rust targets."""
     if target_update not in ("hard", "polyak"):
         raise ValueError(f"unknown target_update {target_update!r}")
     if target_update == "polyak" and not (0.0 < polyak_tau <= 1.0):
         raise ValueError(f"polyak_tau must be in (0, 1], got {polyak_tau}")
+    if epochs_per_fqi <= 0:
+        raise ValueError(f"epochs_per_fqi must be positive, got {epochs_per_fqi}")
+    if target_update == "hard":
+        refresh_interval = (
+            epochs_per_fqi
+            if hard_target_refresh_epochs is None
+            else hard_target_refresh_epochs
+        )
+        if refresh_interval <= 0 or epochs_per_fqi % refresh_interval != 0:
+            raise ValueError(
+                "hard_target_refresh_epochs must be a positive divisor of "
+                f"epochs_per_fqi ({epochs_per_fqi}), got {refresh_interval}"
+            )
+    else:
+        if hard_target_refresh_epochs is not None:
+            raise ValueError(
+                "hard_target_refresh_epochs is only supported with target_update='hard'"
+            )
+        refresh_interval = epochs_per_fqi
     torch.manual_seed(seed)
     np.random.seed(seed % (2**32))
 
@@ -187,7 +216,7 @@ def train_fqi_streaming(
 
     net = EfficiencyQNet(in_features=in_features).to(device)
     target_net = EfficiencyQNet(in_features=in_features).to(device)
-    target_net.load_state_dict(net.state_dict())
+    hard_update_target_net(target_net, net)
 
     optimizer = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=weight_decay)
 
@@ -197,43 +226,53 @@ def train_fqi_streaming(
         tmp_dir = Path(tmpdir)
 
         for fqi_iter in range(fqi_iterations):
-            t0 = time.time()
-            # 1. Update targets using target_net via streaming Rust builder
-            y_train = compute_targets_streaming(train_transitions_path, target_net, tmp_dir).to(device)
-            y_val = compute_targets_streaming(val_transitions_path, target_net, tmp_dir).to(device)
-            t_target = time.time() - t0
+            t_target = 0.0
+            t_train = 0.0
 
-            # 2. Fit network to y_train
-            net.train()
-            t_train_start = time.time()
-            for ep in range(epochs_per_fqi):
-                perm = torch.randperm(n_train, device=device)
-                for i in range(0, n_train, batch_size):
-                    idx = perm[i : i + batch_size]
-                    bx = x_train[idx]
-                    by = y_train[idx]
+            # A C1/C2 block has one segment of 8 epochs. C3 uses two 4-epoch
+            # segments inside the same block and refreshes hard targets between
+            # them. The optimizer and torch RNG are created/seeded only once
+            # above, so changing target cadence does not reset either stream.
+            for segment_start in range(0, epochs_per_fqi, refresh_interval):
+                segment_end = min(segment_start + refresh_interval, epochs_per_fqi)
+                target_start = time.time()
+                y_train = compute_targets_streaming(
+                    train_transitions_path, target_net, tmp_dir
+                ).to(device)
+                y_val = compute_targets_streaming(
+                    val_transitions_path, target_net, tmp_dir
+                ).to(device)
+                t_target += time.time() - target_start
 
-                    pred = net(bx)
-                    loss = F.smooth_l1_loss(pred, by)
+                net.train()
+                train_start = time.time()
+                for _ep in range(segment_start, segment_end):
+                    perm = torch.randperm(n_train, device=device)
+                    for i in range(0, n_train, batch_size):
+                        idx = perm[i : i + batch_size]
+                        bx = x_train[idx]
+                        by = y_train[idx]
 
-                    optimizer.zero_grad()
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
-                    optimizer.step()
+                        pred = net(bx)
+                        loss = F.smooth_l1_loss(pred, by)
 
-            t_train = time.time() - t_train_start
+                        optimizer.zero_grad()
+                        loss.backward()
+                        torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+                        optimizer.step()
+                t_train += time.time() - train_start
 
-            # 3. Evaluate
+                if target_update == "hard":
+                    hard_update_target_net(target_net, net)
+                else:
+                    # Polyak remains once per complete FQI block. Validation
+                    # rejects a refresh interval other than the whole block.
+                    polyak_update_target_net(target_net, net, polyak_tau)
+
+            # y_train/y_val are the labels used by the final segment of this
+            # block, matching the pre-existing once-per-block diagnostics.
             train_m = evaluate_metrics(net, x_train, y_train, device)
             val_m = evaluate_metrics(net, x_val, y_val, device)
-
-            # 4. Update target network. `hard` = C1 baseline (full replacement
-            # after each FQI iteration). `polyak` = C2 control (single frozen
-            # tau, applied once per completed iteration).
-            if target_update == "hard":
-                target_net.load_state_dict(net.state_dict())
-            else:
-                polyak_update_target_net(target_net, net, polyak_tau)
 
             rec = {
                 "iteration": fqi_iter + 1,
@@ -253,33 +292,33 @@ def train_fqi_streaming(
                   f"val_huber={rec['val_huber']:.4f}, val_mae={rec['val_mae']:.2f}, "
                   f"Q_med={rec['val_q_median']:.1f}, Q_range=[{rec['val_q_min']:.1f}, {rec['val_q_max']:.1f}]")
 
-            # Optional periodic checkpoint export for convergence-curve probing.
+            # Checkpoints remain comparison-block checkpoints of the ONLINE
+            # net, never the Bellman-label target net.
             if checkpoint_dir is not None and checkpoint_every > 0:
                 it = fqi_iter + 1
                 if it % checkpoint_every == 0 or it == fqi_iterations:
                     checkpoint_dir.mkdir(parents=True, exist_ok=True)
-                    # CHECKPOINT CONTRACT: always export the ONLINE net (the
-                    # policy candidate), under both hard and Polyak updates.
-                    # The target net must never leak into selection/evaluation,
-                    # otherwise C1 (C1 online) vs C2 (C2 EMA target) would be
-                    # comparing two different objects.
                     ck = export_net_weights_dict(net)
                     ck_path = checkpoint_dir / f"weights_iter{it:03d}.json"
                     with open(ck_path, "w", encoding="utf-8") as f:
                         json.dump(ck, f)
 
+    config = {
+        "target_update": target_update,
+        "polyak_tau": polyak_tau if target_update == "polyak" else None,
+        "epochs_per_fqi": epochs_per_fqi,
+        "fqi_iterations": fqi_iterations,
+        "batch_size": batch_size,
+        "lr": lr,
+        "weight_decay": weight_decay,
+        "seed": seed,
+        "device": str(device),
+    }
+    if hard_target_refresh_epochs is not None:
+        config["hard_target_refresh_epochs"] = hard_target_refresh_epochs
+
     return net, {
         "history": history,
         "final_val": val_m,
-        "config": {
-            "target_update": target_update,
-            "polyak_tau": polyak_tau if target_update == "polyak" else None,
-            "epochs_per_fqi": epochs_per_fqi,
-            "fqi_iterations": fqi_iterations,
-            "batch_size": batch_size,
-            "lr": lr,
-            "weight_decay": weight_decay,
-            "seed": seed,
-            "device": str(device),
-        },
+        "config": config,
     }
