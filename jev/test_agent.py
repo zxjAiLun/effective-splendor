@@ -5,10 +5,11 @@ import json
 import unittest
 import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import agent
 import build_catalog
+import transport
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -48,8 +49,7 @@ class AgentTests(unittest.TestCase):
         self.assertIn("probability, points", stage2["questions"]["move"]["instructions"])
 
     def test_two_stage_category_then_exact_legal_action(self):
-        # The existing fixture's 30 token choices exercise stage two; add a
-        # distinct certified-family value to exercise stage-one routing.
+        # Synthetic routing-only buy, not claimed to be affordable in this opening fixture.
         legal = self.legal + [{"type": "buy_market", "tier": "One", "slot": 0}]
         answers = iter([
             {"model": "jev-1.13.0", "answers": {"family": {"type": "choice", "choice": "take_tokens"}},
@@ -102,8 +102,8 @@ class AgentTests(unittest.TestCase):
         ])
         # Fixture has two action families after no-op filtering, so both stages run.
         with contextlib.redirect_stdout(output):
-            metrics = agent.run([json.dumps(x) for x in [*self.fixture, end]], lambda _: next(responses),
-                                lambda _obs, actions: zero_terms(actions))
+            metrics = agent.run([json.dumps(x) for x in [*self.fixture, end]], lambda _, **kw: next(responses),
+                                lambda _obs, actions, **kw: zero_terms(actions))
         emitted = [json.loads(x) for x in output.getvalue().splitlines()]
         self.assertEqual([x["type"] for x in emitted], ["hello", "action"])
         self.assertEqual(emitted[1]["action"], self.legal[3])
@@ -122,23 +122,25 @@ class AgentTests(unittest.TestCase):
         end = {"type": "game_end", "protocol_version": "0.5", "game_id": self.fixture[0]["game_id"],
                "recipient_player_id": 0, "result": {}}
         calls = []
-        def call(payload):
+        def call(payload, **kwargs):
             calls.append(payload)
             return {"answers": {"family": {"type": "choice", "choice": "take_tokens"}}}
         with patch.dict("os.environ", {"JEV_MAX_API_CALLS": "1"}), contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaisesRegex(agent.AgentFault, "call budget"):
                 agent.run([json.dumps(x) for x in [*self.fixture, end]], call,
-                          lambda _obs, actions: zero_terms(actions))
+                          lambda _obs, actions, **kw: zero_terms(actions))
         self.assertEqual(len(calls), 1, "stage 2 must not exceed the one-call budget")
 
     def test_http_error_does_not_log_remote_body_or_key(self):
+        opener = Mock()
+        opener.open.side_effect = urllib.error.HTTPError(agent.API_URL, 429, "SENSITIVE REMOTE BODY", {}, io.BytesIO())
         with patch.dict("os.environ", {"TYPESAFE_API_KEY": "fake-test-key"}), patch.object(
-            agent.urllib.request, "urlopen", side_effect=urllib.error.HTTPError(
-                agent.API_URL, 429, "SENSITIVE REMOTE BODY", {}, io.BytesIO(b"SENSITIVE REMOTE BODY"))
+            transport.urllib.request, "build_opener", return_value=opener
         ):
             with self.assertRaises(agent.AgentFault) as caught:
-                agent.evaluate({"state": "test"})
-            self.assertEqual(str(caught.exception), "TypeSafe HTTP 429")
+                transport.https_request({"state": "test"}, 1.0)
+            self.assertEqual(str(caught.exception), "http_error")
+            self.assertEqual(caught.exception.http_status, 429)
 
     def test_credential_not_forwarded_to_request_state(self):
         with patch.dict("os.environ", {"TYPESAFE_API_KEY": "fake-test-key"}):

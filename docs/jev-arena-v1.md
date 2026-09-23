@@ -1,6 +1,6 @@
 # Jev Arena Agent V1
 
-- Status: IMPLEMENTED / smoke VERIFIED; parent code review completed at `de709ae` (2026-09-23), fixes recommended below; NOT ACCEPTED or promoted.
+- Status: v0.2.0 hardening IMPLEMENTED / VERIFIED offline (2026-09-23, baseline `b7864e3`); parent review and earlier live smokes retained below. NOT competitively ACCEPTED or promoted. Latest closeout: **Hardening implementation and offline verification**.
 - Baseline: `79c2ca0ba2dc8a36bc3d3b33d31f653d00846358` on `main` (2026-09-23); pre-existing owner `.gitignore` change protects `TYPESAFE_API_KEY` and is not owned by this round.
 - Owner/date: owner request, 2026-09-23.
 
@@ -36,7 +36,7 @@ Scope includes the separate `jev/` agent/runner, a narrow read-only Rust CLI ada
 - First two-stage live run succeeded: Jev seat 0 won 16–6 in 56 plies; replay verified. This is encouraging one-game evidence, not a strength estimate.
 - Initial live match exposed repeated zero-net token takes: Jev seat 0 chose 23 take moves, some exact exchange no-ops, bought 7 cards versus heuristic's 20, and lost 2–16. Instead of calling this a model-only failure, we removed exact no-op takes from the Choice offer when alternatives exist (still allow forced singleton), instrumented actual response model version, added tests and reran the **same seed**. This modifies offered candidates and must be recorded as an iteration, not a comparable frozen ablation; remote `jev-latest` responses may also vary.
 
-## Final implementation
+## Final implementation (historical two-stage version; hardening closeout below)
 
 - `jev/agent.py`: no third-party Python dependencies; protocol `hello`/`game_start`/`observation`/`request_action`/`pong`/`game_end`/`game_truncated`; request/hash/seat guards; public/own-private allowlist. Two dependent Choice stages: route among buy/take/reserve/noble/pass families, then select one certified action in the chosen family; deterministic no-op filtering and 80-action cap remain. Stage 2 receives standard Splendor action terms and exact existing Rust `HeuristicTermScores`. One-family and one-action cases skip unnecessary calls. HTTPS timeout 18 s, arena deadline 45 s, call cap 100 by default. No heuristic fallback.
 - `crates/splendor-cli/src/agent_terms_command.rs` + `agent-heuristic-terms` CLI: narrow NDJSON sidecar accepts only `(Observation, legal_actions)` and returns the shared Rust heuristic decomposition aligned by index. Strict top-level schema, no seed/config/replay/referee input. The Python agent starts it once per decision; no Python score reimplementation or training-label interpretation.
@@ -63,15 +63,30 @@ Commands run from repo root (all exit **0**, unless noted):
 
 **Two-stage integration IMPLEMENTED / VERIFIED locally.** First game won 16–6; this is an encouraging single unrated sample, NOT evidence of strategic superiority. Earlier V1 same-seed sample was 4–15; candidate set, stages, and API calls changed, with no frozen model responses or repeated paired games. NOT PROMOTED; no rated games booked; M49A C3 and Canonical 64 remain untouched.
 
-## Known limitations
+## Known limitations (historical snapshot; interpretation corrected in parent review below)
 
 Jev is not trained for Splendor; typed output and Choice confidence do not imply strategic correctness. In final run, 28 decisions used 50 calls (28 family / 22 specific action) and 174,564 total usage tokens; six family routes needed no second-stage request. Two-stage latency/cost, model alias, and API response nondeterminism remain. The explicit legal move cap/filter means 573 exact actions were not offered in this sample; stage 1 did see family counts and one heuristic-leading example. No seat swap, multiple seeds, saved per-choice distributions, latency measurements, or calibrated analysis. Secret protection relies on local `.gitignore` owner change; verify ignore if checking out another revision.
 
-## Next authorized gate
+## Next authorized gate (historical smoke closeout; superseded by hardening authorization below)
 
 Stop after this requested same-seed smoke. If owner wants competitive assessment, separately design fixed-budget paired seat-swapped evaluation with cost/latency and candidate-coverage gates; do not repurpose M49A Canonical 64 or book Elo by default.
 
+## Authorized hardening slice — 2026-09-23 (baseline `b7864e3`)
+
+Owner approved the preceding review's proposed next slice (“修改吧”). Scope: correct game input/term semantics, preserve failed/partial call evidence, prohibit redirects, bound both stages/helper/retries by the server deadline, and repair helper/test boundaries. No heuristic-weight tuning, new decision stages, model training, paid matches, or league writes. Keep old experimental results as historical evidence, not validation of the new prompts.
+
+Plan and gates (fixed before implementation):
+1. Name public colors/reserves, distinguish immediate card VP from reserved-card future VP, and remove fixed family prior/total from stage-1 advice. Keep canonical heuristic calculations unchanged.
+2. Append-only flushed request/decision journal + atomic summary, retaining stage-1 usage on stage-2 failure and explicit abort/cancel status. Journal metadata/option mapping only, no keys/auth headers/error bodies. Separate no-op/cap/routing exclusions.
+3. Fixed HTTPS endpoint, no redirects; max two attempts per stage for transient service errors, every attempt charged to a fixed call budget. Monotonic per-decision deadline covers helper + stages + backoff, with safety margin. A separately killable stdlib HTTP worker enforces wall-clock timeout (socket timeout alone is insufficient); credentials stay in env/file, never argv/payload.
+4. Validate helper indices/viewer/catalog references and bound input before the unchanged heuristic function. Add focused semantic, lifecycle, transport, deadline/retry, partial-usage and real-sidecar/arena tests with fake network, no paid calls.
+5. Run targeted regressions/build/publication checks and record exact results and remaining limitations here. Broader model attribution/evaluation stays deferred pending a new owner gate.
+
+Implementation/results: **IMPLEMENTED / VERIFIED offline**; detailed closeout follows the preserved historical review below. No paid inference was run for this slice.
+
 ## Parent integration review — 2026-09-23
+
+Historical pre-fix review; findings below describe `de709ae`, not v0.2.0. The later authorization and hardening closeout supersede the old OPEN/next-step status, not the observed evidence.
 
 ### Scope and evidence
 
@@ -102,3 +117,56 @@ Offline reproducer: `python local-artifacts/jev/review-de709ae/review.py` (exit 
 ### Decision and next gate
 
 Review complete; findings are **OPEN recommendations**, not implementation authorizations or fixed claims. First repair error evidence/redirect handling and the misleading state/term semantics. Then freeze the integration and measure attribution: e.g. named game mechanics with/without heuristic advice under the same two-stage structure, plus the existing heuristic baseline. A bounded predetermined seed set with both seats and recorded cost/latency would test generality; a larger study is not authorized by this review. Do not add more strategic prompt tuning, increase paid volume, or call the 16–6 result proof of Jev strength before these distinctions are measurable. No external-model training or M49A gates are reopened.
+
+## Hardening implementation and offline verification — 2026-09-23
+
+### Scope, baseline and final implementation
+
+Owner authorized the fixed repair plan above against `main@b7864e3e533c180789611520e24629842a275b40`. This is a **parent implementation/self-check, not independent review**. Agent version is now **0.2.0**. No new TypeSafe inference request, paid match, training experiment, M49A/Canonical evaluation, league operation or heuristic-weight change occurred. Public TypeSafe documentation was consulted for the 429/529 backoff recommendation; that read is not inference. The historical win remains a valid result of the old version only.
+
+- **R1 (failure evidence):** new `jev/runtime.py` owns a flushed/fsynced JSONL lifecycle journal and atomic summary. Attempts, stage, latency, requested/returned models, payload hash, option mapping, selected ID, compatible reported probabilities/confidence and immediately received usage survive later failure. Invalid choices/errors cannot inject arbitrary remote strings into logs. Unknown usage is explicit, never assumed free. Normal failure/cancellation closes status; a hard kill may retain the last `running` snapshot plus journal.
+- **R2 (redirect boundary):** new `jev/transport.py` uses the fixed HTTPS URL, rejects *all* redirects, retains default certificate verification and bounds response bytes. Credentials remain env/file-only and are used only in the HTTPS Authorization header. HTTP bodies/reasons/headers and dependency exception text are not logged. A real urllib handler-chain test with a fake HTTPS response proves no second request is sent after a cross-origin HTTP redirect.
+- **R3/R4 (semantics/public context):** `known_effects` separates immediate purchase VP/bonus from future reserved-card VP and net token changes. Reserving explicitly gives zero immediate VP; purchase-triggered noble settlement is not guessed. `public_state` deep-projects named-color bonuses/costs/requirements/tokens, visible opponent reserves, own reserves, and concise verified base-game rules (including final round/ties/forced-pass termination). Stage 1 includes definitions and excludes both `category_base` and prior-inclusive total, including in its example. Stage 2 still supplies unchanged canonical weighted advice. This is a prompt behavior change, not merely a cosmetic rename.
+- **R5 (bounded runtime/identity):** one monotonic server-deadline budget covers helper, both stages and backoff; a safety margin reserves delivery time. The HTTP worker is a separately killable/reaped process (socket timeouts alone are insufficient). At most two attempts per stage for 429/502/503/504/529 or connection errors; every attempt consumes the shared call cap. No retry for auth/redirect/invalid-choice/TLS errors or ambiguous timeouts, including `URLError`-wrapped socket timeouts. The runner owns its process group/tree, records interruption separately, and writes a manifest binding source/catalog/helper/heuristic/binary/config hashes, settings and both commands. Version/model histories are retained, not only the last response string. Source manifest keys use portable `/` separators.
+- **R6 (helper/tests):** bound helper input to 2 MB and validate viewer/player/catalog references, slots, noble choices and small-count arithmetic before canonical scoring. This is structural validation, not a second game-legality implementation. The unknown-field Rust test now starts with a valid request. New tests cover real sidecar success/rejection, synthetic routing/caps explicitly labeled as such, real arena framing with fake inference, and error/cancel/timeout paths.
+
+### Material iterations and failed attempts
+
+1. Migrating transport/term-provider injection to accept the remaining `timeout=` caused three legacy tests to fail until their stubs/mock targets were migrated; six other legacy tests initially passed. The transport moved out of `agent.py`; no live service was used to debug this.
+2. A new stage-1 test initially rejected the substring `heuristic_total` even inside the deliberately allowed `...total_excluding_family_prior` key. Corrected the assertion to reject the exact full-total key; the gate still requires no `category_base` or prior-inclusive total anywhere in stage 1.
+3. A manifest test exposed Windows `\\` versus portable `/` source keys. Fixed implementation normalization, not the expected contract. The initial failed run is preserved in `local-artifacts/jev/hardening-b7864e3/python-initial-path-failure.log` and `checks-initial.json`.
+4. Final self-check identified wrapped socket/TLS errors that would otherwise be treated as retryable connections; classification and focused tests now distinguish them. Added a real Windows spawned-descendant timeout test, not just a mocked process-cleanup assertion.
+
+### Exact validation and evidence
+
+All commands below ran in the repository root and exited **0** on the final validated source:
+
+| Command | Evidence |
+|---|---|
+| `cargo build -p splendor-cli --release` | Built release binary used by Python integration gates. Existing unrelated warnings remain. |
+| `python -m unittest discover -s jev -p 'test_*.py' -v` | **30 passed, zero skipped on this Windows host**. Includes real helper, worker IPC/deadline, urllib redirect chain, runner manifest, and Windows descendant cleanup. |
+| `cargo test -p splendor-cli -p splendor-agent` | **360 passed, 3 existing explicit benchmarks ignored**, zero failures. Helper module's 3 unit tests pass. Ignored M05 strength, M06 fixed-search and M07 reproducibility benchmarks were not run. |
+| `python -m compileall -q jev` | PASS. |
+| `rustfmt --edition 2021 --check crates/splendor-cli/src/agent_terms_command.rs` | PASS. No whole-repository formatting cleanup; earlier unrelated fmt failure remains historical. |
+| `git diff --check` | PASS, repeated after documentation closeout. |
+
+Specific observed gates:
+- Stage 1 reports 100 input / 10 output tokens; stage 2 gets two fake 429s. Final summary is `failed`, attempts **3**, retained input **100**, unknown-usage attempts **2**, no action emitted.
+- An injected 529 retries once then completes; both returned model versions are retained. Auth/redirect/invalid-choice and timeout/TLS paths do not retry. A one-attempt cap is not exceeded by retry logic.
+- Shared-deadline fixture charges helper and both stages, retains usage from a late reply, but emits no late action. Backoff longer than remaining time starts no further attempt. HTTP worker wall timeout kills/reaps the real local child.
+- Real built helper rejects a valid-observation request with slot **255**, viewer **255**, overflowing bonus counts, unknown top-level seed or oversized input with **exit 1**, no panic or score output.
+- Real `splendor run-rollout --max-plies 4` under a test-owned fake-decision agent completes a **truncated** 4-ply protocol run: two Jev decisions, four **mock** calls, no winner, verified prefix. This is boundary verification, not a Jev gameplay result.
+
+Local-only evidence: `local-artifacts/jev/hardening-b7864e3/validation.json`, SHA256 **`61309d5b9cc21c1936a9d1653cc84f746b97891df8eae86bcb2634fdc2ab2501`**, binds nine source/catalog/test hashes, release binary hash, all final commands/exits and raw log hashes. Companion `checks.json`, `python.log`, `rust.log`, `release.log`, `compile.log`, `rustfmt.log` and `diff.log` retain raw outputs. The historical winning report/replay/metrics were rehashed and are unchanged from their hashes above. Test-owned transient arena files are not retained as a new competitive artifact.
+
+### Result, limitations and next authorized gate
+
+**Repair slice IMPLEMENTED / VERIFIED offline.** R1–R6's scoped implementation gaps above are addressed with named tests; no independent review, live post-fix service compatibility test or competitive acceptance is claimed. The agent remains **NOT PROMOTED**.
+
+- The alias `jev-latest` still floats; hashes/returned versions provide provenance, not remote-model determinism. Heuristic advice, two-stage exclusion and the 80-option cap remain; no evidence yet isolates Jev's independent contribution.
+- The 100-attempt default is not a hard token/dollar budget. Missing usage and server work after local cancellation may still be billable. Reported probability/confidence is neither calibrated nor a game-strength estimate.
+- The arena remains the ultimate deadline enforcer. OS scheduling/fsync/process creation can overrun local timing assumptions; after hard termination the journal may end with an unmatched request start and summary `running`. Windows descendant cleanup was executed; POSIX process-group cleanup is implemented but not tested on this host.
+- Exact game effects are intentionally partial: no Python replacement for noble settlement, full purchase payment simulation or full legality verification. The referee remains authoritative.
+- Secret/artifact publication policy unchanged: root handoff, key and generated logs stay ignored; owner `.gitignore` change stays unstaged. No push by default.
+
+Stop after local code/doc commit. Await owner review or a separately budgeted small service smoke; before any strength claim, freeze the integration and predeclare seeds/both seats and facts-only versus facts+heuristic-advice comparison. No new tuning, training or paid experiment is implicitly authorized by this closeout.
