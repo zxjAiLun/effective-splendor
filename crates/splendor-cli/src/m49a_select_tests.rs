@@ -22,6 +22,7 @@ fn reports() -> EvaluationReports {
         checkpoint_schedule: SCHEDULE.to_vec(),
         validation_seeds: validation_seeds_v1(),
         max_main_turns: 100,
+        training_run_id: None,
         evaluated: rows(),
     }
 }
@@ -152,6 +153,142 @@ fn incompatible_report_contract_or_cohort_is_rejected() {
     let mut r = reports();
     r.checkpoint_schedule.push(51);
     assert!(make_report(r).is_err());
+    let mut r = reports();
+    r.training_run_id = Some("  ".into());
+    assert!(make_report(r).is_err());
+}
+
+#[test]
+fn training_run_id_round_trips_and_is_optional() {
+    // Bound report: the run id survives selection reporting and replay.
+    let mut r = reports();
+    r.training_run_id = Some("m49a-c2-polyak005-v1".into());
+    let report = make_report(r).unwrap();
+    let json = serde_json::to_string(&report).unwrap();
+    assert!(json.contains("m49a-c2-polyak005-v1"));
+    let replayed: EvaluationReports = serde_json::from_str(&json).unwrap();
+    assert_eq!(replay_polyak_id(&replayed), "m49a-c2-polyak005-v1");
+    // Legacy unbound report (field omitted entirely) still parses.
+    let legacy = serde_json::json!({
+        "evaluation_contract": EVALUATION_CONTRACT,
+        "checkpoint_schedule": SCHEDULE,
+        "validation_seeds": validation_seeds_v1(),
+        "max_main_turns": 100,
+        "evaluated": rows(),
+    });
+    let parsed: EvaluationReports = serde_json::from_value(legacy).unwrap();
+    assert_eq!(parsed.training_run_id, None);
+    let out = serde_json::to_string(&make_report(parsed).unwrap()).unwrap();
+    assert!(!out.contains("training_run_id"));
+}
+
+fn replay_polyak_id(r: &EvaluationReports) -> String {
+    r.training_run_id.clone().unwrap()
+}
+
+#[test]
+fn training_manifest_binding() {
+    let dir = std::env::temp_dir().join(format!("m49a-manifest-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let shas: BTreeMap<String, String> = SCHEDULE
+        .iter()
+        .map(|it| (format!("weights_iter{it:03}.json"), "a".repeat(64)))
+        .collect();
+
+    // Missing manifest -> legacy unbound, allowed.
+    assert_eq!(bind_training_manifest(&dir, &shas).unwrap(), None);
+
+    let input_shas: BTreeMap<String, String> = [
+        "train/current_x.f32",
+        "train/step_costs.f32",
+        "train/outcomes.u8",
+        "train/compact_transitions.jsonl",
+        "val/current_x.f32",
+        "val/step_costs.f32",
+        "val/outcomes.u8",
+        "val/compact_transitions.jsonl",
+    ]
+    .into_iter()
+    .map(|name| (name.to_string(), "c".repeat(64)))
+    .collect();
+
+    // Matching manifest -> run id returned.
+    let manifest = serde_json::json!({
+        "run_id": "c2",
+        "training_contract": {"target_update": "polyak", "polyak_tau": 0.05},
+        "d2_input_sha256": input_shas,
+        "checkpoints": shas
+    });
+    fs::write(
+        dir.join("training_manifest.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        bind_training_manifest(&dir, &shas).unwrap().as_deref(),
+        Some("c2")
+    );
+
+    // Missing one D2 identity component -> fatal.
+    let mut incomplete: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join("training_manifest.json")).unwrap()).unwrap();
+    incomplete["d2_input_sha256"]
+        .as_object_mut()
+        .unwrap()
+        .remove("val/outcomes.u8");
+    fs::write(
+        dir.join("training_manifest.json"),
+        serde_json::to_vec(&incomplete).unwrap(),
+    )
+    .unwrap();
+    assert!(bind_training_manifest(&dir, &shas).is_err());
+
+    fs::write(
+        dir.join("training_manifest.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+
+    // Drifted checkpoint -> fatal, no selection can mis-bind.
+    let mut drifted = shas.clone();
+    *drifted.get_mut("weights_iter050.json").unwrap() = "b".repeat(64);
+    assert!(bind_training_manifest(&dir, &drifted).is_err());
+    let mut extra = shas.clone();
+    extra.insert("unexpected.json".into(), "a".repeat(64));
+    assert!(bind_training_manifest(&dir, &extra).is_err());
+
+    // Manifest missing a checkpoint -> fatal.
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join("training_manifest.json")).unwrap()).unwrap();
+    manifest["checkpoints"]
+        .as_object_mut()
+        .unwrap()
+        .remove("weights_iter080.json");
+    fs::write(
+        dir.join("training_manifest.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    assert!(bind_training_manifest(&dir, &shas).is_err());
+
+    // Malformed manifest JSON / empty run_id -> fatal.
+    fs::write(dir.join("training_manifest.json"), b"not json").unwrap();
+    assert!(bind_training_manifest(&dir, &shas).is_err());
+    fs::write(
+        dir.join("training_manifest.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "run_id":"",
+            "training_contract":{"target_update":"polyak"},
+            "d2_input_sha256":input_shas,
+            "checkpoints":shas
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(bind_training_manifest(&dir, &shas).is_err());
+
+    let _ = fs::remove_dir_all(&dir);
 }
 
 #[test]

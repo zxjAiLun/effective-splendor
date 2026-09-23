@@ -1,6 +1,6 @@
 # M49A Efficiency Q / Distance-to-15 Feasibility & Target Design
 
-- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II Repair 1/1a ACCEPTED @ `06babda`; C1 ACCEPTED / CLOSED @ `efa42987979d13c14fd32555c457a31de7f20ca7`; C1a selection IMPLEMENTED / VERIFIED locally (§16), pending owner review. Canonical 64 seeds remain on HOLD. Earlier sections retain the design/iteration history; §16 is the current scope and next-gate authority.
+- **Status**: M49A-I ACCEPTED / CLOSED @ `e67df05424eee9869342e91b93088d334d423939`; M49A-II Repair 1/1a ACCEPTED @ `06babda`; C1 ACCEPTED / CLOSED @ `efa42987979d13c14fd32555c457a31de7f20ca7`; C1a ACCEPTED / CLOSED @ `fd9dfba465effa3223d0fd8d15375c1342abb11c`; C2 Polyak stability control AUTHORIZED / IN PROGRESS (§17). Canonical 64 seeds remain on HOLD. Earlier sections retain the design/iteration history; §17 is the current scope and next-gate authority.
 - **Baseline**: `01b98df15cf467167ca6ee5e4d31a9d74ac091b9` (M49A design accepted/closed)
 - **Owner-date**: 2026-09-20; owner accepted M49A Design Repair 2 (`01b98df`), authorized M49A implementation in two slices: M49A-I Data Foundation (Rust parity delta encoder, transition schema, seed partition assertions, coverage report) followed by M49A-II Efficiency-Q Training.
 - **Scope**:
@@ -494,7 +494,7 @@ Conclusion: these runs do not isolate optimization effects from data aggregation
 
 ### Authorization, scope, and frozen gates
 
-- **Status**: IMPLEMENTED / VERIFIED locally; pending owner review. Baseline `efa42987979d13c14fd32555c457a31de7f20ca7`. Owner accepted/closed C1 at that baseline and authorized C1a only.
+- **Status**: ACCEPTED / CLOSED by owner @ `fd9dfba465effa3223d0fd8d15375c1342abb11c` (P0=0/P1=0/P2=1 nonblocking training-identity follow-up, addressed in C2 scope). Implementation baseline `efa42987979d13c14fd32555c457a31de7f20ca7`.
 - Contract: `m49a_validation_select_v1`. Fixed schedule **[10,20,30,40,50,60,70,80]**; no denser sweep, no online rollout early stopping, no retraining. Selection happens after the fixed training trajectory ends.
 - Frozen lexicographic order: **max success_count → min J_val → min successful mean turns → earliest iteration**. This is a model-selection rule, not a convergence-stability fix. The rule is frozen by this owner decision after seeing C1; it is not retroactively described as preregistered before C1 training.
 - Expected application to retained C1 measurements: iter50 (59/64) selected over iter30 (58/64), despite iter30's lower J_val. Both points remain in evidence.
@@ -567,7 +567,7 @@ target/release/splendor.exe m49a-select-checkpoint \
 
 ### Result, hard-target baseline, limitations, and next gate
 
-**C1a IMPLEMENTED / VERIFIED locally; owner review pending.** The selection contract is frozen by the owner's decision, and its application selects iter50. The model remains imperfect (5 validation failures); no convergence/stability/generalization claim is licensed by selecting it.
+**C1a ACCEPTED / CLOSED @ `fd9dfba` by owner; local checks are not independent CI.** The selection contract is frozen by the owner's decision, and its application selects iter50. The model remains imperfect (5 validation failures); no convergence/stability/generalization claim is licensed by selecting it.
 
 Reusable hard-target baseline:
 
@@ -580,4 +580,37 @@ checkpoint schedule=[10,20,30,40,50,60,70,80]
 m49a_validation_select_v1 → iter50 → 59/64, J_val=40.265625
 ```
 
-Future stability controls must retain that schedule/selector on **both** arms. C2/Polyak is the proposed next experiment only after C1a review and explicit execution authorization; any tau/granularity belongs to that separate preregistered round. Double-Q and Round3 stay deferred/unapproved; no M50. No live validation early stopping, every-iteration rollout, or iter41–59 sweep. **Canonical 64: HOLD / UNTOUCHED.**
+Future stability controls must retain that schedule/selector on **both** arms. C2 was not executed in C1a; subsequent owner authorization is recorded in §17. Double-Q and Round3 stay deferred/unapproved; no M50. No live validation early stopping, every-iteration rollout, or iter41–59 sweep. **Canonical 64: HOLD / UNTOUCHED.**
+
+## 17. C2 Polyak Target Stability Control
+
+### Problem, authorization, and frozen design
+
+- **Status**: AUTHORIZED / IN PROGRESS. Baseline `fd9dfba465effa3223d0fd8d15375c1342abb11c`; owner closed C1a with P0=0/P1=0/P2=1 and authorized exactly this control.
+- **Question**: Does smoothing the Bellman target network reduce the late instability observed in C1? Not merely whether another selected checkpoint exceeds 59/64.
+- **Only experimental change**: after each complete FQI iteration (after all 8 epochs), update all target parameters as `target = 0.95 * target + 0.05 * online`. Tau is **0.05**, not a CLI sweep parameter. Initialization still copies online to target exactly, as in C1.
+- **Everything else fixed**: D2 (36,674 train transitions; 2,402 offline validation rows), 428→256→LayerNorm/ReLU→128→ReLU→1→Softplus, Huber, AdamW lr=1e-3 / weight_decay=1e-4, batch256, clip1.0, seed49000001, 8 epochs/FQI, exactly 80 FQI updates. No trajectories generated or validation-failure seeds inserted into training.
+- **Device control**: retained C1 `q0_model.pt` contains CPU tensors; the baseline wrapper saves the network without moving devices. Use **CPU**, preserving the C1 device/RNG path rather than opportunistically switching to the available GPU.
+- **Target versus policy**: target_net generates Bellman labels only. All saved/checkpoint/evaluated candidates are the **online network**, as in C1. Preserve model initialization and training RNG consumption.
+- **Evaluation**: training ends before any validation rollout. Evaluate exactly `[10,20,30,40,50,60,70,80]` using the accepted shared evaluator and `m49a_validation_select_v1`. Never run canonical, densify checkpoints, stop from rollout metrics, sweep tau, or extend to 100/120 even if learning is slow. A longer run would require a separately authorized C2b.
+
+### Implementation plan and gates
+
+1. Add a small explicit target-update helper: unchanged hard-copy default plus fixed Polyak-0.05 mode. Test initialization/update arithmetic, no online mutation, once-per-FQI timing, and online (not target) checkpoint serialization through the real training loop using synthetic targets.
+2. **Implemented, tests pass**: C1a P2 uses `training_manifest.json` with effective C2 config, exact eight-file D2 SHA256 identity, run ID and all eight online-checkpoint SHA256s. The selector checks the complete checkpoint-name/hash map before rollout and carries optional `training_run_id` into the report. Legacy unbound C1 reports remain readable/replay byte-identically; no historical run is relabeled.
+3. Run local Rust/Python regression gates, then **one** fresh C2 run in ignored `local-artifacts/m49a-c2-polyak005/`. Keep existing C1/D2 inputs untouched. Store complete logs, online weights, offline diagnostics, and post-training selection locally.
+4. Present both eight-point curves and selected checkpoints. Freeze descriptive comparisons before C2 results: `success80 - success50`, `J80 - J50`; on updates 30–80, success/J range (max−min) and mean absolute adjacent change (five adjacent differences). These describe tail drift/variation, not a post-hoc numeric acceptance threshold. A flat low-performing or slowly rising curve is not by itself proof of successful stabilization.
+5. Reconcile this record and local handoff, commit/push the authorized implementation and findings, then return to owner review. No Double-Q, Round3, or M50.
+
+### Iteration log
+
+- Start: verified clean `main` at `fd9dfba`; all 18 retained C1/D2 hashes match C1a's manifest. CPU checkpoint device and D2 row counts verified directly. No C2 training or rollout has run yet.
+- Implementation: added explicit `polyak_update_target_net()` and preserved hard replacement as default; once-per-FQI call occurs after the full epoch block. The periodic checkpoint path still serializes the online `net`; tests run the real trainer loop with synthetic targets and assert target recursion, call count, and checkpoint-vs-target identity.
+- C1a P2 closure: selection report gained backward-compatible optional `training_run_id`; C2 checkpoint-dir selection parses the training manifest and requires exact equality of all eight checkpoint filename/hash pairs, nonempty training config, and complete, valid SHA256s for the eight D2 data files. Unit/process tests reject mismatch before validation rollout. Legacy C1 selection report replay is byte-identical.
+- C2 entrypoint is a dedicated fixed-contract script with tau 0.05 hardcoded (no tau CLI), exact hashes for all eight train/validation D2 transport files, CPU, fixed 80×8 and checkpoint cadence 10; it refuses non-empty output dirs and verifies input hashes did not drift during training. C2 train/evaluation is not yet started.
+- Pre-run regressions after source freeze: `cargo test -p splendor-cli --bin splendor m49a_select_command` **10 passed**; `cargo test -p splendor-cli --test m49a_selection_cli` **7 passed**; `cargo test -p splendor-analysis --test m49a_target_builder_tests` **5 passed**; `cargo test -p splendor-analysis --test m49a_collector_tests` **6 passed**; Python Polyak/target-builder/forward/delta regressions **8 passed**. Release build, scoped `rustfmt --check`, and `git diff --check` PASS. Frozen C2 preflight verified all eight exact C1 D2 SHA256s and expected row counts; C1 report-only replay with the updated selector remains byte-identical.
+- Ruff was not available in `C:/Python312` (`No module named ruff`); no Ruff pass is claimed.
+
+### Final implementation / validation / result
+
+Implementation is pending final release build + exact D2 hash preflight and the one authorized C2 80-update run. No C2 performance result or acceptance claim yet.

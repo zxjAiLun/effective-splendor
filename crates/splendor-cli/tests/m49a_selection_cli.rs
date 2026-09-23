@@ -197,6 +197,51 @@ fn missing_checkpoint_preflight_precedes_all_rollouts() {
 }
 
 #[test]
+fn mismatched_training_manifest_fails_before_any_rollout() {
+    let s = Sandbox::new();
+    fixture(&s);
+    for it in [10, 20, 30, 40, 50, 60, 70, 80] {
+        fs::copy(
+            s.0.join("weights.json"),
+            s.0.join(format!("weights_iter{it:03}.json")),
+        )
+        .unwrap();
+    }
+    // Manifest claims a different batch of checkpoints than what is on disk.
+    s.write(
+        "training_manifest.json",
+        &json!({
+            "run_id":"other-run",
+            "training_contract":{"target_update":"polyak","polyak_tau":0.05},
+            "d2_input_sha256":{
+                "train/current_x.f32":"c".repeat(64),
+                "train/step_costs.f32":"c".repeat(64),
+                "train/outcomes.u8":"c".repeat(64),
+                "train/compact_transitions.jsonl":"c".repeat(64),
+                "val/current_x.f32":"c".repeat(64),
+                "val/step_costs.f32":"c".repeat(64),
+                "val/outcomes.u8":"c".repeat(64),
+                "val/compact_transitions.jsonl":"c".repeat(64)
+            },
+            "checkpoints":{
+                "weights_iter010.json":"b".repeat(64)
+            }
+        }),
+    );
+    let o = s.call(&[
+        "m49a-select-checkpoint",
+        "--checkpoint-dir",
+        ".",
+        "--out-json",
+        "none.json",
+    ]);
+    assert_eq!(o.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&o.stderr).contains("manifest"));
+    assert!(o.stdout.is_empty(), "must reject the batch before rollouts");
+    assert!(!s.0.join("none.json").exists());
+}
+
+#[test]
 fn bad_selector_usage_has_no_outputs() {
     let s = Sandbox::new();
     for args in [

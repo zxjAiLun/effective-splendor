@@ -55,6 +55,22 @@ def export_net_weights_dict(net: EfficiencyQNet) -> dict[str, Any]:
     }
 
 
+def polyak_update_target_net(
+    target_net: EfficiencyQNet, online_net: EfficiencyQNet, tau: float
+) -> None:
+    """In-place Polyak update: target = (1 - tau) * target + tau * online.
+
+    C2 contract: called exactly once per completed FQI iteration. The online
+    net is NEVER mutated here; it remains the sole checkpoint/policy candidate
+    (the target net only generates Bellman labels).
+    """
+    if not (0.0 < tau <= 1.0):
+        raise ValueError(f"polyak tau must be in (0, 1], got {tau}")
+    with torch.no_grad():
+        for tp, op in zip(target_net.parameters(), online_net.parameters()):
+            tp.mul_(1.0 - tau).add_(op, alpha=tau)
+
+
 def compute_targets_streaming(
     transitions_jsonl: Path,
     target_net: EfficiencyQNet,
@@ -149,8 +165,14 @@ def train_fqi_streaming(
     seed: int = 49000001,
     checkpoint_dir: Path | None = None,
     checkpoint_every: int = 0,
+    target_update: str = "hard",
+    polyak_tau: float = 0.05,
 ) -> tuple[EfficiencyQNet, dict[str, Any]]:
     """Runs Fitted Q-Iteration using memory-mapped current_x and on-demand streaming Rust targets."""
+    if target_update not in ("hard", "polyak"):
+        raise ValueError(f"unknown target_update {target_update!r}")
+    if target_update == "polyak" and not (0.0 < polyak_tau <= 1.0):
+        raise ValueError(f"polyak_tau must be in (0, 1], got {polyak_tau}")
     torch.manual_seed(seed)
     np.random.seed(seed % (2**32))
 
@@ -205,8 +227,13 @@ def train_fqi_streaming(
             train_m = evaluate_metrics(net, x_train, y_train, device)
             val_m = evaluate_metrics(net, x_val, y_val, device)
 
-            # 4. Update target network
-            target_net.load_state_dict(net.state_dict())
+            # 4. Update target network. `hard` = C1 baseline (full replacement
+            # after each FQI iteration). `polyak` = C2 control (single frozen
+            # tau, applied once per completed iteration).
+            if target_update == "hard":
+                target_net.load_state_dict(net.state_dict())
+            else:
+                polyak_update_target_net(target_net, net, polyak_tau)
 
             rec = {
                 "iteration": fqi_iter + 1,
@@ -231,9 +258,28 @@ def train_fqi_streaming(
                 it = fqi_iter + 1
                 if it % checkpoint_every == 0 or it == fqi_iterations:
                     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                    # CHECKPOINT CONTRACT: always export the ONLINE net (the
+                    # policy candidate), under both hard and Polyak updates.
+                    # The target net must never leak into selection/evaluation,
+                    # otherwise C1 (C1 online) vs C2 (C2 EMA target) would be
+                    # comparing two different objects.
                     ck = export_net_weights_dict(net)
                     ck_path = checkpoint_dir / f"weights_iter{it:03d}.json"
                     with open(ck_path, "w", encoding="utf-8") as f:
                         json.dump(ck, f)
 
-    return net, {"history": history, "final_val": val_m}
+    return net, {
+        "history": history,
+        "final_val": val_m,
+        "config": {
+            "target_update": target_update,
+            "polyak_tau": polyak_tau if target_update == "polyak" else None,
+            "epochs_per_fqi": epochs_per_fqi,
+            "fqi_iterations": fqi_iterations,
+            "batch_size": batch_size,
+            "lr": lr,
+            "weight_decay": weight_decay,
+            "seed": seed,
+            "device": str(device),
+        },
+    }

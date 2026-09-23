@@ -44,6 +44,11 @@ struct EvaluationReports {
     checkpoint_schedule: Vec<u32>,
     validation_seeds: Vec<u64>,
     max_main_turns: u32,
+    /// C1a-P2 (non-blocking finding): lightweight training-run identity so a
+    /// future report cannot silently be fed a different batch of 8
+    /// checkpoints. `None` = legacy/unbound report (pre-C2 artifacts).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    training_run_id: Option<String>,
     evaluated: Vec<CheckpointRow>,
 }
 
@@ -127,6 +132,13 @@ fn select_checkpoint_v1(rows: &[CheckpointRow]) -> Result<&CheckpointRow, String
 }
 
 fn make_report(mut measurements: EvaluationReports) -> Result<SelectionReport, String> {
+    if measurements
+        .training_run_id
+        .as_ref()
+        .is_some_and(|run_id| run_id.trim().is_empty())
+    {
+        return Err("training_run_id must be non-empty when present".into());
+    }
     if measurements.evaluation_contract != EVALUATION_CONTRACT
         || measurements.checkpoint_schedule != SCHEDULE
         || measurements.validation_seeds != validation_seeds_v1()
@@ -155,6 +167,75 @@ struct Args {
     checkpoint_dir: Option<PathBuf>,
     reports_json: Option<PathBuf>,
     out_json: PathBuf,
+}
+
+/// Optional training-run identity written next to the checkpoints by the
+/// training wrapper. Binds a non-empty config, all eight D2 input hashes, and
+/// the exact frozen checkpoint set; carried into selection reports.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TrainingManifest {
+    run_id: String,
+    training_contract: serde_json::Value,
+    d2_input_sha256: BTreeMap<String, String>,
+    checkpoints: BTreeMap<String, String>,
+}
+
+/// If `<checkpoint_dir>/training_manifest.json` exists, bind it: every frozen
+/// checkpoint hash must match the manifest, and the manifest's run id is
+/// carried into the selection report. Missing manifest => legacy unbound
+/// (returns Ok(None)); present-but-inconsistent manifest is fatal.
+fn is_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+fn bind_training_manifest(
+    checkpoint_dir: &std::path::Path,
+    actuals: &BTreeMap<String, String>,
+) -> Result<Option<String>, String> {
+    let path = checkpoint_dir.join("training_manifest.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = fs::read(&path).map_err(|e| format!("read {path:?}: {e}"))?;
+    let manifest: TrainingManifest =
+        serde_json::from_slice(&bytes).map_err(|e| format!("parse {path:?}: {e}"))?;
+    if manifest.run_id.trim().is_empty()
+        || !manifest
+            .training_contract
+            .as_object()
+            .is_some_and(|config| !config.is_empty())
+    {
+        return Err("training manifest has invalid run_id/training_contract".into());
+    }
+    const INPUTS: [&str; 8] = [
+        "train/current_x.f32",
+        "train/step_costs.f32",
+        "train/outcomes.u8",
+        "train/compact_transitions.jsonl",
+        "val/current_x.f32",
+        "val/step_costs.f32",
+        "val/outcomes.u8",
+        "val/compact_transitions.jsonl",
+    ];
+    if manifest.d2_input_sha256.len() != INPUTS.len()
+        || INPUTS.iter().any(|name| {
+            manifest
+                .d2_input_sha256
+                .get(*name)
+                .map(|sha| !is_sha256(sha))
+                .unwrap_or(true)
+        })
+    {
+        return Err("training manifest has incomplete/invalid D2 input hashes".into());
+    }
+    if &manifest.checkpoints != actuals {
+        return Err("checkpoint set/hashes differ from training manifest".into());
+    }
+    Ok(Some(manifest.run_id))
 }
 
 fn parse_args(args: &[String]) -> Result<Args, String> {
@@ -233,6 +314,13 @@ fn run(args: Args) -> Result<SelectionReport, String> {
             let (weights, sha) = load_weights_with_sha256(&path)?;
             checkpoints.push((it, path, weights, sha));
         }
+        // C1a-P2: if the training wrapper left a manifest next to the
+        // checkpoints, bind it before any rollout starts.
+        let actual_shas: BTreeMap<String, String> = checkpoints
+            .iter()
+            .map(|(it, _, _, sha)| (format!("weights_iter{it:03}.json"), sha.clone()))
+            .collect();
+        let training_run_id = bind_training_manifest(&dir, &actual_shas)?;
         let mut rows = Vec::new();
         for (it, path, weights, sha) in checkpoints {
             let m =
@@ -256,6 +344,7 @@ fn run(args: Args) -> Result<SelectionReport, String> {
             checkpoint_schedule: SCHEDULE.to_vec(),
             validation_seeds: validation_seeds_v1(),
             max_main_turns: 100,
+            training_run_id,
             evaluated: rows,
         }
     };
