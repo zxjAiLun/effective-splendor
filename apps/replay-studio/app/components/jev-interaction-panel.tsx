@@ -16,7 +16,7 @@ export type TraceAttempt = {
 };
 
 export type TraceStage = {
-  stage: "helper" | "family" | "move";
+  stage: "helper" | "family" | "move" | "colors" | "target" | "return" | "noble";
   latency_ms?: number | null;
   requested_model?: string | null;
   payload_sha256?: string | null;
@@ -35,6 +35,9 @@ export type StepView = {
   stages?: TraceStage[];
   actionAgrees?: boolean | null;
   family?: string | null;
+  decisionMode?: string | null;
+  selectionPath?: unknown[] | null;
+  targetRemoved?: number | null;
   selectedIndex?: number | null;
   offeredCount?: number | null;
   exclusions?: { noop: number; routed: number; capped: number };
@@ -67,12 +70,12 @@ export function JevInteractionPanel({ step }: { step: StepView }) {
             {step.family ? (
               <>
                 <dt>Chosen family</dt>
-                <dd>{step.family}</dd>
+                <dd>{step.decisionMode ?? step.family}</dd>
               </>
             ) : null}
             {step.offeredCount === null ? null : (
               <>
-                <dt>Exact actions offered</dt>
+                <dt>{step.decisionMode ? "Legal completions for selected target/take" : "Exact actions offered"}</dt>
                 <dd>{step.offeredCount}</dd>
               </>
             )}
@@ -88,6 +91,18 @@ export function JevInteractionPanel({ step }: { step: StepView }) {
             <dt>Action delivered</dt>
             <dd>{step.actionSent ? "yes" : "no"}</dd>
           </dl>
+
+          {step.selectionPath ? (
+            <details className="jev-request">
+              <summary>Recorded program mapping · colors / target / returns</summary>
+              <p className="jev-trace-note">
+                Color Choice probabilities rank eligible colors; code constructs the take bundle.
+                They are not joint-bundle utility or win probability. Returns are separate explicit choices.
+                Forced stages have no model response. Other target/take completions: {step.targetRemoved ?? 0}.
+              </p>
+              <pre>{JSON.stringify(step.selectionPath, null, 2)}</pre>
+            </details>
+          ) : null}
 
           {(step.stages ?? []).map((stage, index) => (
             <TraceStageView key={`${stage.stage}-${index}`} stage={stage as TraceStage} />
@@ -133,6 +148,12 @@ function TraceStageView({ stage }: { stage: TraceStage }) {
             {attemptLines(attempt).map((line) => (
               <span key={line}>{line}</span>
             ))}
+            {attempt.probabilities ? (
+              <details>
+                <summary>Choice probabilities · not win probability</summary>
+                <pre>{JSON.stringify(attempt.probabilities, null, 2)}</pre>
+              </details>
+            ) : null}
           </li>
         ))}
       </ol>

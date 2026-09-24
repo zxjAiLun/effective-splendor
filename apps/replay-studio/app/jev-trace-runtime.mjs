@@ -18,6 +18,10 @@ export const STAGE_LABEL = {
   helper: "Local heuristic terms",
   family: "Stage 1 · choose move family",
   move: "Stage 2 · choose exact action",
+  colors: "Gem color probabilities · program maps to a legal take",
+  target: "Choose legal card target",
+  return: "Choose exact overflow return",
+  noble: "Choose eligible noble",
 };
 
 /** Which artifact backs a run, and what a reader can do with it. */
@@ -120,6 +124,9 @@ export function describeStep(frame, bundle) {
     stages,
     actionAgrees,
     family: decision.family ?? null,
+    decisionMode: decision.decision_mode ?? null,
+    selectionPath: Array.isArray(decision.selection_path) ? decision.selection_path : null,
+    targetRemoved: decision.target_removed ?? null,
     selectedIndex: decision.selected_index ?? null,
     offeredCount: Array.isArray(decision.offered_indices) ? decision.offered_indices.length : null,
     exclusions: {

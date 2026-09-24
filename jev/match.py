@@ -75,10 +75,13 @@ def main() -> int:
               "handshake_timeout_ms": 15000, "move_timeout_ms": 45000, "shutdown_grace_ms": 2000,
               "agents": agents}
     atomic_json(out / "config.json", config)
-    sources = [ROOT / "jev" / name for name in ("agent.py", "runtime.py", "transport.py", "match.py", "catalog.json")]
-    sources += [ROOT / "crates/splendor-cli/src/agent_terms_command.rs", ROOT / "crates/splendor-agent/src/heuristic.rs"]
+    sources = [ROOT / "jev" / name for name in ("agent.py", "runtime.py", "transport.py", "match.py", "trace.py", "catalog.json")]
+    # The heuristic belongs to the opponent, never to the facts-only Jev input.
+    sources += [ROOT / "crates/splendor-agent/src/heuristic.rs"]
     atomic_json(out / "manifest.json", {
-        "schema_version": 1, "agent_version": AGENT_VERSION,
+        "schema_version": 1, "agent_version": AGENT_VERSION, "policy_id": agent_module.POLICY_ID,
+        "input_policy": "structured_facts_only", "heuristic_advice": False,
+        "color_tie_order": list(agent_module.COLORS),
         # The identity the experiment actually pins, read from the agent rather
         # than restated here. A manifest claiming the floating alias while the
         # code pins a concrete model would detach the record from the run.
@@ -116,6 +119,19 @@ def main() -> int:
         print(f"verify-replay exit={check.returncode}")
         if check.returncode:
             return 1
+    report_path = out / "report.json"
+    if report_path.is_file():
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        outcome = report.get("outcome", {})
+        game_result = outcome.get("result", {})
+        winners = game_result.get("winners", [])
+        atomic_json(out / "game-summary.json", {
+            "anchor": "heuristic", "seed": args.seed, "jev_seat": args.jev_seat,
+            "agent_version": AGENT_VERSION, "policy_id": agent_module.POLICY_ID,
+            "requested_model": agent_module.MODEL, "outcome_status": outcome.get("status"),
+            "scores": game_result.get("scores"), "winners": winners,
+            "jev_won": (args.jev_seat in winners and len(winners) == 1) if game_result else None,
+        })
     write_trace_summary(out)
     return result.returncode
 

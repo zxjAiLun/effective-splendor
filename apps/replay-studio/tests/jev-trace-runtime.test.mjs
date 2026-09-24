@@ -5,6 +5,7 @@ import {
   describeRun,
   describeStep,
   seatOf,
+  STAGE_LABEL,
   usageLine,
 } from "../app/jev-trace-runtime.mjs";
 
@@ -74,6 +75,22 @@ test("a journalled step shows both stages and confirms the recorded action agree
   assert.equal(step.offeredCount, 2);
   assert.equal(step.stages.length, 3);
   assert.deepEqual(step.exclusions, { noop: 0, routed: 0, capped: 0 });
+});
+
+test("facts-only preserves color mapping and explicit return stages", () => {
+  const path = [{ stage: "colors", mapping: "eligible_argmax_double", take: { white: 2 } },
+    { stage: "return", selected_id: "r1", forced: false }];
+  const step = describeStep(frame(), bundle({ decisions: { "3": decision({
+    decision_mode: "take_double", selection_path: path, target_removed: 4,
+    stages: [{ stage: "colors", attempts: [] }, { stage: "return", attempts: [] }],
+  }) } }));
+  assert.equal(step.kind, "recorded");
+  assert.equal(step.decisionMode, "take_double");
+  assert.equal(step.targetRemoved, 4);
+  assert.deepEqual(step.selectionPath, path);
+  assert.deepEqual(step.stages.map(s => s.stage), ["colors", "return"]);
+  assert.match(STAGE_LABEL.colors, /program maps/);
+  assert.match(STAGE_LABEL.return, /overflow return/);
 });
 
 test("a journal selection that disagrees with the replay is surfaced, and the replay still stands", () => {

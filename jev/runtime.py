@@ -10,9 +10,10 @@ import re
 import subprocess
 import time
 
-AGENT_VERSION = "0.3.0"
-# Lifecycle record schema. 3 adds safe request snapshots and run identity.
-METRICS_SCHEMA_VERSION = 3
+AGENT_VERSION = "0.4.0"
+POLICY_ID = "facts-only-color-probabilities-v1"
+# 4 adds per-stage counts and explicit color/target/return selection mapping.
+METRICS_SCHEMA_VERSION = 4
 # A saved request may be replayed by a reader, so it is bounded and allowlisted.
 MAX_SNAPSHOT_BYTES = 262_144
 _SNAPSHOT_KEYS = frozenset(("state", "model", "questions"))
@@ -156,17 +157,19 @@ class Session:
         self.request_id = None
         self.identity = None
         self.start = clock()
-        self.metrics = dict(schema_version=METRICS_SCHEMA_VERSION, agent_version=AGENT_VERSION, status="running", model=model,
+        self.metrics = dict(schema_version=METRICS_SCHEMA_VERSION, agent_version=AGENT_VERSION, policy_id=POLICY_ID,
+                            status="running", model=model,
                             model_version=None, model_versions=[], max_api_calls=max_calls,
-                            api_calls=0, stage1_calls=0, stage2_calls=0, unknown_usage_attempts=0,
+                            api_calls=0, stage1_calls=0, stage2_calls=0, stage_calls={}, unknown_usage_attempts=0,
                             decisions=0, families_offered=0, options_offered=0, options_omitted=0,
-                            noops_removed=0, routed_out=0, cap_removed=0, input_tokens=0, output_tokens=0)
+                            noops_removed=0, routed_out=0, cap_removed=0, target_removed=0, input_tokens=0, output_tokens=0)
         if summary_path is not None:
             summary_path.parent.mkdir(parents=True, exist_ok=True)
             if summary_path.exists():
                 raise AgentFault("metrics output exists", "output_exists")
             self.stream = summary_path.with_suffix(".jsonl").open("x", encoding="utf-8")
-        self.emit("session_start", max_api_calls=max_calls, agent_version=AGENT_VERSION, requested_model=model)
+        self.emit("session_start", max_api_calls=max_calls, agent_version=AGENT_VERSION,
+                  policy_id=POLICY_ID, requested_model=model)
 
     def emit(self, event, **fields):
         record = dict(event=event, request_id=self.request_id, elapsed_ms=round((self.clock()-self.start)*1000, 3), **fields)
@@ -204,6 +207,8 @@ class Session:
             deadline.remaining()
             self.metrics["api_calls"] += 1
             self.metrics[stage] += 1
+            stage_calls = self.metrics["stage_calls"]
+            stage_calls[question_id] = stage_calls.get(question_id, 0) + 1
             self.metrics["unknown_usage_attempts"] += 1
             started = self.clock()
             snapshot = safe_payload(payload)
@@ -238,7 +243,7 @@ class Session:
                 for key, value in usage.items():
                     self.metrics[key] += value
             model = safe_model(response.get("model")) if isinstance(response, dict) else None
-            if self.expected_model is not None and model is not None and model != self.expected_model:
+            if self.expected_model is not None and model != self.expected_model:
                 # Fail closed and loudly: continuing would blend two models.
                 self.emit("model_identity_drift", expected=self.expected_model, returned=model)
                 raise AgentFault("model identity drifted from the pinned experiment model",

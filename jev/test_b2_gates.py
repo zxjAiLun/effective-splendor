@@ -7,6 +7,9 @@ server to rediscover mid-run.
 """
 from __future__ import annotations
 
+import contextlib
+import io
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -75,6 +78,16 @@ class PinnedModelTests(unittest.TestCase):
                       events)
 
 
+    def test_missing_response_identity_also_fails_closed(self):
+        session = runtime.Session(agent.MODEL, expected_model=agent.EXPECTED_MODEL)
+        payload = agent.question({}, "family", "choose", {"buy": "buy"})
+        response = {"answers": {"family": {"type": "choice", "choice": "buy"}}}
+        with self.assertRaises(runtime.AgentFault) as caught:
+            session.ask(payload, runtime.Deadline(5000), lambda *a, **kw: response)
+        self.assertEqual(caught.exception.code, "model_identity_drift")
+        self.assertEqual(session.metrics["api_calls"], 1)
+
+
 class ManifestIdentityTests(unittest.TestCase):
     def test_the_match_manifest_reads_the_pinned_model_instead_of_the_alias(self):
         # A manifest that recorded the floating alias while the code pins a
@@ -84,26 +97,35 @@ class ManifestIdentityTests(unittest.TestCase):
         self.assertIn("requested_model\": agent_module.MODEL", source)
         self.assertNotIn('"requested_model": "jev-latest"', source)
 
+    def test_b2_runner_refuses_current_policy_before_artifacts_or_arena(self):
+        import run_batch
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "must-not-exist"
+            with unittest.mock.patch.object(run_batch, "run_arena", side_effect=AssertionError("no paid call")):
+                with self.assertRaisesRegex(ValueError, "current policy is not B2"):
+                    run_batch.one_game({}, out, Path("unused"), 30, 100)
+                with unittest.mock.patch.object(sys, "argv", ["run_batch.py", "--batch-dir", str(out)]), \
+                     contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                    run_batch.main()
+                self.assertEqual(caught.exception.code, 2)
+            self.assertFalse(out.exists())
+
     def test_the_batch_manifest_never_states_the_floating_alias(self):
         source = (HERE / "run_batch.py").read_text(encoding="utf-8")
         self.assertIn("requested_model\": agent_module.MODEL", source)
         self.assertNotIn('"requested_model": "jev-latest"', source)
 
 
-class CompactionTests(unittest.TestCase):
-    def test_gem_codes_are_unambiguous(self):
-        # blue and black both start with `b`; a first-letter scheme would render
-        # two different costs identically.
-        codes = list(agent.GEM_CODE.values())
-        self.assertEqual(len(codes), len(set(codes)))
+class FactsRepresentationTests(unittest.TestCase):
+    # B2 compaction tests remain in commit 80514df. The active policy no longer
+    # has heuristic terms or an abbreviated color legend to compact.
+    def test_named_colors_are_unambiguous(self):
+        self.assertEqual(agent.COLORS, ("white", "blue", "green", "red", "black"))
+        self.assertNotEqual(agent.sparse_gems({"blue": 2}), agent.sparse_gems({"black": 2}))
 
-    def test_zero_terms_dropped_and_nonzero_terms_keep_their_values(self):
-        terms = {name: 0 for name in agent.TERM_NAMES}
-        terms["prestige"] = 3000
-        compact = agent._compact_terms(terms)
-        self.assertEqual(compact["prestige"], 3000)
-        self.assertNotIn("noble_gain", compact)
-        self.assertEqual(compact["heuristic_total"], 3000)
+    def test_no_heuristic_scoring_or_shortlist_functions_in_active_policy(self):
+        for name in ("heuristic_terms", "TERM_NAMES", "TERM_GLOSSARY", "candidate_indices", "MAX_OPTIONS"):
+            self.assertFalse(hasattr(agent, name), name)
 
 
 if __name__ == "__main__":

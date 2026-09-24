@@ -31,12 +31,11 @@ LEGAL = next(x["legal_actions"] for x in FIXTURE if x["type"] == "request_action
 CATALOG = agent.load_catalog()
 
 
-def zero_terms(_obs, actions, **_kwargs):
-    return [{k: 0 for k in agent.TERM_NAMES} for _ in actions]
-
-
 def response(stage, choice, tokens=100):
-    return {"model": "jev-1.13.0", "answers": {stage: {"type": "choice", "choice": choice}},
+    body = {"type": "choice", "choice": choice}
+    if stage == "colors":
+        body["probabilities"] = dict.fromkeys(agent.COLORS, .2)
+    return {"model": "jev-1.13.0", "answers": {stage: body},
             "usage": {"input_tokens": tokens, "output_tokens": 10}}
 
 
@@ -55,16 +54,9 @@ class FakeClock:
 
 class SemanticsTests(unittest.TestCase):
     def test_reserve_card_points_are_future_not_immediate(self):
-        reserve = next(a for a in LEGAL if a["type"] == "reserve_market" and CATALOG["cards"][OBS["public"]["market"][0][a["slot"]]]["prestige"] > 0 and a["tier"] == "One")
-        desc = agent.description(reserve, OBS, CATALOG)
-        self.assertEqual(desc["known_effects"]["card_vp_now"], 0)
-        self.assertIsNone(desc["known_effects"]["permanent_bonus_gained"])
-        self.assertGreater(desc["known_effects"]["reserved_card_vp_if_later_bought"], 0)
-        buy = {"type": "buy_market", "tier": reserve["tier"], "slot": reserve["slot"]}
-        bought = agent.description(buy, OBS, CATALOG)
-        self.assertEqual(bought["known_effects"]["card_vp_now"], desc["known_effects"]["reserved_card_vp_if_later_bought"])
-        self.assertIsNone(bought["known_effects"]["noble_vp_now"], "don't fabricate purchase noble settlement")
-        self.assertIn("zero immediate VP", agent.TERM_GLOSSARY["prestige"])
+        self.assertIn("neither VP nor a permanent bonus", agent.RULES["reserve"])
+        self.assertIn("No immediate VP or bonus", agent.MODE_RULES["reserve"])
+        self.assertIn("gaining its VP and permanent color bonus", agent.MODE_RULES["buy"])
 
     def test_public_reserves_named_colors_and_no_nested_leak(self):
         obs = copy.deepcopy(OBS)
@@ -79,34 +71,15 @@ class SemanticsTests(unittest.TestCase):
         self.assertNotIn("bonuses", state["players"][0])
         self.assertIn("fewer purchased", state["rules"]["ending"])
 
-    def test_stage1_does_not_reintroduce_prior_and_has_glossary(self):
-        scores = zero_terms(OBS, LEGAL)
-        for t in scores: t["category_base"] = 123456789
-        request = agent.family_question(OBS, LEGAL, list(range(len(LEGAL))), scores, CATALOG)
-        text = json.dumps(request)
-        self.assertNotIn("category_base", text)
-        self.assertNotIn('"heuristic_total"', text)
-        self.assertNotIn("123456789", text)
-        self.assertIn("advisory_term_definitions", text)
-        self.assertIn("zero immediate VP", text)
-
-    def test_single_family_skips_stage1_and_cap_reports_only_cap(self):
-        # Synthetic over-cap selection test, not a claim about a reachable legal set.
-        legal = [next(a for a in LEGAL if a["type"] == "take_tokens")] * 81
-        scores = zero_terms(OBS, legal)
-        scores[80]["new_target"] = 100
-        offered = []
-        trace = []
-        def call(payload):
-            self.assertEqual(set(payload["questions"]), {"move"})
-            offered.append(payload)
-            return response("move", "a0")
-        _, _, count, calls = agent.pick(OBS, legal, CATALOG, call, lambda *_: scores, lambda **info: trace.append(info))
-        self.assertEqual((count, calls), (80, 1))
-        self.assertEqual(trace[0]["routed_out"], 0)
-        self.assertEqual(trace[0]["noops_removed"], 0)
-        self.assertEqual(trace[0]["cap_removed"], 1)
-        self.assertEqual(trace[0]["selected_index"], 80)
+    def test_duplicate_actions_are_forced_not_score_capped(self):
+        legal = [LEGAL[0]] * 81
+        traces = []
+        picked, _, count, calls = agent.pick(OBS, legal, CATALOG,
+            lambda _: self.fail("duplicates must not cause paid inference"), lambda **kw: traces.append(kw))
+        self.assertEqual((picked, count, calls), (legal[0], 81, 0))
+        self.assertEqual(traces[0]["offered_indices"], list(range(81)))
+        self.assertEqual(traces[0]["cap_removed"], 0)
+        self.assertEqual(traces[0]["selected_index"], 0)
 
     def test_selected_singleton_family_skips_stage2(self):
         legal = [next(a for a in LEGAL if a["type"] == "take_tokens"), next(a for a in LEGAL if a["type"] == "reserve_market")]
@@ -114,13 +87,13 @@ class SemanticsTests(unittest.TestCase):
         def call(payload):
             calls.append(set(payload["questions"]))
             return response("family", "reserve")
-        picked, _, _, count = agent.pick(OBS, legal, CATALOG, call, zero_terms)
+        picked, _, _, count = agent.pick(OBS, legal, CATALOG, call)
         self.assertEqual(calls, [{"family"}])
         self.assertEqual((picked, count), (legal[1], 1))
 
 
 class LifecycleTests(unittest.TestCase):
-    def run_case(self, call, *, deadline_ms=45000, max_calls=100, helper=zero_terms, clock=None):
+    def run_case(self, call, *, deadline_ms=45000, max_calls=100, clock=None):
         clock = clock or FakeClock()
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
@@ -130,7 +103,7 @@ class LifecycleTests(unittest.TestCase):
         error = None
         try:
             with contextlib.redirect_stdout(output):
-                agent.run(transcript(deadline_ms), call, helper, session=session)
+                agent.run(transcript(deadline_ms), call, session=session)
         except BaseException as exc:
             error = exc
         metrics = json.loads(path.read_text())
@@ -140,7 +113,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_partial_usage_and_failed_summary_survive_second_stage_429(self):
         def call(payload, **kw):
-            if "family" in payload["questions"]: return response("family", "take_tokens")
+            if "family" in payload["questions"]: return response("family", "take_double")
             raise ServiceFault("http_error", 429)
         err, m, events, stdout = self.run_case(call)
         self.assertIsInstance(err, ServiceFault)
@@ -157,8 +130,8 @@ class LifecycleTests(unittest.TestCase):
         def call(payload, **kw):
             calls.append(payload)
             if len(calls) == 1: raise ServiceFault("http_error", 529)
-            if "family" in payload["questions"]: return response("family", "take_tokens", 20)
-            out = response("move", "a0", 30)
+            if "family" in payload["questions"]: return response("family", "take_double", 20)
+            out = response("colors", "white", 30)
             out["model"] = "jev-other-test"
             return out
         err, m, events, stdout = self.run_case(call)
@@ -167,8 +140,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(m["api_calls"], 3)
         self.assertEqual(m["input_tokens"], 50)
         self.assertEqual(m["model_versions"], ["jev-1.13.0", "jev-other-test"])
-        self.assertEqual(m["noops_removed"]+m["routed_out"]+m["cap_removed"], m["options_omitted"])
-        self.assertEqual(m["routed_out"], 15)
+        self.assertEqual(sum(m[k] for k in ("noops_removed", "routed_out", "cap_removed", "target_removed")), m["options_omitted"])
+        self.assertEqual(m["routed_out"], len(LEGAL) - 5)
         self.assertEqual(m["cap_removed"], 0)
         self.assertIn('"type":"action"', stdout)
         self.assertTrue(any(e["event"] == "decision_choice" and e["selected_index"] == 0 for e in events))
@@ -191,19 +164,15 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(err.code, "api_budget")
         self.assertEqual(m["api_calls"], 1)
 
-    def test_shared_deadline_includes_helper_both_stages_and_retry_wait(self):
+    def test_shared_deadline_includes_stages_and_retry_wait(self):
         clock = FakeClock()
         timeouts = []
-        def helper(o, a, **kw):
-            clock.sleep(.2)
-            return zero_terms(o, a)
         def call(payload, *, timeout):
             timeouts.append(timeout)
-            clock.sleep(.3)
-            if "family" in payload["questions"]: return response("family", "take_tokens")
-            clock.sleep(.3)  # Past the .9s effective deadline.
-            return response("move", "a0")
-        err, m, _, stdout = self.run_case(call, deadline_ms=1000, helper=helper, clock=clock)
+            clock.sleep(.5)
+            if "family" in payload["questions"]: return response("family", "take_double")
+            return response("colors", "white")
+        err, m, _, stdout = self.run_case(call, deadline_ms=1000, clock=clock)
         self.assertEqual(err.code, "decision_timeout")
         self.assertLess(timeouts[1], timeouts[0])
         self.assertEqual(m["input_tokens"], 200, "late response usage is still retained")
@@ -214,7 +183,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_cancellation_keeps_partial_usage_and_does_not_echo_exception(self):
         def call(payload, **kw):
-            if "family" in payload["questions"]: return response("family", "take_tokens")
+            if "family" in payload["questions"]: return response("family", "take_double")
             raise KeyboardInterrupt("SECRET_SENTINEL")
         err, m, events, _ = self.run_case(call)
         self.assertIsInstance(err, KeyboardInterrupt)
@@ -324,6 +293,15 @@ class TransportTests(unittest.TestCase):
             match.run_arena([sys.executable, "-c", "import time;time.sleep(60)"], cwd=ROOT, env=os.environ.copy(), timeout=.15)
 
 
+def write_fake_wrapper(wrapper):
+    wrapper.write_text("import sys\nsys.path.insert(0," + repr(str(ROOT/'jev')) + ")\nimport agent\n"
+        "def fake(payload, **kw):\n"
+        " qid=next(iter(payload['questions'])); criteria=payload['questions'][qid]['criteria']; chosen=next(iter(criteria))\n"
+        " body={'type':'choice','choice':chosen,'probabilities':dict.fromkeys(criteria,1/len(criteria))}\n"
+        " return {'model':'jev-test','answers':{qid:body},'usage':{'input_tokens':1,'output_tokens':1}}\n"
+        "agent.run(sys.stdin,call=fake)\n", encoding="utf-8")
+
+
 @unittest.skipUnless(BINARY.is_file(), "build release splendor-cli for sidecar/arena integration gates")
 class RealBoundaryTests(unittest.TestCase):
     def call_helper(self, value):
@@ -359,7 +337,9 @@ class RealBoundaryTests(unittest.TestCase):
                 self.assertEqual(match.main(), 0)
             manifest = json.loads((out/"manifest.json").read_text())
             self.assertEqual(manifest["max_api_calls"], 12)
-            self.assertEqual(manifest["agent_version"], "0.3.0")
+            self.assertEqual(manifest["agent_version"], "0.4.0")
+            self.assertEqual(manifest["policy_id"], agent.POLICY_ID)
+            self.assertFalse(manifest["heuristic_advice"])
             self.assertIn("jev/transport.py", manifest["source_sha256"])
             self.assertEqual(len(manifest["binary_sha256"]), 64)
             self.assertNotIn("SECRET_SENTINEL", (out/"manifest.json").read_text())
@@ -369,11 +349,7 @@ class RealBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
             wrapper = out/"offline_agent.py"
-            wrapper.write_text("import sys\nsys.path.insert(0," + repr(str(ROOT/'jev')) + ")\nimport agent\n"
-                "def fake(payload, **kw):\n"
-                " qid=next(iter(payload['questions'])); chosen=next(iter(payload['questions'][qid]['criteria']))\n"
-                " return {'model':'jev-test','answers':{qid:{'type':'choice','choice':chosen}},'usage':{'input_tokens':1,'output_tokens':1}}\n"
-                "agent.run(sys.stdin,call=fake)\n", encoding="utf-8")
+            write_fake_wrapper(wrapper)
             config = dict(game_id="jev-offline-hardening", run_trace_id="offline", seed=20260926,
                           handshake_timeout_ms=10000,
                           move_timeout_ms=10000, shutdown_grace_ms=2000,
@@ -429,11 +405,7 @@ class RealBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
             wrapper = out/"offline_agent.py"
-            wrapper.write_text("import sys\nsys.path.insert(0," + repr(str(ROOT/'jev')) + ")\nimport agent\n"
-                "def fake(payload, **kw):\n"
-                " qid=next(iter(payload['questions'])); chosen=next(iter(payload['questions'][qid]['criteria']))\n"
-                " return {'model':'jev-test','answers':{qid:{'type':'choice','choice':chosen}},'usage':{'input_tokens':1,'output_tokens':1}}\n"
-                "agent.run(sys.stdin,call=fake)\n", encoding="utf-8")
+            write_fake_wrapper(wrapper)
             config = dict(game_id="jev-offline-tracejoin", run_trace_id="offline", seed=20260928,
                           handshake_timeout_ms=10000, move_timeout_ms=10000, shutdown_grace_ms=2000,
                           agents=[dict(program=sys.executable,args=[str(wrapper)]),
@@ -459,9 +431,10 @@ class RealBoundaryTests(unittest.TestCase):
                 entry = summary["decisions"][ply]
                 self.assertEqual(entry["actor"], 0)
                 self.assertTrue(entry["action_sent"])
-                # A non-forced decision has a local helper plus both Jev stages.
-                self.assertEqual([s["stage"] for s in entry["stages"]],
-                                 ["helper", "family", "move"])
+                # Facts-only records mode/color calls and the exact mapping, no helper.
+                self.assertEqual([s["stage"] for s in entry["stages"]], ["family", "colors"])
+                self.assertEqual(entry["decision_mode"], "take_distinct")
+                self.assertTrue(any(p["stage"] == "colors" for p in entry["selection_path"]))
             # The summary is a projection of the same journal the reader loads, so
             # both must agree on which plies carry a call.
             read = trace_reader.read_run(out.name, out.parent)

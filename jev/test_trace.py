@@ -200,8 +200,8 @@ class SnapshotTests(unittest.TestCase):
         bound = next(r for r in records if r["event"] == "identity_bound")
         self.assertEqual(bound["identity"], {"game_id": "g", "run_id": "r", "seat": 1})
         self.assertEqual(session.metrics["identity"]["seat"], 1)
-        self.assertEqual(session.metrics["schema_version"], 3)
-        self.assertEqual(session.metrics["agent_version"], "0.3.0")
+        self.assertEqual(session.metrics["schema_version"], 4)
+        self.assertEqual(session.metrics["agent_version"], "0.4.0")
 
     def test_the_registered_identity_is_never_invented_from_an_unknown_message(self):
         session = runtime.Session("jev-latest")
@@ -230,11 +230,11 @@ class AgentBindingTests(unittest.TestCase):
                 lines.append(json.dumps(message))
             session = runtime.Session(agent.MODEL, summary_path=metrics_path)
             sessions.append(session)
-            # The fixture ends before its first real decision, so the drive stops
-            # with a protocol fault; only the binding recorded so far is asserted.
+            # The fixture reaches a decision; an empty fake response fails closed.
+            # Only the identity binding recorded before that fault is asserted.
             with contextlib.redirect_stdout(io.StringIO()):
                 with self.assertRaises(agent.AgentFault):
-                    agent.drive(iter(lines), lambda *a, **k: {}, lambda *a, **k: {}, session)
+                    agent.drive(iter(lines), lambda *a, **k: {}, session)
             return session
 
         directory = Path(tempfile.mkdtemp())

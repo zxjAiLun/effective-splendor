@@ -65,7 +65,16 @@ def schedule(anchors: list[str], games_per_anchor: int) -> list[dict]:
     return games
 
 
+def require_b2_policy() -> None:
+    # This archived harness labels its evidence B/B2. Never silently relabel a
+    # facts-only run as the frozen heuristic-conditioned experiment.
+    if AGENT_VERSION != "0.3.0":
+        raise ValueError("B2 batch runner requires archived v0.3.0; current policy is not B2. "
+                         "Use match.py only with a newly approved single-game budget.")
+
+
 def one_game(game: dict, out: Path, binary: Path, timeout: int, max_calls: int) -> dict:
+    require_b2_policy()
     out.mkdir(parents=True, exist_ok=False)
     env = os.environ.copy()
     env["JEV_METRICS_FILE"] = str(out / "metrics.json")
@@ -174,6 +183,10 @@ def main() -> int:
     parser.add_argument("--only", type=int, help="Run just this 0-based schedule index (for staged smoke)")
     parser.add_argument("--binary", type=Path)
     args = parser.parse_args()
+    try:
+        require_b2_policy()
+    except ValueError as error:
+        parser.error(str(error))
     suffix = ".exe" if os.name == "nt" else ""
     binary = args.binary or next((p for p in (ROOT / f"target/release/splendor{suffix}",
                                               ROOT / f"target/debug/splendor{suffix}") if p.exists()), None)

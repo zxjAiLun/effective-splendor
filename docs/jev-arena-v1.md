@@ -1,6 +1,6 @@
 # Jev Arena Agent V1
 
-- Status: v0.2.0 hardening IMPLEMENTED / VERIFIED offline (2026-09-23, baseline `b7864e3`); parent review and earlier live smokes retained below. NOT competitively ACCEPTED or promoted. Latest closeout: **Hardening implementation and offline verification**.
+- Status: **v0.4.0 facts-only IMPLEMENTED / VERIFIED**, one authorized live smoke completed **0–17 vs heuristic** (2026-09-24); **NOT PROMOTED**. Latest closeout: **Facts-only live smoke and closeout** below. Earlier V1/v0.2/B2 results and the B3 interpretation withdrawal are retained as distinct historical records.
 - Baseline: `79c2ca0ba2dc8a36bc3d3b33d31f653d00846358` on `main` (2026-09-23); pre-existing owner `.gitignore` change protects `TYPESAFE_API_KEY` and is not owned by this round.
 - Owner/date: owner request, 2026-09-23.
 
@@ -327,7 +327,15 @@ and replays (family routing, within-family heuristic rank/gap, reserve-return
 incidence, and a pure-heuristic control on the same schedule). No strategy code
 changes.
 
-## B3 offline attribution audit — VERIFIED (2026-09-24)
+## B3 offline attribution audit — historical report (2026-09-24)
+
+> **Correction from the subsequent design review:** the Q1/global-canonical
+> interpretation and the causal conclusions below are **WITHDRAWN**. Q1 used
+> scores excluding `category_base`, not the canonical policy's full totals;
+> Q2's ordinal ranks split tied scores; the non-random filter and decision
+> denominator were also wrong. Preserve this report as history, not a basis for
+> choosing a strategy change. See **Heuristic-conditioned input design review**
+> below for verified corrections and remaining audit gaps.
 
 Zero-cost: reads the completed B2 traces/replays only, calls no API, writes
 nothing to the league. The league database and identity manifest hashes were
@@ -432,3 +440,348 @@ specifically harmful.
 None. Owner to decide among: pursuing plan/tempo beyond one-move heuristic
 advice, reducing heuristic牵引 despite the 90% agreement, reserve return policy,
 or stopping development on this configuration. No further API spend authorized.
+
+## Heuristic-conditioned input design review — REVIEWED, findings OPEN (2026-09-24)
+
+### Scope and baseline
+
+Owner asked whether the current design is flawed because Jev receives
+heuristic-annotated inputs. Direct-parent review, not independent review, at
+`main@c18f430cf0475656255c85899243725aa526247a`, with the preceding uncommitted
+Jev viewer changes and owner `.gitignore` edit retained. No strategy, prompt,
+heuristic, viewer implementation, model request, gameplay, or league operation
+was changed/run in this review. The agent and canonical heuristic have no
+tracked diff between B2 closeout `80514df` and this HEAD.
+
+### What the model actually receives
+
+`jev/agent.py::pick` invokes the local Rust heuristic helper before the Choice
+calls. The values are on-the-fly **weighted advice**, not outcome labels,
+training targets, or Jev's own evaluations:
+
+1. `public_state` supplies rules, projected public facts and own-private reserves.
+2. `family_question` supplies each family's maximum score **excluding
+   `category_base`**, the maximizing action as `best_move_example`, and its
+   term breakdown. This is a heuristic-selected example, not neutral coverage
+   of all moves in the family.
+3. `move_question` offers only the selected family. If it exceeds 80 actions,
+   its candidates are capped by the **full** heuristic total. Each offered
+   candidate then carries a readable action plus nonzero weighted terms and
+   `heuristic_total` (including `category_base`).
+4. The model returns a Choice ID and reported distribution/confidence. These
+   are neither an exposed reasoning transcript nor calibrated win chances.
+
+Consequently, B2 measures **Jev + advice + two-stage restriction + candidate
+filter/cap**, not facts-only Jev competence. Showing the verified board is
+useful for orientation but is not a substitute for showing the saved
+`request_start.payload_snapshot`. A debug display should distinguish board
+facts, advice supplied **before** the model call, and the returned choice.
+Referee reveal is not part of the model input. Hiding advice in the UI cannot
+make an already-recorded decision a no-advice experiment.
+
+### Material findings and corrections to B3
+
+**R1 — Q1 compared the wrong score definition.** The pure Rust heuristic selects
+the maximum of `HeuristicTermScores::total()` and uses RNG only among equal
+maxima. Its family priors are buy **1,000,000**, take **100,000**, visible reserve
+**10,000**, blind reserve **1,000**. Removing these was an intentional earlier
+policy design choice, not a transport bug, but it means the family-stage advice
+argmax is not the canonical policy's global argmax. Restoring priors is NOT
+implicitly authorized by this finding.
+
+Exact recorded B2 example, game `00-s3-rollout-s0-20261000`, ply 0:
+
+| option | score shown at stage 1 | canonical score for the same example |
+| --- | ---: | ---: |
+| take tokens | 28,500 | 128,500 |
+| reserve market Three/S2, card #81 | 33,300 | 43,300 |
+
+Jev selected reserve. It agrees with the shown advice while disagreeing with the
+canonical preference. The old “96.6% correct family / routing ruled out” claim
+is therefore invalid. Even a genuinely rare disagreement can be decisive;
+frequency alone cannot bound recoverable games.
+
+**R2 — agreement cannot identify independent competence or advice harm.**
+Recounting the recorded stage-2 offers gives **551/582 (94.7%)** selections in
+the maximum-score set, with **31** strictly below it. The old 524/582 “rank 1”
+count arbitrarily split ties using option-ID lexical order. High agreement with
+advice the model already saw is not proof of independent validation, copying,
+training, or a heuristic ceiling. It certainly does **not** rule out reducing
+heuristic influence; that causal effect requires a controlled comparison.
+Likewise, a hybrid policy losing more games than the pure heuristic does not
+identify advice as the cause: family scoring, restriction, ties and occasional
+below-top choices all differ. The prior “planning must be the next lever”
+conclusion is withdrawn.
+
+**R3 — prior audit coverage was incomplete.** There are **617** decision-choice
+records, not 613; **595** family calls and **582** move calls. Non-random anchors
+have **442** family calls, not 288: `not run.startswith('1')` wrongly excluded
+games 10–14 as well as random games 15–19. The audit must use the manifest's
+anchor identity. There are 80 reserve choices and 17 selected reserve actions
+with a return; the old cross-game repeated-target count did not measure
+same-root alternative returns. Neither reserve incidence nor its similarity
+between wins/losses proves that return policy is harmless. A full canonical
+reranking and same-root sibling-return audit remain undone.
+
+**R4 — representation ambiguity remains.** The actual compact encoder uses
+`W/U/G/R/K/J`, but the instruction legend still says `W/B/G/R/K` before giving
+an example with `U`. Record as an unresolved input-contract defect, not a proven
+cause of losses. It was not edited here; the B2 request bodies stay frozen.
+
+### Reproducible offline evidence
+
+Command run (exit **0**):
+
+```text
+python local-artifacts/jev/design-review-20260924/audit.py
+```
+
+The local-only audit validates **1,177** saved payload hashes using the transport
+serialization, joins **617** recorded actions to replay actor/ply/action, checks
+stage-2 term sums and choice-ID mapping, and retains hashes of all 20 input
+journals/replays/summaries plus the relevant sources. It is a diagnostic check,
+not a fresh model run or a new full engine-replay-verification suite.
+
+Output: `local-artifacts/jev/design-review-20260924/audit.json`, SHA256
+`9d43e0a27bbfb9b7c77d760ac2e2b3a640cbbdc8b1fdf1ec0b8db0c4d080f770`.
+The B2 journals and old B3 scripts/results were not overwritten. No new
+competitive result or statistical test is claimed.
+
+### Decision and next gate
+
+B2 remains a valid completed behavior sample of the frozen hybrid policy;
+**the earlier B3 root-cause exclusions are not valid**. Treat the current debug
+view as an augmented-input audit, not as a window into independent model
+reasoning. Before a strategic intervention, correct the attribution contract
+(full canonical score versus displayed advice, tied maxima, complete decision
+coverage, within-root returns). A future facts-only/advice comparison is a
+proposal only: simply deleting the total while retaining weighted terms,
+heuristic-selected examples or top-80 filtering is not a clean no-advice arm.
+No new policy change or paid experiment is authorized by this review.
+
+## Facts-only Jev redesign — owner direction recorded / mapping PROPOSED (2026-09-24)
+
+Owner now requests structured game facts without heuristic annotations: tiered
+market/card costs, bank, own gems/bonuses/VP, opponents' visible state; legal
+family choice first, followed by color preferences / reserve target / legal buy.
+This supersedes the prior hold on *designing* a facts-only policy. No live API
+call or experiment is authorized; this turn investigates the action mapping.
+
+Verified contracts:
+- `FullState::legal_main_actions` already includes only affordable market and
+  reserved-card purchases. Family availability can be derived directly from the
+  certified legal-action list; no heuristic helper is needed.
+- Token taking allows either three distinct available colors (fewer only when
+  fewer colors remain), or two of one color when that bank stack is at least 4.
+  Before returns, there are at most 10 distinct triples plus 5 double-take
+  bundles. Ranking five colors and always taking the top three drops the legal
+  double-take option and does not evaluate combinations jointly.
+- Take and reserve actions include exact return vectors when token holdings
+  would exceed 10. Choosing only a card target or gross take does not select a
+  full executable action; an arbitrary sibling tie-break would add a policy.
+- Reserve targets include up to 12 visible slots and 3 nonempty blind decks;
+  gold gain is subject to bank availability. The three-reserve limit is masked.
+- Multiple eligible nobles use the existing separate `ChooseNoble` phase;
+  forced singleton choices need no model call.
+- Live TypeSafe Choice reference (`https://docs.typesafe.ai/primitives/choice.md`,
+  read 2026-09-24) defines a distribution over competing single options, not
+  marginal resource values or the utility of selecting a triple. A top-three
+  mapping is possible as an explicit simplifying policy, not an equivalent
+  interpretation of Choice probabilities.
+
+Minimal recommendation (not yet implemented): facts-only legal-family routing,
+then a legal take bundle / reserve target / legal purchase Choice. Handle exact
+returns explicitly only where needed; retain noble/forced handling. Remove the
+heuristic helper, weighted terms/totals, heuristic-picked examples and
+heuristic-based candidate pruning; retain rules, objective, legality/identity,
+request-byte gate and logs. The open owner choice is whether to retain the
+proposed probability/top-three simplification (and knowingly exclude doubles)
+or use legal-bundle selection, and how to select overflow returns. No gameplay,
+policy code, frozen evidence, viewer code or league data changed in this turn.
+
+## Facts-only v0.4 policy — AUTHORIZED / IN PROGRESS (2026-09-24)
+
+Owner confirmed adding a same-color-double take option while retaining five
+color probabilities, then authorized strategy implementation and a real game.
+Frozen mapping: legal modes `take_distinct`, `take_double`, `reserve`, `buy`
+(with noble/pass phases preserved); color stage always has the five named
+colors, masks unavailable colors in local execution, uses top min(3,available)
+for distinct takes and top one eligible color for a double. Equal probabilities
+use fixed W/U/G/R/K order, recorded as policy (not calibrated utility). Invalid,
+missing or non-normalized probability vectors fail closed, never fall back to
+heuristic advice. Reserve and buy target choices reference structured card
+facts; exact overflow returns are chosen explicitly, including gold where legal.
+Forced choices make no call. No heuristic helper, terms, recommended examples,
+score-based cap, or no-op deletion remains in the active policy.
+
+Implementation gates: facts-only payload assertions, legal family/buy mask,
+distinct/double masks, insufficient-bank colors, probability validation/ties,
+reserve market/deck and own-reserve buys, explicit returns, forced/noble paths,
+identity/deadline/size/failure logging, fake-network real-arena tests, and replay
+joins. Logs must distinguish color probabilities from the converted token bundle
+and retain original legal-action index mapping for target/return selections.
+
+Live smoke frozen BEFORE implementation: **one** complete game, seed **20260923**,
+Jev **seat 0**, opponent `agent-heuristic --seed 20260924`, model **jev-1.13.0**,
+**100** API-attempt cap, unchanged 70,000-byte request gate and transport retry
+policy, 45s decision deadline. Fresh direct-child run directory under
+`local-artifacts/jev/`; no B2 overwrite, no 20-game batch, no League/Elo write.
+No retuning or replacement game after viewing the result. Compare protected
+artifact hashes before/after. A valid completed game checks behavior and
+integration only; it does not establish strength or a causal advice effect.
+
+### Implementation / offline gate (before the one live game)
+
+The active agent is now **v0.4.0**, policy
+`facts-only-color-probabilities-v1`, metrics schema 4. The legal list supplies
+mode masks, take bundles and exact completions; the policy returns an original
+legal-list action. No `agent-heuristic-terms` call, term glossary, recommended
+example, score ranking/cap or no-op deletion remains. Full color names replace
+B2's ambiguous abbreviation legend. Session logs retain per-stage counts and
+`selection_path` (forced skips, eligible colors, ranking, constructed bundle,
+target and return IDs). The shared interaction panel renders color/target/
+return/noble stages and the recorded program mapping separately from answers.
+This does not resolve all pre-existing `/jev` run-identity/navigation issues.
+
+Offline checks actually run, all exit **0**:
+
+- `python -m unittest discover -s jev -p 'test_*.py'`: **72 passed**, no skips
+  on this Windows host (including two real local-arena fake-inference tests).
+- `python -m compileall -q jev`: PASS.
+- In `apps/replay-studio`: `npm test` (build + **153 passed**), `npm run lint`,
+  `npx --no-install tsc --noEmit`: PASS.
+- `python -u jev/check_facts_replays.py --root local-artifacts/jev/roundB2-20260923 --binary target/release/splendor.exe --out local-artifacts/jev/facts-only-20260924-validation/legal-roundtrips.json`:
+  **20 verified/rebuilt replays, 617 roots, 44,659 exact legal-action
+  round-trips**, including 37,019 actions with returns and 49 own-reserved
+  purchases. Test-owned responses exercise every legal action; this is not
+  model evaluation or a canonical heuristic reranking. Noble/pass covered by
+  unit fixtures, not this B2 corpus. Maximum encoded request **7,605 B**;
+  per-stage maxima family/colors/target/return = 5,715/5,869/6,134/7,605 B.
+- `git diff --check`: PASS. All **48** pre-recorded protected file hashes still
+  match, including League DB/identity, B2 journals/replays, canonical heuristic,
+  owner `.gitignore` and pre-existing viewer files.
+
+Iteration evidence: the first exhaustive checker invocation exceeded its 180s
+harness timeout without a result file; no checker process remained. Grouping
+legal actions was simplified to a single pass, progress was made durable, and
+an explicit 600s invocation completed with exit 0. No paid retry or game was
+involved. Logs/results are under
+`local-artifacts/jev/facts-only-20260924-validation/`.
+
+The next authorized operation is the **single** frozen real game in fresh
+`local-artifacts/jev/facts-v04-20260924-s20260923-seat0/`; no paid call had been
+made when this offline gate was recorded.
+
+## Facts-only live smoke and closeout — VERIFIED / NOT PROMOTED (2026-09-24)
+
+### Execution and final implementation
+
+Baseline `main@c18f430cf0475656255c85899243725aa526247a`; direct-parent
+implementation/validation, not independent review. The one previously frozen
+game ran exactly once, with no changed seed, seat, opponent, model, budget,
+policy or replacement game after observing its outcome:
+
+```text
+JEV_MAX_API_CALLS=100 JEV_MODEL=jev-1.13.0 JEV_EXPECTED_MODEL=jev-1.13.0
+python -u jev/match.py --seed 20260923 --jev-seat 0 --binary target/release/splendor.exe --out-dir local-artifacts/jev/facts-v04-20260924-s20260923-seat0
+```
+
+The variables above were supplied in the subprocess environment, not as a
+literal Windows command prefix. Arena/runner exit **0**, elapsed **53.05 s**;
+`verify-replay` exit **0**. The existing release binary was reused and hashed;
+this round did not change/rebuild game-core rules.
+
+| Observation | Recorded result |
+| --- | --- |
+| Outcome | Jev **0**, heuristic **17**; winner seat 1, prestige-threshold ending |
+| Replay | **52 plies**, Jev **26 decisions** |
+| API attempts | **52** (family 22, colors 10, target 3, return 17) |
+| Service behavior | 51 received answers; one `connection_error` in colors, recovered by the existing bounded retry |
+| Identity | Every received answer reports **jev-1.13.0** |
+| Reported usage | **142,754 input / 5,241 output tokens** |
+| Unknown usage | **1 attempt**; its possible server billing is unknown, not zero |
+| Maximum actual encoded payload | **6,602 B**, below the unchanged 70,000 B guard |
+| Mode choices | Distinct take 19, double take 2, reserve 3, buy 2 |
+| Exact actions | 21 token takes, 3 market reserves, 2 market buys; 17 actions had returns |
+
+After the game, closeout found the old `run_batch.py` would still label any
+new policy B/B2. A narrow **non-policy** guard now refuses v0.4 at both batch
+entry points **before** directory creation or arena launch. The archived B2
+harness is not a facts-only evaluation tool. A no-network regression verifies
+this; the final Python suite is **73 passed**, no skips. `compileall` and
+`git diff --check` exit 0 (Git emits local LF/CRLF conversion notices, not
+whitespace failures). No change was made to the sampled agent/transport/runtime
+policy after the game; manifest-bound source and binary hashes still match.
+
+### Exact replay / input / mapping audit
+
+Command run, exit **0**:
+
+```text
+python local-artifacts/jev/facts-only-20260924-validation/audit-live.py
+```
+
+This read-only audit re-verifies the replay, rebuilds all 26 Jev positions via
+`probe-legal --emit-observation`, checks actor/ply/observation hash and the
+original legal index, then re-executes the policy with the **saved** service
+answers/error. Every emitted payload matches the recorded serialized snapshot
+and hash; every color/target/return path and final action matches the journal
+and authoritative replay. All **52** attempts, **51** received answers and
+reported usage reconcile. All 26 `trace-summary` entries agree. This does not
+call the model again. The **48** pre-recorded protected file hashes remain
+unchanged, including League DB/identity, frozen B2 replay/journals, canonical
+heuristic, owner ignore edit and the pre-existing viewer files.
+
+### Behavior evidence and limitations
+
+The game contains **10 exact no-op takes** (the received vector was returned
+unchanged). This was permitted by the frozen policy: no-op deletion was removed
+along with heuristic filtering, and returns were model-selected rather than
+silently chosen by code. Across all 26 Jev roots, buying was legal only **twice**;
+both times Jev chose buy. The observed failure is therefore not “refused many
+available purchases.” The take/return decisions repeatedly failed to create
+purchase opportunities. Two purchased cards yielded zero VP, while the
+opponent reached 17. Exact mapping audits found no execution mismatch to
+explain this result.
+
+These are observations from one trajectory, **not a causal diagnosis** of
+five-color top-k, return decomposition, or advice removal. This game does not
+establish general strength, a universal Jev limit, or a statistical comparison
+to B1/B2. Keep the negative result; do not adjust prompts/filters/probability
+ties or rerun until the owner chooses a new scope.
+
+### Evidence index (all generated files remain local-only)
+
+Run directory: `local-artifacts/jev/facts-v04-20260924-s20260923-seat0/`.
+Validation directory: `local-artifacts/jev/facts-only-20260924-validation/`.
+
+| File | SHA-256 |
+| --- | --- |
+| Run `manifest.json` | `4d6a4483a6fe753d5325403240a4d2aa9116480d75a517e551f5544d681f3694` |
+| Run `config.json` | `1f5445d48cbd9c3d12773527b888c88700bf9440deb67bb1f9384411d40926f4` |
+| Run `report.json` | `67d4210b09fc25b89ba8195977579bcee4f00543a6a974693731494998462f7c` |
+| Run `replay.json` | `c8f6a9ffcea3964b761e732f4cb282658b3cf7d0a450f89c859a136f1fb781bb` |
+| Run `metrics.jsonl` | `52f4a32e77d8244cc6b7cfea7071311fed63268a6f47b7ffbddb86a05c5a25df` |
+| Run `trace-summary.json` | `45ecd404e867d6d819fe90b9fe4627f33864f6f28f5b604f6ba91f9b48fd27f2` |
+| Validation `legal-roundtrips.json` | `11d93d29453c81dfea087ee72f9d9f35c6e934a447e87bad2b570b7759bdd67b` |
+| Validation `live-audit.json` | `853546ccf64fefad395c90e154b7c41e26f5d5b0c941afee7e75cffa58c38b2d` |
+
+`live-audit.json` also anchors all other run artifacts and the audit script;
+`manifest.json` anchors sampled source/catalog/binary hashes. Offline evidence
+includes `python-gates.json`, `ui-gates.json`, `closeout-gates.json`,
+`live-launch.json`, `live-exit.json` and their command logs. Original B2 data and
+historical failed/withdrawn interpretations are not overwritten.
+
+### Verdict and next authorized gate
+
+**IMPLEMENTED / VERIFIED:** facts-only v0.4 strategy, exact legal-action
+mapping, safe transport/identity, trace projection and shared panel support.
+**Completed unrated behavior smoke: 0–17; NOT PROMOTED.** No claim of independent
+review or new dedicated `/jev` browser end-to-end acceptance. The pre-existing
+viewer branch of work remains uncommitted: duplicate leaf IDs across rounds,
+seat-authority fallback and launcher/navigation integration require separate
+closeout; the shared panel stage change does not resolve them.
+
+All authorized paid work is exhausted. Stop for owner review; no additional
+calls, replacement game, 20-game batch, League/Elo mutation, training, new
+strategy intervention or competitive promotion is authorized by this result.
