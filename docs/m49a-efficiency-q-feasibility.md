@@ -749,6 +749,24 @@ These are descriptive comparisons, not a newly invented pass threshold:
 - Preserved that exact file under ignored `local-artifacts/m49a-c3-hard-refresh4-attempt1-incomplete/`; did not resume from it because optimizer/RNG state was not captured. The canonical C3 run directory is reset and empty. Continue the same frozen C3 trajectory from its original seed, not a new treatment/interval.
 - In response to the owner's exit-code recommendation, the C3 wrapper now writes an atomic `process-status.json` (`running`, then `completed`/`failed`/`interrupted` with exit code). This small operational record does not alter training, targets, RNG, or selection. After this patch, `PYTHONPATH=training/m17_gpu C:/Python312/python.exe -m pytest -q training/m17_gpu/tests/test_m49a_refresh4.py training/m17_gpu/tests/test_m49a_polyak.py training/m17_gpu/tests/test_m49a_streaming_builder.py training/m17_gpu/tests/test_m49a_forward_parity.py training/m17_gpu/tests/test_m49a_delta_parity.py` exited 0 with **12 passed**; `git diff --check` exited 0. Logs/hashes: `local-artifacts/m49a-c3-preflight/python-status-update.log` and `diff-check-status-update.log`. The status-only update was committed/pushed before the complete run as `f2cb2bd` (`fix(m49a): persist C3 training process status`); it changes only local process-status evidence, not training behavior.
 
+### Attempt 2 interruption (runtime worktree coupling) and runtime-isolation repair
+
+- Attempt 2 was launched foreground at `10:24:20Z` on code `6e6ac9c`. It progressed through 78 FQI blocks over ~2.8 hours, writing 7 valid checkpoints (`weights_iter010.json` through `weights_iter070.json`; iter10 hash `35cfabb3…` matched attempt 1 identically, confirming deterministic trajectory recovery).
+- At `13:13:23Z` during FQI block 78 target recalculation, the training process failed with:
+  `RuntimeError: Rust target builder failed: ... error[E0063]: missing field 'run_trace_id' in initializer of 'RunCtx' --> crates/splendor-arena/src/runner.rs:472`
+  `error: could not compile 'splendor-arena' (lib) due to 1 previous error`
+- Root cause: `compute_targets_streaming()` (introduced in `b7ec8b1`) executed `cargo run -q --release -p splendor-cli ...` on every Bellman target recalculation (160 times per C3 run). This dynamically recompiled from the mutable main worktree. While C3 was running, unrelated commits to `splendor-arena` passed through an intermediate non-compiling state, causing cargo to fail during training block 78.
+- Owner ruling: **INFRASTRUCTURE-INTERRUPTED / NO EXPERIMENTAL RESULT**. The partial 7 checkpoints are not evaluated, not used for selection, and not resumed from. The failure does not consume the authorized C3 experiment. Jev commits are not reverted.
+- Architectural policy established: **"Build once, run immutable"**. Long-running training must never invoke `cargo run` or depend on the live worktree at runtime.
+- Fix implementation (`aae7aa2`):
+  1. Built release binary `local-artifacts/m49a-c3-runtime/splendor-target-builder.exe` (SHA256 `0e8534f620ba2f9a37a40fe108cc73ebfca64b5e8f89ccd7f14e42e8d3b31b3d`) from C3 source commit `f2cb2bd` in a detached worktree.
+  2. Updated `compute_targets_streaming()` to accept `target_builder_exe: Path`.
+  3. C3 runner strictly enforces frozen executable existence and SHA256 match; fails closed with **no cargo fallback**. No git state is inspected during training.
+  4. Parity gate: verified byte-identical and float-identical target output between frozen binary and cargo builder on shared validation fixture (2,402 rows).
+  5. Python regressions: 16 passed (`test_m49a_refresh4.py` includes frozen binary enforcement and direct execution tests).
+- Attempt 2 artifacts preserved in ignored `local-artifacts/m49a-c3-hard-refresh4-attempt2-interrupted/` and `local-artifacts/m49a-c3-hard-refresh4-attempt2-training.log`.
+- Clean replacement run launched as an independent, persistent OS process (PID 9724) on the exact authorized contract (same seed `49000001`, D2, 80×8 blocks, 4-epoch refresh, CPU, online checkpoints). First FQI iteration completed successfully (114.1s target calc, 6.3s train).
+
 ### Next authorized gate
 
-Status-capture update `f2cb2bd` is pushed; Python 12 passed and diff-check passed on it. Execute one complete C3 interval-4 trajectory from the fixed initialization, capture its actual exit status and local log; only a complete 80×8 run may proceed to fixed eight-checkpoint evaluation. C1 remains reference pending a later owner decision. Double-Q, Round3, all sweeps/other intervals, longer training, M50, and Canonical 64 remain NOT AUTHORIZED / HOLD.
+Wait for replacement C3 run to complete all 80 blocks, then evaluate the fixed eight checkpoints `[10,20,30,40,50,60,70,80]` using `m49a_validation_select_v1`. Compare against C1 and C2, record full evidence, and return for owner review. C1 remains reference. Double-Q, Round3, all sweeps/other intervals, longer training, M50, and Canonical 64 remain NOT AUTHORIZED / HOLD.
