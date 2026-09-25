@@ -145,6 +145,47 @@ fn test_gate2_running_min_q_target() {
 }
 
 #[test]
+fn test_split_successor_feature_cache_matches_combined_encoder() {
+    let mut policy = CategoryBiasedPolicy::new(0.20);
+    let mut rng = StableRng::new(0x7788);
+    let (records, _) =
+        collect_solo15_trajectory(1001049, &mut policy, "cache-parity", 0, 35, &mut rng).unwrap();
+    assert!(!records.is_empty());
+
+    let mut saw_running = false;
+    let mut saw_terminal = false;
+    for record in &records {
+        let compact = M49ACompactTransitionV1::from_record(record).unwrap();
+        let parts = compact.materialize_next_action_feature_parts().unwrap();
+        if compact.outcome == Solo15Outcome::Running {
+            saw_running = true;
+            let (prefix, suffixes) = parts.expect("running rows have split successor features");
+            let obs = compact.next_observation.as_ref().unwrap();
+            let horizon = compact.next_remaining_main_turns as f32 / compact.max_main_turns as f32;
+            assert_eq!(prefix.len(), 368);
+            assert_eq!(suffixes.len(), compact.next_legal_actions.len() * 60);
+            for (action_idx, action) in compact.next_legal_actions.iter().enumerate() {
+                let combined = splendor_learning::encode_combined_v2(
+                    obs,
+                    action,
+                    compact.next_remaining_main_turns,
+                    compact.max_main_turns,
+                )
+                .unwrap();
+                assert_eq!(&combined[..368], prefix.as_slice());
+                let start = action_idx * 60;
+                assert_eq!(&combined[368..], &suffixes[start..start + 60]);
+                assert_eq!(suffixes[start + 59], horizon);
+            }
+        } else {
+            saw_terminal = true;
+            assert!(parts.is_none(), "terminal rows have no successor features");
+        }
+    }
+    assert!(saw_running && saw_terminal);
+}
+
+#[test]
 fn test_gate3_horizon_awareness() {
     let weights = make_test_weights();
 

@@ -265,6 +265,9 @@ fn main() {
         Some("m49a-export-compact") => {
             std::process::exit(m49a_target_builder::run_m49a_export_compact(&argv[2..]))
         }
+        Some("m49a-export-successor-cache") => std::process::exit(
+            m49a_target_builder::run_m49a_export_successor_cache(&argv[2..]),
+        ),
         Some("m49a-select-checkpoint") => {
             std::process::exit(m49a_select_command::run_m49a_select_checkpoint(&argv[2..]))
         }

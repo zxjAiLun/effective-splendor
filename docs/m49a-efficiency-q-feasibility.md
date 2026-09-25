@@ -805,3 +805,45 @@ These are descriptive comparisons, not a newly invented pass threshold:
 The C3 run is currently **stopped by the owner at iter 16/80** (non-result). When the owner returns, relaunch one complete optimized C3 run (frozen bit-identical builder `edf2003c…`, seed `49000001`, canonical path verified clean) to a full 80/80. Only then evaluate the fixed checkpoints `[10,20,30,40,50,60,70,80]` with `m49a_validation_select_v1`. Because the optimized builder has byte-identical target output on the full frozen train and validation datasets, and the console-window fix is non-numerical, this remains the authorized C3 arm, not a new treatment. Compare against C1 and C2, record full evidence, and return for owner review. C1 remains reference. Double-Q, Round3, sweeps/other intervals, longer training, M50, and Canonical 64 remain NOT AUTHORIZED / HOLD.
 
 > Note: while this optimization work was in progress, unrelated S4 heuristic commits (`bc2904c`, `5e36a83`) landed on `main` from concurrent work. The running/relaunched C3 is unaffected by design — it executes only the frozen, hash-pinned builder and never reads git state — which is exactly the isolation the Attempt 2 post-mortem mandated.
+
+## 19. Owner-authorized CUDA fast-iteration follow-on (AUTHORIZED / IMPLEMENTATION IN PROGRESS)
+
+### Owner decision and problem
+
+On 2026-09-26 the owner explicitly rejected preserving the old CPU C1/C2/C3 comparability requirement for the next development pass ("不用管之前基线 ... 我就要看当前效果 速度快迭代快"). The legacy C3 process had already been owner-stopped at iter 16/80 and archived as a non-result. The owner then authorized changing the compute path to CUDA and optimizing for fast iteration. Preserve the old C1/C2 results as historical evidence, but do not treat them as a gate or claim a controlled comparison for this follow-on.
+
+### Scope and contract
+
+- Build a new, clearly named CUDA fast-iteration path; do not mutate or resume the stopped CPU C3 run/checkpoints.
+- Keep the fixed D2 transition data (36,674 train / 2,402 validation) and the existing cost-to-reach-15 objective, 428-d `EfficiencyQNet`, AdamW configuration, seed `49000001`, 80 blocks × 8 epochs, hard-target refresh every 4 epochs, and eight online checkpoints `[10,20,30,40,50,60,70,80]` for the first GPU run. Device/numerics/runtime are intentionally changed; this is an exploratory current-effect run, **not comparable** to C1/C2 or the stopped CPU attempts.
+- One-time Rust preprocessing uses the canonical feature encoders to materialize each transition's shared next-observation prefix (368 floats), successor action/delta/horizon suffixes (60 floats each), and cumulative action offsets. Expected train cache is ~0.67 GiB (2,788,868 successor actions); validation cache ~0.03 GiB. This avoids reimplementing game/feature semantics in Python while keeping the cache small enough for the local machine.
+- At each target refresh, compute the observation-prefix projection once per transition, batch the suffix projection + remaining MLP forward on the RTX 4060 CUDA device, and segment-min by offsets; apply the unchanged terminal rules (`Reached15→0`, `Stalled/TurnCap→100`, `Running→min Q`) plus `step_cost`. Train the same net on CUDA. TF32/fused optimizer settings, if enabled, are explicit in the run manifest.
+- Cache provenance binds D2 source hashes, exporter executable SHA/source commit, row counts/dimensions, and generated artifact hashes. Training must fail closed if inputs/cache identity or shapes disagree. All caches/checkpoints/logs remain local-only under ignored `local-artifacts/`.
+
+### Non-goals and interpretation
+
+- No C1/C2 rerun, old-baseline gate, Canonical/League evaluation, promotion, policy deployment, or claim of historical comparability.
+- No change to the objective or add/remove data for this first CUDA pass. Batch size/optimizer/target-refresh changes are deferred until the GPU path is measured; a later fast-iteration run can vary those explicitly.
+- The target is measured wall-clock and current held-out validation behavior. Report warm-up/cache-build separately from repeated-run training time; do not present a speed estimate as a measured result.
+
+### Implementation and verification plan
+
+1. Add a Rust streaming export command for the split features/offsets, with fail-closed validation and a parity test that reconstructs sampled 428-d vectors against `encode_combined_v2`.
+2. Build once from a committed source snapshot and hash-pin the local exporter. Generate and hash the train/validation cache once.
+3. Add a PyTorch CUDA target builder and fast runner. Test terminal targets and compare sampled/bounded Rust-vs-CUDA target values to a declared tolerance; test segment-offset coverage, finite outputs, and feature-cache hash/shape guards.
+4. Profile one target refresh and a short training smoke on the RTX 4060. Then run the full fixed-budget fast iteration, preserving process status and logs, and evaluate the eight checkpoints after full completion.
+5. Record actual preprocessing cost, target-refresh/train time, CUDA/TF32 settings, validation curve, hashes, and limitations. Owner decides what to iterate next.
+
+### Iteration log
+
+- 2026-09-26: verified local hardware is NVIDIA GeForce RTX 4060 Laptop GPU (8,187 MiB), Python torch `2.6.0+cu124`, `torch.cuda.is_available() == True`. D2 scan found 2,788,868 train successor-action rows (average 77.67, max 577) and 126,864 validation rows (average 54.26, max 484). Split cache avoids a full 4.45-GiB expanded train matrix; projected train storage is ~0.67 GiB plus ~0.03 GiB validation. `torch.segment_reduce(..., reduce="min", lengths=...)` smoke passed on CUDA, including an empty segment returning `inf` as expected.
+- Owner explicitly authorized prioritizing speed/current effect over old C1/C2 baseline comparability. No CUDA training run has been launched; implementation/verification gates are underway.
+- **Canonical split exporter implemented**: `M49ACompactTransitionV1::materialize_next_action_feature_parts` returns `encode_observation_v1` + flattened `encode_action_v1|encode_action_delta_v2|horizon`; a Rust natural-trajectory test reconstructs each 428-d row exactly against `encode_combined_v2` and verifies terminal rows return no features. New CLI `m49a-export-successor-cache` writes little-endian prefix/suffix/offset files, one transition at a time, failing closed on invalid compact rows/output collisions. `cargo test -p splendor-analysis --test m49a_target_builder_tests` exit 0 (6 passed); `cargo check -p splendor-cli` exit 0 (only pre-existing warnings). A local debug CLI export smoke on full validation emitted 2,402 transitions / 126,864 action rows; output sizes exactly match `[2402,368]`, `[126864,60]`, `[2403]` (`local-artifacts/m49a-cuda-cache-probe/val/`). This is smoke evidence, not yet the frozen full train+validation cache.
+- **CUDA trainer implemented and unit-smoked**: split target computation caches observation/prefix projection and row-to-transition IDs on GPU, uses batched suffix GEMM + `torch.segment_reduce(min)`, then applies the fixed terminal and step-cost rules. New CUDA unit tests cover terminal targets, segmented minima across batch boundaries, and one-block fused-AdamW training/checkpoint output. `py_compile` passed and `pytest -q training/m17_gpu/tests/test_m49a_cuda_fast.py` exited 0 (2 passed).
+- **Full validation target parity smoke**: frozen Rust builder SHA256 `edf2003c…` vs CUDA split-cache implementation (initial net seed `49000001`, RTX 4060, TF32 enabled), 2,402/2,402 targets finite; max absolute error `9.7394e-5`, mean `1.9937e-5`, p99 `6.7111e-5`; `np.allclose(atol=1e-3, rtol=1e-3)` passed. One CUDA pass, including setup/sync, took 0.549s. Exact hashes and config: ignored `local-artifacts/m49a-cuda-parity/target-parity-val-v1.json`. Numerical parity is diagnostic only, not the old-baseline acceptance gate.
+- **Frozen exporter built/pinned**: `m49a-export-successor-cache` release binary was built from committed Rust source `3cbaed4e20f7b60fbddcb93305694565379e5fc9` in the detached CUDA worktree. Local executable `local-artifacts/m49a-c3-runtime/splendor-target-builder-cuda-cache.exe`, SHA256 `8e1bcd4226bbb05e8fde570a5feabfeff04405bacea51c4a2e9c37f36657aa98`, 11,504,640 bytes. Full validation export from the frozen binary reproduced the debug-exporter prefix/suffix/offset files byte-for-byte (SHA256 respectively `22f35949…`, `755cef22…`, `fb30e8e7…`).
+- The full train+validation cache has not yet been built; no end-to-end GPU training result or measured full-run time exists.
+
+### Next authorized gate
+
+Implement, verify, and profile the immutable-exporter + CUDA cached-target path. Only after the smoke gates pass, launch the new exploratory GPU run; report it separately from the stopped CPU C3 and old accepted baselines.
