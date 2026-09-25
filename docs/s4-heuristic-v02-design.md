@@ -1,6 +1,6 @@
 # S4 — Heuristic v0.2 独立评分策略与小规模对战
 
-- **Status:** v0.2.0 IMPLEMENTED / VERIFIED offline，128/128 有效探索性 **EXPLORATORY_WEAKER**；owner 指示 v0.2 属开发阶段可继续调结构，**v0.2.1（分阶段感知）** 已用全新 seed 完成 192 场探索性 pilot：对冻结 v0.2.0 EXPLORATORY_STRONGER、对 v0.1 UNRESOLVED、对 S3 EXPLORATORY_WEAKER。全部 **NOT PROMOTED**，owner review pending，默认仍是 S3。
+- **Status:** v0.2 仍在开发中；v0.2.0 有效负向、v0.2.1 分阶段正向干预均保留各自证据；**v0.2.2（自有折扣三阶段）** 新 seed 192/192 有效：对冷冻 v0.2.1 EXPLORATORY_STRONGER、对 v0.1/S3 均 UNRESOLVED。全部 **NOT PROMOTED**，owner review pending，默认仍是 S3。
 - **Baseline:** `main@5eae959903023fda669b9ba5085f40394aa45663`，2026-09-25；本轮开始时工作树已有 `.gitignore`、Replay Studio 页面、`human_play_command.rs` 等其他未提交改动，不属于本设计。
 - **Scope:** 独立的 v0.2 候选 scorer / CLI / 测试与预先固定的小规模 1v1 换座 Arena 对照；旧 heuristic v0.1、`StaticEvaluatorV1`、M07/S3 的冻结身份和结果均不改动。另一 agent 负责 Solo-15 Q/MLP；真人对局与数据库构建完全不触碰。
 
@@ -147,3 +147,39 @@ v0.2.0 的真实分歧案例（本地 `local-artifacts/s4-heuristic-v02-pilot/v0
 - 匹配耗时（v0.1 组 11.844s、s3 组 50.105s）非逐决策延迟。
 - 唯一改动判定可信依赖“v0.2.0 组用了冷冻二进制且 hash 一致”这一点，已审计核验。
 - 本轮实现、config/runner/结果与本节记录已本地提交 `71cf4c6f0388759c8035db36a38b580c0c646ba1`（未 push；只纳入 S4.1 五文件：heuristic_v02.rs、v021 config/result、v021 runner、本文档；既有 owner/UI/M49A 未提交改动未碰）。
+
+## S4.2 — v0.2.2 三阶段结构干预（2026-09-26，赛前设计）
+
+### 问题、证据与授权
+Owner 明确要求继续优化，不将 v0.2.1 当产品冻结；提出以**自己的永久折扣数**划分超前期（≤4）、前期（5–8）与中后期（>8）。超前期首要抢成本≤4的一级牌和轮转、不在>7币且无可买牌的状态继续堆币；其次优先能帮助未来可见一级/高性价比二级牌的转换卡，并预留高性价比大分卡；其他常规需求最后。前期继续宝石→低级牌→下一轮折扣循环；中后期买/瞄准 VP/实际折后成本更划算的卡。v0.2.1 在新种子相对 v0.2.0 有提升，但对 v0.1 未决、对 S3 弱；没有证据证明这次结构改动一定有效。baseline `main@d44c17b648458364e5bf583ef39bdd1b8f0ef7a9`，原有未提交 UI/.gitignore/human-play 改动保留，绝不修改。旧 v0.2.0/0.2.1 的 config/result/二进制均保持只读。
+
+直接核对 `crates/splendor-catalog/src/cards.rs` 90 张牌：一级 40 张，成本≤4 共 25 张（0VP/3:10、0VP/4:10、1VP/4:5）；二级有 2VP/5 和 3VP/6 各 5 张。**6同色→3分属于二级，不存在三级 6同色→3分**。三级 7同色→4分、7+3→5分各 5 张。依 owner 所给 7→4 > 6→3 > 7+3→5 的偏好排序，预留目标跨 T3/T2 识别真实牌型，不杜撰不存在的 T3。
+
+### 首场比赛之前的结构与门槛（初值为假设，不是最优解）
+1. 新身份 `splendor-cli-heuristic-v02/0.2.2`，仍只读自己的 `Observation` 和服务器 `legal_actions`。phase=Ultra（自己的 `sum(bonuses)≤4`）、Build（5–8）、Score（>8）；公开 `end_game_triggered` 或任一玩家公开 prestige≥12 是紧急冲分 override，不窥牌堆/对手暗牌。继承 v0.2.1 的结算投影/终局/贵族/金牌合法性测试；stage 在一回合内依当前**决策前**状态计算，不以假想购买后的折扣重新分期。
+2. Ultra：购买一级印刷成本≤4 给显式 `cheap_engine_buy`，3 宝石比 4 宝石略优；拿币令此类目标由不可买变可买给 `cheap_ready` 正值（绝不是所有 BUY 无条件赢）。购买非自身卡、bonus 色对仍需该色的可见一级或 2VP/5、3VP/6 二级牌的帮助计 `conversion_value`，构建期有效、冲分期归零；保持原 `engine_value`，不伪称两项互不相关。
+3. Ultra 在无当前合法 cheap-T1 可买时，`ReserveMarket` 卡型奖励按 **T3: 7同色/4VP > T2: 6同色/3VP > T3: 7+3/5VP**（同状态同退币且无竞争奖励影响时严格排序）；有限预留数仍由裁判合法集合控制，只锁牌和可得金币，不给卡的即时VP。过币（拿币后自己总 token>7 且**任何可见/自己预留牌均不可买**）和净零拿退施加显式惩罚，杜绝空轮转；不能因为牌堆未知或对手暗预留而虚构可买牌。
+4. Build：延续低级牌和目标接力，cheap 奖励小于 Ultra、conversion 有折减，过币守卫保留；Score：二者归零，即时VP按 v0.2.1 满冲分档计，新增 `vp_efficiency` = 已知 VP/(1+当前折后总成本) 的有界奖励，top-2 目标按 VP/折后成本及可达缺口重排。不存在强制跨家族优先级；同分沿用既有 StableRng，旧 v0.1/S3 冻结身份不变。
+5. 在首场新 pilot 前冻结实际常量、源码/配置/二进制哈希，测试 stage 边界(4/5/8/9 + public override)、真实卡型及预留顺序、廉价卡/转换、>7 无可买惩罚/净零拿退、冲分性价比、隐牌视角隔离、投影对拍；具体不符的合法成本案例只按规则修正并记日志，不能见战绩后择优调参。
+
+**第二次结构迭代的独立开发 pilot 合同**：fresh seed `9_252_000..9_252_031`，smoke `9_251_999`，32 block × 双换座 × 3 对照 = 192 场；前两支 S4 pilot 用过的 seed 与本批无交集。对照：冷冻 v0.2.1 的 `local-artifacts/s4-heuristic-v021-pilot/splendor-candidate.exe` SHA256 `045b890fe52d647d6b6500642fccafc10bf229e7cec7066b696c6cbccc3e9f17`、v0.1、S3；10,000 次配对 seed-block bootstrap seed `92_522_026`，双侧 95% CI，分组仅 `EXPLORATORY_STRONGER` (下界>5000bps)/`EXPLORATORY_WEAKER` (上界<5000)/`UNRESOLVED`。registry + 既有 6,860 份本地 match-config 的起始核对零撞；赛前仍须自动复核。单局 handshake10s/move60s/shutdown2s，任何 abort/进程/身份/回放/哈希错误 STOP，保留失败，不换种子/删败局/重试。结果只在独立 `benchmarks/s4-heuristic-v022-pilot-v1.{config,result}.json` + ignored `local-artifacts/s4-heuristic-v022-pilot/`；不读写 League、人类数据库、Q/MLP、Canonical 64 或 C3。不触发晋级或产品默认切换。胜负只是探索性比较，三次迭代同原参照的跨批中心变化不是严格的同根因果消融。
+
+### 迭代日志（append-only）
+- 2026-09-26：核对基础仓库状态与卡表，确定上述机制/种子/有效性门禁；`main@d44c17b648458364e5bf583ef39bdd1b8f0ef7a9`。**此时尚未实现或开赛。**
+- 2026-09-26 竞技赛前已实现/冻结的细化：`DevelopmentPhase` 以自己的五色永久折扣合计精确区分 Ultra 0–4 / Build 5–8 / Score 9+，公开最高 prestige≥12 或 end_game 触发应急 Score；阶段于根决策前固定。新 `HeuristicV02Terms` 新增六项（`cheap_engine_buy`, `cheap_ready`, `conversion_value`, `bomb_reserve`, `rotation_guard`, `vp_efficiency`），保留 v0.2.1 旧项/无类别基座。购买一级印刷成本≤4 的 bonus = `(7−印刷成本)×500`(Ultra) / `×350`(Build)；拿币使原不可买的≤4 一级牌变可买 +1100/+700。非本次买牌的已知可见一级/2VP5或3VP6二级若尚需该 bonus 色，按每目标 2(便宜一级/高效二级) 或 1(其他一级) 的启用需求封顶8，每单位 +180/+120；与 v0.2.1 engine_value 有相关性，不当作独立因果消融。Ultra 预留卡型奖励 2400(T3 7/4)、1700(T2 6/3)、900(T3 7+3/5)，只在无可负担 cheap-T1 且自己未持任何上述 bomb 时有效；差距>一次竞争奖励500，同状态同退币严格保序。take净拿退=0 罚 2000；Ultra/Build 拿完>7币且公开/自有预留均无可买牌，按超出7的个数×850罚。Score 的购买得分性价比 `Δ实际VP ×1200/(1+当前折后总成本)`，top2目标依 `VP/折后成本/当前缺口` 排序；Ultra/Build 优先组为≤4一级、其余一级、2VP5或3VP6二级、其余。Score 时继承 v0.2.1 的 VP 最大权重 3000、engine归零。其余旧项不动，旧版本二进制不动。注意这是真实合法投影上的启发式目标，不是保证每次都能抢到/买到的规则断言。
+- **首场 smoke/Arena 前身份冻结**：`crates/splendor-agent/src/heuristic_v02.rs` SHA256 `feb76b006c28e313ad8bbdfccb5086915fae4842f359e42776ce9576ff9d2cbf`；配置 `benchmarks/s4-heuristic-v022-pilot-v1.config.json` SHA256 `490f2e9bef8329566e11a3e9fe9abbb0bf603112aa98cab16a4da75dac86b2fd`；runner `scripts/s4_heuristic_v022_pilot.py` SHA256 `ee0abb4bd6e9650b072a8e61392a56bca88538b43b1434061c02cb31a9aae802`；release `target/release/splendor.exe` SHA256 `65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4`。冻结 v0.2.1 对手已核 SHA256 `045b890fe52d647d6b6500642fccafc10bf229e7cec7066b696c6cbccc3e9f17`。配置对 v0.2.2 命令 `agent-heuristic-v02 --seed 20260926`，v0.2.1 命令仍 `--seed 20260925`；对 v0.1/S3 同原身份。不得因 smoke 输赢更改任一常量/种子。
+
+### 实现、验证、结果与下一 gate
+竞技赛前实际执行（exit 0）：`rustfmt --check --edition 2021 --config skip_children=true crates/splendor-agent/src/heuristic_v02.rs`；`cargo test -p splendor-agent heuristic_v02` 16/16，`cargo test -p splendor-agent` 37 unit +10+5 integration，`cargo test -p splendor-cli --bin splendor` 102/102，`python -m py_compile scripts/s4_heuristic_v022_pilot.py`、`python -O` 的坏版本显式合同负控 PASS，`cargo build --release -p splendor-cli --bin splendor` PASS（原有其他 crate 的警告未视为棋力数据）。竞技执行（赛前代码/权重/配置/对手二进制哈希均如上，赛后未调参数）：`python scripts/s4_heuristic_v022_pilot.py --config benchmarks/s4-heuristic-v022-pilot-v1.config.json --mode smoke` exit0，静态 registry 与本地已存 match-config 新 seed 冲突 0，smoke seed `9_251_999` vs 冷冻 v0.2.1 双换座各胜、各重核 replay（只作通路，不计入192，也没有因烟测改权重）。随后相同配置/候选二进制运行 `--mode pilot` exit0，**192/192 completed/verified，0 abort**。独立赛后只读核验：192 个 matchup/seed/rotation 唯一齐全，原始 config/report/replay 的逐场 SHA256、游戏 ID、seed、座次、双方精确 name/version/args/可执行路径（含冷冻 v0.2.1）、最终状态哈希与重算 W/T/L 全一致；对全部 192 局再次执行 `verify-replay` exit0；真实错误 0。
+
+**tracked 小结果** `benchmarks/s4-heuristic-v022-pilot-v1.result.json` SHA256 `a2de20690efb5f4ae617218e13f923a5ab0bc279ccc9b39b24568e591797dc9b`。本地 ignored `local-artifacts/s4-heuristic-v022-pilot/` 中候选 `splendor-candidate.exe` SHA256 `65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4`，逐场内容哈希清单 `manifest.json` SHA256 `803dbac064f6316dd45849c53c32b326ee596bcc055d1430849d475bb0a9fc51`，smoke `smoke-complete.json` SHA256 `7d1c4fdb9fd1359b83587b623633628b86d903445cbdfe405e37b3040ca1a137`；逐场报告/回放/二进制不跟踪、不碰人工库/League。
+
+| v0.2.2 1v1（每组32新种子×双换座） | W–T–L | paired-block center / 95% CI（bps）| exploratory 判词 |
+|---|---:|---:|---|
+| 对 v0.2.1（旧冷冻二进制） | **45–0–19** | **7031.25** / [5937.5, 8125] | **EXPLORATORY_STRONGER** |
+| 对 v0.1 | **35–0–29** | **5468.75** / [4375, 6562.5] | **UNRESOLVED** |
+| 对 S3 | **31–0–33** | **4843.75** / [3437.5, 6250] | **UNRESOLVED** |
+
+结果有效且对应新 seed；**只有对 v0.2.1 能说该 pilot 中更强**。但候选 tie RNG seed 是 `20260926`、冷冻 v0.2.1 是 `20260925`：这个 head-to-head 比较的是整个冻结 policy 包（结构+tie stream），**不是单独结构改动的严格因果隔离**；超前期/前期/冲分期的多项改动也没有逐项 ablation。v0.1/S3 区间都跨5000，既不能声称比它们强，也不能声称实际等同。对 S3 的样本分数 31–33 不够推广、更不改变默认；这些不是正式多臂检验，也未测逐决策延迟（匹配墙钟不是 p95 latency）。跨 v0.2.0/v0.2.1 不同 seed 的中心点差不构成同根因果估计。与冷冻 v0.2.1 的这64局后验行为对照（不同 tie seed 的同局面对照也可能产生不同动作）：v0.2.2 首买均值自身第3.58手、v0.2.1第4.17手；明压197 vs 371；买卡 1003 vs1103；净零拿退双方0。轨迹随策略变化，以上是描述而非“减少明压导致胜率增长”的隔离归因。
+
+**当前决定：v0.2.2 IMPLEMENTED/VERIFIED，valid exploratory stronger vs v0.2.1，vs v0.1/S3 UNRESOLVED，NOT PROMOTED；产品 S3 不变。** 下一授权门槛 STOP 等 owner 审阅：若继续 v0.2.3，应隔离轮转/cheap-T1/预留 bomb/得分效率各项的贡献并用新种子预注册测，或另授权正式独立竞技 gate 与逐决策时延门槛；不能拿本批反复调到赢。S4 与 Q/MLP、人类数据库、Canonical/M49A C3 不互相推断或绕门。

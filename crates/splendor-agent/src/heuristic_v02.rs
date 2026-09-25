@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.1";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.2";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -48,6 +48,72 @@ const ENGINE_PER_CARD_CAP: u8 = 3;
 const PHASE_LOW: i64 = 4;
 /// Lead-prestige span from construction to full scoring.
 const PHASE_SPAN: i64 = 8;
+
+// v0.2.2: phase is determined by *own* permanent discounts, with an
+// observation-only emergency scoring override near the public finish.
+const CHEAP_BUY_ULTRA: i64 = 500; // multiplied by 7 - printed T1 cost (3/4)
+const CHEAP_BUY_BUILD: i64 = 350;
+const CHEAP_READY_ULTRA: i64 = 1_100;
+const CHEAP_READY_BUILD: i64 = 700;
+const CONVERSION_ULTRA: i64 = 180;
+const CONVERSION_BUILD: i64 = 120;
+const CONVERSION_CAP: i64 = 8;
+const BOMB_7_FOR_4: i64 = 2_400;
+const BOMB_6_FOR_3: i64 = 1_700; // tier TWO in this catalog
+const BOMB_7_PLUS_3_FOR_5: i64 = 900;
+const STRANDED_TOKEN_PENALTY: i64 = 850;
+const ZERO_NET_TAKE_PENALTY: i64 = 2_000;
+const VP_EFFICIENCY_WEIGHT: i64 = 1_200;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DevelopmentPhase {
+    Ultra, // own permanent discounts 0..=4
+    Build, // own permanent discounts 5..=8
+    Score, // >8, public 12+ VP race, or publicly triggered endgame
+}
+
+fn development_phase(obs: &Observation, own: &OwnProjection) -> DevelopmentPhase {
+    let lead_prestige = obs
+        .public
+        .players
+        .iter()
+        .map(|p| p.prestige)
+        .max()
+        .unwrap_or(0);
+    if obs.public.end_game_triggered || lead_prestige >= 12 {
+        return DevelopmentPhase::Score;
+    }
+    match own.bonuses.iter().map(|&b| u16::from(b)).sum::<u16>() {
+        0..=4 => DevelopmentPhase::Ultra,
+        5..=8 => DevelopmentPhase::Build,
+        _ => DevelopmentPhase::Score,
+    }
+}
+
+fn high_value_t2(def: &CardDef) -> bool {
+    def.tier == Tier::Two
+        && ((def.prestige == 2 && def.total_cost() == 5)
+            || (def.prestige == 3 && def.total_cost() == 6))
+}
+
+/// Actual catalog shapes, not a fictitious tier-three 6-mono/3VP card.
+fn bomb_reserve_value(def: &CardDef) -> i64 {
+    let mut positive: Vec<u8> = def.cost.into_iter().filter(|&v| v > 0).collect();
+    positive.sort_unstable();
+    match (def.tier, def.prestige, positive.as_slice()) {
+        (Tier::Three, 4, [7]) => BOMB_7_FOR_4,
+        (Tier::Two, 3, [6]) => BOMB_6_FOR_3,
+        (Tier::Three, 5, [3, 7]) => BOMB_7_PLUS_3_FOR_5,
+        _ => 0,
+    }
+}
+
+fn effective_cost(def: &CardDef, bonuses: [u8; 5]) -> i64 {
+    GemColor::ALL
+        .iter()
+        .map(|&c| i64::from(def.cost[c.index()].saturating_sub(bonuses[c.index()])))
+        .sum()
+}
 
 #[derive(Default)]
 pub struct HeuristicAgentPolicyV02;
@@ -89,6 +155,12 @@ pub struct HeuristicV02Terms {
     pub terminal_lead: i64,
     pub immediate_prestige: i64,
     pub engine_value: i64,
+    pub cheap_engine_buy: i64,
+    pub cheap_ready: i64,
+    pub conversion_value: i64,
+    pub bomb_reserve: i64,
+    pub rotation_guard: i64,
+    pub vp_efficiency: i64,
     pub target_shortfall: i64,
     pub useful_discount: i64,
     pub new_affordable_target: i64,
@@ -102,6 +174,12 @@ impl HeuristicV02Terms {
         self.terminal_lead
             + self.immediate_prestige
             + self.engine_value
+            + self.cheap_engine_buy
+            + self.cheap_ready
+            + self.conversion_value
+            + self.bomb_reserve
+            + self.rotation_guard
+            + self.vp_efficiency
             + self.target_shortfall
             + self.useful_discount
             + self.new_affordable_target
@@ -134,6 +212,17 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
         prestige: me.prestige,
     };
     let targets = visible_targets(obs);
+    let phase = development_phase(obs, &before);
+    // Observation affordability, not a scan of the supplied action slice:
+    // scoring one certified action or all certified siblings must agree.
+    let has_cheap_buy = targets
+        .iter()
+        .any(|def| def.tier == Tier::One && def.total_cost() <= 4 && deficit(def, &before) == 0);
+    let has_reserved_bomb = obs
+        .private
+        .reserved
+        .iter()
+        .any(|r| bomb_reserve_value(card(r.card)) > 0);
 
     // Phase scalar in per-mille: 0 = pure construction, 1000 = pure scoring.
     // Derived only from public prestige and the public end-game flag.
@@ -144,7 +233,7 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
         .map(|p| i64::from(p.prestige))
         .max()
         .unwrap_or(0);
-    let scoring_milli = if obs.public.end_game_triggered {
+    let scoring_milli = if phase == DevelopmentPhase::Score {
         1000
     } else {
         (((lead_prestige - PHASE_LOW) * 1000) / PHASE_SPAN).clamp(0, 1000)
@@ -173,7 +262,7 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 .copied()
                 .filter(|def| Some(def.id) != bought)
                 .collect();
-            let selected = select_targets(&remaining, &before, obs);
+            let selected = select_targets(&remaining, &before, obs, phase);
             let before_def: Vec<i64> = selected.iter().map(|def| deficit(def, &before)).collect();
             let after_def: Vec<i64> = selected.iter().map(|def| deficit(def, &after)).collect();
             let shortfall = before_def
@@ -220,6 +309,90 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 }
                 None => 0,
             };
+            let cheap_engine_buy = bought.map_or(0, |id| {
+                let def = card(id);
+                if def.tier != Tier::One || def.total_cost() > 4 {
+                    return 0;
+                }
+                let weight = match phase {
+                    DevelopmentPhase::Ultra => CHEAP_BUY_ULTRA,
+                    DevelopmentPhase::Build => CHEAP_BUY_BUILD,
+                    DevelopmentPhase::Score => 0,
+                };
+                (7 - i64::from(def.total_cost())) * weight
+            });
+            let cheap_ready = if matches!(action, Action::TakeTokens { .. })
+                && targets.iter().any(|def| {
+                    def.tier == Tier::One
+                        && def.total_cost() <= 4
+                        && deficit(def, &before) > 0
+                        && deficit(def, &after) == 0
+                }) {
+                match phase {
+                    DevelopmentPhase::Ultra => CHEAP_READY_ULTRA,
+                    DevelopmentPhase::Build => CHEAP_READY_BUILD,
+                    DevelopmentPhase::Score => 0,
+                }
+            } else {
+                0
+            };
+            // Direct enabling value: a purchased discount must help OTHER
+            // currently visible cheap T1 or efficient T2 cards. v0.2.1's
+            // broader engine_value remains as a separate (correlated) term.
+            let conversion_value = bought.map_or(0, |id| {
+                let color = card(id).bonus.index();
+                let demand: i64 = targets
+                    .iter()
+                    .filter(|def| def.id != id && def.cost[color] > before.bonuses[color])
+                    .map(|def| {
+                        if def.tier == Tier::One && def.total_cost() <= 4 {
+                            2
+                        } else if def.tier == Tier::One {
+                            1
+                        } else if high_value_t2(def) {
+                            2
+                        } else {
+                            0
+                        }
+                    })
+                    .sum();
+                let weight = match phase {
+                    DevelopmentPhase::Ultra => CONVERSION_ULTRA,
+                    DevelopmentPhase::Build => CONVERSION_BUILD,
+                    DevelopmentPhase::Score => 0,
+                };
+                demand.min(CONVERSION_CAP) * weight
+            });
+            let bomb_reserve = if phase == DevelopmentPhase::Ultra
+                && !has_cheap_buy
+                && !has_reserved_bomb
+                && matches!(action, Action::ReserveMarket { .. })
+            {
+                secured.map_or(0, |id| bomb_reserve_value(card(id)))
+            } else {
+                0
+            };
+            let rotation_guard = match *action {
+                Action::TakeTokens { take, give_back } if take == give_back => {
+                    -ZERO_NET_TAKE_PENALTY
+                }
+                Action::TakeTokens { .. }
+                    if phase != DevelopmentPhase::Score
+                        && after.tokens.total() > 7
+                        && !targets.iter().any(|def| deficit(def, &after) == 0) =>
+                {
+                    -STRANDED_TOKEN_PENALTY * i64::from(after.tokens.total() - 7)
+                }
+                _ => 0,
+            };
+            let vp_efficiency = if phase == DevelopmentPhase::Score {
+                bought.map_or(0, |id| {
+                    i64::from(after.prestige - before.prestige) * VP_EFFICIENCY_WEIGHT
+                        / (1 + effective_cost(card(id), before.bonuses))
+                })
+            } else {
+                0
+            };
             let secured = secured.is_some_and(|id| {
                 let def = card(id);
                 selected.iter().any(|target| target.id == id)
@@ -245,6 +418,12 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 immediate_prestige: i64::from(after.prestige - before.prestige)
                     * (VP_WEIGHT + (scoring_milli * VP_LATE_BONUS) / 1000),
                 engine_value,
+                cheap_engine_buy,
+                cheap_ready,
+                conversion_value,
+                bomb_reserve,
+                rotation_guard,
+                vp_efficiency,
                 target_shortfall: shortfall * SHORTFALL_WEIGHT,
                 useful_discount: discount * BONUS_WEIGHT,
                 new_affordable_target: if newly_ready { READY_WEIGHT } else { 0 },
@@ -323,7 +502,12 @@ fn visible_targets(obs: &Observation) -> Vec<CardDef> {
     out
 }
 
-fn select_targets(targets: &[CardDef], own: &OwnProjection, obs: &Observation) -> Vec<CardDef> {
+fn select_targets(
+    targets: &[CardDef],
+    own: &OwnProjection,
+    obs: &Observation,
+    phase: DevelopmentPhase,
+) -> Vec<CardDef> {
     let mut demand = [0i64; 5];
     for def in targets {
         for color in GemColor::ALL {
@@ -344,11 +528,28 @@ fn select_targets(targets: &[CardDef], own: &OwnProjection, obs: &Observation) -
             })
             .count() as i64;
         let value = 1 + 2 * i64::from(def.prestige) + 2 * demand[color].min(3) + noble_help;
-        (
-            -(100 * value / (1 + deficit(def, own))),
-            deficit(def, own),
-            def.id.index(),
-        )
+        let gap = deficit(def, own);
+        match phase {
+            DevelopmentPhase::Ultra | DevelopmentPhase::Build => {
+                let group = if def.tier == Tier::One && def.total_cost() <= 4 {
+                    0
+                } else if def.tier == Tier::One {
+                    1
+                } else if high_value_t2(def) {
+                    2
+                } else {
+                    3
+                };
+                (group, -(100 * value / (1 + gap)), gap, def.id.index())
+            }
+            DevelopmentPhase::Score => {
+                let efficiency =
+                    i64::from(def.prestige) * 1_000 / (1 + effective_cost(def, own.bonuses));
+                // The target must be cost-effective AND reachable; an
+                // unreachable 5VP card cannot dominate an imminent 2VP buy.
+                (0, -(efficiency * 10 / (1 + gap)), gap, def.id.index())
+            }
+        }
     });
     ordered.truncate(2);
     ordered
@@ -424,6 +625,25 @@ mod tests {
         })
         .expect("valid game")
         .0
+    }
+
+    /// Expose an actual catalog card without duplicating it in the deck.
+    fn expose(state: &mut FullState, id: CardId, slot: usize) {
+        let t = card(id).tier.index();
+        let old = state.market[t][slot].expect("full market fixture");
+        if old == id {
+            return;
+        }
+        if let Some(other_slot) = state.market[t].iter().position(|&x| x == Some(id)) {
+            state.market[t][other_slot] = Some(old);
+        } else {
+            let pos = state.decks[t]
+                .iter()
+                .position(|&x| x == id)
+                .expect("card in deck");
+            state.decks[t][pos] = old;
+        }
+        state.market[t][slot] = Some(id);
     }
 
     #[test]
@@ -850,6 +1070,286 @@ mod tests {
         assert_eq!(
             engine_after, 0,
             "end-game flag must zero construction engine value"
+        );
+    }
+
+    #[test]
+    fn discount_phase_boundaries_and_public_scoring_override() {
+        let mut state = game(53);
+        for (count, expected) in [
+            (4, DevelopmentPhase::Ultra),
+            (5, DevelopmentPhase::Build),
+            (8, DevelopmentPhase::Build),
+            (9, DevelopmentPhase::Score),
+        ] {
+            state.players[0].bonuses = [count, 0, 0, 0, 0];
+            let obs = state.observation(PlayerId(0));
+            let own = OwnProjection {
+                tokens: Gems::ZERO,
+                bonuses: [count, 0, 0, 0, 0],
+                prestige: 0,
+            };
+            assert_eq!(development_phase(&obs, &own), expected, "discounts={count}");
+        }
+        let own = OwnProjection {
+            tokens: Gems::ZERO,
+            bonuses: [0; 5],
+            prestige: 0,
+        };
+        state.players[0].bonuses = [0; 5];
+        state.players[1].prestige = 12;
+        assert_eq!(
+            development_phase(&state.observation(PlayerId(0)), &own),
+            DevelopmentPhase::Score
+        );
+        state.players[1].prestige = 0;
+        state.end_game_triggered = true;
+        assert_eq!(
+            development_phase(&state.observation(PlayerId(0)), &own),
+            DevelopmentPhase::Score
+        );
+    }
+
+    #[test]
+    fn real_catalog_bomb_order_and_tier_correction() {
+        assert_eq!(bomb_reserve_value(card(CardId(71))), BOMB_7_FOR_4); // T3 7 white -> 4VP
+        assert_eq!(bomb_reserve_value(card(CardId(45))), BOMB_6_FOR_3); // T2 6 blue -> 3VP
+        assert_eq!(bomb_reserve_value(card(CardId(73))), BOMB_7_PLUS_3_FOR_5); // T3 7+3 -> 5VP
+        assert!(BOMB_7_FOR_4 > BOMB_6_FOR_3 && BOMB_6_FOR_3 > BOMB_7_PLUS_3_FOR_5);
+        assert!(
+            splendor_catalog::all_cards()
+                .iter()
+                .filter(|def| def.tier == Tier::Three
+                    && def.prestige == 3
+                    && def.cost.iter().filter(|&&x| x > 0).count() == 1
+                    && def.cost.contains(&6))
+                .next()
+                .is_none(),
+            "no fictitious T3 6-mono/3VP"
+        );
+        for (id, expected) in [
+            (71, BOMB_7_FOR_4),
+            (45, BOMB_6_FOR_3),
+            (73, BOMB_7_PLUS_3_FOR_5),
+        ] {
+            assert_eq!(bomb_reserve_value(card(CardId(id))), expected);
+        }
+    }
+
+    #[test]
+    fn cheap_buy_and_conversion_use_real_sibling_actions() {
+        let mut state = game(54);
+        expose(&mut state, CardId(0), 0); // T1 zero-VP blue engine, 3 black
+        expose(&mut state, CardId(9), 1); // T1 red bonus needs blue
+        expose(&mut state, CardId(42), 0); // T2 2VP/5 needs blue
+        state.players[0].tokens.black = 3;
+        state.bank.black -= 3;
+        let obs = state.observation(PlayerId(0));
+        let legal = state.legal_actions();
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        let idx = legal.iter().position(|&a| a == buy).unwrap();
+        let score = heuristic_v02_term_scores(&obs, &legal)[idx];
+        assert_eq!(score.cheap_engine_buy, 4 * CHEAP_BUY_ULTRA); // printed cost=3
+        assert!(
+            score.conversion_value > 0,
+            "blue bonus enables T1/T2 board: {score:?}"
+        );
+        // Taking tokens can prepare a cheap card: not every buy is hard-coded
+        // ahead of every take (old no-family-base regression remains in force).
+        assert!(legal.iter().any(|a| matches!(a, Action::TakeTokens { .. })));
+        let mut without_followups = obs.clone();
+        for tier in Tier::ALL {
+            for id in &mut without_followups.public.market[tier.index()] {
+                if *id != Some(CardId(0)) {
+                    *id = None;
+                }
+            }
+        }
+        let alone = heuristic_v02_term_scores(&without_followups, &[buy])[0];
+        assert_eq!(
+            alone.conversion_value, 0,
+            "card cannot count itself as its own followup"
+        );
+    }
+
+    #[test]
+    fn cheap_take_readiness_and_stranded_rotation_penalty() {
+        let mut state = game(55);
+        expose(&mut state, CardId(0), 0);
+        state.players[0].tokens.black = 2;
+        state.bank.black -= 2;
+        let obs = state.observation(PlayerId(0));
+        let legal = state.legal_actions();
+        let ready = legal
+            .iter()
+            .position(|a| {
+                matches!(a,
+            Action::TakeTokens { take, .. } if take.black >= 1)
+            })
+            .expect("can take black");
+        let scores = heuristic_v02_term_scores(&obs, &legal);
+        assert_eq!(scores[ready].cheap_ready, CHEAP_READY_ULTRA);
+
+        // Construct a real legal take above 7 tokens with no visible target;
+        // player-view scoring may not infer market refills or hidden cards.
+        let mut crowded = game(56);
+        crowded.players[0].tokens = Gems {
+            white: 3,
+            blue: 3,
+            green: 1,
+            ..Gems::ZERO
+        };
+        crowded.bank.white -= 3;
+        crowded.bank.blue -= 3;
+        crowded.bank.green -= 1;
+        crowded.market = [[None; 4]; 3];
+        let obs = crowded.observation(PlayerId(0));
+        let legal = crowded.legal_actions();
+        let idx = legal
+            .iter()
+            .position(|a| {
+                matches!(a,
+            Action::TakeTokens { take, give_back } if take.total() == 3 && give_back.total() == 0)
+            })
+            .expect("legal take to exactly ten");
+        let s = heuristic_v02_term_scores(&obs, &legal)[idx];
+        assert_eq!(s.rotation_guard, -3 * STRANDED_TOKEN_PENALTY);
+        let mut full = game(57);
+        full.players[0].tokens = Gems {
+            white: 3,
+            blue: 3,
+            green: 3,
+            red: 1,
+            ..Gems::ZERO
+        };
+        full.bank.white -= 3;
+        full.bank.blue -= 3;
+        full.bank.green -= 3;
+        full.bank.red -= 1;
+        let obs = full.observation(PlayerId(0));
+        let legal = full.legal_actions();
+        if let Some(idx) = legal.iter().position(|a| {
+            matches!(a,
+            Action::TakeTokens { take, give_back } if take == give_back)
+        }) {
+            assert_eq!(
+                heuristic_v02_term_scores(&obs, &legal)[idx].rotation_guard,
+                -ZERO_NET_TAKE_PENALTY
+            );
+        } else {
+            panic!("10-token fixture must expose a net-zero legal take");
+        }
+    }
+
+    #[test]
+    fn scoring_targets_and_bonus_match_vp_per_effective_cost() {
+        let state = game(58);
+        let obs = state.observation(PlayerId(0));
+        let own = OwnProjection {
+            tokens: Gems::ZERO,
+            bonuses: [0; 5],
+            prestige: 0,
+        };
+        let ranked = select_targets(
+            &[*card(CardId(42)), *card(CardId(43))],
+            &own,
+            &obs,
+            DevelopmentPhase::Score,
+        );
+        assert_eq!(
+            ranked[0].id,
+            CardId(42),
+            "2VP/5 outranks 2VP/8, same budget"
+        );
+        assert_eq!(effective_cost(card(CardId(42)), own.bonuses), 5);
+        assert_eq!(effective_cost(card(CardId(43)), own.bonuses), 8);
+        // Evaluate a genuinely legal 2VP/5 purchase in emergency scoring.
+        let mut scoring = game(59);
+        expose(&mut scoring, CardId(42), 0);
+        scoring.players[1].prestige = 12;
+        scoring.players[0].tokens = Gems {
+            blue: 4,
+            gold: 1,
+            ..Gems::ZERO
+        };
+        scoring.bank.blue -= 4;
+        scoring.bank.gold -= 1;
+        let buy = Action::BuyMarket {
+            tier: Tier::Two,
+            slot: 0,
+        };
+        assert!(scoring.legal_actions().contains(&buy));
+        let score = heuristic_v02_term_scores(&scoring.observation(PlayerId(0)), &[buy])[0];
+        assert_eq!(score.immediate_prestige, 2 * (VP_WEIGHT + VP_LATE_BONUS));
+        assert_eq!(score.vp_efficiency, 2 * VP_EFFICIENCY_WEIGHT / 6);
+        assert_eq!(score.cheap_engine_buy, 0);
+        assert_eq!(score.conversion_value, 0);
+    }
+
+    #[test]
+    fn actual_legal_reserve_ranking_is_gated_by_stage_and_cheap_buy() {
+        let mut state = game(60);
+        expose(&mut state, CardId(71), 0); // T3 7 white -> 4VP
+        expose(&mut state, CardId(73), 1); // T3 7+3 -> 5VP
+        expose(&mut state, CardId(45), 0); // T2 6 blue -> 3VP
+        let a4 = Action::ReserveMarket {
+            tier: Tier::Three,
+            slot: 0,
+            give_back: Gems::ZERO,
+        };
+        let a3 = Action::ReserveMarket {
+            tier: Tier::Two,
+            slot: 0,
+            give_back: Gems::ZERO,
+        };
+        let a5 = Action::ReserveMarket {
+            tier: Tier::Three,
+            slot: 1,
+            give_back: Gems::ZERO,
+        };
+        let legal = state.legal_actions();
+        assert!([a4, a3, a5].iter().all(|a| legal.contains(a)));
+        let scores = heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[a4, a3, a5]);
+        assert_eq!(
+            scores.iter().map(|s| s.bomb_reserve).collect::<Vec<_>>(),
+            vec![BOMB_7_FOR_4, BOMB_6_FOR_3, BOMB_7_PLUS_3_FOR_5]
+        );
+        assert!(
+            scores[0].total() > scores[1].total() && scores[1].total() > scores[2].total(),
+            "true legal action order: {scores:?}"
+        );
+        state.players[0].bonuses = [5, 0, 0, 0, 0];
+        assert!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[a4, a3, a5])
+                .iter()
+                .all(|s| s.bomb_reserve == 0),
+            "no ultra bonus beyond four discounts"
+        );
+
+        // If an immediate cheap T1 buy exists, secondary reserve bonuses do
+        // not compete with the owner's primary construction goal.
+        state.players[0].bonuses = [0; 5];
+        expose(&mut state, CardId(0), 0);
+        state.players[0].tokens.black = 3;
+        state.bank.black -= 3;
+        let legal = state.legal_actions();
+        assert!(legal.contains(&Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0
+        }));
+        assert!(legal.contains(&a4));
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[a4])[0].bomb_reserve,
+            0,
+            "primary-buy gate must not depend on sibling action slice"
+        );
+        let s = heuristic_v02_term_scores(&state.observation(PlayerId(0)), &legal);
+        assert_eq!(
+            s[legal.iter().position(|&a| a == a4).unwrap()].bomb_reserve,
+            0
         );
     }
 }
