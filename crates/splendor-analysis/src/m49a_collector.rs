@@ -16,7 +16,9 @@ use serde::{Deserialize, Serialize};
 use splendor_agent::{AgentPolicy, DecisionContext, PublicRequestMeta, StableRng};
 use splendor_core::{observation_hash, Action, Observation, Phase, PlayerId};
 use splendor_learning::{
-    encode_combined_v1, encode_combined_v2, EfficiencyQWeightsV1, LearningError,
+    encode_action_delta_v2, encode_action_v1, encode_combined_v1, encode_combined_v2,
+    encode_observation_v1, EfficiencyQWeightsV1, LearningError, ACTION_DELTA_FEATURES_V2,
+    ACTION_FEATURES_V1, OBSERVATION_FEATURES_V1,
 };
 
 use crate::solo15::{
@@ -687,15 +689,40 @@ impl M49ACompactTransitionV1 {
                     .as_ref()
                     .ok_or_else(|| LearningError::InvalidDataset("missing next_observation".to_string()))?;
 
+                // Bit-identical fc1 prefix caching. The 428-d feature vector is
+                // [observation(368) | action(36) | delta(23) | horizon(1)]; the
+                // 368-d observation prefix is identical for every successor
+                // action of this transition, so its fc1 pre-activation is
+                // computed once here and completed per action below. Output is
+                // bit-for-bit identical to the previous per-action
+                // `encode_combined_v2` + `forward` path (asserted by the model
+                // crate's `fc1_prefix_split_is_bit_identical_to_forward` test
+                // and the end-to-end target parity gate). The horizon guard
+                // mirrors `encode_combined_v2`'s fail-closed range check.
+                if self.max_main_turns == 0 || self.next_remaining_main_turns > self.max_main_turns
+                {
+                    return Err(LearningError::InvalidDataset(
+                        "remaining-main-turn budget is outside the environment horizon".to_string(),
+                    ));
+                }
+                let obs_prefix = encode_observation_v1(next_obs)?;
+                let fc1_partial = target_weights.fc1_partial_from_prefix(&obs_prefix);
+                let horizon = self.next_remaining_main_turns as f32 / self.max_main_turns as f32;
+
+                let mut suffix = [0.0f32; ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2 + 1];
                 let mut min_q = f32::INFINITY;
                 for a in &self.next_legal_actions {
-                    let feat = encode_combined_v2(
-                        next_obs,
-                        a,
-                        self.next_remaining_main_turns,
-                        self.max_main_turns,
-                    )?;
-                    let q = target_weights.forward(&feat);
+                    let act_f = encode_action_v1(a)?;
+                    let delta_f = encode_action_delta_v2(next_obs, a)?;
+                    suffix[..ACTION_FEATURES_V1].copy_from_slice(&act_f);
+                    suffix[ACTION_FEATURES_V1..ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2]
+                        .copy_from_slice(&delta_f);
+                    suffix[ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2] = horizon;
+                    let q = target_weights.forward_with_fc1_partial(
+                        &fc1_partial,
+                        &suffix,
+                        OBSERVATION_FEATURES_V1,
+                    );
                     if !q.is_finite() {
                         return Err(LearningError::InvalidDataset("target Q value is non-finite".to_string()));
                     }

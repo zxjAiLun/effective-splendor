@@ -139,6 +139,96 @@ impl EfficiencyQWeightsV1 {
             (1.0 + sum.exp()).ln()
         }
     }
+
+    /// Precomputes the fc1 pre-activation accumulator over a shared input
+    /// prefix (columns `0..x_prefix.len()`), returning one running sum per
+    /// hidden unit seeded with the fc1 bias.
+    ///
+    /// This exists purely for the min-over-actions Bellman target builder: all
+    /// successor actions of a single transition share the identical 368-d
+    /// observation prefix of the 428-d feature vector, so this fc1 partial can
+    /// be computed once per transition and completed per action via
+    /// [`Self::forward_with_fc1_partial`]. The accumulation is the SAME
+    /// left-to-right order (`bias`, then `j = 0..prefix.len()`) used by
+    /// [`Self::forward`], so the composed result is bit-for-bit identical
+    /// rather than merely close. `x_prefix.len()` must not exceed 428.
+    pub fn fc1_partial_from_prefix(&self, x_prefix: &[f32]) -> [f32; 256] {
+        let p = x_prefix.len();
+        debug_assert!(p <= 428, "fc1 prefix cannot exceed the 428-d input");
+        let mut partial = [0.0f32; 256];
+        for i in 0..256 {
+            let row = &self.fc1_w[i];
+            let mut sum = self.fc1_b[i];
+            for j in 0..p {
+                sum += row[j] * x_prefix[j];
+            }
+            partial[i] = sum;
+        }
+        partial
+    }
+
+    /// Completes the forward pass from a prefix accumulator produced by
+    /// [`Self::fc1_partial_from_prefix`]. `x_suffix` holds the remaining input
+    /// columns beginning at `suffix_offset` (i.e. columns
+    /// `suffix_offset..suffix_offset + x_suffix.len()`), and
+    /// `suffix_offset + x_suffix.len()` must equal 428.
+    ///
+    /// The fc1 completion continues the exact left-to-right accumulation of
+    /// [`Self::forward`], and the LayerNorm/fc2/fc3/Softplus tail is copied
+    /// verbatim, so `forward_with_fc1_partial(fc1_partial_from_prefix(x[..k]),
+    /// &x[k..], k)` reproduces `forward(x)` bit-for-bit.
+    pub fn forward_with_fc1_partial(
+        &self,
+        fc1_partial: &[f32; 256],
+        x_suffix: &[f32],
+        suffix_offset: usize,
+    ) -> f32 {
+        // Layer 1 completion: resume the same accumulation the prefix started.
+        let mut h1 = [0.0f32; 256];
+        for i in 0..256 {
+            let row = &self.fc1_w[i];
+            let mut sum = fc1_partial[i];
+            for (k, &xv) in x_suffix.iter().enumerate() {
+                sum += row[suffix_offset + k] * xv;
+            }
+            h1[i] = sum;
+        }
+
+        // LayerNorm(256, eps=1e-5)
+        let mean = h1.iter().sum::<f32>() / 256.0;
+        let var = h1.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / 256.0;
+        let std = (var + 1e-5).sqrt();
+        for i in 0..256 {
+            let norm = (h1[i] - mean) / std;
+            let val = norm * self.ln1_w[i] + self.ln1_b[i];
+            h1[i] = if val > 0.0 { val } else { 0.0 }; // ReLU
+        }
+
+        // Layer 2: Linear(256, 128) + ReLU
+        let mut h2 = [0.0f32; 128];
+        for i in 0..128 {
+            let row = &self.fc2_w[i];
+            let mut sum = self.fc2_b[i];
+            for j in 0..256 {
+                sum += row[j] * h1[j];
+            }
+            h2[i] = if sum > 0.0 { sum } else { 0.0 }; // ReLU
+        }
+
+        // Layer 3: Linear(128, 1) + Softplus
+        let mut sum = self.fc3_b[0];
+        let row = &self.fc3_w[0];
+        for j in 0..128 {
+            sum += row[j] * h2[j];
+        }
+        if sum > 20.0 {
+            sum
+        } else if sum < -20.0 {
+            sum.exp()
+        } else {
+            (1.0 + sum.exp()).ln()
+        }
+    }
 }
 
 pub const POLICY_VALUE_CHECKPOINT_FORMAT: &str = "effective-splendor-policy-value-checkpoint";
@@ -807,6 +897,47 @@ mod tests {
             assert!(
                 diff < 1e-5,
                 "Sample {idx} mismatch: Rust={actual}, PyTorch={expected}, diff={diff}"
+            );
+        }
+    }
+
+    #[test]
+    fn fc1_prefix_split_is_bit_identical_to_forward() {
+        // The min-over-actions Bellman target builder splits the 428-d input
+        // into a shared 368-d observation prefix and a per-action 60-d suffix,
+        // caching the fc1 accumulator over the prefix. That optimization MUST
+        // reproduce `forward` bit-for-bit: any divergence would silently shift
+        // the Bellman labels and every downstream checkpoint away from the
+        // reference implementation used by C1/C2.
+        let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/m49a_q_forward_parity_v1.json");
+        let content = std::fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|e| panic!("failed to read fixture at {:?}: {}", fixture_path, e));
+
+        #[derive(Deserialize)]
+        struct SplitPayload {
+            weights: EfficiencyQWeightsV1,
+            inputs: Vec<Vec<f32>>,
+        }
+
+        let payload: SplitPayload = serde_json::from_str(&content).expect("parse fixture");
+        payload
+            .weights
+            .validate()
+            .expect("fixture weights must be valid");
+
+        const PREFIX: usize = OBSERVATION_FEATURES_V1; // 368; shared per transition
+        for (idx, inp) in payload.inputs.iter().enumerate() {
+            assert_eq!(inp.len(), 428, "fixture input must be 428-d");
+            let reference = payload.weights.forward(inp);
+            let partial = payload.weights.fc1_partial_from_prefix(&inp[..PREFIX]);
+            let split = payload
+                .weights
+                .forward_with_fc1_partial(&partial, &inp[PREFIX..], PREFIX);
+            assert_eq!(
+                reference.to_bits(),
+                split.to_bits(),
+                "sample {idx}: split forward diverged from forward (ref={reference}, split={split})"
             );
         }
     }
