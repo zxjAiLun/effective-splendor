@@ -80,7 +80,7 @@ Score(a) = lexicographic(
 
 ## Final implementation
 
-已新增 `crates/splendor-agent/src/heuristic_v02.rs`（同量纲 terms、已知后继资源投影、top-2 可达目标）、`splendor-agent/src/lib.rs` 的独立 `run_heuristic_v02_agent` 和 `splendor-cli/src/{arena_command,main}.rs` 的独立 `agent-heuristic-v02 --seed`。新前瞻 pilot runner `scripts/s4_heuristic_v02_pilot.py` 与 tracked 配置 `benchmarks/s4-heuristic-v02-pilot-v1.config.json`；不共用 v0.1 的身份或修改 S3。当前仅本地未提交。旧 heuristic、M07、S3、M49A 实现均未因本轮修改。
+已新增 `crates/splendor-agent/src/heuristic_v02.rs`（同量纲 terms、已知后继资源投影、top-2 可达目标）、`splendor-agent/src/lib.rs` 的独立 `run_heuristic_v02_agent` 和 `splendor-cli/src/{arena_command,main}.rs` 的独立 `agent-heuristic-v02 --seed`。新前瞻 pilot runner `scripts/s4_heuristic_v02_pilot.py` 与 tracked 配置 `benchmarks/s4-heuristic-v02-pilot-v1.config.json`；不共用 v0.1 的身份或修改 S3。实现、pilot 配置/结果与本记录已本地提交 `e02011dace4a2209f5c0aaa1e6681ac568d69bf0`，未 push；本段提交后 provenance 补记属于 docs-only closeout，不改变二进制或实验。旧 heuristic、M07、S3、M49A 实现均未因本轮修改。
 
 ## Validation and evidence
 
