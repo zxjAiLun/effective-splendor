@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -163,6 +164,7 @@ def main() -> None:
         flush=True,
     )
 
+    training_started = time.perf_counter()
     model, report = train_fqi_cuda_cached(
         train_x_path=COMPACT_DIR / "train/current_x.f32",
         train_cache=train_cache,
@@ -185,6 +187,7 @@ def main() -> None:
         checkpoint_every=CHECKPOINT_EVERY,
         progress_path=RUN_DIR / "progress.json",
     )
+    training_wall_seconds = time.perf_counter() - training_started
 
     expected_config = {
         "target_update": "hard",
@@ -236,6 +239,7 @@ def main() -> None:
         "source_sha256": source_hashes,
     }
     report["runtime"] = {
+        "training_wall_seconds": training_wall_seconds,
         "torch_version": torch.__version__,
         "cuda_version": torch.version.cuda,
         "gpu_name": gpu.name,
