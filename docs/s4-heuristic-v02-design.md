@@ -146,3 +146,4 @@ v0.2.0 的真实分歧案例（本地 `local-artifacts/s4-heuristic-v02-pilot/v0
 - 这些仍是**有限对照 exploratory**结论，不跨对手/人类泛化，不是 promotion 证据。v0.2.1 vs v0.1 的 UNRESOLVED 不能读作“已经不弱于 v0.1”（区间含明显负值），更不能读作胜过 S3。
 - 匹配耗时（v0.1 组 11.844s、s3 组 50.105s）非逐决策延迟。
 - 唯一改动判定可信依赖“v0.2.0 组用了冷冻二进制且 hash 一致”这一点，已审计核验。
+- 本轮实现、config/runner/结果与本节记录已本地提交 `71cf4c6f0388759c8035db36a38b580c0c646ba1`（未 push；只纳入 S4.1 五文件：heuristic_v02.rs、v021 config/result、v021 runner、本文档；既有 owner/UI/M49A 未提交改动未碰）。
