@@ -22,8 +22,8 @@ from m49a_train_c3_refresh4 import (  # noqa: E402
 CACHE_DIR = REPO / "local-artifacts/m49a-cuda-fast-cache-v1"
 EXPORTER_EXE = REPO / "local-artifacts/m49a-c3-runtime/splendor-target-builder-cuda-cache.exe"
 # Filled only after the exporter is built from a committed source snapshot.
-EXPORTER_SOURCE_COMMIT = "__PIN_AFTER_EXPORTER_BUILD__"
-EXPORTER_SHA256 = "__PIN_AFTER_EXPORTER_BUILD__"
+EXPORTER_SOURCE_COMMIT = "3cbaed4e20f7b60fbddcb93305694565379e5fc9"
+EXPORTER_SHA256 = "8e1bcd4226bbb05e8fde570a5feabfeff04405bacea51c4a2e9c37f36657aa98"
 OBSERVATION_WIDTH = 368
 SUFFIX_WIDTH = 60
 
