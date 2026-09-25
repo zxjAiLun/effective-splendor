@@ -1,6 +1,6 @@
 //! M49A Target Builder & Compact Dataset Emitter.
 //!
-//! Provides two CLI commands:
+//! Provides three CLI commands:
 //! 1. `m49a-export-compact`: Exports a collected dataset into binary/compact form:
 //!    - `current_x.f32`: [N, 428] float32 array of input features
 //!    - `step_costs.f32`: [N] float32 array of step costs
@@ -9,6 +9,7 @@
 //! 2. `m49a-build-targets`: Given `compact_next.jsonl` (or binary/NDJSON records) and an `EfficiencyQWeightsV1` JSON:
 //!    - Evaluates on-demand Bellman targets y = c + V(o')
 //!    - Emits `targets.f32` containing N float32 values directly.
+//! 3. `m49a-export-successor-cache`: Exports split canonical successor features and segment offsets for batched target evaluation.
 
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, BufWriter, Write};
@@ -16,6 +17,9 @@ use std::path::PathBuf;
 
 use splendor_analysis::m49a_collector::{M49ACompactTransitionV1, TransitionRecord};
 use splendor_analysis::solo15::Solo15Outcome;
+use splendor_learning::{
+    ACTION_DELTA_FEATURES_V2, ACTION_FEATURES_V1, OBSERVATION_FEATURES_V1,
+};
 
 use crate::m49a_eval_command::load_weights_from_json;
 
@@ -538,3 +542,218 @@ pub fn run_m49a_export_compact(args: &[String]) -> i32 {
     0
 }
 
+/// CLI runner for `m49a-export-successor-cache`.
+///
+/// Writes canonical split successor features for CUDA batched target evaluation:
+/// - `next_obs_prefix.f32`: [N, 368], zero rows for terminal transitions;
+/// - `next_action_suffix.f32`: [M, 60], one `[action | delta | horizon]` row per
+///   legal successor action of Running transitions;
+/// - `action_offsets.u64`: [N + 1], cumulative segment boundaries into suffix rows.
+///
+/// All values and offsets are little-endian. The caller binds the outputs to the
+/// source dataset and frozen exporter hash in a sidecar manifest.
+pub fn run_m49a_export_successor_cache(args: &[String]) -> i32 {
+    let mut transitions_path: Option<PathBuf> = None;
+    let mut out_dir: Option<PathBuf> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--transitions" => {
+                transitions_path = args.get(i + 1).map(PathBuf::from);
+                i += 2;
+            }
+            "--out-dir" => {
+                out_dir = args.get(i + 1).map(PathBuf::from);
+                i += 2;
+            }
+            other => {
+                eprintln!("error: unknown flag `{other}`");
+                return EXIT_USAGE;
+            }
+        }
+    }
+    let transitions_path = match transitions_path {
+        Some(path) => path,
+        None => {
+            eprintln!("error: missing --transitions");
+            return EXIT_USAGE;
+        }
+    };
+    let out_dir = match out_dir {
+        Some(path) => path,
+        None => {
+            eprintln!("error: missing --out-dir");
+            return EXIT_USAGE;
+        }
+    };
+
+    if let Err(e) = fs::create_dir_all(&out_dir) {
+        eprintln!("error creating output directory {out_dir:?}: {e}");
+        return 1;
+    }
+    let prefix_path = out_dir.join("next_obs_prefix.f32");
+    let suffix_path = out_dir.join("next_action_suffix.f32");
+    let offsets_path = out_dir.join("action_offsets.u64");
+    let create_output = |path: &PathBuf| -> Result<BufWriter<File>, std::io::Error> {
+        File::options()
+            .write(true)
+            .create_new(true)
+            .open(path)
+            .map(BufWriter::new)
+    };
+    let mut prefix_writer = match create_output(&prefix_path) {
+        Ok(writer) => writer,
+        Err(e) => {
+            eprintln!("cannot create {prefix_path:?}: {e}");
+            return 1;
+        }
+    };
+    let mut suffix_writer = match create_output(&suffix_path) {
+        Ok(writer) => writer,
+        Err(e) => {
+            eprintln!("cannot create {suffix_path:?}: {e}");
+            return 1;
+        }
+    };
+    let mut offsets_writer = match create_output(&offsets_path) {
+        Ok(writer) => writer,
+        Err(e) => {
+            eprintln!("cannot create {offsets_path:?}: {e}");
+            return 1;
+        }
+    };
+
+    let input = match File::open(&transitions_path) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("cannot open {transitions_path:?}: {e}");
+            return 1;
+        }
+    };
+    let reader = BufReader::new(input);
+    if let Err(e) = offsets_writer.write_all(&0u64.to_le_bytes()) {
+        eprintln!("cannot write initial action offset: {e}");
+        return 1;
+    }
+
+    let suffix_width = ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2 + 1;
+    let mut scratch = Vec::<u8>::new();
+    let mut transition_count = 0u64;
+    let mut successor_count = 0u64;
+    for (line_idx, line_result) in reader.lines().enumerate() {
+        let line = match line_result {
+            Ok(line) => line,
+            Err(e) => {
+                eprintln!("error reading transition line {line_idx}: {e}");
+                return 1;
+            }
+        };
+        if line.trim().is_empty() {
+            continue;
+        }
+        let compact: M49ACompactTransitionV1 = match serde_json::from_str(line.trim()) {
+            Ok(compact) => compact,
+            Err(e) => {
+                eprintln!("error deserializing transition line {line_idx}: {e}");
+                return 1;
+            }
+        };
+        let parts = match compact.materialize_next_action_feature_parts() {
+            Ok(parts) => parts,
+            Err(e) => {
+                eprintln!("invalid compact transition at line {line_idx}: {e}");
+                return 1;
+            }
+        };
+        match parts {
+            Some((prefix, suffixes)) => {
+                if prefix.len() != OBSERVATION_FEATURES_V1
+                    || suffixes.len() % suffix_width != 0
+                    || suffixes.len() / suffix_width != compact.next_legal_actions.len()
+                {
+                    eprintln!("unexpected feature dimensions at transition {transition_count}");
+                    return 1;
+                }
+                if let Err(e) = write_f32_le(&mut prefix_writer, &prefix, &mut scratch) {
+                    eprintln!("error writing observation prefix: {e}");
+                    return 1;
+                }
+                if let Err(e) = write_f32_le(&mut suffix_writer, &suffixes, &mut scratch) {
+                    eprintln!("error writing successor suffixes: {e}");
+                    return 1;
+                }
+                successor_count =
+                    match successor_count.checked_add((suffixes.len() / suffix_width) as u64) {
+                        Some(count) => count,
+                        None => {
+                            eprintln!("successor row count overflow");
+                            return 1;
+                        }
+                    };
+            }
+            None => {
+                if let Err(e) = write_f32_zeros(
+                    &mut prefix_writer,
+                    OBSERVATION_FEATURES_V1,
+                    &mut scratch,
+                ) {
+                    eprintln!("error writing terminal observation prefix: {e}");
+                    return 1;
+                }
+                if !compact.next_legal_actions.is_empty() {
+                    eprintln!("terminal transition unexpectedly has successor actions");
+                    return 1;
+                }
+            }
+        }
+        transition_count = match transition_count.checked_add(1) {
+            Some(count) => count,
+            None => {
+                eprintln!("transition row count overflow");
+                return 1;
+            }
+        };
+        if let Err(e) = offsets_writer.write_all(&successor_count.to_le_bytes()) {
+            eprintln!("error writing action offset: {e}");
+            return 1;
+        }
+    }
+
+    for (name, result) in [
+        ("prefix", prefix_writer.flush()),
+        ("suffix", suffix_writer.flush()),
+        ("offsets", offsets_writer.flush()),
+    ] {
+        if let Err(e) = result {
+            eprintln!("error flushing {name} cache output: {e}");
+            return 1;
+        }
+    }
+    println!(
+        "Exported {transition_count} transition rows and {successor_count} successor actions to {out_dir:?}"
+    );
+    0
+}
+
+fn write_f32_le<W: Write>(
+    writer: &mut W,
+    values: &[f32],
+    scratch: &mut Vec<u8>,
+) -> std::io::Result<()> {
+    scratch.clear();
+    scratch.reserve(values.len().saturating_mul(4));
+    for value in values {
+        scratch.extend_from_slice(&value.to_le_bytes());
+    }
+    writer.write_all(scratch)
+}
+
+fn write_f32_zeros<W: Write>(
+    writer: &mut W,
+    count: usize,
+    scratch: &mut Vec<u8>,
+) -> std::io::Result<()> {
+    scratch.clear();
+    scratch.resize(count.saturating_mul(4), 0);
+    writer.write_all(scratch)
+}

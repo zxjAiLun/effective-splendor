@@ -667,6 +667,60 @@ impl M49ACompactTransitionV1 {
         Ok(())
     }
 
+    /// Materializes the shared observation prefix and flattened successor-action
+    /// suffixes used by a batched Bellman target evaluator.
+    ///
+    /// For each Running transition, the returned prefix is the canonical
+    /// `encode_observation_v1(o')` (368 floats) and the flattened suffix contains
+    /// one `[action(36) | delta(23) | horizon(1)]` row (60 floats) per legal
+    /// successor action, in the original action order. Terminal rows return
+    /// `None` and contain no successor features. This keeps feature semantics
+    /// in the canonical Rust encoders while allowing batched PyTorch inference.
+    pub fn materialize_next_action_feature_parts(
+        &self,
+    ) -> Result<Option<(Vec<f32>, Vec<f32>)>, LearningError> {
+        self.validate().map_err(LearningError::InvalidDataset)?;
+        if self.outcome != Solo15Outcome::Running {
+            return Ok(None);
+        }
+
+        let next_obs = self
+            .next_observation
+            .as_ref()
+            .ok_or_else(|| LearningError::InvalidDataset("missing next_observation".to_string()))?;
+        if self.max_main_turns == 0 || self.next_remaining_main_turns > self.max_main_turns {
+            return Err(LearningError::InvalidDataset(
+                "remaining-main-turn budget is outside the environment horizon".to_string(),
+            ));
+        }
+
+        let prefix = encode_observation_v1(next_obs)?;
+        if prefix.len() != OBSERVATION_FEATURES_V1 {
+            return Err(LearningError::InvalidDataset(format!(
+                "observation encoder returned {} features, expected {OBSERVATION_FEATURES_V1}",
+                prefix.len()
+            )));
+        }
+        let horizon = self.next_remaining_main_turns as f32 / self.max_main_turns as f32;
+        let suffix_width = ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2 + 1;
+        let mut suffixes = Vec::with_capacity(self.next_legal_actions.len() * suffix_width);
+        for action in &self.next_legal_actions {
+            let action_features = encode_action_v1(action)?;
+            let delta_features = encode_action_delta_v2(next_obs, action)?;
+            if action_features.len() != ACTION_FEATURES_V1
+                || delta_features.len() != ACTION_DELTA_FEATURES_V2
+            {
+                return Err(LearningError::InvalidDataset(
+                    "action encoder returned an unexpected feature width".to_string(),
+                ));
+            }
+            suffixes.extend_from_slice(&action_features);
+            suffixes.extend_from_slice(&delta_features);
+            suffixes.push(horizon);
+        }
+        Ok(Some((prefix, suffixes)))
+    }
+
     /// Evaluates the Bellman target:
     /// y = step_cost + V(o')
     /// where:
