@@ -1,0 +1,45 @@
+{
+  "format": "effective-splendor-s4-heuristic-v021-pilot-config",
+  "version": 1,
+  "status": "prospective-exploratory-pilot",
+  "design_doc": "docs/s4-heuristic-v02-design.md",
+  "notes": "Fresh-seed development pilot for phase-aware v0.2.1. The v0.2.0 opponent runs from the frozen pinned binary of the previous pilot so the head-to-head isolates the phase-aware change. No promotion, no default change, no reuse of the v0.2.0 pilot seeds.",
+  "seed_start": 9251000,
+  "seed_count": 32,
+  "smoke_seed": 9250999,
+  "rotations": [0, 1],
+  "candidate": {
+    "id": "heuristic-v021",
+    "args": ["agent-heuristic-v02", "--seed", "20260925"],
+    "agent_name": "splendor-cli-heuristic-v02",
+    "agent_version": "0.2.1"
+  },
+  "opponents": [
+    {
+      "id": "heuristic-v020",
+      "program": "local-artifacts/s4-heuristic-v02-pilot/splendor-s4-v02.exe",
+      "program_sha256": "d38433b477f21e864f99e1755f5826a92a53a5c8366d19934d0636ff5ea842c7",
+      "args": ["agent-heuristic-v02", "--seed", "20260925"],
+      "agent_name": "splendor-cli-heuristic-v02",
+      "agent_version": "0.2.0"
+    },
+    {
+      "id": "heuristic-v01",
+      "args": ["agent-heuristic", "--seed", "20260812"],
+      "agent_name": "splendor-cli-heuristic",
+      "agent_version": "0.1.0"
+    },
+    {
+      "id": "s3-rollout",
+      "args": ["agent-s3-rollout"],
+      "agent_name": "effective-splendor-s3-rollout-v1",
+      "agent_version": "1"
+    }
+  ],
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 60000,
+  "shutdown_grace_ms": 2000,
+  "bootstrap": {"resamples": 10000, "seed": 92512026, "ci_percent": 95},
+  "inference": "paired-seed-block descriptive pilot only; no promotion or default change",
+  "artifacts": "local-artifacts/s4-heuristic-v021-pilot"
+}

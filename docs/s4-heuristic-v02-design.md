@@ -1,6 +1,6 @@
 # S4 — Heuristic v0.2 独立评分策略与小规模对战
 
-- **Status:** IMPLEMENTED / VERIFIED offline；128/128 场有效的探索性对战 **EXPLORATORY_WEAKER**，NOT PROMOTED；owner review pending。原设计/授权及执行顺序见下方记录，不替换默认。
+- **Status:** v0.2.0 IMPLEMENTED / VERIFIED offline，128/128 有效探索性 **EXPLORATORY_WEAKER**；owner 指示 v0.2 属开发阶段可继续调结构，**v0.2.1（分阶段感知）** 已用全新 seed 完成 192 场探索性 pilot：对冻结 v0.2.0 EXPLORATORY_STRONGER、对 v0.1 UNRESOLVED、对 S3 EXPLORATORY_WEAKER。全部 **NOT PROMOTED**，owner review pending，默认仍是 S3。
 - **Baseline:** `main@5eae959903023fda669b9ba5085f40394aa45663`，2026-09-25；本轮开始时工作树已有 `.gitignore`、Replay Studio 页面、`human_play_command.rs` 等其他未提交改动，不属于本设计。
 - **Scope:** 独立的 v0.2 候选 scorer / CLI / 测试与预先固定的小规模 1v1 换座 Arena 对照；旧 heuristic v0.1、`StaticEvaluatorV1`、M07/S3 的冻结身份和结果均不改动。另一 agent 负责 Solo-15 Q/MLP；真人对局与数据库构建完全不触碰。
 
@@ -77,6 +77,7 @@ Score(a) = lexicographic(
 - **首场 Arena 之前冻结的代码/配置身份**：`crates/splendor-agent/src/heuristic_v02.rs` SHA256 `0b7474ba406851eebefc707155e95e03254b210c04c99a56ef0b721e1475c990`；`benchmarks/s4-heuristic-v02-pilot-v1.config.json` SHA256 `57036d1ef020f84b878ceeb1be489958135dc25904a0ad99b312e7659e51abb5`；`scripts/s4_heuristic_v02_pilot.py` SHA256 `3902b5a42a403a28c5ea338e73ee3c7d2a91e79cfa30b06fc59d9848d631552b`；预构建 release `target/release/splendor.exe` SHA256 `d38433b477f21e864f99e1755f5826a92a53a5c8366d19934d0636ff5ea842c7`。runner 在 ignored local-artifacts 独立复制不可变二进制、绑定上述配置；读取已有人类对局/League 为禁止项。
 - 固定 smoke 先行：`python scripts/s4_heuristic_v02_pilot.py --mode smoke` exit 0；静态 registry + 本地已有 match configs 新种子无冲突，seed 9_249_999 双换座均完成并重核 replay，候选均负。smoke 只证通路/合法性；**未据此改权重或换种子**。随后 `python scripts/s4_heuristic_v02_pilot.py --mode pilot` exit 0，严格按相同二进制与配置完成 128 场，无 abort，所有 replay 即时验证 PASS。
 - Pilot 后的只读独立核验：128 条清单键唯一、32 seed × 2 换座 × 2 对照齐全，report/replay SHA256 与 final-state 绑定、精确 agent name/version/args/seat、重算 W/T/L 均一致；使用固定二进制再次对 128/128 replay 运行 `verify-replay`，全部 exit0；不修改任何竞技输入。
+- 2026-09-25 后续 owner 澄清（本行在 v0.2.0 结果定攀之后）：v0.2 尚未成为产品、仍在开发阶段，"冻结"只是每个已测量版本的证据工件属性，不是设计本身的永久锁定；定义明确要求调整 v0.2 结构。据此提出并实现 **v0.2.1 分阶段感知**，并用与 v0.2.0 完全不相交的新 seed 块预注册了第二支 pilot（见 ## S4.1 节）；v0.2.0 的 config/result/清单/二进制读作只读证据不回改。未被授权的操作边界不变（不碰 Q/MLP、人类库、Canonical、M49A C3）。
 
 ## Final implementation
 
@@ -109,4 +110,39 @@ Score(a) = lexicographic(
 
 ## Next authorized gate
 
-**STOP 等 owner 审阅本轮有效负向 pilot**。下一步如继续 heuristic，应先只读归因拆解（最好同根合法动作/目标/退币 term 审计）并单独提出 v0.2.1 预注册干预、全新 seed 与预算；不得在本轮结果上反复调参直到赢。另一个 agent 的 Solo-15 Q/MLP、人类对局数据库与 M49A C3 状态保持独立；C3 后续是否调查/重跑仍由 owner 决定，Canonical 64 HOLD。
+**STOP 等 owner 审阅两轮 pilot（v0.2.0 负向 + v0.2.1 三轮向）**。owner 已明确 v0.2 处开发阶段、不冻结；v0.2.1 改动已按其指示实现并用新种子测完（见 S4.1）。要继续：下一个结构调整（如盲预留期望、预留机会成本细化、阶段切换点）须按同一规则——预注册、全新未见 seed 块、复盘旧 measurements 不回改。另一个 agent 的 Solo-15 Q/MLP、人类对局数据库与 M49A C3 状态保持独立；C3 后续是否调查/重跑仍由 owner 决定，Canonical 64 HOLD。
+
+## S4.1 — v0.2.1 分阶段感知迭代（2026-09-25，owner 指示后）
+
+### 动机与改动
+v0.2.0 的真实分歧案例（本地 `local-artifacts/s4-heuristic-v02-pilot/v01-vs-v02-comparison.html`，派生自 gitignored replay）显示该版本用一套静态权重打整局：构建期把不推进 top-2 目标的廉价 0 分引擎卡打成负分（典型 seed 9_250_000 ply 4，v0.2 打分 −1350 而 v0.1 打分 1,007,850），v0.2 从而首买偏晚、购卡偏少。Owner 明确了游戏规律——前中期构建期永久折扣/引擎卡价值高，后期冲分期才轮到即时 VP 主导。v0.2.1 只改打分结构，不动已经测量过的 v0.2.0 证据：
+
+- 新增 observation-only 阶段标量 `scoring_milli = clamp((lead_prestige − 4) × 1000 / 8, 0, 1000)`，场上任一玩家最高公开 prestige 为信号，`end_game_triggered` 强制为 1000；全部来自自己 observation，无隐藏状态。
+- 新增 `engine_value`（仅真实购买触发）：买到的永久 bonus 色按全桌可见卡对该色的剩余需求计价（每卡限幅 3、总需求限幅 12、权重 120），乘 `(1 − 阶段)`——构建期让廉价引擎卡明显为正，冲分期归零。
+- `immediate_prestige` 权重从 1000 变为 `1000 + 阶段 × 2000`——冲分期每分最多 3000。`terminal_lead`、`target_shortfall`、`useful_discount`、`new_affordable`、`gold_liquidity`、`secured`、`reserve_tempo` 保留不变。
+- `HEURISTIC_V02_AGENT_NAME` 不变，`HEURISTIC_V02_AGENT_VERSION` 0.2.0 → **0.2.1**；`HeuristicV02Terms` 增字段 `engine_value`。
+
+### 冻结与第二支 pilot 合同（先冻结后测）
+在第二场 pilot 之前记录的身份：源码 `crates/splendor-agent/src/heuristic_v02.rs` SHA256 `b4e1d8822b378a5fb1e0f544b2e73bcd0b26e0ff765461451835699b44076d42`（赛前冻结；赛后对该源文件执行了 format-only rustfmt，提交后源码哈希为 `c7b2e39810a21c5b1fda81e05e66032831742e35868eb2748f7b9f99559619e6`，格式化不改变语义，格式化后全套测试重跑通过）；config `benchmarks/s4-heuristic-v021-pilot-v1.config.json` SHA256 `df5cc3447ef6437f6109a5f1cd9f34edd687b8b999e6def8d882c1e8750bfbec`；通用 runner `scripts/s4_heuristic_v021_pilot.py` SHA256 `e0ab47b0a8f984290c1993e909cc3a59b331e58cca3eb0bf2c4f4ef6ac6d099d`（以显式 `require` 代替 assert，响应 v0.2.0 轮 runner 的 `-O` 告警）；构建二进制 `local-artifacts/s4-heuristic-v021-pilot/splendor-candidate.exe` SHA256 `045b890fe52d647d6b6500642fccafc10bf229e7cec7066b696c6cbccc3e9f17`。
+
+- 全新 seed 块 `9_251_000..9_251_031`（32 block）+ smoke `9_250_999`，bootstrap seed `92_512_026`；原 v0.2.0 块 9_249_999..9_250_031 不复用；registry + 全量已有本地 match-config 冲突检查 PASS。
+- 三对照（双向换座，共 192 场）：`heuristic-v020` 用上一轮冷冻二进制 `local-artifacts/s4-heuristic-v02-pilot/splendor-s4-v02.exe`（SHA256 `d38433b4...`，该 head-to-head 正好隔离分阶段这一处改动）、`heuristic-v01 0.1.0`、`s3-rollout v1`。超时同前；任何非 0 退出/abort/缺失/身份不符即 STOP。
+
+### 执行与结果
+- 赛前：`cargo test -p splendor-agent` 31+10+5 PASS（v0.2 相关新增 3 项：构建期廉价引擎卡 >0、冲分期 VP 权重抬高且 engine_value 归零、end_game 强制冲分期；原 7 项含对拍全部保留通过）；`cargo test -p splendor-cli --bin splendor` 102/102；`py_compile`、release build 全 exit0。
+- `python scripts/s4_heuristic_v021_pilot.py --config benchmarks/s4-heuristic-v021-pilot-v1.config.json --mode smoke` exit0（双換座均胜，`verify-replay` PASS）；随后 `--mode pilot` exit0，192/192 完成、0 abort。
+- pilot 后独立只读审计：192 条唯一键、逐场 config/report/replay 哈希绑定、程序路径（含 v0.2.0 的冷冻二进制）与 identity 全核、重算 W/T/L 一致、用候选二进制再跑 192/192 `verify-replay` exit0。审核脚本曾报 384 条路径段隔符差异，归一化后为 0 真错误。
+
+**tracked 结果** `benchmarks/s4-heuristic-v021-pilot-v1.result.json` SHA256 `7210e6ec7867cfe16a34c275d102e1875ded56740897497325ded6f7ae5cbf08`；`manifest` SHA256 `131f0afdad9c5d88a51b3f5724b84781e8a0e347441ddf10eb898647c83e2803`（ignored 目录）；smoke 完整报告 SHA256 `d4866f8a9276207453e027964fdd05141c14ce27e11730f15da474a9c8036ee6`。
+
+| 1v1 配对（32 新 seed × 换座） | W–T–L (v0.2.1) | paired-block center / 95% CI, bps | 判词 |
+|---|---:|---:|---|
+| v0.2.1 vs v0.2.0（冷冻二进制） | **52–0–12** | **8125.0** / [7187.5, 9062.5] | EXPLORATORY_STRONGER |
+| v0.2.1 vs v0.1 | **26–1–37** | **4140.625** / [3046.875, 5312.5] | UNRESOLVED |
+| v0.2.1 vs S3 | **11–1–52** | **1796.875** / [859.375, 2890.625] | EXPLORATORY_WEAKER |
+
+### 解读与边界
+- 分阶段结构在本 seed 块上显著优于 v0.2.0（95% 下界 >5000），说明“构建期给引擎卡正价值”这个方向是对的；相对 v0.1 从明确弱势（v0.2.0 CI 上界 2031 → v0.2.1 CI 跨 5000）推进到未决，也明显收窄；对 S3 仍明显弱（但比 v0.2.0 的 1093.75 bps 有改善）。
+- 这些仍是**有限对照 exploratory**结论，不跨对手/人类泛化，不是 promotion 证据。v0.2.1 vs v0.1 的 UNRESOLVED 不能读作“已经不弱于 v0.1”（区间含明显负值），更不能读作胜过 S3。
+- 匹配耗时（v0.1 组 11.844s、s3 组 50.105s）非逐决策延迟。
+- 唯一改动判定可信依赖“v0.2.0 组用了冷冻二进制且 hash 一致”这一点，已审计核验。

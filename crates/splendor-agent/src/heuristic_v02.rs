@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.0";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.1";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -21,6 +21,33 @@ const GOLD_WEIGHT: i64 = 150;
 const SECURED_WEIGHT: i64 = 500;
 const VISIBLE_RESERVE_TEMPO: i64 = 350;
 const BLIND_RESERVE_TEMPO: i64 = 500;
+
+// --- v0.2.1 phase awareness ---------------------------------------------
+//
+// Splendor has two regimes: an early/mid *construction* phase where a
+// permanent bonus has high option value even at zero VP, and a late *scoring*
+// phase where reaching 15 fast is what matters. v0.2.0 used one static scale
+// and therefore refused cheap engine cards it should have grabbed early (see
+// the seed 9_250_000 ply 4 case). v0.2.1 blends the two regimes with a single
+// observation-only phase scalar in per-mille [0, 1000]: 0 = pure construction,
+// 1000 = pure scoring. The scalar is derived only from public prestige and the
+// public end-game flag — never from hidden state.
+
+/// Extra weight added to each realized VP as the game approaches scoring phase
+/// (per full-scoring; scaled by the phase scalar).
+const VP_LATE_BONUS: i64 = 2_000;
+/// Value of the permanent bonus gained by a purchase, per unit of remaining
+/// board demand for that color, in pure construction phase (tapers to 0).
+const ENGINE_WEIGHT: i64 = 120;
+/// Board demand for the gained color is capped here so one purchase cannot be
+/// scored as if it unlocked the entire board.
+const ENGINE_DEMAND_CAP: i64 = 12;
+/// Per-card contribution cap when summing board color demand.
+const ENGINE_PER_CARD_CAP: u8 = 3;
+/// Lead prestige at/below which the game is treated as pure construction.
+const PHASE_LOW: i64 = 4;
+/// Lead-prestige span from construction to full scoring.
+const PHASE_SPAN: i64 = 8;
 
 #[derive(Default)]
 pub struct HeuristicAgentPolicyV02;
@@ -61,6 +88,7 @@ impl AgentPolicy for HeuristicAgentPolicyV02 {
 pub struct HeuristicV02Terms {
     pub terminal_lead: i64,
     pub immediate_prestige: i64,
+    pub engine_value: i64,
     pub target_shortfall: i64,
     pub useful_discount: i64,
     pub new_affordable_target: i64,
@@ -73,6 +101,7 @@ impl HeuristicV02Terms {
     pub fn total(&self) -> i64 {
         self.terminal_lead
             + self.immediate_prestige
+            + self.engine_value
             + self.target_shortfall
             + self.useful_discount
             + self.new_affordable_target
@@ -105,6 +134,31 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
         prestige: me.prestige,
     };
     let targets = visible_targets(obs);
+
+    // Phase scalar in per-mille: 0 = pure construction, 1000 = pure scoring.
+    // Derived only from public prestige and the public end-game flag.
+    let lead_prestige = obs
+        .public
+        .players
+        .iter()
+        .map(|p| i64::from(p.prestige))
+        .max()
+        .unwrap_or(0);
+    let scoring_milli = if obs.public.end_game_triggered {
+        1000
+    } else {
+        (((lead_prestige - PHASE_LOW) * 1000) / PHASE_SPAN).clamp(0, 1000)
+    };
+    // Remaining board demand per color (how much each color is still needed
+    // across all visible cards), capped per card so no single card dominates.
+    let mut board_demand = [0i64; 5];
+    for def in &targets {
+        for color in GemColor::ALL {
+            let c = color.index();
+            let need = def.cost[c].saturating_sub(before.bonuses[c]);
+            board_demand[c] += i64::from(need.min(ENGINE_PER_CARD_CAP));
+        }
+    }
 
     actions
         .iter()
@@ -154,6 +208,18 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 .unwrap_or(0);
             let safe_lead =
                 before.prestige < 15 && after.prestige >= 15 && after.prestige > max_other;
+            // Engine value: acquiring a permanent bonus color has standalone
+            // option value in construction phase, independent of the current
+            // top-2 targets. Only a realized purchase gains a bonus; the value
+            // tapers to zero as the game enters scoring phase.
+            let engine_value = match bought {
+                Some(id) => {
+                    let color = card(id).bonus.index();
+                    let demand = board_demand[color].min(ENGINE_DEMAND_CAP);
+                    ((1000 - scoring_milli) * ENGINE_WEIGHT * demand) / 1000
+                }
+                None => 0,
+            };
             let secured = secured.is_some_and(|id| {
                 let def = card(id);
                 selected.iter().any(|target| target.id == id)
@@ -175,7 +241,10 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
             HeuristicV02Terms {
                 terminal_lead: if safe_lead { TERMINAL_PRIORITY } else { 0 },
                 // Points beyond 15 still determine the winner in the final round.
-                immediate_prestige: i64::from(after.prestige - before.prestige) * VP_WEIGHT,
+                // Each realized VP is worth more as the game enters scoring phase.
+                immediate_prestige: i64::from(after.prestige - before.prestige)
+                    * (VP_WEIGHT + (scoring_milli * VP_LATE_BONUS) / 1000),
+                engine_value,
                 target_shortfall: shortfall * SHORTFALL_WEIGHT,
                 useful_discount: discount * BONUS_WEIGHT,
                 new_affordable_target: if newly_ready { READY_WEIGHT } else { 0 },
@@ -648,6 +717,139 @@ mod tests {
         assert!(
             distinct_scores.len() > 1,
             "return composition must affect score"
+        );
+    }
+
+    #[test]
+    fn construction_phase_rewards_a_cheap_zero_vp_engine_card() {
+        // v0.2.0 regression fixture: early game, a cheap 0-VP bonus card whose
+        // color the board still demands must score positively (v0.2.0 gave it
+        // a negative total and reserved instead). Uses card 0 (blue bonus,
+        // 0 VP, costs three black).
+        let mut state = game(10);
+        let old = state.market[0][0].unwrap();
+        if old != CardId(0) {
+            if let Some(slot) = state.market[0].iter().position(|&id| id == Some(CardId(0))) {
+                state.market[0][slot] = Some(old);
+            } else {
+                let pos = state.decks[0]
+                    .iter()
+                    .position(|&id| id == CardId(0))
+                    .unwrap();
+                state.decks[0][pos] = old;
+            }
+            state.market[0][0] = Some(CardId(0));
+        }
+        state.players[0].tokens.black = 3;
+        state.bank.black -= 3;
+        let obs = state.observation(PlayerId(0));
+        // Everyone at 0 prestige => pure construction phase.
+        assert_eq!(obs.public.players.iter().map(|p| p.prestige).max(), Some(0));
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        let terms = heuristic_v02_term_scores(&obs, &[buy])[0];
+        assert_eq!(terms.immediate_prestige, 0, "card 0 is 0 VP");
+        assert!(
+            terms.engine_value > 0,
+            "a demanded bonus color must have construction-phase engine value: {terms:?}"
+        );
+        assert!(
+            terms.total() > 0,
+            "a cheap engine card must not score negative early: {terms:?}"
+        );
+    }
+
+    #[test]
+    fn scoring_phase_lifts_vp_weight_and_removes_engine_value() {
+        // A late-game state (someone already near 15) must weight realized VP
+        // at the full late rate and drop construction-phase engine value.
+        let mut state = game(10);
+        let old = state.market[0][0].unwrap();
+        // A tier-2 card worth VP that the player can afford outright.
+        let scoring_card = CardId(53); // T2 black bonus, 1 VP
+        if old != scoring_card {
+            if let Some(slot) = state.market[0]
+                .iter()
+                .position(|&id| id == Some(scoring_card))
+            {
+                state.market[0][slot] = Some(old);
+            } else if let Some(pos) = state.decks[1].iter().position(|&id| id == scoring_card) {
+                let repl = state.market[0][0].unwrap();
+                state.decks[1][pos] = repl;
+            }
+            state.market[0][0] = Some(scoring_card);
+        }
+        let def = *card(scoring_card);
+        // Give exactly the colored tokens for its cost so the buy is legal.
+        let mut tokens = Gems::ZERO;
+        for c in GemColor::ALL {
+            tokens.set_color(c, def.cost[c.index()]);
+        }
+        state.players[0].tokens = tokens;
+        // Opponent already near the finish => full scoring phase.
+        state.players[1].prestige = 13;
+        let obs = state.observation(PlayerId(0));
+        assert!(
+            obs.public.players.iter().map(|p| p.prestige).max() >= Some(12),
+            "fixture must be in scoring phase"
+        );
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        assert!(
+            state.legal_actions().contains(&buy),
+            "scoring buy must be legal"
+        );
+        let terms = heuristic_v02_term_scores(&obs, &[buy])[0];
+        assert_eq!(
+            terms.immediate_prestige,
+            i64::from(def.prestige) * (VP_WEIGHT + VP_LATE_BONUS),
+            "scoring phase must pay the full late VP rate: {terms:?}"
+        );
+        assert_eq!(
+            terms.engine_value, 0,
+            "engine value must vanish in scoring phase: {terms:?}"
+        );
+    }
+
+    #[test]
+    fn end_game_flag_forces_scoring_phase_regardless_of_prestige() {
+        // Even at low prestige, a triggered end game is treated as full
+        // scoring phase (no residual construction discount).
+        let mut state = game(7);
+        state.players[0].tokens = Gems {
+            black: 3,
+            ..Gems::ZERO
+        };
+        let old = state.market[0][0].unwrap();
+        if old != CardId(0) {
+            if let Some(slot) = state.market[0].iter().position(|&id| id == Some(CardId(0))) {
+                state.market[0][slot] = Some(old);
+            } else {
+                let pos = state.decks[0]
+                    .iter()
+                    .position(|&id| id == CardId(0))
+                    .unwrap();
+                state.decks[0][pos] = old;
+            }
+            state.market[0][0] = Some(CardId(0));
+        }
+        let obs_before = state.observation(PlayerId(0));
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        let engine_before = heuristic_v02_term_scores(&obs_before, &[buy])[0].engine_value;
+        assert!(engine_before > 0, "pre-endgame construction value expected");
+        state.end_game_triggered = true;
+        let obs_after = state.observation(PlayerId(0));
+        let engine_after = heuristic_v02_term_scores(&obs_after, &[buy])[0].engine_value;
+        assert_eq!(
+            engine_after, 0,
+            "end-game flag must zero construction engine value"
         );
     }
 }
