@@ -125,6 +125,9 @@ fn main() {
         Some("run-branches") => std::process::exit(branch_command::run_branches(&argv[2..])),
         Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
         Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
+        Some("agent-heuristic-v02") => {
+            std::process::exit(arena_command::agent_heuristic_v02(&argv[2..]))
+        }
         Some("agent-heuristic-terms") => std::process::exit(agent_terms_command::run(&argv[2..])),
         Some("agent-determinization") => {
             std::process::exit(arena_command::agent_determinization(&argv[2..]))

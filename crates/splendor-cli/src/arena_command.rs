@@ -29,7 +29,9 @@ use splendor_arena::{ArenaConfig, ArenaRun, ArenaRunner, CappedRun};
 use splendor_replay::{verify_replay, verify_rollout_prefix};
 
 use crate::atomic_output;
-use splendor_agent::{run_heuristic_agent, run_random_agent, AgentIdentity};
+use splendor_agent::{
+    run_heuristic_agent, run_heuristic_v02_agent, run_random_agent, AgentIdentity,
+};
 use splendor_determinization_agent::run_n1_buy_overlay_agent_v1;
 use splendor_determinization_agent::s3_agent::run_s3_agent_v1;
 use splendor_determinization_agent::{
@@ -88,6 +90,16 @@ Deterministic heuristic stdio agent: reads server NDJSON on stdin, replies with
 the highest-scoring legal action on stdout. Uses the --seed only to break ties
 among equally-scored actions; a unique best action is chosen without consuming
 the RNG, so the same server transcript always yields the same action.
+
+Options:
+  --seed <u64>   Seed for the tie-break RNG (required).
+  -h, --help     Print this help and exit 0.";
+
+const AGENT_HEURISTIC_V02_USAGE: &str = "\
+Usage: splendor agent-heuristic-v02 --seed <u64>
+
+Independent observation-only heuristic candidate v0.2. Does not change the
+frozen agent-heuristic or the S3 rollout policy. The seed breaks score ties.
 
 Options:
   --seed <u64>   Seed for the tie-break RNG (required).
@@ -773,6 +785,38 @@ pub fn agent_heuristic(args: &[String]) -> i32 {
     match run_heuristic_agent(input, output, diagnostics, seed) {
         Ok(()) => 0,
         Err(_) => 1, // The diagnostic was already written to stderr.
+    }
+}
+
+// ---------------------------------------------------------------------------
+// agent-heuristic-v02 (independent candidate)
+// ---------------------------------------------------------------------------
+
+pub fn agent_heuristic_v02(args: &[String]) -> i32 {
+    if wants_help(args) {
+        print_stdout(AGENT_HEURISTIC_V02_USAGE);
+        return 0;
+    }
+    let seed = match parse_agent_random_args(args) {
+        Ok(seed) => seed,
+        Err(msg) => {
+            let mut stderr = io::stderr().lock();
+            let _ = writeln!(stderr, "error: {msg}");
+            let _ = stderr.flush();
+            return 1;
+        }
+    };
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    match run_heuristic_v02_agent(
+        BufReader::new(stdin.lock()),
+        stdout.lock(),
+        stderr.lock(),
+        seed,
+    ) {
+        Ok(()) => 0,
+        Err(_) => 1,
     }
 }
 

@@ -17,6 +17,7 @@
 
 mod error;
 mod heuristic;
+mod heuristic_v02;
 mod policy;
 mod runtime;
 mod stable_rng;
@@ -25,6 +26,10 @@ pub use error::AgentError;
 pub use heuristic::{
     heuristic_term_scores, HeuristicAgentPolicy, HeuristicTermScores, HEURISTIC_AGENT_NAME,
     HEURISTIC_AGENT_VERSION,
+};
+pub use heuristic_v02::{
+    heuristic_v02_term_scores, HeuristicAgentPolicyV02, HeuristicV02Terms,
+    HEURISTIC_V02_AGENT_NAME, HEURISTIC_V02_AGENT_VERSION,
 };
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
 pub use runtime::{run_agent, AgentIdentity};
@@ -97,5 +102,30 @@ where
         },
         seed,
         HeuristicAgentPolicy::new(),
+    )
+}
+
+/// Separate v0.2 candidate; the v0.1 entry and its runtime identity remain frozen.
+pub fn run_heuristic_v02_agent<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    seed: u64,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: HEURISTIC_V02_AGENT_NAME,
+            version: HEURISTIC_V02_AGENT_VERSION,
+        },
+        seed,
+        HeuristicAgentPolicyV02::new(),
     )
 }
