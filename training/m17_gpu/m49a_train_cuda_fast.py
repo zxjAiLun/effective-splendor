@@ -83,30 +83,27 @@ def _write_json(path: Path, payload: Any) -> None:
     tmp.replace(path)
 
 
+def _git_output(args: list[str]) -> str:
+    kwargs: dict[str, Any] = {
+        "cwd": REPO,
+        "capture_output": True,
+        "text": True,
+        "check": True,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    return subprocess.run(["git", *args], **kwargs).stdout.strip()
+
+
 def _git_head() -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return result.stdout.strip()
+    return _git_output(["rev-parse", "HEAD"])
 
 
 def _source_hashes(*, require_clean: bool) -> dict[str, str]:
     if require_clean:
-        result = subprocess.run(
-            ["git", "status", "--porcelain", "--", *SOURCE_RELATIVE_PATHS],
-            cwd=REPO,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        if result.stdout.strip():
-            raise RuntimeError(
-                "training source files have uncommitted changes:\\n" + result.stdout
-            )
+        dirty = _git_output(["status", "--porcelain", "--", *SOURCE_RELATIVE_PATHS])
+        if dirty:
+            raise RuntimeError("training source files have uncommitted changes:\\n" + dirty)
     return {
         relative: sha256_file(REPO / relative)
         for relative in SOURCE_RELATIVE_PATHS
