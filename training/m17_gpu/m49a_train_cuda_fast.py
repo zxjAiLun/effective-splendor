@@ -143,12 +143,14 @@ def main() -> None:
     checkpoint_dir = RUN_DIR / "checkpoints"
     checkpoint_dir.mkdir()
 
-    torch.backends.cuda.matmul.allow_tf32 = ALLOW_TF32
-    torch.backends.cudnn.allow_tf32 = ALLOW_TF32
-    torch.cuda.reset_peak_memory_stats(DEVICE)
     _STARTED_AT = datetime.now(timezone.utc).isoformat()
     _STATUS_ENABLED = True
     _write_status("running", None)
+    torch.cuda.set_device(DEVICE)
+    torch.cuda.init()
+    torch.backends.cuda.matmul.allow_tf32 = ALLOW_TF32
+    torch.backends.cudnn.allow_tf32 = ALLOW_TF32
+    torch.cuda.reset_peak_memory_stats(DEVICE)
 
     gpu = torch.cuda.get_device_properties(DEVICE)
     print(
