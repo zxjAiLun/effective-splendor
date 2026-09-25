@@ -240,7 +240,7 @@ v0.2.2 的公开回放诊断有少数状态显示多个贵族距离较近时，�
 ### Final implementation
 
 - `crates/splendor-agent/src/heuristic_v02.rs` 实现版本身份 `0.2.3`：多贵族仅在 Score phase 且至少两位公开贵族五色折扣距离 `≤4` 时启用；近贵族进度每减一单位 `+800`，帮助 near 贵族的永久折扣卡优先；高成本 3VP（印刷总成本 `>6`）与可买高效率自留牌进入次级目标组，各自合法购买 `+1200`；Ultra/Build 已持有至少两张时，再次可见/盲预留 `−500`。score 项均可从 observation 计算，动作仍来自引擎 legal-actions。tie seed `20260926` 与 v0.2.2 相同。
-- v0.2.2 保存二进制保持原样并作为主要对照：`local-artifacts/s4-heuristic-v022-pilot/splendor-candidate.exe` SHA256 `65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4`。candidate binary 为 `7a98103548082c9018f5941fae0d0289acd5939b2d3d386457bf04f0f22a6dc0`；源码 SHA256 `b9dd6423db5a38d71e24e6babbfda8c294fe83a1ebd62ce43dbb2321ba08b684`。无 v0.2.2/v0.1/S3 源码、历史结果或产品默认改动。
+- v0.2.2 保存二进制保持原样并作为主要对照：`local-artifacts/s4-heuristic-v022-pilot/splendor-candidate.exe` SHA256 `65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4`。candidate binary 为 `7a98103548082c9018f5941fae0d0289acd5939b2d3d386457bf04f0f22a6dc0`；源码 SHA256 `b9dd6423db5a38d71e24e6babbfda8c294fe83a1ebd62ce43dbb2321ba08b684`。无 v0.2.2/v0.1/S3 源码、历史结果或产品默认改动。跟踪实现、合同、结果与本节复盘的本地提交为 `4f2b25b`（未 push）；后续若有文档提交只补 provenance，不改本轮冻结代码/结果。
 
 ### Validation and evidence
 
