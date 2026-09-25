@@ -11,6 +11,7 @@ from splendor_gpu.m49a_cuda_trainer import (
     train_fqi_cuda_cached,
 )
 from splendor_gpu.m49a_trainer import EfficiencyQNet
+from m49a_train_cuda_fast import _selector_training_manifest
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA device required")
 
@@ -22,6 +23,26 @@ def _write_cache(directory, prefixes: np.ndarray, suffixes: np.ndarray, counts: 
     offsets = np.concatenate(([0], np.cumsum(counts))).astype("<u8")
     offsets.tofile(directory / "action_offsets.u64")
     return SuccessorFeatureCache(directory, len(counts))
+
+
+def test_selector_manifest_has_exact_strict_rust_contract():
+    rich = {
+        "run_id": "m49a-cuda-fast-test",
+        "training_contract": {"fqi_iterations": 80},
+        "d2_input_sha256": {"train/current_x.f32": "a" * 64},
+        "checkpoints": {"weights_iter010.json": "b" * 64},
+        "runtime": {"cuda_tf32": True},
+        "source_identity": {"git_commit_start": "deadbeef"},
+    }
+    selector = _selector_training_manifest(rich)
+    assert set(selector) == {
+        "run_id",
+        "training_contract",
+        "d2_input_sha256",
+        "checkpoints",
+    }
+    assert selector["run_id"] == rich["run_id"]
+    assert selector["checkpoints"] == rich["checkpoints"]
 
 
 def test_cuda_cached_targets_match_full_batch_mlp_and_terminal_rules(tmp_path):

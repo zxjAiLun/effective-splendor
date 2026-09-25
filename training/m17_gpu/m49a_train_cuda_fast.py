@@ -111,6 +111,16 @@ def _source_hashes(*, require_clean: bool) -> dict[str, str]:
     }
 
 
+def _selector_training_manifest(run_manifest: dict[str, Any]) -> dict[str, Any]:
+    """Return exactly the strict four-field manifest the Rust selector accepts."""
+    return {
+        "run_id": run_manifest["run_id"],
+        "training_contract": run_manifest["training_contract"],
+        "d2_input_sha256": run_manifest["d2_input_sha256"],
+        "checkpoints": run_manifest["checkpoints"],
+    }
+
+
 def _validate_shapes() -> tuple[int, int]:
     train_x = COMPACT_DIR / "train/current_x.f32"
     val_x = COMPACT_DIR / "val/current_x.f32"
@@ -289,7 +299,10 @@ def main() -> None:
         "checkpoints": checkpoint_hashes,
         "runtime": report["runtime"],
     }
-    _write_json(checkpoint_dir / "training_manifest.json", run_manifest)
+    _write_json(
+        checkpoint_dir / "training_manifest.json",
+        _selector_training_manifest(run_manifest),
+    )
     _write_json(RUN_DIR / "run_manifest.json", run_manifest)
     print(f"CUDA run complete: {RUN_DIR / 'report.json'}", flush=True)
     _write_status("completed", 0)
