@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,6 +46,13 @@ SEED = 49000001
 FAILURE_PENALTY = 100.0
 DEVICE = torch.device("cuda:0")
 ALLOW_TF32 = True
+SOURCE_RELATIVE_PATHS = (
+    "training/m17_gpu/m49a_train_cuda_fast.py",
+    "training/m17_gpu/m49a_build_cuda_cache.py",
+    "training/m17_gpu/splendor_gpu/m49a_cuda_trainer.py",
+    "training/m17_gpu/splendor_gpu/m49a_trainer.py",
+    "training/m17_gpu/m49a_train_c3_refresh4.py",
+)
 
 _STATUS_ENABLED = False
 _STARTED_AT: str | None = None
@@ -75,6 +83,36 @@ def _write_json(path: Path, payload: Any) -> None:
     tmp.replace(path)
 
 
+def _git_head() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _source_hashes(*, require_clean: bool) -> dict[str, str]:
+    if require_clean:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--", *SOURCE_RELATIVE_PATHS],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if result.stdout.strip():
+            raise RuntimeError(
+                "training source files have uncommitted changes:\\n" + result.stdout
+            )
+    return {
+        relative: sha256_file(REPO / relative)
+        for relative in SOURCE_RELATIVE_PATHS
+    }
+
+
 def _validate_shapes() -> tuple[int, int]:
     train_x = COMPACT_DIR / "train/current_x.f32"
     val_x = COMPACT_DIR / "val/current_x.f32"
@@ -87,6 +125,8 @@ def _validate_shapes() -> tuple[int, int]:
 
 def main() -> None:
     global _STATUS_ENABLED, _STARTED_AT
+    source_commit_start = _git_head()
+    source_hashes = _source_hashes(require_clean=True)
     input_hashes = snapshot_input_hashes()
     if input_hashes != FROZEN_D2_SHA256:
         raise RuntimeError("D2 input hashes differ from the fixed dataset")
@@ -180,6 +220,10 @@ def main() -> None:
     if final_cache.get("manifest_sha256") != cache_manifest.get("manifest_sha256"):
         raise RuntimeError("feature cache manifest or output hashes changed during training")
     final_cache_manifest_hash = sha256_file(CACHE_DIR / "cache_manifest.json")
+    final_source_hashes = _source_hashes(require_clean=False)
+    if final_source_hashes != source_hashes:
+        raise RuntimeError("training source files changed during the CUDA run")
+    source_commit_end = _git_head()
 
     checkpoint_hashes: dict[str, str] = {}
     for iteration in range(CHECKPOINT_EVERY, FQI_ITERATIONS + 1, CHECKPOINT_EVERY):
@@ -189,6 +233,11 @@ def main() -> None:
             raise RuntimeError(f"missing online checkpoint: {path}")
         checkpoint_hashes[name] = sha256_file(path)
 
+    report["provenance"] = {
+        "git_commit_start": source_commit_start,
+        "git_commit_end": source_commit_end,
+        "source_sha256": source_hashes,
+    }
     report["runtime"] = {
         "torch_version": torch.__version__,
         "cuda_version": torch.version.cuda,
@@ -223,6 +272,11 @@ def main() -> None:
             "checkpoint_object": "online_net",
         },
         "d2_input_sha256": final_input_hashes,
+        "source_identity": {
+            "git_commit_start": source_commit_start,
+            "git_commit_end": source_commit_end,
+            "source_sha256": source_hashes,
+        },
         "successor_cache": {
             "path": str(CACHE_DIR.relative_to(REPO)).replace("\\", "/"),
             "manifest_sha256": final_cache_manifest_hash,
