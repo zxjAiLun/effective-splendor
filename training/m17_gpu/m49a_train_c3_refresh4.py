@@ -44,12 +44,17 @@ TOTAL_OPTIMIZER_EPOCHS = FQI_ITERATIONS * EPOCHS_PER_FQI
 TOTAL_OPTIMIZER_STEPS = 92160  # ceil(36,674 / 256) * 640, no dropped tail.
 
 # Frozen target-builder runtime. Built once from the C3 source snapshot commit
-# f2cb2bd (detached worktree), copied here, and hash-pinned. The training
+# b5af7b3 (detached worktree), copied here, and hash-pinned. The training
 # process executes only this file; it never runs cargo and never reads git
 # state, so unrelated worktree activity cannot alter a long run.
-TARGET_BUILDER_SOURCE_COMMIT = "f2cb2bd5be09fce9d5d700b2c36ee523b2e09cfe"
-TARGET_BUILDER_EXE = REPO / "local-artifacts/m49a-c3-runtime/splendor-target-builder.exe"
-TARGET_BUILDER_SHA256 = "0e8534f620ba2f9a37a40fe108cc73ebfca64b5e8f89ccd7f14e42e8d3b31b3d"
+#
+# b5af7b3 adds bit-identical fc1 prefix caching (perf only): its Bellman labels
+# are byte-identical to the superseded f2cb2bd builder
+# (0e8534f6..., verified on the full 36,674-row train and 2,402-row val sets),
+# so C1/C2/C3 stay directly comparable while target building runs ~2.3x faster.
+TARGET_BUILDER_SOURCE_COMMIT = "b5af7b31e5a4c1c759f4680510b8fa3776fd7a85"
+TARGET_BUILDER_EXE = REPO / "local-artifacts/m49a-c3-runtime/splendor-target-builder-fc1cache.exe"
+TARGET_BUILDER_SHA256 = "edf2003c4faf434929fc56b07bab509655a1d9ed91c395be67d4973c683610e8"
 
 _RUN_STATUS_ENABLED = False
 _RUN_STARTED_AT = None
@@ -253,7 +258,7 @@ def main() -> None:
         },
         "d2_input_sha256": input_hashes,
         "frozen_target_builder": {
-            "path": "local-artifacts/m49a-c3-runtime/splendor-target-builder.exe",
+            "path": "local-artifacts/m49a-c3-runtime/splendor-target-builder-fc1cache.exe",
             "sha256": target_builder_sha256,
             "source_commit": TARGET_BUILDER_SOURCE_COMMIT,
         },
