@@ -12,8 +12,10 @@ The registry below is the union of:
   - the segments documented in milestone docs (M42S 5_300_000..63,
     M44C 5_700_000..63, M45A 5_800_000..63).
 
-Scan date: 2026-09-08. The registry is committed so the audit can
-reproduce the disjointness check without re-scanning.
+Baseline scan date: 2026-09-08. Incremental update 2026-09-26 adds the S4
+heuristic v0.2.0–v0.2.3 pilot/smoke blocks from their tracked contracts and
+local match configs; it is not a full rescan of every historical namespace.
+The registry is committed so audits can reproduce its disjointness checks.
 """
 
 from __future__ import annotations
@@ -24,13 +26,15 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 
 # The segment to check is assigned by the caller (each round's
-# orchestrator sets its own frozen segment before calling check()).
+# orchestrator sets its own frozen segment before calling check()). A bare
+# invocation uses the historical S0 default below, which is already consumed
+# and therefore reports the expected overlap rather than checking a new round.
 # Registry updated 2026-09-09 to the real current state: the early static
 # scan ended at the M45A/M46A era and did not list the S-era segments,
 # forcing callers to monkeypatch — that gap is closed here.
 CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 
-# S-era arena segments (2026-09-08/09):
+# Earlier S-era arena segments (2026-09-08/09):
 #   5_800_064..127  S0 baseline calibration — CONSUMED
 #   5_800_128..191  S1 — RESERVED then RETIRED (Phase B never ran; retired
 #                    namespace, must NOT be reused)
@@ -38,6 +42,7 @@ CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 #   5_800_256..319  S3 Stage-B — CONSUMED
 #   5_800_320..383  S3 field calibration — CONSUMED
 #   5_800_384..447  S3 operational profile — CONSUMED
+#   9_249_999..9_253_031  S4 v0.2.0–v0.2.3 pilot/smoke namespaces — CONSUMED
 
 # Frozen scanned ranges (start, end_inclusive, label).
 # Single-seed ranges are (s, s).
@@ -64,6 +69,10 @@ REGISTRY: list[tuple[int, int, str]] = [
     (5_800_256, 5_800_319, "s3-stage-b"),
     (5_800_320, 5_800_383, "s3-field-calibration"),
     (5_800_384, 5_800_447, "s3-operational-profile"),
+    (9_249_999, 9_250_031, "s4-v020-pilot-smoke-and-matches"),
+    (9_250_999, 9_251_031, "s4-v021-pilot-smoke-and-matches"),
+    (9_251_999, 9_252_031, "s4-v022-pilot-smoke-and-matches"),
+    (9_252_999, 9_253_031, "s4-v023-pilot-smoke-and-matches"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),

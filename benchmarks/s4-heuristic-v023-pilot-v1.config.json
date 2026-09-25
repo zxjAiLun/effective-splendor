@@ -1,0 +1,44 @@
+{
+  "format": "effective-splendor-s4-heuristic-v023-pilot-config",
+  "version": 1,
+  "status": "prospective-exploratory-pilot",
+  "design_doc": "docs/s4-heuristic-v02-design.md#s43-v023-multi-noble-reserve-count",
+  "seed_start": 9253000,
+  "seed_count": 32,
+  "smoke_seed": 9252999,
+  "rotations": [0, 1],
+  "candidate": {
+    "id": "heuristic-v023",
+    "args": ["agent-heuristic-v02", "--seed", "20260926"],
+    "agent_name": "splendor-cli-heuristic-v02",
+    "agent_version": "0.2.3"
+  },
+  "opponents": [
+    {
+      "id": "heuristic-v022",
+      "program": "local-artifacts/s4-heuristic-v022-pilot/splendor-candidate.exe",
+      "program_sha256": "65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4",
+      "args": ["agent-heuristic-v02", "--seed", "20260926"],
+      "agent_name": "splendor-cli-heuristic-v02",
+      "agent_version": "0.2.2"
+    },
+    {
+      "id": "heuristic-v01",
+      "args": ["agent-heuristic", "--seed", "20260812"],
+      "agent_name": "splendor-cli-heuristic",
+      "agent_version": "0.1.0"
+    },
+    {
+      "id": "s3-rollout",
+      "args": ["agent-s3-rollout"],
+      "agent_name": "effective-splendor-s3-rollout-v1",
+      "agent_version": "1"
+    }
+  ],
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 60000,
+  "shutdown_grace_ms": 2000,
+  "bootstrap": {"resamples": 10000, "seed": 92532026, "ci_percent": 95},
+  "inference": "paired-seed-block descriptive pilot only; no promotion or default change; v0.2.3 and frozen v0.2.2 share candidate tie seed",
+  "artifacts": "local-artifacts/s4-heuristic-v023-pilot"
+}

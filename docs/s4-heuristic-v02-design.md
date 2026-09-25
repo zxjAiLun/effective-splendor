@@ -185,3 +185,86 @@ Owner 明确要求继续优化，不将 v0.2.1 当产品冻结；提出以**自�
 **当前决定：v0.2.2 IMPLEMENTED/VERIFIED，valid exploratory stronger vs v0.2.1，vs v0.1/S3 UNRESOLVED，NOT PROMOTED；产品 S3 不变。** 下一授权门槛 STOP 等 owner 审阅：若继续 v0.2.3，应隔离轮转/cheap-T1/预留 bomb/得分效率各项的贡献并用新种子预注册测，或另授权正式独立竞技 gate 与逐决策时延门槛；不能拿本批反复调到赢。S4 与 Q/MLP、人类数据库、Canonical/M49A C3 不互相推断或绕门。
 
 实现、完整赛前合同、tracked 结果与本节复盘已在本地 `bc2904cc6507403b6d6335835555184029de750b` 提交（未 push）；此行是提交后 docs-only provenance 补记，不改变赛前代码、配置、候选二进制或实验结果。
+
+### Owner 权重审阅说明页（2026-09-26；仅回放解释，无策略实现）
+
+- 按 owner 新要求，生成本地只读说明页 `local-artifacts/s4-heuristic-v022-pilot/v022-weight-review.html` (SHA256 `ce9c0832fba2e5d6f3f1d32ee7fa97e8b175ff0a04eb3a8437a8f4d4a5434cf6`)：覆盖当前 15 项 additive terms、Ultra/Build/Score 流程、top-2 目标排序、真实回放案例，并将“≥2 贵族 gap≤4 的明确目标优先”与“已有两张自留后的数量相关预留降权”明确标为 `PROPOSED / NOT IMPLEMENTED`。页面交互控件只演示阈值/分数敏感性，不改代码或回放分数。
+- 来源合同仍是既有 v0.2.2 pilot：样例提取时 repo HEAD `main@c97b97594ae745f1d5dfce8a433a1bb2ff2005ca`；文档收口时 HEAD 已到 `main@9cb8464a4a2089913ffed2d1e5c08b1e91ba3bcf`（期间新提交仅更新 M49A C3 stop 记录，S4 源码哈希未变）；heuristic 源哈希 `feb76b006c28e313ad8bbdfccb5086915fae4842f359e42776ce9576ff9d2cbf` 与冻结记录一致；tracked pilot result SHA256 `a2de20690efb5f4ae617218e13f923a5ab0bc279ccc9b39b24568e591797dc9b`，ignored manifest SHA256 `803dbac064f6316dd45849c53c32b326ee596bcc055d1430849d475bb0a9fc51`。
+- 只用 v0.2.2 vs v0.2.1 的 64 份旧 pilot replay（32 seeds × 2 rotations）。提取器对每份运行 `verify_replay_trace`；命令 `cargo run --release -q -p splendor-cli --example s4_v022_case_dump -- local-artifacts/s4-heuristic-v022-pilot > local-artifacts/s4-heuristic-v022-pilot/reconstructed-candidate-states-reproduced.json` exit 0。得到 1,848 个 v0.2.2 决策状态，复跑 JSON SHA256 `07c9fb046309191e9b7093b03e7053c1b01545cfee3ef4507027e118b24416fe`，与原状态文件相同；一次性提取器源码保存在 ignored artifact，SHA256 `19a4b640b5fc7e0585b36d9bf57c7b90271a56f7065d0967e4031da2b686a165`。案例包含：9,252,000/r1/ply31（持两张仍预留第三张，900 vs 非预留600）；9,252,001/r1/ply49（3位贵族gap 2/3/4、不可买自留 #57 与可买T3 #74 3VP/印刷成本14）；9,252,001/r0/ply52（两位近贵族且可买自留 #57）；9,252,018/r0/ply52（无自留，买T1触发一位贵族）。这些是解释性单状态重算，不是新强度证据或因果消融。
+- 页面静态核验：15 个评分项、16 个 DOM id、6 个页内链接均存在；inline JavaScript 语法及三个交互控件用 mock DOM 检查通过。**未运行真实浏览器/视觉 E2E**。没有变更 heuristic 源码、配置、pilot result、种子或二进制；没有新对局、训练或独立审查。S3 仍为默认，v0.2.2 仍 `NOT PROMOTED`。
+- 下一步：owner 审阅页面并确认 noble-distance、3VP &gt;6 的印刷/折后成本口径、已有两张后适用的预留类型/例外及额外惩罚范围；确认后另立 v0.2.3 合同、边界测试与全新未见 seed，不重用 `9_252_000..031`。
+
+<a id="s43-v023-multi-noble-reserve-count"></a>
+
+## S4.3 — v0.2.3 多贵族目标与预留数量惩罚（2026-09-26）
+
+**状态：IMPLEMENTED / VERIFIED；探索性结果记录完毕；NOT PROMOTED（未做独立审查/接受门）。**
+基线 `main@9cb8464a4a2089913ffed2d1e5c08b1e91ba3bcf`。owner 要求优先检查中后期多个贵族临近、3VP 高成本卡、自留牌的合法购买跟进，并在已有两张自留牌后谨慎继续预留；保存的优化前对照确实存在：`local-artifacts/s4-heuristic-v022-pilot/splendor-candidate.exe` SHA256 `65c7271c…`，用于本轮 v0.2.2 冻结对照，不会覆盖。
+
+### Problem and evidence
+
+v0.2.2 的公开回放诊断有少数状态显示多个贵族距离较近时，顶级 VP/成本目标与贵族进度可能不同向；已有两张自留牌后仍可能再预留；有牌在玩家自己的预留区且合法可买，但目标跟进不足。它们是具体策略状态的诊断，不代表普遍胜率原因。见上节 64 份旧回放的 1,848 个决策态；这些旧 seed 只作设计线索，**不作 v0.2.3 调参测量或新强度证据**。
+
+### Initial design / contracts
+
+本轮仅修改 `agent-heuristic-v02` 的 observation-only scorer；在线决策只读己方 `Observation`、公开贵族/市场和引擎提供的合法动作，不读取 `FullState`、暗牌、牌堆顺序或真人对局数据库。v0.2.2、v0.2.1、v0.1、S3 与其历史二进制/证据保持不变；S3 仍为产品默认。本轮不晋级候选、不触碰 Canonical、Solo-15 Q/MLP、M49A C3 或人类对局数据。
+
+赛前冻结以下规则和常量，不看新 pilot 结果后修改：
+
+1. “贵族接近”按当前自己的永久折扣计算：每位公开贵族的距离为五色 `max(需求−己方折扣, 0)` 总和；距离 `≤4` 为 near。只有冲分阶段且至少两位公开贵族 near 时启用 `multi_noble_race`。购牌若令这些已 near 贵族的距离下降，每减少一单位累计 `+800` 分（`noble_race_progress`）。
+2. 在该贵族竞速状态下，冲分目标排序优先帮助至少一位 near 贵族的卡；第二组包括印刷总成本 `>6` 且 `3 VP` 的卡、以及玩家自留区中 `VP×1000/(1+折后总成本) ≥600` 的牌；其余牌按既有 VP/有效成本/可达性排序。阈值用印刷成本判定卡型；折后成本仅用于自留牌可买价值。
+3. 在该状态下，合法购买 `3 VP` 且印刷总成本 `>6` 的卡额外 `+1200`（`noble_race_three_vp`）；合法购买自留区内达到上述 `600` 效率门槛的牌额外 `+1200`（`noble_race_reserved`）。这只是弱偏好项，不覆写合法性，也不保证买牌动作胜出。
+4. 仅 Ultra/Build 期（己方折扣≤8，且未触发既有冲分覆盖），若当前已经持有至少两张自留牌，任何再预留动作额外 `−500`（`reserve_count_guard`）。既有 reserve tempo、爆牌价值等保留；此惩罚不是绝对禁止，合法且足够高价值的预留仍可胜出。
+5. 版本身份 `0.2.3`。候选 tie seed 固定为 `20260926`（与 v0.2.2 相同，减少这组直接比较的随机 tie-break 差异）；其余项、目标函数、阶段边界、合法动作由现有 v0.2.2 继承。不得在看到结果后改任何权重、种子、候选或 gate。
+
+### Scope, pilot and acceptance gates
+
+- 将冻结 v0.2.2 二进制作为主要直接对照，SHA256 精确锁为 `65c7271c…`；另保留 v0.1 与 S3 对照，用各自原有固定程序参数。仅解释性比较，不宣称单因素因果：本轮只用同一候选 tie seed 做 v0.2.3 vs v0.2.2 的配对；其余版本仍是多因素策略包比较。
+- 新 smoke seed `9_252_999`；pilot seeds `9_253_000..9_253_031`（32 seed × 2 seat rotations × 3 opponents = 192 matches）。在立约时先检查静态 seed registry 和既有 local Arena match-config，确认无冲突；完整命令、身份、时限和 10,000 次 paired-block bootstrap 参数写入 tracked config。pilot 必须先通过两座 smoke；任何失败/不完整比赛 fail closed，不过滤、不重试、不换 seed；每局保存 config/report/replay 并运行独立 `verify-replay`。
+- 完成门槛：冻结源码/config/runner/程序哈希；agent 与 CLI 测试、release build、Python 合同检查通过；2/2 smoke 有效；pilot 恰为 192/192 有效、0 abort，身份/换座/报告回放哈希/独立 replay 复验与逐对重算全通过。统计结果仍只标 `EXPLORATORY_PILOT_ONLY`，每个对照分别给 95% 配对 seed block CI；不设促销门槛、不晋级、不更改默认 S3。
+- Artifact 路径：`benchmarks/s4-heuristic-v023-pilot-v1.config.json`、对应 tracked `.result.json`、`scripts/s4_heuristic_v023_pilot.py`；每局文件、冻结候选二进制和 manifest 留在 ignored `local-artifacts/s4-heuristic-v023-pilot/`。v0.2.2 保存件不得覆盖。
+
+### Implementation plan / iteration log
+
+1. 记录本合同和 baseline；实现 near noble gap、帮助色目标排序、两项合法购牌加分与早期持两牌后的预留数量惩罚，并加入阶段阈值/牌型/合法动作回归测试。
+2. 固定 runner/config 与全新 seed；确认 registry/local config 无冲突；完成 agent/CLI/release/py_compile 与两个 seat smoke。
+3. smoke 身份、哈希、对照程序和回放均通过后才运行 192 局；跑完独立复验，重算所有配对结论。
+4. 收口时记录源码/config/runner/二进制/manifest/result SHA、exact validation commands/exit status、工作树和 publication 状态；结果不支持或执行失败均保留原样，不改 seed/门槛。
+
+- **Iteration 0 (2026-09-26)**: owner 在审阅 v0.2.2 权重页后要求直接实战对战测试修改版，授权范围为实现上述两项提案并以保存的 v0.2.2 作对照；此前 seed preflight 对 smoke+pilot 区间 `9_252_999..9_253_031` 的 registry 与 `local-artifacts/**/match-config.json` 均未发现冲突。尚未改策略源码、运行 smoke 或比赛。开始工作树已有 `.gitignore`、Replay Studio 页面、`human_play_command.rs`、`apps/replay-studio/app/jev/` 和本设计文档的独立改动；不得覆盖/暂存无关路径。根 `handoff.md` 与 `local-artifacts/` 必须保持 ignored/local-only。
+- **Iteration 1 — implementation / unit tests**: 固定五色永久折扣距离≤4、至少两位、Score-only开关和各权重；实现 v0.2.3 四项 term 与 target-group。首次专项测试 18/19；失败仅因 fixture 将红色 CardId15误认为白色，改用白色 CardId24 后 19/19 PASS；完整 agent 40+10+5、CLI bin102 PASS。
+- **Iteration 2 — preflight / smoke**: release binary 建成后冻结 candidate `7a981035…` 和脚本/config hash；runner合同检查、py_compile、rustfmt与diff-check PASS。fresh-seed scan 对 registry/local configs disjoint；v0.2.2 executable SHA钉为 `65c7271c…`。两座 smoke `9_252_999` 均完成并独立 verify-replay exit0，此后未改 scorer、runner、config 或 candidate binary。
+- **Iteration 3 — pilot / audit**: 以 create-only fail-closed runner 完成 192/192 (0 abort)；输出完整 per-game log、report、replay 与 manifest。单局 runner verify 后，再用独立 audit 按文件 SHA、seed/seat/agent identities/args/final hash 重验，并对192个 replay 再执行 `verify-replay`；独立重算 paired W/T/L 与 10,000-resample CIs，全部匹配 tracked result。
+- **Iteration 4 — registry / closeout**: 把 v0.2.0–v0.2.3 smoke+pilot ranges 记入 static registry；pairwise range disjointness PASS。裸运行 registry 脚本曾 exit1，是因为它默认检查本来已 consumed 的 S0 segment；按 caller contract 做全 registry pairwise 检查及赛前 S4 seed preflight后，无 seed collision。结果仅 exploratory、未晋级。
+
+### Final implementation
+
+- `crates/splendor-agent/src/heuristic_v02.rs` 实现版本身份 `0.2.3`：多贵族仅在 Score phase 且至少两位公开贵族五色折扣距离 `≤4` 时启用；近贵族进度每减一单位 `+800`，帮助 near 贵族的永久折扣卡优先；高成本 3VP（印刷总成本 `>6`）与可买高效率自留牌进入次级目标组，各自合法购买 `+1200`；Ultra/Build 已持有至少两张时，再次可见/盲预留 `−500`。score 项均可从 observation 计算，动作仍来自引擎 legal-actions。tie seed `20260926` 与 v0.2.2 相同。
+- v0.2.2 保存二进制保持原样并作为主要对照：`local-artifacts/s4-heuristic-v022-pilot/splendor-candidate.exe` SHA256 `65c7271c74ba233f193bc6a7ccfcd23004aecb93d85f96b5303e09955bd22cd4`。candidate binary 为 `7a98103548082c9018f5941fae0d0289acd5939b2d3d386457bf04f0f22a6dc0`；源码 SHA256 `b9dd6423db5a38d71e24e6babbfda8c294fe83a1ebd62ce43dbb2321ba08b684`。无 v0.2.2/v0.1/S3 源码、历史结果或产品默认改动。
+
+### Validation and evidence
+
+- 源码定向回归：先有一次失败的 `multi_noble_race_progress_and_target_order_use_frozen_distance` fixture（以为 CardId15 是白色 bonus；真实目录中它是红色）。改为真实白色 bonus CardId24 后，`cargo test -p splendor-agent heuristic_v02 -- --nocapture` 19/19 PASS；这是 fixture 修正，不改冻结规则或权重。之后完整 `cargo test -p splendor-agent --quiet`：40 unit +10 integration +5 public API PASS；`cargo test -p splendor-cli --bin splendor --quiet` 102/102 PASS；`cargo build --release -p splendor-cli --bin splendor --quiet` exit 0；`rustfmt --edition 2021 --check crates/splendor-agent/src/heuristic_v02.rs`、`python -m py_compile scripts/s4_heuristic_v023_pilot.py scripts/s0_seed_registry.py`、runner `check_contract`、`git diff --check` PASS。
+- preflight 原先对 smoke+pilot `9_252_999..9_253_031` 检查过旧 static registry 和所有既有 `local-artifacts/**/match-config.json`，无冲突。smoke `python scripts/s4_heuristic_v023_pilot.py --config benchmarks/s4-heuristic-v023-pilot-v1.config.json --mode smoke`：两座均完成并各自 verify replay；candidate/配置 SHA 与 pilot 相同。pilot seeds `9_253_000..9_253_031`，32 matched seeds ×双座×v0.2.2/v0.1/S3 =192；无失败、无过滤、无重跑、0 abort。runner SHA256 `6e3705cd46b7f52ef08d8a7b32702033d00c9e04fcf87ce9966ce6b24d090898`；config SHA256 `c143c9d36b007c02d12c456d5e43d5a9c634f55f2f92dceb586bcfb682553f8e`。
+- tracked result `benchmarks/s4-heuristic-v023-pilot-v1.result.json` SHA256 `3a6664dce948999169d57d76655e116d6f816e97c84dd875fd6860d31830f2dc`；ignored manifest `local-artifacts/s4-heuristic-v023-pilot/manifest.json` SHA256 `84420e3e477297ebddc5ecd7a29c54b4060199ba62b0a02e8eb1de35b039a823`。独立 audit `python local-artifacts/s4-heuristic-v023-pilot/independent-audit.py` exit 0，逐局重算 config/report/replay SHA、seat/args/identity/final-state、W/T/L/paired-block CI，并重新执行 candidate `verify-replay`：192/192 exit 0；audit JSON SHA256 `20f89a2b34759e9d4f090bdaddf20941253a77c1ab34fcc5d0554ee3809a2fa9`，审计脚本 SHA256 `5c62f015a4a19cff197b9a3eae6c2a0d542612766fc881b21beb5e1cc146859f`。
+- 静态 seed registry 加入四轮 S4 smoke+pilot 已消费区间；post-run pairwise check 30 个 registry ranges 无互相重叠。误直接运行 `python scripts/s0_seed_registry.py` exit 1 的原因是其默认 `CHECK_SEGMENT=5_800_064..127` 本来就在 consumed registry（该工具需 caller 覆盖待检查段），不是 S4 seed 冲突；采用 pairwise 检查和 pilot runner 的赛前 disjoint preflight 作本轮证据。`handoff.md` 与 `local-artifacts/` 确认 gitignored/local-only。
+
+### Result and decision
+
+192/192 完成并审计通过；95% paired-seed-block bootstrap（32 blocks/opponent，10,000 resamples）：
+
+| 对手 | W–T–L | 分数中心（bps） | 95% CI（bps） | 探索结论 |
+|---|---:|---:|---:|---|
+| 冻结 v0.2.2 | 34–2–28 | 5468.75 | [4453.125, 6406.25] | `UNRESOLVED` |
+| v0.1 | 43–0–21 | 6718.75 | [5625, 7812.5] | `EXPLORATORY_STRONGER` |
+| S3 | 30–0–34 | 4687.5 | [3593.75, 5781.25] | `UNRESOLVED` |
+
+**Decision: exploratory only, NOT PROMOTED; S3 remains product default.** v0.2.3 未显示对 v0.2.2 或 S3 的明确优势；对 v0.1 的优势仍是有限样本、该冻结策略包上的探索性结果。多个规则/权重同时变化，不能把胜率归因为贵族进度或预留数量惩罚的单项因果效果；相同 tie seed 仅减少 v0.2.2 配对的一项混杂。无逐决策 p95、Canonical/League/真人测量、独立 reviewer 或产品晋级结论。
+
+### Known limitations
+
+32 个 paired seed blocks/opponent 仅可用于继续研究的方向提示，不足以证明相对 S3 的 superiority/equivalence；三项新 term 未做单因素 ablation。本轮不运行额外种子，不在这批 seeds 上调参。M49A C3 仍为 `STOPPED / NO EXPERIMENTAL RESULT`，与 S4 无关且不恢复。
+
+### Next authorized gate
+
+停止并等 owner 审阅这轮 192 局结果、决定是否保留/修改贵族进度目标与持两牌后预留惩罚。未经新的明确授权，不晋级、不改默认、不另起 v0.2.4、不追加 pilot。

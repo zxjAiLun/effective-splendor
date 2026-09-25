@@ -4,13 +4,13 @@
 //! referee state, a deck order, or a hidden opponent reserve. A market refill
 //! is deliberately NOT predicted after a buy/reservation.
 
-use splendor_catalog::{all_nobles, card, CardDef, CardId, GemColor, Tier};
+use splendor_catalog::{all_nobles, card, CardDef, CardId, GemColor, NobleId, Tier};
 use splendor_core::{Action, Gems, Observation};
 
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.2";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.3";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -65,6 +65,17 @@ const STRANDED_TOKEN_PENALTY: i64 = 850;
 const ZERO_NET_TAKE_PENALTY: i64 = 2_000;
 const VP_EFFICIENCY_WEIGHT: i64 = 1_200;
 
+// v0.2.3: explicitly pursue simultaneous near-noble races and reduce
+// additional early reservations once two cards are already held.
+const NOBLE_RACE_DISTANCE_MAX: i64 = 4;
+const NOBLE_RACE_MIN_COUNT: usize = 2;
+const NOBLE_RACE_PROGRESS_WEIGHT: i64 = 800;
+const NOBLE_RACE_THREE_VP_WEIGHT: i64 = 1_200;
+const NOBLE_RACE_RESERVED_WEIGHT: i64 = 1_200;
+const NOBLE_RACE_RESERVED_EFFICIENCY_MIN: i64 = 600;
+const RESERVE_COUNT_THRESHOLD: usize = 2;
+const RESERVE_COUNT_GUARD: i64 = 500;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DevelopmentPhase {
     Ultra, // own permanent discounts 0..=4
@@ -113,6 +124,27 @@ fn effective_cost(def: &CardDef, bonuses: [u8; 5]) -> i64 {
         .iter()
         .map(|&c| i64::from(def.cost[c.index()].saturating_sub(bonuses[c.index()])))
         .sum()
+}
+
+fn reserve_efficiency(def: &CardDef, bonuses: [u8; 5]) -> i64 {
+    i64::from(def.prestige) * 1_000 / (1 + effective_cost(def, bonuses))
+}
+
+fn noble_distance(noble_id: NobleId, bonuses: &[u8; 5]) -> i64 {
+    let noble = &all_nobles()[noble_id.index()];
+    GemColor::ALL
+        .iter()
+        .map(|&color| i64::from(noble.requires(color).saturating_sub(bonuses[color.index()])))
+        .sum()
+}
+
+fn near_noble_ids(obs: &Observation, bonuses: &[u8; 5]) -> Vec<NobleId> {
+    obs.public
+        .nobles
+        .iter()
+        .copied()
+        .filter(|&id| noble_distance(id, bonuses) <= NOBLE_RACE_DISTANCE_MAX)
+        .collect()
 }
 
 #[derive(Default)]
@@ -167,6 +199,10 @@ pub struct HeuristicV02Terms {
     pub gold_liquidity: i64,
     pub secured_target: i64,
     pub reserve_tempo: i64,
+    pub noble_race_progress: i64,
+    pub noble_race_three_vp: i64,
+    pub noble_race_reserved: i64,
+    pub reserve_count_guard: i64,
 }
 
 impl HeuristicV02Terms {
@@ -186,6 +222,10 @@ impl HeuristicV02Terms {
             + self.gold_liquidity
             + self.secured_target
             + self.reserve_tempo
+            + self.noble_race_progress
+            + self.noble_race_three_vp
+            + self.noble_race_reserved
+            + self.reserve_count_guard
     }
 }
 
@@ -213,6 +253,9 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
     };
     let targets = visible_targets(obs);
     let phase = development_phase(obs, &before);
+    let near_nobles = near_noble_ids(obs, &before.bonuses);
+    let multi_noble_race =
+        phase == DevelopmentPhase::Score && near_nobles.len() >= NOBLE_RACE_MIN_COUNT;
     // Observation affordability, not a scan of the supplied action slice:
     // scoring one certified action or all certified siblings must agree.
     let has_cheap_buy = targets
@@ -393,6 +436,55 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
             } else {
                 0
             };
+            let noble_race_progress = if multi_noble_race {
+                near_nobles
+                    .iter()
+                    .map(|&id| {
+                        (noble_distance(id, &before.bonuses) - noble_distance(id, &after.bonuses))
+                            .max(0)
+                    })
+                    .sum::<i64>()
+                    * NOBLE_RACE_PROGRESS_WEIGHT
+            } else {
+                0
+            };
+            let noble_race_three_vp = if multi_noble_race {
+                bought.map_or(0, |id| {
+                    let def = card(id);
+                    if def.prestige == 3 && def.total_cost() > 6 {
+                        NOBLE_RACE_THREE_VP_WEIGHT
+                    } else {
+                        0
+                    }
+                })
+            } else {
+                0
+            };
+            let noble_race_reserved = if multi_noble_race
+                && matches!(action, Action::BuyReserved { .. })
+            {
+                bought.map_or(0, |id| {
+                    let def = card(id);
+                    if reserve_efficiency(def, before.bonuses) >= NOBLE_RACE_RESERVED_EFFICIENCY_MIN
+                    {
+                        NOBLE_RACE_RESERVED_WEIGHT
+                    } else {
+                        0
+                    }
+                })
+            } else {
+                0
+            };
+            let reserve_count_guard = if phase != DevelopmentPhase::Score
+                && obs.private.reserved.len() >= RESERVE_COUNT_THRESHOLD
+                && matches!(
+                    action,
+                    Action::ReserveMarket { .. } | Action::ReserveDeck { .. }
+                ) {
+                -RESERVE_COUNT_GUARD
+            } else {
+                0
+            };
             let secured = secured.is_some_and(|id| {
                 let def = card(id);
                 selected.iter().any(|target| target.id == id)
@@ -432,6 +524,10 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                     * GOLD_WEIGHT,
                 secured_target: if secured { SECURED_WEIGHT } else { 0 },
                 reserve_tempo,
+                noble_race_progress,
+                noble_race_three_vp,
+                noble_race_reserved,
+                reserve_count_guard,
             }
         })
         .collect()
@@ -515,18 +611,22 @@ fn select_targets(
             demand[c] += i64::from(def.cost[c].saturating_sub(own.bonuses[c])).min(2);
         }
     }
+    let near = if phase == DevelopmentPhase::Score {
+        near_noble_ids(obs, &own.bonuses)
+    } else {
+        Vec::new()
+    };
+    let multi_noble_race = near.len() >= NOBLE_RACE_MIN_COUNT;
     let mut ordered = targets.to_vec();
     ordered.sort_by_key(|def| {
         let color = def.bonus.index();
-        let noble_help = obs
-            .public
-            .nobles
-            .iter()
-            .filter(|&&id| {
-                let noble = &all_nobles()[id.index()];
-                own.bonuses[color] < noble.requires(def.bonus)
-            })
-            .count() as i64;
+        let noble_help = if multi_noble_race {
+            near.iter()
+                .filter(|&&id| own.bonuses[color] < all_nobles()[id.index()].requires(def.bonus))
+                .count() as i64
+        } else {
+            0
+        };
         let value = 1 + 2 * i64::from(def.prestige) + 2 * demand[color].min(3) + noble_help;
         let gap = deficit(def, own);
         match phase {
@@ -540,14 +640,33 @@ fn select_targets(
                 } else {
                     3
                 };
-                (group, -(100 * value / (1 + gap)), gap, def.id.index())
+                (group, 0, -(100 * value / (1 + gap)), gap, def.id.index())
             }
             DevelopmentPhase::Score => {
-                let efficiency =
-                    i64::from(def.prestige) * 1_000 / (1 + effective_cost(def, own.bonuses));
-                // The target must be cost-effective AND reachable; an
-                // unreachable 5VP card cannot dominate an imminent 2VP buy.
-                (0, -(efficiency * 10 / (1 + gap)), gap, def.id.index())
+                let race_group = if !multi_noble_race {
+                    0
+                } else if noble_help > 0 {
+                    0
+                } else if (def.prestige == 3 && def.total_cost() > 6)
+                    || (obs.private.reserved.iter().any(|r| r.card == def.id)
+                        && reserve_efficiency(def, own.bonuses)
+                            >= NOBLE_RACE_RESERVED_EFFICIENCY_MIN)
+                {
+                    1
+                } else {
+                    2
+                };
+                let efficiency = reserve_efficiency(def, own.bonuses);
+                // In a multi-noble race, permanent-discount progress comes
+                // first, then the frozen high-value-card/reserve group. Within
+                // each group keep VP efficiency and reachability ordering.
+                (
+                    race_group,
+                    -noble_help,
+                    -(efficiency * 10 / (1 + gap)),
+                    gap,
+                    def.id.index(),
+                )
             }
         }
     });
@@ -615,7 +734,7 @@ fn reserve_tokens(before: Gems, give_back: Gems, gold_available: bool) -> Gems {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use splendor_core::{FullState, GameConfig, Phase, PlayerId, Ruleset};
+    use splendor_core::{FullState, GameConfig, Phase, PlayerId, ReservedCard, Ruleset};
 
     fn game(seed: u64) -> FullState {
         FullState::new(GameConfig {
@@ -1350,6 +1469,176 @@ mod tests {
         assert_eq!(
             s[legal.iter().position(|&a| a == a4).unwrap()].bomb_reserve,
             0
+        );
+    }
+
+    fn multi_noble_scoring_state(seed: u64) -> FullState {
+        let mut state = game(seed);
+        state.nobles = vec![NobleId(0), NobleId(8)];
+        state.players[0].bonuses = [2, 4, 2, 0, 3];
+        state.players[1].prestige = 12;
+        state
+    }
+
+    fn give_race_buy_tokens(state: &mut FullState) {
+        state.players[0].tokens = Gems {
+            white: 1,
+            blue: 1,
+            green: 1,
+            ..Gems::ZERO
+        };
+        state.bank.white -= 1;
+        state.bank.blue -= 1;
+        state.bank.green -= 1;
+    }
+
+    #[test]
+    fn multi_noble_race_progress_and_target_order_use_frozen_distance() {
+        let mut state = game(61);
+        state.nobles = vec![NobleId(0), NobleId(8)];
+        state.players[0].bonuses = [2, 2, 1, 0, 0];
+        state.players[1].prestige = 12;
+        assert_eq!(noble_distance(NobleId(0), &[2, 2, 1, 0, 0]), 4);
+        assert_eq!(noble_distance(NobleId(8), &[2, 2, 1, 0, 0]), 4);
+        assert_eq!(
+            near_noble_ids(&state.observation(PlayerId(0)), &[2, 2, 1, 0, 0]).len(),
+            2
+        );
+
+        expose(&mut state, CardId(0), 0); // blue bonus advances both nobles
+        state.players[0].tokens.black = 3;
+        state.bank.black -= 3;
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        assert!(state.legal_actions().contains(&buy));
+        let score = heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[buy])[0];
+        assert_eq!(score.noble_race_progress, 2 * NOBLE_RACE_PROGRESS_WEIGHT);
+
+        // One near noble is not enough; neither is a multi-noble state outside
+        // the scoring phase. Both retain the pre-v0.2.3 behavior.
+        state.nobles = vec![NobleId(0)];
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[buy])[0]
+                .noble_race_progress,
+            0
+        );
+        state.nobles = vec![NobleId(0), NobleId(8)];
+        state.players[1].prestige = 0;
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[buy])[0]
+                .noble_race_progress,
+            0
+        );
+
+        let mut ranked_state = multi_noble_scoring_state(62);
+        ranked_state.players[0].reserved = vec![ReservedCard {
+            card: CardId(74),
+            from_deck: false,
+        }];
+        let own = OwnProjection {
+            tokens: ranked_state.players[0].tokens,
+            bonuses: ranked_state.players[0].bonuses,
+            prestige: ranked_state.players[0].prestige,
+        };
+        let ranked = select_targets(
+            &[*card(CardId(8)), *card(CardId(74)), *card(CardId(24))],
+            &own,
+            &ranked_state.observation(PlayerId(0)),
+            DevelopmentPhase::Score,
+        );
+        assert_eq!(ranked[0].id, CardId(24), "white helps both near nobles");
+        assert_eq!(ranked[1].id, CardId(74), "valuable own reserve is next");
+    }
+
+    #[test]
+    fn high_cost_three_vp_and_legal_high_efficiency_reserve_get_race_bonus() {
+        let mut market_state = multi_noble_scoring_state(63);
+        expose(&mut market_state, CardId(74), 0); // T3, 3VP, printed cost 14
+        give_race_buy_tokens(&mut market_state);
+        let market_buy = Action::BuyMarket {
+            tier: Tier::Three,
+            slot: 0,
+        };
+        assert!(market_state.legal_actions().contains(&market_buy));
+        let market_score =
+            heuristic_v02_term_scores(&market_state.observation(PlayerId(0)), &[market_buy])[0];
+        assert_eq!(market_score.noble_race_three_vp, NOBLE_RACE_THREE_VP_WEIGHT);
+        assert_eq!(market_score.noble_race_reserved, 0);
+
+        let mut reserved_state = multi_noble_scoring_state(64);
+        expose(&mut reserved_state, CardId(74), 0);
+        reserved_state.market[Tier::Three.index()][0] = None;
+        reserved_state.players[0].reserved.push(ReservedCard {
+            card: CardId(74),
+            from_deck: false,
+        });
+        give_race_buy_tokens(&mut reserved_state);
+        let reserved_buy = Action::BuyReserved { slot: 0 };
+        assert!(reserved_state.legal_actions().contains(&reserved_buy));
+        assert_eq!(reserve_efficiency(card(CardId(74)), [2, 4, 2, 0, 3]), 750);
+        let reserved_score =
+            heuristic_v02_term_scores(&reserved_state.observation(PlayerId(0)), &[reserved_buy])[0];
+        assert_eq!(
+            reserved_score.noble_race_three_vp,
+            NOBLE_RACE_THREE_VP_WEIGHT
+        );
+        assert_eq!(
+            reserved_score.noble_race_reserved,
+            NOBLE_RACE_RESERVED_WEIGHT
+        );
+        assert_eq!(reserved_score.vp_efficiency, 900);
+    }
+
+    #[test]
+    fn early_reservation_count_guard_starts_at_two_and_is_off_in_scoring() {
+        let mut state = game(65);
+        let first = state.market[Tier::Three.index()][0].take().unwrap();
+        let second = state.market[Tier::Three.index()][1].take().unwrap();
+        state.players[0].reserved = vec![
+            ReservedCard {
+                card: first,
+                from_deck: false,
+            },
+            ReservedCard {
+                card: second,
+                from_deck: false,
+            },
+        ];
+        let legal = state.legal_actions();
+        let visible = legal
+            .iter()
+            .copied()
+            .find(|a| matches!(a, Action::ReserveMarket { .. }))
+            .expect("visible reserve remains legal with two held cards");
+        let blind = legal
+            .iter()
+            .copied()
+            .find(|a| matches!(a, Action::ReserveDeck { .. }))
+            .expect("blind reserve remains legal with two held cards");
+        let obs = state.observation(PlayerId(0));
+        let scores = heuristic_v02_term_scores(&obs, &[visible, blind]);
+        assert_eq!(scores[0].reserve_count_guard, -RESERVE_COUNT_GUARD);
+        assert_eq!(scores[1].reserve_count_guard, -RESERVE_COUNT_GUARD);
+
+        state.players[0].reserved.pop();
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[visible])[0]
+                .reserve_count_guard,
+            0,
+            "one reserve is not penalized"
+        );
+        state.players[0].reserved.push(ReservedCard {
+            card: second,
+            from_deck: false,
+        });
+        state.players[1].prestige = 12;
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[visible])[0]
+                .reserve_count_guard,
+            0,
+            "scoring phase keeps the legacy reserve policy"
         );
     }
 }
