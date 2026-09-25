@@ -1,6 +1,8 @@
 """C3 hard-target refresh-granularity contract tests."""
 
 import json
+import subprocess
+import sys
 
 import numpy as np
 import torch
@@ -58,8 +60,9 @@ def test_frozen_exe_mode_invokes_executable_directly(tmp_path, monkeypatch):
     tmp_dir.mkdir()
     captured = {}
 
-    def fake_run(cmd, capture_output, text):
+    def fake_run(cmd, capture_output, text, creationflags=0):
         captured["cmd"] = cmd
+        captured["creationflags"] = creationflags
         np.zeros(4, dtype=np.float32).tofile(str(tmp_dir / "targets.f32"))
 
         class Result:
@@ -79,6 +82,12 @@ def test_frozen_exe_mode_invokes_executable_directly(tmp_path, monkeypatch):
     assert "cargo" not in captured["cmd"]
     assert captured["cmd"][1] == "m49a-build-targets"
     assert targets.shape == (4,)
+    # Popup suppression: on Windows the console-subsystem builder must be spawned
+    # with CREATE_NO_WINDOW so detached runs do not flash a console per call.
+    if sys.platform == "win32":
+        assert captured["creationflags"] == subprocess.CREATE_NO_WINDOW
+    else:
+        assert captured["creationflags"] == 0
 
 
 def test_frozen_exe_mode_rejects_missing_bytes_before_cargo_fallback(tmp_path):

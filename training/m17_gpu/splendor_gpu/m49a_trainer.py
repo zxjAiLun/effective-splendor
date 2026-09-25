@@ -15,6 +15,7 @@ Each target-refresh segment:
 
 import json
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -24,6 +25,18 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+# On Windows the target builder is a console-subsystem executable. When the
+# trainer itself runs detached (no console), Windows allocates a fresh console
+# window for every builder invocation -- hundreds of transient pop-ups per run.
+# CREATE_NO_WINDOW suppresses that window. It changes ONLY window visibility:
+# piped stdout/stderr, the process exit code, and the emitted target bytes are
+# identical with or without it, so it does not affect the frozen C1/C2/C3
+# numerical contract. On non-Windows platforms it resolves to 0 (no-op).
+_NO_WINDOW_CREATIONFLAGS = (
+    subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+)
 
 
 class EfficiencyQNet(nn.Module):
@@ -140,7 +153,12 @@ def compute_targets_streaming(
         ]
         mode = "cargo_run_dev_convenience"
 
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        creationflags=_NO_WINDOW_CREATIONFLAGS,
+    )
     if res.returncode != 0:
         raise RuntimeError(
             f"Rust target builder failed (mode={mode}, cmd={cmd[0]}): "
