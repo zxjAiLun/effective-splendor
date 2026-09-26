@@ -265,6 +265,17 @@ v0.2.2 的公开回放诊断有少数状态显示多个贵族距离较近时，�
 
 32 个 paired seed blocks/opponent 仅可用于继续研究的方向提示，不足以证明相对 S3 的 superiority/equivalence；三项新 term 未做单因素 ablation。本轮不运行额外种子，不在这批 seeds 上调参。M49A C3 仍为 `STOPPED / NO EXPERIMENTAL RESULT`，与 S4 无关且不恢复。
 
+### Post-pilot read-only census（2026-09-26；仅诊断，不可作调参或强度证据）
+
+对上述冻结 192 局 replay 的一次性只读普查：提取器源码（运行后已从工作树移除，副本在 ignored artifact）SHA256 `3e6d3c340ea351ea6fe06970398342c868104473fac1d23cb143e65c43555f51`，逐决策 JSON `census-decisions-v2.json` SHA256 `cf1f7ef5774ba2574f945ba447123b94ab4fff8fe43d7610e8381d6cbd45342b`，汇总脚本 SHA256 `63c5b908a2d5a55827ccae2eb3a5ee99711444d6b77f861b71e2424e2dd978aa`。重建 5,468 个候选决策态（每态先 `verify_replay_trace`）。核心描述统计：
+
+- 触发面：`multi_noble_race` 在 1,393/5,468（25.5%）决策激活，183/192 局至少一次；Score 阶段 68% 的决策满足“≥2 位 near 贵族”。`noble_race_progress` 在 860 个实际选择上非零；`noble_race_three_vp`/`noble_race_reserved` 仅 22/33 次（0.4%/0.6%，近乎死项）；`reserve_count_guard` 落在被选动作 10 次，并把 55 个决策从预留翻转为非预留（非 Score 且持牌≥2 的 1,032 个决策中，预估 v0.2.2 等价行为会预留约 65 次）。
+- 行为差异：把四项新 term 置零后 argmax 集合在 372 个决策（6.8%）不同（race 态 317、guard 态 55）。注意 race 态内 target 重排也会改旧项，该数字是下限口径。
+- 贵族归属：vs 冻结 v0.2.2，候选场均贵族 1.44 vs 0.52（约三倍），但净胜率仍 34–2–28、终局 VP 差均值仅 +0.36；vs S3 为 1.14 vs 1.28（被反超）。候选拿≥2 贵族的局：vs v0.2.2 30 局 25 胜、vs S3 25 局 20 胜；全局看胜局贵族差均值 +1.03、负局 −0.98。
+- 对手盲竞速：race 态决策中 47.2% 至少有一位 near 贵族是对手折扣距离严格更近的，7.9% 全部 near 贵族都落后于对手。终局滞留未买自留牌均值 1.38–1.56 张（vs S3 有 30/64 局终局持 2 张）。
+
+上述全部为描述性单批统计；这些 seed 已消费，不能在其上择参再验证，也不改变 NOT PROMOTED 结论。
+
 ### Next authorized gate
 
 停止并等 owner 审阅这轮 192 局结果、决定是否保留/修改贵族进度目标与持两牌后预留惩罚。未经新的明确授权，不晋级、不改默认、不另起 v0.2.4、不追加 pilot。
