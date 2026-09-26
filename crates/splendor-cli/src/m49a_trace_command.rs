@@ -638,7 +638,9 @@ fn sha256_file(path: &Path) -> Result<String, String> {
     let mut hasher = Sha256::new();
     let file = fs::File::open(path).map_err(|e| format!("open {}: {e}", path.display()))?;
     let mut reader = std::io::BufReader::new(file);
-    let mut buffer = [0u8; 1 << 20];
+    // Heap buffer: a stack array here would add a megabyte to the calling
+    // frame (the support file is ~63 MB).
+    let mut buffer = vec![0u8; 1 << 20];
     loop {
         let read = std::io::Read::read(&mut reader, &mut buffer)
             .map_err(|e| format!("read {}: {e}", path.display()))?;
@@ -721,6 +723,7 @@ fn run(args: Args) -> Result<(), String> {
     let out_json = args.out_json.clone();
     let (weights_a, sha_a) = load_weights_with_sha256(&args.weights_a)?;
     let (weights_b, sha_b) = load_weights_with_sha256(&args.weights_b)?;
+    println!("loaded weights a={sha_a} b={sha_b}");
 
     let all_seeds = validation_seeds_v1();
     let seeds: Vec<u64> = all_seeds[..args.max_seeds].to_vec();
@@ -881,10 +884,28 @@ pub fn run_m49a_trace_validation(args: &[String]) -> i32 {
             return EXIT_USAGE;
         }
     };
-    match run(args) {
-        Ok(()) => 0,
+    // Release builds inline the per-ply encode/forward/lockstep body into a
+    // single very large stack frame, which overflowed the default
+    // main-thread stack in optimized builds (debug builds were fine). Run the
+    // whole diagnostic on a dedicated thread with an explicit large stack.
+    let spawned = std::thread::Builder::new()
+        .stack_size(256 * 1024 * 1024)
+        .spawn(move || run(args));
+    let joined = match spawned {
+        Ok(handle) => handle.join(),
         Err(e) => {
+            eprintln!("error: failed to spawn diagnostic thread: {e}");
+            return 1;
+        }
+    };
+    match joined {
+        Ok(Ok(())) => 0,
+        Ok(Err(e)) => {
             eprintln!("error: {e}");
+            1
+        }
+        Err(panic) => {
+            eprintln!("error: diagnostic thread panicked: {panic:?}");
             1
         }
     }
