@@ -32,6 +32,7 @@ mod m49a_round2_command;
 mod m49a_select_command;
 pub mod m49a_target_builder;
 mod m49a_trace_command;
+mod m50_agent_command;
 mod m50_extract_command;
 mod profile_agent;
 mod promotion_command;
@@ -278,6 +279,9 @@ fn main() {
         }
         Some("m50-extract-replays") => {
             std::process::exit(m50_extract_command::run_m50_extract_replays(&argv[2..]))
+        }
+        Some("agent-m50-policy") => {
+            std::process::exit(m50_agent_command::run_agent_m50_policy(&argv[2..]))
         }
         _ => {}
     }
