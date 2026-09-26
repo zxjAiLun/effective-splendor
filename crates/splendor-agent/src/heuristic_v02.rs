@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.6";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.7";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -84,9 +84,11 @@ const RESERVE_COUNT_GUARD: i64 = 500;
 // not be strictly smaller. Both sides' bonuses are public observation data;
 // the trigger (>=2 near nobles) and all constants are unchanged.
 
-// v0.2.6: Mid-to-late game route locking (HighCostRush / Tycoon / Balanced).
-// Suppresses low-VP distractions when pursuing high-cost 3+ VP cards or noble completions.
-const LOW_VP_RUSH_SUPPRESSION: i64 = -2_000;
+// v0.2.7: Reachable Target Route Locking with Dynamic Tempo Balance.
+// Softens low-VP suppression from -2000 to -600, exempts 1-VP cards that contribute
+// to high-cost target colors, enforces strict infrastructure requirements for single-color
+// high-cost cards (>=2 discount), and provides reserve tempo bonuses for promising 3+ VP cards.
+const LOW_VP_RUSH_SUPPRESSION: i64 = -600;
 const HIGH_VP_RUSH_EXECUTION_BONUS: i64 = 1_000;
 const HIGH_VP_RUSH_PROTECT_BONUS: i64 = 800;
 const TYCOON_SCORING_CARD_BONUS: i64 = 1_500;
@@ -194,12 +196,31 @@ pub enum MidLateRoute {
     Balanced,
 }
 
+fn is_reachable_rush_target(c: &CardDef, own: &OwnProjection, is_reserved: bool) -> bool {
+    if c.prestige < 3 {
+        return false;
+    }
+    let max_deficit = if is_reserved { 5 } else { 4 };
+    if deficit(c, own) > max_deficit {
+        return false;
+    }
+    // High single-color demand check: if a card demands 6+ in any single color,
+    // we must already possess at least 2 permanent discounts in that color.
+    // This prevents locking impossible cards like 7-black with 0 black discount.
+    for color in GemColor::ALL {
+        if c.cost[color.index()] >= 6 && own.bonuses[color.index()] < 2 {
+            return false;
+        }
+    }
+    true
+}
+
 fn has_viable_rush_target(obs: &Observation, own: &OwnProjection) -> bool {
     for tier in [Tier::Two, Tier::Three] {
         for slot in 0..4 {
             if let Some(cid) = obs.public.market[tier.index()][slot] {
                 let c = card(cid);
-                if c.prestige >= 3 && deficit(c, own) <= 5 {
+                if is_reachable_rush_target(c, own, false) {
                     return true;
                 }
             }
@@ -207,11 +228,40 @@ fn has_viable_rush_target(obs: &Observation, own: &OwnProjection) -> bool {
     }
     for r in &obs.private.reserved {
         let c = card(r.card);
-        if c.prestige >= 3 && deficit(c, own) <= 5 {
+        if is_reachable_rush_target(c, own, true) {
             return true;
         }
     }
     false
+}
+
+fn rush_needed_colors(obs: &Observation, own: &OwnProjection) -> [bool; 5] {
+    let mut needed = [false; 5];
+    for tier in [Tier::Two, Tier::Three] {
+        for slot in 0..4 {
+            if let Some(cid) = obs.public.market[tier.index()][slot] {
+                let c = card(cid);
+                if is_reachable_rush_target(c, own, false) {
+                    for color in GemColor::ALL {
+                        if c.cost[color.index()] > own.bonuses[color.index()] {
+                            needed[color.index()] = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for r in &obs.private.reserved {
+        let c = card(r.card);
+        if is_reachable_rush_target(c, own, true) {
+            for color in GemColor::ALL {
+                if c.cost[color.index()] > own.bonuses[color.index()] {
+                    needed[color.index()] = true;
+                }
+            }
+        }
+    }
+    needed
 }
 
 fn find_tycoon_target(obs: &Observation, bonuses: &[u8; 5]) -> Option<NobleId> {
@@ -717,49 +767,62 @@ pub fn heuristic_v02_term_scores_with_route(
                         })
             });
             let route_guidance = match route {
-                Some(MidLateRoute::HighCostRush) => match action {
-                    Action::BuyMarket { tier, slot } => {
-                        let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
-                        cid.map_or(0, |id| {
-                            let c = card(id);
-                            if c.prestige <= 1 {
-                                LOW_VP_RUSH_SUPPRESSION
-                            } else if c.prestige >= 3 {
-                                HIGH_VP_RUSH_EXECUTION_BONUS
-                            } else {
-                                0
-                            }
-                        })
-                    }
-                    Action::BuyReserved { slot } => {
-                        let idx = *slot as usize;
-                        if idx < obs.private.reserved.len() {
-                            let id = obs.private.reserved[idx].card;
-                            let c = card(id);
-                            if c.prestige <= 1 {
-                                LOW_VP_RUSH_SUPPRESSION
-                            } else if c.prestige >= 3 {
-                                HIGH_VP_RUSH_EXECUTION_BONUS
-                            } else {
-                                0
-                            }
-                        } else {
-                            0
+                Some(MidLateRoute::HighCostRush) => {
+                    let needed_colors = rush_needed_colors(obs, &before);
+                    match action {
+                        Action::BuyMarket { tier, slot } => {
+                            let cid: Option<CardId> =
+                                obs.public.market[tier.index()][*slot as usize];
+                            cid.map_or(0, |id| {
+                                let c = card(id);
+                                if c.prestige <= 1 {
+                                    if needed_colors[c.bonus.index()] {
+                                        0
+                                    } else {
+                                        LOW_VP_RUSH_SUPPRESSION
+                                    }
+                                } else if c.prestige >= 3 {
+                                    HIGH_VP_RUSH_EXECUTION_BONUS
+                                } else {
+                                    0
+                                }
+                            })
                         }
-                    }
-                    Action::ReserveMarket { tier, slot, .. } => {
-                        let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
-                        cid.map_or(0, |id| {
-                            let c = card(id);
-                            if c.prestige >= 3 && deficit(c, &before) <= 5 {
-                                HIGH_VP_RUSH_PROTECT_BONUS
+                        Action::BuyReserved { slot } => {
+                            let idx = *slot as usize;
+                            if idx < obs.private.reserved.len() {
+                                let id = obs.private.reserved[idx].card;
+                                let c = card(id);
+                                if c.prestige <= 1 {
+                                    if needed_colors[c.bonus.index()] {
+                                        0
+                                    } else {
+                                        LOW_VP_RUSH_SUPPRESSION
+                                    }
+                                } else if c.prestige >= 3 {
+                                    HIGH_VP_RUSH_EXECUTION_BONUS
+                                } else {
+                                    0
+                                }
                             } else {
                                 0
                             }
-                        })
+                        }
+                        Action::ReserveMarket { tier, slot, .. } => {
+                            let cid: Option<CardId> =
+                                obs.public.market[tier.index()][*slot as usize];
+                            cid.map_or(0, |id| {
+                                let c = card(id);
+                                if c.prestige >= 3 && deficit(c, &before) <= 6 {
+                                    HIGH_VP_RUSH_PROTECT_BONUS
+                                } else {
+                                    0
+                                }
+                            })
+                        }
+                        _ => 0,
                     }
-                    _ => 0,
-                },
+                }
                 Some(MidLateRoute::Tycoon { target }) => match action {
                     Action::BuyMarket { tier, slot } => {
                         let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
@@ -2352,6 +2415,8 @@ mod tests {
         let obs = state.observation(PlayerId(0));
 
         // Under HighCostRush:
+        // CardId(7) bonus is Blue, while CardId(71) demands White.
+        // So CardId(7) does NOT contribute to White, and gets suppressed!
         let rush_scores = heuristic_v02_term_scores_with_route(
             &obs,
             &[buy_1vp, reserve_4vp],
@@ -2359,11 +2424,35 @@ mod tests {
         );
         assert_eq!(
             rush_scores[0].route_guidance, LOW_VP_RUSH_SUPPRESSION,
-            "1VP buy is suppressed in rush"
+            "1VP buy unrelated to target color is suppressed"
         );
         assert_eq!(
             rush_scores[1].route_guidance, HIGH_VP_RUSH_PROTECT_BONUS,
             "reserving 4VP card is protected"
+        );
+
+        // Now test color exemption: if an affordable 1VP card provides White (which 71 demands),
+        // it must be completely EXEMPT from suppression (route_guidance == 0)
+        let white_1vp_card = splendor_catalog::all_cards()
+            .iter()
+            .find(|c| c.bonus == GemColor::White && c.prestige == 1)
+            .unwrap();
+        expose(&mut state, white_1vp_card.id, 1);
+        // Ensure player has enough tokens to legally afford white_1vp_card
+        state.players[0].tokens.gold = 5;
+        let buy_white_1vp = Action::BuyMarket {
+            tier: white_1vp_card.tier,
+            slot: 1,
+        };
+        let obs_with_white = state.observation(PlayerId(0));
+        let white_scores = heuristic_v02_term_scores_with_route(
+            &obs_with_white,
+            &[buy_white_1vp],
+            Some(MidLateRoute::HighCostRush),
+        );
+        assert_eq!(
+            white_scores[0].route_guidance, 0,
+            "1VP card contributing to target color is exempt from suppression"
         );
 
         // When buy_4vp is affordable:

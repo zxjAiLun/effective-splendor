@@ -508,5 +508,72 @@ Candidate version: `0.2.6`, tie seed `20260926`
 
 ### Next authorized gate
 
-- 默认 STOP 等待 owner 决策。后续若改进：需平衡“高分大卡”与“小卡顺手抓”的节奏权重（如软化压制、引入离终局差值动态调节），或探索其他单因素干预。
+- Owner 明确授权：“okay，按你说的调整一下方向之后继续 其实我的大牌的意思 还是要先预估距离 如果距离太远 可以先reserve 之后徐徐图之 然后不要硬锁 你没法买的牌 例如你现在0个黑折扣 然后场上有个7黑3红的5分牌 就不可能以他为目标了 还是以自己能够到的目标来pursue”。进入 S4.7（v0.2.7：可达性大牌锁定 + 动态节奏平衡）。
+
+## S4.7 v0.2.7: Reachable Target Route Locking with Dynamic Tempo Balance
+
+Status: AUTHORIZED / IN PROGRESS (2026-09-26)
+Baseline: `main@f512fe1` (v0.2.6 completed commit)
+Candidate version: `0.2.7`, tie seed `20260926`
+
+### Problem and observed evidence
+
+1. **v0.2.6 的教训：虚假可达性与节奏赤字**：
+   - v0.2.6 将 `deficit <= 5` 视为进入 `HighCostRush` 的标准，导致 AI 在例如拥有 0 个黑折扣时，因为手握 3 宝石而判定 7 黑 3 红的大牌为目标，硬憋多轮大牌。
+   - 强行压制（-2000）导致 AI 在 5.35 回合内过度拒买廉价 1 VP 卡，被对手以高频 1~2 分卡率先冲过 15 分终局线。
+2. **Owner 的战术修正**：
+   - **预估距离与真实可达性**：大牌目标必须以“自身能够到的目标来 pursue”。例如单色高费牌（如需要 7 黑），自身若无相应折扣（< 2 折扣）则不应盲目作为主攻目标锁定。
+   - **预留与徐徐图之**：若距离稍远但有极大潜力，应先 reserve 保留，而不是强行用代币死磕。
+   - **动态节奏平衡**：顺手能买的 1 分卡如果不妨碍大牌且提供永久折扣，应合理买入，不进行毁灭性压制。
+
+### Initial design / contracts
+
+1. **精准的可达性定义（`is_reachable_rush_target`）**：
+   - 一张 3+ VP 卡作为冲分流目标必须满足：
+     - 总代币缺口 `deficit <= 4`（从 5 收紧至 4）；
+     - 对于任何单色需求 `cost[c] >= 6` 的大卡，自身在该颜色必须拥有至少 `bonuses[c] >= 2` 的基础减免，杜绝 0 折扣硬憋 7 宝石牌。
+     - 若为自身已预留卡（`obs.private.reserved`），门槛放宽至 `deficit <= 5`（已锁定归属，徐徐图之）。
+2. **预留大卡保护激励**：
+   - 处于 Score 阶段，若市场出现高分潜力卡（3+ VP 且总缺口 ≤ 6），支持提前预留（`ReserveMarket` 获得 `+800` 保护激励），锁定未来发展空间。
+3. **动态软化低分卡压制（`LOW_VP_SUPPRESSION_SOFT`）**：
+   - 将 `-2000` 硬压制大幅软化至 `-600`。
+   - 且若该 1 VP 卡的颜色恰好是当前锁定的 3+ VP 大牌所需要的颜色（买入能直接减少大牌缺口），**完全豁免压制**（惩罚为 0）！这完美落实了“顺手买入小卡兼得永久减免、铺垫大牌”的节奏原则。
+
+### Pilot and frozen gates (v0.2.7)
+
+- 样本量：**128 块 × 双座 × 3 对照 = 768 局**。
+- 种子预留：
+  - Smoke: `9_256_999` 双座。
+  - Pilot: `9_257_000..9_257_127`（128 块）。
+  - Bootstrap: seed `92_572_026`，10,000 次重采样，95% CI。
+- 对照组：
+  - 主对照：冻结 v0.2.5 二进制（SHA256 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`）。
+  - 基准对照：v0.1.0 与 S3-rollout。
+- 判定标准：
+  - vs v0.2.5 95% CI 下界 > 5000 bps -> EXPLORATORY_STRONGER。
+  - 否则 UNRESOLVED 或 EXPLORATORY_WEAKER。仅作探索性 pilot，不改默认。
+
+### Validation and evidence（实际执行）
+
+- 冻结：`freeze.json` SHA `43e1cfcf0d79435b809867ca327f311394f8fb29df5ec1eb3b573a48e89547d0`；候选 `c01050cef75d824e5abed855f5ea4a036fb86b5a812d0ae0c6592d952ba29709`、v025对照/裁判 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`、config `ef6a43e49e25d74268e309cb9f4d1a55c2cf0f477e687e148e65c92c5a278918`。8,982份既有match-config实查零碰撞；smoke `9256999` 双座PASS。
+- Pilot：768/768完成、0 abort，`benchmarks/s4-heuristic-v027-pilot-v1.result.json` SHA `bab2e695f6c19b668822bd82ede87d27a1381c5c8dc272b2fa91efcea7f4bbb7`、manifest `1607ef3a5bcfa1573c9ff4c28db8aa33e9b11e29c15ff9a38541c4f4a3bfecbc`。另脚本 `scripts/s4_heuristic_v027_audit.py` 重读原始报告/回放、对全部 770 份回放（768 pilot + 2 smoke）重跑冻结 `verify-replay` 均 exit0、独立重算 W/T/L/CI 逐字一致（PASS）。
+- 离线诊断与战术对比（v0.2.6 vs v0.2.7）：
+  - 软化压制与颜色豁免确实修复了过激的拒买现象：0~1 VP 购买从 v0.2.6 的 1,352 回升至 2,163（接近 v0.2.5 原始的 2,458）；
+  - 胜率相对 v0.2.6 有明显回升（vs v025 从 3808 bps 回升至 4335 bps，胜场从 97 场提升至 110 场；vs v01 从 4960 bps 升至 5156 bps 翻正），但依然落后于未作路由锁定的基线 v0.2.5（4335 bps，CI [3906, 4785]）。
+
+### Result and decision
+
+- **主对照 v0.2.5（唯一单因素差异）：110–2–144，center 4335.94 bps，CI [3906.25, 4785.16]，EXPLORATORY_WEAKER。**
+- vs v0.1：132–0–124，center 5156.25，CI [4531.25, 5781.25]，UNRESOLVED。
+- vs S3：104–0–152，center 4062.50，CI [3437.50, 4687.50]，EXPLORATORY_WEAKER。
+- **裁定：EXPLORATORY_WEAKER / NOT PROMOTED。** S3 仍为产品默认；旧版二进制保持只读不变。
+- **博弈机制深层总结**：连续两轮实测（v0.2.6 与 v0.2.7）严谨证伪了“在中后期入口死锁固定路线”的有效性。Splendor 是一个每回合都在动态刷新的高频博弈环境，静态/持久化的 Route 状态机人为扭曲了行动的边际收益曲线，AI 必须保持纯状态依赖的灵活调度，而非跨回合固守某种流派。
+
+### Known limitations
+
+- 128 块配对测试，单一固定候选；流派锁定的退出与转换条件虽经软化，仍引入了状态依赖滞后。
+
+### Next authorized gate
+
+- 默认 STOP 等待 owner 决策。后续若改进：建议放弃持久化 Route 状态机，回归纯 observation-only 的瞬时估值函数优化（如全局微调性价比权重、平衡高费与低费折扣价值等）。
 

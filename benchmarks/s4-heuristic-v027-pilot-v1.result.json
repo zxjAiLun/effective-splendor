@@ -1,0 +1,63 @@
+{
+  "format": "effective-splendor-s4-heuristic-v027-pilot-result",
+  "version": 1,
+  "status": "EXPLORATORY_PILOT_ONLY",
+  "contract": "benchmarks/s4-heuristic-v027-pilot-v1.config.json",
+  "config_sha256": "573edc391fa92c88c22fb529879cd3b4bb559873771a33b3c33f03716143e277",
+  "candidate_binary_sha256": "c01050cef75d824e5abed855f5ea4a036fb86b5a812d0ae0c6592d952ba29709",
+  "reference_binary_sha256": "898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937",
+  "freeze_sha256": "b796a0844a7030a32bdd41a0a6b844e00473e145de07b1bfa2aa3a1952749aa3",
+  "manifest": "local-artifacts/s4-heuristic-v027-pilot/manifest.json",
+  "manifest_sha256": "747a43668b2acaf295eacdb8d1484f456e6cece4231f6af6ca17b017979f7043",
+  "matched_game_seeds": 128,
+  "completed_and_verified_matches": 768,
+  "aborts": 0,
+  "pairings": [
+    {
+      "opponent": "heuristic-v025",
+      "matches": 256,
+      "wins": 110,
+      "ties": 2,
+      "losses": 144,
+      "center_bps": 4335.9375,
+      "ci_95_bps": [
+        3906.25,
+        4785.15625
+      ],
+      "exploratory_verdict": "EXPLORATORY_WEAKER",
+      "mean_plies": 55.8046875,
+      "total_match_wall_seconds": 47.208
+    },
+    {
+      "opponent": "heuristic-v01",
+      "matches": 256,
+      "wins": 132,
+      "ties": 0,
+      "losses": 124,
+      "center_bps": 5156.25,
+      "ci_95_bps": [
+        4531.25,
+        5781.25
+      ],
+      "exploratory_verdict": "UNRESOLVED",
+      "mean_plies": 56.12890625,
+      "total_match_wall_seconds": 45.302
+    },
+    {
+      "opponent": "s3-rollout",
+      "matches": 256,
+      "wins": 104,
+      "ties": 0,
+      "losses": 152,
+      "center_bps": 4062.5,
+      "ci_95_bps": [
+        3437.5,
+        4687.5
+      ],
+      "exploratory_verdict": "EXPLORATORY_WEAKER",
+      "mean_plies": 57.81640625,
+      "total_match_wall_seconds": 184.826
+    }
+  ],
+  "limitations": "128 seed blocks per opponent; reachable target route locking with dynamic tempo balance; marginal exploratory CIs, not a promotion or equivalence test; game-wall is not per-decision latency"
+}
