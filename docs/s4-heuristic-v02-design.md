@@ -348,3 +348,81 @@ v0.2.2 的公开回放诊断有少数状态显示多个贵族距离较近时，�
 ### Next authorized gate
 
 STOP 等 owner。若继续，候选方向只能是：方案 B（收紧竞速触发）、方案 C（预留兑现 + 终局滞留项）、或对 S3 输局的作用分解做更大样本/单因素轮次；任何新 pilot 须全新 seed（下一可用起点 smoke `9_254_999`、块 `9_255_000..031`）。未经授权不晋级、不改默认、不再动现有冻结件。
+
+<a id="s45-v025-score-conversion"></a>
+
+## S4.5 — v0.2.5 接手复核与一次完整迭代（2026-09-26）
+
+**状态：AUTHORIZED / ANALYSIS IN PROGRESS。** Owner 授权先独立分析，再按接手模型判断完成本轮修改→实战→报告；不要求沿用 S4.4 的下一步推断。基线 `main@fecf2699dddb27ffaa14fd6cb67e394a692b56f0`，v0.2.4 源 SHA256 `b1a1f87f559f96beb7f150ee4e92a54e6841bf51608160c646ef922bebe4e7d6`、冻结二进制 `fe00d1ea89dd9ecc24319c2851ebb03907c18e4910f262a152201c4aeaf72877` 与本地实物一致。既有 UI、human-play、`.gitignore` 改动不属于本轮；Solo15/M49A/M49B、真人库、League、默认 S3 不动。
+
+### Problem and evidence
+
+本轮先复核前轮解释，而不把它们当作新实验的既定因果：
+
+- `UNRESOLVED` 不等于“方案被否”或“强度不变”；S4.4 的 35–29/[45.31%,64.06%] 同时容许改善与退步。原句“方案 A 是被否了”撤回，但原结果、种子和标签保留。
+- 贵族永久折扣距离不等于剩余行动数；对手距离更小不代表“必输竞速”。v0.2.4 的过滤只是启发式代理，不是可赢性定理。
+- 终局未买预留不自动等于浪费；预留获得而非花费一枚可用金币，也可能用于阻断。需要区分领金、封锁、可买却不买和始终未能准备购买。
+- 两项 +1200 实选低频不证明“死项”；决定行为的是候选动作的分差，不是 +1200 与 9000 的绝对比例。置零四项后仍沿用新目标排序，也不等价于 v0.2.2，更不是严格的差异下界。
+
+### Scope and non-goals
+
+仅 observation-only heuristic 候选与其验证/记录；允许离线通过已验证 replay 重建自己的 Observation，但任何隐藏补牌/对手暗牌不得作为在线评分输入。只执行一个冻结候选的一轮新 seed pilot，不扫权重、不根据 smoke/pilot 结果改候选。具体干预、样本量、种子和门禁在完成只读诊断后、实现/新比赛之前写入下一节。旧实验工件只读。
+
+### Iteration log
+
+- **Iteration 0 / 接手复核**：读取当前 handoff/S4、architecture/ADR-0001/Arena；核验 branch/HEAD/dirty 与 v024 源/config/result/binary/manifest 实物哈希。新赛程尚未启动，旧文档中的下一 seed 仅是建议，需要实际冲突检查。先重建 v024 192 局的购买、预留生命周期与拿币后的可买性，再选择本轮干预。
+- **Iteration 1 / 只读诊断**：新增可复用的 `crates/splendor-cli/examples/s4_replay_economics.rs` 和 `scripts/s4_economics_summary.py`。对 v024 的 192/192 完整 replay 校验三文件 SHA、全局终局与逐步哈希，重建 5,423 个候选决策并断言 recorded action 位于真实 v024 scorer 的 argmax 集合。冻结诊断 `local-artifacts/s4-heuristic-v025-analysis/v024-economics-v2.json` SHA256 `78d53fd24f4a024e571679069b050ef1005374d39cf99f4a59d6eba326bef200`；初版遗漏 reserve 的领金/退币对可买性的影响，修正后才作为设计依据，初版文件保留而不引用其机会数。
+  - v024 三组共预留 534 次，每次净得一金，购买共花掉 519 金；260 张预留最终买到。对 S3 的 167 次预留得167金，购买花163金，终局留85张（1.328/局）。不能把这些预留统称为无产出。
+  - Score 且未进入最终轮、存在合法拿币可准备≥3VP牌的状态有838个；其中78次实际选了拿币/预留却准备了更低VP的牌（vs v023/v01/S3 为20/30/28；其中涉及更高VP自留牌的仅1/2/5）。这不是“78步必错”：市场竞争、折扣与贵族仍可能支持原选择；它只暴露当前 top-2 缺口目标与得分准备价值没有直接对齐。
+  - 同根单独移除两个 +1200 加分，在这批 v024 轨迹上各有0次令实选动作严格落出 argmax（不代表它们普遍无效，亦未度量并列集合/RNG变化）。本轮保留两项不动。
+  - 例：对 S3 `seed=9254000/r0/ply38`，实选拿币评分1100、最高可买牌2VP；另一合法拿币评分800，却可令自留 #63（3VP）变可买。由于不是历史卡投入本身有价值，本轮对市场与自留一视同仁，而不强迫兑现所有自留。
+
+- **Iteration 2 / 实现验证与赛前冻结**：唯一新增行为项 `scoring_readiness=500×max(V_after−V_before,0)` 完成。`cargo test -p splendor-agent --quiet` 46+10+5、CLI bin105、Python `test_s4_v025_pilot.py` 11项（含 -O 负控、重复/缺局/身份/冻结篡改）、release/诊断工具 build、rustfmt/py_compile/diff-check 全 exit0。source SHA `2144bb313ed5d6a31098df2bc14125fc35e33de6cae6def2bf1cfc2dd309764b`；候选 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`；config `3eeba9dbd04619352c9cc6d08d1635622147d0c7a74fb695aa69cf3921a77f48`；runner `996b3020d9ef306cf6098a56a7bd283e9a08644f72b950f7fb57f5118bc56ea4`。`--mode freeze` 与 `--mode smoke` 均exit0，7,442份既有match configs冲突零；smoke双座完整验证（两局候选负）不进入计数，也不据此改策略。冻结细节在 ignored `freeze.json`，pilot尚待执行。
+
+### Initial design / contracts（实现与新比赛前冻结）
+
+**唯一行为干预：Score 阶段的当前已知得分牌可买性增量奖励 `scoring_readiness`。**
+
+- 定义 `V(o,x) = max(card.prestige)`，集合是决策前已知的市场牌 + 己方预留牌中，在自身资源投影 `x` 下按逐色折扣、金币与退币可负担的牌；没有可买得分牌时为0。取 max 而非求和，不重复计算同一批宝石可支持的互斥购买。
+- 对 `TakeTokens`、`ReserveMarket`、`ReserveDeck`，仅当决策前阶段为 Score 且 `end_game_triggered=false`，新增 `500 × max(V(after) − V(before), 0)`。500 沿用既有 readiness 权重的量纲，是本轮固定假设，不是扫参结果；真实牌库上0..2500。拿币/领金的投影必须含 exact give_back；盲预留不增加未知卡目标，不把预留卡当即时分。
+- Buy/ChooseNoble/Pass 此项为0；购买得分已由既有 immediate_prestige 等计入。不更改真实胜负、不强制买>拿、不加终局滞留罚款、不因过去预留过某牌而硬优先它。最终轮关闭，因为没有后续自己的购买回合。
+- 版本 `0.2.5`，tie seed继续 `20260926`。全部既有权重、阶段、贵族距离代理及 target排序、两个+1200项、预留数量守卫保持 v024 原样。在线只读自己的 Observation 和引擎合法动作；不看隐藏补牌/对手暗牌/真实 seed。
+- 新增测试覆盖：已知市场与自身预留一致、只取最大值不累加、无改善/有更好可买牌/净零拿退不给分、领金/无金与各色退币、Ultra/Build与最终轮关闭、即时购买零新增、隐藏身份/牌堆置换不变；保留投影对拍与原规则回归。
+
+### Pilot and frozen gates
+
+- 将32块扩至 **128块×双座×3对照=768局**，在见到任何本轮比赛之前一次固定，不按中途结果增样。smoke `9_254_999` 双座；pilot `9_255_000..9_255_127`；独立 paired-block bootstrap 10,000次，seed `92_552_026`，每组95%区间下界>5000报 exploratory stronger，上界<5000报 exploratory weaker，否则 unresolved。单个块的两座只作一个重采样单位；不声称正式多重检验/产品晋级。
+- 主对照 v0.2.4：冻结 `local-artifacts/s4-heuristic-v024-pilot/splendor-candidate.exe` SHA256 `fe00d1ea89dd9ecc24319c2851ebb03907c18e4910f262a152201c4aeaf72877`、args `agent-heuristic-v02 --seed 20260926`。v0.1（`agent-heuristic --seed 20260812`）和 S3（`agent-s3-rollout`）也用同一个冻结旧程序执行，裁判/verify-replay亦钉该程序，避免无关并行构建漂移。
+- 赛前实查：`seed-preflight.json` 记录 registry无交叉、7,442份本地 match-config无重用/无损坏、tracked benchmark config无重叠。先登记 reserved 区间，runner只允许本轮的精确登记，首场smoke仍复核。
+- 测试与release通过后，在 `freeze.json` 固定配置、源码、runner、候选与对照/裁判二进制 SHA，再开smoke；smoke仅检查执行/身份/合法性，不据输赢调整。任何非零/abort/缺报告或回放/哈希或身份错立即停，保留failure记录、不重试/补局/换seed。通过768局后用另一脚本重新读取原始材料、调用冻结 verifier 并重算 W/T/L/CI，不把同一作者的程序复算称为独立 reviewer。
+- 输出：tracked `benchmarks/s4-heuristic-v025-pilot-v1.{config,result}.json`、runner/audit/tests与本文；ignored `local-artifacts/s4-heuristic-v025-pilot/` 原始文件、freeze/manifest/log/replays/binaries。`handoff.md`、分析中间文件和生成工件禁止stage/push。
+
+### Implementation plan
+
+1. 实现唯一 readiness 项与边界/隐藏信息回归；冻结v024诊断工具和旧二进制。
+2. 审计可复用计数工具/runner合同与负控，运行agent+CLI测试和release build，生成不可变freeze。
+3. smoke→768局→另脚本审计与同口径赛后经济诊断，不用赛后诊断回调策略。
+4. 收口结果/局限/哈希/命令，更新handoff与注册表，scoped local commit，不push，不换默认。
+
+### Validation and evidence（实际执行）
+
+- 冻结：`freeze.json` SHA `c5c9ae5a573e88029c942211dff7c821bb6e87c6804b97335c08534de57b5b13`；候选 `898dba36…`、v024对照/裁判 `fe00d1ea…`、config `3eeba9db…`。freeze 前的 seed preflight：registry无交叉、7,442份本地 match-config 无重用/无损坏、tracked config无重叠。smoke `9254999` 双座执行/身份/合法性PASS（不计入结果）。
+- Pilot：768/768完成、0 abort，`benchmarks/s4-heuristic-v025-pilot-v1.result.json` SHA `588c16794289ef01d29ae6fa7a65852f131ee068eb4dff62c726c819648fa124`、manifest `3a6d05ae…`。另脚本 `scripts/s4_heuristic_v025_audit.py` 重读原始报告/回放、对全部 770 份回放（768 pilot + 2 smoke）重跑冻结 `verify-replay` 均 exit0、独立重算 W/T/L/CI 与 result 逐字一致（PASS）——作者自跑复算，非独立 reviewer/晛级门。audit SHA `e6fafabd…`。
+- 同口径赛后只读经济诊断（`s4_replay_economics.rs` @0.2.5）：768回放/21,498候选决策，**每一步候选 recorded action 均为 0.2.5 scorer 的 argmax**（断言无失败），证实 pilot二进制与工作区 scorer 一致。economics-v025.json SHA `1d34e18b…`、summary SHA `14459a14…`。readiness 项真实生效：每对照 `scoring_readiness>0` 的候选决策 814/824/893 次（v024/v01/S3）；Score非终局“能准备≥3VP”机会 804/839/913，实选却准备更低VP的非购买决策降至 18/17/22。资本：预留均换到金币(net_gold_from_reserves = reserve次数)且大部分用于购买，未买预留寿命右删截，不作浪费证据。
+
+### Result and decision
+
+- **主对照 v0.2.4（唯一单因素差异）：123–2–131，center 4843.75 bps，CI [4375.0, 5332.03]，UNRESOLVED。** 在 128 块上无法证明 `scoring_readiness` 相对 v024 有改善（也未证明变差；UNRESOLVED≠被否/无效）。
+- vs v0.1：148–0–108，center 5781.25，CI [5156.25, 6406.25]，EXPLORATORY_STRONGER。vs S3：144–1–111，center 5644.53，CI [5039.06, 6250.0]，EXPLORATORY_STRONGER。
+- **不能把 vs v01/S3 的 stronger 归因于 readiness 项**：这些是在更大样本(128 vs 上轮32块)、与固定旧程序对打的绝对强度；v024 并未在这 128 块对 v01/S3 跑过，跨不同样本量的 seed 批不构成单因果比较。
+- **裁定：EXPLORATORY_PILOT_ONLY / NOT PROMOTED。** S3 仍为产品默认；v0.1/S3/旧二进制/League/真人库/M49A、1B 不变。
+
+### Known limitations
+
+- 每对照 128 seed 块、单一固定候选、无 optional stopping；边缘 CI 为探索性，非正式多重检验/等价性/产品晛级门。赛后经济为描述性统计，非单因因果；argmax 一致只謁明二进制/scorer 一致，不复现 RNG 并列集。game-wall 非逐决策延时。
+- readiness 对市场与自留牌一视同仁、取 max 不累加，未建模多牌连买或对手抢牌；盲预留不估未知卡。与上轮一致，跨批 seed 不作单因因果归因。
+
+### Next authorized gate
+
+- 默认 STOP 等 owner。若继续：可在同 128 块上补跑 v024↔v01/S3 以估计本轮强度提升是否真来自 readiness（而非样本量）；或设计 v0.2.6 另一单因素干预，必须预注册+全新未见 seed，不在本批种子上调参。
+

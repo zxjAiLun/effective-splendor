@@ -1,0 +1,63 @@
+{
+  "format": "effective-splendor-s4-heuristic-v025-pilot-result",
+  "version": 1,
+  "status": "EXPLORATORY_PILOT_ONLY",
+  "contract": "benchmarks/s4-heuristic-v025-pilot-v1.config.json",
+  "config_sha256": "3eeba9dbd04619352c9cc6d08d1635622147d0c7a74fb695aa69cf3921a77f48",
+  "candidate_binary_sha256": "898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937",
+  "reference_binary_sha256": "fe00d1ea89dd9ecc24319c2851ebb03907c18e4910f262a152201c4aeaf72877",
+  "freeze_sha256": "c5c9ae5a573e88029c942211dff7c821bb6e87c6804b97335c08534de57b5b13",
+  "manifest": "local-artifacts/s4-heuristic-v025-pilot/manifest.json",
+  "manifest_sha256": "3a6d05ae4f2a35ad596d56a7491dbd7bf3407dac00bd6cd09e28512f601e95ab",
+  "matched_game_seeds": 128,
+  "completed_and_verified_matches": 768,
+  "aborts": 0,
+  "pairings": [
+    {
+      "opponent": "heuristic-v024",
+      "matches": 256,
+      "wins": 123,
+      "ties": 2,
+      "losses": 131,
+      "center_bps": 4843.75,
+      "ci_95_bps": [
+        4375.0,
+        5332.03125
+      ],
+      "exploratory_verdict": "UNRESOLVED",
+      "mean_plies": 55.6953125,
+      "total_match_wall_seconds": 60.981
+    },
+    {
+      "opponent": "heuristic-v01",
+      "matches": 256,
+      "wins": 148,
+      "ties": 0,
+      "losses": 108,
+      "center_bps": 5781.25,
+      "ci_95_bps": [
+        5156.25,
+        6406.25
+      ],
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 55.484375,
+      "total_match_wall_seconds": 61.97
+    },
+    {
+      "opponent": "s3-rollout",
+      "matches": 256,
+      "wins": 144,
+      "ties": 1,
+      "losses": 111,
+      "center_bps": 5644.53125,
+      "ci_95_bps": [
+        5039.0625,
+        6250.0
+      ],
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 56.90234375,
+      "total_match_wall_seconds": 249.841
+    }
+  ],
+  "limitations": "128 seed blocks per opponent; one fixed candidate, no optional stopping; marginal exploratory CIs, not a promotion or equivalence test; game-wall is not per-decision latency"
+}

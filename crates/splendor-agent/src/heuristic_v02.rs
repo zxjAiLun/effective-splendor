@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.4";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.5";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -64,6 +64,9 @@ const BOMB_7_PLUS_3_FOR_5: i64 = 900;
 const STRANDED_TOKEN_PENALTY: i64 = 850;
 const ZERO_NET_TAKE_PENALTY: i64 = 2_000;
 const VP_EFFICIENCY_WEIGHT: i64 = 1_200;
+// v0.2.5: value improved readiness for ONE currently known scoring card,
+// not the sum of mutually exclusive purchases supported by the same tokens.
+const SCORING_READINESS_PER_VP: i64 = 500;
 
 // v0.2.3: explicitly pursue simultaneous near-noble races and reduce
 // additional early reservations once two cards are already held.
@@ -225,6 +228,7 @@ pub struct HeuristicV02Terms {
     pub noble_race_three_vp: i64,
     pub noble_race_reserved: i64,
     pub reserve_count_guard: i64,
+    pub scoring_readiness: i64,
 }
 
 impl HeuristicV02Terms {
@@ -248,6 +252,7 @@ impl HeuristicV02Terms {
             + self.noble_race_three_vp
             + self.noble_race_reserved
             + self.reserve_count_guard
+            + self.scoring_readiness
     }
 }
 
@@ -275,6 +280,13 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
     };
     let targets = visible_targets(obs);
     let phase = development_phase(obs, &before);
+    let scoring_readiness_enabled =
+        phase == DevelopmentPhase::Score && !obs.public.end_game_triggered;
+    let ready_vp_before = if scoring_readiness_enabled {
+        best_affordable_card_vp(&targets, &before)
+    } else {
+        0
+    };
     let near_nobles = near_noble_ids(obs, &before.bonuses);
     let multi_noble_race =
         phase == DevelopmentPhase::Score && near_nobles.len() >= NOBLE_RACE_MIN_COUNT;
@@ -324,6 +336,21 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
         .iter()
         .map(|action| {
             let (after, bought, secured, reserve_tempo) = project_action(obs, *action, before);
+            // Only known cards and exact own resource effects count. A reserve
+            // can receive gold but cannot invent points or a blind card target.
+            // Disable in the final round: no subsequent own buy is available.
+            let scoring_readiness = if scoring_readiness_enabled
+                && matches!(
+                    action,
+                    Action::TakeTokens { .. }
+                        | Action::ReserveMarket { .. }
+                        | Action::ReserveDeck { .. }
+                ) {
+                (best_affordable_card_vp(&targets, &after) - ready_vp_before).max(0)
+                    * SCORING_READINESS_PER_VP
+            } else {
+                0
+            };
 
             // A bought card is present on neither side of the *comparison*; its
             // realized VP/bonus is scored separately, rather than falsely treating
@@ -556,6 +583,7 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 noble_race_three_vp,
                 noble_race_reserved,
                 reserve_count_guard,
+                scoring_readiness,
             }
         })
         .collect()
@@ -706,6 +734,15 @@ fn select_targets(
     });
     ordered.truncate(2);
     ordered
+}
+
+fn best_affordable_card_vp(targets: &[CardDef], own: &OwnProjection) -> i64 {
+    targets
+        .iter()
+        .filter(|def| deficit(def, own) == 0)
+        .map(|def| i64::from(def.prestige))
+        .max()
+        .unwrap_or(0)
 }
 
 fn deficit(def: &CardDef, own: &OwnProjection) -> i64 {
@@ -1692,6 +1729,257 @@ mod tests {
             ranked2[0].id,
             CardId(24),
             "winnable races keep group-0 priority"
+        );
+    }
+
+    fn readiness_fixture() -> FullState {
+        let mut state = game(68);
+        expose(&mut state, CardId(45), 0); // 3VP, six blue; exact colored cost below.
+                                           // Keep one known market card, returning the other identities to their
+                                           // own decks so these fixtures do not duplicate/discard hidden cards.
+        for tier in Tier::ALL {
+            for slot in 0..4 {
+                if state.market[tier.index()][slot] != Some(CardId(45)) {
+                    if let Some(id) = state.market[tier.index()][slot].take() {
+                        state.decks[tier.index()].push(id);
+                    }
+                }
+            }
+        }
+        state.players[0].bonuses = [0, 3, 0, 0, 0];
+        state.players[0].tokens.blue = 2;
+        state.bank.blue -= 2;
+        state.players[1].prestige = 12; // public emergency Score phase
+        state
+    }
+
+    fn ready_take() -> Action {
+        Action::TakeTokens {
+            take: Gems {
+                white: 1,
+                blue: 1,
+                green: 1,
+                ..Gems::ZERO
+            },
+            give_back: Gems::ZERO,
+        }
+    }
+
+    #[test]
+    fn scoring_readiness_counts_known_market_and_own_reserve_equally() {
+        let market = readiness_fixture();
+        let action = ready_take();
+        assert!(market.legal_actions().contains(&action));
+        let market_terms =
+            heuristic_v02_term_scores(&market.observation(PlayerId(0)), &[action])[0];
+        assert_eq!(market_terms.scoring_readiness, 3 * SCORING_READINESS_PER_VP);
+        assert_eq!(
+            market_terms.immediate_prestige, 0,
+            "readiness is not earned VP"
+        );
+        let mut held = market.clone();
+        held.market[Tier::Two.index()][0] = None;
+        held.players[0].reserved.push(ReservedCard {
+            card: CardId(45),
+            from_deck: true,
+        });
+        assert!(held.legal_actions().contains(&action));
+        assert_eq!(
+            heuristic_v02_term_scores(&held.observation(PlayerId(0)), &[action])[0]
+                .scoring_readiness,
+            market_terms.scoring_readiness,
+            "own blind reserve is known to its owner, not worth extra by sunk cost"
+        );
+        let all = market.legal_actions();
+        let i = all.iter().position(|a| *a == action).unwrap();
+        assert_eq!(
+            heuristic_v02_term_scores(&market.observation(PlayerId(0)), &all)[i],
+            market_terms
+        );
+    }
+
+    #[test]
+    fn scoring_readiness_is_incremental_max_not_sum_or_repeated_reward() {
+        let three = *card(CardId(45));
+        let two = *card(CardId(42));
+        let before = OwnProjection {
+            tokens: Gems {
+                blue: 2,
+                ..Gems::ZERO
+            },
+            bonuses: [0, 3, 0, 0, 0],
+            prestige: 0,
+        };
+        let after = OwnProjection {
+            tokens: Gems {
+                blue: 3,
+                ..Gems::ZERO
+            },
+            ..before
+        };
+        assert_eq!(best_affordable_card_vp(&[two, three], &before), 2);
+        assert_eq!(best_affordable_card_vp(&[two, three], &after), 3);
+        assert_eq!(
+            best_affordable_card_vp(&[three, three], &after),
+            3,
+            "same tokens buy only one card"
+        );
+        assert_eq!(best_affordable_card_vp(&[], &after), 0);
+        let mut state = readiness_fixture();
+        let index = state.decks[Tier::Two.index()]
+            .iter()
+            .position(|id| *id == CardId(42))
+            .unwrap();
+        state.decks[Tier::Two.index()].remove(index);
+        state.market[Tier::Two.index()][1] = Some(CardId(42));
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[ready_take()])[0]
+                .scoring_readiness,
+            SCORING_READINESS_PER_VP,
+            "one already-affordable 2VP card leaves only a 1VP readiness increment"
+        );
+        state.players[0].tokens.blue += 1;
+        state.bank.blue -= 1;
+        assert!(state.legal_actions().contains(&ready_take()));
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[ready_take()])[0]
+                .scoring_readiness,
+            0
+        );
+    }
+
+    #[test]
+    fn scoring_readiness_uses_gold_and_exact_legal_returns_without_blind_card_value() {
+        let mut state = readiness_fixture();
+        let mut obs = state.observation(PlayerId(0));
+        let visible = Action::ReserveMarket {
+            tier: Tier::Two,
+            slot: 0,
+            give_back: Gems::ZERO,
+        };
+        let blind = Action::ReserveDeck {
+            tier: Tier::Three,
+            give_back: Gems::ZERO,
+        };
+        assert!([visible, blind]
+            .iter()
+            .all(|a| state.legal_actions().contains(a)));
+        let terms = heuristic_v02_term_scores(&obs, &[visible, blind]);
+        assert_eq!(terms[0].scoring_readiness, 3 * SCORING_READINESS_PER_VP);
+        assert_eq!(terms[1].scoring_readiness, terms[0].scoring_readiness);
+        assert_eq!(terms[1].immediate_prestige, 0);
+        state.decks[Tier::Three.index()].reverse();
+        assert_eq!(obs, state.observation(PlayerId(0)));
+        assert_eq!(
+            terms,
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[visible, blind])
+        );
+        obs.public.bank.gold = 0;
+        assert_eq!(
+            heuristic_v02_term_scores(&obs, &[blind])[0].scoring_readiness,
+            0,
+            "no gold means no invented improvement"
+        );
+
+        let mut full = readiness_fixture();
+        for (c, n) in [
+            (GemColor::White, 3),
+            (GemColor::Green, 3),
+            (GemColor::Red, 2),
+        ] {
+            full.players[0].tokens.set_color(c, n);
+            full.bank.set_color(c, full.bank.color(c) - n);
+        }
+        assert_eq!(full.players[0].tokens.total(), 10);
+        let keep_gold = Action::ReserveDeck {
+            tier: Tier::Three,
+            give_back: Gems {
+                white: 1,
+                ..Gems::ZERO
+            },
+        };
+        let return_gold = Action::ReserveDeck {
+            tier: Tier::Three,
+            give_back: Gems {
+                gold: 1,
+                ..Gems::ZERO
+            },
+        };
+        assert!([keep_gold, return_gold]
+            .iter()
+            .all(|a| full.legal_actions().contains(a)));
+        let terms =
+            heuristic_v02_term_scores(&full.observation(PlayerId(0)), &[keep_gold, return_gold]);
+        assert_eq!(terms[0].scoring_readiness, 3 * SCORING_READINESS_PER_VP);
+        assert_eq!(terms[1].scoring_readiness, 0);
+        let no_net = full
+            .legal_actions()
+            .into_iter()
+            .find(|a| matches!(a, Action::TakeTokens { take, give_back } if take == give_back))
+            .unwrap();
+        assert_eq!(
+            heuristic_v02_term_scores(&full.observation(PlayerId(0)), &[no_net])[0]
+                .scoring_readiness,
+            0
+        );
+    }
+
+    #[test]
+    fn scoring_readiness_is_off_during_build_final_round_and_real_purchases() {
+        let mut state = readiness_fixture();
+        state.players[1].prestige = 0;
+        for bonuses in [[0, 3, 0, 0, 0], [2, 3, 0, 0, 0]] {
+            state.players[0].bonuses = bonuses;
+            assert_eq!(
+                heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[ready_take()])[0]
+                    .scoring_readiness,
+                0
+            );
+        }
+        state.players[1].prestige = 12;
+        state.end_game_triggered = true;
+        state.turns_remaining_in_final_round = Some(1);
+        assert_eq!(
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[ready_take()])[0]
+                .scoring_readiness,
+            0
+        );
+        let mut buy_state = readiness_fixture();
+        buy_state.players[0].tokens.blue += 1;
+        buy_state.bank.blue -= 1;
+        let buy = Action::BuyMarket {
+            tier: Tier::Two,
+            slot: 0,
+        };
+        assert!(buy_state.legal_actions().contains(&buy));
+        let terms = heuristic_v02_term_scores(&buy_state.observation(PlayerId(0)), &[buy])[0];
+        assert_eq!(terms.scoring_readiness, 0);
+        assert_eq!(terms.immediate_prestige, 3 * (VP_WEIGHT + VP_LATE_BONUS));
+    }
+
+    #[test]
+    fn scoring_readiness_cannot_see_opponent_blind_card_identities() {
+        let mut state = readiness_fixture();
+        let id = state.decks[Tier::Three.index()].pop().unwrap();
+        state.players[1].reserved.push(ReservedCard {
+            card: id,
+            from_deck: true,
+        });
+        let obs = state.observation(PlayerId(0));
+        let legal = state.legal_actions();
+        let scores = heuristic_v02_term_scores(&obs, &legal);
+        assert!(
+            scores.iter().any(|t| t.scoring_readiness > 0),
+            "test must exercise enabled term"
+        );
+        let other = state.decks[Tier::Three.index()][0];
+        state.decks[Tier::Three.index()][0] = id;
+        state.players[1].reserved[0].card = other;
+        assert_eq!(obs, state.observation(PlayerId(0)));
+        assert_eq!(legal, state.legal_actions());
+        assert_eq!(
+            scores,
+            heuristic_v02_term_scores(&state.observation(PlayerId(0)), &legal)
         );
     }
 
