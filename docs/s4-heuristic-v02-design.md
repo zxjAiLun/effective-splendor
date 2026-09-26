@@ -424,5 +424,89 @@ STOP 等 owner。若继续，候选方向只能是：方案 B（收紧竞速触�
 
 ### Next authorized gate
 
-- 默认 STOP 等 owner。若继续：可在同 128 块上补跑 v024↔v01/S3 以估计本轮强度提升是否真来自 readiness（而非样本量）；或设计 v0.2.6 另一单因素干预，必须预注册+全新未见 seed，不在本批种子上调参。
+- Owner 已明确授权：“A和B可以对比一下试试……大亨流……高费冲分流……如果没有这两种路线，那只能回到普通基建路线……没问题”。进入 S4.6（v0.2.6：中后期路由锁定机制）。
+
+## S4.6 v0.2.6: Mid-to-Late Game Route Locking (HighCostRush / Tycoon / Balanced)
+
+Status: AUTHORIZED / IN PROGRESS (2026-09-26)
+Baseline: `main@83882f9` (v0.2.5 completed commit)
+Candidate version: `0.2.6`, tie seed `20260926`
+
+### Problem and observed evidence
+
+1. **AI 在中后期 30% 购买决策存在“捡芝麻丢西瓜”**：在 v0.2.5 的 768 局回放离线诊断中，Score 阶段共发生 2,396 次 0~1 VP 低分卡购买；其中 **整整 727 次（30.3%）**，当前局面只要拿代币即可在 1~2 轮内买下 3+ VP 大卡，AI 却选择了买 1 分甚至 0 分杂毛卡。
+2. **算术漏洞根因**：当前体系中，任何 1 VP 卡只要当前能买，立得 `immediate_prestige = 1 × 3000 = 3000`；而拿代币准备 4~5 VP 大卡时，当回合 `immediate_prestige = 0`，虽然有 `scoring_readiness = 2000`，但 `2000 < 3000`。AI 被随手可买的 1 VP 卡截胡，花光宝石，导致 4~5 分大卡一再延误。
+3. **三流在入口处的实测分布**（768 局 Score 阶段第一回合）：
+   - `HighCostRush`（存在 3+ VP、折后缺口 ≤5 的卡）：**87.1%** 的对局都存在（单高费 74.7%，高费与大亨并存 12.4%）。
+   - `Tycoon`（无合适高费，且距离大亨缺口 ≤2）：仅 **1.4%**（11 局）。
+   - `Balanced`（两者皆无）：**11.5%**（88 局）。
+4. **锁定层级与退出机制**：
+   - 若死锁单个 CardId，768 局中仅 20.3% 最终买到该卡（对手可能抢走/预留，或场上刷新更优卡）。
+   - 因此“锁定”必须是**流派路线级别（Route-level lock）**：锁定当前契合自身减免的 3+ VP 目标集合，全力压制低分卡诱惑；目标卡若被抢，平滑切换到其他契合大卡；当场上完全没有缺口 ≤5 的高分卡时，平滑退回 `Balanced`。
+   - 大亨流实测验证：Score 阶段买入的低分卡中，77.2% 确实有助于贵族颜色，但若买 3 张 0 分卡耗时 3 轮才拿 3 分，得分效率仅 1.0 分/轮，远逊于冲高费卡（1.33~1.67 分/轮）。大亨流必须严格限定于：缺口极小（≤2）或顺带买入的卡本身带分（≥1 VP）。
+
+### Initial design / contracts
+
+1. **结构体增加持久化路线状态**：
+   - `HeuristicAgentPolicyV02` 增加 `route: Option<MidLateRoute>`。
+   - `MidLateRoute` 枚举：
+     - `HighCostRush`: 专注 3+ VP 高分卡。
+     - `Tycoon { target: NobleId }`: 专注特定最近贵族。
+     - `Balanced`: 均衡基建。
+2. **判定点与状态机更新**：
+   - 在每回合 `choose_action` 中更新状态机：
+     - 若未进入 Score 阶段（自身折扣 < 9 且对手分 < 12 且未终局），`route = None`。
+     - 若处于 Score 阶段且 `route.is_none()`（首次进入中后期）：
+       - 优先检测 `HighCostRush`：市场或自留中是否存在 `prestige >= 3` 且 `token_deficit <= 5` 且银行/手头黄金可支撑的卡。若有，锁定 `HighCostRush`。
+       - 其次检测 `Tycoon`：是否存在未被领取的贵族 `gap <= 2`，或 `gap <= 3` 且市场有带分卡（≥1 VP）可推进该贵族。若有，锁定 `Tycoon { target }`。
+       - 否则锁定 `Balanced`。
+     - 若处于 Score 阶段且 `route.is_some()`（维持锁定与退出检测）：
+       - `HighCostRush` 退出条件：市场与自留中不再存在任何 `prestige >= 3 && token_deficit <= 5` 的卡（例如目标已买完，或被对手买走/预留后无替代卡），且当前手头无足额代币，退回 `Balanced`。
+       - `Tycoon` 退出条件：目标贵族已被对手领取，或自身距该贵族缺口 > 3 且无顺带得分卡，退回 `Balanced`。
+3. **流派行为加权**：
+   - 在 `HighCostRush` 下：
+     - 对买入 `prestige <= 1` 的卡施加压制 `LOW_VP_RUSH_SUPPRESSION = -2000`，使拿币准备 4~5 分大卡（`scoring_readiness = 2000`）能够有效胜出随手可买的 1 分杂毛卡！
+     - 正常保留 3+ VP 卡的购买激励与代币准备激励。
+   - 在 `Tycoon` 下：
+     - 推进目标贵族的卡若 `prestige >= 1`，给予 `NOBLE_RACE_PROGRESS` 激励；若 `prestige == 0`，仅在能够当回合直接达成贵族（`gap <= 1`）时才给予高额奖励；无关 0 分卡压制。
+   - 在 `Balanced` 下：
+     - 正常按性价比与 VP 权重评估，压制纯 0 分卡。
+
+### Pilot and frozen gates
+
+- 样本量：**128 块 × 双座 × 3 对照 = 768 局**。
+- 种子预留：
+  - Smoke: `9_255_999` 双座。
+  - Pilot: `9_256_000..9_256_127`（128 块）。
+  - Bootstrap: seed `92_562_026`，10,000 次重采样，95% CI。
+- 对照组：
+  - 主对照：冻结 v0.2.5 二进制（SHA256 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`）。
+  - 基准对照：v0.1.0 与 S3-rollout。
+- 判定标准：
+  - vs v0.2.5 95% CI 下界 > 5000 bps -> EXPLORATORY_STRONGER。
+  - 否则 UNRESOLVED 或 EXPLORATORY_WEAKER。仅作探索性 pilot，不改默认。
+
+### Validation and evidence（实际执行）
+
+- 冻结：`freeze.json` SHA `01d853b8a4726e9a9889cb67755137566b2e8b9a3b4ccf26da8b8c944e6057b5`；候选 `29fd504792ca0a7f610cc2e7140f2469506caafdaf61698cb5cc83e5d0b8e482`、v025对照/裁判 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`、config `203e9a1a8205b3340b4bcac46a32b155e0054d95dc880fe4bf286c31767e69a1`。8,212份既有match-config实查零碰撞；smoke `9255999` 双座PASS。
+- Pilot：768/768完成、0 abort，`benchmarks/s4-heuristic-v026-pilot-v1.result.json` SHA `26ce28ce6de601e990198420b7e28a1f12295d97dbc9377bf0ba2170e4837c0e`、manifest `16819f09c356789c7c1fa778df82ceeaa44e855eeb5a2f857b5e468d178aaf8f`。另脚本 `scripts/s4_heuristic_v026_audit.py` 重读原始报告/回放、对全部 770 份回放（768 pilot + 2 smoke）重跑冻结 `verify-replay` 均 exit0、独立重算 W/T/L/CI 逐字一致（PASS）。
+- 离线路线与经济诊断（对比 v0.2.5）：
+  - 行为改变完全符合预期：Score 阶段 0~1 VP 低分卡购买从 2,458 张骤降至 1,352 张（降幅 45%）；2+ VP 高分卡购买从 2,277 张上升至 2,585 张；锁定目标兑现率从 20.3% 提升至 27.3%。
+  - 战术副作用揭示（节奏亏损）：高费冲分平均需要 5.35 回合拿币/准备才能买出一张大卡；而对手（v0.2.5）每 1~2 回合顺手买入 1~2 分卡兼得永久减免。在 56 回合（双方各约 28 回合）的平均对局中，对手以小卡高频得分率先撞线 15 分触发终局，候选者均分 13.36 分 vs 对手 14.69 分，手握代币遗憾终局。
+
+### Result and decision
+
+- **主对照 v0.2.5（唯一单因素差异）：97–1–158，center 3808.59 bps，CI [3320.31, 4316.41]，EXPLORATORY_WEAKER。**
+- vs v0.1：127–0–129，center 4960.94，CI [4296.88, 5625.0]，UNRESOLVED。
+- vs S3：102–0–154，center 3984.38，CI [3359.38, 4609.38]，EXPLORATORY_WEAKER。
+- **裁定：EXPLORATORY_WEAKER / NOT PROMOTED。** S3 仍为产品默认；旧版二进制保持只读不变。
+- **科学结论**：强行压制 0~1 分卡会导致严重的**节奏赤字（Tempo Deficit）**。1 分卡绝非纯“杂毛”，它以极低成本提供 1 VP + 1 永久减免，是兼顾节奏与冲刺的重要阶梯。过于偏执于 3+ VP 大牌反而降低了终局速度。
+
+### Known limitations
+
+- 128 块配对测试，单一固定候选；`LOW_VP_RUSH_SUPPRESSION = -2000` 惩罚幅度过大，导致 AI 在高费卡未成熟前过度拒买小卡。
+
+### Next authorized gate
+
+- 默认 STOP 等待 owner 决策。后续若改进：需平衡“高分大卡”与“小卡顺手抓”的节奏权重（如软化压制、引入离终局差值动态调节），或探索其他单因素干预。
 

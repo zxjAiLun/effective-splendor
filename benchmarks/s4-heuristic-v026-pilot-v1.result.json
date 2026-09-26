@@ -1,0 +1,63 @@
+{
+  "format": "effective-splendor-s4-heuristic-v026-pilot-result",
+  "version": 1,
+  "status": "EXPLORATORY_PILOT_ONLY",
+  "contract": "benchmarks/s4-heuristic-v026-pilot-v1.config.json",
+  "config_sha256": "203e9a1a8205b3340b4bcac46a32b155e0054d95dc880fe4bf286c31767e69a1",
+  "candidate_binary_sha256": "29fd504792ca0a7f610cc2e7140f2469506caafdaf61698cb5cc83e5d0b8e482",
+  "reference_binary_sha256": "898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937",
+  "freeze_sha256": "01d853b8a4726e9a9889cb67755137566b2e8b9a3b4ccf26da8b8c944e6057b5",
+  "manifest": "local-artifacts/s4-heuristic-v026-pilot/manifest.json",
+  "manifest_sha256": "16819f09c356789c7c1fa778df82ceeaa44e855eeb5a2f857b5e468d178aaf8f",
+  "matched_game_seeds": 128,
+  "completed_and_verified_matches": 768,
+  "aborts": 0,
+  "pairings": [
+    {
+      "opponent": "heuristic-v025",
+      "matches": 256,
+      "wins": 97,
+      "ties": 1,
+      "losses": 158,
+      "center_bps": 3808.59375,
+      "ci_95_bps": [
+        3320.3125,
+        4316.40625
+      ],
+      "exploratory_verdict": "EXPLORATORY_WEAKER",
+      "mean_plies": 56.36328125,
+      "total_match_wall_seconds": 56.748
+    },
+    {
+      "opponent": "heuristic-v01",
+      "matches": 256,
+      "wins": 127,
+      "ties": 0,
+      "losses": 129,
+      "center_bps": 4960.9375,
+      "ci_95_bps": [
+        4296.875,
+        5625.0
+      ],
+      "exploratory_verdict": "UNRESOLVED",
+      "mean_plies": 55.9375,
+      "total_match_wall_seconds": 57.803
+    },
+    {
+      "opponent": "s3-rollout",
+      "matches": 256,
+      "wins": 102,
+      "ties": 0,
+      "losses": 154,
+      "center_bps": 3984.375,
+      "ci_95_bps": [
+        3359.375,
+        4609.375
+      ],
+      "exploratory_verdict": "EXPLORATORY_WEAKER",
+      "mean_plies": 57.5546875,
+      "total_match_wall_seconds": 187.835
+    }
+  ],
+  "limitations": "128 seed blocks per opponent; mid-late route locking candidate; marginal exploratory CIs, not a promotion or equivalence test; game-wall is not per-decision latency"
+}

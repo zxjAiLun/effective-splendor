@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.5";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.6";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -83,6 +83,14 @@ const RESERVE_COUNT_GUARD: i64 = 500;
 // when it is still WINNABLE — the opponent's own missing-bonus distance must
 // not be strictly smaller. Both sides' bonuses are public observation data;
 // the trigger (>=2 near nobles) and all constants are unchanged.
+
+// v0.2.6: Mid-to-late game route locking (HighCostRush / Tycoon / Balanced).
+// Suppresses low-VP distractions when pursuing high-cost 3+ VP cards or noble completions.
+const LOW_VP_RUSH_SUPPRESSION: i64 = -2_000;
+const HIGH_VP_RUSH_EXECUTION_BONUS: i64 = 1_000;
+const HIGH_VP_RUSH_PROTECT_BONUS: i64 = 800;
+const TYCOON_SCORING_CARD_BONUS: i64 = 1_500;
+const TYCOON_IMMEDIATE_CLAIM_BONUS: i64 = 2_500;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DevelopmentPhase {
@@ -172,12 +180,154 @@ fn winnable_near_nobles(obs: &Observation, own_bonuses: &[u8; 5]) -> Vec<NobleId
         .collect()
 }
 
-#[derive(Default)]
-pub struct HeuristicAgentPolicyV02;
+#[derive(Clone, Copy)]
+struct OwnProjection {
+    tokens: Gems,
+    bonuses: [u8; 5],
+    prestige: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum MidLateRoute {
+    HighCostRush,
+    Tycoon { target: NobleId },
+    Balanced,
+}
+
+fn has_viable_rush_target(obs: &Observation, own: &OwnProjection) -> bool {
+    for tier in [Tier::Two, Tier::Three] {
+        for slot in 0..4 {
+            if let Some(cid) = obs.public.market[tier.index()][slot] {
+                let c = card(cid);
+                if c.prestige >= 3 && deficit(c, own) <= 5 {
+                    return true;
+                }
+            }
+        }
+    }
+    for r in &obs.private.reserved {
+        let c = card(r.card);
+        if c.prestige >= 3 && deficit(c, own) <= 5 {
+            return true;
+        }
+    }
+    false
+}
+
+fn find_tycoon_target(obs: &Observation, bonuses: &[u8; 5]) -> Option<NobleId> {
+    let winnable = winnable_near_nobles(obs, bonuses);
+    let mut best: Option<(NobleId, i64)> = None;
+    for nid in winnable {
+        let dist = noble_distance(nid, bonuses);
+        if dist <= 2 {
+            if best.map_or(true, |(_, d)| dist < d) {
+                best = Some((nid, dist));
+            }
+        } else if dist <= 3 {
+            let noble = &all_nobles()[nid.index()];
+            let mut has_scoring_card = false;
+            for tier in Tier::ALL {
+                for slot in 0..4 {
+                    if let Some(cid) = obs.public.market[tier.index()][slot] {
+                        let c = card(cid);
+                        if c.prestige >= 1 && noble.requires(c.bonus) > bonuses[c.bonus.index()] {
+                            has_scoring_card = true;
+                            break;
+                        }
+                    }
+                }
+                if has_scoring_card {
+                    break;
+                }
+            }
+            if !has_scoring_card {
+                for r in &obs.private.reserved {
+                    let c = card(r.card);
+                    if c.prestige >= 1 && noble.requires(c.bonus) > bonuses[c.bonus.index()] {
+                        has_scoring_card = true;
+                        break;
+                    }
+                }
+            }
+            if has_scoring_card && best.map_or(true, |(_, d)| dist < d) {
+                best = Some((nid, dist));
+            }
+        }
+    }
+    best.map(|(nid, _)| nid)
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct HeuristicAgentPolicyV02 {
+    route: Option<MidLateRoute>,
+}
 
 impl HeuristicAgentPolicyV02 {
     pub fn new() -> Self {
-        Self
+        Self { route: None }
+    }
+
+    pub fn current_route(&self) -> Option<MidLateRoute> {
+        self.route
+    }
+
+    pub fn set_route(&mut self, route: Option<MidLateRoute>) {
+        self.route = route;
+    }
+
+    pub fn update_route(&mut self, obs: &Observation) {
+        let me_player = obs
+            .public
+            .players
+            .iter()
+            .find(|p| p.id == obs.viewer)
+            .expect("viewer is a valid player");
+        let me = OwnProjection {
+            tokens: me_player.tokens,
+            bonuses: me_player.bonuses,
+            prestige: me_player.prestige,
+        };
+        let discounts: u16 = me.bonuses.iter().map(|&x| u16::from(x)).sum();
+        let lead_prestige = obs
+            .public
+            .players
+            .iter()
+            .map(|p| p.prestige)
+            .max()
+            .unwrap_or(0);
+        let in_score = obs.public.end_game_triggered || lead_prestige >= 12 || discounts >= 9;
+
+        if !in_score {
+            self.route = None;
+            return;
+        }
+
+        match self.route {
+            None => {
+                if has_viable_rush_target(obs, &me) {
+                    self.route = Some(MidLateRoute::HighCostRush);
+                } else if let Some(target) = find_tycoon_target(obs, &me.bonuses) {
+                    self.route = Some(MidLateRoute::Tycoon { target });
+                } else {
+                    self.route = Some(MidLateRoute::Balanced);
+                }
+            }
+            Some(MidLateRoute::HighCostRush) => {
+                if !has_viable_rush_target(obs, &me) {
+                    self.route = Some(MidLateRoute::Balanced);
+                }
+            }
+            Some(MidLateRoute::Tycoon { target }) => {
+                if !obs.public.nobles.contains(&target) || noble_distance(target, &me.bonuses) > 3 {
+                    if let Some(new_target) = find_tycoon_target(obs, &me.bonuses) {
+                        self.route = Some(MidLateRoute::Tycoon { target: new_target });
+                    } else {
+                        self.route = Some(MidLateRoute::Balanced);
+                    }
+                }
+            }
+            Some(MidLateRoute::Balanced) => {}
+        }
     }
 }
 
@@ -185,7 +335,12 @@ impl AgentPolicy for HeuristicAgentPolicyV02 {
     type Error = std::convert::Infallible;
 
     fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error> {
-        let scores = heuristic_v02_term_scores(&context.observation, context.legal_actions);
+        self.update_route(&context.observation);
+        let scores = heuristic_v02_term_scores_with_route(
+            &context.observation,
+            context.legal_actions,
+            self.route,
+        );
         let best_score = scores
             .iter()
             .map(HeuristicV02Terms::total)
@@ -229,6 +384,7 @@ pub struct HeuristicV02Terms {
     pub noble_race_reserved: i64,
     pub reserve_count_guard: i64,
     pub scoring_readiness: i64,
+    pub route_guidance: i64,
 }
 
 impl HeuristicV02Terms {
@@ -253,20 +409,22 @@ impl HeuristicV02Terms {
             + self.noble_race_reserved
             + self.reserve_count_guard
             + self.scoring_readiness
+            + self.route_guidance
     }
-}
-
-#[derive(Clone, Copy)]
-struct OwnProjection {
-    tokens: Gems,
-    bonuses: [u8; 5],
-    prestige: u8,
 }
 
 /// Exact for the visible own token/bonus/VP changes, except that a purchased
 /// market slot is intentionally left empty rather than peeking at the refill.
 /// Only the already certified legal actions may be scored.
 pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<HeuristicV02Terms> {
+    heuristic_v02_term_scores_with_route(obs, actions, None)
+}
+
+pub fn heuristic_v02_term_scores_with_route(
+    obs: &Observation,
+    actions: &[Action],
+    route: Option<MidLateRoute>,
+) -> Vec<HeuristicV02Terms> {
     let me = obs
         .public
         .players
@@ -558,6 +716,99 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                             deficit(def, &opponent) <= 1
                         })
             });
+            let route_guidance = match route {
+                Some(MidLateRoute::HighCostRush) => match action {
+                    Action::BuyMarket { tier, slot } => {
+                        let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
+                        cid.map_or(0, |id| {
+                            let c = card(id);
+                            if c.prestige <= 1 {
+                                LOW_VP_RUSH_SUPPRESSION
+                            } else if c.prestige >= 3 {
+                                HIGH_VP_RUSH_EXECUTION_BONUS
+                            } else {
+                                0
+                            }
+                        })
+                    }
+                    Action::BuyReserved { slot } => {
+                        let idx = *slot as usize;
+                        if idx < obs.private.reserved.len() {
+                            let id = obs.private.reserved[idx].card;
+                            let c = card(id);
+                            if c.prestige <= 1 {
+                                LOW_VP_RUSH_SUPPRESSION
+                            } else if c.prestige >= 3 {
+                                HIGH_VP_RUSH_EXECUTION_BONUS
+                            } else {
+                                0
+                            }
+                        } else {
+                            0
+                        }
+                    }
+                    Action::ReserveMarket { tier, slot, .. } => {
+                        let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
+                        cid.map_or(0, |id| {
+                            let c = card(id);
+                            if c.prestige >= 3 && deficit(c, &before) <= 5 {
+                                HIGH_VP_RUSH_PROTECT_BONUS
+                            } else {
+                                0
+                            }
+                        })
+                    }
+                    _ => 0,
+                },
+                Some(MidLateRoute::Tycoon { target }) => match action {
+                    Action::BuyMarket { tier, slot } => {
+                        let cid: Option<CardId> = obs.public.market[tier.index()][*slot as usize];
+                        cid.map_or(0, |id| {
+                            let c = card(id);
+                            let noble = &all_nobles()[target.index()];
+                            if noble.requires(c.bonus) > before.bonuses[c.bonus.index()] {
+                                if c.prestige >= 1 {
+                                    TYCOON_SCORING_CARD_BONUS
+                                } else if noble_distance(target, &before.bonuses) <= 1 {
+                                    TYCOON_IMMEDIATE_CLAIM_BONUS
+                                } else {
+                                    LOW_VP_RUSH_SUPPRESSION
+                                }
+                            } else if c.prestige <= 1 {
+                                LOW_VP_RUSH_SUPPRESSION
+                            } else {
+                                0
+                            }
+                        })
+                    }
+                    Action::BuyReserved { slot } => {
+                        let idx = *slot as usize;
+                        if idx < obs.private.reserved.len() {
+                            let id = obs.private.reserved[idx].card;
+                            let c = card(id);
+                            let noble = &all_nobles()[target.index()];
+                            if noble.requires(c.bonus) > before.bonuses[c.bonus.index()] {
+                                if c.prestige >= 1 {
+                                    TYCOON_SCORING_CARD_BONUS
+                                } else if noble_distance(target, &before.bonuses) <= 1 {
+                                    TYCOON_IMMEDIATE_CLAIM_BONUS
+                                } else {
+                                    LOW_VP_RUSH_SUPPRESSION
+                                }
+                            } else if c.prestige <= 1 {
+                                LOW_VP_RUSH_SUPPRESSION
+                            } else {
+                                0
+                            }
+                        } else {
+                            0
+                        }
+                    }
+                    _ => 0,
+                },
+                Some(MidLateRoute::Balanced) | None => 0,
+            };
+
             HeuristicV02Terms {
                 terminal_lead: if safe_lead { TERMINAL_PRIORITY } else { 0 },
                 // Points beyond 15 still determine the winner in the final round.
@@ -584,6 +835,7 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 noble_race_reserved,
                 reserve_count_guard,
                 scoring_readiness,
+                route_guidance,
             }
         })
         .collect()
@@ -2032,5 +2284,166 @@ mod tests {
             0,
             "scoring phase keeps the legacy reserve policy"
         );
+    }
+
+    #[test]
+    fn test_mid_late_route_transitions_and_locking() {
+        let mut policy = HeuristicAgentPolicyV02::new();
+        let mut state = game(68);
+        // Early construction phase
+        let obs = state.observation(PlayerId(0));
+        policy.update_route(&obs);
+        assert_eq!(policy.current_route(), None, "early game has no route lock");
+
+        // Transition to Score phase with CardId(71) (4VP, 7 white) in market
+        expose(&mut state, CardId(71), 0);
+        state.players[0].bonuses = [4, 0, 0, 0, 0]; // 4 white discount -> deficit is 3 (<= 5)
+        state.players[1].prestige = 12; // triggers Score phase
+        let score_obs = state.observation(PlayerId(0));
+        policy.update_route(&score_obs);
+        assert_eq!(
+            policy.current_route(),
+            Some(MidLateRoute::HighCostRush),
+            "locks HighCostRush when 4VP card is reachable"
+        );
+
+        // Verify route persistence across subsequent calls (memory check)
+        policy.update_route(&score_obs);
+        assert_eq!(
+            policy.current_route(),
+            Some(MidLateRoute::HighCostRush),
+            "route remains locked"
+        );
+
+        // When bonuses drop so no 3+ VP card is reachable within 5 deficit, exit to Balanced
+        state.players[0].bonuses = [0, 0, 0, 0, 0];
+        let empty_obs = state.observation(PlayerId(0));
+        policy.update_route(&empty_obs);
+        assert_eq!(
+            policy.current_route(),
+            Some(MidLateRoute::Balanced),
+            "transitions to Balanced when high cost route exhausted"
+        );
+    }
+
+    #[test]
+    fn test_high_cost_rush_suppresses_low_vp_buy_favoring_token_take() {
+        let mut state = game(68);
+        // Expose CardId(71) (Tier 3, 4VP, 7 white) at slot 0
+        expose(&mut state, CardId(71), 0);
+        // Expose CardId(7) (Tier 1, 1VP, 4 red) at Tier 1 slot 0
+        expose(&mut state, CardId(7), 0);
+        state.players[0].bonuses = [4, 0, 0, 4, 0]; // 4 white (needs 3 white for 71), 4 red (can buy 7 right now!)
+
+        let buy_1vp = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        let buy_4vp = Action::BuyMarket {
+            tier: Tier::Three,
+            slot: 0,
+        };
+        let reserve_4vp = Action::ReserveMarket {
+            tier: Tier::Three,
+            slot: 0,
+            give_back: Gems::ZERO,
+        };
+
+        let obs = state.observation(PlayerId(0));
+
+        // Under HighCostRush:
+        let rush_scores = heuristic_v02_term_scores_with_route(
+            &obs,
+            &[buy_1vp, reserve_4vp],
+            Some(MidLateRoute::HighCostRush),
+        );
+        assert_eq!(
+            rush_scores[0].route_guidance, LOW_VP_RUSH_SUPPRESSION,
+            "1VP buy is suppressed in rush"
+        );
+        assert_eq!(
+            rush_scores[1].route_guidance, HIGH_VP_RUSH_PROTECT_BONUS,
+            "reserving 4VP card is protected"
+        );
+
+        // When buy_4vp is affordable:
+        state.players[0].tokens.white = 3;
+        let obs_ready = state.observation(PlayerId(0));
+        let ready_scores = heuristic_v02_term_scores_with_route(
+            &obs_ready,
+            &[buy_4vp],
+            Some(MidLateRoute::HighCostRush),
+        );
+        assert_eq!(
+            ready_scores[0].route_guidance, HIGH_VP_RUSH_EXECUTION_BONUS,
+            "executing 4VP buy is strongly boosted"
+        );
+    }
+
+    #[test]
+    fn test_tycoon_route_rewards_scoring_cards_and_immediate_claim() {
+        let mut state = game(68);
+        let target_noble = state.nobles[0];
+        let noble_req = all_nobles()[target_noble.index()].requirements;
+
+        // Find a color required by the noble
+        let req_color = GemColor::ALL
+            .into_iter()
+            .find(|&c| noble_req[c.index()] > 0)
+            .unwrap();
+
+        // Expose a card with prestige >= 1 that has that color
+        let scoring_card = splendor_catalog::all_cards()
+            .iter()
+            .find(|c| c.bonus == req_color && c.prestige >= 1)
+            .unwrap();
+        expose(&mut state, scoring_card.id, 0);
+
+        // Give player enough tokens to legally afford the card
+        state.players[0].tokens.gold = 5;
+
+        let buy_action = Action::BuyMarket {
+            tier: scoring_card.tier,
+            slot: 0,
+        };
+        let obs = state.observation(PlayerId(0));
+        let scores = heuristic_v02_term_scores_with_route(
+            &obs,
+            &[buy_action],
+            Some(MidLateRoute::Tycoon {
+                target: target_noble,
+            }),
+        );
+        assert_eq!(
+            scores[0].route_guidance, TYCOON_SCORING_CARD_BONUS,
+            "scoring card contributing to target noble gets tycoon bonus"
+        );
+    }
+
+    #[test]
+    fn test_route_cannot_see_hidden_information() {
+        let mut state = readiness_fixture();
+        let mut policy = HeuristicAgentPolicyV02::new();
+        let obs = state.observation(PlayerId(0));
+        policy.update_route(&obs);
+        let route_before = policy.current_route();
+        let scores_before =
+            heuristic_v02_term_scores_with_route(&obs, &state.legal_actions(), route_before);
+
+        // Permute opponent's hidden deck
+        state.decks[Tier::Three.index()].reverse();
+        let obs_after = state.observation(PlayerId(0));
+        let mut policy_after = HeuristicAgentPolicyV02::new();
+        policy_after.update_route(&obs_after);
+        let route_after = policy_after.current_route();
+        let scores_after =
+            heuristic_v02_term_scores_with_route(&obs_after, &state.legal_actions(), route_after);
+
+        assert_eq!(obs, obs_after, "observation must be identical");
+        assert_eq!(
+            route_before, route_after,
+            "route determination must be identical"
+        );
+        assert_eq!(scores_before, scores_after, "scores must be identical");
     }
 }
