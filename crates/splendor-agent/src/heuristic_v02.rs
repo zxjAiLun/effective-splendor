@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.3";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.4";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -75,6 +75,11 @@ const NOBLE_RACE_RESERVED_WEIGHT: i64 = 1_200;
 const NOBLE_RACE_RESERVED_EFFICIENCY_MIN: i64 = 600;
 const RESERVE_COUNT_THRESHOLD: usize = 2;
 const RESERVE_COUNT_GUARD: i64 = 500;
+
+// v0.2.4 (single factor vs v0.2.3): a near noble only counts as a race target
+// when it is still WINNABLE — the opponent's own missing-bonus distance must
+// not be strictly smaller. Both sides' bonuses are public observation data;
+// the trigger (>=2 near nobles) and all constants are unchanged.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DevelopmentPhase {
@@ -144,6 +149,23 @@ fn near_noble_ids(obs: &Observation, bonuses: &[u8; 5]) -> Vec<NobleId> {
         .iter()
         .copied()
         .filter(|&id| noble_distance(id, bonuses) <= NOBLE_RACE_DISTANCE_MAX)
+        .collect()
+}
+
+fn opponent_min_distance(obs: &Observation, noble_id: NobleId) -> i64 {
+    obs.public
+        .players
+        .iter()
+        .filter(|p| p.id != obs.viewer)
+        .map(|p| noble_distance(noble_id, &p.bonuses))
+        .min()
+        .unwrap_or(i64::MAX)
+}
+
+fn winnable_near_nobles(obs: &Observation, own_bonuses: &[u8; 5]) -> Vec<NobleId> {
+    near_noble_ids(obs, own_bonuses)
+        .into_iter()
+        .filter(|&id| noble_distance(id, own_bonuses) <= opponent_min_distance(obs, id))
         .collect()
 }
 
@@ -256,6 +278,12 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
     let near_nobles = near_noble_ids(obs, &before.bonuses);
     let multi_noble_race =
         phase == DevelopmentPhase::Score && near_nobles.len() >= NOBLE_RACE_MIN_COUNT;
+    // v0.2.4: races you cannot win (opponent strictly closer) earn nothing.
+    let winnable_nobles = if multi_noble_race {
+        winnable_near_nobles(obs, &before.bonuses)
+    } else {
+        Vec::new()
+    };
     // Observation affordability, not a scan of the supplied action slice:
     // scoring one certified action or all certified siblings must agree.
     let has_cheap_buy = targets
@@ -437,7 +465,7 @@ pub fn heuristic_v02_term_scores(obs: &Observation, actions: &[Action]) -> Vec<H
                 0
             };
             let noble_race_progress = if multi_noble_race {
-                near_nobles
+                winnable_nobles
                     .iter()
                     .map(|&id| {
                         (noble_distance(id, &before.bonuses) - noble_distance(id, &after.bonuses))
@@ -617,11 +645,17 @@ fn select_targets(
         Vec::new()
     };
     let multi_noble_race = near.len() >= NOBLE_RACE_MIN_COUNT;
+    let winnable = if multi_noble_race {
+        winnable_near_nobles(obs, &own.bonuses)
+    } else {
+        Vec::new()
+    };
     let mut ordered = targets.to_vec();
     ordered.sort_by_key(|def| {
         let color = def.bonus.index();
         let noble_help = if multi_noble_race {
-            near.iter()
+            winnable
+                .iter()
                 .filter(|&&id| own.bonuses[color] < all_nobles()[id.index()].requires(def.bonus))
                 .count() as i64
         } else {
@@ -1589,6 +1623,76 @@ mod tests {
             NOBLE_RACE_RESERVED_WEIGHT
         );
         assert_eq!(reserved_score.vp_efficiency, 900);
+    }
+
+    #[test]
+    fn winnable_only_race_progress_and_priority() {
+        // v0.2.4: races the opponent is strictly closer on earn nothing.
+        let mut lost = game(66);
+        lost.nobles = vec![NobleId(0), NobleId(8)];
+        lost.players[0].bonuses = [2, 2, 1, 0, 0]; // near both: missing 4 and 4
+        lost.players[1].bonuses = [3, 3, 3, 0, 0]; // strictly closer: 0 and 2
+        lost.players[1].prestige = 12;
+        expose(&mut lost, CardId(0), 0);
+        lost.players[0].tokens.black = 3;
+        lost.bank.black -= 3;
+        let buy = Action::BuyMarket {
+            tier: Tier::One,
+            slot: 0,
+        };
+        assert!(lost.legal_actions().contains(&buy));
+        let s = heuristic_v02_term_scores(&lost.observation(PlayerId(0)), &[buy])[0];
+        assert_eq!(s.noble_race_progress, 0, "both near nobles are lost races");
+
+        // One winnable, one lost: only the winnable one's progress counts.
+        let mut mixed = lost.clone();
+        mixed.players[1].bonuses = [3, 0, 3, 0, 0]; // noble0 lost (3<4), noble8 winnable (5>4)
+        let s = heuristic_v02_term_scores(&mixed.observation(PlayerId(0)), &[buy])[0];
+        assert_eq!(
+            s.noble_race_progress, NOBLE_RACE_PROGRESS_WEIGHT,
+            "blue advances noble0(lost)+noble8(winnable); only winnable counts"
+        );
+
+        // Target priority: with both nobles lost, white-bonus cards get no
+        // race-first group; with an idle opponent they do.
+        let mut ranked_state = game(67);
+        ranked_state.nobles = vec![NobleId(0), NobleId(8)];
+        ranked_state.players[0].bonuses = [2, 4, 2, 0, 3]; // near both: 4 and 3
+        ranked_state.players[1].bonuses = [4, 3, 3, 0, 0]; // strictly closer: 0 and 1
+        ranked_state.players[1].prestige = 12;
+        ranked_state.players[0].reserved = vec![ReservedCard {
+            card: CardId(74),
+            from_deck: false,
+        }];
+        let own = OwnProjection {
+            tokens: ranked_state.players[0].tokens,
+            bonuses: ranked_state.players[0].bonuses,
+            prestige: ranked_state.players[0].prestige,
+        };
+        let ranked = select_targets(
+            &[*card(CardId(24)), *card(CardId(74))],
+            &own,
+            &ranked_state.observation(PlayerId(0)),
+            DevelopmentPhase::Score,
+        );
+        assert_eq!(ranked[0].id, CardId(74), "lost races get no priority");
+        let mut win_state = ranked_state.clone();
+        win_state.players[1].bonuses = [0; 5];
+        let own2 = OwnProjection {
+            tokens: win_state.players[0].tokens,
+            ..own
+        };
+        let ranked2 = select_targets(
+            &[*card(CardId(24)), *card(CardId(74))],
+            &own2,
+            &win_state.observation(PlayerId(0)),
+            DevelopmentPhase::Score,
+        );
+        assert_eq!(
+            ranked2[0].id,
+            CardId(24),
+            "winnable races keep group-0 priority"
+        );
     }
 
     #[test]

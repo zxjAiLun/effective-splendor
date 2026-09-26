@@ -279,3 +279,72 @@ v0.2.2 的公开回放诊断有少数状态显示多个贵族距离较近时，�
 ### Next authorized gate
 
 停止并等 owner 审阅这轮 192 局结果、决定是否保留/修改贵族进度目标与持两牌后预留惩罚。未经新的明确授权，不晋级、不改默认、不另起 v0.2.4、不追加 pilot。
+（后续：2026-09-26 owner 授权按赛后普查建议只做单因素方案 A，见 S4.4。）
+
+<a id="s44-v024-winnable-noble-race"></a>
+
+## S4.4 — v0.2.4 仅“可赢”贵族竞速过滤（2026-09-26）
+
+**状态：IMPLEMENTED / VERIFIED；探索性结果记录完毕；NOT PROMOTED（未做独立审查/接受门）。**
+基线 `main@2b5a73d`（v0.2.3 收口后）。v0.2.3 实战普查显示竞速触发面宽（25.5% 决策）且对手盲：race 态 47.2% 决策存在对手折扣距离严格更近的 near 贵族，全部为丢失竞速的状态占 7.9%；两项 +1200 近乎死项。owner 允许实施后续修改。
+
+### Problem and evidence
+
+问题证据均来自 S4.3 赛后只读普查（`local-artifacts/s4-heuristic-v023-pilot/census-decisions-v2.json` SHA256 `cf1f7ef5774ba2574f945ba447123b94ab4fff8fe43d7610e8381d6cbd45342b`），属描述性诊断，不作择参依据。已消费 seeds `9_252_999..9_253_031` 不再用于任何验证。
+
+### Initial design / contracts（赛前冻结）
+
+相对 v0.2.3 **只改一个因素**——贵族“可赢性”过滤：
+
+1. near 定义与多贵族触发**不变**：Score phase 且至少两位公开贵族的五色折扣距离 `≤4`。不计入“可赢≥2 才触发”等改动（那是方案 B，另行授权）。
+2. `noble_race_progress` 只对**可赢 noble**（我方距离 ≤ 任一对手的最小距离；双方折扣皆公开信息）累计距离减少，每单位仍 `+800`；对手严格更近的 near 贵族**不奖励也不惩罚**。
+3. `select_targets` 的 race 态“帮助近贵族”优先级同样只数可赢贵族（不可赢时让出第一组，第二组 3VP>6/高效自留船组规则不变）。
+4. 其余全部冻结：所有常数、`reserve_count_guard`、两个 +1200 项（即使普查显示近乎死项，不在本轮动）、阶段边界全部与 v0.2.3 完全相同；tie seed 继续 `20260926`；版本身份 `0.2.4`。
+5. 信息边界不变：只用己方 Observation、公开贵族/两侧公开折扣/引擎合法动作；不读暗牌、牌堆序、或真人库。
+
+### Scope, pilot and acceptance gates
+
+- 主要对照为 **冻结 v0.2.3 二进制** `local-artifacts/s4-heuristic-v023-pilot/splendor-candidate.exe` SHA256 `7a98103548082c9018f5941fae0d0289acd5939b2d3d386457bf04f0f22a6dc0`（同 tie seed，相对 v0.2.3 严格单因素）；另保留 v0.1（seed 20260812）与 S3 两个既有对照。
+- 新 smoke seed `9_253_999`；pilot seeds `9_254_000..9_254_031`（32 × 2 seat × 3 opponents = 192 matches）。赛前查 static registry + 既有 local match-config 无冲突；合同、时限、10,000 次 paired-block bootstrap（seed `92_542_026`）全部进 tracked config。pilot 必须先过双座 smoke；任一比赛失败/不完整 fail closed，不重试、不换 seed、不过滤；逐局独立 `verify-replay`；赛后独立 audit 重验 SHA/身份/换座/W-T-L/CI。
+- 完成门槛：冻结源码/config/runner/二进制哈希；agent 与 CLI 测试、release build、py_compile/rustfmt/diff-check 通过；2/2 smoke；pilot 恰 192/192 有效、0 abort；独立于 runner 的 audit（独立脚本、独立 manifest 重读）全部 PASS。统计仍只标 `EXPLORATORY_PILOT_ONLY`，不设促销门、不晋级、不改 S3 默认。
+- Artifact：`benchmarks/s4-heuristic-v024-pilot-v1.config.json`/`.result.json`、`scripts/s4_heuristic_v024_pilot.py`；per-game 与冻结候选二进制在 ignored `local-artifacts/s4-heuristic-v024-pilot/`。不改 v0.2.2/v0.2.3 保存件。
+
+### Implementation plan / iteration log
+
+1. 记合同；实现 `min_opponent_distance` + 可赢过滤，版本升 0.2.4；加负向/混合测试（对手严格更近时进度归零且不占第一组；一赢一输只计可赢一半；原测在对手折扣为 0 的可赢情形下不变）。
+2. 全量 agent/CLI 测试、release build、rustfmt/py_compile；v024 config/runner 与 seed preflight；双座 smoke。
+3. 192 局 pilot；独立 audit；registry 登记（补 v024 区间）。
+4. 收口：SHA/命令/results 入账，同好样，不晋级，STOP 等 owner。
+
+- **Iteration 0 (2026-09-26)**: owner 授权「改呗」，范围限定为普查建议的方案 A 单因素；复用 v0.2.2↔v0.2.3 同 tie seed 的对照结构，预期 v0.2.4 vs 冻结 v0.2.3 是唯一可单因素归因的配对。B（触发收紧）、C（死项重设计/预留兑现）、D（bomb 门加持牌数）均未授权，不在本轮。seed preflight 明：registry 无 `9_253_999..9_254_031`，v023 区间 `9_252_999..9_253_031` 与其不相交。
+- **Iteration 1 — implementation / unit tests**: 新增 `opponent_min_distance`（公开对手折扣距离最小值）与 `winnable_near_nobles`；`noble_race_progress` 与 race 态 target 第一组的 help 计数都只数可赢贵族；触发与其余常数不变。加测试 `winnable_only_race_progress_and_priority`：双 lost→进度 0、一赢一lost→只计 winnable、目标排序 lost 时让出第一组。首跑 fixture 距离心算出错（noble8 成平手而非严格更近）已修正后全过：agent 41+10+5、CLI bin105（含 M49A 新增三项）、release build 全 PASS；其余 v0.2.3 原测试因对手折扣为 0 的可赢场景保持预期值不变。
+- **Iteration 2 — smoke / pilot / audit**: release binary & runner/config 冻结（candidate `fe00d1ea…`）；seed preflight DISJOINT；smoke `9_253_999` 双座独立 verify-replay 均成功（两局候选均负，仅计完整性）。pilot 192/192 完成、0 abort、逐局 runner verify。独立 audit（复制改造后独立脚本）重核 config/report/replay SHA、程序路径/身份/换座、192 次 extra `verify-replay` exit0，paired W-T-L 与 10,000 resample CI 重算完全匹配。registry 已登记五轮 S4 区间，31 范围 pairwise disjoint。
+
+### Final implementation
+
+- `crates/splendor-agent/src/heuristic_v02.rs`（source SHA256 `b1a1f87f559f96beb7f150ee4e92a54e6841bf51608160c646ef922bebe4e7d6`）：版本 `0.2.4`；race 触发仍为「Score phase 且自近（距离≤4）贵族 ≥2」，但进度与目标第一组都只计 `my_missing ≤ min(opponent_missing)` 的可赢贵族。constants、guard、两个 +1200 项、tie seed `20260926` 与 v0.2.3 完全一致。候选二进制 SHA256 `fe00d1ea89dd9ecc24319c2851ebb03907c18e4910f262a152201c4aeaf72877`；v0.2.3 对照二进制 `7a981035…` 保持不动。
+
+### Validation and evidence
+
+- 测试：`cargo test -p splendor-agent --quiet` 41+10+5 PASS；`cargo test -p splendor-cli --bin splendor --quiet` 105 PASS；release build exit0；`rustfmt --check`、`py_compile`（runner+registry）、`check_contract`、`git diff --check` 全 PASS。
+- 私目：`benchmarks/s4-heuristic-v024-pilot-v1.config.json` SHA256 `9f7f6c227b398997cf2b99d4feaf93f1efabacadc916c4d2a720006d368a6435`；result `.result.json` SHA256 `92291052daf6839ac7603a3fea06eff31be9ca4d8acfaab9292e4684dcf04b71`；runner `scripts/s4_heuristic_v024_pilot.py` SHA256 `98df247b117181fb8b316fe03ffbcf0e80865f583f857c238f84246027461267`；ignored manifest SHA256 `3f6fd9d525b1f8df0eeed76962955f394058e239df4458a92541508cc39885fa`、independent-audit.py `3cb98ab3…`、audit JSON `27004680…`、smoke `f1d4aba4…`。每局 create-only 文件在 ignored `local-artifacts/s4-heuristic-v024-pilot/`。
+
+### Result and decision
+
+192/192 有效，0 abort；95% paired-seed-block bootstrap（32 blocks × 10,000）：
+
+| 对手 | W–T–L | 中心（bps） | 95% CI（bps） | 判定 |
+|---|---:|---:|---:|---|
+| 冻结 v0.2.3（唯一单因素对照） | 35–0–29 | 5468.75 | [4531.25, 6406.25] | `UNRESOLVED` |
+| v0.1（种子非同批，描述性） | 36–0–28 | 5625.0 | [4375, 6875] | `UNRESOLVED` |
+| S3 | 33–0–31 | 5156.25 | [3906.25, 6406.25] | `UNRESOLVED` |
+
+**Decision: exploratory only, NOT PROMOTED; S3 remains product default.** 单因素「可赢过滤」相对 v0.2.3 在 32 配对 seed 块上没有可分辨的强度变化（中心偏正但 CI 跨过 5000 较多）。方案 A 是被否了：改善无法在此样本量证明。与 v0.1/S3 的比较来自不同批 seed，仅描述性。
+
+### Known limitations
+
+样本只有 32 配对块/对手，对 S3 仍不能下 superiority/equivalence 结论；未测逐决策时延；B/C/D（触发收紧、死项重设计/预留兑现、bomb 门）未动；S4.3 普查揭示的“终局滞留未买自留牌“问题仍然悬而未决。
+
+### Next authorized gate
+
+STOP 等 owner。若继续，候选方向只能是：方案 B（收紧竞速触发）、方案 C（预留兑现 + 终局滞留项）、或对 S3 输局的作用分解做更大样本/单因素轮次；任何新 pilot 须全新 seed（下一可用起点 smoke `9_254_999`、块 `9_255_000..031`）。未经授权不晋级、不改默认、不再动现有冻结件。

@@ -43,6 +43,7 @@ CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 #   5_800_320..383  S3 field calibration — CONSUMED
 #   5_800_384..447  S3 operational profile — CONSUMED
 #   9_249_999..9_253_031  S4 v0.2.0–v0.2.3 pilot/smoke namespaces — CONSUMED
+#   9_253_999..9_254_031  S4 v0.2.4 pilot/smoke namespace — CONSUMED
 
 # Frozen scanned ranges (start, end_inclusive, label).
 # Single-seed ranges are (s, s).
@@ -73,6 +74,7 @@ REGISTRY: list[tuple[int, int, str]] = [
     (9_250_999, 9_251_031, "s4-v021-pilot-smoke-and-matches"),
     (9_251_999, 9_252_031, "s4-v022-pilot-smoke-and-matches"),
     (9_252_999, 9_253_031, "s4-v023-pilot-smoke-and-matches"),
+    (9_253_999, 9_254_031, "s4-v024-pilot-smoke-and-matches"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),
