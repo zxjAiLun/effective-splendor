@@ -31,6 +31,7 @@ mod m49a_round1_command;
 mod m49a_round2_command;
 mod m49a_select_command;
 pub mod m49a_target_builder;
+mod m49a_trace_command;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
@@ -270,6 +271,9 @@ fn main() {
         ),
         Some("m49a-select-checkpoint") => {
             std::process::exit(m49a_select_command::run_m49a_select_checkpoint(&argv[2..]))
+        }
+        Some("m49a-trace-validation") => {
+            std::process::exit(m49a_trace_command::run_m49a_trace_validation(&argv[2..]))
         }
         _ => {}
     }
