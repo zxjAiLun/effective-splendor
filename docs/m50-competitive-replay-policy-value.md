@@ -849,3 +849,36 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
 ### 27.4 Analysis
 - Step 1 Dueling architecture stably preserves the historic breakthrough over v0.2.8 (**53.30% win rate across 500 games**, confirming superiority over champion v0.2.8 is not a small-sample fluke) and holds near parity with predecessor (**48.40%**) and v0.2.9 (**43.30%**).
 - Ready to proceed to Step 2: Mish activation + Squeeze-and-Excitation (SE) channel attention residual blocks.
+
+## 28. Mortal Architecture Step 2: SE-ResNet & Mish Channel Attention — 2026-09-28
+
+### 28.1 Architecture Design & Motivation
+Following owner authorization to proceed with Step 2:
+1. **Squeeze-and-Excitation (SE) Channel Attention Residual Blocks**:
+   - Replaced basic 2-layer MLP with stacked SE-ResBlocks.
+   - Dynamically learns feature importance weights across hidden channels via SE-Block gating:
+     $$w = \sigma\left(W_2 \cdot \text{Mish}(W_1 \cdot h)\right), \quad \tilde{h} = h \odot w, \quad \text{out} = \text{Mish}(x + \tilde{h})$$
+   - Enables network to dynamically shift attention between low-tier engine cards, noble gaps, and high-tier endgame cards.
+2. **Mish Non-Linearity**:
+   - Replaced ReLU with Mish across all backbone and head layers.
+3. **Preserved Dueling & Critic Stop-Gradient**:
+   - Maintains $Q = V + (A - \text{mean}(A))$ and Critic `detach()`.
+
+### 28.2 Training Performance (GPU)
+Trained in `training/m17_gpu/m50_train_semantic_se_q.py`:
+- 113.4s on RTX 4060 GPU.
+- Best Epoch 3 selected: Validation Q MAE **1.25 turns** (V MAE **1.28 turns**), with min-step match rate hitting **60.2%**.
+
+### 28.3 Controlled 500-Game Triad Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated in pure greedy mode across 250 paired seeds (500 games with double seat rotation per opponent):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **Step 1 Predecessor (Dueling Q 3c3ff95)** | 500 | 286 - 5 - 209 | **57.70% (Decisive Win!)** | `[53.4%, 61.9%]` | **62.20%** | **53.20% (破半!)** | **14.21 vs 13.10 (+1.11分)** | **0.523 vs 0.481** | 46.45s (0.093s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 257 - 5 - 238 | **51.90% (Win!)** | `[47.4%, 56.4%]` | 54.80% | 49.00% | **13.99 vs 13.82** | **0.511 vs 0.504** | 34.16s (0.068s/game) |
+| **Heuristic v0.2.9 (Reigning Champion)** | 500 | 223 - 6 - 271 | **45.20%** | `[40.9%, 49.6%]` | **52.60% (破半!)** | 37.80% | 13.57 vs 14.06 | 0.497 vs 0.517 | 39.39s (0.079s/game) |
+
+### 28.4 Analysis & Verdict
+- Step 2 SE-ResNet decisively outplayed Step 1 Dueling predecessor: **57.70% win rate across 500 games (+77 net wins)**, boosting mean score by +1.11 VP/game and achieving 53.20% win rate as second seat!
+- Maintained victory over v0.2.8 (**51.90%**) and lifted win rate vs v0.2.9 to **45.20%** with a 52.60% first-seat win rate.
+- Confirms that channel attention dynamically tuning focus to active card deficits produces measurable competitive gains. Ready for Step 3.

@@ -363,16 +363,131 @@ impl PolicyValueEvaluatorV1 for M50PolicyWeights {
     }
 }
 
+#[inline]
+fn mish(x: f32) -> f32 {
+    if x > 20.0 {
+        x
+    } else if x < -20.0 {
+        0.0
+    } else {
+        let sp = (1.0 + x.exp()).ln();
+        x * sp.tanh()
+    }
+}
+
+#[inline]
+fn sigmoid(x: f32) -> f32 {
+    1.0 / (1.0 + (-x).exp())
+}
+
+#[derive(Debug, Clone)]
+pub struct SEResBlockWeights {
+    ln1_w: Vec<f32>,
+    ln1_b: Vec<f32>,
+    fc1_w: Vec<Vec<f32>>,
+    fc1_b: Vec<f32>,
+    ln2_w: Vec<f32>,
+    ln2_b: Vec<f32>,
+    fc2_w: Vec<Vec<f32>>,
+    fc2_b: Vec<f32>,
+    se_fc1_w: Vec<Vec<f32>>,
+    se_fc1_b: Vec<f32>,
+    se_fc2_w: Vec<Vec<f32>>,
+    se_fc2_b: Vec<f32>,
+}
+
+impl SEResBlockWeights {
+    pub fn forward(&self, x: &[f32]) -> Vec<f32> {
+        let dim = x.len();
+        // 1. ln1
+        let mean1 = x.iter().sum::<f32>() / (dim as f32);
+        let var1 = x.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / (dim as f32);
+        let std1 = (var1 + 1e-5).sqrt();
+        let mut h1_in = vec![0.0f32; dim];
+        for i in 0..dim {
+            h1_in[i] = ((x[i] - mean1) / std1) * self.ln1_w[i] + self.ln1_b[i];
+        }
+        // fc1 + mish
+        let mut h1 = vec![0.0f32; dim];
+        for i in 0..dim {
+            let row = &self.fc1_w[i];
+            let mut sum = self.fc1_b[i];
+            for j in 0..dim {
+                sum += row[j] * h1_in[j];
+            }
+            h1[i] = mish(sum);
+        }
+
+        // 2. ln2
+        let mean2 = h1.iter().sum::<f32>() / (dim as f32);
+        let var2 = h1.iter().map(|v| (v - mean2) * (v - mean2)).sum::<f32>() / (dim as f32);
+        let std2 = (var2 + 1e-5).sqrt();
+        let mut h2_in = vec![0.0f32; dim];
+        for i in 0..dim {
+            h2_in[i] = ((h1[i] - mean2) / std2) * self.ln2_w[i] + self.ln2_b[i];
+        }
+        // fc2
+        let mut h2 = vec![0.0f32; dim];
+        for i in 0..dim {
+            let row = &self.fc2_w[i];
+            let mut sum = self.fc2_b[i];
+            for j in 0..dim {
+                sum += row[j] * h2_in[j];
+            }
+            h2[i] = sum;
+        }
+
+        // 3. SE channel attention
+        let mid_dim = self.se_fc1_w.len();
+        let mut se_mid = vec![0.0f32; mid_dim];
+        for i in 0..mid_dim {
+            let row = &self.se_fc1_w[i];
+            let mut sum = self.se_fc1_b[i];
+            for j in 0..dim {
+                sum += row[j] * h2[j];
+            }
+            se_mid[i] = mish(sum);
+        }
+
+        let mut se_scale = vec![0.0f32; dim];
+        for i in 0..dim {
+            let row = &self.se_fc2_w[i];
+            let mut sum = self.se_fc2_b[i];
+            for j in 0..mid_dim {
+                sum += row[j] * se_mid[j];
+            }
+            se_scale[i] = sigmoid(sum);
+        }
+
+        // 4. residual + mish
+        let mut out = vec![0.0f32; dim];
+        for i in 0..dim {
+            let scaled = h2[i] * se_scale[i];
+            out[i] = mish(x[i] + scaled);
+        }
+        out
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SemanticQWeights {
-    state_l1_w: Vec<Vec<f32>>,
-    state_l1_b: Vec<f32>,
-    state_ln1_w: Vec<f32>,
-    state_ln1_b: Vec<f32>,
-    state_l2_w: Vec<Vec<f32>>,
-    state_l2_b: Vec<f32>,
-    state_ln2_w: Vec<f32>,
-    state_ln2_b: Vec<f32>,
+    // Legacy 2-layer MLP state backbone
+    state_l1_w: Option<Vec<Vec<f32>>>,
+    state_l1_b: Option<Vec<f32>>,
+    state_ln1_w: Option<Vec<f32>>,
+    state_ln1_b: Option<Vec<f32>>,
+    state_l2_w: Option<Vec<Vec<f32>>>,
+    state_l2_b: Option<Vec<f32>>,
+    state_ln2_w: Option<Vec<f32>>,
+    state_ln2_b: Option<Vec<f32>>,
+
+    // SE-ResNet state backbone (Step 2)
+    state_entry_w: Option<Vec<Vec<f32>>>,
+    state_entry_b: Option<Vec<f32>>,
+    state_entry_ln_w: Option<Vec<f32>>,
+    state_entry_ln_b: Option<Vec<f32>>,
+    state_res_blocks: Vec<SEResBlockWeights>,
+    is_mish: bool,
 
     act_l1_w: Vec<Vec<f32>>,
     act_l1_b: Vec<f32>,
@@ -424,6 +539,9 @@ impl SemanticQWeights {
             return Err("not a semantic Q weights file".into());
         }
 
+        let is_seres = map.contains_key("state_entry.0.weight");
+        let is_mish = is_seres;
+
         let get_vec_vec = |key: &str| -> Result<Vec<Vec<f32>>, String> {
             let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
             serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
@@ -433,6 +551,67 @@ impl SemanticQWeights {
             let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
             serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
         };
+
+        let (state_entry_w, state_entry_b, state_entry_ln_w, state_entry_ln_b, state_res_blocks) =
+            if is_seres {
+                let entry_w = get_vec_vec("state_entry.0.weight")?;
+                let entry_b = get_vec("state_entry.0.bias")?;
+                let entry_ln_w = get_vec("state_entry.1.weight")?;
+                let entry_ln_b = get_vec("state_entry.1.bias")?;
+
+                let mut blocks = Vec::new();
+                let mut b = 0;
+                while map.contains_key(&format!("state_res_blocks.{b}.fc1.weight")) {
+                    let p = format!("state_res_blocks.{b}");
+                    let b_ln1_w = get_vec(&format!("{p}.ln1.weight"))?;
+                    let b_ln1_b = get_vec(&format!("{p}.ln1.bias"))?;
+                    let b_fc1_w = get_vec_vec(&format!("{p}.fc1.weight"))?;
+                    let b_fc1_b = get_vec(&format!("{p}.fc1.bias"))?;
+                    let b_ln2_w = get_vec(&format!("{p}.ln2.weight"))?;
+                    let b_ln2_b = get_vec(&format!("{p}.ln2.bias"))?;
+                    let b_fc2_w = get_vec_vec(&format!("{p}.fc2.weight"))?;
+                    let b_fc2_b = get_vec(&format!("{p}.fc2.bias"))?;
+                    let b_se1_w = get_vec_vec(&format!("{p}.se.fc.0.weight"))?;
+                    let b_se1_b = get_vec(&format!("{p}.se.fc.0.bias"))?;
+                    let b_se2_w = get_vec_vec(&format!("{p}.se.fc.2.weight"))?;
+                    let b_se2_b = get_vec(&format!("{p}.se.fc.2.bias"))?;
+
+                    blocks.push(SEResBlockWeights {
+                        ln1_w: b_ln1_w,
+                        ln1_b: b_ln1_b,
+                        fc1_w: b_fc1_w,
+                        fc1_b: b_fc1_b,
+                        ln2_w: b_ln2_w,
+                        ln2_b: b_ln2_b,
+                        fc2_w: b_fc2_w,
+                        fc2_b: b_fc2_b,
+                        se_fc1_w: b_se1_w,
+                        se_fc1_b: b_se1_b,
+                        se_fc2_w: b_se2_w,
+                        se_fc2_b: b_se2_b,
+                    });
+                    b += 1;
+                }
+                (Some(entry_w), Some(entry_b), Some(entry_ln_w), Some(entry_ln_b), blocks)
+            } else {
+                (None, None, None, None, Vec::new())
+            };
+
+        let (state_l1_w, state_l1_b, state_ln1_w, state_ln1_b, state_l2_w, state_l2_b, state_ln2_w, state_ln2_b) =
+            if !is_seres {
+                (
+                    Some(get_vec_vec("state_net.0.weight")?),
+                    Some(get_vec("state_net.0.bias")?),
+                    Some(get_vec("state_net.1.weight")?),
+                    Some(get_vec("state_net.1.bias")?),
+                    Some(get_vec_vec("state_net.3.weight")?),
+                    Some(get_vec("state_net.3.bias")?),
+                    Some(get_vec("state_net.4.weight")?),
+                    Some(get_vec("state_net.4.bias")?),
+                )
+            } else {
+                (None, None, None, None, None, None, None, None)
+            };
 
         let (q_l1_w, q_l1_b, q_l2_w, q_l2_b, q_l3_w, q_l3_b) = if is_standard_q {
             let q_l3_2d = get_vec_vec("q_head.4.weight")?;
@@ -481,14 +660,21 @@ impl SemanticQWeights {
         let val_l2_b = get_vec("val_head.2.bias")?[0];
 
         Ok(Self {
-            state_l1_w: get_vec_vec("state_net.0.weight")?,
-            state_l1_b: get_vec("state_net.0.bias")?,
-            state_ln1_w: get_vec("state_net.1.weight")?,
-            state_ln1_b: get_vec("state_net.1.bias")?,
-            state_l2_w: get_vec_vec("state_net.3.weight")?,
-            state_l2_b: get_vec("state_net.3.bias")?,
-            state_ln2_w: get_vec("state_net.4.weight")?,
-            state_ln2_b: get_vec("state_net.4.bias")?,
+            state_l1_w,
+            state_l1_b,
+            state_ln1_w,
+            state_ln1_b,
+            state_l2_w,
+            state_l2_b,
+            state_ln2_w,
+            state_ln2_b,
+
+            state_entry_w,
+            state_entry_b,
+            state_entry_ln_w,
+            state_entry_ln_b,
+            state_res_blocks,
+            is_mish,
 
             act_l1_w: get_vec_vec("action_net.0.weight")?,
             act_l1_b: get_vec("action_net.0.bias")?,
@@ -526,11 +712,51 @@ impl SemanticQWeights {
     }
 
     pub fn forward_state(&self, obs: &[f32]) -> Vec<f32> {
-        let h1_dim = self.state_l1_w.len();
+        if let Some(ref entry_w) = self.state_entry_w {
+            let entry_b = self.state_entry_b.as_ref().unwrap();
+            let entry_ln_w = self.state_entry_ln_w.as_ref().unwrap();
+            let entry_ln_b = self.state_entry_ln_b.as_ref().unwrap();
+
+            let h_dim = entry_w.len();
+            let mut h_raw = vec![0.0f32; h_dim];
+            for i in 0..h_dim {
+                let row = &entry_w[i];
+                let mut sum = entry_b[i];
+                for j in 0..obs.len() {
+                    sum += row[j] * obs[j];
+                }
+                h_raw[i] = sum;
+            }
+            // LayerNorm + Mish
+            let mean = h_raw.iter().sum::<f32>() / (h_dim as f32);
+            let var = h_raw.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / (h_dim as f32);
+            let std = (var + 1e-5).sqrt();
+            let mut h = vec![0.0f32; h_dim];
+            for i in 0..h_dim {
+                let norm = (h_raw[i] - mean) / std;
+                h[i] = mish(norm * entry_ln_w[i] + entry_ln_b[i]);
+            }
+
+            for block in &self.state_res_blocks {
+                h = block.forward(&h);
+            }
+            return h;
+        }
+
+        let state_l1_w = self.state_l1_w.as_ref().unwrap();
+        let state_l1_b = self.state_l1_b.as_ref().unwrap();
+        let state_ln1_w = self.state_ln1_w.as_ref().unwrap();
+        let state_ln1_b = self.state_ln1_b.as_ref().unwrap();
+        let state_l2_w = self.state_l2_w.as_ref().unwrap();
+        let state_l2_b = self.state_l2_b.as_ref().unwrap();
+        let state_ln2_w = self.state_ln2_w.as_ref().unwrap();
+        let state_ln2_b = self.state_ln2_b.as_ref().unwrap();
+
+        let h1_dim = state_l1_w.len();
         let mut h1 = vec![0.0f32; h1_dim];
         for i in 0..h1_dim {
-            let row = &self.state_l1_w[i];
-            let mut sum = self.state_l1_b[i];
+            let row = &state_l1_w[i];
+            let mut sum = state_l1_b[i];
             for j in 0..obs.len() {
                 sum += row[j] * obs[j];
             }
@@ -541,15 +767,15 @@ impl SemanticQWeights {
         let std1 = (var1 + 1e-5).sqrt();
         for i in 0..h1_dim {
             let norm = (h1[i] - mean1) / std1;
-            let val = norm * self.state_ln1_w[i] + self.state_ln1_b[i];
+            let val = norm * state_ln1_w[i] + state_ln1_b[i];
             h1[i] = if val > 0.0 { val } else { 0.0 };
         }
 
-        let h2_dim = self.state_l2_w.len();
+        let h2_dim = state_l2_w.len();
         let mut h2 = vec![0.0f32; h2_dim];
         for i in 0..h2_dim {
-            let row = &self.state_l2_w[i];
-            let mut sum = self.state_l2_b[i];
+            let row = &state_l2_w[i];
+            let mut sum = state_l2_b[i];
             for j in 0..h1_dim {
                 sum += row[j] * h1[j];
             }
@@ -560,13 +786,23 @@ impl SemanticQWeights {
         let std2 = (var2 + 1e-5).sqrt();
         for i in 0..h2_dim {
             let norm = (h2[i] - mean2) / std2;
-            let val = norm * self.state_ln2_w[i] + self.state_ln2_b[i];
+            let val = norm * state_ln2_w[i] + state_ln2_b[i];
             h2[i] = if val > 0.0 { val } else { 0.0 };
         }
         h2
     }
 
     pub fn forward_action(&self, act: &[f32]) -> Vec<f32> {
+        let act_fn = |v: f32| -> f32 {
+            if self.is_mish {
+                mish(v)
+            } else if v > 0.0 {
+                v
+            } else {
+                0.0
+            }
+        };
+
         let h1_dim = self.act_l1_w.len();
         let mut h1 = vec![0.0f32; h1_dim];
         for i in 0..h1_dim {
@@ -583,7 +819,7 @@ impl SemanticQWeights {
         for i in 0..h1_dim {
             let norm = (h1[i] - mean1) / std1;
             let val = norm * self.act_ln1_w[i] + self.act_ln1_b[i];
-            h1[i] = if val > 0.0 { val } else { 0.0 };
+            h1[i] = act_fn(val);
         }
 
         let h2_dim = self.act_l2_w.len();
@@ -602,12 +838,22 @@ impl SemanticQWeights {
         for i in 0..h2_dim {
             let norm = (h2[i] - mean2) / std2;
             let val = norm * self.act_ln2_w[i] + self.act_ln2_b[i];
-            h2[i] = if val > 0.0 { val } else { 0.0 };
+            h2[i] = act_fn(val);
         }
         h2
     }
 
     pub fn predict_advantage(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+        let act_fn = |v: f32| -> f32 {
+            if self.is_mish {
+                mish(v)
+            } else if v > 0.0 {
+                v
+            } else {
+                0.0
+            }
+        };
+
         let act_h = self.forward_action(act_raw);
         let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
         joint.extend_from_slice(state_h);
@@ -629,7 +875,7 @@ impl SemanticQWeights {
             for j in 0..joint.len() {
                 sum += row[j] * joint[j];
             }
-            q1[i] = if sum > 0.0 { sum } else { 0.0 };
+            q1[i] = act_fn(sum);
         }
 
         let q2_dim = l2_w.len();
@@ -640,7 +886,7 @@ impl SemanticQWeights {
             for j in 0..q1_dim {
                 sum += row[j] * q1[j];
             }
-            q2[i] = if sum > 0.0 { sum } else { 0.0 };
+            q2[i] = act_fn(sum);
         }
 
         let mut sum = l3_b;
