@@ -116,17 +116,36 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - **Execution Speed:** 26.82 seconds total for 128 games (**0.210 seconds per full game**).
   - Summary: `local-artifacts/m50-eval-v025/summary.json`.
 
+### 4. Large-Scale Corpus Ingestion (463k Steps / 7,764 Games)
+- Expanded extraction across 19 arena/pilot corpora (`s4-heuristic-v02*`, `s0-baseline`, `s2b-arena`, `s3-arena`, `m42s`, `m44*`, `m45a`, `m46a`):
+  - Ingestion runtime: **23.70 seconds** across 9,744 total replays.
+  - Partitioning:
+    - **Train:** 7,764 games, **463,354 decision steps**, 14,945,386 candidate actions (230,760 wins / 230,360 losses).
+    - **Val:** 1,980 games, **118,169 decision steps**, 3,797,553 candidate actions (59,068 wins / 58,979 losses).
+  - Stored in `local-artifacts/m50-large-dataset-v1/`.
+- Training:
+  - 10 epochs on 463k steps took **121.23 seconds** on RTX 4060 (`local-artifacts/m50-large-run/best_model.pt`).
+  - Validation metrics across diverse opponent distributions:
+    - Val Top-1 Accuracy: **45.04%** (best epoch 10).
+    - Val Win Prediction Accuracy: **63.21%** (dramatically up from 51.66% on small dataset).
+    - Score Margin Correlation: **0.355** (more than tripled from 0.110).
+    - High-confidence calibration: when predicting win prob > 0.70, actual win rate is **67.2%**; when predicting < 0.30, actual win rate is **33.0%**.
+- Arena Evaluation vs Frozen v0.2.5 (128 games, seeds `9_260_000..9_260_063`):
+  - Result: **24 胜 0 平 104 负** (18.75% 胜率, 95% CI `[12.5%, 25.8%]`).
+  - Seat 0: 18.75%, Seat 1: 18.75%. Mean score: M50 **10.38** vs v0.2.5 **15.55**.
+  - Decision agreement with small model on unseen validation states is **61.3%** (learns a broader, more conservative generalist distribution across varied opponents).
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **实战对战直接击败 v0.2.5：** 在完全未见过的 64 个双换座种子（128 场）对战中，纯粹基于模仿学习得到的网络在没有搜索、没有 MCTS 辅助的情况下，**实打实赢下 24 局（18.75% 胜率）**，场均得分达到 11.14 分，展现出扎实的引擎构筑与得分对抗能力。
+- **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。实战单走贪心与小模型保持在同等的 18.75% 胜率，但现在具备了一个极为精准的胜率评估器（Value Head），为后续带搜索（IS-MCTS）铺平了道路。
 
 ## Known limitations
-- Current network was trained on only 612 games (34k steps).
 - The network plays pure greedily without search tree expansion (IS-MCTS or 1-ply rollout).
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Scale up corpus:** Ingest the remaining ~10,000 match replays across `local-artifacts/` (>500,000 decision steps) to push Top-1 accuracy towards 60%+.
-2. **Search integration:** Integrate M50 Policy-Value network as the prior / evaluation head in IS-MCTS (`crates/splendor-neural-agent/`).
+1. **Search integration:** Integrate M50 Policy-Value network as the prior / evaluation head in IS-MCTS (`crates/splendor-neural-agent/`), letting the calibrated Value Head guide lookahead.
+2. **Quality filtering:** Filter training corpus to include only winning seats / high-ELO agent trajectories rather than mixed-outcome matches.

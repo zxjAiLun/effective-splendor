@@ -36,7 +36,7 @@ Options:
 
 #[derive(Debug, Clone)]
 struct Args {
-    replays_dir: PathBuf,
+    replays_dirs: Vec<PathBuf>,
     out_dir: PathBuf,
     val_modulus: u64,
     val_remainder: u64,
@@ -226,7 +226,7 @@ fn collect_replays_recursive(dir: &Path, list: &mut Vec<PathBuf>) {
 }
 
 fn parse_args(args: &[String]) -> Result<Args, String> {
-    let mut replays_dir = None;
+    let mut replays_dirs = Vec::new();
     let mut out_dir = None;
     let mut val_modulus = 5u64;
     let mut val_remainder = 0u64;
@@ -235,7 +235,9 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     while i < args.len() {
         match args[i].as_str() {
             "--replays-dir" => {
-                replays_dir = args.get(i + 1).map(PathBuf::from);
+                if let Some(dir) = args.get(i + 1) {
+                    replays_dirs.push(PathBuf::from(dir));
+                }
                 i += 2;
             }
             "--manifest" => {
@@ -264,8 +266,12 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
         }
     }
 
+    if replays_dirs.is_empty() {
+        return Err("missing required --replays-dir (specify one or more)".into());
+    }
+
     Ok(Args {
-        replays_dir: replays_dir.ok_or("missing --replays-dir")?,
+        replays_dirs,
         out_dir: out_dir.ok_or("missing --out-dir")?,
         val_modulus,
         val_remainder,
@@ -275,20 +281,21 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
 fn run(args: Args) -> Result<(), String> {
     let t0 = Instant::now();
     println!(
-        "M50 Replay Extractor: scanning {}",
-        args.replays_dir.display()
+        "M50 Replay Extractor: scanning {} root directories",
+        args.replays_dirs.len()
     );
 
     let mut replay_paths = Vec::new();
-    collect_replays_recursive(&args.replays_dir, &mut replay_paths);
+    for d in &args.replays_dirs {
+        println!("  - scanning {}", d.display());
+        collect_replays_recursive(d, &mut replay_paths);
+    }
     replay_paths.sort();
-    println!("Found {} match-replay.json files", replay_paths.len());
+    replay_paths.dedup();
+    println!("Found {} unique match-replay.json files", replay_paths.len());
 
     if replay_paths.is_empty() {
-        return Err(format!(
-            "no match-replay.json files found under {}",
-            args.replays_dir.display()
-        ));
+        return Err("no match-replay.json files found".into());
     }
 
     let mut train_buf = SplitBuffer::new();
@@ -445,7 +452,7 @@ fn run(args: Args) -> Result<(), String> {
     let manifest = DatasetManifest {
         format: "m50-competitive-replay-dataset-v1".to_string(),
         version: 1,
-        source_replays_dir: args.replays_dir.display().to_string(),
+        source_replays_dir: format!("{:?}", args.replays_dirs),
         val_modulus: args.val_modulus,
         val_remainder: args.val_remainder,
         observation_width: OBSERVATION_FEATURES_V1,
@@ -517,7 +524,7 @@ mod tests {
             "out/path".to_string(),
         ];
         let parsed = parse_args(&args).expect("valid args");
-        assert_eq!(parsed.replays_dir, PathBuf::from("some/path"));
+        assert_eq!(parsed.replays_dirs, vec![PathBuf::from("some/path")]);
         assert_eq!(parsed.out_dir, PathBuf::from("out/path"));
         assert_eq!(parsed.val_modulus, 5);
         assert_eq!(parsed.val_remainder, 0);
