@@ -355,6 +355,8 @@ struct HumanReplayFrameV1 {
     player_view: Observation,
     legal_actions: Vec<Action>,
     recorded_action: Action,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    card_id: Option<CardId>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -546,6 +548,8 @@ struct HumanActionHistoryV1 {
     ply: u32,
     actor: PlayerId,
     action: Action,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    card_id: Option<CardId>,
 }
 
 struct Session {
@@ -575,9 +579,20 @@ impl Session {
     }
 
     fn apply_recorded(&mut self, actor: PlayerId, action: Action) -> Result<(), String> {
-        let (player_view, legal_actions) = {
+        let (player_view, legal_actions, card_id) = {
             let state = self.state();
-            (state.observation(actor), state.legal_actions())
+            let cid = match action {
+                Action::BuyMarket { tier, slot } => state.market[tier.index()][slot as usize],
+                Action::ReserveMarket { tier, slot, .. } => {
+                    state.market[tier.index()][slot as usize]
+                }
+                Action::BuyReserved { slot } => state.players[actor.index()]
+                    .reserved
+                    .get(slot as usize)
+                    .map(|r| r.card),
+                _ => None,
+            };
+            (state.observation(actor), state.legal_actions(), cid)
         };
         self.frames.push(HumanReplayFrameV1 {
             ply: self.ply,
@@ -585,6 +600,7 @@ impl Session {
             player_view,
             legal_actions,
             recorded_action: action,
+            card_id,
         });
         let step = self
             .recorder
@@ -745,6 +761,7 @@ impl Session {
                     ply: frame.ply,
                     actor: frame.actor,
                     action: frame.recorded_action,
+                    card_id: frame.card_id,
                 })
                 .collect(),
             result: state.result.clone(),
@@ -3588,11 +3605,35 @@ mod tests {
         assert_eq!(value["action_history"][0]["ply"], 0);
         assert_eq!(value["action_history"][0]["actor"], 0);
         assert_eq!(value["action_history"][0]["action"]["type"], "take_tokens");
+        assert!(value["action_history"][0].get("card_id").is_none());
         let json = value.to_string();
         assert!(!json.contains("decks"));
         assert_eq!(value["seed"], "20");
         assert!(!value["observation"].to_string().contains("seed\""));
         assert!(!value["action_history"].to_string().contains("seed\""));
+    }
+
+    #[test]
+    fn snapshot_history_records_card_id_for_card_actions() {
+        let mut session = test_session();
+        let reserve_action = session
+            .state()
+            .legal_actions()
+            .into_iter()
+            .find(|action| matches!(action, Action::ReserveMarket { .. }))
+            .unwrap();
+        let expected_card = match reserve_action {
+            Action::ReserveMarket { tier, slot, .. } => {
+                session.state().market[tier.index()][slot as usize].unwrap()
+            }
+            _ => unreachable!(),
+        };
+        session.apply_recorded(PlayerId(0), reserve_action).unwrap();
+        let value = serde_json::to_value(session.snapshot()).unwrap();
+        assert_eq!(value["action_history"][0]["ply"], 0);
+        assert_eq!(value["action_history"][0]["actor"], 0);
+        assert_eq!(value["action_history"][0]["action"]["type"], "reserve_market");
+        assert_eq!(value["action_history"][0]["card_id"], expected_card.0);
     }
 
     #[test]

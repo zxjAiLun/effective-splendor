@@ -101,6 +101,7 @@ function UnknownCard({ id }: { id: number | null }) {
 export function StructuredAction({
   action,
   playerView = null,
+  cardId = null,
   cards,
   nobles,
   variant = "detail",
@@ -113,6 +114,7 @@ export function StructuredAction({
    * instead of naming the wrong card.
    */
   playerView?: ActionPlayerView | null;
+  cardId?: number | null;
   cards: ActionCatalog["cards"];
   nobles: ActionCatalog["nobles"];
   variant?: "compact" | "detail";
@@ -138,8 +140,9 @@ export function StructuredAction({
   } else if (action.type === "buy_market" || action.type === "reserve_market") {
     const tier = actionTierIndex(action.tier);
     const slot = Number(action.slot);
-    // Identity comes from the pre-action view, never from the action itself.
-    const id = resolveActionCardId(action, asView(playerView)) as number | null;
+    // Identity comes from explicit cardId, action.card_id, or pre-action view.
+    const resolvedId = cardId ?? (action.card_id as number | undefined) ?? resolveActionCardId(action, asView(playerView));
+    const id = resolvedId != null ? Number(resolvedId) : null;
     const card = id != null ? cards.get(id) ?? null : null;
     body = (
       <>
@@ -158,7 +161,8 @@ export function StructuredAction({
   } else if (action.type === "buy_reserved") {
     const slot = Number(action.slot);
     // A reserved card is bought from the actor's own private reserve.
-    const id = resolveActionCardId(action, playerView);
+    const resolvedId = cardId ?? (action.card_id as number | undefined) ?? resolveActionCardId(action, playerView);
+    const id = resolvedId != null ? Number(resolvedId) : null;
     const card = id != null ? cards.get(id) ?? null : null;
     body = (
       <>

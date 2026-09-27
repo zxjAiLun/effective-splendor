@@ -55,7 +55,11 @@ export function gemEntries(value) {
  * "show tier/slot", never "invent a card".
  */
 export function resolveActionCardId(action, view) {
-  if (!view || !action) return null;
+  if (!action || !actionMayDiscloseCard(action.type)) return null;
+  if (action.card_id != null && Number.isInteger(Number(action.card_id))) {
+    return Number(action.card_id);
+  }
+  if (!view) return null;
   if (action.type === "buy_market" || action.type === "reserve_market") {
     const tier = actionTierIndex(action.tier);
     const slot = Number(action.slot);

@@ -18,7 +18,7 @@ type Reviewer = { id:string; display_name:string; description:string; competitiv
 type Catalog = { cards:DevelopmentCardData[]; nobles:Array<{id:number;prestige:number;requirements:number[]}> };
 type NobleData = Catalog["nobles"][number];
 type Player = { id:number; tokens:Gems; bonuses:number[]; prestige:number; reserved_count:number; public_reserved:number[]; purchased:number[]; nobles:number[] };
-type HistoryItem = { ply:number; actor:number; action:Action };
+type HistoryItem = { ply:number; actor:number; action:Action; card_id?: number | null };
 type State = {
   format:string; version:number; session_id:string; human_seat:number; opponent:string; ply:number;
   observation:{ viewer:number; public:{ player_count:number; current_player:number; phase:string; bank:Gems; deck_counts:number[]; market:Array<Array<number|null>>; nobles:number[]; players:Player[] }; private:{reserved:Array<{slot:number;card:number;tier:string;from_deck:boolean}>} };
@@ -70,14 +70,12 @@ function OpponentReserve({player,cards}:{player:Player;cards:Map<number,Developm
 /**
  * One history entry, through the shared action renderer.
  *
- * The public history stores only `{ply, actor, action}`, so there is no
- * pre-action player view to resolve a card identity from; the renderer is given
- * none and degrades to tier/slot. That is deliberate: naming a card from the
- * *current* market would attribute today's slot to a past move.
+ * Card identity is resolved from item.card_id provided by the backend snapshot.
  */
 function HistoryText({item,humanSeat,cards,nobles}:{item:HistoryItem;humanSeat:number;cards:ActionCatalog["cards"];nobles:ActionCatalog["nobles"]}) {
   const actor=item.actor===humanSeat?"You":"Opponent";
-  return <div className="history-entry"><strong>{actor}</strong><StructuredAction action={item.action} cards={cards} nobles={nobles} variant="compact"/></div>;
+  const actionWithCard = item.card_id != null ? { ...item.action, card_id: item.card_id } : item.action;
+  return <div className="history-entry"><strong>{actor}</strong><StructuredAction action={actionWithCard} cardId={item.card_id} cards={cards} nobles={nobles} variant="compact"/></div>;
 }
 
 function GemStrip({gems}:{gems:Gems}) {
