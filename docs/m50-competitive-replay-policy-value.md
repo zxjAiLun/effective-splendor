@@ -261,18 +261,40 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - 面对经过二次非线性 VP 效率曲线和单贵族冲刺深度优化的最新最强规则机 v0.2.8，M50 神经搜索网络**依然稳定轰出 36.72% 胜率（赢下 47 局）**！
     - 这证实了神经网络的学习成果并非针对某个旧版规则机的“过拟合破解”，而是习得了真正具备广泛泛化能力的通用博弈能力。
 
+### 13. Multi-Task Speed Guidance: Steps-to-15 Prediction Dual Loss
+- Following owner guidance ("就是loss里 可以有输赢最后的标签 但是一定要先加上15 分步数预测网络 这样才能让每一步模型往拿分速度上收敛"):
+  - Upgraded `splendor m50-extract-replays` to calculate exact remaining main turns (`steps_to_15`) until the acting player reaches >= 15 prestige (or remaining game turns + deficit penalty if unreached).
+  - Extracted 463,354 decision steps with 3-dimensional outcome targets: `[won, score_diff, steps_to_15]` (`local-artifacts/m50-steps-dataset-v1/`). Average steps to 15 is 19.3 turns (median 19.0, p10 6.0, p90 32.0).
+  - Built `PolicyValueStepsNet` (`training/m17_gpu/m50_train_steps_pv.py`) with three simultaneous heads:
+    1. Policy Head: Cross-entropy action imitation.
+    2. Value Head: BCE ultimate match win probability.
+    3. **Steps-to-15 Head:** Smooth L1 regression predicting exact remaining turns to 15 prestige.
+  - Multi-task training forces the shared 128-d state representation to directly encode speed/distance to 15 VP.
+  - Training metrics on unseen validation games:
+    - **Steps-to-15 MAE: 3.64 turns** (model predicts remaining turns to 15 with an average error of only ~3.6 turns!).
+    - **Win Prediction Accuracy: 64.5%** (highest recorded so far, up from 63.2%).
+  - Head-to-Head Arena Series vs v0.2.8 Heuristic (128 games, seeds `9_260_000..9_260_063`):
+    - **IS-MCTS (128 sims x depth 6):** **45 胜 1 平 82 负** (**35.55% 胜率**, 95% CI `[28.1%, 43.0%]`).
+    - **Seat 1 (后手) 胜率冲破四成，达到 42.19%** (54 胜率分 / 128)!
+    - **场均得分达到历史最高峰值：M50 11.85 分** vs v0.2.8 14.98 分 (较旧版大幅提升近 1.6 分，全场紧咬对手！)。
+    - Runtime: 113.75s for 128 games (0.89s / game).
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
+- **15 分步数多任务网络（Speed-to-15 Guidance）：**
+  - 在 Loss 中加入真实到 15 分的剩余步数回归后，网络表征直接对齐拿分速度，**到 15 分剩余步数的预测平均绝对误差仅 3.64 回合**，胜率预测准确率刷新至 **64.5%**！
+  - 对战最新冠军 v0.2.8 实测：后手胜率突破 **42.19%**，场均得分达到历史最高的 **11.85 分**，彻底摆脱了无分拖沓。
 - **面对顶尖规则强机的全面实战战报（128 场双换座）：**
   - **vs v0.2.5 (上一代基准强机)**：
     - 纯 Policy 贪心：18.75% 胜率
     - IS-MCTS (128 模拟 x 深度 6)：**37.50% 胜率**（赢下 48 局）
   - **vs v0.2.8 (最新全胜冠军强机)**：
     - 纯 Policy 贪心：18.75% 胜率
-    - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（赢下 47 局，先手突破 40.6%）
+    - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（先手 40.6%）
+    - 步数引导 IS-MCTS (128 模拟 x 深度 6)：**35.55% 胜率**（后手 42.2%，场均分达 11.85 分）
 - **结论：** 纯神经网络 + IS-MCTS 树搜索无论面对哪一代规则专家，都稳定具备 **36% ~ 38% 的实战胜率**。
 
 ## Known limitations

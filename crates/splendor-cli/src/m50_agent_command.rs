@@ -56,6 +56,11 @@ pub struct M50PolicyWeights {
     val_l1_b: Vec<f32>,      // [64]
     val_l2_w: Vec<f32>,      // [64]
     val_l2_b: f32,
+
+    steps_l1_w: Option<Vec<Vec<f32>>>, // [64, 128]
+    steps_l1_b: Option<Vec<f32>>,      // [64]
+    steps_l2_w: Option<Vec<f32>>,      // [64]
+    steps_l2_b: Option<f32>,
 }
 
 impl M50PolicyWeights {
@@ -82,6 +87,18 @@ impl M50PolicyWeights {
         let val_l2_w = val_l2_2d.into_iter().next().unwrap_or_default();
         let val_l2_b = get_vec("value_head.2.bias")?[0];
 
+        let (steps_l1_w, steps_l1_b, steps_l2_w, steps_l2_b) =
+            if map.contains_key("steps_head.0.weight") {
+                let l1_w = get_vec_vec("steps_head.0.weight")?;
+                let l1_b = get_vec("steps_head.0.bias")?;
+                let l2_2d = get_vec_vec("steps_head.2.weight")?;
+                let l2_w = l2_2d.into_iter().next().unwrap_or_default();
+                let l2_b = get_vec("steps_head.2.bias")?[0];
+                (Some(l1_w), Some(l1_b), Some(l2_w), Some(l2_b))
+            } else {
+                (None, None, None, None)
+            };
+
         let weights = Self {
             state_l1_w: get_vec_vec("state_net.0.weight")?,
             state_l1_b: get_vec("state_net.0.bias")?,
@@ -103,6 +120,11 @@ impl M50PolicyWeights {
             val_l1_b: get_vec("value_head.0.bias")?,
             val_l2_w,
             val_l2_b,
+
+            steps_l1_w,
+            steps_l1_b,
+            steps_l2_w,
+            steps_l2_b,
         };
 
         assert_eq!(weights.state_l1_w.len(), 256);
@@ -189,6 +211,43 @@ impl M50PolicyWeights {
     pub fn predict_value(&self, obs: &[f32]) -> f32 {
         let state_h = self.forward_state(obs);
         self.predict_value_from_state_h(&state_h)
+    }
+
+    pub fn predict_steps_to_15(&self, state_h: &[f32; 128]) -> Option<f32> {
+        let (l1_w, l1_b, l2_w, l2_b) = match (
+            &self.steps_l1_w,
+            &self.steps_l1_b,
+            &self.steps_l2_w,
+            self.steps_l2_b,
+        ) {
+            (Some(w1), Some(b1), Some(w2), Some(b2)) => (w1, b1, w2, b2),
+            _ => return None,
+        };
+
+        let mut vh = [0.0f32; 64];
+        for i in 0..64 {
+            let row = &l1_w[i];
+            let mut sum = l1_b[i];
+            for j in 0..128 {
+                sum += row[j] * state_h[j];
+            }
+            vh[i] = if sum > 0.0 { sum } else { 0.0 };
+        }
+
+        let mut sum = l2_b;
+        for j in 0..64 {
+            sum += l2_w[j] * vh[j];
+        }
+
+        let sp = if sum > 20.0 {
+            sum
+        } else if sum < -20.0 {
+            sum.exp()
+        } else {
+            (1.0 + sum.exp()).ln()
+        };
+
+        Some(sp * 20.0)
     }
 
     pub fn score_action(&self, state_h: &[f32; 128], act: &[f32]) -> f32 {
