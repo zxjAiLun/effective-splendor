@@ -40,6 +40,8 @@ struct Args {
     out_dir: PathBuf,
     val_modulus: u64,
     val_remainder: u64,
+    winner_only: bool,
+    top_fastest_percent: Option<f64>,
 }
 
 #[derive(Debug, Default)]
@@ -230,6 +232,8 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     let mut out_dir = None;
     let mut val_modulus = 5u64;
     let mut val_remainder = 0u64;
+    let mut winner_only = false;
+    let mut top_fastest_percent = None;
 
     let mut i = 0;
     while i < args.len() {
@@ -262,6 +266,18 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
                     .map_err(|e| format!("invalid --val-remainder: {e}"))?;
                 i += 2;
             }
+            "--winner-only" => {
+                winner_only = true;
+                i += 1;
+            }
+            "--top-fastest-percent" => {
+                let val = args.get(i + 1).ok_or("missing --top-fastest-percent value")?;
+                let pct: f64 = val
+                    .parse()
+                    .map_err(|e| format!("invalid --top-fastest-percent: {e}"))?;
+                top_fastest_percent = Some(pct);
+                i += 2;
+            }
             other => return Err(format!("unknown option `{other}`")),
         }
     }
@@ -275,6 +291,8 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
         out_dir: out_dir.ok_or("missing --out-dir")?,
         val_modulus,
         val_remainder,
+        winner_only,
+        top_fastest_percent,
     })
 }
 
@@ -303,6 +321,32 @@ fn run(args: Args) -> Result<(), String> {
 
     let mut total_parsed = 0;
     let mut total_failed = 0;
+
+    // Optional pre-pass to compute plies threshold if top_fastest_percent is set
+    let plies_threshold = if let Some(pct) = args.top_fastest_percent {
+        println!("Computing {pct}% fastest plies threshold across all replays...");
+        let mut all_plies = Vec::with_capacity(replay_paths.len());
+        for path in &replay_paths {
+            if let Ok(c) = fs::read(path) {
+                if let Ok(r) = serde_json::from_slice::<ReplayV1>(&c) {
+                    if r.player_count == 2 {
+                        all_plies.push(r.steps.len());
+                    }
+                }
+            }
+        }
+        all_plies.sort_unstable();
+        if all_plies.is_empty() {
+            None
+        } else {
+            let idx = ((all_plies.len() as f64) * (pct / 100.0)).floor() as usize;
+            let thresh = all_plies[idx.min(all_plies.len() - 1)];
+            println!("  Threshold for fastest {pct}%: <= {thresh} plies (evaluated {} games)", all_plies.len());
+            Some(thresh)
+        }
+    } else {
+        None
+    };
 
     for (idx, path) in replay_paths.iter().enumerate() {
         if idx % 100 == 0 && idx > 0 {
@@ -333,6 +377,17 @@ fn run(args: Args) -> Result<(), String> {
             }
         };
 
+        if replay.player_count != 2 {
+            continue;
+        }
+
+        // Apply fastest threshold filter if requested
+        if let Some(thresh) = plies_threshold {
+            if replay.steps.len() > thresh {
+                continue;
+            }
+        }
+
         let trace = match verify_replay_trace(&replay) {
             Ok(t) => t,
             Err(e) => {
@@ -360,6 +415,15 @@ fn run(args: Args) -> Result<(), String> {
         for step in &trace.positions {
             let actor = step.recorded_actor;
             let actor_seat = actor.index();
+
+            // If winner_only is enabled, skip steps made by losing/tied players
+            if args.winner_only {
+                let actor_won = result.winners.len() == 1 && result.winners.contains(&(actor_seat as u8));
+                if !actor_won {
+                    continue;
+                }
+            }
+
             let obs = step.state.observation(actor);
             let legal = step.state.legal_actions();
 

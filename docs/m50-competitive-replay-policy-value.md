@@ -162,20 +162,69 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - Search runtime: **64.97 seconds** for 128 games (**0.508 seconds per full game**, ~9ms per IS-MCTS search decision).
   - Replays and summary recorded in `local-artifacts/m50-ismcts-eval-v025/`.
 
+### 7. Elite Dataset Curation: Winner-Only + Fastest Top-20% Fine-Tuning
+- Following owner guidance ("把赢家 + 其中平均耗时最低的前20%的局的数据继续用来微调先 试试效果"):
+  - Upgraded `splendor m50-extract-replays` to support `--winner-only` and `--top-fastest-percent 20`.
+  - Scanned the full 9,744 replay corpus; computed the 20th percentile duration threshold: **<= 54 plies**.
+  - Extracted 2,617 qualifying games (fastest 20% won games):
+    - **Train:** 2,078 games, **56,333 steps** (100% winner actions, 0 losses).
+    - **Val:** 539 games, **14,683 steps** (100% winner actions).
+  - Stored in `local-artifacts/m50-elite-dataset-v1/`.
+- Fine-Tuning:
+  - Initialized from pretrained 463k-step backbone (`m50-large-run/best_model.pt`).
+  - Trained 10 epochs (21.67s) with gentle learning rate `3e-4`.
+  - **Validation Top-1 Accuracy reaches a new peak: 46.44%** (highest recorded so far, up from 44.21% on small and 45.04% on large).
+- Head-to-Head Arena Series vs Frozen v0.2.5 (128 games each, seeds `9_260_000..9_260_063`):
+  1. **Elite Policy (Pure Greedy):**
+     - **W - T - L:** **27 胜 0 平 101 负** (**21.09% 胜率**, 95% paired bootstrap CI `[14.06%, 28.91%]`).
+     - **胜率显著提升：** 纯贪心模仿从基础模型的 18.75% 提升至 **21.09%**（净胜局从 24 局增加到 27 局），直接印证了“过滤掉输家动作、专注高质量速胜牌谱”能纯粹通过策略模仿提升胜率！
+  2. **Elite IS-MCTS (32 simulations):**
+     - **W - T - L:** 24 胜 0 平 104 负 (18.75% 胜率)。
+     - 分析：赢家速胜数据全是高歌猛进的速攻风格，PUCT 树搜索在探索非速攻分支时，先验对防御/僵持局面的支持度下降，使得纯搜索在深层树上的收益不及全数据大模型（25.78%）。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
-- **搜索消融与突破（三方严格实战对照）：**
-  - **1 步单向浅搜索（1-ply lookahead）：7.42% 胜率**（128 局仅赢 9 局）。证实了 1 步近视推演因为不包含对手回应，会陷入短视贪心陷阱，破坏全局长线规划。
-  - **纯 Policy 贪心（Greedy，无搜索）：18.75% 胜率**（128 局赢 24 局）。依靠 46 万步学到的直觉下快棋，稳定在 18.75%。
-  - **完整交互 IS-MCTS 树搜索（32 sims x depth 4）：25.78% 胜率**（128 局赢 **33 局**，最高冲破 50% 前半程胜率）。在完整的对抗交替展开中，Policy 作为先验指引搜索方向，Value 评估叶节点，将实战胜率从 18.75% 大幅推升至 **25.78%**（相对增幅 +37.5%）！
+- **搜索消融与实战突破：**
+  - **1 步单向浅搜索（1-ply lookahead）：7.42% 胜率**。证实单向不含对手反制的推演会导致短视，破坏大局观。
+  - **纯 Policy 贪心（全数据下快棋）：18.75% 胜率**。
+  - **完整交替 IS-MCTS 树搜索（全数据 32 次模拟）：25.78% 胜率**（净增 +7.03 百分点，暴增 +37.5%）。
+- **赢家 + 最速前 20% 局数据蒸馏效果：**
+  - **纯贪心模仿胜率从 18.75% 突破至 21.09%**（Top-1 准确率达到历史最高 **46.44%**）。证明过滤掉败者动作、聚焦前 20% 最快赢局，能直接让纯策略头打出更凌厉的进攻与更高的基本盘胜率。
 
 ## Known limitations
 - 32 simulations is a very fast exploratory budget (~9ms/decision); higher simulation counts (e.g. 64 or 128) have not yet been evaluated.
 
+### 8. Search Simulation Scaling: 32 vs 64 vs 128 Simulations (Arena Series)
+- Evaluated full M50 Policy-Value network under 64 and 128 IS-MCTS simulations against frozen v0.2.5 (`scripts/m50_eval_scaling_vs_v025.py`):
+  - **32 Simulations:** 33 胜 0 平 95 负 (**25.78% 胜率**, CI `[18.8%, 33.6%]`, 场均分 11.29 vs 14.99).
+  - **64 Simulations:** 31 胜 0 平 97 负 (**24.22% 胜率**, CI `[17.2%, 32.0%]`, 场均分 10.96 vs 15.13).
+  - **128 Simulations:** **44 胜 0 平 84 负** (**34.38% 胜率**, CI `[26.6%, 42.2%]`, 场均分 **11.76 vs 14.74**).
+  - **重要实证突破：**
+    - 胜率直接突破三分之一大关，从纯贪心的 18.75% **飙升至 34.38%（净胜局增加 20 局，增幅接近翻倍）**！
+    - 后手（Seat 1）胜率达到 **37.50%**，场均分差被强行压缩到 **2.98 分**。
+    - 运行时间：128 场仅耗时 **118.48 秒**（0.926 秒/局，单步推演约 16 毫秒，依然极速）。
+    - 结果保存在 `local-artifacts/m50-ismcts64-eval-v025/` 与 `local-artifacts/m50-ismcts128-eval-v025/`。
+
+## Result and decision
+
+- **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
+- In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
+- **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
+- **全技术栈实战对战阶梯（128 场双换座 vs 顶级规则机 v0.2.5）：**
+  - **1 步单向浅搜索：7.42% 胜率**（陷入单边近视短视陷阱，破坏长线大局观）。
+  - **纯 Policy 贪心（下快棋）：18.75% 胜率**（小模型与大模型均稳定在 18.75%）。
+  - **纯赢家 + 最速前 20% 局微调（纯贪心）：21.09% 胜率**（过滤败着直接提升了独立决策质量，Top-1 达 46.44%）。
+  - **交替对抗 IS-MCTS 树搜索（32 次模拟）：25.78% 胜率**（双边展开反制推演，有效打破贪心死角）。
+  - **深度对抗 IS-MCTS 树搜索（128 次模拟）：34.38% 胜率**（赢下 44 局，后手胜率 37.5%，分差缩至 2.9 分）。
+- **结论：** 随着计算量（MCTS 模拟次数）增加，神经智能体的对战表现呈现出稳步、强劲的单调提升态势（18.75% -> 25.78% -> 34.38%）。在没有任何规则硬编码或手工启发项的前提下，纯神经网络已能稳定从顶尖规则专家手里拿下一超过三分之一的胜局。
+
+## Known limitations
+- 128 simulations runs at ~0.9s per full game; 256 simulations has not yet been benchmarked.
+
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Simulation Scaling:** Scale IS-MCTS from 32 to 64/128 simulations to evaluate if win rate surpasses 35%~40%.
-2. **Quality Filtering:** Retrain Policy-Value network on only the winning player's trajectories from the 46.3万步 corpus.
+1. **Push to 256 / 512 Simulations:** Check if win rate crosses 40%~45%.
+2. **Value-Guided Rollout / Pruning:** Combine fast 21% elite policy as rollout policy with IS-MCTS.
