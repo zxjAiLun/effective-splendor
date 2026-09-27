@@ -48,7 +48,8 @@ CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 #   9_255_999..9_256_127  S4 v0.2.6 — CONSUMED
 #   9_256_999..9_257_127  S4 v0.2.7 — CONSUMED
 #   9_257_999..9_258_127  S4 v0.2.8 — CONSUMED
-#   9_258_999..9_259_127  S4 v0.2.9 — RESERVED (one frozen 128-block pilot)
+#   9_258_999..9_259_127  S4 v0.2.9 — CONSUMED
+#   9_300_000..9_304_999  S4/M50 v0.2.9 5000-game self-play dataset — RESERVED
 
 # Frozen scanned ranges (start, end_inclusive, label).
 # Single-seed ranges are (s, s).
@@ -85,6 +86,7 @@ REGISTRY: list[tuple[int, int, str]] = [
     (9_256_999, 9_257_127, "s4-v027-pilot-smoke-and-matches"),
     (9_257_999, 9_258_127, "s4-v028-pilot-smoke-and-matches"),
     (9_258_999, 9_259_127, "s4-v029-pilot-smoke-and-matches"),
+    (9_300_000, 9_304_999, "m50-v029-selfplay-5k"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),
