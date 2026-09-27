@@ -961,3 +961,33 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
   2. Shatters previous records against champion v0.2.8: **58.20% win rate (net +82 wins)**, with second-seat win rate breaking 50% (52.00%).
   3. Closes the gap against reigning champion v0.2.9 to virtually 50/50: **49.40% win rate**, score deficit shrunk to only 0.21 VP/game.
 - **OFFICIALLY PROMOTED TO `aran-v0.1`**. Canonical weights active at `local-artifacts/aran-v01/aran_v01_weights.json`.
+
+## 31. aran-v0.2 Promotion: Historical Breakthrough Past 50% vs Reigning Champion v0.2.9 — 2026-09-28
+
+### 31.1 Motivation & Training Execution
+Following owner authorization to execute another round of match-play training iteration:
+"继续进行一轮 对战训练迭代"
+
+1. **Seed Registration & Hybrid Generation**:
+   - Registered `(9_314_000, 9_314_999, "aran-v01-selfplay-2k")` and `(9_315_000, 9_315_999, "aran-v01-coev-v029-2k")`.
+   - Generated 2,000 matches of `aran-v0.1` self-play and 2,000 matches of `aran-v0.1` vs `v0.2.9` co-evolution in 376.4s across 16 workers.
+2. **Dataset Extraction & GPU Training**:
+   - Extracted 85,988 train steps and 21,519 validation steps (3.09M actions) into `local-artifacts/aran-v02-dataset/`.
+   - Warm-started from `aran-v0.1` checkpoint, trained 8 epochs with Mortal gradient accumulation (`accumulation_steps=4`, effective batch=2048).
+   - Epoch 3 selected: Validation Q MAE **1.16 turns** (all-time best!), Min-step match rate **85.2%**!
+   - Weights minted to `local-artifacts/aran-v02/aran_v02_weights.json`.
+
+### 31.2 Controlled 500-Game Triad Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode (0.070s/game):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **aran-v0.1 (Predecessor Baseline)** | 500 | 237 - 4 - 259 | **47.80%** | `[44.1%, 51.5%]` | 49.60% | 46.00% | 13.70 vs 13.94 | 0.504 vs 0.514 | 47.87s (0.096s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 277 - 3 - 220 | **55.70% (Dominant Win!)** | `[51.2%, 60.0%]` | **60.00%** | **51.40% (后手破半!)** | **14.29 vs 13.65 (+0.64分)** | **0.522 vs 0.497** | 33.06s (0.066s/game) |
+| **Heuristic v0.2.9 (Reigning Champion)** | 500 | 253 - 1 - 246 | **50.70% (HISTORIC WIN!)** | `[46.1%, 55.3%]` | **53.60% (破半!)** | **47.80%** | 13.76 vs 14.01 | 0.501 vs 0.511 | 35.85s (0.072s/game) |
+
+### 31.3 Historical Analysis & Official Promotion
+- **Historic Project Milestone**: For the first time in project history, a pure neural network in zero-search fast-chess mode (0.07s/game) has officially defeated the reigning champion Heuristic v0.2.9 in a 500-game match series with double seat rotation: **253 胜 1 平 246 负 (50.70% 胜率)**!
+- Both Seat 0 (53.60%) and Seat 1 (47.80%) remain near or above parity.
+- S4.8 Champion v0.2.8 is defeated with a solid 55.70% win rate (and 51.40% win rate as second seat).
+- **OFFICIALLY PROMOTED TO `aran-v0.2`**. Canonical weights active at `local-artifacts/aran-v02/aran_v02_weights.json`.

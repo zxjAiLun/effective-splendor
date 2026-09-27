@@ -104,14 +104,14 @@ def run_one_game(task: tuple) -> dict:
     }
 
 
-def generate_batch(mode: str, seed_start: int, count: int, out_dir: Path, workers: int = 16):
+def generate_batch(mode: str, seed_start: int, count: int, out_dir: Path, weights_path: Path, workers: int = 16):
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\n{'='*70}\nGenerating {mode.upper()}: seeds {seed_start}..{seed_start + count - 1} ({count * 2} games)\nWorkers: {workers} | Target Dir: {out_dir}\n{'='*70}")
+    print(f"\n{'='*70}\nGenerating {mode.upper()}: seeds {seed_start}..{seed_start + count - 1} ({count * 2} games)\nWorkers: {workers} | Weights: {weights_path.name} | Target Dir: {out_dir}\n{'='*70}")
 
     tasks = []
     for seed in range(seed_start, seed_start + count):
         for s in (0, 1):
-            tasks.append((mode, seed, s, out_dir, str(CANDIDATE_EXE), str(ARAN_V0_WEIGHTS), str(V029_EXE)))
+            tasks.append((mode, seed, s, out_dir, str(CANDIDATE_EXE), str(weights_path), str(V029_EXE)))
 
     t_start = time.perf_counter()
     completed = 0
@@ -135,33 +135,42 @@ def generate_batch(mode: str, seed_start: int, count: int, out_dir: Path, worker
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Hybrid Training Corpus for aran-v0.1")
+    parser = argparse.ArgumentParser(description="Generate Hybrid Training Corpus for aran")
     parser.add_argument("--workers", type=int, default=min(os.cpu_count() or 16, 16))
+    parser.add_argument("--weights", type=str, default=str(ARAN_V0_WEIGHTS))
+    parser.add_argument("--out-dir", type=str, default=str(BASE_OUT_DIR))
+    parser.add_argument("--selfplay-start", type=int, default=9_312_000)
+    parser.add_argument("--coev-start", type=int, default=9_313_000)
+    parser.add_argument("--count", type=int, default=1000)
     parser.add_argument("--skip-selfplay", action="store_true")
     parser.add_argument("--skip-coev", action="store_true")
     args = parser.parse_args()
 
-    BASE_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_base = Path(args.out_dir)
+    out_base.mkdir(parents=True, exist_ok=True)
+    weights_path = Path(args.weights)
 
     if not args.skip_selfplay:
         generate_batch(
             mode="selfplay",
-            seed_start=9_312_000,
-            count=1000,
-            out_dir=BASE_OUT_DIR / "selfplay",
+            seed_start=args.selfplay_start,
+            count=args.count,
+            out_dir=out_base / "selfplay",
+            weights_path=weights_path,
             workers=args.workers,
         )
 
     if not args.skip_coev:
         generate_batch(
             mode="coev",
-            seed_start=9_313_000,
-            count=1000,
-            out_dir=BASE_OUT_DIR / "coev",
+            seed_start=args.coev_start,
+            count=args.count,
+            out_dir=out_base / "coev",
+            weights_path=weights_path,
             workers=args.workers,
         )
 
-    print("All 4,000 matches generated successfully!")
+    print("All matches generated successfully!")
 
 
 if __name__ == "__main__":
