@@ -357,6 +357,8 @@ def train_steps_network(
 
 def main():
     parser = argparse.ArgumentParser(description="M50 Policy-Value-Steps Network Training")
+    parser.add_argument("--data-dir", type=str, default=str(DATA_DIR))
+    parser.add_argument("--out-dir", type=str, default=str(RUN_DIR))
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -364,6 +366,8 @@ def main():
     args = parser.parse_args()
 
     train_steps_network(
+        data_dir=Path(args.data_dir),
+        out_dir=Path(args.out_dir),
         pretrained_backbone=Path(args.pretrained) if args.pretrained else None,
         epochs=args.epochs,
         batch_size=args.batch_size,

@@ -279,23 +279,52 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - **场均得分达到历史最高峰值：M50 11.85 分** vs v0.2.8 14.98 分 (较旧版大幅提升近 1.6 分，全场紧咬对手！)。
     - Runtime: 113.75s for 128 games (0.89s / game).
 
+### 14. Pure v0.2.9 Self-Play Training (5,000 Games / 276k Steps) and Direct Evaluation vs v0.2.9 Champion
+- Following owner direction ("你看一下现在模型需要哪种数据进行训练 现在0.2.9的实力已经还可以了，以及我需要你统计的不仅是局均得分 并且需要添加每一步平均得分这一统计"):
+  - Upgraded arena evaluation scripts to track both **每回合平均得分 (VP / Turn)** and **每步平均得分 (VP / Completed Ply)** alongside total game score.
+  - Ingested 5,000 games of pure v0.2.9 self-play (`local-artifacts/m50-v029-selfplay-5k/games`), extracting 276,738 steps into `local-artifacts/m50-v029-dataset-v1/` (Train 221,189 steps, Val 55,549 steps).
+  - Trained `PolicyValueStepsNet` on v0.2.9 data for 10 epochs (55.34s) with steps-to-15 guidance:
+    - **Policy Top-1 Accuracy broke through the 50% barrier: 51.86%** (highest recorded in project history, up from 41.8%~45.0% on mixed corpora)!
+    - **Steps-to-15 MAE dropped to 2.92 turns** (down below 3 turns error on 20-turn games)!
+  - Head-to-Head 128 Games vs v0.2.9 Champion Heuristic (`scripts/m50_eval_v029_trained.py`):
+    1. **M50 IS-MCTS (128 sims x depth 6) vs v0.2.9:**
+       - **W - T - L:** **45 胜 1 平 82 负** (**35.55% 胜率**, 95% CI `[28.1%, 43.0%]`).
+       - **Seat 0 (先手): 33.59% | Seat 1 (后手): 37.50%**.
+       - **局均得分:** M50 **11.79 分** vs v0.2.9 **14.78 分**.
+       - **每回合平均得分 (VP/Turn):** M50 **0.421 分/回合** vs v0.2.9 **0.533 分/回合**.
+       - **每步平均得分 (VP/Ply):** M50 **0.211 分/步** vs v0.2.9 **0.267 分/步**.
+       - Total time: 110.50s (0.86s / game).
+    2. **M50 Pure Greedy vs v0.2.9:**
+       - **W - T - L:** **23 胜 0 平 105 负** (**17.97% 胜率**).
+       - **局均得分:** M50 **10.66 分** vs v0.2.9 **15.26 分**.
+       - **每回合平均得分 (VP/Turn):** M50 **0.377 分/回合** vs v0.2.9 **0.546 分/回合**.
+       - **每步平均得分 (VP/Ply):** M50 **0.188 分/步** vs v0.2.9 **0.273 分/步**.
+  - **核心实证结论：**
+    - 面对历史上最强、消除了开局盲留大卡漏洞的王者 v0.2.9，基于 v0.2.9 数据训练的 M50 神经搜索网络**稳定砍下 35.55% 胜率（赢下 45 局，平 1 局）**！
+    - 单位造分速率清晰揭示了胜负差距：M50 在 128 模拟下的出分速率为 **0.421 分/回合**，而顶尖规则机为 **0.533 分/回合**。这微小的 ~0.11 分/回合差距正是终局 3 分之差的直观来源。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
 - **15 分步数多任务网络（Speed-to-15 Guidance）：**
-  - 在 Loss 中加入真实到 15 分的剩余步数回归后，网络表征直接对齐拿分速度，**到 15 分剩余步数的预测平均绝对误差仅 3.64 回合**，胜率预测准确率刷新至 **64.5%**！
-  - 对战最新冠军 v0.2.8 实测：后手胜率突破 **42.19%**，场均得分达到历史最高的 **11.85 分**，彻底摆脱了无分拖沓。
+  - 在 Loss 中加入真实到 15 分的剩余步数回归后，网络表征直接对齐拿分速度，**到 15 分剩余步数的预测平均绝对误差仅 2.92~3.64 回合**，胜率预测准确率刷新至 **64.5%**！
+- **v0.2.9 自对战专精训练（5,000 局 / 27.6 万步）：**
+  - 策略 Top-1 准确率冲破 **51.86%**（历史最高记录）。
+  - 对战历史最强王者 v0.2.9 实测斩获 **35.55% 胜率**（45 胜 1 平 82 负），每回合得分速率提升至 **0.421 VP/Turn**。
 - **面对顶尖规则强机的全面实战战报（128 场双换座）：**
   - **vs v0.2.5 (上一代基准强机)**：
     - 纯 Policy 贪心：18.75% 胜率
     - IS-MCTS (128 模拟 x 深度 6)：**37.50% 胜率**（赢下 48 局）
-  - **vs v0.2.8 (最新全胜冠军强机)**：
+  - **vs v0.2.8 (前代全胜强机)**：
     - 纯 Policy 贪心：18.75% 胜率
     - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（先手 40.6%）
     - 步数引导 IS-MCTS (128 模拟 x 深度 6)：**35.55% 胜率**（后手 42.2%，场均分达 11.85 分）
-- **结论：** 纯神经网络 + IS-MCTS 树搜索无论面对哪一代规则专家，都稳定具备 **36% ~ 38% 的实战胜率**。
+  - **vs v0.2.9 (历史最强 S4 王者)**：
+    - 纯 Policy 贪心：17.97% 胜率
+    - IS-MCTS (128 模拟 x 深度 6)：**35.55% 胜率**（45 胜 1 平，分差仅 2.99 分）
+- **结论：** 纯神经网络 + IS-MCTS 树搜索面对任何一代顶尖规则强机，稳定具备 **35% ~ 38% 的实战胜率**。
 
 ## Known limitations
 - Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
@@ -303,5 +332,5 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Push to 256 / 512 Simulations on v0.2.8:** Check if win rate crosses 40%~45%.
-2. **Self-Play Iteration (AlphaZero):** Use the 37% agent to generate new high-level self-play games.
+1. **Push to 256 / 512 Simulations on v0.2.9:** Check if win rate crosses 40%~45%.
+2. **Self-Play Iteration (AlphaZero):** Use the 35.5% agent to generate new high-level self-play games.
