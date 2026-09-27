@@ -28,8 +28,8 @@ pub use heuristic::{
     HEURISTIC_AGENT_VERSION,
 };
 pub use heuristic_v02::{
-    heuristic_v02_term_scores, heuristic_v02_term_scores_with_route, HeuristicAgentPolicyV02,
-    HeuristicV02Terms, MidLateRoute, HEURISTIC_V02_AGENT_NAME, HEURISTIC_V02_AGENT_VERSION,
+    heuristic_v02_term_scores, HeuristicAgentPolicyV02, HeuristicV02Terms,
+    HEURISTIC_V02_AGENT_NAME, HEURISTIC_V02_AGENT_VERSION,
 };
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
 pub use runtime::{run_agent, AgentIdentity};

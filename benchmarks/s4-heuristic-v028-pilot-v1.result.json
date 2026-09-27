@@ -1,0 +1,63 @@
+{
+  "format": "effective-splendor-s4-heuristic-v028-pilot-result",
+  "version": 1,
+  "status": "EXPLORATORY_PILOT_ONLY",
+  "contract": "benchmarks/s4-heuristic-v028-pilot-v1.config.json",
+  "config_sha256": "6fb7962432f851df4ea8293da41ac2b21240fae22a0b589d6644e29a6c12d34b",
+  "candidate_binary_sha256": "76c154ff0ac32d9c9a1f51c38787b88548743276495ee346a262d9d51affb876",
+  "reference_binary_sha256": "898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937",
+  "freeze_sha256": "84183aa698d1f3720cb67ce32a0cab67715786223e954cec4e264430fd8236e3",
+  "manifest": "local-artifacts/s4-heuristic-v028-pilot/manifest.json",
+  "manifest_sha256": "4c36d695ae3422989dd77565198a4cea53c3d5991858e361dc3867506ee82f40",
+  "matched_game_seeds": 128,
+  "completed_and_verified_matches": 768,
+  "aborts": 0,
+  "pairings": [
+    {
+      "opponent": "heuristic-v025",
+      "matches": 256,
+      "wins": 131,
+      "ties": 4,
+      "losses": 121,
+      "center_bps": 5195.3125,
+      "ci_95_bps": [
+        4882.8125,
+        5507.8125
+      ],
+      "exploratory_verdict": "UNRESOLVED",
+      "mean_plies": 56.0,
+      "total_match_wall_seconds": 48.973
+    },
+    {
+      "opponent": "heuristic-v01",
+      "matches": 256,
+      "wins": 169,
+      "ties": 0,
+      "losses": 87,
+      "center_bps": 6601.5625,
+      "ci_95_bps": [
+        6054.6875,
+        7148.4375
+      ],
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 56.296875,
+      "total_match_wall_seconds": 45.969
+    },
+    {
+      "opponent": "s3-rollout",
+      "matches": 256,
+      "wins": 139,
+      "ties": 2,
+      "losses": 115,
+      "center_bps": 5468.75,
+      "ci_95_bps": [
+        4824.21875,
+        6113.28125
+      ],
+      "exploratory_verdict": "UNRESOLVED",
+      "mean_plies": 57.80078125,
+      "total_match_wall_seconds": 200.417
+    }
+  ],
+  "limitations": "128 seed blocks per opponent; stateless valuation calibration with single noble activation and quadratic VP efficiency; marginal exploratory CIs, not a promotion or equivalence test; game-wall is not per-decision latency"
+}

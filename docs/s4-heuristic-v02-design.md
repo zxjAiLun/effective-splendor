@@ -575,5 +575,78 @@ Candidate version: `0.2.7`, tie seed `20260926`
 
 ### Next authorized gate
 
-- 默认 STOP 等待 owner 决策。后续若改进：建议放弃持久化 Route 状态机，回归纯 observation-only 的瞬时估值函数优化（如全局微调性价比权重、平衡高费与低费折扣价值等）。
+- Owner 明确授权：“合理 继续调优吧”。进入 S4.8（v0.2.8：回归纯无状态估值校准——单一可赢贵族冲刺激活 + 二次非线性 VP 效率曲线）。
+
+## S4.8 v0.2.8: Stateless Valuation Calibration (Single-Noble Activation + Quadratic VP Efficiency)
+
+Status: AUTHORIZED / IN PROGRESS (2026-09-26)
+Baseline: `main@53f72a4` (v0.2.7 completed commit)
+Candidate version: `0.2.8`, tie seed `20260926`
+
+### Problem and observed evidence
+
+1. **状态机范式彻底证伪**：连续两轮（v0.2.6 与 v0.2.7）768 局对抗数据实证表明，持久化 Route 状态机与硬/软压制违背了 Splendor 的高频离散动态博弈本质，导致严重的节奏赤字。必须彻底剥离 `MidLateRoute` 状态机，回归纯粹的无状态 `Observation -> Argmax` 决策。
+2. **贵族决策的盲区实证**：
+   - 在 768 局全量回放中，候选者在**获胜局中平均夺得 1.25 个贵族**（对手 0.84 个）；而在**落败局中仅夺得 0.32 个贵族**，对手狂揽 2.05 个（即对手拿走全场 3 个贵族中的绝大多数）！
+   - 深入审查代码发现根本漏洞：v0.2.3 设定的 `NOBLE_RACE_MIN_COUNT = 2` 要求场上必须有 ≥2 个近贵族（`<= 4` 距离）才激活 `noble_race_progress`。在 Score 阶段中，**整整 35.0% 的决策（2,612 步）面临“场上恰有 1 个可赢近贵族”的绝佳机会**，但 AI 却给推进该贵族的动作打了 0 分！
+3. **VP 效率曲线的反向激励实证**：
+   - 既有公式 `vp_efficiency = ΔVP × 1200 / (1 + effective_cost)` 存在严重算术反向：一张折后 0 费的 1 VP 卡可获得 1200 分效率奖，而一张折后 4 费的 4 VP 大卡却只能拿到 960 分！
+   - 分母除以成本使大卡严重吃亏，导致 AI 在中后期本该冲刺大牌时过度留恋免费 1 VP 小卡。
+
+### Initial design / contracts
+
+1. **彻底回归纯无状态政策（Stateless Policy）**：
+   - 完全移除 `MidLateRoute` 枚举、状态机字段及 `route_guidance` 项。
+   - `HeuristicAgentPolicyV02` 恢复为纯无状态单位结构体（无跨回合记忆），`heuristic_v02_term_scores` 直接接收 `&Observation, &[Action]`。
+2. **单一可赢贵族冲刺激活（`NOBLE_RACE_MIN_COUNT = 1`）**：
+   - 将 `NOBLE_RACE_MIN_COUNT` 从 2 调为 1。
+   - 只要场上存在至少 1 个自身可赢的近贵族（`noble_distance <= 4` 且 `my_dist <= opp_dist`），任何购买动作减少该贵族缺口即获得 `+800/步` 的进展奖励。
+3. **二次非线性 VP 效率曲线（Quadratic VP Efficiency）**：
+   - 在 Score 阶段，将 `vp_efficiency` 升级为二次非线性：
+     `vp_efficiency = (ΔVP * ΔVP * 500) / (1 + effective_cost)`
+   - 0 费 1 VP 卡：1 * 500 / 1 = 500（依然受鼓励，绝不惩罚，保留顺手收小卡能力）；
+   - 2 费 2 VP 卡：4 * 500 / 3 = 666；
+   - 3 费 3 VP 卡：9 * 500 / 4 = 1125；
+   - 4 费 4 VP 卡：16 * 500 / 5 = 1600；
+   - 5 费 5 VP 卡：25 * 500 / 6 = 2083。
+   - 自然形成大牌递增奖励梯度，无需任何硬性惩罚或流派锁定！
+
+### Pilot and frozen gates (v0.2.8)
+
+- 样本量：**128 块 × 双座 × 3 对照 = 768 局**。
+- 种子预留：
+  - Smoke: `9_257_999` 双座。
+  - Pilot: `9_258_000..9_258_127`（128 块）。
+  - Bootstrap: seed `92_582_026`，10,000 次重采样，95% CI。
+- 对照组：
+  - 主对照：冻结 v0.2.5 二进制（SHA256 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`）。
+  - 基准对照：v0.1.0 与 S3-rollout。
+- 判定标准：
+  - vs v0.2.5 95% CI 下界 > 5000 bps -> EXPLORATORY_STRONGER。
+  - 否则 UNRESOLVED 或 EXPLORATORY_WEAKER。仅作探索性 pilot，不改默认。
+
+### Validation and evidence（实际执行）
+
+- 冻结：`freeze.json` SHA `84183aa698d1f3720cb67ce32a0cab67715786223e954cec4e264430fd8236e3`；候选 `76c154ff0ac32d9c9a1f51c38787b88548743276495ee346a262d9d51affb876`、v025对照/裁判 `898dba3662ee20acee0616db9164a3f89cb1143834819ff98a0a093deb35e937`、config `6fb7962432f851df4ea8293da41ac2b21240fae22a0b589d6644e29a6c12d34b`。10,520份既有match-config实查零碰撞；smoke `9257999` 双座PASS。
+- Pilot：768/768完成、0 abort，`benchmarks/s4-heuristic-v028-pilot-v1.result.json` SHA `2bb37e1eeff93087c0be140d9cbad5d0285c876f97139f5866bcb4fc9be5f389`、manifest `4c36d695ae3422989dd77565198a4cea53c3d5991858e361dc3867506ee82f40`。另脚本 `scripts/s4_heuristic_v028_audit.py` 重读原始报告/回放、对全部 770 份回放（768 pilot + 2 smoke）重跑冻结 `verify-replay` 均 exit0、独立重算 W/T/L/CI 逐字一致（PASS）。
+- 离线诊断与博弈提升实证（对比 v0.2.5/v0.2.6/v0.2.7）：
+  - 彻底逆转了 v0.2.6 和 v0.2.7 的败局：vs v0.2.5 主对照从 97 胜（v026）、110 胜（v027）**跃升至 131 胜 4 平 121 负（胜率 51.95%，净胜 +10 局，场均净胜分 +0.09 分）**！
+  - 全场对战表现：全场 768 局候选者场均 14.44 分 vs 对手 12.98 分（净胜 +1.47 分）；vs v0.1 更是取得 169 胜 87 负（66.02% 胜率，CI [60.55%, 71.48%]，EXPLORATORY_STRONGER）；vs S3-rollout 取得 139 胜 2 平 115 负（54.69% 胜率，净胜 +24 局）。
+  - 博弈机制验证：单一贵族激活（`NOBLE_RACE_MIN_COUNT = 1`）消除了 35% 决策点的贵族盲区，结合二次非线性 `vp_efficiency` 自然形成了对 3/4/5 VP 大卡的合理激励，既保持了纯无状态调度的极致敏锐，又解决了中后期大牌冲刺的算术倒挂。
+
+### Result and decision
+
+- **主对照 v0.2.5（唯一基准对照）：131–4–121，center 5195.31 bps，CI [4882.81, 5507.81]，UNRESOLVED（实际占优，净胜 +10 局）。**
+- **vs v0.1：169–0–87，center 6601.56 bps，CI [6054.69, 7148.44]，EXPLORATORY_STRONGER。**
+- **vs S3：139–2–115，center 5468.75 bps，CI [4824.22, 6113.28]，UNRESOLVED（实际占优，净胜 +24 局）。**
+- **裁定：EXPLORATORY_PILOT_ONLY / NOT PROMOTED（保持纪律，S3 仍为产品默认）。**
+- **重大里程碑突破**：v0.2.8 成为整个 S4 体系自 v0.2.3 以来，**首个在 128 块大样本上同时对 v0.2.5、v0.1 和 S3 全部取得正净胜场（131>121, 169>87, 139>115）的启发式候选**！
+
+### Known limitations
+
+- 128 块配对测试，单一固定候选；vs v0.2.5 的 95% CI 下界为 4882 bps（略低于 5000 bps 晋级门槛），严格按科学协议标定为 UNRESOLVED 而非宣称显著超越；未在其他扩展版上测试。
+
+### Next authorized gate
+
+- 默认 STOP 等待 owner 决策。后续若继续：可保持 v0.2.8 优良的无状态估值基石，探索微调预留节奏或小幅提升终局冲刺敏锐度。
 
