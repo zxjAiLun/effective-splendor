@@ -653,3 +653,38 @@ Recommended order, requiring implementation authorization:
    compare actual new weights to parent at equal budget on untouched paired seeds,
    with full unified metrics. Expansion to 5k/10k games is conditional on evidence,
    not the automatic next step. The promotion gate remains separate.
+
+### 22.7 Subsequent local changes observed during the owner's fact check
+
+The §22 findings above describe the already completed Gen2/Gen3 evaluations and
+older tensor contents, **not** a claim that the same bug remains in every current
+file. At `main@116acb4`, concurrent uncommitted source edits and replaced local
+tensors were observed, without changing them in this review:
+
+- The current extractor checks prestige **after applying** each recorded action.
+  A read-only alignment of all 276,738 rows of the current
+  `local-artifacts/m50-v029-dataset-v1` with its 5,000 source replays found all
+  **5,671 / 5,671** observed crossings to 15 now labeled `0.0` (previously
+  5,657 were `2.0` and 14 were `1.0`). Example seed `9300000`, ply 50,
+  13→17 VP, is now `0.0`. These are new tensors under the same local path;
+  the §22.2 old values SHA256s refer to the earlier data, not the current files.
+  Whether `0` or `1` is the intended pre-action definition of remaining turns,
+  and the treatment of non-crossers/non-main actions, still require semantic
+  confirmation. No new model evaluation is implied by this tensor check.
+- Current uncommitted `m50_agent_command.rs` mixes `0.75 * win_value +
+  0.25 * clamp(1 - predicted_steps / 30)` into search leaf values, and uses
+  the same mixture for one-ply lookahead. Thus the earlier statement that the
+  speed head has **no online caller** applies to completed Gen2/Gen3 source
+  and saved evaluations, **not** current working source. Greedy still selects
+  actions from policy logits. No evaluation of the altered online code was
+  completed as part of this review.
+- `local-artifacts/m50-v029-dim256-fixed-run` now contains a different trained
+  checkpoint from the original 256-dim run (SHA256 `6fda1c944ff328735d2bdbd1ec3416fb19fb8933879f459476e61e13aed2eb70`
+  vs `d860d86f0e09f6307554f3862b8c85ec516eca376bab718bb7ff9d5e52e677f4`).
+  Its report selects epoch 13, validation Top-1 52.23%; the observed new
+  `m50-v029-fixed-ismcts256-d6-vs-v029/` directory had no summary at inspection.
+  **Trained-new-weights exists; competitive effect not yet known.** Gen2/Gen3
+  unchanged-parent identity and 128/128 action equality remain historical fact.
+
+This paragraph records facts about concurrently changing local artifacts, not
+acceptance of their uncommitted source changes or a new training request.
