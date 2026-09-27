@@ -176,7 +176,8 @@ def evaluate(
 
             loss_pi = (logsumexp - chosen_logits).mean()
             loss_v = F.binary_cross_entropy_with_logits(val_logits, won)
-            steps_mae = (pred_steps - steps_15).abs().mean()
+            pred_q_chosen = pred_steps - chosen_logits
+            steps_mae = (pred_q_chosen - steps_15).abs().mean()
 
             is_top1 = (chosen_logits >= max_val - 1e-5).float().mean()
             val_pred_win = (val_logits > 0.0).float()
@@ -290,10 +291,15 @@ def train_steps_network(
             # 2. Value loss: BCE
             loss_v = F.binary_cross_entropy_with_logits(val_logits, won)
 
-            # 3. Steps-to-15 loss: Smooth L1 on normalized steps
-            pred_steps_norm = pred_steps / STEPS_NORM
+            # 3. Action-Conditioned Q-Steps Loss & State V-Steps Loss
             target_steps_norm = steps_15 / STEPS_NORM
-            loss_steps = F.smooth_l1_loss(pred_steps_norm, target_steps_norm)
+            pred_v_norm = pred_steps / STEPS_NORM
+            pred_q_chosen = pred_steps - chosen_logits
+            pred_q_norm = pred_q_chosen / STEPS_NORM
+
+            loss_v_steps = F.smooth_l1_loss(pred_v_norm, target_steps_norm)
+            loss_q_steps = F.smooth_l1_loss(pred_q_norm, target_steps_norm)
+            loss_steps = 0.5 * loss_v_steps + 0.5 * loss_q_steps
 
             total_loss = loss_pi + steps_weight * loss_steps + value_weight * loss_v
             total_loss.backward()
@@ -302,7 +308,7 @@ def train_steps_network(
             optimizer.step()
 
             is_top1 = (chosen_logits >= max_val - 1e-5).float().mean()
-            steps_mae = (pred_steps - steps_15).abs().mean()
+            steps_mae = (pred_q_chosen - steps_15).abs().mean()
 
             b_len = len(batch_idx)
             train_loss_pi_sum += loss_pi.item() * b_len

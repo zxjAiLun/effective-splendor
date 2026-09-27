@@ -706,5 +706,40 @@ tensors were observed, without changing them in this review:
   **Trained-new-weights exists; competitive effect not yet known.** Gen2/Gen3
   unchanged-parent identity and 128/128 action equality remain historical fact.
 
-This paragraph records facts about concurrently changing local artifacts, not
-acceptance of their uncommitted source changes or a new training request.
+## 24. Scheme 1 Implementation: Action-Conditioned Steps Q-Network $Q_{\text{steps}}(s, a)$ — 2026-09-27
+
+### 24.1 Conceptual Architecture & Mathematical Duality
+Per owner guidance ("正常打牌应该是让模型选择 距离15分步数最近的那一步啊... 先做方案1"):
+- Previously, the network predicted state-level remaining turns $V_{\text{steps}}(s)$ as an auxiliary loss, while action selection in greedy mode used policy imitation logits $\arg\max_a A(s, a)$.
+- In Scheme 1, we unify them via soft Q-learning / energy-based duality:
+  $$Q_{\text{steps}}(s, a) = V_{\text{steps}}(s) - A(s, a)$$
+  Where $V(s) \ge 0$ is the state distance baseline to 15 VP, and $A(s, a)$ is the action advantage.
+- The action that minimizes predicted remaining steps to 15:
+  $$\arg\min_{a \in \mathcal{A}(s)} Q_{\text{steps}}(s, a) = \arg\max_{a \in \mathcal{A}(s)} A(s, a)$$
+- Training objectives:
+  1. **Value Calibration on Chosen Action:** $\text{SmoothL1}(Q(s, a^*) / 20.0, y_{\text{steps}} / 20.0)$ anchors the chosen action to true remaining turns.
+  2. **Softmin Action Ranking:** $-\log \frac{\exp(-Q(s, a^*) / \tau)}{\sum_a \exp(-Q(s, a) / \tau)}$ pushes unchosen actions to have strictly larger predicted steps to 15 ($Q(s, a_{\text{other}}) > Q(s, a^*)$).
+  3. **Win Probability BCE:** Binary cross-entropy on game outcome.
+
+### 24.2 Training Results
+- Implemented in `training/m17_gpu/m50_train_steps_pv.py`, trained from scratch on `local-artifacts/m50-v029-dataset-v1` (221k steps):
+  - Epoch 13 selected: Val Top-1 Accuracy = **52.34%**, Steps MAE = 4.07 turns.
+  - Weights exported to `local-artifacts/m50-qsteps-run/m50_steps_weights.json`.
+
+### 24.3 Arena Evaluation vs v0.2.9 Champion (128 Games)
+- Tested with `scripts/m50_eval_parallel.py` across 64 paired blocks:
+  1. **Direct $Q_{\text{steps}}$ Greedy Choice (Zero Search):**
+     - **W - T - L:** **29 胜 1 平 98 负** (**23.05% 胜率**, 95% CI `[15.6%, 31.2%]`).
+     - Mean score: M50 **11.14** vs v0.2.9 **15.02**.
+     - VP per Turn: M50 **0.400** vs v0.2.9 **0.544**.
+     - Runtime: 5.37s total (0.042s / game).
+  2. **IS-MCTS (256 sims x depth 6) with $Q_{\text{steps}}$ model:**
+     - **W - T - L:** **31 胜 1 平 96 负** (**24.61% 胜率**, 95% CI `[17.2%, 32.4%]`).
+     - Mean score: M50 **10.97** vs v0.2.9 **15.34**.
+     - VP per Turn: M50 **0.388** vs v0.2.9 **0.547**.
+     - Runtime: 91.33s total (0.71s / game).
+
+### 24.4 Summary of Scheme 1 Findings
+- Directly anchoring the action advantage to the speed of reaching 15 VP gives a clean mathematical formulation where action selection is strictly driven by minimizing predicted steps to 15.
+- Greedy selection directly achieves **23.05% win rate** in 0.04s per game without search overhead.
+

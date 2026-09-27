@@ -360,6 +360,7 @@ impl PolicyValueEvaluatorV1 for M50PolicyWeights {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M50Mode {
     Greedy,
+    QSteps,
     Search,
     Ismcts,
 }
@@ -555,6 +556,8 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
                         mode = M50Mode::Search;
                     } else if m == "ismcts" {
                         mode = M50Mode::Ismcts;
+                    } else if m == "qsteps" || m == "q_steps" {
+                        mode = M50Mode::QSteps;
                     } else {
                         mode = M50Mode::Greedy;
                     }
