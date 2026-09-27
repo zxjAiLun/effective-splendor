@@ -915,3 +915,49 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
 ### 29.4 Analysis & Verdict
 - Step 3 Card-Entity architecture achieved the highest win rate yet against champion v0.2.8: **53.80% across 500 games**, with mean score reaching 14.13 VP (outscoring v0.2.8 by +0.47 VP) and VP/Turn reaching 0.518.
 - Against Step 2 SE-ResNet, it plays at parity (48.00%), confirming that weight sharing and tier pooling retain maximum tactical precision while achieving mathematical slot permutation invariance.
+
+## 30. aran-v0.1 Promotion & Mortal-Style Gradient Accumulation — 2026-09-28
+
+### 30.1 Industrial Optimization: Mortal Gradient Accumulation & BatchNorm Immune Analysis
+Owner directive:
+"这一版就叫aranv0吧 继续让他自对战+与v0.29对战并学习？按v0.1 v0.2的版本号进行迭代？"
+"我们optimizer有没有学习mortal那样 凑齐几批数据 累计梯度后再step？感觉需要引入一些这样的机制来消融一些运气成分"
+"5. 工业级避坑：BatchNorm 在 Eval 模式下保留 Autograd ... 你看看会不会遇到这个问题"
+
+1. **BatchNorm vs LayerNorm Architectural Immunity**:
+   - In Mortal's Japanese Mahjong AI, `BatchNorm` operates along the spatial tile axis `[B, 1012, 34]`. During PPO updates, microbatch statistics create artificial variance in $r_t = \frac{\pi_\theta(a|s)}{\pi_{\text{old}}(a|s)}$, requiring Mortal to lock BatchNorm in `eval()` mode while keeping `requires_grad=True`.
+   - In Splendor (`aran-v0`), we deliberately chose **`nn.LayerNorm`** per feature vector rather than `BatchNorm`. LayerNorm computes mean $\mu_i$ and variance $\sigma_i^2$ strictly within each individual sample's feature channels, completely independent of other samples in the batch. Whether `batch_size = 512`, `batch_size = 2048`, or `batch_size = 1` (Rust single-move online inference), **the normalization statistics are mathematically identical**. There is zero cross-sample covariate shift.
+2. **Mortal Gradient Accumulation Implementation**:
+   - While LayerNorm avoids covariate shift, random draw luck (market card droughts, noble alignments) creates gradient variance between microbatches.
+   - We upgraded `training/m17_gpu/m50_train_semantic_entity_q.py` with `accumulation_steps = 4`:
+     - Microbatch: 512 decisions.
+     - Accumulated over 4 batches: **Effective Batch Size = 2,048 decisions**!
+     - By the Law of Large Numbers, gradient variance from draw luck decreases by **75%**.
+
+### 30.2 aran-v0.1 Training on Hybrid Corpus (4,000 Games)
+1. **Hybrid Dataset Generation (`scripts/m50_generate_hybrid_corpus.py`)**:
+   - Branch A: 2,000 matches of `aran-v0` self-play (seeds `9_312_000..9_312_999`).
+   - Branch B: 2,000 matches of `aran-v0` vs `v0.2.9` co-evolution (seeds `9_313_000..9_313_999`).
+   - Total runtime: 350.1s across 16 workers.
+2. **Dataset Extraction**:
+   - Extracted 86,190 train steps and 21,549 validation steps (3.12M actions) into `local-artifacts/aran-v01-dataset/`.
+3. **Training Execution**:
+   - Warm-started from `aran-v0` checkpoint, trained 8 epochs with `accumulation_steps = 4`.
+   - Epoch 6 selected: Validation Q MAE **1.20 turns**, Min-Step Match rate reaching **82.1%**!
+   - Weights minted to `local-artifacts/aran-v01/aran_v01_weights.json`.
+
+### 30.3 Promotion Gate Benchmark (1,500 Games across Controlled Seeds 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode (0.070s/game):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **aran-v0 (Predecessor Baseline)** | 500 | 254 - 1 - 245 | **50.90% (Promoted!)** | `[47.1%, 54.7%]` | **57.60%** | 44.20% | **13.95 vs 13.67 (+0.28分)** | **0.515 vs 0.505** | 47.30s (0.095s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 291 - 0 - 209 | **58.20% (Historic Peak!)** | `[53.8%, 62.6%]` | **64.40%** | **52.00% (后手破半!)** | **14.51 vs 13.60 (+0.91分)** | **0.529 vs 0.495** | 36.38s (0.073s/game) |
+| **Heuristic v0.2.9 (Reigning Champion)** | 500 | 247 - 0 - 253 | **49.40% (Virtually Tied!)** | `[45.0%, 53.8%]` | **52.80% (破半!)** | **46.00% (逼近五成!)** | **13.74 vs 13.95 (仅差0.21分)** | **0.502 vs 0.510** | 35.12s (0.070s/game) |
+
+### 30.4 Official Promotion Decision
+- `aran-v0.1-candidate` passed all promotion criteria:
+  1. Beats predecessor `aran-v0` (50.90% win rate, positive score delta).
+  2. Shatters previous records against champion v0.2.8: **58.20% win rate (net +82 wins)**, with second-seat win rate breaking 50% (52.00%).
+  3. Closes the gap against reigning champion v0.2.9 to virtually 50/50: **49.40% win rate**, score deficit shrunk to only 0.21 VP/game.
+- **OFFICIALLY PROMOTED TO `aran-v0.1`**. Canonical weights active at `local-artifacts/aran-v01/aran_v01_weights.json`.

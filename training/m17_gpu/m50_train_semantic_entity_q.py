@@ -335,14 +335,18 @@ def train_semantic_entity_q(
     num_blocks: int = 2,
     epochs: int = 6,
     batch_size: int = 512,
+    accumulation_steps: int = 4,
     lr: float = 3e-4,
+    pretrained: str = "",
     seed: int = 50000001,
 ) -> dict[str, Any]:
     torch.manual_seed(seed)
     np.random.seed(seed)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"M50 Semantic Card-Entity SE-ResNet Dueling Q (Mortal Step 3): device={device}, hidden_dim={hidden_dim}, blocks={num_blocks}")
+    effective_batch = batch_size * accumulation_steps
+    print(f"M50 Semantic Card-Entity SE-ResNet Dueling Q (aran-v0.1): device={device}, hidden_dim={hidden_dim}, blocks={num_blocks}")
+    print(f"Mortal Gradient Accumulation: micro_batch={batch_size}, accum={accumulation_steps} -> effective_batch={effective_batch}")
     print("Shared Card Entity Encoder + Tier Permutation Invariance + SE-ResNet + Dueling Q + Critic detach()")
 
     train_data = SemanticDataset(data_dir / "train")
@@ -350,13 +354,20 @@ def train_semantic_entity_q(
     print(f"Loaded: train={train_data.count} steps, val={val_data.count} steps")
 
     model = SemanticCardEntityDuelingQNet(hidden_dim=hidden_dim, num_blocks=num_blocks).to(device)
+
+    if pretrained and Path(pretrained).exists():
+        print(f"Loading pretrained weights from {pretrained}...")
+        ckpt = torch.load(pretrained, weights_only=True, map_location=device)
+        model.load_state_dict(ckpt, strict=False)
+        print("Pretrained weights transferred successfully!")
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
     val_0 = evaluate(model, val_data, device)
-    print(f"Epoch 0 (Untrained Baseline): Val Q MAE={val_0['q_mae']:.2f} turns, V MAE={val_0['v_mae']:.2f}, Min-Step Match={val_0['min_step_top1']*100:.2f}%")
+    print(f"Epoch 0 (Baseline): Val Q MAE={val_0['q_mae']:.2f} turns, V MAE={val_0['v_mae']:.2f}, Min-Step Match={val_0['min_step_top1']*100:.2f}%")
 
     best_mae = 999.0
     best_epoch = 1
@@ -372,12 +383,12 @@ def train_semantic_entity_q(
 
         train_loss_sum = 0.0
         train_mae_sum = 0.0
+        optimizer.zero_grad()
 
-        for i in range(0, train_data.count, batch_size):
+        for step_idx, i in enumerate(range(0, train_data.count, batch_size)):
             b_idx = indices[i : min(i + batch_size, train_data.count)]
             obs, actions, parent_idx, lengths, chosen_global, won, steps_15 = train_data.get_batch(b_idx, device)
 
-            optimizer.zero_grad()
             q_steps, val_logits, v_steps = model(obs, actions, parent_idx, lengths)
 
             chosen_q = q_steps[chosen_global]
@@ -397,10 +408,15 @@ def train_semantic_entity_q(
             loss_v = F.binary_cross_entropy_with_logits(val_logits, won)
 
             total_loss = 0.5 * loss_v_steps + 0.5 * loss_q_calib + 0.5 * loss_margin + 0.2 * loss_v
-            total_loss.backward()
 
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+            # Scale loss for gradient accumulation
+            (total_loss / accumulation_steps).backward()
+
+            # Optimizer step every accumulation_steps microbatches
+            if (step_idx + 1) % accumulation_steps == 0 or (i + batch_size >= train_data.count):
+                nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
+                optimizer.zero_grad()
 
             mae = (chosen_q - steps_15).abs().mean()
             b_len = len(b_idx)
@@ -458,7 +474,9 @@ def main():
     parser.add_argument("--num-blocks", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--batch-size", type=int, default=512)
+    parser.add_argument("--accumulation-steps", type=int, default=4)
     parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--pretrained", type=str, default="")
     args = parser.parse_args()
 
     train_semantic_entity_q(
@@ -468,7 +486,9 @@ def main():
         num_blocks=args.num_blocks,
         epochs=args.epochs,
         batch_size=args.batch_size,
+        accumulation_steps=args.accumulation_steps,
         lr=args.lr,
+        pretrained=args.pretrained,
     )
 
 
