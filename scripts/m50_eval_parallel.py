@@ -36,8 +36,8 @@ def percentile(samples: list[float], fraction: float) -> float:
     return samples[low] * (1 - (pos - low)) + samples[min(low + 1, len(samples) - 1)] * (pos - low)
 
 
-def run_one_match(args: tuple[int, int, str, int, int, Path, Path, str, Path]) -> dict:
-    seed, candidate_seat, mode, sims, depth, opp_exe, out_dir, label, weights_path = args
+def run_one_match(args: tuple) -> dict:
+    seed, candidate_seat, mode, sims, depth, opp_exe, opp_args, out_dir, label, weights_path = args
     match_dir = out_dir / f"seed-{seed}" / f"r{candidate_seat}"
     match_dir.mkdir(parents=True, exist_ok=True)
     game_id = f"{label}-{seed}-r{candidate_seat}"
@@ -51,7 +51,7 @@ def run_one_match(args: tuple[int, int, str, int, int, Path, Path, str, Path]) -
         cand_args.extend(["--simulations", str(sims), "--max-depth", str(depth)])
 
     cand_agent = {"program": str(CANDIDATE_EXE), "args": cand_args}
-    opp_agent = {"program": str(opp_exe), "args": OPPONENT_ARGS}
+    opp_agent = {"program": str(opp_exe), "args": opp_args}
 
     agents = [cand_agent, opp_agent] if candidate_seat == 0 else [opp_agent, cand_agent]
     cfg = {
@@ -143,6 +143,7 @@ def run_one_match(args: tuple[int, int, str, int, int, Path, Path, str, Path]) -
 def run_evaluation_series(
     opp_exe: Path,
     opp_name: str,
+    opp_args: list[str],
     weights_path: Path,
     mode: str,
     sims: int,
@@ -150,14 +151,16 @@ def run_evaluation_series(
     workers: int,
     out_dir: Path,
     label: str,
+    seed_start: int = SEED_START,
+    seed_count: int = SEED_COUNT,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\n{'='*70}\nStarting Evaluation Series: {label}\nOpponent: {opp_name} | Mode: {mode} | Sims: {sims} | Depth: {depth}\nWorkers: {workers} | Weights: {weights_path.name}\n{'='*70}")
+    print(f"\n{'='*70}\nStarting Evaluation Series: {label}\nOpponent: {opp_name} | Mode: {mode} | Sims: {sims} | Depth: {depth}\nWorkers: {workers} | Weights: {weights_path.name}\nSeeds: {seed_start}..{seed_start + seed_count - 1} ({seed_count * 2} games)\n{'='*70}")
 
     tasks = []
-    for seed in range(SEED_START, SEED_START + SEED_COUNT):
+    for seed in range(seed_start, seed_start + seed_count):
         for candidate_seat in (0, 1):
-            tasks.append((seed, candidate_seat, mode, sims, depth, opp_exe, out_dir, label, weights_path))
+            tasks.append((seed, candidate_seat, mode, sims, depth, opp_exe, opp_args, out_dir, label, weights_path))
 
     t_start = time.perf_counter()
     rows = []
@@ -199,7 +202,7 @@ def run_evaluation_series(
     mean_plies = sum(r["plies"] for r in rows) / total_games
 
     blocks = []
-    for seed in range(SEED_START, SEED_START + SEED_COUNT):
+    for seed in range(seed_start, seed_start + seed_count):
         b0 = next(r for r in rows if r["seed"] == seed and r["candidate_seat"] == 0)
         b1 = next(r for r in rows if r["seed"] == seed and r["candidate_seat"] == 1)
         blocks.append((b0["score_bps"] + b1["score_bps"]) / 2.0)
@@ -255,17 +258,31 @@ def run_evaluation_series(
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel M50 Evaluation Runner")
-    parser.add_argument("--opponent", choices=["v029", "v028"], default="v029")
+    parser.add_argument("--opponent", choices=["v029", "v028", "predecessor"], default="v029")
+    parser.add_argument("--opp-weights", type=str, default="")
     parser.add_argument("--sims", type=int, default=512)
     parser.add_argument("--depth", type=int, default=6)
     parser.add_argument("--mode", choices=["ismcts", "greedy", "distance", "qsteps"], default="ismcts")
     parser.add_argument("--workers", type=int, default=min(os.cpu_count() or 8, 12))
     parser.add_argument("--weights", type=str, default=str(DEFAULT_WEIGHTS))
+    parser.add_argument("--seed-start", type=int, default=SEED_START)
+    parser.add_argument("--seed-count", type=int, default=SEED_COUNT)
     parser.add_argument("--out-dir", type=str, default="")
     args = parser.parse_args()
 
-    opp_exe = V029_EXE if args.opponent == "v029" else V028_EXE
-    opp_name = f"heuristic-{args.opponent}"
+    if args.opponent == "predecessor" or args.opp_weights:
+        opp_exe = CANDIDATE_EXE
+        opp_weights_path = Path(args.opp_weights) if args.opp_weights else ROOT / "local-artifacts" / "m50-semantic-q-run" / "semantic_q_weights.json"
+        opp_args = ["agent-m50-policy", "--weights", str(opp_weights_path), "--mode", args.mode]
+        opp_name = f"predecessor-{opp_weights_path.stem}"
+    elif args.opponent == "v029":
+        opp_exe = V029_EXE
+        opp_args = OPPONENT_ARGS
+        opp_name = "heuristic-v029"
+    else:
+        opp_exe = V028_EXE
+        opp_args = OPPONENT_ARGS
+        opp_name = "heuristic-v028"
 
     out_dir = Path(args.out_dir) if args.out_dir else ROOT / "local-artifacts" / f"m50-eval-parallel-{args.opponent}-sim{args.sims}"
     label = f"m50-parallel-{args.opponent}-sim{args.sims}"
@@ -273,6 +290,7 @@ def main():
     run_evaluation_series(
         opp_exe=opp_exe,
         opp_name=opp_name,
+        opp_args=opp_args,
         weights_path=Path(args.weights),
         mode=args.mode,
         sims=args.sims,
@@ -280,6 +298,8 @@ def main():
         workers=args.workers,
         out_dir=out_dir,
         label=label,
+        seed_start=args.seed_start,
+        seed_count=args.seed_count,
     )
 
 

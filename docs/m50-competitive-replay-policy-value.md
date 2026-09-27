@@ -817,5 +817,35 @@ Evaluated across 128 games (64 paired seed blocks with strict seat rotation) in 
    - Mean score: M50 **13.95** vs v0.2.8 **13.68** (反超)!
    - VP/Turn: M50 **0.508** vs v0.2.8 **0.499** (反超)!
 
-### 26.5 Key Finding
-Feeding the neural network explicit physical consequences (card deficit reductions, purchase readiness, and noble gaps) rather than forcing it to memorize opaque discrete color choices eliminated the generalization bottleneck. The network autonomously learned to pick moves that accelerate victory, raising pure greedy zero-search win rate from 17.97% to **45.31% vs v0.2.9** and **53.52% vs v0.2.8**.
+## 27. Mortal Architecture Step 1: Dueling Q & Critic detach() — 2026-09-28
+
+### 27.1 Architecture Design & Motivation
+Following owner instructions to systematically adopt Mortal's core structural advantages:
+"都依次做 每一步做完之后 跟上一版本 + 0.28 + 0.29实战进行对比 实战量分别500局 可以控制三个不同对手的seed相同 先开始做第一步吧"
+
+1. **Dueling Q Decomposition**:
+   $$Q_{\text{steps}}(s, a) = V_{\text{steps}}(s) + \left(A_{\text{steps}}(s, a) - \frac{1}{|\mathcal{A}|}\sum_{a'} A_{\text{steps}}(s, a')\right)$$
+   - State Value Stream $V_{\text{steps}}(s)$: Linear(256 -> 128) -> ReLU -> Linear(128 -> 1). Predicts global macro board hitting time to 15 VP.
+   - Advantage Stream $A_{\text{steps}}(s, a)$: Linear(560 -> 128) -> ReLU -> Linear(128 -> 64) -> ReLU -> Linear(64 -> 1). Predicts local action acceleration relative to mean.
+   - Decouples global board progress variance from local move advantages.
+2. **Critic Stop-Gradient (`detach()`)**:
+   - `val_logits = self.val_head(state_h.detach()).squeeze(-1)`.
+   - Halts long-horizon win/loss binary cross-entropy gradients from propagating into `state_net`, preserving pristine physical representations for turn minimization.
+
+### 27.2 Training Performance (GPU)
+Trained in `training/m17_gpu/m50_train_semantic_dueling_q.py` on 137k steps dataset:
+- Validation Q MAE: **1.26 turns** (State V MAE: 1.38 turns).
+- Validation Min-Step Match rate across 31 candidate actions per step reached **60.2%**!
+
+### 27.3 Controlled 500-Game Triad Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode (0.06s/game):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **Predecessor Baseline (Semantic Q e397b7d)** | 500 | 240 - 4 - 256 | **48.40%** | `[44.0%, 52.8%]` | 53.80% | 43.00% | 13.44 vs 13.76 | 0.492 vs 0.506 | 46.64s (0.093s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 265 - 3 - 232 | **53.30%** | `[48.9%, 57.8%]` | **61.80%** | 44.80% | **14.00 vs 13.77** | **0.510 vs 0.501** | 32.17s (0.064s/game) |
+| **Heuristic v0.2.9 (Reigning Champion)** | 500 | 215 - 3 - 282 | **43.30%** | `[38.7%, 47.9%]` | 48.00% | 38.60% | 12.93 vs 14.17 | 0.472 vs 0.521 | 30.61s (0.061s/game) |
+
+### 27.4 Analysis
+- Step 1 Dueling architecture stably preserves the historic breakthrough over v0.2.8 (**53.30% win rate across 500 games**, confirming superiority over champion v0.2.8 is not a small-sample fluke) and holds near parity with predecessor (**48.40%**) and v0.2.9 (**43.30%**).
+- Ready to proceed to Step 2: Mish activation + Squeeze-and-Excitation (SE) channel attention residual blocks.

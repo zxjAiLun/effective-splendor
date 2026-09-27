@@ -383,12 +383,26 @@ pub struct SemanticQWeights {
     act_ln2_w: Vec<f32>,
     act_ln2_b: Vec<f32>,
 
-    q_l1_w: Vec<Vec<f32>>,
-    q_l1_b: Vec<f32>,
-    q_l2_w: Vec<Vec<f32>>,
-    q_l2_b: Vec<f32>,
-    q_l3_w: Vec<f32>,
-    q_l3_b: f32,
+    // Standard Q-head
+    q_l1_w: Option<Vec<Vec<f32>>>,
+    q_l1_b: Option<Vec<f32>>,
+    q_l2_w: Option<Vec<Vec<f32>>>,
+    q_l2_b: Option<Vec<f32>>,
+    q_l3_w: Option<Vec<f32>>,
+    q_l3_b: Option<f32>,
+
+    // Dueling Q-head: V(s) + A(s, a)
+    v_l1_w: Option<Vec<Vec<f32>>>,
+    v_l1_b: Option<Vec<f32>>,
+    v_l2_w: Option<Vec<f32>>,
+    v_l2_b: Option<f32>,
+
+    adv_l1_w: Option<Vec<Vec<f32>>>,
+    adv_l1_b: Option<Vec<f32>>,
+    adv_l2_w: Option<Vec<Vec<f32>>>,
+    adv_l2_b: Option<Vec<f32>>,
+    adv_l3_w: Option<Vec<f32>>,
+    adv_l3_b: Option<f32>,
 
     val_l1_w: Vec<Vec<f32>>,
     val_l1_b: Vec<f32>,
@@ -403,7 +417,10 @@ impl SemanticQWeights {
         let map: HashMap<String, serde_json::Value> =
             serde_json::from_reader(reader).map_err(|e| format!("parse JSON: {e}"))?;
 
-        if !map.contains_key("q_head.0.weight") {
+        let is_dueling = map.contains_key("adv_head.0.weight");
+        let is_standard_q = map.contains_key("q_head.0.weight");
+
+        if !is_dueling && !is_standard_q {
             return Err("not a semantic Q weights file".into());
         }
 
@@ -417,9 +434,47 @@ impl SemanticQWeights {
             serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
         };
 
-        let q_l3_2d = get_vec_vec("q_head.4.weight")?;
-        let q_l3_w = q_l3_2d.into_iter().next().unwrap_or_default();
-        let q_l3_b = get_vec("q_head.4.bias")?[0];
+        let (q_l1_w, q_l1_b, q_l2_w, q_l2_b, q_l3_w, q_l3_b) = if is_standard_q {
+            let q_l3_2d = get_vec_vec("q_head.4.weight")?;
+            let w = q_l3_2d.into_iter().next().unwrap_or_default();
+            let b = get_vec("q_head.4.bias")?[0];
+            (
+                Some(get_vec_vec("q_head.0.weight")?),
+                Some(get_vec("q_head.0.bias")?),
+                Some(get_vec_vec("q_head.2.weight")?),
+                Some(get_vec("q_head.2.bias")?),
+                Some(w),
+                Some(b),
+            )
+        } else {
+            (None, None, None, None, None, None)
+        };
+
+        let (v_l1_w, v_l1_b, v_l2_w, v_l2_b, adv_l1_w, adv_l1_b, adv_l2_w, adv_l2_b, adv_l3_w, adv_l3_b) =
+            if is_dueling {
+                let v2_2d = get_vec_vec("v_head.2.weight")?;
+                let vw = v2_2d.into_iter().next().unwrap_or_default();
+                let vb = get_vec("v_head.2.bias")?[0];
+
+                let a3_2d = get_vec_vec("adv_head.4.weight")?;
+                let aw = a3_2d.into_iter().next().unwrap_or_default();
+                let ab = get_vec("adv_head.4.bias")?[0];
+
+                (
+                    Some(get_vec_vec("v_head.0.weight")?),
+                    Some(get_vec("v_head.0.bias")?),
+                    Some(vw),
+                    Some(vb),
+                    Some(get_vec_vec("adv_head.0.weight")?),
+                    Some(get_vec("adv_head.0.bias")?),
+                    Some(get_vec_vec("adv_head.2.weight")?),
+                    Some(get_vec("adv_head.2.bias")?),
+                    Some(aw),
+                    Some(ab),
+                )
+            } else {
+                (None, None, None, None, None, None, None, None, None, None)
+            };
 
         let val_l2_2d = get_vec_vec("val_head.2.weight")?;
         let val_l2_w = val_l2_2d.into_iter().next().unwrap_or_default();
@@ -444,12 +499,24 @@ impl SemanticQWeights {
             act_ln2_w: get_vec("action_net.4.weight")?,
             act_ln2_b: get_vec("action_net.4.bias")?,
 
-            q_l1_w: get_vec_vec("q_head.0.weight")?,
-            q_l1_b: get_vec("q_head.0.bias")?,
-            q_l2_w: get_vec_vec("q_head.2.weight")?,
-            q_l2_b: get_vec("q_head.2.bias")?,
+            q_l1_w,
+            q_l1_b,
+            q_l2_w,
+            q_l2_b,
             q_l3_w,
             q_l3_b,
+
+            v_l1_w,
+            v_l1_b,
+            v_l2_w,
+            v_l2_b,
+
+            adv_l1_w,
+            adv_l1_b,
+            adv_l2_w,
+            adv_l2_b,
+            adv_l3_w,
+            adv_l3_b,
 
             val_l1_w: get_vec_vec("val_head.0.weight")?,
             val_l1_b: get_vec("val_head.0.bias")?,
@@ -540,6 +607,49 @@ impl SemanticQWeights {
         h2
     }
 
+    pub fn predict_advantage(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+        let act_h = self.forward_action(act_raw);
+        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
+        joint.extend_from_slice(state_h);
+        joint.extend_from_slice(&act_h);
+        joint.extend_from_slice(act_raw);
+
+        let l1_w = self.adv_l1_w.as_ref().unwrap();
+        let l1_b = self.adv_l1_b.as_ref().unwrap();
+        let l2_w = self.adv_l2_w.as_ref().unwrap();
+        let l2_b = self.adv_l2_b.as_ref().unwrap();
+        let l3_w = self.adv_l3_w.as_ref().unwrap();
+        let l3_b = self.adv_l3_b.unwrap();
+
+        let q1_dim = l1_w.len();
+        let mut q1 = vec![0.0f32; q1_dim];
+        for i in 0..q1_dim {
+            let row = &l1_w[i];
+            let mut sum = l1_b[i];
+            for j in 0..joint.len() {
+                sum += row[j] * joint[j];
+            }
+            q1[i] = if sum > 0.0 { sum } else { 0.0 };
+        }
+
+        let q2_dim = l2_w.len();
+        let mut q2 = vec![0.0f32; q2_dim];
+        for i in 0..q2_dim {
+            let row = &l2_w[i];
+            let mut sum = l2_b[i];
+            for j in 0..q1_dim {
+                sum += row[j] * q1[j];
+            }
+            q2[i] = if sum > 0.0 { sum } else { 0.0 };
+        }
+
+        let mut sum = l3_b;
+        for j in 0..q2_dim {
+            sum += l3_w[j] * q2[j];
+        }
+        sum
+    }
+
     pub fn predict_q_steps(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
         let act_h = self.forward_action(act_raw);
         let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
@@ -547,31 +657,38 @@ impl SemanticQWeights {
         joint.extend_from_slice(&act_h);
         joint.extend_from_slice(act_raw);
 
-        let q1_dim = self.q_l1_w.len();
+        let l1_w = self.q_l1_w.as_ref().unwrap();
+        let l1_b = self.q_l1_b.as_ref().unwrap();
+        let l2_w = self.q_l2_w.as_ref().unwrap();
+        let l2_b = self.q_l2_b.as_ref().unwrap();
+        let l3_w = self.q_l3_w.as_ref().unwrap();
+        let l3_b = self.q_l3_b.unwrap();
+
+        let q1_dim = l1_w.len();
         let mut q1 = vec![0.0f32; q1_dim];
         for i in 0..q1_dim {
-            let row = &self.q_l1_w[i];
-            let mut sum = self.q_l1_b[i];
+            let row = &l1_w[i];
+            let mut sum = l1_b[i];
             for j in 0..joint.len() {
                 sum += row[j] * joint[j];
             }
             q1[i] = if sum > 0.0 { sum } else { 0.0 };
         }
 
-        let q2_dim = self.q_l2_w.len();
+        let q2_dim = l2_w.len();
         let mut q2 = vec![0.0f32; q2_dim];
         for i in 0..q2_dim {
-            let row = &self.q_l2_w[i];
-            let mut sum = self.q_l2_b[i];
+            let row = &l2_w[i];
+            let mut sum = l2_b[i];
             for j in 0..q1_dim {
                 sum += row[j] * q1[j];
             }
             q2[i] = if sum > 0.0 { sum } else { 0.0 };
         }
 
-        let mut sum = self.q_l3_b;
+        let mut sum = l3_b;
         for j in 0..q2_dim {
-            sum += self.q_l3_w[j] * q2[j];
+            sum += l3_w[j] * q2[j];
         }
 
         let sp = if sum > 20.0 {
@@ -583,6 +700,14 @@ impl SemanticQWeights {
         };
 
         sp * 20.0
+    }
+
+    pub fn score_action(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+        if self.adv_l1_w.is_some() {
+            self.predict_advantage(state_h, act_raw)
+        } else {
+            self.predict_q_steps(state_h, act_raw)
+        }
     }
 }
 
@@ -657,7 +782,7 @@ impl AgentPolicy for M50Policy {
                 for action in legal {
                     let act_feat = encode_action_semantic_v1(&context.observation, action)
                         .map_err(|e| AgentError::Policy(e.to_string()))?;
-                    let q = sw.predict_q_steps(&state_h, &act_feat);
+                    let q = sw.score_action(&state_h, &act_feat);
                     if q < best_q {
                         best_q = q;
                         best_action = action.clone();
