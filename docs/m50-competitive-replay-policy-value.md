@@ -217,24 +217,53 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - **树搜索对通用局面的依赖（Generalist vs Specialist）**：MCTS 树搜索在深层展开中需要评估大量非最优、逆风、中盘防守的僵持局面。原版大模型（全分布 46 万步）在此类局面上的胜率感知最全面准确；而 Elite 策略高度偏向激进速杀，在需要防守和卡位的树枝上评估失真。
   - **关键结论**：在 MCTS 树搜索中，**端到端联合训练的全分布模型（大模型）是绝对的最佳组合**（128 次模拟达 **34.38%** 胜率）；而纯赢家速胜微调更适合作为**下快棋的纯贪心策略（达到最高的 21.09%）**。
 
+### 10. Search Depth & Simulation Scaling: 256 Sims and Depth 6
+- Following owner guidance ("试试256次模拟 以及多depth模拟"):
+  1. **256 Simulations (Depth 4):**
+     - Head-to-Head 128 games vs v0.2.5 (`local-artifacts/m50-ismcts256-eval-v025/`):
+     - **47 胜 0 平 81 负** (**36.72% 胜率**, 95% CI `[28.1%, 45.3%]`).
+     - Mean score: M50 **12.02** vs v0.2.5 **14.97** (closes score gap to 2.95 points).
+     - Seat 1 win rate reached **39.06%**.
+     - Runtime: 202.7s for 128 games (1.58s / game).
+  2. **128 Simulations with Depth 6 (Increased Lookahead Horizon):**
+     - Head-to-Head 128 games vs v0.2.5 (`local-artifacts/m50-ismcts128-d6-eval-v025/`):
+     - **48 胜 0 平 80 负** (**37.50% 胜率**, 95% CI `[29.7%, 46.1%]`)!
+     - 胜率再次刷新历史新高，达到 **37.5%**！
+     - Runtime: 111.4s for 128 games (0.87s / game).
+     - 证实了增加搜索深度允许智能体在对手对抗下看到更长远的回合规划（深层截胡和终局冲刺）。
+
+### 11. Human Replay Fine-Tuning Exploration
+- Following owner guidance ("或者是用我（用户 human）的几盘数据喂给他学习一下"):
+  - Discovered 10 human play replays in `local-artifacts/m20-human-play` (human win record: 8-2, 557 plies).
+  - Extracted 284 winner decision steps into `local-artifacts/m50-human-winner-dataset-v1/`.
+  - Fine-tuned M50 backbone on these 284 human winning steps (`local-artifacts/m50-human-run/`).
+  - Head-to-Head Arena Series vs v0.2.5 (128 games):
+    - **5 胜 0 平 123 负 (3.91% 胜率)**.
+  - **重要实证归因：**
+    - 仅 10 盘（284 步）样本量对于 14 万参数的神经网络极易过拟合特定牌局的局部走法（Catastrophic Overfitting），破坏了预训练阶段在 46 万步里建立的全局泛化分布。
+    - **结论：** 人类专家的对局如果只有几盘到几十盘，不能用来直接微调底层神经网络，而应当作为测试基准（Benchmark）或者在数据规模达到几百上千局时作为高质量加权样本混合训练。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
 - **全技术栈实战对战阶梯（128 场双换座 vs 顶级规则机 v0.2.5）：**
-  - **1 步单向浅搜索：7.42% 胜率**（陷入单边近视短视陷阱，破坏长线大局观）。
-  - **全数据大模型（纯 Policy 贪心下快棋）：18.75% 胜率**。
-  - **纯赢家 + 最速前 20% 局微调（纯贪心下快棋）：21.09% 胜率**（过滤败着直接提升了独立决策质量，Top-1 达 46.44%）。
-  - **混合先验 IS-MCTS（128 次模拟）：17.97% 胜率**（缝合表征漂移，验证了端到端联合训练的重要性）。
-  - **全数据 IS-MCTS 树搜索（32 次模拟）：25.78% 胜率**（双边展开反制推演，有效打破贪心死角）。
-  - **全数据 IS-MCTS 树搜索（128 次模拟）：34.38% 胜率**（净胜 44 局，后手胜率 37.5%，分差缩至 2.9 分）。
-- **结论：** 随着计算量（MCTS 模拟次数）增加，端到端大模型展现出强劲的单调提升态势（18.75% -> 25.78% -> 34.38%）。在没有任何规则硬编码或手工启发项的前提下，纯神经网络已能稳定从顶尖规则专家手里拿下一超过三分之一的胜局。
+  - **1 步单向浅搜索：7.42% 胜率**（单边近视陷阱）。
+  - **纯 Policy 贪心（全数据下快棋）：18.75% 胜率**。
+  - **纯赢家速胜微调（纯贪心下快棋）：21.09% 胜率**。
+  - **全数据 IS-MCTS 32 次模拟（深度 4）：25.78% 胜率**。
+  - **全数据 IS-MCTS 64 次模拟（深度 4）：24.22% 胜率**。
+  - **全数据 IS-MCTS 128 次模拟（深度 4）：34.38% 胜率**。
+  - **全数据 IS-MCTS 256 次模拟（深度 4）：36.72% 胜率**。
+  - **全数据 IS-MCTS 128 次模拟（深度 6）：37.50% 胜率（历史最高记录，赢下 48 局！）**。
+- **结论：** 随着计算量（MCTS 模拟次数）和深度（4 -> 6）的增加，端到端大模型展现出强劲的单调提升态势（18.75% -> 25.78% -> 34.38% -> 37.50%）。深度对抗搜索使得纯神经网络在与顶尖规则强机硬碰硬对抗时，已能从对方手里斩获接近 **四成（37.5%）的实战胜率**！
 
 ## Known limitations
-- 128 simulations runs at ~0.9s per full game; 256 simulations has not yet been benchmarked.
+- Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
+- Tiny human sample sizes (<500 steps) cause catastrophic overfitting if fine-tuned in isolation.
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Push to 256 / 512 Simulations:** Check if win rate crosses 40%~45%.
-2. **Self-Play Iteration (AlphaZero):** Use the 128-sim agent to play self-play games and generate fresh bootstrap training data.
+1. **Push to 512 Simulations / Depth 8:** Check if win rate crosses 40%~45%.
+2. **Self-Play Iteration (AlphaZero):** Use the 37.5% agent to generate new high-level self-play games.

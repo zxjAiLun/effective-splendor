@@ -223,6 +223,13 @@ def main():
             label="m50-ismcts-sim128",
         )
 
+    if target in ("256", "all"):
+        run_sim_series(
+            sims=256,
+            out_dir=ROOT / "local-artifacts" / "m50-ismcts256-eval-v025",
+            label="m50-ismcts-sim256",
+        )
+
 
 if __name__ == "__main__":
     main()

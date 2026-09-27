@@ -220,8 +220,12 @@ fn collect_replays_recursive(dir: &Path, list: &mut Vec<PathBuf>) {
             let path = entry.path();
             if path.is_dir() {
                 collect_replays_recursive(&path, list);
-            } else if path.file_name().and_then(|n| n.to_str()) == Some("match-replay.json") {
-                list.push(path);
+            } else if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name == "match-replay.json"
+                    || (name.ends_with(".replay.json") && !name.ends_with(".meta.json"))
+                {
+                    list.push(path);
+                }
             }
         }
     }
@@ -271,7 +275,9 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
                 i += 1;
             }
             "--top-fastest-percent" => {
-                let val = args.get(i + 1).ok_or("missing --top-fastest-percent value")?;
+                let val = args
+                    .get(i + 1)
+                    .ok_or("missing --top-fastest-percent value")?;
                 let pct: f64 = val
                     .parse()
                     .map_err(|e| format!("invalid --top-fastest-percent: {e}"))?;
@@ -310,7 +316,10 @@ fn run(args: Args) -> Result<(), String> {
     }
     replay_paths.sort();
     replay_paths.dedup();
-    println!("Found {} unique match-replay.json files", replay_paths.len());
+    println!(
+        "Found {} unique match-replay.json files",
+        replay_paths.len()
+    );
 
     if replay_paths.is_empty() {
         return Err("no match-replay.json files found".into());
@@ -341,7 +350,10 @@ fn run(args: Args) -> Result<(), String> {
         } else {
             let idx = ((all_plies.len() as f64) * (pct / 100.0)).floor() as usize;
             let thresh = all_plies[idx.min(all_plies.len() - 1)];
-            println!("  Threshold for fastest {pct}%: <= {thresh} plies (evaluated {} games)", all_plies.len());
+            println!(
+                "  Threshold for fastest {pct}%: <= {thresh} plies (evaluated {} games)",
+                all_plies.len()
+            );
             Some(thresh)
         }
     } else {
@@ -418,7 +430,8 @@ fn run(args: Args) -> Result<(), String> {
 
             // If winner_only is enabled, skip steps made by losing/tied players
             if args.winner_only {
-                let actor_won = result.winners.len() == 1 && result.winners.contains(&(actor_seat as u8));
+                let actor_won =
+                    result.winners.len() == 1 && result.winners.contains(&(actor_seat as u8));
                 if !actor_won {
                     continue;
                 }

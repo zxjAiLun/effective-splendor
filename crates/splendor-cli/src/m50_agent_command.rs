@@ -301,6 +301,7 @@ pub struct M50Policy {
     weights: M50PolicyWeights,
     mode: M50Mode,
     simulations: u32,
+    max_depth: u8,
     top_k: usize,
     worlds: usize,
     sample_seed: u64,
@@ -311,6 +312,7 @@ impl M50Policy {
         weights: M50PolicyWeights,
         mode: M50Mode,
         simulations: u32,
+        max_depth: u8,
         top_k: usize,
         worlds: usize,
         sample_seed: u64,
@@ -319,6 +321,7 @@ impl M50Policy {
             weights,
             mode,
             simulations,
+            max_depth,
             top_k,
             worlds,
             sample_seed,
@@ -353,7 +356,7 @@ impl AgentPolicy for M50Policy {
             let config = NeuralIsmctsConfigV1 {
                 sample_seed: self.sample_seed,
                 simulations: self.simulations.clamp(1, 2048),
-                max_depth_turns: 4,
+                max_depth_turns: self.max_depth.clamp(1, 8),
                 puct_exploration_milli: 1500,
                 expected_checkpoint_hash:
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
@@ -459,6 +462,7 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
     let mut weights_path = None;
     let mut mode = M50Mode::Greedy;
     let mut simulations = 32u32;
+    let mut max_depth = 4u8;
     let mut top_k = 4usize;
     let mut worlds = 2usize;
     let mut seed = 50_000_001u64;
@@ -486,6 +490,14 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
                 if let Some(s) = args.get(i + 1) {
                     if let Ok(v) = s.parse::<u32>() {
                         simulations = v;
+                    }
+                }
+                i += 2;
+            }
+            "--max-depth" | "--depth" => {
+                if let Some(s) = args.get(i + 1) {
+                    if let Ok(v) = s.parse::<u8>() {
+                        max_depth = v;
                     }
                 }
                 i += 2;
@@ -555,7 +567,7 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
         stderr.lock(),
         identity,
         seed,
-        M50Policy::new(weights, mode, simulations, top_k, worlds, seed),
+        M50Policy::new(weights, mode, simulations, max_depth, top_k, worlds, seed),
     ) {
         Ok(()) => 0,
         Err(_) => 1,
