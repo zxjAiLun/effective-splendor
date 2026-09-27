@@ -319,6 +319,19 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
        - **W - T - L:** **42 胜 0 平 86 负** (**32.81% 胜率**, 95% CI `[25.0%, 41.4%]`).
        - 局均得分 **11.79 分**，每回合得分 **0.416 VP/Turn**，先手胜率达到 **39.06%**。
 
+### 16. 1M-Sample Continuation Training Dynamics & Capacity Saturation
+- Following owner direction ("继续续训1M 看看他预测准确率"):
+  - Resumed training from `local-artifacts/m50-v029-scratch-run/best_model.pt` for an additional 5 epochs = **1,105,945 decision samples processed** (2,165 optimizer updates) with learning rate `3e-4 -> 1e-5` (`local-artifacts/m50-v029-1m-run/`).
+  - **训练曲线与精度走势**：
+    - Train Top-1 Accuracy: **54.0% -> 56.8%** (模型在 22.1 万步训练集上拟合度持续稳步上升).
+    - Train Steps-to-15 MAE: **2.33 -> 2.20 turns**.
+    - Validation Top-1 Accuracy: 稳定在 **52.18%** (初始 52.17% -> Epoch 3 达到 **52.18%**，其余各轮在 51.95%~52.03% 极高位平稳震荡).
+    - Validation Steps-to-15 MAE: **3.27 turns**.
+    - 验证准确率曲线显示：当前 128 维隐藏宽度的单隐层 MLP 在 22 万步纯净数据上的容量已达到平稳极点，泛化精度稳定在 **52.2%**，未发生灾难性过拟合或发散。
+  - Head-to-Head 128 Games vs v0.2.9 Champion Heuristic (`scripts/m50_eval_v029_1m.py`):
+    - **Pure Greedy:** **33 胜 0 平 95 负** (**25.78% 胜率**, 局均得分 11.64 分, 0.414 VP/Turn). 纯快棋胜率与初训版极其一致（稳定在 25.78% / 33 胜），展现出极高的一致性。
+    - **IS-MCTS (128 sims x depth 6):** **40 胜 3 平 85 负** (**32.42% 胜率**, 先手 37.5%, 局均得分 11.47 分, 0.410 VP/Turn).
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
@@ -327,7 +340,7 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 - **15 分步数多任务网络（Speed-to-15 Guidance）：**
   - 在 Loss 中加入真实到 15 分的剩余步数回归后，网络表征直接对齐拿分速度，**到 15 分剩余步数的预测平均绝对误差仅 2.92~3.64 回合**，胜率预测准确率刷新至 **64.5%**！
 - **从零训练（Scratch Training）彻底清除历史毒素：**
-  - 在纯 v0.2.9 自对战数据上从零初始化训练，策略 Top-1 准确率冲上 **52.17%**。
+  - 在纯 v0.2.9 自对战数据上从零初始化训练，策略 Top-1 准确率冲上 **52.17% ~ 52.18%**。
   - **纯下快棋（零搜索贪心）胜率迎来巨大突破：从 17.97% 飙升至 25.78%**，场均得分达到 **11.76 分**（0.417 VP/Turn）。
 - **面对顶尖规则强机的全面实战战报（128 场双换座）：**
   - **vs v0.2.5 (上一代基准强机)**：

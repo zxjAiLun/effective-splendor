@@ -236,9 +236,28 @@ def train_steps_network(
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    best_top1 = 0.0
+
+    # Initial baseline evaluation (Epoch 0 before training steps)
+    val_metrics_0 = evaluate(model, val_data, device)
+    print(
+        f"Epoch 0 (Initial Checkpoint): "
+        f"Val Policy Loss={val_metrics_0['loss_pi']:.4f}, Top-1 Acc={val_metrics_0['top1_acc']*100:.2f}%, "
+        f"Steps-to-15 MAE={val_metrics_0['steps_mae']:.2f} turns, "
+        f"Val Win Acc={val_metrics_0['val_acc']*100:.2f}%"
+    )
+
+    best_top1 = val_metrics_0["top1_acc"]
     best_epoch = 0
-    history = []
+    torch.save(model.state_dict(), out_dir / "best_model.pt")
+    history = [
+        {
+            "epoch": 0,
+            "val_loss_pi": val_metrics_0["loss_pi"],
+            "val_top1_acc": val_metrics_0["top1_acc"],
+            "val_steps_mae": val_metrics_0["steps_mae"],
+            "val_val_acc": val_metrics_0["val_acc"],
+        }
+    ]
 
     t_start = time.perf_counter()
     indices = np.arange(train_data.count)
