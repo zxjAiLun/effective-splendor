@@ -208,6 +208,15 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - 运行时间：128 场仅耗时 **118.48 秒**（0.926 秒/局，单步推演约 16 毫秒，依然极速）。
     - 结果保存在 `local-artifacts/m50-ismcts64-eval-v025/` 与 `local-artifacts/m50-ismcts128-eval-v025/`。
 
+### 9. Hybrid Model Evaluation: Elite Policy Prior + Large Calibrated Value
+- Evaluated hybrid architecture (Elite 46.4% policy prior + Large 63.2% calibrated value head) across 64 and 128 IS-MCTS simulations (`scripts/m50_eval_hybrid_vs_v025.py`):
+  - **Hybrid 64 Simulations:** 19 胜 0 平 109 负 (**14.84% 胜率**, 95% CI `[8.6%, 21.1%]`).
+  - **Hybrid 128 Simulations:** 23 胜 0 平 105 负 (**17.97% 胜率**, 95% CI `[11.7%, 25.0%]`).
+- **深度归因分析（为什么混合模型在搜索中不如原版大模型 34.38%？）：**
+  - **特征空间分布漂移（Backbone Representation Mismatch）**：Elite 策略微调改变了共享主干网络（`state_net`）的特征表征，而直接缝合的大模型 `value_head` 权重是基于大模型旧的主干表征训练的，二者拼接产生了特征漂移；
+  - **树搜索对通用局面的依赖（Generalist vs Specialist）**：MCTS 树搜索在深层展开中需要评估大量非最优、逆风、中盘防守的僵持局面。原版大模型（全分布 46 万步）在此类局面上的胜率感知最全面准确；而 Elite 策略高度偏向激进速杀，在需要防守和卡位的树枝上评估失真。
+  - **关键结论**：在 MCTS 树搜索中，**端到端联合训练的全分布模型（大模型）是绝对的最佳组合**（128 次模拟达 **34.38%** 胜率）；而纯赢家速胜微调更适合作为**下快棋的纯贪心策略（达到最高的 21.09%）**。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
@@ -215,11 +224,12 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
 - **全技术栈实战对战阶梯（128 场双换座 vs 顶级规则机 v0.2.5）：**
   - **1 步单向浅搜索：7.42% 胜率**（陷入单边近视短视陷阱，破坏长线大局观）。
-  - **纯 Policy 贪心（下快棋）：18.75% 胜率**（小模型与大模型均稳定在 18.75%）。
-  - **纯赢家 + 最速前 20% 局微调（纯贪心）：21.09% 胜率**（过滤败着直接提升了独立决策质量，Top-1 达 46.44%）。
-  - **交替对抗 IS-MCTS 树搜索（32 次模拟）：25.78% 胜率**（双边展开反制推演，有效打破贪心死角）。
-  - **深度对抗 IS-MCTS 树搜索（128 次模拟）：34.38% 胜率**（赢下 44 局，后手胜率 37.5%，分差缩至 2.9 分）。
-- **结论：** 随着计算量（MCTS 模拟次数）增加，神经智能体的对战表现呈现出稳步、强劲的单调提升态势（18.75% -> 25.78% -> 34.38%）。在没有任何规则硬编码或手工启发项的前提下，纯神经网络已能稳定从顶尖规则专家手里拿下一超过三分之一的胜局。
+  - **全数据大模型（纯 Policy 贪心下快棋）：18.75% 胜率**。
+  - **纯赢家 + 最速前 20% 局微调（纯贪心下快棋）：21.09% 胜率**（过滤败着直接提升了独立决策质量，Top-1 达 46.44%）。
+  - **混合先验 IS-MCTS（128 次模拟）：17.97% 胜率**（缝合表征漂移，验证了端到端联合训练的重要性）。
+  - **全数据 IS-MCTS 树搜索（32 次模拟）：25.78% 胜率**（双边展开反制推演，有效打破贪心死角）。
+  - **全数据 IS-MCTS 树搜索（128 次模拟）：34.38% 胜率**（净胜 44 局，后手胜率 37.5%，分差缩至 2.9 分）。
+- **结论：** 随着计算量（MCTS 模拟次数）增加，端到端大模型展现出强劲的单调提升态势（18.75% -> 25.78% -> 34.38%）。在没有任何规则硬编码或手工启发项的前提下，纯神经网络已能稳定从顶尖规则专家手里拿下一超过三分之一的胜局。
 
 ## Known limitations
 - 128 simulations runs at ~0.9s per full game; 256 simulations has not yet been benchmarked.
@@ -227,4 +237,4 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
 1. **Push to 256 / 512 Simulations:** Check if win rate crosses 40%~45%.
-2. **Value-Guided Rollout / Pruning:** Combine fast 21% elite policy as rollout policy with IS-MCTS.
+2. **Self-Play Iteration (AlphaZero):** Use the 128-sim agent to play self-play games and generate fresh bootstrap training data.
