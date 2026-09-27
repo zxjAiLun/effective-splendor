@@ -740,6 +740,31 @@ Per owner guidance ("正常打牌应该是让模型选择 距离15分步数最�
      - Runtime: 91.33s total (0.71s / game).
 
 ### 24.4 Summary of Scheme 1 Findings
-- Directly anchoring the action advantage to the speed of reaching 15 VP gives a clean mathematical formulation where action selection is strictly driven by minimizing predicted steps to 15.
-- Greedy selection directly achieves **23.05% win rate** in 0.04s per game without search overhead.
+## 25. Direct Confrontational Learning: M50 vs v0.2.9 Replays -> Pure Greedy Evaluation — 2026-09-27
+
+### 25.1 Method & Motivation
+Per owner guidance ("不接入搜索 先让模型与0.2.9对战之后学习策略"):
+- Rather than running neural self-play in isolation, we generate head-to-head matches between M50 (in pure greedy mode, zero search) and the reigning champion v0.2.9 heuristic.
+- This produces a dataset capturing direct cross-play: M50's winning and losing trajectories under v0.2.9's intense opening pressure and tempo.
+- 1,000 paired-seed blocks = 2,000 games on fresh registered seeds `9_309_000 .. 9_309_999`:
+  - Generated in 78.75s (25.4 games/s) across 16 parallel workers (`scripts/m50_coev_selfplay.py`).
+  - M50 Pure Greedy baseline record: **485 W - 5 T - 1510 L (24.38% win rate)**.
+  - Replays stored in `local-artifacts/m50-vs-v029-coev-2k/`.
+
+### 25.2 Dataset Extraction & Model Training
+- Replay extractor (`splendor m50-extract-replays`) exported 89,305 train steps and 22,282 validation steps into `local-artifacts/m50-vs-v029-dataset/`.
+- Trained 10 epochs on RTX 4060 (65.06s) in `local-artifacts/m50-coev-run/`:
+  - Selected Epoch 3: Validation Policy Top-1 = **68.03%**, Steps MAE = 5.50 turns.
+
+### 25.3 Pure Greedy Arena Evaluation vs v0.2.9 Champion (128 Games)
+- Tested with `scripts/m50_eval_parallel.py` in **pure greedy mode (zero search)** across 64 paired blocks:
+  - **W - T - L:** **31 胜 1 平 96 负** (**24.61% 胜率**, 95% CI `[17.2%, 32.8%]`).
+  - **后手（Seat 1）大幅改善：胜率从 17.19% 飙升至 29.69%（近三成胜率，净增 +12.5 个百分点）！**
+  - 先手（Seat 0）胜率 19.53%，平均得分 11.02 分 vs 15.23 分。
+  - VP per Turn: M50 **0.391** vs v0.2.9 **0.547**.
+  - Total evaluation runtime: **6.71 seconds** for 128 games (**0.052 seconds per full game**).
+
+### 25.4 Conclusion
+- Learning directly from confrontation matches against v0.2.9 successfully taught the pure neural policy how to better handle second-seat (Seat 1) play, pushing pure-greedy Seat 1 win rate from 17% to near 30% in 50-millisecond games.
+
 

@@ -89,6 +89,7 @@ REGISTRY: list[tuple[int, int, str]] = [
     (9_300_000, 9_304_999, "m50-v029-selfplay-5k"),
     (9_305_000, 9_306_999, "m50-alphazero-gen1"),
     (9_307_000, 9_308_999, "m50-alphazero-gen2"),
+    (9_309_000, 9_310_999, "m50-coev-v029-2k"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),
