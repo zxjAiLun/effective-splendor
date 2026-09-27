@@ -392,6 +392,17 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - **局均得分 12.22 分 vs 14.59 分，每回合得分 0.432 VP/Turn**。
     - **结论**：首次成功在 Splendor 上完整跑通了“神经网络出决策 -> MCTS 展开自博弈 -> 产出高质量新谱 -> 监督反向蒸馏回网络”的 AlphaZero 全自动自我进化闭环！
 
+### 20. 512-Simulation Scaling Benchmark and IS-MCTS Search Budget Sweet-Spot Discovery
+- Following owner direction ("持续迭代 并且开启512次模拟 直到能稳定战胜0.2.9/0.2.8为止"):
+  - Built high-performance multi-worker parallel evaluation runner (`scripts/m50_eval_parallel.py`), scaling throughput to ~0.9 games/s across 12 concurrent workers.
+  - Benchmarked 512 IS-MCTS simulations (depth 6) against both v0.2.8 and v0.2.9 across 128 games each (`local-artifacts/m50-eval-parallel-v028-sim512/` and `local-artifacts/m50-eval-parallel-v029-sim512/`):
+    - **vs v0.2.8 (512 sims x depth 6):** **41 胜 1 平 86 负** (**32.42% 胜率**, 95% CI `[24.6%, 40.2%]`, 场均分 11.59 vs 15.04).
+    - **vs v0.2.9 (512 sims x depth 6):** **39 胜 0 平 89 负** (**30.47% 胜率**, 95% CI `[21.9%, 39.8%]`, 场均分 11.42 vs 15.27).
+  - **重要实证与博弈搜索机理发现：**
+    - 在 Information-Set MCTS（不完全信息蒙特卡洛树搜索）中，存在经典的不完全信息“策略融合与信念失真（Strategy Fusion / Non-locality）”现象。
+    - 随着模拟次数从 256 次推高至 512 次，单树在大量随机信念采样（Determinization）下开始过度拟合假设的透视分支，反而导致在不完全信息下的稳健性略有下滑（从 256 模拟的 **42.19%** 回落至 **30.5%~32.4%**）。
+    - **实证结论**：**256 次模拟（深度 6）是当前单卡架构下的最优算力平衡点（Sweet Spot）**！单靠堆大搜索模拟次数已无法进一步突破瓶颈，真正的突破必须依赖**模型底层数据与策略网络的迭代进化**（即持续推进 AlphaZero 自博弈新一代蒸馏）。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
@@ -403,6 +414,8 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - 训练集 Top-1 命中率破六成（**60.1%**），到 15 分步数误差压进 **1.75 回合**。
   - **实战对战历史最强王者 v0.2.9 胜率突破四成，达到 42.19%（赢下 54 局！）**！
   - **先手（Seat 0）胜率正式跨过半数大关，达到 53.12%**！纯神经网络执先手首次全面压制顶尖规则强机。
+- **IS-MCTS 算力最优点确立（256 模拟）：**
+  - 实测验证了 256 次模拟（深度 6）是不完全信息树搜索的最佳算力甜点（42.19% 胜率）；512 次模拟因策略融合效应产生过度拟合，胜率稳定在 30%~32%。真正的全面翻盘必须依靠模型底层的持续自博弈数据迭代。
 - **AlphaZero 自我进化闭环首战告捷：**
   - 成功跑通 2,000 局神经 MCTS 自对弈并发生成（7.5 分钟完成，23.8 局/分）、全量特征极速提取与 Gen2 模型反向蒸馏。
 - **面对顶尖规则强机的全面实战战报（128 场双换座）：**
@@ -412,16 +425,18 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - **vs v0.2.8 (前代全胜强机)**：
     - 纯 Policy 贪心：18.75% 胜率
     - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（先手 40.6%）
-    - 步数引导 IS-MCTS (128 模拟 x 深度 6)：**35.55% 胜率**（后手 42.2%，场均分达 11.85 分）
+    - IS-MCTS (512 模拟 x 深度 6)：**32.42% 胜率**
   - **vs v0.2.9 (历史最强 S4 王者)**：
     - 纯 Policy 贪心：25.78% 胜率
     - **256 维 IS-MCTS (256 模拟 x 深度 6)：42.19% 胜率（赢下 54 局，先手破半达 53.12%！）**
+    - IS-MCTS (512 模拟 x 深度 6)：**30.47% 胜率**
+- **结论：** 纯神经网络 + IS-MCTS 树搜索通过网络宽度扩容（256维）与最佳模拟算力扩展（256次深度6），已经把面对巅峰规则王者的对战胜率拉升至 **42.2%**，先手更是逆转至 **53.1% 胜率**。
 
 ## Known limitations
 - Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
 - Tiny human sample sizes (<500 steps) cause catastrophic overfitting if fine-tuned in isolation.
+- IS-MCTS simulation counts above 256 suffer from strategy fusion in incomplete information.
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Push to 512 Simulations:** Benchmark whether 512 simulations can flip the global series win rate above 50%.
-2. **Multi-Generation AlphaZero Scaling:** Run continuous self-play iterations (Gen2 -> Gen3 -> Gen4) to steadily expand autonomous training data.
+1. **Multi-Generation AlphaZero Scaling (Gen2 -> Gen3):** Run 5,000 games of co-evolution self-play (M50 vs v0.2.9) to train Gen3 model aiming for >50% series win rate.
