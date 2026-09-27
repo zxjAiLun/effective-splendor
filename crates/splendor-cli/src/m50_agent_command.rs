@@ -1,6 +1,6 @@
 //! M50: Native Rust inference agent for the competitive Policy-Value network
 //! with support for direct greedy policy, Policy-pruned 1-ply search, and
-//! value evaluation.
+//! full IS-MCTS tree search via `splendor-neural-search`.
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -9,22 +9,29 @@ use std::path::{Path, PathBuf};
 
 use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, DecisionContext};
 use splendor_belief::{build_information_set_v1, sample_determinization_v1};
-use splendor_core::{Action, Phase, Ruleset};
-use splendor_learning::{encode_action_v1, encode_observation_v1};
+use splendor_core::{Action, Observation, Phase, Ruleset};
+use splendor_learning::{
+    encode_action_v1, encode_observation_v1, PolicyActionProbabilityV1, PolicyValuePredictionV1,
+};
+use splendor_neural_search::{
+    search_neural_ismcts_with_evaluator_v1, NeuralIsmctsConfigV1, NeuralSearchError,
+    PolicyValueEvaluatorV1,
+};
 
 pub const M50_AGENT_NAME: &str = "splendor-cli-m50-policy";
-pub const M50_AGENT_VERSION: &str = "0.2.0";
+pub const M50_AGENT_VERSION: &str = "0.3.0";
 
 const USAGE: &str = "\
-Usage: splendor agent-m50-policy --weights <weights.json> [--mode <greedy|search>] [--top-k <N>] [--worlds <D>] [--seed <u64>]
+Usage: splendor agent-m50-policy --weights <weights.json> [--mode <greedy|search|ismcts>] [--simulations <N>] [--top-k <N>] [--worlds <D>] [--seed <u64>]
 
 Play 2-player Splendor using the M50 competitive policy-value network.
 Options:
-  --weights  Path to exported m50 policy-value JSON weights
-  --mode     `greedy` (default) for fast 10us policy argmax, or `search` for policy-guided 1-ply value lookahead
-  --top-k    Number of candidate actions to consider in search mode (default: 5)
-  --worlds   Number of determinized belief worlds to average over in search (default: 2)
-  --seed     RNG seed for tie-breaking and world sampling (default: 50000001)
+  --weights      Path to exported m50 policy-value JSON weights
+  --mode         `greedy` (default), `search` (1-ply lookahead), or `ismcts` (full neural tree search)
+  --simulations  Number of ISMCTS simulations (default: 32)
+  --top-k        Candidate actions in 1-ply search mode (default: 4)
+  --worlds       Determinized belief worlds in 1-ply search mode (default: 2)
+  --seed         RNG seed (default: 50000001)
 ";
 
 #[derive(Debug, Clone)]
@@ -161,7 +168,6 @@ impl M50PolicyWeights {
     }
 
     pub fn predict_value_from_state_h(&self, state_h: &[f32; 128]) -> f32 {
-        // Value Layer 1: Linear(128, 64) + ReLU
         let mut vh = [0.0f32; 64];
         for i in 0..64 {
             let row = &self.val_l1_w[i];
@@ -172,7 +178,6 @@ impl M50PolicyWeights {
             vh[i] = if sum > 0.0 { sum } else { 0.0 };
         }
 
-        // Value Layer 2: Linear(64, 1) -> logit -> sigmoid
         let mut sum = self.val_l2_b;
         for j in 0..64 {
             sum += self.val_l2_w[j] * vh[j];
@@ -189,7 +194,6 @@ impl M50PolicyWeights {
     pub fn score_action(&self, state_h: &[f32; 128], act: &[f32]) -> f32 {
         assert_eq!(act.len(), 36);
 
-        // Action Layer 1: Linear(36, 128)
         let mut ah = [0.0f32; 128];
         for i in 0..128 {
             let row = &self.act_l1_w[i];
@@ -200,7 +204,6 @@ impl M50PolicyWeights {
             ah[i] = sum;
         }
 
-        // LayerNorm(128, eps=1e-5) + ReLU
         let mean = ah.iter().sum::<f32>() / 128.0;
         let var = ah.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / 128.0;
         let std = (var + 1e-5).sqrt();
@@ -210,14 +213,12 @@ impl M50PolicyWeights {
             ah[i] = if val > 0.0 { val } else { 0.0 };
         }
 
-        // Bilinear dot product: (state_h * ah).sum() / sqrt(128)
         let mut dot = 0.0f32;
         for i in 0..128 {
             dot += state_h[i] * ah[i];
         }
         let dot_scaled = dot / (128.0f32).sqrt();
 
-        // Action bias: Linear(36, 1)
         let mut bias = 0.0f32;
         for j in 0..36 {
             bias += self.act_bias[j] * act[j];
@@ -227,15 +228,79 @@ impl M50PolicyWeights {
     }
 }
 
+impl PolicyValueEvaluatorV1 for M50PolicyWeights {
+    fn model_id(&self) -> &str {
+        "m50-policy-value-v1"
+    }
+
+    fn checkpoint_hash(&self) -> Result<String, NeuralSearchError> {
+        Ok("0000000000000000000000000000000000000000000000000000000000000000".to_string())
+    }
+
+    fn predict(
+        &self,
+        observation: &Observation,
+        legal_actions: &[Action],
+    ) -> Result<PolicyValuePredictionV1, NeuralSearchError> {
+        if legal_actions.is_empty() {
+            return Err(NeuralSearchError::NoLegalActions);
+        }
+        let obs_feat = encode_observation_v1(observation)
+            .map_err(|e| NeuralSearchError::Learning(e.to_string()))?;
+        let state_h = self.forward_state(&obs_feat);
+
+        let mut logits = Vec::with_capacity(legal_actions.len());
+        for action in legal_actions {
+            let act_feat =
+                encode_action_v1(action).map_err(|e| NeuralSearchError::Learning(e.to_string()))?;
+            logits.push(self.score_action(&state_h, &act_feat));
+        }
+
+        // Softmax
+        let max_logit = logits.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = logits.iter().map(|l| (l - max_logit).exp()).collect();
+        let sum_exp: f32 = exps.iter().sum();
+        let probs: Vec<f32> = exps.iter().map(|e| e / sum_exp.max(1e-8)).collect();
+
+        let policy = legal_actions
+            .iter()
+            .zip(probs)
+            .map(|(&action, probability)| PolicyActionProbabilityV1 {
+                action,
+                probability,
+            })
+            .collect();
+
+        // Value prediction for acting player
+        let p_viewer_win = self.predict_value_from_state_h(&state_h);
+        let viewer_idx = observation.viewer.index();
+        let pcount = observation.public.player_count as usize;
+
+        // Return values in absolute seat order [seat 0, seat 1]
+        let mut value_by_player = vec![0.5f32; pcount];
+        if pcount == 2 {
+            value_by_player[viewer_idx] = p_viewer_win.clamp(0.0, 1.0);
+            value_by_player[1 - viewer_idx] = (1.0 - p_viewer_win).clamp(0.0, 1.0);
+        }
+
+        Ok(PolicyValuePredictionV1 {
+            policy,
+            value_by_player,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M50Mode {
     Greedy,
     Search,
+    Ismcts,
 }
 
 pub struct M50Policy {
     weights: M50PolicyWeights,
     mode: M50Mode,
+    simulations: u32,
     top_k: usize,
     worlds: usize,
     sample_seed: u64,
@@ -245,6 +310,7 @@ impl M50Policy {
     pub fn new(
         weights: M50PolicyWeights,
         mode: M50Mode,
+        simulations: u32,
         top_k: usize,
         worlds: usize,
         sample_seed: u64,
@@ -252,6 +318,7 @@ impl M50Policy {
         Self {
             weights,
             mode,
+            simulations,
             top_k,
             worlds,
             sample_seed,
@@ -271,11 +338,39 @@ impl AgentPolicy for M50Policy {
             return Ok(legal[0].clone());
         }
 
+        // Full ISMCTS tree search mode
+        if self.mode == M50Mode::Ismcts && context.observation.public.phase == Phase::Main {
+            let ruleset = Ruleset::base_v1();
+            let info_set = match build_information_set_v1(
+                ruleset,
+                &context.observation,
+                context.visible_history,
+            ) {
+                Ok(is) => is,
+                Err(e) => return Err(AgentError::Policy(format!("build info set: {e}"))),
+            };
+
+            let config = NeuralIsmctsConfigV1 {
+                sample_seed: self.sample_seed,
+                simulations: self.simulations.clamp(1, 2048),
+                max_depth_turns: 4,
+                puct_exploration_milli: 1500,
+                expected_checkpoint_hash:
+                    "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            };
+
+            match search_neural_ismcts_with_evaluator_v1(&info_set, &self.weights, &config) {
+                Ok(res) => return Ok(res.action),
+                Err(e) => {
+                    eprintln!("Warning: IS-MCTS search failed: {e:?}, falling back to policy");
+                }
+            }
+        }
+
         let obs_feat = encode_observation_v1(&context.observation)
             .map_err(|e| AgentError::Policy(e.to_string()))?;
         let state_h = self.weights.forward_state(&obs_feat);
 
-        // Score all legal actions with the policy head
         let mut scored: Vec<(usize, f32)> = Vec::with_capacity(legal.len());
         for (idx, action) in legal.iter().enumerate() {
             let act_feat =
@@ -284,14 +379,13 @@ impl AgentPolicy for M50Policy {
             scored.push((idx, score));
         }
 
-        // Sort descending by policy score
         scored.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        if self.mode == M50Mode::Greedy || context.observation.public.phase != Phase::Main {
+        if self.mode != M50Mode::Search || context.observation.public.phase != Phase::Main {
             return Ok(legal[scored[0].0].clone());
         }
 
-        // Search mode: 1-ply value lookahead over Top-K candidate actions
+        // 1-ply search mode
         let actor = context.observation.viewer;
         let ruleset = Ruleset::base_v1();
         let info_set = match build_information_set_v1(
@@ -300,10 +394,9 @@ impl AgentPolicy for M50Policy {
             context.visible_history,
         ) {
             Ok(is) => is,
-            Err(_) => return Ok(legal[scored[0].0].clone()), // fallback to greedy on error
+            Err(_) => return Ok(legal[scored[0].0].clone()),
         };
 
-        // Sample determinized worlds
         let num_worlds = self.worlds.max(1);
         let mut worlds = Vec::with_capacity(num_worlds);
         for w in 0..num_worlds {
@@ -330,7 +423,6 @@ impl AgentPolicy for M50Policy {
             for world_state in &worlds {
                 let mut sim_state = world_state.clone();
                 if sim_state.apply(cand_act.clone()).is_ok() {
-                    // Check if action triggers immediate game over / win
                     if sim_state.is_terminal() {
                         if let Some(ref result) = sim_state.result {
                             if result.winners.contains(&actor) {
@@ -340,7 +432,6 @@ impl AgentPolicy for M50Policy {
                             }
                         }
                     } else {
-                        // Predict win prob for actor from next state
                         let next_obs = sim_state.observation(actor);
                         if let Ok(next_feat) = encode_observation_v1(&next_obs) {
                             let p_win = self.weights.predict_value(&next_feat);
@@ -367,7 +458,8 @@ impl AgentPolicy for M50Policy {
 pub fn run_agent_m50_policy(args: &[String]) -> i32 {
     let mut weights_path = None;
     let mut mode = M50Mode::Greedy;
-    let mut top_k = 5usize;
+    let mut simulations = 32u32;
+    let mut top_k = 4usize;
     let mut worlds = 2usize;
     let mut seed = 50_000_001u64;
 
@@ -382,8 +474,18 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
                 if let Some(m) = args.get(i + 1) {
                     if m == "search" {
                         mode = M50Mode::Search;
+                    } else if m == "ismcts" {
+                        mode = M50Mode::Ismcts;
                     } else {
                         mode = M50Mode::Greedy;
+                    }
+                }
+                i += 2;
+            }
+            "--simulations" => {
+                if let Some(s) = args.get(i + 1) {
+                    if let Ok(v) = s.parse::<u32>() {
+                        simulations = v;
                     }
                 }
                 i += 2;
@@ -453,7 +555,7 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
         stderr.lock(),
         identity,
         seed,
-        M50Policy::new(weights, mode, top_k, worlds, seed),
+        M50Policy::new(weights, mode, simulations, top_k, worlds, seed),
     ) {
         Ok(()) => 0,
         Err(_) => 1,

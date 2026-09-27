@@ -148,21 +148,34 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - The static Value Head values immediate token counts and bank control disproportionately compared to strategic delayed setup (e.g. greedy reserved key Tier-3 cards in early plies, whereas 1-ply search over-indexed on immediate safe token takes).
   - This establishes an important empirical invariant: **1-ply myopic lookahead degrades global policy coherence**. A tree search MUST evaluate full alternating cycles (our move + opponent response, i.e. 2 plies or IS-MCTS tree expansions) or use Policy-only rollouts to avoid myopic evaluation traps.
 
+### 6. Full IS-MCTS Neural Tree Search vs Frozen v0.2.5 Heuristic
+- Implemented `splendor agent-m50-policy --mode ismcts --simulations 32`:
+  - Directly implemented `PolicyValueEvaluatorV1` for `M50PolicyWeights`, plugging into `splendor_neural_search::search_neural_ismcts_with_evaluator_v1`.
+  - Runs 32 simulations per decision with depth 4, PUCT exploration constant 1.5, sampling determinized belief worlds via `sample_determinization_v1`.
+  - Policy network supplies candidate action priors; Value head evaluates leaf states at depth limits or terminal nodes.
+  - Alternating multi-ply game tree search: evaluates our actions AND opponent counter-responses.
+- Head-to-Head Arena Series vs Frozen v0.2.5 (128 games, seeds `9_260_000..9_260_063`):
+  - Result: **33 胜 0 平 95 负** (**25.78% 胜率**, 95% paired bootstrap CI `[18.75%, 33.59%]`).
+  - Win rate jumps from **18.75% (Greedy) / 7.42% (1-ply) -> 25.78% (IS-MCTS)**, an increase of **+7.03 percentage points** (+37.5% relative boost over greedy, and **3.5x higher** than 1-ply lookahead)!
+  - Seat 0 win rate reaches **31.25%**; Seat 1 win rate **20.31%**.
+  - Mean score: M50 **11.29** vs v0.2.5 **14.99** (closes the gap to under 3.7 points against the elite heuristic).
+  - Search runtime: **64.97 seconds** for 128 games (**0.508 seconds per full game**, ~9ms per IS-MCTS search decision).
+  - Replays and summary recorded in `local-artifacts/m50-ismcts-eval-v025/`.
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
-- **实战对战直接击败 v0.2.5：** 在完全未见过的 64 个双换座种子（128 场）对战中，纯粹基于模仿学习得到的网络在没有搜索、没有 MCTS 辅助的情况下，**实打实赢下 24 局（18.75% 胜率）**，场均得分达到 11.14 分，展现出扎实的引擎构筑与得分对抗能力。
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
-- **搜索消融与局限（实测证据）：**
-  - **纯 Policy 贪心（Greedy）：18.75% 胜率**（128 局赢 24 局）。
-  - **1 步单向浅搜索（1-ply lookahead）：7.42% 胜率**（128 局仅赢 9 局）。
-  - 诊断证实：1 步不包含对手回应的近视推演会破坏 Policy 网络学到的长期全局规划（例如过早贪图手里多两个筹码的即时静态优势，放弃了关键大卡的抢先预留）。这证明搜索不能做 1 步近视，必须是**包含对手对抗回应的完整交互搜索（如 IS-MCTS 或双步推演）**。
+- **搜索消融与突破（三方严格实战对照）：**
+  - **1 步单向浅搜索（1-ply lookahead）：7.42% 胜率**（128 局仅赢 9 局）。证实了 1 步近视推演因为不包含对手回应，会陷入短视贪心陷阱，破坏全局长线规划。
+  - **纯 Policy 贪心（Greedy，无搜索）：18.75% 胜率**（128 局赢 24 局）。依靠 46 万步学到的直觉下快棋，稳定在 18.75%。
+  - **完整交互 IS-MCTS 树搜索（32 sims x depth 4）：25.78% 胜率**（128 局赢 **33 局**，最高冲破 50% 前半程胜率）。在完整的对抗交替展开中，Policy 作为先验指引搜索方向，Value 评估叶节点，将实战胜率从 18.75% 大幅推升至 **25.78%**（相对增幅 +37.5%）！
 
 ## Known limitations
-- Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
+- 32 simulations is a very fast exploratory budget (~9ms/decision); higher simulation counts (e.g. 64 or 128) have not yet been evaluated.
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Full IS-MCTS Integration:** Wire `splendor-neural-agent` with M50 Policy as prior and M50 Value as leaf evaluator across full multi-ply simulation trees.
-2. **High-ELO / Winners-Only Data Curation:** Filter the 46.3万步 dataset to train exclusively on the winning player's trajectories.
+1. **Simulation Scaling:** Scale IS-MCTS from 32 to 64/128 simulations to evaluate if win rate surpasses 35%~40%.
+2. **Quality Filtering:** Retrain Policy-Value network on only the winning player's trajectories from the 46.3万步 corpus.
