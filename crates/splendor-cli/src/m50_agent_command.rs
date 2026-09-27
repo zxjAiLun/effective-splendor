@@ -11,7 +11,8 @@ use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, Decision
 use splendor_belief::{build_information_set_v1, sample_determinization_v1};
 use splendor_core::{Action, Observation, Phase, Ruleset};
 use splendor_learning::{
-    encode_action_v1, encode_observation_v1, PolicyActionProbabilityV1, PolicyValuePredictionV1,
+    encode_action_semantic_v1, encode_action_v1, encode_observation_v1, PolicyActionProbabilityV1,
+    PolicyValuePredictionV1,
 };
 use splendor_neural_search::{
     search_neural_ismcts_with_evaluator_v1, NeuralIsmctsConfigV1, NeuralSearchError,
@@ -80,8 +81,8 @@ impl M50PolicyWeights {
             serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
         };
 
-        let bias_2d = get_vec_vec("action_bias.weight")?;
-        let act_bias = bias_2d.into_iter().next().unwrap_or_default();
+    let bias_2d = get_vec_vec("action_bias.weight").unwrap_or_default();
+        let act_bias = bias_2d.into_iter().next().unwrap_or_else(|| vec![0.0f32; 36]);
 
         let val_l2_2d = get_vec_vec("value_head.2.weight")?;
         let val_l2_w = val_l2_2d.into_iter().next().unwrap_or_default();
@@ -99,6 +100,11 @@ impl M50PolicyWeights {
                 (None, None, None, None)
             };
 
+        let act_l1_w = get_vec_vec("action_net.0.weight").unwrap_or_default();
+        let act_l1_b = get_vec("action_net.0.bias").unwrap_or_default();
+        let act_ln1_w = get_vec("action_net.1.weight").unwrap_or_default();
+        let act_ln1_b = get_vec("action_net.1.bias").unwrap_or_default();
+
         let weights = Self {
             state_l1_w: get_vec_vec("state_net.0.weight")?,
             state_l1_b: get_vec("state_net.0.bias")?,
@@ -109,10 +115,10 @@ impl M50PolicyWeights {
             state_ln2_w: get_vec("state_net.4.weight")?,
             state_ln2_b: get_vec("state_net.4.bias")?,
 
-            act_l1_w: get_vec_vec("action_net.0.weight")?,
-            act_l1_b: get_vec("action_net.0.bias")?,
-            act_ln1_w: get_vec("action_net.1.weight")?,
-            act_ln1_b: get_vec("action_net.1.bias")?,
+            act_l1_w,
+            act_l1_b,
+            act_ln1_w,
+            act_ln1_b,
 
             act_bias,
 
@@ -131,9 +137,6 @@ impl M50PolicyWeights {
         let h2_dim = weights.state_l2_w.len();
         assert_eq!(weights.state_l1_w[0].len(), 368);
         assert_eq!(weights.state_l2_w[0].len(), h1_dim);
-        assert_eq!(weights.act_l1_w.len(), h2_dim);
-        assert_eq!(weights.act_l1_w[0].len(), 36);
-        assert_eq!(weights.act_bias.len(), 36);
         assert_eq!(weights.val_l1_w[0].len(), h2_dim);
 
         Ok(weights)
@@ -254,6 +257,9 @@ impl M50PolicyWeights {
     pub fn score_action(&self, state_h: &[f32], act: &[f32]) -> f32 {
         assert_eq!(act.len(), 36);
         let h2_dim = self.act_l1_w.len();
+        if h2_dim == 0 {
+            return 0.0;
+        }
         let mut ah = vec![0.0f32; h2_dim];
         for i in 0..h2_dim {
             let row = &self.act_l1_w[i];
@@ -357,16 +363,242 @@ impl PolicyValueEvaluatorV1 for M50PolicyWeights {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SemanticQWeights {
+    state_l1_w: Vec<Vec<f32>>,
+    state_l1_b: Vec<f32>,
+    state_ln1_w: Vec<f32>,
+    state_ln1_b: Vec<f32>,
+    state_l2_w: Vec<Vec<f32>>,
+    state_l2_b: Vec<f32>,
+    state_ln2_w: Vec<f32>,
+    state_ln2_b: Vec<f32>,
+
+    act_l1_w: Vec<Vec<f32>>,
+    act_l1_b: Vec<f32>,
+    act_ln1_w: Vec<f32>,
+    act_ln1_b: Vec<f32>,
+    act_l2_w: Vec<Vec<f32>>,
+    act_l2_b: Vec<f32>,
+    act_ln2_w: Vec<f32>,
+    act_ln2_b: Vec<f32>,
+
+    q_l1_w: Vec<Vec<f32>>,
+    q_l1_b: Vec<f32>,
+    q_l2_w: Vec<Vec<f32>>,
+    q_l2_b: Vec<f32>,
+    q_l3_w: Vec<f32>,
+    q_l3_b: f32,
+
+    val_l1_w: Vec<Vec<f32>>,
+    val_l1_b: Vec<f32>,
+    val_l2_w: Vec<f32>,
+    val_l2_b: f32,
+}
+
+impl SemanticQWeights {
+    pub fn load_from_json(path: &Path) -> Result<Self, String> {
+        let file = File::open(path).map_err(|e| format!("open {}: {e}", path.display()))?;
+        let reader = BufReader::new(file);
+        let map: HashMap<String, serde_json::Value> =
+            serde_json::from_reader(reader).map_err(|e| format!("parse JSON: {e}"))?;
+
+        if !map.contains_key("q_head.0.weight") {
+            return Err("not a semantic Q weights file".into());
+        }
+
+        let get_vec_vec = |key: &str| -> Result<Vec<Vec<f32>>, String> {
+            let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
+            serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
+        };
+
+        let get_vec = |key: &str| -> Result<Vec<f32>, String> {
+            let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
+            serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
+        };
+
+        let q_l3_2d = get_vec_vec("q_head.4.weight")?;
+        let q_l3_w = q_l3_2d.into_iter().next().unwrap_or_default();
+        let q_l3_b = get_vec("q_head.4.bias")?[0];
+
+        let val_l2_2d = get_vec_vec("val_head.2.weight")?;
+        let val_l2_w = val_l2_2d.into_iter().next().unwrap_or_default();
+        let val_l2_b = get_vec("val_head.2.bias")?[0];
+
+        Ok(Self {
+            state_l1_w: get_vec_vec("state_net.0.weight")?,
+            state_l1_b: get_vec("state_net.0.bias")?,
+            state_ln1_w: get_vec("state_net.1.weight")?,
+            state_ln1_b: get_vec("state_net.1.bias")?,
+            state_l2_w: get_vec_vec("state_net.3.weight")?,
+            state_l2_b: get_vec("state_net.3.bias")?,
+            state_ln2_w: get_vec("state_net.4.weight")?,
+            state_ln2_b: get_vec("state_net.4.bias")?,
+
+            act_l1_w: get_vec_vec("action_net.0.weight")?,
+            act_l1_b: get_vec("action_net.0.bias")?,
+            act_ln1_w: get_vec("action_net.1.weight")?,
+            act_ln1_b: get_vec("action_net.1.bias")?,
+            act_l2_w: get_vec_vec("action_net.3.weight")?,
+            act_l2_b: get_vec("action_net.3.bias")?,
+            act_ln2_w: get_vec("action_net.4.weight")?,
+            act_ln2_b: get_vec("action_net.4.bias")?,
+
+            q_l1_w: get_vec_vec("q_head.0.weight")?,
+            q_l1_b: get_vec("q_head.0.bias")?,
+            q_l2_w: get_vec_vec("q_head.2.weight")?,
+            q_l2_b: get_vec("q_head.2.bias")?,
+            q_l3_w,
+            q_l3_b,
+
+            val_l1_w: get_vec_vec("val_head.0.weight")?,
+            val_l1_b: get_vec("val_head.0.bias")?,
+            val_l2_w,
+            val_l2_b,
+        })
+    }
+
+    pub fn forward_state(&self, obs: &[f32]) -> Vec<f32> {
+        let h1_dim = self.state_l1_w.len();
+        let mut h1 = vec![0.0f32; h1_dim];
+        for i in 0..h1_dim {
+            let row = &self.state_l1_w[i];
+            let mut sum = self.state_l1_b[i];
+            for j in 0..obs.len() {
+                sum += row[j] * obs[j];
+            }
+            h1[i] = sum;
+        }
+        let mean1 = h1.iter().sum::<f32>() / (h1_dim as f32);
+        let var1 = h1.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / (h1_dim as f32);
+        let std1 = (var1 + 1e-5).sqrt();
+        for i in 0..h1_dim {
+            let norm = (h1[i] - mean1) / std1;
+            let val = norm * self.state_ln1_w[i] + self.state_ln1_b[i];
+            h1[i] = if val > 0.0 { val } else { 0.0 };
+        }
+
+        let h2_dim = self.state_l2_w.len();
+        let mut h2 = vec![0.0f32; h2_dim];
+        for i in 0..h2_dim {
+            let row = &self.state_l2_w[i];
+            let mut sum = self.state_l2_b[i];
+            for j in 0..h1_dim {
+                sum += row[j] * h1[j];
+            }
+            h2[i] = sum;
+        }
+        let mean2 = h2.iter().sum::<f32>() / (h2_dim as f32);
+        let var2 = h2.iter().map(|v| (v - mean2) * (v - mean2)).sum::<f32>() / (h2_dim as f32);
+        let std2 = (var2 + 1e-5).sqrt();
+        for i in 0..h2_dim {
+            let norm = (h2[i] - mean2) / std2;
+            let val = norm * self.state_ln2_w[i] + self.state_ln2_b[i];
+            h2[i] = if val > 0.0 { val } else { 0.0 };
+        }
+        h2
+    }
+
+    pub fn forward_action(&self, act: &[f32]) -> Vec<f32> {
+        let h1_dim = self.act_l1_w.len();
+        let mut h1 = vec![0.0f32; h1_dim];
+        for i in 0..h1_dim {
+            let row = &self.act_l1_w[i];
+            let mut sum = self.act_l1_b[i];
+            for j in 0..act.len() {
+                sum += row[j] * act[j];
+            }
+            h1[i] = sum;
+        }
+        let mean1 = h1.iter().sum::<f32>() / (h1_dim as f32);
+        let var1 = h1.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / (h1_dim as f32);
+        let std1 = (var1 + 1e-5).sqrt();
+        for i in 0..h1_dim {
+            let norm = (h1[i] - mean1) / std1;
+            let val = norm * self.act_ln1_w[i] + self.act_ln1_b[i];
+            h1[i] = if val > 0.0 { val } else { 0.0 };
+        }
+
+        let h2_dim = self.act_l2_w.len();
+        let mut h2 = vec![0.0f32; h2_dim];
+        for i in 0..h2_dim {
+            let row = &self.act_l2_w[i];
+            let mut sum = self.act_l2_b[i];
+            for j in 0..h1_dim {
+                sum += row[j] * h1[j];
+            }
+            h2[i] = sum;
+        }
+        let mean2 = h2.iter().sum::<f32>() / (h2_dim as f32);
+        let var2 = h2.iter().map(|v| (v - mean2) * (v - mean2)).sum::<f32>() / (h2_dim as f32);
+        let std2 = (var2 + 1e-5).sqrt();
+        for i in 0..h2_dim {
+            let norm = (h2[i] - mean2) / std2;
+            let val = norm * self.act_ln2_w[i] + self.act_ln2_b[i];
+            h2[i] = if val > 0.0 { val } else { 0.0 };
+        }
+        h2
+    }
+
+    pub fn predict_q_steps(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+        let act_h = self.forward_action(act_raw);
+        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
+        joint.extend_from_slice(state_h);
+        joint.extend_from_slice(&act_h);
+        joint.extend_from_slice(act_raw);
+
+        let q1_dim = self.q_l1_w.len();
+        let mut q1 = vec![0.0f32; q1_dim];
+        for i in 0..q1_dim {
+            let row = &self.q_l1_w[i];
+            let mut sum = self.q_l1_b[i];
+            for j in 0..joint.len() {
+                sum += row[j] * joint[j];
+            }
+            q1[i] = if sum > 0.0 { sum } else { 0.0 };
+        }
+
+        let q2_dim = self.q_l2_w.len();
+        let mut q2 = vec![0.0f32; q2_dim];
+        for i in 0..q2_dim {
+            let row = &self.q_l2_w[i];
+            let mut sum = self.q_l2_b[i];
+            for j in 0..q1_dim {
+                sum += row[j] * q1[j];
+            }
+            q2[i] = if sum > 0.0 { sum } else { 0.0 };
+        }
+
+        let mut sum = self.q_l3_b;
+        for j in 0..q2_dim {
+            sum += self.q_l3_w[j] * q2[j];
+        }
+
+        let sp = if sum > 20.0 {
+            sum
+        } else if sum < -20.0 {
+            sum.exp()
+        } else {
+            (1.0 + sum.exp()).ln()
+        };
+
+        sp * 20.0
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M50Mode {
     Greedy,
     QSteps,
+    SemanticQ,
+    PureDistance,
     Search,
     Ismcts,
 }
 
 pub struct M50Policy {
-    weights: M50PolicyWeights,
+    weights: Option<M50PolicyWeights>,
+    semantic_weights: Option<SemanticQWeights>,
     mode: M50Mode,
     simulations: u32,
     max_depth: u8,
@@ -377,7 +609,8 @@ pub struct M50Policy {
 
 impl M50Policy {
     pub fn new(
-        weights: M50PolicyWeights,
+        weights: Option<M50PolicyWeights>,
+        semantic_weights: Option<SemanticQWeights>,
         mode: M50Mode,
         simulations: u32,
         max_depth: u8,
@@ -387,6 +620,7 @@ impl M50Policy {
     ) -> Self {
         Self {
             weights,
+            semantic_weights,
             mode,
             simulations,
             max_depth,
@@ -409,6 +643,35 @@ impl AgentPolicy for M50Policy {
             return Ok(legal[0].clone());
         }
 
+        // Semantic Q Mode: evaluate each legal action using rich 48-dim physical features!
+        // ZERO policy imitation. Pick a* = argmin_a Q_steps(s, a)!
+        if self.mode == M50Mode::SemanticQ {
+            if let Some(ref sw) = self.semantic_weights {
+                let obs_feat = encode_observation_v1(&context.observation)
+                    .map_err(|e| AgentError::Policy(e.to_string()))?;
+                let state_h = sw.forward_state(&obs_feat);
+
+                let mut best_q = f32::INFINITY;
+                let mut best_action = legal[0].clone();
+
+                for action in legal {
+                    let act_feat = encode_action_semantic_v1(&context.observation, action)
+                        .map_err(|e| AgentError::Policy(e.to_string()))?;
+                    let q = sw.predict_q_steps(&state_h, &act_feat);
+                    if q < best_q {
+                        best_q = q;
+                        best_action = action.clone();
+                    }
+                }
+                return Ok(best_action);
+            }
+        }
+
+        let weights = match self.weights.as_ref() {
+            Some(w) => w,
+            None => return Err(AgentError::Policy("missing policy weights for non-semantic mode".into())),
+        };
+
         // Full ISMCTS tree search mode
         if self.mode == M50Mode::Ismcts && context.observation.public.phase == Phase::Main {
             let ruleset = Ruleset::base_v1();
@@ -430,7 +693,7 @@ impl AgentPolicy for M50Policy {
                     "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
             };
 
-            match search_neural_ismcts_with_evaluator_v1(&info_set, &self.weights, &config) {
+            match search_neural_ismcts_with_evaluator_v1(&info_set, weights, &config) {
                 Ok(res) => return Ok(res.action),
                 Err(e) => {
                     eprintln!("Warning: IS-MCTS search failed: {e:?}, falling back to policy");
@@ -438,15 +701,70 @@ impl AgentPolicy for M50Policy {
             }
         }
 
+        // Pure Distance Mode: simulate s' = apply(a) on determinization, evaluate V_steps(s')!
+        // ZERO policy logits involved. Pick a* = argmin_a pred_steps(s')!
+        if self.mode == M50Mode::PureDistance {
+            let actor = context.observation.viewer;
+            let ruleset = Ruleset::base_v1();
+            if let Ok(info_set) = build_information_set_v1(ruleset, &context.observation, context.visible_history) {
+                if let Ok(det) = sample_determinization_v1(&info_set, self.sample_seed, 0) {
+                    let mut best_steps = f32::INFINITY;
+                    let mut best_val = f32::NEG_INFINITY;
+                    let mut best_action = legal[0].clone();
+
+                    for action in legal {
+                        let mut sim = det.state().clone();
+                        if sim.apply(action.clone()).is_ok() {
+                            let (steps, val) = if sim.is_terminal() {
+                                if let Some(ref res) = sim.result {
+                                    if res.winners.contains(&actor) {
+                                        (0.0f32, 1.0f32)
+                                    } else {
+                                        (50.0f32, 0.0f32)
+                                    }
+                                } else {
+                                    (0.0f32, 0.5f32)
+                                }
+                            } else {
+                                let next_obs = sim.observation(actor);
+                                if let Ok(feat) = encode_observation_v1(&next_obs) {
+                                    let h = weights.forward_state(&feat);
+                                    let s = weights.predict_steps_to_15(&h).unwrap_or(20.0);
+                                    let v = weights.predict_value_from_state_h(&h);
+                                    (s, v)
+                                } else {
+                                    (20.0, 0.5)
+                                }
+                            };
+
+                            let is_better = if (steps - best_steps).abs() > 1e-4 {
+                                steps < best_steps
+                            } else {
+                                val > best_val
+                            };
+
+                            if is_better {
+                                best_steps = steps;
+                                best_val = val;
+                                best_action = action.clone();
+                            }
+                        }
+                    }
+                    return Ok(best_action);
+                }
+            }
+            return Ok(legal[0].clone());
+        }
+
         let obs_feat = encode_observation_v1(&context.observation)
             .map_err(|e| AgentError::Policy(e.to_string()))?;
-        let state_h = self.weights.forward_state(&obs_feat);
+        let state_h = weights.forward_state(&obs_feat);
 
         let mut scored: Vec<(usize, f32)> = Vec::with_capacity(legal.len());
         for (idx, action) in legal.iter().enumerate() {
             let act_feat =
                 encode_action_v1(action).map_err(|e| AgentError::Policy(e.to_string()))?;
-            let score = self.weights.score_action(&state_h, &act_feat);
+            let score = weights.score_action(&state_h, &act_feat);
             scored.push((idx, score));
         }
 
@@ -505,12 +823,12 @@ impl AgentPolicy for M50Policy {
                     } else {
                         let next_obs = sim_state.observation(actor);
                         if let Ok(next_feat) = encode_observation_v1(&next_obs) {
-                            let next_h = self.weights.forward_state(&next_feat);
-                            let p_win = self.weights.predict_value_from_state_h(&next_h);
-                            let val = if let Some(steps) = self.weights.predict_steps_to_15(&next_h)
+                            let next_h = weights.forward_state(&next_feat);
+                            let p_win = weights.predict_value_from_state_h(&next_h);
+                            let val = if let Some(steps) = weights.predict_steps_to_15(&next_h)
                             {
-                                let speed_ratio = (1.0 - (steps / 30.0)).clamp(0.0, 1.0);
-                                (0.75 * p_win + 0.25 * speed_ratio).clamp(0.0, 1.0)
+                                let speed_ratio = (1.0f32 - (steps / 30.0f32)).clamp(0.0f32, 1.0f32);
+                                (0.75f32 * p_win + 0.25f32 * speed_ratio).clamp(0.0f32, 1.0f32)
                             } else {
                                 p_win
                             };
@@ -558,6 +876,8 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
                         mode = M50Mode::Ismcts;
                     } else if m == "qsteps" || m == "q_steps" {
                         mode = M50Mode::QSteps;
+                    } else if m == "distance" || m == "pure_distance" {
+                        mode = M50Mode::PureDistance;
                     } else {
                         mode = M50Mode::Greedy;
                     }
@@ -622,11 +942,20 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
         }
     };
 
-    let weights = match M50PolicyWeights::load_from_json(&weights_path) {
-        Ok(w) => w,
-        Err(e) => {
-            eprintln!("error loading weights from {}: {e}", weights_path.display());
-            return 1;
+    let (weights, semantic_weights) = match SemanticQWeights::load_from_json(&weights_path) {
+        Ok(sw) => {
+            mode = M50Mode::SemanticQ;
+            (None, Some(sw))
+        }
+        Err(_) => {
+            let pw = match M50PolicyWeights::load_from_json(&weights_path) {
+                Ok(w) => w,
+                Err(e) => {
+                    eprintln!("error loading weights from {}: {e}", weights_path.display());
+                    return 1;
+                }
+            };
+            (Some(pw), None)
         }
     };
 
@@ -645,7 +974,7 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
         stderr.lock(),
         identity,
         seed,
-        M50Policy::new(weights, mode, simulations, max_depth, top_k, worlds, seed),
+        M50Policy::new(weights, semantic_weights, mode, simulations, max_depth, top_k, worlds, seed),
     ) {
         Ok(()) => 0,
         Err(_) => 1,

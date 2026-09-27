@@ -18,7 +18,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 // splendor_core types used via splendor_replay / splendor_learning
 use splendor_learning::{
-    encode_action_v1, encode_observation_v1, ACTION_FEATURES_V1, OBSERVATION_FEATURES_V1,
+    encode_action_semantic_v1, encode_action_v1, encode_observation_v1, ACTION_FEATURES_V1,
+    ACTION_SEMANTIC_FEATURES_V1, OBSERVATION_FEATURES_V1,
 };
 use splendor_replay::{verify_replay_trace, ReplayV1};
 
@@ -42,6 +43,7 @@ struct Args {
     val_remainder: u64,
     winner_only: bool,
     top_fastest_percent: Option<f64>,
+    semantic: bool,
 }
 
 #[derive(Debug, Default)]
@@ -81,7 +83,6 @@ impl SplitBuffer {
         }
 
         for act_feat in legal_feats {
-            assert_eq!(act_feat.len(), ACTION_FEATURES_V1);
             for &v in act_feat {
                 self.action_bytes.extend_from_slice(&v.to_le_bytes());
             }
@@ -241,6 +242,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     let mut val_remainder = 0u64;
     let mut winner_only = false;
     let mut top_fastest_percent = None;
+    let mut semantic = false;
 
     let mut i = 0;
     while i < args.len() {
@@ -277,6 +279,10 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
                 winner_only = true;
                 i += 1;
             }
+            "--semantic" => {
+                semantic = true;
+                i += 1;
+            }
             "--top-fastest-percent" => {
                 let val = args
                     .get(i + 1)
@@ -302,6 +308,7 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
         val_remainder,
         winner_only,
         top_fastest_percent,
+        semantic,
     })
 }
 
@@ -491,15 +498,26 @@ fn run(args: Args) -> Result<(), String> {
                 }
             };
 
-            let legal_feats: Result<Vec<Vec<f32>>, _> =
-                legal.iter().map(encode_action_v1).collect();
-            let legal_feats = match legal_feats {
-                Ok(lf) => lf,
-                Err(e) => {
-                    eprintln!("Warning: encode_action failed: {e}");
-                    continue;
+            let mut legal_feats = Vec::with_capacity(legal.len());
+            let mut encode_err = false;
+            for a in &legal {
+                let feat_res: Result<Vec<f32>, splendor_learning::LearningError> = if args.semantic {
+                    encode_action_semantic_v1(&obs, a).map(|v| v.to_vec())
+                } else {
+                    encode_action_v1(a)
+                };
+                match feat_res {
+                    Ok(f) => legal_feats.push(f),
+                    Err(e) => {
+                        eprintln!("Warning: encode_action failed: {e}");
+                        encode_err = true;
+                        break;
+                    }
                 }
-            };
+            }
+            if encode_err {
+                continue;
+            }
 
             let actor_seat_u8 = actor_seat as u8;
             let won = if result.winners.contains(&actor_seat_u8) {
@@ -582,7 +600,11 @@ fn run(args: Args) -> Result<(), String> {
         val_modulus: args.val_modulus,
         val_remainder: args.val_remainder,
         observation_width: OBSERVATION_FEATURES_V1,
-        action_width: ACTION_FEATURES_V1,
+        action_width: if args.semantic {
+            ACTION_SEMANTIC_FEATURES_V1
+        } else {
+            ACTION_FEATURES_V1
+        },
         total_replays_parsed: total_parsed,
         total_steps: train_meta.step_count + val_meta.step_count,
         splits: SplitsMeta {

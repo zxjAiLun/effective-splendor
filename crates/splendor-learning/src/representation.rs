@@ -178,6 +178,7 @@ pub fn encode_action_v1(action: &Action) -> Result<Vec<f32>, LearningError> {
 
 /// Frozen M25/M49A deterministic action delta feature count.
 pub const ACTION_DELTA_FEATURES_V2: usize = 23;
+pub const ACTION_SEMANTIC_FEATURES_V1: usize = 48;
 /// Combined input dimension for M49A Q-network (368 + 36 + 23 = 427).
 pub const COMBINED_FEATURES_V1: usize =
     OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2;
@@ -185,6 +186,325 @@ pub const COMBINED_FEATURES_V1: usize =
 pub const HORIZON_FEATURES_V1: usize = 1;
 /// Horizon-aware combined input dimension (427 + normalized remaining budget).
 pub const COMBINED_FEATURES_V2: usize = COMBINED_FEATURES_V1 + HORIZON_FEATURES_V1;
+
+/// Computes the exact deficit of missing gems to purchase a card, taking bonuses and gold into account.
+#[inline]
+pub fn compute_card_deficit(cost: [u8; 5], bonuses: [u8; 5], tokens: [u8; 6]) -> u8 {
+    let mut total_shortfall: u8 = 0;
+    for i in 0..5 {
+        let needed = cost[i].saturating_sub(bonuses[i]);
+        let shortfall = needed.saturating_sub(tokens[i]);
+        total_shortfall = total_shortfall.saturating_add(shortfall);
+    }
+    total_shortfall.saturating_sub(tokens[5])
+}
+
+fn evaluate_card_group_metrics(
+    cards: &[&splendor_catalog::CardDef],
+    before_bonuses: [u8; 5],
+    before_tokens: [u8; 6],
+    after_bonuses: [u8; 5],
+    after_tokens: [u8; 6],
+) -> (f32, f32, f32, f32, f32) {
+    if cards.is_empty() {
+        return (10.0, 0.0, 0.0, 0.0, 0.0);
+    }
+    let mut min_def_after: u8 = 255;
+    let mut max_reduction: u8 = 0;
+    let mut newly_affordable: u8 = 0;
+    let mut total_affordable_after: u8 = 0;
+    let mut vp_weighted_reduction: f32 = 0.0;
+
+    for &c in cards {
+        let def_before = compute_card_deficit(c.cost, before_bonuses, before_tokens);
+        let def_after = compute_card_deficit(c.cost, after_bonuses, after_tokens);
+        let reduction = def_before.saturating_sub(def_after);
+
+        if def_after < min_def_after {
+            min_def_after = def_after;
+        }
+        if reduction > max_reduction {
+            max_reduction = reduction;
+        }
+        if def_before > 0 && def_after == 0 {
+            newly_affordable += 1;
+        }
+        if def_after == 0 {
+            total_affordable_after += 1;
+        }
+        vp_weighted_reduction += (reduction as f32) * (c.prestige as f32);
+    }
+
+    (
+        min_def_after as f32,
+        max_reduction as f32,
+        newly_affordable as f32,
+        total_affordable_after as f32,
+        vp_weighted_reduction,
+    )
+}
+
+/// Rich semantic action feature encoding (48 dimensions).
+///
+/// Directly supplies the network with the exact physical consequences of an action:
+/// - Target card deficit reductions across Tier 1, Tier 2, Tier 3, and private reserved cards
+/// - Purchase readiness (newly affordable cards unlocked by this action)
+/// - Alignment with noble tile requirements
+/// - Board-wide color demand coverage
+/// - Direct tempo and resource deltas
+pub fn encode_action_semantic_v1(
+    observation: &Observation,
+    action: &Action,
+) -> Result<[f32; ACTION_SEMANTIC_FEATURES_V1], LearningError> {
+    validate_observation_v1(observation)?;
+    validate_action_v1(action)?;
+
+    let viewer = observation.viewer.index();
+    let player = &observation.public.players[viewer];
+    let before_tokens = [
+        player.tokens.white,
+        player.tokens.blue,
+        player.tokens.green,
+        player.tokens.red,
+        player.tokens.black,
+        player.tokens.gold,
+    ];
+    let before_bonuses = player.bonuses;
+    let before_prestige = player.prestige;
+
+    let mut action_type_onehot = [0.0f32; 6];
+    let mut after_tokens = before_tokens;
+    let mut after_bonuses = before_bonuses;
+    let mut after_prestige = before_prestige;
+    let mut gold_spent: f32 = 0.0;
+    let mut card_cost_total: f32 = 0.0;
+    let mut card_prestige: f32 = 0.0;
+    let mut reserved_prestige: f32 = 0.0;
+    let mut noble_claimed: f32 = 0.0;
+    let mut taken_board_demand_overlap: f32 = 0.0;
+
+    // Board-wide color demand
+    let mut board_demand = [0u8; 5];
+    for tier in 0..3 {
+        for slot in 0..4 {
+            if let Some(card_id) = observation.public.market[tier][slot] {
+                let c = card(card_id);
+                for i in 0..5 {
+                    let need = c.cost[i].saturating_sub(before_bonuses[i]);
+                    board_demand[i] = board_demand[i].saturating_add(need);
+                }
+            }
+        }
+    }
+
+    match *action {
+        Action::TakeTokens { take, give_back } => {
+            action_type_onehot[0] = 1.0;
+            let take_arr = [take.white, take.blue, take.green, take.red, take.black, take.gold];
+            let give_arr = [give_back.white, give_back.blue, give_back.green, give_back.red, give_back.black, give_back.gold];
+            for i in 0..6 {
+                after_tokens[i] = (before_tokens[i] + take_arr[i]).saturating_sub(give_arr[i]);
+            }
+            let mut dot = 0.0f32;
+            for i in 0..5 {
+                dot += (take_arr[i] as f32) * (board_demand[i] as f32);
+            }
+            taken_board_demand_overlap = dot / 20.0;
+        }
+        Action::BuyMarket { tier, slot } => {
+            action_type_onehot[1] = 1.0;
+            let slot_idx = slot as usize;
+            if slot_idx < 4 {
+                if let Some(card_id) = observation.public.market[tier.index()][slot_idx] {
+                    let c = card(card_id);
+                    card_prestige = c.prestige as f32 / 5.0;
+                    card_cost_total = c.total_cost() as f32 / 10.0;
+                    after_prestige = before_prestige.saturating_add(c.prestige);
+                    after_bonuses[c.bonus.index()] = after_bonuses[c.bonus.index()].saturating_add(1);
+
+                    let mut g_spent = 0u8;
+                    for i in 0..5 {
+                        let need = c.cost[i].saturating_sub(before_bonuses[i]);
+                        let pay = before_tokens[i].min(need);
+                        after_tokens[i] = before_tokens[i] - pay;
+                        g_spent += need - pay;
+                    }
+                    gold_spent = g_spent as f32 / 5.0;
+                    after_tokens[5] = before_tokens[5].saturating_sub(g_spent);
+
+                    for &n_id in &observation.public.nobles {
+                        let nd = &splendor_catalog::all_nobles()[n_id.index()];
+                        let sat_before = (0..5).all(|i| before_bonuses[i] >= nd.requirements[i]);
+                        let sat_after = (0..5).all(|i| after_bonuses[i] >= nd.requirements[i]);
+                        if !sat_before && sat_after {
+                            noble_claimed = 1.0;
+                            after_prestige = after_prestige.saturating_add(3);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Action::BuyReserved { slot } => {
+            action_type_onehot[2] = 1.0;
+            let slot_idx = slot as usize;
+            let reserved = &observation.private.reserved;
+            if slot_idx < reserved.len() {
+                let card_id = reserved[slot_idx].card;
+                let c = card(card_id);
+                card_prestige = c.prestige as f32 / 5.0;
+                card_cost_total = c.total_cost() as f32 / 10.0;
+                after_prestige = before_prestige.saturating_add(c.prestige);
+                after_bonuses[c.bonus.index()] = after_bonuses[c.bonus.index()].saturating_add(1);
+
+                let mut g_spent = 0u8;
+                for i in 0..5 {
+                    let need = c.cost[i].saturating_sub(before_bonuses[i]);
+                    let pay = before_tokens[i].min(need);
+                    after_tokens[i] = before_tokens[i] - pay;
+                    g_spent += need - pay;
+                }
+                gold_spent = g_spent as f32 / 5.0;
+                after_tokens[5] = before_tokens[5].saturating_sub(g_spent);
+
+                for &n_id in &observation.public.nobles {
+                    let nd = &splendor_catalog::all_nobles()[n_id.index()];
+                    let sat_before = (0..5).all(|i| before_bonuses[i] >= nd.requirements[i]);
+                    let sat_after = (0..5).all(|i| after_bonuses[i] >= nd.requirements[i]);
+                    if !sat_before && sat_after {
+                        noble_claimed = 1.0;
+                        after_prestige = after_prestige.saturating_add(3);
+                        break;
+                    }
+                }
+            }
+        }
+        Action::ReserveMarket { tier, slot, give_back } => {
+            action_type_onehot[3] = 1.0;
+            let slot_idx = slot as usize;
+            if slot_idx < 4 {
+                if let Some(card_id) = observation.public.market[tier.index()][slot_idx] {
+                    let c = card(card_id);
+                    reserved_prestige = c.prestige as f32 / 5.0;
+                }
+            }
+            let gold_taken = if observation.public.bank.gold > 0 { 1u8 } else { 0u8 };
+            let give_arr = [give_back.white, give_back.blue, give_back.green, give_back.red, give_back.black, give_back.gold];
+            for i in 0..5 {
+                after_tokens[i] = before_tokens[i].saturating_sub(give_arr[i]);
+            }
+            after_tokens[5] = (before_tokens[5] + gold_taken).saturating_sub(give_arr[5]);
+        }
+        Action::ReserveDeck { give_back, .. } => {
+            action_type_onehot[4] = 1.0;
+            let gold_taken = if observation.public.bank.gold > 0 { 1u8 } else { 0u8 };
+            let give_arr = [give_back.white, give_back.blue, give_back.green, give_back.red, give_back.black, give_back.gold];
+            for i in 0..5 {
+                after_tokens[i] = before_tokens[i].saturating_sub(give_arr[i]);
+            }
+            after_tokens[5] = (before_tokens[5] + gold_taken).saturating_sub(give_arr[5]);
+        }
+        Action::ChooseNoble { .. } => {
+            action_type_onehot[5] = 1.0;
+            noble_claimed = 1.0;
+            after_prestige = before_prestige.saturating_add(3);
+        }
+        Action::Pass => {
+            action_type_onehot[5] = 1.0;
+        }
+    }
+
+    // Collect cards by tier
+    let mut t1_cards = Vec::with_capacity(4);
+    let mut t2_cards = Vec::with_capacity(4);
+    let mut t3_cards = Vec::with_capacity(4);
+    for slot in 0..4 {
+        if let Some(id) = observation.public.market[0][slot] { t1_cards.push(card(id)); }
+        if let Some(id) = observation.public.market[1][slot] { t2_cards.push(card(id)); }
+        if let Some(id) = observation.public.market[2][slot] { t3_cards.push(card(id)); }
+    }
+    let mut res_cards = Vec::with_capacity(3);
+    for r in &observation.private.reserved {
+        res_cards.push(card(r.card));
+    }
+
+    let (t1_min_def, t1_max_red, t1_new_aff, t1_tot_aff, _) =
+        evaluate_card_group_metrics(&t1_cards, before_bonuses, before_tokens, after_bonuses, after_tokens);
+    let (t2_min_def, t2_max_red, t2_new_aff, t2_tot_aff, t2_vp_red) =
+        evaluate_card_group_metrics(&t2_cards, before_bonuses, before_tokens, after_bonuses, after_tokens);
+    let (t3_min_def, t3_max_red, t3_new_aff, t3_tot_aff, t3_vp_red) =
+        evaluate_card_group_metrics(&t3_cards, before_bonuses, before_tokens, after_bonuses, after_tokens);
+    let (res_min_def, res_max_red, res_new_aff, res_tot_aff, res_vp_red) =
+        evaluate_card_group_metrics(&res_cards, before_bonuses, before_tokens, after_bonuses, after_tokens);
+
+    // Noble alignment
+    let mut min_noble_def_before: u8 = 255;
+    let mut min_noble_def_after: u8 = 255;
+    for &n_id in &observation.public.nobles {
+        let nd = &splendor_catalog::all_nobles()[n_id.index()];
+        let mut def_b: u8 = 0;
+        let mut def_a: u8 = 0;
+        for c in 0..5 {
+            def_b += nd.requirements[c].saturating_sub(before_bonuses[c]);
+            def_a += nd.requirements[c].saturating_sub(after_bonuses[c]);
+        }
+        if def_b < min_noble_def_before { min_noble_def_before = def_b; }
+        if def_a < min_noble_def_after { min_noble_def_after = def_a; }
+    }
+    let noble_def_red = min_noble_def_before.saturating_sub(min_noble_def_after) as f32;
+
+    let mut net_tokens = [0.0f32; 6];
+    for i in 0..6 {
+        net_tokens[i] = (after_tokens[i] as f32 - before_tokens[i] as f32) / 5.0;
+    }
+    let total_post_tokens: f32 = after_tokens.iter().map(|&t| t as f32).sum::<f32>() / 10.0;
+    let vp_gain = (after_prestige.saturating_sub(before_prestige)) as f32 / 5.0;
+    let post_vp = (after_prestige as f32) / 15.0;
+    let dist_15 = (15.0 - after_prestige as f32).max(0.0) / 15.0;
+
+    let mut bonus_gain = [0.0f32; 5];
+    for i in 0..5 {
+        bonus_gain[i] = (after_bonuses[i].saturating_sub(before_bonuses[i])) as f32;
+    }
+
+    let mut out = [0.0f32; ACTION_SEMANTIC_FEATURES_V1];
+    out[0..6].copy_from_slice(&action_type_onehot);
+    out[6..12].copy_from_slice(&net_tokens);
+    out[12] = total_post_tokens;
+    out[13] = vp_gain;
+    out[14] = post_vp;
+    out[15] = dist_15;
+    out[16..21].copy_from_slice(&bonus_gain);
+    out[21] = gold_spent;
+    out[22] = card_cost_total;
+    out[23] = card_prestige;
+    out[24] = reserved_prestige;
+    out[25] = t1_min_def / 5.0;
+    out[26] = t1_max_red / 3.0;
+    out[27] = t1_new_aff / 4.0;
+    out[28] = t1_tot_aff / 4.0;
+    out[29] = t2_min_def / 8.0;
+    out[30] = t2_max_red / 3.0;
+    out[31] = t2_new_aff / 4.0;
+    out[32] = t2_tot_aff / 4.0;
+    out[33] = t2_vp_red / 6.0;
+    out[34] = t3_min_def / 12.0;
+    out[35] = t3_max_red / 3.0;
+    out[36] = t3_new_aff / 4.0;
+    out[37] = t3_tot_aff / 4.0;
+    out[38] = t3_vp_red / 10.0;
+    out[39] = (res_min_def.min(10.0)) / 10.0;
+    out[40] = res_max_red / 3.0;
+    out[41] = res_new_aff / 3.0;
+    out[42] = res_tot_aff / 3.0;
+    out[43] = res_vp_red / 5.0;
+    out[44] = (min_noble_def_after as f32) / 4.0;
+    out[45] = noble_def_red / 2.0;
+    out[46] = noble_claimed;
+    out[47] = taken_board_demand_overlap;
+
+    Ok(out)
+}
 
 /// Exact post-action state delta encoding matching Splendor engine rules and Python M25 parity.
 ///
@@ -898,5 +1218,31 @@ mod tests {
             &combined[OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1..],
             &delta_buy_m,
         );
+    }
+
+    #[test]
+    fn test_encode_action_semantic_v1_properties() {
+        let obs = make_test_observation();
+        let act_take = Action::TakeTokens {
+            take: Gems { white: 1, blue: 1, green: 1, red: 0, black: 0, gold: 0 },
+            give_back: Gems::ZERO,
+        };
+        let semantic_take = encode_action_semantic_v1(&obs, &act_take).expect("valid semantic take");
+        assert_eq!(semantic_take.len(), ACTION_SEMANTIC_FEATURES_V1);
+        assert_eq!(semantic_take[0], 1.0); // is_take
+        assert_eq!(semantic_take[1], 0.0); // is_buy
+        // Net token changes: white=0.2, blue=0.2, green=0.2
+        assert!((semantic_take[6] - 0.2).abs() < 1e-5);
+        assert!((semantic_take[7] - 0.2).abs() < 1e-5);
+        assert!((semantic_take[8] - 0.2).abs() < 1e-5);
+
+        let act_buy = Action::BuyMarket {
+            tier: splendor_catalog::Tier::One,
+            slot: 0,
+        };
+        let semantic_buy = encode_action_semantic_v1(&obs, &act_buy).expect("valid semantic buy");
+        assert_eq!(semantic_buy.len(), ACTION_SEMANTIC_FEATURES_V1);
+        assert_eq!(semantic_buy[0], 0.0); // is_take
+        assert_eq!(semantic_buy[1], 1.0); // is_buy
     }
 }

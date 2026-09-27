@@ -258,7 +258,7 @@ def main():
     parser.add_argument("--opponent", choices=["v029", "v028"], default="v029")
     parser.add_argument("--sims", type=int, default=512)
     parser.add_argument("--depth", type=int, default=6)
-    parser.add_argument("--mode", choices=["ismcts", "greedy"], default="ismcts")
+    parser.add_argument("--mode", choices=["ismcts", "greedy", "distance", "qsteps"], default="ismcts")
     parser.add_argument("--workers", type=int, default=min(os.cpu_count() or 8, 12))
     parser.add_argument("--weights", type=str, default=str(DEFAULT_WEIGHTS))
     parser.add_argument("--out-dir", type=str, default="")

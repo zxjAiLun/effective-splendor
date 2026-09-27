@@ -23,10 +23,10 @@ pub use model::{
     POLICY_VALUE_CHECKPOINT_FORMAT, POLICY_VALUE_CHECKPOINT_VERSION,
 };
 pub use representation::{
-    encode_action_delta_v2, encode_action_v1, encode_combined_v1, encode_combined_v2,
-    encode_observation_v1, ACTION_DELTA_FEATURES_V2, ACTION_FEATURES_V1, COMBINED_FEATURES_V1,
-    COMBINED_FEATURES_V2, HORIZON_FEATURES_V1, MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1,
-    REPRESENTATION_VERSION_V1,
+    encode_action_delta_v2, encode_action_semantic_v1, encode_action_v1, encode_combined_v1,
+    encode_combined_v2, encode_observation_v1, ACTION_DELTA_FEATURES_V2, ACTION_FEATURES_V1,
+    ACTION_SEMANTIC_FEATURES_V1, COMBINED_FEATURES_V1, COMBINED_FEATURES_V2, HORIZON_FEATURES_V1,
+    MAX_PLAYERS_V1, OBSERVATION_FEATURES_V1, REPRESENTATION_VERSION_V1,
 };
 pub use teacher_targets::{
     build_search_teacher_targets_v1, search_teacher_targets_hash_v1, SearchTeacherActionTargetV1,
