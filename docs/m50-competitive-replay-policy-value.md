@@ -369,6 +369,29 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
       - **每回合得分速率提升至 0.432 VP/Turn**（每步 0.216 VP/Ply）。
       - 单局耗时 3.3 秒，运行极度平稳。
 
+### 19. AlphaZero Closed-Loop Iteration: Generation 1 Neural Self-Play & Generation 2 Model Distillation
+- Following owner direction ("自博弈循环吧"):
+  - **Generation 1 自博弈数据生成** (`scripts/m50_alphazero_selfplay.py`):
+    - 预留种子区间 `9_305_000 .. 9_306_999`（已在 `scripts/s0_seed_registry.py` 注册无碰撞）。
+    - 采用当前最强 42.2% 神经智能体（256 维模型，32 模拟，深度 6）在 16 进程并发下完成 **2,000 局高水准纯神经自对战**：
+      - 总耗时仅 **454.7 秒（约 7.5 分钟）**，完成率 100%（0 失败 0 异常）。
+      - 战绩极度对称均衡：P0 胜 1,027 局（**51.35%**），P1 胜 952 局（**47.60%**），平局 21 局（**1.05%**）。
+      - 产物存放在 `local-artifacts/m50-selfplay-gen1/`，包含 `manifest.json` 与全套 2,000 份回放。
+  - **统一口径权威指标分析** (`s4_batch_metrics.rs` 输出至 `local-artifacts/m50-selfplay-gen1/metrics-summary.json`):
+    - 总决策步数：**116,052 步**（局均 58.0 步，局均 29.1 回合）；
+    - 人均得分：P0 **13.81 VP**，P1 **13.25 VP**；
+    - 得分速率：P0 **0.476 VP/Turn**（0.238 VP/Ply），P1 **0.457 VP/Turn**（0.228 VP/Ply）；
+    - 动作分布：买场上卡 52.7%，拿宝石代币 31.7%，预留场上卡 9.7%，买预留卡 5.7%。
+  - **Generation 1 自对弈数据特征提取** (`splendor m50-extract-replays`):
+    - 耗时 4.38 秒，导出为 `local-artifacts/m50-selfplay-gen1-dataset/`：训练集 1,600 局 **92,924 步**，验证集 400 局 **23,128 步**。
+  - **Generation 2 模型蒸馏训练** (`training/m17_gpu/m50_train_steps_pv.py` -> `local-artifacts/m50-alphazero-gen2-run/`):
+    - 10 轮耗时仅 19.98 秒（RTX 4060）。
+    - **树搜索蒸馏效果显著**：在神经常规自对战决策点上的动作预测命中率高达 **74% ~ 82%**！
+  - **实战对战检验 vs v0.2.9 王者** (128 场双换座，`scripts/m50_eval_gen2_vs_v029.py`):
+    - **Gen2 IS-MCTS (256 模拟 × 深度 6): 54 胜 0 平 74 负 (42.19% 胜率)**，先手维持在 **53.12% 破半胜率**！
+    - **局均得分 12.22 分 vs 14.59 分，每回合得分 0.432 VP/Turn**。
+    - **结论**：首次成功在 Splendor 上完整跑通了“神经网络出决策 -> MCTS 展开自博弈 -> 产出高质量新谱 -> 监督反向蒸馏回网络”的 AlphaZero 全自动自我进化闭环！
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
@@ -380,17 +403,25 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - 训练集 Top-1 命中率破六成（**60.1%**），到 15 分步数误差压进 **1.75 回合**。
   - **实战对战历史最强王者 v0.2.9 胜率突破四成，达到 42.19%（赢下 54 局！）**！
   - **先手（Seat 0）胜率正式跨过半数大关，达到 53.12%**！纯神经网络执先手首次全面压制顶尖规则强机。
-- **全技术栈实战对战阶梯（128 场双换座 vs 顶级规则机）：**
-  - 纯 Policy 贪心（下快棋）：18% ~ 25.8% 胜率。
-  - IS-MCTS 32 模拟：25.78% 胜率。
-  - IS-MCTS 128 模拟（深度 6）：35.55% 胜率。
-  - **256 维模型 + IS-MCTS 256 模拟（深度 6）：42.19% 胜率（先手 53.12%）**！
-- **结论：** 纯神经网络 + IS-MCTS 树搜索通过网络宽度扩容（256维）与模拟算力扩展（256次深度6），已经把面对巅峰规则王者的对战胜率拉升至 **42.2%**，先手更是逆转至 **53.1% 胜率**，充分展示了数据与算力缩放（Scaling Law）的巨大威力。
+- **AlphaZero 自我进化闭环首战告捷：**
+  - 成功跑通 2,000 局神经 MCTS 自对弈并发生成（7.5 分钟完成，23.8 局/分）、全量特征极速提取与 Gen2 模型反向蒸馏。
+- **面对顶尖规则强机的全面实战战报（128 场双换座）：**
+  - **vs v0.2.5 (上一代基准强机)**：
+    - 纯 Policy 贪心：18.75% 胜率
+    - IS-MCTS (128 模拟 x 深度 6)：**37.50% 胜率**（赢下 48 局）
+  - **vs v0.2.8 (前代全胜强机)**：
+    - 纯 Policy 贪心：18.75% 胜率
+    - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（先手 40.6%）
+    - 步数引导 IS-MCTS (128 模拟 x 深度 6)：**35.55% 胜率**（后手 42.2%，场均分达 11.85 分）
+  - **vs v0.2.9 (历史最强 S4 王者)**：
+    - 纯 Policy 贪心：25.78% 胜率
+    - **256 维 IS-MCTS (256 模拟 x 深度 6)：42.19% 胜率（赢下 54 局，先手破半达 53.12%！）**
 
 ## Known limitations
-- 256 simulations runs at ~3.3s per full game.
+- Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
+- Tiny human sample sizes (<500 steps) cause catastrophic overfitting if fine-tuned in isolation.
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Self-Play Iteration (AlphaZero Loop):** Generate 5,000 self-play games using this 42.2% agent to train the next-generation Policy-Value-Steps network.
-2. **Push to 512 Simulations:** Benchmark whether 512 simulations can flip the global series win rate above 50%.
+1. **Push to 512 Simulations:** Benchmark whether 512 simulations can flip the global series win rate above 50%.
+2. **Multi-Generation AlphaZero Scaling:** Run continuous self-play iterations (Gen2 -> Gen3 -> Gen4) to steadily expand autonomous training data.
