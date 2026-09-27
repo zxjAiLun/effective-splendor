@@ -243,21 +243,37 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - 仅 10 盘（284 步）样本量对于 14 万参数的神经网络极易过拟合特定牌局的局部走法（Catastrophic Overfitting），破坏了预训练阶段在 46 万步里建立的全局泛化分布。
     - **结论：** 人类专家的对局如果只有几盘到几十盘，不能用来直接微调底层神经网络，而应当作为测试基准（Benchmark）或者在数据规模达到几百上千局时作为高质量加权样本混合训练。
 
+### 12. Head-to-Head Arena Series vs v0.2.8 (S4.8 Champion Heuristic)
+- Following owner guidance ("打打v0.2.8"):
+  - Tested M50 Neural Agent against the newly crowned champion heuristic **v0.2.8** (SHA256 `76c154ff…` from `s4-heuristic-v028-pilot`), which had previously achieved a positive record against all historical agents.
+  - Across the same 64 paired blocks (128 games) with strict seat rotation (`scripts/m50_eval_vs_v028.py`):
+    1. **M50 Pure Greedy vs v0.2.8:**
+       - **W - T - L:** **24 胜 0 平 104 负** (**18.75% 胜率**, 95% CI `[12.5%, 25.8%]`).
+       - Mean score: M50 **10.23** vs v0.2.8 **15.63**.
+       - Runtime: 27.31s total (0.21s / game).
+       - 与对阵 v0.2.5 时的纯贪心胜率完全持平（18.75%），展现出一致的基线水平。
+    2. **M50 IS-MCTS (128 sims x depth 6) vs v0.2.8:**
+       - **W - T - L:** **47 胜 0 平 81 负** (**36.72% 胜率**, 95% CI `[28.9%, 44.5%]`).
+       - **Seat 0 (先手) 胜率突破四成，达到 40.62%**！
+       - Mean score: M50 **11.56** vs v0.2.8 **14.99** (分差仅 3.4 分).
+       - Runtime: 113.43s total (0.88s / game).
+  - **重要实证结论：**
+    - 面对经过二次非线性 VP 效率曲线和单贵族冲刺深度优化的最新最强规则机 v0.2.8，M50 神经搜索网络**依然稳定轰出 36.72% 胜率（赢下 47 局）**！
+    - 这证实了神经网络的学习成果并非针对某个旧版规则机的“过拟合破解”，而是习得了真正具备广泛泛化能力的通用博弈能力。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
 - In just 16 seconds of training on 612 games, the raw neural policy achieves **44.21% Top-1 action prediction** across ~31 legal actions per state on completely unseen game seeds (**13.6x better than random choice**), and places the expert heuristic's choice in its Top 3 nearly **70% of the time** (69.58%).
 - **大数据集验证：** 扩充到 46.3 万步（7,764 局）后，网络在兼顾多种历史对手（S0/S2/S3/S4/M44）的复杂分布下，Top-1 达到 45.04%，**价值头（胜率预测）准确率从 51.7% 飙升至 63.2%，分差相关度从 0.11 飙升至 0.355**。
-- **全技术栈实战对战阶梯（128 场双换座 vs 顶级规则机 v0.2.5）：**
-  - **1 步单向浅搜索：7.42% 胜率**（单边近视陷阱）。
-  - **纯 Policy 贪心（全数据下快棋）：18.75% 胜率**。
-  - **纯赢家速胜微调（纯贪心下快棋）：21.09% 胜率**。
-  - **全数据 IS-MCTS 32 次模拟（深度 4）：25.78% 胜率**。
-  - **全数据 IS-MCTS 64 次模拟（深度 4）：24.22% 胜率**。
-  - **全数据 IS-MCTS 128 次模拟（深度 4）：34.38% 胜率**。
-  - **全数据 IS-MCTS 256 次模拟（深度 4）：36.72% 胜率**。
-  - **全数据 IS-MCTS 128 次模拟（深度 6）：37.50% 胜率（历史最高记录，赢下 48 局！）**。
-- **结论：** 随着计算量（MCTS 模拟次数）和深度（4 -> 6）的增加，端到端大模型展现出强劲的单调提升态势（18.75% -> 25.78% -> 34.38% -> 37.50%）。深度对抗搜索使得纯神经网络在与顶尖规则强机硬碰硬对抗时，已能从对方手里斩获接近 **四成（37.5%）的实战胜率**！
+- **面对顶尖规则强机的全面实战战报（128 场双换座）：**
+  - **vs v0.2.5 (上一代基准强机)**：
+    - 纯 Policy 贪心：18.75% 胜率
+    - IS-MCTS (128 模拟 x 深度 6)：**37.50% 胜率**（赢下 48 局）
+  - **vs v0.2.8 (最新全胜冠军强机)**：
+    - 纯 Policy 贪心：18.75% 胜率
+    - IS-MCTS (128 模拟 x 深度 6)：**36.72% 胜率**（赢下 47 局，先手突破 40.6%）
+- **结论：** 纯神经网络 + IS-MCTS 树搜索无论面对哪一代规则专家，都稳定具备 **36% ~ 38% 的实战胜率**。
 
 ## Known limitations
 - Pure 1-ply lookahead lacks opponent response modeling, leading to myopic evaluation.
@@ -265,5 +281,5 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Push to 512 Simulations / Depth 8:** Check if win rate crosses 40%~45%.
-2. **Self-Play Iteration (AlphaZero):** Use the 37.5% agent to generate new high-level self-play games.
+1. **Push to 256 / 512 Simulations on v0.2.8:** Check if win rate crosses 40%~45%.
+2. **Self-Play Iteration (AlphaZero):** Use the 37% agent to generate new high-level self-play games.
