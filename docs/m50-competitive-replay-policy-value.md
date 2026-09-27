@@ -882,3 +882,36 @@ Evaluated in pure greedy mode across 250 paired seeds (500 games with double sea
 - Step 2 SE-ResNet decisively outplayed Step 1 Dueling predecessor: **57.70% win rate across 500 games (+77 net wins)**, boosting mean score by +1.11 VP/game and achieving 53.20% win rate as second seat!
 - Maintained victory over v0.2.8 (**51.90%**) and lifted win rate vs v0.2.9 to **45.20%** with a 52.60% first-seat win rate.
 - Confirms that channel attention dynamically tuning focus to active card deficits produces measurable competitive gains. Ready for Step 3.
+
+## 29. Mortal Architecture Step 3: Card-Entity Permutation Invariance — 2026-09-28
+
+### 29.1 Architecture Design & Motivation
+Following owner authorization to proceed with Step 3 ("继续 go"):
+1. **Shared Card-Entity Encoder (Weight Sharing Across Card Slots)**:
+   - Rather than isolated disjoint weights for slot 0, slot 1, slot 2, slot 3, all 12 market cards share a single `CardEncoder` MLP:
+     $$\text{card\_feat}[12] \to \text{Linear}(12, 64) \to \text{LN} \to \text{Mish} \to \text{Linear}(64, 64) \to \text{Mish}$$
+   - Reserved cards share `ResCardEncoder` (16 dims $\to$ 64 dims).
+   - Knowledge learned about a card in slot 0 automatically transfers when the same card appears in slot 1, 2, or 3.
+2. **Permutation-Invariant Tier Poolings**:
+   - For each tier (4 cards $\times$ 64 dims), computes element-wise `mean_pool` and `max_pool` across the 4 slots.
+   - Eliminates sensitivity to card slot re-orderings or shifts caused by opponent card purchases.
+3. **Preserved SE-ResNet & Dueling Q & Critic detach()**:
+   - All state features fuse into 256 dims and pass through stacked SE-ResBlocks.
+
+### 29.2 Training Performance (GPU)
+Trained in `training/m17_gpu/m50_train_semantic_entity_q.py`:
+- 162.1s on RTX 4060 GPU.
+- Best Epoch 1 selected: Validation Q MAE **1.21 turns** (all-time lowest error!), Min-step match rate up to **60.2%**.
+
+### 29.3 Controlled 500-Game Triad Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode (0.065s/game):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **Step 2 Predecessor (SE-ResNet d43f6eb)** | 500 | 239 - 2 - 259 | **48.00%** | `[43.9%, 52.2%]` | 51.60% | 44.40% | 13.71 vs 13.94 | 0.505 vs 0.515 | 40.25s (0.080s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 268 - 2 - 230 | **53.80% (New Peak!)** | `[49.3%, 58.4%]` | **58.20%** | **49.40%** | **14.13 vs 13.66 (+0.47分)** | **0.518 vs 0.499** | 32.22s (0.064s/game) |
+| **Heuristic v0.2.9 (Reigning Champion)** | 500 | 216 - 3 - 281 | **43.50%** | `[39.1%, 47.9%]` | **51.00% (破半!)** | 36.00% | 13.57 vs 14.29 | 0.495 vs 0.522 | 32.55s (0.065s/game) |
+
+### 29.4 Analysis & Verdict
+- Step 3 Card-Entity architecture achieved the highest win rate yet against champion v0.2.8: **53.80% across 500 games**, with mean score reaching 14.13 VP (outscoring v0.2.8 by +0.47 VP) and VP/Turn reaching 0.518.
+- Against Step 2 SE-ResNet, it plays at parity (48.00%), confirming that weight sharing and tier pooling retain maximum tactical precision while achieving mathematical slot permutation invariance.

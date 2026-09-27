@@ -470,6 +470,207 @@ impl SEResBlockWeights {
 }
 
 #[derive(Debug, Clone)]
+pub struct CardEntityBackboneWeights {
+    card_enc_w1: Vec<Vec<f32>>,
+    card_enc_b1: Vec<f32>,
+    card_enc_ln_w: Vec<f32>,
+    card_enc_ln_b: Vec<f32>,
+    card_enc_w2: Vec<Vec<f32>>,
+    card_enc_b2: Vec<f32>,
+
+    res_enc_w1: Vec<Vec<f32>>,
+    res_enc_b1: Vec<f32>,
+    res_enc_ln_w: Vec<f32>,
+    res_enc_ln_b: Vec<f32>,
+    res_enc_w2: Vec<Vec<f32>>,
+    res_enc_b2: Vec<f32>,
+
+    ctx_enc_w: Vec<Vec<f32>>,
+    ctx_enc_b: Vec<f32>,
+    ctx_enc_ln_w: Vec<f32>,
+    ctx_enc_ln_b: Vec<f32>,
+
+    fusion_w: Vec<Vec<f32>>,
+    fusion_b: Vec<f32>,
+    fusion_ln_w: Vec<f32>,
+    fusion_ln_b: Vec<f32>,
+}
+
+impl CardEntityBackboneWeights {
+    pub fn forward(&self, obs: &[f32]) -> Vec<f32> {
+        assert_eq!(obs.len(), 368);
+
+        // 1. Context encoding: [header (0..21), middle (165..192), players (192..320)] = 176 floats
+        let mut ctx_raw = Vec::with_capacity(176);
+        ctx_raw.extend_from_slice(&obs[0..21]);
+        ctx_raw.extend_from_slice(&obs[165..192]);
+        ctx_raw.extend_from_slice(&obs[192..320]);
+
+        let ctx_dim = self.ctx_enc_w.len();
+        let mut ctx_h_raw = vec![0.0f32; ctx_dim];
+        for i in 0..ctx_dim {
+            let row = &self.ctx_enc_w[i];
+            let mut sum = self.ctx_enc_b[i];
+            for j in 0..176 {
+                sum += row[j] * ctx_raw[j];
+            }
+            ctx_h_raw[i] = sum;
+        }
+        let ctx_mean = ctx_h_raw.iter().sum::<f32>() / (ctx_dim as f32);
+        let ctx_var = ctx_h_raw.iter().map(|v| (v - ctx_mean) * (v - ctx_mean)).sum::<f32>() / (ctx_dim as f32);
+        let ctx_std = (ctx_var + 1e-5).sqrt();
+        let mut ctx_h = vec![0.0f32; ctx_dim];
+        for i in 0..ctx_dim {
+            let norm = (ctx_h_raw[i] - ctx_mean) / ctx_std;
+            ctx_h[i] = mish(norm * self.ctx_enc_ln_w[i] + self.ctx_enc_ln_b[i]);
+        }
+
+        // Shared Card Entity Encoder helper
+        let encode_card = |slice: &[f32]| -> Vec<f32> {
+            let mut h1_raw = vec![0.0f32; 64];
+            for i in 0..64 {
+                let row = &self.card_enc_w1[i];
+                let mut sum = self.card_enc_b1[i];
+                for j in 0..12 {
+                    sum += row[j] * slice[j];
+                }
+                h1_raw[i] = sum;
+            }
+            let mean1 = h1_raw.iter().sum::<f32>() / 64.0;
+            let var1 = h1_raw.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / 64.0;
+            let std1 = (var1 + 1e-5).sqrt();
+            let mut h1 = vec![0.0f32; 64];
+            for i in 0..64 {
+                let norm = (h1_raw[i] - mean1) / std1;
+                h1[i] = mish(norm * self.card_enc_ln_w[i] + self.card_enc_ln_b[i]);
+            }
+            let mut h2 = vec![0.0f32; 64];
+            for i in 0..64 {
+                let row = &self.card_enc_w2[i];
+                let mut sum = self.card_enc_b2[i];
+                for j in 0..64 {
+                    sum += row[j] * h1[j];
+                }
+                h2[i] = mish(sum);
+            }
+            h2
+        };
+
+        // Shared Reserved Card Encoder helper
+        let encode_res = |slice: &[f32]| -> Vec<f32> {
+            let mut h1_raw = vec![0.0f32; 64];
+            for i in 0..64 {
+                let row = &self.res_enc_w1[i];
+                let mut sum = self.res_enc_b1[i];
+                for j in 0..16 {
+                    sum += row[j] * slice[j];
+                }
+                h1_raw[i] = sum;
+            }
+            let mean1 = h1_raw.iter().sum::<f32>() / 64.0;
+            let var1 = h1_raw.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / 64.0;
+            let std1 = (var1 + 1e-5).sqrt();
+            let mut h1 = vec![0.0f32; 64];
+            for i in 0..64 {
+                let norm = (h1_raw[i] - mean1) / std1;
+                h1[i] = mish(norm * self.res_enc_ln_w[i] + self.res_enc_ln_b[i]);
+            }
+            let mut h2 = vec![0.0f32; 64];
+            for i in 0..64 {
+                let row = &self.res_enc_w2[i];
+                let mut sum = self.res_enc_b2[i];
+                for j in 0..64 {
+                    sum += row[j] * h1[j];
+                }
+                h2[i] = mish(sum);
+            }
+            h2
+        };
+
+        // 2. Encode 12 market cards
+        let mut t1_cards = Vec::with_capacity(4);
+        for slot in 0..4 {
+            let start = 21 + slot * 12;
+            t1_cards.push(encode_card(&obs[start..start + 12]));
+        }
+        let mut t2_cards = Vec::with_capacity(4);
+        for slot in 0..4 {
+            let start = 69 + slot * 12;
+            t2_cards.push(encode_card(&obs[start..start + 12]));
+        }
+        let mut t3_cards = Vec::with_capacity(4);
+        for slot in 0..4 {
+            let start = 117 + slot * 12;
+            t3_cards.push(encode_card(&obs[start..start + 12]));
+        }
+        let mut res_cards = Vec::with_capacity(3);
+        for slot in 0..3 {
+            let start = 320 + slot * 16;
+            res_cards.push(encode_res(&obs[start..start + 16]));
+        }
+
+        // 3. Permutation-invariant tier poolings (mean and max)
+        let pool_tier = |cards: &[Vec<f32>]| -> (Vec<f32>, Vec<f32>) {
+            let count = cards.len() as f32;
+            let mut mean = vec![0.0f32; 64];
+            let mut max = vec![f32::NEG_INFINITY; 64];
+            for c in cards {
+                for i in 0..64 {
+                    mean[i] += c[i] / count;
+                    if c[i] > max[i] {
+                        max[i] = c[i];
+                    }
+                }
+            }
+            (mean, max)
+        };
+
+        let (t1_mean, t1_max) = pool_tier(&t1_cards);
+        let (t2_mean, t2_max) = pool_tier(&t2_cards);
+        let (t3_mean, t3_max) = pool_tier(&t3_cards);
+        let (res_mean, res_max) = pool_tier(&res_cards);
+
+        // 4. Concatenate all for fusion: 128 (ctx) + 4 * 128 (pools) + 15 * 64 (cards) = 1600 dims
+        let mut fused_raw = Vec::with_capacity(1600);
+        fused_raw.extend_from_slice(&ctx_h);
+        fused_raw.extend_from_slice(&t1_mean);
+        fused_raw.extend_from_slice(&t1_max);
+        fused_raw.extend_from_slice(&t2_mean);
+        fused_raw.extend_from_slice(&t2_max);
+        fused_raw.extend_from_slice(&t3_mean);
+        fused_raw.extend_from_slice(&t3_max);
+        fused_raw.extend_from_slice(&res_mean);
+        fused_raw.extend_from_slice(&res_max);
+        for c in &t1_cards { fused_raw.extend_from_slice(c); }
+        for c in &t2_cards { fused_raw.extend_from_slice(c); }
+        for c in &t3_cards { fused_raw.extend_from_slice(c); }
+        for c in &res_cards { fused_raw.extend_from_slice(c); }
+
+        // 5. Fusion projection -> [256]
+        let fusion_dim = self.fusion_w.len();
+        let mut out_raw = vec![0.0f32; fusion_dim];
+        for i in 0..fusion_dim {
+            let row = &self.fusion_w[i];
+            let mut sum = self.fusion_b[i];
+            for j in 0..1600 {
+                sum += row[j] * fused_raw[j];
+            }
+            out_raw[i] = sum;
+        }
+
+        let out_mean = out_raw.iter().sum::<f32>() / (fusion_dim as f32);
+        let out_var = out_raw.iter().map(|v| (v - out_mean) * (v - out_mean)).sum::<f32>() / (fusion_dim as f32);
+        let out_std = (out_var + 1e-5).sqrt();
+        let mut out = vec![0.0f32; fusion_dim];
+        for i in 0..fusion_dim {
+            let norm = (out_raw[i] - out_mean) / out_std;
+            out[i] = mish(norm * self.fusion_ln_w[i] + self.fusion_ln_b[i]);
+        }
+        out
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SemanticQWeights {
     // Legacy 2-layer MLP state backbone
     state_l1_w: Option<Vec<Vec<f32>>>,
@@ -486,6 +687,10 @@ pub struct SemanticQWeights {
     state_entry_b: Option<Vec<f32>>,
     state_entry_ln_w: Option<Vec<f32>>,
     state_entry_ln_b: Option<Vec<f32>>,
+
+    // Card Entity state backbone (Step 3)
+    entity_backbone: Option<CardEntityBackboneWeights>,
+
     state_res_blocks: Vec<SEResBlockWeights>,
     is_mish: bool,
 
@@ -539,8 +744,9 @@ impl SemanticQWeights {
             return Err("not a semantic Q weights file".into());
         }
 
+        let is_entity = map.contains_key("entity_backbone.card_encoder.0.weight");
         let is_seres = map.contains_key("state_entry.0.weight");
-        let is_mish = is_seres;
+        let is_mish = is_seres || is_entity;
 
         let get_vec_vec = |key: &str| -> Result<Vec<Vec<f32>>, String> {
             let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
@@ -552,53 +758,86 @@ impl SemanticQWeights {
             serde_json::from_value(val.clone()).map_err(|e| format!("key `{key}`: {e}"))
         };
 
-        let (state_entry_w, state_entry_b, state_entry_ln_w, state_entry_ln_b, state_res_blocks) =
+        let entity_backbone = if is_entity {
+            Some(CardEntityBackboneWeights {
+                card_enc_w1: get_vec_vec("entity_backbone.card_encoder.0.weight")?,
+                card_enc_b1: get_vec("entity_backbone.card_encoder.0.bias")?,
+                card_enc_ln_w: get_vec("entity_backbone.card_encoder.1.weight")?,
+                card_enc_ln_b: get_vec("entity_backbone.card_encoder.1.bias")?,
+                card_enc_w2: get_vec_vec("entity_backbone.card_encoder.3.weight")?,
+                card_enc_b2: get_vec("entity_backbone.card_encoder.3.bias")?,
+
+                res_enc_w1: get_vec_vec("entity_backbone.res_encoder.0.weight")?,
+                res_enc_b1: get_vec("entity_backbone.res_encoder.0.bias")?,
+                res_enc_ln_w: get_vec("entity_backbone.res_encoder.1.weight")?,
+                res_enc_ln_b: get_vec("entity_backbone.res_encoder.1.bias")?,
+                res_enc_w2: get_vec_vec("entity_backbone.res_encoder.3.weight")?,
+                res_enc_b2: get_vec("entity_backbone.res_encoder.3.bias")?,
+
+                ctx_enc_w: get_vec_vec("entity_backbone.context_encoder.0.weight")?,
+                ctx_enc_b: get_vec("entity_backbone.context_encoder.0.bias")?,
+                ctx_enc_ln_w: get_vec("entity_backbone.context_encoder.1.weight")?,
+                ctx_enc_ln_b: get_vec("entity_backbone.context_encoder.1.bias")?,
+
+                fusion_w: get_vec_vec("entity_backbone.fusion.0.weight")?,
+                fusion_b: get_vec("entity_backbone.fusion.0.bias")?,
+                fusion_ln_w: get_vec("entity_backbone.fusion.1.weight")?,
+                fusion_ln_b: get_vec("entity_backbone.fusion.1.bias")?,
+            })
+        } else {
+            None
+        };
+
+        let mut state_res_blocks = Vec::new();
+        if is_seres || is_entity {
+            let mut b = 0;
+            while map.contains_key(&format!("state_res_blocks.{b}.fc1.weight")) {
+                let p = format!("state_res_blocks.{b}");
+                let b_ln1_w = get_vec(&format!("{p}.ln1.weight"))?;
+                let b_ln1_b = get_vec(&format!("{p}.ln1.bias"))?;
+                let b_fc1_w = get_vec_vec(&format!("{p}.fc1.weight"))?;
+                let b_fc1_b = get_vec(&format!("{p}.fc1.bias"))?;
+                let b_ln2_w = get_vec(&format!("{p}.ln2.weight"))?;
+                let b_ln2_b = get_vec(&format!("{p}.ln2.bias"))?;
+                let b_fc2_w = get_vec_vec(&format!("{p}.fc2.weight"))?;
+                let b_fc2_b = get_vec(&format!("{p}.fc2.bias"))?;
+                let b_se1_w = get_vec_vec(&format!("{p}.se.fc.0.weight"))?;
+                let b_se1_b = get_vec(&format!("{p}.se.fc.0.bias"))?;
+                let b_se2_w = get_vec_vec(&format!("{p}.se.fc.2.weight"))?;
+                let b_se2_b = get_vec(&format!("{p}.se.fc.2.bias"))?;
+
+                state_res_blocks.push(SEResBlockWeights {
+                    ln1_w: b_ln1_w,
+                    ln1_b: b_ln1_b,
+                    fc1_w: b_fc1_w,
+                    fc1_b: b_fc1_b,
+                    ln2_w: b_ln2_w,
+                    ln2_b: b_ln2_b,
+                    fc2_w: b_fc2_w,
+                    fc2_b: b_fc2_b,
+                    se_fc1_w: b_se1_w,
+                    se_fc1_b: b_se1_b,
+                    se_fc2_w: b_se2_w,
+                    se_fc2_b: b_se2_b,
+                });
+                b += 1;
+            }
+        }
+
+        let (state_entry_w, state_entry_b, state_entry_ln_w, state_entry_ln_b) =
             if is_seres {
-                let entry_w = get_vec_vec("state_entry.0.weight")?;
-                let entry_b = get_vec("state_entry.0.bias")?;
-                let entry_ln_w = get_vec("state_entry.1.weight")?;
-                let entry_ln_b = get_vec("state_entry.1.bias")?;
-
-                let mut blocks = Vec::new();
-                let mut b = 0;
-                while map.contains_key(&format!("state_res_blocks.{b}.fc1.weight")) {
-                    let p = format!("state_res_blocks.{b}");
-                    let b_ln1_w = get_vec(&format!("{p}.ln1.weight"))?;
-                    let b_ln1_b = get_vec(&format!("{p}.ln1.bias"))?;
-                    let b_fc1_w = get_vec_vec(&format!("{p}.fc1.weight"))?;
-                    let b_fc1_b = get_vec(&format!("{p}.fc1.bias"))?;
-                    let b_ln2_w = get_vec(&format!("{p}.ln2.weight"))?;
-                    let b_ln2_b = get_vec(&format!("{p}.ln2.bias"))?;
-                    let b_fc2_w = get_vec_vec(&format!("{p}.fc2.weight"))?;
-                    let b_fc2_b = get_vec(&format!("{p}.fc2.bias"))?;
-                    let b_se1_w = get_vec_vec(&format!("{p}.se.fc.0.weight"))?;
-                    let b_se1_b = get_vec(&format!("{p}.se.fc.0.bias"))?;
-                    let b_se2_w = get_vec_vec(&format!("{p}.se.fc.2.weight"))?;
-                    let b_se2_b = get_vec(&format!("{p}.se.fc.2.bias"))?;
-
-                    blocks.push(SEResBlockWeights {
-                        ln1_w: b_ln1_w,
-                        ln1_b: b_ln1_b,
-                        fc1_w: b_fc1_w,
-                        fc1_b: b_fc1_b,
-                        ln2_w: b_ln2_w,
-                        ln2_b: b_ln2_b,
-                        fc2_w: b_fc2_w,
-                        fc2_b: b_fc2_b,
-                        se_fc1_w: b_se1_w,
-                        se_fc1_b: b_se1_b,
-                        se_fc2_w: b_se2_w,
-                        se_fc2_b: b_se2_b,
-                    });
-                    b += 1;
-                }
-                (Some(entry_w), Some(entry_b), Some(entry_ln_w), Some(entry_ln_b), blocks)
+                (
+                    Some(get_vec_vec("state_entry.0.weight")?),
+                    Some(get_vec("state_entry.0.bias")?),
+                    Some(get_vec("state_entry.1.weight")?),
+                    Some(get_vec("state_entry.1.bias")?),
+                )
             } else {
-                (None, None, None, None, Vec::new())
+                (None, None, None, None)
             };
 
         let (state_l1_w, state_l1_b, state_ln1_w, state_ln1_b, state_l2_w, state_l2_b, state_ln2_w, state_ln2_b) =
-            if !is_seres {
+            if !is_seres && !is_entity {
                 (
                     Some(get_vec_vec("state_net.0.weight")?),
                     Some(get_vec("state_net.0.bias")?),
@@ -673,6 +912,7 @@ impl SemanticQWeights {
             state_entry_b,
             state_entry_ln_w,
             state_entry_ln_b,
+            entity_backbone,
             state_res_blocks,
             is_mish,
 
@@ -712,6 +952,14 @@ impl SemanticQWeights {
     }
 
     pub fn forward_state(&self, obs: &[f32]) -> Vec<f32> {
+        if let Some(ref eb) = self.entity_backbone {
+            let mut h = eb.forward(obs);
+            for block in &self.state_res_blocks {
+                h = block.forward(&h);
+            }
+            return h;
+        }
+
         if let Some(ref entry_w) = self.state_entry_w {
             let entry_b = self.state_entry_b.as_ref().unwrap();
             let entry_ln_w = self.state_entry_ln_w.as_ref().unwrap();
