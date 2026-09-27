@@ -240,18 +240,17 @@ def train_steps_network(
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Initial baseline evaluation (Epoch 0 before training steps)
+    # Initial baseline evaluation (Epoch 0 before training steps, for diagnostic record only)
     val_metrics_0 = evaluate(model, val_data, device)
     print(
-        f"Epoch 0 (Initial Checkpoint): "
+        f"Epoch 0 (Baseline before training): "
         f"Val Policy Loss={val_metrics_0['loss_pi']:.4f}, Top-1 Acc={val_metrics_0['top1_acc']*100:.2f}%, "
         f"Steps-to-15 MAE={val_metrics_0['steps_mae']:.2f} turns, "
         f"Val Win Acc={val_metrics_0['val_acc']*100:.2f}%"
     )
 
-    best_top1 = val_metrics_0["top1_acc"]
-    best_epoch = 0
-    torch.save(model.state_dict(), out_dir / "best_model.pt")
+    best_top1 = -1.0
+    best_epoch = 1
     history = [
         {
             "epoch": 0,
@@ -333,11 +332,13 @@ def train_steps_network(
         }
         history.append(row)
 
-        is_best = val_metrics["top1_acc"] > best_top1
+        is_best = epoch == 1 or val_metrics["top1_acc"] > best_top1
         if is_best:
             best_top1 = val_metrics["top1_acc"]
             best_epoch = epoch
             torch.save(model.state_dict(), out_dir / "best_model.pt")
+
+        torch.save(model.state_dict(), out_dir / "latest_model.pt")
 
         print(
             f"Epoch {epoch:2d}/{epochs:2d} ({epoch_sec:.2f}s) | "

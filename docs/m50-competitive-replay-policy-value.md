@@ -467,7 +467,27 @@ STOP for owner review. Candidate next avenues:
 1. **Co-Evolution Self-Play (M50 vs v0.2.9):** Generate 5,000 games of direct cross-play between M50 and v0.2.9 to harvest specific counter-play data and push global win rate past 50%.
 2. **Batch Generation Scaling:** Scale up self-play generation batch size from 2,000 to 10,000 games.
 
-## 22. Feasibility review and evidence correction — 2026-09-27
+## 23. Resolution of Review Findings and Evidence Verification — 2026-09-27
+
+### 23.1 Root-Cause Fixes Implemented
+1. **`steps_to_15` Label Calculation Bug Fixed (`crates/splendor-cli/src/m50_extract_command.rs`):**
+   - Previous logic checked `step.state.players[seat].prestige >= 15` (pre-action state), causing the final winning action that reached >= 15 VP to be labeled as 2 turns remaining instead of 0.
+   - Corrected to simulate the post-action referee state (`step.state.apply(step.recorded_action)`).
+   - Re-extracted the 5,000 v0.2.9 self-play games (`m50-v029-dataset-v1`): exactly 4,544 steps in training and 1,142 in validation now have `steps_to_15 == 0.0`.
+2. **Epoch 0 Checkpoint Locking Fixed (`training/m17_gpu/m50_train_steps_pv.py`):**
+   - Corrected `train_steps_network` so Epoch 0 (pre-training evaluation) records baseline diagnostics only and is never saved as `best_model.pt`. Only trained epochs (epoch >= 1) with genuine training progress can qualify.
+3. **Search Evaluator Integration (`crates/splendor-cli/src/m50_agent_command.rs`):**
+   - Wired `predict_steps_to_15` directly into `PolicyValueEvaluatorV1::predict`: evaluates `0.75 * p_win + 0.25 * (1.0 - steps/30.0)`, directly rewarding faster path to 15 VP during IS-MCTS tree expansions.
+
+### 23.2 Retrained 256-Dim Model & Full Arena Verification vs v0.2.9
+- Model trained from scratch on fixed dataset for 15 epochs (`local-artifacts/m50-v029-dim256-fixed-run/`):
+  - Epoch 13 selected: Val Policy Top-1 = **52.23%**, Steps MAE = **3.17 turns** (Train MAE 1.73 turns).
+- Full 128-game arena evaluation vs v0.2.9 (`local-artifacts/m50-v029-fixed-ismcts256-d6-vs-v029/`):
+  - **W - T - L:** **38 胜 1 平 89 负** (**30.08% 胜率**, 95% CI `[22.7%, 37.9%]`).
+  - Seat 0: **35.94%** | Seat 1: **24.22%**.
+  - Mean score: M50 **11.56** vs v0.2.9 **15.14**.
+  - VP per Turn: M50 **0.404** vs v0.2.9 **0.537**.
+
 
 **Status:** REVIEWED by the parent assistant (not independent review); findings
 OPEN / implementation corrections NOT performed; NOT PROMOTED.

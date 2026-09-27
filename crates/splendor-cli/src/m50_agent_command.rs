@@ -331,16 +331,23 @@ impl PolicyValueEvaluatorV1 for M50PolicyWeights {
             })
             .collect();
 
-        // Value prediction for acting player
+        // Value prediction for acting player (synthesizing win prob + speed to 15)
         let p_viewer_win = self.predict_value_from_state_h(&state_h);
+        let viewer_val = if let Some(steps) = self.predict_steps_to_15(&state_h) {
+            let speed_ratio = (1.0 - (steps / 30.0)).clamp(0.0, 1.0);
+            (0.75 * p_viewer_win + 0.25 * speed_ratio).clamp(0.0, 1.0)
+        } else {
+            p_viewer_win.clamp(0.0, 1.0)
+        };
+
         let viewer_idx = observation.viewer.index();
         let pcount = observation.public.player_count as usize;
 
         // Return values in absolute seat order [seat 0, seat 1]
         let mut value_by_player = vec![0.5f32; pcount];
         if pcount == 2 {
-            value_by_player[viewer_idx] = p_viewer_win.clamp(0.0, 1.0);
-            value_by_player[1 - viewer_idx] = (1.0 - p_viewer_win).clamp(0.0, 1.0);
+            value_by_player[viewer_idx] = viewer_val;
+            value_by_player[1 - viewer_idx] = (1.0 - viewer_val).clamp(0.0, 1.0);
         }
 
         Ok(PolicyValuePredictionV1 {
@@ -497,8 +504,16 @@ impl AgentPolicy for M50Policy {
                     } else {
                         let next_obs = sim_state.observation(actor);
                         if let Ok(next_feat) = encode_observation_v1(&next_obs) {
-                            let p_win = self.weights.predict_value(&next_feat);
-                            val_sum += p_win;
+                            let next_h = self.weights.forward_state(&next_feat);
+                            let p_win = self.weights.predict_value_from_state_h(&next_h);
+                            let val = if let Some(steps) = self.weights.predict_steps_to_15(&next_h)
+                            {
+                                let speed_ratio = (1.0 - (steps / 30.0)).clamp(0.0, 1.0);
+                                (0.75 * p_win + 0.25 * speed_ratio).clamp(0.0, 1.0)
+                            } else {
+                                p_win
+                            };
+                            val_sum += val;
                         }
                     }
                     valid_worlds += 1;

@@ -427,15 +427,20 @@ fn run(args: Args) -> Result<(), String> {
             "2-player replay must have >= 2 scores"
         );
 
-        // Precompute the final/target turn for each seat where they reached >= 15 VP (or game end turn)
+        // Precompute the exact turn for each seat where they reached >= 15 VP (post-action).
         let mut seat_turn_reached_15 = [None, None];
         let mut current_turn_count = [0u32, 0u32];
         for step in &trace.positions {
             let seat = step.recorded_actor.index();
             current_turn_count[seat] += 1;
-            let p_prestige = step.state.players[seat].prestige;
-            if p_prestige >= 15 && seat_turn_reached_15[seat].is_none() {
-                seat_turn_reached_15[seat] = Some(current_turn_count[seat]);
+
+            if seat_turn_reached_15[seat].is_none() {
+                let mut after_state = step.state.clone();
+                if after_state.apply(step.recorded_action.clone()).is_ok() {
+                    if after_state.players[seat].prestige >= 15 {
+                        seat_turn_reached_15[seat] = Some(current_turn_count[seat]);
+                    }
+                }
             }
         }
         let seat_total_turns = current_turn_count;
@@ -522,13 +527,21 @@ fn run(args: Args) -> Result<(), String> {
                     }
                 }
                 None => {
-                    let rem_turns = seat_total_turns[actor_seat].saturating_sub(current_turn) as f32;
-                    let vp_deficit = (15.0 - actor_score).max(1.0);
-                    rem_turns + vp_deficit * 2.0
+                    let rem_turns =
+                        seat_total_turns[actor_seat].saturating_sub(current_turn) as f32;
+                    let vp_deficit = (15.0 - actor_score).max(0.0);
+                    rem_turns + vp_deficit * 1.5
                 }
             };
 
-            buf.add_step(&obs_feat, &legal_feats, chosen_idx, won, score_diff, steps_to_15);
+            buf.add_step(
+                &obs_feat,
+                &legal_feats,
+                chosen_idx,
+                won,
+                score_diff,
+                steps_to_15,
+            );
         }
 
         total_parsed += 1;
