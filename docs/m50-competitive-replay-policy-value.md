@@ -1,6 +1,12 @@
 # M50 Competitive Replay Policy-Value Network
 
-Status: **IMPLEMENTED / VERIFIED (extractor + baseline Policy-Value network; EXPLORATORY)**.
+Status: **IMPLEMENTED / exploratory evidence only; parent feasibility REVIEWED with OPEN findings (§22). Self-improvement and promotion NOT ESTABLISHED.**
+
+> **2026-09-27 evidence correction:** Read §22 before relying on historical
+> interpretation below. Gen2 and Gen3 both export the unchanged epoch-0 parent;
+> steps-to-15 labels are not exact hitting times. Historical runs are preserved,
+> but claims of demonstrated multi-generation improvement, an established
+> 256-simulation optimum, or exact speed prediction are superseded by §22.
 Baseline: `main@814981499725bd42cd9a43e3f7e079e8bd0f6c2b`
 Owner-date: 2026-09-27.
 
@@ -460,3 +466,190 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 STOP for owner review. Candidate next avenues:
 1. **Co-Evolution Self-Play (M50 vs v0.2.9):** Generate 5,000 games of direct cross-play between M50 and v0.2.9 to harvest specific counter-play data and push global win rate past 50%.
 2. **Batch Generation Scaling:** Scale up self-play generation batch size from 2,000 to 10,000 games.
+
+## 22. Feasibility review and evidence correction — 2026-09-27
+
+**Status:** REVIEWED by the parent assistant (not independent review); findings
+OPEN / implementation corrections NOT performed; NOT PROMOTED.
+Scope: owner's request to analyze ongoing M50 feasibility. No training, match,
+parameter change, service restart, or alteration of previous artifacts was run.
+Baseline at inspection: `2ca89047ad3811fdff8d4454d71a54b8288cce32`; concurrent work
+advanced HEAD to `7b7ee5d9e4919f01768834601b4a81f1619f33f7` and added Gen3 artifacts.
+The six inspected implementation files retained their audited SHA256s across
+that advance. Later, during documentation closeout, concurrent uncommitted edits
+appeared in `m50_agent_command.rs`, `m50_extract_command.rs`, and
+`m50_train_steps_pv.py`. Those later edits are outside this review: findings below
+refer to the hashed baseline and existing artifacts, not a verdict on any new
+repair. Other worktree edits were left alone.
+
+### 22.1 Generation identity: the deployed model did not change
+
+Artifact comparison establishes that the original 256-dimensional model,
+`m50-alphazero-gen2-run`, and `m50-alphazero-gen3-run` have **byte-identical**:
+
+- `best_model.pt`: SHA256 `d860d86f0e09f6307554f3862b8c85ec516eca376bab718bb7ff9d5e52e677f4`.
+- `m50_steps_weights.json`: SHA256 `e2bbacdae8d1c2ae2c26d022c4ae83f45633e4b6f63c7f2cc81224d4181f9cc6`.
+
+`training_report.json` records best epoch **0** for both Gen2 and Gen3. The
+trainer saves the initial parent as best, then replaces it only when validation
+Top-1 strictly increases. Gen2 begins at 80.610% and ends at 74.145%; Gen3 begins
+at 80.955% and ends at 74.335%. The often-quoted 80% accuracy was already present
+**before training**, on the new self-play distribution, not a demonstrated
+learning gain over the parent's 52.26% on the different heuristic distribution.
+Gen2 policy validation loss nevertheless falls from 1.1013 to 0.8931: Top-1,
+probability fit, auxiliary accuracy, and playing strength are different metrics.
+This is not proof that all trained epochs were useless; they were not the
+exported/evaluated candidate, and the current trainer retains only best weights.
+
+Both Gen2 and Gen3 256-simulation evaluations have exactly the same seed, actor,
+action sequence, and terminal result as the original model in **128/128 games**.
+Their 54–0–74 results are valid saved outcomes, but are repeat evaluation of the
+same effective model, not independent generations or evidence of improvement.
+Selecting epoch 0 is a legitimate retain-parent outcome, not itself a reason to
+force-export a worse checkpoint. Generation naming must report that outcome.
+
+### 22.2 Speed labels: concrete extraction defect and target limitation
+
+`m50_extract_command.rs` detects >=15 only in the recorded actor's **pre-action**
+state. A player normally gets no further own turn after their threshold-crossing
+action, so that success is missed and falls into the unreached branch:
+`remaining_recorded_actor_decisions + max(15 - terminal_score, 1) * 2`.
+The cursor also increments on `ChooseNoble`, not just main turns.
+
+Read-only alignment of all **276,738** actual v029 dataset rows with sorted source
+replays found:
+
+- 5,671 crossings to >=15; **5,657 have stored label 2.0**, and 14 label 1.0.
+- 5,657 player-games reach 15 without a later own prestate showing it.
+- 4,329 / 10,000 player-games end below 15: their future hitting time is unobserved;
+  a hand-written `2 * deficit` extension is a proxy, not ground-truth duration.
+- 274 non-main decision rows are included in the actor-decision counter.
+- Example: seed `9300000`, ply 50, P0 buys a tier-3 card and goes **13 -> 17**;
+  stored steps-to-15 is **2**, despite success on the current action.
+
+A repaired contract must specify whether the current action costs one remaining
+main turn, account for automatic/pending nobles and final actions, and distinguish
+observed success from right-censored non-success. Do not interpret existing MAE
+as error against exact time-to-15. Preserve old tensors; corrected labels require
+a versioned extraction and regression tests.
+
+`predict_steps_to_15` exists in `m50_agent_command.rs` but has **no decision-path
+caller**. Online greedy uses policy logits; ISMCTS uses policy priors and win-value
+only. The speed head currently influences shared representation during training,
+not an explicit speed-aware action objective. Connecting it to search would be a
+new, separately tested design, not automatically a fix.
+
+### 22.3 What the current self-play loop actually learns
+
+The self-play runner records chosen actions and terminal outcomes. The extractor
+stores a single `chosen_action` index; the trainer minimizes one-hot action CE,
+value BCE, and speed Smooth-L1. Search already computes per-action visits, but
+`M50Policy::choose_action` returns only `res.action`; root visit distributions are
+not exported into this training path. No explicit root Dirichlet noise or
+visit-temperature action sampling is configured (game and determinization seeds
+still supply variation).
+
+This is **search-assisted self-play behavior cloning plus outcome learning**,
+not yet the usual AlphaZero visit-distribution policy-improvement loop. It can
+still work in principle; failure is not mathematically implied. But generation
+count and imitation accuracy alone do not demonstrate improvement. Both existing
+self-play batches use **32 simulations/depth 6**, while the 42.19% result uses
+**256 simulations**. Calling the data generator a measured 42.19%-strength
+teacher conflates different search budgets.
+
+### 22.4 Competitive evidence and unresolved attribution
+
+Recomputed W/T/L from 384 saved reports agrees with the original, Gen2, and 512-sim
+summaries; a further 128 Gen3 reports also agree. No new competition was run.
+
+- Original 256-dim, 256-sim vs v029: **54–0–74**, 42.1875%, stored paired CI
+  **[34.375%, 50.78125%]**. P0 53.125%, P1 31.25%. Neither overall equivalence nor
+  reliable superiority, and no special claim of first-seat dominance follows.
+- Same weights, 512-sim vs v029: **39–0–89**, 30.46875%. This is negative evidence
+  for that setting on this panel, **not a demonstrated cause of strategy fusion**
+  or a universal optimum at 256. Value error, exploration calibration, search
+  coverage, determinization, and sampling variation remain candidate causes.
+- Evaluation scripts repeatedly use seeds `9260000..9260063`. They are a reused
+  development panel, not fresh confirmations after successive choices. A final
+  claim needs a predeclared untouched paired-seed gate and immutable artifacts.
+- Candidate binaries/weights are referenced by mutable paths. The M50 adapter's
+  `checkpoint_hash()` and expected hash are both 64 zeroes, so the inherited search
+  hash check does **not** bind the loaded checkpoint. Historical identities cannot
+  be retroactively proved merely from today's file at that path.
+- Search failure can silently become policy fallback after a stderr warning;
+  explicit counts are needed before attributing wins/losses to a search budget.
+- The trainer's reported validation metrics use only the first **20,000** rows,
+  not all 55,549 / 23,128 / 23,249 available validation rows. Split-by-seed is good,
+  but a fixed prefix is not full-validation evidence.
+- Arena summaries do not yet contain every field in
+  `docs/unified-match-metrics-standard.md`. Their VP/turn uses approximate seat
+  turn counts from total plies and a mean of game ratios. Do not conflate it with
+  an exact main-turn replay-derived metric or an independently validated causal
+  explanation of strength.
+
+The frozen 368/36 encoding is observation-only at the inspected model boundary,
+and search samples worlds from the information set rather than receiving the
+live referee state. This is a sound boundary, not a full security certification.
+The action encoder supplies type/tier/slot, not an explicit selected-card/effect
+embedding; learning state-to-action binding is a plausible difficulty, not a
+proven capacity ceiling. Increased training accuracy with flat validation does
+not establish that network width is the unique bottleneck.
+
+Other historical causal language is narrowed: CE/BCE convexity in outputs does
+not make the neural optimization problem convex; supervised terminal labels
+avoid M49A's particular TD min-backup loop, not all value errors. A single bad
+one-ply or tiny-human fine-tune result does not prove every such method fails.
+
+### 22.5 Validation commands and artifact index
+
+Executed from repository root (both **exit 0**):
+
+```text
+python local-artifacts/m50-feasibility-review-20260927/audit.py
+python local-artifacts/m50-feasibility-review-20260927/gen3-audit.py
+```
+
+These are stdlib-only read-only code/data diagnostics; they write only their own
+local audit JSONs. They check dataset alignment, weight identity, saved W/T/L,
+and trajectory equality, **not** a new all-replay engine verification or model
+parity suite. Evidence:
+
+- `local-artifacts/m50-feasibility-review-20260927/audit.py`, SHA256
+  `2deca29dd966ecbd3236329a1e41d1167e6bc43fde1d85c108f1d10701249333`.
+- `local-artifacts/m50-feasibility-review-20260927/audit.json`, SHA256
+  `a74345746c9b5067e767265332881345fd62a855e1bbc9b4f8f7b060188740fd`.
+- `local-artifacts/m50-feasibility-review-20260927/gen3-audit.json`, SHA256
+  `6ccc87c7c5c9cd4e314539df8d7a7450c1a0445f05802c7a7eca8c919a164a1b`.
+- Gen2 training report SHA256
+  `9f2ff8063503511a1d9911c6095cef214fbf4e13cc966b53b58ea6508d0577c6`;
+  Gen3 training report SHA256
+  `678fbaa0de40506e5f9f86912819331a996b554714930c8ade07e20a2299a009`.
+- Saved 256-sim original summary SHA256
+  `3ed24d63709cb003956a2dbd13fe23017d4bcd4359e4251b2130145af579448a`;
+  Gen3 summary SHA256
+  `97a3c8cab133f857ef18d811bc4b28608eb8c05bcdfd44fb642a3ea22f6bf73a`.
+
+### 22.6 Decision and next proposed gate
+
+**Feasible engineering and useful competitive prototype; reliable self-improvement
+NOT ESTABLISHED.** Retain the unchanged parent and all valid negative evidence.
+Do not promote, relabel repeated checkpoints as learned generations, or discard
+old results. This review does not launch/stop another session's jobs.
+
+Recommended order, requiring implementation authorization:
+
+1. Freeze actual model/binary/config hashes; report unchanged-parent selection;
+   retain trained candidates separately and count search fallbacks.
+2. Repair/version steps labels with post-action/main-turn/terminal/censoring tests;
+   audit full-validation metrics and Python/Rust inference parity.
+3. Freeze a small policy-improvement diagnostic: same-model greedy vs searched
+   actions, root visits/entropy/changed-action coverage, and neutral-value/prior
+   ablations using the existing analysis API. Do not change multiple factors
+   and attribute the result to one.
+4. Design visit-distribution distillation (if authorized) with explicit exploration,
+   retain-parent/reject outcomes, prior-generation comparison, and appropriate
+   value coverage. Do not train the value head only on winners.
+5. Only after identity and target gates pass, run one predeclared small iteration;
+   compare actual new weights to parent at equal budget on untouched paired seeds,
+   with full unified metrics. Expansion to 5k/10k games is conditional on evidence,
+   not the automatic next step. The promotion gate remains separate.
