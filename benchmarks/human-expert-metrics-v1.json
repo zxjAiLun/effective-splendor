@@ -1,0 +1,248 @@
+{
+  "format": "effective-splendor-human-performance-metrics-v1",
+  "version": 1,
+  "total_games": 13,
+  "total_plies": 723,
+  "mean_plies": 55.61538461538461,
+  "mean_turns": 27.846153846153847,
+  "median_turns": 28.0,
+  "min_turns": 25,
+  "max_turns": 33,
+  "mean_victory_margin": 6.846153846153846,
+  "human_first_p0_games": 8,
+  "human_second_p1_games": 5,
+  "human_overall": {
+    "games_played": 13,
+    "wins": 10,
+    "ties": 0,
+    "losses": 3,
+    "win_rate_percent": 76.92307692307692,
+    "mean_prestige": 15.0,
+    "total_prestige": 195,
+    "total_turns": 362,
+    "vp_per_turn": 0.5386740331491713,
+    "vp_per_ply": 0.26933701657458564,
+    "mean_nobles": 0.9230769230769231,
+    "games_with_nobles": 9,
+    "games_with_nobles_percent": 69.23076923076923,
+    "mean_cards_by_vp": {
+      "0": 8.538461538461538,
+      "1": 2.076923076923077,
+      "2": 1.2307692307692308,
+      "3": 1.0769230769230769,
+      "4": 0.5384615384615384,
+      "5": 0.46153846153846156
+    },
+    "total_cards_by_vp": {
+      "0": 111,
+      "1": 27,
+      "2": 16,
+      "3": 14,
+      "4": 7,
+      "5": 6
+    },
+    "mean_permanent_bonuses": 13.923076923076923,
+    "mean_bonuses_by_color": {
+      "Black": 3.0,
+      "Blue": 2.3846153846153846,
+      "Green": 2.3846153846153846,
+      "Red": 3.3076923076923075,
+      "White": 2.8461538461538463
+    },
+    "mean_reserves_acquired": 2.769230769230769,
+    "mean_reserves_bought": 2.4615384615384617,
+    "mean_reserves_stranded": 0.3076923076923077,
+    "reserve_redemption_rate_percent": 88.88888888888889,
+    "action_distribution": {
+      "buy_market": 149,
+      "buy_reserved": 32,
+      "choose_noble": 1,
+      "reserve_market": 36,
+      "take_tokens": 144
+    },
+    "action_percentages": {
+      "buy_market": 41.16022099447514,
+      "buy_reserved": 8.839779005524862,
+      "choose_noble": 0.27624309392265195,
+      "reserve_market": 9.94475138121547,
+      "take_tokens": 39.77900552486188
+    }
+  },
+  "human_as_p0_first": {
+    "games_played": 8,
+    "wins": 6,
+    "ties": 0,
+    "losses": 2,
+    "win_rate_percent": 75.0,
+    "mean_prestige": 14.75,
+    "total_prestige": 118,
+    "total_turns": 224,
+    "vp_per_turn": 0.5267857142857143,
+    "vp_per_ply": 0.26339285714285715,
+    "mean_nobles": 1.0,
+    "games_with_nobles": 6,
+    "games_with_nobles_percent": 75.0,
+    "mean_cards_by_vp": {
+      "0": 8.875,
+      "1": 2.0,
+      "2": 1.375,
+      "3": 1.0,
+      "4": 0.375,
+      "5": 0.5
+    },
+    "total_cards_by_vp": {
+      "0": 71,
+      "1": 16,
+      "2": 11,
+      "3": 8,
+      "4": 3,
+      "5": 4
+    },
+    "mean_permanent_bonuses": 14.125,
+    "mean_bonuses_by_color": {
+      "Black": 2.75,
+      "Blue": 2.375,
+      "Green": 2.625,
+      "Red": 3.375,
+      "White": 3.0
+    },
+    "mean_reserves_acquired": 2.875,
+    "mean_reserves_bought": 2.5,
+    "mean_reserves_stranded": 0.375,
+    "reserve_redemption_rate_percent": 86.95652173913044,
+    "action_distribution": {
+      "buy_market": 93,
+      "buy_reserved": 20,
+      "choose_noble": 1,
+      "reserve_market": 23,
+      "take_tokens": 87
+    },
+    "action_percentages": {
+      "buy_market": 41.517857142857146,
+      "buy_reserved": 8.928571428571429,
+      "choose_noble": 0.44642857142857145,
+      "reserve_market": 10.267857142857142,
+      "take_tokens": 38.839285714285715
+    }
+  },
+  "human_as_p1_second": {
+    "games_played": 5,
+    "wins": 4,
+    "ties": 0,
+    "losses": 1,
+    "win_rate_percent": 80.0,
+    "mean_prestige": 15.4,
+    "total_prestige": 77,
+    "total_turns": 138,
+    "vp_per_turn": 0.5579710144927537,
+    "vp_per_ply": 0.27898550724637683,
+    "mean_nobles": 0.8,
+    "games_with_nobles": 3,
+    "games_with_nobles_percent": 60.0,
+    "mean_cards_by_vp": {
+      "0": 8.0,
+      "1": 2.2,
+      "2": 1.0,
+      "3": 1.2,
+      "4": 0.8,
+      "5": 0.4
+    },
+    "total_cards_by_vp": {
+      "0": 40,
+      "1": 11,
+      "2": 5,
+      "3": 6,
+      "4": 4,
+      "5": 2
+    },
+    "mean_permanent_bonuses": 13.6,
+    "mean_bonuses_by_color": {
+      "Black": 3.4,
+      "Blue": 2.4,
+      "Green": 2.0,
+      "Red": 3.2,
+      "White": 2.6
+    },
+    "mean_reserves_acquired": 2.6,
+    "mean_reserves_bought": 2.4,
+    "mean_reserves_stranded": 0.2,
+    "reserve_redemption_rate_percent": 92.3076923076923,
+    "action_distribution": {
+      "buy_market": 56,
+      "buy_reserved": 12,
+      "reserve_market": 13,
+      "take_tokens": 57
+    },
+    "action_percentages": {
+      "buy_market": 40.57971014492754,
+      "buy_reserved": 8.695652173913043,
+      "reserve_market": 9.420289855072463,
+      "take_tokens": 41.30434782608695
+    }
+  },
+  "opponents_overall": {
+    "games_played": 13,
+    "wins": 3,
+    "ties": 0,
+    "losses": 10,
+    "win_rate_percent": 23.076923076923077,
+    "mean_prestige": 10.615384615384615,
+    "total_prestige": 138,
+    "total_turns": 361,
+    "vp_per_turn": 0.38227146814404434,
+    "vp_per_ply": 0.19113573407202217,
+    "mean_nobles": 1.0,
+    "games_with_nobles": 9,
+    "games_with_nobles_percent": 69.23076923076923,
+    "mean_cards_by_vp": {
+      "0": 10.846153846153847,
+      "1": 3.6153846153846154,
+      "2": 1.4615384615384615,
+      "3": 0.15384615384615385,
+      "4": 0.15384615384615385,
+      "5": 0.0
+    },
+    "total_cards_by_vp": {
+      "0": 141,
+      "1": 47,
+      "2": 19,
+      "3": 2,
+      "4": 2,
+      "5": 0
+    },
+    "mean_permanent_bonuses": 16.23076923076923,
+    "mean_bonuses_by_color": {
+      "Black": 3.1538461538461537,
+      "Blue": 3.4615384615384617,
+      "Green": 3.3076923076923075,
+      "Red": 2.6923076923076925,
+      "White": 3.6153846153846154
+    },
+    "mean_reserves_acquired": 2.8461538461538463,
+    "mean_reserves_bought": 1.5384615384615385,
+    "mean_reserves_stranded": 1.3076923076923077,
+    "reserve_redemption_rate_percent": 54.054054054054056,
+    "action_distribution": {
+      "buy_market": 191,
+      "buy_reserved": 20,
+      "reserve_deck": 2,
+      "reserve_market": 35,
+      "take_tokens": 113
+    },
+    "action_percentages": {
+      "buy_market": 52.908587257617725,
+      "buy_reserved": 5.54016620498615,
+      "reserve_deck": 0.554016620498615,
+      "reserve_market": 9.695290858725762,
+      "take_tokens": 31.301939058171744
+    }
+  },
+  "opponents_breakdown": {
+    "Heuristic baseline": "3 wins / 3 games (100.0%)",
+    "Heuristic v0.2.8 (Single-Noble + Quadratic VP)": "1 wins / 1 games (100.0%)",
+    "Heuristic v0.2.9 (No Bomb Reserve · Fast Engine)": "1 wins / 2 games (50.0%)",
+    "M07 determinization champion": "1 wins / 1 games (100.0%)",
+    "S3 Rollout (Default · Strong)": "4 wins / 4 games (100.0%)",
+    "Unknown (legacy session)": "0 wins / 2 games (0.0%)"
+  }
+}
