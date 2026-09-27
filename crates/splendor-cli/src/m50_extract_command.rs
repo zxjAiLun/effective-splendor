@@ -73,6 +73,7 @@ impl SplitBuffer {
         chosen_idx: usize,
         won: f32,
         score_diff: f32,
+        steps_to_15: f32,
     ) {
         assert_eq!(obs_feat.len(), OBSERVATION_FEATURES_V1);
         for &v in obs_feat {
@@ -93,6 +94,8 @@ impl SplitBuffer {
         self.values_bytes.extend_from_slice(&won.to_le_bytes());
         self.values_bytes
             .extend_from_slice(&score_diff.to_le_bytes());
+        self.values_bytes
+            .extend_from_slice(&steps_to_15.to_le_bytes());
 
         if won > 0.75 {
             self.wins += 1;
@@ -424,9 +427,26 @@ fn run(args: Args) -> Result<(), String> {
             "2-player replay must have >= 2 scores"
         );
 
+        // Precompute the final/target turn for each seat where they reached >= 15 VP (or game end turn)
+        let mut seat_turn_reached_15 = [None, None];
+        let mut current_turn_count = [0u32, 0u32];
+        for step in &trace.positions {
+            let seat = step.recorded_actor.index();
+            current_turn_count[seat] += 1;
+            let p_prestige = step.state.players[seat].prestige;
+            if p_prestige >= 15 && seat_turn_reached_15[seat].is_none() {
+                seat_turn_reached_15[seat] = Some(current_turn_count[seat]);
+            }
+        }
+        let seat_total_turns = current_turn_count;
+
+        let mut actor_turn_cursor = [0u32, 0u32];
+
         for step in &trace.positions {
             let actor = step.recorded_actor;
             let actor_seat = actor.index();
+            actor_turn_cursor[actor_seat] += 1;
+            let current_turn = actor_turn_cursor[actor_seat];
 
             // If winner_only is enabled, skip steps made by losing/tied players
             if args.winner_only {
@@ -492,7 +512,23 @@ fn run(args: Args) -> Result<(), String> {
             let opp_score = result.scores.get(opp_seat).copied().unwrap_or(0) as f32;
             let score_diff = (actor_score - opp_score) / 10.0f32;
 
-            buf.add_step(&obs_feat, &legal_feats, chosen_idx, won, score_diff);
+            // Calculate exact remaining main turns to reach 15 (or game end + penalty if never reached 15)
+            let steps_to_15 = match seat_turn_reached_15[actor_seat] {
+                Some(target_turn) => {
+                    if target_turn >= current_turn {
+                        (target_turn - current_turn) as f32
+                    } else {
+                        0.0f32
+                    }
+                }
+                None => {
+                    let rem_turns = seat_total_turns[actor_seat].saturating_sub(current_turn) as f32;
+                    let vp_deficit = (15.0 - actor_score).max(1.0);
+                    rem_turns + vp_deficit * 2.0
+                }
+            };
+
+            buf.add_step(&obs_feat, &legal_feats, chosen_idx, won, score_diff, steps_to_15);
         }
 
         total_parsed += 1;

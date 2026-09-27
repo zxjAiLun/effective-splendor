@@ -648,5 +648,78 @@ Candidate version: `0.2.8`, tie seed `20260926`
 
 ### Next authorized gate
 
-- 默认 STOP 等待 owner 决策。后续若继续：可保持 v0.2.8 优良的无状态估值基石，探索微调预留节奏或小幅提升终局冲刺敏锐度。
+- Owner 明确授权：“ok go”。进入 S4.9（v0.2.9：废除开局盲目核弹预留，释放早期引擎发育节奏）。
+
+## S4.9 v0.2.9: Abolishing Premature Bomb Reservation for Pure Early Engine Tempo
+
+Status: AUTHORIZED / IN PROGRESS (2026-09-27)
+Baseline: `main@716ecf9` (v0.2.8 completed commit)
+Candidate version: `0.2.9`, tie seed `20260926`
+
+### Problem and observed evidence
+
+1. **真实人类对局复盘曝光的起手漏洞**：
+   - 在真实人机对抗（seed `4482377481514291788`，用户执后手 P1）中，AI（P0）在第 1 手（Ply 0）盲目预留了 Tier 3 的 4 分大蓝卡（CardId 71，需要 7 个白宝石）；
+   - 整整 56 回合打完，人类以 15:12 终局获胜，AI 的这张 4 分大牌在手里躺了一整盘，直至终局都没能买出来！AI 白白浪费了开局第 1 轮的关键起手节奏，还永久占死了一个预留槽位。
+2. **256 局全量回放统计挖掘出的惊人事实**：
+   - 在 v0.2.8 对战 v0.2.5 的 256 局回放中：
+     - 开局前 2 回合发生“核弹大牌预留”（`bomb_reserve`）的对局高达 **242 局（占 94.5%）**；
+     - 这张开局预留的大牌最终在终局前真正被买出的**仅有 27 局（11.2%）**；
+     - **整整 88.8% 的对局（215 局），AI 开局第 1 步预留的大牌到死都没买下来！**
+   - 产生这一严重病态行为的根源在于 v0.2.2 遗留的硬编码项：
+     `const BOMB_7_FOR_4: i64 = 2_400; const BOMB_6_FOR_3: i64 = 1_700;`
+     在开局 Ultra 阶段，只要场上没有可以直接买的便宜 1 级卡，AI 看到 7 费 4 分或 6 费 3 分的牌就会给预留动作打出高达 +2400 / +1700 的虚高分，诱导 AI 在自身 0 减免的脆弱阶段直接送掉先手节奏去拿自己根本消化不了的大牌。
+
+### Initial design / contracts
+
+1. **彻底废除 `bomb_reserve` 虚高加分**：
+   - 将 `bomb_reserve` 项彻底归零并移除。
+   - 绝不在开局 Ultra 阶段因为一张卡是 7 费 4 分或 6 费 3 分就无脑给预留动作 +2400 / +1700 分。
+2. **还节奏于开局基础发育**：
+   - 移除 `bomb_reserve` 后，开局 AI 将自然由 `useful_discount`、`cheap_engine_buy`、`conversion_value`、`engine_value` 引导：
+     老老实实拿高流动性代币、起手买 1 级超低费折扣卡建立引擎；
+   - 预留动作回归其本质功能：真正有便宜大牌且手头缺币保护（`secured_target`），或中后期 Score 阶段筹备关键卡（`scoring_readiness`）。
+3. **保持 v0.2.8 的所有优良无状态特性不变**：
+   - `NOBLE_RACE_MIN_COUNT = 1`（单一可赢贵族敏感激活）保持；
+   - 二次非线性 `vp_efficiency = (ΔVP² × 500) / (1 + effective_cost)` 保持；
+   - 保持纯无状态，无任何跨回合状态机。
+
+### Pilot and frozen gates (v0.2.9)
+
+- 样本量：**128 块 × 双座 × 3 对照 = 768 局**。
+- 种子预留：
+  - Smoke: `9_258_999` 双座。
+  - Pilot: `9_259_000..9_259_127`（128 块）。
+  - Bootstrap: seed `92_592_026`，10,000 次重采样，95% CI。
+- 对照组：
+  - 主对照：**冻结当前 S4 王者 v0.2.8 二进制（SHA256 `76c154ff0ac32d9c9a1f51c38787b88548743276495ee346a262d9d51affb876`）**。
+  - 基准对照：v0.1.0 与 S3-rollout。
+- 判定标准：
+  - vs v0.2.8 95% CI 下界 > 5000 bps -> EXPLORATORY_STRONGER。
+  - 否则 UNRESOLVED 或 EXPLORATORY_WEAKER。仅作探索性 pilot，不改默认。
+
+### Validation and evidence（实际执行）
+
+- 冻结：`freeze.json` SHA `cb42562479e0bf0f8c37c227bf791f6354f0a99aa2d863ca356fcba2ec7f75eb`；候选 `2e8c37fafb6cbfce0cf5d79804dcca574a0d9b6011577824e92af26f04f64528`、v028对照/裁判 `76c154ff0ac32d9c9a1f51c38787b88548743276495ee346a262d9d51affb876`、config `2ca53fcbeee946c1092305a41ea370bfd750fa4d173ec18386348ad855ceb08a`。12,442份既有match-config实查零碰撞；smoke `9258999` 双座PASS。
+- Pilot：768/768完成、0 abort，`benchmarks/s4-heuristic-v029-pilot-v1.result.json` SHA `ac8fb325076fa8e1ef9aac07728358810c6dceed815b7301c78bd59aeecccf2a`、manifest `fe372f5c78b30d3151df4ff1a6eb303d297a783424d9c7d42cf3891d4e7fc55a`。另脚本 `scripts/s4_heuristic_v029_audit.py` 重读原始报告/回放、对全部 770 份回放（768 pilot + 2 smoke）重跑冻结 `verify-replay` 均 exit0、独立重算 W/T/L/CI 逐字一致（PASS）。
+- 离线兑现率与经济诊断对比（vs v0.2.8 256 局）：
+  - 开局盲目预留彻底解决：开局前 2 回合（ply <= 4）的预留次数从 v0.2.8 的 **242 次（94.5% 对局）暴跌至 26 次（10.2%）**！
+  - 终局滞留废牌几乎减半：终局未兑现的死预留牌均值从 **1.57 张骤降至 0.91 张**；实际买回的预留牌均值从 1.42 升至 1.64 张。
+  - 开局节奏彻底释放：AI 开局老老实实拿高流动性宝石做 1 级折扣引擎，不再送掉先手节奏。
+
+### Result and decision
+
+- **主对照 v0.2.8（唯一单因素基准对照）：144–1–111，center 5644.53 bps，CI [5000.00, 6308.59]，UNRESOLVED（实际大幅占优，净胜 +33 局，胜率 56.45%！95% CI 下界恰好压线 5000 bps）。**
+- **vs v0.1：176–0–80，center 6875.00 bps，CI [6250.00, 7460.94]，EXPLORATORY_STRONGER（净胜 +96 局，胜率 68.75%）！**
+- **vs S3：163–1–92，center 6386.72 bps，CI [5781.25, 6992.19]，EXPLORATORY_STRONGER（净胜 +71 局，胜率 63.87%）！**
+- **裁定：EXPLORATORY_PILOT_ONLY / NOT PROMOTED（严格遵守纪律，S3 仍为产品默认）**。
+- **历史性巅峰**：v0.2.9 创下整个 S4 启发式项目的最高战绩纪录，面对旧基准 v0.1 接近七成胜率（68.75%），面对强化学习与搜索基准 S3 超过六成胜率（63.87%），且面对前代最强王者 v0.2.8 斩获 **+33 场净胜（144 胜 111 负）**！
+
+### Known limitations
+
+- 128 块配对测试，单一固定候选；vs v0.2.8 的 95% CI 下界恰为 5000 bps，按严格科学规范标记为 UNRESOLVED 而未声称严格双边显著超越；仅在 2 人标准规则下测试。
+
+### Next authorized gate
+
+- 默认 STOP 等待 owner 决策。可将 v0.2.9 注册至 Studio 与人机对战供 owner 实战检验手感。
 

@@ -2084,12 +2084,15 @@ fn build_session(args: &Args) -> Result<Session, String> {
                 || name == "v0.2"
                 || name == "v028"
                 || name == "v0.2.8"
+                || name == "v029"
+                || name == "v0.2.9"
                 || name == "heuristic-v02"
-                || name == "heuristic-v028" =>
+                || name == "heuristic-v028"
+                || name == "heuristic-v029" =>
         {
             (
                 Opponent::InProcess {
-                    label: "Heuristic v0.2.8",
+                    label: "Heuristic v0.2.9",
                     policy: InProcessOpponent::HeuristicV02(
                         splendor_agent::HeuristicAgentPolicyV02::new(),
                     ),

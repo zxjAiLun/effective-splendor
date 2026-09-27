@@ -11,12 +11,13 @@ fn studio_registry_is_valid_and_contains_every_current_gpu_model() {
     )
     .unwrap();
     registry.validate().unwrap();
-    assert_eq!(registry.agents.len(), 10);
+    assert_eq!(registry.agents.len(), 11);
     assert_eq!(registry.agents[0].id, "s3-rollout");
     for id in [
         "s3-rollout",
         "heuristic-v1",
         "heuristic-v028",
+        "heuristic-v029",
         "m17-entity-mixer",
         "m18a-self-play",
         "m18b-rainbow",

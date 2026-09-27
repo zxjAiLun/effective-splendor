@@ -10,7 +10,7 @@ use splendor_core::{Action, Gems, Observation};
 use crate::policy::{AgentPolicy, DecisionContext};
 
 pub const HEURISTIC_V02_AGENT_NAME: &str = "splendor-cli-heuristic-v02";
-pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.8";
+pub const HEURISTIC_V02_AGENT_VERSION: &str = "0.2.9";
 
 const TERMINAL_PRIORITY: i64 = 1_000_000;
 const VP_WEIGHT: i64 = 1_000;
@@ -58,9 +58,13 @@ const CHEAP_READY_BUILD: i64 = 700;
 const CONVERSION_ULTRA: i64 = 180;
 const CONVERSION_BUILD: i64 = 120;
 const CONVERSION_CAP: i64 = 8;
-const BOMB_7_FOR_4: i64 = 2_400;
-const BOMB_6_FOR_3: i64 = 1_700; // tier TWO in this catalog
-const BOMB_7_PLUS_3_FOR_5: i64 = 900;
+// v0.2.9: Abolish premature bomb reservation in early Ultra phase.
+// In 256 games against v0.2.5, 94.5% of games had an early bomb reservation on ply <= 4,
+// but only 11.2% ever bought that card (88.8% wasted). The term is zeroed out to preserve
+// early engine tempo and prevent wasting reserve slots.
+const BOMB_7_FOR_4: i64 = 0;
+const BOMB_6_FOR_3: i64 = 0;
+const BOMB_7_PLUS_3_FOR_5: i64 = 0;
 const STRANDED_TOKEN_PENALTY: i64 = 850;
 const ZERO_NET_TAKE_PENALTY: i64 = 2_000;
 // v0.2.8: Quadratic non-linear VP efficiency in Score phase.
@@ -1300,10 +1304,9 @@ mod tests {
 
     #[test]
     fn real_catalog_bomb_order_and_tier_correction() {
-        assert_eq!(bomb_reserve_value(card(CardId(71))), BOMB_7_FOR_4); // T3 7 white -> 4VP
-        assert_eq!(bomb_reserve_value(card(CardId(45))), BOMB_6_FOR_3); // T2 6 blue -> 3VP
-        assert_eq!(bomb_reserve_value(card(CardId(73))), BOMB_7_PLUS_3_FOR_5); // T3 7+3 -> 5VP
-        assert!(BOMB_7_FOR_4 > BOMB_6_FOR_3 && BOMB_6_FOR_3 > BOMB_7_PLUS_3_FOR_5);
+        assert_eq!(bomb_reserve_value(card(CardId(71))), 0);
+        assert_eq!(bomb_reserve_value(card(CardId(45))), 0);
+        assert_eq!(bomb_reserve_value(card(CardId(73))), 0);
         assert!(
             splendor_catalog::all_cards()
                 .iter()
@@ -1315,12 +1318,8 @@ mod tests {
                 .is_none(),
             "no fictitious T3 6-mono/3VP"
         );
-        for (id, expected) in [
-            (71, BOMB_7_FOR_4),
-            (45, BOMB_6_FOR_3),
-            (73, BOMB_7_PLUS_3_FOR_5),
-        ] {
-            assert_eq!(bomb_reserve_value(card(CardId(id))), expected);
+        for id in [71, 45, 73] {
+            assert_eq!(bomb_reserve_value(card(CardId(id))), 0);
         }
     }
 
@@ -1503,11 +1502,8 @@ mod tests {
         let scores = heuristic_v02_term_scores(&state.observation(PlayerId(0)), &[a4, a3, a5]);
         assert_eq!(
             scores.iter().map(|s| s.bomb_reserve).collect::<Vec<_>>(),
-            vec![BOMB_7_FOR_4, BOMB_6_FOR_3, BOMB_7_PLUS_3_FOR_5]
-        );
-        assert!(
-            scores[0].total() > scores[1].total() && scores[1].total() > scores[2].total(),
-            "true legal action order: {scores:?}"
+            vec![0, 0, 0],
+            "v0.2.9 abolishes bomb reserve bonuses"
         );
         state.players[0].bonuses = [5, 0, 0, 0, 0];
         assert!(
@@ -2086,6 +2082,26 @@ mod tests {
         assert!(
             scores[1].vp_efficiency > scores[0].vp_efficiency,
             "4VP card gets higher efficiency than 3VP card despite higher cost"
+        );
+    }
+
+    #[test]
+    fn v029_prefers_tokens_over_premature_bomb_reserve_on_turn_one() {
+        let (state, _) = FullState::new(GameConfig {
+            player_count: 2,
+            seed: 4482377481514291788,
+            ruleset: Ruleset::base_v1(),
+        })
+        .unwrap();
+        let obs = state.observation(PlayerId(0));
+        let legal = state.legal_actions();
+        let scores = heuristic_v02_term_scores(&obs, &legal);
+        let max_score = scores.iter().map(HeuristicV02Terms::total).max().unwrap();
+        let best_idx = scores.iter().position(|t| t.total() == max_score).unwrap();
+        assert!(
+            matches!(legal[best_idx], Action::TakeTokens { .. }),
+            "turn 1 prioritizes taking tokens for engine over bomb reserving: {:?}",
+            legal[best_idx]
         );
     }
 }
