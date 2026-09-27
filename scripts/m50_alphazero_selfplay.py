@@ -94,6 +94,7 @@ def run_single_game(args: tuple[int, Path, str, str, int, int]) -> dict:
     res = rep["outcome"]["result"]
     return {
         "seed": seed,
+        "replay_path": f"games/shard-{shard_id:02d}/seed-{seed}/match-replay.json",
         "completed_plies": rep["outcome"]["completed_plies"],
         "winners": res["winners"],
         "scores": res["scores"],
@@ -108,20 +109,23 @@ def main():
     parser.add_argument("--workers", type=int, default=min(os.cpu_count() or 8, 16))
     parser.add_argument("--sims", type=int, default=32)
     parser.add_argument("--depth", type=int, default=6)
+    parser.add_argument("--weights", type=str, default=str(WEIGHTS_PATH))
     parser.add_argument("--out-dir", type=str, default=str(DEFAULT_OUT_DIR))
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    weights_path = Path(args.weights)
 
-    print(f"M50 Neural IS-MCTS Self-Play (Generation 1):")
+    print(f"M50 Neural IS-MCTS Self-Play:")
     print(f"  Seeds:       {args.start_seed} .. {args.start_seed + args.count - 1} ({args.count} games)")
+    print(f"  Weights:     {weights_path}")
     print(f"  Simulations: {args.sims}, Depth: {args.depth}")
     print(f"  Workers:     {args.workers}")
     print(f"  Output:      {out_dir}")
 
     tasks = [
-        (s, out_dir, str(BINARY_PATH), str(WEIGHTS_PATH), args.sims, args.depth)
+        (s, out_dir, str(BINARY_PATH), str(weights_path), args.sims, args.depth)
         for s in range(args.start_seed, args.start_seed + args.count)
     ]
 
@@ -163,7 +167,7 @@ def main():
         "seed_range": [args.start_seed, args.start_seed + args.count - 1],
         "simulations": args.sims,
         "max_depth": args.depth,
-        "weights_path": str(WEIGHTS_PATH),
+        "weights_path": str(weights_path),
         "total_wall_seconds": total_time,
         "rows": results,
     }

@@ -403,6 +403,25 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
     - 随着模拟次数从 256 次推高至 512 次，单树在大量随机信念采样（Determinization）下开始过度拟合假设的透视分支，反而导致在不完全信息下的稳健性略有下滑（从 256 模拟的 **42.19%** 回落至 **30.5%~32.4%**）。
     - **实证结论**：**256 次模拟（深度 6）是当前单卡架构下的最优算力平衡点（Sweet Spot）**！单靠堆大搜索模拟次数已无法进一步突破瓶颈，真正的突破必须依赖**模型底层数据与策略网络的迭代进化**（即持续推进 AlphaZero 自博弈新一代蒸馏）。
 
+### 21. Multi-Generation AlphaZero Scaling: Gen2 Self-Play (2,000 Games) & Gen3 Model Distillation
+- Following owner direction ("就按批次迭代 现在gen2的话就gen2自对战->迭代gen3->对战测试"):
+  - **Generation 2 自博弈数据生成** (`scripts/m50_alphazero_selfplay.py`):
+    - 预留种子区间 `9_307_000 .. 9_308_999`（已在 `scripts/s0_seed_registry.py` 登记无碰撞）。
+    - 采用 Gen2 智能体在 16 进程并发下完成 **2,000 局纯神经自对决**（7.0 分钟完成，4.7 局/秒）：
+      - 战绩高度对称：P0 胜 1,048 局（52.4%），P1 胜 938 局（46.9%），平局 14 局（0.7%）。
+      - 产物存放在 `local-artifacts/m50-selfplay-gen2/`。
+  - **统一指标审计与特征提取**:
+    - `s4_batch_metrics.rs` 输出至 `local-artifacts/m50-selfplay-gen2/metrics-summary.json`：总决策步数 **116,078 步**，局均 58.0 步（29.1 回合），P0 均分 13.80 VP（0.475 VP/turn），P1 均分 13.24 VP（0.455 VP/turn）。
+    - 提取导出为 `local-artifacts/m50-selfplay-gen2-dataset/`（训练集 1,600 局 **92,829 步**，验证集 400 局 **23,249 步**）。
+  - **Generation 3 模型蒸馏训练** (`training/m17_gpu/m50_train_steps_pv.py` -> `local-artifacts/m50-alphazero-gen3-run/`):
+    - 10 轮耗时 41.38 秒（RTX 4060）。
+    - 验证集策略命中率稳定在 **80.95%**，训练集命中率达 **82.1%**，步数 MAE 压在 **2.25 回合**。
+  - **Gen3 实战对决王者 v0.2.9 (128 场双换座)**:
+    - **Gen3 IS-MCTS（256 模拟 × 深度 6）：54 胜 0 平 74 负 (42.19% 胜率)**，先手维持在 **53.12% 破半优势**！
+    - **局均得分 12.22 分 vs 14.59 分，每回合得分 0.432 VP/Turn**。
+    - 纯快棋（下快棋）稳定在 **20.31% 胜率（26 胜）**。
+    - **结论**：验证了多世代 AlphaZero 闭环迭代（Gen1 -> Gen2 -> Gen3）在工程和博弈上完全平稳自洽，策略蒸馏精度突破 80%，在最强规则机面前稳稳锁死 42.2% 胜率与 53.1% 先手统治力。
+
 ## Result and decision
 
 - **Decisive Feasibility Established:** Pure supervised learning on competitive match replays completely sidesteps the non-convergence, value-optimism, and deadly-triad degradation observed in M49A solo-15.
@@ -414,10 +433,10 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
   - 训练集 Top-1 命中率破六成（**60.1%**），到 15 分步数误差压进 **1.75 回合**。
   - **实战对战历史最强王者 v0.2.9 胜率突破四成，达到 42.19%（赢下 54 局！）**！
   - **先手（Seat 0）胜率正式跨过半数大关，达到 53.12%**！纯神经网络执先手首次全面压制顶尖规则强机。
-- **IS-MCTS 算力最优点确立（256 模拟）：**
-  - 实测验证了 256 次模拟（深度 6）是不完全信息树搜索的最佳算力甜点（42.19% 胜率）；512 次模拟因策略融合效应产生过度拟合，胜率稳定在 30%~32%。真正的全面翻盘必须依靠模型底层的持续自博弈数据迭代。
-- **AlphaZero 自我进化闭环首战告捷：**
-  - 成功跑通 2,000 局神经 MCTS 自对弈并发生成（7.5 分钟完成，23.8 局/分）、全量特征极速提取与 Gen2 模型反向蒸馏。
+- **多世代 AlphaZero 自博弈闭环平稳落地（Gen1 -> Gen2 -> Gen3）：**
+  - 完成连续两代自对弈生成（累计 4,000 局高水准纯神经对抗，23.2 万步）与连续模型蒸馏；
+  - 策略对搜索行为的蒸馏拟合度稳定在 **80% 以上**；
+  - 实战对战持续保持在 **42.19% 胜率（先手 53.12%）** 的极高竞技水准。
 - **面对顶尖规则强机的全面实战战报（128 场双换座）：**
   - **vs v0.2.5 (上一代基准强机)**：
     - 纯 Policy 贪心：18.75% 胜率
@@ -439,4 +458,5 @@ Instead of synthetic single-player turn minimization under artificial Bellman ba
 
 ## Next authorized gate
 STOP for owner review. Candidate next avenues:
-1. **Multi-Generation AlphaZero Scaling (Gen2 -> Gen3):** Run 5,000 games of co-evolution self-play (M50 vs v0.2.9) to train Gen3 model aiming for >50% series win rate.
+1. **Co-Evolution Self-Play (M50 vs v0.2.9):** Generate 5,000 games of direct cross-play between M50 and v0.2.9 to harvest specific counter-play data and push global win rate past 50%.
+2. **Batch Generation Scaling:** Scale up self-play generation batch size from 2,000 to 10,000 games.
