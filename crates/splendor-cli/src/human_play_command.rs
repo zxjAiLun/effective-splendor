@@ -50,7 +50,7 @@ use crate::runtime_orchestration::{
     OccurrenceEvidence, OccurrenceSlotV1, RuntimeOrchestrationError, RuntimeOrchestrationOutcome,
 };
 
-const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
+const USAGE: &str = "Usage: splendor human-play-server --seed <u64> --human-seat <0|1> [--opponent <s3|s3-rollout|default|heuristic|fast|v0.2.8|m07>] [--registry <registry.json> --agent-id <id>] --port <u16> [--move-timeout-ms <u64>] [--replay-out <replay.json>]";
 const HOST_USAGE: &str =
     "Usage: splendor studio-host --registry <registry.json> [--reviewer-registry <reviewers.json>] --port <u16> [--handshake-timeout-ms <u64>] [--move-timeout-ms <u64>] [--shutdown-grace-ms <u64>] [--replay-sources <sources.json>] [--project-root <dir>]";
 const DEFAULT_MOVE_TIMEOUT_MS: u64 = 120_000;
@@ -69,6 +69,7 @@ const REVIEWS_DIR: &str = "reviews";
 enum InProcessOpponent {
     S3(splendor_determinization_agent::s3_agent::S3RolloutAgentPolicy),
     Heuristic(HeuristicAgentPolicy),
+    HeuristicV02(splendor_agent::HeuristicAgentPolicyV02),
     M07(DeterminizationAgentPolicyV1),
 }
 
@@ -79,6 +80,9 @@ impl InProcessOpponent {
                 .choose_action(context)
                 .map_err(|error| error.to_string()),
             Self::Heuristic(policy) => policy
+                .choose_action(context)
+                .map_err(|error| error.to_string()),
+            Self::HeuristicV02(policy) => policy
                 .choose_action(context)
                 .map_err(|error| error.to_string()),
             Self::M07(policy) => policy
@@ -965,6 +969,28 @@ struct StudioHost {
 }
 
 impl StudioHost {
+    fn find_jev_run_dir(&self, run_id: &str) -> Option<PathBuf> {
+        let direct = self.jev_runs_dir.join(run_id);
+        if direct.is_dir() {
+            return Some(direct);
+        }
+        if let Ok(entries) = fs::read_dir(&self.jev_runs_dir) {
+            let mut sub_dirs: Vec<PathBuf> = entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_dir())
+                .collect();
+            sub_dirs.sort_by(|a, b| b.cmp(a));
+            for path in sub_dirs {
+                let sub = path.join(run_id);
+                if sub.is_dir() {
+                    return Some(sub);
+                }
+            }
+        }
+        None
+    }
+
     /// Read-only index of local Jev arena runs.
     ///
     /// These are unrated exhibition games written by `jev/match.py`; they are
@@ -975,61 +1001,105 @@ impl StudioHost {
     fn jev_runs_index(&self) -> Result<String, String> {
         let root = self.jev_runs_dir.as_path();
         let mut runs: Vec<serde_json::Value> = Vec::new();
+        let mut check_dir = |path: &Path| {
+            let Some(run_id) = path.file_name().and_then(|n| n.to_str()) else {
+                return;
+            };
+            if !is_safe_component(run_id) {
+                return;
+            }
+            let summary = path.join("trace-summary.json");
+            let read = |name: &str| -> Option<serde_json::Value> {
+                fs::read_to_string(path.join(name))
+                    .ok()
+                    .and_then(|body| serde_json::from_str(&body).ok())
+            };
+            let trace = read("trace-summary.json");
+            let report = read("report.json");
+            let journal_recorded = path.join("metrics.jsonl").is_file();
+            let game_document = path
+                .join("replay.json")
+                .is_file()
+                .then_some("completed_replay")
+                .or_else(|| {
+                    path.join("prefix.json")
+                        .is_file()
+                        .then_some("truncated_prefix")
+                })
+                .unwrap_or("unavailable");
+            let metrics = read("metrics.json");
+            let game_summary = read("game-summary.json");
+            let anchor = game_summary
+                .as_ref()
+                .and_then(|v| v.get("anchor"))
+                .and_then(|v| v.as_str());
+            let jev_seat = game_summary
+                .as_ref()
+                .and_then(|v| v.get("jev_seat"))
+                .and_then(|v| v.as_u64());
+            let jev_won = game_summary
+                .as_ref()
+                .and_then(|v| v.get("jev_won"))
+                .and_then(|v| v.as_bool());
+            let scores = game_summary
+                .as_ref()
+                .and_then(|v| v.get("scores"))
+                .cloned();
+            runs.push(serde_json::json!({
+                "run_id": run_id,
+                "has_trace_summary": summary.is_file(),
+                "journal_recorded": journal_recorded,
+                "game_document": game_document,
+                "anchor": anchor,
+                "jev_seat": jev_seat,
+                "jev_won": jev_won,
+                "scores": scores,
+                "decisions": trace.as_ref()
+                    .and_then(|value| value.get("journal_decisions"))
+                    .and_then(|value| value.as_u64()),
+                "status": metrics.as_ref()
+                    .and_then(|value| value.get("status"))
+                    .and_then(|value| value.as_str()),
+                "agent_version": metrics.as_ref()
+                    .and_then(|value| value.get("agent_version"))
+                    .and_then(|value| value.as_str()),
+                "model_versions": metrics.as_ref()
+                    .and_then(|value| value.get("model_versions"))
+                    .cloned(),
+                "outcome": report.as_ref()
+                    .and_then(|value| value.get("outcome"))
+                    .and_then(|value| value.get("status"))
+                    .and_then(|value| value.as_str()),
+            }));
+        };
+
         if root.is_dir() {
-            for entry in fs::read_dir(root).map_err(|error| error.to_string())? {
-                let entry = entry.map_err(|error| error.to_string())?;
-                let path = entry.path();
-                if !path.is_dir() {
-                    continue;
+            if let Ok(entries) = fs::read_dir(root) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if !path.is_dir() {
+                        continue;
+                    }
+                    let is_run = path.join("metrics.json").is_file()
+                        || path.join("metrics.jsonl").is_file()
+                        || path.join("replay.json").is_file()
+                        || path.join("trace-summary.json").is_file();
+                    if is_run {
+                        check_dir(&path);
+                    } else if let Ok(sub_entries) = fs::read_dir(&path) {
+                        for sub_entry in sub_entries.flatten() {
+                            let sub_path = sub_entry.path();
+                            if sub_path.is_dir()
+                                && (sub_path.join("metrics.json").is_file()
+                                    || sub_path.join("metrics.jsonl").is_file()
+                                    || sub_path.join("replay.json").is_file()
+                                    || sub_path.join("trace-summary.json").is_file())
+                            {
+                                check_dir(&sub_path);
+                            }
+                        }
+                    }
                 }
-                let Some(run_id) = path.file_name().and_then(|n| n.to_str()) else {
-                    continue;
-                };
-                if !is_safe_component(run_id) {
-                    continue;
-                }
-                let summary = path.join("trace-summary.json");
-                let read = |name: &str| -> Option<serde_json::Value> {
-                    fs::read_to_string(path.join(name))
-                        .ok()
-                        .and_then(|body| serde_json::from_str(&body).ok())
-                };
-                let trace = read("trace-summary.json");
-                let report = read("report.json");
-                let journal_recorded = path.join("metrics.jsonl").is_file();
-                let game_document = path
-                    .join("replay.json")
-                    .is_file()
-                    .then_some("completed_replay")
-                    .or_else(|| {
-                        path.join("prefix.json")
-                            .is_file()
-                            .then_some("truncated_prefix")
-                    })
-                    .unwrap_or("unavailable");
-                let metrics = read("metrics.json");
-                runs.push(serde_json::json!({
-                    "run_id": run_id,
-                    "has_trace_summary": summary.is_file(),
-                    "journal_recorded": journal_recorded,
-                    "game_document": game_document,
-                    "decisions": trace.as_ref()
-                        .and_then(|value| value.get("journal_decisions"))
-                        .and_then(|value| value.as_u64()),
-                    "status": metrics.as_ref()
-                        .and_then(|value| value.get("status"))
-                        .and_then(|value| value.as_str()),
-                    "agent_version": metrics.as_ref()
-                        .and_then(|value| value.get("agent_version"))
-                        .and_then(|value| value.as_str()),
-                    "model_versions": metrics.as_ref()
-                        .and_then(|value| value.get("model_versions"))
-                        .cloned(),
-                    "outcome": report.as_ref()
-                        .and_then(|value| value.get("outcome"))
-                        .and_then(|value| value.get("status"))
-                        .and_then(|value| value.as_str()),
-                }));
             }
         }
         runs.sort_by(|a, b| {
@@ -1050,10 +1120,9 @@ impl StudioHost {
     /// the journal-derived per-ply trace projection.
     fn jev_run_trace(&self, run_id: &str) -> Result<String, String> {
         let run_id = sanitize_session_id(run_id)?;
-        let directory = self.jev_runs_dir.join(&run_id);
-        if !directory.is_dir() {
-            return Err(format!("unknown Jev run `{run_id}`"));
-        }
+        let directory = self
+            .find_jev_run_dir(&run_id)
+            .ok_or_else(|| format!("unknown Jev run `{run_id}`"))?;
         let read = |name: &str| -> Result<serde_json::Value, String> {
             let body = fs::read_to_string(directory.join(name))
                 .map_err(|error| format!("{name} is unavailable: {error}"))?;
@@ -1083,7 +1152,6 @@ impl StudioHost {
         }))
         .map_err(|error| error.to_string())
     }
-
     fn agents_json(&self) -> Result<String, String> {
         let agents = self
             .registry
@@ -1529,21 +1597,42 @@ impl StudioHost {
         let session_id = sanitize_session_id(session_id)?;
         let human_play_dir = Path::new(HUMAN_PLAY_DIR);
         let replay_path = human_play_dir.join(format!("{session_id}.replay.json"));
-        if !replay_path.is_file() {
+        let (replay_path, opponent, human_seat) = if replay_path.is_file() {
+            let meta = read_human_meta_for_session(&human_play_dir, &session_id);
+            let opponent = meta
+                .as_ref()
+                .and_then(|value| value.get("opponent"))
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let human_seat = meta
+                .as_ref()
+                .and_then(|value| value.get("human_seat"))
+                .and_then(|value| value.as_u64())
+                .and_then(|value| u8::try_from(value).ok());
+            (replay_path, opponent, human_seat)
+        } else if let Some(jev_dir) = self.find_jev_run_dir(&session_id) {
+            let jev_replay = jev_dir.join("replay.json");
+            if !jev_replay.is_file() {
+                return Err(format!("unknown session `{session_id}`"));
+            }
+            let summary_val: Option<serde_json::Value> = fs::read_to_string(jev_dir.join("game-summary.json"))
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok());
+            let opponent = summary_val
+                .as_ref()
+                .and_then(|v| v.get("anchor"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let human_seat = summary_val
+                .as_ref()
+                .and_then(|v| v.get("jev_seat"))
+                .and_then(|v| v.as_u64())
+                .and_then(|v| u8::try_from(v).ok());
+            (jev_replay, opponent, human_seat)
+        } else {
             return Err(format!("unknown session `{session_id}`"));
-        }
+        };
         let replay = read_replay_file(&replay_path)?;
-        let meta = read_human_meta_for_session(&human_play_dir, &session_id);
-        let opponent = meta
-            .as_ref()
-            .and_then(|value| value.get("opponent"))
-            .and_then(|value| value.as_str())
-            .map(str::to_string);
-        let human_seat = meta
-            .as_ref()
-            .and_then(|value| value.get("human_seat"))
-            .and_then(|value| value.as_u64())
-            .and_then(|value| u8::try_from(value).ok());
         let archive = build_historical_replay_archive(&replay, &session_id, opponent, human_seat)?;
         serde_json::to_string(&archive).map_err(|error| error.to_string())
     }
@@ -1990,6 +2079,24 @@ fn build_session(args: &Args) -> Result<Session, String> {
             },
             20_260_812, // Authoritative heuristic-v1 seed (identical to agent-heuristic --seed 20260812)
         ),
+        (Some(name), None, None)
+            if name == "v02"
+                || name == "v0.2"
+                || name == "v028"
+                || name == "v0.2.8"
+                || name == "heuristic-v02"
+                || name == "heuristic-v028" =>
+        {
+            (
+                Opponent::InProcess {
+                    label: "Heuristic v0.2.8",
+                    policy: InProcessOpponent::HeuristicV02(
+                        splendor_agent::HeuristicAgentPolicyV02::new(),
+                    ),
+                },
+                20_260_926, // Authoritative tie-breaking seed for heuristic-v02
+            )
+        }
         (Some(name), None, None) if name == "m07" => (
             Opponent::InProcess {
                 label: "M07 determinization champion",
@@ -2009,12 +2116,12 @@ fn build_session(args: &Args) -> Result<Session, String> {
         ),
         (Some(_), None, None) => {
             return Err(
-                "--opponent must be s3 (or s3-rollout/default), heuristic (or fast), or m07".into(),
+                "--opponent must be s3 (or s3-rollout/default), heuristic (or fast), v0.2.8 (or v02/heuristic-v02), or m07".into(),
             )
         }
         _ => {
             return Err(
-                "choose --opponent <s3|s3-rollout|default|heuristic|fast|m07> or --registry <path> --agent-id <id> (defaults to s3)"
+                "choose --opponent <s3|s3-rollout|default|heuristic|fast|v0.2.8|m07> or --registry <path> --agent-id <id> (defaults to s3)"
                     .into(),
             )
         }
@@ -3424,6 +3531,31 @@ mod tests {
             request_id: 0,
             ply: 0,
         }
+    }
+
+    #[test]
+    fn in_process_opponent_supports_heuristic_v028() {
+        let mut opponent =
+            InProcessOpponent::HeuristicV02(splendor_agent::HeuristicAgentPolicyV02::new());
+        let session = test_session();
+        let obs = session.state().observation(PlayerId(1));
+        let legal = session.state().legal_actions();
+        let mut rng = StableRng::new(20260926);
+        let action = opponent
+            .choose(DecisionContext {
+                observation: obs.clone(),
+                visible_history: &[],
+                legal_actions: &legal,
+                meta: PublicRequestMeta {
+                    game_id: "test".to_string(),
+                    recipient_seat: obs.viewer,
+                    request_id: 0,
+                    observation_hash: observation_hash(&obs),
+                },
+                rng: &mut rng,
+            })
+            .unwrap();
+        assert!(legal.contains(&action));
     }
 
     #[test]
