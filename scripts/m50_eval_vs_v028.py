@@ -111,6 +111,13 @@ def run_one_match(seed: int, candidate_seat: int, mode: str, sims: int, depth: i
         won = 0.0
         score_bps = 0
 
+    cand_turns = (outcome["completed_plies"] + 1) // 2 if candidate_seat == 0 else outcome["completed_plies"] // 2
+    opp_turns = outcome["completed_plies"] // 2 if candidate_seat == 0 else (outcome["completed_plies"] + 1) // 2
+    cand_s_per_turn = cand_score / max(cand_turns, 1)
+    opp_s_per_turn = opp_score / max(opp_turns, 1)
+    cand_s_per_ply = cand_score / max(outcome["completed_plies"], 1)
+    opp_s_per_ply = opp_score / max(outcome["completed_plies"], 1)
+
     return {
         "game_id": game_id,
         "seed": seed,
@@ -119,6 +126,12 @@ def run_one_match(seed: int, candidate_seat: int, mode: str, sims: int, depth: i
         "score_bps": score_bps,
         "cand_score": cand_score,
         "opp_score": opp_score,
+        "cand_turns": cand_turns,
+        "opp_turns": opp_turns,
+        "cand_s_per_turn": cand_s_per_turn,
+        "opp_s_per_turn": opp_s_per_turn,
+        "cand_s_per_ply": cand_s_per_ply,
+        "opp_s_per_ply": opp_s_per_ply,
         "plies": outcome["completed_plies"],
         "wall_sec": wall_sec,
     }
@@ -160,6 +173,10 @@ def run_series(mode: str, sims: int, depth: int, out_dir: Path, label: str) -> d
 
     mean_cand_score = sum(r["cand_score"] for r in rows) / total_games
     mean_opp_score = sum(r["opp_score"] for r in rows) / total_games
+    mean_cand_score_per_turn = sum(r["cand_s_per_turn"] for r in rows) / total_games
+    mean_opp_score_per_turn = sum(r["opp_s_per_turn"] for r in rows) / total_games
+    mean_cand_score_per_ply = sum(r["cand_s_per_ply"] for r in rows) / total_games
+    mean_opp_score_per_ply = sum(r["opp_s_per_ply"] for r in rows) / total_games
     mean_plies = sum(r["plies"] for r in rows) / total_games
 
     blocks = []
@@ -194,6 +211,10 @@ def run_series(mode: str, sims: int, depth: int, out_dir: Path, label: str) -> d
         "win_rate_seat1_pct": win_rate_seat1 * 100.0,
         "mean_cand_score": mean_cand_score,
         "mean_opp_score": mean_opp_score,
+        "mean_cand_score_per_turn": mean_cand_score_per_turn,
+        "mean_opp_score_per_turn": mean_opp_score_per_turn,
+        "mean_cand_score_per_ply": mean_cand_score_per_ply,
+        "mean_opp_score_per_ply": mean_opp_score_per_ply,
         "mean_plies": mean_plies,
         "total_wall_seconds": total_sec,
     }
@@ -202,11 +223,13 @@ def run_series(mode: str, sims: int, depth: int, out_dir: Path, label: str) -> d
         json.dump(summary, f, indent=2)
 
     print(f"\nFinal Results for {label} vs v0.2.8:")
-    print(f"  W - T - L:   {wins} - {ties} - {losses} | Win Rate: {summary['win_rate_pct']:.2f}%")
-    print(f"  95% CI:      [{ci_95_bps[0]:.1f}, {ci_95_bps[1]:.1f}] BPS")
-    print(f"  Seat 0:      {summary['win_rate_seat0_pct']:.2f}% | Seat 1: {summary['win_rate_seat1_pct']:.2f}%")
-    print(f"  Mean Score:  M50 {mean_cand_score:.2f} vs v0.2.8 {mean_opp_score:.2f}")
-    print(f"  Total Time:  {total_sec:.2f}s ({total_sec / total_games:.3f}s / game)")
+    print(f"  W - T - L:               {wins} - {ties} - {losses} | Win Rate: {summary['win_rate_pct']:.2f}%")
+    print(f"  95% CI:                  [{ci_95_bps[0]:.1f}, {ci_95_bps[1]:.1f}] BPS")
+    print(f"  Seat 0:                  {summary['win_rate_seat0_pct']:.2f}% | Seat 1: {summary['win_rate_seat1_pct']:.2f}%")
+    print(f"  局均得分:                M50 {mean_cand_score:.2f} 分 vs v0.2.8 {mean_opp_score:.2f} 分")
+    print(f"  每回合平均得分(VP/Turn): M50 {mean_cand_score_per_turn:.3f} 分/回合 vs v0.2.8 {mean_opp_score_per_turn:.3f} 分/回合")
+    print(f"  每步平均得分 (VP/Ply):   M50 {mean_cand_score_per_ply:.3f} 分/步   vs v0.2.8 {mean_opp_score_per_ply:.3f} 分/步")
+    print(f"  Total Time:              {total_sec:.2f}s ({total_sec / total_games:.3f}s / game)")
     return summary
 
 
