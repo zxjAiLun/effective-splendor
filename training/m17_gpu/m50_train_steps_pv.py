@@ -46,27 +46,29 @@ class PolicyValueStepsNet(nn.Module):
         self.hidden_dim = hidden_dim
 
         # State representation trunk
+        mid_dim = 512 if hidden_dim >= 256 else 256
         self.state_net = nn.Sequential(
-            nn.Linear(obs_dim, 256),
-            nn.LayerNorm(256),
+            nn.Linear(obs_dim, mid_dim),
+            nn.LayerNorm(mid_dim),
             nn.ReLU(),
-            nn.Linear(256, hidden_dim),
+            nn.Linear(mid_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.ReLU(),
         )
 
         # Head 1: Value Head (Win probability logit)
+        head_mid = 128 if hidden_dim >= 256 else 64
         self.value_head = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim, head_mid),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(head_mid, 1),
         )
 
         # Head 2: Steps-to-15 Head (Expected main turns to 15 VP)
         self.steps_head = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim, head_mid),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(head_mid, 1),
         )
 
         # Head 3: Policy Head (Candidate action scorer)
@@ -200,6 +202,7 @@ def train_steps_network(
     data_dir: Path = DATA_DIR,
     out_dir: Path = RUN_DIR,
     pretrained_backbone: Path | None = None,
+    hidden_dim: int = 128,
     epochs: int = 10,
     batch_size: int = 512,
     lr: float = 1e-3,
@@ -212,13 +215,13 @@ def train_steps_network(
     np.random.seed(seed)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"M50 Steps Network Training: device={device}, data={data_dir}")
+    print(f"M50 Steps Network Training: device={device}, hidden_dim={hidden_dim}, data={data_dir}")
 
     train_data = StepsReplayDataset(data_dir / "train")
     val_data = StepsReplayDataset(data_dir / "val")
     print(f"Loaded: train={train_data.count} steps, val={val_data.count} steps")
 
-    model = PolicyValueStepsNet(hidden_dim=128).to(device)
+    model = PolicyValueStepsNet(hidden_dim=hidden_dim).to(device)
 
     # Transfer state_net, action_net, and value_head from existing model if provided
     if pretrained_backbone and pretrained_backbone.exists():
@@ -378,6 +381,7 @@ def main():
     parser = argparse.ArgumentParser(description="M50 Policy-Value-Steps Network Training")
     parser.add_argument("--data-dir", type=str, default=str(DATA_DIR))
     parser.add_argument("--out-dir", type=str, default=str(RUN_DIR))
+    parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=1e-3)
@@ -388,6 +392,7 @@ def main():
         data_dir=Path(args.data_dir),
         out_dir=Path(args.out_dir),
         pretrained_backbone=Path(args.pretrained) if args.pretrained else None,
+        hidden_dim=args.hidden_dim,
         epochs=args.epochs,
         batch_size=args.batch_size,
         lr=args.lr,

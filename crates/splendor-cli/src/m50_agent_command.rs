@@ -127,26 +127,23 @@ impl M50PolicyWeights {
             steps_l2_b,
         };
 
-        assert_eq!(weights.state_l1_w.len(), 256);
+        let h1_dim = weights.state_l1_w.len();
+        let h2_dim = weights.state_l2_w.len();
         assert_eq!(weights.state_l1_w[0].len(), 368);
-        assert_eq!(weights.state_l2_w.len(), 128);
-        assert_eq!(weights.state_l2_w[0].len(), 256);
-        assert_eq!(weights.act_l1_w.len(), 128);
+        assert_eq!(weights.state_l2_w[0].len(), h1_dim);
+        assert_eq!(weights.act_l1_w.len(), h2_dim);
         assert_eq!(weights.act_l1_w[0].len(), 36);
         assert_eq!(weights.act_bias.len(), 36);
-        assert_eq!(weights.val_l1_w.len(), 64);
-        assert_eq!(weights.val_l1_w[0].len(), 128);
-        assert_eq!(weights.val_l2_w.len(), 64);
+        assert_eq!(weights.val_l1_w[0].len(), h2_dim);
 
         Ok(weights)
     }
 
-    pub fn forward_state(&self, obs: &[f32]) -> [f32; 128] {
+    pub fn forward_state(&self, obs: &[f32]) -> Vec<f32> {
         assert_eq!(obs.len(), 368);
-
-        // Layer 1: Linear(368, 256)
-        let mut h1 = [0.0f32; 256];
-        for i in 0..256 {
+        let h1_dim = self.state_l1_w.len();
+        let mut h1 = vec![0.0f32; h1_dim];
+        for i in 0..h1_dim {
             let row = &self.state_l1_w[i];
             let mut sum = self.state_l1_b[i];
             for j in 0..368 {
@@ -155,32 +152,32 @@ impl M50PolicyWeights {
             h1[i] = sum;
         }
 
-        // LayerNorm(256, eps=1e-5) + ReLU
-        let mean1 = h1.iter().sum::<f32>() / 256.0;
-        let var1 = h1.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / 256.0;
+        // LayerNorm(h1_dim, eps=1e-5) + ReLU
+        let mean1 = h1.iter().sum::<f32>() / (h1_dim as f32);
+        let var1 = h1.iter().map(|v| (v - mean1) * (v - mean1)).sum::<f32>() / (h1_dim as f32);
         let std1 = (var1 + 1e-5).sqrt();
-        for i in 0..256 {
+        for i in 0..h1_dim {
             let norm = (h1[i] - mean1) / std1;
             let val = norm * self.state_ln1_w[i] + self.state_ln1_b[i];
             h1[i] = if val > 0.0 { val } else { 0.0 };
         }
 
-        // Layer 2: Linear(256, 128)
-        let mut h2 = [0.0f32; 128];
-        for i in 0..128 {
+        let h2_dim = self.state_l2_w.len();
+        let mut h2 = vec![0.0f32; h2_dim];
+        for i in 0..h2_dim {
             let row = &self.state_l2_w[i];
             let mut sum = self.state_l2_b[i];
-            for j in 0..256 {
+            for j in 0..h1_dim {
                 sum += row[j] * h1[j];
             }
             h2[i] = sum;
         }
 
-        // LayerNorm(128, eps=1e-5) + ReLU
-        let mean2 = h2.iter().sum::<f32>() / 128.0;
-        let var2 = h2.iter().map(|v| (v - mean2) * (v - mean2)).sum::<f32>() / 128.0;
+        // LayerNorm(h2_dim, eps=1e-5) + ReLU
+        let mean2 = h2.iter().sum::<f32>() / (h2_dim as f32);
+        let var2 = h2.iter().map(|v| (v - mean2) * (v - mean2)).sum::<f32>() / (h2_dim as f32);
         let std2 = (var2 + 1e-5).sqrt();
-        for i in 0..128 {
+        for i in 0..h2_dim {
             let norm = (h2[i] - mean2) / std2;
             let val = norm * self.state_ln2_w[i] + self.state_ln2_b[i];
             h2[i] = if val > 0.0 { val } else { 0.0 };
@@ -189,19 +186,21 @@ impl M50PolicyWeights {
         h2
     }
 
-    pub fn predict_value_from_state_h(&self, state_h: &[f32; 128]) -> f32 {
-        let mut vh = [0.0f32; 64];
-        for i in 0..64 {
+    pub fn predict_value_from_state_h(&self, state_h: &[f32]) -> f32 {
+        let v_dim = self.val_l1_w.len();
+        let h2_dim = state_h.len();
+        let mut vh = vec![0.0f32; v_dim];
+        for i in 0..v_dim {
             let row = &self.val_l1_w[i];
             let mut sum = self.val_l1_b[i];
-            for j in 0..128 {
+            for j in 0..h2_dim {
                 sum += row[j] * state_h[j];
             }
             vh[i] = if sum > 0.0 { sum } else { 0.0 };
         }
 
         let mut sum = self.val_l2_b;
-        for j in 0..64 {
+        for j in 0..v_dim {
             sum += self.val_l2_w[j] * vh[j];
         }
 
@@ -213,7 +212,7 @@ impl M50PolicyWeights {
         self.predict_value_from_state_h(&state_h)
     }
 
-    pub fn predict_steps_to_15(&self, state_h: &[f32; 128]) -> Option<f32> {
+    pub fn predict_steps_to_15(&self, state_h: &[f32]) -> Option<f32> {
         let (l1_w, l1_b, l2_w, l2_b) = match (
             &self.steps_l1_w,
             &self.steps_l1_b,
@@ -224,18 +223,20 @@ impl M50PolicyWeights {
             _ => return None,
         };
 
-        let mut vh = [0.0f32; 64];
-        for i in 0..64 {
+        let s_dim = l1_w.len();
+        let h2_dim = state_h.len();
+        let mut vh = vec![0.0f32; s_dim];
+        for i in 0..s_dim {
             let row = &l1_w[i];
             let mut sum = l1_b[i];
-            for j in 0..128 {
+            for j in 0..h2_dim {
                 sum += row[j] * state_h[j];
             }
             vh[i] = if sum > 0.0 { sum } else { 0.0 };
         }
 
         let mut sum = l2_b;
-        for j in 0..64 {
+        for j in 0..s_dim {
             sum += l2_w[j] * vh[j];
         }
 
@@ -250,11 +251,11 @@ impl M50PolicyWeights {
         Some(sp * 20.0)
     }
 
-    pub fn score_action(&self, state_h: &[f32; 128], act: &[f32]) -> f32 {
+    pub fn score_action(&self, state_h: &[f32], act: &[f32]) -> f32 {
         assert_eq!(act.len(), 36);
-
-        let mut ah = [0.0f32; 128];
-        for i in 0..128 {
+        let h2_dim = self.act_l1_w.len();
+        let mut ah = vec![0.0f32; h2_dim];
+        for i in 0..h2_dim {
             let row = &self.act_l1_w[i];
             let mut sum = self.act_l1_b[i];
             for j in 0..36 {
@@ -263,20 +264,20 @@ impl M50PolicyWeights {
             ah[i] = sum;
         }
 
-        let mean = ah.iter().sum::<f32>() / 128.0;
-        let var = ah.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / 128.0;
+        let mean = ah.iter().sum::<f32>() / (h2_dim as f32);
+        let var = ah.iter().map(|v| (v - mean) * (v - mean)).sum::<f32>() / (h2_dim as f32);
         let std = (var + 1e-5).sqrt();
-        for i in 0..128 {
+        for i in 0..h2_dim {
             let norm = (ah[i] - mean) / std;
             let val = norm * self.act_ln1_w[i] + self.act_ln1_b[i];
             ah[i] = if val > 0.0 { val } else { 0.0 };
         }
 
         let mut dot = 0.0f32;
-        for i in 0..128 {
+        for i in 0..h2_dim {
             dot += state_h[i] * ah[i];
         }
-        let dot_scaled = dot / (128.0f32).sqrt();
+        let dot_scaled = dot / (h2_dim as f32).sqrt();
 
         let mut bias = 0.0f32;
         for j in 0..36 {
