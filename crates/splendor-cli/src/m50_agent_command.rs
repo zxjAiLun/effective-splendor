@@ -380,7 +380,7 @@ fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SEResBlockWeights {
     ln1_w: Vec<f32>,
     ln1_b: Vec<f32>,
@@ -469,7 +469,7 @@ impl SEResBlockWeights {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CardEntityBackboneWeights {
     card_enc_w1: Vec<Vec<f32>>,
     card_enc_b1: Vec<f32>,
@@ -670,7 +670,7 @@ impl CardEntityBackboneWeights {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQWeights {
     // Legacy 2-layer MLP state backbone
     state_l1_w: Option<Vec<Vec<f32>>>,
@@ -731,8 +731,28 @@ pub struct SemanticQWeights {
 }
 
 impl SemanticQWeights {
-    pub fn load_from_json(path: &Path) -> Result<Self, String> {
+    pub fn save_to_compact_json(&self, path: &Path) -> Result<(), String> {
+        let file = File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
+        let writer = std::io::BufWriter::new(file);
+        serde_json::to_writer(writer, self).map_err(|e| format!("write {}: {e}", path.display()))
+    }
+
+    pub fn load_from_compact_json(path: &Path) -> Result<Self, String> {
         let file = File::open(path).map_err(|e| format!("open {}: {e}", path.display()))?;
+        let reader = std::io::BufReader::new(file);
+        serde_json::from_reader(reader).map_err(|e| format!("parse compact JSON: {e}"))
+    }
+
+    pub fn load_from_json(path: &Path) -> Result<Self, String> {
+        let mut file_res = File::open(path);
+        for _ in 0..10 {
+            if file_res.is_ok() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            file_res = File::open(path);
+        }
+        let file = file_res.map_err(|e| format!("open {}: {e}", path.display()))?;
         let reader = BufReader::new(file);
         let map: HashMap<String, serde_json::Value> =
             serde_json::from_reader(reader).map_err(|e| format!("parse JSON: {e}"))?;

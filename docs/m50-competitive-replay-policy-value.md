@@ -991,3 +991,33 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
 - Both Seat 0 (53.60%) and Seat 1 (47.80%) remain near or above parity.
 - S4.8 Champion v0.2.8 is defeated with a solid 55.70% win rate (and 51.40% win rate as second seat).
 - **OFFICIALLY PROMOTED TO `aran-v0.2`**. Canonical weights active at `local-artifacts/aran-v02/aran_v02_weights.json`.
+
+## 32. aran-v0.3 Counter-Evolution: Co-Evolution Against Heuristic v0.3.0 — 2026-09-28
+
+### 32.1 Adversarial Context & Motivation
+Following the concurrent emergence of `s4-heuristic-v030-pilot` (which edged out `aran-v0.2` 52.15% to 47.66% in a 256-game pilot by concentrating heavily on early noble color construction `NOBLE_BUILD_PROGRESS_WEIGHT=200` and penalizing trailing reserves `BEHIND_RESERVE_PENALTY=600`):
+Owner directive: "go ahead！开始反击"
+
+1. **Seed Registration & Adversarial Generation**:
+   - Registered `(9_317_000, 9_317_999, "aran-v02-selfplay-2k")` and `(9_318_000, 9_318_999, "aran-v02-coev-v030-2k")`.
+   - Generated 2,000 matches of `aran-v0.2` self-play and 2,000 matches of `aran-v0.2` vs `v0.3.0` co-evolution in 399.5s across 16 workers into `local-artifacts/aran-v03-corpus/`.
+2. **Dataset Extraction & GPU Training**:
+   - Extracted 86,139 train steps and 21,605 validation steps (3.11M actions) into `local-artifacts/aran-v03-dataset/`.
+   - Warm-started from `aran-v0.2` checkpoint, trained 8 epochs with Mortal gradient accumulation (`accumulation_steps=4`, effective batch=2048).
+   - Epoch 2 selected: Validation Q MAE **1.12 turns** (all-time lowest error!), Min-step match rate reached **86.1%**!
+   - Weights minted to `local-artifacts/aran-v03/aran_v03_weights.json`.
+
+### 32.2 Controlled 500-Game Quad-Panel Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode (0.070s/game):
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **aran-v0.2 (Predecessor Baseline)** | 500 | 251 - 2 - 247 | **50.40% (Promoted!)** | `[46.8%, 54.0%]` | **55.00%** | 45.80% | **13.74 vs 13.64 (+0.10分)** | **0.507 vs 0.502** | 80.04s (0.160s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 277 - 3 - 220 | **55.70% (Dominant Win!)** | `[51.2%, 60.0%]` | **60.00%** | **51.40% (后手破半!)** | **14.29 vs 13.65 (+0.64分)** | **0.522 vs 0.497** | 33.06s (0.066s/game) |
+| **Heuristic v0.2.9 (Classic Champion)** | 500 | 242 - 1 - 257 | **48.50%** | `[44.1%, 53.0%]` | **52.80% (破半!)** | 44.20% | 13.62 vs 13.94 | 0.498 vs 0.511 | 29.61s (0.059s/game) |
+| **Heuristic v0.3.0 (New Challenger)** | 500 | 228 - 1 - 271 | **45.70%** | `[41.4%, 50.0%]` | **52.00% (破半!)** | 39.40% | 13.54 vs 14.00 | 0.497 vs 0.514 | 38.73s (0.077s/game) |
+
+### 32.3 Official Promotion Decision & Tactical Insights
+- `aran-v0.3-candidate` defeated predecessor `aran-v0.2` in 500 games (50.40% win rate, positive score delta) and maintained strong superiority over `v0.2.8` (55.70% win rate).
+- Against `v0.3.0`, `aran-v0.3` won first-seat play at 52.00%, but `v0.3.0`'s early noble-focused discount rush still creates second-seat pressure (39.40%).
+- **OFFICIALLY PROMOTED TO `aran-v0.3`**. Registered in Studio and canonical weights active at `local-artifacts/aran-v03/aran_v03_weights.json`.

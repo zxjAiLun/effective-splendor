@@ -22,6 +22,7 @@ from pathlib import Path
 ROOT = Path("E:/AUbuntuProject/project/splendor")
 CANDIDATE_EXE = ROOT / "target" / "release" / "splendor.exe"
 V029_EXE = ROOT / "local-artifacts" / "s4-heuristic-v029-pilot" / "splendor-candidate.exe"
+V030_EXE = ROOT / "local-artifacts" / "s4-heuristic-v030-pilot" / "splendor-candidate.exe"
 V028_EXE = ROOT / "local-artifacts" / "s4-heuristic-v028-pilot" / "splendor-candidate.exe"
 DEFAULT_WEIGHTS = ROOT / "local-artifacts" / "m50-v029-dim256-run" / "m50_steps_weights.json"
 OPPONENT_ARGS = ["agent-heuristic-v02", "--seed", "20260926"]
@@ -74,18 +75,23 @@ def run_one_match(args: tuple) -> dict:
     if rpl_path.exists(): rpl_path.unlink()
 
     t0 = time.perf_counter()
-    proc = subprocess.run(
-        [
-            str(CANDIDATE_EXE),
-            "run-match",
-            "--config", str(cfg_path),
-            "--report-out", str(rep_path),
-            "--replay-out", str(rpl_path),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
+    for attempt in range(3):
+        proc = subprocess.run(
+            [
+                str(CANDIDATE_EXE),
+                "run-match",
+                "--config", str(cfg_path),
+                "--report-out", str(rep_path),
+                "--replay-out", str(rpl_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if proc.returncode == 0:
+            break
+        time.sleep(0.1)
+
     wall_sec = time.perf_counter() - t0
 
     if proc.returncode != 0:
@@ -258,7 +264,7 @@ def run_evaluation_series(
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel M50 Evaluation Runner")
-    parser.add_argument("--opponent", choices=["v029", "v028", "predecessor"], default="v029")
+    parser.add_argument("--opponent", choices=["v030", "v029", "v028", "predecessor"], default="v029")
     parser.add_argument("--opp-weights", type=str, default="")
     parser.add_argument("--sims", type=int, default=512)
     parser.add_argument("--depth", type=int, default=6)
@@ -275,6 +281,10 @@ def main():
         opp_weights_path = Path(args.opp_weights) if args.opp_weights else ROOT / "local-artifacts" / "m50-semantic-q-run" / "semantic_q_weights.json"
         opp_args = ["agent-m50-policy", "--weights", str(opp_weights_path), "--mode", args.mode]
         opp_name = f"predecessor-{opp_weights_path.stem}"
+    elif args.opponent == "v030":
+        opp_exe = V030_EXE
+        opp_args = OPPONENT_ARGS
+        opp_name = "heuristic-v030"
     elif args.opponent == "v029":
         opp_exe = V029_EXE
         opp_args = OPPONENT_ARGS

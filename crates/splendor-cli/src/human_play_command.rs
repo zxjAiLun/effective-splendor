@@ -2085,7 +2085,7 @@ fn analyze_replay_aran(
                 base_heuristic_action: recommended_action.clone(),
                 n1_proposal: None,
                 m07_proposal: None,
-                decision_path: S3ReviewPathV2::RolloutComparison,
+                decision_path: S3ReviewPathV2::HeuristicFastPath,
                 recommended_differs_from_base_heuristic: false,
             }),
             recommended_matches_recorded: recommended_matches,

@@ -42,14 +42,14 @@ def run_one_game(task: tuple) -> dict:
 
     if mode == "selfplay":
         agents = [agent_aran, agent_aran]
-        label = f"aran0-sp-{seed}-r{cand_seat}"
+        label = f"aran-sp-{seed}-r{cand_seat}"
     else:
-        agent_v029 = {
+        agent_opp = {
             "program": opp_bin_str,
             "args": OPPONENT_ARGS,
         }
-        agents = [agent_aran, agent_v029] if cand_seat == 0 else [agent_v029, agent_aran]
-        label = f"aran0-v029-{seed}-r{cand_seat}"
+        agents = [agent_aran, agent_opp] if cand_seat == 0 else [agent_opp, agent_aran]
+        label = f"aran-opp-{seed}-r{cand_seat}"
 
     match_config = {
         "game_id": label,
@@ -104,14 +104,14 @@ def run_one_game(task: tuple) -> dict:
     }
 
 
-def generate_batch(mode: str, seed_start: int, count: int, out_dir: Path, weights_path: Path, workers: int = 16):
+def generate_batch(mode: str, seed_start: int, count: int, out_dir: Path, weights_path: Path, opp_bin: Path, workers: int = 16):
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\n{'='*70}\nGenerating {mode.upper()}: seeds {seed_start}..{seed_start + count - 1} ({count * 2} games)\nWorkers: {workers} | Weights: {weights_path.name} | Target Dir: {out_dir}\n{'='*70}")
+    print(f"\n{'='*70}\nGenerating {mode.upper()}: seeds {seed_start}..{seed_start + count - 1} ({count * 2} games)\nWorkers: {workers} | Weights: {weights_path.name} | Opponent: {opp_bin.name}\nTarget Dir: {out_dir}\n{'='*70}")
 
     tasks = []
     for seed in range(seed_start, seed_start + count):
         for s in (0, 1):
-            tasks.append((mode, seed, s, out_dir, str(CANDIDATE_EXE), str(weights_path), str(V029_EXE)))
+            tasks.append((mode, seed, s, out_dir, str(CANDIDATE_EXE), str(weights_path), str(opp_bin)))
 
     t_start = time.perf_counter()
     completed = 0
@@ -138,6 +138,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Hybrid Training Corpus for aran")
     parser.add_argument("--workers", type=int, default=min(os.cpu_count() or 16, 16))
     parser.add_argument("--weights", type=str, default=str(ARAN_V0_WEIGHTS))
+    parser.add_argument("--opp-bin", type=str, default=str(V029_EXE))
     parser.add_argument("--out-dir", type=str, default=str(BASE_OUT_DIR))
     parser.add_argument("--selfplay-start", type=int, default=9_312_000)
     parser.add_argument("--coev-start", type=int, default=9_313_000)
@@ -149,6 +150,7 @@ def main():
     out_base = Path(args.out_dir)
     out_base.mkdir(parents=True, exist_ok=True)
     weights_path = Path(args.weights)
+    opp_bin = Path(args.opp_bin)
 
     if not args.skip_selfplay:
         generate_batch(
@@ -157,6 +159,7 @@ def main():
             count=args.count,
             out_dir=out_base / "selfplay",
             weights_path=weights_path,
+            opp_bin=opp_bin,
             workers=args.workers,
         )
 
@@ -167,6 +170,7 @@ def main():
             count=args.count,
             out_dir=out_base / "coev",
             weights_path=weights_path,
+            opp_bin=opp_bin,
             workers=args.workers,
         )
 
