@@ -11,10 +11,11 @@ fn studio_registry_is_valid_and_contains_every_current_gpu_model() {
     )
     .unwrap();
     registry.validate().unwrap();
-    assert_eq!(registry.agents.len(), 14);
+    assert_eq!(registry.agents.len(), 15);
     assert_eq!(registry.agents[0].id, "s3-rollout");
     for id in [
         "s3-rollout",
+        "aran-v022",
         "aran-v021",
         "aran-v02",
         "aran-v01",

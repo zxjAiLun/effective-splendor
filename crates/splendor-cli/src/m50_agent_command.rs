@@ -724,6 +724,8 @@ pub struct SemanticQWeights {
     adv_l3_w: Option<Vec<f32>>,
     adv_l3_b: Option<f32>,
 
+    pub is_argmax: bool,
+
     val_l1_w: Vec<Vec<f32>>,
     val_l1_b: Vec<f32>,
     val_l2_w: Vec<f32>,
@@ -767,6 +769,7 @@ impl SemanticQWeights {
         let is_entity = map.contains_key("entity_backbone.card_encoder.0.weight");
         let is_seres = map.contains_key("state_entry.0.weight");
         let is_mish = is_seres || is_entity;
+        let is_argmax = map.get("is_argmax").and_then(|v| v.as_bool()).unwrap_or(false);
 
         let get_vec_vec = |key: &str| -> Result<Vec<Vec<f32>>, String> {
             let val = map.get(key).ok_or_else(|| format!("missing key `{key}`"))?;
@@ -890,17 +893,24 @@ impl SemanticQWeights {
 
         let (v_l1_w, v_l1_b, v_l2_w, v_l2_b, adv_l1_w, adv_l1_b, adv_l2_w, adv_l2_b, adv_l3_w, adv_l3_b) =
             if is_dueling {
-                let v2_2d = get_vec_vec("v_head.2.weight")?;
+                let v_name = if map.contains_key("v_head.2.weight") {
+                    "v_head"
+                } else if map.contains_key("v_steps_head.2.weight") {
+                    "v_steps_head"
+                } else {
+                    "v_head"
+                };
+                let v2_2d = get_vec_vec(&format!("{v_name}.2.weight"))?;
                 let vw = v2_2d.into_iter().next().unwrap_or_default();
-                let vb = get_vec("v_head.2.bias")?[0];
+                let vb = get_vec(&format!("{v_name}.2.bias"))?[0];
 
                 let a3_2d = get_vec_vec("adv_head.4.weight")?;
                 let aw = a3_2d.into_iter().next().unwrap_or_default();
                 let ab = get_vec("adv_head.4.bias")?[0];
 
                 (
-                    Some(get_vec_vec("v_head.0.weight")?),
-                    Some(get_vec("v_head.0.bias")?),
+                    Some(get_vec_vec(&format!("{v_name}.0.weight"))?),
+                    Some(get_vec(&format!("{v_name}.0.bias"))?),
                     Some(vw),
                     Some(vb),
                     Some(get_vec_vec("adv_head.0.weight")?),
@@ -963,6 +973,8 @@ impl SemanticQWeights {
             adv_l2_b,
             adv_l3_w,
             adv_l3_b,
+
+            is_argmax,
 
             val_l1_w: get_vec_vec("val_head.0.weight")?,
             val_l1_b: get_vec("val_head.0.bias")?,
@@ -1314,7 +1326,7 @@ impl AgentPolicy for M50Policy {
                     .map_err(|e| AgentError::Policy(e.to_string()))?;
                 let state_h = sw.forward_state(&obs_feat);
 
-                let mut best_q = f32::INFINITY;
+                let mut best_q = if sw.is_argmax { f32::NEG_INFINITY } else { f32::INFINITY };
                 let mut best_action = legal[0].clone();
 
                 for action in legal {
@@ -1329,7 +1341,12 @@ impl AgentPolicy for M50Policy {
                     }
 
                     let q = sw.score_action(&state_h, &act_feat);
-                    if q < best_q {
+                    let is_better = if sw.is_argmax {
+                        q > best_q
+                    } else {
+                        q < best_q
+                    };
+                    if is_better {
                         best_q = q;
                         best_action = action.clone();
                     }

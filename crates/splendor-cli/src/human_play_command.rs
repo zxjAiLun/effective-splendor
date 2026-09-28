@@ -2013,8 +2013,9 @@ fn analyze_replay_aran(
     progress: &mut dyn FnMut(u32, u32, u32),
 ) -> Result<AnalysisTraceV2, String> {
     use splendor_analysis::{
-        build_catalog_v1, AnalysisFrameV2, PolicyRecommendationReviewResultV2, ReviewResultV2,
-        S3ReviewPathV2, ANALYSIS_TRACE_FORMAT, REVIEW_TRACE_VERSION,
+        build_catalog_v1, AnalysisFrameV2, PolicyRecommendationActionScoreV1,
+        PolicyRecommendationReviewResultV2, ReviewResultV2, S3ReviewPathV2,
+        ANALYSIS_TRACE_FORMAT, REVIEW_TRACE_VERSION,
     };
     use splendor_belief::build_information_set_v1;
     use splendor_core::Ruleset;
@@ -2045,16 +2046,32 @@ fn analyze_replay_aran(
         let obs_feat = encode_observation_v1(&player_view).map_err(|e| e.to_string())?;
         let state_h = weights.forward_state(&obs_feat);
 
-        let mut best_score = f32::INFINITY;
+        let mut best_score = if weights.is_argmax { f32::NEG_INFINITY } else { f32::INFINITY };
         let mut recommended_action = legal_actions[0].clone();
+        let mut action_scores = Vec::with_capacity(legal_actions.len());
 
         for action in &legal_actions {
             if let Ok(act_feat) = encode_action_semantic_v1(&player_view, action) {
                 let score = weights.score_action(&state_h, &act_feat);
-                if score < best_score {
+                let q_milli = (score * 1000.0).round() as i32;
+                action_scores.push(PolicyRecommendationActionScoreV1 {
+                    action: action.clone(),
+                    q_milli,
+                });
+                let is_better = if weights.is_argmax {
+                    score > best_score
+                } else {
+                    score < best_score
+                };
+                if is_better {
                     best_score = score;
                     recommended_action = action.clone();
                 }
+            } else {
+                action_scores.push(PolicyRecommendationActionScoreV1 {
+                    action: action.clone(),
+                    q_milli: if weights.is_argmax { -99_000 } else { 99_000 },
+                });
             }
         }
 
@@ -2087,6 +2104,7 @@ fn analyze_replay_aran(
                 m07_proposal: None,
                 decision_path: S3ReviewPathV2::HeuristicFastPath,
                 recommended_differs_from_base_heuristic: false,
+                action_scores: Some(action_scores),
             }),
             recommended_matches_recorded: recommended_matches,
         });

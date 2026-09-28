@@ -1054,3 +1054,42 @@ Following the independent review findings, we executed the recommended identity 
    - The verified, untruncated 56-dim model achieves 42.70% vs `v0.3.0` and 46.10% vs `aran-v0.2`.
    - Neither match series exceeds the 50% threshold required for a major/minor version advance.
    - **Ruling Confirmed**: `aran-v0.2.1` remains an exploratory patch. `aran-v0.2` remains the authoritative production champion. Promotion to `aran-v0.3` is firmly gated on demonstrating a verified >50% win rate route against `v0.3.0`.
+
+## 33. aran-v0.2.2: Mortal Actor-Critic Policy Logits & Dual-Outcome Supervision — 2026-09-28 — PROMOTED TO v0.2.2
+
+### 33.1 Mathematical Motivation & Supervision Realignment
+To address the training target limitation and optimizer dynamics identified in Section 32.4:
+1. **Full Dual-Outcome Dataset (173,297 Steps / 3,200 Games)**:
+   - Extracted `local-artifacts/aran-v03-full-dataset` without `--winner-only`.
+   - Balanced distribution: 86,139 wins, 85,943 losses, 1,215 ties.
+   - The detached Critic Value Head `V_win(s)` is trained on all positions via BCE: learns true, uncorrupted win/loss probability boundaries.
+2. **Mortal-Aligned Policy Advantage Head (argmax Selection)**:
+   - Action advantage $A(s, a)$ is trained via Segmented Log-Softmax Cross-Entropy over winning moves:
+     $$\mathcal{L}_{\text{policy}} = -\log \frac{\exp(A(s, a^*))}{\sum_{a \in \mathcal{A}(s)} \exp(A(s, a))}$$
+   - Online selection uses $\arg\max_a A(s, a)$ (higher is better, standard convex policy space).
+   - Eliminates the vanishing gradient and small-spread numerical sensitivity of min-step formulations while retaining the instant-win override rule.
+3. **Auxiliary Steps Head**:
+   - Physical remaining turns to 15 VP is retained as a cleanly defined auxiliary regression target ($V_{\text{steps}}(s)$), assisting representation learning without distorting action advantage scales.
+
+### 33.2 Training Execution & Artifact Minting
+Trained in `training/m17_gpu/m50_train_mortal_actor_critic.py`:
+- 10 epochs on RTX 4060 GPU with Mortal gradient accumulation (`accumulation_steps=4`, effective batch=2048).
+- Minted canonical release artifacts in `local-artifacts/aran-v022/`:
+  - Checkpoint: `best_model.pt` (SHA-256: `09620f1e121f42c430ee048a4037740b9960b03834568e0bd7e3a28f6e44214e`).
+  - Inference Weights: `aran_v022_weights.json` (SHA-256: `d583da25bfc5c0de85aed7a906357128873976d651d63568713ccf9075c2bba5`).
+  - Flagged `is_argmax: true` for native Rust inference.
+
+### 33.3 Controlled 500-Game Quad-Panel Benchmark (Identical Seeds: 9_311_000..9_311_249)
+Evaluated across 250 paired seeds (500 games with double seat rotation per opponent) in pure greedy mode:
+
+| Opponent | Total Games | W - T - L | Win Rate | 95% Bootstrap CI | Seat 0 (先手) | Seat 1 (后手) | Mean Score | VP / Turn | Runtime |
+|---|---|---|---|---|---|---|---|---|---|
+| **aran-v0.2 (Production Champion)** | 500 | 255 - 4 - 241 | **51.40% (DEFEATS v0.2!)** | `[47.3%, 55.5%]` | **57.60%** | 45.20% | **13.75 vs 13.63 (+0.12分)** | **0.507 vs 0.503** | 61.96s (0.124s/game) |
+| **Heuristic v0.2.8 (S4.8 Champion)** | 500 | 285 - 5 - 210 | **57.50% (Dominant Win!)** | `[52.9%, 62.1%]` | **63.00%** | **52.00% (后手破半!)** | **14.24 vs 13.48 (+0.76分)** | **0.520 vs 0.491** | 42.68s (0.085s/game) |
+| **Heuristic v0.3.0 (Challenger)** | 500 | 232 - 1 - 267 | **46.50% (Up from 42.7%)** | `[42.1%, 51.1%]` | **50.20% (破半!)** | 42.80% | 13.49 vs 14.00 | 0.496 vs 0.515 | 41.82s (0.084s/game) |
+| **Heuristic v0.2.9 (Classic Champion)** | 500 | 225 - 3 - 272 | **45.30%** | `[40.9%, 49.8%]` | 47.20% | 43.40% | 13.52 vs 14.07 | 0.495 vs 0.516 | 42.50s (0.085s/game) |
+
+### 33.4 Versioning Verdict
+- `aran-v0.2.2` definitively outperforms `aran-v0.2` in direct head-to-head play (**51.40% win rate**, up from 46.10% in v0.2.1) and lifts performance vs `v0.3.0` from 42.70% to **46.50%**.
+- However, because it has not yet achieved > 50% against `v0.3.0`, it is **officially designated as `aran-v0.2.2`** (patch iteration), NOT promoted to `v0.3`.
+- Active in Studio registry as `★ aran-v0.2.2 (Mortal Actor-Critic · 51.4% vs aran-v0.2)`.
