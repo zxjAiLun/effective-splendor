@@ -1073,10 +1073,12 @@ impl SemanticQWeights {
 
         let h1_dim = self.act_l1_w.len();
         let mut h1 = vec![0.0f32; h1_dim];
+        let expected_act_dim = if h1_dim > 0 { self.act_l1_w[0].len() } else { 0 };
+        let in_act_dim = act.len().min(expected_act_dim);
         for i in 0..h1_dim {
             let row = &self.act_l1_w[i];
             let mut sum = self.act_l1_b[i];
-            for j in 0..act.len() {
+            for j in 0..in_act_dim {
                 sum += row[j] * act[j];
             }
             h1[i] = sum;
@@ -1122,11 +1124,21 @@ impl SemanticQWeights {
             }
         };
 
-        let act_h = self.forward_action(act_raw);
-        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
+        let expected_act_dim = if !self.act_l1_w.is_empty() {
+            self.act_l1_w[0].len()
+        } else {
+            48
+        };
+        let in_act = if act_raw.len() >= expected_act_dim {
+            &act_raw[..expected_act_dim]
+        } else {
+            act_raw
+        };
+        let act_h = self.forward_action(in_act);
+        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + in_act.len());
         joint.extend_from_slice(state_h);
         joint.extend_from_slice(&act_h);
-        joint.extend_from_slice(act_raw);
+        joint.extend_from_slice(in_act);
 
         let l1_w = self.adv_l1_w.as_ref().unwrap();
         let l1_b = self.adv_l1_b.as_ref().unwrap();
@@ -1139,8 +1151,9 @@ impl SemanticQWeights {
         let mut q1 = vec![0.0f32; q1_dim];
         for i in 0..q1_dim {
             let row = &l1_w[i];
+            let in_dim = row.len().min(joint.len());
             let mut sum = l1_b[i];
-            for j in 0..joint.len() {
+            for j in 0..in_dim {
                 sum += row[j] * joint[j];
             }
             q1[i] = act_fn(sum);
@@ -1165,11 +1178,21 @@ impl SemanticQWeights {
     }
 
     pub fn predict_q_steps(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
-        let act_h = self.forward_action(act_raw);
-        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + act_raw.len());
+        let expected_act_dim = if !self.act_l1_w.is_empty() {
+            self.act_l1_w[0].len()
+        } else {
+            48
+        };
+        let in_act = if act_raw.len() >= expected_act_dim {
+            &act_raw[..expected_act_dim]
+        } else {
+            act_raw
+        };
+        let act_h = self.forward_action(in_act);
+        let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + in_act.len());
         joint.extend_from_slice(state_h);
         joint.extend_from_slice(&act_h);
-        joint.extend_from_slice(act_raw);
+        joint.extend_from_slice(in_act);
 
         let l1_w = self.q_l1_w.as_ref().unwrap();
         let l1_b = self.q_l1_b.as_ref().unwrap();
@@ -1182,8 +1205,9 @@ impl SemanticQWeights {
         let mut q1 = vec![0.0f32; q1_dim];
         for i in 0..q1_dim {
             let row = &l1_w[i];
+            let in_dim = row.len().min(joint.len());
             let mut sum = l1_b[i];
-            for j in 0..joint.len() {
+            for j in 0..in_dim {
                 sum += row[j] * joint[j];
             }
             q1[i] = if sum > 0.0 { sum } else { 0.0 };

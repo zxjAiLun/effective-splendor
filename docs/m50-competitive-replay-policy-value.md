@@ -1021,3 +1021,36 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
 - In strict adherence to scientific versioning discipline: because this generation did not achieve an overall winning record (> 50% win rate) against the active challenger `v0.3.0` (landing at 45.70%), **it is designated as a patch generation `aran-v0.2.1`, and NOT promoted to `v0.3`**.
 - Canonical weights preserved at `local-artifacts/aran-v021/aran_v021_weights.json`.
 - The reigning canonical champion remains **`aran-v0.2`** (which conquered `v0.2.9` with 50.70% win rate). Promotion to `aran-v0.3` requires a verified overall >50% win rate route against `v0.3.0`.
+
+### 32.4 Independent architecture and release-identity review — 2026-09-28 — REVIEWED
+
+Read-only review at `main@91c51bd2e7c3ee033928973087efc5cef02bdf61`; no retraining or arena match was run. This correction does not change the recorded 500-game result for the exact file named in its summary. It limits which release artifact that result supports.
+
+- `local-artifacts/aran-v03-vs-v030-500/summary.json` identifies `local-artifacts/aran-v03-run/semantic_entity_q_weights.json` as the evaluated candidate. Its SHA-256 is `F134A27DAA7DE76036EDC7DF00944F33D9B44190BBEBA39B209D468DF6FB7D95`; it has 48 action inputs. `local-artifacts/aran-v03/aran_v03_weights.json` is byte-identical to that file. The registry instead points `aran-v021` at `local-artifacts/aran-v021/aran_v021_weights.json`, SHA-256 `6CEC39E780CF95BE03077780629C613615617C9EC4B4B00CBD9F0CFA60574D67`, with 56 action inputs. Thus the 45.70% result and 86.1% validation match must not be attributed to this different JSON without a new identity-bound evaluation.
+- All three `best_model.pt` files in `aran-v03-run`, `aran-v03`, and `aran-v021` are byte-identical (SHA-256 `83CC893D6EC3A9BF9D95ACA65FDBD1CB375BBB9B89F1FE3EFDC2EAE2D469C86A`) and have 48 action inputs. The `aran-v021` JSON differs numerically in every tensor and has 56-input action and 568-input advantage first layers. It is not an export of the colocated checkpoint; the matching 56-input checkpoint provenance was not established in this review.
+- At this HEAD, `m50_train_semantic_entity_q.py` and `encode_action_semantic_v1` use 56 action features, but `SemanticQWeights::predict_advantage` in `m50_agent_command.rs` still truncates to 48. A bounded Python diagnostic loaded the 56-input JSON and 256 seeded validation positions, then zeroed dimensions 48..55 to emulate the Rust truncation: the greedy argmin changed on 34/256 positions; the median within-position Q span was 1.347 turns with all 56 inputs and 1.519 with the last eight zeroed. This is an inference diagnostic, not a Rust parity test or match result.
+- The dataset manifest records 86,139 train and 21,605 validation steps, all marked as winner actions. The extractor supplies the observed winner's future steps only for the action taken. The current loss calibrates `V(s)` and chosen `Q(s,a*)` to that same label and ranks every other legal action behind `a*`, without counterfactual step or outcome targets for those alternatives. The win-head BCE sees only positive outcomes; its shared backbone is detached, and greedy `SemanticQ` does not use that head. Validation chosen-action MAE and top-1 match therefore measure replay fit, not calibrated steps for every legal action or competitive strength.
+- The proposed optimizer diagnosis is not established by these facts. Configured AdamW uses `lr=3e-4`, `weight_decay=1e-4`, so direct decay is at most `3e-8` of a parameter per update at the initial learning rate. The normalized Smooth L1 loss reduces the chosen-Q regression gradient for small residuals, while the state-value path multiplies its output by `STEPS_NORM=20` before dividing by 20 in the loss. In one 32-position diagnostic batch, the first card-encoder weight gradient L2 norm was `0.00616` and the first residual block weight gradient L2 norm was `0.01022`; this does not establish training-wide gradient health, but refutes an inference of universal `1e-5` gradients from the loss formula alone.
+
+**Recommended next gate, not yet implemented:** first reconcile checkpoint, JSON, feature width, Rust/Python action-score parity, registry identity, and the exact runtime used in evaluation. Then compare a small, frozen-seed policy-logit/listwise target against the current chosen-action margin baseline using paired competitive matches. Keep any steps-to-15 prediction as an explicitly defined auxiliary target, and retain a full-outcome value target if it is meant to influence the policy. Do not promote a renamed or rescaled head on offline MAE alone.
+
+### 32.5 Verified identity-bound benchmark with un-truncated 56-dim inference — 2026-09-28 — VERIFIED
+
+Following the independent review findings, we executed the recommended identity reconciliation and verification gate:
+1. **Rust Truncation Bug Fixed**:
+   - `crates/splendor-cli/src/m50_agent_command.rs`: removed hardcoded `48` dimension slicing in `forward_action`, `predict_advantage`, and `predict_q_steps`. The inference engine now dynamically adapts to the exact input dimension of the loaded weights (`56` for `aran-v0.2.1`, `48` for legacy weights).
+2. **Provenance-Bound Artifact Identity**:
+   - Checkpoint: `local-artifacts/aran-v021/best_model.pt` (SHA-256: `8330524902f6967bbb73c9dbb36604ae8cae993f14cba8b9f3b9d1078f96d571`).
+   - Weights: `local-artifacts/aran-v021/aran_v021_weights.json` (SHA-256: `6cec39e780cf95be03077780629c613615617c9ec4b4b00cbd9f0cfa60574d67`).
+   - Verified exact 56-dim action encoder inputs (`[128, 56]`) and 568-dim advantage input (`[128, 568]`).
+3. **Controlled 500-Game Identity-Bound Benchmarks (Seeds 9_311_000..9_311_249)**:
+   - **vs Heuristic v0.3.0 (500 games, 0.061s/game)**:
+     - Record: **213 W - 1 T - 286 L (42.70% win rate)**, 95% CI `[38.3%, 47.2%]`.
+     - Seat 0: **46.00%**, Seat 1: **39.40%**. Mean Score: **13.13 vs 14.27**.
+   - **vs aran-v0.2 (500 games, 0.088s/game)**:
+     - Record: **227 W - 7 T - 266 L (46.10% win rate)**, 95% CI `[42.0%, 50.3%]`.
+     - Seat 0: **51.00%**, Seat 1: **41.20%**. Mean Score: **13.38 vs 14.00**.
+4. **Empirical Confirmation of Owner Ruling**:
+   - The verified, untruncated 56-dim model achieves 42.70% vs `v0.3.0` and 46.10% vs `aran-v0.2`.
+   - Neither match series exceeds the 50% threshold required for a major/minor version advance.
+   - **Ruling Confirmed**: `aran-v0.2.1` remains an exploratory patch. `aran-v0.2` remains the authoritative production champion. Promotion to `aran-v0.3` is firmly gated on demonstrating a verified >50% win rate route against `v0.3.0`.
