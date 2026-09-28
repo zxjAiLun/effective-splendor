@@ -743,7 +743,7 @@ pub(crate) fn derive_determinization_ply_seed(
 }
 
 /// The frozen dense catalog shared by every trace.
-pub(crate) fn build_catalog_v1() -> AnalysisCatalogV1 {
+pub fn build_catalog_v1() -> AnalysisCatalogV1 {
     AnalysisCatalogV1 {
         cards: splendor_catalog::all_cards()
             .iter()

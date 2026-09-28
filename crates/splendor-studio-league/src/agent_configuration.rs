@@ -305,6 +305,8 @@ pub fn classify_switch(token: &str) -> SwitchClass {
         "--checkpoint",
         "--checkpoint-hash",
         "--checkpoint-sha256",
+        "--weights",
+        "--mode",
         // How the policy turns its scores into actions (argmax vs sampling)
         // and which A/B arm of a pipeline it plays.
         "--action-selection",

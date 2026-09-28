@@ -30,7 +30,7 @@ pub use neural_trace::{
     analyze_replay_neural_v1, analyze_replay_neural_v2, analyze_replay_neural_v2_with_progress,
 };
 pub use review_trace::{
-    analysis_trace_hash_v2, review_cache_key_v2, AnalysisFrameV2, AnalysisTraceV2,
+    analysis_trace_hash_v2, build_catalog_v1, review_cache_key_v2, AnalysisFrameV2, AnalysisTraceV2,
     NeuralIsmctsReviewResultV2, PolicyRecommendationReviewResultV2, ReviewResultV2,
     ReviewerConfigV2, ReviewerIdentityV2, ReviewerProvenanceV2, ReviewerResultKindV2,
     ReviewerStatusV2, RootDeterminizationActionStatsV2, RootDeterminizationReviewResultV2,

@@ -35,6 +35,37 @@
       "checkpoint_path": null
     },
     {
+      "id": "aran-v02-review",
+      "display_name": "★ aran-v0.2 Review (Mortal Neural Engine)",
+      "description": "Mortal-inspired SE-ResNet Dueling Q-steps neural reviewer. Recommends the fastest route to 15 VP at each ply.",
+      "competitive_status": "champion",
+      "result_kind": "policy_recommendation",
+      "default_for_player_counts": [],
+      "available_metrics": ["recommended_action", "decision_path"],
+      "required_artifacts": [],
+      "estimated_cost": "cpu",
+      "default_config": {
+        "kind": "policy_recommendation",
+        "version": 1,
+        "rollout_policy": "s3-rollout-d4-p120-v1",
+        "determinizations": 4,
+        "ply_cap": 120,
+        "sample_seed": 43300101,
+        "root_seed": 20260812,
+        "n1_config": {
+          "sample_seed": 20260703,
+          "sample_count": 4,
+          "continuation_search": { "max_depth_turns": 1, "max_nodes": 1 }
+        },
+        "m07_config": {
+          "sample_seed": 20260703,
+          "sample_count": 4,
+          "continuation_search": { "max_depth_turns": 1, "max_nodes": 2000 }
+        }
+      },
+      "checkpoint_path": null
+    },
+    {
       "id": "m07-determinization-champion",
       "display_name": "M07 Determinization Champion",
       "description": "Frozen root-determinization baseline (historical champion reviewer). Mean continuation utility per action, no priors or Q values.",

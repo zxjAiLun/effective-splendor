@@ -11,10 +11,12 @@ fn studio_registry_is_valid_and_contains_every_current_gpu_model() {
     )
     .unwrap();
     registry.validate().unwrap();
-    assert_eq!(registry.agents.len(), 11);
+    assert_eq!(registry.agents.len(), 13);
     assert_eq!(registry.agents[0].id, "s3-rollout");
     for id in [
         "s3-rollout",
+        "aran-v02",
+        "aran-v01",
         "heuristic-v1",
         "heuristic-v028",
         "heuristic-v029",
@@ -35,7 +37,7 @@ fn studio_reviewer_registry_is_valid_and_player_count_aware() {
     )
     .unwrap();
     registry.validate().unwrap();
-    assert_eq!(registry.reviewers.len(), 3);
+    assert_eq!(registry.reviewers.len(), 4);
     assert_eq!(registry.reviewers[0].id, "s3-rollout-review");
 
     // 2p -> S3 default (available); 3/4p -> M07 default; S3 is unavailable

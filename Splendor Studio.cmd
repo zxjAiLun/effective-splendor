@@ -46,7 +46,7 @@ if not exist "%~dp0apps\replay-studio\node_modules" (
   popd
 )
 
-start "Splendor Studio Host" /D "%~dp0" cmd /k cargo run -p splendor-cli --bin splendor -- studio-host --registry benchmarks/studio-1v1.registry.json --reviewer-registry benchmarks/studio-reviewers.registry.json --port 43120 --project-root .
+start "Splendor Studio Host" /D "%~dp0" cmd /k cargo run --release -p splendor-cli --bin splendor -- studio-host --registry benchmarks/studio-1v1.registry.json --reviewer-registry benchmarks/studio-reviewers.registry.json --port 43120 --project-root .
 
 start "Splendor Replay Studio" /D "%~dp0apps\replay-studio" cmd /k npm run dev -- --host 127.0.0.1 --port 4173
 

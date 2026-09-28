@@ -1970,8 +1970,12 @@ fn run_review(
                     .map_err(|error| error.to_string())?
             }
             ReviewerConfigV2::PolicyRecommendation(_) => {
-                analyze_replay_s3_v2_with_progress(replay, reviewer, &mut progress)
-                    .map_err(|error| error.to_string())?
+                if reviewer.id.starts_with("aran") {
+                    analyze_replay_aran(replay, reviewer, &mut progress)?
+                } else {
+                    analyze_replay_s3_v2_with_progress(replay, reviewer, &mut progress)
+                        .map_err(|error| error.to_string())?
+                }
             }
         }
     };
@@ -2001,6 +2005,110 @@ fn run_review(
         }
         Err(error) => Err(error.to_string()),
     }
+}
+
+fn analyze_replay_aran(
+    replay: &ReplayV1,
+    reviewer: &ReviewerIdentityV2,
+    progress: &mut dyn FnMut(u32, u32, u32),
+) -> Result<AnalysisTraceV2, String> {
+    use splendor_analysis::{
+        build_catalog_v1, AnalysisFrameV2, PolicyRecommendationReviewResultV2, ReviewResultV2,
+        S3ReviewPathV2, ANALYSIS_TRACE_FORMAT, REVIEW_TRACE_VERSION,
+    };
+    use splendor_belief::build_information_set_v1;
+    use splendor_core::Ruleset;
+    use splendor_learning::{encode_action_semantic_v1, encode_observation_v1};
+    use crate::m50_agent_command::SemanticQWeights;
+
+    let weights_path = if reviewer.id.contains("v01") {
+        PathBuf::from("local-artifacts/aran-v01/aran_v01_weights.json")
+    } else {
+        PathBuf::from("local-artifacts/aran-v02/aran_v02_weights.json")
+    };
+
+    let weights = SemanticQWeights::load_from_json(&weights_path)
+        .map_err(|e| format!("load aran reviewer weights from {}: {e}", weights_path.display()))?;
+
+    let verified = verify_replay_trace(replay).map_err(|e| e.to_string())?;
+    let replay_document_hash = replay_document_hash_v1(replay).map_err(|e| e.to_string())?;
+
+    let total = verified.positions.len() as u32;
+    let mut frames = Vec::with_capacity(verified.positions.len());
+
+    for position in &verified.positions {
+        progress(position.ply, total, position.ply);
+
+        let actor = position.recorded_actor;
+        let player_view = position.state.observation(actor);
+        let legal_actions = canonical_order(&position.state.legal_actions());
+        let obs_feat = encode_observation_v1(&player_view).map_err(|e| e.to_string())?;
+        let state_h = weights.forward_state(&obs_feat);
+
+        let mut best_score = f32::INFINITY;
+        let mut recommended_action = legal_actions[0].clone();
+
+        for action in &legal_actions {
+            if let Ok(act_feat) = encode_action_semantic_v1(&player_view, action) {
+                let score = weights.score_action(&state_h, &act_feat);
+                if score < best_score {
+                    best_score = score;
+                    recommended_action = action.clone();
+                }
+            }
+        }
+
+        let visible_history = visible_events(&position.state.log, Audience::Player(actor));
+        let visible_event_count = visible_history.len() as u32;
+        let information_set = build_information_set_v1(Ruleset::base_v1(), &player_view, &visible_history)
+            .map_err(|e| e.to_string())?;
+
+        let recommended_matches = recommended_action == position.recorded_action;
+        frames.push(AnalysisFrameV2 {
+            ply: position.ply,
+            state_hash_before: position.state_hash.clone(),
+            actor,
+            recorded_action: position.recorded_action.clone(),
+            observation_hash: observation_hash(&player_view).as_str().into(),
+            visible_event_count,
+            visible_history_hash: information_set.visible_history_hash().as_str().into(),
+            information_set_hash: information_set.information_set_hash().as_str().into(),
+            player_view: player_view.clone(),
+            referee_reveal: RefereeRevealV1 {
+                seed: position.state.seed,
+                decks: position.state.decks.clone(),
+                players: position.state.players.clone(),
+            },
+            legal_actions: legal_actions.clone(),
+            review_result: ReviewResultV2::PolicyRecommendation(PolicyRecommendationReviewResultV2 {
+                recommended_action: recommended_action.clone(),
+                base_heuristic_action: recommended_action.clone(),
+                n1_proposal: None,
+                m07_proposal: None,
+                decision_path: S3ReviewPathV2::RolloutComparison,
+                recommended_differs_from_base_heuristic: false,
+            }),
+            recommended_matches_recorded: recommended_matches,
+        });
+    }
+
+    let trace = AnalysisTraceV2 {
+        format: ANALYSIS_TRACE_FORMAT.into(),
+        version: REVIEW_TRACE_VERSION,
+        engine_version: ENGINE_VERSION.into(),
+        catalog_version: CATALOG_VERSION.into(),
+        replay_version: replay.version,
+        replay_document_hash,
+        replay_final_state_hash: replay.final_state_hash.to_string(),
+        ruleset_fingerprint: replay.ruleset_fingerprint.to_string(),
+        player_count: replay.player_count,
+        result: replay.result.clone(),
+        reviewer: reviewer.clone(),
+        catalog: build_catalog_v1(),
+        frames,
+    };
+    trace.validate().map_err(|e| e.to_string())?;
+    Ok(trace)
 }
 
 pub fn run_human_play_server(args: &[String]) -> i32 {
