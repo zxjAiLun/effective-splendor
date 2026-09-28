@@ -1296,6 +1296,14 @@ impl AgentPolicy for M50Policy {
                 for action in legal {
                     let act_feat = encode_action_semantic_v1(&context.observation, action)
                         .map_err(|e| AgentError::Policy(e.to_string()))?;
+
+                    // Absolute Priority: If this action achieves instant victory (or winning tie-break), take it immediately!
+                    if act_feat.len() >= 56 {
+                        if act_feat[55] > 0.5 || act_feat[54] > 0.5 {
+                            return Ok(action.clone());
+                        }
+                    }
+
                     let q = sw.score_action(&state_h, &act_feat);
                     if q < best_q {
                         best_q = q;

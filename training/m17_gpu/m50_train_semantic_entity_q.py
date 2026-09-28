@@ -38,7 +38,7 @@ DATA_DIR = REPO_ROOT / "local-artifacts" / "m50-semantic-dataset-v1"
 RUN_DIR = REPO_ROOT / "local-artifacts" / "m50-semantic-entity-q-run"
 
 OBS_DIM = 368
-ACT_DIM = 48
+ACT_DIM = 56
 STEPS_NORM = 20.0
 
 
@@ -358,8 +358,14 @@ def train_semantic_entity_q(
     if pretrained and Path(pretrained).exists():
         print(f"Loading pretrained weights from {pretrained}...")
         ckpt = torch.load(pretrained, weights_only=True, map_location=device)
-        model.load_state_dict(ckpt, strict=False)
-        print("Pretrained weights transferred successfully!")
+        model_dict = model.state_dict()
+        filtered_ckpt = {
+            k: v for k, v in ckpt.items()
+            if k in model_dict and model_dict[k].shape == v.shape
+        }
+        model_dict.update(filtered_ckpt)
+        model.load_state_dict(model_dict)
+        print(f"Transferred {len(filtered_ckpt)} tensors successfully from {pretrained}!")
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)

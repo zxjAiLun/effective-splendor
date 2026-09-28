@@ -178,7 +178,7 @@ pub fn encode_action_v1(action: &Action) -> Result<Vec<f32>, LearningError> {
 
 /// Frozen M25/M49A deterministic action delta feature count.
 pub const ACTION_DELTA_FEATURES_V2: usize = 23;
-pub const ACTION_SEMANTIC_FEATURES_V1: usize = 48;
+pub const ACTION_SEMANTIC_FEATURES_V1: usize = 56;
 /// Combined input dimension for M49A Q-network (368 + 36 + 23 = 427).
 pub const COMBINED_FEATURES_V1: usize =
     OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2;
@@ -282,6 +282,7 @@ pub fn encode_action_semantic_v1(
     let mut reserved_prestige: f32 = 0.0;
     let mut noble_claimed: f32 = 0.0;
     let mut taken_board_demand_overlap: f32 = 0.0;
+    let mut card_bought: Option<&splendor_catalog::CardDef> = None;
 
     // Board-wide color demand
     let mut board_demand = [0u8; 5];
@@ -317,6 +318,7 @@ pub fn encode_action_semantic_v1(
             if slot_idx < 4 {
                 if let Some(card_id) = observation.public.market[tier.index()][slot_idx] {
                     let c = card(card_id);
+                    card_bought = Some(c);
                     card_prestige = c.prestige as f32 / 5.0;
                     card_cost_total = c.total_cost() as f32 / 10.0;
                     after_prestige = before_prestige.saturating_add(c.prestige);
@@ -352,6 +354,7 @@ pub fn encode_action_semantic_v1(
             if slot_idx < reserved.len() {
                 let card_id = reserved[slot_idx].card;
                 let c = card(card_id);
+                card_bought = Some(c);
                 card_prestige = c.prestige as f32 / 5.0;
                 card_cost_total = c.total_cost() as f32 / 10.0;
                 after_prestige = before_prestige.saturating_add(c.prestige);
@@ -502,6 +505,93 @@ pub fn encode_action_semantic_v1(
     out[45] = noble_def_red / 2.0;
     out[46] = noble_claimed;
     out[47] = taken_board_demand_overlap;
+
+    // 8 Dimensions of Seat Identity, Opponent Status, and Tie-Breaking Law:
+    // Splendor Rule: In case of equal prestige (>= 15), the player with FEWER purchased development cards wins!
+    let is_seat_1 = if viewer == 1 { 1.0f32 } else { 0.0f32 };
+    let opp = observation.public.players.iter().find(|p| p.id.index() != viewer);
+
+    let (opp_prestige, opp_purchased_count, opp_min_noble_def) = if let Some(opp_p) = opp {
+        let mut min_nd: u8 = 255;
+        for &n_id in &observation.public.nobles {
+            let nd = &splendor_catalog::all_nobles()[n_id.index()];
+            let mut def: u8 = 0;
+            for c in 0..5 {
+                def += nd.requirements[c].saturating_sub(opp_p.bonuses[c]);
+            }
+            if def < min_nd { min_nd = def; }
+        }
+        (opp_p.prestige, opp_p.purchased.len() as u8, min_nd)
+    } else {
+        (0, 0, 255)
+    };
+
+    let my_after_purchased = if card_bought.is_some() {
+        (player.purchased.len() as u8).saturating_add(1)
+    } else {
+        player.purchased.len() as u8
+    };
+
+    let score_delta = (after_prestige as f32 - opp_prestige as f32) / 10.0f32;
+    let opp_dist_15 = (15.0f32 - opp_prestige as f32).max(0.0) / 15.0f32;
+    let opp_min_noble_norm = (opp_min_noble_def.min(10) as f32) / 4.0;
+
+    // Opponent noble denial: did this action claim a noble or purchase a card of a bonus color opp is 1 card away from?
+    let mut denies_opp_noble: f32 = 0.0;
+    if opp_min_noble_def == 1 {
+        if noble_claimed > 0.0 {
+            denies_opp_noble = 1.0;
+        } else if let Some(cb) = card_bought {
+            for &n_id in &observation.public.nobles {
+                let nd = &splendor_catalog::all_nobles()[n_id.index()];
+                let needed = nd.requirements[cb.bonus.index()].saturating_sub(opp.map(|p| p.bonuses[cb.bonus.index()]).unwrap_or(0));
+                if needed > 0 {
+                    denies_opp_noble = 1.0;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Tie-break card advantage: (opp_cards - my_cards) / 10.0
+    // Positive means I have FEWER cards than opponent -> I WIN any tie!
+    let tie_card_advantage = (opp_purchased_count as f32 - my_after_purchased as f32) / 10.0f32;
+
+    // Tie-win status: if tied at >= 15 prestige, +1.0 for winning tie, -1.0 for losing tie
+    let tie_win_status = if after_prestige >= 15 && after_prestige == opp_prestige {
+        if my_after_purchased < opp_purchased_count {
+            1.0f32
+        } else if my_after_purchased > opp_purchased_count {
+            -1.0f32
+        } else {
+            0.0f32
+        }
+    } else {
+        0.0f32
+    };
+
+    // Instant victory / safe finish trigger:
+    // For Seat 1: reaching >= 15 with higher score or winning tie ends game IMMEDIATELY with victory!
+    let endgame_win_signal = if viewer == 1 {
+        if after_prestige >= 15 && (after_prestige > opp_prestige || (after_prestige == opp_prestige && my_after_purchased < opp_purchased_count)) {
+            1.0f32
+        } else {
+            0.0f32
+        }
+    } else if after_prestige >= 15 && after_prestige.saturating_sub(opp_prestige) >= 4 {
+        1.0f32
+    } else {
+        0.0f32
+    };
+
+    out[48] = is_seat_1;
+    out[49] = score_delta;
+    out[50] = opp_dist_15;
+    out[51] = opp_min_noble_norm;
+    out[52] = denies_opp_noble;
+    out[53] = tie_card_advantage;
+    out[54] = tie_win_status;
+    out[55] = endgame_win_signal;
 
     Ok(out)
 }
