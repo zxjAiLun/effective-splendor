@@ -1,0 +1,5 @@
+# Checkpoint identities hash exact source bytes across Windows and Linux.
+# Preserve the pinned engine snapshot's bytes instead of autocrlf conversion.
+*.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+provenance.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+requirements.txt -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

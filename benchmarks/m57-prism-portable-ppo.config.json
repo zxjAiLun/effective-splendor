@@ -1,0 +1,921 @@
+{
+  "authorized_by": "owner-portability-control-resume-calibration",
+  "blueprints": {
+    "calibration": {
+      "cancel_fixture": false,
+      "format": "prism-portable-blueprint-v1",
+      "model_label": "unpublished engineering learner warm-started from Prism Alpha v0.1.1",
+      "purpose": "engineering-calibration-only",
+      "template": {
+        "arena": {
+          "engine_version": "0.4.0",
+          "program": "@engine",
+          "protocol_version": "0.5",
+          "ruleset": "splendor-base-v1",
+          "sha256": "@engine_sha256"
+        },
+        "cycles": [
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9570000,
+              "job_id": "m57-calibration-c1-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570000,
+              "job_id": "m57-calibration-c1-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570001,
+              "job_id": "m57-calibration-c1-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570001,
+              "job_id": "m57-calibration-c1-b1-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570002,
+              "job_id": "m57-calibration-c1-b2-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570002,
+              "job_id": "m57-calibration-c1-b2-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570003,
+              "job_id": "m57-calibration-c1-b3-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570003,
+              "job_id": "m57-calibration-c1-b3-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570004,
+              "job_id": "m57-calibration-c1-b4-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570004,
+              "job_id": "m57-calibration-c1-b4-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570005,
+              "job_id": "m57-calibration-c1-b5-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570005,
+              "job_id": "m57-calibration-c1-b5-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570006,
+              "job_id": "m57-calibration-c1-b6-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570006,
+              "job_id": "m57-calibration-c1-b6-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570007,
+              "job_id": "m57-calibration-c1-b7-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570007,
+              "job_id": "m57-calibration-c1-b7-s1",
+              "opponent_id": "prism-v01"
+            }
+          ],
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9570008,
+              "job_id": "m57-calibration-c2-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570008,
+              "job_id": "m57-calibration-c2-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570009,
+              "job_id": "m57-calibration-c2-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570009,
+              "job_id": "m57-calibration-c2-b1-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570010,
+              "job_id": "m57-calibration-c2-b2-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570010,
+              "job_id": "m57-calibration-c2-b2-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570011,
+              "job_id": "m57-calibration-c2-b3-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570011,
+              "job_id": "m57-calibration-c2-b3-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570012,
+              "job_id": "m57-calibration-c2-b4-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570012,
+              "job_id": "m57-calibration-c2-b4-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570013,
+              "job_id": "m57-calibration-c2-b5-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570013,
+              "job_id": "m57-calibration-c2-b5-s1",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570014,
+              "job_id": "m57-calibration-c2-b6-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570014,
+              "job_id": "m57-calibration-c2-b6-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9570015,
+              "job_id": "m57-calibration-c2-b7-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9570015,
+              "job_id": "m57-calibration-c2-b7-s1",
+              "opponent_id": "prism-v01"
+            }
+          ]
+        ],
+        "format": "prism-ppo-arena-v1",
+        "learner": {
+          "program": "@engine",
+          "sha256": "@engine_sha256"
+        },
+        "limits": {
+          "campaign_cpu_seconds": 3600,
+          "game_cpu_seconds": 30,
+          "game_wall_seconds": 90,
+          "handshake_timeout_ms": 10000,
+          "max_infra_retries": 0,
+          "max_physical_decisions": 8192,
+          "max_plies": 256,
+          "memory_bytes": 2147483648,
+          "move_timeout_ms": 10000,
+          "shutdown_grace_ms": 1000
+        },
+        "opponents": {
+          "heuristic-v031": {
+            "args": [
+              "agent-heuristic-v02",
+              "--seed",
+              "20260926"
+            ],
+            "files": {},
+            "hello": {
+              "agent_name": "splendor-cli-heuristic-v02",
+              "agent_version": "0.2.9"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          },
+          "prism-v01": {
+            "args": [
+              "agent-prism",
+              "--weights",
+              "@initial",
+              "--seed",
+              "51000001"
+            ],
+            "files": {
+              "@initial": "@initial_sha256"
+            },
+            "hello": {
+              "agent_name": "prism-v0.1",
+              "agent_version": "0.1.0"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          }
+        },
+        "parent_weights": "@parent",
+        "run": {
+          "arena_contract_sha256": "",
+          "auditor_sha256": "@engine_sha256",
+          "budget": {
+            "max_attempts": 32,
+            "max_cycles": 2,
+            "max_decisions": 8192,
+            "max_job_decisions": 256,
+            "max_jobs": 32,
+            "max_optimizer_steps": 128,
+            "max_run_seconds": 7200,
+            "max_storage_bytes": 4294967296,
+            "max_update_attempts": 128
+          },
+          "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+          "cpu_threads": 2,
+          "device": "cpu",
+          "format": "prism-ppo-run-v3",
+          "opponents": {
+            "heuristic-v031": "9cde45a39f617c125144572efd94d082d422339f088b34f5ddab0499f1c7540c",
+            "prism-v01": "daf995afebb25a282973beb194fdae9b438b173a33f76dcd4baefc053bbb0e1b"
+          },
+          "parent_sha256": "@parent_sha256",
+          "ppo": {
+            "clip_epsilon": 0.2,
+            "entropy_weight": 0.01,
+            "gae_lambda": 0.95,
+            "logp_tolerance": 1e-06,
+            "lr": 3e-05,
+            "max_grad_norm": 1.0,
+            "minibatch_size": 256,
+            "normalize_advantage": true,
+            "passes": 2,
+            "style_beta": 0.3,
+            "style_value_weight": 0.5,
+            "target_kl": 0.02,
+            "value_tolerance": 1e-06,
+            "value_weight": 0.5,
+            "weight_decay": 0.0
+          },
+          "run_id": "m57-calibration",
+          "seed": 57010001,
+          "style": {
+            "diagnostic_horizon_main_actions": 20,
+            "diagnostic_score_threshold": 8,
+            "format": "prism-rush-style-v1",
+            "phase_semantics": "choose_noble-belongs-to-preceding-main",
+            "score_cap": 15,
+            "short_game_padding": "terminal-prestige",
+            "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+            "terminal_only": true,
+            "window_main_actions": 24
+          }
+        }
+      },
+      "weight_hashes": {
+        "initial": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+        "parent": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff"
+      }
+    },
+    "force-cloud1": {
+      "cancel_fixture": true,
+      "format": "prism-portable-blueprint-v1",
+      "model_label": "unpublished engineering learner warm-started from Prism Alpha v0.1.1",
+      "purpose": "engineering-calibration-only",
+      "template": {
+        "arena": {
+          "engine_version": "0.4.0",
+          "program": "@engine",
+          "protocol_version": "0.5",
+          "ruleset": "splendor-base-v1",
+          "sha256": "@engine_sha256"
+        },
+        "cycles": [
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9573000,
+              "job_id": "m57-force-cloud1-c1-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9573000,
+              "job_id": "m57-force-cloud1-c1-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9573001,
+              "job_id": "m57-force-cloud1-c1-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9573001,
+              "job_id": "m57-force-cloud1-c1-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ],
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9573002,
+              "job_id": "m57-force-cloud1-c2-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9573002,
+              "job_id": "m57-force-cloud1-c2-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9573003,
+              "job_id": "m57-force-cloud1-c2-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9573003,
+              "job_id": "m57-force-cloud1-c2-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ]
+        ],
+        "format": "prism-ppo-arena-v1",
+        "learner": {
+          "program": "@engine",
+          "sha256": "@engine_sha256"
+        },
+        "limits": {
+          "campaign_cpu_seconds": 3600,
+          "game_cpu_seconds": 30,
+          "game_wall_seconds": 90,
+          "handshake_timeout_ms": 10000,
+          "max_infra_retries": 1,
+          "max_physical_decisions": 2304,
+          "max_plies": 256,
+          "memory_bytes": 2147483648,
+          "move_timeout_ms": 10000,
+          "shutdown_grace_ms": 1000
+        },
+        "opponents": {
+          "heuristic-v031": {
+            "args": [
+              "agent-heuristic-v02",
+              "--seed",
+              "20260926"
+            ],
+            "files": {},
+            "hello": {
+              "agent_name": "splendor-cli-heuristic-v02",
+              "agent_version": "0.2.9"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          },
+          "prism-v01": {
+            "args": [
+              "agent-prism",
+              "--weights",
+              "@initial",
+              "--seed",
+              "51000001"
+            ],
+            "files": {
+              "@initial": "@initial_sha256"
+            },
+            "hello": {
+              "agent_name": "prism-v0.1",
+              "agent_version": "0.1.0"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          }
+        },
+        "parent_weights": "@parent",
+        "run": {
+          "arena_contract_sha256": "",
+          "auditor_sha256": "@engine_sha256",
+          "budget": {
+            "max_attempts": 9,
+            "max_cycles": 2,
+            "max_decisions": 2048,
+            "max_job_decisions": 256,
+            "max_jobs": 8,
+            "max_optimizer_steps": 128,
+            "max_run_seconds": 7200,
+            "max_storage_bytes": 4294967296,
+            "max_update_attempts": 128
+          },
+          "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+          "cpu_threads": 2,
+          "device": "cpu",
+          "format": "prism-ppo-run-v3",
+          "opponents": {
+            "heuristic-v031": "9cde45a39f617c125144572efd94d082d422339f088b34f5ddab0499f1c7540c",
+            "prism-v01": "daf995afebb25a282973beb194fdae9b438b173a33f76dcd4baefc053bbb0e1b"
+          },
+          "parent_sha256": "@parent_sha256",
+          "ppo": {
+            "clip_epsilon": 0.2,
+            "entropy_weight": 0.01,
+            "gae_lambda": 0.95,
+            "logp_tolerance": 1e-06,
+            "lr": 3e-05,
+            "max_grad_norm": 1.0,
+            "minibatch_size": 256,
+            "normalize_advantage": true,
+            "passes": 2,
+            "style_beta": 0.3,
+            "style_value_weight": 0.5,
+            "target_kl": 0.02,
+            "value_tolerance": 1e-06,
+            "value_weight": 0.5,
+            "weight_decay": 0.0
+          },
+          "run_id": "m57-force-cloud1",
+          "seed": 57010001,
+          "style": {
+            "diagnostic_horizon_main_actions": 20,
+            "diagnostic_score_threshold": 8,
+            "format": "prism-rush-style-v1",
+            "phase_semantics": "choose_noble-belongs-to-preceding-main",
+            "score_cap": 15,
+            "short_game_padding": "terminal-prestige",
+            "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+            "terminal_only": true,
+            "window_main_actions": 24
+          }
+        }
+      },
+      "weight_hashes": {
+        "initial": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+        "parent": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff"
+      }
+    },
+    "force-local": {
+      "cancel_fixture": true,
+      "format": "prism-portable-blueprint-v1",
+      "model_label": "unpublished engineering learner warm-started from Prism Alpha v0.1.1",
+      "purpose": "engineering-calibration-only",
+      "template": {
+        "arena": {
+          "engine_version": "0.4.0",
+          "program": "@engine",
+          "protocol_version": "0.5",
+          "ruleset": "splendor-base-v1",
+          "sha256": "@engine_sha256"
+        },
+        "cycles": [
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9572000,
+              "job_id": "m57-force-local-c1-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9572000,
+              "job_id": "m57-force-local-c1-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9572001,
+              "job_id": "m57-force-local-c1-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9572001,
+              "job_id": "m57-force-local-c1-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ],
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9572002,
+              "job_id": "m57-force-local-c2-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9572002,
+              "job_id": "m57-force-local-c2-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9572003,
+              "job_id": "m57-force-local-c2-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9572003,
+              "job_id": "m57-force-local-c2-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ]
+        ],
+        "format": "prism-ppo-arena-v1",
+        "learner": {
+          "program": "@engine",
+          "sha256": "@engine_sha256"
+        },
+        "limits": {
+          "campaign_cpu_seconds": 3600,
+          "game_cpu_seconds": 30,
+          "game_wall_seconds": 90,
+          "handshake_timeout_ms": 10000,
+          "max_infra_retries": 1,
+          "max_physical_decisions": 2304,
+          "max_plies": 256,
+          "memory_bytes": 2147483648,
+          "move_timeout_ms": 10000,
+          "shutdown_grace_ms": 1000
+        },
+        "opponents": {
+          "heuristic-v031": {
+            "args": [
+              "agent-heuristic-v02",
+              "--seed",
+              "20260926"
+            ],
+            "files": {},
+            "hello": {
+              "agent_name": "splendor-cli-heuristic-v02",
+              "agent_version": "0.2.9"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          },
+          "prism-v01": {
+            "args": [
+              "agent-prism",
+              "--weights",
+              "@initial",
+              "--seed",
+              "51000001"
+            ],
+            "files": {
+              "@initial": "@initial_sha256"
+            },
+            "hello": {
+              "agent_name": "prism-v0.1",
+              "agent_version": "0.1.0"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          }
+        },
+        "parent_weights": "@parent",
+        "run": {
+          "arena_contract_sha256": "",
+          "auditor_sha256": "@engine_sha256",
+          "budget": {
+            "max_attempts": 9,
+            "max_cycles": 2,
+            "max_decisions": 2048,
+            "max_job_decisions": 256,
+            "max_jobs": 8,
+            "max_optimizer_steps": 128,
+            "max_run_seconds": 7200,
+            "max_storage_bytes": 4294967296,
+            "max_update_attempts": 128
+          },
+          "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+          "cpu_threads": 2,
+          "device": "cpu",
+          "format": "prism-ppo-run-v3",
+          "opponents": {
+            "heuristic-v031": "9cde45a39f617c125144572efd94d082d422339f088b34f5ddab0499f1c7540c",
+            "prism-v01": "daf995afebb25a282973beb194fdae9b438b173a33f76dcd4baefc053bbb0e1b"
+          },
+          "parent_sha256": "@parent_sha256",
+          "ppo": {
+            "clip_epsilon": 0.2,
+            "entropy_weight": 0.01,
+            "gae_lambda": 0.95,
+            "logp_tolerance": 1e-06,
+            "lr": 3e-05,
+            "max_grad_norm": 1.0,
+            "minibatch_size": 256,
+            "normalize_advantage": true,
+            "passes": 2,
+            "style_beta": 0.3,
+            "style_value_weight": 0.5,
+            "target_kl": 0.02,
+            "value_tolerance": 1e-06,
+            "value_weight": 0.5,
+            "weight_decay": 0.0
+          },
+          "run_id": "m57-force-local",
+          "seed": 57010001,
+          "style": {
+            "diagnostic_horizon_main_actions": 20,
+            "diagnostic_score_threshold": 8,
+            "format": "prism-rush-style-v1",
+            "phase_semantics": "choose_noble-belongs-to-preceding-main",
+            "score_cap": 15,
+            "short_game_padding": "terminal-prestige",
+            "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+            "terminal_only": true,
+            "window_main_actions": 24
+          }
+        }
+      },
+      "weight_hashes": {
+        "initial": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+        "parent": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff"
+      }
+    },
+    "handoff": {
+      "cancel_fixture": false,
+      "format": "prism-portable-blueprint-v1",
+      "model_label": "unpublished engineering learner warm-started from Prism Alpha v0.1.1",
+      "purpose": "engineering-calibration-only",
+      "template": {
+        "arena": {
+          "engine_version": "0.4.0",
+          "program": "@engine",
+          "protocol_version": "0.5",
+          "ruleset": "splendor-base-v1",
+          "sha256": "@engine_sha256"
+        },
+        "cycles": [
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9571000,
+              "job_id": "m57-handoff-c1-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571000,
+              "job_id": "m57-handoff-c1-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9571001,
+              "job_id": "m57-handoff-c1-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571001,
+              "job_id": "m57-handoff-c1-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ],
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9571002,
+              "job_id": "m57-handoff-c2-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571002,
+              "job_id": "m57-handoff-c2-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9571003,
+              "job_id": "m57-handoff-c2-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571003,
+              "job_id": "m57-handoff-c2-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ],
+          [
+            {
+              "actor": 0,
+              "environment_seed": 9571004,
+              "job_id": "m57-handoff-c3-b0-s0",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571004,
+              "job_id": "m57-handoff-c3-b0-s1",
+              "opponent_id": "heuristic-v031"
+            },
+            {
+              "actor": 0,
+              "environment_seed": 9571005,
+              "job_id": "m57-handoff-c3-b1-s0",
+              "opponent_id": "prism-v01"
+            },
+            {
+              "actor": 1,
+              "environment_seed": 9571005,
+              "job_id": "m57-handoff-c3-b1-s1",
+              "opponent_id": "prism-v01"
+            }
+          ]
+        ],
+        "format": "prism-ppo-arena-v1",
+        "learner": {
+          "program": "@engine",
+          "sha256": "@engine_sha256"
+        },
+        "limits": {
+          "campaign_cpu_seconds": 3600,
+          "game_cpu_seconds": 30,
+          "game_wall_seconds": 90,
+          "handshake_timeout_ms": 10000,
+          "max_infra_retries": 0,
+          "max_physical_decisions": 3072,
+          "max_plies": 256,
+          "memory_bytes": 2147483648,
+          "move_timeout_ms": 10000,
+          "shutdown_grace_ms": 1000
+        },
+        "opponents": {
+          "heuristic-v031": {
+            "args": [
+              "agent-heuristic-v02",
+              "--seed",
+              "20260926"
+            ],
+            "files": {},
+            "hello": {
+              "agent_name": "splendor-cli-heuristic-v02",
+              "agent_version": "0.2.9"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          },
+          "prism-v01": {
+            "args": [
+              "agent-prism",
+              "--weights",
+              "@initial",
+              "--seed",
+              "51000001"
+            ],
+            "files": {
+              "@initial": "@initial_sha256"
+            },
+            "hello": {
+              "agent_name": "prism-v0.1",
+              "agent_version": "0.1.0"
+            },
+            "mode": "greedy",
+            "program": "@engine",
+            "sha256": "@engine_sha256"
+          }
+        },
+        "parent_weights": "@parent",
+        "run": {
+          "arena_contract_sha256": "",
+          "auditor_sha256": "@engine_sha256",
+          "budget": {
+            "max_attempts": 12,
+            "max_cycles": 3,
+            "max_decisions": 3072,
+            "max_job_decisions": 256,
+            "max_jobs": 12,
+            "max_optimizer_steps": 128,
+            "max_run_seconds": 7200,
+            "max_storage_bytes": 4294967296,
+            "max_update_attempts": 128
+          },
+          "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+          "cpu_threads": 2,
+          "device": "cpu",
+          "format": "prism-ppo-run-v3",
+          "opponents": {
+            "heuristic-v031": "9cde45a39f617c125144572efd94d082d422339f088b34f5ddab0499f1c7540c",
+            "prism-v01": "daf995afebb25a282973beb194fdae9b438b173a33f76dcd4baefc053bbb0e1b"
+          },
+          "parent_sha256": "@parent_sha256",
+          "ppo": {
+            "clip_epsilon": 0.2,
+            "entropy_weight": 0.01,
+            "gae_lambda": 0.95,
+            "logp_tolerance": 1e-06,
+            "lr": 3e-05,
+            "max_grad_norm": 1.0,
+            "minibatch_size": 256,
+            "normalize_advantage": true,
+            "passes": 2,
+            "style_beta": 0.3,
+            "style_value_weight": 0.5,
+            "target_kl": 0.02,
+            "value_tolerance": 1e-06,
+            "value_weight": 0.5,
+            "weight_decay": 0.0
+          },
+          "run_id": "m57-handoff",
+          "seed": 57010001,
+          "style": {
+            "diagnostic_horizon_main_actions": 20,
+            "diagnostic_score_threshold": 8,
+            "format": "prism-rush-style-v1",
+            "phase_semantics": "choose_noble-belongs-to-preceding-main",
+            "score_cap": 15,
+            "short_game_padding": "terminal-prestige",
+            "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+            "terminal_only": true,
+            "window_main_actions": 24
+          }
+        }
+      },
+      "weight_hashes": {
+        "initial": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+        "parent": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff"
+      }
+    }
+  },
+  "calibration_clones": [
+    "local",
+    "cloud1"
+  ],
+  "code_identity": "6ec1b4bcc5531d15b3df5147abe821a37b1f8bf38cc81724bc72db7a20191a5c",
+  "format": "m57-portable-calibration-v1",
+  "gates": {
+    "calibration": "same two-cycle/32-game schedule and parameters per host; no speed threshold",
+    "native_parity": {
+      "atol": 0.0001,
+      "inputs": 68,
+      "rtol": 0.0001
+    },
+    "numeric_restore": "model/optimizer/RNG exact state digests and budget counters retained",
+    "ownership": "released source rejected; duplicate target ticket rejected; one active writer",
+    "process_control": "both hosts stop owned descendants and resume without consumed-game replay"
+  },
+  "maximum_completed_games": 92,
+  "maximum_interrupted_unpublished_attempts": 2,
+  "source_head": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "statistical_scope": "diagnostic throughput; no strength/style acceptance",
+  "status": "FROZEN_BEFORE_MATCHES"
+}

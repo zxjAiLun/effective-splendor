@@ -1,0 +1,7 @@
+# Verified execution runtime: CPython 3.12.6, CPU mode.
+# On Linux install torch using https://download.pytorch.org/whl/cpu
+torch==2.6.0
+numpy==2.2.4
+psutil==7.0.0
+# Development checks only:
+pytest==8.3.5

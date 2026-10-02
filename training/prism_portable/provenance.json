@@ -1,0 +1,90 @@
+{
+  "format": "prism-portable-engine-provenance-v1",
+  "baseline_head": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "files": {
+    "training/prism_portable/engine/__init__.py": {
+      "origin": "training/prism/__init__.py",
+      "origin_sha256": "5a1b2684719f4402719ffd1ba1e77f45f1889c55bb1cef3fd56e9e7b0ddd7c75"
+    },
+    "training/prism_portable/engine/io.py": {
+      "origin": "training/prism/io.py",
+      "origin_sha256": "2b96ab284f8c4f79ef4e81c5726c4ae51b176fa56c95b546c01f6391df199e7d"
+    },
+    "training/prism_portable/engine/data.py": {
+      "origin": "training/prism/data.py",
+      "origin_sha256": "573a11980bc26268a3c278c9a9cb28efab4501827c316039e0bf26a15dfadc98"
+    },
+    "training/prism_portable/engine/model.py": {
+      "origin": "training/prism/model.py",
+      "origin_sha256": "1d39ada9f306f3ad642be43a6038704dcd371c8263ac1b9ad23a07fd237bf5cb"
+    },
+    "training/prism_portable/engine/export.py": {
+      "origin": "training/prism/export.py",
+      "origin_sha256": "309afa200c6d22bf5c7802d2091e03098ba6a3dedb7885e4f361eaadffad75e1"
+    },
+    "training/prism_portable/engine/parity.py": {
+      "origin": "training/prism/parity.py",
+      "origin_sha256": "37aabbc1f374e20886532d6f66e681b068a36ff5e499266861c385de99f9917f"
+    },
+    "training/prism_portable/engine/ppo/__init__.py": {
+      "origin": "training/prism/ppo/__init__.py",
+      "origin_sha256": "987ad20304f6df104762ca1910ca53e6af5c5c82f88f1f0f1ecc42840cb2ad5a"
+    },
+    "training/prism_portable/engine/ppo/__main__.py": {
+      "origin": "training/prism/ppo/__main__.py",
+      "origin_sha256": "7cb07b189d3e75a0d733184344f26eee4d0193e0ab4158538c6e4538dd27ec7a"
+    },
+    "training/prism_portable/engine/ppo/arena.py": {
+      "origin": "training/prism/ppo/arena.py",
+      "origin_sha256": "c7e2a5b3915abe58d88214d27e3a449915d40a1f145fc3f45e86e135bb3f3b01"
+    },
+    "training/prism_portable/engine/ppo/audit.py": {
+      "origin": "training/prism/ppo/audit.py",
+      "origin_sha256": "7c9280f23c15024f35b73ad6a86cade04fb224ea2e88550ab370a06439388267"
+    },
+    "training/prism_portable/engine/ppo/contract.py": {
+      "origin": "training/prism/ppo/contract.py",
+      "origin_sha256": "94f22a2e7f02fb2980c465020d71af3ce8352b5046d0103dddf15d46cdc460df"
+    },
+    "training/prism_portable/engine/ppo/coordinator.py": {
+      "origin": "training/prism/ppo/coordinator.py",
+      "origin_sha256": "4780f021ae1c66bcdd5080c1fa5e4b4eb23c19818551efeb27eca2b337075be9"
+    },
+    "training/prism_portable/engine/ppo/execution.py": {
+      "origin": "training/prism/ppo/execution.py",
+      "origin_sha256": "f1c60e7546755d02625985cb50d082c4b44b1aa13f6162a61c55596e0d14a71e"
+    },
+    "training/prism_portable/engine/ppo/learner.py": {
+      "origin": "training/prism/ppo/learner.py",
+      "origin_sha256": "1942662bb7e0bb16d1ef4b436f52eb8beee656ab4e59ace4f6728af54c53879c"
+    },
+    "training/prism_portable/engine/ppo/model.py": {
+      "origin": "training/prism/ppo/model.py",
+      "origin_sha256": "eb48413f7e4c8b164133392bc4b532364752de5cfa337c399cdc9c802a514c55"
+    },
+    "training/prism_portable/engine/ppo/processes.py": {
+      "origin": "training/prism/ppo/processes.py",
+      "origin_sha256": "50f08f1a23e750e9458ed5ac8a49128401ebc80fa3b00234b31d42430a7bac33"
+    },
+    "training/prism_portable/engine/ppo/runtime.py": {
+      "origin": "training/prism/ppo/runtime.py",
+      "origin_sha256": "dc46fc770243e3284a74e4049caa102f9692c8d2c469c034dfcaf3d0e5b58ab8"
+    },
+    "training/prism_portable/engine/ppo/sampling.py": {
+      "origin": "training/prism/ppo/sampling.py",
+      "origin_sha256": "c649d69debf0f5d5c2353b25443e438e2cd530cf9ca14e896b65cdc3f29f02e4"
+    },
+    "training/prism_portable/engine/ppo/service.py": {
+      "origin": "training/prism/ppo/service.py",
+      "origin_sha256": "f524a353557af2a94f41b59534a98e327e675653a78bf8b6fc4e1f67ba2416ba"
+    },
+    "training/prism_portable/engine/ppo/store.py": {
+      "origin": "training/prism/ppo/store.py",
+      "origin_sha256": "4b4b47ca45fad2e4a7126a6fe858d928db6121e05ad7e75a2eac9db49c9ec91d"
+    },
+    "training/prism_portable/engine/ppo/style.py": {
+      "origin": "training/prism/ppo/style.py",
+      "origin_sha256": "b4eb3bf217ef697b2db52942bda220a4efef269986a586fbb802b4e55bf1580e"
+    }
+  }
+}
