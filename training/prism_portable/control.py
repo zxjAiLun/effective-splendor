@@ -1,5 +1,6 @@
 """Host-side control CLI, invoked locally or through SSH without a shell argv."""
 import argparse
+import math
 import os
 from pathlib import Path
 import platform
@@ -74,6 +75,9 @@ def start(host, root, cycles):
         previous = status(host, root)
         if previous["alive"] or previous["status"] == "STARTING":
             raise ValueError("owned campaign already running/starting")
+        remaining_wall = read(root / "resource-ledger.json")["deadline"] - time.time()
+        if not math.isfinite(remaining_wall) or remaining_wall <= 0:
+            raise ValueError("original campaign wall budget exhausted")
         control = root / "control"
         control.mkdir(exist_ok=True)
         for name in ("force-stop.json", "boundary-stop.json", "boundary-ack.json"):
@@ -102,7 +106,7 @@ def start(host, root, cycles):
                        "--property=Type=exec", "--property=KillMode=control-group",
                        "--property=MemoryAccounting=yes", "--property=CPUAccounting=yes",
                        "--property=MemoryMax=" + str(limits["memory_bytes"]), "--property=TasksMax=512",
-                       "--property=RuntimeMaxSec=7200",
+                       "--property=RuntimeMaxSec=" + str(math.ceil(remaining_wall)),
                        "--property=StandardOutput=append:" + str(control / "supervisor.stdout.log"),
                        "--property=StandardError=append:" + str(control / "supervisor.stderr.log"),
                        "--setenv=PRISM_PPO_SLICE=" + slice_name,

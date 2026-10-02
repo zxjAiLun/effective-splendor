@@ -139,3 +139,39 @@ def test_kill_reused_pid_preserves_unrelated_real_process(tmp_path):
     result = hard_kill({"root": str(tmp_path)}, campaign)
     assert result["alive"] is False
     assert psutil.pid_exists(os.getpid())
+
+
+@pytest.mark.skipif(os.name == "nt", reason="systemd launch contract is Linux-only")
+def test_systemd_start_uses_original_remaining_deadline(tmp_path, monkeypatch):
+    from training.prism_portable import control
+    campaign = tmp_path / "campaigns" / "long-run"
+    write(campaign / "ownership.json", {"nonce": "owner"})
+    write(campaign / "blueprint.json", {"template": {"limits": {"memory_bytes": 1024**3}}})
+    write(campaign / "resource-ledger.json", {"deadline": 30000.5})
+    monkeypatch.setattr(control, "assert_owner", lambda *a: None)
+    monkeypatch.setattr(control, "bind", lambda *a: None)
+    monkeypatch.setattr(control.time, "time", lambda: 5000)
+    launched = []
+    monkeypatch.setattr(control.subprocess, "run", lambda argv, **kw: launched.append(argv))
+    monkeypatch.setattr(control, "systemctl", lambda *a, **kw: type("Reply", (), {"stdout": "123\n"})())
+    host = {"root": str(tmp_path), "host_id": "cloud1", "python": sys.executable,
+            "project": str(tmp_path), "_path": str(tmp_path / "host.json")}
+    result = control.start(host, campaign, 4)
+    assert result["status"] == "STARTING"
+    assert "--property=RuntimeMaxSec=25001" in launched[0]
+    assert read(campaign / "resource-ledger.json")["deadline"] == 30000.5
+
+
+def test_expired_start_does_not_publish_starting_or_launch(tmp_path, monkeypatch):
+    from training.prism_portable import control
+    campaign = tmp_path / "campaigns" / "expired"
+    write(campaign / "ownership.json", {"nonce": "owner"})
+    write(campaign / "blueprint.json", {})
+    write(campaign / "resource-ledger.json", {"deadline": 5000})
+    monkeypatch.setattr(control, "assert_owner", lambda *a: None)
+    monkeypatch.setattr(control, "bind", lambda *a: None)
+    monkeypatch.setattr(control.time, "time", lambda: 5001)
+    host = {"root": str(tmp_path), "host_id": "cloud1"}
+    with pytest.raises(ValueError, match="wall budget exhausted"):
+        control.start(host, campaign, 1)
+    assert not (campaign / "control/status.json").exists()

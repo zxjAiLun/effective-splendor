@@ -1,0 +1,134 @@
+{
+  "blueprint_sha256": "32cc86fe7e6b5bf9a1cf602064547a10e8703f638134c1c002af8630fd4f4377",
+  "candidate": {
+    "checkpoint_selection": "only final c4; no development selection",
+    "label": "M59 unpublished final-c4 training candidate",
+    "release_name_if_accepted": "Prism Alpha v0.1.2",
+    "status": "NOT_RUN"
+  },
+  "config_sha256": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
+  "development": "NOT_RUN",
+  "evidence": {
+    "contract.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/contract.json",
+      "sha256": "efc38465ddff645902cf1939fff4a4a689c11899fae4638f6c74e7b22fbf8c3a"
+    },
+    "freeze-receipt.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/freeze-receipt.json",
+      "sha256": "6452452f3f9c08af52c5c8de0ec4cb5ba38dfa056a19020c5a1a1f58db24e57b"
+    },
+    "hello-preflight.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/hello-preflight.json",
+      "sha256": "3b04d661e550874b724f449f7911c805895bf08574fd4e4be3d6015d1ff01c1c"
+    },
+    "historical-input-check.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/historical-input-check.json",
+      "sha256": "af9afa32a4a99b6c1f637f7b909e205e957b2e37d846ae3e9baf189ebb039e53"
+    },
+    "host.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/host.json",
+      "sha256": "0eab3df3317da0e2ad1341864eecc60638f35b8152c5a2ef04b66423507cf904"
+    },
+    "initialization.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/initialization.json",
+      "sha256": "e4861c395f1de413343e10a5aa31ea17bcf0be27afda16dd505265dabc2f13a6"
+    },
+    "local/host.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/local/host.json",
+      "sha256": "63ee240eef0c12bcf95888c078e6e15f4a76aefbff7073ebfe186bb69e4a3509"
+    },
+    "local/preflight.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/local/preflight.json",
+      "sha256": "591d03bb8e617afa72c37fe712de4ea66939f925257396e9ca6e71d65ca57d18"
+    },
+    "preflight.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/preflight.json",
+      "sha256": "1ec3ddfff6b7332b909ac2494b107f0361808f4b88926e08cdba14e9e3c775a3"
+    },
+    "profiles.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/profiles.json",
+      "sha256": "4171a7a3484d79fb8e48e68bae9c26038e1d87aae4c6a52135df78b05018800b"
+    },
+    "start-receipt.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/start-receipt.json",
+      "sha256": "73373852a7ff1713bb777f8ac22e32d519fb5e8fd6e9dd8db5965a2015f715e3"
+    },
+    "startup-status.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/startup-status.json",
+      "sha256": "2bb2126a6e87f1623fb82709e48628fb034f74b5bbee658857331b61a69dd95f"
+    },
+    "tests.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/tests.json",
+      "sha256": "9a451f20baaf06a779156bd0e2abf3c0317dab4a517e319b3988b7125a6a3c24"
+    },
+    "warm-start-check.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/warm-start-check.json",
+      "sha256": "8fe09fafe6d4889d733a9ca7c3f9b31eab1c994ab5a61ac886501dd1e295f85e"
+    }
+  },
+  "format": "m59-prism-alpha-cloud-ppo-result-v1",
+  "independent_strength_acceptance": "NOT_RUN",
+  "released_model": "Prism Alpha v0.1.1",
+  "startup_checks": {
+    "cloud_python_rust_boundary_inputs": 68,
+    "cloud_test_exit_code": 0,
+    "cloud_tests": ".......................                                                  [100%]\n23 passed in 0.96s",
+    "local_migration_target_preflight": {
+      "boundary_inputs": 68,
+      "new_games": 0,
+      "status": "PASS"
+    },
+    "warm_start": {
+      "cycle": 0,
+      "fresh_optimizer_slots": 0,
+      "global_step": 0,
+      "inherited_policy_value_tensors": 32,
+      "new_games": 0,
+      "parent_sha256": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff",
+      "status": "PASS"
+    }
+  },
+  "status": "TRAINING_RUNNING",
+  "style_acceptance": "NOT_RUN",
+  "training": {
+    "completed_games_at_observation": 68,
+    "final_export": "NOT_READY",
+    "planned_games": 1024,
+    "snapshot": {
+      "alive": true,
+      "bound_contract_sha256": "efc38465ddff645902cf1939fff4a4a689c11899fae4638f6c74e7b22fbf8c3a",
+      "campaign": "/home/ubuntu/splendor-ppo-m59/campaigns/m59-alpha-bigcard-g0",
+      "completed_per_opponent": {
+        "alpha-parent-v011": 18,
+        "heuristic-portable-v029": 8,
+        "prism-general-v011": 34,
+        "prism-v01": 8
+      },
+      "config_sha256": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
+      "counts": {
+        "COMPLETE": 68,
+        "RUNNING": 1
+      },
+      "heartbeat": {
+        "accounting_scope": "owned systemd cgroup including descendants",
+        "active_processes": 0,
+        "cpu_seconds": 70.69809699999999,
+        "kernel_cpu_seconds": 11.643353,
+        "observed_at": 1790980373.7290056,
+        "peak_memory_bytes": 602718208,
+        "user_cpu_seconds": 59.143588
+      },
+      "launch_ledger_commit": "92ec4ae93b0b328702fb4ee5352b9e1bf02f9bde9461ac63afbe07df0954c226",
+      "ledger_failed": false,
+      "observed_at": 1790980374.7942138,
+      "ownership_sha256": "dfaa3cf822f8956f12ab1dca626421dd12ecabad23f4c5baa9c9053d241e61b8",
+      "pid": 382840,
+      "progress": null,
+      "remaining_wall": 28674.46849155426,
+      "retries": 0,
+      "status": "RUNNING",
+      "unit_properties": "ActiveState=active\nSubState=running\nRuntimeMaxUSec=7h 59min 12s\nMainPID=382840\nMemoryMax=4294967296\n"
+    },
+    "status": "RUNNING"
+  }
+}
