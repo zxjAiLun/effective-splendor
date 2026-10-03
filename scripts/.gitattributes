@@ -6,3 +6,4 @@ prism_alpha_cloud_evaluation_report.py -text
 prism_cloud_storage_snapshot.py -text
 prism_alpha_cloud_evaluation_repair.py -text
 prism_alpha_cloud_html_report.py -text
+prism_alpha_cloud_prepare_m60.py -text

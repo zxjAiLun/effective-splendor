@@ -1,0 +1,6322 @@
+{
+  "cancel_fixture": false,
+  "format": "prism-portable-blueprint-v1",
+  "model_label": "M60 unpublished final-c4 candidate, warm-started from Prism Alpha v0.1.2",
+  "purpose": "finite-model-training-bigcard-continuation",
+  "template": {
+    "arena": {
+      "engine_version": "0.4.0",
+      "program": "@engine",
+      "protocol_version": "0.5",
+      "ruleset": "splendor-base-v1",
+      "sha256": "@engine_sha256"
+    },
+    "cycles": [
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9591000,
+          "job_id": "m60-c1-b0-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591000,
+          "job_id": "m60-c1-b0-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591001,
+          "job_id": "m60-c1-b1-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591001,
+          "job_id": "m60-c1-b1-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591002,
+          "job_id": "m60-c1-b2-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591002,
+          "job_id": "m60-c1-b2-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591003,
+          "job_id": "m60-c1-b3-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591003,
+          "job_id": "m60-c1-b3-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591004,
+          "job_id": "m60-c1-b4-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591004,
+          "job_id": "m60-c1-b4-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591005,
+          "job_id": "m60-c1-b5-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591005,
+          "job_id": "m60-c1-b5-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591006,
+          "job_id": "m60-c1-b6-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591006,
+          "job_id": "m60-c1-b6-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591007,
+          "job_id": "m60-c1-b7-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591007,
+          "job_id": "m60-c1-b7-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591008,
+          "job_id": "m60-c1-b8-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591008,
+          "job_id": "m60-c1-b8-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591009,
+          "job_id": "m60-c1-b9-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591009,
+          "job_id": "m60-c1-b9-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591010,
+          "job_id": "m60-c1-b10-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591010,
+          "job_id": "m60-c1-b10-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591011,
+          "job_id": "m60-c1-b11-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591011,
+          "job_id": "m60-c1-b11-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591012,
+          "job_id": "m60-c1-b12-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591012,
+          "job_id": "m60-c1-b12-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591013,
+          "job_id": "m60-c1-b13-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591013,
+          "job_id": "m60-c1-b13-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591014,
+          "job_id": "m60-c1-b14-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591014,
+          "job_id": "m60-c1-b14-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591015,
+          "job_id": "m60-c1-b15-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591015,
+          "job_id": "m60-c1-b15-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591016,
+          "job_id": "m60-c1-b16-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591016,
+          "job_id": "m60-c1-b16-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591017,
+          "job_id": "m60-c1-b17-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591017,
+          "job_id": "m60-c1-b17-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591018,
+          "job_id": "m60-c1-b18-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591018,
+          "job_id": "m60-c1-b18-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591019,
+          "job_id": "m60-c1-b19-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591019,
+          "job_id": "m60-c1-b19-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591020,
+          "job_id": "m60-c1-b20-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591020,
+          "job_id": "m60-c1-b20-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591021,
+          "job_id": "m60-c1-b21-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591021,
+          "job_id": "m60-c1-b21-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591022,
+          "job_id": "m60-c1-b22-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591022,
+          "job_id": "m60-c1-b22-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591023,
+          "job_id": "m60-c1-b23-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591023,
+          "job_id": "m60-c1-b23-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591024,
+          "job_id": "m60-c1-b24-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591024,
+          "job_id": "m60-c1-b24-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591025,
+          "job_id": "m60-c1-b25-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591025,
+          "job_id": "m60-c1-b25-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591026,
+          "job_id": "m60-c1-b26-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591026,
+          "job_id": "m60-c1-b26-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591027,
+          "job_id": "m60-c1-b27-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591027,
+          "job_id": "m60-c1-b27-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591028,
+          "job_id": "m60-c1-b28-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591028,
+          "job_id": "m60-c1-b28-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591029,
+          "job_id": "m60-c1-b29-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591029,
+          "job_id": "m60-c1-b29-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591030,
+          "job_id": "m60-c1-b30-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591030,
+          "job_id": "m60-c1-b30-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591031,
+          "job_id": "m60-c1-b31-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591031,
+          "job_id": "m60-c1-b31-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591032,
+          "job_id": "m60-c1-b32-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591032,
+          "job_id": "m60-c1-b32-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591033,
+          "job_id": "m60-c1-b33-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591033,
+          "job_id": "m60-c1-b33-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591034,
+          "job_id": "m60-c1-b34-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591034,
+          "job_id": "m60-c1-b34-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591035,
+          "job_id": "m60-c1-b35-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591035,
+          "job_id": "m60-c1-b35-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591036,
+          "job_id": "m60-c1-b36-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591036,
+          "job_id": "m60-c1-b36-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591037,
+          "job_id": "m60-c1-b37-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591037,
+          "job_id": "m60-c1-b37-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591038,
+          "job_id": "m60-c1-b38-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591038,
+          "job_id": "m60-c1-b38-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591039,
+          "job_id": "m60-c1-b39-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591039,
+          "job_id": "m60-c1-b39-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591040,
+          "job_id": "m60-c1-b40-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591040,
+          "job_id": "m60-c1-b40-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591041,
+          "job_id": "m60-c1-b41-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591041,
+          "job_id": "m60-c1-b41-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591042,
+          "job_id": "m60-c1-b42-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591042,
+          "job_id": "m60-c1-b42-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591043,
+          "job_id": "m60-c1-b43-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591043,
+          "job_id": "m60-c1-b43-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591044,
+          "job_id": "m60-c1-b44-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591044,
+          "job_id": "m60-c1-b44-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591045,
+          "job_id": "m60-c1-b45-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591045,
+          "job_id": "m60-c1-b45-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591046,
+          "job_id": "m60-c1-b46-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591046,
+          "job_id": "m60-c1-b46-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591047,
+          "job_id": "m60-c1-b47-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591047,
+          "job_id": "m60-c1-b47-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591048,
+          "job_id": "m60-c1-b48-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591048,
+          "job_id": "m60-c1-b48-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591049,
+          "job_id": "m60-c1-b49-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591049,
+          "job_id": "m60-c1-b49-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591050,
+          "job_id": "m60-c1-b50-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591050,
+          "job_id": "m60-c1-b50-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591051,
+          "job_id": "m60-c1-b51-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591051,
+          "job_id": "m60-c1-b51-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591052,
+          "job_id": "m60-c1-b52-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591052,
+          "job_id": "m60-c1-b52-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591053,
+          "job_id": "m60-c1-b53-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591053,
+          "job_id": "m60-c1-b53-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591054,
+          "job_id": "m60-c1-b54-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591054,
+          "job_id": "m60-c1-b54-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591055,
+          "job_id": "m60-c1-b55-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591055,
+          "job_id": "m60-c1-b55-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591056,
+          "job_id": "m60-c1-b56-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591056,
+          "job_id": "m60-c1-b56-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591057,
+          "job_id": "m60-c1-b57-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591057,
+          "job_id": "m60-c1-b57-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591058,
+          "job_id": "m60-c1-b58-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591058,
+          "job_id": "m60-c1-b58-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591059,
+          "job_id": "m60-c1-b59-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591059,
+          "job_id": "m60-c1-b59-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591060,
+          "job_id": "m60-c1-b60-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591060,
+          "job_id": "m60-c1-b60-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591061,
+          "job_id": "m60-c1-b61-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591061,
+          "job_id": "m60-c1-b61-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591062,
+          "job_id": "m60-c1-b62-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591062,
+          "job_id": "m60-c1-b62-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591063,
+          "job_id": "m60-c1-b63-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591063,
+          "job_id": "m60-c1-b63-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591064,
+          "job_id": "m60-c1-b64-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591064,
+          "job_id": "m60-c1-b64-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591065,
+          "job_id": "m60-c1-b65-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591065,
+          "job_id": "m60-c1-b65-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591066,
+          "job_id": "m60-c1-b66-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591066,
+          "job_id": "m60-c1-b66-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591067,
+          "job_id": "m60-c1-b67-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591067,
+          "job_id": "m60-c1-b67-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591068,
+          "job_id": "m60-c1-b68-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591068,
+          "job_id": "m60-c1-b68-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591069,
+          "job_id": "m60-c1-b69-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591069,
+          "job_id": "m60-c1-b69-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591070,
+          "job_id": "m60-c1-b70-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591070,
+          "job_id": "m60-c1-b70-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591071,
+          "job_id": "m60-c1-b71-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591071,
+          "job_id": "m60-c1-b71-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591072,
+          "job_id": "m60-c1-b72-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591072,
+          "job_id": "m60-c1-b72-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591073,
+          "job_id": "m60-c1-b73-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591073,
+          "job_id": "m60-c1-b73-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591074,
+          "job_id": "m60-c1-b74-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591074,
+          "job_id": "m60-c1-b74-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591075,
+          "job_id": "m60-c1-b75-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591075,
+          "job_id": "m60-c1-b75-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591076,
+          "job_id": "m60-c1-b76-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591076,
+          "job_id": "m60-c1-b76-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591077,
+          "job_id": "m60-c1-b77-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591077,
+          "job_id": "m60-c1-b77-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591078,
+          "job_id": "m60-c1-b78-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591078,
+          "job_id": "m60-c1-b78-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591079,
+          "job_id": "m60-c1-b79-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591079,
+          "job_id": "m60-c1-b79-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591080,
+          "job_id": "m60-c1-b80-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591080,
+          "job_id": "m60-c1-b80-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591081,
+          "job_id": "m60-c1-b81-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591081,
+          "job_id": "m60-c1-b81-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591082,
+          "job_id": "m60-c1-b82-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591082,
+          "job_id": "m60-c1-b82-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591083,
+          "job_id": "m60-c1-b83-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591083,
+          "job_id": "m60-c1-b83-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591084,
+          "job_id": "m60-c1-b84-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591084,
+          "job_id": "m60-c1-b84-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591085,
+          "job_id": "m60-c1-b85-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591085,
+          "job_id": "m60-c1-b85-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591086,
+          "job_id": "m60-c1-b86-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591086,
+          "job_id": "m60-c1-b86-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591087,
+          "job_id": "m60-c1-b87-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591087,
+          "job_id": "m60-c1-b87-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591088,
+          "job_id": "m60-c1-b88-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591088,
+          "job_id": "m60-c1-b88-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591089,
+          "job_id": "m60-c1-b89-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591089,
+          "job_id": "m60-c1-b89-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591090,
+          "job_id": "m60-c1-b90-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591090,
+          "job_id": "m60-c1-b90-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591091,
+          "job_id": "m60-c1-b91-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591091,
+          "job_id": "m60-c1-b91-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591092,
+          "job_id": "m60-c1-b92-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591092,
+          "job_id": "m60-c1-b92-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591093,
+          "job_id": "m60-c1-b93-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591093,
+          "job_id": "m60-c1-b93-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591094,
+          "job_id": "m60-c1-b94-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591094,
+          "job_id": "m60-c1-b94-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591095,
+          "job_id": "m60-c1-b95-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591095,
+          "job_id": "m60-c1-b95-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591096,
+          "job_id": "m60-c1-b96-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591096,
+          "job_id": "m60-c1-b96-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591097,
+          "job_id": "m60-c1-b97-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591097,
+          "job_id": "m60-c1-b97-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591098,
+          "job_id": "m60-c1-b98-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591098,
+          "job_id": "m60-c1-b98-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591099,
+          "job_id": "m60-c1-b99-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591099,
+          "job_id": "m60-c1-b99-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591100,
+          "job_id": "m60-c1-b100-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591100,
+          "job_id": "m60-c1-b100-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591101,
+          "job_id": "m60-c1-b101-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591101,
+          "job_id": "m60-c1-b101-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591102,
+          "job_id": "m60-c1-b102-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591102,
+          "job_id": "m60-c1-b102-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591103,
+          "job_id": "m60-c1-b103-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591103,
+          "job_id": "m60-c1-b103-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591104,
+          "job_id": "m60-c1-b104-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591104,
+          "job_id": "m60-c1-b104-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591105,
+          "job_id": "m60-c1-b105-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591105,
+          "job_id": "m60-c1-b105-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591106,
+          "job_id": "m60-c1-b106-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591106,
+          "job_id": "m60-c1-b106-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591107,
+          "job_id": "m60-c1-b107-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591107,
+          "job_id": "m60-c1-b107-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591108,
+          "job_id": "m60-c1-b108-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591108,
+          "job_id": "m60-c1-b108-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591109,
+          "job_id": "m60-c1-b109-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591109,
+          "job_id": "m60-c1-b109-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591110,
+          "job_id": "m60-c1-b110-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591110,
+          "job_id": "m60-c1-b110-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591111,
+          "job_id": "m60-c1-b111-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591111,
+          "job_id": "m60-c1-b111-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591112,
+          "job_id": "m60-c1-b112-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591112,
+          "job_id": "m60-c1-b112-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591113,
+          "job_id": "m60-c1-b113-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591113,
+          "job_id": "m60-c1-b113-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591114,
+          "job_id": "m60-c1-b114-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591114,
+          "job_id": "m60-c1-b114-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591115,
+          "job_id": "m60-c1-b115-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591115,
+          "job_id": "m60-c1-b115-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591116,
+          "job_id": "m60-c1-b116-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591116,
+          "job_id": "m60-c1-b116-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591117,
+          "job_id": "m60-c1-b117-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591117,
+          "job_id": "m60-c1-b117-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591118,
+          "job_id": "m60-c1-b118-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591118,
+          "job_id": "m60-c1-b118-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591119,
+          "job_id": "m60-c1-b119-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591119,
+          "job_id": "m60-c1-b119-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591120,
+          "job_id": "m60-c1-b120-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591120,
+          "job_id": "m60-c1-b120-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591121,
+          "job_id": "m60-c1-b121-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591121,
+          "job_id": "m60-c1-b121-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591122,
+          "job_id": "m60-c1-b122-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591122,
+          "job_id": "m60-c1-b122-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591123,
+          "job_id": "m60-c1-b123-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591123,
+          "job_id": "m60-c1-b123-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591124,
+          "job_id": "m60-c1-b124-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591124,
+          "job_id": "m60-c1-b124-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591125,
+          "job_id": "m60-c1-b125-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591125,
+          "job_id": "m60-c1-b125-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591126,
+          "job_id": "m60-c1-b126-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591126,
+          "job_id": "m60-c1-b126-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591127,
+          "job_id": "m60-c1-b127-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591127,
+          "job_id": "m60-c1-b127-s1",
+          "opponent_id": "heuristic-portable-v029"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9591128,
+          "job_id": "m60-c2-b0-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591128,
+          "job_id": "m60-c2-b0-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591129,
+          "job_id": "m60-c2-b1-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591129,
+          "job_id": "m60-c2-b1-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591130,
+          "job_id": "m60-c2-b2-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591130,
+          "job_id": "m60-c2-b2-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591131,
+          "job_id": "m60-c2-b3-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591131,
+          "job_id": "m60-c2-b3-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591132,
+          "job_id": "m60-c2-b4-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591132,
+          "job_id": "m60-c2-b4-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591133,
+          "job_id": "m60-c2-b5-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591133,
+          "job_id": "m60-c2-b5-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591134,
+          "job_id": "m60-c2-b6-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591134,
+          "job_id": "m60-c2-b6-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591135,
+          "job_id": "m60-c2-b7-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591135,
+          "job_id": "m60-c2-b7-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591136,
+          "job_id": "m60-c2-b8-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591136,
+          "job_id": "m60-c2-b8-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591137,
+          "job_id": "m60-c2-b9-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591137,
+          "job_id": "m60-c2-b9-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591138,
+          "job_id": "m60-c2-b10-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591138,
+          "job_id": "m60-c2-b10-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591139,
+          "job_id": "m60-c2-b11-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591139,
+          "job_id": "m60-c2-b11-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591140,
+          "job_id": "m60-c2-b12-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591140,
+          "job_id": "m60-c2-b12-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591141,
+          "job_id": "m60-c2-b13-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591141,
+          "job_id": "m60-c2-b13-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591142,
+          "job_id": "m60-c2-b14-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591142,
+          "job_id": "m60-c2-b14-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591143,
+          "job_id": "m60-c2-b15-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591143,
+          "job_id": "m60-c2-b15-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591144,
+          "job_id": "m60-c2-b16-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591144,
+          "job_id": "m60-c2-b16-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591145,
+          "job_id": "m60-c2-b17-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591145,
+          "job_id": "m60-c2-b17-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591146,
+          "job_id": "m60-c2-b18-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591146,
+          "job_id": "m60-c2-b18-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591147,
+          "job_id": "m60-c2-b19-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591147,
+          "job_id": "m60-c2-b19-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591148,
+          "job_id": "m60-c2-b20-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591148,
+          "job_id": "m60-c2-b20-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591149,
+          "job_id": "m60-c2-b21-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591149,
+          "job_id": "m60-c2-b21-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591150,
+          "job_id": "m60-c2-b22-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591150,
+          "job_id": "m60-c2-b22-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591151,
+          "job_id": "m60-c2-b23-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591151,
+          "job_id": "m60-c2-b23-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591152,
+          "job_id": "m60-c2-b24-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591152,
+          "job_id": "m60-c2-b24-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591153,
+          "job_id": "m60-c2-b25-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591153,
+          "job_id": "m60-c2-b25-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591154,
+          "job_id": "m60-c2-b26-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591154,
+          "job_id": "m60-c2-b26-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591155,
+          "job_id": "m60-c2-b27-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591155,
+          "job_id": "m60-c2-b27-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591156,
+          "job_id": "m60-c2-b28-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591156,
+          "job_id": "m60-c2-b28-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591157,
+          "job_id": "m60-c2-b29-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591157,
+          "job_id": "m60-c2-b29-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591158,
+          "job_id": "m60-c2-b30-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591158,
+          "job_id": "m60-c2-b30-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591159,
+          "job_id": "m60-c2-b31-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591159,
+          "job_id": "m60-c2-b31-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591160,
+          "job_id": "m60-c2-b32-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591160,
+          "job_id": "m60-c2-b32-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591161,
+          "job_id": "m60-c2-b33-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591161,
+          "job_id": "m60-c2-b33-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591162,
+          "job_id": "m60-c2-b34-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591162,
+          "job_id": "m60-c2-b34-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591163,
+          "job_id": "m60-c2-b35-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591163,
+          "job_id": "m60-c2-b35-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591164,
+          "job_id": "m60-c2-b36-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591164,
+          "job_id": "m60-c2-b36-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591165,
+          "job_id": "m60-c2-b37-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591165,
+          "job_id": "m60-c2-b37-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591166,
+          "job_id": "m60-c2-b38-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591166,
+          "job_id": "m60-c2-b38-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591167,
+          "job_id": "m60-c2-b39-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591167,
+          "job_id": "m60-c2-b39-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591168,
+          "job_id": "m60-c2-b40-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591168,
+          "job_id": "m60-c2-b40-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591169,
+          "job_id": "m60-c2-b41-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591169,
+          "job_id": "m60-c2-b41-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591170,
+          "job_id": "m60-c2-b42-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591170,
+          "job_id": "m60-c2-b42-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591171,
+          "job_id": "m60-c2-b43-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591171,
+          "job_id": "m60-c2-b43-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591172,
+          "job_id": "m60-c2-b44-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591172,
+          "job_id": "m60-c2-b44-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591173,
+          "job_id": "m60-c2-b45-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591173,
+          "job_id": "m60-c2-b45-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591174,
+          "job_id": "m60-c2-b46-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591174,
+          "job_id": "m60-c2-b46-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591175,
+          "job_id": "m60-c2-b47-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591175,
+          "job_id": "m60-c2-b47-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591176,
+          "job_id": "m60-c2-b48-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591176,
+          "job_id": "m60-c2-b48-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591177,
+          "job_id": "m60-c2-b49-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591177,
+          "job_id": "m60-c2-b49-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591178,
+          "job_id": "m60-c2-b50-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591178,
+          "job_id": "m60-c2-b50-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591179,
+          "job_id": "m60-c2-b51-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591179,
+          "job_id": "m60-c2-b51-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591180,
+          "job_id": "m60-c2-b52-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591180,
+          "job_id": "m60-c2-b52-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591181,
+          "job_id": "m60-c2-b53-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591181,
+          "job_id": "m60-c2-b53-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591182,
+          "job_id": "m60-c2-b54-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591182,
+          "job_id": "m60-c2-b54-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591183,
+          "job_id": "m60-c2-b55-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591183,
+          "job_id": "m60-c2-b55-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591184,
+          "job_id": "m60-c2-b56-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591184,
+          "job_id": "m60-c2-b56-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591185,
+          "job_id": "m60-c2-b57-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591185,
+          "job_id": "m60-c2-b57-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591186,
+          "job_id": "m60-c2-b58-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591186,
+          "job_id": "m60-c2-b58-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591187,
+          "job_id": "m60-c2-b59-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591187,
+          "job_id": "m60-c2-b59-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591188,
+          "job_id": "m60-c2-b60-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591188,
+          "job_id": "m60-c2-b60-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591189,
+          "job_id": "m60-c2-b61-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591189,
+          "job_id": "m60-c2-b61-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591190,
+          "job_id": "m60-c2-b62-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591190,
+          "job_id": "m60-c2-b62-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591191,
+          "job_id": "m60-c2-b63-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591191,
+          "job_id": "m60-c2-b63-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591192,
+          "job_id": "m60-c2-b64-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591192,
+          "job_id": "m60-c2-b64-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591193,
+          "job_id": "m60-c2-b65-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591193,
+          "job_id": "m60-c2-b65-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591194,
+          "job_id": "m60-c2-b66-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591194,
+          "job_id": "m60-c2-b66-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591195,
+          "job_id": "m60-c2-b67-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591195,
+          "job_id": "m60-c2-b67-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591196,
+          "job_id": "m60-c2-b68-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591196,
+          "job_id": "m60-c2-b68-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591197,
+          "job_id": "m60-c2-b69-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591197,
+          "job_id": "m60-c2-b69-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591198,
+          "job_id": "m60-c2-b70-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591198,
+          "job_id": "m60-c2-b70-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591199,
+          "job_id": "m60-c2-b71-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591199,
+          "job_id": "m60-c2-b71-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591200,
+          "job_id": "m60-c2-b72-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591200,
+          "job_id": "m60-c2-b72-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591201,
+          "job_id": "m60-c2-b73-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591201,
+          "job_id": "m60-c2-b73-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591202,
+          "job_id": "m60-c2-b74-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591202,
+          "job_id": "m60-c2-b74-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591203,
+          "job_id": "m60-c2-b75-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591203,
+          "job_id": "m60-c2-b75-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591204,
+          "job_id": "m60-c2-b76-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591204,
+          "job_id": "m60-c2-b76-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591205,
+          "job_id": "m60-c2-b77-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591205,
+          "job_id": "m60-c2-b77-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591206,
+          "job_id": "m60-c2-b78-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591206,
+          "job_id": "m60-c2-b78-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591207,
+          "job_id": "m60-c2-b79-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591207,
+          "job_id": "m60-c2-b79-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591208,
+          "job_id": "m60-c2-b80-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591208,
+          "job_id": "m60-c2-b80-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591209,
+          "job_id": "m60-c2-b81-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591209,
+          "job_id": "m60-c2-b81-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591210,
+          "job_id": "m60-c2-b82-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591210,
+          "job_id": "m60-c2-b82-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591211,
+          "job_id": "m60-c2-b83-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591211,
+          "job_id": "m60-c2-b83-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591212,
+          "job_id": "m60-c2-b84-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591212,
+          "job_id": "m60-c2-b84-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591213,
+          "job_id": "m60-c2-b85-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591213,
+          "job_id": "m60-c2-b85-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591214,
+          "job_id": "m60-c2-b86-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591214,
+          "job_id": "m60-c2-b86-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591215,
+          "job_id": "m60-c2-b87-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591215,
+          "job_id": "m60-c2-b87-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591216,
+          "job_id": "m60-c2-b88-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591216,
+          "job_id": "m60-c2-b88-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591217,
+          "job_id": "m60-c2-b89-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591217,
+          "job_id": "m60-c2-b89-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591218,
+          "job_id": "m60-c2-b90-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591218,
+          "job_id": "m60-c2-b90-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591219,
+          "job_id": "m60-c2-b91-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591219,
+          "job_id": "m60-c2-b91-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591220,
+          "job_id": "m60-c2-b92-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591220,
+          "job_id": "m60-c2-b92-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591221,
+          "job_id": "m60-c2-b93-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591221,
+          "job_id": "m60-c2-b93-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591222,
+          "job_id": "m60-c2-b94-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591222,
+          "job_id": "m60-c2-b94-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591223,
+          "job_id": "m60-c2-b95-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591223,
+          "job_id": "m60-c2-b95-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591224,
+          "job_id": "m60-c2-b96-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591224,
+          "job_id": "m60-c2-b96-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591225,
+          "job_id": "m60-c2-b97-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591225,
+          "job_id": "m60-c2-b97-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591226,
+          "job_id": "m60-c2-b98-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591226,
+          "job_id": "m60-c2-b98-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591227,
+          "job_id": "m60-c2-b99-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591227,
+          "job_id": "m60-c2-b99-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591228,
+          "job_id": "m60-c2-b100-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591228,
+          "job_id": "m60-c2-b100-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591229,
+          "job_id": "m60-c2-b101-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591229,
+          "job_id": "m60-c2-b101-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591230,
+          "job_id": "m60-c2-b102-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591230,
+          "job_id": "m60-c2-b102-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591231,
+          "job_id": "m60-c2-b103-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591231,
+          "job_id": "m60-c2-b103-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591232,
+          "job_id": "m60-c2-b104-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591232,
+          "job_id": "m60-c2-b104-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591233,
+          "job_id": "m60-c2-b105-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591233,
+          "job_id": "m60-c2-b105-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591234,
+          "job_id": "m60-c2-b106-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591234,
+          "job_id": "m60-c2-b106-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591235,
+          "job_id": "m60-c2-b107-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591235,
+          "job_id": "m60-c2-b107-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591236,
+          "job_id": "m60-c2-b108-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591236,
+          "job_id": "m60-c2-b108-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591237,
+          "job_id": "m60-c2-b109-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591237,
+          "job_id": "m60-c2-b109-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591238,
+          "job_id": "m60-c2-b110-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591238,
+          "job_id": "m60-c2-b110-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591239,
+          "job_id": "m60-c2-b111-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591239,
+          "job_id": "m60-c2-b111-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591240,
+          "job_id": "m60-c2-b112-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591240,
+          "job_id": "m60-c2-b112-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591241,
+          "job_id": "m60-c2-b113-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591241,
+          "job_id": "m60-c2-b113-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591242,
+          "job_id": "m60-c2-b114-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591242,
+          "job_id": "m60-c2-b114-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591243,
+          "job_id": "m60-c2-b115-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591243,
+          "job_id": "m60-c2-b115-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591244,
+          "job_id": "m60-c2-b116-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591244,
+          "job_id": "m60-c2-b116-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591245,
+          "job_id": "m60-c2-b117-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591245,
+          "job_id": "m60-c2-b117-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591246,
+          "job_id": "m60-c2-b118-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591246,
+          "job_id": "m60-c2-b118-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591247,
+          "job_id": "m60-c2-b119-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591247,
+          "job_id": "m60-c2-b119-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591248,
+          "job_id": "m60-c2-b120-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591248,
+          "job_id": "m60-c2-b120-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591249,
+          "job_id": "m60-c2-b121-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591249,
+          "job_id": "m60-c2-b121-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591250,
+          "job_id": "m60-c2-b122-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591250,
+          "job_id": "m60-c2-b122-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591251,
+          "job_id": "m60-c2-b123-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591251,
+          "job_id": "m60-c2-b123-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591252,
+          "job_id": "m60-c2-b124-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591252,
+          "job_id": "m60-c2-b124-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591253,
+          "job_id": "m60-c2-b125-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591253,
+          "job_id": "m60-c2-b125-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591254,
+          "job_id": "m60-c2-b126-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591254,
+          "job_id": "m60-c2-b126-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591255,
+          "job_id": "m60-c2-b127-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591255,
+          "job_id": "m60-c2-b127-s1",
+          "opponent_id": "heuristic-portable-v029"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9591256,
+          "job_id": "m60-c3-b0-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591256,
+          "job_id": "m60-c3-b0-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591257,
+          "job_id": "m60-c3-b1-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591257,
+          "job_id": "m60-c3-b1-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591258,
+          "job_id": "m60-c3-b2-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591258,
+          "job_id": "m60-c3-b2-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591259,
+          "job_id": "m60-c3-b3-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591259,
+          "job_id": "m60-c3-b3-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591260,
+          "job_id": "m60-c3-b4-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591260,
+          "job_id": "m60-c3-b4-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591261,
+          "job_id": "m60-c3-b5-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591261,
+          "job_id": "m60-c3-b5-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591262,
+          "job_id": "m60-c3-b6-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591262,
+          "job_id": "m60-c3-b6-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591263,
+          "job_id": "m60-c3-b7-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591263,
+          "job_id": "m60-c3-b7-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591264,
+          "job_id": "m60-c3-b8-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591264,
+          "job_id": "m60-c3-b8-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591265,
+          "job_id": "m60-c3-b9-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591265,
+          "job_id": "m60-c3-b9-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591266,
+          "job_id": "m60-c3-b10-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591266,
+          "job_id": "m60-c3-b10-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591267,
+          "job_id": "m60-c3-b11-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591267,
+          "job_id": "m60-c3-b11-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591268,
+          "job_id": "m60-c3-b12-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591268,
+          "job_id": "m60-c3-b12-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591269,
+          "job_id": "m60-c3-b13-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591269,
+          "job_id": "m60-c3-b13-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591270,
+          "job_id": "m60-c3-b14-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591270,
+          "job_id": "m60-c3-b14-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591271,
+          "job_id": "m60-c3-b15-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591271,
+          "job_id": "m60-c3-b15-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591272,
+          "job_id": "m60-c3-b16-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591272,
+          "job_id": "m60-c3-b16-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591273,
+          "job_id": "m60-c3-b17-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591273,
+          "job_id": "m60-c3-b17-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591274,
+          "job_id": "m60-c3-b18-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591274,
+          "job_id": "m60-c3-b18-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591275,
+          "job_id": "m60-c3-b19-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591275,
+          "job_id": "m60-c3-b19-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591276,
+          "job_id": "m60-c3-b20-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591276,
+          "job_id": "m60-c3-b20-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591277,
+          "job_id": "m60-c3-b21-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591277,
+          "job_id": "m60-c3-b21-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591278,
+          "job_id": "m60-c3-b22-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591278,
+          "job_id": "m60-c3-b22-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591279,
+          "job_id": "m60-c3-b23-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591279,
+          "job_id": "m60-c3-b23-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591280,
+          "job_id": "m60-c3-b24-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591280,
+          "job_id": "m60-c3-b24-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591281,
+          "job_id": "m60-c3-b25-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591281,
+          "job_id": "m60-c3-b25-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591282,
+          "job_id": "m60-c3-b26-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591282,
+          "job_id": "m60-c3-b26-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591283,
+          "job_id": "m60-c3-b27-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591283,
+          "job_id": "m60-c3-b27-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591284,
+          "job_id": "m60-c3-b28-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591284,
+          "job_id": "m60-c3-b28-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591285,
+          "job_id": "m60-c3-b29-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591285,
+          "job_id": "m60-c3-b29-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591286,
+          "job_id": "m60-c3-b30-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591286,
+          "job_id": "m60-c3-b30-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591287,
+          "job_id": "m60-c3-b31-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591287,
+          "job_id": "m60-c3-b31-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591288,
+          "job_id": "m60-c3-b32-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591288,
+          "job_id": "m60-c3-b32-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591289,
+          "job_id": "m60-c3-b33-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591289,
+          "job_id": "m60-c3-b33-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591290,
+          "job_id": "m60-c3-b34-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591290,
+          "job_id": "m60-c3-b34-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591291,
+          "job_id": "m60-c3-b35-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591291,
+          "job_id": "m60-c3-b35-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591292,
+          "job_id": "m60-c3-b36-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591292,
+          "job_id": "m60-c3-b36-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591293,
+          "job_id": "m60-c3-b37-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591293,
+          "job_id": "m60-c3-b37-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591294,
+          "job_id": "m60-c3-b38-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591294,
+          "job_id": "m60-c3-b38-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591295,
+          "job_id": "m60-c3-b39-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591295,
+          "job_id": "m60-c3-b39-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591296,
+          "job_id": "m60-c3-b40-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591296,
+          "job_id": "m60-c3-b40-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591297,
+          "job_id": "m60-c3-b41-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591297,
+          "job_id": "m60-c3-b41-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591298,
+          "job_id": "m60-c3-b42-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591298,
+          "job_id": "m60-c3-b42-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591299,
+          "job_id": "m60-c3-b43-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591299,
+          "job_id": "m60-c3-b43-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591300,
+          "job_id": "m60-c3-b44-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591300,
+          "job_id": "m60-c3-b44-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591301,
+          "job_id": "m60-c3-b45-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591301,
+          "job_id": "m60-c3-b45-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591302,
+          "job_id": "m60-c3-b46-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591302,
+          "job_id": "m60-c3-b46-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591303,
+          "job_id": "m60-c3-b47-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591303,
+          "job_id": "m60-c3-b47-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591304,
+          "job_id": "m60-c3-b48-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591304,
+          "job_id": "m60-c3-b48-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591305,
+          "job_id": "m60-c3-b49-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591305,
+          "job_id": "m60-c3-b49-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591306,
+          "job_id": "m60-c3-b50-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591306,
+          "job_id": "m60-c3-b50-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591307,
+          "job_id": "m60-c3-b51-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591307,
+          "job_id": "m60-c3-b51-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591308,
+          "job_id": "m60-c3-b52-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591308,
+          "job_id": "m60-c3-b52-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591309,
+          "job_id": "m60-c3-b53-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591309,
+          "job_id": "m60-c3-b53-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591310,
+          "job_id": "m60-c3-b54-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591310,
+          "job_id": "m60-c3-b54-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591311,
+          "job_id": "m60-c3-b55-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591311,
+          "job_id": "m60-c3-b55-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591312,
+          "job_id": "m60-c3-b56-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591312,
+          "job_id": "m60-c3-b56-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591313,
+          "job_id": "m60-c3-b57-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591313,
+          "job_id": "m60-c3-b57-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591314,
+          "job_id": "m60-c3-b58-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591314,
+          "job_id": "m60-c3-b58-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591315,
+          "job_id": "m60-c3-b59-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591315,
+          "job_id": "m60-c3-b59-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591316,
+          "job_id": "m60-c3-b60-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591316,
+          "job_id": "m60-c3-b60-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591317,
+          "job_id": "m60-c3-b61-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591317,
+          "job_id": "m60-c3-b61-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591318,
+          "job_id": "m60-c3-b62-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591318,
+          "job_id": "m60-c3-b62-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591319,
+          "job_id": "m60-c3-b63-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591319,
+          "job_id": "m60-c3-b63-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591320,
+          "job_id": "m60-c3-b64-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591320,
+          "job_id": "m60-c3-b64-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591321,
+          "job_id": "m60-c3-b65-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591321,
+          "job_id": "m60-c3-b65-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591322,
+          "job_id": "m60-c3-b66-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591322,
+          "job_id": "m60-c3-b66-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591323,
+          "job_id": "m60-c3-b67-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591323,
+          "job_id": "m60-c3-b67-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591324,
+          "job_id": "m60-c3-b68-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591324,
+          "job_id": "m60-c3-b68-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591325,
+          "job_id": "m60-c3-b69-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591325,
+          "job_id": "m60-c3-b69-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591326,
+          "job_id": "m60-c3-b70-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591326,
+          "job_id": "m60-c3-b70-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591327,
+          "job_id": "m60-c3-b71-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591327,
+          "job_id": "m60-c3-b71-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591328,
+          "job_id": "m60-c3-b72-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591328,
+          "job_id": "m60-c3-b72-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591329,
+          "job_id": "m60-c3-b73-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591329,
+          "job_id": "m60-c3-b73-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591330,
+          "job_id": "m60-c3-b74-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591330,
+          "job_id": "m60-c3-b74-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591331,
+          "job_id": "m60-c3-b75-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591331,
+          "job_id": "m60-c3-b75-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591332,
+          "job_id": "m60-c3-b76-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591332,
+          "job_id": "m60-c3-b76-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591333,
+          "job_id": "m60-c3-b77-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591333,
+          "job_id": "m60-c3-b77-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591334,
+          "job_id": "m60-c3-b78-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591334,
+          "job_id": "m60-c3-b78-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591335,
+          "job_id": "m60-c3-b79-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591335,
+          "job_id": "m60-c3-b79-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591336,
+          "job_id": "m60-c3-b80-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591336,
+          "job_id": "m60-c3-b80-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591337,
+          "job_id": "m60-c3-b81-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591337,
+          "job_id": "m60-c3-b81-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591338,
+          "job_id": "m60-c3-b82-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591338,
+          "job_id": "m60-c3-b82-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591339,
+          "job_id": "m60-c3-b83-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591339,
+          "job_id": "m60-c3-b83-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591340,
+          "job_id": "m60-c3-b84-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591340,
+          "job_id": "m60-c3-b84-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591341,
+          "job_id": "m60-c3-b85-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591341,
+          "job_id": "m60-c3-b85-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591342,
+          "job_id": "m60-c3-b86-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591342,
+          "job_id": "m60-c3-b86-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591343,
+          "job_id": "m60-c3-b87-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591343,
+          "job_id": "m60-c3-b87-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591344,
+          "job_id": "m60-c3-b88-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591344,
+          "job_id": "m60-c3-b88-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591345,
+          "job_id": "m60-c3-b89-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591345,
+          "job_id": "m60-c3-b89-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591346,
+          "job_id": "m60-c3-b90-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591346,
+          "job_id": "m60-c3-b90-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591347,
+          "job_id": "m60-c3-b91-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591347,
+          "job_id": "m60-c3-b91-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591348,
+          "job_id": "m60-c3-b92-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591348,
+          "job_id": "m60-c3-b92-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591349,
+          "job_id": "m60-c3-b93-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591349,
+          "job_id": "m60-c3-b93-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591350,
+          "job_id": "m60-c3-b94-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591350,
+          "job_id": "m60-c3-b94-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591351,
+          "job_id": "m60-c3-b95-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591351,
+          "job_id": "m60-c3-b95-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591352,
+          "job_id": "m60-c3-b96-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591352,
+          "job_id": "m60-c3-b96-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591353,
+          "job_id": "m60-c3-b97-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591353,
+          "job_id": "m60-c3-b97-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591354,
+          "job_id": "m60-c3-b98-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591354,
+          "job_id": "m60-c3-b98-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591355,
+          "job_id": "m60-c3-b99-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591355,
+          "job_id": "m60-c3-b99-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591356,
+          "job_id": "m60-c3-b100-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591356,
+          "job_id": "m60-c3-b100-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591357,
+          "job_id": "m60-c3-b101-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591357,
+          "job_id": "m60-c3-b101-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591358,
+          "job_id": "m60-c3-b102-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591358,
+          "job_id": "m60-c3-b102-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591359,
+          "job_id": "m60-c3-b103-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591359,
+          "job_id": "m60-c3-b103-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591360,
+          "job_id": "m60-c3-b104-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591360,
+          "job_id": "m60-c3-b104-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591361,
+          "job_id": "m60-c3-b105-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591361,
+          "job_id": "m60-c3-b105-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591362,
+          "job_id": "m60-c3-b106-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591362,
+          "job_id": "m60-c3-b106-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591363,
+          "job_id": "m60-c3-b107-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591363,
+          "job_id": "m60-c3-b107-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591364,
+          "job_id": "m60-c3-b108-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591364,
+          "job_id": "m60-c3-b108-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591365,
+          "job_id": "m60-c3-b109-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591365,
+          "job_id": "m60-c3-b109-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591366,
+          "job_id": "m60-c3-b110-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591366,
+          "job_id": "m60-c3-b110-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591367,
+          "job_id": "m60-c3-b111-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591367,
+          "job_id": "m60-c3-b111-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591368,
+          "job_id": "m60-c3-b112-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591368,
+          "job_id": "m60-c3-b112-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591369,
+          "job_id": "m60-c3-b113-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591369,
+          "job_id": "m60-c3-b113-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591370,
+          "job_id": "m60-c3-b114-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591370,
+          "job_id": "m60-c3-b114-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591371,
+          "job_id": "m60-c3-b115-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591371,
+          "job_id": "m60-c3-b115-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591372,
+          "job_id": "m60-c3-b116-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591372,
+          "job_id": "m60-c3-b116-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591373,
+          "job_id": "m60-c3-b117-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591373,
+          "job_id": "m60-c3-b117-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591374,
+          "job_id": "m60-c3-b118-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591374,
+          "job_id": "m60-c3-b118-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591375,
+          "job_id": "m60-c3-b119-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591375,
+          "job_id": "m60-c3-b119-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591376,
+          "job_id": "m60-c3-b120-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591376,
+          "job_id": "m60-c3-b120-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591377,
+          "job_id": "m60-c3-b121-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591377,
+          "job_id": "m60-c3-b121-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591378,
+          "job_id": "m60-c3-b122-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591378,
+          "job_id": "m60-c3-b122-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591379,
+          "job_id": "m60-c3-b123-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591379,
+          "job_id": "m60-c3-b123-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591380,
+          "job_id": "m60-c3-b124-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591380,
+          "job_id": "m60-c3-b124-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591381,
+          "job_id": "m60-c3-b125-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591381,
+          "job_id": "m60-c3-b125-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591382,
+          "job_id": "m60-c3-b126-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591382,
+          "job_id": "m60-c3-b126-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591383,
+          "job_id": "m60-c3-b127-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591383,
+          "job_id": "m60-c3-b127-s1",
+          "opponent_id": "heuristic-portable-v029"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9591384,
+          "job_id": "m60-c4-b0-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591384,
+          "job_id": "m60-c4-b0-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591385,
+          "job_id": "m60-c4-b1-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591385,
+          "job_id": "m60-c4-b1-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591386,
+          "job_id": "m60-c4-b2-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591386,
+          "job_id": "m60-c4-b2-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591387,
+          "job_id": "m60-c4-b3-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591387,
+          "job_id": "m60-c4-b3-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591388,
+          "job_id": "m60-c4-b4-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591388,
+          "job_id": "m60-c4-b4-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591389,
+          "job_id": "m60-c4-b5-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591389,
+          "job_id": "m60-c4-b5-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591390,
+          "job_id": "m60-c4-b6-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591390,
+          "job_id": "m60-c4-b6-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591391,
+          "job_id": "m60-c4-b7-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591391,
+          "job_id": "m60-c4-b7-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591392,
+          "job_id": "m60-c4-b8-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591392,
+          "job_id": "m60-c4-b8-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591393,
+          "job_id": "m60-c4-b9-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591393,
+          "job_id": "m60-c4-b9-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591394,
+          "job_id": "m60-c4-b10-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591394,
+          "job_id": "m60-c4-b10-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591395,
+          "job_id": "m60-c4-b11-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591395,
+          "job_id": "m60-c4-b11-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591396,
+          "job_id": "m60-c4-b12-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591396,
+          "job_id": "m60-c4-b12-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591397,
+          "job_id": "m60-c4-b13-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591397,
+          "job_id": "m60-c4-b13-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591398,
+          "job_id": "m60-c4-b14-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591398,
+          "job_id": "m60-c4-b14-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591399,
+          "job_id": "m60-c4-b15-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591399,
+          "job_id": "m60-c4-b15-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591400,
+          "job_id": "m60-c4-b16-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591400,
+          "job_id": "m60-c4-b16-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591401,
+          "job_id": "m60-c4-b17-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591401,
+          "job_id": "m60-c4-b17-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591402,
+          "job_id": "m60-c4-b18-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591402,
+          "job_id": "m60-c4-b18-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591403,
+          "job_id": "m60-c4-b19-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591403,
+          "job_id": "m60-c4-b19-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591404,
+          "job_id": "m60-c4-b20-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591404,
+          "job_id": "m60-c4-b20-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591405,
+          "job_id": "m60-c4-b21-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591405,
+          "job_id": "m60-c4-b21-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591406,
+          "job_id": "m60-c4-b22-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591406,
+          "job_id": "m60-c4-b22-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591407,
+          "job_id": "m60-c4-b23-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591407,
+          "job_id": "m60-c4-b23-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591408,
+          "job_id": "m60-c4-b24-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591408,
+          "job_id": "m60-c4-b24-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591409,
+          "job_id": "m60-c4-b25-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591409,
+          "job_id": "m60-c4-b25-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591410,
+          "job_id": "m60-c4-b26-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591410,
+          "job_id": "m60-c4-b26-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591411,
+          "job_id": "m60-c4-b27-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591411,
+          "job_id": "m60-c4-b27-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591412,
+          "job_id": "m60-c4-b28-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591412,
+          "job_id": "m60-c4-b28-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591413,
+          "job_id": "m60-c4-b29-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591413,
+          "job_id": "m60-c4-b29-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591414,
+          "job_id": "m60-c4-b30-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591414,
+          "job_id": "m60-c4-b30-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591415,
+          "job_id": "m60-c4-b31-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591415,
+          "job_id": "m60-c4-b31-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591416,
+          "job_id": "m60-c4-b32-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591416,
+          "job_id": "m60-c4-b32-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591417,
+          "job_id": "m60-c4-b33-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591417,
+          "job_id": "m60-c4-b33-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591418,
+          "job_id": "m60-c4-b34-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591418,
+          "job_id": "m60-c4-b34-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591419,
+          "job_id": "m60-c4-b35-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591419,
+          "job_id": "m60-c4-b35-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591420,
+          "job_id": "m60-c4-b36-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591420,
+          "job_id": "m60-c4-b36-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591421,
+          "job_id": "m60-c4-b37-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591421,
+          "job_id": "m60-c4-b37-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591422,
+          "job_id": "m60-c4-b38-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591422,
+          "job_id": "m60-c4-b38-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591423,
+          "job_id": "m60-c4-b39-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591423,
+          "job_id": "m60-c4-b39-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591424,
+          "job_id": "m60-c4-b40-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591424,
+          "job_id": "m60-c4-b40-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591425,
+          "job_id": "m60-c4-b41-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591425,
+          "job_id": "m60-c4-b41-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591426,
+          "job_id": "m60-c4-b42-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591426,
+          "job_id": "m60-c4-b42-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591427,
+          "job_id": "m60-c4-b43-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591427,
+          "job_id": "m60-c4-b43-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591428,
+          "job_id": "m60-c4-b44-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591428,
+          "job_id": "m60-c4-b44-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591429,
+          "job_id": "m60-c4-b45-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591429,
+          "job_id": "m60-c4-b45-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591430,
+          "job_id": "m60-c4-b46-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591430,
+          "job_id": "m60-c4-b46-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591431,
+          "job_id": "m60-c4-b47-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591431,
+          "job_id": "m60-c4-b47-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591432,
+          "job_id": "m60-c4-b48-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591432,
+          "job_id": "m60-c4-b48-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591433,
+          "job_id": "m60-c4-b49-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591433,
+          "job_id": "m60-c4-b49-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591434,
+          "job_id": "m60-c4-b50-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591434,
+          "job_id": "m60-c4-b50-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591435,
+          "job_id": "m60-c4-b51-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591435,
+          "job_id": "m60-c4-b51-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591436,
+          "job_id": "m60-c4-b52-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591436,
+          "job_id": "m60-c4-b52-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591437,
+          "job_id": "m60-c4-b53-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591437,
+          "job_id": "m60-c4-b53-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591438,
+          "job_id": "m60-c4-b54-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591438,
+          "job_id": "m60-c4-b54-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591439,
+          "job_id": "m60-c4-b55-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591439,
+          "job_id": "m60-c4-b55-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591440,
+          "job_id": "m60-c4-b56-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591440,
+          "job_id": "m60-c4-b56-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591441,
+          "job_id": "m60-c4-b57-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591441,
+          "job_id": "m60-c4-b57-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591442,
+          "job_id": "m60-c4-b58-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591442,
+          "job_id": "m60-c4-b58-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591443,
+          "job_id": "m60-c4-b59-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591443,
+          "job_id": "m60-c4-b59-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591444,
+          "job_id": "m60-c4-b60-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591444,
+          "job_id": "m60-c4-b60-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591445,
+          "job_id": "m60-c4-b61-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591445,
+          "job_id": "m60-c4-b61-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591446,
+          "job_id": "m60-c4-b62-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591446,
+          "job_id": "m60-c4-b62-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591447,
+          "job_id": "m60-c4-b63-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591447,
+          "job_id": "m60-c4-b63-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591448,
+          "job_id": "m60-c4-b64-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591448,
+          "job_id": "m60-c4-b64-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591449,
+          "job_id": "m60-c4-b65-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591449,
+          "job_id": "m60-c4-b65-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591450,
+          "job_id": "m60-c4-b66-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591450,
+          "job_id": "m60-c4-b66-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591451,
+          "job_id": "m60-c4-b67-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591451,
+          "job_id": "m60-c4-b67-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591452,
+          "job_id": "m60-c4-b68-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591452,
+          "job_id": "m60-c4-b68-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591453,
+          "job_id": "m60-c4-b69-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591453,
+          "job_id": "m60-c4-b69-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591454,
+          "job_id": "m60-c4-b70-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591454,
+          "job_id": "m60-c4-b70-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591455,
+          "job_id": "m60-c4-b71-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591455,
+          "job_id": "m60-c4-b71-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591456,
+          "job_id": "m60-c4-b72-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591456,
+          "job_id": "m60-c4-b72-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591457,
+          "job_id": "m60-c4-b73-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591457,
+          "job_id": "m60-c4-b73-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591458,
+          "job_id": "m60-c4-b74-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591458,
+          "job_id": "m60-c4-b74-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591459,
+          "job_id": "m60-c4-b75-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591459,
+          "job_id": "m60-c4-b75-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591460,
+          "job_id": "m60-c4-b76-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591460,
+          "job_id": "m60-c4-b76-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591461,
+          "job_id": "m60-c4-b77-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591461,
+          "job_id": "m60-c4-b77-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591462,
+          "job_id": "m60-c4-b78-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591462,
+          "job_id": "m60-c4-b78-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591463,
+          "job_id": "m60-c4-b79-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591463,
+          "job_id": "m60-c4-b79-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591464,
+          "job_id": "m60-c4-b80-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591464,
+          "job_id": "m60-c4-b80-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591465,
+          "job_id": "m60-c4-b81-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591465,
+          "job_id": "m60-c4-b81-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591466,
+          "job_id": "m60-c4-b82-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591466,
+          "job_id": "m60-c4-b82-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591467,
+          "job_id": "m60-c4-b83-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591467,
+          "job_id": "m60-c4-b83-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591468,
+          "job_id": "m60-c4-b84-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591468,
+          "job_id": "m60-c4-b84-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591469,
+          "job_id": "m60-c4-b85-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591469,
+          "job_id": "m60-c4-b85-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591470,
+          "job_id": "m60-c4-b86-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591470,
+          "job_id": "m60-c4-b86-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591471,
+          "job_id": "m60-c4-b87-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591471,
+          "job_id": "m60-c4-b87-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591472,
+          "job_id": "m60-c4-b88-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591472,
+          "job_id": "m60-c4-b88-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591473,
+          "job_id": "m60-c4-b89-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591473,
+          "job_id": "m60-c4-b89-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591474,
+          "job_id": "m60-c4-b90-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591474,
+          "job_id": "m60-c4-b90-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591475,
+          "job_id": "m60-c4-b91-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591475,
+          "job_id": "m60-c4-b91-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591476,
+          "job_id": "m60-c4-b92-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591476,
+          "job_id": "m60-c4-b92-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591477,
+          "job_id": "m60-c4-b93-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591477,
+          "job_id": "m60-c4-b93-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591478,
+          "job_id": "m60-c4-b94-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591478,
+          "job_id": "m60-c4-b94-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591479,
+          "job_id": "m60-c4-b95-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591479,
+          "job_id": "m60-c4-b95-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591480,
+          "job_id": "m60-c4-b96-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591480,
+          "job_id": "m60-c4-b96-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591481,
+          "job_id": "m60-c4-b97-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591481,
+          "job_id": "m60-c4-b97-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591482,
+          "job_id": "m60-c4-b98-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591482,
+          "job_id": "m60-c4-b98-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591483,
+          "job_id": "m60-c4-b99-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591483,
+          "job_id": "m60-c4-b99-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591484,
+          "job_id": "m60-c4-b100-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591484,
+          "job_id": "m60-c4-b100-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591485,
+          "job_id": "m60-c4-b101-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591485,
+          "job_id": "m60-c4-b101-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591486,
+          "job_id": "m60-c4-b102-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591486,
+          "job_id": "m60-c4-b102-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591487,
+          "job_id": "m60-c4-b103-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591487,
+          "job_id": "m60-c4-b103-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591488,
+          "job_id": "m60-c4-b104-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591488,
+          "job_id": "m60-c4-b104-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591489,
+          "job_id": "m60-c4-b105-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591489,
+          "job_id": "m60-c4-b105-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591490,
+          "job_id": "m60-c4-b106-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591490,
+          "job_id": "m60-c4-b106-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591491,
+          "job_id": "m60-c4-b107-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591491,
+          "job_id": "m60-c4-b107-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591492,
+          "job_id": "m60-c4-b108-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591492,
+          "job_id": "m60-c4-b108-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591493,
+          "job_id": "m60-c4-b109-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591493,
+          "job_id": "m60-c4-b109-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591494,
+          "job_id": "m60-c4-b110-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591494,
+          "job_id": "m60-c4-b110-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591495,
+          "job_id": "m60-c4-b111-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591495,
+          "job_id": "m60-c4-b111-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591496,
+          "job_id": "m60-c4-b112-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591496,
+          "job_id": "m60-c4-b112-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591497,
+          "job_id": "m60-c4-b113-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591497,
+          "job_id": "m60-c4-b113-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591498,
+          "job_id": "m60-c4-b114-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591498,
+          "job_id": "m60-c4-b114-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591499,
+          "job_id": "m60-c4-b115-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591499,
+          "job_id": "m60-c4-b115-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591500,
+          "job_id": "m60-c4-b116-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591500,
+          "job_id": "m60-c4-b116-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591501,
+          "job_id": "m60-c4-b117-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591501,
+          "job_id": "m60-c4-b117-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591502,
+          "job_id": "m60-c4-b118-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591502,
+          "job_id": "m60-c4-b118-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591503,
+          "job_id": "m60-c4-b119-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591503,
+          "job_id": "m60-c4-b119-s1",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591504,
+          "job_id": "m60-c4-b120-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591504,
+          "job_id": "m60-c4-b120-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591505,
+          "job_id": "m60-c4-b121-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591505,
+          "job_id": "m60-c4-b121-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591506,
+          "job_id": "m60-c4-b122-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591506,
+          "job_id": "m60-c4-b122-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591507,
+          "job_id": "m60-c4-b123-s0",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591507,
+          "job_id": "m60-c4-b123-s1",
+          "opponent_id": "prism-v01"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591508,
+          "job_id": "m60-c4-b124-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591508,
+          "job_id": "m60-c4-b124-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591509,
+          "job_id": "m60-c4-b125-s0",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591509,
+          "job_id": "m60-c4-b125-s1",
+          "opponent_id": "alpha-parent-v012"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591510,
+          "job_id": "m60-c4-b126-s0",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591510,
+          "job_id": "m60-c4-b126-s1",
+          "opponent_id": "prism-general-v011"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9591511,
+          "job_id": "m60-c4-b127-s0",
+          "opponent_id": "heuristic-portable-v029"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9591511,
+          "job_id": "m60-c4-b127-s1",
+          "opponent_id": "heuristic-portable-v029"
+        }
+      ]
+    ],
+    "format": "prism-ppo-arena-v1",
+    "learner": {
+      "program": "@engine",
+      "sha256": "@engine_sha256"
+    },
+    "limits": {
+      "campaign_cpu_seconds": 40000,
+      "game_cpu_seconds": 30,
+      "game_wall_seconds": 90,
+      "handshake_timeout_ms": 10000,
+      "max_infra_retries": 0,
+      "max_physical_decisions": 262144,
+      "max_plies": 256,
+      "memory_bytes": 8589934592,
+      "move_timeout_ms": 10000,
+      "shutdown_grace_ms": 1000
+    },
+    "opponents": {
+      "alpha-parent-v012": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@parent",
+          "--seed",
+          "59031003"
+        ],
+        "files": {
+          "@parent": "@parent_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "heuristic-portable-v029": {
+        "args": [
+          "agent-heuristic-v02",
+          "--seed",
+          "20260926"
+        ],
+        "files": {},
+        "hello": {
+          "agent_name": "splendor-cli-heuristic-v02",
+          "agent_version": "0.2.9"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "prism-general-v011": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@general",
+          "--seed",
+          "59031002"
+        ],
+        "files": {
+          "@general": "@general_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "prism-v01": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@initial",
+          "--seed",
+          "51000001"
+        ],
+        "files": {
+          "@initial": "@initial_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      }
+    },
+    "parent_weights": "@parent",
+    "run": {
+      "arena_contract_sha256": "",
+      "auditor_sha256": "@engine_sha256",
+      "budget": {
+        "max_attempts": 1024,
+        "max_cycles": 4,
+        "max_decisions": 262144,
+        "max_job_decisions": 256,
+        "max_jobs": 1024,
+        "max_optimizer_steps": 2048,
+        "max_run_seconds": 28800,
+        "max_storage_bytes": 34359738368,
+        "max_update_attempts": 2048
+      },
+      "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+      "cpu_threads": 2,
+      "device": "cpu",
+      "format": "prism-ppo-run-v3",
+      "opponents": {
+        "alpha-parent-v012": "",
+        "heuristic-portable-v029": "",
+        "prism-general-v011": "",
+        "prism-v01": ""
+      },
+      "parent_sha256": "@parent_sha256",
+      "ppo": {
+        "clip_epsilon": 0.2,
+        "entropy_weight": 0.01,
+        "gae_lambda": 0.95,
+        "logp_tolerance": 1e-06,
+        "lr": 3e-05,
+        "max_grad_norm": 1.0,
+        "minibatch_size": 256,
+        "normalize_advantage": true,
+        "passes": 2,
+        "style_beta": 0.3,
+        "style_value_weight": 0.5,
+        "target_kl": 0.02,
+        "value_tolerance": 1e-06,
+        "value_weight": 0.5,
+        "weight_decay": 0.0
+      },
+      "run_id": "m60-alpha-bigcard",
+      "seed": 59031001,
+      "style": {
+        "diagnostic_horizon_main_actions": 20,
+        "diagnostic_score_threshold": 8,
+        "format": "prism-rush-style-v1",
+        "phase_semantics": "choose_noble-belongs-to-preceding-main",
+        "score_cap": 15,
+        "short_game_padding": "terminal-prestige",
+        "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+        "terminal_only": true,
+        "window_main_actions": 24
+      }
+    }
+  },
+  "weight_hashes": {
+    "general": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "initial": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+    "parent": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618"
+  }
+}
