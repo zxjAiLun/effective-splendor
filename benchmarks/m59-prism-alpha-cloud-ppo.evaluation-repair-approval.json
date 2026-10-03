@@ -1,0 +1,35 @@
+{
+  "archived_partials": [
+    {
+      "archive": "/home/ubuntu/splendor-ppo-m59/evaluation/incident/original-partials/partial-0",
+      "hashes": {
+        "game.json": "4aad88c6a2d560c4ea239c2b06c0e22f3628ec890ccd57309d22f037124628e5",
+        "match-config.json": "9d04b9229f27016bd1c0738d70831fd8222024ae11c05d704bff1cf105832225"
+      },
+      "original_path": "/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/runs/anchors-4/games/base/prism-v01/seed-9600134-seat-0"
+    },
+    {
+      "archive": "/home/ubuntu/splendor-ppo-m59/evaluation/incident/original-partials/partial-1",
+      "hashes": {
+        "game.json": "bb6b14f0795036f72f70b885b285a2745dc49760f2ca081a1672539920107dc2",
+        "match-config.json": "98a052ad66ca8af27f0f2b4571fa5161ec973bbbc11392cb8d587ff77ccd2000",
+        "replay.json": "fd19f92c382563d425da0c6929bae1d0440d28ab7c44f7159eefd09035a5d633",
+        "report.json": "076e6c717d289017d680453003aa94bf0504e1f11f89f4248b572cf335a1e113",
+        "stderr.log.470965.tmp": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout.log": "2bc15b016b8ff09ccecc5d0d9e8fb7a57e435538f3b7bc61b2a1989fb26dda9f"
+      },
+      "original_path": "/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/runs/anchors-5/games/base/prism-v01/seed-9600166-seat-1"
+    }
+  ],
+  "format": "m59-approved-execution-repair-v1",
+  "maximum_interrupted_game_retries": 2,
+  "maximum_physical_eval_attempts": 4482,
+  "original_deadline": "2026-10-03T13:40:17.189558+00:00",
+  "original_execution_sha256": "3ad3dc50bd2c08f3c241c8db120b1d70d65d9a63f2b30f1be2a6d161aae5eb11",
+  "original_failure_preserved": true,
+  "owner_authorization": "允许最多补跑这2局，完成原固定评测",
+  "proposal_sha256": "abd5daa2a4fe1d18ac999408f04dfd53a27a0aad005c88957e07919986589c1a",
+  "source_sha256": "e44eb8432fe05af177f7e451c6988e3398c3f50324b3b4b5dc737ed91db2c033",
+  "storage_fix_sha256": "b417e62c6aa2ce56ad2968ab0ac4c952b4a954514128a6923efc272129f5eb8c",
+  "timestamp": "2026-10-03T05:59:47.813883+00:00"
+}

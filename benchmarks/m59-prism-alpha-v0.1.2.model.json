@@ -1,0 +1,42 @@
+{
+  "companion_path": "local-artifacts/prism/alpha-v0.1.2/weights.manifest.json",
+  "companion_sha256": "0a4be43f913fbe3ba8f0125700fac1a7db104ffd9ace3a7e1ccb65d70d565bab",
+  "confirmed_enhancement": {
+    "bigcard_auc24": true,
+    "direct_parent": true,
+    "overall_anchor_strength": false
+  },
+  "default_replaced": false,
+  "display_name": "Prism Alpha v0.1.2",
+  "format": "prism-experimental-model-identity-v1",
+  "frozen_at": "2026-10-03T06:09:52.548807+00:00",
+  "independent_acceptance": {
+    "gates": {
+      "bigcard_auc24": true,
+      "direct_parent": true,
+      "strength_pool": true
+    },
+    "owner_approved_execution_repair": true,
+    "repair_approval_sha256": "6a2d7d108d943c0b855ddb756043c771973d58049fd5f9c1d0b07cc8d5ba5d7f",
+    "result_path": "benchmarks/m59-prism-alpha-cloud-ppo.evaluation-result.json",
+    "result_sha256": "c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37",
+    "status": "ACCEPTED_BIGCARD_CONTINUATION"
+  },
+  "model_id": "prism-alpha-v0.1.2",
+  "original_evaluation_supervisor_failed": true,
+  "parent": {
+    "display_name": "Prism Alpha v0.1.1",
+    "model_id": "prism-alpha-v0.1.1",
+    "sha256": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff",
+    "weights_path": "local-artifacts/prism/alpha-v0.1.1/weights.json"
+  },
+  "readable_report": "docs/prism/prism-alpha-cloud-m59-evaluation.md",
+  "readable_report_sha256": "24199c06b6d5666368562c24db04c3514c3efbc00b6c132249f8c468071357e9",
+  "shared_pool_deployed": false,
+  "status": "REGISTERED_EXPERIMENTAL_MODEL",
+  "studio_deployed": false,
+  "style_descriptor": "大牌取分 / 大牌冲分取向；非基建专用",
+  "training_original_supervisor_failed": true,
+  "weights_path": "local-artifacts/prism/alpha-v0.1.2/weights.json",
+  "weights_sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618"
+}
