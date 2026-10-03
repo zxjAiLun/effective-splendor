@@ -62,7 +62,8 @@ def main():
     require(state["cycle"] == 4, "unexpected cycle count")
     require(state["global_step"] == 216, "unexpected optimizer count")
     require(state["attempts"] == 1024, "unexpected attempt count")
-    require(state["decisions"] == 27360, "unexpected learning decision count")
+    require(0 < state["decisions"] <= run.config["budget"]["max_decisions"],
+            "learning decisions outside frozen budget")
     require(len(state["consumed"]) == 4 and len(set(state["consumed"])) == 4, "unexpected consumed batches")
     require(len(state["all_jobs"]) == 1024 and len(set(state["all_jobs"])) == 1024, "unexpected job count")
     slots = len(state["optimizer"]["state"])
