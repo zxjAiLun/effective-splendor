@@ -95,7 +95,7 @@ def audit(project):
               "supervisor_resources": resources, "checkpoint": checkpoint, "groups": results,
               "completed_games": len(seen), "new_matches": 0, "new_optimizer_updates": 0,
               "source_hashes": {Path(__file__).name: detail.sha(__file__), "prism_portable_report.py": detail.sha(detail.__file__)},
-              "config_sha256": detail.sha(project / "m60-prism-alpha-cloud-ppo.config.json"),
+              "config_sha256": detail.sha(project / "benchmarks/m60-prism-alpha-cloud-ppo.config.json"),
               "metrics": metrics, "training_blueprint_sha256": detail.sha(root / "blueprint.json"),
               "bound_contract_sha256": detail.sha(root / "contract.json"), "observed_at": time.time()}
     output = project / "training-audit.json"
