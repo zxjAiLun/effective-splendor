@@ -1,7 +1,7 @@
 # M60 Prism Alpha 大牌冲分续训（cloud1，8 GiB 修复版收尾）
 
-状态：AUTHORIZED / IMPLEMENTED（合同已冻结，训练尚未启动）
-基线：main@d1b2c182cb64aa0725ca61e1b86cba9bc92d8c77（含收尾修复）
+状态：ACCEPTED_BIGCARD_CONTINUATION / REGISTERED_EXPERIMENTAL_MODEL（Prism Alpha v0.1.3）
+基线：main@d1b2c182cb64aa0725ca61e1b86cba9bc92d8c77（含收尾修复）→ 最终验收提交见 Git 记录
 负责人/日期：Zixuan Tang / 2026-10-03
 授权：用户 2026-10-03 原话「继续迭代？」
 
@@ -99,7 +99,7 @@ IMPLEMENTED：worker 收尾单实例化修复 + M60 冻结合同/包。云端执
 
 ## Result and decision
 
-尚未训练，无竞技/风格结论。禁止从代码存在或离线指标推断 PASS/ACCEPTED。
+**ACCEPTED_BIGCARD_CONTINUATION**（2026-10-03T10:01 UTC，正式分析一次）：三项冻结底线全部通过，实验产物按用户命名惯例登记为 **Prism Alpha v0.1.3**（`benchmarks/m60-prism-alpha-v0.1.3.model.json`）。增强判定按校正下界区分：总体共同锚点增强**有**证据（+0.012370 > 0，M59 未确认的一项本轮确认）；大牌风格增强**有**证据（+0.001449 > 0）；对父模型直接优势下界 0.498047 < 0.5，**未**获确认（保留门仍 PASS）。通过底线不等于证明全面更强；默认/共享池/Studio 未部署，不外推其他温度/平台。
 
 ## Known limitations
 
@@ -185,3 +185,46 @@ CPUQuota=200%（2s/s）、RuntimeMaxUSec=8h、2 并行 worker、0 retry；自有
 核验通过后开始开发局。种子/门/统计家族均为 M60 冻结值（动作种子 59032001、
 bootstrap RNG 59039999、三门阈值与 M59 相同）。结果与三门判定将在完成后追加，
 不从开发信号提前下结论。
+
+### 三门独立验收 — ACCEPTED_BIGCARD_CONTINUATION — 2026-10-03T10:01 UTC
+
+4,480 逻辑局全部完成并通过 Rust 规则回放；评测墙钟 1,142.051 s（约 19 分 02 秒）、
+cgroup CPU 1,940.321916 s、峰值 728,186,880 bytes、OOM 0、0 retry；服务
+`Result=success`。正式三门分析只执行一次；[评测结果](../benchmarks/m60-prism-alpha-cloud-ppo.evaluation-result.json)
+SHA `d475cf9f3409ccf735ea5f310879c4b223ce1696d3c4a19fed32dfa8058cd22b`。
+
+| Gate / 目的 | 冻结阈值 | 估计 | 普通配对95% CI | 校正下界 | 判定 |
+| --- | --- | --- | --- | --- | --- |
+| strength_pool / 保护总体半平得分率 | Δ校正下界 ≥ −0.05 | +0.044596 | [0.014974, 0.073568] | **+0.012370** | **PASS** |
+| direct_parent / 对父模型直接竞争力 | 半平得分率校正下界 ≥ 0.45 | 0.531738 | [0.500964, 0.562988] | **0.498047** | **PASS** |
+| bigcard_auc24 / 保留大牌冲分画像 | Δ校正下界 ≥ −0.015 | +0.004881 | [0.001729, 0.008125] | **+0.001449** | **PASS** |
+
+独立验收对战（被测均为固定最终 c4，T=1；比例按模型身份聚合双座）：
+
+| 被测 | 对手 / 模式 | W / D / L | 局数 | 半平得分率 |
+| --- | --- | ---: | ---: | ---: |
+| Prism Alpha v0.1.2 父模型 | 便携 Heuristic greedy | 352 / 2 / 158 | 512 | 68.9453% |
+| Prism Alpha v0.1.2 父模型 | 通用 Prism v0.1.1 T=1 | 283 / 4 / 225 | 512 | 55.6641% |
+| Prism Alpha v0.1.2 父模型 | 初代 Prism greedy | 332 / 2 / 178 | 512 | 65.0391% |
+| Prism Alpha v0.1.3（M60 c4） | 父模型 Prism Alpha v0.1.2 T=1 | 541 / 7 / 476 | 1,024 | 53.1738% |
+| Prism Alpha v0.1.3（M60 c4） | 便携 Heuristic greedy | 371 / 1 / 140 | 512 | 72.5586% |
+| Prism Alpha v0.1.3（M60 c4） | 通用 Prism v0.1.1 T=1 | 300 / 2 / 210 | 512 | 58.7891% |
+| Prism Alpha v0.1.3（M60 c4） | 初代 Prism greedy | 367 / 0 / 145 | 512 | 71.6797% |
+
+共同锚点等权平均：父 63.2161% → 候选 67.6758%（**↑ +4.4596 个百分点**）；大牌
+AUC24 0.084614 → 0.089495（**↑ +0.004881**）；终局大牌印刷分 7.700521 → 7.927734；
+4VP 卡 0.819661 → 0.836589 / 局；5VP 卡 0.376953 → 0.399089 / 局；终局 VP
+14.714844 → 14.843750。开发 384 局仅描述（共同锚点半平父 67.9688% → 候选
+59.1146%，方向与独立样本相反，不作选择/结论依据）。
+
+增强判定（校正下界分别 >0 / >0.5 / >0）：总体共同锚点增强**有**证据；大牌风格
+增强**有**证据；对父模型直接优势下界 0.498047 未超过 0.5，**无**确认。与 M59 的
+判定模式（总体未确认/直接确认）不同，不能混读两轮的对手/温度组合。
+
+人类完整报告：[prism-alpha-cloud-m60-evaluation.md](prism/prism-alpha-cloud-m60-evaluation.md)
+（readable_report_sha256 `b98c4808b0c0c2b0520a3a9e36aa3ec9e4ad8991520ad047d3374fcab20ed189`）；
+实验身份：[m60-prism-alpha-v0.1.3.model.json](../benchmarks/m60-prism-alpha-v0.1.3.model.json)。
+本机不可变权重 `local-artifacts/prism/alpha-v0.1.3/`（SHA 与 c4 一致）；companion
+manifest SHA `52da0740c4badb397f59d40b09716ba4c5ff860061b86322a32c32a3af478335`。
+逐推理/逐决策时钟 **NOT_MEASURED**。彩色 HTML 对照页本轮尚未生成（NOT_RUN），
+生成后须回填 `colored_comparison_path/sha256`。
