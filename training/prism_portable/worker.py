@@ -1,5 +1,6 @@
 """Detached bounded supervisor and synchronous numerical worker."""
 import argparse
+import gc
 import os
 from pathlib import Path
 import re
@@ -77,6 +78,10 @@ def execute(root, host, nonce, cycles):
                                                      "commit": campaign.run.parent, "nonce": nonce})
             return
     # Independent of a stop request, each execute invocation ends at a real boundary.
+    # The final authoritative reload must not coexist with the live campaign's
+    # retained batch/behavior caches: holding both instances caused the M59 tail OOM.
+    del campaign, ledger
+    gc.collect()
     final = Run.open(root / "run")
     write(root / "control/progress.json", {**final.status(), "observed_at": time.time(),
                                           "run_identity": final.identity})
