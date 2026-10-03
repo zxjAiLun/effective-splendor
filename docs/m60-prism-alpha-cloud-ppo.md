@@ -112,3 +112,76 @@ IMPLEMENTED：worker 收尾单实例化修复 + M60 冻结合同/包。云端执
 
 四轮提交 → 独立审计 → 按已冻结开发/独立种子执行评测与三门判定；默认/共享池/
 Studio 发布由后续明确决定控制。
+
+### 云端部署与收尾探针 — 2026-10-03（训练启动前）
+
+cloud1 新目录 `/home/ubuntu/splendor-ppo-m60`：包/合同/权重逐 SHA 核验一致
+（code identity `a2f7633e…` 与冻结回执相同）。provision 68/68 边界 parity PASS，
+max abs `0.0001045727539121799` 与 M59 最终边界完全一致（数值实现未变）；六资产
+host 绑定逐 digest 核验（engine `1a13af46…`、metrics `ba3f2cbe…`、parent
+`faada9ba…`、general `a2301f08…`、initial `5db70b77…`、fixtures `81c3f01d…`）。
+`general` 资产按标准五资产 provision 后追加并留 `inputs-amendment.json` 回执，
+镜像 M59 的六资产绑定；`protocol.bind` 在 create/start 再次逐项核验。
+
+**收尾内存探针（有界工程检查）**：对 M59 已提交 run 的只读副本（8.3 GB）在
+systemd 自有 cgroup 下量化收尾 `Run.open` 的真实规模内存：
+
+| 探针 | 形态 | MemoryMax | 结果 | cgroup 峰值 |
+| --- | --- | --- | --- | --- |
+| A | 修复后（单实例） | 4 GiB | PASS（exit 0） | 2,820,194,304 |
+| B | 修复后（单实例） | 8 GiB | PASS（exit 0） | 2,746,114,048 |
+| C | 修复前（双实例并存） | 4 GiB | **内核 OOM kill（exit 137）**，journal `Result=oom-kill` | （被杀） |
+
+结论：修复后收尾在**原 M59 4 GiB 训练上限内即可完成**（约 2.8 GiB 峰值，余量
+约 1.2 GiB），并直接在受控条件下复现了 M59 的 OOM 形态，支持重复实例诊断。
+仍无逐分配 profiling；探针回执在 `local-artifacts/prism/alpha-cloud-m60/probe/`。
+
+Hello 预检 **NOT_RUN**（两此独立调用尝试均未复现 M59 的 hello 读取 harness，
+原始尝试记录保留于 `hello-preflight-attempts.json`）：blueprint 对手行及其期望
+hello 字段与 M59 已验证的 1,024 局运行形状逐字一致，且冻结 arena 在每局报告中
+核验 hello/seat（协议缺陷即 fatal）；风险边界如实记录，不以本项冒充已测。
+
+### 云端真实启动 — 2026-10-03T08:47:01 UTC（16:47 +08）
+
+`control create` 成功：campaign `m60-alpha-bigcard-g0`，ownership ACTIVE，
+nonce `1b1520a97bf94298a9884789127204d1`，blueprint identity
+`772907c0de2054413ffd10a88f289536b9f3e8361fbfbd68b8f4c5c27d3e757a`，code
+identity `a2f7633e…`（含修复）。`control start --cycles 4` 后实测：
+supervisor unit `prism-ppo-supervisor-ebc1ed306b13486baea892c9a398e0ea.service`
+PID 493860 active/running；**服务 MemoryMax=8,589,934,592、slice CPUQuota=200%、
+RuntimeMaxUSec=7h59min44s（原 deadline 语义，非重发 8 小时）**；slice memory
+events oom/oom_kill=0。启动约 108 秒内 58 个 attempt 目录，游戏正常产出。
+启动观察回执 `local-artifacts/prism/alpha-cloud-m60/startup-observation.json`。
+这是第一轮训练采样，不是已完成迭代或棋力增强。
+
+### 四轮提交完成（收尾修复后首次全程 PASS）— 2026-10-03T09:34 UTC
+
+**TRAINING_ARTIFACT_VERIFIED / supervisor STOPPED_COMMITTED。** 四轮 1,024 局、
+216 次更新、27,398 次学习决策、0 retry 全部提交；最终 c4 导出与审计完成。
+**这是修复后首次完整跑通含收尾的云端 PPO**：M59 在同一路径以 cgroup OOM 终止。
+
+| 实测项 | 结果 |
+| --- | --- |
+| 监督区间 / 墙钟 | 08:47:01 UTC 启动；自有 tree 墙钟 2,835.466626 s ≈ 47分15秒（M59 为 2,831.08 s 含收尾异常） |
+| slice 累计 CPU / 峰值 | 3,470.803261 s / memory.peak 触及 8 GiB cap（页缓存为主；`memory.events` oom=0、oom_kill=0，max 计数 1,077 为回收成功） |
+| 最终状态 | STOPPED_COMMITTED，returncode 0，stop_reason null |
+| run identity / 最终 commit | `c65520e7b706252d723a85cba1101285423e584cb302d888ba2c60b13e1e1445` / `5e3d44b21f570a8bad7b9351697ef293a823aacb0b5e1cb95ed2a38d232bc4c8` |
+| checkpoint 核验 | phase COMMITTED、cycle 4、216 步、1,024 attempts/jobs、4 消费批、36 AdamW slots；**32 导出 policy/value 张量与 checkpoint 逐元素一致**；different_from_parent=true |
+| **最终权重 SHA** | `7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544` |
+| 最终 c4 Rust/Python 边界 | 68/68 PASS，atol/rtol 1e-4，max abs `0.00012456054687959295` |
+| 完整产物审计 | **PASS_TRAINING_ARTIFACT_AUDIT**：1,024 局逐 completion/replay/report/sidecar hash、16 组、32 分座 Rust manifest、0 新局/更新；审计结果 SHA `372a2c3230ea9acb7eb33e5c53900fe3c5fab6c41b512a7e600f288877658a64` |
+
+[完整16组训练对战表](prism/prism-alpha-cloud-m60-training-matches.md)：被测为未发布
+c0..c3 训练快照，不是最终 c4 或任何已发布版本的战绩；训练胜率不得代替独立验收。
+
+### 独立评测启动 — 2026-10-03T09:47 UTC
+
+`prism_alpha_cloud_acceptance_m60.py`（commit 42c1753，绑定 c4
+`7f6cdbc2…`）prepare 成功：执行合同 SHA
+`4ff390a53fc4ce62e1f9baa1edce3aa90e86dfeee2bb63ed087e1c0d9409158c`，4,480 逻辑局
+（开发 2 分片 384 局 + 独立 24 分片 4,096 局），0 局预检零游戏。systemd 服务
+`prism-m60-evaluation-4ff390a5.service` 实测 MemoryMax=8,589,934,592、
+CPUQuota=200%（2s/s）、RuntimeMaxUSec=8h、2 并行 worker、0 retry；自有 cgroup
+核验通过后开始开发局。种子/门/统计家族均为 M60 冻结值（动作种子 59032001、
+bootstrap RNG 59039999、三门阈值与 M59 相同）。结果与三门判定将在完成后追加，
+不从开发信号提前下结论。
