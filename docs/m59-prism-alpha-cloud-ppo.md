@@ -1199,3 +1199,10 @@ Prism 推理 runtime 的 Hello 为 prism-sample / 0.1.0（T=1）或 prism-v0.1 /
 版本登记：本机不可变推理产物位于 local-artifacts/prism/alpha-v0.1.2/weights.json，SHA 与原最终c4一致；[实验身份记录](../benchmarks/m59-prism-alpha-v0.1.2.model.json)。这是实验模型身份冻结，默认/共享池/Studio部署仍为 false。下一轮尚未启动；优先修复PPO收尾重复加载并沿用8 GiB执行范围，再另定有限训练与新独立样本。
 
 <!-- M59 FINAL MATCH TABLES END -->
+
+
+### HTML 阅读视图补充 — 2026-10-03
+
+用户要求HTML版本，已生成[Prism Alpha v0.1.2 HTML报告](prism/prism-alpha-v0.1.2-comparison.html)。结论卡片/三门解释/带颜色与↑↓的匹配变化先展示，独立与开发分开，每阶段按对手折叠完整双方表；原Markdown全部61张表保留。无CDN/远程依赖，单文件可直接打开。Markdown、模型权重和正式结果hash均不变，HTML是展示补充。
+
+生成命令 `C:\Python312\python.exe -B scripts/prism_alpha_cloud_html_report.py` exit0；绑定原Markdown SHA24199c06b6d5666368562c24db04c3514c3efbc00b6c132249f8c468071357e9、原评测结果SHA c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37。HTML SHA 35d0f406c2e7d9056d600d25ecaf20e60f66a58755da47301f0739ab10515b11。浏览器检查13项PASS：实际版本/三门/真实数字、61表完整、7个对手折叠、全部/单组展开与收起、390px无全页横向溢出、无脚本错误；Playwright Chromium真实file页面，截图/回执在local-artifacts/prism/alpha-cloud-m59/html。agent-browser CLI本机未安装且离线缓存缺失，使用已安装Playwright完成同等浏览器验证。0新局/更新。

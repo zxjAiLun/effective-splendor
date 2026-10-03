@@ -1,4 +1,6 @@
 {
+  "colored_comparison_path": "docs/prism/prism-alpha-v0.1.2-comparison.html",
+  "colored_comparison_sha256": "35d0f406c2e7d9056d600d25ecaf20e60f66a58755da47301f0739ab10515b11",
   "companion_path": "local-artifacts/prism/alpha-v0.1.2/weights.manifest.json",
   "companion_sha256": "0a4be43f913fbe3ba8f0125700fac1a7db104ffd9ace3a7e1ccb65d70d565bab",
   "confirmed_enhancement": {

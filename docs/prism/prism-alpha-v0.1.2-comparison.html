@@ -1,0 +1,3814 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prism Alpha v0.1.2 · M59 对战评测</title><style>
+:root{color-scheme:light;--ink:#192e33;--muted:#5a6c70;--line:#d9e3e0;--up:#087f71;--down:#9a661d}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:80px}body{margin:0;background:#f4f7f5;color:var(--ink);font:16px/1.65 "Segoe UI","Microsoft YaHei",sans-serif}
+main{max-width:1200px;margin:auto;padding:42px 30px 80px}header{margin-bottom:30px}.eyebrow{font-size:13px;letter-spacing:.15em;color:var(--muted)}h1{font-size:clamp(30px,4vw,46px);line-height:1.2;margin:14px 0}h2{font-size:25px;margin:0 0 20px}h3{font-size:20px}h4{font-size:17px;margin-top:28px}
+.lead{max-width:880px;color:var(--muted)}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--line);border-radius:20px;padding:4px 13px;font-size:13px;background:white}
+nav{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;background:#f4f7f5ef;backdrop-filter:blur(10px);padding:14px 0;margin-bottom:20px;border-bottom:1px solid var(--line)}a{color:#126c68;text-underline-offset:3px}nav a{font-size:14px;text-decoration:none;border:1px solid var(--line);padding:6px 12px;border-radius:6px;background:white}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0}.card{padding:23px;border-radius:12px;background:#fff;border:1px solid var(--line)}.card .label{color:var(--muted);font-size:14px}.card b{display:block;font-size:32px;color:var(--up);margin:8px 0}.card small{color:var(--muted);display:block}.note{background:#fff6e7;border-left:4px solid #b78235;padding:14px 18px;border-radius:5px;margin:24px 0}
+section,.stage,.provenance{background:#fff;border:1px solid var(--line);border-radius:12px;padding:25px;margin:22px 0}.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:16px 0}table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}th{background:#edf4f1;color:#274a48;text-align:left;vertical-align:bottom}th,td{padding:12px 14px;border-bottom:1px solid #e3ebe8;vertical-align:top}td{min-width:85px}td:first-child{min-width:140px;font-weight:500}tbody tr:nth-child(even){background:#fafcfb}tbody tr:hover{background:#f0f7f4}.up{color:var(--up);background:#e9f7f2}.down{color:var(--down);background:#fff5e3}.pass{color:var(--up);font-weight:700}.fail{color:#ad3232;font-weight:700}
+details>summary{cursor:pointer;list-style-position:inside;font-weight:650;line-height:1.5}details>summary:hover{color:var(--up)}details[open]>summary{padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:20px}.match{border:1px solid var(--line);border-radius:8px;padding:17px;margin:15px 0;background:#fafcfb}.match[open]{background:white}.match>summary{font-size:16px}.source{color:var(--muted);font-size:13px;overflow-wrap:anywhere}code{font-size:.9em;overflow-wrap:anywhere}button{font:inherit;font-size:14px;border:1px solid var(--line);background:white;color:var(--ink);padding:7px 12px;border-radius:6px;cursor:pointer}.tools{display:flex;gap:10px;margin-bottom:18px}.legend{color:var(--muted);font-size:14px}.intro{font-size:14px;color:var(--muted)}footer{color:var(--muted);font-size:13px;margin-top:32px}
+@media(max-width:700px){main{padding:24px 14px 50px}.cards{grid-template-columns:1fr;gap:10px}.card{padding:18px}.card b{font-size:28px}section,.stage,.provenance{padding:17px}nav{gap:6px}th,td{padding:9px 10px}h2{font-size:21px}}
+@media print{nav,.tools{display:none}body{background:white}main{max-width:none;padding:0}.table-scroll{overflow:visible}details{break-inside:auto}.card{break-inside:avoid}th,td{font-size:10px;padding:5px}section,.stage{border:0;padding:10px 0}details>summary{font-size:14px}}
+</style></head><body><main>
+<header><div class="eyebrow">PRISM / MODEL REPORT / M59</div><h1>Prism Alpha v0.1.2</h1><p class="lead">大牌冲分模型 · 从 Prism Alpha v0.1.1 继续四轮 PPO，固定最终 c4，以新种子完成独立对战验收。</p><div class="chips"><span class="chip">实验版本已固定</span><span class="chip">1,024 训练局</span><span class="chip">384 开发局</span><span class="chip">4,096 独立验收局</span><span class="chip">cloud1 · 8 GiB · 已停止</span></div></header>
+<nav><a href="#overview">结论</a><a href="#comparison">父模型 → 新版本</a><a href="#gates">三项验收门</a><a href="#acceptance">独立完整数据</a><a href="#development">开发完整数据</a><a href="#sources">来源与修复记录</a><a href="prism-alpha-cloud-m59-evaluation.md">Markdown 原文</a></nav>
+<div id="overview" class="cards"><div class="card"><span class="label">本轮保留底线</span><b>3 / 3 PASS</b><small>棋力保护 · 直接竞争力 · 大牌风格</small></div><div class="card"><span class="label">对父模型 · 半平得分率</span><b>53.81%</b><small>校正下界 50.39% · 已确认直接优势</small></div><div class="card"><span class="label">大牌印刷 VP · AUC24 变化</span><b>+0.004581</b><small>校正下界 +0.001013 · 已确认风格增强</small></div></div>
+<div class="note"><strong>总体棋力增强尚未确认。</strong> 共同三锚点得分率提升 1.3997 个百分点，但校正下界仍低于 0；本轮确认的是棋力保留底线、直接对父模型优势和大牌风格增强。</div>
+<details class="intro"><summary>模型身份、训练产物与工程异常</summary><h3>M59 Prism Alpha：最终 c4 对战评测与验收</h3>
+<p><strong>产物：</strong>四轮 1,024 局、216 次更新、27,360 次训练决策，最终 c4 已提交；32 policy/value 导出张量与 checkpoint 相同，Rust/Python 边界 68/68 PASS。原训练收尾 4 GiB OOM / FAILED 保留。本次评测使用独立 8 GiB 资源合同，0 补训。</p>
+<p><strong>竞技：</strong>棋力保护与直接父模型两项底线均通过。共同锚点半平得分率变化 +1.3997 个百分点；直接父模型得分率 53.8086%。总体增强无校正下界证据；直接父模型优势有校正下界证据。</p>
+<p><strong>风格：</strong>大牌印刷 VP AUC24 变化 +0.004581，保留门 PASS；风格增强有校正下界证据。</p>
+<p><strong>版本身份：</strong>三项原定底线全部通过，本实验产物已登记为 <strong>Prism Alpha v0.1.2</strong>。</p>
+<p>父模型是 <strong>Prism Alpha v0.1.1</strong>：本轮继承它的 policy/value 权重继续 PPO，产生不同的新权重；通用 <strong>Prism v0.1.1</strong> 是共同对手，二者不是同一条版本线。所有表中的候选均为固定最终 c4，训练 c0..c3 不计入本报告。</p>
+<p><a href="../m59-prism-alpha-cloud-ppo.md">本轮设计与历史</a>；<a href="prism-alpha-cloud-m59-training-matches.md">原训练双方表</a>。默认模型、共享池、Studio 和 Elo 未变。</p></details>
+<section id="comparison"><h2>一眼看变化：父模型 → 新版本</h2><p class="legend"><strong>↑ 数值增加 / ↓ 数值减少</strong>：颜色和箭头表示变化方向，不自动代表更好或统计显著。双方指标以表头标注的模型身份为准。</p><p>以下为独立验收数据。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>共同三锚点等权平均</th>
+<th>单位 / 归属</th>
+<th>父模型 Prism Alpha v0.1.1</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4）</th>
+<th>匹配变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">半平得分率</td>
+<td class="">%，模型本人</td>
+<td class="">62.5651%</td>
+<td class="">63.9648%</td>
+<td class="up"><strong>↑ +1.3997 个百分点</strong></td>
+</tr>
+<tr>
+<td class="">大牌印刷 VP AUC24</td>
+<td class="">无量纲，模型本人</td>
+<td class="">0.077910</td>
+<td class="">0.082491</td>
+<td class="up"><strong>↑ +0.004581</strong></td>
+</tr>
+<tr>
+<td class="">终局大牌印刷分</td>
+<td class="">VP / 局，模型本人</td>
+<td class="">7.567057</td>
+<td class="">7.880859</td>
+<td class="up"><strong>↑ +0.313802</strong></td>
+</tr>
+<tr>
+<td class="">购入4 VP牌</td>
+<td class="">张 / 局，模型本人</td>
+<td class="">0.779297</td>
+<td class="">0.832031</td>
+<td class="up"><strong>↑ +0.052734</strong></td>
+</tr>
+<tr>
+<td class="">购入5 VP牌</td>
+<td class="">张 / 局，模型本人</td>
+<td class="">0.388021</td>
+<td class="">0.402344</td>
+<td class="up"><strong>↑ +0.014323</strong></td>
+</tr>
+<tr>
+<td class="">终局VP</td>
+<td class="">VP / 局，模型本人</td>
+<td class="">14.694661</td>
+<td class="">14.813802</td>
+<td class="up"><strong>↑ +0.119141</strong></td>
+</tr>
+<tr>
+<td class="">自身Main得分速度</td>
+<td class="">VP / Main，模型本人</td>
+<td class="">0.546474</td>
+<td class="">0.552912</td>
+<td class="up"><strong>↑ +0.006439</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>三个对手都用同批新种子和双座。↑/↓ 只表示变化方向；显著增强必须看校正下界。VP/Main 先各组按总VP/总Main计算，再按三个锚点等权描述。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>同种子共同对手</th>
+<th>父模型得分率</th>
+<th>候选得分率</th>
+<th>得分率变化</th>
+<th>大牌AUC24变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">66.2109%</td>
+<td class="">70.1172%</td>
+<td class="up"><strong>↑ +3.9062 个百分点</strong></td>
+<td class="up"><strong>↑ +0.006733</strong></td>
+</tr>
+<tr>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">65.8203%</td>
+<td class="">65.9180%</td>
+<td class="up"><strong>↑ +0.0977 个百分点</strong></td>
+<td class="up"><strong>↑ +0.003158</strong></td>
+</tr>
+<tr>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">55.6641%</td>
+<td class="">55.8594%</td>
+<td class="up"><strong>↑ +0.1953 个百分点</strong></td>
+<td class="up"><strong>↑ +0.003852</strong></td>
+</tr>
+</tbody>
+</table></div></section>
+<section id="gates"><h2>三项冻结保留门</h2><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>gate</th>
+<th>目的</th>
+<th>冻结阈值</th>
+<th>估计</th>
+<th>普通配对95%区间</th>
+<th>三门校正单侧下界</th>
+<th>结论</th>
+<th>FAIL 的具体含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">strength_pool</td>
+<td class="">防止共同锚点总体棋力明显退步</td>
+<td class="">配对得分率Δ校正下界 ≥ −0.05（−5个百分点）</td>
+<td class="">0.013997</td>
+<td class="">[-0.016602, 0.044596]</td>
+<td class="">-0.019206</td>
+<td class="pass"><strong>PASS</strong></td>
+<td class="">未能排除超过5个百分点的退步；不等于候选每组输了</td>
+</tr>
+<tr>
+<td class="">direct_parent</td>
+<td class="">保证对父模型的直接竞争力</td>
+<td class="">候选半平得分率校正下界 ≥ 0.45</td>
+<td class="">0.538086</td>
+<td class="">[0.506836, 0.568848]</td>
+<td class="">0.503906</td>
+<td class="pass"><strong>PASS</strong></td>
+<td class="">未能确认对父模型得分率至少45%；不要求下界超过50%</td>
+</tr>
+<tr>
+<td class="">bigcard_auc24</td>
+<td class="">保留大牌冲分画像</td>
+<td class="">配对大牌印刷VP AUC24 Δ校正下界 ≥ −0.015</td>
+<td class="">0.004581</td>
+<td class="">[0.001289, 0.007740]</td>
+<td class="">0.001013</td>
+<td class="pass"><strong>PASS</strong></td>
+<td class="">未能排除大牌AUC降低超过0.015；经济指标可有取舍</td>
+</tr>
+</tbody>
+</table></div>
+<p>三门是允许取舍的保留底线，不要求所有描述指标上升。20,000 次配对 seed 块 bootstrap，RNG 59029999，family α=0.05，单侧下界分位 0.05/3；共同锚点 256 个匹配块，直接父模型 512 块。相同下界分别 &gt;0、&gt;0.5、&gt;0 才能确认相应增强；通过底线不自动证明更强。每个对手的结果、折扣、贵族、预留和早期总VP均为描述，不另加否决门。独立样本只作一次三门分析，不延长样本或挑权重。</p></section>
+<div class="tools"><button id="expand" type="button">展开全部详细表</button><button id="collapse" type="button">收起全部详细表</button></div>
+<section id="acceptance" class="stage"><h2>独立验收 · 4,096 局</h2><p>4096 局全部完成并经 Rust 规则回放验证。各组按模型身份与物理座位分别聚合后合并；比例按总计数/总分母计算。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>被测玩家（T=1）</th>
+<th>固定对手 / 模式</th>
+<th>局数 / 双座 seed块</th>
+<th>纯胜率：配对95%区间</th>
+<th>半平得分率：配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">[61.9141%, 70.1172%]</td>
+<td class="">[62.1094%, 70.3125%]</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">512 / 256</td>
+<td class="">[51.1719%, 59.3750%]</td>
+<td class="">[51.5625%, 59.7656%]</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">[61.3281%, 69.5312%]</td>
+<td class="">[61.7188%, 69.9219%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">1024 / 512</td>
+<td class="">[50.2930%, 56.5430%]</td>
+<td class="">[50.6836%, 56.8848%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">[65.4297%, 73.8281%]</td>
+<td class="">[66.0156%, 74.1211%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">512 / 256</td>
+<td class="">[51.7578%, 59.5703%]</td>
+<td class="">[51.9531%, 59.8633%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">[61.5234%, 69.7266%]</td>
+<td class="">[61.9141%, 69.9219%]</td>
+</tr>
+</tbody>
+</table></div><details class="match"><summary>便携 Heuristic v0.2.9（greedy）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">338 / 2 / 172</td>
+<td class="">66.0156%</td>
+<td class="">66.2109%</td>
+<td class="">[62.1094%, 70.3125%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">357 / 4 / 151</td>
+<td class="">69.7266%</td>
+<td class="">70.1172%</td>
+<td class="">[66.0156%, 74.1211%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">179 / 1 / 76</td>
+<td class="">70.1172%</td>
+<td class="">14.941 / 13.109</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">159 / 1 / 96</td>
+<td class="">62.3047%</td>
+<td class="">14.855 / 13.723</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">181 / 2 / 73</td>
+<td class="">71.0938%</td>
+<td class="">15.035 / 12.781</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">176 / 2 / 78</td>
+<td class="">69.1406%</td>
+<td class="">15.070 / 12.781</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">53.797</td>
+<td class="">26.908 / 21 / 27.0 / 32</td>
+<td class="">1.848</td>
+<td class="">26.889</td>
+<td class="">3.775</td>
+<td class="">34.77%</td>
+<td class="">0.20146</td>
+<td class="">28.9062%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">53.355</td>
+<td class="">26.688 / 21 / 27.0 / 33</td>
+<td class="">1.817</td>
+<td class="">26.668</td>
+<td class="">4.213</td>
+<td class="">28.71%</td>
+<td class="">0.21106</td>
+<td class="">29.8828%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">14.8984 / 13.4160</td>
+<td class="">15.0527 / 12.7812</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5540 / 0.4987</td>
+<td class="">0.5644 / 0.4790</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5541 / 0.4989</td>
+<td class="">0.5644 / 0.4793</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2769 / 0.2494</td>
+<td class="">0.2821 / 0.2395</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.2734 / 13.1582</td>
+<td class="">12.0430 / 13.1133</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.5059 / 0.6484</td>
+<td class="">0.4629 / 0.6309</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.4160 / 2.4824</td>
+<td class="">2.3125 / 2.3809</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">0.9961 / 1.2324</td>
+<td class="">0.8965 / 1.1562</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.4199 / 1.2500</td>
+<td class="">1.4160 / 1.2246</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">41.016% / 49.219%</td>
+<td class="">38.477% / 47.656%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">41.229% / 49.646%</td>
+<td class="">38.767% / 48.564%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.3574 / 7.3359</td>
+<td class="">6.1406 / 7.4492</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.1074 / 2.5801</td>
+<td class="">1.9512 / 2.6133</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.7773 / 1.7246</td>
+<td class="">1.8418 / 1.6836</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8301 / 0.8086</td>
+<td class="">0.8418 / 0.7246</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.7773 / 0.5293</td>
+<td class="">0.8340 / 0.4785</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.4238 / 0.1797</td>
+<td class="">0.4336 / 0.1641</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.4668 / 2.5938</td>
+<td class="">2.3379 / 2.6445</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.4863 / 2.5273</td>
+<td class="">2.3301 / 2.6465</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.4570 / 2.6445</td>
+<td class="">2.4668 / 2.6250</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.4727 / 2.6914</td>
+<td class="">2.3594 / 2.6328</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.3906 / 2.7012</td>
+<td class="">2.5488 / 2.5645</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">5774 / 6106</td>
+<td class="">5707 / 6122</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">41.932% / 44.330%</td>
+<td class="">41.791% / 44.810%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">510 / 631</td>
+<td class="">459 / 592</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.704% / 4.581%</td>
+<td class="">3.361% / 4.333%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">6246 / 5759</td>
+<td class="">6304 / 5721</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">45.359% / 41.811%</td>
+<td class="">46.163% / 41.875%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">1237 / 1264</td>
+<td class="">1184 / 1213</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">8.983% / 9.177%</td>
+<td class="">8.670% / 8.879%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">0 / 7</td>
+<td class="">0 / 6</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.000% / 0.051%</td>
+<td class="">0.000% / 0.044%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">3 / 7</td>
+<td class="">2 / 8</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.022% / 0.051%</td>
+<td class="">0.015% / 0.059%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">96.572</td>
+<td class="">0.1886</td>
+<td class="">0.2323</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">97.131</td>
+<td class="">0.1897</td>
+<td class="">0.2371</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.2015 / 0.1786</td>
+<td class="">0.2111 / 0.1727</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0793 / 0.0585</td>
+<td class="">0.0860 / 0.0528</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.7188 / 5.4414</td>
+<td class="">8.0293 / 4.9082</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.3613 / 1.0215</td>
+<td class="">1.4590 / 0.9512</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">18.8462 / 19.5650</td>
+<td class="">18.3534 / 19.6066</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">494/512 ; 446/512</td>
+<td class="">498/512 ; 422/512</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.5937 / 20.7828</td>
+<td class="">20.4060 / 20.8277</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">411/512 ; 290/512</td>
+<td class="">431/512 ; 267/512</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.6543 / 0.5664</td>
+<td class="">0.7051 / 0.5781</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0215 / 0.0293</td>
+<td class="">0.0391 / 0.0234</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.7227 / 1.4922</td>
+<td class="">1.8457 / 1.4199</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.3008 / 0.2598</td>
+<td class="">0.3672 / 0.2207</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.3066 / 2.9961</td>
+<td class="">3.5273 / 2.8848</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.0195 / 0.8398</td>
+<td class="">1.1445 / 0.7188</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.2754 / 5.4863</td>
+<td class="">6.4141 / 5.3125</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.7852 / 1.9746</td>
+<td class="">2.8770 / 1.8574</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">10.4531 / 9.4023</td>
+<td class="">10.9238 / 9.1289</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">5.1543 / 3.6660</td>
+<td class="">5.5430 / 3.4043</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">496 / 496</td>
+<td class="">492 / 492</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p></details><details class="match"><summary>初代 Prism v0.1.0（greedy）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">335 / 4 / 173</td>
+<td class="">65.4297%</td>
+<td class="">65.8203%</td>
+<td class="">[61.7188%, 69.9219%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">512 / 256</td>
+<td class="">336 / 3 / 173</td>
+<td class="">65.6250%</td>
+<td class="">65.9180%</td>
+<td class="">[61.9141%, 69.9219%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">170 / 2 / 84</td>
+<td class="">66.7969%</td>
+<td class="">14.961 / 13.117</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">165 / 2 / 89</td>
+<td class="">64.8438%</td>
+<td class="">14.770 / 13.469</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">172 / 3 / 81</td>
+<td class="">67.7734%</td>
+<td class="">15.012 / 12.965</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">164 / 0 / 92</td>
+<td class="">64.0625%</td>
+<td class="">14.812 / 13.203</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 初代 Prism v0.1.0（greedy）</td>
+<td class="">53.725</td>
+<td class="">26.879 / 19 / 27.0 / 32</td>
+<td class="">1.803</td>
+<td class="">26.844</td>
+<td class="">3.631</td>
+<td class="">37.50%</td>
+<td class="">0.20302</td>
+<td class="">30.0781%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 初代 Prism v0.1.0（greedy）</td>
+<td class="">53.459</td>
+<td class="">26.744 / 21 / 27.0 / 32</td>
+<td class="">1.785</td>
+<td class="">26.715</td>
+<td class="">3.902</td>
+<td class="">33.20%</td>
+<td class="">0.21010</td>
+<td class="">35.9375%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">14.8652 / 13.2930</td>
+<td class="">14.9121 / 13.0840</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5536 / 0.4947</td>
+<td class="">0.5582 / 0.4893</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5538 / 0.4952</td>
+<td class="">0.5582 / 0.4898</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2767 / 0.2474</td>
+<td class="">0.2789 / 0.2447</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.1680 / 13.3809</td>
+<td class="">11.9062 / 13.4355</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.4961 / 0.6445</td>
+<td class="">0.4219 / 0.6621</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.4375 / 1.9199</td>
+<td class="">2.3984 / 1.9238</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">0.9883 / 0.9746</td>
+<td class="">0.8711 / 0.9492</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.4492 / 0.9453</td>
+<td class="">1.5273 / 0.9746</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">40.820% / 48.633%</td>
+<td class="">35.156% / 47.070%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">40.545% / 50.763%</td>
+<td class="">36.319% / 49.340%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.2734 / 7.5273</td>
+<td class="">6.0508 / 7.5508</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0879 / 2.5918</td>
+<td class="">1.8828 / 2.7480</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.7520 / 1.8516</td>
+<td class="">1.8418 / 1.8086</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8438 / 0.7578</td>
+<td class="">0.8574 / 0.7441</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.8008 / 0.4707</td>
+<td class="">0.8594 / 0.4199</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.4102 / 0.1816</td>
+<td class="">0.4141 / 0.1641</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.4609 / 2.6211</td>
+<td class="">2.3750 / 2.6621</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.3730 / 2.7988</td>
+<td class="">2.2988 / 2.7578</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.4453 / 2.6328</td>
+<td class="">2.4102 / 2.6836</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.4219 / 2.6523</td>
+<td class="">2.3887 / 2.6543</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.4668 / 2.6758</td>
+<td class="">2.4336 / 2.6777</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">5724 / 6352</td>
+<td class="">5650 / 6393</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">41.635% / 46.166%</td>
+<td class="">41.304% / 46.691%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">506 / 499</td>
+<td class="">446 / 486</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.681% / 3.627%</td>
+<td class="">3.260% / 3.550%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">6266 / 5910</td>
+<td class="">6354 / 5814</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">45.578% / 42.954%</td>
+<td class="">46.451% / 42.463%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">1247 / 981</td>
+<td class="">1228 / 983</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">9.070% / 7.130%</td>
+<td class="">8.977% / 7.179%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">1 / 2</td>
+<td class="">0 / 2</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.007% / 0.015%</td>
+<td class="">0.000% / 0.015%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">4 / 15</td>
+<td class="">1 / 14</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.029% / 0.109%</td>
+<td class="">0.007% / 0.102%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 初代 Prism v0.1.0（greedy）</td>
+<td class="">164.448</td>
+<td class="">0.3212</td>
+<td class="">0.3806</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 初代 Prism v0.1.0（greedy）</td>
+<td class="">164.612</td>
+<td class="">0.3215</td>
+<td class="">0.3852</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.2030 / 0.1718</td>
+<td class="">0.2101 / 0.1690</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0811 / 0.0490</td>
+<td class="">0.0842 / 0.0453</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.7852 / 5.0645</td>
+<td class="">8.0801 / 4.7324</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.3906 / 0.9102</td>
+<td class="">1.4199 / 0.8516</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">18.7713 / 20.2693</td>
+<td class="">18.5120 / 20.5329</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">494/512 ; 427/512</td>
+<td class="">498/512 ; 426/512</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.7696 / 21.2299</td>
+<td class="">20.3088 / 21.5785</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">434/512 ; 274/512</td>
+<td class="">421/512 ; 261/512</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.6055 / 0.5059</td>
+<td class="">0.6543 / 0.4824</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0117 / 0.0117</td>
+<td class="">0.0117 / 0.0059</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.6289 / 1.3477</td>
+<td class="">1.6934 / 1.3008</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.2930 / 0.1836</td>
+<td class="">0.3008 / 0.1387</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.4473 / 2.7754</td>
+<td class="">3.5566 / 2.7656</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.1133 / 0.5918</td>
+<td class="">1.1738 / 0.5996</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.3574 / 5.3086</td>
+<td class="">6.5781 / 5.2617</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.8574 / 1.6836</td>
+<td class="">2.9414 / 1.5820</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">511 / 511</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">10.6016 / 9.2129</td>
+<td class="">10.7402 / 9.1816</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">5.2695 / 3.2793</td>
+<td class="">5.3906 / 3.0605</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">502 / 502</td>
+<td class="">498 / 498</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p></details><details class="match"><summary>通用 Prism v0.1.1（T=1）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">512 / 256</td>
+<td class="">283 / 4 / 225</td>
+<td class="">55.2734%</td>
+<td class="">55.6641%</td>
+<td class="">[51.5625%, 59.7656%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">512 / 256</td>
+<td class="">285 / 2 / 225</td>
+<td class="">55.6641%</td>
+<td class="">55.8594%</td>
+<td class="">[51.9531%, 59.8633%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">145 / 3 / 108</td>
+<td class="">57.2266%</td>
+<td class="">14.379 / 13.754</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">138 / 1 / 117</td>
+<td class="">54.1016%</td>
+<td class="">14.262 / 13.980</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">先手 P0</td>
+<td class="">256</td>
+<td class="">153 / 0 / 103</td>
+<td class="">59.7656%</td>
+<td class="">14.582 / 13.727</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">后手 P1</td>
+<td class="">256</td>
+<td class="">132 / 2 / 122</td>
+<td class="">51.9531%</td>
+<td class="">14.371 / 14.020</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 通用 Prism v0.1.1（T=1）</td>
+<td class="">53.891</td>
+<td class="">26.951 / 22 / 27.0 / 34</td>
+<td class="">1.803</td>
+<td class="">26.939</td>
+<td class="">3.586</td>
+<td class="">36.13%</td>
+<td class="">0.19232</td>
+<td class="">23.0469%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 通用 Prism v0.1.1（T=1）</td>
+<td class="">54.027</td>
+<td class="">27.021 / 21 / 27.0 / 32</td>
+<td class="">1.871</td>
+<td class="">27.004</td>
+<td class="">3.646</td>
+<td class="">33.20%</td>
+<td class="">0.19805</td>
+<td class="">26.3672%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">14.3203 / 13.8672</td>
+<td class="">14.4766 / 13.8730</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5315 / 0.5146</td>
+<td class="">0.5360 / 0.5135</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5316 / 0.5148</td>
+<td class="">0.5361 / 0.5137</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2657 / 0.2573</td>
+<td class="">0.2679 / 0.2568</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.3691 / 12.3730</td>
+<td class="">12.0801 / 12.4316</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.5410 / 0.4805</td>
+<td class="">0.4902 / 0.5391</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.7246 / 2.5586</td>
+<td class="">2.8164 / 2.6504</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">1.0605 / 1.0488</td>
+<td class="">1.1133 / 1.0879</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.6641 / 1.5098</td>
+<td class="">1.7031 / 1.5625</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">43.750% / 39.844%</td>
+<td class="">41.992% / 42.188%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">38.925% / 40.992%</td>
+<td class="">39.528% / 41.046%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.6582 / 6.4727</td>
+<td class="">6.3848 / 6.5762</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0703 / 2.3086</td>
+<td class="">1.9102 / 2.3516</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.7148 / 1.8633</td>
+<td class="">1.7812 / 1.7754</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8359 / 0.8242</td>
+<td class="">0.8418 / 0.8340</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.7598 / 0.6035</td>
+<td class="">0.8027 / 0.6211</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.3301 / 0.3008</td>
+<td class="">0.3594 / 0.2734</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.3750 / 2.4844</td>
+<td class="">2.4941 / 2.4805</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.4688 / 2.4648</td>
+<td class="">2.2500 / 2.6484</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.4844 / 2.5098</td>
+<td class="">2.2793 / 2.5312</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.4648 / 2.5117</td>
+<td class="">2.4434 / 2.4473</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.5762 / 2.4023</td>
+<td class="">2.6133 / 2.3242</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">5790 / 5798</td>
+<td class="">5615 / 5808</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">41.969% / 42.027%</td>
+<td class="">40.603% / 41.987%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">543 / 537</td>
+<td class="">570 / 557</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.936% / 3.892%</td>
+<td class="">4.122% / 4.027%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">6065 / 6148</td>
+<td class="">6199 / 6104</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">43.962% / 44.564%</td>
+<td class="">44.826% / 44.126%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">1394 / 1308</td>
+<td class="">1441 / 1355</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">10.104% / 9.481%</td>
+<td class="">10.420% / 9.795%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">1 / 2</td>
+<td class="">1 / 2</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.007% / 0.014%</td>
+<td class="">0.007% / 0.014%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">3 / 3</td>
+<td class="">3 / 7</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.022% / 0.022%</td>
+<td class="">0.022% / 0.051%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 通用 Prism v0.1.1（T=1）</td>
+<td class="">154.600</td>
+<td class="">0.3020</td>
+<td class="">0.3612</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 通用 Prism v0.1.1（T=1）</td>
+<td class="">155.188</td>
+<td class="">0.3031</td>
+<td class="">0.3593</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.1923 / 0.1900</td>
+<td class="">0.1981 / 0.1858</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0734 / 0.0644</td>
+<td class="">0.0773 / 0.0645</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.1973 / 6.3906</td>
+<td class="">7.5332 / 6.3535</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.2695 / 1.1660</td>
+<td class="">1.3184 / 1.1348</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">19.1125 / 19.5532</td>
+<td class="">18.9560 / 19.3859</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">489/512 ; 479/512</td>
+<td class="">500/512 ; 469/512</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.3817 / 21.3583</td>
+<td class="">20.4303 / 21.0774</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">393/512 ; 360/512</td>
+<td class="">402/512 ; 349/512</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.5645 / 0.5332</td>
+<td class="">0.6211 / 0.5234</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0254 / 0.0117</td>
+<td class="">0.0176 / 0.0117</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.5879 / 1.5781</td>
+<td class="">1.6875 / 1.5703</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.3066 / 0.2266</td>
+<td class="">0.3145 / 0.2969</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.2090 / 3.2129</td>
+<td class="">3.3203 / 3.0762</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">0.9492 / 0.8477</td>
+<td class="">1.0059 / 0.8379</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">5.9219 / 5.9160</td>
+<td class="">6.1582 / 5.6641</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.4512 / 2.2559</td>
+<td class="">2.6953 / 2.1426</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">512 / 512</td>
+<td class="">512 / 512</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">10.0586 / 9.8750</td>
+<td class="">10.0312 / 9.6875</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">4.7852 / 4.2969</td>
+<td class="">4.9863 / 4.1621</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">498 / 498</td>
+<td class="">495 / 495</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p></details><details class="match"><summary>父模型 Prism Alpha v0.1.1（T=1）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">1024 / 512</td>
+<td class="">547 / 8 / 469</td>
+<td class="">53.4180%</td>
+<td class="">53.8086%</td>
+<td class="">[50.6836%, 56.8848%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">先手 P0</td>
+<td class="">512</td>
+<td class="">279 / 5 / 228</td>
+<td class="">54.9805%</td>
+<td class="">14.240 / 13.770</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">后手 P1</td>
+<td class="">512</td>
+<td class="">268 / 3 / 241</td>
+<td class="">52.6367%</td>
+<td class="">14.211 / 13.910</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">53.896</td>
+<td class="">26.955 / 21 / 27.0 / 33</td>
+<td class="">1.831</td>
+<td class="">26.941</td>
+<td class="">3.679</td>
+<td class="">37.11%</td>
+<td class="">0.19931</td>
+<td class="">28.1250%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 父模型 Prism Alpha v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">14.2256 / 13.8398</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5279 / 0.5136</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5280 / 0.5137</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2639 / 0.2568</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.0322 / 12.1699</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.4756 / 0.5244</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.7354 / 2.9004</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">1.0215 / 1.1279</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.7139 / 1.7725</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">38.867% / 43.555%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">37.344% / 38.889%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.2539 / 6.5576</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0918 / 2.0547</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.7607 / 1.7295</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8438 / 0.8506</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.7559 / 0.6865</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.3262 / 0.2910</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.3838 / 2.4121</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.2217 / 2.5059</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.3486 / 2.4463</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.4980 / 2.4307</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.5801 / 2.3750</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 父模型 Prism Alpha v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">11275 / 11307</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">40.859% / 40.975%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">1046 / 1155</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.791% / 4.186%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">12466 / 12156</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">45.175% / 44.051%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">2801 / 2966</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">10.150% / 10.748%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">0 / 4</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.000% / 0.014%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">7 / 7</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.025% / 0.025%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 父模型 Prism Alpha v0.1.1（T=1）</td>
+<td class="">315.399</td>
+<td class="">0.3080</td>
+<td class="">0.3816</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 父模型 Prism Alpha v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.1993 / 0.1906</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0775 / 0.0729</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.1855 / 6.7529</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.2988 / 1.2266</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">18.6378 / 18.7612</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">969/1024 ; 959/1024</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.4230 / 20.5587</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">766/1024 ; 732/1024</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.5977 / 0.5420</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0391 / 0.0508</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">1024 / 1024</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.7158 / 1.6084</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.3066 / 0.3242</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">1024 / 1024</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.4326 / 3.2715</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.0869 / 1.0371</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">1024 / 1024</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.2148 / 5.9043</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.6758 / 2.4453</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">1024 / 1024</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">10.1006 / 9.7881</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">4.8613 / 4.5312</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">993 / 993</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p>
+<p>上述每组纯胜/半平区间均为描述性双座 seed 块 bootstrap，20,000 次、RNG 54049999；不是额外晋级门。计时为 cloud1 ARM64 两个并行 worker、CPUQuota 200%，每个 worker 串行执行 run-match，内存总上限8 GiB。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>本阶段来源</th>
+<th>云端路径 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">分片计划</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/plan.json / 743e7550162aa5d2e471b9bd1fc3bb991178cff7d8f43ee7bff9e552544289cb</td>
+</tr>
+<tr>
+<td class="">逐局来源账本</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/source-ledger.json / 27c8058ba405822c359b78217ea43e5da019a01f07b390e9cb0833b5cd948874</td>
+</tr>
+<tr>
+<td class="">规则回放与大牌画像</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/style-metrics.json / bbc02bef99bcd817c9ca33503662a69da144395afea54cf36a19a9883407098d</td>
+</tr>
+<tr>
+<td class="">双方完整指标</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/acceptance/match-details.json / b1523e8037851a513f853935021f7ab2be3f464e865e10e1ac414baf0e8874df</td>
+</tr>
+</tbody>
+</table></div></details></section>
+<section id="development" class="stage"><h2>开发评测 · 384 局 · 仅描述</h2><p>384 局全部完成并经 Rust 规则回放验证。各组按模型身份与物理座位分别聚合后合并；比例按总计数/总分母计算。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>被测玩家（T=1）</th>
+<th>固定对手 / 模式</th>
+<th>局数 / 双座 seed块</th>
+<th>纯胜率：配对95%区间</th>
+<th>半平得分率：配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">[75.0000%, 92.1875%]</td>
+<td class="">[76.5625%, 92.9688%]</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">64 / 32</td>
+<td class="">[46.8750%, 71.8750%]</td>
+<td class="">[46.8750%, 71.8750%]</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">[56.2500%, 76.5625%]</td>
+<td class="">[56.2500%, 76.5625%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">[65.6250%, 84.3750%]</td>
+<td class="">[65.6250%, 84.3750%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">64 / 32</td>
+<td class="">[51.5625%, 73.4375%]</td>
+<td class="">[51.5625%, 73.4375%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">[53.1250%, 78.1250%]</td>
+<td class="">[53.1250%, 78.1250%]</td>
+</tr>
+</tbody>
+</table></div><details class="match"><summary>便携 Heuristic v0.2.9（greedy）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">54 / 1 / 9</td>
+<td class="">84.3750%</td>
+<td class="">85.1562%</td>
+<td class="">[76.5625%, 92.9688%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">48 / 0 / 16</td>
+<td class="">75.0000%</td>
+<td class="">75.0000%</td>
+<td class="">[65.6250%, 84.3750%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">25 / 1 / 6</td>
+<td class="">79.6875%</td>
+<td class="">15.719 / 11.969</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">29 / 0 / 3</td>
+<td class="">90.6250%</td>
+<td class="">16.031 / 12.125</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">25 / 0 / 7</td>
+<td class="">78.1250%</td>
+<td class="">14.875 / 12.938</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">23 / 0 / 9</td>
+<td class="">71.8750%</td>
+<td class="">15.094 / 12.438</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">53.531</td>
+<td class="">26.766 / 23 / 27.0 / 31</td>
+<td class="">1.934</td>
+<td class="">26.766</td>
+<td class="">4.828</td>
+<td class="">20.31%</td>
+<td class="">0.22187</td>
+<td class="">39.0625%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">53.750</td>
+<td class="">26.891 / 23 / 27.0 / 31</td>
+<td class="">1.795</td>
+<td class="">26.859</td>
+<td class="">3.797</td>
+<td class="">35.94%</td>
+<td class="">0.21719</td>
+<td class="">46.8750%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">15.8750 / 12.0469</td>
+<td class="">14.9844 / 12.6875</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5931 / 0.4501</td>
+<td class="">0.5579 / 0.4718</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5931 / 0.4501</td>
+<td class="">0.5579 / 0.4724</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2966 / 0.2250</td>
+<td class="">0.2788 / 0.2360</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.2188 / 13.0781</td>
+<td class="">12.5312 / 13.5312</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.5312 / 0.3906</td>
+<td class="">0.5156 / 0.5781</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.2188 / 2.5938</td>
+<td class="">2.3281 / 2.5469</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">0.8281 / 1.3906</td>
+<td class="">0.9219 / 1.4375</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.3906 / 1.2031</td>
+<td class="">1.4062 / 1.1094</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">45.312% / 32.812%</td>
+<td class="">43.750% / 42.188%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">37.324% / 53.614%</td>
+<td class="">39.597% / 56.442%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.2344 / 7.4219</td>
+<td class="">6.5000 / 7.7812</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0156 / 2.4219</td>
+<td class="">2.1719 / 2.6250</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.6094 / 1.8906</td>
+<td class="">1.8438 / 1.7969</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8438 / 0.7969</td>
+<td class="">0.9062 / 0.6719</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">1.0625 / 0.4531</td>
+<td class="">0.6875 / 0.5625</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.4531 / 0.0938</td>
+<td class="">0.4219 / 0.0938</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.0312 / 2.4531</td>
+<td class="">2.3438 / 2.6875</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.6094 / 2.8906</td>
+<td class="">2.5156 / 2.9531</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.5625 / 2.7188</td>
+<td class="">2.4531 / 2.7969</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.6719 / 2.6094</td>
+<td class="">2.4844 / 2.5000</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.3438 / 2.4062</td>
+<td class="">2.7344 / 2.5938</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">729 / 748</td>
+<td class="">743 / 774</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">42.557% / 43.666%</td>
+<td class="">43.223% / 44.974%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">53 / 89</td>
+<td class="">59 / 92</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.094% / 5.196%</td>
+<td class="">3.432% / 5.346%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">789 / 710</td>
+<td class="">768 / 690</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">46.060% / 41.448%</td>
+<td class="">44.677% / 40.093%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">142 / 165</td>
+<td class="">149 / 163</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">8.290% / 9.632%</td>
+<td class="">8.668% / 9.471%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">0 / 1</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.000% / 0.058%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 2</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.116%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">11.916</td>
+<td class="">0.1862</td>
+<td class="">0.2203</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 便携 Heuristic v0.2.9（greedy）</td>
+<td class="">12.099</td>
+<td class="">0.1891</td>
+<td class="">0.2294</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 便携 Heuristic v0.2.9（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 便携 Heuristic v0.2.9（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.2219 / 0.1645</td>
+<td class="">0.2172 / 0.1628</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0965 / 0.0448</td>
+<td class="">0.0915 / 0.0462</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">9.0469 / 4.6719</td>
+<td class="">7.5781 / 4.7344</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.6406 / 0.9062</td>
+<td class="">1.3750 / 0.9688</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">17.8548 / 20.6607</td>
+<td class="">17.5556 / 20.1731</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">62/64 ; 56/64</td>
+<td class="">63/64 ; 52/64</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.2456 / 21.8519</td>
+<td class="">20.6981 / 22.3611</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">57/64 ; 27/64</td>
+<td class="">53/64 ; 36/64</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.8125 / 0.5469</td>
+<td class="">0.7188 / 0.5000</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.1406 / 0.0000</td>
+<td class="">0.0938 / 0.0000</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">2.1250 / 1.4531</td>
+<td class="">2.2031 / 1.3906</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.6094 / 0.2031</td>
+<td class="">0.6406 / 0.2031</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.5781 / 2.9375</td>
+<td class="">3.6875 / 2.6250</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.0469 / 0.6406</td>
+<td class="">1.3281 / 0.4219</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.7969 / 4.9531</td>
+<td class="">6.9375 / 4.7188</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">3.2188 / 1.4688</td>
+<td class="">3.3750 / 1.4375</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">11.2031 / 8.5781</td>
+<td class="">10.5156 / 8.8750</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">6.1875 / 3.1094</td>
+<td class="">5.1406 / 3.4062</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">61 / 61</td>
+<td class="">62 / 62</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p></details><details class="match"><summary>初代 Prism v0.1.0（greedy）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">43 / 0 / 21</td>
+<td class="">67.1875%</td>
+<td class="">67.1875%</td>
+<td class="">[56.2500%, 76.5625%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">64 / 32</td>
+<td class="">42 / 0 / 22</td>
+<td class="">65.6250%</td>
+<td class="">65.6250%</td>
+<td class="">[53.1250%, 78.1250%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">23 / 0 / 9</td>
+<td class="">71.8750%</td>
+<td class="">15.469 / 12.219</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">20 / 0 / 12</td>
+<td class="">62.5000%</td>
+<td class="">14.781 / 13.281</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">22 / 0 / 10</td>
+<td class="">68.7500%</td>
+<td class="">14.719 / 12.719</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">20 / 0 / 12</td>
+<td class="">62.5000%</td>
+<td class="">14.688 / 13.062</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 初代 Prism v0.1.0（greedy）</td>
+<td class="">54.125</td>
+<td class="">27.078 / 23 / 27.0 / 33</td>
+<td class="">1.865</td>
+<td class="">27.047</td>
+<td class="">4.375</td>
+<td class="">31.25%</td>
+<td class="">0.20391</td>
+<td class="">26.5625%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 初代 Prism v0.1.0（greedy）</td>
+<td class="">54.078</td>
+<td class="">27.047 / 22 / 27.0 / 32</td>
+<td class="">1.866</td>
+<td class="">27.031</td>
+<td class="">3.906</td>
+<td class="">32.81%</td>
+<td class="">0.20998</td>
+<td class="">28.1250%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">15.1250 / 12.7500</td>
+<td class="">14.7031 / 12.8906</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5592 / 0.4709</td>
+<td class="">0.5436 / 0.4769</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5592 / 0.4714</td>
+<td class="">0.5439 / 0.4769</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2794 / 0.2356</td>
+<td class="">0.2719 / 0.2384</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.4375 / 13.0781</td>
+<td class="">12.0156 / 12.9219</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.5312 / 0.4531</td>
+<td class="">0.4531 / 0.5312</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.5469 / 2.1719</td>
+<td class="">2.7656 / 2.3594</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">1.0781 / 1.2031</td>
+<td class="">1.0938 / 1.0938</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.4688 / 0.9688</td>
+<td class="">1.6719 / 1.2656</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">42.188% / 35.938%</td>
+<td class="">39.062% / 43.750%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">42.331% / 55.396%</td>
+<td class="">39.548% / 46.358%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.4062 / 6.9844</td>
+<td class="">6.1719 / 7.2500</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0938 / 2.7812</td>
+<td class="">1.9531 / 2.5156</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.8438 / 2.0469</td>
+<td class="">1.8281 / 1.6406</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.9531 / 0.6875</td>
+<td class="">0.8594 / 0.7500</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.8125 / 0.4375</td>
+<td class="">0.8594 / 0.5781</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.3281 / 0.1406</td>
+<td class="">0.3438 / 0.1875</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.3906 / 2.3594</td>
+<td class="">2.2969 / 2.5000</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.5781 / 3.0000</td>
+<td class="">2.4062 / 3.0156</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.6406 / 2.7656</td>
+<td class="">2.4375 / 2.4688</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.4531 / 2.4375</td>
+<td class="">2.1562 / 2.5625</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.3750 / 2.5156</td>
+<td class="">2.7188 / 2.3750</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">727 / 760</td>
+<td class="">699 / 757</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">41.999% / 43.855%</td>
+<td class="">40.381% / 43.757%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">69 / 77</td>
+<td class="">70 / 70</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">3.986% / 4.443%</td>
+<td class="">4.044% / 4.046%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">772 / 755</td>
+<td class="">784 / 752</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">44.598% / 43.566%</td>
+<td class="">45.292% / 43.468%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">163 / 138</td>
+<td class="">177 / 151</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">9.417% / 7.963%</td>
+<td class="">10.225% / 8.728%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">0 / 1</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.000% / 0.058%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">0 / 2</td>
+<td class="">1 / 0</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.000% / 0.115%</td>
+<td class="">0.058% / 0.000%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 初代 Prism v0.1.0（greedy）</td>
+<td class="">20.477</td>
+<td class="">0.3200</td>
+<td class="">0.3790</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 初代 Prism v0.1.0（greedy）</td>
+<td class="">20.716</td>
+<td class="">0.3237</td>
+<td class="">0.3671</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 初代 Prism v0.1.0（greedy）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 初代 Prism v0.1.0（greedy）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.2039 / 0.1729</td>
+<td class="">0.2100 / 0.1699</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0857 / 0.0516</td>
+<td class="">0.0910 / 0.0583</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.7500 / 4.5156</td>
+<td class="">7.7344 / 5.5000</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.4531 / 0.8438</td>
+<td class="">1.4844 / 1.0156</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">18.1905 / 19.7308</td>
+<td class="">17.6613 / 19.3636</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">63/64 ; 52/64</td>
+<td class="">62/64 ; 55/64</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.7059 / 20.6774</td>
+<td class="">19.3529 / 21.6905</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">51/64 ; 31/64</td>
+<td class="">51/64 ; 42/64</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.6406 / 0.4531</td>
+<td class="">0.6406 / 0.4844</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0938 / 0.0000</td>
+<td class="">0.0938 / 0.0000</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.9219 / 1.4531</td>
+<td class="">1.9062 / 1.3125</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.4844 / 0.2656</td>
+<td class="">0.5312 / 0.2344</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.5781 / 2.9844</td>
+<td class="">3.6250 / 2.8438</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.3594 / 0.8281</td>
+<td class="">1.3594 / 0.8438</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.0312 / 5.3594</td>
+<td class="">6.1875 / 5.2656</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.6875 / 1.8125</td>
+<td class="">2.9375 / 2.0312</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">10.4688 / 8.7812</td>
+<td class="">10.7031 / 8.9375</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">5.2969 / 2.9688</td>
+<td class="">5.4844 / 3.7188</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">62 / 62</td>
+<td class="">63 / 63</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p></details><details class="match"><summary>通用 Prism v0.1.1（T=1）：完整双方数据</summary><p>“模型”列是被测玩家；对手列注明动作模式。个人指标每格为“被测模型 / 对手”。节奏是该模型对阵该对手的整局指标。纯胜率=胜/局数，得分率=(胜+0.5平)/局数。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型（T=1）</th>
+<th>对手</th>
+<th>局数 / 双座种子数</th>
+<th>胜 / 平 / 负</th>
+<th>纯胜率</th>
+<th>得分率</th>
+<th>描述性配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">64 / 32</td>
+<td class="">38 / 0 / 26</td>
+<td class="">59.3750%</td>
+<td class="">59.3750%</td>
+<td class="">[46.8750%, 71.8750%]</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">64 / 32</td>
+<td class="">40 / 0 / 24</td>
+<td class="">62.5000%</td>
+<td class="">62.5000%</td>
+<td class="">[51.5625%, 73.4375%]</td>
+</tr>
+</tbody>
+</table></div>
+<h4>双座明细</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>对手</th>
+<th>本模型座位</th>
+<th>局数</th>
+<th>胜 / 平 / 负</th>
+<th>得分率</th>
+<th>局均VP（模型 / 对手）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">17 / 0 / 15</td>
+<td class="">53.1250%</td>
+<td class="">14.312 / 13.906</td>
+</tr>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">21 / 0 / 11</td>
+<td class="">65.6250%</td>
+<td class="">14.594 / 13.375</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">先手 P0</td>
+<td class="">32</td>
+<td class="">23 / 0 / 9</td>
+<td class="">71.8750%</td>
+<td class="">14.875 / 12.594</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">后手 P1</td>
+<td class="">32</td>
+<td class="">17 / 0 / 15</td>
+<td class="">53.1250%</td>
+<td class="">14.281 / 14.125</td>
+</tr>
+</tbody>
+</table></div>
+<h4>对局节奏与风格</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>局均步数</th>
+<th>决策轮：均值 / 最短 / 中位 / 最长</th>
+<th>轮标准差</th>
+<th>Main轮均值</th>
+<th>终局绝对分差</th>
+<th>分差≤2</th>
+<th>总VP AUC24</th>
+<th>20 Main内8VP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 通用 Prism v0.1.1（T=1）</td>
+<td class="">54.500</td>
+<td class="">27.266 / 25 / 27.0 / 32</td>
+<td class="">1.761</td>
+<td class="">27.234</td>
+<td class="">3.438</td>
+<td class="">39.06%</td>
+<td class="">0.19709</td>
+<td class="">31.2500%</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 通用 Prism v0.1.1（T=1）</td>
+<td class="">54.391</td>
+<td class="">27.203 / 22 / 27.0 / 31</td>
+<td class="">1.897</td>
+<td class="">27.188</td>
+<td class="">3.906</td>
+<td class="">28.12%</td>
+<td class="">0.20282</td>
+<td class="">18.7500%</td>
+</tr>
+</tbody>
+</table></div>
+<p>总VP AUC24/20 Main列为被测玩家；短于24自身Main的AUC按终局分补足固定窗口。legacy决策轮=ceil(全动作步数/2)，含贵族选择；Main轮排除贵族选择。风格两项之外的经济数据为新增描述性指标。</p>
+<h4>双方得分、购卡、折扣、贵族与预留</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">局均最终VP</td>
+<td class="">14.4531 / 13.6406</td>
+<td class="">14.5781 / 13.3594</td>
+</tr>
+<tr>
+<td class="">VP / 自身决策（含贵族选择）</td>
+<td class="">0.5301 / 0.5009</td>
+<td class="">0.5362 / 0.4911</td>
+</tr>
+<tr>
+<td class="">VP / 自身Main</td>
+<td class="">0.5307 / 0.5009</td>
+<td class="">0.5362 / 0.4914</td>
+</tr>
+<tr>
+<td class="">VP / 全局步数</td>
+<td class="">0.2652 / 0.2503</td>
+<td class="">0.2680 / 0.2456</td>
+</tr>
+<tr>
+<td class="">局均永久折扣 / 购卡</td>
+<td class="">12.2969 / 12.5156</td>
+<td class="">12.1094 / 12.3750</td>
+</tr>
+<tr>
+<td class="">局均贵族数</td>
+<td class="">0.5000 / 0.4844</td>
+<td class="">0.4062 / 0.5000</td>
+</tr>
+<tr>
+<td class="">局均预留获取</td>
+<td class="">2.8594 / 3.0156</td>
+<td class="">2.6719 / 3.0000</td>
+</tr>
+<tr>
+<td class="">局均预留买回</td>
+<td class="">1.1562 / 1.3438</td>
+<td class="">0.9844 / 1.1719</td>
+</tr>
+<tr>
+<td class="">终局未买回预留</td>
+<td class="">1.7031 / 1.6719</td>
+<td class="">1.6875 / 1.8281</td>
+</tr>
+<tr>
+<td class="">获得贵族的对局比例</td>
+<td class="">37.500% / 35.938%</td>
+<td class="">31.250% / 39.062%</td>
+</tr>
+<tr>
+<td class="">预留买回 / 获取</td>
+<td class="">40.437% / 44.560%</td>
+<td class="">36.842% / 39.062%</td>
+</tr>
+<tr>
+<td class="">局均购入 0 VP卡</td>
+<td class="">6.5469 / 6.7500</td>
+<td class="">6.3125 / 6.6562</td>
+</tr>
+<tr>
+<td class="">局均购入 1 VP卡</td>
+<td class="">2.0469 / 2.2500</td>
+<td class="">1.9219 / 2.4375</td>
+</tr>
+<tr>
+<td class="">局均购入 2 VP卡</td>
+<td class="">1.6875 / 1.7188</td>
+<td class="">1.7969 / 1.5938</td>
+</tr>
+<tr>
+<td class="">局均购入 3 VP卡</td>
+<td class="">0.8281 / 0.9219</td>
+<td class="">0.8125 / 0.7812</td>
+</tr>
+<tr>
+<td class="">局均购入 4 VP卡</td>
+<td class="">0.8906 / 0.6406</td>
+<td class="">0.9219 / 0.6406</td>
+</tr>
+<tr>
+<td class="">局均购入 5 VP卡</td>
+<td class="">0.2969 / 0.2344</td>
+<td class="">0.3438 / 0.2656</td>
+</tr>
+<tr>
+<td class="">局均 白 折扣</td>
+<td class="">2.3125 / 2.4375</td>
+<td class="">2.5469 / 2.2656</td>
+</tr>
+<tr>
+<td class="">局均 蓝 折扣</td>
+<td class="">2.6250 / 2.8594</td>
+<td class="">2.2344 / 2.8125</td>
+</tr>
+<tr>
+<td class="">局均 绿 折扣</td>
+<td class="">2.5781 / 2.3594</td>
+<td class="">2.4375 / 2.4219</td>
+</tr>
+<tr>
+<td class="">局均 红 折扣</td>
+<td class="">2.3281 / 2.5781</td>
+<td class="">2.3281 / 2.5469</td>
+</tr>
+<tr>
+<td class="">局均 黑 折扣</td>
+<td class="">2.4531 / 2.2812</td>
+<td class="">2.5625 / 2.3281</td>
+</tr>
+</tbody>
+</table></div>
+<h4>全部七类动作</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">买市场 次数</td>
+<td class="">713 / 715</td>
+<td class="">712 / 717</td>
+</tr>
+<tr>
+<td class="">买市场 占自身全部决策</td>
+<td class="">40.860% / 41.021%</td>
+<td class="">40.920% / 41.183%</td>
+</tr>
+<tr>
+<td class="">买预留 次数</td>
+<td class="">74 / 86</td>
+<td class="">63 / 75</td>
+</tr>
+<tr>
+<td class="">买预留 占自身全部决策</td>
+<td class="">4.241% / 4.934%</td>
+<td class="">3.621% / 4.308%</td>
+</tr>
+<tr>
+<td class="">取宝石 次数</td>
+<td class="">773 / 749</td>
+<td class="">794 / 756</td>
+</tr>
+<tr>
+<td class="">取宝石 占自身全部决策</td>
+<td class="">44.298% / 42.972%</td>
+<td class="">45.632% / 43.423%</td>
+</tr>
+<tr>
+<td class="">预留市场 次数</td>
+<td class="">183 / 193</td>
+<td class="">171 / 192</td>
+</tr>
+<tr>
+<td class="">预留市场 占自身全部决策</td>
+<td class="">10.487% / 11.073%</td>
+<td class="">9.828% / 11.028%</td>
+</tr>
+<tr>
+<td class="">预留牌堆 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">预留牌堆 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+<tr>
+<td class="">选贵族 次数</td>
+<td class="">2 / 0</td>
+<td class="">0 / 1</td>
+</tr>
+<tr>
+<td class="">选贵族 占自身全部决策</td>
+<td class="">0.115% / 0.000%</td>
+<td class="">0.000% / 0.057%</td>
+</tr>
+<tr>
+<td class="">跳过 次数</td>
+<td class="">0 / 0</td>
+<td class="">0 / 0</td>
+</tr>
+<tr>
+<td class="">跳过 占自身全部决策</td>
+<td class="">0.000% / 0.000%</td>
+<td class="">0.000% / 0.000%</td>
+</tr>
+</tbody>
+</table></div>
+<h4>实测计时</h4>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 对手</th>
+<th>进程耗时累计s</th>
+<th>单局均值s</th>
+<th>单局P95s</th>
+<th>决策 / 推理延迟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1 / 通用 Prism v0.1.1（T=1）</td>
+<td class="">19.444</td>
+<td class="">0.3038</td>
+<td class="">0.3557</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4） / 通用 Prism v0.1.1（T=1）</td>
+<td class="">19.652</td>
+<td class="">0.3071</td>
+<td class="">0.3510</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟包括程序启动、比赛、验核和输出；累计单局秒数含并行重叠，不等于整批墙钟。未记录逐决策/推理延迟，不能填0或由单局时间推算。</p><h3>大牌购入时点与分段得分（双方个人指标）</h3><div class="table-scroll"><table>
+<thead>
+<tr>
+<th>个人指标：模型 / 对手</th>
+<th>父模型 Prism Alpha v0.1.1 对阵 通用 Prism v0.1.1（T=1）</th>
+<th>Prism Alpha v0.1.2（M59 最终 c4） 对阵 通用 Prism v0.1.1（T=1）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">24 Main 总VP AUC（训练效用）</td>
+<td class="">0.1971 / 0.1855</td>
+<td class="">0.2028 / 0.1862</td>
+</tr>
+<tr>
+<td class="">24 Main 大牌印刷VP AUC（风格底线）</td>
+<td class="">0.0755 / 0.0704</td>
+<td class="">0.0799 / 0.0628</td>
+</tr>
+<tr>
+<td class="">终局3～5VP牌印刷分合计</td>
+<td class="">7.5312 / 6.5000</td>
+<td class="">7.8438 / 6.2344</td>
+</tr>
+<tr>
+<td class="">前24自身Main购入3～5VP牌数</td>
+<td class="">1.2344 / 1.1719</td>
+<td class="">1.2500 / 1.0781</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 自身Main（仅买到的局）</td>
+<td class="">18.7333 / 18.7931</td>
+<td class="">18.6774 / 18.6909</td>
+</tr>
+<tr>
+<td class="">首张3～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">60/64 ; 58/64</td>
+<td class="">62/64 ; 55/64</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 自身Main（仅买到的局）</td>
+<td class="">20.2500 / 20.9000</td>
+<td class="">20.4545 / 20.9318</td>
+</tr>
+<tr>
+<td class="">首张4～5VP牌 覆盖局数 / 总局数（双方）</td>
+<td class="">52/64 ; 40/64</td>
+<td class="">55/64 ; 44/64</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均总VP</td>
+<td class="">0.5469 / 0.6094</td>
+<td class="">0.6094 / 0.6406</td>
+</tr>
+<tr>
+<td class="">自身Main 8 后局均大牌印刷VP</td>
+<td class="">0.0000 / 0.0469</td>
+<td class="">0.0000 / 0.0000</td>
+</tr>
+<tr>
+<td class="">自身Main 8 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均总VP</td>
+<td class="">1.7188 / 1.7031</td>
+<td class="">1.8906 / 1.6875</td>
+</tr>
+<tr>
+<td class="">自身Main 12 后局均大牌印刷VP</td>
+<td class="">0.4844 / 0.4531</td>
+<td class="">0.4844 / 0.2969</td>
+</tr>
+<tr>
+<td class="">自身Main 12 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均总VP</td>
+<td class="">3.5000 / 3.1406</td>
+<td class="">3.6562 / 3.1719</td>
+</tr>
+<tr>
+<td class="">自身Main 16 后局均大牌印刷VP</td>
+<td class="">1.2344 / 0.9688</td>
+<td class="">1.2656 / 0.8281</td>
+</tr>
+<tr>
+<td class="">自身Main 16 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均总VP</td>
+<td class="">6.1562 / 5.7812</td>
+<td class="">5.9688 / 5.6875</td>
+</tr>
+<tr>
+<td class="">自身Main 20 后局均大牌印刷VP</td>
+<td class="">2.5781 / 2.4688</td>
+<td class="">2.5156 / 2.1094</td>
+</tr>
+<tr>
+<td class="">自身Main 20 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">64 / 64</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均总VP</td>
+<td class="">9.9531 / 9.4219</td>
+<td class="">10.0469 / 9.1719</td>
+</tr>
+<tr>
+<td class="">自身Main 24 后局均大牌印刷VP</td>
+<td class="">4.6094 / 4.1875</td>
+<td class="">4.7812 / 3.9062</td>
+</tr>
+<tr>
+<td class="">自身Main 24 实际达到局数（双方）</td>
+<td class="">64 / 64</td>
+<td class="">63 / 63</td>
+</tr>
+</tbody>
+</table></div>
+<p>每格为模型 / 对手。自身Main含购卡/取宝石/预留/跳过，不含贵族选择；贵族分计入前一个Main。短局在后续固定检查点用其终局分补足，并列实际达到该Main的局数。大牌仅含购入3～5VP卡的印刷VP，排除贵族；AUC按15VP截断、固定24分母。首牌时点只对买到的局取均值，必须连同覆盖率解读，不能单凭均值认定更快。</p>
+<p>上述每组纯胜/半平区间均为描述性双座 seed 块 bootstrap，20,000 次、RNG 54049999；不是额外晋级门。计时为 cloud1 ARM64 两个并行 worker、CPUQuota 200%，每个 worker 串行执行 run-match，内存总上限8 GiB。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>本阶段来源</th>
+<th>云端路径 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">分片计划</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/development/plan.json / 327f370177a2167407a667f788c0dde393434dadd417380c65df5c694fb6e2ed</td>
+</tr>
+<tr>
+<td class="">逐局来源账本</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/development/source-ledger.json / e14fa1f7ba242f1de4527afcb21a46154c6192be6ccd49c202663b4b734f91b8</td>
+</tr>
+<tr>
+<td class="">规则回放与大牌画像</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/development/style-metrics.json / d33627c63f6aa4e60d5b7fc85bd00582cae8c1ca8a3c9439f1583b9c8f010bd1</td>
+</tr>
+<tr>
+<td class="">双方完整指标</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/development/match-details.json / 7d049d9925d7c7eb0748b2e83628176883054f4ddae10fadb75ff4dd367a48c7</td>
+</tr>
+</tbody>
+</table></div></details></section>
+<details id="sources" class="provenance"><summary>完整来源、计时、运行身份与两局执行修复</summary>
+<h2>资源、时钟与来源</h2>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>实测 / 合同</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">固定最终c4 SHA256</td>
+<td class="">faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618</td>
+</tr>
+<tr>
+<td class="">评测执行合同 SHA256</td>
+<td class="">3ad3dc50bd2c08f3c241c8db120b1d70d65d9a63f2b30f1be2a6d161aae5eb11</td>
+</tr>
+<tr>
+<td class="">原训练</td>
+<td class="">4×256=1,024局 / 216次更新 / 0重试；tree墙钟2,831.078534s；4GiB收尾OOM FAILED保留</td>
+</tr>
+<tr>
+<td class="">本次评测</td>
+<td class="">384开发 + 4,096独立 = 4,480逻辑局；2并行 / 8GiB / 原8h截止 / 40,000CPU秒 / 32GiB；用户授权仅两局中断重试，物理尝试最多4,482</td>
+</tr>
+<tr>
+<td class="">本次开始到结束间隔（含停机与等待授权）</td>
+<td class="">1775.359s</td>
+</tr>
+<tr>
+<td class="">评测cgroup累计CPU / 内存峰值</td>
+<td class="">1910.720084s / 567549952 bytes</td>
+</tr>
+<tr>
+<td class="">逐决策 / 逐推理时延</td>
+<td class="">NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td class="">完成状态</td>
+<td class="">ACCEPTED_BIGCARD_CONTINUATION</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时钟涵盖启动、比赛、输出；累计单局秒数包含并行重叠，不能当作监督墙钟。评测墙钟与训练墙钟分别记录。game-wall60s、握手/动作各10s、关闭宽限1s。仅原确切两局允许一次中断重试，其他失败不重赛；原截止时间和累计CPU不重置。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>冻结来源</th>
+<th>路径 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">原配置</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.config.json / cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac</td>
+</tr>
+<tr>
+<td class="">原蓝图</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.train.json / 32cc86fe7e6b5bf9a1cf602064547a10e8703f638134c1c002af8630fd4f4377</td>
+</tr>
+<tr>
+<td class="">执行补充</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.evaluation-execution.json / 3ad3dc50bd2c08f3c241c8db120b1d70d65d9a63f2b30f1be2a6d161aae5eb11</td>
+</tr>
+<tr>
+<td class="">评测结果</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.evaluation-result.json / c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37</td>
+</tr>
+<tr>
+<td class="">描述性纯胜区间</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/descriptive-win-intervals.json / 5173de880921d384728c03d29be0f6404ff93f6d6eaf555c3ba27f55068b1e18</td>
+</tr>
+</tbody>
+</table></div>
+<p>cloud1 原始逐局配置、report/replay/process-result/握手、26个分片进度、source-ledger 和 Rust style/economy manifest 在 /home/ubuntu/splendor-ppo-m59/evaluation。共同开发 seed9595000..9595031，独立共同 seed9600000..9600255，直接父模型 seed9600000..9600511；T=1 action seed59020001。native/权重/源文件完整 hash 见执行补充；固定305文件 Rust snapshot/数值身份见原配置。初代 greedy seed51000001，便携 Heuristic greedy seed20260926。</p>
+<p>本轮保持单候选、有限对手池与一次训练 RNG；对其他风格、采样温度或运行平台不外推。不存在本机与 cloud1 同负载正式比赛计时对照，不能由本次时间声称固定速度倍数。</p>
+<h2>固定玩家与运行程序身份</h2>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>模型 / 固定对手</th>
+<th>字面启动参数（动作模式）</th>
+<th>权重文件 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">父模型 Prism Alpha v0.1.1</td>
+<td class="">agent-prism-sample --weights /home/ubuntu/splendor-ppo-m57/inputs/parent.json --seed 59020001</td>
+<td class="">/home/ubuntu/splendor-ppo-m57/inputs/parent.json / d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff</td>
+</tr>
+<tr>
+<td class="">Prism Alpha v0.1.2（M59 最终 c4）</td>
+<td class="">agent-prism-sample --weights /home/ubuntu/splendor-ppo-m59/campaigns/m59-alpha-bigcard-g0/cycle-4-export/weights.json --seed 59020001</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/campaigns/m59-alpha-bigcard-g0/cycle-4-export/weights.json / faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618</td>
+</tr>
+<tr>
+<td class="">便携 Heuristic v0.2.9（greedy）</td>
+<td class="">agent-heuristic-v02 --seed 20260926</td>
+<td class="">无权重文件（固定源码启发式）</td>
+</tr>
+<tr>
+<td class="">通用 Prism v0.1.1（T=1）</td>
+<td class="">agent-prism-sample --weights /home/ubuntu/splendor-ppo-m59/inputs/general.json --seed 59020001</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/inputs/general.json / a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85</td>
+</tr>
+<tr>
+<td class="">初代 Prism v0.1.0（greedy）</td>
+<td class="">agent-prism --weights /home/ubuntu/splendor-ppo-m57/inputs/initial.json --seed 51000001</td>
+<td class="">/home/ubuntu/splendor-ppo-m57/inputs/initial.json / 5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54</td>
+</tr>
+</tbody>
+</table></div>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>原生 ARM 程序</th>
+<th>路径 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">economy</td>
+<td class="">/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics / ba3f2cbe49e5839ae0b5ca220425c5e79ec901f368eabfc12bc2463c0fe265dc</td>
+</tr>
+<tr>
+<td class="">engine</td>
+<td class="">/home/ubuntu/splendor-ppo-m57/build/release/splendor / 1a13af46327650c20675994b3347047ecadd5068e701ad3808322ec8ac528d4b</td>
+</tr>
+<tr>
+<td class="">style</td>
+<td class="">/home/ubuntu/splendor-ppo-m57/build/release/examples/prism_bigcard_metrics / 5510f847e31981bb223147639ef1e20c1b7317b5fe2a24d12668f4293919ad5a</td>
+</tr>
+</tbody>
+</table></div>
+<p>Prism 推理 runtime 的 Hello 为 prism-sample / 0.1.0（T=1）或 prism-v0.1 / 0.1.0（greedy）；这些是程序协议版本。模型身份由上表冻结权重 SHA区分，不能把 runtime 的0.1.0当作所有模型的模型版本。启发式 Hello 为 splendor-cli-heuristic-v02 / 0.2.9。</p>
+<h2>本轮决定</h2>
+<p>三门全部通过，完成本轮独立验收；保留原工程异常。</p>
+<h2>已批准执行修复的来源</h2>
+<p>原评测监控临时文件stat竞态失败永久保留。用户明确授权“允许最多补跑这2局，完成原固定评测”。1,817已记账局逐hash复用，原未记账两局归档后仅补跑一次；已有终局回放那局的终局结果与逐步动作一致。原权重、种子、模式、三个统计门不变；全grid完成后正式分析一次。此结论依据获批的执行修复合同，原失败服务没有改为成功。</p>
+<div class="table-scroll"><table>
+<thead>
+<tr>
+<th>执行修复证据</th>
+<th>实测 / SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="">原失败服务控制墙钟</td>
+<td class="">520.648s</td>
+</tr>
+<tr>
+<td class="">修复后控制墙钟</td>
+<td class="">604.731s</td>
+</tr>
+<tr>
+<td class="">逻辑评测局 / 物理尝试</td>
+<td class="">4480 / 4482</td>
+</tr>
+<tr>
+<td class="">中断局重试 / 正式三门分析</td>
+<td class="">2 / 1</td>
+</tr>
+<tr>
+<td class="">授权修复回执</td>
+<td class="">/home/ubuntu/splendor-ppo-m59/evaluation/repair-approval.json / 6a2d7d108d943c0b855ddb756043c771973d58049fd5f9c1d0b07cc8d5ba5d7f</td>
+</tr>
+<tr>
+<td class="">原提案</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.evaluation-repair-proposal.json / abd5daa2a4fe1d18ac999408f04dfd53a27a0aad005c88957e07919986589c1a</td>
+</tr>
+<tr>
+<td class="">原监控事故</td>
+<td class="">../../benchmarks/m59-prism-alpha-cloud-ppo.evaluation-incident.json</td>
+</tr>
+</tbody>
+</table></div>
+<p>版本登记：本机不可变推理产物位于 local-artifacts/prism/alpha-v0.1.2/weights.json，SHA 与原最终c4一致；<a href="../../benchmarks/m59-prism-alpha-v0.1.2.model.json">实验身份记录</a>。这是实验模型身份冻结，默认/共享池/Studio部署仍为 false。下一轮尚未启动；优先修复PPO收尾重复加载并沿用8 GiB执行范围，再另定有限训练与新独立样本。</p>
+</details><footer><p>数据来自已冻结 Markdown 和结果 JSON。本页面不重新计算验收、不运行比赛或训练；原训练 OOM 与原评测监控失败保留，仅两局中断重试获用户授权。</p>
+<p class="source">Markdown SHA256: 24199c06b6d5666368562c24db04c3514c3efbc00b6c132249f8c468071357e9<br>独立结果 SHA256: c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37</p></footer>
+</main><script>document.querySelector("#expand").addEventListener("click",()=>document.querySelectorAll("details.match").forEach(d=>d.open=true));document.querySelector("#collapse").addEventListener("click",()=>document.querySelectorAll("details.match").forEach(d=>d.open=false));</script></body></html>
