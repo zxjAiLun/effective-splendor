@@ -9,3 +9,5 @@ prism_alpha_cloud_html_report.py -text
 prism_alpha_cloud_prepare_m60.py -text
 prism_alpha_cloud_audit_m60.py -text
 prism_alpha_cloud_training_report_m60.py -text
+prism_alpha_cloud_evaluation_report_m60.py -text
+prism_alpha_cloud_acceptance_m60.py -text
