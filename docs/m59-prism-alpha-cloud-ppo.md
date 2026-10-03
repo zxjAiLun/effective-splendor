@@ -1,6 +1,6 @@
 # M59 Prism Alpha：cloud1 大牌冲分 PPO 续训
 
-Status: **AUTHORIZED / FROZEN_BEFORE_FIRST_GAME**；训练启动核验见下方追加记录。开发与独立验收 **NOT_RUN**。
+Status: **TRAINING_ARTIFACT_VERIFIED / SUPERVISOR_FAILED**；四轮已提交，收尾OOM与独立核验见追加记录。开发与独立验收 **NOT_RUN**。历史首局前设计和启动快照保留。
 Baseline: main@ba7cb1958daeccbe5391d6bd769c677d50ac3f94；保留其他任务的未提交改动。
 Owner/date: 用户“在云端现在启动迭代训练”，2026-10-03（北京时间）。
 
@@ -133,3 +133,28 @@ C:\Python312\python.exe -B scripts/prism_portable_control.py --profiles $alphaPr
 ~~~
 
 正常换机先等 STOPPED_BOUNDARY，再按[M57交接操作](prism/portable-ppo-operations.md)使用此M59 profiles进行transfer。当前云端owner独占，不能同时在本机开同一条线。0retry合同保留，强制中断不保证剩余局可继续；正常采用提交边界停止。
+
+### 四轮提交完成 / 收尾OOM / 产物独立核验 — 2026-10-03T13:16:43.574077+08:00
+
+**当前状态：训练产物VERIFIED，原监督器FAILED保留；开发/独立竞技/风格验收NOT_RUN。** 云端已停止，无在训进程。
+
+1,024/1,024局、4/4轮、216次更新、27,360次学习决策、0retry；每轮54次更新并以passes_complete结束。最终c4 commit 25997983b7f36e5769d759df55006bed2428fe70af40d1baee360a0ea907938b，final32键导出与checkpoint逐元素相同，36 AdamW slots保留；4个消费批次与1,024唯一job校验通过。
+
+| 已实测项目 | 结果 | 状态 |
+| --- | --- | --- |
+| 监督区间（北京时间） | 2026-10-03T06:31:38.233598+08:00 → 2026-10-03T07:19:01.464349+08:00 | 已停止 |
+| 自有tree监督墙钟 | 2,831.078534秒，约47分11秒，含收尾异常 | 已测；不同于创建到结束总间隔 |
+| 自有slice累计CPU / 内存峰值 | 3,457.699131秒 / 4,294,995,968 bytes | CPU含后代；4GiB内存上限触发 |
+| cgroup / systemd证据 | memory.events oom2 / oom_kill1；worker unit Result=oom-kill，exit−9 | FAILED原记录保留 |
+| 最终推理导出 / checkpoint | 32张量精确一致；最终权重SHA faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618 | PASS |
+| c4 Rust/Python边界 | 68/68，atol/rtol1e-4，max abs0.0001045728 | PASS；0新局/更新 |
+| 逐局来源与双方指标 | 1,024项completion/report/replay/sidecar hash、32个分座Rust manifest、16个固定行为/对手组 | PASS；0新局 |
+| 正式晋级三门 | 尚未运行新独立对战 | NOT_RUN |
+
+[完整16组训练对战表](prism/prism-alpha-cloud-m59-training-matches.md)已补齐：被测分别为未发布c0..c3，不能称为最终c4或已发布Prism Alpha v0.1.2的战绩。没有用训练胜率代替正式验收。
+
+#### 原因与处置边界
+
+内核OOM已由journal与cgroup counters直接确认；发生时四轮portable-summary、进度COMMITTED和c4导出均已落盘。源码收尾再次Run.open会解析仍保留的整批数据，和内存压力的时点一致；没有逐分配profiling，暂不声称这是唯一内存来源。当前不修改冻结数值/预算、不给FAILED换标签、不补训或重放已完成对局。本次恢复的是对已提交产物的核验，并非重新跑训练。
+
+当前候选已复制到local-artifacts/prism/alpha-cloud-m59/candidate/，SHA一致；仍未发布。工程收尾路径应在后续续训前消除重复加载并按原内存上限验证；本轮竞技下一步是对已固定c4按原预留新种子开展384开发局及4,096独立验收，不能因收尾OOM擅自调整门/种子或再训一轮。

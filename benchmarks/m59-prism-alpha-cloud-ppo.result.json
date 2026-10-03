@@ -9,9 +9,25 @@
   "config_sha256": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
   "development": "NOT_RUN",
   "evidence": {
+    "candidate/weights.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/candidate/weights.json",
+      "sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618"
+    },
+    "candidate/weights.manifest.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/candidate/weights.manifest.json",
+      "sha256": "0a4be43f913fbe3ba8f0125700fac1a7db104ffd9ace3a7e1ccb65d70d565bab"
+    },
+    "checkpoint-validation.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/checkpoint-validation.json",
+      "sha256": "4c2849d07df072594e147b2013ff6a14ea38cc956ad0454187f085fb34ffb443"
+    },
     "contract.json": {
       "path": "local-artifacts/prism/alpha-cloud-m59/contract.json",
       "sha256": "efc38465ddff645902cf1939fff4a4a689c11899fae4638f6c74e7b22fbf8c3a"
+    },
+    "final-parity.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/final-parity.json",
+      "sha256": "524159926ae793e42f70e9edc86c6ee0cef700470f0fd319ec44ed01c9d9a957"
     },
     "freeze-receipt.json": {
       "path": "local-artifacts/prism/alpha-cloud-m59/freeze-receipt.json",
@@ -57,9 +73,17 @@
       "path": "local-artifacts/prism/alpha-cloud-m59/startup-status.json",
       "sha256": "2bb2126a6e87f1623fb82709e48628fb034f74b5bbee658857331b61a69dd95f"
     },
+    "termination-evidence.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/termination-evidence.json",
+      "sha256": "715eea4c504c99568df3d65764ae21e0ae79f6b03a9756ef1d9f8e46e6838bbf"
+    },
     "tests.json": {
       "path": "local-artifacts/prism/alpha-cloud-m59/tests.json",
       "sha256": "9a451f20baaf06a779156bd0e2abf3c0317dab4a517e319b3988b7125a6a3c24"
+    },
+    "training-audit.json": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/training-audit.json",
+      "sha256": "71eac2f6212beb33c25302ce2649ebaa87bed8d7f268cff9529c98a469a666a3"
     },
     "warm-start-check.json": {
       "path": "local-artifacts/prism/alpha-cloud-m59/warm-start-check.json",
@@ -68,6 +92,7 @@
   },
   "format": "m59-prism-alpha-cloud-ppo-result-v1",
   "independent_strength_acceptance": "NOT_RUN",
+  "observed_at": 1791004603.574077,
   "released_model": "Prism Alpha v0.1.1",
   "startup_checks": {
     "cloud_python_rust_boundary_inputs": 68,
@@ -88,47 +113,3335 @@
       "status": "PASS"
     }
   },
-  "status": "TRAINING_RUNNING",
+  "startup_snapshot_preserved": {
+    "path": "local-artifacts/prism/alpha-cloud-m59/startup-result-preserved.json",
+    "sha256": "8035eb444d4cc590d070264615aea5b32d48626c81bfee8d1b97c18cf3d61067"
+  },
+  "status": "TRAINING_ARTIFACT_VERIFIED_SUPERVISOR_FAILED",
   "style_acceptance": "NOT_RUN",
   "training": {
-    "completed_games_at_observation": 68,
-    "final_export": "NOT_READY",
-    "planned_games": 1024,
-    "snapshot": {
-      "alive": true,
-      "bound_contract_sha256": "efc38465ddff645902cf1939fff4a4a689c11899fae4638f6c74e7b22fbf8c3a",
-      "campaign": "/home/ubuntu/splendor-ppo-m59/campaigns/m59-alpha-bigcard-g0",
-      "completed_per_opponent": {
-        "alpha-parent-v011": 18,
-        "heuristic-portable-v029": 8,
-        "prism-general-v011": 34,
-        "prism-v01": 8
-      },
-      "config_sha256": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
-      "counts": {
-        "COMPLETE": 68,
-        "RUNNING": 1
-      },
-      "heartbeat": {
+    "checkpoint": {
+      "attempts": 1024,
+      "commit": "25997983b7f36e5769d759df55006bed2428fe70af40d1baee360a0ea907938b",
+      "consumed_batches": 4,
+      "cycle": 4,
+      "decisions": 27360,
+      "different_from_parent": true,
+      "exact_export_tensors": 32,
+      "final_weights_sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618",
+      "global_step": 216,
+      "jobs": 1024,
+      "new_games": 0,
+      "new_optimizer_updates": 0,
+      "observed_at": 1791004603.574077,
+      "optimizer_slots": 36,
+      "phase": "COMMITTED",
+      "rss_bytes": 239251456,
+      "run_identity": "e86fe7c518c56161ea540b9063044ca373e89ecf275e2800d92f72ad3904ac7c",
+      "scope": "final committed checkpoint and exported 32 policy/value tensors; no new matches or optimizer updates",
+      "status": "PASS"
+    },
+    "completed_games": 1024,
+    "cycles": 4,
+    "final_inference_parity": {
+      "atol": 0.0001,
+      "boundary_inputs": 68,
+      "max_abs_error": 0.0001045727539121799,
+      "rtol": 0.0001,
+      "status": "PASS"
+    },
+    "final_weights": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/candidate/weights.json",
+      "published": false,
+      "sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618"
+    },
+    "infrastructure_retries": 0,
+    "learning_decisions": 27360,
+    "optimizer_steps": 216,
+    "physical_attempts": 1024,
+    "status": "COMMITTED_FINAL_C4",
+    "supervisor": {
+      "alive": false,
+      "reason": "owned cgroup memory limit OOM killed worker after final committed checkpoint/export; original failed process verdict retained",
+      "resources": {
         "accounting_scope": "owned systemd cgroup including descendants",
         "active_processes": 0,
-        "cpu_seconds": 70.69809699999999,
-        "kernel_cpu_seconds": 11.643353,
-        "observed_at": 1790980373.7290056,
-        "peak_memory_bytes": 602718208,
-        "user_cpu_seconds": 59.143588
+        "cpu_seconds": 3457.699131,
+        "kernel_cpu_seconds": 527.236009,
+        "peak_memory_bytes": 4294995968,
+        "returncode": -9,
+        "stop_reason": null,
+        "storage_scan_interval_seconds": 5.0,
+        "user_cpu_seconds": 2930.551967,
+        "wall_seconds": 2831.0785336510744
       },
-      "launch_ledger_commit": "92ec4ae93b0b328702fb4ee5352b9e1bf02f9bde9461ac63afbe07df0954c226",
-      "ledger_failed": false,
-      "observed_at": 1790980374.7942138,
-      "ownership_sha256": "dfaa3cf822f8956f12ab1dca626421dd12ecabad23f4c5baa9c9053d241e61b8",
-      "pid": 382840,
-      "progress": null,
-      "remaining_wall": 28674.46849155426,
-      "retries": 0,
-      "status": "RUNNING",
-      "unit_properties": "ActiveState=active\nSubState=running\nRuntimeMaxUSec=7h 59min 12s\nMainPID=382840\nMemoryMax=4294967296\n"
+      "status": "FAILED"
+    }
+  },
+  "training_diagnostics": {
+    "full_machine_result": {
+      "path": "local-artifacts/prism/alpha-cloud-m59/training-audit.json",
+      "sha256": "71eac2f6212beb33c25302ce2649ebaa87bed8d7f268cff9529c98a469a666a3"
     },
-    "status": "RUNNING"
+    "games": 1024,
+    "groups": [
+      {
+        "behavior_id": "7ac329cac8f184b6c83fd0bccc880f5c64ff52685532fc9b751aa6ec081dfb5b",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 701,
+              "percent": 40.994152046783626
+            },
+            "buy_reserved": {
+              "count": 68,
+              "percent": 3.9766081871345027
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 185,
+              "percent": 10.818713450292398
+            },
+            "take_tokens": {
+              "count": 756,
+              "percent": 44.21052631578947
+            }
+          },
+          "games": 64,
+          "losses": 39,
+          "main_actions": 1710,
+          "mean_bonuses_by_color": {
+            "Black": 2.6875,
+            "Blue": 2.15625,
+            "Green": 2.015625,
+            "Red": 2.578125,
+            "White": 2.578125
+          },
+          "mean_cards_by_vp": {
+            "0": 6.234375,
+            "1": 2.203125,
+            "2": 1.640625,
+            "3": 1.03125,
+            "4": 0.6875,
+            "5": 0.21875
+          },
+          "mean_nobles": 0.484375,
+          "mean_permanent_bonuses": 12.015625,
+          "mean_prestige": 13.875,
+          "mean_reserves_acquired": 2.890625,
+          "mean_reserves_bought": 1.0625,
+          "mean_reserves_stranded": 1.828125,
+          "noble_coverage_percent": 40.625,
+          "reserve_redemption_percent": 36.75675675675676,
+          "score_rate": 0.390625,
+          "ties": 0,
+          "total_decisions": 1710,
+          "vp_per_decision": 0.519298245614035,
+          "vp_per_global_ply": 0.2595732242034493,
+          "vp_per_main": 0.519298245614035,
+          "win_rate_percent": 39.0625,
+          "wins": 25
+        },
+        "cycle": 1,
+        "label": "\u7b2c1\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c0 / \u7236\u6a21\u578b Prism Alpha v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 34.375,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.6864441197285487,
+          "game_wall_seconds_p95": 0.8134509325027465,
+          "game_wall_seconds_sum": 43.932423662627116,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 30,
+          "mean_main_rounds": 26.71875,
+          "mean_plies": 53.453125,
+          "mean_turns": 26.734375,
+          "mean_victory_margin": 3.703125,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.7699063137282154,
+          "total_games": 64,
+          "total_plies": 3421
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 754,
+              "percent": 44.067796610169495
+            },
+            "buy_reserved": {
+              "count": 70,
+              "percent": 4.091174751607247
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.058445353594389245
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 157,
+              "percent": 9.175920514319111
+            },
+            "take_tokens": {
+              "count": 729,
+              "percent": 42.60666277030976
+            }
+          },
+          "games": 64,
+          "losses": 25,
+          "main_actions": 1710,
+          "mean_bonuses_by_color": {
+            "Black": 2.6875,
+            "Blue": 2.359375,
+            "Green": 2.5,
+            "Red": 2.640625,
+            "White": 2.6875
+          },
+          "mean_cards_by_vp": {
+            "0": 6.921875,
+            "1": 2.265625,
+            "2": 1.71875,
+            "3": 0.828125,
+            "4": 0.78125,
+            "5": 0.359375
+          },
+          "mean_nobles": 0.59375,
+          "mean_permanent_bonuses": 12.875,
+          "mean_prestige": 14.890625,
+          "mean_reserves_acquired": 2.453125,
+          "mean_reserves_bought": 1.09375,
+          "mean_reserves_stranded": 1.359375,
+          "noble_coverage_percent": 45.3125,
+          "reserve_redemption_percent": 44.5859872611465,
+          "score_rate": 0.609375,
+          "ties": 0,
+          "total_decisions": 1711,
+          "vp_per_decision": 0.5569842197545295,
+          "vp_per_global_ply": 0.2785735165156387,
+          "vp_per_main": 0.5573099415204679,
+          "win_rate_percent": 60.9375,
+          "wins": 39
+        },
+        "opponent_id": "alpha-parent-v011",
+        "opponent_identity": "1a4d1c390f34b395d58137d2241fc6a54deff5b43b6a415df6748a69422c424b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g0-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g0-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "f4d677bbb07dc21898391bda165813fc653f798bb104e4ae761fe4da32defa82",
+            "metrics_sha256": "180d110311a4db920cf0dcd7aaddeb7ff76e47f299bdfbbce0a72b749bc21989",
+            "seconds": 0.0311071309261024
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g0-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g0-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "7404b8dd04abf79b8636ccfa645e833f1f58472ba99eb9e2f600bbcd9cb8b930",
+            "metrics_sha256": "62832e18a5d11e3bd884090cc8b690179287e4feb07b6a6aa02665a36224bd01",
+            "seconds": 0.03021704708226025
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.28125,
+            0.515625
+          ],
+          "estimate": 0.390625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.28125,
+            0.515625
+          ],
+          "estimate": 0.390625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        }
+      },
+      {
+        "behavior_id": "7ac329cac8f184b6c83fd0bccc880f5c64ff52685532fc9b751aa6ec081dfb5b",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 383,
+              "percent": 45.48693586698337
+            },
+            "buy_reserved": {
+              "count": 21,
+              "percent": 2.494061757719715
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.1187648456057007
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 59,
+              "percent": 7.007125890736342
+            },
+            "take_tokens": {
+              "count": 378,
+              "percent": 44.89311163895487
+            }
+          },
+          "games": 32,
+          "losses": 11,
+          "main_actions": 841,
+          "mean_bonuses_by_color": {
+            "Black": 2.4375,
+            "Blue": 2.46875,
+            "Green": 2.75,
+            "Red": 2.03125,
+            "White": 2.9375
+          },
+          "mean_cards_by_vp": {
+            "0": 7.0,
+            "1": 1.9375,
+            "2": 1.6875,
+            "3": 0.9375,
+            "4": 0.65625,
+            "5": 0.40625
+          },
+          "mean_nobles": 0.6875,
+          "mean_permanent_bonuses": 12.625,
+          "mean_prestige": 14.84375,
+          "mean_reserves_acquired": 1.84375,
+          "mean_reserves_bought": 0.65625,
+          "mean_reserves_stranded": 1.1875,
+          "noble_coverage_percent": 50.0,
+          "reserve_redemption_percent": 35.59322033898305,
+          "score_rate": 0.65625,
+          "ties": 0,
+          "total_decisions": 842,
+          "vp_per_decision": 0.5641330166270784,
+          "vp_per_global_ply": 0.2820665083135392,
+          "vp_per_main": 0.5648038049940547,
+          "win_rate_percent": 65.625,
+          "wins": 21
+        },
+        "cycle": 1,
+        "label": "\u7b2c1\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c0 / \u4fbf\u643a Heuristic v0.2.9",
+        "macro": {
+          "close_games_margin_le_2_percent": 28.125,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.5562263342580991,
+          "game_wall_seconds_p95": 0.6617170664365404,
+          "game_wall_seconds_sum": 17.79924269625917,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 29,
+          "mean_main_rounds": 26.28125,
+          "mean_plies": 52.625,
+          "mean_turns": 26.34375,
+          "mean_victory_margin": 3.71875,
+          "median_turns": 26.5,
+          "min_turns": 24,
+          "std_turns": 1.4493398281631538,
+          "total_games": 32,
+          "total_plies": 1684
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 399,
+              "percent": 47.387173396674584
+            },
+            "buy_reserved": {
+              "count": 30,
+              "percent": 3.5629453681710213
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.1187648456057007
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 63,
+              "percent": 7.4821852731591445
+            },
+            "take_tokens": {
+              "count": 349,
+              "percent": 41.44893111638955
+            }
+          },
+          "games": 32,
+          "losses": 21,
+          "main_actions": 841,
+          "mean_bonuses_by_color": {
+            "Black": 2.53125,
+            "Blue": 2.5625,
+            "Green": 2.8125,
+            "Red": 2.78125,
+            "White": 2.71875
+          },
+          "mean_cards_by_vp": {
+            "0": 7.625,
+            "1": 2.78125,
+            "2": 1.6875,
+            "3": 0.59375,
+            "4": 0.65625,
+            "5": 0.0625
+          },
+          "mean_nobles": 0.75,
+          "mean_permanent_bonuses": 13.40625,
+          "mean_prestige": 13.125,
+          "mean_reserves_acquired": 1.96875,
+          "mean_reserves_bought": 0.9375,
+          "mean_reserves_stranded": 1.03125,
+          "noble_coverage_percent": 50.0,
+          "reserve_redemption_percent": 47.61904761904762,
+          "score_rate": 0.34375,
+          "ties": 0,
+          "total_decisions": 842,
+          "vp_per_decision": 0.498812351543943,
+          "vp_per_global_ply": 0.2494061757719715,
+          "vp_per_main": 0.4994054696789536,
+          "win_rate_percent": 34.375,
+          "wins": 11
+        },
+        "opponent_id": "heuristic-portable-v029",
+        "opponent_identity": "42daf58ccf8cb35efcfd34c4a2ddda9e6f68c61390cca4218e2b2ae6c1bc6c8e",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g1-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g1-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "9f63c53c940a90c10245f608b391166e49e095a9404dccc1136c6ff39e26e161",
+            "metrics_sha256": "a9945bdad8b5651199ca27c6a637f47307bea97f6478cb87abc5049e1f3b7d2d",
+            "seconds": 0.016438229009509087
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g1-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g1-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "33e397c0b4c40e941e97a93e4dfab1f1e707560110036924ec8e3368d30016cb",
+            "metrics_sha256": "e7b18a7248cb88464966c737f66bdc340f9c9311aac787d10fe205be8c42d78e",
+            "seconds": 0.016073108185082674
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.8125
+          ],
+          "estimate": 0.65625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.8125
+          ],
+          "estimate": 0.65625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "7ac329cac8f184b6c83fd0bccc880f5c64ff52685532fc9b751aa6ec081dfb5b",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 1400,
+              "percent": 40.85205719288007
+            },
+            "buy_reserved": {
+              "count": 127,
+              "percent": 3.7058651882112636
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.029180040852057193
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 1,
+              "percent": 0.029180040852057193
+            },
+            "reserve_market": {
+              "count": 345,
+              "percent": 10.06711409395973
+            },
+            "take_tokens": {
+              "count": 1553,
+              "percent": 45.31660344324482
+            }
+          },
+          "games": 128,
+          "losses": 59,
+          "main_actions": 3426,
+          "mean_bonuses_by_color": {
+            "Black": 2.5703125,
+            "Blue": 2.140625,
+            "Green": 2.453125,
+            "Red": 2.5,
+            "White": 2.265625
+          },
+          "mean_cards_by_vp": {
+            "0": 6.09375,
+            "1": 2.078125,
+            "2": 1.8125,
+            "3": 0.9296875,
+            "4": 0.7890625,
+            "5": 0.2265625
+          },
+          "mean_nobles": 0.5078125,
+          "mean_permanent_bonuses": 11.9296875,
+          "mean_prestige": 14.3046875,
+          "mean_reserves_acquired": 2.703125,
+          "mean_reserves_bought": 0.9921875,
+          "mean_reserves_stranded": 1.7109375,
+          "noble_coverage_percent": 35.9375,
+          "reserve_redemption_percent": 36.70520231213873,
+          "score_rate": 0.53515625,
+          "ties": 1,
+          "total_decisions": 3427,
+          "vp_per_decision": 0.5342865480011671,
+          "vp_per_global_ply": 0.2671432740005836,
+          "vp_per_main": 0.5344424985405721,
+          "win_rate_percent": 53.125,
+          "wins": 68
+        },
+        "cycle": 1,
+        "label": "\u7b2c1\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c0 / \u901a\u7528 Prism v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 35.9375,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.6818642037815152,
+          "game_wall_seconds_p95": 0.8053528515971266,
+          "game_wall_seconds_sum": 87.27861808403395,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 31,
+          "mean_main_rounds": 26.765625,
+          "mean_plies": 53.546875,
+          "mean_turns": 26.78125,
+          "mean_victory_margin": 3.421875,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.8453382989305782,
+          "total_games": 128,
+          "total_plies": 6854
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 1461,
+              "percent": 42.632039684855556
+            },
+            "buy_reserved": {
+              "count": 126,
+              "percent": 3.676685147359206
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.029180040852057193
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 317,
+              "percent": 9.25007295010213
+            },
+            "take_tokens": {
+              "count": 1522,
+              "percent": 44.412022176831044
+            }
+          },
+          "games": 128,
+          "losses": 68,
+          "main_actions": 3426,
+          "mean_bonuses_by_color": {
+            "Black": 2.5078125,
+            "Blue": 2.5390625,
+            "Green": 2.4375,
+            "Red": 2.4609375,
+            "White": 2.453125
+          },
+          "mean_cards_by_vp": {
+            "0": 6.3671875,
+            "1": 2.3046875,
+            "2": 1.984375,
+            "3": 0.9140625,
+            "4": 0.578125,
+            "5": 0.25
+          },
+          "mean_nobles": 0.4921875,
+          "mean_permanent_bonuses": 12.3984375,
+          "mean_prestige": 14.0546875,
+          "mean_reserves_acquired": 2.4765625,
+          "mean_reserves_bought": 0.984375,
+          "mean_reserves_stranded": 1.4921875,
+          "noble_coverage_percent": 37.5,
+          "reserve_redemption_percent": 39.74763406940063,
+          "score_rate": 0.46484375,
+          "ties": 1,
+          "total_decisions": 3427,
+          "vp_per_decision": 0.5249489349285089,
+          "vp_per_global_ply": 0.26247446746425446,
+          "vp_per_main": 0.5251021599532983,
+          "win_rate_percent": 46.09375,
+          "wins": 59
+        },
+        "opponent_id": "prism-general-v011",
+        "opponent_identity": "3844a060800776b7be04164f94c3f43e3dd517591ba52ae9709ad4bb79469d7b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g2-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g2-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "6d54f17e8923edcf956d8900bd56322d7dcb82969f890faf63f0693f2b8a65ae",
+            "metrics_sha256": "d1dbb06542daee53ca11298b638f4c2d00952b2b309946237f92628ab75b4e85",
+            "seconds": 0.05766472197137773
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g2-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g2-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "4bb21a67e9f2a1c13a359931ed6c1b3c5db59356b1d796a3c8490a40a684bd70",
+            "metrics_sha256": "d40c987717e9b671af18df486adc51e27cacf142a335d38e7aaa15cb52debae7",
+            "seconds": 0.05866548581980169
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.4453125,
+            0.62109375
+          ],
+          "estimate": 0.53515625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.4375,
+            0.6171875
+          ],
+          "estimate": 0.53125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        }
+      },
+      {
+        "behavior_id": "7ac329cac8f184b6c83fd0bccc880f5c64ff52685532fc9b751aa6ec081dfb5b",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 348,
+              "percent": 41.13475177304964
+            },
+            "buy_reserved": {
+              "count": 37,
+              "percent": 4.373522458628842
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 96,
+              "percent": 11.347517730496454
+            },
+            "take_tokens": {
+              "count": 365,
+              "percent": 43.14420803782506
+            }
+          },
+          "games": 32,
+          "losses": 10,
+          "main_actions": 846,
+          "mean_bonuses_by_color": {
+            "Black": 2.5,
+            "Blue": 2.625,
+            "Green": 2.03125,
+            "Red": 2.28125,
+            "White": 2.59375
+          },
+          "mean_cards_by_vp": {
+            "0": 6.28125,
+            "1": 1.90625,
+            "2": 1.75,
+            "3": 0.84375,
+            "4": 0.875,
+            "5": 0.375
+          },
+          "mean_nobles": 0.4375,
+          "mean_permanent_bonuses": 12.03125,
+          "mean_prestige": 14.625,
+          "mean_reserves_acquired": 3.0,
+          "mean_reserves_bought": 1.15625,
+          "mean_reserves_stranded": 1.84375,
+          "noble_coverage_percent": 40.625,
+          "reserve_redemption_percent": 38.541666666666664,
+          "score_rate": 0.65625,
+          "ties": 2,
+          "total_decisions": 846,
+          "vp_per_decision": 0.5531914893617021,
+          "vp_per_global_ply": 0.2765957446808511,
+          "vp_per_main": 0.5531914893617021,
+          "win_rate_percent": 62.5,
+          "wins": 20
+        },
+        "cycle": 1,
+        "label": "\u7b2c1\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c0 / \u521d\u4ee3 Prism v0.1.0",
+        "macro": {
+          "close_games_margin_le_2_percent": 31.25,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.6668303842889145,
+          "game_wall_seconds_p95": 0.7739516023197212,
+          "game_wall_seconds_sum": 21.338572297245264,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 30,
+          "mean_main_rounds": 26.4375,
+          "mean_plies": 52.875,
+          "mean_turns": 26.4375,
+          "mean_victory_margin": 3.71875,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.919269066598011,
+          "total_games": 32,
+          "total_plies": 1692
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 404,
+              "percent": 47.75413711583924
+            },
+            "buy_reserved": {
+              "count": 27,
+              "percent": 3.1914893617021276
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 60,
+              "percent": 7.092198581560283
+            },
+            "take_tokens": {
+              "count": 355,
+              "percent": 41.96217494089834
+            }
+          },
+          "games": 32,
+          "losses": 20,
+          "main_actions": 846,
+          "mean_bonuses_by_color": {
+            "Black": 2.96875,
+            "Blue": 2.875,
+            "Green": 2.5625,
+            "Red": 2.4375,
+            "White": 2.625
+          },
+          "mean_cards_by_vp": {
+            "0": 7.625,
+            "1": 2.71875,
+            "2": 1.9375,
+            "3": 0.59375,
+            "4": 0.4375,
+            "5": 0.15625
+          },
+          "mean_nobles": 0.625,
+          "mean_permanent_bonuses": 13.46875,
+          "mean_prestige": 12.78125,
+          "mean_reserves_acquired": 1.875,
+          "mean_reserves_bought": 0.84375,
+          "mean_reserves_stranded": 1.03125,
+          "noble_coverage_percent": 53.125,
+          "reserve_redemption_percent": 45.0,
+          "score_rate": 0.34375,
+          "ties": 2,
+          "total_decisions": 846,
+          "vp_per_decision": 0.483451536643026,
+          "vp_per_global_ply": 0.241725768321513,
+          "vp_per_main": 0.483451536643026,
+          "win_rate_percent": 31.25,
+          "wins": 10
+        },
+        "opponent_id": "prism-v01",
+        "opponent_identity": "2c0e33fa610a1f41375a654f29b105a8de16be8d22440aa37b98138301bf4e7c",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g3-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g3-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "9282e0d3b24332393f6ba7ee3ca5cf11b03c96c4ebf5ec7206d490893d805b0d",
+            "metrics_sha256": "bd357b460433249213731c8877742e335edfa0aa21cfd91c3f798f51907906e7",
+            "seconds": 0.015580225037410855
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g3-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g3-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "c6c0e0762cff740b806c283c90a4ca6e6e7d3717288579d1880e02238ab60f70",
+            "metrics_sha256": "7606ad4d3f7a22cec743387a1f84a7ed4b612755972940ac96e29f5262772385",
+            "seconds": 0.01568882609717548
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.796875
+          ],
+          "estimate": 0.65625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.46875,
+            0.78125
+          ],
+          "estimate": 0.625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "7c3346579ff0352faf9966943efc6b5326a090b41a7d07280cb7fc997424e28c",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 671,
+              "percent": 39.19392523364486
+            },
+            "buy_reserved": {
+              "count": 70,
+              "percent": 4.088785046728972
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 200,
+              "percent": 11.682242990654206
+            },
+            "take_tokens": {
+              "count": 771,
+              "percent": 45.03504672897196
+            }
+          },
+          "games": 64,
+          "losses": 42,
+          "main_actions": 1712,
+          "mean_bonuses_by_color": {
+            "Black": 2.109375,
+            "Blue": 2.359375,
+            "Green": 2.4375,
+            "Red": 2.328125,
+            "White": 2.34375
+          },
+          "mean_cards_by_vp": {
+            "0": 5.9375,
+            "1": 2.1875,
+            "2": 1.578125,
+            "3": 0.84375,
+            "4": 0.734375,
+            "5": 0.296875
+          },
+          "mean_nobles": 0.296875,
+          "mean_permanent_bonuses": 11.578125,
+          "mean_prestige": 13.1875,
+          "mean_reserves_acquired": 3.125,
+          "mean_reserves_bought": 1.09375,
+          "mean_reserves_stranded": 2.03125,
+          "noble_coverage_percent": 28.125,
+          "reserve_redemption_percent": 35.0,
+          "score_rate": 0.3359375,
+          "ties": 1,
+          "total_decisions": 1712,
+          "vp_per_decision": 0.4929906542056075,
+          "vp_per_global_ply": 0.24642335766423357,
+          "vp_per_main": 0.4929906542056075,
+          "win_rate_percent": 32.8125,
+          "wins": 21
+        },
+        "cycle": 2,
+        "label": "\u7b2c2\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c1 / \u7236\u6a21\u578b Prism Alpha v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 32.8125,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.820479546833667,
+          "game_wall_seconds_p95": 0.9462653667782432,
+          "game_wall_seconds_sum": 52.510690997354686,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 35,
+          "mean_main_rounds": 26.75,
+          "mean_plies": 53.515625,
+          "mean_turns": 26.765625,
+          "mean_victory_margin": 3.96875,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.942470941706722,
+          "total_games": 64,
+          "total_plies": 3425
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 759,
+              "percent": 44.30823117338004
+            },
+            "buy_reserved": {
+              "count": 59,
+              "percent": 3.4442498540572095
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.05837711617046118
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 163,
+              "percent": 9.515469935785172
+            },
+            "take_tokens": {
+              "count": 731,
+              "percent": 42.67367192060712
+            }
+          },
+          "games": 64,
+          "losses": 21,
+          "main_actions": 1712,
+          "mean_bonuses_by_color": {
+            "Black": 2.625,
+            "Blue": 2.296875,
+            "Green": 2.6875,
+            "Red": 2.71875,
+            "White": 2.453125
+          },
+          "mean_cards_by_vp": {
+            "0": 7.109375,
+            "1": 2.15625,
+            "2": 1.671875,
+            "3": 0.671875,
+            "4": 0.796875,
+            "5": 0.375
+          },
+          "mean_nobles": 0.796875,
+          "mean_permanent_bonuses": 12.78125,
+          "mean_prestige": 14.96875,
+          "mean_reserves_acquired": 2.546875,
+          "mean_reserves_bought": 0.921875,
+          "mean_reserves_stranded": 1.625,
+          "noble_coverage_percent": 54.6875,
+          "reserve_redemption_percent": 36.19631901840491,
+          "score_rate": 0.6640625,
+          "ties": 1,
+          "total_decisions": 1713,
+          "vp_per_decision": 0.5592527729130181,
+          "vp_per_global_ply": 0.27970802919708027,
+          "vp_per_main": 0.5595794392523364,
+          "win_rate_percent": 65.625,
+          "wins": 42
+        },
+        "opponent_id": "alpha-parent-v011",
+        "opponent_identity": "1a4d1c390f34b395d58137d2241fc6a54deff5b43b6a415df6748a69422c424b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g4-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g4-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "f99a0e14cc54b01ce9e6f9a8b1d6e256b4a02a6f0ade6b7b821c195f0679fe58",
+            "metrics_sha256": "85a8383c9376aa0984d08ed03e6aecb1f1db6ab0c2a5a8916c1c40fe75dfe6f6",
+            "seconds": 0.030006045941263437
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g4-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g4-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "6b35c42585f5ebd7725f61875f5a2d8501db0166fd31a98c2d54a4e19436b897",
+            "metrics_sha256": "96a4b2e5cebf547bd029cf16b34252ca5d1fb557d9c4afc971106553c9725e43",
+            "seconds": 0.030181326903402805
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.21875,
+            0.453125
+          ],
+          "estimate": 0.3359375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.21875,
+            0.453125
+          ],
+          "estimate": 0.328125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        }
+      },
+      {
+        "behavior_id": "7c3346579ff0352faf9966943efc6b5326a090b41a7d07280cb7fc997424e28c",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 360,
+              "percent": 42.20398593200469
+            },
+            "buy_reserved": {
+              "count": 31,
+              "percent": 3.634232121922626
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.11723329425556858
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 83,
+              "percent": 9.730363423212193
+            },
+            "take_tokens": {
+              "count": 378,
+              "percent": 44.31418522860493
+            }
+          },
+          "games": 32,
+          "losses": 9,
+          "main_actions": 852,
+          "mean_bonuses_by_color": {
+            "Black": 2.8125,
+            "Blue": 2.34375,
+            "Green": 2.46875,
+            "Red": 2.28125,
+            "White": 2.3125
+          },
+          "mean_cards_by_vp": {
+            "0": 6.125,
+            "1": 2.4375,
+            "2": 1.5,
+            "3": 0.84375,
+            "4": 0.875,
+            "5": 0.4375
+          },
+          "mean_nobles": 0.40625,
+          "mean_permanent_bonuses": 12.21875,
+          "mean_prestige": 14.875,
+          "mean_reserves_acquired": 2.59375,
+          "mean_reserves_bought": 0.96875,
+          "mean_reserves_stranded": 1.625,
+          "noble_coverage_percent": 28.125,
+          "reserve_redemption_percent": 37.34939759036145,
+          "score_rate": 0.703125,
+          "ties": 1,
+          "total_decisions": 853,
+          "vp_per_decision": 0.5580304806565064,
+          "vp_per_global_ply": 0.2790152403282532,
+          "vp_per_main": 0.5586854460093896,
+          "win_rate_percent": 68.75,
+          "wins": 22
+        },
+        "cycle": 2,
+        "label": "\u7b2c2\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c1 / \u4fbf\u643a Heuristic v0.2.9",
+        "macro": {
+          "close_games_margin_le_2_percent": 25.0,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.7218155862938147,
+          "game_wall_seconds_p95": 0.8210295101627707,
+          "game_wall_seconds_sum": 23.09809876140207,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 31,
+          "mean_main_rounds": 26.625,
+          "mean_plies": 53.3125,
+          "mean_turns": 26.6875,
+          "mean_victory_margin": 4.75,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.8275239396516807,
+          "total_games": 32,
+          "total_plies": 1706
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 391,
+              "percent": 45.838218053927314
+            },
+            "buy_reserved": {
+              "count": 37,
+              "percent": 4.337631887456038
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.11723329425556858
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 1,
+              "percent": 0.11723329425556858
+            },
+            "reserve_market": {
+              "count": 68,
+              "percent": 7.971864009378663
+            },
+            "take_tokens": {
+              "count": 355,
+              "percent": 41.61781946072685
+            }
+          },
+          "games": 32,
+          "losses": 22,
+          "main_actions": 852,
+          "mean_bonuses_by_color": {
+            "Black": 2.59375,
+            "Blue": 2.71875,
+            "Green": 2.625,
+            "Red": 2.71875,
+            "White": 2.71875
+          },
+          "mean_cards_by_vp": {
+            "0": 7.84375,
+            "1": 2.59375,
+            "2": 1.625,
+            "3": 0.625,
+            "4": 0.53125,
+            "5": 0.15625
+          },
+          "mean_nobles": 0.8125,
+          "mean_permanent_bonuses": 13.375,
+          "mean_prestige": 13.0625,
+          "mean_reserves_acquired": 2.15625,
+          "mean_reserves_bought": 1.15625,
+          "mean_reserves_stranded": 1.0,
+          "noble_coverage_percent": 53.125,
+          "reserve_redemption_percent": 53.6231884057971,
+          "score_rate": 0.296875,
+          "ties": 1,
+          "total_decisions": 853,
+          "vp_per_decision": 0.4900351699882767,
+          "vp_per_global_ply": 0.24501758499413834,
+          "vp_per_main": 0.49061032863849763,
+          "win_rate_percent": 28.125,
+          "wins": 9
+        },
+        "opponent_id": "heuristic-portable-v029",
+        "opponent_identity": "42daf58ccf8cb35efcfd34c4a2ddda9e6f68c61390cca4218e2b2ae6c1bc6c8e",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g5-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g5-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "064016361166255471ae10461f71df8eaee65fbb874f90d8568dba7944dcea17",
+            "metrics_sha256": "7778bb2905eb87df6a91804e2e32b5e0195303c272c5eb4fe8d802777226a240",
+            "seconds": 0.016059427056461573
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g5-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g5-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "51a21ac29cdfa0bd6a21c5ff3324a0933f9119a4ccab0a98f49ad4249ea9d5ab",
+            "metrics_sha256": "00716f9e341975cc5a24e4882755992028642b14a3319b3601e535d5e90c901a",
+            "seconds": 0.01596518699079752
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.53125,
+            0.859375
+          ],
+          "estimate": 0.703125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.84375
+          ],
+          "estimate": 0.6875,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "7c3346579ff0352faf9966943efc6b5326a090b41a7d07280cb7fc997424e28c",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 1419,
+              "percent": 41.25
+            },
+            "buy_reserved": {
+              "count": 150,
+              "percent": 4.3604651162790695
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.029069767441860465
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 357,
+              "percent": 10.377906976744185
+            },
+            "take_tokens": {
+              "count": 1513,
+              "percent": 43.98255813953488
+            }
+          },
+          "games": 128,
+          "losses": 70,
+          "main_actions": 3439,
+          "mean_bonuses_by_color": {
+            "Black": 2.5546875,
+            "Blue": 2.3046875,
+            "Green": 2.453125,
+            "Red": 2.4453125,
+            "White": 2.5
+          },
+          "mean_cards_by_vp": {
+            "0": 6.7890625,
+            "1": 1.984375,
+            "2": 1.6875,
+            "3": 0.75,
+            "4": 0.671875,
+            "5": 0.375
+          },
+          "mean_nobles": 0.5234375,
+          "mean_permanent_bonuses": 12.2578125,
+          "mean_prestige": 13.7421875,
+          "mean_reserves_acquired": 2.7890625,
+          "mean_reserves_bought": 1.171875,
+          "mean_reserves_stranded": 1.6171875,
+          "noble_coverage_percent": 38.28125,
+          "reserve_redemption_percent": 42.016806722689076,
+          "score_rate": 0.44921875,
+          "ties": 1,
+          "total_decisions": 3440,
+          "vp_per_decision": 0.5113372093023256,
+          "vp_per_global_ply": 0.25563144891730855,
+          "vp_per_main": 0.5114858970630998,
+          "win_rate_percent": 44.53125,
+          "wins": 57
+        },
+        "cycle": 2,
+        "label": "\u7b2c2\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c1 / \u901a\u7528 Prism v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 40.625,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.8200498574260564,
+          "game_wall_seconds_p95": 0.9452127162134275,
+          "game_wall_seconds_sum": 104.96638175053522,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 32,
+          "mean_main_rounds": 26.8671875,
+          "mean_plies": 53.7578125,
+          "mean_turns": 26.890625,
+          "mean_victory_margin": 3.6171875,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.8884284761078456,
+          "total_games": 128,
+          "total_plies": 6881
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 1542,
+              "percent": 44.81255448997384
+            },
+            "buy_reserved": {
+              "count": 121,
+              "percent": 3.5164196454519034
+            },
+            "choose_noble": {
+              "count": 2,
+              "percent": 0.05812263876780006
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 291,
+              "percent": 8.456843940714908
+            },
+            "take_tokens": {
+              "count": 1485,
+              "percent": 43.156059285091544
+            }
+          },
+          "games": 128,
+          "losses": 57,
+          "main_actions": 3439,
+          "mean_bonuses_by_color": {
+            "Black": 2.71875,
+            "Blue": 2.6171875,
+            "Green": 2.6484375,
+            "Red": 2.640625,
+            "White": 2.3671875
+          },
+          "mean_cards_by_vp": {
+            "0": 6.8671875,
+            "1": 2.5078125,
+            "2": 1.8046875,
+            "3": 0.9296875,
+            "4": 0.578125,
+            "5": 0.3046875
+          },
+          "mean_nobles": 0.6171875,
+          "mean_permanent_bonuses": 12.9921875,
+          "mean_prestige": 14.59375,
+          "mean_reserves_acquired": 2.2734375,
+          "mean_reserves_bought": 0.9453125,
+          "mean_reserves_stranded": 1.328125,
+          "noble_coverage_percent": 46.875,
+          "reserve_redemption_percent": 41.580756013745706,
+          "score_rate": 0.55078125,
+          "ties": 1,
+          "total_decisions": 3441,
+          "vp_per_decision": 0.5428654460912525,
+          "vp_per_global_ply": 0.27147216974276994,
+          "vp_per_main": 0.5431811573131724,
+          "win_rate_percent": 54.6875,
+          "wins": 70
+        },
+        "opponent_id": "prism-general-v011",
+        "opponent_identity": "3844a060800776b7be04164f94c3f43e3dd517591ba52ae9709ad4bb79469d7b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g6-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g6-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "a3eb6678886ab17cc0ea44b97c7c6d30ad367571cb5355f377caf19ddadb43df",
+            "metrics_sha256": "33e72f8853ac309dc66fd397f753c0e05d8619c6800fc66cb00229ab4bb23f05",
+            "seconds": 0.05820580408908427
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g6-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g6-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "eeee22e2fd9a939742c6258ee1a301c8ec96057a286861027ec6204a89dc9a32",
+            "metrics_sha256": "2c88f7ba68433838de91c07e14cef2614c1790f064eb3a64550565046c487eea",
+            "seconds": 0.05730783985927701
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.359375,
+            0.5390625
+          ],
+          "estimate": 0.44921875,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.359375,
+            0.53125
+          ],
+          "estimate": 0.4453125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        }
+      },
+      {
+        "behavior_id": "7c3346579ff0352faf9966943efc6b5326a090b41a7d07280cb7fc997424e28c",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 336,
+              "percent": 39.34426229508197
+            },
+            "buy_reserved": {
+              "count": 33,
+              "percent": 3.8641686182669788
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 83,
+              "percent": 9.718969555035128
+            },
+            "take_tokens": {
+              "count": 402,
+              "percent": 47.07259953161593
+            }
+          },
+          "games": 32,
+          "losses": 12,
+          "main_actions": 854,
+          "mean_bonuses_by_color": {
+            "Black": 2.375,
+            "Blue": 2.1875,
+            "Green": 2.3125,
+            "Red": 1.875,
+            "White": 2.78125
+          },
+          "mean_cards_by_vp": {
+            "0": 6.0625,
+            "1": 1.28125,
+            "2": 1.71875,
+            "3": 1.25,
+            "4": 0.9375,
+            "5": 0.28125
+          },
+          "mean_nobles": 0.3125,
+          "mean_permanent_bonuses": 11.53125,
+          "mean_prestige": 14.5625,
+          "mean_reserves_acquired": 2.59375,
+          "mean_reserves_bought": 1.03125,
+          "mean_reserves_stranded": 1.5625,
+          "noble_coverage_percent": 25.0,
+          "reserve_redemption_percent": 39.75903614457831,
+          "score_rate": 0.625,
+          "ties": 0,
+          "total_decisions": 854,
+          "vp_per_decision": 0.5456674473067916,
+          "vp_per_global_ply": 0.2728337236533958,
+          "vp_per_main": 0.5456674473067916,
+          "win_rate_percent": 62.5,
+          "wins": 20
+        },
+        "cycle": 2,
+        "label": "\u7b2c2\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c1 / \u521d\u4ee3 Prism v0.1.0",
+        "macro": {
+          "close_games_margin_le_2_percent": 43.75,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.8195757585563115,
+          "game_wall_seconds_p95": 0.9434925566543825,
+          "game_wall_seconds_sum": 26.226424273801968,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 31,
+          "mean_main_rounds": 26.6875,
+          "mean_plies": 53.375,
+          "mean_turns": 26.6875,
+          "mean_victory_margin": 3.0625,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.7218721642444887,
+          "total_games": 32,
+          "total_plies": 1708
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 387,
+              "percent": 45.31615925058548
+            },
+            "buy_reserved": {
+              "count": 33,
+              "percent": 3.8641686182669788
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 68,
+              "percent": 7.962529274004684
+            },
+            "take_tokens": {
+              "count": 366,
+              "percent": 42.857142857142854
+            }
+          },
+          "games": 32,
+          "losses": 20,
+          "main_actions": 854,
+          "mean_bonuses_by_color": {
+            "Black": 2.65625,
+            "Blue": 2.65625,
+            "Green": 2.59375,
+            "Red": 2.75,
+            "White": 2.46875
+          },
+          "mean_cards_by_vp": {
+            "0": 7.28125,
+            "1": 2.46875,
+            "2": 1.90625,
+            "3": 0.75,
+            "4": 0.46875,
+            "5": 0.25
+          },
+          "mean_nobles": 0.65625,
+          "mean_permanent_bonuses": 13.125,
+          "mean_prestige": 13.625,
+          "mean_reserves_acquired": 2.125,
+          "mean_reserves_bought": 1.03125,
+          "mean_reserves_stranded": 1.09375,
+          "noble_coverage_percent": 43.75,
+          "reserve_redemption_percent": 48.529411764705884,
+          "score_rate": 0.375,
+          "ties": 0,
+          "total_decisions": 854,
+          "vp_per_decision": 0.5105386416861827,
+          "vp_per_global_ply": 0.25526932084309134,
+          "vp_per_main": 0.5105386416861827,
+          "win_rate_percent": 37.5,
+          "wins": 12
+        },
+        "opponent_id": "prism-v01",
+        "opponent_identity": "2c0e33fa610a1f41375a654f29b105a8de16be8d22440aa37b98138301bf4e7c",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g7-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g7-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "d366ed458f0c5bc3e1359c536d8b5b42beadc9cab892b192b344eb314706fb09",
+            "metrics_sha256": "8a550a273a6e1f632cfcd07a6e4b1eb5f06d6c30be32ac0d892ea0197cc0c0ee",
+            "seconds": 0.016057386994361877
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g7-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g7-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "4541680a35cd1157e08d2eb4cb73a124f7d9f88e6ee625861a7d543661f97944",
+            "metrics_sha256": "9677072c90b1e249c88793c393cdfffa4f4d75b87dd721d6a2273da65f919f7b",
+            "seconds": 0.016206787899136543
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.53125,
+            0.71875
+          ],
+          "estimate": 0.625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.53125,
+            0.71875
+          ],
+          "estimate": 0.625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "24f0821466c2969e76ac6cc3b9f82a50aa607f331774ddeb4db313c0a6090e92",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 670,
+              "percent": 39.044289044289044
+            },
+            "buy_reserved": {
+              "count": 75,
+              "percent": 4.370629370629371
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 1,
+              "percent": 0.05827505827505827
+            },
+            "reserve_market": {
+              "count": 200,
+              "percent": 11.655011655011656
+            },
+            "take_tokens": {
+              "count": 770,
+              "percent": 44.87179487179487
+            }
+          },
+          "games": 64,
+          "losses": 36,
+          "main_actions": 1716,
+          "mean_bonuses_by_color": {
+            "Black": 2.34375,
+            "Blue": 2.390625,
+            "Green": 2.375,
+            "Red": 2.328125,
+            "White": 2.203125
+          },
+          "mean_cards_by_vp": {
+            "0": 5.875,
+            "1": 1.84375,
+            "2": 2.015625,
+            "3": 0.9375,
+            "4": 0.671875,
+            "5": 0.296875
+          },
+          "mean_nobles": 0.421875,
+          "mean_permanent_bonuses": 11.640625,
+          "mean_prestige": 14.125,
+          "mean_reserves_acquired": 3.140625,
+          "mean_reserves_bought": 1.171875,
+          "mean_reserves_stranded": 1.96875,
+          "noble_coverage_percent": 34.375,
+          "reserve_redemption_percent": 37.3134328358209,
+          "score_rate": 0.4375,
+          "ties": 0,
+          "total_decisions": 1716,
+          "vp_per_decision": 0.5268065268065268,
+          "vp_per_global_ply": 0.2634032634032634,
+          "vp_per_main": 0.5268065268065268,
+          "win_rate_percent": 43.75,
+          "wins": 28
+        },
+        "cycle": 3,
+        "label": "\u7b2c3\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c2 / \u7236\u6a21\u578b Prism Alpha v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 39.0625,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.965661257130705,
+          "game_wall_seconds_p95": 1.0701389619032853,
+          "game_wall_seconds_sum": 61.80232045636512,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 32,
+          "mean_main_rounds": 26.8125,
+          "mean_plies": 53.625,
+          "mean_turns": 26.8125,
+          "mean_victory_margin": 3.390625,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.9435389756832766,
+          "total_games": 64,
+          "total_plies": 3432
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 705,
+              "percent": 41.08391608391609
+            },
+            "buy_reserved": {
+              "count": 71,
+              "percent": 4.137529137529137
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 175,
+              "percent": 10.198135198135198
+            },
+            "take_tokens": {
+              "count": 765,
+              "percent": 44.58041958041958
+            }
+          },
+          "games": 64,
+          "losses": 28,
+          "main_actions": 1716,
+          "mean_bonuses_by_color": {
+            "Black": 2.328125,
+            "Blue": 2.59375,
+            "Green": 2.296875,
+            "Red": 2.53125,
+            "White": 2.375
+          },
+          "mean_cards_by_vp": {
+            "0": 6.265625,
+            "1": 2.015625,
+            "2": 1.734375,
+            "3": 0.984375,
+            "4": 0.796875,
+            "5": 0.328125
+          },
+          "mean_nobles": 0.5,
+          "mean_permanent_bonuses": 12.125,
+          "mean_prestige": 14.765625,
+          "mean_reserves_acquired": 2.734375,
+          "mean_reserves_bought": 1.109375,
+          "mean_reserves_stranded": 1.625,
+          "noble_coverage_percent": 42.1875,
+          "reserve_redemption_percent": 40.57142857142857,
+          "score_rate": 0.5625,
+          "ties": 0,
+          "total_decisions": 1716,
+          "vp_per_decision": 0.5506993006993007,
+          "vp_per_global_ply": 0.27534965034965037,
+          "vp_per_main": 0.5506993006993007,
+          "win_rate_percent": 56.25,
+          "wins": 36
+        },
+        "opponent_id": "alpha-parent-v011",
+        "opponent_identity": "1a4d1c390f34b395d58137d2241fc6a54deff5b43b6a415df6748a69422c424b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g8-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g8-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "44e3071519598b3245f9c1687723aad3f1e541edf2d74f2a4dfc518342ec2867",
+            "metrics_sha256": "7bdb06dd328247f937f892515d293f1b8644efd6ff177a925d2a9e1d1166abba",
+            "seconds": 0.029771605040878057
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g8-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g8-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "1580ccf3c81a86242a0db6734b72d5a7d011f19e6030524c0bbfac358c6d7ab9",
+            "metrics_sha256": "76e752f6c93906b5e06b167a1b88d50c908f6cfbfb2ba4d8b413a1c5d8fc7ea5",
+            "seconds": 0.030423127114772797
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.328125,
+            0.546875
+          ],
+          "estimate": 0.4375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.328125,
+            0.546875
+          ],
+          "estimate": 0.4375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        }
+      },
+      {
+        "behavior_id": "24f0821466c2969e76ac6cc3b9f82a50aa607f331774ddeb4db313c0a6090e92",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 343,
+              "percent": 40.16393442622951
+            },
+            "buy_reserved": {
+              "count": 30,
+              "percent": 3.51288056206089
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 83,
+              "percent": 9.718969555035128
+            },
+            "take_tokens": {
+              "count": 398,
+              "percent": 46.604215456674474
+            }
+          },
+          "games": 32,
+          "losses": 9,
+          "main_actions": 854,
+          "mean_bonuses_by_color": {
+            "Black": 2.21875,
+            "Blue": 2.53125,
+            "Green": 2.15625,
+            "Red": 2.34375,
+            "White": 2.40625
+          },
+          "mean_cards_by_vp": {
+            "0": 5.46875,
+            "1": 2.125,
+            "2": 2.1875,
+            "3": 0.75,
+            "4": 0.625,
+            "5": 0.5
+          },
+          "mean_nobles": 0.46875,
+          "mean_permanent_bonuses": 11.65625,
+          "mean_prestige": 15.15625,
+          "mean_reserves_acquired": 2.59375,
+          "mean_reserves_bought": 0.9375,
+          "mean_reserves_stranded": 1.65625,
+          "noble_coverage_percent": 37.5,
+          "reserve_redemption_percent": 36.144578313253014,
+          "score_rate": 0.71875,
+          "ties": 0,
+          "total_decisions": 854,
+          "vp_per_decision": 0.5679156908665105,
+          "vp_per_global_ply": 0.28395784543325525,
+          "vp_per_main": 0.5679156908665105,
+          "win_rate_percent": 71.875,
+          "wins": 23
+        },
+        "cycle": 3,
+        "label": "\u7b2c3\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c2 / \u4fbf\u643a Heuristic v0.2.9",
+        "macro": {
+          "close_games_margin_le_2_percent": 37.5,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.9293665305594914,
+          "game_wall_seconds_p95": 1.037957629270386,
+          "game_wall_seconds_sum": 29.739728977903724,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 30,
+          "mean_main_rounds": 26.6875,
+          "mean_plies": 53.375,
+          "mean_turns": 26.6875,
+          "mean_victory_margin": 3.9375,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.7399263633843818,
+          "total_games": 32,
+          "total_plies": 1708
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 361,
+              "percent": 42.27166276346604
+            },
+            "buy_reserved": {
+              "count": 39,
+              "percent": 4.566744730679157
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 2,
+              "percent": 0.234192037470726
+            },
+            "reserve_market": {
+              "count": 79,
+              "percent": 9.250585480093676
+            },
+            "take_tokens": {
+              "count": 373,
+              "percent": 43.676814988290396
+            }
+          },
+          "games": 32,
+          "losses": 23,
+          "main_actions": 854,
+          "mean_bonuses_by_color": {
+            "Black": 2.15625,
+            "Blue": 2.9375,
+            "Green": 2.03125,
+            "Red": 2.71875,
+            "White": 2.65625
+          },
+          "mean_cards_by_vp": {
+            "0": 6.5,
+            "1": 2.40625,
+            "2": 2.1875,
+            "3": 0.8125,
+            "4": 0.5,
+            "5": 0.09375
+          },
+          "mean_nobles": 0.40625,
+          "mean_permanent_bonuses": 12.5,
+          "mean_prestige": 12.90625,
+          "mean_reserves_acquired": 2.53125,
+          "mean_reserves_bought": 1.21875,
+          "mean_reserves_stranded": 1.3125,
+          "noble_coverage_percent": 34.375,
+          "reserve_redemption_percent": 48.148148148148145,
+          "score_rate": 0.28125,
+          "ties": 0,
+          "total_decisions": 854,
+          "vp_per_decision": 0.48360655737704916,
+          "vp_per_global_ply": 0.24180327868852458,
+          "vp_per_main": 0.48360655737704916,
+          "win_rate_percent": 28.125,
+          "wins": 9
+        },
+        "opponent_id": "heuristic-portable-v029",
+        "opponent_identity": "42daf58ccf8cb35efcfd34c4a2ddda9e6f68c61390cca4218e2b2ae6c1bc6c8e",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g9-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g9-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "328623d160ac90387bac6fd7a6d395e19d807e4d196e5abe339196557aceb0bc",
+            "metrics_sha256": "ab348f5ecf0d8ed19cdaae769910c1b5d888f977ab29779c5ccfcbd32393fefb",
+            "seconds": 0.01645950903184712
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g9-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g9-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "54f09661772e92ebfc33a8fd890ffd2f4a838dee673073e56d8109b37770223c",
+            "metrics_sha256": "64ae87fab2183aceaec73a21de65fbd125b67e2c1afca592d04df71921ce9fa9",
+            "seconds": 0.016226868145167828
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.53125,
+            0.875
+          ],
+          "estimate": 0.71875,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.53125,
+            0.875
+          ],
+          "estimate": 0.71875,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "24f0821466c2969e76ac6cc3b9f82a50aa607f331774ddeb4db313c0a6090e92",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 1444,
+              "percent": 42.234571512138054
+            },
+            "buy_reserved": {
+              "count": 123,
+              "percent": 3.597543141269377
+            },
+            "choose_noble": {
+              "count": 2,
+              "percent": 0.058496636443404505
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 1,
+              "percent": 0.029248318221702253
+            },
+            "reserve_market": {
+              "count": 338,
+              "percent": 9.885931558935361
+            },
+            "take_tokens": {
+              "count": 1511,
+              "percent": 44.1942088329921
+            }
+          },
+          "games": 128,
+          "losses": 60,
+          "main_actions": 3417,
+          "mean_bonuses_by_color": {
+            "Black": 2.5546875,
+            "Blue": 2.484375,
+            "Green": 2.359375,
+            "Red": 2.359375,
+            "White": 2.484375
+          },
+          "mean_cards_by_vp": {
+            "0": 6.578125,
+            "1": 2.03125,
+            "2": 1.8046875,
+            "3": 0.796875,
+            "4": 0.71875,
+            "5": 0.3125
+          },
+          "mean_nobles": 0.5,
+          "mean_permanent_bonuses": 12.2421875,
+          "mean_prestige": 13.96875,
+          "mean_reserves_acquired": 2.6484375,
+          "mean_reserves_bought": 0.9609375,
+          "mean_reserves_stranded": 1.6875,
+          "noble_coverage_percent": 39.84375,
+          "reserve_redemption_percent": 36.283185840707965,
+          "score_rate": 0.52734375,
+          "ties": 1,
+          "total_decisions": 3419,
+          "vp_per_decision": 0.5229599298040363,
+          "vp_per_global_ply": 0.26147996490201814,
+          "vp_per_main": 0.5232660228270413,
+          "win_rate_percent": 52.34375,
+          "wins": 67
+        },
+        "cycle": 3,
+        "label": "\u7b2c3\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c2 / \u901a\u7528 Prism v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 35.15625,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.970116510947264,
+          "game_wall_seconds_p95": 1.1015897174132987,
+          "game_wall_seconds_sum": 124.1749134012498,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 31,
+          "mean_main_rounds": 26.6953125,
+          "mean_plies": 53.421875,
+          "mean_turns": 26.7265625,
+          "mean_victory_margin": 3.546875,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.721712645476518,
+          "total_games": 128,
+          "total_plies": 6838
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 1478,
+              "percent": 43.22901433167593
+            },
+            "buy_reserved": {
+              "count": 133,
+              "percent": 3.8900263234863997
+            },
+            "choose_noble": {
+              "count": 2,
+              "percent": 0.058496636443404505
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 317,
+              "percent": 9.271716876279614
+            },
+            "take_tokens": {
+              "count": 1489,
+              "percent": 43.55074583211465
+            }
+          },
+          "games": 128,
+          "losses": 67,
+          "main_actions": 3417,
+          "mean_bonuses_by_color": {
+            "Black": 2.6015625,
+            "Blue": 2.5390625,
+            "Green": 2.25,
+            "Red": 2.71875,
+            "White": 2.4765625
+          },
+          "mean_cards_by_vp": {
+            "0": 6.6953125,
+            "1": 2.25,
+            "2": 1.9453125,
+            "3": 0.7734375,
+            "4": 0.6953125,
+            "5": 0.2265625
+          },
+          "mean_nobles": 0.578125,
+          "mean_permanent_bonuses": 12.5859375,
+          "mean_prestige": 14.109375,
+          "mean_reserves_acquired": 2.4765625,
+          "mean_reserves_bought": 1.0390625,
+          "mean_reserves_stranded": 1.4375,
+          "noble_coverage_percent": 49.21875,
+          "reserve_redemption_percent": 41.95583596214511,
+          "score_rate": 0.47265625,
+          "ties": 1,
+          "total_decisions": 3419,
+          "vp_per_decision": 0.5282246270839427,
+          "vp_per_global_ply": 0.26411231354197134,
+          "vp_per_main": 0.5285338015803336,
+          "win_rate_percent": 46.875,
+          "wins": 60
+        },
+        "opponent_id": "prism-general-v011",
+        "opponent_identity": "3844a060800776b7be04164f94c3f43e3dd517591ba52ae9709ad4bb79469d7b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g10-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g10-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "e017ae0ac27bd89be8a254c49be6beefd1d073695fa5d66c9169f21d4b5dbf62",
+            "metrics_sha256": "1954907adb6d51424ddce600f77a46fe5f64ea1b89dba41595f6c48fcae9fd68",
+            "seconds": 0.05660375696606934
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g10-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g10-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "ecb726e66d110ca09848fa0edd195653f0951790836024f8dd2d7aa6e3140d60",
+            "metrics_sha256": "b06b4164c748315b126d03f456865fd27b30131f000db37148edccc26b2de644",
+            "seconds": 0.05763400113210082
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.44140625,
+            0.61328125
+          ],
+          "estimate": 0.52734375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.4375,
+            0.609375
+          ],
+          "estimate": 0.5234375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        }
+      },
+      {
+        "behavior_id": "24f0821466c2969e76ac6cc3b9f82a50aa607f331774ddeb4db313c0a6090e92",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 356,
+              "percent": 41.63742690058479
+            },
+            "buy_reserved": {
+              "count": 31,
+              "percent": 3.625730994152047
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 79,
+              "percent": 9.239766081871345
+            },
+            "take_tokens": {
+              "count": 389,
+              "percent": 45.49707602339181
+            }
+          },
+          "games": 32,
+          "losses": 12,
+          "main_actions": 855,
+          "mean_bonuses_by_color": {
+            "Black": 2.375,
+            "Blue": 2.1875,
+            "Green": 2.59375,
+            "Red": 2.59375,
+            "White": 2.34375
+          },
+          "mean_cards_by_vp": {
+            "0": 6.28125,
+            "1": 1.9375,
+            "2": 1.78125,
+            "3": 0.9375,
+            "4": 0.8125,
+            "5": 0.34375
+          },
+          "mean_nobles": 0.375,
+          "mean_permanent_bonuses": 12.09375,
+          "mean_prestige": 14.40625,
+          "mean_reserves_acquired": 2.46875,
+          "mean_reserves_bought": 0.96875,
+          "mean_reserves_stranded": 1.5,
+          "noble_coverage_percent": 34.375,
+          "reserve_redemption_percent": 39.24050632911393,
+          "score_rate": 0.625,
+          "ties": 0,
+          "total_decisions": 855,
+          "vp_per_decision": 0.5391812865497077,
+          "vp_per_global_ply": 0.2695906432748538,
+          "vp_per_main": 0.5391812865497077,
+          "win_rate_percent": 62.5,
+          "wins": 20
+        },
+        "cycle": 3,
+        "label": "\u7b2c3\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c2 / \u521d\u4ee3 Prism v0.1.0",
+        "macro": {
+          "close_games_margin_le_2_percent": 31.25,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 0.9727329406159697,
+          "game_wall_seconds_p95": 1.134018593840301,
+          "game_wall_seconds_sum": 31.12745409971103,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 31,
+          "mean_main_rounds": 26.71875,
+          "mean_plies": 53.4375,
+          "mean_turns": 26.71875,
+          "mean_victory_margin": 4.125,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.924096784857768,
+          "total_games": 32,
+          "total_plies": 1710
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 387,
+              "percent": 45.26315789473684
+            },
+            "buy_reserved": {
+              "count": 34,
+              "percent": 3.9766081871345027
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 1,
+              "percent": 0.11695906432748537
+            },
+            "reserve_market": {
+              "count": 60,
+              "percent": 7.017543859649122
+            },
+            "take_tokens": {
+              "count": 373,
+              "percent": 43.62573099415204
+            }
+          },
+          "games": 32,
+          "losses": 20,
+          "main_actions": 855,
+          "mean_bonuses_by_color": {
+            "Black": 2.84375,
+            "Blue": 2.84375,
+            "Green": 2.21875,
+            "Red": 2.5625,
+            "White": 2.6875
+          },
+          "mean_cards_by_vp": {
+            "0": 6.90625,
+            "1": 3.03125,
+            "2": 2.0,
+            "3": 0.71875,
+            "4": 0.3125,
+            "5": 0.1875
+          },
+          "mean_nobles": 0.53125,
+          "mean_permanent_bonuses": 13.15625,
+          "mean_prestige": 12.96875,
+          "mean_reserves_acquired": 1.90625,
+          "mean_reserves_bought": 1.0625,
+          "mean_reserves_stranded": 0.84375,
+          "noble_coverage_percent": 46.875,
+          "reserve_redemption_percent": 55.73770491803279,
+          "score_rate": 0.375,
+          "ties": 0,
+          "total_decisions": 855,
+          "vp_per_decision": 0.4853801169590643,
+          "vp_per_global_ply": 0.24269005847953215,
+          "vp_per_main": 0.4853801169590643,
+          "win_rate_percent": 37.5,
+          "wins": 12
+        },
+        "opponent_id": "prism-v01",
+        "opponent_identity": "2c0e33fa610a1f41375a654f29b105a8de16be8d22440aa37b98138301bf4e7c",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g11-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g11-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "2269cf739fd6efe9cdfbfe1124d19099bc61f6fffe2276487c64d951713994d5",
+            "metrics_sha256": "a898782397eb369703ee7d3b3f86bbc97bfbc255db81457142d02a180e0366dc",
+            "seconds": 0.016349507961422205
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g11-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g11-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "d4c1d9b9af2bf55629fb2e5c6be57d218413f4df20d822dddb14972dbf22df6b",
+            "metrics_sha256": "eaa6354e454e39a4cd014ac4ebf5c49224c24d737c040670ea383e1ecc148e4a",
+            "seconds": 0.01576194609515369
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.75
+          ],
+          "estimate": 0.625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.75
+          ],
+          "estimate": 0.625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "b23a53aac1534c63471570972d8352358e9b8c6b1df2f37f2f05e56d4a7b8744",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 667,
+              "percent": 39.304655274012966
+            },
+            "buy_reserved": {
+              "count": 68,
+              "percent": 4.007071302298173
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 171,
+              "percent": 10.076605774896876
+            },
+            "take_tokens": {
+              "count": 791,
+              "percent": 46.611667648791986
+            }
+          },
+          "games": 64,
+          "losses": 43,
+          "main_actions": 1697,
+          "mean_bonuses_by_color": {
+            "Black": 2.28125,
+            "Blue": 2.390625,
+            "Green": 2.34375,
+            "Red": 2.21875,
+            "White": 2.25
+          },
+          "mean_cards_by_vp": {
+            "0": 5.921875,
+            "1": 1.953125,
+            "2": 1.765625,
+            "3": 0.75,
+            "4": 0.84375,
+            "5": 0.25
+          },
+          "mean_nobles": 0.3125,
+          "mean_permanent_bonuses": 11.484375,
+          "mean_prestige": 13.296875,
+          "mean_reserves_acquired": 2.671875,
+          "mean_reserves_bought": 1.0625,
+          "mean_reserves_stranded": 1.609375,
+          "noble_coverage_percent": 28.125,
+          "reserve_redemption_percent": 39.76608187134503,
+          "score_rate": 0.3203125,
+          "ties": 1,
+          "total_decisions": 1697,
+          "vp_per_decision": 0.501473187978786,
+          "vp_per_global_ply": 0.250736593989393,
+          "vp_per_main": 0.501473187978786,
+          "win_rate_percent": 31.25,
+          "wins": 20
+        },
+        "cycle": 4,
+        "label": "\u7b2c4\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c3 / \u7236\u6a21\u578b Prism Alpha v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 40.625,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 1.1566669271487626,
+          "game_wall_seconds_p95": 1.2903466598480007,
+          "game_wall_seconds_sum": 74.02668333752081,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 32,
+          "mean_main_rounds": 26.515625,
+          "mean_plies": 53.03125,
+          "mean_turns": 26.515625,
+          "mean_victory_margin": 3.40625,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 2.0462785390496085,
+          "total_games": 64,
+          "total_plies": 3394
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 732,
+              "percent": 43.13494401885681
+            },
+            "buy_reserved": {
+              "count": 69,
+              "percent": 4.065998821449617
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 155,
+              "percent": 9.133765468473777
+            },
+            "take_tokens": {
+              "count": 741,
+              "percent": 43.6652916912198
+            }
+          },
+          "games": 64,
+          "losses": 20,
+          "main_actions": 1697,
+          "mean_bonuses_by_color": {
+            "Black": 2.671875,
+            "Blue": 2.296875,
+            "Green": 2.265625,
+            "Red": 2.484375,
+            "White": 2.796875
+          },
+          "mean_cards_by_vp": {
+            "0": 6.515625,
+            "1": 1.90625,
+            "2": 2.171875,
+            "3": 1.046875,
+            "4": 0.671875,
+            "5": 0.203125
+          },
+          "mean_nobles": 0.609375,
+          "mean_permanent_bonuses": 12.515625,
+          "mean_prestige": 14.921875,
+          "mean_reserves_acquired": 2.421875,
+          "mean_reserves_bought": 1.078125,
+          "mean_reserves_stranded": 1.34375,
+          "noble_coverage_percent": 53.125,
+          "reserve_redemption_percent": 44.516129032258064,
+          "score_rate": 0.6796875,
+          "ties": 1,
+          "total_decisions": 1697,
+          "vp_per_decision": 0.5627578078962876,
+          "vp_per_global_ply": 0.2813789039481438,
+          "vp_per_main": 0.5627578078962876,
+          "win_rate_percent": 67.1875,
+          "wins": 43
+        },
+        "opponent_id": "alpha-parent-v011",
+        "opponent_identity": "1a4d1c390f34b395d58137d2241fc6a54deff5b43b6a415df6748a69422c424b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g12-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g12-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "2adab4172ec8c14edb2b35bf056cf05d20959c60642ad6529509d0c518cc0ea8",
+            "metrics_sha256": "5ca154622e92558e425e4ae528716ca3805a52ecfb9929e541cea69310ceae6e",
+            "seconds": 0.029714243952184916
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g12-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g12-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "fc1d1f8319676b37daad605a0732df5974767a41f11fbb0e83f2467abe72f0f8",
+            "metrics_sha256": "a256dcfc3793328dad29eaa27ccd42d3ba3134a59dc9983a8687bc96ab064174",
+            "seconds": 0.02992868609726429
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.21875,
+            0.421875
+          ],
+          "estimate": 0.3203125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.21875,
+            0.421875
+          ],
+          "estimate": 0.3125,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 32
+        }
+      },
+      {
+        "behavior_id": "b23a53aac1534c63471570972d8352358e9b8c6b1df2f37f2f05e56d4a7b8744",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 349,
+              "percent": 40.675990675990676
+            },
+            "buy_reserved": {
+              "count": 27,
+              "percent": 3.1468531468531467
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 65,
+              "percent": 7.575757575757576
+            },
+            "take_tokens": {
+              "count": 417,
+              "percent": 48.6013986013986
+            }
+          },
+          "games": 32,
+          "losses": 8,
+          "main_actions": 858,
+          "mean_bonuses_by_color": {
+            "Black": 2.375,
+            "Blue": 2.03125,
+            "Green": 2.6875,
+            "Red": 2.53125,
+            "White": 2.125
+          },
+          "mean_cards_by_vp": {
+            "0": 5.25,
+            "1": 2.15625,
+            "2": 1.96875,
+            "3": 1.03125,
+            "4": 1.0,
+            "5": 0.34375
+          },
+          "mean_nobles": 0.1875,
+          "mean_permanent_bonuses": 11.75,
+          "mean_prestige": 15.46875,
+          "mean_reserves_acquired": 2.03125,
+          "mean_reserves_bought": 0.84375,
+          "mean_reserves_stranded": 1.1875,
+          "noble_coverage_percent": 18.75,
+          "reserve_redemption_percent": 41.53846153846154,
+          "score_rate": 0.75,
+          "ties": 0,
+          "total_decisions": 858,
+          "vp_per_decision": 0.5769230769230769,
+          "vp_per_global_ply": 0.28829353523587653,
+          "vp_per_main": 0.5769230769230769,
+          "win_rate_percent": 75.0,
+          "wins": 24
+        },
+        "cycle": 4,
+        "label": "\u7b2c4\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c3 / \u4fbf\u643a Heuristic v0.2.9",
+        "macro": {
+          "close_games_margin_le_2_percent": 28.125,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 1.1415342085965676,
+          "game_wall_seconds_p95": 1.2653670738567597,
+          "game_wall_seconds_sum": 36.529094675090164,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 29,
+          "mean_main_rounds": 26.8125,
+          "mean_plies": 53.65625,
+          "mean_turns": 26.84375,
+          "mean_victory_margin": 4.125,
+          "median_turns": 27.0,
+          "min_turns": 23,
+          "std_turns": 1.438518660810488,
+          "total_games": 32,
+          "total_plies": 1717
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 376,
+              "percent": 43.77182770663562
+            },
+            "buy_reserved": {
+              "count": 39,
+              "percent": 4.540162980209546
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.11641443538998836
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 82,
+              "percent": 9.545983701979045
+            },
+            "take_tokens": {
+              "count": 361,
+              "percent": 42.0256111757858
+            }
+          },
+          "games": 32,
+          "losses": 24,
+          "main_actions": 858,
+          "mean_bonuses_by_color": {
+            "Black": 2.5,
+            "Blue": 2.8125,
+            "Green": 2.71875,
+            "Red": 2.5,
+            "White": 2.4375
+          },
+          "mean_cards_by_vp": {
+            "0": 7.0625,
+            "1": 3.03125,
+            "2": 1.46875,
+            "3": 0.65625,
+            "4": 0.53125,
+            "5": 0.21875
+          },
+          "mean_nobles": 0.5625,
+          "mean_permanent_bonuses": 12.96875,
+          "mean_prestige": 12.84375,
+          "mean_reserves_acquired": 2.5625,
+          "mean_reserves_bought": 1.21875,
+          "mean_reserves_stranded": 1.34375,
+          "noble_coverage_percent": 34.375,
+          "reserve_redemption_percent": 47.5609756097561,
+          "score_rate": 0.25,
+          "ties": 0,
+          "total_decisions": 859,
+          "vp_per_decision": 0.47846332945285214,
+          "vp_per_global_ply": 0.23937099592312172,
+          "vp_per_main": 0.479020979020979,
+          "win_rate_percent": 25.0,
+          "wins": 8
+        },
+        "opponent_id": "heuristic-portable-v029",
+        "opponent_identity": "42daf58ccf8cb35efcfd34c4a2ddda9e6f68c61390cca4218e2b2ae6c1bc6c8e",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g13-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g13-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "528693efc93a16cbf4c1caf39736e05c592b19cda23852a69f09f3443bddba55",
+            "metrics_sha256": "8396f24ec182d1efda62f65d89b1b1b12dc1ad75cd4099becc7a61d7479500ee",
+            "seconds": 0.015773266088217497
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g13-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g13-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "1c77dba408cba1ceaab41e1bd594a6f8f96dac01be9c2547b1ee4df6083bac92",
+            "metrics_sha256": "acc358b4a9b074801bc60385ce647fddf86ce1d87f317f5e0f0ae50f6cc985ea",
+            "seconds": 0.016006506979465485
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.625,
+            0.875
+          ],
+          "estimate": 0.75,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.625,
+            0.875
+          ],
+          "estimate": 0.75,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      },
+      {
+        "behavior_id": "b23a53aac1534c63471570972d8352358e9b8c6b1df2f37f2f05e56d4a7b8744",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 1427,
+              "percent": 41.48255813953488
+            },
+            "buy_reserved": {
+              "count": 135,
+              "percent": 3.9244186046511627
+            },
+            "choose_noble": {
+              "count": 4,
+              "percent": 0.11627906976744186
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 336,
+              "percent": 9.767441860465116
+            },
+            "take_tokens": {
+              "count": 1538,
+              "percent": 44.7093023255814
+            }
+          },
+          "games": 128,
+          "losses": 56,
+          "main_actions": 3436,
+          "mean_bonuses_by_color": {
+            "Black": 2.6953125,
+            "Blue": 2.328125,
+            "Green": 2.2578125,
+            "Red": 2.5703125,
+            "White": 2.3515625
+          },
+          "mean_cards_by_vp": {
+            "0": 6.546875,
+            "1": 1.8984375,
+            "2": 1.953125,
+            "3": 0.84375,
+            "4": 0.6484375,
+            "5": 0.3125
+          },
+          "mean_nobles": 0.6015625,
+          "mean_permanent_bonuses": 12.203125,
+          "mean_prestige": 14.296875,
+          "mean_reserves_acquired": 2.625,
+          "mean_reserves_bought": 1.0546875,
+          "mean_reserves_stranded": 1.5703125,
+          "noble_coverage_percent": 47.65625,
+          "reserve_redemption_percent": 40.17857142857143,
+          "score_rate": 0.55859375,
+          "ties": 1,
+          "total_decisions": 3440,
+          "vp_per_decision": 0.5319767441860465,
+          "vp_per_global_ply": 0.2660657167781332,
+          "vp_per_main": 0.5325960419091967,
+          "win_rate_percent": 55.46875,
+          "wins": 71
+        },
+        "cycle": 4,
+        "label": "\u7b2c4\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c3 / \u901a\u7528 Prism v0.1.1",
+        "macro": {
+          "close_games_margin_le_2_percent": 36.71875,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 1.1609518935056258,
+          "game_wall_seconds_p95": 1.2909813727717847,
+          "game_wall_seconds_sum": 148.6018423687201,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 32,
+          "mean_main_rounds": 26.84375,
+          "mean_plies": 53.734375,
+          "mean_turns": 26.890625,
+          "mean_victory_margin": 3.53125,
+          "median_turns": 27.0,
+          "min_turns": 22,
+          "std_turns": 1.803791038167947,
+          "total_games": 128,
+          "total_plies": 6878
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 1498,
+              "percent": 43.5718440954043
+            },
+            "buy_reserved": {
+              "count": 124,
+              "percent": 3.6067481093659106
+            },
+            "choose_noble": {
+              "count": 2,
+              "percent": 0.058173356602675974
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 314,
+              "percent": 9.133216986620129
+            },
+            "take_tokens": {
+              "count": 1500,
+              "percent": 43.63001745200698
+            }
+          },
+          "games": 128,
+          "losses": 71,
+          "main_actions": 3436,
+          "mean_bonuses_by_color": {
+            "Black": 2.421875,
+            "Blue": 2.5703125,
+            "Green": 2.5546875,
+            "Red": 2.6171875,
+            "White": 2.5078125
+          },
+          "mean_cards_by_vp": {
+            "0": 6.640625,
+            "1": 2.4921875,
+            "2": 1.8203125,
+            "3": 0.9453125,
+            "4": 0.5078125,
+            "5": 0.265625
+          },
+          "mean_nobles": 0.625,
+          "mean_permanent_bonuses": 12.671875,
+          "mean_prestige": 14.203125,
+          "mean_reserves_acquired": 2.453125,
+          "mean_reserves_bought": 0.96875,
+          "mean_reserves_stranded": 1.484375,
+          "noble_coverage_percent": 48.4375,
+          "reserve_redemption_percent": 39.49044585987261,
+          "score_rate": 0.44140625,
+          "ties": 1,
+          "total_decisions": 3438,
+          "vp_per_decision": 0.5287958115183246,
+          "vp_per_global_ply": 0.2643210235533585,
+          "vp_per_main": 0.5291036088474971,
+          "win_rate_percent": 43.75,
+          "wins": 56
+        },
+        "opponent_id": "prism-general-v011",
+        "opponent_identity": "3844a060800776b7be04164f94c3f43e3dd517591ba52ae9709ad4bb79469d7b",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g14-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g14-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "a34d3cb9b720c2a625910a983cabaaebe8e293eeddc443b891e66e7b0eb0f8fa",
+            "metrics_sha256": "904411b941ad40432ddd7afff91106bdc3d184e64a329015b782c2b583bf8840",
+            "seconds": 0.05765892192721367
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g14-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g14-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "adaf21bdae79d25ec83e7edc7a78e7228f2e6fd771413c587f0841eb52048e32",
+            "metrics_sha256": "c45f9d11e89caebf420b73fc185d07a025759c9bf64ebf5acf652337f8cc1eda",
+            "seconds": 0.058194323908537626
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.46875,
+            0.64453125
+          ],
+          "estimate": 0.55859375,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.4609375,
+            0.640625
+          ],
+          "estimate": 0.5546875,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 64
+        }
+      },
+      {
+        "behavior_id": "b23a53aac1534c63471570972d8352358e9b8c6b1df2f37f2f05e56d4a7b8744",
+        "candidate": {
+          "actions": {
+            "buy_market": {
+              "count": 358,
+              "percent": 42.77180406212664
+            },
+            "buy_reserved": {
+              "count": 23,
+              "percent": 2.7479091995221028
+            },
+            "choose_noble": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 70,
+              "percent": 8.363201911589009
+            },
+            "take_tokens": {
+              "count": 386,
+              "percent": 46.117084826762245
+            }
+          },
+          "games": 32,
+          "losses": 11,
+          "main_actions": 837,
+          "mean_bonuses_by_color": {
+            "Black": 2.34375,
+            "Blue": 2.34375,
+            "Green": 2.34375,
+            "Red": 2.53125,
+            "White": 2.34375
+          },
+          "mean_cards_by_vp": {
+            "0": 6.46875,
+            "1": 1.84375,
+            "2": 1.40625,
+            "3": 0.9375,
+            "4": 0.875,
+            "5": 0.375
+          },
+          "mean_nobles": 0.53125,
+          "mean_permanent_bonuses": 11.90625,
+          "mean_prestige": 14.4375,
+          "mean_reserves_acquired": 2.1875,
+          "mean_reserves_bought": 0.71875,
+          "mean_reserves_stranded": 1.46875,
+          "noble_coverage_percent": 40.625,
+          "reserve_redemption_percent": 32.857142857142854,
+          "score_rate": 0.65625,
+          "ties": 0,
+          "total_decisions": 837,
+          "vp_per_decision": 0.5519713261648745,
+          "vp_per_global_ply": 0.27582089552238803,
+          "vp_per_main": 0.5519713261648745,
+          "win_rate_percent": 65.625,
+          "wins": 21
+        },
+        "cycle": 4,
+        "label": "\u7b2c4\u8f6e / \u672a\u53d1\u5e03\u68c0\u67e5\u70b9c3 / \u521d\u4ee3 Prism v0.1.0",
+        "macro": {
+          "close_games_margin_le_2_percent": 25.0,
+          "decision_latency_ms": "NOT_MEASURED",
+          "game_wall_seconds_mean": 1.1574906904352247,
+          "game_wall_seconds_p95": 1.2552238703123293,
+          "game_wall_seconds_sum": 37.03970209392719,
+          "inference_latency_ms": "NOT_MEASURED",
+          "max_turns": 29,
+          "mean_main_rounds": 26.15625,
+          "mean_plies": 52.34375,
+          "mean_turns": 26.1875,
+          "mean_victory_margin": 3.6875,
+          "median_turns": 26.0,
+          "min_turns": 24,
+          "std_turns": 1.4238482187368147,
+          "total_games": 32,
+          "total_plies": 1675
+        },
+        "opponent": {
+          "actions": {
+            "buy_market": {
+              "count": 412,
+              "percent": 49.16467780429594
+            },
+            "buy_reserved": {
+              "count": 26,
+              "percent": 3.1026252983293556
+            },
+            "choose_noble": {
+              "count": 1,
+              "percent": 0.11933174224343675
+            },
+            "pass": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_deck": {
+              "count": 0,
+              "percent": 0.0
+            },
+            "reserve_market": {
+              "count": 53,
+              "percent": 6.324582338902148
+            },
+            "take_tokens": {
+              "count": 346,
+              "percent": 41.288782816229116
+            }
+          },
+          "games": 32,
+          "losses": 21,
+          "main_actions": 837,
+          "mean_bonuses_by_color": {
+            "Black": 2.9375,
+            "Blue": 2.75,
+            "Green": 2.53125,
+            "Red": 2.46875,
+            "White": 3.0
+          },
+          "mean_cards_by_vp": {
+            "0": 7.40625,
+            "1": 3.15625,
+            "2": 2.03125,
+            "3": 0.5625,
+            "4": 0.34375,
+            "5": 0.1875
+          },
+          "mean_nobles": 0.71875,
+          "mean_permanent_bonuses": 13.6875,
+          "mean_prestige": 13.375,
+          "mean_reserves_acquired": 1.65625,
+          "mean_reserves_bought": 0.8125,
+          "mean_reserves_stranded": 0.84375,
+          "noble_coverage_percent": 50.0,
+          "reserve_redemption_percent": 49.056603773584904,
+          "score_rate": 0.34375,
+          "ties": 0,
+          "total_decisions": 838,
+          "vp_per_decision": 0.5107398568019093,
+          "vp_per_global_ply": 0.2555223880597015,
+          "vp_per_main": 0.5113500597371565,
+          "win_rate_percent": 34.375,
+          "wins": 11
+        },
+        "opponent_id": "prism-v01",
+        "opponent_identity": "2c0e33fa610a1f41375a654f29b105a8de16be8d22440aa37b98138301bf4e7c",
+        "receipts": [
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g15-s0.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g15-s0.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "4a5ae095d703bc06b191988020bf972287b368f10c9010f7ee21c27347f1254b",
+            "metrics_sha256": "2d64919a986e6b528eaf3769c64ab8b2e84ae7268c7ed32a3e247a3fef984bf4",
+            "seconds": 0.015199063811451197
+          },
+          {
+            "argv": [
+              "/home/ubuntu/splendor-ppo-m57/build/release/examples/s4_batch_metrics",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g15-s1.manifest.json",
+              "/home/ubuntu/splendor-ppo-m59/training-metrics/g15-s1.metrics.json"
+            ],
+            "exit_code": 0,
+            "manifest_sha256": "a1671d3ce409613aa0765a65a6c6b54a2b7b1273339d3efe4e926666d4821c64",
+            "metrics_sha256": "0f37ef6c35d51b7e99c59d476dbd7d5fff749a1af556f3b14d0dff55881d7a64",
+            "seconds": 0.01586862583644688
+          }
+        ],
+        "score_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.8125
+          ],
+          "estimate": 0.65625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        },
+        "win_ci": {
+          "bootstrap_seed": 57049999,
+          "ci95": [
+            0.5,
+            0.8125
+          ],
+          "estimate": 0.65625,
+          "resamples": 20000,
+          "scope": "descriptive paired-seed bootstrap; one-block CI is degenerate",
+          "seed_blocks": 16
+        }
+      }
+    ],
+    "new_games": 0,
+    "new_optimizer_updates": 0,
+    "readable_table_path": "docs/prism/prism-alpha-cloud-m59-training-matches.md",
+    "rust_manifests": 32,
+    "source_hashes": {
+      "prism_alpha_cloud_training_report.py": "6e47476a393a04e35d75f552c63df5004e7969e798607245e6a9ab12797d1aea",
+      "prism_portable_report.py": "603210f2a363327d9d7a46ae0c42c0b97b38341f06a90b541627cbe4285d6286"
+    },
+    "status": "PASS_TRAINING_ARTIFACT_AUDIT"
   }
 }

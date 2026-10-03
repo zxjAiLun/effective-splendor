@@ -1,2 +1,3 @@
 # M59 records raw source bytes; preserve this script across Windows/Linux checkouts.
 prism_alpha_cloud_prepare.py -text
+prism_alpha_cloud_training_report.py -text
