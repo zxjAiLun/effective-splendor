@@ -228,3 +228,16 @@ AUC24 0.084614 → 0.089495（**↑ +0.004881**）；终局大牌印刷分 7.700
 manifest SHA `52da0740c4badb397f59d40b09716ba4c5ff860061b86322a32c32a3af478335`。
 逐推理/逐决策时钟 **NOT_MEASURED**。彩色 HTML 对照页本轮尚未生成（NOT_RUN），
 生成后须回填 `colored_comparison_path/sha256`。
+
+### 锚点身份更正：heuristic-portable-v029 即 Heuristic v0.3.1 策略 — 2026-10-03
+
+用户指出 v0.2.9 启发式不是合格对手并要求补 v0.3.1 数据。核查结论：**M59/M60 的
+锚点对手在策略层面就是 Heuristic v0.3.1**（S4.11 五层等价重构），"0.2.9" 仅为
+协议 Hello 常量。证据链：S4.11 记录的 7 份 v0.3.1 源码哈希与当前工作树逐一一致；
+M57 冻结快照即该工作树（M60 冻结时 0 漂移复核）；本次用同源码重建 ARM 引擎得
+SHA `1a13af46…` 与 cloud1 冻结引擎**逐字节相同**。因此 v0.3.1 数据已存在于 M60
+验收（候选 371/1/140、72.5586%；父模型 352/2/158、68.9453%）与 M59 验收
+（70.1172% / 66.2109%），**0 新局补跑**；报告冻结字节不改，按更正名称阅读。
+后续轮次（M61+）启发式对手行更名 `heuristic-v031` 并绑定引擎/源码哈希；无需新
+引擎。完整证据与更正记录见 [heuristic-anchor-v031-identity.md](prism/heuristic-anchor-v031-identity.md)。
+重建回执保留于 cloud1 `/home/ubuntu/splendor-ppo-m60/heuristic-v031/`。
