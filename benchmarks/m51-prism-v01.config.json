@@ -1,0 +1,63 @@
+{
+  "format": "m51-prism-round-v1",
+  "round_id": "prism-v01",
+  "status": "FROZEN",
+  "baseline_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "goal_artifact": ".pi/goal/prism-v0-1-独立模型开发-首训与实战基线-20260929-1921.md",
+  "artifact_root": "local-artifacts/prism/v01",
+  "workers": 4,
+  "teacher": {
+    "program": "local-artifacts/prism/v01/bin/teacher-v031.exe",
+    "origin": "local-artifacts/s4-heuristic-v031-pilot/splendor-candidate.exe",
+    "sha256": "6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db",
+    "args": ["agent-heuristic-v02", "--seed", "20260926"],
+    "seed_start": 9400000,
+    "games": 4000
+  },
+  "model": {
+    "observation_schema": "prism-observation-v1",
+    "action_schema": "prism-action-v1",
+    "entity_dim": 96,
+    "action_dim": 80,
+    "hidden_dim": 128,
+    "num_blocks": 2,
+    "action_attention_layers": 1,
+    "architecture_contract": "docs/m51-prism-implementation-contract.md"
+  },
+  "dataset": {"val_modulus": 5, "val_remainder": 0, "train_games": 3200, "val_games": 800},
+  "training": {
+    "data_dir": "local-artifacts/prism/v01/dataset",
+    "out_dir": "local-artifacts/prism/v01/run",
+    "epochs": 20,
+    "batch_size": 64,
+    "accumulation_steps": 2,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "seed": 51000001,
+    "value_weight": 0.5,
+    "gradient_clip": 1.0,
+    "device": "cuda",
+    "dtype": "float32",
+    "amp": false,
+    "tf32": false,
+    "cpu_threads": 2,
+    "checkpoint_selection": "minimum full validation CE+0.5*BCE epochs1..20, earliest exact tie",
+    "initialization": "from scratch; no Aran weights",
+    "scheduler": "none"
+  },
+  "evaluation": {
+    "engine": "local-artifacts/prism/v01/bin/splendor-prism.exe",
+    "weights": "local-artifacts/prism/v01/run/weights.json",
+    "candidate_args": ["agent-prism", "--seed", "51000001"],
+    "smoke_seed": 9404999,
+    "baseline_seed_start": 9405000,
+    "baseline_seed_count": 128,
+    "baseline_games": 256,
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 51002026,
+    "move_timeout_ms": 60000,
+    "handshake_timeout_ms": 30000,
+    "stop_rule": "one candidate; no 500-game confirmation or win-rate completion gate"
+  },
+  "publication": "local only; no Aran or production changes, commit, push or GUI registration"
+}

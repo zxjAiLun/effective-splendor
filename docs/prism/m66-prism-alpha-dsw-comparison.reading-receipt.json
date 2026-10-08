@@ -1,0 +1,21 @@
+{
+  "format": "prism-reading-receipt-v1",
+  "adapter": "native-greedy-v1",
+  "spec_sha256": "e37c0b364a6ab4b88638a56b9a93825d5c63c34fb1ebb5b9bc36b8e8fd420a48",
+  "result_sha256": "53cbbca99085ffea003de17c9b3523331e19def7bcc7f228a2ed55793e4a8bb0",
+  "complete_markdown_sha256": "a82009c10a413227ab951fd6ad365216e7ba3812983dc1db41466644cbaa7420",
+  "html_sha256": "8ee78bbb86faec7f76a8b996dfcba5f9e42d321073758a3f4ec22546374c8799",
+  "reading_markdown_sha256": "1b20310b5b3898c214db728485f1db421705094356058cd6c4c85eeb58bd5f18",
+  "audit_html_sha256": "41f6ad88e4afab088b507519be18e64381af752f83b7a7728d97835b97e62815",
+  "audit_markdown_sha256": "acc20232f804295d1aab20afdef7ede8ee461314fa57fffec8d5bd231d532a1d",
+  "source_result_sha256": [
+    "9d864470234d34506923b913e46958ad2fcde14b31515b3fa1d0800bf32cad22",
+    "3623986be3cbc41ce5fbce572eccf789565a33d60b1781f7deeebebd0e432ced",
+    "b66c1fe2066fa2d3aeb2154cb1e8f98804c5396b4bbb9c22aa2a065c87ae1631"
+  ],
+  "games_dispatched": 0,
+  "gate_values_changed": false,
+  "sampling_history": "NOT_RUN",
+  "original_html_sha256": null,
+  "preserved_source_tables": 82
+}

@@ -1,0 +1,117 @@
+{
+  "acceptance": {
+    "action_seed": 56020001,
+    "anchor_total_games": 3072,
+    "anchors": [
+      "heuristic-v031",
+      "prism-v01",
+      "prism-v0.1.1"
+    ],
+    "bigcard_auc24_delta_lower_gte": -0.015,
+    "bigcard_definition": "purchased printed VP>=3; noble VP excluded; cumulative own Main trajectory, clip15, fixed24 terminal-large-card-VP padding",
+    "blocks": 256,
+    "bootstrap_rng_seed": 56029999,
+    "bootstrap_samples": 20000,
+    "direct_blocks": 512,
+    "direct_parent_games": 1024,
+    "direct_parent_score_lower_gte": 0.45,
+    "direct_seed_end": 9520511,
+    "enhancement_reporting": "three same simultaneous lower bounds: delta>0, direct score>0.5; acceptance floors do not imply enhancement",
+    "family_alpha": 0.05,
+    "lower_quantile": 0.016666666666666666,
+    "no_extension_or_checkpoint_selection": true,
+    "once_only_final_candidate": true,
+    "one_sided_claims": 3,
+    "per_opponent_metrics": "diagnostic only; no additional veto",
+    "require_all_three_gates": true,
+    "seed_end": 9520255,
+    "seed_start": 9520000,
+    "strength_pool_delta_lower_gte": -0.05,
+    "total_games": 4096,
+    "total_physical_budget": 5504,
+    "unused_for_training": true
+  },
+  "base_model": {
+    "display_name": "Prism Alpha v0.1.0",
+    "model_version": "prism-alpha-v0.1.0",
+    "sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a",
+    "weights_path": "local-artifacts/prism/alpha-v0.1.0/weights.json"
+  },
+  "baseline_git_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "development": {
+    "action_seed": 56020001,
+    "anchors": [
+      "heuristic-v031",
+      "prism-v01",
+      "prism-v0.1.1"
+    ],
+    "seed_end": 9515031,
+    "seed_start": 9515000,
+    "selection": "descriptive only; final c4 fixed before samples; no tuning",
+    "total_games": 384
+  },
+  "format": "m56-prism-alpha-bigcard-continuation-v1",
+  "isolation": {
+    "no_default_model_replacement": true,
+    "no_git_publication": true,
+    "no_inference_overlay": true,
+    "no_shared_pool_mutation": true,
+    "retain_all_negative_results": true
+  },
+  "prospective_model": "prism-alpha-v0.1.1",
+  "scope": "one fixed final c4, four-cycle continuation along large-card scoring profile; no sweep or extension",
+  "seed_reservations": [
+    [
+      9510000,
+      9510511,
+      "m56-training"
+    ],
+    [
+      9515000,
+      9515031,
+      "m56-development"
+    ],
+    [
+      9520000,
+      9520511,
+      "m56-independent"
+    ]
+  ],
+  "status": "AUTHORIZED",
+  "style": {
+    "diagnostic_horizon_main_actions": 20,
+    "diagnostic_score_threshold": 8,
+    "format": "prism-rush-style-v1",
+    "phase_semantics": "choose_noble-belongs-to-preceding-main",
+    "score_cap": 15,
+    "short_game_padding": "terminal-prestige",
+    "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+    "terminal_only": true,
+    "window_main_actions": 24
+  },
+  "training": {
+    "action_seed": 56010001,
+    "cycles": 4,
+    "fresh_optimizer_style_head_and_rng": true,
+    "games_per_cycle": 256,
+    "lr": 3e-05,
+    "max_cpu_seconds": 18000,
+    "max_memory_bytes": 8589934592,
+    "max_retries": 0,
+    "max_storage_bytes": 68719476736,
+    "max_wall_seconds": 14400,
+    "minibatch_size": 256,
+    "only_final_c4_candidate": true,
+    "opponents": [
+      "heuristic-v031",
+      "prism-v01"
+    ],
+    "passes": 2,
+    "seed_end": 9510511,
+    "seed_start": 9510000,
+    "style_beta": 0.3,
+    "style_value_weight": 0.5,
+    "total_games": 1024
+  },
+  "user_authorization": "okay 沿着这个方向继续迭代吧"
+}

@@ -1,0 +1,234 @@
+{
+  "assets": {
+    "alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.4/weights.json",
+      "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9"
+    },
+    "balance": {
+      "local_path": "local-artifacts/prism/balance-v0.1.0/weights.json",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1"
+    },
+    "beta": {
+      "local_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb"
+    },
+    "fixtures": {
+      "local_path": "local-artifacts/prism/portable-m57/inputs/boundary-fixtures.jsonl",
+      "sha256": "81c3f01dcd0d31fcb7dc54acfd125892a2692ff13e31a996889282d35ea817c1"
+    },
+    "general": {
+      "local_path": "local-artifacts/prism/v0.1.1/weights.json",
+      "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85"
+    },
+    "initial": {
+      "local_path": "local-artifacts/prism/v01/run/weights.json",
+      "sha256": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54"
+    },
+    "parent": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+    }
+  },
+  "authorization": {
+    "date": "2026-10-05",
+    "request": "\u589e\u5927\u8bad\u7ec3\u91cf\u548c\u8bc4\u6d4b\u91cf\uff0c5000/10000\uff0c\u5141\u8bb8\u8017\u65f6\u589e\u52a05\u500d10\u500d\uff0c\u505a\u4e00\u6b21\u91cd\u590d\u5b9e\u9a8c",
+    "source": "human_owner"
+  },
+  "base_model": {
+    "name": "Prism Alpha v0.1.5",
+    "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+  },
+  "candidate_status": "NOT_RUN_UNPUBLISHED",
+  "comparison_limit": "larger budget than M66; not a same-budget repetition or causal budget test; two seeds do not establish population robustness",
+  "default_replaced": false,
+  "engineering": {
+    "cpu_seconds": 2400,
+    "games": 8,
+    "research_use": false,
+    "run_seed": 67000001,
+    "wall_seconds": 1200
+  },
+  "evaluation": {
+    "action_seed": 67020001,
+    "bootstrap_samples": 20000,
+    "bootstrap_seed": 67029999,
+    "common_games_per_model": 30000,
+    "common_opponents": [
+      "heuristic",
+      "initial",
+      "general",
+      "balance",
+      "alpha",
+      "beta"
+    ],
+    "common_seed_end": 9832499,
+    "common_seed_start": 9830000,
+    "cpu_seconds_per_arena": 72000,
+    "direct_games": 10000,
+    "direct_seed_end": 9844999,
+    "direct_seed_start": 9840000,
+    "enhancement_thresholds": {
+      "candidate/direct_parent": 0.5,
+      "candidate/strength_pool": 0.0
+    },
+    "family_alpha": 0.05,
+    "gates": {
+      "candidate/direct_parent": 0.45,
+      "candidate/strength_pool": -0.05
+    },
+    "lower_quantile": 0.0125,
+    "memory_bytes": 8589934592,
+    "mode": "both-greedy",
+    "repeat_success": "both arms clear adjusted enhancement lower bounds for strength pool and direct parent",
+    "selection": "no extension or arm/checkpoint selection",
+    "statistical_unit": "paired two-seat seed block; six equal-weight common opponents; four gates across two arms",
+    "storage_bytes_per_arena": 8589934592,
+    "style": "descriptive observed route; no style veto",
+    "total_games": 110000,
+    "wall_seconds_per_arena": 18000,
+    "workers": 4
+  },
+  "format": "m67-prism-alpha-repeat-v1",
+  "frozen_at": "2026-10-05T16:04:56.448406+00:00",
+  "git_published": false,
+  "inference_boundary": "player-view only; referee replay is offline audit only",
+  "names": {
+    "alpha": "Prism Alpha v0.1.4",
+    "balance": "Prism Balance v0.1.0",
+    "beta": "Prism Beta v0.1.0",
+    "candidate": "M66 final c4 unpublished training checkpoint",
+    "candidate-a": "M67\u79cd\u5b50A\u6700\u7ec8c20\u672a\u53d1\u5e03\u8bad\u7ec3\u68c0\u67e5\u70b9",
+    "candidate-b": "M67\u79cd\u5b50B\u6700\u7ec8c20\u672a\u53d1\u5e03\u8bad\u7ec3\u68c0\u67e5\u70b9",
+    "general": "Prism v0.1.1",
+    "heuristic": "Heuristic v0.3.1",
+    "initial": "Prism v0.1.0",
+    "parent": "Prism Alpha v0.1.5"
+  },
+  "pool_deployed": false,
+  "resources": {
+    "automatic_retries": 0,
+    "available_cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "round_wall_seconds": 86400,
+    "rss_limit_scope": "sampled process-tree soft limit; no owned cgroup",
+    "total_storage_bytes": 64424509440
+  },
+  "runtime": {
+    "arena_environment": {
+      "Markdown": "3.8",
+      "numpy": "2.2.4",
+      "psutil": "7.0.0"
+    },
+    "arena_python": "/mnt/workspace/envs/splendor-arena-py312/bin/python",
+    "numeric_source_identity": "ce1bb93c9ce5e13bad1ef05845ba531cb3a0366e2de331fec9917ca211ab7303",
+    "portable_package_identity": "c48d6fdb0db00176e4aaad1b39979cb711006bf4773fc649f71f6ffe7da72327",
+    "remote_root": "/mnt/workspace/splendor-m67-alpha-repeat",
+    "source_pin_policy": "all dispatched bytes pinned before first launch; never modify active copy",
+    "training_environment": {
+      "Markdown": "3.7",
+      "cpu_threads": 2,
+      "numpy": "2.2.4",
+      "psutil": "7.0.0",
+      "torch": "2.6.0+cpu"
+    },
+    "training_python": "/mnt/workspace/envs/splendor-ppo-m67-py312/bin/python"
+  },
+  "seed_check": {
+    "configs": {
+      "benchmarks/m56-prism-alpha-v0.1.1.config.json": "81579f01aae5f0d74871bf61ef4a7827b8ba23f50a897a7a5d5d071f9769eda7",
+      "benchmarks/m59-prism-alpha-cloud-ppo.config.json": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
+      "benchmarks/m60-prism-alpha-cloud-ppo.config.json": "afa21fc1e588ecc80e8bab64ca08392448758d68d47544900f48b8eaa9f89c4b",
+      "benchmarks/m61-prism-alpha-balance-ab.config.json": "280efde1a7441e82d072f33f22b97c24b2d1f5653de76ccfeecb72729ac53fd9",
+      "benchmarks/m62-prism-beta-building.config.json": "4f3ff90c89b017ad4b1fdb0f344b1ca84bc55ea641d5a1aee3b0bb50463eb408",
+      "benchmarks/m63-prism-beta-timed-building.config.json": "c0d3de5398c724bd502d5c30f5f52ec06a848f7fe2672c28e1086c7730b21550",
+      "benchmarks/m66-prism-alpha-dsw.config.json": "1770d3635149f5df7b4f06630457c329604971adb98afb4c81355c93027572aa"
+    },
+    "prior_ranges": 106,
+    "registry_sha256": "ef396878241602bd7c679892ad2a1a99beb27c3ad6cae557c16e96f601ba6e40",
+    "status": "PASS"
+  },
+  "seed_reservations": [
+    [
+      9800000,
+      9800003,
+      "m67-engineering-not-research"
+    ],
+    [
+      9801000,
+      9803559,
+      "m67-training-a"
+    ],
+    [
+      9811000,
+      9813559,
+      "m67-training-b"
+    ],
+    [
+      9830000,
+      9832499,
+      "m67-common-independent"
+    ],
+    [
+      9840000,
+      9844999,
+      "m67-direct-independent"
+    ]
+  ],
+  "status": "FROZEN_BEFORE_FIRST_GAME",
+  "studio_deployed": false,
+  "training": {
+    "arms": {
+      "a": {
+        "blueprint": "benchmarks/m67-prism-alpha-repeat-a.train.json",
+        "blueprint_identity": "c67c054a6afdfb5444d11b9181b524e2c59fb352feb78d8ee1375b28dd38c835",
+        "cycles": 20,
+        "games": 5120,
+        "run_seed": 67010001,
+        "seed_start": 9801000
+      },
+      "b": {
+        "blueprint": "benchmarks/m67-prism-alpha-repeat-b.train.json",
+        "blueprint_identity": "69a37b10943e1ff97fca5fb92df718dbdc3fdc4c15e50f7255f9ccca2a40f738",
+        "cycles": 20,
+        "games": 5120,
+        "run_seed": 67010002,
+        "seed_start": 9811000
+      }
+    },
+    "cpu_seconds": 100000,
+    "games_per_cycle": 256,
+    "initialization": "exact Prism Alpha v0.1.5 weights; independent fresh AdamW/RNG per arm; not full-state resume",
+    "memory_bytes": 8589934592,
+    "mix_per_arm": {
+      "alpha": 640,
+      "beta": 640,
+      "general": 2560,
+      "parent": 1280
+    },
+    "ppo": {
+      "clip_epsilon": 0.2,
+      "entropy_weight": 0.01,
+      "gae_lambda": 0.95,
+      "logp_tolerance": 1e-06,
+      "lr": 3e-05,
+      "max_grad_norm": 1.0,
+      "minibatch_size": 256,
+      "normalize_advantage": true,
+      "passes": 2,
+      "style_beta": 0.0,
+      "style_value_weight": 0.0,
+      "target_kl": 0.02,
+      "value_tolerance": 1e-06,
+      "value_weight": 0.5,
+      "weight_decay": 0.0
+    },
+    "selection": "final c20 only for each arm; no intermediate checkpoint evaluation or picking best arm",
+    "storage_bytes": 17179869184,
+    "total_games": 10240,
+    "wall_seconds": 25200
+  }
+}

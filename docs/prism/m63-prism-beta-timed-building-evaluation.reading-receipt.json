@@ -1,0 +1,39 @@
+{
+  "format": "prism-reading-receipt-v1",
+  "result_sha256": "a3c5c4f2c48b2b7dc36fed34326236ba5bcab687718ede6fe7bac99902b1e989",
+  "complete_markdown_sha256": "911d4ef90395be7a373ea23f79d921d03ebb5909ffde76c222ebd0bf70c6c341",
+  "spec_sha256": "4f7cbf8f568e0d5a93b817804bd39c0c5ed92b9ee0c94a4f07b5fd13ab46342f",
+  "html_sha256": "e329d89968d8d2045f5fe33497731873198b2dd2222566b32c649a49c2fa1469",
+  "reading_markdown_sha256": "541be3b119aa8419c9186fbcace9decd055fc5b34655d923fc9c4ca9f4ecd3f7",
+  "audit_html_sha256": "d2f5e410e2fa35c991b94201f56a57ad164e2c55e16a77a111e288a813e28ec1",
+  "audit_markdown_sha256": "1b5f3be603fd0eb8e8ea3368a7d5e3b6b47e63b9de0d4b7e02005eb7c2b9a6f5",
+  "sampling_html_sha256": "327eafd87b7855aad54a2b118aa07e8285e9926f32d837b22acb5d02c3aeaafb",
+  "original_html_sha256": "2af29a90b32adf7d3ee07784a2c97cd334f1134fa421beaa7be9cfa50f9faaf5",
+  "preserved_source_tables": 106,
+  "games_dispatched": 0,
+  "gate_values_changed": false,
+  "practical_review_sha256": "59f8e70448f430c2fb9a5388fa56c6d17f52db0e16774907d185161f09840bfc",
+  "route_assignment": "Alpha路线固定研究版本（已发布）",
+  "original_research_verdict": {
+    "beta_acceptance": "NOT_ACCEPTED_BUILDING_CANDIDATE",
+    "beta_accepted": false,
+    "beta_building_retention": "FAIL_BUILDING_RETENTION_TOLERANCE",
+    "beta_eight_gates": "FAIL_BETA_GATES",
+    "beta_style": "FAIL_BUILDING_STYLE_THRESHOLD",
+    "cohort_qualified": true,
+    "confirmed_enhancement": {
+      "beta/building_utility": false,
+      "beta/direct_alpha": false,
+      "beta/direct_control": false,
+      "beta/direct_parent": true,
+      "beta/direct_previous_beta": false,
+      "beta/early_bonus_auc12": false,
+      "beta/general_anchor": false,
+      "beta/strength_pool": false,
+      "control/direct_parent": false,
+      "control/strength_pool": false
+    },
+    "control_retention": "PASS_RETENTION_FLOORS"
+  },
+  "greedy_trajectory_sha256": "b09776f2f1a04496c1f72ac381f3034af56e7d4d26658a78fa9d090d1bdaf099"
+}

@@ -314,11 +314,21 @@ class Run:
                 from .style import extract_style_targets
                 style_targets, style_summary = extract_style_targets(games, self.config["style"])
                 style_artifact = self.store.put_json(style_summary)
-                s['metrics'].append({'event': 'style_extracted', 'cycle': s['cycle'],
-                                     'artifact': style_artifact,
-                                     'style_contract_sha256': style_summary['style_contract_sha256'],
-                                     'mean_rush_auc': style_summary['mean_rush_auc'],
-                                     'vp_threshold_by_horizon_rate': style_summary['vp_threshold_by_horizon_rate']})
+                style_metrics = {'event': 'style_extracted', 'cycle': s['cycle'],
+                                 'artifact': style_artifact,
+                                 'style_contract_sha256': style_summary['style_contract_sha256']}
+                if self.config['style']['format'] == 'prism-building-style-v1':
+                    style_metrics.update(mean_building_utility=style_summary['mean_building_utility'],
+                                         mean_early_bonus_auc12=style_summary['mean_early_bonus_auc12'])
+                elif self.config['style']['format'] == 'prism-building-timed-style-v1':
+                    style_metrics.update(
+                        mean_time_weighted_utility=style_summary['mean_time_weighted_utility'],
+                        mean_building_utility=style_summary['mean_building_utility'],
+                        mean_early_bonus_auc12=style_summary['mean_early_bonus_auc12'])
+                else:
+                    style_metrics.update(mean_rush_auc=style_summary['mean_rush_auc'],
+                                         vp_threshold_by_horizon_rate=style_summary['vp_threshold_by_horizon_rate'])
+                s['metrics'].append(style_metrics)
             batch = prepare_batch(games, behavior, self.ppo, max_decisions=self.config["budget"]["max_decisions"],
                                   style_returns=style_targets, verify=False)
             if batch["batch_id"] in s["consumed"]:

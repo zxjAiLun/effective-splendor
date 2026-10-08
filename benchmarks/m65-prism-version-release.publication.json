@@ -1,0 +1,126 @@
+{
+  "format": "prism-owner-directed-publication-v1",
+  "authorization": {
+    "source": "human_owner",
+    "date": "2026-10-05",
+    "request": "不能浪费dsw上的算力，并且你可以看着将之前没发布的那两版发布了",
+    "clarification": "M62 的 Beta 候选＋M63 的 Alpha 路线候选"
+  },
+  "models": [
+    {
+      "model_id": "prism-beta-v0.1.0",
+      "model_version": "0.1.0",
+      "display_name": "Prism Beta v0.1.0",
+      "route": "beta",
+      "observed_route": "mixed / scoring-leaning; stronger-building preference not established",
+      "parent": {
+        "display_name": "Prism Balance v0.1.0",
+        "model_id": "prism-balance-v0.1.0",
+        "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+        "weights_path": "local-artifacts/prism/balance-v0.1.0/weights.json"
+      },
+      "origin": {
+        "milestone": "M62",
+        "arm": "beta",
+        "cycle": 4,
+        "original_experiment_name": "Prism Beta v0.1.0 candidate"
+      },
+      "weights_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+      "weights_sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+      "source_weights": "local-artifacts/prism/m62-reception-2026-10-04/harvest/beta/weights.json",
+      "source_companion": "local-artifacts/prism/m62-reception-2026-10-04/harvest/beta/weights.manifest.json",
+      "source_companion_sha256": "ccb14f7ac59413238997387fdd9c502613e69a492c1154ff8505da3b7c65f0d4",
+      "artifact_audit": "local-artifacts/prism/m62-reception-2026-10-04/harvest/beta/training-audit.json",
+      "artifact_audit_sha256": "d557706bb0b912de2394439a17deadb3e797bfc562838449fd37847bd2a7fe96",
+      "original_result": "local-artifacts/prism/building-beta-m62/evaluation/result.json",
+      "original_result_sha256": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+      "original_config": "benchmarks/m62-prism-beta-building.config.json",
+      "original_config_sha256": "4f3ff90c89b017ad4b1fdb0f344b1ca84bc55ea641d5a1aee3b0bb50463eb408",
+      "greedy_evidence": [
+        {
+          "path": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+          "sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+          "games": 2048,
+          "candidate_key": "beta",
+          "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+          "plan": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/plan.json",
+          "completion": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/completion.json"
+        },
+        {
+          "path": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/result.json",
+          "sha256": "eb04474fd5cb469784af05ec6e8afa321824eb545596687c732242928346fb7c",
+          "games": 256,
+          "candidate_key": "beta",
+          "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/config.json",
+          "plan": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/plan.json",
+          "completion": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/completion.json"
+        },
+        {
+          "path": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/result.json",
+          "sha256": "2c029162ec647340657acb6f1452a09be5c82ae225e72297c2a84a3f27641330",
+          "games": 256,
+          "candidate_key": "beta",
+          "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/config.json",
+          "plan": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/plan.json",
+          "completion": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/completion.json"
+        }
+      ],
+      "style_interpretation": "Beta研究路线的固定初始版本；竞技与基建倾向按实战数据解释，旧风格门未达保留。",
+      "report_path": "docs/prism/m62-prism-beta-building-comparison.html",
+      "record_path": "benchmarks/m65-prism-beta-v0.1.0.model.json"
+    },
+    {
+      "model_id": "prism-alpha-v0.1.5",
+      "model_version": "0.1.5",
+      "display_name": "Prism Alpha v0.1.5",
+      "route": "alpha",
+      "observed_route": "slight large-card scoring/rush shift versus Balance",
+      "parent": {
+        "display_name": "Prism Balance v0.1.0",
+        "model_id": "prism-balance-v0.1.0",
+        "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+        "weights_path": "local-artifacts/prism/balance-v0.1.0/weights.json"
+      },
+      "origin": {
+        "milestone": "M63",
+        "arm": "beta",
+        "cycle": 4,
+        "original_experiment_name": "Prism Beta v0.1.1 candidate"
+      },
+      "weights_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "weights_sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+      "source_weights": "local-artifacts/prism/m65-release/alpha-source/weights.json",
+      "source_companion": "local-artifacts/prism/m65-release/alpha-source/weights.manifest.json",
+      "source_companion_sha256": "f9cbd615994c3768aff48f4b716fbb6a6193aef4291a21900fbaa61b5762692c",
+      "artifact_audit": "local-artifacts/prism/m65-release/alpha-source/training-artifact-audit.json",
+      "artifact_audit_sha256": "e193b9d91faab787751dd4d299a3f2c42f50e724e079833210e6e4f72669db75",
+      "original_result": "local-artifacts/prism/m63-dsw-r2/harvested/evaluation/result.json",
+      "original_result_sha256": "a3c5c4f2c48b2b7dc36fed34326236ba5bcab687718ede6fe7bac99902b1e989",
+      "original_config": "benchmarks/m63-prism-beta-timed-building.config.json",
+      "original_config_sha256": "c0d3de5398c724bd502d5c30f5f52ec06a848f7fe2672c28e1086c7730b21550",
+      "greedy_evidence": [
+        {
+          "path": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+          "sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+          "games": 2560,
+          "candidate_key": "beta",
+          "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+          "plan": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/plan.json",
+          "completion": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/completion.json"
+        },
+        {
+          "path": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/result.json",
+          "sha256": "c5908481e18523431819cc7e3a1242d90871a4db855ff69a8263f790be190ca0",
+          "games": 256,
+          "candidate_key": "beta",
+          "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/config.json",
+          "plan": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/plan.json",
+          "completion": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/completion.json"
+        }
+      ],
+      "style_interpretation": "由Balance父代分支得到的大牌冲分路线检查点；变化轻微，不宣称已超过现任Alpha。",
+      "report_path": "docs/prism/m63-prism-beta-timed-building-evaluation.html",
+      "record_path": "benchmarks/m65-prism-alpha-v0.1.5.model.json"
+    }
+  ]
+}

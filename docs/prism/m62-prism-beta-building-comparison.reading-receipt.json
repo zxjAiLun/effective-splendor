@@ -1,0 +1,15 @@
+{
+  "format": "prism-reading-receipt-v1",
+  "result_sha256": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+  "complete_markdown_sha256": "80fc912e820a0f008aeeba6f2b244d0ed6640724dfc01c78422a7793087cb6c0",
+  "spec_sha256": "e6824be26cfd41cf8322b92c475cfae252ca8f96b46b402f1c325dec68eb9ff5",
+  "html_sha256": "f991a937ac48533352f18757308e0c9048884b0c0d6c945cab7e9bf74de4535e",
+  "reading_markdown_sha256": "48f63a8003bad3998e40299023fbb582cc89e541aa67172c9e09f7aca295ef86",
+  "audit_html_sha256": "e0e0e1852d6769b4802ed114a7dbe6632b632d25f732dfa5e50a0c9eec583b98",
+  "audit_markdown_sha256": "5c2aa526cdd628e001e34b66b3d81b433ce7075790a29b2c3fd9ec377b7cd9d9",
+  "sampling_html_sha256": "9daa6fd89f1ae2415fae1317927329cda9bf202a8a1507380d77332200960468",
+  "original_html_sha256": "c942dfaaf61799d1812f767ab40c7497e4eab717cda82393db3bbbc675c882a7",
+  "preserved_source_tables": 97,
+  "games_dispatched": 0,
+  "gate_values_changed": false
+}

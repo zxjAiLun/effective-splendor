@@ -1,0 +1,193 @@
+{
+  "format": "prism-reading-spec-v1",
+  "result": "local-artifacts/prism/balance-ab-m61/result.json",
+  "result_sha256": "37834fd4571503b269924f6ab62d9dd423a6b7d8e317f75a8930c1d96c46c6a4",
+  "markdown": "docs/prism/m61-prism-alpha-balance-ab-evaluation.md",
+  "markdown_sha256": "f4033572bae221ced35b8e4d403290c4f5cd1e6b2f2bbecff09bb1c79ab171a3",
+  "output": "docs/prism/m61-prism-alpha-balance-ab-comparison.html",
+  "focus": "balance",
+  "baseline": "alpha",
+  "names": {
+    "heuristic-v031": "Heuristic v0.3.1（greedy）",
+    "prism-v01": "Prism v0.1.0（greedy）",
+    "prism-general-v011": "Prism v0.1.1（T=1）",
+    "alpha-t1": "M61 Alpha最终c4候选（当时未发布）",
+    "previous-beta-t1": "Prism Beta v0.1.0 M62冻结候选（T=1）",
+    "base": "Prism Alpha v0.1.3（共同父代）",
+    "alpha": "M61 Alpha最终c4候选（当时未发布）",
+    "balance": "M61 Balance最终c4候选（当时未发布）",
+    "base-t1": "Prism Alpha v0.1.3（共同父代）",
+    "control-t1": "同轮对照"
+  },
+  "gates": {
+    "alpha/bigcard_auc24": {
+      "label": "Alpha候选 · 大牌风格保留",
+      "category": "风格/效用",
+      "purpose": "用预先固定的行为指标检验风格实质或保留要求；不能只凭胜率发布风格模型。",
+      "threshold": -0.015,
+      "unit": "归一化单位",
+      "scale": 1,
+      "digits": 5,
+      "fail": "未通过时须保留原判定，不能事后改门。",
+      "pass": "满足大牌风格保留；校正下界也高于0，原记录另有Alpha对父的风格增强证据。"
+    },
+    "alpha/direct_parent": {
+      "label": "Alpha候选 · 直接对共同父代",
+      "category": "竞争力保留",
+      "purpose": "要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "alpha/strength_pool": {
+      "label": "Alpha候选 · 总体共同锚点表现",
+      "category": "竞争力保留",
+      "purpose": "允许一定强度代价，但要排除超过声明容忍线的退步。",
+      "threshold": -0.05,
+      "unit": "个百分点",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "balance/direct_parent": {
+      "label": "Balance候选 · 直接对共同父代",
+      "category": "竞争力保留",
+      "purpose": "要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "balance/strength_pool": {
+      "label": "Balance候选 · 总体共同锚点表现",
+      "category": "竞争力保留",
+      "purpose": "允许一定强度代价，但要排除超过声明容忍线的退步。",
+      "threshold": -0.05,
+      "unit": "个百分点",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    }
+  },
+  "style_metrics": [
+    {
+      "label": "对共同锚点的半平得分率",
+      "path": "candidate_metrics.score_rate",
+      "unit": "个百分点",
+      "meaning": "三个固定对手等权平均，胜计1、平计0.5",
+      "interpretation": "描述变化，不自动表示显著增强",
+      "scale": 100,
+      "digits": 2
+    },
+    {
+      "label": "大牌印刷分AUC24",
+      "path": "candidate_bigcard.mean_large_card_vp_auc24",
+      "unit": "归一化单位",
+      "meaning": "前24个Main获得大牌印刷分的速度",
+      "interpretation": "两候选差为描述，不替代Alpha对父的风格门",
+      "scale": 1,
+      "digits": 3
+    },
+    {
+      "label": "终局永久折扣",
+      "path": "candidate_metrics.mean_permanent_bonuses",
+      "unit": "个/局",
+      "meaning": "结算时共有多少永久折扣",
+      "interpretation": "仅描述，不独立决定风格验收",
+      "scale": 1,
+      "digits": 3
+    },
+    {
+      "label": "贵族",
+      "path": "candidate_metrics.mean_nobles",
+      "unit": "个/局",
+      "meaning": "结算时获得贵族的平均个数",
+      "interpretation": "仅描述，不足以认定均衡风格",
+      "scale": 1,
+      "digits": 3
+    }
+  ],
+  "story": {
+    "round": "M61",
+    "title": "M61 · 两条路线保住竞争力，但没有分出胜者",
+    "headline": "Alpha续训与Balance都通过保留门；哪条更强，独立对照仍无定论。",
+    "question": "从同一Prism Alpha v0.1.3起点，保留大牌奖励继续训练，与只看输赢的训练相比，哪条路线更好？",
+    "identity": "两臂同从Prism Alpha v0.1.3初始化。报告使用测量时的最终c4候选身份；后续注册的版本不改写本次原始记录。",
+    "lineage": [
+      {
+        "role": "共同起点",
+        "name": "Prism Alpha v0.1.3",
+        "change": "固定父代"
+      },
+      {
+        "role": "原风格续训",
+        "name": "M61 Alpha最终c4候选（当时未发布）",
+        "change": "保留大牌奖励"
+      },
+      {
+        "role": "输赢目标",
+        "name": "M61 Balance最终c4候选（当时未发布）",
+        "change": "不加风格奖励"
+      }
+    ],
+    "conclusions": [
+      {
+        "label": "产物",
+        "value": "两候选固定评测完成",
+        "explanation": "最终c4与原对照证据保留；测量结果不自动登记版本。",
+        "tone": "good"
+      },
+      {
+        "label": "竞技",
+        "value": "均保留竞争力，无胜者",
+        "explanation": "五项保留门通过；Balance对Alpha半平得分50.24%，A/B原判定INCONCLUSIVE。",
+        "tone": "warn"
+      },
+      {
+        "label": "风格",
+        "value": "Alpha大牌有增强证据",
+        "explanation": "Alpha对父的大牌AUC24增加+0.00661，校正下界为正；Balance没有均衡风格验收门。",
+        "tone": "good"
+      }
+    ],
+    "strength": "这里不能用“没分出胜者”说明两条路线等效。Balance直接对Alpha半平得分50.24%，普通95%区间47.27%..53.27%；当前样本仍允许两边各有优势。",
+    "style": "下表默认比较Alpha候选与Balance候选。Balance的大牌AUC低一些、折扣多一些，只是描述；它不是“均衡风格已被证实”。Alpha对父的大牌增强证据需要看原门与原对照，不能用两候选差值替代。",
+    "interpretation": "保留门解决“有没有退步超过容忍线”；A/B判断解决“谁更强”；风格描述解决“行为有什么差异”。这三种问题不能混在一个PASS里。",
+    "next": "保留原INCONCLUSIVE判定。后续基建Beta研究已有独立M62/M63报告；本页面只重组M61证据，不把后续版本身份倒填为当时发布。",
+    "gate_intro": "本轮五个保留门全部通过，但它们不能替代两路线胜负的A/B判定。A/B原记录INCONCLUSIVE保持；这里的门使用原同时双侧区间下界，不改成M63单侧合同。",
+    "compute": "原cloud1固定执行；原JSON没有开发/独立派发分段时钟，所以吞吐标NOT_MEASURED"
+  },
+  "human_story": {
+    "interpretation": "此轮画像按实际购牌、贵族覆盖、得分效率与冲分数据判断。奖励效用或折扣增加不能单独证明基建倾向；原研究目标记录保留在Agent审计页。",
+    "next": "先看对应动作模式下的完整对手表现，再评审路线与实战取舍。此页不登记版本或替代原实验记录。"
+  },
+  "history_story": {
+    "conclusions": [
+      {
+        "label": "产物",
+        "value": "历史评测已完成",
+        "explanation": "完整原记录独立保留。",
+        "tone": "good"
+      },
+      {
+        "label": "竞技",
+        "value": "查看跨代对照",
+        "explanation": "本页均为历史采样；双方greedy战绩未测。",
+        "tone": "warn"
+      },
+      {
+        "label": "画像",
+        "value": "按实际行为判断",
+        "explanation": "贵族、得分效率与买牌倾向并列；风格未达不自动否定实战价值。",
+        "tone": "good"
+      }
+    ]
+  }
+}

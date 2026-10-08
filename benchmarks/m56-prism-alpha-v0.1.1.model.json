@@ -1,0 +1,28 @@
+{
+  "colored_comparison_path": "docs\\prism\\prism-alpha-v0.1.1-comparison.html",
+  "colored_comparison_sha256": "32f192fa6eb25d6fb299f3cbce6e4c1cfcad64d02490971c978902f353105566",
+  "companion_path": "local-artifacts\\prism\\alpha-v0.1.1\\weights.manifest.json",
+  "companion_sha256": "6abdadc704b78cfb4b740bc8970faefbad35615e81da95ef4e62e7b5595975f6",
+  "default_replaced": false,
+  "display_name": "Prism Alpha v0.1.1",
+  "format": "prism-experimental-model-identity-v1",
+  "independent_acceptance": {
+    "result_path": "benchmarks\\m56-prism-alpha-v0.1.1.result.json",
+    "result_sha256": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+    "status": "ACCEPTED_BIGCARD_CONTINUATION"
+  },
+  "model_id": "prism-alpha-v0.1.1",
+  "parent": {
+    "display_name": "Prism Alpha v0.1.0",
+    "model_version": "prism-alpha-v0.1.0",
+    "sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a",
+    "weights_path": "local-artifacts/prism/alpha-v0.1.0/weights.json"
+  },
+  "readable_report": "docs\\prism\\prism-alpha-v0.1.1-evaluation-summary.md",
+  "readable_report_sha256": "f055409c400a460c5a5b9a048da738e9d1cfb932b4ff9be59413b027bdc572d7",
+  "shared_pool_deployed": false,
+  "status": "REGISTERED_EXPERIMENTAL_MODEL",
+  "style_descriptor": "大牌取分 / 大牌冲分取向；非基建专用",
+  "weights_path": "local-artifacts\\prism\\alpha-v0.1.1\\weights.json",
+  "weights_sha256": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff"
+}

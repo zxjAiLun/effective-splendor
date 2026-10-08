@@ -34,6 +34,9 @@ pub mod m49a_target_builder;
 mod m49a_trace_command;
 mod m50_agent_command;
 mod m50_extract_command;
+mod prism_command;
+mod prism_sample_command;
+mod prism_ppo_command;
 mod profile_agent;
 mod promotion_command;
 mod rating_command;
@@ -282,6 +285,15 @@ fn main() {
         }
         Some("agent-m50-policy") => {
             std::process::exit(m50_agent_command::run_agent_m50_policy(&argv[2..]))
+        }
+        Some(command @ ("agent-prism-ppo" | "prism-ppo-audit")) => {
+            std::process::exit(prism_ppo_command::run(command, &argv[2..]))
+        }
+        Some("agent-prism-sample") => {
+            std::process::exit(prism_sample_command::run(&argv[2..]))
+        }
+        Some(command @ ("agent-prism" | "prism-extract" | "prism-predict" | "prism-fixtures" | "prism-audit")) => {
+            std::process::exit(prism_command::run(command, &argv[2..]))
         }
         _ => {}
     }

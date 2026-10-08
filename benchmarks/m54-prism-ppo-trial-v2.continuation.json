@@ -1,0 +1,14 @@
+{
+  "authorized_by": "user-continue-training",
+  "contract_sha256": "59d8cfe26529db4fce914be005c388f0c73576cc1bec69fe4afbf76d19bb51aa",
+  "format": "prism-ppo-continuation-v1",
+  "inherited_optimizer_steps": 436,
+  "initializer_sha256": "77d8ddbdfa47a59e792db5032a5b0d2be1214e58511ce2402a81e4cb6705f9ef",
+  "source_commit": "184f892d12f217bd6c15b8631dd7dfe575cf3269a273ae076a582d3d07cfc1bf",
+  "source_config_sha256": "47921e7587a3b95b537f3f5f7555c67e8546dff08cbcdfb670da38e87e5620c8",
+  "source_identity": "6951e32a8819bd37e915701fb517ebf387a411c954820554e0b2cb3525f15964",
+  "source_payload_sha256": "f39d0197b4001d6b8fd4d320866d21043bab16302dc529f1fc176b989adfa704",
+  "source_policy_tensor_sha256": "5685b14293040fc74cf9375902deed727ab4d3603a15858b69b6d236cc52d58d",
+  "source_run": "local-artifacts/prism/ppo-trial-v1/campaign/run",
+  "source_sha256": "2b1997059bde2f083309ee08ff50f8ad54773a0e2ec9444c5069cc46a18fd9ee"
+}

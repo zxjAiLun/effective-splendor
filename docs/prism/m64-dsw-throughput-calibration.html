@@ -1,0 +1,52 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSW四核速度校准</title><style>body{font:16px/1.7 "Segoe UI","Microsoft YaHei",sans-serif;color:#203648;background:#f1f4f8;max-width:1000px;margin:32px auto;padding:24px}table{border-collapse:collapse;background:white;width:100%}th,td{padding:12px;border:1px solid #d8e2e9;text-align:left}th{background:#e9f0f5}strong{color:#185c49}code{overflow-wrap:anywhere}</style><h1>DSW 四核对战速度校准</h1>
+<p><strong>结论：后续采用4路并发，全部四核可用。</strong> 它达到最快配置约97%的速度；5路反而较慢，6路只多约2.8%的吞吐。</p>
+<p>本轮是工程速度校准：同一批256局双方greedy，在3/4/5/6路下各跑两次，共2048次执行。动作和胜负逐局一致，重复执行不计作更多棋力样本。时钟包括arena派发、保存回放、回放验核和报告，不包括准备、下载与逐局一致性比较。</p>
+<table>
+<thead>
+<tr>
+<th>并发</th>
+<th>两次执行数</th>
+<th>实测局/分钟</th>
+<th>1000局分钟</th>
+<th>观测RSS峰MiB</th>
+<th>两次耗时差/较长耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3</td>
+<td>512</td>
+<td><strong>286.47</strong></td>
+<td>3.491</td>
+<td>155.65</td>
+<td>2.90%</td>
+</tr>
+<tr>
+<td>4</td>
+<td>512</td>
+<td><strong>324.50</strong></td>
+<td>3.082</td>
+<td>205.13</td>
+<td>2.32%</td>
+</tr>
+<tr>
+<td>5</td>
+<td>512</td>
+<td><strong>307.41</strong></td>
+<td>3.253</td>
+<td>236.17</td>
+<td>2.93%</td>
+</tr>
+<tr>
+<td>6</td>
+<td>512</td>
+<td><strong>333.56</strong></td>
+<td>2.998</td>
+<td>272.98</td>
+<td>0.32%</td>
+</tr>
+</tbody>
+</table>
+<p>随后发布支持评测实际采用4路并发，2560局完整活动墙钟实测 <strong>350.69局/分钟、1000局2.852分钟</strong>。工作负载不同，此速度与上表校准分开记录。</p>
+<p>8GiB是采样进程树内存预算，不是实际已用内存；CPU利用是主要瓶颈。5/6路仍只有4个物理可用核，是显式校准过量并发。正常任务仍不超过可用核。决策/推理时钟 NOT_MEASURED。</p>
+<p>详证：<code>local-artifacts/prism/m65-release/harvest/calibration-result.json</code>；全8组原始表/报告/计划保留，0自动重试。</p></html>

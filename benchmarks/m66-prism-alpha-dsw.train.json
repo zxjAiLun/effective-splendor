@@ -1,0 +1,6316 @@
+{
+  "cancel_fixture": false,
+  "format": "prism-portable-blueprint-v1",
+  "model_label": "M66 final c4 unpublished training checkpoint",
+  "purpose": "finite-alpha-start-outcome-only-ppo",
+  "template": {
+    "arena": {
+      "engine_version": "0.4.0",
+      "program": "@engine",
+      "protocol_version": "0.5",
+      "ruleset": "splendor-base-v1",
+      "sha256": "@engine_sha256"
+    },
+    "cycles": [
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9701000,
+          "job_id": "m66-m66-alpha-outcome-c1-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701000,
+          "job_id": "m66-m66-alpha-outcome-c1-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701001,
+          "job_id": "m66-m66-alpha-outcome-c1-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701001,
+          "job_id": "m66-m66-alpha-outcome-c1-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701002,
+          "job_id": "m66-m66-alpha-outcome-c1-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701002,
+          "job_id": "m66-m66-alpha-outcome-c1-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701003,
+          "job_id": "m66-m66-alpha-outcome-c1-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701003,
+          "job_id": "m66-m66-alpha-outcome-c1-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701004,
+          "job_id": "m66-m66-alpha-outcome-c1-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701004,
+          "job_id": "m66-m66-alpha-outcome-c1-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701005,
+          "job_id": "m66-m66-alpha-outcome-c1-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701005,
+          "job_id": "m66-m66-alpha-outcome-c1-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701006,
+          "job_id": "m66-m66-alpha-outcome-c1-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701006,
+          "job_id": "m66-m66-alpha-outcome-c1-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701007,
+          "job_id": "m66-m66-alpha-outcome-c1-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701007,
+          "job_id": "m66-m66-alpha-outcome-c1-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701008,
+          "job_id": "m66-m66-alpha-outcome-c1-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701008,
+          "job_id": "m66-m66-alpha-outcome-c1-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701009,
+          "job_id": "m66-m66-alpha-outcome-c1-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701009,
+          "job_id": "m66-m66-alpha-outcome-c1-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701010,
+          "job_id": "m66-m66-alpha-outcome-c1-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701010,
+          "job_id": "m66-m66-alpha-outcome-c1-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701011,
+          "job_id": "m66-m66-alpha-outcome-c1-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701011,
+          "job_id": "m66-m66-alpha-outcome-c1-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701012,
+          "job_id": "m66-m66-alpha-outcome-c1-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701012,
+          "job_id": "m66-m66-alpha-outcome-c1-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701013,
+          "job_id": "m66-m66-alpha-outcome-c1-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701013,
+          "job_id": "m66-m66-alpha-outcome-c1-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701014,
+          "job_id": "m66-m66-alpha-outcome-c1-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701014,
+          "job_id": "m66-m66-alpha-outcome-c1-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701015,
+          "job_id": "m66-m66-alpha-outcome-c1-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701015,
+          "job_id": "m66-m66-alpha-outcome-c1-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701016,
+          "job_id": "m66-m66-alpha-outcome-c1-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701016,
+          "job_id": "m66-m66-alpha-outcome-c1-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701017,
+          "job_id": "m66-m66-alpha-outcome-c1-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701017,
+          "job_id": "m66-m66-alpha-outcome-c1-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701018,
+          "job_id": "m66-m66-alpha-outcome-c1-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701018,
+          "job_id": "m66-m66-alpha-outcome-c1-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701019,
+          "job_id": "m66-m66-alpha-outcome-c1-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701019,
+          "job_id": "m66-m66-alpha-outcome-c1-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701020,
+          "job_id": "m66-m66-alpha-outcome-c1-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701020,
+          "job_id": "m66-m66-alpha-outcome-c1-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701021,
+          "job_id": "m66-m66-alpha-outcome-c1-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701021,
+          "job_id": "m66-m66-alpha-outcome-c1-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701022,
+          "job_id": "m66-m66-alpha-outcome-c1-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701022,
+          "job_id": "m66-m66-alpha-outcome-c1-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701023,
+          "job_id": "m66-m66-alpha-outcome-c1-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701023,
+          "job_id": "m66-m66-alpha-outcome-c1-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701024,
+          "job_id": "m66-m66-alpha-outcome-c1-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701024,
+          "job_id": "m66-m66-alpha-outcome-c1-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701025,
+          "job_id": "m66-m66-alpha-outcome-c1-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701025,
+          "job_id": "m66-m66-alpha-outcome-c1-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701026,
+          "job_id": "m66-m66-alpha-outcome-c1-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701026,
+          "job_id": "m66-m66-alpha-outcome-c1-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701027,
+          "job_id": "m66-m66-alpha-outcome-c1-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701027,
+          "job_id": "m66-m66-alpha-outcome-c1-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701028,
+          "job_id": "m66-m66-alpha-outcome-c1-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701028,
+          "job_id": "m66-m66-alpha-outcome-c1-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701029,
+          "job_id": "m66-m66-alpha-outcome-c1-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701029,
+          "job_id": "m66-m66-alpha-outcome-c1-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701030,
+          "job_id": "m66-m66-alpha-outcome-c1-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701030,
+          "job_id": "m66-m66-alpha-outcome-c1-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701031,
+          "job_id": "m66-m66-alpha-outcome-c1-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701031,
+          "job_id": "m66-m66-alpha-outcome-c1-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701032,
+          "job_id": "m66-m66-alpha-outcome-c1-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701032,
+          "job_id": "m66-m66-alpha-outcome-c1-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701033,
+          "job_id": "m66-m66-alpha-outcome-c1-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701033,
+          "job_id": "m66-m66-alpha-outcome-c1-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701034,
+          "job_id": "m66-m66-alpha-outcome-c1-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701034,
+          "job_id": "m66-m66-alpha-outcome-c1-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701035,
+          "job_id": "m66-m66-alpha-outcome-c1-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701035,
+          "job_id": "m66-m66-alpha-outcome-c1-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701036,
+          "job_id": "m66-m66-alpha-outcome-c1-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701036,
+          "job_id": "m66-m66-alpha-outcome-c1-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701037,
+          "job_id": "m66-m66-alpha-outcome-c1-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701037,
+          "job_id": "m66-m66-alpha-outcome-c1-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701038,
+          "job_id": "m66-m66-alpha-outcome-c1-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701038,
+          "job_id": "m66-m66-alpha-outcome-c1-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701039,
+          "job_id": "m66-m66-alpha-outcome-c1-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701039,
+          "job_id": "m66-m66-alpha-outcome-c1-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701040,
+          "job_id": "m66-m66-alpha-outcome-c1-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701040,
+          "job_id": "m66-m66-alpha-outcome-c1-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701041,
+          "job_id": "m66-m66-alpha-outcome-c1-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701041,
+          "job_id": "m66-m66-alpha-outcome-c1-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701042,
+          "job_id": "m66-m66-alpha-outcome-c1-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701042,
+          "job_id": "m66-m66-alpha-outcome-c1-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701043,
+          "job_id": "m66-m66-alpha-outcome-c1-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701043,
+          "job_id": "m66-m66-alpha-outcome-c1-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701044,
+          "job_id": "m66-m66-alpha-outcome-c1-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701044,
+          "job_id": "m66-m66-alpha-outcome-c1-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701045,
+          "job_id": "m66-m66-alpha-outcome-c1-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701045,
+          "job_id": "m66-m66-alpha-outcome-c1-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701046,
+          "job_id": "m66-m66-alpha-outcome-c1-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701046,
+          "job_id": "m66-m66-alpha-outcome-c1-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701047,
+          "job_id": "m66-m66-alpha-outcome-c1-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701047,
+          "job_id": "m66-m66-alpha-outcome-c1-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701048,
+          "job_id": "m66-m66-alpha-outcome-c1-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701048,
+          "job_id": "m66-m66-alpha-outcome-c1-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701049,
+          "job_id": "m66-m66-alpha-outcome-c1-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701049,
+          "job_id": "m66-m66-alpha-outcome-c1-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701050,
+          "job_id": "m66-m66-alpha-outcome-c1-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701050,
+          "job_id": "m66-m66-alpha-outcome-c1-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701051,
+          "job_id": "m66-m66-alpha-outcome-c1-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701051,
+          "job_id": "m66-m66-alpha-outcome-c1-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701052,
+          "job_id": "m66-m66-alpha-outcome-c1-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701052,
+          "job_id": "m66-m66-alpha-outcome-c1-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701053,
+          "job_id": "m66-m66-alpha-outcome-c1-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701053,
+          "job_id": "m66-m66-alpha-outcome-c1-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701054,
+          "job_id": "m66-m66-alpha-outcome-c1-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701054,
+          "job_id": "m66-m66-alpha-outcome-c1-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701055,
+          "job_id": "m66-m66-alpha-outcome-c1-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701055,
+          "job_id": "m66-m66-alpha-outcome-c1-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701056,
+          "job_id": "m66-m66-alpha-outcome-c1-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701056,
+          "job_id": "m66-m66-alpha-outcome-c1-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701057,
+          "job_id": "m66-m66-alpha-outcome-c1-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701057,
+          "job_id": "m66-m66-alpha-outcome-c1-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701058,
+          "job_id": "m66-m66-alpha-outcome-c1-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701058,
+          "job_id": "m66-m66-alpha-outcome-c1-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701059,
+          "job_id": "m66-m66-alpha-outcome-c1-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701059,
+          "job_id": "m66-m66-alpha-outcome-c1-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701060,
+          "job_id": "m66-m66-alpha-outcome-c1-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701060,
+          "job_id": "m66-m66-alpha-outcome-c1-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701061,
+          "job_id": "m66-m66-alpha-outcome-c1-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701061,
+          "job_id": "m66-m66-alpha-outcome-c1-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701062,
+          "job_id": "m66-m66-alpha-outcome-c1-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701062,
+          "job_id": "m66-m66-alpha-outcome-c1-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701063,
+          "job_id": "m66-m66-alpha-outcome-c1-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701063,
+          "job_id": "m66-m66-alpha-outcome-c1-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701064,
+          "job_id": "m66-m66-alpha-outcome-c1-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701064,
+          "job_id": "m66-m66-alpha-outcome-c1-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701065,
+          "job_id": "m66-m66-alpha-outcome-c1-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701065,
+          "job_id": "m66-m66-alpha-outcome-c1-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701066,
+          "job_id": "m66-m66-alpha-outcome-c1-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701066,
+          "job_id": "m66-m66-alpha-outcome-c1-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701067,
+          "job_id": "m66-m66-alpha-outcome-c1-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701067,
+          "job_id": "m66-m66-alpha-outcome-c1-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701068,
+          "job_id": "m66-m66-alpha-outcome-c1-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701068,
+          "job_id": "m66-m66-alpha-outcome-c1-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701069,
+          "job_id": "m66-m66-alpha-outcome-c1-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701069,
+          "job_id": "m66-m66-alpha-outcome-c1-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701070,
+          "job_id": "m66-m66-alpha-outcome-c1-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701070,
+          "job_id": "m66-m66-alpha-outcome-c1-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701071,
+          "job_id": "m66-m66-alpha-outcome-c1-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701071,
+          "job_id": "m66-m66-alpha-outcome-c1-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701072,
+          "job_id": "m66-m66-alpha-outcome-c1-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701072,
+          "job_id": "m66-m66-alpha-outcome-c1-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701073,
+          "job_id": "m66-m66-alpha-outcome-c1-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701073,
+          "job_id": "m66-m66-alpha-outcome-c1-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701074,
+          "job_id": "m66-m66-alpha-outcome-c1-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701074,
+          "job_id": "m66-m66-alpha-outcome-c1-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701075,
+          "job_id": "m66-m66-alpha-outcome-c1-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701075,
+          "job_id": "m66-m66-alpha-outcome-c1-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701076,
+          "job_id": "m66-m66-alpha-outcome-c1-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701076,
+          "job_id": "m66-m66-alpha-outcome-c1-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701077,
+          "job_id": "m66-m66-alpha-outcome-c1-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701077,
+          "job_id": "m66-m66-alpha-outcome-c1-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701078,
+          "job_id": "m66-m66-alpha-outcome-c1-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701078,
+          "job_id": "m66-m66-alpha-outcome-c1-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701079,
+          "job_id": "m66-m66-alpha-outcome-c1-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701079,
+          "job_id": "m66-m66-alpha-outcome-c1-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701080,
+          "job_id": "m66-m66-alpha-outcome-c1-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701080,
+          "job_id": "m66-m66-alpha-outcome-c1-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701081,
+          "job_id": "m66-m66-alpha-outcome-c1-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701081,
+          "job_id": "m66-m66-alpha-outcome-c1-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701082,
+          "job_id": "m66-m66-alpha-outcome-c1-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701082,
+          "job_id": "m66-m66-alpha-outcome-c1-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701083,
+          "job_id": "m66-m66-alpha-outcome-c1-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701083,
+          "job_id": "m66-m66-alpha-outcome-c1-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701084,
+          "job_id": "m66-m66-alpha-outcome-c1-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701084,
+          "job_id": "m66-m66-alpha-outcome-c1-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701085,
+          "job_id": "m66-m66-alpha-outcome-c1-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701085,
+          "job_id": "m66-m66-alpha-outcome-c1-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701086,
+          "job_id": "m66-m66-alpha-outcome-c1-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701086,
+          "job_id": "m66-m66-alpha-outcome-c1-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701087,
+          "job_id": "m66-m66-alpha-outcome-c1-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701087,
+          "job_id": "m66-m66-alpha-outcome-c1-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701088,
+          "job_id": "m66-m66-alpha-outcome-c1-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701088,
+          "job_id": "m66-m66-alpha-outcome-c1-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701089,
+          "job_id": "m66-m66-alpha-outcome-c1-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701089,
+          "job_id": "m66-m66-alpha-outcome-c1-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701090,
+          "job_id": "m66-m66-alpha-outcome-c1-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701090,
+          "job_id": "m66-m66-alpha-outcome-c1-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701091,
+          "job_id": "m66-m66-alpha-outcome-c1-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701091,
+          "job_id": "m66-m66-alpha-outcome-c1-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701092,
+          "job_id": "m66-m66-alpha-outcome-c1-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701092,
+          "job_id": "m66-m66-alpha-outcome-c1-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701093,
+          "job_id": "m66-m66-alpha-outcome-c1-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701093,
+          "job_id": "m66-m66-alpha-outcome-c1-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701094,
+          "job_id": "m66-m66-alpha-outcome-c1-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701094,
+          "job_id": "m66-m66-alpha-outcome-c1-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701095,
+          "job_id": "m66-m66-alpha-outcome-c1-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701095,
+          "job_id": "m66-m66-alpha-outcome-c1-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701096,
+          "job_id": "m66-m66-alpha-outcome-c1-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701096,
+          "job_id": "m66-m66-alpha-outcome-c1-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701097,
+          "job_id": "m66-m66-alpha-outcome-c1-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701097,
+          "job_id": "m66-m66-alpha-outcome-c1-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701098,
+          "job_id": "m66-m66-alpha-outcome-c1-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701098,
+          "job_id": "m66-m66-alpha-outcome-c1-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701099,
+          "job_id": "m66-m66-alpha-outcome-c1-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701099,
+          "job_id": "m66-m66-alpha-outcome-c1-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701100,
+          "job_id": "m66-m66-alpha-outcome-c1-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701100,
+          "job_id": "m66-m66-alpha-outcome-c1-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701101,
+          "job_id": "m66-m66-alpha-outcome-c1-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701101,
+          "job_id": "m66-m66-alpha-outcome-c1-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701102,
+          "job_id": "m66-m66-alpha-outcome-c1-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701102,
+          "job_id": "m66-m66-alpha-outcome-c1-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701103,
+          "job_id": "m66-m66-alpha-outcome-c1-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701103,
+          "job_id": "m66-m66-alpha-outcome-c1-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701104,
+          "job_id": "m66-m66-alpha-outcome-c1-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701104,
+          "job_id": "m66-m66-alpha-outcome-c1-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701105,
+          "job_id": "m66-m66-alpha-outcome-c1-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701105,
+          "job_id": "m66-m66-alpha-outcome-c1-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701106,
+          "job_id": "m66-m66-alpha-outcome-c1-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701106,
+          "job_id": "m66-m66-alpha-outcome-c1-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701107,
+          "job_id": "m66-m66-alpha-outcome-c1-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701107,
+          "job_id": "m66-m66-alpha-outcome-c1-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701108,
+          "job_id": "m66-m66-alpha-outcome-c1-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701108,
+          "job_id": "m66-m66-alpha-outcome-c1-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701109,
+          "job_id": "m66-m66-alpha-outcome-c1-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701109,
+          "job_id": "m66-m66-alpha-outcome-c1-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701110,
+          "job_id": "m66-m66-alpha-outcome-c1-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701110,
+          "job_id": "m66-m66-alpha-outcome-c1-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701111,
+          "job_id": "m66-m66-alpha-outcome-c1-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701111,
+          "job_id": "m66-m66-alpha-outcome-c1-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701112,
+          "job_id": "m66-m66-alpha-outcome-c1-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701112,
+          "job_id": "m66-m66-alpha-outcome-c1-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701113,
+          "job_id": "m66-m66-alpha-outcome-c1-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701113,
+          "job_id": "m66-m66-alpha-outcome-c1-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701114,
+          "job_id": "m66-m66-alpha-outcome-c1-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701114,
+          "job_id": "m66-m66-alpha-outcome-c1-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701115,
+          "job_id": "m66-m66-alpha-outcome-c1-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701115,
+          "job_id": "m66-m66-alpha-outcome-c1-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701116,
+          "job_id": "m66-m66-alpha-outcome-c1-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701116,
+          "job_id": "m66-m66-alpha-outcome-c1-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701117,
+          "job_id": "m66-m66-alpha-outcome-c1-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701117,
+          "job_id": "m66-m66-alpha-outcome-c1-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701118,
+          "job_id": "m66-m66-alpha-outcome-c1-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701118,
+          "job_id": "m66-m66-alpha-outcome-c1-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701119,
+          "job_id": "m66-m66-alpha-outcome-c1-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701119,
+          "job_id": "m66-m66-alpha-outcome-c1-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701120,
+          "job_id": "m66-m66-alpha-outcome-c1-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701120,
+          "job_id": "m66-m66-alpha-outcome-c1-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701121,
+          "job_id": "m66-m66-alpha-outcome-c1-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701121,
+          "job_id": "m66-m66-alpha-outcome-c1-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701122,
+          "job_id": "m66-m66-alpha-outcome-c1-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701122,
+          "job_id": "m66-m66-alpha-outcome-c1-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701123,
+          "job_id": "m66-m66-alpha-outcome-c1-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701123,
+          "job_id": "m66-m66-alpha-outcome-c1-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701124,
+          "job_id": "m66-m66-alpha-outcome-c1-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701124,
+          "job_id": "m66-m66-alpha-outcome-c1-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701125,
+          "job_id": "m66-m66-alpha-outcome-c1-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701125,
+          "job_id": "m66-m66-alpha-outcome-c1-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701126,
+          "job_id": "m66-m66-alpha-outcome-c1-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701126,
+          "job_id": "m66-m66-alpha-outcome-c1-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701127,
+          "job_id": "m66-m66-alpha-outcome-c1-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701127,
+          "job_id": "m66-m66-alpha-outcome-c1-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9701128,
+          "job_id": "m66-m66-alpha-outcome-c2-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701128,
+          "job_id": "m66-m66-alpha-outcome-c2-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701129,
+          "job_id": "m66-m66-alpha-outcome-c2-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701129,
+          "job_id": "m66-m66-alpha-outcome-c2-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701130,
+          "job_id": "m66-m66-alpha-outcome-c2-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701130,
+          "job_id": "m66-m66-alpha-outcome-c2-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701131,
+          "job_id": "m66-m66-alpha-outcome-c2-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701131,
+          "job_id": "m66-m66-alpha-outcome-c2-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701132,
+          "job_id": "m66-m66-alpha-outcome-c2-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701132,
+          "job_id": "m66-m66-alpha-outcome-c2-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701133,
+          "job_id": "m66-m66-alpha-outcome-c2-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701133,
+          "job_id": "m66-m66-alpha-outcome-c2-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701134,
+          "job_id": "m66-m66-alpha-outcome-c2-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701134,
+          "job_id": "m66-m66-alpha-outcome-c2-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701135,
+          "job_id": "m66-m66-alpha-outcome-c2-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701135,
+          "job_id": "m66-m66-alpha-outcome-c2-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701136,
+          "job_id": "m66-m66-alpha-outcome-c2-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701136,
+          "job_id": "m66-m66-alpha-outcome-c2-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701137,
+          "job_id": "m66-m66-alpha-outcome-c2-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701137,
+          "job_id": "m66-m66-alpha-outcome-c2-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701138,
+          "job_id": "m66-m66-alpha-outcome-c2-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701138,
+          "job_id": "m66-m66-alpha-outcome-c2-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701139,
+          "job_id": "m66-m66-alpha-outcome-c2-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701139,
+          "job_id": "m66-m66-alpha-outcome-c2-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701140,
+          "job_id": "m66-m66-alpha-outcome-c2-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701140,
+          "job_id": "m66-m66-alpha-outcome-c2-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701141,
+          "job_id": "m66-m66-alpha-outcome-c2-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701141,
+          "job_id": "m66-m66-alpha-outcome-c2-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701142,
+          "job_id": "m66-m66-alpha-outcome-c2-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701142,
+          "job_id": "m66-m66-alpha-outcome-c2-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701143,
+          "job_id": "m66-m66-alpha-outcome-c2-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701143,
+          "job_id": "m66-m66-alpha-outcome-c2-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701144,
+          "job_id": "m66-m66-alpha-outcome-c2-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701144,
+          "job_id": "m66-m66-alpha-outcome-c2-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701145,
+          "job_id": "m66-m66-alpha-outcome-c2-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701145,
+          "job_id": "m66-m66-alpha-outcome-c2-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701146,
+          "job_id": "m66-m66-alpha-outcome-c2-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701146,
+          "job_id": "m66-m66-alpha-outcome-c2-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701147,
+          "job_id": "m66-m66-alpha-outcome-c2-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701147,
+          "job_id": "m66-m66-alpha-outcome-c2-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701148,
+          "job_id": "m66-m66-alpha-outcome-c2-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701148,
+          "job_id": "m66-m66-alpha-outcome-c2-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701149,
+          "job_id": "m66-m66-alpha-outcome-c2-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701149,
+          "job_id": "m66-m66-alpha-outcome-c2-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701150,
+          "job_id": "m66-m66-alpha-outcome-c2-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701150,
+          "job_id": "m66-m66-alpha-outcome-c2-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701151,
+          "job_id": "m66-m66-alpha-outcome-c2-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701151,
+          "job_id": "m66-m66-alpha-outcome-c2-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701152,
+          "job_id": "m66-m66-alpha-outcome-c2-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701152,
+          "job_id": "m66-m66-alpha-outcome-c2-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701153,
+          "job_id": "m66-m66-alpha-outcome-c2-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701153,
+          "job_id": "m66-m66-alpha-outcome-c2-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701154,
+          "job_id": "m66-m66-alpha-outcome-c2-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701154,
+          "job_id": "m66-m66-alpha-outcome-c2-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701155,
+          "job_id": "m66-m66-alpha-outcome-c2-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701155,
+          "job_id": "m66-m66-alpha-outcome-c2-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701156,
+          "job_id": "m66-m66-alpha-outcome-c2-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701156,
+          "job_id": "m66-m66-alpha-outcome-c2-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701157,
+          "job_id": "m66-m66-alpha-outcome-c2-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701157,
+          "job_id": "m66-m66-alpha-outcome-c2-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701158,
+          "job_id": "m66-m66-alpha-outcome-c2-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701158,
+          "job_id": "m66-m66-alpha-outcome-c2-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701159,
+          "job_id": "m66-m66-alpha-outcome-c2-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701159,
+          "job_id": "m66-m66-alpha-outcome-c2-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701160,
+          "job_id": "m66-m66-alpha-outcome-c2-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701160,
+          "job_id": "m66-m66-alpha-outcome-c2-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701161,
+          "job_id": "m66-m66-alpha-outcome-c2-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701161,
+          "job_id": "m66-m66-alpha-outcome-c2-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701162,
+          "job_id": "m66-m66-alpha-outcome-c2-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701162,
+          "job_id": "m66-m66-alpha-outcome-c2-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701163,
+          "job_id": "m66-m66-alpha-outcome-c2-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701163,
+          "job_id": "m66-m66-alpha-outcome-c2-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701164,
+          "job_id": "m66-m66-alpha-outcome-c2-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701164,
+          "job_id": "m66-m66-alpha-outcome-c2-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701165,
+          "job_id": "m66-m66-alpha-outcome-c2-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701165,
+          "job_id": "m66-m66-alpha-outcome-c2-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701166,
+          "job_id": "m66-m66-alpha-outcome-c2-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701166,
+          "job_id": "m66-m66-alpha-outcome-c2-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701167,
+          "job_id": "m66-m66-alpha-outcome-c2-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701167,
+          "job_id": "m66-m66-alpha-outcome-c2-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701168,
+          "job_id": "m66-m66-alpha-outcome-c2-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701168,
+          "job_id": "m66-m66-alpha-outcome-c2-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701169,
+          "job_id": "m66-m66-alpha-outcome-c2-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701169,
+          "job_id": "m66-m66-alpha-outcome-c2-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701170,
+          "job_id": "m66-m66-alpha-outcome-c2-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701170,
+          "job_id": "m66-m66-alpha-outcome-c2-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701171,
+          "job_id": "m66-m66-alpha-outcome-c2-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701171,
+          "job_id": "m66-m66-alpha-outcome-c2-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701172,
+          "job_id": "m66-m66-alpha-outcome-c2-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701172,
+          "job_id": "m66-m66-alpha-outcome-c2-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701173,
+          "job_id": "m66-m66-alpha-outcome-c2-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701173,
+          "job_id": "m66-m66-alpha-outcome-c2-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701174,
+          "job_id": "m66-m66-alpha-outcome-c2-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701174,
+          "job_id": "m66-m66-alpha-outcome-c2-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701175,
+          "job_id": "m66-m66-alpha-outcome-c2-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701175,
+          "job_id": "m66-m66-alpha-outcome-c2-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701176,
+          "job_id": "m66-m66-alpha-outcome-c2-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701176,
+          "job_id": "m66-m66-alpha-outcome-c2-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701177,
+          "job_id": "m66-m66-alpha-outcome-c2-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701177,
+          "job_id": "m66-m66-alpha-outcome-c2-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701178,
+          "job_id": "m66-m66-alpha-outcome-c2-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701178,
+          "job_id": "m66-m66-alpha-outcome-c2-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701179,
+          "job_id": "m66-m66-alpha-outcome-c2-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701179,
+          "job_id": "m66-m66-alpha-outcome-c2-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701180,
+          "job_id": "m66-m66-alpha-outcome-c2-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701180,
+          "job_id": "m66-m66-alpha-outcome-c2-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701181,
+          "job_id": "m66-m66-alpha-outcome-c2-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701181,
+          "job_id": "m66-m66-alpha-outcome-c2-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701182,
+          "job_id": "m66-m66-alpha-outcome-c2-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701182,
+          "job_id": "m66-m66-alpha-outcome-c2-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701183,
+          "job_id": "m66-m66-alpha-outcome-c2-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701183,
+          "job_id": "m66-m66-alpha-outcome-c2-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701184,
+          "job_id": "m66-m66-alpha-outcome-c2-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701184,
+          "job_id": "m66-m66-alpha-outcome-c2-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701185,
+          "job_id": "m66-m66-alpha-outcome-c2-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701185,
+          "job_id": "m66-m66-alpha-outcome-c2-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701186,
+          "job_id": "m66-m66-alpha-outcome-c2-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701186,
+          "job_id": "m66-m66-alpha-outcome-c2-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701187,
+          "job_id": "m66-m66-alpha-outcome-c2-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701187,
+          "job_id": "m66-m66-alpha-outcome-c2-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701188,
+          "job_id": "m66-m66-alpha-outcome-c2-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701188,
+          "job_id": "m66-m66-alpha-outcome-c2-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701189,
+          "job_id": "m66-m66-alpha-outcome-c2-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701189,
+          "job_id": "m66-m66-alpha-outcome-c2-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701190,
+          "job_id": "m66-m66-alpha-outcome-c2-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701190,
+          "job_id": "m66-m66-alpha-outcome-c2-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701191,
+          "job_id": "m66-m66-alpha-outcome-c2-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701191,
+          "job_id": "m66-m66-alpha-outcome-c2-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701192,
+          "job_id": "m66-m66-alpha-outcome-c2-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701192,
+          "job_id": "m66-m66-alpha-outcome-c2-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701193,
+          "job_id": "m66-m66-alpha-outcome-c2-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701193,
+          "job_id": "m66-m66-alpha-outcome-c2-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701194,
+          "job_id": "m66-m66-alpha-outcome-c2-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701194,
+          "job_id": "m66-m66-alpha-outcome-c2-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701195,
+          "job_id": "m66-m66-alpha-outcome-c2-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701195,
+          "job_id": "m66-m66-alpha-outcome-c2-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701196,
+          "job_id": "m66-m66-alpha-outcome-c2-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701196,
+          "job_id": "m66-m66-alpha-outcome-c2-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701197,
+          "job_id": "m66-m66-alpha-outcome-c2-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701197,
+          "job_id": "m66-m66-alpha-outcome-c2-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701198,
+          "job_id": "m66-m66-alpha-outcome-c2-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701198,
+          "job_id": "m66-m66-alpha-outcome-c2-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701199,
+          "job_id": "m66-m66-alpha-outcome-c2-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701199,
+          "job_id": "m66-m66-alpha-outcome-c2-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701200,
+          "job_id": "m66-m66-alpha-outcome-c2-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701200,
+          "job_id": "m66-m66-alpha-outcome-c2-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701201,
+          "job_id": "m66-m66-alpha-outcome-c2-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701201,
+          "job_id": "m66-m66-alpha-outcome-c2-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701202,
+          "job_id": "m66-m66-alpha-outcome-c2-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701202,
+          "job_id": "m66-m66-alpha-outcome-c2-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701203,
+          "job_id": "m66-m66-alpha-outcome-c2-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701203,
+          "job_id": "m66-m66-alpha-outcome-c2-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701204,
+          "job_id": "m66-m66-alpha-outcome-c2-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701204,
+          "job_id": "m66-m66-alpha-outcome-c2-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701205,
+          "job_id": "m66-m66-alpha-outcome-c2-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701205,
+          "job_id": "m66-m66-alpha-outcome-c2-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701206,
+          "job_id": "m66-m66-alpha-outcome-c2-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701206,
+          "job_id": "m66-m66-alpha-outcome-c2-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701207,
+          "job_id": "m66-m66-alpha-outcome-c2-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701207,
+          "job_id": "m66-m66-alpha-outcome-c2-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701208,
+          "job_id": "m66-m66-alpha-outcome-c2-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701208,
+          "job_id": "m66-m66-alpha-outcome-c2-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701209,
+          "job_id": "m66-m66-alpha-outcome-c2-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701209,
+          "job_id": "m66-m66-alpha-outcome-c2-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701210,
+          "job_id": "m66-m66-alpha-outcome-c2-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701210,
+          "job_id": "m66-m66-alpha-outcome-c2-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701211,
+          "job_id": "m66-m66-alpha-outcome-c2-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701211,
+          "job_id": "m66-m66-alpha-outcome-c2-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701212,
+          "job_id": "m66-m66-alpha-outcome-c2-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701212,
+          "job_id": "m66-m66-alpha-outcome-c2-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701213,
+          "job_id": "m66-m66-alpha-outcome-c2-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701213,
+          "job_id": "m66-m66-alpha-outcome-c2-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701214,
+          "job_id": "m66-m66-alpha-outcome-c2-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701214,
+          "job_id": "m66-m66-alpha-outcome-c2-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701215,
+          "job_id": "m66-m66-alpha-outcome-c2-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701215,
+          "job_id": "m66-m66-alpha-outcome-c2-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701216,
+          "job_id": "m66-m66-alpha-outcome-c2-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701216,
+          "job_id": "m66-m66-alpha-outcome-c2-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701217,
+          "job_id": "m66-m66-alpha-outcome-c2-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701217,
+          "job_id": "m66-m66-alpha-outcome-c2-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701218,
+          "job_id": "m66-m66-alpha-outcome-c2-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701218,
+          "job_id": "m66-m66-alpha-outcome-c2-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701219,
+          "job_id": "m66-m66-alpha-outcome-c2-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701219,
+          "job_id": "m66-m66-alpha-outcome-c2-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701220,
+          "job_id": "m66-m66-alpha-outcome-c2-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701220,
+          "job_id": "m66-m66-alpha-outcome-c2-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701221,
+          "job_id": "m66-m66-alpha-outcome-c2-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701221,
+          "job_id": "m66-m66-alpha-outcome-c2-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701222,
+          "job_id": "m66-m66-alpha-outcome-c2-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701222,
+          "job_id": "m66-m66-alpha-outcome-c2-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701223,
+          "job_id": "m66-m66-alpha-outcome-c2-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701223,
+          "job_id": "m66-m66-alpha-outcome-c2-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701224,
+          "job_id": "m66-m66-alpha-outcome-c2-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701224,
+          "job_id": "m66-m66-alpha-outcome-c2-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701225,
+          "job_id": "m66-m66-alpha-outcome-c2-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701225,
+          "job_id": "m66-m66-alpha-outcome-c2-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701226,
+          "job_id": "m66-m66-alpha-outcome-c2-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701226,
+          "job_id": "m66-m66-alpha-outcome-c2-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701227,
+          "job_id": "m66-m66-alpha-outcome-c2-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701227,
+          "job_id": "m66-m66-alpha-outcome-c2-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701228,
+          "job_id": "m66-m66-alpha-outcome-c2-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701228,
+          "job_id": "m66-m66-alpha-outcome-c2-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701229,
+          "job_id": "m66-m66-alpha-outcome-c2-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701229,
+          "job_id": "m66-m66-alpha-outcome-c2-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701230,
+          "job_id": "m66-m66-alpha-outcome-c2-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701230,
+          "job_id": "m66-m66-alpha-outcome-c2-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701231,
+          "job_id": "m66-m66-alpha-outcome-c2-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701231,
+          "job_id": "m66-m66-alpha-outcome-c2-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701232,
+          "job_id": "m66-m66-alpha-outcome-c2-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701232,
+          "job_id": "m66-m66-alpha-outcome-c2-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701233,
+          "job_id": "m66-m66-alpha-outcome-c2-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701233,
+          "job_id": "m66-m66-alpha-outcome-c2-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701234,
+          "job_id": "m66-m66-alpha-outcome-c2-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701234,
+          "job_id": "m66-m66-alpha-outcome-c2-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701235,
+          "job_id": "m66-m66-alpha-outcome-c2-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701235,
+          "job_id": "m66-m66-alpha-outcome-c2-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701236,
+          "job_id": "m66-m66-alpha-outcome-c2-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701236,
+          "job_id": "m66-m66-alpha-outcome-c2-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701237,
+          "job_id": "m66-m66-alpha-outcome-c2-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701237,
+          "job_id": "m66-m66-alpha-outcome-c2-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701238,
+          "job_id": "m66-m66-alpha-outcome-c2-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701238,
+          "job_id": "m66-m66-alpha-outcome-c2-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701239,
+          "job_id": "m66-m66-alpha-outcome-c2-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701239,
+          "job_id": "m66-m66-alpha-outcome-c2-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701240,
+          "job_id": "m66-m66-alpha-outcome-c2-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701240,
+          "job_id": "m66-m66-alpha-outcome-c2-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701241,
+          "job_id": "m66-m66-alpha-outcome-c2-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701241,
+          "job_id": "m66-m66-alpha-outcome-c2-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701242,
+          "job_id": "m66-m66-alpha-outcome-c2-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701242,
+          "job_id": "m66-m66-alpha-outcome-c2-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701243,
+          "job_id": "m66-m66-alpha-outcome-c2-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701243,
+          "job_id": "m66-m66-alpha-outcome-c2-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701244,
+          "job_id": "m66-m66-alpha-outcome-c2-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701244,
+          "job_id": "m66-m66-alpha-outcome-c2-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701245,
+          "job_id": "m66-m66-alpha-outcome-c2-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701245,
+          "job_id": "m66-m66-alpha-outcome-c2-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701246,
+          "job_id": "m66-m66-alpha-outcome-c2-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701246,
+          "job_id": "m66-m66-alpha-outcome-c2-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701247,
+          "job_id": "m66-m66-alpha-outcome-c2-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701247,
+          "job_id": "m66-m66-alpha-outcome-c2-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701248,
+          "job_id": "m66-m66-alpha-outcome-c2-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701248,
+          "job_id": "m66-m66-alpha-outcome-c2-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701249,
+          "job_id": "m66-m66-alpha-outcome-c2-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701249,
+          "job_id": "m66-m66-alpha-outcome-c2-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701250,
+          "job_id": "m66-m66-alpha-outcome-c2-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701250,
+          "job_id": "m66-m66-alpha-outcome-c2-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701251,
+          "job_id": "m66-m66-alpha-outcome-c2-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701251,
+          "job_id": "m66-m66-alpha-outcome-c2-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701252,
+          "job_id": "m66-m66-alpha-outcome-c2-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701252,
+          "job_id": "m66-m66-alpha-outcome-c2-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701253,
+          "job_id": "m66-m66-alpha-outcome-c2-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701253,
+          "job_id": "m66-m66-alpha-outcome-c2-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701254,
+          "job_id": "m66-m66-alpha-outcome-c2-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701254,
+          "job_id": "m66-m66-alpha-outcome-c2-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701255,
+          "job_id": "m66-m66-alpha-outcome-c2-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701255,
+          "job_id": "m66-m66-alpha-outcome-c2-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9701256,
+          "job_id": "m66-m66-alpha-outcome-c3-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701256,
+          "job_id": "m66-m66-alpha-outcome-c3-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701257,
+          "job_id": "m66-m66-alpha-outcome-c3-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701257,
+          "job_id": "m66-m66-alpha-outcome-c3-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701258,
+          "job_id": "m66-m66-alpha-outcome-c3-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701258,
+          "job_id": "m66-m66-alpha-outcome-c3-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701259,
+          "job_id": "m66-m66-alpha-outcome-c3-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701259,
+          "job_id": "m66-m66-alpha-outcome-c3-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701260,
+          "job_id": "m66-m66-alpha-outcome-c3-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701260,
+          "job_id": "m66-m66-alpha-outcome-c3-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701261,
+          "job_id": "m66-m66-alpha-outcome-c3-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701261,
+          "job_id": "m66-m66-alpha-outcome-c3-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701262,
+          "job_id": "m66-m66-alpha-outcome-c3-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701262,
+          "job_id": "m66-m66-alpha-outcome-c3-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701263,
+          "job_id": "m66-m66-alpha-outcome-c3-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701263,
+          "job_id": "m66-m66-alpha-outcome-c3-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701264,
+          "job_id": "m66-m66-alpha-outcome-c3-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701264,
+          "job_id": "m66-m66-alpha-outcome-c3-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701265,
+          "job_id": "m66-m66-alpha-outcome-c3-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701265,
+          "job_id": "m66-m66-alpha-outcome-c3-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701266,
+          "job_id": "m66-m66-alpha-outcome-c3-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701266,
+          "job_id": "m66-m66-alpha-outcome-c3-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701267,
+          "job_id": "m66-m66-alpha-outcome-c3-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701267,
+          "job_id": "m66-m66-alpha-outcome-c3-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701268,
+          "job_id": "m66-m66-alpha-outcome-c3-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701268,
+          "job_id": "m66-m66-alpha-outcome-c3-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701269,
+          "job_id": "m66-m66-alpha-outcome-c3-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701269,
+          "job_id": "m66-m66-alpha-outcome-c3-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701270,
+          "job_id": "m66-m66-alpha-outcome-c3-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701270,
+          "job_id": "m66-m66-alpha-outcome-c3-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701271,
+          "job_id": "m66-m66-alpha-outcome-c3-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701271,
+          "job_id": "m66-m66-alpha-outcome-c3-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701272,
+          "job_id": "m66-m66-alpha-outcome-c3-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701272,
+          "job_id": "m66-m66-alpha-outcome-c3-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701273,
+          "job_id": "m66-m66-alpha-outcome-c3-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701273,
+          "job_id": "m66-m66-alpha-outcome-c3-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701274,
+          "job_id": "m66-m66-alpha-outcome-c3-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701274,
+          "job_id": "m66-m66-alpha-outcome-c3-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701275,
+          "job_id": "m66-m66-alpha-outcome-c3-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701275,
+          "job_id": "m66-m66-alpha-outcome-c3-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701276,
+          "job_id": "m66-m66-alpha-outcome-c3-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701276,
+          "job_id": "m66-m66-alpha-outcome-c3-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701277,
+          "job_id": "m66-m66-alpha-outcome-c3-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701277,
+          "job_id": "m66-m66-alpha-outcome-c3-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701278,
+          "job_id": "m66-m66-alpha-outcome-c3-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701278,
+          "job_id": "m66-m66-alpha-outcome-c3-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701279,
+          "job_id": "m66-m66-alpha-outcome-c3-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701279,
+          "job_id": "m66-m66-alpha-outcome-c3-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701280,
+          "job_id": "m66-m66-alpha-outcome-c3-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701280,
+          "job_id": "m66-m66-alpha-outcome-c3-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701281,
+          "job_id": "m66-m66-alpha-outcome-c3-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701281,
+          "job_id": "m66-m66-alpha-outcome-c3-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701282,
+          "job_id": "m66-m66-alpha-outcome-c3-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701282,
+          "job_id": "m66-m66-alpha-outcome-c3-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701283,
+          "job_id": "m66-m66-alpha-outcome-c3-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701283,
+          "job_id": "m66-m66-alpha-outcome-c3-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701284,
+          "job_id": "m66-m66-alpha-outcome-c3-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701284,
+          "job_id": "m66-m66-alpha-outcome-c3-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701285,
+          "job_id": "m66-m66-alpha-outcome-c3-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701285,
+          "job_id": "m66-m66-alpha-outcome-c3-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701286,
+          "job_id": "m66-m66-alpha-outcome-c3-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701286,
+          "job_id": "m66-m66-alpha-outcome-c3-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701287,
+          "job_id": "m66-m66-alpha-outcome-c3-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701287,
+          "job_id": "m66-m66-alpha-outcome-c3-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701288,
+          "job_id": "m66-m66-alpha-outcome-c3-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701288,
+          "job_id": "m66-m66-alpha-outcome-c3-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701289,
+          "job_id": "m66-m66-alpha-outcome-c3-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701289,
+          "job_id": "m66-m66-alpha-outcome-c3-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701290,
+          "job_id": "m66-m66-alpha-outcome-c3-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701290,
+          "job_id": "m66-m66-alpha-outcome-c3-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701291,
+          "job_id": "m66-m66-alpha-outcome-c3-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701291,
+          "job_id": "m66-m66-alpha-outcome-c3-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701292,
+          "job_id": "m66-m66-alpha-outcome-c3-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701292,
+          "job_id": "m66-m66-alpha-outcome-c3-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701293,
+          "job_id": "m66-m66-alpha-outcome-c3-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701293,
+          "job_id": "m66-m66-alpha-outcome-c3-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701294,
+          "job_id": "m66-m66-alpha-outcome-c3-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701294,
+          "job_id": "m66-m66-alpha-outcome-c3-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701295,
+          "job_id": "m66-m66-alpha-outcome-c3-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701295,
+          "job_id": "m66-m66-alpha-outcome-c3-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701296,
+          "job_id": "m66-m66-alpha-outcome-c3-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701296,
+          "job_id": "m66-m66-alpha-outcome-c3-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701297,
+          "job_id": "m66-m66-alpha-outcome-c3-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701297,
+          "job_id": "m66-m66-alpha-outcome-c3-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701298,
+          "job_id": "m66-m66-alpha-outcome-c3-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701298,
+          "job_id": "m66-m66-alpha-outcome-c3-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701299,
+          "job_id": "m66-m66-alpha-outcome-c3-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701299,
+          "job_id": "m66-m66-alpha-outcome-c3-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701300,
+          "job_id": "m66-m66-alpha-outcome-c3-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701300,
+          "job_id": "m66-m66-alpha-outcome-c3-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701301,
+          "job_id": "m66-m66-alpha-outcome-c3-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701301,
+          "job_id": "m66-m66-alpha-outcome-c3-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701302,
+          "job_id": "m66-m66-alpha-outcome-c3-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701302,
+          "job_id": "m66-m66-alpha-outcome-c3-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701303,
+          "job_id": "m66-m66-alpha-outcome-c3-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701303,
+          "job_id": "m66-m66-alpha-outcome-c3-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701304,
+          "job_id": "m66-m66-alpha-outcome-c3-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701304,
+          "job_id": "m66-m66-alpha-outcome-c3-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701305,
+          "job_id": "m66-m66-alpha-outcome-c3-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701305,
+          "job_id": "m66-m66-alpha-outcome-c3-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701306,
+          "job_id": "m66-m66-alpha-outcome-c3-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701306,
+          "job_id": "m66-m66-alpha-outcome-c3-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701307,
+          "job_id": "m66-m66-alpha-outcome-c3-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701307,
+          "job_id": "m66-m66-alpha-outcome-c3-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701308,
+          "job_id": "m66-m66-alpha-outcome-c3-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701308,
+          "job_id": "m66-m66-alpha-outcome-c3-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701309,
+          "job_id": "m66-m66-alpha-outcome-c3-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701309,
+          "job_id": "m66-m66-alpha-outcome-c3-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701310,
+          "job_id": "m66-m66-alpha-outcome-c3-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701310,
+          "job_id": "m66-m66-alpha-outcome-c3-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701311,
+          "job_id": "m66-m66-alpha-outcome-c3-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701311,
+          "job_id": "m66-m66-alpha-outcome-c3-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701312,
+          "job_id": "m66-m66-alpha-outcome-c3-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701312,
+          "job_id": "m66-m66-alpha-outcome-c3-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701313,
+          "job_id": "m66-m66-alpha-outcome-c3-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701313,
+          "job_id": "m66-m66-alpha-outcome-c3-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701314,
+          "job_id": "m66-m66-alpha-outcome-c3-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701314,
+          "job_id": "m66-m66-alpha-outcome-c3-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701315,
+          "job_id": "m66-m66-alpha-outcome-c3-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701315,
+          "job_id": "m66-m66-alpha-outcome-c3-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701316,
+          "job_id": "m66-m66-alpha-outcome-c3-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701316,
+          "job_id": "m66-m66-alpha-outcome-c3-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701317,
+          "job_id": "m66-m66-alpha-outcome-c3-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701317,
+          "job_id": "m66-m66-alpha-outcome-c3-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701318,
+          "job_id": "m66-m66-alpha-outcome-c3-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701318,
+          "job_id": "m66-m66-alpha-outcome-c3-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701319,
+          "job_id": "m66-m66-alpha-outcome-c3-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701319,
+          "job_id": "m66-m66-alpha-outcome-c3-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701320,
+          "job_id": "m66-m66-alpha-outcome-c3-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701320,
+          "job_id": "m66-m66-alpha-outcome-c3-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701321,
+          "job_id": "m66-m66-alpha-outcome-c3-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701321,
+          "job_id": "m66-m66-alpha-outcome-c3-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701322,
+          "job_id": "m66-m66-alpha-outcome-c3-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701322,
+          "job_id": "m66-m66-alpha-outcome-c3-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701323,
+          "job_id": "m66-m66-alpha-outcome-c3-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701323,
+          "job_id": "m66-m66-alpha-outcome-c3-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701324,
+          "job_id": "m66-m66-alpha-outcome-c3-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701324,
+          "job_id": "m66-m66-alpha-outcome-c3-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701325,
+          "job_id": "m66-m66-alpha-outcome-c3-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701325,
+          "job_id": "m66-m66-alpha-outcome-c3-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701326,
+          "job_id": "m66-m66-alpha-outcome-c3-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701326,
+          "job_id": "m66-m66-alpha-outcome-c3-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701327,
+          "job_id": "m66-m66-alpha-outcome-c3-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701327,
+          "job_id": "m66-m66-alpha-outcome-c3-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701328,
+          "job_id": "m66-m66-alpha-outcome-c3-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701328,
+          "job_id": "m66-m66-alpha-outcome-c3-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701329,
+          "job_id": "m66-m66-alpha-outcome-c3-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701329,
+          "job_id": "m66-m66-alpha-outcome-c3-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701330,
+          "job_id": "m66-m66-alpha-outcome-c3-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701330,
+          "job_id": "m66-m66-alpha-outcome-c3-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701331,
+          "job_id": "m66-m66-alpha-outcome-c3-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701331,
+          "job_id": "m66-m66-alpha-outcome-c3-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701332,
+          "job_id": "m66-m66-alpha-outcome-c3-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701332,
+          "job_id": "m66-m66-alpha-outcome-c3-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701333,
+          "job_id": "m66-m66-alpha-outcome-c3-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701333,
+          "job_id": "m66-m66-alpha-outcome-c3-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701334,
+          "job_id": "m66-m66-alpha-outcome-c3-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701334,
+          "job_id": "m66-m66-alpha-outcome-c3-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701335,
+          "job_id": "m66-m66-alpha-outcome-c3-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701335,
+          "job_id": "m66-m66-alpha-outcome-c3-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701336,
+          "job_id": "m66-m66-alpha-outcome-c3-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701336,
+          "job_id": "m66-m66-alpha-outcome-c3-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701337,
+          "job_id": "m66-m66-alpha-outcome-c3-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701337,
+          "job_id": "m66-m66-alpha-outcome-c3-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701338,
+          "job_id": "m66-m66-alpha-outcome-c3-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701338,
+          "job_id": "m66-m66-alpha-outcome-c3-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701339,
+          "job_id": "m66-m66-alpha-outcome-c3-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701339,
+          "job_id": "m66-m66-alpha-outcome-c3-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701340,
+          "job_id": "m66-m66-alpha-outcome-c3-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701340,
+          "job_id": "m66-m66-alpha-outcome-c3-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701341,
+          "job_id": "m66-m66-alpha-outcome-c3-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701341,
+          "job_id": "m66-m66-alpha-outcome-c3-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701342,
+          "job_id": "m66-m66-alpha-outcome-c3-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701342,
+          "job_id": "m66-m66-alpha-outcome-c3-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701343,
+          "job_id": "m66-m66-alpha-outcome-c3-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701343,
+          "job_id": "m66-m66-alpha-outcome-c3-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701344,
+          "job_id": "m66-m66-alpha-outcome-c3-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701344,
+          "job_id": "m66-m66-alpha-outcome-c3-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701345,
+          "job_id": "m66-m66-alpha-outcome-c3-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701345,
+          "job_id": "m66-m66-alpha-outcome-c3-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701346,
+          "job_id": "m66-m66-alpha-outcome-c3-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701346,
+          "job_id": "m66-m66-alpha-outcome-c3-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701347,
+          "job_id": "m66-m66-alpha-outcome-c3-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701347,
+          "job_id": "m66-m66-alpha-outcome-c3-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701348,
+          "job_id": "m66-m66-alpha-outcome-c3-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701348,
+          "job_id": "m66-m66-alpha-outcome-c3-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701349,
+          "job_id": "m66-m66-alpha-outcome-c3-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701349,
+          "job_id": "m66-m66-alpha-outcome-c3-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701350,
+          "job_id": "m66-m66-alpha-outcome-c3-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701350,
+          "job_id": "m66-m66-alpha-outcome-c3-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701351,
+          "job_id": "m66-m66-alpha-outcome-c3-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701351,
+          "job_id": "m66-m66-alpha-outcome-c3-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701352,
+          "job_id": "m66-m66-alpha-outcome-c3-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701352,
+          "job_id": "m66-m66-alpha-outcome-c3-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701353,
+          "job_id": "m66-m66-alpha-outcome-c3-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701353,
+          "job_id": "m66-m66-alpha-outcome-c3-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701354,
+          "job_id": "m66-m66-alpha-outcome-c3-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701354,
+          "job_id": "m66-m66-alpha-outcome-c3-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701355,
+          "job_id": "m66-m66-alpha-outcome-c3-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701355,
+          "job_id": "m66-m66-alpha-outcome-c3-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701356,
+          "job_id": "m66-m66-alpha-outcome-c3-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701356,
+          "job_id": "m66-m66-alpha-outcome-c3-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701357,
+          "job_id": "m66-m66-alpha-outcome-c3-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701357,
+          "job_id": "m66-m66-alpha-outcome-c3-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701358,
+          "job_id": "m66-m66-alpha-outcome-c3-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701358,
+          "job_id": "m66-m66-alpha-outcome-c3-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701359,
+          "job_id": "m66-m66-alpha-outcome-c3-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701359,
+          "job_id": "m66-m66-alpha-outcome-c3-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701360,
+          "job_id": "m66-m66-alpha-outcome-c3-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701360,
+          "job_id": "m66-m66-alpha-outcome-c3-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701361,
+          "job_id": "m66-m66-alpha-outcome-c3-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701361,
+          "job_id": "m66-m66-alpha-outcome-c3-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701362,
+          "job_id": "m66-m66-alpha-outcome-c3-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701362,
+          "job_id": "m66-m66-alpha-outcome-c3-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701363,
+          "job_id": "m66-m66-alpha-outcome-c3-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701363,
+          "job_id": "m66-m66-alpha-outcome-c3-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701364,
+          "job_id": "m66-m66-alpha-outcome-c3-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701364,
+          "job_id": "m66-m66-alpha-outcome-c3-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701365,
+          "job_id": "m66-m66-alpha-outcome-c3-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701365,
+          "job_id": "m66-m66-alpha-outcome-c3-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701366,
+          "job_id": "m66-m66-alpha-outcome-c3-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701366,
+          "job_id": "m66-m66-alpha-outcome-c3-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701367,
+          "job_id": "m66-m66-alpha-outcome-c3-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701367,
+          "job_id": "m66-m66-alpha-outcome-c3-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701368,
+          "job_id": "m66-m66-alpha-outcome-c3-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701368,
+          "job_id": "m66-m66-alpha-outcome-c3-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701369,
+          "job_id": "m66-m66-alpha-outcome-c3-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701369,
+          "job_id": "m66-m66-alpha-outcome-c3-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701370,
+          "job_id": "m66-m66-alpha-outcome-c3-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701370,
+          "job_id": "m66-m66-alpha-outcome-c3-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701371,
+          "job_id": "m66-m66-alpha-outcome-c3-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701371,
+          "job_id": "m66-m66-alpha-outcome-c3-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701372,
+          "job_id": "m66-m66-alpha-outcome-c3-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701372,
+          "job_id": "m66-m66-alpha-outcome-c3-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701373,
+          "job_id": "m66-m66-alpha-outcome-c3-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701373,
+          "job_id": "m66-m66-alpha-outcome-c3-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701374,
+          "job_id": "m66-m66-alpha-outcome-c3-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701374,
+          "job_id": "m66-m66-alpha-outcome-c3-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701375,
+          "job_id": "m66-m66-alpha-outcome-c3-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701375,
+          "job_id": "m66-m66-alpha-outcome-c3-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701376,
+          "job_id": "m66-m66-alpha-outcome-c3-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701376,
+          "job_id": "m66-m66-alpha-outcome-c3-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701377,
+          "job_id": "m66-m66-alpha-outcome-c3-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701377,
+          "job_id": "m66-m66-alpha-outcome-c3-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701378,
+          "job_id": "m66-m66-alpha-outcome-c3-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701378,
+          "job_id": "m66-m66-alpha-outcome-c3-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701379,
+          "job_id": "m66-m66-alpha-outcome-c3-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701379,
+          "job_id": "m66-m66-alpha-outcome-c3-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701380,
+          "job_id": "m66-m66-alpha-outcome-c3-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701380,
+          "job_id": "m66-m66-alpha-outcome-c3-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701381,
+          "job_id": "m66-m66-alpha-outcome-c3-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701381,
+          "job_id": "m66-m66-alpha-outcome-c3-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701382,
+          "job_id": "m66-m66-alpha-outcome-c3-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701382,
+          "job_id": "m66-m66-alpha-outcome-c3-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701383,
+          "job_id": "m66-m66-alpha-outcome-c3-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701383,
+          "job_id": "m66-m66-alpha-outcome-c3-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 9701384,
+          "job_id": "m66-m66-alpha-outcome-c4-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701384,
+          "job_id": "m66-m66-alpha-outcome-c4-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701385,
+          "job_id": "m66-m66-alpha-outcome-c4-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701385,
+          "job_id": "m66-m66-alpha-outcome-c4-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701386,
+          "job_id": "m66-m66-alpha-outcome-c4-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701386,
+          "job_id": "m66-m66-alpha-outcome-c4-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701387,
+          "job_id": "m66-m66-alpha-outcome-c4-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701387,
+          "job_id": "m66-m66-alpha-outcome-c4-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701388,
+          "job_id": "m66-m66-alpha-outcome-c4-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701388,
+          "job_id": "m66-m66-alpha-outcome-c4-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701389,
+          "job_id": "m66-m66-alpha-outcome-c4-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701389,
+          "job_id": "m66-m66-alpha-outcome-c4-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701390,
+          "job_id": "m66-m66-alpha-outcome-c4-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701390,
+          "job_id": "m66-m66-alpha-outcome-c4-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701391,
+          "job_id": "m66-m66-alpha-outcome-c4-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701391,
+          "job_id": "m66-m66-alpha-outcome-c4-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701392,
+          "job_id": "m66-m66-alpha-outcome-c4-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701392,
+          "job_id": "m66-m66-alpha-outcome-c4-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701393,
+          "job_id": "m66-m66-alpha-outcome-c4-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701393,
+          "job_id": "m66-m66-alpha-outcome-c4-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701394,
+          "job_id": "m66-m66-alpha-outcome-c4-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701394,
+          "job_id": "m66-m66-alpha-outcome-c4-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701395,
+          "job_id": "m66-m66-alpha-outcome-c4-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701395,
+          "job_id": "m66-m66-alpha-outcome-c4-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701396,
+          "job_id": "m66-m66-alpha-outcome-c4-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701396,
+          "job_id": "m66-m66-alpha-outcome-c4-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701397,
+          "job_id": "m66-m66-alpha-outcome-c4-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701397,
+          "job_id": "m66-m66-alpha-outcome-c4-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701398,
+          "job_id": "m66-m66-alpha-outcome-c4-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701398,
+          "job_id": "m66-m66-alpha-outcome-c4-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701399,
+          "job_id": "m66-m66-alpha-outcome-c4-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701399,
+          "job_id": "m66-m66-alpha-outcome-c4-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701400,
+          "job_id": "m66-m66-alpha-outcome-c4-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701400,
+          "job_id": "m66-m66-alpha-outcome-c4-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701401,
+          "job_id": "m66-m66-alpha-outcome-c4-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701401,
+          "job_id": "m66-m66-alpha-outcome-c4-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701402,
+          "job_id": "m66-m66-alpha-outcome-c4-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701402,
+          "job_id": "m66-m66-alpha-outcome-c4-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701403,
+          "job_id": "m66-m66-alpha-outcome-c4-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701403,
+          "job_id": "m66-m66-alpha-outcome-c4-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701404,
+          "job_id": "m66-m66-alpha-outcome-c4-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701404,
+          "job_id": "m66-m66-alpha-outcome-c4-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701405,
+          "job_id": "m66-m66-alpha-outcome-c4-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701405,
+          "job_id": "m66-m66-alpha-outcome-c4-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701406,
+          "job_id": "m66-m66-alpha-outcome-c4-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701406,
+          "job_id": "m66-m66-alpha-outcome-c4-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701407,
+          "job_id": "m66-m66-alpha-outcome-c4-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701407,
+          "job_id": "m66-m66-alpha-outcome-c4-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701408,
+          "job_id": "m66-m66-alpha-outcome-c4-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701408,
+          "job_id": "m66-m66-alpha-outcome-c4-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701409,
+          "job_id": "m66-m66-alpha-outcome-c4-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701409,
+          "job_id": "m66-m66-alpha-outcome-c4-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701410,
+          "job_id": "m66-m66-alpha-outcome-c4-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701410,
+          "job_id": "m66-m66-alpha-outcome-c4-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701411,
+          "job_id": "m66-m66-alpha-outcome-c4-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701411,
+          "job_id": "m66-m66-alpha-outcome-c4-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701412,
+          "job_id": "m66-m66-alpha-outcome-c4-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701412,
+          "job_id": "m66-m66-alpha-outcome-c4-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701413,
+          "job_id": "m66-m66-alpha-outcome-c4-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701413,
+          "job_id": "m66-m66-alpha-outcome-c4-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701414,
+          "job_id": "m66-m66-alpha-outcome-c4-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701414,
+          "job_id": "m66-m66-alpha-outcome-c4-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701415,
+          "job_id": "m66-m66-alpha-outcome-c4-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701415,
+          "job_id": "m66-m66-alpha-outcome-c4-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701416,
+          "job_id": "m66-m66-alpha-outcome-c4-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701416,
+          "job_id": "m66-m66-alpha-outcome-c4-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701417,
+          "job_id": "m66-m66-alpha-outcome-c4-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701417,
+          "job_id": "m66-m66-alpha-outcome-c4-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701418,
+          "job_id": "m66-m66-alpha-outcome-c4-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701418,
+          "job_id": "m66-m66-alpha-outcome-c4-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701419,
+          "job_id": "m66-m66-alpha-outcome-c4-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701419,
+          "job_id": "m66-m66-alpha-outcome-c4-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701420,
+          "job_id": "m66-m66-alpha-outcome-c4-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701420,
+          "job_id": "m66-m66-alpha-outcome-c4-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701421,
+          "job_id": "m66-m66-alpha-outcome-c4-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701421,
+          "job_id": "m66-m66-alpha-outcome-c4-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701422,
+          "job_id": "m66-m66-alpha-outcome-c4-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701422,
+          "job_id": "m66-m66-alpha-outcome-c4-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701423,
+          "job_id": "m66-m66-alpha-outcome-c4-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701423,
+          "job_id": "m66-m66-alpha-outcome-c4-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701424,
+          "job_id": "m66-m66-alpha-outcome-c4-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701424,
+          "job_id": "m66-m66-alpha-outcome-c4-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701425,
+          "job_id": "m66-m66-alpha-outcome-c4-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701425,
+          "job_id": "m66-m66-alpha-outcome-c4-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701426,
+          "job_id": "m66-m66-alpha-outcome-c4-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701426,
+          "job_id": "m66-m66-alpha-outcome-c4-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701427,
+          "job_id": "m66-m66-alpha-outcome-c4-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701427,
+          "job_id": "m66-m66-alpha-outcome-c4-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701428,
+          "job_id": "m66-m66-alpha-outcome-c4-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701428,
+          "job_id": "m66-m66-alpha-outcome-c4-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701429,
+          "job_id": "m66-m66-alpha-outcome-c4-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701429,
+          "job_id": "m66-m66-alpha-outcome-c4-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701430,
+          "job_id": "m66-m66-alpha-outcome-c4-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701430,
+          "job_id": "m66-m66-alpha-outcome-c4-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701431,
+          "job_id": "m66-m66-alpha-outcome-c4-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701431,
+          "job_id": "m66-m66-alpha-outcome-c4-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701432,
+          "job_id": "m66-m66-alpha-outcome-c4-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701432,
+          "job_id": "m66-m66-alpha-outcome-c4-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701433,
+          "job_id": "m66-m66-alpha-outcome-c4-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701433,
+          "job_id": "m66-m66-alpha-outcome-c4-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701434,
+          "job_id": "m66-m66-alpha-outcome-c4-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701434,
+          "job_id": "m66-m66-alpha-outcome-c4-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701435,
+          "job_id": "m66-m66-alpha-outcome-c4-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701435,
+          "job_id": "m66-m66-alpha-outcome-c4-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701436,
+          "job_id": "m66-m66-alpha-outcome-c4-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701436,
+          "job_id": "m66-m66-alpha-outcome-c4-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701437,
+          "job_id": "m66-m66-alpha-outcome-c4-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701437,
+          "job_id": "m66-m66-alpha-outcome-c4-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701438,
+          "job_id": "m66-m66-alpha-outcome-c4-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701438,
+          "job_id": "m66-m66-alpha-outcome-c4-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701439,
+          "job_id": "m66-m66-alpha-outcome-c4-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701439,
+          "job_id": "m66-m66-alpha-outcome-c4-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701440,
+          "job_id": "m66-m66-alpha-outcome-c4-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701440,
+          "job_id": "m66-m66-alpha-outcome-c4-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701441,
+          "job_id": "m66-m66-alpha-outcome-c4-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701441,
+          "job_id": "m66-m66-alpha-outcome-c4-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701442,
+          "job_id": "m66-m66-alpha-outcome-c4-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701442,
+          "job_id": "m66-m66-alpha-outcome-c4-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701443,
+          "job_id": "m66-m66-alpha-outcome-c4-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701443,
+          "job_id": "m66-m66-alpha-outcome-c4-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701444,
+          "job_id": "m66-m66-alpha-outcome-c4-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701444,
+          "job_id": "m66-m66-alpha-outcome-c4-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701445,
+          "job_id": "m66-m66-alpha-outcome-c4-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701445,
+          "job_id": "m66-m66-alpha-outcome-c4-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701446,
+          "job_id": "m66-m66-alpha-outcome-c4-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701446,
+          "job_id": "m66-m66-alpha-outcome-c4-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701447,
+          "job_id": "m66-m66-alpha-outcome-c4-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701447,
+          "job_id": "m66-m66-alpha-outcome-c4-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701448,
+          "job_id": "m66-m66-alpha-outcome-c4-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701448,
+          "job_id": "m66-m66-alpha-outcome-c4-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701449,
+          "job_id": "m66-m66-alpha-outcome-c4-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701449,
+          "job_id": "m66-m66-alpha-outcome-c4-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701450,
+          "job_id": "m66-m66-alpha-outcome-c4-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701450,
+          "job_id": "m66-m66-alpha-outcome-c4-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701451,
+          "job_id": "m66-m66-alpha-outcome-c4-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701451,
+          "job_id": "m66-m66-alpha-outcome-c4-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701452,
+          "job_id": "m66-m66-alpha-outcome-c4-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701452,
+          "job_id": "m66-m66-alpha-outcome-c4-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701453,
+          "job_id": "m66-m66-alpha-outcome-c4-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701453,
+          "job_id": "m66-m66-alpha-outcome-c4-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701454,
+          "job_id": "m66-m66-alpha-outcome-c4-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701454,
+          "job_id": "m66-m66-alpha-outcome-c4-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701455,
+          "job_id": "m66-m66-alpha-outcome-c4-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701455,
+          "job_id": "m66-m66-alpha-outcome-c4-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701456,
+          "job_id": "m66-m66-alpha-outcome-c4-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701456,
+          "job_id": "m66-m66-alpha-outcome-c4-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701457,
+          "job_id": "m66-m66-alpha-outcome-c4-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701457,
+          "job_id": "m66-m66-alpha-outcome-c4-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701458,
+          "job_id": "m66-m66-alpha-outcome-c4-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701458,
+          "job_id": "m66-m66-alpha-outcome-c4-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701459,
+          "job_id": "m66-m66-alpha-outcome-c4-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701459,
+          "job_id": "m66-m66-alpha-outcome-c4-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701460,
+          "job_id": "m66-m66-alpha-outcome-c4-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701460,
+          "job_id": "m66-m66-alpha-outcome-c4-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701461,
+          "job_id": "m66-m66-alpha-outcome-c4-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701461,
+          "job_id": "m66-m66-alpha-outcome-c4-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701462,
+          "job_id": "m66-m66-alpha-outcome-c4-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701462,
+          "job_id": "m66-m66-alpha-outcome-c4-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701463,
+          "job_id": "m66-m66-alpha-outcome-c4-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701463,
+          "job_id": "m66-m66-alpha-outcome-c4-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701464,
+          "job_id": "m66-m66-alpha-outcome-c4-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701464,
+          "job_id": "m66-m66-alpha-outcome-c4-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701465,
+          "job_id": "m66-m66-alpha-outcome-c4-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701465,
+          "job_id": "m66-m66-alpha-outcome-c4-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701466,
+          "job_id": "m66-m66-alpha-outcome-c4-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701466,
+          "job_id": "m66-m66-alpha-outcome-c4-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701467,
+          "job_id": "m66-m66-alpha-outcome-c4-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701467,
+          "job_id": "m66-m66-alpha-outcome-c4-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701468,
+          "job_id": "m66-m66-alpha-outcome-c4-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701468,
+          "job_id": "m66-m66-alpha-outcome-c4-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701469,
+          "job_id": "m66-m66-alpha-outcome-c4-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701469,
+          "job_id": "m66-m66-alpha-outcome-c4-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701470,
+          "job_id": "m66-m66-alpha-outcome-c4-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701470,
+          "job_id": "m66-m66-alpha-outcome-c4-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701471,
+          "job_id": "m66-m66-alpha-outcome-c4-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701471,
+          "job_id": "m66-m66-alpha-outcome-c4-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701472,
+          "job_id": "m66-m66-alpha-outcome-c4-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701472,
+          "job_id": "m66-m66-alpha-outcome-c4-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701473,
+          "job_id": "m66-m66-alpha-outcome-c4-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701473,
+          "job_id": "m66-m66-alpha-outcome-c4-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701474,
+          "job_id": "m66-m66-alpha-outcome-c4-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701474,
+          "job_id": "m66-m66-alpha-outcome-c4-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701475,
+          "job_id": "m66-m66-alpha-outcome-c4-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701475,
+          "job_id": "m66-m66-alpha-outcome-c4-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701476,
+          "job_id": "m66-m66-alpha-outcome-c4-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701476,
+          "job_id": "m66-m66-alpha-outcome-c4-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701477,
+          "job_id": "m66-m66-alpha-outcome-c4-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701477,
+          "job_id": "m66-m66-alpha-outcome-c4-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701478,
+          "job_id": "m66-m66-alpha-outcome-c4-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701478,
+          "job_id": "m66-m66-alpha-outcome-c4-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701479,
+          "job_id": "m66-m66-alpha-outcome-c4-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701479,
+          "job_id": "m66-m66-alpha-outcome-c4-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701480,
+          "job_id": "m66-m66-alpha-outcome-c4-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701480,
+          "job_id": "m66-m66-alpha-outcome-c4-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701481,
+          "job_id": "m66-m66-alpha-outcome-c4-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701481,
+          "job_id": "m66-m66-alpha-outcome-c4-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701482,
+          "job_id": "m66-m66-alpha-outcome-c4-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701482,
+          "job_id": "m66-m66-alpha-outcome-c4-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701483,
+          "job_id": "m66-m66-alpha-outcome-c4-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701483,
+          "job_id": "m66-m66-alpha-outcome-c4-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701484,
+          "job_id": "m66-m66-alpha-outcome-c4-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701484,
+          "job_id": "m66-m66-alpha-outcome-c4-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701485,
+          "job_id": "m66-m66-alpha-outcome-c4-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701485,
+          "job_id": "m66-m66-alpha-outcome-c4-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701486,
+          "job_id": "m66-m66-alpha-outcome-c4-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701486,
+          "job_id": "m66-m66-alpha-outcome-c4-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701487,
+          "job_id": "m66-m66-alpha-outcome-c4-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701487,
+          "job_id": "m66-m66-alpha-outcome-c4-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701488,
+          "job_id": "m66-m66-alpha-outcome-c4-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701488,
+          "job_id": "m66-m66-alpha-outcome-c4-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701489,
+          "job_id": "m66-m66-alpha-outcome-c4-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701489,
+          "job_id": "m66-m66-alpha-outcome-c4-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701490,
+          "job_id": "m66-m66-alpha-outcome-c4-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701490,
+          "job_id": "m66-m66-alpha-outcome-c4-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701491,
+          "job_id": "m66-m66-alpha-outcome-c4-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701491,
+          "job_id": "m66-m66-alpha-outcome-c4-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701492,
+          "job_id": "m66-m66-alpha-outcome-c4-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701492,
+          "job_id": "m66-m66-alpha-outcome-c4-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701493,
+          "job_id": "m66-m66-alpha-outcome-c4-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701493,
+          "job_id": "m66-m66-alpha-outcome-c4-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701494,
+          "job_id": "m66-m66-alpha-outcome-c4-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701494,
+          "job_id": "m66-m66-alpha-outcome-c4-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701495,
+          "job_id": "m66-m66-alpha-outcome-c4-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701495,
+          "job_id": "m66-m66-alpha-outcome-c4-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701496,
+          "job_id": "m66-m66-alpha-outcome-c4-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701496,
+          "job_id": "m66-m66-alpha-outcome-c4-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701497,
+          "job_id": "m66-m66-alpha-outcome-c4-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701497,
+          "job_id": "m66-m66-alpha-outcome-c4-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701498,
+          "job_id": "m66-m66-alpha-outcome-c4-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701498,
+          "job_id": "m66-m66-alpha-outcome-c4-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701499,
+          "job_id": "m66-m66-alpha-outcome-c4-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701499,
+          "job_id": "m66-m66-alpha-outcome-c4-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701500,
+          "job_id": "m66-m66-alpha-outcome-c4-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701500,
+          "job_id": "m66-m66-alpha-outcome-c4-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701501,
+          "job_id": "m66-m66-alpha-outcome-c4-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701501,
+          "job_id": "m66-m66-alpha-outcome-c4-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701502,
+          "job_id": "m66-m66-alpha-outcome-c4-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701502,
+          "job_id": "m66-m66-alpha-outcome-c4-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701503,
+          "job_id": "m66-m66-alpha-outcome-c4-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701503,
+          "job_id": "m66-m66-alpha-outcome-c4-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701504,
+          "job_id": "m66-m66-alpha-outcome-c4-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701504,
+          "job_id": "m66-m66-alpha-outcome-c4-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701505,
+          "job_id": "m66-m66-alpha-outcome-c4-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701505,
+          "job_id": "m66-m66-alpha-outcome-c4-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701506,
+          "job_id": "m66-m66-alpha-outcome-c4-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701506,
+          "job_id": "m66-m66-alpha-outcome-c4-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701507,
+          "job_id": "m66-m66-alpha-outcome-c4-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701507,
+          "job_id": "m66-m66-alpha-outcome-c4-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701508,
+          "job_id": "m66-m66-alpha-outcome-c4-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701508,
+          "job_id": "m66-m66-alpha-outcome-c4-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701509,
+          "job_id": "m66-m66-alpha-outcome-c4-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701509,
+          "job_id": "m66-m66-alpha-outcome-c4-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701510,
+          "job_id": "m66-m66-alpha-outcome-c4-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701510,
+          "job_id": "m66-m66-alpha-outcome-c4-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 9701511,
+          "job_id": "m66-m66-alpha-outcome-c4-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 9701511,
+          "job_id": "m66-m66-alpha-outcome-c4-b127-s1",
+          "opponent_id": "beta"
+        }
+      ]
+    ],
+    "format": "prism-ppo-arena-v1",
+    "learner": {
+      "program": "@engine",
+      "sha256": "@engine_sha256"
+    },
+    "limits": {
+      "campaign_cpu_seconds": 40000,
+      "game_cpu_seconds": 30,
+      "game_wall_seconds": 90,
+      "handshake_timeout_ms": 10000,
+      "max_infra_retries": 0,
+      "max_physical_decisions": 262144,
+      "max_plies": 256,
+      "memory_bytes": 8589934592,
+      "move_timeout_ms": 10000,
+      "shutdown_grace_ms": 1000
+    },
+    "opponents": {
+      "alpha": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@alpha",
+          "--seed",
+          "66010004"
+        ],
+        "files": {
+          "@alpha": "@alpha_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "beta": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@beta",
+          "--seed",
+          "66010005"
+        ],
+        "files": {
+          "@beta": "@beta_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "general": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@general",
+          "--seed",
+          "66010002"
+        ],
+        "files": {
+          "@general": "@general_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "parent": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@parent",
+          "--seed",
+          "66010003"
+        ],
+        "files": {
+          "@parent": "@parent_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      }
+    },
+    "parent_weights": "@parent",
+    "run": {
+      "arena_contract_sha256": "",
+      "auditor_sha256": "@engine_sha256",
+      "budget": {
+        "max_attempts": 1024,
+        "max_cycles": 4,
+        "max_decisions": 262144,
+        "max_job_decisions": 256,
+        "max_jobs": 1024,
+        "max_optimizer_steps": 2048,
+        "max_run_seconds": 10800,
+        "max_storage_bytes": 34359738368,
+        "max_update_attempts": 2048
+      },
+      "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+      "cpu_threads": 2,
+      "device": "cpu",
+      "format": "prism-ppo-run-v2",
+      "opponents": {
+        "alpha": "",
+        "beta": "",
+        "general": "",
+        "parent": ""
+      },
+      "parent_sha256": "@parent_sha256",
+      "ppo": {
+        "clip_epsilon": 0.2,
+        "entropy_weight": 0.01,
+        "gae_lambda": 0.95,
+        "logp_tolerance": 1e-06,
+        "lr": 3e-05,
+        "max_grad_norm": 1.0,
+        "minibatch_size": 256,
+        "normalize_advantage": true,
+        "passes": 2,
+        "style_beta": 0.0,
+        "style_value_weight": 0.0,
+        "target_kl": 0.02,
+        "value_tolerance": 1e-06,
+        "value_weight": 0.5,
+        "weight_decay": 0.0
+      },
+      "run_id": "m66-alpha-outcome",
+      "seed": 66010001
+    }
+  },
+  "weight_hashes": {
+    "alpha": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+    "beta": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+    "general": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "parent": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+  }
+}

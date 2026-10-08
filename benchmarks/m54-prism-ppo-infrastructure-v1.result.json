@@ -1,0 +1,102 @@
+{
+  "format": "prism-ppo-infrastructure-result-v1",
+  "milestone": "M54 Stage I",
+  "date": "2026-09-30",
+  "status": "IMPLEMENTED_ENGINEERING_VERIFIED",
+  "promotion": "NOT_PROMOTED",
+  "baseline": {
+    "branch": "main",
+    "head": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+    "dirty_worktree": true,
+    "new_commit_created": false
+  },
+  "scope": "Infrastructure and synthetic engineering tests only; no new matches, collection or formal training",
+  "implementation": [
+    "strict player-view rollout messages and SHA-bound immutable behavior snapshots",
+    "loopback singleton categorical sampling service and independent Rust agent entry point",
+    "Rust terminal replay/projection/action audit with Python pinned-binary wrapper",
+    "own-player terminal GAE, clipped PPO, outcome BCE and separate training-only style critic",
+    "atomic checkpoint/optimizer/RNG/data-cursor commits, attempt budgets, pause/resume and no double consumption",
+    "original 32-key Prism deployment export"
+  ],
+  "verification": {
+    "python_all": {
+      "command": "python -B -m pytest -q -p no:cacheprovider training/prism/tests --basetemp \"$env:PI_SCRATCH_DIR\\m54-pytest-final\"",
+      "exit": 0,
+      "passed": 167,
+      "skipped": 0,
+      "log": "local-artifacts/prism/ppo-infrastructure-v1/m54-python-final.log"
+    },
+    "rust_prism": {
+      "command": "cargo test --offline -p splendor-prism --jobs 2",
+      "exit": 0,
+      "passed": 22,
+      "log": "local-artifacts/prism/ppo-infrastructure-v1/m54-rust-prism-final.log"
+    },
+    "rust_cli_prism_filter": {
+      "command": "cargo test --offline -p splendor-cli --bin splendor prism --jobs 2",
+      "exit": 0,
+      "passed": 12,
+      "ignored": 2,
+      "ignored_note": "Both opt-in Rust tests were explicitly executed successfully by Python interop tests, not counted as passes from the ordinary cargo invocation",
+      "log": "local-artifacts/prism/ppo-infrastructure-v1/m54-rust-cli-final.log"
+    },
+    "explicit_interop_final": {
+      "command": "python -B -m pytest -q -p no:cacheprovider training/prism/tests/test_ppo_interop.py --basetemp \"$env:PI_SCRATCH_DIR\\m54-interop-final\"",
+      "exit": 0,
+      "passed": 3,
+      "log": "local-artifacts/prism/ppo-infrastructure-v1/m54-interop-final.log"
+    },
+    "isolated_build": {
+      "command": "cargo build --offline -p splendor-cli --bin splendor --jobs 2",
+      "exit": 0,
+      "log": "local-artifacts/prism/ppo-infrastructure-v1/m54-rust-build-final.log"
+    },
+    "rustfmt": {"exit": 0, "scope": "two new Rust files only"},
+    "git_diff_check": {"exit": 0, "scope": "whole tracked worktree; LF/CRLF warnings only"},
+    "frozen_baseline_hashes": {"unchanged": 13, "total": 13},
+    "cli_help": {"coordinator_exit": 0, "service_exit": 0}
+  },
+  "environment": {
+    "CARGO_TARGET_DIR": "$env:PI_SCRATCH_DIR\\m54-cargo-target",
+    "M54_RUST_TEST_EXE": "$env:PI_SCRATCH_DIR\\m54-cargo-target\\debug\\deps\\splendor-11ddd28a6e3046c4.exe",
+    "M54_CLI_EXE": "$env:PI_SCRATCH_DIR\\m54-cargo-target\\debug\\splendor.exe",
+    "M54_EXISTING_REPLAY": "local-artifacts/prism/v01/smoke/games/seed-9404999/r0/match-replay.json",
+    "M54_BOUNDARY_FIXTURES": "local-artifacts/prism/v01/provenance/boundary-fixtures.jsonl",
+    "M54_EXISTING_WEIGHTS": "local-artifacts/prism/v01/run/weights.json",
+    "device": "cpu",
+    "scratch_directory": "C:\\Users\\81489\\.pi-desktop\\scratch\\0a801c36-dc48-44ad-8fd7-4e03b17cffad"
+  },
+  "parity": {
+    "scope": "One synthetic PPO optimizer update and export; not a trained candidate",
+    "existing_boundary_states": 68,
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "max_absolute_logit_difference": 1.6391277313232422e-7,
+    "passed": true
+  },
+  "preserved_failures": [
+    {"test": "Python strict mixed-list bool target", "initial": "1 failed, 61 passed", "resolution": "reject JSON booleans before NumPy coercion; regression passed"},
+    {"test": "Rust valid sidecar roundtrip", "initial": "1 failed, 5 passed", "resolution": "check nested field structure and types, not f32 decimal spellings; preserve duplicate/missing/unknown-field rejection; regression passed"}
+  ],
+  "evidence": {
+    "path": "local-artifacts/prism/ppo-infrastructure-v1/evidence.json",
+    "sha256": "e33f28bf98b096cdd7b2646473d065e23f7bd444ff1ebb22778b8fba67d58c6c",
+    "source_manifest": "local-artifacts/prism/ppo-infrastructure-v1/source-hashes.json",
+    "source_manifest_sha256": "a529401716f49719a87edcff0cdaad49f7de7650c04e89df5570a818b1dcb891",
+    "source_files": 18
+  },
+  "review": "One read-only review was started before session interruption; no report was received. Independent review completion is NOT claimed. Parent inspected, fixed and tested the implementation.",
+  "remaining_gates": [
+    "Arena launcher and actual opponent/engine/report identity binding; physical rollout budgets and process deadlines",
+    "real on-policy integration games with an explicitly approved small budget",
+    "frozen builder/disruptor/rush reward extraction, beta candidates and measurable style gates",
+    "GPU recovery, throughput, long-run storage/streaming and power-loss testing",
+    "development and independent competitive/style/non-inferiority acceptance"
+  ],
+  "style_campaigns_enabled": false,
+  "production_or_service_changes": false,
+  "new_seed_allocations": 0,
+  "formal_training_runs": 0,
+  "new_matches": 0
+}

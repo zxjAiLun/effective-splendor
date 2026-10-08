@@ -1,0 +1,766 @@
+{
+  "format": "prism-historical-model-catalog-v1",
+  "as_of": "2026-10-05 evening Asia/Shanghai",
+  "verified_at": "2026-10-07T23:48:34+08:00",
+  "task_kind": "report/sync",
+  "authorization": "User explicitly requested syncing provided historical model list to ALL and project memory",
+  "authorized_end": "verify existing records, create bound historical catalog and append memory update note; 0 research games",
+  "baseline_head": "9899749188f35c838c85c5b3530049bd5dcbd105",
+  "models": [
+    {
+      "display_name": "Prism v0.1.1",
+      "route": "General",
+      "status": "ACCEPTED_MODEL_ITERATION",
+      "weights_path": "local-artifacts/prism/v0.1.1/weights.json",
+      "weights_sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+      "identity_record": "benchmarks/m54-prism-v0.1.1.release.json",
+      "identity_record_sha256": "bbd5f410e45885bd030dd69476f7bcc3fb6a92a18f73fe1d859b34e48d1fb7d4",
+      "parent": {
+        "label": "trial-v1-c8",
+        "sha256": "cb7c4fb33ac7666706213ca4138f80104dacc5151b2385b9532bfebbe82025ac",
+        "weights_path": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-8-export/weights.json"
+      },
+      "origin": {
+        "label": "trial-v2-c8",
+        "prospective_model_version": "prism-v0.1.1",
+        "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+        "weights_path": "local-artifacts/prism/ppo-trial-v2/campaign/cycle-8-export/weights.json"
+      },
+      "observed_style": "冻结T=1通用模型迭代验收通过；不证明跨全家族最强或已部署默认冠军",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "Prism v0.1.0",
+      "route": "General",
+      "status": "VERIFIED_BASELINE_COMPLETE",
+      "weights_path": "local-artifacts/prism/v01/run/weights.json",
+      "weights_sha256": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+      "identity_record": "benchmarks/m51-prism-v01.result.json",
+      "identity_record_sha256": "e22af95e46d03bc83fcb0890989a5c1f6ab881ad5737ee9c43e4888895328d63",
+      "parent": {
+        "display_name": "Heuristic v0.3.1 teacher BC",
+        "relationship": "teacher, not neural parent weights"
+      },
+      "origin": {
+        "milestone": "M51",
+        "selected_epoch": 20,
+        "teacher_games": 4000
+      },
+      "observed_style": "4000局Heuristic v0.3.1自对弈教师BC；历史锚点",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "Prism Alpha v0.1.5",
+      "route": "Alpha",
+      "status": "RELEASED_EXPERIMENTAL_MODEL",
+      "weights_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "weights_sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+      "identity_record": "benchmarks/m65-prism-alpha-v0.1.5.model.json",
+      "identity_record_sha256": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb",
+      "parent": {
+        "display_name": "Prism Balance v0.1.0",
+        "model_id": "prism-balance-v0.1.0",
+        "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+        "weights_path": "local-artifacts/prism/balance-v0.1.0/weights.json"
+      },
+      "origin": {
+        "milestone": "M63",
+        "arm": "beta",
+        "cycle": 4,
+        "original_experiment_name": "Prism Beta v0.1.1 candidate"
+      },
+      "observed_style": "相对Balance轻微大牌冲分倾向，描述性画像",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "Prism Alpha v0.1.4",
+      "route": "Alpha",
+      "status": "REGISTERED_EXPERIMENTAL_MODEL",
+      "weights_path": "local-artifacts/prism/alpha-v0.1.4/weights.json",
+      "weights_sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+      "identity_record": "benchmarks/m61-prism-alpha-v0.1.4.model.json",
+      "identity_record_sha256": "c8476edbb6bf474cc8bfca3c09df78957c1968a061b0cf8383b96a26d45f5435",
+      "parent": {
+        "display_name": "Prism Alpha v0.1.3",
+        "model_id": "prism-alpha-v0.1.3",
+        "sha256": "7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544",
+        "weights_path": "local-artifacts/prism/alpha-v0.1.3/weights.json"
+      },
+      "origin": {
+        "arm": "alpha",
+        "cycle": 4,
+        "milestone": "M61",
+        "original_candidate_descriptor": {
+          "display_name": "M61 Alpha unpublished final-c4 training checkpoint (T=1)",
+          "path": "/home/ubuntu/splendor-ppo-m61/campaigns/m61-alpha-ab-g0/cycle-4-export/weights.json",
+          "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9"
+        },
+        "source_companion": {
+          "path": "local-artifacts/prism/balance-ab-m61/reaudit-r1/candidates/alpha/weights.manifest.json",
+          "sha256": "9157460843a0569c5efda0ba2e36a0fb6695136be36e38c4f3524a5252fc575e"
+        },
+        "source_weights": {
+          "path": "local-artifacts/prism/balance-ab-m61/reaudit-r1/candidates/alpha/weights.json",
+          "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9"
+        },
+        "style_beta": 0.3,
+        "style_value_weight": 0.5,
+        "training_games": 1024,
+        "training_updates": 216
+      },
+      "observed_style": "相对Alpha v0.1.3大牌AUC24增强有原冻结范围证据；不升级为普适风格确认",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "Prism Balance v0.1.0",
+      "route": "Balance",
+      "status": "REGISTERED_EXPERIMENTAL_MODEL",
+      "weights_path": "local-artifacts/prism/balance-v0.1.0/weights.json",
+      "weights_sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "identity_record": "benchmarks/m61-prism-balance-v0.1.0.model.json",
+      "identity_record_sha256": "66abd12229ad03543ae9121b12bebf36b4bf61b3f254f2284aef0dfa2e117b21",
+      "parent": {
+        "display_name": "Prism Alpha v0.1.3",
+        "model_id": "prism-alpha-v0.1.3",
+        "sha256": "7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544",
+        "weights_path": "local-artifacts/prism/alpha-v0.1.3/weights.json"
+      },
+      "origin": {
+        "arm": "balance",
+        "cycle": 4,
+        "milestone": "M61",
+        "original_candidate_descriptor": {
+          "display_name": "M61 Balance unpublished final-c4 training checkpoint (T=1)",
+          "path": "/home/ubuntu/splendor-ppo-m61/campaigns/m61-balance-ab-g0/cycle-4-export/weights.json",
+          "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1"
+        },
+        "source_companion": {
+          "path": "local-artifacts/prism/balance-ab-m61/reaudit-r1/candidates/balance/weights.manifest.json",
+          "sha256": "1cf63831f2727b20d8201320295c957c37be8b06971e2442325fbc42ba47f60a"
+        },
+        "source_weights": {
+          "path": "local-artifacts/prism/balance-ab-m61/reaudit-r1/candidates/balance/weights.json",
+          "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1"
+        },
+        "style_beta": 0.0,
+        "style_value_weight": 0.0,
+        "training_games": 1024,
+        "training_updates": 216
+      },
+      "observed_style": "outcome-only训练基座；balance_style_acceptance=NOT_CLAIMED，均衡未确认",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "Prism Beta v0.1.0",
+      "route": "Beta",
+      "status": "RELEASED_EXPERIMENTAL_MODEL",
+      "weights_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+      "weights_sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+      "identity_record": "benchmarks/m65-prism-beta-v0.1.0.model.json",
+      "identity_record_sha256": "fe146698b1745434d1492e7f96bdae2db1f24c207b6606c9a54a3766b7552630",
+      "parent": {
+        "display_name": "Prism Balance v0.1.0",
+        "model_id": "prism-balance-v0.1.0",
+        "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+        "weights_path": "local-artifacts/prism/balance-v0.1.0/weights.json"
+      },
+      "origin": {
+        "milestone": "M62",
+        "arm": "beta",
+        "cycle": 4,
+        "original_experiment_name": "Prism Beta v0.1.0 candidate"
+      },
+      "observed_style": "保留研究分支名；实际混合/偏得分，强基建偏好未确认",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    },
+    {
+      "display_name": "M66 最终 c4（未发布训练检查点）",
+      "route": "undetermined",
+      "status": "VERIFIED_UNPUBLISHED_TRAINING_CHECKPOINT",
+      "weights_path": "local-artifacts/prism/m66-alpha-dsw/harvest/campaigns/training/cycle-4-export/weights.json",
+      "weights_sha256": "d392a5d13e070173a3c80406acbe2f7028d52e3bbdc34a59864ab84f546588f8",
+      "identity_record": "benchmarks/m66-prism-alpha-dsw.candidate.json",
+      "identity_record_sha256": "b3ac89ae8e102fb29acd65ffb262d2cb66a5b177161c2e5361da770af5da105b",
+      "parent": {
+        "display_name": "Prism Alpha v0.1.5",
+        "weights_sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+      },
+      "origin": {
+        "milestone": "M66",
+        "cycle": 4
+      },
+      "observed_style": "Alpha起点、outcome-only研发血缘；轻微混合变化，未发布、未确认新路线",
+      "tensors": 32,
+      "hidden_dim": 128,
+      "num_blocks": 2,
+      "claim_scope": "Historical snapshot as of 2026-10-05 evening; no current deployment verification"
+    }
+  ],
+  "matches": [
+    {
+      "model": "Prism v0.1.1",
+      "opponent": "Heuristic v0.3.1",
+      "cohort": "M54 acceptance-v2",
+      "candidate_mode": "sample T=1",
+      "opponent_mode": "greedy",
+      "games": 1024,
+      "wins": 633,
+      "draws": 4,
+      "losses": 387,
+      "half_draw_score": 0.6201171875,
+      "score_percent": 62.01171875,
+      "result": "benchmarks/m54-prism-v0.1.1.result.json",
+      "result_sha256": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+      "config": null,
+      "keys": null
+    },
+    {
+      "model": "Prism v0.1.1",
+      "opponent": "Prism v0.1.0",
+      "cohort": "M54 acceptance-v2",
+      "candidate_mode": "sample T=1",
+      "opponent_mode": "greedy",
+      "games": 1024,
+      "wins": 631,
+      "draws": 6,
+      "losses": 387,
+      "half_draw_score": 0.619140625,
+      "score_percent": 61.9140625,
+      "result": "benchmarks/m54-prism-v0.1.1.result.json",
+      "result_sha256": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+      "config": null,
+      "keys": null
+    },
+    {
+      "model": "Prism v0.1.1",
+      "opponent": "trial-v1 final c8",
+      "cohort": "M54 acceptance-v2",
+      "candidate_mode": "sample T=1",
+      "opponent_mode": "sample T=1",
+      "games": 1024,
+      "wins": 609,
+      "draws": 9,
+      "losses": 406,
+      "half_draw_score": 0.59912109375,
+      "score_percent": 59.912109375,
+      "result": "benchmarks/m54-prism-v0.1.1.result.json",
+      "result_sha256": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+      "config": null,
+      "keys": null
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism Alpha v0.1.4",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 124,
+      "draws": 3,
+      "losses": 129,
+      "half_draw_score": 0.490234375,
+      "score_percent": 49.0234375,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "alpha"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Heuristic v0.3.1",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 195,
+      "draws": 3,
+      "losses": 58,
+      "half_draw_score": 0.767578125,
+      "score_percent": 76.7578125,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "heuristic-v031"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism v0.1.1",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 160,
+      "draws": 2,
+      "losses": 94,
+      "half_draw_score": 0.62890625,
+      "score_percent": 62.890625,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "prism-general-v011"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism v0.1.0",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 202,
+      "draws": 0,
+      "losses": 54,
+      "half_draw_score": 0.7890625,
+      "score_percent": 78.90625,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "prism-v01"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism Alpha v0.1.4",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 126,
+      "draws": 5,
+      "losses": 125,
+      "half_draw_score": 0.501953125,
+      "score_percent": 50.1953125,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "alpha"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Heuristic v0.3.1",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 194,
+      "draws": 1,
+      "losses": 61,
+      "half_draw_score": 0.759765625,
+      "score_percent": 75.9765625,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "heuristic-v031"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism v0.1.1",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 162,
+      "draws": 2,
+      "losses": 92,
+      "half_draw_score": 0.63671875,
+      "score_percent": 63.671875,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "prism-general-v011"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism v0.1.0",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 200,
+      "draws": 1,
+      "losses": 55,
+      "half_draw_score": 0.783203125,
+      "score_percent": 78.3203125,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "result_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "prism-v01"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism Balance v0.1.0",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 118,
+      "draws": 4,
+      "losses": 134,
+      "half_draw_score": 0.46875,
+      "score_percent": 46.875,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/result.json",
+      "result_sha256": "eb04474fd5cb469784af05ec6e8afa321824eb545596687c732242928346fb7c",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "parent"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism Alpha v0.1.5",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 112,
+      "draws": 1,
+      "losses": 143,
+      "half_draw_score": 0.439453125,
+      "score_percent": 43.9453125,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/result.json",
+      "result_sha256": "2c029162ec647340657acb6f1452a09be5c82ae225e72297c2a84a3f27641330",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "new_alpha"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism Beta v0.1.0",
+      "cohort": "M65 greedy",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 143,
+      "draws": 1,
+      "losses": 112,
+      "half_draw_score": 0.560546875,
+      "score_percent": 56.0546875,
+      "result": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/result.json",
+      "result_sha256": "2c029162ec647340657acb6f1452a09be5c82ae225e72297c2a84a3f27641330",
+      "config": "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/config.json",
+      "keys": {
+        "perspective": "opponent"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism Alpha v0.1.4",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 136,
+      "draws": 3,
+      "losses": 117,
+      "half_draw_score": 0.537109375,
+      "score_percent": 53.7109375,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "alpha"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Heuristic v0.3.1",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 198,
+      "draws": 2,
+      "losses": 56,
+      "half_draw_score": 0.77734375,
+      "score_percent": 77.734375,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "heuristic-v031"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism Beta v0.1.0",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 129,
+      "draws": 7,
+      "losses": 120,
+      "half_draw_score": 0.517578125,
+      "score_percent": 51.7578125,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "previous_beta"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism v0.1.1",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 159,
+      "draws": 1,
+      "losses": 96,
+      "half_draw_score": 0.623046875,
+      "score_percent": 62.3046875,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "prism-general-v011"
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "opponent": "Prism v0.1.0",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 209,
+      "draws": 1,
+      "losses": 46,
+      "half_draw_score": 0.818359375,
+      "score_percent": 81.8359375,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "base",
+        "opponent": "prism-v01"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism Alpha v0.1.4",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 132,
+      "draws": 2,
+      "losses": 122,
+      "half_draw_score": 0.51953125,
+      "score_percent": 51.953125,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "alpha"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Heuristic v0.3.1",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 211,
+      "draws": 0,
+      "losses": 45,
+      "half_draw_score": 0.82421875,
+      "score_percent": 82.421875,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "heuristic-v031"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism Beta v0.1.0",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 122,
+      "draws": 5,
+      "losses": 129,
+      "half_draw_score": 0.486328125,
+      "score_percent": 48.6328125,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "previous_beta"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism v0.1.1",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 158,
+      "draws": 2,
+      "losses": 96,
+      "half_draw_score": 0.62109375,
+      "score_percent": 62.109375,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "prism-general-v011"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism v0.1.0",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 212,
+      "draws": 1,
+      "losses": 43,
+      "half_draw_score": 0.830078125,
+      "score_percent": 83.0078125,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "result_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "prism-v01"
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "opponent": "Prism Balance v0.1.0",
+      "cohort": "M63 greedy-r3",
+      "candidate_mode": "greedy",
+      "opponent_mode": "greedy",
+      "games": 256,
+      "wins": 137,
+      "draws": 2,
+      "losses": 117,
+      "half_draw_score": 0.5390625,
+      "score_percent": 53.90625,
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/result.json",
+      "result_sha256": "c5908481e18523431819cc7e3a1242d90871a4db855ff69a8263f790be190ca0",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/config.json",
+      "keys": {
+        "candidate": "beta",
+        "opponent": "parent"
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "opponent": "Prism Alpha v0.1.4",
+      "cohort": "M62 independent sampling",
+      "candidate_mode": "sample T=1",
+      "opponent_mode": "sample T=1",
+      "games": 1024,
+      "wins": 557,
+      "draws": 12,
+      "losses": 455,
+      "half_draw_score": 0.5498046875,
+      "score_percent": 54.98046875,
+      "result": "local-artifacts/prism/building-beta-m62/evaluation/result.json",
+      "result_sha256": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+      "simultaneous_lower": 0.509765625,
+      "scope": "Original sampling-only enhancement evidence; not greedy confirmation"
+    }
+  ],
+  "corrections": [
+    "用户称Prism v0.1.1“通用最强/冠军”作为历史定位保存；源release仅验收冻结T=1对父代和两个锚点，default_replaced=false/shared_pool_deployed=false，未核验跨全家族最强或实机默认。",
+    "General 62.0117%/61.9141%/59.9121%属于M54 T=1采样候选，不能当both-greedy。原开发共享池边界失败与后来独立acceptance-v2通过并存，不抹去历史失败。",
+    "Alpha v0.1.5对旧Alpha 51.953125%属于M63 greedy-r3；用户提供的53.42%在已查绑定证据中未找到对应行，标UNKNOWN，不构造51.95–53.42范围。",
+    "Alpha v0.1.5对Beta：M63 greedy-r3为48.6328125%（256局）；M65新greedy为56.0546875%（256局，143/1/112）。不同seed cohort分别保存，不取最好一项代替全部。",
+    "Beta对Alpha v0.1.4：M65 greedy50.1953125%，M62双方T=1采样54.98046875%及原校正下界增强证据。后者仅限原模式，不能写成跨模式直接克制区间。",
+    "Balance对Alpha v0.1.4的50.2441%来自M61双方T=1；INCONCLUSIVE，未证明等效。outcome-only不等于均衡风格通过。",
+    "M66 c4完整SHA d392a5d13e070173a3c80406acbe2f7028d52e3bbdc34a59864ab84f546588f8；未发布、无新路线确认，不纳入已发布六模型。",
+    "此表列用户指定当前/固定参照，不是所有历史Alpha版本的完整清单；模型登记/发布不等于应用池、Studio或服务在役。"
+  ],
+  "sources_sha256": {
+    "benchmarks/m54-prism-v0.1.1.release.json": "bbd5f410e45885bd030dd69476f7bcc3fb6a92a18f73fe1d859b34e48d1fb7d4",
+    "benchmarks/m54-prism-v02-acceptance-v2.result.json": "827c621a8e1771849088624cff385fe818c149c0f8374fe5863bb70cebfa82a5",
+    "benchmarks/m51-prism-v01.result.json": "e22af95e46d03bc83fcb0890989a5c1f6ab881ad5737ee9c43e4888895328d63",
+    "benchmarks/m65-prism-alpha-v0.1.5.model.json": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb",
+    "benchmarks/m61-prism-alpha-v0.1.4.model.json": "c8476edbb6bf474cc8bfca3c09df78957c1968a061b0cf8383b96a26d45f5435",
+    "benchmarks/m61-prism-balance-v0.1.0.model.json": "66abd12229ad03543ae9121b12bebf36b4bf61b3f254f2284aef0dfa2e117b21",
+    "benchmarks/m65-prism-beta-v0.1.0.model.json": "fe146698b1745434d1492e7f96bdae2db1f24c207b6606c9a54a3766b7552630",
+    "benchmarks/m66-prism-alpha-dsw.candidate.json": "b3ac89ae8e102fb29acd65ffb262d2cb66a5b177161c2e5361da770af5da105b",
+    "benchmarks/m54-prism-v0.1.1.result.json": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json": "a697e5b0f710166b94c2903093ed95e18d55d95cfe5a8bdf10c4a5b72dd82cb9",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/plan.json": "cdd6277c4bf6615d8533deb0cf2d55e757d73fdd9c449396fd8110b478d0897f",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/config.json": "7beb49d8c93e5c52751b632d6b3d7ee6ee46f5b7ad510cb4d5b325a13b4cc72c",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/plan.json": "c63c761f1f2185b2b26334280413bf15ffdfa984ac229e17f5539272ed225756",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/result.json": "eb04474fd5cb469784af05ec6e8afa321824eb545596687c732242928346fb7c",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/config.json": "e357e6d92dbae60ecaa3b94af034a16882e67c33faef61d0e662791c727b5144",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/plan.json": "9b27eed9e6c7e0af1bfe882455a170fa00ebbd944421d2e5650afc874762b2b0",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/result.json": "2c029162ec647340657acb6f1452a09be5c82ae225e72297c2a84a3f27641330",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json": "bdc309afd3d2fd43b38cd5549175460e10d5f1baeebd873a8da21f5366f63490",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/plan.json": "7e4c989d16641e5c754be96d98b09eea3ce8b12e26397af477f062387d05c17b",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/config.json": "be98563418991dea6c51120b9570b6828ff51db1796a0845e4263accb6071ff8",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/plan.json": "a17d1969cd9c2d64cfefc05c719e64b7db16e85b0121dfd1b2efcb500b65f321",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/result.json": "c5908481e18523431819cc7e3a1242d90871a4db855ff69a8263f790be190ca0",
+    "local-artifacts/prism/building-beta-m62/evaluation/result.json": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede"
+  },
+  "verification_scope": "Local identity hashes and selected W/D/L aggregate arithmetic; no rerun matches, raw replay audit, bootstrap, or deployment verification",
+  "status": "VERIFIED_HISTORICAL_CATALOG",
+  "visual": "NOT_VERIFIED"
+}

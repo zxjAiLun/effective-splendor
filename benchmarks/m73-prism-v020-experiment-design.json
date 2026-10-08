@@ -1,0 +1,227 @@
+{
+  "format": "prism-experiment-design-summary-v1",
+  "status": "DESIGNED",
+  "task_kind": "design",
+  "execution_authorized": false,
+  "not_an_executable_controller_config": true,
+  "authorization": {
+    "source": "human_owner",
+    "request": "后续怎么设计实验",
+    "authorized_end": "R0-R1 design plus R9 design delivery"
+  },
+  "baseline_head": "9899749188f35c838c85c5b3530049bd5dcbd105",
+  "baseline_source_limitation": "dirty worktree; HEAD is not a complete execution-source identity",
+  "models": [
+    {
+      "model_id": "prism-alpha-v0.2.0",
+      "display_name": "Prism Alpha v0.2.0",
+      "original_checkpoint": "M67 A-c20",
+      "weights_path": "local-artifacts/prism/alpha-v0.2.0/weights.json",
+      "weights_sha256": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5",
+      "parent": {
+        "display_name": "Prism Alpha v0.1.5",
+        "model_id": "prism-alpha-v0.1.5",
+        "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+        "weights_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+        "source_weights": "local-artifacts/prism/alpha-v0.1.5/weights.json"
+      }
+    },
+    {
+      "model_id": "prism-balance-v0.2.0",
+      "display_name": "Prism Balance v0.2.0",
+      "original_checkpoint": "M67 B-c20",
+      "weights_path": "local-artifacts/prism/balance-v0.2.0/weights.json",
+      "weights_sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "parent": {
+        "display_name": "Prism Alpha v0.1.5",
+        "model_id": "prism-alpha-v0.1.5",
+        "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+        "weights_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+        "source_weights": "local-artifacts/prism/alpha-v0.1.5/weights.json"
+      }
+    },
+    {
+      "model_id": "prism-balance-v0.2.1",
+      "display_name": "Prism Balance v0.2.1",
+      "original_checkpoint": "M70 c4",
+      "weights_path": "local-artifacts/prism/balance-v0.2.1/weights.json",
+      "weights_sha256": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a",
+      "parent": {
+        "display_name": "Prism Balance v0.2.0",
+        "model_id": "prism-balance-v0.2.0",
+        "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+        "weights_path": "local-artifacts/prism/balance-v0.2.0/weights.json",
+        "source_weights": "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.json"
+      }
+    }
+  ],
+  "recommended_sequence": [
+    "existing-replay measurement readiness",
+    "Balance same-parent M70 recipe repeat",
+    "separate Alpha and Beta controlled pilots"
+  ],
+  "first_experiment": {
+    "status": "PROPOSED_NOT_AUTHORIZED",
+    "parent_model_id": "prism-balance-v0.2.0",
+    "independent_training_seeds": 3,
+    "training_rng_seeds": null,
+    "training_environment_seed_ranges": null,
+    "initialization": "fresh AdamW and RNG from exact B exported weights; not full-state resume",
+    "cycles_per_seed": 4,
+    "games_per_cycle": 256,
+    "training_games_per_seed": 1024,
+    "selection": "all three final c4; no independent-result seed or checkpoint selection",
+    "mode_training": "categorical-T1",
+    "ppo": {
+      "clip_epsilon": 0.2,
+      "entropy_weight": 0.01,
+      "gae_lambda": 0.95,
+      "logp_tolerance": 1e-06,
+      "lr": 3e-05,
+      "max_grad_norm": 1.0,
+      "minibatch_size": 256,
+      "normalize_advantage": true,
+      "passes": 2,
+      "style_beta": 0.0,
+      "style_value_weight": 0.0,
+      "target_kl": 0.02,
+      "value_tolerance": 1e-06,
+      "value_weight": 0.5,
+      "weight_decay": 0.0
+    },
+    "training_opponent_mix": {
+      "alpha": 128,
+      "beta": 128,
+      "general": 512,
+      "parent": 256
+    },
+    "primary_common_opponents": [
+      {
+        "key": "heuristic",
+        "display_name": "Heuristic v0.3.1",
+        "identity_status": "VERIFY_BEFORE_EXECUTION"
+      },
+      {
+        "key": "general",
+        "display_name": "Prism v0.1.1",
+        "local_path": "local-artifacts/prism/v0.1.1/weights.json",
+        "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+        "identity_status": "SHA_BOUND_DESIGN"
+      },
+      {
+        "key": "balance",
+        "display_name": "Prism Balance v0.1.0",
+        "local_path": "local-artifacts/prism/balance-v0.1.0/weights.json",
+        "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+        "identity_status": "SHA_BOUND_DESIGN"
+      },
+      {
+        "key": "alpha",
+        "display_name": "Prism Alpha v0.1.4",
+        "local_path": "local-artifacts/prism/alpha-v0.1.4/weights.json",
+        "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+        "identity_status": "SHA_BOUND_DESIGN"
+      },
+      {
+        "key": "beta",
+        "display_name": "Prism Beta v0.1.0",
+        "local_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+        "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+        "identity_status": "SHA_BOUND_DESIGN"
+      },
+      {
+        "key": "released-alpha",
+        "display_name": "Prism Alpha v0.1.5",
+        "local_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+        "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+        "identity_status": "SHA_BOUND_DESIGN"
+      }
+    ],
+    "coverage_opponents": [
+      "prism-alpha-v0.2.0",
+      "prism-balance-v0.2.1"
+    ],
+    "primary_weights": [
+      0.16666666666666666,
+      0.16666666666666666,
+      0.16666666666666666,
+      0.16666666666666666,
+      0.16666666666666666,
+      0.16666666666666666
+    ],
+    "mode_confirmation": "both-greedy",
+    "confirmation_environment_seed_ranges": null,
+    "shared_parent_grid_runs": 1,
+    "common_two_seat_blocks_per_opponent_per_actor": 256,
+    "direct_parent_two_seat_blocks_per_candidate": 512,
+    "budget": {
+      "training_games": 3072,
+      "primary_common_games": 12288,
+      "coverage_games": 4096,
+      "direct_parent_games": 3072,
+      "confirmation_games": 19456,
+      "research_games_total": 22528
+    },
+    "engineering_games_proposal": 16,
+    "engineering_contract_status": "TBD_NOT_INCLUDED_IN_RESEARCH",
+    "automatic_research_retries": 0,
+    "statistical_unit": "two-seat environmental seed block; paired candidate minus B; training seeds reported separately",
+    "bootstrap_samples_proposed": 20000,
+    "bootstrap_rng": null,
+    "gates_status": "PROPOSED_NOT_FROZEN",
+    "enhancement": {
+      "primary_delta_point_min": 0.02,
+      "primary_delta_lower_min_exclusive": 0,
+      "direct_parent_score_point_min": 0.52,
+      "direct_parent_score_lower_min_exclusive": 0.5,
+      "family_alpha": 0.05,
+      "comparisons": 6,
+      "method_proposed": "Bonferroni one-sided paired bootstrap lower bounds"
+    },
+    "representative_retention": {
+      "opponents": [
+        "prism-alpha-v0.2.0",
+        "prism-balance-v0.2.1"
+      ],
+      "candidate_minus_B_lower_min": -0.03,
+      "family_alpha": 0.05,
+      "comparisons": 6,
+      "method_proposed": "Bonferroni one-sided paired bootstrap lower bounds"
+    },
+    "method_claim_rule": "all three must meet prespecified combination for three-in-scope repeat success; otherwise report all per-seed results and heterogeneity",
+    "sample_size_status": "finite-budget proposal; power/precision planning TBD before sampling; no extension after outcomes",
+    "style_evidence": "descriptive; no confirmatory style gate",
+    "resources": null,
+    "default_replaced": false,
+    "publish_authorized": false,
+    "deploy_authorized": false
+  },
+  "later_style_pilots": {
+    "status": "SEPARATE_CONTRACTS_NOT_AUTHORIZED",
+    "arms": 2,
+    "training_seeds_per_arm_proposed": 2,
+    "training_games_per_seed_proposed": 1024,
+    "training_games_per_pilot_proposed": 4096,
+    "reward_intervention": null,
+    "development_confirmation_budgets": null
+  },
+  "pending_before_execution": [
+    "human execution authorization and finite budget",
+    "seed registry conflict audit and exact ranges",
+    "power/precision plan and final gates",
+    "investment-redemption accounting contract",
+    "resource calibration and node/deadline/storage reservation",
+    "engineering contract and Linux bounded-wrapper audit",
+    "source/dependency/rule/schema/heuristic identities and parity",
+    "observation/delivery owner"
+  ],
+  "source_hashes": {
+    "benchmarks/prism-v020-model-registry.json": "d1f5d2dc8c35fb7a1eb16962b4d81f0c655e9d14351d51af1b12b0f4b93643f4",
+    "benchmarks/m70-prism-b-continuation.config.json": "ecaa045f7946ef46769237fce3b779f15d56c4afb1785f7183e755acba6a8532",
+    "benchmarks/m70-prism-b-continuation.train.json": "d3d27de97c6c87a0617c577e9f7e1d7ee69c282e23e27b59cdc7023d646b0b90",
+    "benchmarks/m70-prism-b-continuation.result.json": "9c46ebba921d372f55b59a4096e6779f9ee41d42269f898a8fa2420b7e05ee6b",
+    "docs/m71-prism-bounded-evaluation.md": "4bad43faae83c841e6b8c443a5fc1dfff246ad0e32977a7a67d84450ede5f262",
+    "benchmarks/prism-balance-data-baseline-v0.2.0.json": "889a66760d54bf429dc70eb86f54c34f92e100c246830654a1bb0b5c6439b403"
+  },
+  "design_document": "docs/m73-prism-v020-experiment-design.md"
+}

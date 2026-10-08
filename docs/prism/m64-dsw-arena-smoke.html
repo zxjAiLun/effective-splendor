@@ -1,0 +1,1472 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>M64 DSW实机烟测</title><style>body{font:16px/1.7 system-ui;color:#173c3d;background:#f3f8f6;max-width:1200px;margin:auto;padding:28px}h1,h2,h3{color:#095d4d}strong{color:#095d4d}table{border-collapse:collapse;width:100%;background:white;font-variant-numeric:tabular-nums}td,th{padding:9px;border:1px solid #cee0d8;text-align:left;overflow-wrap:anywhere}th{background:#e3efe8}.scroll{overflow:auto;margin:18px 0}code{overflow-wrap:anywhere}</style></head><body><h1>M64 DSW SSH 通用对战工具实机烟测</h1>
+<p><strong>产物结论：两台均完成8局，0重试，原生运行、规则回放验核、完整双方指标与HTML生成通过。</strong></p>
+<p><strong>竞技结论：IMPLEMENTATION_SMOKE / DEVELOPMENT_ONLY_NOT_PROMOTED。</strong>16次执行是同8个固定逻辑对局的两台部署复现，不合并成16局棋力样本；独立正式验收NOT_RUN，M63未启动，模型未发布。</p>
+<p><strong>风格结论：NOT_RUN。</strong>少量对局只检验工程，不能给M63 Beta c4赋予新的风格/版本身份。</p>
+<h2>两台执行对照</h2>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>主机</th>
+<th>有效CPU</th>
+<th>有效内存</th>
+<th>配置workers / 实际shard并发上限</th>
+<th>完成局 / 独特双座种子</th>
+<th>活动墙钟秒</th>
+<th>已测RSS和峰值MiB</th>
+<th>原生/报告判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dsw</td>
+<td>4核</td>
+<td>15.35GiB</td>
+<td>3 / 3</td>
+<td>8 / 每对手2个种子</td>
+<td>3.4687</td>
+<td>140.42</td>
+<td>PASS（工程）</td>
+</tr>
+<tr>
+<td>dsw2</td>
+<td>8核</td>
+<td>28.00GiB</td>
+<td>6 / 4</td>
+<td>8 / 每对手2个种子</td>
+<td>5.5670</td>
+<td>181.60</td>
+<td>PASS（工程）</td>
+</tr>
+</tbody>
+</table></div>
+<p>墙钟包含派发、比赛监督、保存回放审计及离线报告，排除下载/构建/SSH传输；RSS是采样进程树和，可能重复计共享页。DSW2配了6 workers，但此8局只有4个双座shards，最多4路，未校准满6路吞吐。微型烟测被启动/负载噪声影响，不能据此排名批量速度或宣称2倍加速。</p>
+<p>独立本地抓取核验：两归档SHA、全部逐局终局/回放/计时/配置hash、完整网格、14表/主机和双方经济守恒通过；两机逐局终局行完全一致。source-ledger和完整回放在ignored资产目录，下面是原阅读件全文。所有未发布训练检查点按其真实身份展示。</p>
+<h2>来源与历史例外</h2>
+<p>先前ARM运行时在两台均Exec format error，0局，已保留；DSW2 Rust下载过慢已停，WSL默认cc包装器/新glibc链接也未作为有效运行时。最终引擎由当前308份Rust/Cargo文件（0漂移）构建，Rust 1.94.1 + Zig目标glibc2.31，required max GLIBC2.30；指标工具GCC构建、required max GLIBC2.34；两台version与实战均通过。</p>
+<p><code>smoke-v5</code>是工程执行编号，不是模型版本。原状态中<code>new_games: 0</code>是未更新的遗留字段，真实完成数以<code>completed_games: 8</code>及逐局回执为准；原文件保持，当前v6工程补丁移除冗余字段，30测试与两台零局prepare/verify通过。v5实际运行源码已保存在每个run的runtime-snapshot及归档中；新代码没有覆盖原结果或回执。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>资产</th>
+<th>SHA256</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bin/splendor</td>
+<td>6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f</td>
+</tr>
+<tr>
+<td>bin/s4_batch_metrics</td>
+<td>39c630d5e0a9e0611ca4ec8c8b2e4a78817bf971c7bdc7446b614035aedbcb37</td>
+</tr>
+<tr>
+<td>dsw 完整归档</td>
+<td>70edf862c7cc6ca59b78bbe408301f8dc93c189e83238dad49fedc6d44a53194</td>
+</tr>
+<tr>
+<td>dsw2 完整归档</td>
+<td>726b21a7355e68c7da76d887a1f66d5fde1a596101a8731642e39556f3dbd629</td>
+</tr>
+</tbody>
+</table></div>
+<h2>dsw 完整结果（原生成阅读件）</h2>
+<h2>Prism 通用对战结果（DSW / SSH）</h2>
+<p><strong>产物：已完成全部固定网格，Rust规则回放验核与双方指标守恒通过。</strong></p>
+<p><strong>竞技：DEVELOPMENT_ONLY_NOT_PROMOTED。</strong>这是独立通用开发测量，没有执行任何里程碑正式晋级门。</p>
+<p><strong>风格：描述性数据。</strong>不凭单一更高/更低经济指标授予风格身份。</p>
+<p>候选按用户声明的完整模型名及导出SHA识别，未发布检查点仍须在名称中明确标注。每对手恰好双座种子块；个人表按模型身份归并，物理P0不总是候选。</p>
+<h3>候选匹配比较</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>候选</th>
+<th>共同对手</th>
+<th>本人指标</th>
+<th>单位</th>
+<th>首候选基线</th>
+<th>候选</th>
+<th>候选−基线</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>半平得分率</td>
+<td>百分点</td>
+<td>75.0000</td>
+<td>25.0000</td>
+<td><strong>↓ -50.0000</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人最终VP</td>
+<td>VP/局</td>
+<td>14.5000</td>
+<td>12.7500</td>
+<td><strong>↓ -1.7500</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人得分速度</td>
+<td>VP/Main</td>
+<td>0.5472</td>
+<td>0.4857</td>
+<td><strong>↓ -0.0615</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人永久折扣</td>
+<td>个/局</td>
+<td>10.5000</td>
+<td>11.7500</td>
+<td><strong>↑ +1.2500</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>↑/↓仅为方向标记，不表示更好或差异显著。下面CI为逐对手描述性双座bootstrap；不做多门验收或发布。若只有一个种子块，CI退化，不能据此确认稳定性。</p>
+<h3>总体执行与来源</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>固定局数</td>
+<td>8</td>
+</tr>
+<tr>
+<td>并发进程 / 每进程库线程</td>
+<td>3 / 1</td>
+</tr>
+<tr>
+<td>累计已测活动墙钟秒（至报告前监测点）</td>
+<td>2.4583</td>
+</tr>
+<tr>
+<td>首次派发至报告生成秒（包含暂停）</td>
+<td>2.9266</td>
+</tr>
+<tr>
+<td>时钟范围</td>
+<td>standalone arena dispatch, saved replay audit and descriptive reports; excludes build/download</td>
+</tr>
+<tr>
+<td>资源监控</td>
+<td>observed process-tree soft limits; shared platform cgroups are not owned</td>
+</tr>
+<tr>
+<td>已测负载</td>
+<td>{'observed_processes': 2, 'peak_observed_rss_bytes': 147238912, 'process_tree_cpu_seconds': 4.06, 'process_tree_rss_sum_bytes': 33075200, 'scope': 'sampled live tree plus OS-accounted waited child CPU; RSS sum may double count shared pages'}</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td>配置SHA256</td>
+<td>0e407f24f7a5bfb6d7e0b77e32d333457eb4fa28f83dcff248ff4e0d1d256cc8</td>
+</tr>
+<tr>
+<td>plan SHA256</td>
+<td>266cebd35c203b725d3bdf784e8dbf354f1430d959afbdd57f341f1d1037fcf2</td>
+</tr>
+<tr>
+<td>engine SHA256</td>
+<td>6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f</td>
+</tr>
+<tr>
+<td>metrics SHA256</td>
+<td>39c630d5e0a9e0611ca4ec8c8b2e4a78817bf971c7bdc7446b614035aedbcb37</td>
+</tr>
+<tr>
+<td>Git基线 / 源码dirty</td>
+<td>NOT_AVAILABLE / None</td>
+</tr>
+<tr>
+<td>Bootstrap</td>
+<td>{'kind': 'descriptive paired seed blocks, not acceptance', 'samples': 20000, 'seed': 64049999}</td>
+</tr>
+<tr>
+<td>种子</td>
+<td>[64000000, 64000001]</td>
+</tr>
+<tr>
+<td>完整逐局来源</td>
+<td>source-ledger.json</td>
+</tr>
+<tr>
+<td>冻结源码SHA</td>
+<td>{'scripts/prism_cloud_storage_snapshot.py': 'b417e62c6aa2ce56ad2968ab0ac4c952b4a954514128a6923efc272129f5eb8c', 'scripts/prism_dsw_arena.py': '172b6f9edbb69b2d0fc139cd3ac4678d5f0392f97b59ebd09164467beda7b399', 'scripts/prism_match_details.py': '0f7fb79de0a65e60dfcb914716c99562fa44dd7673e6c1c0ea5ee4916ba11bc4', 'scripts/prism_notebook_arena.py': 'c2aa76f7b7cc50501d4fb3880dbe6b1cac85cb50c03dee0a1bf90da3933fa8a0', 'scripts/prism_notebook_report.py': 'bc7dd35146d795c28c8f8a7fb3910cfe3b832e88884de32b93a0d010ff6fd9ec', 'scripts/prism_ppo_fixed_eval.py': 'fb6683d0f0d91d92efafef1d136545b3dabf376e014e066b19beb43fe78aeacb'}</td>
+</tr>
+</tbody>
+</table></div>
+<h3>Prism Balance v0.1.0 (registered experimental model) 对阵 Heuristic development snapshot (agent-heuristic-v02; greedy)</h3>
+<p>被测模型模式：sample（sample=T=1）；对手模式：greedy。下表个人指标分别属于模型/对手，整局指标另列。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>局数/双座种子块</th>
+<th>胜/平/负</th>
+<th>纯胜率</th>
+<th>半平得分率</th>
+<th>纯胜配对95%CI</th>
+<th>半平配对95%CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4/2</td>
+<td>3/0/1</td>
+<td>75.0000%</td>
+<td>75.0000%</td>
+<td>50.0000% / 100.0000%</td>
+<td>50.0000% / 100.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>胜/平/负</th>
+<th>纯胜%</th>
+<th>半平%</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0（先手）</td>
+<td>2</td>
+<td>1/0/1</td>
+<td>50.0000</td>
+<td>50.0000</td>
+<td>14.0000</td>
+<td>14.5000</td>
+</tr>
+<tr>
+<td>P1（后手）</td>
+<td>2</td>
+<td>2/0/0</td>
+<td>100.0000</td>
+<td>100.0000</td>
+<td>15.0000</td>
+<td>12.5000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>被测模型</th>
+<th>对手</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最终VP/局</td>
+<td>14.5000</td>
+<td>13.5000</td>
+</tr>
+<tr>
+<td>VP/本人全部决策</td>
+<td>0.5472</td>
+<td>0.5094</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5472</td>
+<td>0.5094</td>
+</tr>
+<tr>
+<td>VP/全局ply</td>
+<td>0.2736</td>
+<td>0.2547</td>
+</tr>
+<tr>
+<td>永久折扣/购卡每局</td>
+<td>10.5000</td>
+<td>11.5000</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.2500</td>
+<td>0.5000</td>
+</tr>
+<tr>
+<td>获得贵族的对局%</td>
+<td>25.0000</td>
+<td>25.0000</td>
+</tr>
+<tr>
+<td>预留获取/局</td>
+<td>3.2500</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.7500</td>
+<td>0.7500</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.5000</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>预留买回/获取%（总分母）</td>
+<td>53.8462</td>
+<td>23.0769</td>
+</tr>
+<tr>
+<td>购入0 VP卡/局</td>
+<td>4.0000</td>
+<td>6.2500</td>
+</tr>
+<tr>
+<td>购入1 VP卡/局</td>
+<td>3.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>购入2 VP卡/局</td>
+<td>1.5000</td>
+<td>2.2500</td>
+</tr>
+<tr>
+<td>购入3 VP卡/局</td>
+<td>1.0000</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>购入4 VP卡/局</td>
+<td>0.2500</td>
+<td>0.5000</td>
+</tr>
+<tr>
+<td>购入5 VP卡/局</td>
+<td>0.7500</td>
+<td>0.2500</td>
+</tr>
+<tr>
+<td>White折扣/局</td>
+<td>0.7500</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>Blue折扣/局</td>
+<td>2.7500</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>Green折扣/局</td>
+<td>2.5000</td>
+<td>4.0000</td>
+</tr>
+<tr>
+<td>Red折扣/局</td>
+<td>2.0000</td>
+<td>1.7500</td>
+</tr>
+<tr>
+<td>Black折扣/局</td>
+<td>2.5000</td>
+<td>2.0000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>动作 / 占本人全部决策</th>
+<th>模型次数 / %</th>
+<th>对手次数 / %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>buy_market</td>
+<td>35 / 33.0189%</td>
+<td>43 / 40.5660%</td>
+</tr>
+<tr>
+<td>buy_reserved</td>
+<td>7 / 6.6038%</td>
+<td>3 / 2.8302%</td>
+</tr>
+<tr>
+<td>take_tokens</td>
+<td>51 / 48.1132%</td>
+<td>47 / 44.3396%</td>
+</tr>
+<tr>
+<td>reserve_market</td>
+<td>13 / 12.2642%</td>
+<td>13 / 12.2642%</td>
+</tr>
+<tr>
+<td>reserve_deck</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>choose_noble</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>pass</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>整局 / 两人共同指标</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总 / 均ply</td>
+<td>212 / 53.0000</td>
+</tr>
+<tr>
+<td>legacy决策轮：均 / 最小 / 中位 / 最大 / 总体SD</td>
+<td>26.5000 / 24.0000 / 26.0000 / 30.0000 / 2.2913</td>
+</tr>
+<tr>
+<td>Main轮均值</td>
+<td>26.5000</td>
+</tr>
+<tr>
+<td>绝对终局分差</td>
+<td>2.0000</td>
+</tr>
+<tr>
+<td>分差≤2对局%</td>
+<td>75.0000</td>
+</tr>
+<tr>
+<td>对局监督墙钟秒：累计 / 均 / P95</td>
+<td>0.6231 / 0.1558 / 0.1837</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时间含启动、比赛、输出；累计单局秒数包含并行重叠，不等于整批墙钟。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>身份</th>
+<th>源码绑定的完整descriptor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>{'args': ['agent-prism-sample', '--weights', '/mnt/workspace/splendor-dsw/models/balance.json', '--seed', '64010001'], 'files': [{'path': '/mnt/workspace/splendor-dsw/models/balance.json', 'sha256': '225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1'}], 'program': '/mnt/workspace/splendor-dsw/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+<tr>
+<td>对手</td>
+<td>{'args': ['agent-heuristic-v02', '--seed', '20260926'], 'files': [], 'program': '/mnt/workspace/splendor-dsw/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+</tbody>
+</table></div>
+<h3>M63 Beta c4 (unpublished training checkpoint) 对阵 Heuristic development snapshot (agent-heuristic-v02; greedy)</h3>
+<p>被测模型模式：sample（sample=T=1）；对手模式：greedy。下表个人指标分别属于模型/对手，整局指标另列。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>局数/双座种子块</th>
+<th>胜/平/负</th>
+<th>纯胜率</th>
+<th>半平得分率</th>
+<th>纯胜配对95%CI</th>
+<th>半平配对95%CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4/2</td>
+<td>1/0/3</td>
+<td>25.0000%</td>
+<td>25.0000%</td>
+<td>0.0000% / 50.0000%</td>
+<td>0.0000% / 50.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>胜/平/负</th>
+<th>纯胜%</th>
+<th>半平%</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0（先手）</td>
+<td>2</td>
+<td>0/0/2</td>
+<td>0.0000</td>
+<td>0.0000</td>
+<td>10.5000</td>
+<td>15.0000</td>
+</tr>
+<tr>
+<td>P1（后手）</td>
+<td>2</td>
+<td>1/0/1</td>
+<td>50.0000</td>
+<td>50.0000</td>
+<td>15.0000</td>
+<td>15.0000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>被测模型</th>
+<th>对手</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最终VP/局</td>
+<td>12.7500</td>
+<td>15.0000</td>
+</tr>
+<tr>
+<td>VP/本人全部决策</td>
+<td>0.4857</td>
+<td>0.5660</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.4857</td>
+<td>0.5714</td>
+</tr>
+<tr>
+<td>VP/全局ply</td>
+<td>0.2417</td>
+<td>0.2844</td>
+</tr>
+<tr>
+<td>永久折扣/购卡每局</td>
+<td>11.7500</td>
+<td>13.5000</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>获得贵族的对局%</td>
+<td>0.0000</td>
+<td>75.0000</td>
+</tr>
+<tr>
+<td>预留获取/局</td>
+<td>2.7500</td>
+<td>1.7500</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.5000</td>
+<td>0.7500</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.2500</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>预留买回/获取%（总分母）</td>
+<td>54.5455</td>
+<td>42.8571</td>
+</tr>
+<tr>
+<td>购入0 VP卡/局</td>
+<td>5.2500</td>
+<td>7.2500</td>
+</tr>
+<tr>
+<td>购入1 VP卡/局</td>
+<td>3.0000</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>购入2 VP卡/局</td>
+<td>1.7500</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>购入3 VP卡/局</td>
+<td>1.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>购入4 VP卡/局</td>
+<td>0.5000</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>购入5 VP卡/局</td>
+<td>0.2500</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>White折扣/局</td>
+<td>1.2500</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>Blue折扣/局</td>
+<td>2.2500</td>
+<td>3.5000</td>
+</tr>
+<tr>
+<td>Green折扣/局</td>
+<td>3.0000</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>Red折扣/局</td>
+<td>2.7500</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>Black折扣/局</td>
+<td>2.5000</td>
+<td>2.5000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>动作 / 占本人全部决策</th>
+<th>模型次数 / %</th>
+<th>对手次数 / %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>buy_market</td>
+<td>41 / 39.0476%</td>
+<td>51 / 48.1132%</td>
+</tr>
+<tr>
+<td>buy_reserved</td>
+<td>6 / 5.7143%</td>
+<td>3 / 2.8302%</td>
+</tr>
+<tr>
+<td>take_tokens</td>
+<td>47 / 44.7619%</td>
+<td>44 / 41.5094%</td>
+</tr>
+<tr>
+<td>reserve_market</td>
+<td>11 / 10.4762%</td>
+<td>7 / 6.6038%</td>
+</tr>
+<tr>
+<td>reserve_deck</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>choose_noble</td>
+<td>0 / 0.0000%</td>
+<td>1 / 0.9434%</td>
+</tr>
+<tr>
+<td>pass</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>整局 / 两人共同指标</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总 / 均ply</td>
+<td>211 / 52.7500</td>
+</tr>
+<tr>
+<td>legacy决策轮：均 / 最小 / 中位 / 最大 / 总体SD</td>
+<td>26.5000 / 25.0000 / 26.5000 / 28.0000 / 1.1180</td>
+</tr>
+<tr>
+<td>Main轮均值</td>
+<td>26.2500</td>
+</tr>
+<tr>
+<td>绝对终局分差</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>分差≤2对局%</td>
+<td>50.0000</td>
+</tr>
+<tr>
+<td>对局监督墙钟秒：累计 / 均 / P95</td>
+<td>0.5473 / 0.1368 / 0.1658</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时间含启动、比赛、输出；累计单局秒数包含并行重叠，不等于整批墙钟。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>身份</th>
+<th>源码绑定的完整descriptor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>{'args': ['agent-prism-sample', '--weights', '/mnt/workspace/splendor-dsw/models/beta-m63-c4.json', '--seed', '64010001'], 'files': [{'path': '/mnt/workspace/splendor-dsw/models/beta-m63-c4.json', 'sha256': '3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12'}], 'program': '/mnt/workspace/splendor-dsw/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+<tr>
+<td>对手</td>
+<td>{'args': ['agent-heuristic-v02', '--seed', '20260926'], 'files': [], 'program': '/mnt/workspace/splendor-dsw/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+</tbody>
+</table></div>
+<h2>dsw2 完整结果（原生成阅读件）</h2>
+<h2>Prism 通用对战结果（DSW / SSH）</h2>
+<p><strong>产物：已完成全部固定网格，Rust规则回放验核与双方指标守恒通过。</strong></p>
+<p><strong>竞技：DEVELOPMENT_ONLY_NOT_PROMOTED。</strong>这是独立通用开发测量，没有执行任何里程碑正式晋级门。</p>
+<p><strong>风格：描述性数据。</strong>不凭单一更高/更低经济指标授予风格身份。</p>
+<p>候选按用户声明的完整模型名及导出SHA识别，未发布检查点仍须在名称中明确标注。每对手恰好双座种子块；个人表按模型身份归并，物理P0不总是候选。</p>
+<h3>候选匹配比较</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>候选</th>
+<th>共同对手</th>
+<th>本人指标</th>
+<th>单位</th>
+<th>首候选基线</th>
+<th>候选</th>
+<th>候选−基线</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>半平得分率</td>
+<td>百分点</td>
+<td>75.0000</td>
+<td>25.0000</td>
+<td><strong>↓ -50.0000</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人最终VP</td>
+<td>VP/局</td>
+<td>14.5000</td>
+<td>12.7500</td>
+<td><strong>↓ -1.7500</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人得分速度</td>
+<td>VP/Main</td>
+<td>0.5472</td>
+<td>0.4857</td>
+<td><strong>↓ -0.0615</strong></td>
+</tr>
+<tr>
+<td>M63 Beta c4 (unpublished training checkpoint)</td>
+<td>Heuristic development snapshot (agent-heuristic-v02; greedy)</td>
+<td>本人永久折扣</td>
+<td>个/局</td>
+<td>10.5000</td>
+<td>11.7500</td>
+<td><strong>↑ +1.2500</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>↑/↓仅为方向标记，不表示更好或差异显著。下面CI为逐对手描述性双座bootstrap；不做多门验收或发布。若只有一个种子块，CI退化，不能据此确认稳定性。</p>
+<h3>总体执行与来源</h3>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>记录</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>固定局数</td>
+<td>8</td>
+</tr>
+<tr>
+<td>并发进程 / 每进程库线程</td>
+<td>6 / 1</td>
+</tr>
+<tr>
+<td>累计已测活动墙钟秒（至报告前监测点）</td>
+<td>3.5793</td>
+</tr>
+<tr>
+<td>首次派发至报告生成秒（包含暂停）</td>
+<td>5.2739</td>
+</tr>
+<tr>
+<td>时钟范围</td>
+<td>standalone arena dispatch, saved replay audit and descriptive reports; excludes build/download</td>
+</tr>
+<tr>
+<td>资源监控</td>
+<td>observed process-tree soft limits; shared platform cgroups are not owned</td>
+</tr>
+<tr>
+<td>已测负载</td>
+<td>{'observed_processes': 2, 'peak_observed_rss_bytes': 190418944, 'process_tree_cpu_seconds': 1.99, 'process_tree_rss_sum_bytes': 64753664, 'scope': 'sampled live tree plus OS-accounted waited child CPU; RSS sum may double count shared pages'}</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+<tr>
+<td>配置SHA256</td>
+<td>ce376ebd98f31a209747db272b3a246e93534cb4dcf81bb99efea7069c6c7c23</td>
+</tr>
+<tr>
+<td>plan SHA256</td>
+<td>02aaa57ede757bf6218b0b169c90e74fb5ad73359327d739da34eba955bae51b</td>
+</tr>
+<tr>
+<td>engine SHA256</td>
+<td>6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f</td>
+</tr>
+<tr>
+<td>metrics SHA256</td>
+<td>39c630d5e0a9e0611ca4ec8c8b2e4a78817bf971c7bdc7446b614035aedbcb37</td>
+</tr>
+<tr>
+<td>Git基线 / 源码dirty</td>
+<td>NOT_AVAILABLE / None</td>
+</tr>
+<tr>
+<td>Bootstrap</td>
+<td>{'kind': 'descriptive paired seed blocks, not acceptance', 'samples': 20000, 'seed': 64049999}</td>
+</tr>
+<tr>
+<td>种子</td>
+<td>[64000000, 64000001]</td>
+</tr>
+<tr>
+<td>完整逐局来源</td>
+<td>source-ledger.json</td>
+</tr>
+<tr>
+<td>冻结源码SHA</td>
+<td>{'scripts/prism_cloud_storage_snapshot.py': 'b417e62c6aa2ce56ad2968ab0ac4c952b4a954514128a6923efc272129f5eb8c', 'scripts/prism_dsw_arena.py': '172b6f9edbb69b2d0fc139cd3ac4678d5f0392f97b59ebd09164467beda7b399', 'scripts/prism_match_details.py': '0f7fb79de0a65e60dfcb914716c99562fa44dd7673e6c1c0ea5ee4916ba11bc4', 'scripts/prism_notebook_arena.py': 'c2aa76f7b7cc50501d4fb3880dbe6b1cac85cb50c03dee0a1bf90da3933fa8a0', 'scripts/prism_notebook_report.py': 'bc7dd35146d795c28c8f8a7fb3910cfe3b832e88884de32b93a0d010ff6fd9ec', 'scripts/prism_ppo_fixed_eval.py': 'fb6683d0f0d91d92efafef1d136545b3dabf376e014e066b19beb43fe78aeacb'}</td>
+</tr>
+</tbody>
+</table></div>
+<h3>Prism Balance v0.1.0 (registered experimental model) 对阵 Heuristic development snapshot (agent-heuristic-v02; greedy)</h3>
+<p>被测模型模式：sample（sample=T=1）；对手模式：greedy。下表个人指标分别属于模型/对手，整局指标另列。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>局数/双座种子块</th>
+<th>胜/平/负</th>
+<th>纯胜率</th>
+<th>半平得分率</th>
+<th>纯胜配对95%CI</th>
+<th>半平配对95%CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4/2</td>
+<td>3/0/1</td>
+<td>75.0000%</td>
+<td>75.0000%</td>
+<td>50.0000% / 100.0000%</td>
+<td>50.0000% / 100.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>胜/平/负</th>
+<th>纯胜%</th>
+<th>半平%</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0（先手）</td>
+<td>2</td>
+<td>1/0/1</td>
+<td>50.0000</td>
+<td>50.0000</td>
+<td>14.0000</td>
+<td>14.5000</td>
+</tr>
+<tr>
+<td>P1（后手）</td>
+<td>2</td>
+<td>2/0/0</td>
+<td>100.0000</td>
+<td>100.0000</td>
+<td>15.0000</td>
+<td>12.5000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>被测模型</th>
+<th>对手</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最终VP/局</td>
+<td>14.5000</td>
+<td>13.5000</td>
+</tr>
+<tr>
+<td>VP/本人全部决策</td>
+<td>0.5472</td>
+<td>0.5094</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5472</td>
+<td>0.5094</td>
+</tr>
+<tr>
+<td>VP/全局ply</td>
+<td>0.2736</td>
+<td>0.2547</td>
+</tr>
+<tr>
+<td>永久折扣/购卡每局</td>
+<td>10.5000</td>
+<td>11.5000</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.2500</td>
+<td>0.5000</td>
+</tr>
+<tr>
+<td>获得贵族的对局%</td>
+<td>25.0000</td>
+<td>25.0000</td>
+</tr>
+<tr>
+<td>预留获取/局</td>
+<td>3.2500</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.7500</td>
+<td>0.7500</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.5000</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>预留买回/获取%（总分母）</td>
+<td>53.8462</td>
+<td>23.0769</td>
+</tr>
+<tr>
+<td>购入0 VP卡/局</td>
+<td>4.0000</td>
+<td>6.2500</td>
+</tr>
+<tr>
+<td>购入1 VP卡/局</td>
+<td>3.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>购入2 VP卡/局</td>
+<td>1.5000</td>
+<td>2.2500</td>
+</tr>
+<tr>
+<td>购入3 VP卡/局</td>
+<td>1.0000</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>购入4 VP卡/局</td>
+<td>0.2500</td>
+<td>0.5000</td>
+</tr>
+<tr>
+<td>购入5 VP卡/局</td>
+<td>0.7500</td>
+<td>0.2500</td>
+</tr>
+<tr>
+<td>White折扣/局</td>
+<td>0.7500</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>Blue折扣/局</td>
+<td>2.7500</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>Green折扣/局</td>
+<td>2.5000</td>
+<td>4.0000</td>
+</tr>
+<tr>
+<td>Red折扣/局</td>
+<td>2.0000</td>
+<td>1.7500</td>
+</tr>
+<tr>
+<td>Black折扣/局</td>
+<td>2.5000</td>
+<td>2.0000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>动作 / 占本人全部决策</th>
+<th>模型次数 / %</th>
+<th>对手次数 / %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>buy_market</td>
+<td>35 / 33.0189%</td>
+<td>43 / 40.5660%</td>
+</tr>
+<tr>
+<td>buy_reserved</td>
+<td>7 / 6.6038%</td>
+<td>3 / 2.8302%</td>
+</tr>
+<tr>
+<td>take_tokens</td>
+<td>51 / 48.1132%</td>
+<td>47 / 44.3396%</td>
+</tr>
+<tr>
+<td>reserve_market</td>
+<td>13 / 12.2642%</td>
+<td>13 / 12.2642%</td>
+</tr>
+<tr>
+<td>reserve_deck</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>choose_noble</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>pass</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>整局 / 两人共同指标</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总 / 均ply</td>
+<td>212 / 53.0000</td>
+</tr>
+<tr>
+<td>legacy决策轮：均 / 最小 / 中位 / 最大 / 总体SD</td>
+<td>26.5000 / 24.0000 / 26.0000 / 30.0000 / 2.2913</td>
+</tr>
+<tr>
+<td>Main轮均值</td>
+<td>26.5000</td>
+</tr>
+<tr>
+<td>绝对终局分差</td>
+<td>2.0000</td>
+</tr>
+<tr>
+<td>分差≤2对局%</td>
+<td>75.0000</td>
+</tr>
+<tr>
+<td>对局监督墙钟秒：累计 / 均 / P95</td>
+<td>0.9383 / 0.2346 / 0.2531</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时间含启动、比赛、输出；累计单局秒数包含并行重叠，不等于整批墙钟。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>身份</th>
+<th>源码绑定的完整descriptor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>{'args': ['agent-prism-sample', '--weights', '/mnt/workspace/splendor-dsw2/models/balance.json', '--seed', '64010001'], 'files': [{'path': '/mnt/workspace/splendor-dsw2/models/balance.json', 'sha256': '225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1'}], 'program': '/mnt/workspace/splendor-dsw2/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+<tr>
+<td>对手</td>
+<td>{'args': ['agent-heuristic-v02', '--seed', '20260926'], 'files': [], 'program': '/mnt/workspace/splendor-dsw2/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+</tbody>
+</table></div>
+<h3>M63 Beta c4 (unpublished training checkpoint) 对阵 Heuristic development snapshot (agent-heuristic-v02; greedy)</h3>
+<p>被测模型模式：sample（sample=T=1）；对手模式：greedy。下表个人指标分别属于模型/对手，整局指标另列。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>局数/双座种子块</th>
+<th>胜/平/负</th>
+<th>纯胜率</th>
+<th>半平得分率</th>
+<th>纯胜配对95%CI</th>
+<th>半平配对95%CI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4/2</td>
+<td>1/0/3</td>
+<td>25.0000%</td>
+<td>25.0000%</td>
+<td>0.0000% / 50.0000%</td>
+<td>0.0000% / 50.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>胜/平/负</th>
+<th>纯胜%</th>
+<th>半平%</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0（先手）</td>
+<td>2</td>
+<td>0/0/2</td>
+<td>0.0000</td>
+<td>0.0000</td>
+<td>10.5000</td>
+<td>15.0000</td>
+</tr>
+<tr>
+<td>P1（后手）</td>
+<td>2</td>
+<td>1/0/1</td>
+<td>50.0000</td>
+<td>50.0000</td>
+<td>15.0000</td>
+<td>15.0000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>被测模型</th>
+<th>对手</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最终VP/局</td>
+<td>12.7500</td>
+<td>15.0000</td>
+</tr>
+<tr>
+<td>VP/本人全部决策</td>
+<td>0.4857</td>
+<td>0.5660</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.4857</td>
+<td>0.5714</td>
+</tr>
+<tr>
+<td>VP/全局ply</td>
+<td>0.2417</td>
+<td>0.2844</td>
+</tr>
+<tr>
+<td>永久折扣/购卡每局</td>
+<td>11.7500</td>
+<td>13.5000</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>获得贵族的对局%</td>
+<td>0.0000</td>
+<td>75.0000</td>
+</tr>
+<tr>
+<td>预留获取/局</td>
+<td>2.7500</td>
+<td>1.7500</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.5000</td>
+<td>0.7500</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.2500</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>预留买回/获取%（总分母）</td>
+<td>54.5455</td>
+<td>42.8571</td>
+</tr>
+<tr>
+<td>购入0 VP卡/局</td>
+<td>5.2500</td>
+<td>7.2500</td>
+</tr>
+<tr>
+<td>购入1 VP卡/局</td>
+<td>3.0000</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>购入2 VP卡/局</td>
+<td>1.7500</td>
+<td>2.5000</td>
+</tr>
+<tr>
+<td>购入3 VP卡/局</td>
+<td>1.0000</td>
+<td>1.2500</td>
+</tr>
+<tr>
+<td>购入4 VP卡/局</td>
+<td>0.5000</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>购入5 VP卡/局</td>
+<td>0.2500</td>
+<td>0.0000</td>
+</tr>
+<tr>
+<td>White折扣/局</td>
+<td>1.2500</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>Blue折扣/局</td>
+<td>2.2500</td>
+<td>3.5000</td>
+</tr>
+<tr>
+<td>Green折扣/局</td>
+<td>3.0000</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>Red折扣/局</td>
+<td>2.7500</td>
+<td>1.0000</td>
+</tr>
+<tr>
+<td>Black折扣/局</td>
+<td>2.5000</td>
+<td>2.5000</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>动作 / 占本人全部决策</th>
+<th>模型次数 / %</th>
+<th>对手次数 / %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>buy_market</td>
+<td>41 / 39.0476%</td>
+<td>51 / 48.1132%</td>
+</tr>
+<tr>
+<td>buy_reserved</td>
+<td>6 / 5.7143%</td>
+<td>3 / 2.8302%</td>
+</tr>
+<tr>
+<td>take_tokens</td>
+<td>47 / 44.7619%</td>
+<td>44 / 41.5094%</td>
+</tr>
+<tr>
+<td>reserve_market</td>
+<td>11 / 10.4762%</td>
+<td>7 / 6.6038%</td>
+</tr>
+<tr>
+<td>reserve_deck</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+<tr>
+<td>choose_noble</td>
+<td>0 / 0.0000%</td>
+<td>1 / 0.9434%</td>
+</tr>
+<tr>
+<td>pass</td>
+<td>0 / 0.0000%</td>
+<td>0 / 0.0000%</td>
+</tr>
+</tbody>
+</table></div>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>整局 / 两人共同指标</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>总 / 均ply</td>
+<td>211 / 52.7500</td>
+</tr>
+<tr>
+<td>legacy决策轮：均 / 最小 / 中位 / 最大 / 总体SD</td>
+<td>26.5000 / 25.0000 / 26.5000 / 28.0000 / 1.1180</td>
+</tr>
+<tr>
+<td>Main轮均值</td>
+<td>26.2500</td>
+</tr>
+<tr>
+<td>绝对终局分差</td>
+<td>3.2500</td>
+</tr>
+<tr>
+<td>分差≤2对局%</td>
+<td>50.0000</td>
+</tr>
+<tr>
+<td>对局监督墙钟秒：累计 / 均 / P95</td>
+<td>0.8729 / 0.2182 / 0.2293</td>
+</tr>
+<tr>
+<td>逐决策 / 推理延迟</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table></div>
+<p>单局时间含启动、比赛、输出；累计单局秒数包含并行重叠，不等于整批墙钟。</p>
+<div class="scroll"><table>
+<thead>
+<tr>
+<th>身份</th>
+<th>源码绑定的完整descriptor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型</td>
+<td>{'args': ['agent-prism-sample', '--weights', '/mnt/workspace/splendor-dsw2/models/beta-m63-c4.json', '--seed', '64010001'], 'files': [{'path': '/mnt/workspace/splendor-dsw2/models/beta-m63-c4.json', 'sha256': '3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12'}], 'program': '/mnt/workspace/splendor-dsw2/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+<tr>
+<td>对手</td>
+<td>{'args': ['agent-heuristic-v02', '--seed', '20260926'], 'files': [], 'program': '/mnt/workspace/splendor-dsw2/bin/splendor', 'sha256': '6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f'}</td>
+</tr>
+</tbody>
+</table></div></body></html>

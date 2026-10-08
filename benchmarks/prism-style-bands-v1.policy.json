@@ -1,0 +1,18 @@
+{
+  "format": "prism-style-bands-policy-v1",
+  "status": "PROPOSED_DESCRIPTIVE_ENGINEERING_POLICY",
+  "scientific_scope": "Retrospective screening; numerical bands are engineering choices, not validated population cutoffs or old experiment gates",
+  "reference": "Exact registered Balance weights in same mode/opponents/seeds/seats; reject unmatched input",
+  "reference_sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+  "input_contract": "candidate/reference sha256, rules_sha256, observed_grid_sha256, observed_grid entries {opponent: exact weight/execution SHA256, seed, seat}, metrics_semantics, mode, opponent_fixture exact identities, seed_start/end, seats [0,1], games, missing_games=0. Verify full Cartesian grid and recompute digest excluding actor identity; range equality alone is insufficient.",
+  "metrics_semantics_id": "own-Main-12-24-v1",
+  "metrics_semantics": "own-Main-12-24-v1; first_big is first 4-5 printed VP purchase conditional mean plus coverage; early_low is own Main<=12 0-1VP purchases; redemption credits actual later purchases <=24 using pre-purchase discounts, cap3 per investment/cap24 per game",
+  "alpha": {"big_printed_vp_delta_min": 0.5, "low_vp_share_delta_max": -0.02, "first_big_main_delta_max": -1.0, "first_big_coverage_delta_min": -0.05},
+  "beta": {"low_vp_share_delta_min": 0.02, "low_vp_cards_delta_min": 0.3, "early_low_vp_cards_delta_min": 0.3, "early_discount_redemptions_delta_min": 0.3},
+  "balance": {"low_vp_share_delta_abs_max": 0.02, "big_printed_vp_delta_abs_max": 0.5, "early_low_vp_cards_delta_abs_max": 0.3, "first_big_main_delta_abs_max": 1.0, "first_big_coverage_delta_abs_max": 0.05, "noble_coverage_delta_abs_max": 0.05},
+  "missing": "undetermined/INSUFFICIENT; per-route missing lists and provisional_hits; unknown alternative routes prevent exclusive assignment; never zero-fill",
+  "overlap": "mixed; no Alpha priority",
+  "confidence": "No CONFIRMED_IN_SCOPE from this retrospective policy; future independent policy must prefreeze paired intervals, effect sizes and opponent consistency",
+  "percentiles": "midrank=(count lower + 0.5 count equal)/count; per fixed comparison group, exploratory only; do not treat games as independent models",
+  "version_proposal": "Prism Alpha v0.2.0 / Prism Beta v0.2.0 / Prism Balance v0.2.0 reserved naming proposal; no release or historical renaming"
+}

@@ -1,0 +1,116 @@
+{
+  "model_id": "prism-balance-v0.2.0",
+  "model_version": "0.2.0",
+  "display_name": "Prism Balance v0.2.0",
+  "route": "balance",
+  "route_assignment_source": "human_owner",
+  "observed_route": "owner-designated Balance route; balanced style not statistically confirmed",
+  "original_checkpoint": "M67 B-c20",
+  "parent": {
+    "display_name": "Prism Alpha v0.1.5",
+    "model_id": "prism-alpha-v0.1.5",
+    "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+    "weights_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+    "source_weights": "local-artifacts/prism/alpha-v0.1.5/weights.json"
+  },
+  "origin": {
+    "milestone": "M67",
+    "arm": "b",
+    "cycle": 20
+  },
+  "source_weights": "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.json",
+  "source_companion": "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.manifest.json",
+  "source_companion_sha256": "cee1fca35cce841d4e52530ba9b9f569df351e646df56520cd9c5bcc9821d4ec",
+  "companion_derivation": "Original execution manifest unchanged",
+  "weights_path": "local-artifacts/prism/balance-v0.2.0/weights.json",
+  "weights_sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+  "original_result": "benchmarks/m67-prism-alpha-repeat.result.json",
+  "original_config": "benchmarks/m67-prism-alpha-repeat.config.json",
+  "artifact_audit": "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/audits/b/audit.json",
+  "greedy_evidence": [
+    {
+      "result": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/result.json",
+      "config": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/config.json",
+      "plan": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/plan.json",
+      "completion": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/completion.json"
+    },
+    {
+      "result": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/result.json",
+      "config": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/config.json",
+      "plan": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/plan.json",
+      "completion": "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/completion.json"
+    }
+  ],
+  "source_hashes": {
+    "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.json": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+    "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.manifest.json": "cee1fca35cce841d4e52530ba9b9f569df351e646df56520cd9c5bcc9821d4ec",
+    "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/audits/b/audit.json": "3cb6720271d2f0485a8cb562cdd8bfbd8b546390046fa01c8e147b4d8692b9de",
+    "benchmarks/m67-prism-alpha-repeat.result.json": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+    "benchmarks/m67-prism-alpha-repeat.config.json": "cf98d10153b5a3a5c08f78c0fd000e94f53d8d553b70de710183234f35c3659c",
+    "local-artifacts/prism/alpha-v0.1.5/weights.json": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/result.json": "8924cc02715330cab085eb88a5f97f96f909ef0856ea4e8cb0d1bf92f004a71e",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/config.json": "c89d92f50b0c460ce3e92847b8fcc81dae3603b507c0079e11a425a089735775",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/plan.json": "4fdda24703777b009954b11a7e078c40358a7ea36c7b48c7a9b2697d5fa97668",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-common/completion.json": "efb5a14e11fc0fdd3b054c285c823706725fd2d6689de36deef35dcbcb38ad13",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/result.json": "90ec31751cb444a4b65ad0e4604397b22e4a3640e521d2b1d49f5c3eae612a77",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/config.json": "3f124956a6ead97f966d184a8d3ccf078d082e4542d0853814f2a10ee8d7ac2f",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/plan.json": "5a94e91185a9d3fbbcee2c861fe4d6977b50be85b61ce6ce18690a741a004eb4",
+    "local-artifacts/prism/style-atlas-20261008/release-r4/m67-evidence/evaluation/b-direct/completion.json": "a32b6c0e52b3dc7662187b6cd5f15cd72370f26648c72cafb5966597b81fe513"
+  },
+  "style_evidence_level": "INSUFFICIENT_FOR_BALANCE_CONFIRMATION",
+  "designated_data_baseline": true,
+  "reference_baseline_model_id": "prism-balance-v0.2.0",
+  "retained_limitations": [
+    "Balance route chosen by owner; no positive equivalence-style confirmation",
+    "Original B enhancement PASS in frozen evaluation scope"
+  ],
+  "route_history": [
+    {
+      "state": "ORIGINAL_RESEARCH_LABEL",
+      "route": "Alpha research lineage",
+      "checkpoint": "M67 B-c20"
+    },
+    {
+      "state": "OWNER_RELEASE_ASSIGNMENT",
+      "route": "balance",
+      "date": "2026-10-08"
+    }
+  ],
+  "report_path": "docs/prism/style-atlas-2026-10-08.html",
+  "format": "prism-experimental-model-identity-v1",
+  "status": "RELEASED_EXPERIMENTAL_MODEL",
+  "identity_status": "RELEASED_EXPERIMENTAL_MODEL",
+  "authorization": {
+    "source": "human_owner",
+    "date": "2026-10-08",
+    "request": "那先给B的设置成balance的数据基线吧 A大牌 之后固定版本 以及给M70的也相对应固定版本",
+    "version_resolution": "v0.2.0 synchronized starting generation; M70 is Balance successor v0.2.1"
+  },
+  "released_at": "2026-10-08T10:05:22.251364+00:00",
+  "companion_path": "local-artifacts/prism/balance-v0.2.0/weights.manifest.json",
+  "companion_sha256": "cee1fca35cce841d4e52530ba9b9f569df351e646df56520cd9c5bcc9821d4ec",
+  "original_research_verdict": {
+    "competitive_retention": {
+      "a": "DESCRIPTIVE_PASS_WITH_RETAINED_GAPS",
+      "b": "PASS"
+    },
+    "default_replaced": false,
+    "overall_enhancement": {
+      "a": "DESCRIPTIVE_EVIDENCE_WITH_RETAINED_GAPS",
+      "b": "CONFIRMED"
+    },
+    "population_robustness": "NOT_ESTABLISHED",
+    "published": false,
+    "repeated_efficacy": "NOT_CONFIRMED",
+    "retained_gaps_count": 5,
+    "same_budget_m66_repeat": false,
+    "style": "OBSERVED_PROFILE_NOT_A_VETO"
+  },
+  "default_replaced": false,
+  "pool_deployed": false,
+  "studio_deployed": false,
+  "git_published": false,
+  "identity_registration_games": 0,
+  "identity_registration_training_updates": 0,
+  "release_semantics": "Owner-selected fixed research version. Balance reference is a designated data baseline, not confirmed balanced style or default champion."
+}

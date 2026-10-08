@@ -1,0 +1,288 @@
+{
+  "all_strength_gates_passed": false,
+  "analyzer": {
+    "path": "scripts/prism_strength_acceptance.py",
+    "sha256": "bbfb99ba13bf637f6b358b956ab3e67c88d672db0e86bb8fcc43f2e00af94ceb"
+  },
+  "anchor_results": {
+    "c8": {
+      "heuristic-v031": {
+        "draws": 2,
+        "games": 512,
+        "losses": 198,
+        "mean_candidate_score": 14.814453125,
+        "mean_opponent_score": 13.4296875,
+        "mean_plies": 53.14453125,
+        "score_rate": 0.611328125,
+        "wins": 312
+      },
+      "prism-v01": {
+        "draws": 4,
+        "games": 512,
+        "losses": 187,
+        "mean_candidate_score": 14.576171875,
+        "mean_opponent_score": 13.525390625,
+        "mean_plies": 53.49609375,
+        "score_rate": 0.630859375,
+        "wins": 321
+      }
+    },
+    "parent": {
+      "heuristic-v031": {
+        "draws": 3,
+        "games": 512,
+        "losses": 223,
+        "mean_candidate_score": 14.509765625,
+        "mean_opponent_score": 13.802734375,
+        "mean_plies": 53.4140625,
+        "score_rate": 0.5615234375,
+        "wins": 286
+      },
+      "prism-v01": {
+        "draws": 4,
+        "games": 512,
+        "losses": 236,
+        "mean_candidate_score": 14.15234375,
+        "mean_opponent_score": 13.96875,
+        "mean_plies": 53.591796875,
+        "score_rate": 0.53515625,
+        "wins": 272
+      }
+    }
+  },
+  "candidate": {
+    "label": "trial-v2-c8",
+    "prospective_model_version": "prism-v0.2.0",
+    "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "weights_path": "local-artifacts/prism/ppo-trial-v2/campaign/cycle-8-export/weights.json"
+  },
+  "complete_grid_terminal_no_failures": true,
+  "contract": {
+    "path": "benchmarks\\m54-prism-v02-acceptance-v1.config.json",
+    "sha256": "4e849130a065958cf0694717d64a9ac33078aad5aa3f1ff43ee001eaa95f96da"
+  },
+  "direct_duel_wdl": {
+    "draws": 5,
+    "games": 512,
+    "losses": 229,
+    "mean_candidate_score": 14.306640625,
+    "mean_opponent_score": 13.83203125,
+    "mean_plies": 53.828125,
+    "score_rate": 0.5478515625,
+    "wins": 278
+  },
+  "evidence": [
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-0/result.json",
+      "sha256": "65b7dbab7c165729d4d7869313bd2d6d8ad3c90d70bc783a924def5a77cff877"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-0/progress.json",
+      "sha256": "704c68abadfad24c00e1da2681246040322af67364d7ce8d5544028b41339097"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-0/completion.json",
+      "sha256": "df3d5c80eca0d131389711db4cb0e7452030716e7b1436910a5b7ec99d6fcc58"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-1/result.json",
+      "sha256": "f344dde4b54ed24d737b225b7b64a71ee8d960d18450e786c45f0172d58e6ebe"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-1/progress.json",
+      "sha256": "773763a863fb2c5819d729a6a29a02c62172531497149879ad8fb679bdc97464"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-1/completion.json",
+      "sha256": "c8a7fa6a098345a5ba89004c64cc7a2a6de11501a46384ea620e20f9bc5deab9"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-2/result.json",
+      "sha256": "819ff8a78afa49a4059dbe6d8ba2ddce5421a6f9fb4d8a48edbd0b5a472ee26c"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-2/progress.json",
+      "sha256": "2d8720200ecb54171517c288b4600b64a632376f97850c96a3882c437ae67e61"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-2/completion.json",
+      "sha256": "2d975498a47f96521a0c0e5644d8e428f8f9b933d558bda3f601d5052789d2bb"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-3/result.json",
+      "sha256": "3dd62fe3258c2f5fa6e497a3082c67c842dbdfcb72c95b77bda39325dcb0cf34"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-3/progress.json",
+      "sha256": "d4e08e66c2ba2a6f60d2a49cc5cd9b73171277297c4fcb81a382668f8c4a57fe"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-3/completion.json",
+      "sha256": "433b73dd7cf6a03f767cfd521bff4044c783c6d9afd4232b53378cc36ff6cd23"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-4/result.json",
+      "sha256": "de46db92b8e53a5b28204e31586bb894002ffd75aa9ddab2c3cbf1a741e3a4b6"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-4/progress.json",
+      "sha256": "4966255520a3814fd495f7ef620b07a45df25898cc03e76380b631296ede53ec"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-4/completion.json",
+      "sha256": "f75463aa5e39a4601f583ed6f43766a30f217481facd4bf7cde4171cc4076323"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-5/result.json",
+      "sha256": "867477ec14d156b84813c68f47b96525aeff072c73e489e53856d19dc20fb059"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-5/progress.json",
+      "sha256": "433a6ba59e34d409bd7bec804ffc84e81063e4780c0fc1e95593ea96170ef867"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-5/completion.json",
+      "sha256": "be67041283a40471bbed9d0743ba438de1065fa2b94d885ac2d11182bc6088ca"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-6/result.json",
+      "sha256": "19f7d1f7617826007517cfee29aa3c34ee198d9285a8ada1b305e67f4945002a"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-6/progress.json",
+      "sha256": "3abbf60815f8ee5ee1b8e358eb6dd9bebaa859278d321f7eca47dc636edd7d23"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-6/completion.json",
+      "sha256": "34d989a2e18a55eafa0a9b84d9560fb5b36678bd5ac3582870db67df00ecee26"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-7/result.json",
+      "sha256": "aaf681bc0fd37b69a6403fd4b00d00090be437d354cfc8e8e8dc288f59752bdc"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-7/progress.json",
+      "sha256": "03d0e4d8d1e9a7436a5b7775035c7eabc390f4cae9e87c4a7bfb5a672a8014be"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/anchors-7/completion.json",
+      "sha256": "7161b43544361e88a650bdd7f21d29421ee29fe323d4981f4f9c171d217cabc1"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-0/result.json",
+      "sha256": "7d4143356ec138021256d332894124a067129aa28e73e42762dbbde84f6ae074"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-0/progress.json",
+      "sha256": "245ac69b98e8ca8a5c5db4e269e7e51d75629383ed5b28fac700ab31d3d9fd1d"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-0/completion.json",
+      "sha256": "ec5f6a9fa2ff30b793636e2849ed1d89c0063d11049a97d35279c3c15681b255"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-1/result.json",
+      "sha256": "97856db03044fc2e7f465fe2442d856f8def6d2fb186dcd1f4a7e46dc13e4a1a"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-1/progress.json",
+      "sha256": "80e69f8ddcd6c0a2cb899735830502fe300e137299708682830930eb546f5ac4"
+    },
+    {
+      "path": "local-artifacts/prism/acceptance-v1/duel-1/completion.json",
+      "sha256": "8e46a2fa0e586cef9b34812358537abdec7dddb1b9dcc90f558933dd5e182079"
+    }
+  ],
+  "format": "m54-prism-strength-acceptance-result-v1",
+  "games": 2560,
+  "gates": {
+    "anchor_noninferiority/heuristic-v031": true,
+    "anchor_noninferiority/prism-v01": true,
+    "direct_parent_superiority": false,
+    "pooled_anchors_superiority": true
+  },
+  "independent_holdout": true,
+  "independent_review_performed": false,
+  "measurements": {
+    "anchor_deltas": {
+      "heuristic-v031": {
+        "ci95": [
+          -0.0068359375,
+          0.10549316406249787
+        ],
+        "mean": 0.0498046875,
+        "simultaneous_one_sided_lower": -0.015625
+      },
+      "prism-v01": {
+        "ci95": [
+          0.0419921875,
+          0.1494140625
+        ],
+        "mean": 0.095703125,
+        "simultaneous_one_sided_lower": 0.0341796875
+      }
+    },
+    "direct_duel": {
+      "ci95": [
+        0.505859375,
+        0.5898681640624979
+      ],
+      "mean": 0.5478515625,
+      "simultaneous_one_sided_lower": 0.5
+    },
+    "pooled_delta": {
+      "ci95": [
+        0.03271484375,
+        0.1123046875
+      ],
+      "mean": 0.07275390625,
+      "simultaneous_one_sided_lower": 0.02587890625
+    }
+  },
+  "model_version": null,
+  "no_training_updates": true,
+  "not_style_cohort_acceptance": true,
+  "observed_utc": "2026-10-02T06:31:38.425839+00:00",
+  "parent": {
+    "label": "trial-v1-c8",
+    "sha256": "cb7c4fb33ac7666706213ca4138f80104dacc5151b2385b9532bfebbe82025ac",
+    "weights_path": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-8-export/weights.json"
+  },
+  "plan": {
+    "path": "local-artifacts\\prism\\acceptance-v1\\plan.json",
+    "sha256": "7ed26cf9190df0766591ca8321fb61f3f3a30648047687d9b949c45feb2719bc"
+  },
+  "production_default_changed": false,
+  "seed_blocks": 256,
+  "shared_pool_changed": false,
+  "statistics": {
+    "bonferroni_lower_quantile": 0.0125,
+    "family_alpha": 0.05,
+    "method": "paired environment-seed block percentile bootstrap",
+    "one_sided_gate_count": 4,
+    "report_two_sided_ci95": true,
+    "samples": 20000,
+    "seed": 54039999,
+    "single_final_analysis_no_optional_stopping": true
+  },
+  "status": "NOT_ACCEPTED",
+  "execution": {
+    "run_receipt": {
+      "path": "local-artifacts/prism/acceptance-v1/run-receipt.json",
+      "sha256": "9f450e9d639280b28c772be3dd58808eaddfa8cee7b7f6548aa4503bc830e7be"
+    },
+    "elapsed_seconds": 751.6987988948822,
+    "workers": 4,
+    "returncode": 0,
+    "formal_games": 2560,
+    "speed_games": 64
+  },
+  "speed_comparison": {
+    "path": "local-artifacts/prism/acceptance-v1/speed-comparison.json",
+    "sha256": "8c1243af42ad7bd0e2d919d197001b65d4d85cd5e1c5e62f08e3f29ae2d9bbe2"
+  },
+  "full_report": {
+    "path": "local-artifacts/prism/acceptance-v1/full-result.json",
+    "sha256": "95015af108166995ca3aa34f061624a2a7572cb6a01bdfd0006d4a2d578f7019"
+  }
+}

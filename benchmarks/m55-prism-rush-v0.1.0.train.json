@@ -1,0 +1,6271 @@
+{
+  "arena": {
+    "engine_version": "0.4.0",
+    "program": "local-artifacts/prism/ppo-arena-v1/bin/splendor-ppo.exe",
+    "protocol_version": "0.5",
+    "ruleset": "splendor-base-v1",
+    "sha256": "2c0aba78ab1bef8d5e8ac85223277e137a74a931c12a22a9b016706c4d8aa321"
+  },
+  "cycles": [
+    [
+      {
+        "actor": 0,
+        "environment_seed": 9480000,
+        "job_id": "m55-rush-c1-prism-v01-b00-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480000,
+        "job_id": "m55-rush-c1-prism-v01-b00-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480001,
+        "job_id": "m55-rush-c1-heuristic-v031-b00-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480001,
+        "job_id": "m55-rush-c1-heuristic-v031-b00-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480002,
+        "job_id": "m55-rush-c1-prism-v01-b01-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480002,
+        "job_id": "m55-rush-c1-prism-v01-b01-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480003,
+        "job_id": "m55-rush-c1-heuristic-v031-b01-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480003,
+        "job_id": "m55-rush-c1-heuristic-v031-b01-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480004,
+        "job_id": "m55-rush-c1-prism-v01-b02-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480004,
+        "job_id": "m55-rush-c1-prism-v01-b02-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480005,
+        "job_id": "m55-rush-c1-heuristic-v031-b02-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480005,
+        "job_id": "m55-rush-c1-heuristic-v031-b02-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480006,
+        "job_id": "m55-rush-c1-prism-v01-b03-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480006,
+        "job_id": "m55-rush-c1-prism-v01-b03-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480007,
+        "job_id": "m55-rush-c1-heuristic-v031-b03-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480007,
+        "job_id": "m55-rush-c1-heuristic-v031-b03-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480008,
+        "job_id": "m55-rush-c1-prism-v01-b04-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480008,
+        "job_id": "m55-rush-c1-prism-v01-b04-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480009,
+        "job_id": "m55-rush-c1-heuristic-v031-b04-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480009,
+        "job_id": "m55-rush-c1-heuristic-v031-b04-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480010,
+        "job_id": "m55-rush-c1-prism-v01-b05-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480010,
+        "job_id": "m55-rush-c1-prism-v01-b05-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480011,
+        "job_id": "m55-rush-c1-heuristic-v031-b05-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480011,
+        "job_id": "m55-rush-c1-heuristic-v031-b05-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480012,
+        "job_id": "m55-rush-c1-prism-v01-b06-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480012,
+        "job_id": "m55-rush-c1-prism-v01-b06-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480013,
+        "job_id": "m55-rush-c1-heuristic-v031-b06-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480013,
+        "job_id": "m55-rush-c1-heuristic-v031-b06-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480014,
+        "job_id": "m55-rush-c1-prism-v01-b07-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480014,
+        "job_id": "m55-rush-c1-prism-v01-b07-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480015,
+        "job_id": "m55-rush-c1-heuristic-v031-b07-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480015,
+        "job_id": "m55-rush-c1-heuristic-v031-b07-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480016,
+        "job_id": "m55-rush-c1-prism-v01-b08-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480016,
+        "job_id": "m55-rush-c1-prism-v01-b08-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480017,
+        "job_id": "m55-rush-c1-heuristic-v031-b08-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480017,
+        "job_id": "m55-rush-c1-heuristic-v031-b08-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480018,
+        "job_id": "m55-rush-c1-prism-v01-b09-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480018,
+        "job_id": "m55-rush-c1-prism-v01-b09-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480019,
+        "job_id": "m55-rush-c1-heuristic-v031-b09-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480019,
+        "job_id": "m55-rush-c1-heuristic-v031-b09-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480020,
+        "job_id": "m55-rush-c1-prism-v01-b10-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480020,
+        "job_id": "m55-rush-c1-prism-v01-b10-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480021,
+        "job_id": "m55-rush-c1-heuristic-v031-b10-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480021,
+        "job_id": "m55-rush-c1-heuristic-v031-b10-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480022,
+        "job_id": "m55-rush-c1-prism-v01-b11-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480022,
+        "job_id": "m55-rush-c1-prism-v01-b11-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480023,
+        "job_id": "m55-rush-c1-heuristic-v031-b11-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480023,
+        "job_id": "m55-rush-c1-heuristic-v031-b11-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480024,
+        "job_id": "m55-rush-c1-prism-v01-b12-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480024,
+        "job_id": "m55-rush-c1-prism-v01-b12-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480025,
+        "job_id": "m55-rush-c1-heuristic-v031-b12-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480025,
+        "job_id": "m55-rush-c1-heuristic-v031-b12-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480026,
+        "job_id": "m55-rush-c1-prism-v01-b13-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480026,
+        "job_id": "m55-rush-c1-prism-v01-b13-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480027,
+        "job_id": "m55-rush-c1-heuristic-v031-b13-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480027,
+        "job_id": "m55-rush-c1-heuristic-v031-b13-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480028,
+        "job_id": "m55-rush-c1-prism-v01-b14-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480028,
+        "job_id": "m55-rush-c1-prism-v01-b14-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480029,
+        "job_id": "m55-rush-c1-heuristic-v031-b14-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480029,
+        "job_id": "m55-rush-c1-heuristic-v031-b14-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480030,
+        "job_id": "m55-rush-c1-prism-v01-b15-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480030,
+        "job_id": "m55-rush-c1-prism-v01-b15-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480031,
+        "job_id": "m55-rush-c1-heuristic-v031-b15-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480031,
+        "job_id": "m55-rush-c1-heuristic-v031-b15-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480032,
+        "job_id": "m55-rush-c1-prism-v01-b16-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480032,
+        "job_id": "m55-rush-c1-prism-v01-b16-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480033,
+        "job_id": "m55-rush-c1-heuristic-v031-b16-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480033,
+        "job_id": "m55-rush-c1-heuristic-v031-b16-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480034,
+        "job_id": "m55-rush-c1-prism-v01-b17-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480034,
+        "job_id": "m55-rush-c1-prism-v01-b17-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480035,
+        "job_id": "m55-rush-c1-heuristic-v031-b17-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480035,
+        "job_id": "m55-rush-c1-heuristic-v031-b17-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480036,
+        "job_id": "m55-rush-c1-prism-v01-b18-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480036,
+        "job_id": "m55-rush-c1-prism-v01-b18-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480037,
+        "job_id": "m55-rush-c1-heuristic-v031-b18-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480037,
+        "job_id": "m55-rush-c1-heuristic-v031-b18-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480038,
+        "job_id": "m55-rush-c1-prism-v01-b19-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480038,
+        "job_id": "m55-rush-c1-prism-v01-b19-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480039,
+        "job_id": "m55-rush-c1-heuristic-v031-b19-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480039,
+        "job_id": "m55-rush-c1-heuristic-v031-b19-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480040,
+        "job_id": "m55-rush-c1-prism-v01-b20-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480040,
+        "job_id": "m55-rush-c1-prism-v01-b20-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480041,
+        "job_id": "m55-rush-c1-heuristic-v031-b20-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480041,
+        "job_id": "m55-rush-c1-heuristic-v031-b20-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480042,
+        "job_id": "m55-rush-c1-prism-v01-b21-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480042,
+        "job_id": "m55-rush-c1-prism-v01-b21-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480043,
+        "job_id": "m55-rush-c1-heuristic-v031-b21-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480043,
+        "job_id": "m55-rush-c1-heuristic-v031-b21-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480044,
+        "job_id": "m55-rush-c1-prism-v01-b22-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480044,
+        "job_id": "m55-rush-c1-prism-v01-b22-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480045,
+        "job_id": "m55-rush-c1-heuristic-v031-b22-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480045,
+        "job_id": "m55-rush-c1-heuristic-v031-b22-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480046,
+        "job_id": "m55-rush-c1-prism-v01-b23-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480046,
+        "job_id": "m55-rush-c1-prism-v01-b23-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480047,
+        "job_id": "m55-rush-c1-heuristic-v031-b23-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480047,
+        "job_id": "m55-rush-c1-heuristic-v031-b23-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480048,
+        "job_id": "m55-rush-c1-prism-v01-b24-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480048,
+        "job_id": "m55-rush-c1-prism-v01-b24-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480049,
+        "job_id": "m55-rush-c1-heuristic-v031-b24-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480049,
+        "job_id": "m55-rush-c1-heuristic-v031-b24-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480050,
+        "job_id": "m55-rush-c1-prism-v01-b25-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480050,
+        "job_id": "m55-rush-c1-prism-v01-b25-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480051,
+        "job_id": "m55-rush-c1-heuristic-v031-b25-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480051,
+        "job_id": "m55-rush-c1-heuristic-v031-b25-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480052,
+        "job_id": "m55-rush-c1-prism-v01-b26-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480052,
+        "job_id": "m55-rush-c1-prism-v01-b26-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480053,
+        "job_id": "m55-rush-c1-heuristic-v031-b26-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480053,
+        "job_id": "m55-rush-c1-heuristic-v031-b26-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480054,
+        "job_id": "m55-rush-c1-prism-v01-b27-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480054,
+        "job_id": "m55-rush-c1-prism-v01-b27-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480055,
+        "job_id": "m55-rush-c1-heuristic-v031-b27-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480055,
+        "job_id": "m55-rush-c1-heuristic-v031-b27-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480056,
+        "job_id": "m55-rush-c1-prism-v01-b28-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480056,
+        "job_id": "m55-rush-c1-prism-v01-b28-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480057,
+        "job_id": "m55-rush-c1-heuristic-v031-b28-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480057,
+        "job_id": "m55-rush-c1-heuristic-v031-b28-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480058,
+        "job_id": "m55-rush-c1-prism-v01-b29-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480058,
+        "job_id": "m55-rush-c1-prism-v01-b29-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480059,
+        "job_id": "m55-rush-c1-heuristic-v031-b29-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480059,
+        "job_id": "m55-rush-c1-heuristic-v031-b29-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480060,
+        "job_id": "m55-rush-c1-prism-v01-b30-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480060,
+        "job_id": "m55-rush-c1-prism-v01-b30-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480061,
+        "job_id": "m55-rush-c1-heuristic-v031-b30-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480061,
+        "job_id": "m55-rush-c1-heuristic-v031-b30-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480062,
+        "job_id": "m55-rush-c1-prism-v01-b31-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480062,
+        "job_id": "m55-rush-c1-prism-v01-b31-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480063,
+        "job_id": "m55-rush-c1-heuristic-v031-b31-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480063,
+        "job_id": "m55-rush-c1-heuristic-v031-b31-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480064,
+        "job_id": "m55-rush-c1-prism-v01-b32-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480064,
+        "job_id": "m55-rush-c1-prism-v01-b32-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480065,
+        "job_id": "m55-rush-c1-heuristic-v031-b32-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480065,
+        "job_id": "m55-rush-c1-heuristic-v031-b32-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480066,
+        "job_id": "m55-rush-c1-prism-v01-b33-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480066,
+        "job_id": "m55-rush-c1-prism-v01-b33-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480067,
+        "job_id": "m55-rush-c1-heuristic-v031-b33-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480067,
+        "job_id": "m55-rush-c1-heuristic-v031-b33-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480068,
+        "job_id": "m55-rush-c1-prism-v01-b34-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480068,
+        "job_id": "m55-rush-c1-prism-v01-b34-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480069,
+        "job_id": "m55-rush-c1-heuristic-v031-b34-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480069,
+        "job_id": "m55-rush-c1-heuristic-v031-b34-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480070,
+        "job_id": "m55-rush-c1-prism-v01-b35-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480070,
+        "job_id": "m55-rush-c1-prism-v01-b35-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480071,
+        "job_id": "m55-rush-c1-heuristic-v031-b35-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480071,
+        "job_id": "m55-rush-c1-heuristic-v031-b35-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480072,
+        "job_id": "m55-rush-c1-prism-v01-b36-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480072,
+        "job_id": "m55-rush-c1-prism-v01-b36-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480073,
+        "job_id": "m55-rush-c1-heuristic-v031-b36-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480073,
+        "job_id": "m55-rush-c1-heuristic-v031-b36-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480074,
+        "job_id": "m55-rush-c1-prism-v01-b37-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480074,
+        "job_id": "m55-rush-c1-prism-v01-b37-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480075,
+        "job_id": "m55-rush-c1-heuristic-v031-b37-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480075,
+        "job_id": "m55-rush-c1-heuristic-v031-b37-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480076,
+        "job_id": "m55-rush-c1-prism-v01-b38-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480076,
+        "job_id": "m55-rush-c1-prism-v01-b38-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480077,
+        "job_id": "m55-rush-c1-heuristic-v031-b38-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480077,
+        "job_id": "m55-rush-c1-heuristic-v031-b38-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480078,
+        "job_id": "m55-rush-c1-prism-v01-b39-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480078,
+        "job_id": "m55-rush-c1-prism-v01-b39-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480079,
+        "job_id": "m55-rush-c1-heuristic-v031-b39-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480079,
+        "job_id": "m55-rush-c1-heuristic-v031-b39-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480080,
+        "job_id": "m55-rush-c1-prism-v01-b40-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480080,
+        "job_id": "m55-rush-c1-prism-v01-b40-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480081,
+        "job_id": "m55-rush-c1-heuristic-v031-b40-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480081,
+        "job_id": "m55-rush-c1-heuristic-v031-b40-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480082,
+        "job_id": "m55-rush-c1-prism-v01-b41-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480082,
+        "job_id": "m55-rush-c1-prism-v01-b41-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480083,
+        "job_id": "m55-rush-c1-heuristic-v031-b41-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480083,
+        "job_id": "m55-rush-c1-heuristic-v031-b41-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480084,
+        "job_id": "m55-rush-c1-prism-v01-b42-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480084,
+        "job_id": "m55-rush-c1-prism-v01-b42-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480085,
+        "job_id": "m55-rush-c1-heuristic-v031-b42-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480085,
+        "job_id": "m55-rush-c1-heuristic-v031-b42-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480086,
+        "job_id": "m55-rush-c1-prism-v01-b43-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480086,
+        "job_id": "m55-rush-c1-prism-v01-b43-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480087,
+        "job_id": "m55-rush-c1-heuristic-v031-b43-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480087,
+        "job_id": "m55-rush-c1-heuristic-v031-b43-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480088,
+        "job_id": "m55-rush-c1-prism-v01-b44-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480088,
+        "job_id": "m55-rush-c1-prism-v01-b44-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480089,
+        "job_id": "m55-rush-c1-heuristic-v031-b44-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480089,
+        "job_id": "m55-rush-c1-heuristic-v031-b44-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480090,
+        "job_id": "m55-rush-c1-prism-v01-b45-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480090,
+        "job_id": "m55-rush-c1-prism-v01-b45-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480091,
+        "job_id": "m55-rush-c1-heuristic-v031-b45-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480091,
+        "job_id": "m55-rush-c1-heuristic-v031-b45-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480092,
+        "job_id": "m55-rush-c1-prism-v01-b46-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480092,
+        "job_id": "m55-rush-c1-prism-v01-b46-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480093,
+        "job_id": "m55-rush-c1-heuristic-v031-b46-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480093,
+        "job_id": "m55-rush-c1-heuristic-v031-b46-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480094,
+        "job_id": "m55-rush-c1-prism-v01-b47-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480094,
+        "job_id": "m55-rush-c1-prism-v01-b47-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480095,
+        "job_id": "m55-rush-c1-heuristic-v031-b47-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480095,
+        "job_id": "m55-rush-c1-heuristic-v031-b47-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480096,
+        "job_id": "m55-rush-c1-prism-v01-b48-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480096,
+        "job_id": "m55-rush-c1-prism-v01-b48-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480097,
+        "job_id": "m55-rush-c1-heuristic-v031-b48-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480097,
+        "job_id": "m55-rush-c1-heuristic-v031-b48-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480098,
+        "job_id": "m55-rush-c1-prism-v01-b49-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480098,
+        "job_id": "m55-rush-c1-prism-v01-b49-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480099,
+        "job_id": "m55-rush-c1-heuristic-v031-b49-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480099,
+        "job_id": "m55-rush-c1-heuristic-v031-b49-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480100,
+        "job_id": "m55-rush-c1-prism-v01-b50-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480100,
+        "job_id": "m55-rush-c1-prism-v01-b50-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480101,
+        "job_id": "m55-rush-c1-heuristic-v031-b50-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480101,
+        "job_id": "m55-rush-c1-heuristic-v031-b50-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480102,
+        "job_id": "m55-rush-c1-prism-v01-b51-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480102,
+        "job_id": "m55-rush-c1-prism-v01-b51-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480103,
+        "job_id": "m55-rush-c1-heuristic-v031-b51-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480103,
+        "job_id": "m55-rush-c1-heuristic-v031-b51-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480104,
+        "job_id": "m55-rush-c1-prism-v01-b52-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480104,
+        "job_id": "m55-rush-c1-prism-v01-b52-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480105,
+        "job_id": "m55-rush-c1-heuristic-v031-b52-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480105,
+        "job_id": "m55-rush-c1-heuristic-v031-b52-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480106,
+        "job_id": "m55-rush-c1-prism-v01-b53-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480106,
+        "job_id": "m55-rush-c1-prism-v01-b53-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480107,
+        "job_id": "m55-rush-c1-heuristic-v031-b53-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480107,
+        "job_id": "m55-rush-c1-heuristic-v031-b53-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480108,
+        "job_id": "m55-rush-c1-prism-v01-b54-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480108,
+        "job_id": "m55-rush-c1-prism-v01-b54-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480109,
+        "job_id": "m55-rush-c1-heuristic-v031-b54-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480109,
+        "job_id": "m55-rush-c1-heuristic-v031-b54-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480110,
+        "job_id": "m55-rush-c1-prism-v01-b55-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480110,
+        "job_id": "m55-rush-c1-prism-v01-b55-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480111,
+        "job_id": "m55-rush-c1-heuristic-v031-b55-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480111,
+        "job_id": "m55-rush-c1-heuristic-v031-b55-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480112,
+        "job_id": "m55-rush-c1-prism-v01-b56-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480112,
+        "job_id": "m55-rush-c1-prism-v01-b56-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480113,
+        "job_id": "m55-rush-c1-heuristic-v031-b56-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480113,
+        "job_id": "m55-rush-c1-heuristic-v031-b56-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480114,
+        "job_id": "m55-rush-c1-prism-v01-b57-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480114,
+        "job_id": "m55-rush-c1-prism-v01-b57-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480115,
+        "job_id": "m55-rush-c1-heuristic-v031-b57-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480115,
+        "job_id": "m55-rush-c1-heuristic-v031-b57-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480116,
+        "job_id": "m55-rush-c1-prism-v01-b58-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480116,
+        "job_id": "m55-rush-c1-prism-v01-b58-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480117,
+        "job_id": "m55-rush-c1-heuristic-v031-b58-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480117,
+        "job_id": "m55-rush-c1-heuristic-v031-b58-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480118,
+        "job_id": "m55-rush-c1-prism-v01-b59-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480118,
+        "job_id": "m55-rush-c1-prism-v01-b59-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480119,
+        "job_id": "m55-rush-c1-heuristic-v031-b59-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480119,
+        "job_id": "m55-rush-c1-heuristic-v031-b59-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480120,
+        "job_id": "m55-rush-c1-prism-v01-b60-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480120,
+        "job_id": "m55-rush-c1-prism-v01-b60-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480121,
+        "job_id": "m55-rush-c1-heuristic-v031-b60-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480121,
+        "job_id": "m55-rush-c1-heuristic-v031-b60-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480122,
+        "job_id": "m55-rush-c1-prism-v01-b61-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480122,
+        "job_id": "m55-rush-c1-prism-v01-b61-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480123,
+        "job_id": "m55-rush-c1-heuristic-v031-b61-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480123,
+        "job_id": "m55-rush-c1-heuristic-v031-b61-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480124,
+        "job_id": "m55-rush-c1-prism-v01-b62-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480124,
+        "job_id": "m55-rush-c1-prism-v01-b62-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480125,
+        "job_id": "m55-rush-c1-heuristic-v031-b62-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480125,
+        "job_id": "m55-rush-c1-heuristic-v031-b62-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480126,
+        "job_id": "m55-rush-c1-prism-v01-b63-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480126,
+        "job_id": "m55-rush-c1-prism-v01-b63-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480127,
+        "job_id": "m55-rush-c1-heuristic-v031-b63-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480127,
+        "job_id": "m55-rush-c1-heuristic-v031-b63-s1",
+        "opponent_id": "heuristic-v031"
+      }
+    ],
+    [
+      {
+        "actor": 0,
+        "environment_seed": 9480128,
+        "job_id": "m55-rush-c2-prism-v01-b00-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480128,
+        "job_id": "m55-rush-c2-prism-v01-b00-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480129,
+        "job_id": "m55-rush-c2-heuristic-v031-b00-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480129,
+        "job_id": "m55-rush-c2-heuristic-v031-b00-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480130,
+        "job_id": "m55-rush-c2-prism-v01-b01-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480130,
+        "job_id": "m55-rush-c2-prism-v01-b01-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480131,
+        "job_id": "m55-rush-c2-heuristic-v031-b01-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480131,
+        "job_id": "m55-rush-c2-heuristic-v031-b01-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480132,
+        "job_id": "m55-rush-c2-prism-v01-b02-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480132,
+        "job_id": "m55-rush-c2-prism-v01-b02-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480133,
+        "job_id": "m55-rush-c2-heuristic-v031-b02-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480133,
+        "job_id": "m55-rush-c2-heuristic-v031-b02-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480134,
+        "job_id": "m55-rush-c2-prism-v01-b03-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480134,
+        "job_id": "m55-rush-c2-prism-v01-b03-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480135,
+        "job_id": "m55-rush-c2-heuristic-v031-b03-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480135,
+        "job_id": "m55-rush-c2-heuristic-v031-b03-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480136,
+        "job_id": "m55-rush-c2-prism-v01-b04-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480136,
+        "job_id": "m55-rush-c2-prism-v01-b04-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480137,
+        "job_id": "m55-rush-c2-heuristic-v031-b04-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480137,
+        "job_id": "m55-rush-c2-heuristic-v031-b04-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480138,
+        "job_id": "m55-rush-c2-prism-v01-b05-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480138,
+        "job_id": "m55-rush-c2-prism-v01-b05-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480139,
+        "job_id": "m55-rush-c2-heuristic-v031-b05-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480139,
+        "job_id": "m55-rush-c2-heuristic-v031-b05-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480140,
+        "job_id": "m55-rush-c2-prism-v01-b06-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480140,
+        "job_id": "m55-rush-c2-prism-v01-b06-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480141,
+        "job_id": "m55-rush-c2-heuristic-v031-b06-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480141,
+        "job_id": "m55-rush-c2-heuristic-v031-b06-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480142,
+        "job_id": "m55-rush-c2-prism-v01-b07-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480142,
+        "job_id": "m55-rush-c2-prism-v01-b07-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480143,
+        "job_id": "m55-rush-c2-heuristic-v031-b07-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480143,
+        "job_id": "m55-rush-c2-heuristic-v031-b07-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480144,
+        "job_id": "m55-rush-c2-prism-v01-b08-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480144,
+        "job_id": "m55-rush-c2-prism-v01-b08-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480145,
+        "job_id": "m55-rush-c2-heuristic-v031-b08-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480145,
+        "job_id": "m55-rush-c2-heuristic-v031-b08-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480146,
+        "job_id": "m55-rush-c2-prism-v01-b09-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480146,
+        "job_id": "m55-rush-c2-prism-v01-b09-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480147,
+        "job_id": "m55-rush-c2-heuristic-v031-b09-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480147,
+        "job_id": "m55-rush-c2-heuristic-v031-b09-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480148,
+        "job_id": "m55-rush-c2-prism-v01-b10-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480148,
+        "job_id": "m55-rush-c2-prism-v01-b10-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480149,
+        "job_id": "m55-rush-c2-heuristic-v031-b10-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480149,
+        "job_id": "m55-rush-c2-heuristic-v031-b10-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480150,
+        "job_id": "m55-rush-c2-prism-v01-b11-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480150,
+        "job_id": "m55-rush-c2-prism-v01-b11-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480151,
+        "job_id": "m55-rush-c2-heuristic-v031-b11-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480151,
+        "job_id": "m55-rush-c2-heuristic-v031-b11-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480152,
+        "job_id": "m55-rush-c2-prism-v01-b12-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480152,
+        "job_id": "m55-rush-c2-prism-v01-b12-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480153,
+        "job_id": "m55-rush-c2-heuristic-v031-b12-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480153,
+        "job_id": "m55-rush-c2-heuristic-v031-b12-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480154,
+        "job_id": "m55-rush-c2-prism-v01-b13-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480154,
+        "job_id": "m55-rush-c2-prism-v01-b13-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480155,
+        "job_id": "m55-rush-c2-heuristic-v031-b13-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480155,
+        "job_id": "m55-rush-c2-heuristic-v031-b13-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480156,
+        "job_id": "m55-rush-c2-prism-v01-b14-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480156,
+        "job_id": "m55-rush-c2-prism-v01-b14-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480157,
+        "job_id": "m55-rush-c2-heuristic-v031-b14-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480157,
+        "job_id": "m55-rush-c2-heuristic-v031-b14-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480158,
+        "job_id": "m55-rush-c2-prism-v01-b15-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480158,
+        "job_id": "m55-rush-c2-prism-v01-b15-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480159,
+        "job_id": "m55-rush-c2-heuristic-v031-b15-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480159,
+        "job_id": "m55-rush-c2-heuristic-v031-b15-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480160,
+        "job_id": "m55-rush-c2-prism-v01-b16-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480160,
+        "job_id": "m55-rush-c2-prism-v01-b16-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480161,
+        "job_id": "m55-rush-c2-heuristic-v031-b16-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480161,
+        "job_id": "m55-rush-c2-heuristic-v031-b16-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480162,
+        "job_id": "m55-rush-c2-prism-v01-b17-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480162,
+        "job_id": "m55-rush-c2-prism-v01-b17-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480163,
+        "job_id": "m55-rush-c2-heuristic-v031-b17-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480163,
+        "job_id": "m55-rush-c2-heuristic-v031-b17-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480164,
+        "job_id": "m55-rush-c2-prism-v01-b18-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480164,
+        "job_id": "m55-rush-c2-prism-v01-b18-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480165,
+        "job_id": "m55-rush-c2-heuristic-v031-b18-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480165,
+        "job_id": "m55-rush-c2-heuristic-v031-b18-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480166,
+        "job_id": "m55-rush-c2-prism-v01-b19-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480166,
+        "job_id": "m55-rush-c2-prism-v01-b19-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480167,
+        "job_id": "m55-rush-c2-heuristic-v031-b19-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480167,
+        "job_id": "m55-rush-c2-heuristic-v031-b19-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480168,
+        "job_id": "m55-rush-c2-prism-v01-b20-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480168,
+        "job_id": "m55-rush-c2-prism-v01-b20-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480169,
+        "job_id": "m55-rush-c2-heuristic-v031-b20-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480169,
+        "job_id": "m55-rush-c2-heuristic-v031-b20-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480170,
+        "job_id": "m55-rush-c2-prism-v01-b21-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480170,
+        "job_id": "m55-rush-c2-prism-v01-b21-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480171,
+        "job_id": "m55-rush-c2-heuristic-v031-b21-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480171,
+        "job_id": "m55-rush-c2-heuristic-v031-b21-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480172,
+        "job_id": "m55-rush-c2-prism-v01-b22-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480172,
+        "job_id": "m55-rush-c2-prism-v01-b22-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480173,
+        "job_id": "m55-rush-c2-heuristic-v031-b22-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480173,
+        "job_id": "m55-rush-c2-heuristic-v031-b22-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480174,
+        "job_id": "m55-rush-c2-prism-v01-b23-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480174,
+        "job_id": "m55-rush-c2-prism-v01-b23-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480175,
+        "job_id": "m55-rush-c2-heuristic-v031-b23-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480175,
+        "job_id": "m55-rush-c2-heuristic-v031-b23-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480176,
+        "job_id": "m55-rush-c2-prism-v01-b24-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480176,
+        "job_id": "m55-rush-c2-prism-v01-b24-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480177,
+        "job_id": "m55-rush-c2-heuristic-v031-b24-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480177,
+        "job_id": "m55-rush-c2-heuristic-v031-b24-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480178,
+        "job_id": "m55-rush-c2-prism-v01-b25-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480178,
+        "job_id": "m55-rush-c2-prism-v01-b25-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480179,
+        "job_id": "m55-rush-c2-heuristic-v031-b25-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480179,
+        "job_id": "m55-rush-c2-heuristic-v031-b25-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480180,
+        "job_id": "m55-rush-c2-prism-v01-b26-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480180,
+        "job_id": "m55-rush-c2-prism-v01-b26-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480181,
+        "job_id": "m55-rush-c2-heuristic-v031-b26-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480181,
+        "job_id": "m55-rush-c2-heuristic-v031-b26-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480182,
+        "job_id": "m55-rush-c2-prism-v01-b27-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480182,
+        "job_id": "m55-rush-c2-prism-v01-b27-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480183,
+        "job_id": "m55-rush-c2-heuristic-v031-b27-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480183,
+        "job_id": "m55-rush-c2-heuristic-v031-b27-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480184,
+        "job_id": "m55-rush-c2-prism-v01-b28-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480184,
+        "job_id": "m55-rush-c2-prism-v01-b28-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480185,
+        "job_id": "m55-rush-c2-heuristic-v031-b28-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480185,
+        "job_id": "m55-rush-c2-heuristic-v031-b28-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480186,
+        "job_id": "m55-rush-c2-prism-v01-b29-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480186,
+        "job_id": "m55-rush-c2-prism-v01-b29-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480187,
+        "job_id": "m55-rush-c2-heuristic-v031-b29-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480187,
+        "job_id": "m55-rush-c2-heuristic-v031-b29-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480188,
+        "job_id": "m55-rush-c2-prism-v01-b30-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480188,
+        "job_id": "m55-rush-c2-prism-v01-b30-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480189,
+        "job_id": "m55-rush-c2-heuristic-v031-b30-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480189,
+        "job_id": "m55-rush-c2-heuristic-v031-b30-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480190,
+        "job_id": "m55-rush-c2-prism-v01-b31-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480190,
+        "job_id": "m55-rush-c2-prism-v01-b31-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480191,
+        "job_id": "m55-rush-c2-heuristic-v031-b31-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480191,
+        "job_id": "m55-rush-c2-heuristic-v031-b31-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480192,
+        "job_id": "m55-rush-c2-prism-v01-b32-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480192,
+        "job_id": "m55-rush-c2-prism-v01-b32-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480193,
+        "job_id": "m55-rush-c2-heuristic-v031-b32-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480193,
+        "job_id": "m55-rush-c2-heuristic-v031-b32-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480194,
+        "job_id": "m55-rush-c2-prism-v01-b33-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480194,
+        "job_id": "m55-rush-c2-prism-v01-b33-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480195,
+        "job_id": "m55-rush-c2-heuristic-v031-b33-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480195,
+        "job_id": "m55-rush-c2-heuristic-v031-b33-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480196,
+        "job_id": "m55-rush-c2-prism-v01-b34-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480196,
+        "job_id": "m55-rush-c2-prism-v01-b34-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480197,
+        "job_id": "m55-rush-c2-heuristic-v031-b34-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480197,
+        "job_id": "m55-rush-c2-heuristic-v031-b34-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480198,
+        "job_id": "m55-rush-c2-prism-v01-b35-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480198,
+        "job_id": "m55-rush-c2-prism-v01-b35-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480199,
+        "job_id": "m55-rush-c2-heuristic-v031-b35-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480199,
+        "job_id": "m55-rush-c2-heuristic-v031-b35-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480200,
+        "job_id": "m55-rush-c2-prism-v01-b36-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480200,
+        "job_id": "m55-rush-c2-prism-v01-b36-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480201,
+        "job_id": "m55-rush-c2-heuristic-v031-b36-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480201,
+        "job_id": "m55-rush-c2-heuristic-v031-b36-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480202,
+        "job_id": "m55-rush-c2-prism-v01-b37-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480202,
+        "job_id": "m55-rush-c2-prism-v01-b37-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480203,
+        "job_id": "m55-rush-c2-heuristic-v031-b37-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480203,
+        "job_id": "m55-rush-c2-heuristic-v031-b37-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480204,
+        "job_id": "m55-rush-c2-prism-v01-b38-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480204,
+        "job_id": "m55-rush-c2-prism-v01-b38-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480205,
+        "job_id": "m55-rush-c2-heuristic-v031-b38-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480205,
+        "job_id": "m55-rush-c2-heuristic-v031-b38-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480206,
+        "job_id": "m55-rush-c2-prism-v01-b39-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480206,
+        "job_id": "m55-rush-c2-prism-v01-b39-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480207,
+        "job_id": "m55-rush-c2-heuristic-v031-b39-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480207,
+        "job_id": "m55-rush-c2-heuristic-v031-b39-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480208,
+        "job_id": "m55-rush-c2-prism-v01-b40-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480208,
+        "job_id": "m55-rush-c2-prism-v01-b40-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480209,
+        "job_id": "m55-rush-c2-heuristic-v031-b40-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480209,
+        "job_id": "m55-rush-c2-heuristic-v031-b40-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480210,
+        "job_id": "m55-rush-c2-prism-v01-b41-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480210,
+        "job_id": "m55-rush-c2-prism-v01-b41-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480211,
+        "job_id": "m55-rush-c2-heuristic-v031-b41-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480211,
+        "job_id": "m55-rush-c2-heuristic-v031-b41-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480212,
+        "job_id": "m55-rush-c2-prism-v01-b42-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480212,
+        "job_id": "m55-rush-c2-prism-v01-b42-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480213,
+        "job_id": "m55-rush-c2-heuristic-v031-b42-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480213,
+        "job_id": "m55-rush-c2-heuristic-v031-b42-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480214,
+        "job_id": "m55-rush-c2-prism-v01-b43-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480214,
+        "job_id": "m55-rush-c2-prism-v01-b43-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480215,
+        "job_id": "m55-rush-c2-heuristic-v031-b43-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480215,
+        "job_id": "m55-rush-c2-heuristic-v031-b43-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480216,
+        "job_id": "m55-rush-c2-prism-v01-b44-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480216,
+        "job_id": "m55-rush-c2-prism-v01-b44-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480217,
+        "job_id": "m55-rush-c2-heuristic-v031-b44-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480217,
+        "job_id": "m55-rush-c2-heuristic-v031-b44-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480218,
+        "job_id": "m55-rush-c2-prism-v01-b45-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480218,
+        "job_id": "m55-rush-c2-prism-v01-b45-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480219,
+        "job_id": "m55-rush-c2-heuristic-v031-b45-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480219,
+        "job_id": "m55-rush-c2-heuristic-v031-b45-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480220,
+        "job_id": "m55-rush-c2-prism-v01-b46-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480220,
+        "job_id": "m55-rush-c2-prism-v01-b46-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480221,
+        "job_id": "m55-rush-c2-heuristic-v031-b46-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480221,
+        "job_id": "m55-rush-c2-heuristic-v031-b46-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480222,
+        "job_id": "m55-rush-c2-prism-v01-b47-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480222,
+        "job_id": "m55-rush-c2-prism-v01-b47-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480223,
+        "job_id": "m55-rush-c2-heuristic-v031-b47-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480223,
+        "job_id": "m55-rush-c2-heuristic-v031-b47-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480224,
+        "job_id": "m55-rush-c2-prism-v01-b48-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480224,
+        "job_id": "m55-rush-c2-prism-v01-b48-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480225,
+        "job_id": "m55-rush-c2-heuristic-v031-b48-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480225,
+        "job_id": "m55-rush-c2-heuristic-v031-b48-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480226,
+        "job_id": "m55-rush-c2-prism-v01-b49-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480226,
+        "job_id": "m55-rush-c2-prism-v01-b49-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480227,
+        "job_id": "m55-rush-c2-heuristic-v031-b49-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480227,
+        "job_id": "m55-rush-c2-heuristic-v031-b49-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480228,
+        "job_id": "m55-rush-c2-prism-v01-b50-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480228,
+        "job_id": "m55-rush-c2-prism-v01-b50-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480229,
+        "job_id": "m55-rush-c2-heuristic-v031-b50-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480229,
+        "job_id": "m55-rush-c2-heuristic-v031-b50-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480230,
+        "job_id": "m55-rush-c2-prism-v01-b51-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480230,
+        "job_id": "m55-rush-c2-prism-v01-b51-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480231,
+        "job_id": "m55-rush-c2-heuristic-v031-b51-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480231,
+        "job_id": "m55-rush-c2-heuristic-v031-b51-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480232,
+        "job_id": "m55-rush-c2-prism-v01-b52-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480232,
+        "job_id": "m55-rush-c2-prism-v01-b52-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480233,
+        "job_id": "m55-rush-c2-heuristic-v031-b52-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480233,
+        "job_id": "m55-rush-c2-heuristic-v031-b52-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480234,
+        "job_id": "m55-rush-c2-prism-v01-b53-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480234,
+        "job_id": "m55-rush-c2-prism-v01-b53-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480235,
+        "job_id": "m55-rush-c2-heuristic-v031-b53-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480235,
+        "job_id": "m55-rush-c2-heuristic-v031-b53-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480236,
+        "job_id": "m55-rush-c2-prism-v01-b54-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480236,
+        "job_id": "m55-rush-c2-prism-v01-b54-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480237,
+        "job_id": "m55-rush-c2-heuristic-v031-b54-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480237,
+        "job_id": "m55-rush-c2-heuristic-v031-b54-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480238,
+        "job_id": "m55-rush-c2-prism-v01-b55-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480238,
+        "job_id": "m55-rush-c2-prism-v01-b55-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480239,
+        "job_id": "m55-rush-c2-heuristic-v031-b55-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480239,
+        "job_id": "m55-rush-c2-heuristic-v031-b55-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480240,
+        "job_id": "m55-rush-c2-prism-v01-b56-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480240,
+        "job_id": "m55-rush-c2-prism-v01-b56-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480241,
+        "job_id": "m55-rush-c2-heuristic-v031-b56-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480241,
+        "job_id": "m55-rush-c2-heuristic-v031-b56-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480242,
+        "job_id": "m55-rush-c2-prism-v01-b57-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480242,
+        "job_id": "m55-rush-c2-prism-v01-b57-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480243,
+        "job_id": "m55-rush-c2-heuristic-v031-b57-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480243,
+        "job_id": "m55-rush-c2-heuristic-v031-b57-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480244,
+        "job_id": "m55-rush-c2-prism-v01-b58-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480244,
+        "job_id": "m55-rush-c2-prism-v01-b58-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480245,
+        "job_id": "m55-rush-c2-heuristic-v031-b58-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480245,
+        "job_id": "m55-rush-c2-heuristic-v031-b58-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480246,
+        "job_id": "m55-rush-c2-prism-v01-b59-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480246,
+        "job_id": "m55-rush-c2-prism-v01-b59-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480247,
+        "job_id": "m55-rush-c2-heuristic-v031-b59-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480247,
+        "job_id": "m55-rush-c2-heuristic-v031-b59-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480248,
+        "job_id": "m55-rush-c2-prism-v01-b60-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480248,
+        "job_id": "m55-rush-c2-prism-v01-b60-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480249,
+        "job_id": "m55-rush-c2-heuristic-v031-b60-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480249,
+        "job_id": "m55-rush-c2-heuristic-v031-b60-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480250,
+        "job_id": "m55-rush-c2-prism-v01-b61-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480250,
+        "job_id": "m55-rush-c2-prism-v01-b61-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480251,
+        "job_id": "m55-rush-c2-heuristic-v031-b61-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480251,
+        "job_id": "m55-rush-c2-heuristic-v031-b61-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480252,
+        "job_id": "m55-rush-c2-prism-v01-b62-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480252,
+        "job_id": "m55-rush-c2-prism-v01-b62-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480253,
+        "job_id": "m55-rush-c2-heuristic-v031-b62-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480253,
+        "job_id": "m55-rush-c2-heuristic-v031-b62-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480254,
+        "job_id": "m55-rush-c2-prism-v01-b63-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480254,
+        "job_id": "m55-rush-c2-prism-v01-b63-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480255,
+        "job_id": "m55-rush-c2-heuristic-v031-b63-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480255,
+        "job_id": "m55-rush-c2-heuristic-v031-b63-s1",
+        "opponent_id": "heuristic-v031"
+      }
+    ],
+    [
+      {
+        "actor": 0,
+        "environment_seed": 9480256,
+        "job_id": "m55-rush-c3-prism-v01-b00-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480256,
+        "job_id": "m55-rush-c3-prism-v01-b00-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480257,
+        "job_id": "m55-rush-c3-heuristic-v031-b00-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480257,
+        "job_id": "m55-rush-c3-heuristic-v031-b00-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480258,
+        "job_id": "m55-rush-c3-prism-v01-b01-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480258,
+        "job_id": "m55-rush-c3-prism-v01-b01-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480259,
+        "job_id": "m55-rush-c3-heuristic-v031-b01-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480259,
+        "job_id": "m55-rush-c3-heuristic-v031-b01-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480260,
+        "job_id": "m55-rush-c3-prism-v01-b02-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480260,
+        "job_id": "m55-rush-c3-prism-v01-b02-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480261,
+        "job_id": "m55-rush-c3-heuristic-v031-b02-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480261,
+        "job_id": "m55-rush-c3-heuristic-v031-b02-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480262,
+        "job_id": "m55-rush-c3-prism-v01-b03-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480262,
+        "job_id": "m55-rush-c3-prism-v01-b03-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480263,
+        "job_id": "m55-rush-c3-heuristic-v031-b03-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480263,
+        "job_id": "m55-rush-c3-heuristic-v031-b03-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480264,
+        "job_id": "m55-rush-c3-prism-v01-b04-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480264,
+        "job_id": "m55-rush-c3-prism-v01-b04-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480265,
+        "job_id": "m55-rush-c3-heuristic-v031-b04-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480265,
+        "job_id": "m55-rush-c3-heuristic-v031-b04-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480266,
+        "job_id": "m55-rush-c3-prism-v01-b05-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480266,
+        "job_id": "m55-rush-c3-prism-v01-b05-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480267,
+        "job_id": "m55-rush-c3-heuristic-v031-b05-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480267,
+        "job_id": "m55-rush-c3-heuristic-v031-b05-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480268,
+        "job_id": "m55-rush-c3-prism-v01-b06-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480268,
+        "job_id": "m55-rush-c3-prism-v01-b06-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480269,
+        "job_id": "m55-rush-c3-heuristic-v031-b06-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480269,
+        "job_id": "m55-rush-c3-heuristic-v031-b06-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480270,
+        "job_id": "m55-rush-c3-prism-v01-b07-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480270,
+        "job_id": "m55-rush-c3-prism-v01-b07-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480271,
+        "job_id": "m55-rush-c3-heuristic-v031-b07-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480271,
+        "job_id": "m55-rush-c3-heuristic-v031-b07-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480272,
+        "job_id": "m55-rush-c3-prism-v01-b08-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480272,
+        "job_id": "m55-rush-c3-prism-v01-b08-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480273,
+        "job_id": "m55-rush-c3-heuristic-v031-b08-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480273,
+        "job_id": "m55-rush-c3-heuristic-v031-b08-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480274,
+        "job_id": "m55-rush-c3-prism-v01-b09-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480274,
+        "job_id": "m55-rush-c3-prism-v01-b09-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480275,
+        "job_id": "m55-rush-c3-heuristic-v031-b09-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480275,
+        "job_id": "m55-rush-c3-heuristic-v031-b09-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480276,
+        "job_id": "m55-rush-c3-prism-v01-b10-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480276,
+        "job_id": "m55-rush-c3-prism-v01-b10-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480277,
+        "job_id": "m55-rush-c3-heuristic-v031-b10-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480277,
+        "job_id": "m55-rush-c3-heuristic-v031-b10-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480278,
+        "job_id": "m55-rush-c3-prism-v01-b11-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480278,
+        "job_id": "m55-rush-c3-prism-v01-b11-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480279,
+        "job_id": "m55-rush-c3-heuristic-v031-b11-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480279,
+        "job_id": "m55-rush-c3-heuristic-v031-b11-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480280,
+        "job_id": "m55-rush-c3-prism-v01-b12-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480280,
+        "job_id": "m55-rush-c3-prism-v01-b12-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480281,
+        "job_id": "m55-rush-c3-heuristic-v031-b12-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480281,
+        "job_id": "m55-rush-c3-heuristic-v031-b12-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480282,
+        "job_id": "m55-rush-c3-prism-v01-b13-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480282,
+        "job_id": "m55-rush-c3-prism-v01-b13-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480283,
+        "job_id": "m55-rush-c3-heuristic-v031-b13-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480283,
+        "job_id": "m55-rush-c3-heuristic-v031-b13-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480284,
+        "job_id": "m55-rush-c3-prism-v01-b14-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480284,
+        "job_id": "m55-rush-c3-prism-v01-b14-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480285,
+        "job_id": "m55-rush-c3-heuristic-v031-b14-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480285,
+        "job_id": "m55-rush-c3-heuristic-v031-b14-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480286,
+        "job_id": "m55-rush-c3-prism-v01-b15-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480286,
+        "job_id": "m55-rush-c3-prism-v01-b15-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480287,
+        "job_id": "m55-rush-c3-heuristic-v031-b15-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480287,
+        "job_id": "m55-rush-c3-heuristic-v031-b15-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480288,
+        "job_id": "m55-rush-c3-prism-v01-b16-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480288,
+        "job_id": "m55-rush-c3-prism-v01-b16-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480289,
+        "job_id": "m55-rush-c3-heuristic-v031-b16-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480289,
+        "job_id": "m55-rush-c3-heuristic-v031-b16-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480290,
+        "job_id": "m55-rush-c3-prism-v01-b17-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480290,
+        "job_id": "m55-rush-c3-prism-v01-b17-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480291,
+        "job_id": "m55-rush-c3-heuristic-v031-b17-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480291,
+        "job_id": "m55-rush-c3-heuristic-v031-b17-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480292,
+        "job_id": "m55-rush-c3-prism-v01-b18-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480292,
+        "job_id": "m55-rush-c3-prism-v01-b18-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480293,
+        "job_id": "m55-rush-c3-heuristic-v031-b18-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480293,
+        "job_id": "m55-rush-c3-heuristic-v031-b18-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480294,
+        "job_id": "m55-rush-c3-prism-v01-b19-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480294,
+        "job_id": "m55-rush-c3-prism-v01-b19-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480295,
+        "job_id": "m55-rush-c3-heuristic-v031-b19-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480295,
+        "job_id": "m55-rush-c3-heuristic-v031-b19-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480296,
+        "job_id": "m55-rush-c3-prism-v01-b20-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480296,
+        "job_id": "m55-rush-c3-prism-v01-b20-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480297,
+        "job_id": "m55-rush-c3-heuristic-v031-b20-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480297,
+        "job_id": "m55-rush-c3-heuristic-v031-b20-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480298,
+        "job_id": "m55-rush-c3-prism-v01-b21-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480298,
+        "job_id": "m55-rush-c3-prism-v01-b21-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480299,
+        "job_id": "m55-rush-c3-heuristic-v031-b21-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480299,
+        "job_id": "m55-rush-c3-heuristic-v031-b21-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480300,
+        "job_id": "m55-rush-c3-prism-v01-b22-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480300,
+        "job_id": "m55-rush-c3-prism-v01-b22-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480301,
+        "job_id": "m55-rush-c3-heuristic-v031-b22-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480301,
+        "job_id": "m55-rush-c3-heuristic-v031-b22-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480302,
+        "job_id": "m55-rush-c3-prism-v01-b23-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480302,
+        "job_id": "m55-rush-c3-prism-v01-b23-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480303,
+        "job_id": "m55-rush-c3-heuristic-v031-b23-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480303,
+        "job_id": "m55-rush-c3-heuristic-v031-b23-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480304,
+        "job_id": "m55-rush-c3-prism-v01-b24-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480304,
+        "job_id": "m55-rush-c3-prism-v01-b24-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480305,
+        "job_id": "m55-rush-c3-heuristic-v031-b24-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480305,
+        "job_id": "m55-rush-c3-heuristic-v031-b24-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480306,
+        "job_id": "m55-rush-c3-prism-v01-b25-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480306,
+        "job_id": "m55-rush-c3-prism-v01-b25-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480307,
+        "job_id": "m55-rush-c3-heuristic-v031-b25-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480307,
+        "job_id": "m55-rush-c3-heuristic-v031-b25-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480308,
+        "job_id": "m55-rush-c3-prism-v01-b26-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480308,
+        "job_id": "m55-rush-c3-prism-v01-b26-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480309,
+        "job_id": "m55-rush-c3-heuristic-v031-b26-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480309,
+        "job_id": "m55-rush-c3-heuristic-v031-b26-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480310,
+        "job_id": "m55-rush-c3-prism-v01-b27-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480310,
+        "job_id": "m55-rush-c3-prism-v01-b27-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480311,
+        "job_id": "m55-rush-c3-heuristic-v031-b27-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480311,
+        "job_id": "m55-rush-c3-heuristic-v031-b27-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480312,
+        "job_id": "m55-rush-c3-prism-v01-b28-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480312,
+        "job_id": "m55-rush-c3-prism-v01-b28-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480313,
+        "job_id": "m55-rush-c3-heuristic-v031-b28-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480313,
+        "job_id": "m55-rush-c3-heuristic-v031-b28-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480314,
+        "job_id": "m55-rush-c3-prism-v01-b29-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480314,
+        "job_id": "m55-rush-c3-prism-v01-b29-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480315,
+        "job_id": "m55-rush-c3-heuristic-v031-b29-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480315,
+        "job_id": "m55-rush-c3-heuristic-v031-b29-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480316,
+        "job_id": "m55-rush-c3-prism-v01-b30-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480316,
+        "job_id": "m55-rush-c3-prism-v01-b30-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480317,
+        "job_id": "m55-rush-c3-heuristic-v031-b30-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480317,
+        "job_id": "m55-rush-c3-heuristic-v031-b30-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480318,
+        "job_id": "m55-rush-c3-prism-v01-b31-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480318,
+        "job_id": "m55-rush-c3-prism-v01-b31-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480319,
+        "job_id": "m55-rush-c3-heuristic-v031-b31-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480319,
+        "job_id": "m55-rush-c3-heuristic-v031-b31-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480320,
+        "job_id": "m55-rush-c3-prism-v01-b32-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480320,
+        "job_id": "m55-rush-c3-prism-v01-b32-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480321,
+        "job_id": "m55-rush-c3-heuristic-v031-b32-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480321,
+        "job_id": "m55-rush-c3-heuristic-v031-b32-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480322,
+        "job_id": "m55-rush-c3-prism-v01-b33-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480322,
+        "job_id": "m55-rush-c3-prism-v01-b33-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480323,
+        "job_id": "m55-rush-c3-heuristic-v031-b33-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480323,
+        "job_id": "m55-rush-c3-heuristic-v031-b33-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480324,
+        "job_id": "m55-rush-c3-prism-v01-b34-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480324,
+        "job_id": "m55-rush-c3-prism-v01-b34-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480325,
+        "job_id": "m55-rush-c3-heuristic-v031-b34-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480325,
+        "job_id": "m55-rush-c3-heuristic-v031-b34-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480326,
+        "job_id": "m55-rush-c3-prism-v01-b35-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480326,
+        "job_id": "m55-rush-c3-prism-v01-b35-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480327,
+        "job_id": "m55-rush-c3-heuristic-v031-b35-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480327,
+        "job_id": "m55-rush-c3-heuristic-v031-b35-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480328,
+        "job_id": "m55-rush-c3-prism-v01-b36-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480328,
+        "job_id": "m55-rush-c3-prism-v01-b36-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480329,
+        "job_id": "m55-rush-c3-heuristic-v031-b36-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480329,
+        "job_id": "m55-rush-c3-heuristic-v031-b36-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480330,
+        "job_id": "m55-rush-c3-prism-v01-b37-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480330,
+        "job_id": "m55-rush-c3-prism-v01-b37-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480331,
+        "job_id": "m55-rush-c3-heuristic-v031-b37-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480331,
+        "job_id": "m55-rush-c3-heuristic-v031-b37-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480332,
+        "job_id": "m55-rush-c3-prism-v01-b38-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480332,
+        "job_id": "m55-rush-c3-prism-v01-b38-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480333,
+        "job_id": "m55-rush-c3-heuristic-v031-b38-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480333,
+        "job_id": "m55-rush-c3-heuristic-v031-b38-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480334,
+        "job_id": "m55-rush-c3-prism-v01-b39-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480334,
+        "job_id": "m55-rush-c3-prism-v01-b39-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480335,
+        "job_id": "m55-rush-c3-heuristic-v031-b39-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480335,
+        "job_id": "m55-rush-c3-heuristic-v031-b39-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480336,
+        "job_id": "m55-rush-c3-prism-v01-b40-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480336,
+        "job_id": "m55-rush-c3-prism-v01-b40-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480337,
+        "job_id": "m55-rush-c3-heuristic-v031-b40-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480337,
+        "job_id": "m55-rush-c3-heuristic-v031-b40-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480338,
+        "job_id": "m55-rush-c3-prism-v01-b41-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480338,
+        "job_id": "m55-rush-c3-prism-v01-b41-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480339,
+        "job_id": "m55-rush-c3-heuristic-v031-b41-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480339,
+        "job_id": "m55-rush-c3-heuristic-v031-b41-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480340,
+        "job_id": "m55-rush-c3-prism-v01-b42-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480340,
+        "job_id": "m55-rush-c3-prism-v01-b42-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480341,
+        "job_id": "m55-rush-c3-heuristic-v031-b42-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480341,
+        "job_id": "m55-rush-c3-heuristic-v031-b42-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480342,
+        "job_id": "m55-rush-c3-prism-v01-b43-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480342,
+        "job_id": "m55-rush-c3-prism-v01-b43-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480343,
+        "job_id": "m55-rush-c3-heuristic-v031-b43-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480343,
+        "job_id": "m55-rush-c3-heuristic-v031-b43-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480344,
+        "job_id": "m55-rush-c3-prism-v01-b44-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480344,
+        "job_id": "m55-rush-c3-prism-v01-b44-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480345,
+        "job_id": "m55-rush-c3-heuristic-v031-b44-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480345,
+        "job_id": "m55-rush-c3-heuristic-v031-b44-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480346,
+        "job_id": "m55-rush-c3-prism-v01-b45-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480346,
+        "job_id": "m55-rush-c3-prism-v01-b45-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480347,
+        "job_id": "m55-rush-c3-heuristic-v031-b45-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480347,
+        "job_id": "m55-rush-c3-heuristic-v031-b45-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480348,
+        "job_id": "m55-rush-c3-prism-v01-b46-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480348,
+        "job_id": "m55-rush-c3-prism-v01-b46-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480349,
+        "job_id": "m55-rush-c3-heuristic-v031-b46-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480349,
+        "job_id": "m55-rush-c3-heuristic-v031-b46-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480350,
+        "job_id": "m55-rush-c3-prism-v01-b47-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480350,
+        "job_id": "m55-rush-c3-prism-v01-b47-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480351,
+        "job_id": "m55-rush-c3-heuristic-v031-b47-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480351,
+        "job_id": "m55-rush-c3-heuristic-v031-b47-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480352,
+        "job_id": "m55-rush-c3-prism-v01-b48-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480352,
+        "job_id": "m55-rush-c3-prism-v01-b48-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480353,
+        "job_id": "m55-rush-c3-heuristic-v031-b48-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480353,
+        "job_id": "m55-rush-c3-heuristic-v031-b48-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480354,
+        "job_id": "m55-rush-c3-prism-v01-b49-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480354,
+        "job_id": "m55-rush-c3-prism-v01-b49-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480355,
+        "job_id": "m55-rush-c3-heuristic-v031-b49-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480355,
+        "job_id": "m55-rush-c3-heuristic-v031-b49-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480356,
+        "job_id": "m55-rush-c3-prism-v01-b50-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480356,
+        "job_id": "m55-rush-c3-prism-v01-b50-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480357,
+        "job_id": "m55-rush-c3-heuristic-v031-b50-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480357,
+        "job_id": "m55-rush-c3-heuristic-v031-b50-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480358,
+        "job_id": "m55-rush-c3-prism-v01-b51-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480358,
+        "job_id": "m55-rush-c3-prism-v01-b51-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480359,
+        "job_id": "m55-rush-c3-heuristic-v031-b51-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480359,
+        "job_id": "m55-rush-c3-heuristic-v031-b51-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480360,
+        "job_id": "m55-rush-c3-prism-v01-b52-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480360,
+        "job_id": "m55-rush-c3-prism-v01-b52-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480361,
+        "job_id": "m55-rush-c3-heuristic-v031-b52-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480361,
+        "job_id": "m55-rush-c3-heuristic-v031-b52-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480362,
+        "job_id": "m55-rush-c3-prism-v01-b53-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480362,
+        "job_id": "m55-rush-c3-prism-v01-b53-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480363,
+        "job_id": "m55-rush-c3-heuristic-v031-b53-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480363,
+        "job_id": "m55-rush-c3-heuristic-v031-b53-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480364,
+        "job_id": "m55-rush-c3-prism-v01-b54-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480364,
+        "job_id": "m55-rush-c3-prism-v01-b54-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480365,
+        "job_id": "m55-rush-c3-heuristic-v031-b54-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480365,
+        "job_id": "m55-rush-c3-heuristic-v031-b54-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480366,
+        "job_id": "m55-rush-c3-prism-v01-b55-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480366,
+        "job_id": "m55-rush-c3-prism-v01-b55-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480367,
+        "job_id": "m55-rush-c3-heuristic-v031-b55-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480367,
+        "job_id": "m55-rush-c3-heuristic-v031-b55-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480368,
+        "job_id": "m55-rush-c3-prism-v01-b56-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480368,
+        "job_id": "m55-rush-c3-prism-v01-b56-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480369,
+        "job_id": "m55-rush-c3-heuristic-v031-b56-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480369,
+        "job_id": "m55-rush-c3-heuristic-v031-b56-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480370,
+        "job_id": "m55-rush-c3-prism-v01-b57-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480370,
+        "job_id": "m55-rush-c3-prism-v01-b57-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480371,
+        "job_id": "m55-rush-c3-heuristic-v031-b57-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480371,
+        "job_id": "m55-rush-c3-heuristic-v031-b57-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480372,
+        "job_id": "m55-rush-c3-prism-v01-b58-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480372,
+        "job_id": "m55-rush-c3-prism-v01-b58-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480373,
+        "job_id": "m55-rush-c3-heuristic-v031-b58-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480373,
+        "job_id": "m55-rush-c3-heuristic-v031-b58-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480374,
+        "job_id": "m55-rush-c3-prism-v01-b59-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480374,
+        "job_id": "m55-rush-c3-prism-v01-b59-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480375,
+        "job_id": "m55-rush-c3-heuristic-v031-b59-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480375,
+        "job_id": "m55-rush-c3-heuristic-v031-b59-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480376,
+        "job_id": "m55-rush-c3-prism-v01-b60-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480376,
+        "job_id": "m55-rush-c3-prism-v01-b60-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480377,
+        "job_id": "m55-rush-c3-heuristic-v031-b60-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480377,
+        "job_id": "m55-rush-c3-heuristic-v031-b60-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480378,
+        "job_id": "m55-rush-c3-prism-v01-b61-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480378,
+        "job_id": "m55-rush-c3-prism-v01-b61-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480379,
+        "job_id": "m55-rush-c3-heuristic-v031-b61-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480379,
+        "job_id": "m55-rush-c3-heuristic-v031-b61-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480380,
+        "job_id": "m55-rush-c3-prism-v01-b62-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480380,
+        "job_id": "m55-rush-c3-prism-v01-b62-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480381,
+        "job_id": "m55-rush-c3-heuristic-v031-b62-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480381,
+        "job_id": "m55-rush-c3-heuristic-v031-b62-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480382,
+        "job_id": "m55-rush-c3-prism-v01-b63-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480382,
+        "job_id": "m55-rush-c3-prism-v01-b63-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480383,
+        "job_id": "m55-rush-c3-heuristic-v031-b63-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480383,
+        "job_id": "m55-rush-c3-heuristic-v031-b63-s1",
+        "opponent_id": "heuristic-v031"
+      }
+    ],
+    [
+      {
+        "actor": 0,
+        "environment_seed": 9480384,
+        "job_id": "m55-rush-c4-prism-v01-b00-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480384,
+        "job_id": "m55-rush-c4-prism-v01-b00-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480385,
+        "job_id": "m55-rush-c4-heuristic-v031-b00-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480385,
+        "job_id": "m55-rush-c4-heuristic-v031-b00-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480386,
+        "job_id": "m55-rush-c4-prism-v01-b01-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480386,
+        "job_id": "m55-rush-c4-prism-v01-b01-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480387,
+        "job_id": "m55-rush-c4-heuristic-v031-b01-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480387,
+        "job_id": "m55-rush-c4-heuristic-v031-b01-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480388,
+        "job_id": "m55-rush-c4-prism-v01-b02-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480388,
+        "job_id": "m55-rush-c4-prism-v01-b02-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480389,
+        "job_id": "m55-rush-c4-heuristic-v031-b02-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480389,
+        "job_id": "m55-rush-c4-heuristic-v031-b02-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480390,
+        "job_id": "m55-rush-c4-prism-v01-b03-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480390,
+        "job_id": "m55-rush-c4-prism-v01-b03-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480391,
+        "job_id": "m55-rush-c4-heuristic-v031-b03-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480391,
+        "job_id": "m55-rush-c4-heuristic-v031-b03-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480392,
+        "job_id": "m55-rush-c4-prism-v01-b04-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480392,
+        "job_id": "m55-rush-c4-prism-v01-b04-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480393,
+        "job_id": "m55-rush-c4-heuristic-v031-b04-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480393,
+        "job_id": "m55-rush-c4-heuristic-v031-b04-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480394,
+        "job_id": "m55-rush-c4-prism-v01-b05-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480394,
+        "job_id": "m55-rush-c4-prism-v01-b05-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480395,
+        "job_id": "m55-rush-c4-heuristic-v031-b05-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480395,
+        "job_id": "m55-rush-c4-heuristic-v031-b05-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480396,
+        "job_id": "m55-rush-c4-prism-v01-b06-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480396,
+        "job_id": "m55-rush-c4-prism-v01-b06-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480397,
+        "job_id": "m55-rush-c4-heuristic-v031-b06-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480397,
+        "job_id": "m55-rush-c4-heuristic-v031-b06-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480398,
+        "job_id": "m55-rush-c4-prism-v01-b07-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480398,
+        "job_id": "m55-rush-c4-prism-v01-b07-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480399,
+        "job_id": "m55-rush-c4-heuristic-v031-b07-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480399,
+        "job_id": "m55-rush-c4-heuristic-v031-b07-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480400,
+        "job_id": "m55-rush-c4-prism-v01-b08-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480400,
+        "job_id": "m55-rush-c4-prism-v01-b08-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480401,
+        "job_id": "m55-rush-c4-heuristic-v031-b08-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480401,
+        "job_id": "m55-rush-c4-heuristic-v031-b08-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480402,
+        "job_id": "m55-rush-c4-prism-v01-b09-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480402,
+        "job_id": "m55-rush-c4-prism-v01-b09-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480403,
+        "job_id": "m55-rush-c4-heuristic-v031-b09-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480403,
+        "job_id": "m55-rush-c4-heuristic-v031-b09-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480404,
+        "job_id": "m55-rush-c4-prism-v01-b10-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480404,
+        "job_id": "m55-rush-c4-prism-v01-b10-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480405,
+        "job_id": "m55-rush-c4-heuristic-v031-b10-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480405,
+        "job_id": "m55-rush-c4-heuristic-v031-b10-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480406,
+        "job_id": "m55-rush-c4-prism-v01-b11-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480406,
+        "job_id": "m55-rush-c4-prism-v01-b11-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480407,
+        "job_id": "m55-rush-c4-heuristic-v031-b11-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480407,
+        "job_id": "m55-rush-c4-heuristic-v031-b11-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480408,
+        "job_id": "m55-rush-c4-prism-v01-b12-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480408,
+        "job_id": "m55-rush-c4-prism-v01-b12-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480409,
+        "job_id": "m55-rush-c4-heuristic-v031-b12-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480409,
+        "job_id": "m55-rush-c4-heuristic-v031-b12-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480410,
+        "job_id": "m55-rush-c4-prism-v01-b13-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480410,
+        "job_id": "m55-rush-c4-prism-v01-b13-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480411,
+        "job_id": "m55-rush-c4-heuristic-v031-b13-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480411,
+        "job_id": "m55-rush-c4-heuristic-v031-b13-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480412,
+        "job_id": "m55-rush-c4-prism-v01-b14-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480412,
+        "job_id": "m55-rush-c4-prism-v01-b14-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480413,
+        "job_id": "m55-rush-c4-heuristic-v031-b14-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480413,
+        "job_id": "m55-rush-c4-heuristic-v031-b14-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480414,
+        "job_id": "m55-rush-c4-prism-v01-b15-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480414,
+        "job_id": "m55-rush-c4-prism-v01-b15-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480415,
+        "job_id": "m55-rush-c4-heuristic-v031-b15-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480415,
+        "job_id": "m55-rush-c4-heuristic-v031-b15-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480416,
+        "job_id": "m55-rush-c4-prism-v01-b16-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480416,
+        "job_id": "m55-rush-c4-prism-v01-b16-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480417,
+        "job_id": "m55-rush-c4-heuristic-v031-b16-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480417,
+        "job_id": "m55-rush-c4-heuristic-v031-b16-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480418,
+        "job_id": "m55-rush-c4-prism-v01-b17-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480418,
+        "job_id": "m55-rush-c4-prism-v01-b17-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480419,
+        "job_id": "m55-rush-c4-heuristic-v031-b17-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480419,
+        "job_id": "m55-rush-c4-heuristic-v031-b17-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480420,
+        "job_id": "m55-rush-c4-prism-v01-b18-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480420,
+        "job_id": "m55-rush-c4-prism-v01-b18-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480421,
+        "job_id": "m55-rush-c4-heuristic-v031-b18-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480421,
+        "job_id": "m55-rush-c4-heuristic-v031-b18-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480422,
+        "job_id": "m55-rush-c4-prism-v01-b19-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480422,
+        "job_id": "m55-rush-c4-prism-v01-b19-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480423,
+        "job_id": "m55-rush-c4-heuristic-v031-b19-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480423,
+        "job_id": "m55-rush-c4-heuristic-v031-b19-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480424,
+        "job_id": "m55-rush-c4-prism-v01-b20-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480424,
+        "job_id": "m55-rush-c4-prism-v01-b20-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480425,
+        "job_id": "m55-rush-c4-heuristic-v031-b20-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480425,
+        "job_id": "m55-rush-c4-heuristic-v031-b20-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480426,
+        "job_id": "m55-rush-c4-prism-v01-b21-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480426,
+        "job_id": "m55-rush-c4-prism-v01-b21-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480427,
+        "job_id": "m55-rush-c4-heuristic-v031-b21-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480427,
+        "job_id": "m55-rush-c4-heuristic-v031-b21-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480428,
+        "job_id": "m55-rush-c4-prism-v01-b22-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480428,
+        "job_id": "m55-rush-c4-prism-v01-b22-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480429,
+        "job_id": "m55-rush-c4-heuristic-v031-b22-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480429,
+        "job_id": "m55-rush-c4-heuristic-v031-b22-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480430,
+        "job_id": "m55-rush-c4-prism-v01-b23-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480430,
+        "job_id": "m55-rush-c4-prism-v01-b23-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480431,
+        "job_id": "m55-rush-c4-heuristic-v031-b23-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480431,
+        "job_id": "m55-rush-c4-heuristic-v031-b23-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480432,
+        "job_id": "m55-rush-c4-prism-v01-b24-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480432,
+        "job_id": "m55-rush-c4-prism-v01-b24-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480433,
+        "job_id": "m55-rush-c4-heuristic-v031-b24-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480433,
+        "job_id": "m55-rush-c4-heuristic-v031-b24-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480434,
+        "job_id": "m55-rush-c4-prism-v01-b25-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480434,
+        "job_id": "m55-rush-c4-prism-v01-b25-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480435,
+        "job_id": "m55-rush-c4-heuristic-v031-b25-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480435,
+        "job_id": "m55-rush-c4-heuristic-v031-b25-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480436,
+        "job_id": "m55-rush-c4-prism-v01-b26-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480436,
+        "job_id": "m55-rush-c4-prism-v01-b26-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480437,
+        "job_id": "m55-rush-c4-heuristic-v031-b26-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480437,
+        "job_id": "m55-rush-c4-heuristic-v031-b26-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480438,
+        "job_id": "m55-rush-c4-prism-v01-b27-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480438,
+        "job_id": "m55-rush-c4-prism-v01-b27-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480439,
+        "job_id": "m55-rush-c4-heuristic-v031-b27-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480439,
+        "job_id": "m55-rush-c4-heuristic-v031-b27-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480440,
+        "job_id": "m55-rush-c4-prism-v01-b28-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480440,
+        "job_id": "m55-rush-c4-prism-v01-b28-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480441,
+        "job_id": "m55-rush-c4-heuristic-v031-b28-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480441,
+        "job_id": "m55-rush-c4-heuristic-v031-b28-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480442,
+        "job_id": "m55-rush-c4-prism-v01-b29-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480442,
+        "job_id": "m55-rush-c4-prism-v01-b29-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480443,
+        "job_id": "m55-rush-c4-heuristic-v031-b29-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480443,
+        "job_id": "m55-rush-c4-heuristic-v031-b29-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480444,
+        "job_id": "m55-rush-c4-prism-v01-b30-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480444,
+        "job_id": "m55-rush-c4-prism-v01-b30-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480445,
+        "job_id": "m55-rush-c4-heuristic-v031-b30-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480445,
+        "job_id": "m55-rush-c4-heuristic-v031-b30-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480446,
+        "job_id": "m55-rush-c4-prism-v01-b31-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480446,
+        "job_id": "m55-rush-c4-prism-v01-b31-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480447,
+        "job_id": "m55-rush-c4-heuristic-v031-b31-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480447,
+        "job_id": "m55-rush-c4-heuristic-v031-b31-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480448,
+        "job_id": "m55-rush-c4-prism-v01-b32-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480448,
+        "job_id": "m55-rush-c4-prism-v01-b32-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480449,
+        "job_id": "m55-rush-c4-heuristic-v031-b32-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480449,
+        "job_id": "m55-rush-c4-heuristic-v031-b32-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480450,
+        "job_id": "m55-rush-c4-prism-v01-b33-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480450,
+        "job_id": "m55-rush-c4-prism-v01-b33-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480451,
+        "job_id": "m55-rush-c4-heuristic-v031-b33-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480451,
+        "job_id": "m55-rush-c4-heuristic-v031-b33-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480452,
+        "job_id": "m55-rush-c4-prism-v01-b34-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480452,
+        "job_id": "m55-rush-c4-prism-v01-b34-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480453,
+        "job_id": "m55-rush-c4-heuristic-v031-b34-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480453,
+        "job_id": "m55-rush-c4-heuristic-v031-b34-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480454,
+        "job_id": "m55-rush-c4-prism-v01-b35-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480454,
+        "job_id": "m55-rush-c4-prism-v01-b35-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480455,
+        "job_id": "m55-rush-c4-heuristic-v031-b35-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480455,
+        "job_id": "m55-rush-c4-heuristic-v031-b35-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480456,
+        "job_id": "m55-rush-c4-prism-v01-b36-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480456,
+        "job_id": "m55-rush-c4-prism-v01-b36-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480457,
+        "job_id": "m55-rush-c4-heuristic-v031-b36-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480457,
+        "job_id": "m55-rush-c4-heuristic-v031-b36-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480458,
+        "job_id": "m55-rush-c4-prism-v01-b37-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480458,
+        "job_id": "m55-rush-c4-prism-v01-b37-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480459,
+        "job_id": "m55-rush-c4-heuristic-v031-b37-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480459,
+        "job_id": "m55-rush-c4-heuristic-v031-b37-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480460,
+        "job_id": "m55-rush-c4-prism-v01-b38-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480460,
+        "job_id": "m55-rush-c4-prism-v01-b38-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480461,
+        "job_id": "m55-rush-c4-heuristic-v031-b38-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480461,
+        "job_id": "m55-rush-c4-heuristic-v031-b38-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480462,
+        "job_id": "m55-rush-c4-prism-v01-b39-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480462,
+        "job_id": "m55-rush-c4-prism-v01-b39-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480463,
+        "job_id": "m55-rush-c4-heuristic-v031-b39-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480463,
+        "job_id": "m55-rush-c4-heuristic-v031-b39-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480464,
+        "job_id": "m55-rush-c4-prism-v01-b40-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480464,
+        "job_id": "m55-rush-c4-prism-v01-b40-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480465,
+        "job_id": "m55-rush-c4-heuristic-v031-b40-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480465,
+        "job_id": "m55-rush-c4-heuristic-v031-b40-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480466,
+        "job_id": "m55-rush-c4-prism-v01-b41-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480466,
+        "job_id": "m55-rush-c4-prism-v01-b41-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480467,
+        "job_id": "m55-rush-c4-heuristic-v031-b41-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480467,
+        "job_id": "m55-rush-c4-heuristic-v031-b41-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480468,
+        "job_id": "m55-rush-c4-prism-v01-b42-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480468,
+        "job_id": "m55-rush-c4-prism-v01-b42-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480469,
+        "job_id": "m55-rush-c4-heuristic-v031-b42-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480469,
+        "job_id": "m55-rush-c4-heuristic-v031-b42-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480470,
+        "job_id": "m55-rush-c4-prism-v01-b43-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480470,
+        "job_id": "m55-rush-c4-prism-v01-b43-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480471,
+        "job_id": "m55-rush-c4-heuristic-v031-b43-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480471,
+        "job_id": "m55-rush-c4-heuristic-v031-b43-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480472,
+        "job_id": "m55-rush-c4-prism-v01-b44-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480472,
+        "job_id": "m55-rush-c4-prism-v01-b44-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480473,
+        "job_id": "m55-rush-c4-heuristic-v031-b44-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480473,
+        "job_id": "m55-rush-c4-heuristic-v031-b44-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480474,
+        "job_id": "m55-rush-c4-prism-v01-b45-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480474,
+        "job_id": "m55-rush-c4-prism-v01-b45-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480475,
+        "job_id": "m55-rush-c4-heuristic-v031-b45-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480475,
+        "job_id": "m55-rush-c4-heuristic-v031-b45-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480476,
+        "job_id": "m55-rush-c4-prism-v01-b46-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480476,
+        "job_id": "m55-rush-c4-prism-v01-b46-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480477,
+        "job_id": "m55-rush-c4-heuristic-v031-b46-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480477,
+        "job_id": "m55-rush-c4-heuristic-v031-b46-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480478,
+        "job_id": "m55-rush-c4-prism-v01-b47-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480478,
+        "job_id": "m55-rush-c4-prism-v01-b47-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480479,
+        "job_id": "m55-rush-c4-heuristic-v031-b47-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480479,
+        "job_id": "m55-rush-c4-heuristic-v031-b47-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480480,
+        "job_id": "m55-rush-c4-prism-v01-b48-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480480,
+        "job_id": "m55-rush-c4-prism-v01-b48-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480481,
+        "job_id": "m55-rush-c4-heuristic-v031-b48-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480481,
+        "job_id": "m55-rush-c4-heuristic-v031-b48-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480482,
+        "job_id": "m55-rush-c4-prism-v01-b49-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480482,
+        "job_id": "m55-rush-c4-prism-v01-b49-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480483,
+        "job_id": "m55-rush-c4-heuristic-v031-b49-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480483,
+        "job_id": "m55-rush-c4-heuristic-v031-b49-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480484,
+        "job_id": "m55-rush-c4-prism-v01-b50-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480484,
+        "job_id": "m55-rush-c4-prism-v01-b50-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480485,
+        "job_id": "m55-rush-c4-heuristic-v031-b50-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480485,
+        "job_id": "m55-rush-c4-heuristic-v031-b50-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480486,
+        "job_id": "m55-rush-c4-prism-v01-b51-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480486,
+        "job_id": "m55-rush-c4-prism-v01-b51-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480487,
+        "job_id": "m55-rush-c4-heuristic-v031-b51-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480487,
+        "job_id": "m55-rush-c4-heuristic-v031-b51-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480488,
+        "job_id": "m55-rush-c4-prism-v01-b52-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480488,
+        "job_id": "m55-rush-c4-prism-v01-b52-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480489,
+        "job_id": "m55-rush-c4-heuristic-v031-b52-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480489,
+        "job_id": "m55-rush-c4-heuristic-v031-b52-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480490,
+        "job_id": "m55-rush-c4-prism-v01-b53-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480490,
+        "job_id": "m55-rush-c4-prism-v01-b53-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480491,
+        "job_id": "m55-rush-c4-heuristic-v031-b53-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480491,
+        "job_id": "m55-rush-c4-heuristic-v031-b53-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480492,
+        "job_id": "m55-rush-c4-prism-v01-b54-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480492,
+        "job_id": "m55-rush-c4-prism-v01-b54-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480493,
+        "job_id": "m55-rush-c4-heuristic-v031-b54-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480493,
+        "job_id": "m55-rush-c4-heuristic-v031-b54-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480494,
+        "job_id": "m55-rush-c4-prism-v01-b55-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480494,
+        "job_id": "m55-rush-c4-prism-v01-b55-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480495,
+        "job_id": "m55-rush-c4-heuristic-v031-b55-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480495,
+        "job_id": "m55-rush-c4-heuristic-v031-b55-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480496,
+        "job_id": "m55-rush-c4-prism-v01-b56-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480496,
+        "job_id": "m55-rush-c4-prism-v01-b56-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480497,
+        "job_id": "m55-rush-c4-heuristic-v031-b56-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480497,
+        "job_id": "m55-rush-c4-heuristic-v031-b56-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480498,
+        "job_id": "m55-rush-c4-prism-v01-b57-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480498,
+        "job_id": "m55-rush-c4-prism-v01-b57-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480499,
+        "job_id": "m55-rush-c4-heuristic-v031-b57-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480499,
+        "job_id": "m55-rush-c4-heuristic-v031-b57-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480500,
+        "job_id": "m55-rush-c4-prism-v01-b58-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480500,
+        "job_id": "m55-rush-c4-prism-v01-b58-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480501,
+        "job_id": "m55-rush-c4-heuristic-v031-b58-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480501,
+        "job_id": "m55-rush-c4-heuristic-v031-b58-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480502,
+        "job_id": "m55-rush-c4-prism-v01-b59-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480502,
+        "job_id": "m55-rush-c4-prism-v01-b59-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480503,
+        "job_id": "m55-rush-c4-heuristic-v031-b59-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480503,
+        "job_id": "m55-rush-c4-heuristic-v031-b59-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480504,
+        "job_id": "m55-rush-c4-prism-v01-b60-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480504,
+        "job_id": "m55-rush-c4-prism-v01-b60-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480505,
+        "job_id": "m55-rush-c4-heuristic-v031-b60-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480505,
+        "job_id": "m55-rush-c4-heuristic-v031-b60-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480506,
+        "job_id": "m55-rush-c4-prism-v01-b61-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480506,
+        "job_id": "m55-rush-c4-prism-v01-b61-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480507,
+        "job_id": "m55-rush-c4-heuristic-v031-b61-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480507,
+        "job_id": "m55-rush-c4-heuristic-v031-b61-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480508,
+        "job_id": "m55-rush-c4-prism-v01-b62-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480508,
+        "job_id": "m55-rush-c4-prism-v01-b62-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480509,
+        "job_id": "m55-rush-c4-heuristic-v031-b62-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480509,
+        "job_id": "m55-rush-c4-heuristic-v031-b62-s1",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480510,
+        "job_id": "m55-rush-c4-prism-v01-b63-s0",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480510,
+        "job_id": "m55-rush-c4-prism-v01-b63-s1",
+        "opponent_id": "prism-v01"
+      },
+      {
+        "actor": 0,
+        "environment_seed": 9480511,
+        "job_id": "m55-rush-c4-heuristic-v031-b63-s0",
+        "opponent_id": "heuristic-v031"
+      },
+      {
+        "actor": 1,
+        "environment_seed": 9480511,
+        "job_id": "m55-rush-c4-heuristic-v031-b63-s1",
+        "opponent_id": "heuristic-v031"
+      }
+    ]
+  ],
+  "format": "prism-ppo-arena-v1",
+  "learner": {
+    "program": "local-artifacts/prism/ppo-arena-v1/bin/splendor-ppo.exe",
+    "sha256": "2c0aba78ab1bef8d5e8ac85223277e137a74a931c12a22a9b016706c4d8aa321"
+  },
+  "limits": {
+    "campaign_cpu_seconds": 18000,
+    "game_cpu_seconds": 30,
+    "game_wall_seconds": 60,
+    "handshake_timeout_ms": 10000,
+    "max_infra_retries": 0,
+    "max_physical_decisions": 262144,
+    "max_plies": 256,
+    "memory_bytes": 8589934592,
+    "move_timeout_ms": 10000,
+    "shutdown_grace_ms": 1000
+  },
+  "opponents": {
+    "heuristic-v031": {
+      "args": [
+        "agent-heuristic-v02",
+        "--seed",
+        "20260926"
+      ],
+      "files": {},
+      "hello": {
+        "agent_name": "splendor-cli-heuristic-v02",
+        "agent_version": "0.2.9"
+      },
+      "mode": "greedy",
+      "program": "local-artifacts/prism/v01/bin/teacher-v031.exe",
+      "sha256": "6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db"
+    },
+    "prism-v01": {
+      "args": [
+        "agent-prism",
+        "--weights",
+        "local-artifacts/prism/v01/run/weights.json",
+        "--seed",
+        "51000001"
+      ],
+      "files": {
+        "local-artifacts/prism/v01/run/weights.json": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54"
+      },
+      "hello": {
+        "agent_name": "prism-v0.1",
+        "agent_version": "0.1.0"
+      },
+      "mode": "greedy",
+      "program": "local-artifacts/prism/v01/bin/splendor-prism.exe",
+      "sha256": "ec4024d61d8f87d838c6622367414b622118fa0c73e1e9028fe1a4bd828ad104"
+    }
+  },
+  "parent_weights": "local-artifacts/prism/v0.1.1/weights.json",
+  "run": {
+    "arena_contract_sha256": "1799097ed024f0c2c38a018c9e450ea7f36e17241c6d9448b852f085fb746f55",
+    "auditor_sha256": "2c0aba78ab1bef8d5e8ac85223277e137a74a931c12a22a9b016706c4d8aa321",
+    "budget": {
+      "max_attempts": 1024,
+      "max_cycles": 4,
+      "max_decisions": 262144,
+      "max_job_decisions": 256,
+      "max_jobs": 1024,
+      "max_optimizer_steps": 2048,
+      "max_run_seconds": 14400,
+      "max_storage_bytes": 68719476736,
+      "max_update_attempts": 2048
+    },
+    "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+    "cpu_threads": 2,
+    "device": "cpu",
+    "format": "prism-ppo-run-v3",
+    "opponents": {
+      "heuristic-v031": "9cde45a39f617c125144572efd94d082d422339f088b34f5ddab0499f1c7540c",
+      "prism-v01": "daf995afebb25a282973beb194fdae9b438b173a33f76dcd4baefc053bbb0e1b"
+    },
+    "parent_sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "ppo": {
+      "clip_epsilon": 0.2,
+      "entropy_weight": 0.01,
+      "gae_lambda": 0.95,
+      "logp_tolerance": 1e-06,
+      "lr": 3e-05,
+      "max_grad_norm": 1.0,
+      "minibatch_size": 256,
+      "normalize_advantage": true,
+      "passes": 2,
+      "style_beta": 0.3,
+      "style_value_weight": 0.5,
+      "target_kl": 0.02,
+      "value_tolerance": 1e-06,
+      "value_weight": 0.5,
+      "weight_decay": 0.0
+    },
+    "run_id": "m55-prism-rush-v0.1.0-pilot",
+    "seed": 55010001,
+    "style": {
+      "diagnostic_horizon_main_actions": 20,
+      "diagnostic_score_threshold": 8,
+      "format": "prism-rush-style-v1",
+      "phase_semantics": "choose_noble-belongs-to-preceding-main",
+      "score_cap": 15,
+      "short_game_padding": "terminal-prestige",
+      "style_reward_input": "player-visible-own-prestige-and-terminal-own-prestige",
+      "terminal_only": true,
+      "window_main_actions": 16
+    }
+  }
+}

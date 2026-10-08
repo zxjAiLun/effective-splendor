@@ -1,0 +1,3540 @@
+{
+  "format": "prism-cloud-planning-publication-manifest-v1",
+  "status": "CONTENT_CHECKED_FOR_GIT_PUBLICATION",
+  "created_at": "2026-10-08T12:19:19.405119+00:00",
+  "authorization": {
+    "source": "human_owner",
+    "request": "先把项目用于云端agent需要看到拿去做方向判断的内容都同步到git里 我让云端仓库负责规划",
+    "authorized_end": "planning-context Git commit and normal push to default main; no research execution"
+  },
+  "source_baseline_head": "9899749188f35c838c85c5b3530049bd5dcbd105",
+  "remote_base_main": "9cb8464a4a2089913ffed2d1e5c08b1e91ba3bcf",
+  "entrypoint": "CLOUD_PLANNING.md",
+  "execution_authorized": false,
+  "source_scope": "current research source for review; not re-certification of frozen execution bundles; unrelated Studio/M50/heuristic edits excluded",
+  "history_commits_to_publish": 87,
+  "secret_scan": {
+    "selected_files": 461,
+    "historical_text_blobs": 279,
+    "findings": 0
+  },
+  "python_syntax_checked": 192,
+  "json_parse_checked": 96,
+  "excluded": [
+    "handoff.md",
+    "local-artifacts/",
+    "full weights/checkpoints/replays/optimizer/RNG",
+    "credentials",
+    "unrelated working-tree business implementation"
+  ],
+  "partial_staging": [
+    {
+      "path": "crates/splendor-cli/src/main.rs",
+      "included": "Prism module declarations and dispatch only",
+      "excluded": "new heuristic-two-ply dispatch"
+    }
+  ],
+  "files": [
+    {
+      "path": ".gitattributes",
+      "git_bytes": 880,
+      "git_sha256": "2cc61e65332ecc13c1efe2112646b450ee26986fd0754686954732652142e900",
+      "working_sha256": "2cc61e65332ecc13c1efe2112646b450ee26986fd0754686954732652142e900",
+      "git_blob": "34de587f595229a1e41aed7413ba343bcbf38877"
+    },
+    {
+      "path": ".gitignore",
+      "git_bytes": 613,
+      "git_sha256": "3cac633824491d5cde6119521d4e037336673eb3d4f8723b333b91c9f8e8a8c9",
+      "working_sha256": "3cac633824491d5cde6119521d4e037336673eb3d4f8723b333b91c9f8e8a8c9",
+      "git_blob": "21912d3a00395501767bdda60720125edab781a4"
+    },
+    {
+      "path": "AGENTS.md",
+      "git_bytes": 37215,
+      "git_sha256": "217c44198906904a3709ad25bbb0ed04978c88067adcbf261db4e43f316ee3d1",
+      "working_sha256": "217c44198906904a3709ad25bbb0ed04978c88067adcbf261db4e43f316ee3d1",
+      "git_blob": "71df5da0b7df26a846289d441d9862e21b81c67f"
+    },
+    {
+      "path": "CLOUD_PLANNING.md",
+      "git_bytes": 9714,
+      "git_sha256": "0b733c62ab35a14f3b9929e613bb29fe74eb89ce5a714bd6789e168ea44d6edb",
+      "working_sha256": "0b733c62ab35a14f3b9929e613bb29fe74eb89ce5a714bd6789e168ea44d6edb",
+      "git_blob": "8e36024c78f39584c1f872d9e3703bd45354ffa6"
+    },
+    {
+      "path": "Cargo.lock",
+      "git_bytes": 28135,
+      "git_sha256": "21e68ebdbfddc74215091af4091e387c56b4d9d304e6b1ad2fee3339920b8e96",
+      "working_sha256": "21e68ebdbfddc74215091af4091e387c56b4d9d304e6b1ad2fee3339920b8e96",
+      "git_blob": "6e3ec6992e5d703abfcbc90893b1ffca1b00b676"
+    },
+    {
+      "path": "Cargo.toml",
+      "git_bytes": 3429,
+      "git_sha256": "93ec3bf63d875042dafb213a399a63f323d891f37f035b70d028ad7ce0e3b332",
+      "working_sha256": "93ec3bf63d875042dafb213a399a63f323d891f37f035b70d028ad7ce0e3b332",
+      "git_blob": "39fe8331d2b697564cb7f6eed58cda47f66dd4c9"
+    },
+    {
+      "path": "README.md",
+      "git_bytes": 18188,
+      "git_sha256": "30a37a428c0de9564e2e6a83455f05b93a65974aae16c5bb92a811265fc3e027",
+      "working_sha256": "30a37a428c0de9564e2e6a83455f05b93a65974aae16c5bb92a811265fc3e027",
+      "git_blob": "9705e3fd232c60eb22d0f7e7236e9413058355ce"
+    },
+    {
+      "path": "benchmarks/m51-prism-v01.config.json",
+      "git_bytes": 2298,
+      "git_sha256": "c46aba1f90b01508fae9073f9b5bcae1f1fa7696580fe6937721ac57130caecd",
+      "working_sha256": "c46aba1f90b01508fae9073f9b5bcae1f1fa7696580fe6937721ac57130caecd",
+      "git_blob": "4dcc5cfcb1b2857eb8f567be609a1870ea38de45"
+    },
+    {
+      "path": "benchmarks/m51-prism-v01.result.json",
+      "git_bytes": 3113,
+      "git_sha256": "e22af95e46d03bc83fcb0890989a5c1f6ab881ad5737ee9c43e4888895328d63",
+      "working_sha256": "e22af95e46d03bc83fcb0890989a5c1f6ab881ad5737ee9c43e4888895328d63",
+      "git_blob": "5e4d931b2db78ca17f6e8f9abe02442b8f03a9d4"
+    },
+    {
+      "path": "benchmarks/m54-prism-011.candidate.json",
+      "git_bytes": 2443,
+      "git_sha256": "4c1ead2183166b526ccc382e2a08ae989b7df6d605779ed5208572c991030830",
+      "working_sha256": "4c1ead2183166b526ccc382e2a08ae989b7df6d605779ed5208572c991030830",
+      "git_blob": "7cf2fab22ced9c4f4ae78de3edc7b4237bb93780"
+    },
+    {
+      "path": "benchmarks/m54-prism-011.match-details.json",
+      "git_bytes": 79520,
+      "git_sha256": "24c1fbed8cd254a13f6bbb40153b15106576f9436520d4a540a9efc4916510dc",
+      "working_sha256": "24c1fbed8cd254a13f6bbb40153b15106576f9436520d4a540a9efc4916510dc",
+      "git_blob": "0b9c8e9c1b67c00e100475d4f2d65c94e1f0cc68"
+    },
+    {
+      "path": "benchmarks/m54-prism-011.release.json",
+      "git_bytes": 3719,
+      "git_sha256": "f9b95b8d86a59d06b0954e02cf875eb1743c352bc664753fe0c77fc8455b0fd9",
+      "working_sha256": "f9b95b8d86a59d06b0954e02cf875eb1743c352bc664753fe0c77fc8455b0fd9",
+      "git_blob": "27de324352ff50decb72d05bd666cb9bbdd791d3"
+    },
+    {
+      "path": "benchmarks/m54-prism-011.result.json",
+      "git_bytes": 4763,
+      "git_sha256": "07b7cdc7af2bcb67f8e51b46c04c41e06f9b133123f705a6e9700afabec7ba7a",
+      "working_sha256": "07b7cdc7af2bcb67f8e51b46c04c41e06f9b133123f705a6e9700afabec7ba7a",
+      "git_blob": "d5cea2ca378536df12cda25ab508fb26ae9b4aa0"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-arena-v1.config.json",
+      "git_bytes": 4195,
+      "git_sha256": "7f4be54459d4da0054ba604e65272367461ffa2902ae77bf32652911d75cb0dc",
+      "working_sha256": "7f4be54459d4da0054ba604e65272367461ffa2902ae77bf32652911d75cb0dc",
+      "git_blob": "5528b1144563c07eed93702443fca096c98f2b71"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-arena-v1.result.json",
+      "git_bytes": 11109,
+      "git_sha256": "46cb01f70216e76b43fd6b2dc9e3834e45ab01b2b3e5b5372be75c2865531ed2",
+      "working_sha256": "46cb01f70216e76b43fd6b2dc9e3834e45ab01b2b3e5b5372be75c2865531ed2",
+      "git_blob": "7b6313b9b928b68f80c32843ea592f1f806333ea"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-infrastructure-v1.result.json",
+      "git_bytes": 5391,
+      "git_sha256": "8ef2362b346b88a337823266c5727b76e734dc5826b953e36a1e41caf004ee4b",
+      "working_sha256": "8ef2362b346b88a337823266c5727b76e734dc5826b953e36a1e41caf004ee4b",
+      "git_blob": "2eaf1b76d1282db31326bfae7b66f16ee5a418a7"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v1.config.json",
+      "git_bytes": 341439,
+      "git_sha256": "d4d29e21f6886c82af8ca787f0e339759ab48e6bd214b819e3aa6b5289436ee3",
+      "working_sha256": "d4d29e21f6886c82af8ca787f0e339759ab48e6bd214b819e3aa6b5289436ee3",
+      "git_blob": "97b4de9e8dce9f589def02e26a41874b634eb7dd"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v1.resource-supplement.json",
+      "git_bytes": 1291,
+      "git_sha256": "7f7846ee516c4c4aa391ebad960027bc3b45d10ff1560c0a1591ec988a524adb",
+      "working_sha256": "7f7846ee516c4c4aa391ebad960027bc3b45d10ff1560c0a1591ec988a524adb",
+      "git_blob": "867e4e3dd4b0bf07f022208f5986759f08b0e926"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v1.result.json",
+      "git_bytes": 13369,
+      "git_sha256": "19e878395ff98d21c6408b2a062ace059e3efa52a4a374062039316282e46659",
+      "working_sha256": "19e878395ff98d21c6408b2a062ace059e3efa52a4a374062039316282e46659",
+      "git_blob": "c774f796d4c5928b5e8aaa7a0609ab99b56fc806"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v2.config.json",
+      "git_bytes": 347612,
+      "git_sha256": "ce89bc334d7cf755ac109ba2dfb048072873c80a129503a6641c5d45cb31af87",
+      "working_sha256": "ce89bc334d7cf755ac109ba2dfb048072873c80a129503a6641c5d45cb31af87",
+      "git_blob": "b1837ad241ad7c85b7265552a801cdbe1f08767e"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v2.continuation.json",
+      "git_bytes": 926,
+      "git_sha256": "ad81dc3445470ef4bc68c4e2461295001476e3c0feb902fb9b1ce924901483a3",
+      "working_sha256": "ad81dc3445470ef4bc68c4e2461295001476e3c0feb902fb9b1ce924901483a3",
+      "git_blob": "4f7dede2428fe22bb5dfff58f78cfdccbb1b922a"
+    },
+    {
+      "path": "benchmarks/m54-prism-ppo-trial-v2.result.json",
+      "git_bytes": 15817,
+      "git_sha256": "c1a2ad76c0c6b3f5cef0bd225af6c69944b438f8a1d7d554089a33dda1395b71",
+      "working_sha256": "c1a2ad76c0c6b3f5cef0bd225af6c69944b438f8a1d7d554089a33dda1395b71",
+      "git_blob": "224536fe1bc825ad002a0d4dd4ff6ff4c6eac9b5"
+    },
+    {
+      "path": "benchmarks/m54-prism-v0.1.1.candidate.json",
+      "git_bytes": 2844,
+      "git_sha256": "79e1367c318712fb47f255b4105197ba7b294ca1536c02710d77e1df1566b8a2",
+      "working_sha256": "79e1367c318712fb47f255b4105197ba7b294ca1536c02710d77e1df1566b8a2",
+      "git_blob": "133cd646b039356b38d1f77da87358ec1297025a"
+    },
+    {
+      "path": "benchmarks/m54-prism-v0.1.1.release.json",
+      "git_bytes": 4040,
+      "git_sha256": "bbd5f410e45885bd030dd69476f7bcc3fb6a92a18f73fe1d859b34e48d1fb7d4",
+      "working_sha256": "bbd5f410e45885bd030dd69476f7bcc3fb6a92a18f73fe1d859b34e48d1fb7d4",
+      "git_blob": "29a286a7c76b4f59406007279cc0f066b9646bf3"
+    },
+    {
+      "path": "benchmarks/m54-prism-v0.1.1.result.json",
+      "git_bytes": 5042,
+      "git_sha256": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+      "working_sha256": "209d312caccd08f20ba3a54dfe07db82e1ee57097f6b080906cf76f41a274001",
+      "git_blob": "9f8a68e53b2ddb4275caaba080b829a78ff0b02d"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02-acceptance-v1.config.json",
+      "git_bytes": 2984,
+      "git_sha256": "4e849130a065958cf0694717d64a9ac33078aad5aa3f1ff43ee001eaa95f96da",
+      "working_sha256": "4e849130a065958cf0694717d64a9ac33078aad5aa3f1ff43ee001eaa95f96da",
+      "git_blob": "72e7da09a1cb20c5904b022c01683f5729ca3df6"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02-acceptance-v1.result.json",
+      "git_bytes": 10370,
+      "git_sha256": "570a4d2439838ca29e2fb2144e2312b768ad27d6dd6ea0bdf99ece5f2191349c",
+      "working_sha256": "570a4d2439838ca29e2fb2144e2312b768ad27d6dd6ea0bdf99ece5f2191349c",
+      "git_blob": "e8ddf46717cd6a66d4b987161b9974498f27929d"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02-acceptance-v2.config.json",
+      "git_bytes": 5235,
+      "git_sha256": "8b8045da8e1f4e57e9d3d1c986e58722b8ecaafea603cc14ef61b14bb77ca154",
+      "working_sha256": "8b8045da8e1f4e57e9d3d1c986e58722b8ecaafea603cc14ef61b14bb77ca154",
+      "git_blob": "85478c92525758594800b1e520ade1cfeec83b73"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02-acceptance-v2.result.json",
+      "git_bytes": 17813,
+      "git_sha256": "827c621a8e1771849088624cff385fe818c149c0f8374fe5863bb70cebfa82a5",
+      "working_sha256": "827c621a8e1771849088624cff385fe818c149c0f8374fe5863bb70cebfa82a5",
+      "git_blob": "c3a6eb7f3cdf6caaa8632e11776e9758018370d1"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02.candidate.json",
+      "git_bytes": 2024,
+      "git_sha256": "dd2b21d6a0a8b527ef2e68b8cb4ecf1246b7d71c1c90ddd0ba9c3db499dbf234",
+      "working_sha256": "dd2b21d6a0a8b527ef2e68b8cb4ecf1246b7d71c1c90ddd0ba9c3db499dbf234",
+      "git_blob": "f13b2ee6c10edc43164b883991ef5c4d937d5c01"
+    },
+    {
+      "path": "benchmarks/m54-prism-v02.release.json",
+      "git_bytes": 2771,
+      "git_sha256": "448e1b5ff64624f159e48d613d2f98c50235d2f8735f62cdab88044b995a6832",
+      "working_sha256": "448e1b5ff64624f159e48d613d2f98c50235d2f8735f62cdab88044b995a6832",
+      "git_blob": "47dfc9e0f05d21cbbabce0b6b6036a75becf3f1d"
+    },
+    {
+      "path": "benchmarks/m55-prism-alpha-v0.1.0.model.json",
+      "git_bytes": 3319,
+      "git_sha256": "1de55b15f42ab683faa44abb2f6dbfc9d3352191079475ea7a789452361a2552",
+      "working_sha256": "1de55b15f42ab683faa44abb2f6dbfc9d3352191079475ea7a789452361a2552",
+      "git_blob": "ccb2dca44c8b74548b4928c0743a58e24f4ffda5"
+    },
+    {
+      "path": "benchmarks/m55-prism-alpha-v0.1.0.style-profile.json",
+      "git_bytes": 18804,
+      "git_sha256": "db496e0b6371410403a53feb80e800f2e06b823d6547e63b463a3b48d7a166d3",
+      "working_sha256": "db496e0b6371410403a53feb80e800f2e06b823d6547e63b463a3b48d7a166d3",
+      "git_blob": "2db51cbb61cf8ee6cf3e2a4dc286a811010a4cc7"
+    },
+    {
+      "path": "benchmarks/m55-prism-rush-v0.1.0.config.json",
+      "git_bytes": 2799,
+      "git_sha256": "8ab3c1557d104f4164121a92d2c8489a4bf8b27d20a389a83b48fa892b86abff",
+      "working_sha256": "8ab3c1557d104f4164121a92d2c8489a4bf8b27d20a389a83b48fa892b86abff",
+      "git_blob": "b267b01fa8628447ff4c9e414df1310a03099027"
+    },
+    {
+      "path": "benchmarks/m55-prism-rush-v0.1.0.evaluate.json",
+      "git_bytes": 8716,
+      "git_sha256": "c2c57ea34f343e30c03dcdc8fbdbf0074cc2051ffc5a189839cdb44dbaafbe17",
+      "working_sha256": "c2c57ea34f343e30c03dcdc8fbdbf0074cc2051ffc5a189839cdb44dbaafbe17",
+      "git_blob": "378d01b587f815812149048073b5c9730a902523"
+    },
+    {
+      "path": "benchmarks/m55-prism-rush-v0.1.0.interpretation.json",
+      "git_bytes": 4662,
+      "git_sha256": "4e67fa7178534897f70bf8a1e0b945792aee4bf2000891f5b3a9be918094ce69",
+      "working_sha256": "4e67fa7178534897f70bf8a1e0b945792aee4bf2000891f5b3a9be918094ce69",
+      "git_blob": "c9dcf4d18c58c666db8f983c322f21732b769dab"
+    },
+    {
+      "path": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+      "git_bytes": 143425,
+      "git_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "working_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "git_blob": "7e7451bd6eed1083d2cfb73b0e5bac7a8dba9973"
+    },
+    {
+      "path": "benchmarks/m55-prism-rush-v0.1.0.train.json",
+      "git_bytes": 171826,
+      "git_sha256": "2c5126d01de7d21b3bd6f9d37def3b12048807788a19779501e7196a00c5b8f7",
+      "working_sha256": "2c5126d01de7d21b3bd6f9d37def3b12048807788a19779501e7196a00c5b8f7",
+      "git_blob": "5e2ede8db3d97e62b1982b6f96b77d51de127a35"
+    },
+    {
+      "path": "benchmarks/m56-prism-alpha-v0.1.1.config.json",
+      "git_bytes": 3696,
+      "git_sha256": "81579f01aae5f0d74871bf61ef4a7827b8ba23f50a897a7a5d5d071f9769eda7",
+      "working_sha256": "81579f01aae5f0d74871bf61ef4a7827b8ba23f50a897a7a5d5d071f9769eda7",
+      "git_blob": "a69b463f2cfc95e44cc22266f108cf203eb3b5cc"
+    },
+    {
+      "path": "benchmarks/m56-prism-alpha-v0.1.1.evaluate.json",
+      "git_bytes": 9914,
+      "git_sha256": "6361b98624295b75aef745cd2a8dd891aa3fc71cb484e2a73d3ea86e1d9eb5b3",
+      "working_sha256": "6361b98624295b75aef745cd2a8dd891aa3fc71cb484e2a73d3ea86e1d9eb5b3",
+      "git_blob": "57b4e447cf0d3f47161cd77af9b2163842880f64"
+    },
+    {
+      "path": "benchmarks/m56-prism-alpha-v0.1.1.model.json",
+      "git_bytes": 1524,
+      "git_sha256": "9ea52b2ca63ae0a22eca9325a859826e4afc017e5f553c811b71d2080884d29b",
+      "working_sha256": "9ea52b2ca63ae0a22eca9325a859826e4afc017e5f553c811b71d2080884d29b",
+      "git_blob": "565e144f4fd7cc7c7980f8e03c72206e34b9b2ea"
+    },
+    {
+      "path": "benchmarks/m56-prism-alpha-v0.1.1.result.json",
+      "git_bytes": 250999,
+      "git_sha256": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+      "working_sha256": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+      "git_blob": "60bf99dae3ec3518d47fe9e0b045e809f23ac2f4"
+    },
+    {
+      "path": "benchmarks/m56-prism-alpha-v0.1.1.train.json",
+      "git_bytes": 179130,
+      "git_sha256": "4c4afd6cd1b84ae12af3277d35c02d3a7c3b80caaef84f877e6a6536c56a013d",
+      "working_sha256": "4c4afd6cd1b84ae12af3277d35c02d3a7c3b80caaef84f877e6a6536c56a013d",
+      "git_blob": "0fa98273580745a92641bf03c83ac2c88ed512fa"
+    },
+    {
+      "path": "benchmarks/m61-prism-alpha-ab.train.json",
+      "git_bytes": 178083,
+      "git_sha256": "6e82d362b9b17a603f6132780bd8b5bcb9aa3f7ced93f3214ab668a3fd9508f4",
+      "working_sha256": "6e82d362b9b17a603f6132780bd8b5bcb9aa3f7ced93f3214ab668a3fd9508f4",
+      "git_blob": "cff526ee21c24a5929aedbb89380b5c958f8bbaf"
+    },
+    {
+      "path": "benchmarks/m61-prism-alpha-balance-ab.config.json",
+      "git_bytes": 60144,
+      "git_sha256": "280efde1a7441e82d072f33f22b97c24b2d1f5653de76ccfeecb72729ac53fd9",
+      "working_sha256": "280efde1a7441e82d072f33f22b97c24b2d1f5653de76ccfeecb72729ac53fd9",
+      "git_blob": "613cbb9fa0ab40bdee0cb8f14b8462f0bc84ce22"
+    },
+    {
+      "path": "benchmarks/m61-prism-alpha-v0.1.4.model.json",
+      "git_bytes": 3870001,
+      "git_sha256": "c8476edbb6bf474cc8bfca3c09df78957c1968a061b0cf8383b96a26d45f5435",
+      "working_sha256": "c8476edbb6bf474cc8bfca3c09df78957c1968a061b0cf8383b96a26d45f5435",
+      "git_blob": "1515ef065e7cc8b3594597b1167f74f5f721f114"
+    },
+    {
+      "path": "benchmarks/m61-prism-balance-ab.train.json",
+      "git_bytes": 180135,
+      "git_sha256": "0e62f8a0e8f4736a2574e0f8e73ce616b8b4f957f6a7ef5c89cf6a253784cd6e",
+      "working_sha256": "0e62f8a0e8f4736a2574e0f8e73ce616b8b4f957f6a7ef5c89cf6a253784cd6e",
+      "git_blob": "159160426f27f10ec45b3c13cc96c96ad8c10aa6"
+    },
+    {
+      "path": "benchmarks/m61-prism-balance-v0.1.0.model.json",
+      "git_bytes": 3869601,
+      "git_sha256": "66abd12229ad03543ae9121b12bebf36b4bf61b3f254f2284aef0dfa2e117b21",
+      "working_sha256": "66abd12229ad03543ae9121b12bebf36b4bf61b3f254f2284aef0dfa2e117b21",
+      "git_blob": "dab68480ee9b3c96c17a3faf65b7aeb4ea0c5dfa"
+    },
+    {
+      "path": "benchmarks/m62-prism-beta-building.config.json",
+      "git_bytes": 8027733,
+      "git_sha256": "4f3ff90c89b017ad4b1fdb0f344b1ca84bc55ea641d5a1aee3b0bb50463eb408",
+      "working_sha256": "4f3ff90c89b017ad4b1fdb0f344b1ca84bc55ea641d5a1aee3b0bb50463eb408",
+      "git_blob": "e834e8bf38cd2678318827b3f7a2e76ace59a9e5"
+    },
+    {
+      "path": "benchmarks/m62-prism-beta-building.train.json",
+      "git_bytes": 177642,
+      "git_sha256": "c0f98b641ea2504fa111df8e47b16bcfc1588bb155ea6e234b63b5fadaacae20",
+      "working_sha256": "c0f98b641ea2504fa111df8e47b16bcfc1588bb155ea6e234b63b5fadaacae20",
+      "git_blob": "e1e0ab849163ce1879fde7002d45c9d8032e5f5c"
+    },
+    {
+      "path": "benchmarks/m62-prism-control-building.train.json",
+      "git_bytes": 180720,
+      "git_sha256": "48d58866e19e7ea064a2714afb634321139f2390f054586779631ed18b2af53b",
+      "working_sha256": "48d58866e19e7ea064a2714afb634321139f2390f054586779631ed18b2af53b",
+      "git_blob": "a3b7458a0cb42f5e9d60ef4938939ec132d1a468"
+    },
+    {
+      "path": "benchmarks/m63-prism-beta-building.train.json",
+      "git_bytes": 177990,
+      "git_sha256": "63827485a15c7b3acfba8a9b9f6793eb30c80a8abcebc1344a9e3b8dc23b57f0",
+      "working_sha256": "63827485a15c7b3acfba8a9b9f6793eb30c80a8abcebc1344a9e3b8dc23b57f0",
+      "git_blob": "46a111268e27b07d990ab077ba7b2f9cec956980"
+    },
+    {
+      "path": "benchmarks/m63-prism-beta-timed-building.config.json",
+      "git_bytes": 8031325,
+      "git_sha256": "c0d3de5398c724bd502d5c30f5f52ec06a848f7fe2672c28e1086c7730b21550",
+      "working_sha256": "c0d3de5398c724bd502d5c30f5f52ec06a848f7fe2672c28e1086c7730b21550",
+      "git_blob": "4061fc1b4eaf9104a355625fab3be21f3af3c26c"
+    },
+    {
+      "path": "benchmarks/m63-prism-control-building.train.json",
+      "git_bytes": 180823,
+      "git_sha256": "22f549b5d1a0635fb2195261e6cc7fdf0f5b79f6057af5ea6f284f3efaf433e1",
+      "working_sha256": "22f549b5d1a0635fb2195261e6cc7fdf0f5b79f6057af5ea6f284f3efaf433e1",
+      "git_blob": "305e46302818fd3c57feb537459db661c06b1a6a"
+    },
+    {
+      "path": "benchmarks/m65-prism-alpha-v0.1.5.model.json",
+      "git_bytes": 4457,
+      "git_sha256": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb",
+      "working_sha256": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb",
+      "git_blob": "cac7da9d0ecfc5233a6bf37360b9924090558461"
+    },
+    {
+      "path": "benchmarks/m65-prism-beta-v0.1.0.model.json",
+      "git_bytes": 5117,
+      "git_sha256": "fe146698b1745434d1492e7f96bdae2db1f24c207b6606c9a54a3766b7552630",
+      "working_sha256": "fe146698b1745434d1492e7f96bdae2db1f24c207b6606c9a54a3766b7552630",
+      "git_blob": "60ffd4b699f632448488911f407240572f5aca28"
+    },
+    {
+      "path": "benchmarks/m65-prism-version-release.config.json",
+      "git_bytes": 7359,
+      "git_sha256": "8db5057cbc1f3fb8ef005b160e6a5eae29010fccaf34b3274ac783340ee118ca",
+      "working_sha256": "8db5057cbc1f3fb8ef005b160e6a5eae29010fccaf34b3274ac783340ee118ca",
+      "git_blob": "a823db401c50857f559f70f08866f0e0565771c4"
+    },
+    {
+      "path": "benchmarks/m65-prism-version-release.publication.json",
+      "git_bytes": 7385,
+      "git_sha256": "f46b8d1b458644bee9720835e38fb12f54997d08f1fe4990aa781a301bb3de8f",
+      "working_sha256": "f46b8d1b458644bee9720835e38fb12f54997d08f1fe4990aa781a301bb3de8f",
+      "git_blob": "44e40072f5e435e4a295ae69b1a6648bb729b3b6"
+    },
+    {
+      "path": "benchmarks/m65-prism-version-release.result.json",
+      "git_bytes": 3864,
+      "git_sha256": "5f9689946765d0c1d4995108ada0576ff9fe47413869dfa49a8bcf335c2a01ab",
+      "working_sha256": "5f9689946765d0c1d4995108ada0576ff9fe47413869dfa49a8bcf335c2a01ab",
+      "git_blob": "a5d88c3d80cad1775a154a99c8c0c0ce86ba837f"
+    },
+    {
+      "path": "benchmarks/m66-prism-alpha-dsw.candidate.json",
+      "git_bytes": 1866,
+      "git_sha256": "b3ac89ae8e102fb29acd65ffb262d2cb66a5b177161c2e5361da770af5da105b",
+      "working_sha256": "b3ac89ae8e102fb29acd65ffb262d2cb66a5b177161c2e5361da770af5da105b",
+      "git_blob": "5d3b1c50e9b5b23c093c8313fc084667aa10936d"
+    },
+    {
+      "path": "benchmarks/m66-prism-alpha-dsw.config.json",
+      "git_bytes": 6549,
+      "git_sha256": "1770d3635149f5df7b4f06630457c329604971adb98afb4c81355c93027572aa",
+      "working_sha256": "1770d3635149f5df7b4f06630457c329604971adb98afb4c81355c93027572aa",
+      "git_blob": "06c4c424587bb8c1ae8803dbbd95147777392f50"
+    },
+    {
+      "path": "benchmarks/m66-prism-alpha-dsw.result.json",
+      "git_bytes": 172044,
+      "git_sha256": "53cbbca99085ffea003de17c9b3523331e19def7bcc7f228a2ed55793e4a8bb0",
+      "working_sha256": "53cbbca99085ffea003de17c9b3523331e19def7bcc7f228a2ed55793e4a8bb0",
+      "git_blob": "3981ffe7ba4008f096c71204f8b349df2c84b9cc"
+    },
+    {
+      "path": "benchmarks/m66-prism-alpha-dsw.train.json",
+      "git_bytes": 179725,
+      "git_sha256": "0bcc9d33e96624a220bf5d1441ffd13f6e9493b4fd96445332e15f5d317677f6",
+      "working_sha256": "0bcc9d33e96624a220bf5d1441ffd13f6e9493b4fd96445332e15f5d317677f6",
+      "git_blob": "f92f9cd2c29b8ffd472e489fdc5f48285a9f4437"
+    },
+    {
+      "path": "benchmarks/m67-prism-alpha-repeat-a.train.json",
+      "git_bytes": 858709,
+      "git_sha256": "3a04f0bcf0921f585ae423949e7429e528de88073b0d75ac3a00d8f93cf98ee7",
+      "working_sha256": "3a04f0bcf0921f585ae423949e7429e528de88073b0d75ac3a00d8f93cf98ee7",
+      "git_blob": "26db5cf6454c674c3262b95ec698cb80177daffc"
+    },
+    {
+      "path": "benchmarks/m67-prism-alpha-repeat-b.train.json",
+      "git_bytes": 858709,
+      "git_sha256": "63a5edcee1ef8ca7687a754ffe563f4f6ef4811da283e395f6507780741d4105",
+      "working_sha256": "63a5edcee1ef8ca7687a754ffe563f4f6ef4811da283e395f6507780741d4105",
+      "git_blob": "3da39cb514972b558a2cc426c06f5f2ce363faf0"
+    },
+    {
+      "path": "benchmarks/m67-prism-alpha-repeat.config.json",
+      "git_bytes": 8251,
+      "git_sha256": "cf98d10153b5a3a5c08f78c0fd000e94f53d8d553b70de710183234f35c3659c",
+      "working_sha256": "cf98d10153b5a3a5c08f78c0fd000e94f53d8d553b70de710183234f35c3659c",
+      "git_blob": "ab3b7fa1b1e2d04e967ebba3135108d7c0023d24"
+    },
+    {
+      "path": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "git_bytes": 279790,
+      "git_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "working_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "git_blob": "d4a811a99ce8b721f268e8e83968a54973c6dc6e"
+    },
+    {
+      "path": "benchmarks/m70-prism-b-continuation.config.json",
+      "git_bytes": 12195,
+      "git_sha256": "ecaa045f7946ef46769237fce3b779f15d56c4afb1785f7183e755acba6a8532",
+      "working_sha256": "ecaa045f7946ef46769237fce3b779f15d56c4afb1785f7183e755acba6a8532",
+      "git_blob": "1df51dfb4461124b9e2f62395ebb1eda57354bb6"
+    },
+    {
+      "path": "benchmarks/m70-prism-b-continuation.result.json",
+      "git_bytes": 171870,
+      "git_sha256": "9c46ebba921d372f55b59a4096e6779f9ee41d42269f898a8fa2420b7e05ee6b",
+      "working_sha256": "9c46ebba921d372f55b59a4096e6779f9ee41d42269f898a8fa2420b7e05ee6b",
+      "git_blob": "ca99f6fb7daac10d7113d38b21bd981a5b4051d2"
+    },
+    {
+      "path": "benchmarks/m70-prism-b-continuation.train.json",
+      "git_bytes": 177668,
+      "git_sha256": "d3d27de97c6c87a0617c577e9f7e1d7ee69c282e23e27b59cdc7023d646b0b90",
+      "working_sha256": "d3d27de97c6c87a0617c577e9f7e1d7ee69c282e23e27b59cdc7023d646b0b90",
+      "git_blob": "f862c110f67995a55d00dc7051fa36da7c8387f6"
+    },
+    {
+      "path": "benchmarks/m72-prism-alpha-v0.2.0.model.json",
+      "git_bytes": 7166,
+      "git_sha256": "58c7243f9ddf76fdfeaae14313c15594a169f7f735287a7eaf4cdfb5cfaa8db7",
+      "working_sha256": "58c7243f9ddf76fdfeaae14313c15594a169f7f735287a7eaf4cdfb5cfaa8db7",
+      "git_blob": "0fea30878fac1de11dcbe7b1934bea3f53224ea5"
+    },
+    {
+      "path": "benchmarks/m72-prism-balance-v0.2.0.model.json",
+      "git_bytes": 7211,
+      "git_sha256": "2e8e3d28336b42cf85df25bc6d9e947edd84124cf9105cd0b5fc82537ea0a266",
+      "working_sha256": "2e8e3d28336b42cf85df25bc6d9e947edd84124cf9105cd0b5fc82537ea0a266",
+      "git_blob": "7d871d623b91fd36921172d48e3d49bd6884dc89"
+    },
+    {
+      "path": "benchmarks/m72-prism-balance-v0.2.1.model.json",
+      "git_bytes": 6922,
+      "git_sha256": "37d281dee0cfa5e2d6de65f86e09db4ce888afb26186fe3111cba6e6225ebeb0",
+      "working_sha256": "37d281dee0cfa5e2d6de65f86e09db4ce888afb26186fe3111cba6e6225ebeb0",
+      "git_blob": "ed592ccd7b80bdb7a943a1c79b363f06129c6074"
+    },
+    {
+      "path": "benchmarks/m72-prism-generation-release.publication.json",
+      "git_bytes": 18732,
+      "git_sha256": "7cb79d2aa9f71c780632488d6e17d65804bf0fa4fc8f6da1ecdc4e40222e30e4",
+      "working_sha256": "7cb79d2aa9f71c780632488d6e17d65804bf0fa4fc8f6da1ecdc4e40222e30e4",
+      "git_blob": "4771a655f732e54f4a67032dce2c595cc6e09c43"
+    },
+    {
+      "path": "benchmarks/m73-prism-v020-experiment-design.json",
+      "git_bytes": 9542,
+      "git_sha256": "8f9b162900376a4bde161955cea2689a3c6b3d11080c75a1051e1ac92500beab",
+      "working_sha256": "8f9b162900376a4bde161955cea2689a3c6b3d11080c75a1051e1ac92500beab",
+      "git_blob": "620e1fd27d0a032b6c4dd26459576fd61ce85bd7"
+    },
+    {
+      "path": "benchmarks/prism-balance-data-baseline-v0.2.0.json",
+      "git_bytes": 8492,
+      "git_sha256": "889a66760d54bf429dc70eb86f54c34f92e100c246830654a1bb0b5c6439b403",
+      "working_sha256": "889a66760d54bf429dc70eb86f54c34f92e100c246830654a1bb0b5c6439b403",
+      "git_blob": "5f3574f2cc681a215f26946c5891b7d8387e78e5"
+    },
+    {
+      "path": "benchmarks/prism-model-catalog-2026-10-05.json",
+      "git_bytes": 33805,
+      "git_sha256": "2faee82ea8a0dbdb2055308b4472e76aa95058e8eb5bed5b29116f0170638f7a",
+      "working_sha256": "2faee82ea8a0dbdb2055308b4472e76aa95058e8eb5bed5b29116f0170638f7a",
+      "git_blob": "adc1cdb3d0069f1039dad6ad90130f091b348e1e"
+    },
+    {
+      "path": "benchmarks/prism-style-atlas-2026-10-08.json",
+      "git_bytes": 54739,
+      "git_sha256": "87fa9e48efd95537914ddc365a7bb8b9e9540ff5a9ab0e49bfd4763f75e1a0f9",
+      "working_sha256": "87fa9e48efd95537914ddc365a7bb8b9e9540ff5a9ab0e49bfd4763f75e1a0f9",
+      "git_blob": "10c8332657f491789a36b4e427818735503b0b56"
+    },
+    {
+      "path": "benchmarks/prism-style-bands-v020.policy.json",
+      "git_bytes": 2745,
+      "git_sha256": "e93efaba4e0196d11478f86eb63a99aec85ee5177c8cb8fc2d72a8e1d98092f1",
+      "working_sha256": "e93efaba4e0196d11478f86eb63a99aec85ee5177c8cb8fc2d72a8e1d98092f1",
+      "git_blob": "4a6324e6fb6292f5cb3f7249806710499d9c7a69"
+    },
+    {
+      "path": "benchmarks/prism-style-bands-v1.policy.json",
+      "git_bytes": 2407,
+      "git_sha256": "d8debf00a6509eaaeb3ebb917e94e3cc9ca24caa45b6158402b0ffce68eebea3",
+      "working_sha256": "d8debf00a6509eaaeb3ebb917e94e3cc9ca24caa45b6158402b0ffce68eebea3",
+      "git_blob": "49f5a6cd4c36177e75812e948bc57f3bf8d10e05"
+    },
+    {
+      "path": "benchmarks/prism-style-delivery-2026-10-08.json",
+      "git_bytes": 825830,
+      "git_sha256": "ca60cc1e6db939044c5950495cf11376b7fba8544086f7b6176001f3d9009c92",
+      "working_sha256": "ca60cc1e6db939044c5950495cf11376b7fba8544086f7b6176001f3d9009c92",
+      "git_blob": "fb7d509025dd3104c6b88e2910c73a71af032f50"
+    },
+    {
+      "path": "benchmarks/prism-style-distributions-2026-10-08.json",
+      "git_bytes": 466408,
+      "git_sha256": "f138b7637555df91d20e656ced8c6d3df12b7d47d7b645e2bc76d98fda9ba955",
+      "working_sha256": "f138b7637555df91d20e656ced8c6d3df12b7d47d7b645e2bc76d98fda9ba955",
+      "git_blob": "a1555a4d85567a60d1697b25ec33bd64fbd220cc"
+    },
+    {
+      "path": "benchmarks/prism-style-history-2026-10-08.json",
+      "git_bytes": 68975,
+      "git_sha256": "0e0fe3d8e05b63706f61e8bf1558e827ef3a3a514d6a47b5cce755b6d1d5b49b",
+      "working_sha256": "0e0fe3d8e05b63706f61e8bf1558e827ef3a3a514d6a47b5cce755b6d1d5b49b",
+      "git_blob": "33add59ba71cf855096ebcc57ef5813455ff5719"
+    },
+    {
+      "path": "benchmarks/prism-v020-identity-proposal.json",
+      "git_bytes": 1956,
+      "git_sha256": "5c0a1f84ad51d0fde41ffdb8dacfb48eb939c348080cebb940a5b6402bbec76b",
+      "working_sha256": "5c0a1f84ad51d0fde41ffdb8dacfb48eb939c348080cebb940a5b6402bbec76b",
+      "git_blob": "f81f247f5ff08853d1f0dfdf62321590e64022f1"
+    },
+    {
+      "path": "benchmarks/prism-v020-model-registry.json",
+      "git_bytes": 3259,
+      "git_sha256": "d1f5d2dc8c35fb7a1eb16962b4d81f0c655e9d14351d51af1b12b0f4b93643f4",
+      "working_sha256": "d1f5d2dc8c35fb7a1eb16962b4d81f0c655e9d14351d51af1b12b0f4b93643f4",
+      "git_blob": "de65aca680d45e3daf05ab1afacb0be126eb8881"
+    },
+    {
+      "path": "benchmarks/reports/m61-reading.json",
+      "git_bytes": 8875,
+      "git_sha256": "3ef6fce183761e059af1c7036738726f27b36637aacfdd0b5e9214c8005d4ca4",
+      "working_sha256": "3ef6fce183761e059af1c7036738726f27b36637aacfdd0b5e9214c8005d4ca4",
+      "git_blob": "b90a7c032d9b9ffda760805360cc642e6d06de24"
+    },
+    {
+      "path": "benchmarks/reports/m62-reading.json",
+      "git_bytes": 15835,
+      "git_sha256": "e6824be26cfd41cf8322b92c475cfae252ca8f96b46b402f1c325dec68eb9ff5",
+      "working_sha256": "e6824be26cfd41cf8322b92c475cfae252ca8f96b46b402f1c325dec68eb9ff5",
+      "git_blob": "829b1b50d63c0246218f5ff8ac9841ec60681fde"
+    },
+    {
+      "path": "benchmarks/reports/m63-reading.json",
+      "git_bytes": 17805,
+      "git_sha256": "4f7cbf8f568e0d5a93b817804bd39c0c5ed92b9ee0c94a4f07b5fd13ab46342f",
+      "working_sha256": "4f7cbf8f568e0d5a93b817804bd39c0c5ed92b9ee0c94a4f07b5fd13ab46342f",
+      "git_blob": "55c8c7dfce133ee6fae9034b23635d211658a80c"
+    },
+    {
+      "path": "benchmarks/reports/m65-reading.json",
+      "git_bytes": 16078,
+      "git_sha256": "f8b9be1d24dbbde5b72367698e9231e63b11e78c65deba91f64ea693ec66b163",
+      "working_sha256": "f8b9be1d24dbbde5b72367698e9231e63b11e78c65deba91f64ea693ec66b163",
+      "git_blob": "9cf728028cfdc9890e2f88b6a6a8ceafdfc689d5"
+    },
+    {
+      "path": "benchmarks/reports/m66-reading.json",
+      "git_bytes": 6942,
+      "git_sha256": "e37c0b364a6ab4b88638a56b9a93825d5c63c34fb1ebb5b9bc36b8e8fd420a48",
+      "working_sha256": "e37c0b364a6ab4b88638a56b9a93825d5c63c34fb1ebb5b9bc36b8e8fd420a48",
+      "git_blob": "4147cb1d3314e5827ac0ac1f563d4e38c8ffed32"
+    },
+    {
+      "path": "benchmarks/reports/m67-a-reading.json",
+      "git_bytes": 7698,
+      "git_sha256": "c0c68a8f9706e00dcd338b7bcd08117443b9a0f5c163b5d53bc4dbe3d7f8ce8f",
+      "working_sha256": "c0c68a8f9706e00dcd338b7bcd08117443b9a0f5c163b5d53bc4dbe3d7f8ce8f",
+      "git_blob": "22eb03f2b0675bec93a26a625d4ec63e2ffc56c4"
+    },
+    {
+      "path": "benchmarks/reports/m67-a-result.json",
+      "git_bytes": 188879,
+      "git_sha256": "b45a99c850d330d473e58cf2c84032a990a2f927f2a700ecb9eb879a4b08cf1a",
+      "working_sha256": "b45a99c850d330d473e58cf2c84032a990a2f927f2a700ecb9eb879a4b08cf1a",
+      "git_blob": "4dd03f4e3b9ad8162f6b4006b3d3f5f02b672236"
+    },
+    {
+      "path": "benchmarks/reports/m67-b-reading.json",
+      "git_bytes": 7506,
+      "git_sha256": "44bb430423b5cc928081b98f614f29c69224d657f2977f3804da1ff744e022bc",
+      "working_sha256": "44bb430423b5cc928081b98f614f29c69224d657f2977f3804da1ff744e022bc",
+      "git_blob": "bcaac77d66c53def343f19cb9f404187286d550e"
+    },
+    {
+      "path": "benchmarks/reports/m67-b-result.json",
+      "git_bytes": 185573,
+      "git_sha256": "ad95a4af946e70582928c68e29dd3dee821e0d058af345008c992824c791f29b",
+      "working_sha256": "ad95a4af946e70582928c68e29dd3dee821e0d058af345008c992824c791f29b",
+      "git_blob": "c0efbb10bd2871a3618d735cdd0f191551c18d55"
+    },
+    {
+      "path": "benchmarks/reports/m70-reading.json",
+      "git_bytes": 6545,
+      "git_sha256": "6e6f4c0804beffb2106bd3e283dab4c44a68a04e8c294a3190a8901c530f37fc",
+      "working_sha256": "6e6f4c0804beffb2106bd3e283dab4c44a68a04e8c294a3190a8901c530f37fc",
+      "git_blob": "58d10ff12950dce90a80292b4c92426a49664252"
+    },
+    {
+      "path": "crates/splendor-cli/Cargo.toml",
+      "git_bytes": 1760,
+      "git_sha256": "69b850612c478978498cd6c0ced1e0cabdda789ce3f8a7b7ce0fa1bcb09c7f99",
+      "working_sha256": "69b850612c478978498cd6c0ced1e0cabdda789ce3f8a7b7ce0fa1bcb09c7f99",
+      "git_blob": "3518096620618120883c3288d29370fbdb45f320"
+    },
+    {
+      "path": "crates/splendor-cli/examples/prism_bigcard_metrics.rs",
+      "git_bytes": 7096,
+      "git_sha256": "bc27ebb317e9d281c3746a9e1a560bbc35ee4b3333e738e4f2e97af22697573c",
+      "working_sha256": "bc27ebb317e9d281c3746a9e1a560bbc35ee4b3333e738e4f2e97af22697573c",
+      "git_blob": "d6ad1cd22a243aac05b3f28d5123c9c053ac0b75"
+    },
+    {
+      "path": "crates/splendor-cli/examples/prism_building_projection.rs",
+      "git_bytes": 18741,
+      "git_sha256": "ad08c55dd0cf0e22371352614db9104105b62bf92893b07450b4cb5c4ea7817b",
+      "working_sha256": "ad08c55dd0cf0e22371352614db9104105b62bf92893b07450b4cb5c4ea7817b",
+      "git_blob": "8c4cc3be1d343b9ab96bcb10b99a9ee5f2cde61e"
+    },
+    {
+      "path": "crates/splendor-cli/examples/prism_rush_metrics.rs",
+      "git_bytes": 4234,
+      "git_sha256": "72455a7a823d9052da28db0e24e486a4d50e8a138c8e6446382f824e8e623381",
+      "working_sha256": "3e66087a36159ffe7e4e2f57de7b2a7465e58eda4c3026dbb4c248f1c640ff62",
+      "git_blob": "15d2856f112a5caadcfdac3405ceda154cf714d8"
+    },
+    {
+      "path": "crates/splendor-cli/src/main.rs",
+      "git_bytes": 24116,
+      "git_sha256": "268bf1fe45962ed87bbd7ec7e1c44fffbd4fc4c6d52fbbe6b19865312ae076bf",
+      "working_sha256": "34a35b3b416c76662f0e91d7b599e18d9908dd04a6198e40484421a5c1090f8c",
+      "git_blob": "ff9e81d2cdeab220e41ddfa95bd1ee0dac1774dd"
+    },
+    {
+      "path": "crates/splendor-cli/src/prism_audit.rs",
+      "git_bytes": 7519,
+      "git_sha256": "f4b7724da6cdeb7ffe880bd2cc46533e84aa6ead62afd77192a5bcd8bb131993",
+      "working_sha256": "f4b7724da6cdeb7ffe880bd2cc46533e84aa6ead62afd77192a5bcd8bb131993",
+      "git_blob": "3d0cac71f43253ca685e96dff55dccb86ed4443f"
+    },
+    {
+      "path": "crates/splendor-cli/src/prism_command.rs",
+      "git_bytes": 22163,
+      "git_sha256": "8712616a4ac0113b43b0b62d78398c2a16d7f04328d7c2e5d2280722afa1e444",
+      "working_sha256": "8712616a4ac0113b43b0b62d78398c2a16d7f04328d7c2e5d2280722afa1e444",
+      "git_blob": "44b82de31e2afe6229b7c9309f5612f60ed43e6f"
+    },
+    {
+      "path": "crates/splendor-cli/src/prism_ppo_command.rs",
+      "git_bytes": 34326,
+      "git_sha256": "9476131a469609e1a535347ca7b16aee852fb536703f528be107d6d3ed7f47d3",
+      "working_sha256": "9476131a469609e1a535347ca7b16aee852fb536703f528be107d6d3ed7f47d3",
+      "git_blob": "5bee23ac0043159db49ba7ef3b2809e01f283ad4"
+    },
+    {
+      "path": "crates/splendor-cli/src/prism_ppo_tests.rs",
+      "git_bytes": 10775,
+      "git_sha256": "7a79101bc3971e0f9893ad58ace09e8d98143f9a492a6696e562943675b730b6",
+      "working_sha256": "7a79101bc3971e0f9893ad58ace09e8d98143f9a492a6696e562943675b730b6",
+      "git_blob": "3cb59c38d405526c76f54fd21f52169549711f9d"
+    },
+    {
+      "path": "crates/splendor-cli/src/prism_sample_command.rs",
+      "git_bytes": 12702,
+      "git_sha256": "ef8e5de176664ced510474f055f65241f96d787c164e707649102061a414a080",
+      "working_sha256": "ef8e5de176664ced510474f055f65241f96d787c164e707649102061a414a080",
+      "git_blob": "16d926576d720ad6512b4e86538e843dd5c18fbe"
+    },
+    {
+      "path": "crates/splendor-prism/Cargo.toml",
+      "git_bytes": 419,
+      "git_sha256": "2d8a129738070e240026c26721db78c0f19b51300ff23116d127fcc23b1c4743",
+      "working_sha256": "2d8a129738070e240026c26721db78c0f19b51300ff23116d127fcc23b1c4743",
+      "git_blob": "a688dfac7be9a15ea17e5dbeddf9e4d4a3330f11"
+    },
+    {
+      "path": "crates/splendor-prism/src/encoding.rs",
+      "git_bytes": 21227,
+      "git_sha256": "5ff70ccef52ce85c244c30b466f2bef9c9e54b2cf80852907ca1dca93e34c9df",
+      "working_sha256": "5ff70ccef52ce85c244c30b466f2bef9c9e54b2cf80852907ca1dca93e34c9df",
+      "git_blob": "ed7b2629646b12aec3daa78f60b9b68385d44106"
+    },
+    {
+      "path": "crates/splendor-prism/src/encoding_tests.rs",
+      "git_bytes": 15009,
+      "git_sha256": "1453bf1cff593d95c70814d077b1af291de573fe8a504660da16927875ade1a0",
+      "working_sha256": "1453bf1cff593d95c70814d077b1af291de573fe8a504660da16927875ade1a0",
+      "git_blob": "4ccdca0d1bb044b64cc6bc2bae55535690f79aab"
+    },
+    {
+      "path": "crates/splendor-prism/src/inference.rs",
+      "git_bytes": 33171,
+      "git_sha256": "4f228fc12a33bae0fa9447205dcca33e39b78c9544a3f842c80fc2eb311111f5",
+      "working_sha256": "4f228fc12a33bae0fa9447205dcca33e39b78c9544a3f842c80fc2eb311111f5",
+      "git_blob": "da371c0deb8fb1ec1acf34d6b8663eaa9f2d27e7"
+    },
+    {
+      "path": "crates/splendor-prism/src/lib.rs",
+      "git_bytes": 361,
+      "git_sha256": "d110661e2252b1b498997e5d09f141c7b655b42272ecafe4f208b5b91ef7ee88",
+      "working_sha256": "d110661e2252b1b498997e5d09f141c7b655b42272ecafe4f208b5b91ef7ee88",
+      "git_blob": "3416f652ca805a0b2c0b14ad7cd7ebd5cb68ca26"
+    },
+    {
+      "path": "docs/heuristic/heuristic-model-evolution-matrix.md",
+      "git_bytes": 37464,
+      "git_sha256": "9328f1c0686f57aad6ad076eaa6745f0a7985a1c80e78a8f52112bbe53c3c81e",
+      "working_sha256": "772a93257e4b10d85100cc3427813d16f2ce8026848e1fa5bb42a853b7c9309d",
+      "git_blob": "742be220c4d7a013d18abc4ebb1591bb48b20fc7"
+    },
+    {
+      "path": "docs/m51-prism-implementation-contract.md",
+      "git_bytes": 6769,
+      "git_sha256": "162e372937adbd64ec20dc130ea602a38c3dcdd894cfdf30dabf2b1232447adb",
+      "working_sha256": "162e372937adbd64ec20dc130ea602a38c3dcdd894cfdf30dabf2b1232447adb",
+      "git_blob": "2090fde06ba3de9bb8867e416488e3fb755824a3"
+    },
+    {
+      "path": "docs/m51-prism-model-line.md",
+      "git_bytes": 132791,
+      "git_sha256": "1b96527dc69d517a6b515de358f4506ecb8af4593249515f31730358bf801adb",
+      "working_sha256": "1b96527dc69d517a6b515de358f4506ecb8af4593249515f31730358bf801adb",
+      "git_blob": "a1a95f3baeec685362b76a51a6ad2d7b19fc122c"
+    },
+    {
+      "path": "docs/m52-studio-s3-roster-visibility.md",
+      "git_bytes": 5782,
+      "git_sha256": "71e45e5f66718b0b2d2c5bd49c1dba5249eaa0c2b8a668f4431a9b944fe75230",
+      "working_sha256": "71e45e5f66718b0b2d2c5bd49c1dba5249eaa0c2b8a668f4431a9b944fe75230",
+      "git_blob": "d9b349cbdadeaca52524443cc70187c513198b22"
+    },
+    {
+      "path": "docs/m53-cloud2-splendor-pool.md",
+      "git_bytes": 13771,
+      "git_sha256": "2f3c1ab0ae3ba00a7474d809b16799a3dcce6499b13c69014177289f46b846ee",
+      "working_sha256": "4f801d53c3af7dfec277898fda598393dd731123801e77d5dd82c3570a9c3a9e",
+      "git_blob": "904e5bbf3d08aa0dbd60529e0d7581cfd39d01f0"
+    },
+    {
+      "path": "docs/m54-prism-continuous-ppo-design.md",
+      "git_bytes": 183613,
+      "git_sha256": "b73ac5e31472e12514f40126ee5a0afa52ed3681a788ee8d3fd06221c71f88bb",
+      "working_sha256": "b73ac5e31472e12514f40126ee5a0afa52ed3681a788ee8d3fd06221c71f88bb",
+      "git_blob": "852b89c29b5b2291ade5a857012e2ea807a32ad0"
+    },
+    {
+      "path": "docs/m55-prism-rush-style-model.md",
+      "git_bytes": 52689,
+      "git_sha256": "518937239548b0771d15ebc48b3ee8f2b3f7fa71c6507578941fe16d4ea57a13",
+      "working_sha256": "518937239548b0771d15ebc48b3ee8f2b3f7fa71c6507578941fe16d4ea57a13",
+      "git_blob": "b740d8174ed85a7fa76fdad4021e86a0788d46a6"
+    },
+    {
+      "path": "docs/m56-prism-alpha-bigcard-ppo.md",
+      "git_bytes": 60633,
+      "git_sha256": "6742e3f136f6d7600547962e55bf97f66ee770f9593b868704e5edc4852b4a18",
+      "working_sha256": "6742e3f136f6d7600547962e55bf97f66ee770f9593b868704e5edc4852b4a18",
+      "git_blob": "5eadca0650ef7970cf2654fb4bb5e6c046197b7f"
+    },
+    {
+      "path": "docs/m61-prism-alpha-balance-ab.md",
+      "git_bytes": 28392,
+      "git_sha256": "b367e1573a9a01dee3be07dc86714695dfe70c8c74512b3cc9252da3618d2791",
+      "working_sha256": "b367e1573a9a01dee3be07dc86714695dfe70c8c74512b3cc9252da3618d2791",
+      "git_blob": "79280fbfb0b36152e5d9cc921f392277493387ba"
+    },
+    {
+      "path": "docs/m62-prism-beta-building-ppo.md",
+      "git_bytes": 33518,
+      "git_sha256": "5b67cbd4e8cd26ed78756a0090b2d4a7815fc76b41d9e0e38336fd9bac86b396",
+      "working_sha256": "5b67cbd4e8cd26ed78756a0090b2d4a7815fc76b41d9e0e38336fd9bac86b396",
+      "git_blob": "803795f54f43f1e2f96ece370e9e471e13c21503"
+    },
+    {
+      "path": "docs/m63-prism-beta-timed-building.md",
+      "git_bytes": 57488,
+      "git_sha256": "961b79b4490c6a2f9623d0ed96cdcaa555461962590f9aa17ef61d0d4a47a975",
+      "working_sha256": "961b79b4490c6a2f9623d0ed96cdcaa555461962590f9aa17ef61d0d4a47a975",
+      "git_blob": "9078962f24b182a77c7ddbdb0f0095afa47ae88a"
+    },
+    {
+      "path": "docs/m64-prism-notebook-arena.md",
+      "git_bytes": 18158,
+      "git_sha256": "583666657580b43b3f894e43be89f222891c5434a805ed99e1331b459648ca01",
+      "working_sha256": "583666657580b43b3f894e43be89f222891c5434a805ed99e1331b459648ca01",
+      "git_blob": "778fd13c59a7f687a8786e44cedc7367c3c3d059"
+    },
+    {
+      "path": "docs/m65-prism-version-release.md",
+      "git_bytes": 20050,
+      "git_sha256": "7a744257c93ef1d5f92fe3712effc3068675766a5ba81774c9f2d3253fb384d1",
+      "working_sha256": "7a744257c93ef1d5f92fe3712effc3068675766a5ba81774c9f2d3253fb384d1",
+      "git_blob": "22829a4399caa312376ec68a1219de0231577876"
+    },
+    {
+      "path": "docs/m66-prism-alpha-dsw-ppo.md",
+      "git_bytes": 14721,
+      "git_sha256": "07233b3ec5bdf77bc38486b12015bf36e2bbb1fbfdb3254c02df87a26e96ea33",
+      "working_sha256": "07233b3ec5bdf77bc38486b12015bf36e2bbb1fbfdb3254c02df87a26e96ea33",
+      "git_blob": "9b037cdf269a25068f6d7b143950b327f8e2af9a"
+    },
+    {
+      "path": "docs/m67-prism-alpha-repeat.md",
+      "git_bytes": 43879,
+      "git_sha256": "e27e0cb39c114e72db6c82fec80b0978829760092f3349739fa535b236c34da8",
+      "working_sha256": "e27e0cb39c114e72db6c82fec80b0978829760092f3349739fa535b236c34da8",
+      "git_blob": "3e9188d6547f5c838455d954a8a9b522d60629af"
+    },
+    {
+      "path": "docs/m68-prism-research-workflow.md",
+      "git_bytes": 7774,
+      "git_sha256": "9d7a6e80b71cf7f94642ab0298dfb2d4de82e4c7f8eb1a3b6a5db8d8f0f5c9fb",
+      "working_sha256": "9d7a6e80b71cf7f94642ab0298dfb2d4de82e4c7f8eb1a3b6a5db8d8f0f5c9fb",
+      "git_blob": "f6af5655ae833432cdee20df62d00f25cc71dde7"
+    },
+    {
+      "path": "docs/m69-prism-evaluation-failure-isolation.md",
+      "git_bytes": 10070,
+      "git_sha256": "d54428724a8448d21b2a847697c2997ba7507321c0238ea3cfd4c1c9ce6ad3d5",
+      "working_sha256": "d54428724a8448d21b2a847697c2997ba7507321c0238ea3cfd4c1c9ce6ad3d5",
+      "git_blob": "22e04a32c795c8ee5c398ba1319704fdfe4b7b95"
+    },
+    {
+      "path": "docs/m70-prism-b-continuation.md",
+      "git_bytes": 13116,
+      "git_sha256": "eb357f210e41172bb78c1d4a89092a2bb1367f9a4e0cfbf0201f138082ab40bb",
+      "working_sha256": "eb357f210e41172bb78c1d4a89092a2bb1367f9a4e0cfbf0201f138082ab40bb",
+      "git_blob": "6460aa4519d02bea4fdf289b48f6bf08fe576bf8"
+    },
+    {
+      "path": "docs/m71-prism-bounded-evaluation.md",
+      "git_bytes": 10657,
+      "git_sha256": "4bad43faae83c841e6b8c443a5fc1dfff246ad0e32977a7a67d84450ede5f262",
+      "working_sha256": "4bad43faae83c841e6b8c443a5fc1dfff246ad0e32977a7a67d84450ede5f262",
+      "git_blob": "cf34970de5de7fbed02a59e2a15365cd9defa9f5"
+    },
+    {
+      "path": "docs/m72-prism-style-atlas.md",
+      "git_bytes": 25172,
+      "git_sha256": "7ddabb3e81f4cdc49326853c98d688cc2a85a3cb299dc799b35d17ce2ef545a0",
+      "working_sha256": "7ddabb3e81f4cdc49326853c98d688cc2a85a3cb299dc799b35d17ce2ef545a0",
+      "git_blob": "3296738201e71eec89d0e01593e2f584b4448223"
+    },
+    {
+      "path": "docs/m73-prism-v020-experiment-design.md",
+      "git_bytes": 14390,
+      "git_sha256": "1360ad92fc9caba092d94afb887a74ee829062f0ca1ebc31471a0d8d11bf11f1",
+      "working_sha256": "1360ad92fc9caba092d94afb887a74ee829062f0ca1ebc31471a0d8d11bf11f1",
+      "git_blob": "dd417b576f2c44ac75d057e2c82ec70b32c77bda"
+    },
+    {
+      "path": "docs/prism-practical-promotion-contract.md",
+      "git_bytes": 10363,
+      "git_sha256": "90d7e8af8ab6eb2ff65b6f4990cffb77b6c70d4eda42a8defdb100940027dd3b",
+      "working_sha256": "ff545aec6cd38f55d88eacd6e7123297ddcc2d4151a02bf33464477084b5dffb",
+      "git_blob": "b770d50e67c03784838dde3051f1e216589282cb"
+    },
+    {
+      "path": "docs/prism-report-reading-contract.md",
+      "git_bytes": 16922,
+      "git_sha256": "b58b4dc4a3250df5b8e4b49557d7d28f77593b618216550c1c67151d0bc7159e",
+      "working_sha256": "30f275650ae244677ce91ae94b5285b7990e763434d80515bf84cdf8759f8b72",
+      "git_blob": "00e2acebc8f6533137ee30badb14264226be98d6"
+    },
+    {
+      "path": "docs/prism/development-review-2026-10-06.audit.md",
+      "git_bytes": 13374,
+      "git_sha256": "25e10dcb30114c03d367e22d29fc5ae7d315d0e48493e6c7283cba78373fdcdb",
+      "working_sha256": "25e10dcb30114c03d367e22d29fc5ae7d315d0e48493e6c7283cba78373fdcdb",
+      "git_blob": "f6bc50bafdd961b044b50511f67b17bf40297429"
+    },
+    {
+      "path": "docs/prism/development-review-2026-10-06.html",
+      "git_bytes": 75736,
+      "git_sha256": "d0ebf9a6f841e1b3ba2789585e5a30fa66bdaadc30af24c85a2020b7ca6d7848",
+      "working_sha256": "d0ebf9a6f841e1b3ba2789585e5a30fa66bdaadc30af24c85a2020b7ca6d7848",
+      "git_blob": "23351f7bc899fb326747c0366f0edad14fb3b8c2"
+    },
+    {
+      "path": "docs/prism/development-review-2026-10-06.md",
+      "git_bytes": 11588,
+      "git_sha256": "36b748edd8a49381f6edf43f3cfa21cbfdfaf6c3d19f320675846d37779ecfa0",
+      "working_sha256": "36b748edd8a49381f6edf43f3cfa21cbfdfaf6c3d19f320675846d37779ecfa0",
+      "git_blob": "26bb66e36cfb4a148dc4901ef84f8b2a3b74f451"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.audit.html",
+      "git_bytes": 297087,
+      "git_sha256": "119b97c162dc7833ba39860ea478162dc727bda68b7b31ca7fb0851e6919945b",
+      "working_sha256": "119b97c162dc7833ba39860ea478162dc727bda68b7b31ca7fb0851e6919945b",
+      "git_blob": "3f86cd55d2c16990836a3ddc75e24bae156c82d8"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.audit.md",
+      "git_bytes": 217033,
+      "git_sha256": "52ca674f1ddb1ff33e3c4b5d91b7f04737fd73adfdaddaa48a3944332132af35",
+      "working_sha256": "52ca674f1ddb1ff33e3c4b5d91b7f04737fd73adfdaddaa48a3944332132af35",
+      "git_blob": "cb50739262c88e54b212bac5e25370099c02f767"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.html",
+      "git_bytes": 26106,
+      "git_sha256": "bac7d989842ca5f82aa2e42c8e4157543645b9c194859f8c27dd3ebe93bdcbde",
+      "working_sha256": "bac7d989842ca5f82aa2e42c8e4157543645b9c194859f8c27dd3ebe93bdcbde",
+      "git_blob": "18b9730344466b3f2cc8dcdeff3602a1aa76ca69"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.reading-receipt.json",
+      "git_bytes": 912,
+      "git_sha256": "47ddf81497accab15bd2e33dde4df5b9ae16425e3d7cdd9301cbc3a664fe76cf",
+      "working_sha256": "47ddf81497accab15bd2e33dde4df5b9ae16425e3d7cdd9301cbc3a664fe76cf",
+      "git_blob": "541271176a058e7b37e3ddb5314d57eca4d65fe0"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.reading.md",
+      "git_bytes": 1147,
+      "git_sha256": "ef53eef9a60833651117fa70f65fb7eb01ee92423049bb01ae1290f783d9d8a1",
+      "working_sha256": "ef53eef9a60833651117fa70f65fb7eb01ee92423049bb01ae1290f783d9d8a1",
+      "git_blob": "5df1717758f50bdce1858db161f915d20e71f671"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.sampling.html",
+      "git_bytes": 232643,
+      "git_sha256": "46e2e6f0043f5a6100033f4d1461a6da563495aef768545af9818579d5361da1",
+      "working_sha256": "46e2e6f0043f5a6100033f4d1461a6da563495aef768545af9818579d5361da1",
+      "git_blob": "c48e52e6546ac1b27ded4c6ced04bf74481dca49"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-comparison.sampling.reading.md",
+      "git_bytes": 65762,
+      "git_sha256": "326d2dd96b94111d2258e3a024bcb12b86789df07084d9fa72f5439aa07c3451",
+      "working_sha256": "326d2dd96b94111d2258e3a024bcb12b86789df07084d9fa72f5439aa07c3451",
+      "git_blob": "42eedb4c061a75732de8039928a7c1950418ee5b"
+    },
+    {
+      "path": "docs/prism/m61-prism-alpha-balance-ab-evaluation.md",
+      "git_bytes": 211427,
+      "git_sha256": "f4033572bae221ced35b8e4d403290c4f5cd1e6b2f2bbecff09bb1c79ab171a3",
+      "working_sha256": "f4033572bae221ced35b8e4d403290c4f5cd1e6b2f2bbecff09bb1c79ab171a3",
+      "git_blob": "0799fb19863d1a4b0039d40e736bdf3bd46bd1b9"
+    },
+    {
+      "path": "docs/prism/m62-building-reward-diagnostic.html",
+      "git_bytes": 285916,
+      "git_sha256": "4576075176dd4580301ab106e40dd33dafbaeaed0f5268772d057621fcfcc9de",
+      "working_sha256": "4576075176dd4580301ab106e40dd33dafbaeaed0f5268772d057621fcfcc9de",
+      "git_blob": "56372722ea3c5c08a4f2b751b362bf221940d838"
+    },
+    {
+      "path": "docs/prism/m62-building-reward-diagnostic.md",
+      "git_bytes": 205598,
+      "git_sha256": "16da22e7a2f587500e2f163e4d2ed8347f6f6d6009116cf9a767d7bcd35bb900",
+      "working_sha256": "16da22e7a2f587500e2f163e4d2ed8347f6f6d6009116cf9a767d7bcd35bb900",
+      "git_blob": "fc63f5a40533a16d4c8282a30edaed01467851cb"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.audit.html",
+      "git_bytes": 500228,
+      "git_sha256": "e0e0e1852d6769b4802ed114a7dbe6632b632d25f732dfa5e50a0c9eec583b98",
+      "working_sha256": "e0e0e1852d6769b4802ed114a7dbe6632b632d25f732dfa5e50a0c9eec583b98",
+      "git_blob": "4f58af1493ab920aa1df3ee23254295ffa54e945"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.audit.md",
+      "git_bytes": 7864089,
+      "git_sha256": "5c2aa526cdd628e001e34b66b3d81b433ce7075790a29b2c3fd9ec377b7cd9d9",
+      "working_sha256": "5c2aa526cdd628e001e34b66b3d81b433ce7075790a29b2c3fd9ec377b7cd9d9",
+      "git_blob": "1193733c9426177037d4b914a637a4f6a58f6cb4"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.evidence.html",
+      "git_bytes": 8106937,
+      "git_sha256": "c942dfaaf61799d1812f767ab40c7497e4eab717cda82393db3bbbc675c882a7",
+      "working_sha256": "c942dfaaf61799d1812f767ab40c7497e4eab717cda82393db3bbbc675c882a7",
+      "git_blob": "08fe5c5e7dbd5b1076d67ccfc09da4bf1161adcc"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.html",
+      "git_bytes": 110707,
+      "git_sha256": "f991a937ac48533352f18757308e0c9048884b0c0d6c945cab7e9bf74de4535e",
+      "working_sha256": "f991a937ac48533352f18757308e0c9048884b0c0d6c945cab7e9bf74de4535e",
+      "git_blob": "24ee93334c4c11edcc5055e8237107223dd5685f"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.reading-receipt.json",
+      "git_bytes": 974,
+      "git_sha256": "d7dd19e8322a59d51d28c2b5fab8960cd115e52b131134494ec585d7065fc21b",
+      "working_sha256": "d7dd19e8322a59d51d28c2b5fab8960cd115e52b131134494ec585d7065fc21b",
+      "git_blob": "5b08a1651925c1dbd392a15e3b4bcd80060f46b8"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.reading.md",
+      "git_bytes": 31714,
+      "git_sha256": "48f63a8003bad3998e40299023fbb582cc89e541aa67172c9e09f7aca295ef86",
+      "working_sha256": "48f63a8003bad3998e40299023fbb582cc89e541aa67172c9e09f7aca295ef86",
+      "git_blob": "1c2b00e526072317af15f23d0b425ba8301e7825"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.sampling.html",
+      "git_bytes": 365957,
+      "git_sha256": "9daa6fd89f1ae2415fae1317927329cda9bf202a8a1507380d77332200960468",
+      "working_sha256": "9daa6fd89f1ae2415fae1317927329cda9bf202a8a1507380d77332200960468",
+      "git_blob": "8ccc8050e156df262e847ab2b5371f943840251f"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-comparison.sampling.reading.md",
+      "git_bytes": 68051,
+      "git_sha256": "4964ee24b203b1faa1f3d6d00c9c68f1c30bae7073540d0126c8eb302bd31fde",
+      "working_sha256": "4964ee24b203b1faa1f3d6d00c9c68f1c30bae7073540d0126c8eb302bd31fde",
+      "git_blob": "1c8e6c0bd5d6c18833ad02e5e7c857b661dcb98c"
+    },
+    {
+      "path": "docs/prism/m62-prism-beta-building-evaluation.md",
+      "git_bytes": 7802952,
+      "git_sha256": "80fc912e820a0f008aeeba6f2b244d0ed6640724dfc01c78422a7793087cb6c0",
+      "working_sha256": "80fc912e820a0f008aeeba6f2b244d0ed6640724dfc01c78422a7793087cb6c0",
+      "git_blob": "8af45fc06b91a38c5f83cb37e19f402339c165e5"
+    },
+    {
+      "path": "docs/prism/m63-beta-iteration-status.html",
+      "git_bytes": 881,
+      "git_sha256": "a5061026de07e26cf4679b73e36bc410fe02d3032d6a0626936cdfdd1ea51b0a",
+      "working_sha256": "a5061026de07e26cf4679b73e36bc410fe02d3032d6a0626936cdfdd1ea51b0a",
+      "git_blob": "234e9c68bd4188a32d5b068f90d662366468a78d"
+    },
+    {
+      "path": "docs/prism/m63-dsw-evaluation-status.html",
+      "git_bytes": 11763,
+      "git_sha256": "1c21bd4bdd742daa415919f08bcfc9f1ce1666d5969ef5e0301cf09a61043777",
+      "working_sha256": "1c21bd4bdd742daa415919f08bcfc9f1ce1666d5969ef5e0301cf09a61043777",
+      "git_blob": "376de9faf30a6e4b50d67f1c689bd22b360c1959"
+    },
+    {
+      "path": "docs/prism/m63-dsw-evaluation-status.md",
+      "git_bytes": 9682,
+      "git_sha256": "5a37f5e06d39b8d4a77f21a8a5a695919b6320d0a8b2f81897f853bf545649d9",
+      "working_sha256": "5a37f5e06d39b8d4a77f21a8a5a695919b6320d0a8b2f81897f853bf545649d9",
+      "git_blob": "b4ad7937e3fd616da33cc4469b45dd1167c3197c"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.audit.html",
+      "git_bytes": 545516,
+      "git_sha256": "d2f5e410e2fa35c991b94201f56a57ad164e2c55e16a77a111e288a813e28ec1",
+      "working_sha256": "d2f5e410e2fa35c991b94201f56a57ad164e2c55e16a77a111e288a813e28ec1",
+      "git_blob": "37370a23d1004589425b068ab23e7606e0db7ba2"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.audit.md",
+      "git_bytes": 7895271,
+      "git_sha256": "1b5f3be603fd0eb8e8ea3368a7d5e3b6b47e63b9de0d4b7e02005eb7c2b9a6f5",
+      "working_sha256": "1b5f3be603fd0eb8e8ea3368a7d5e3b6b47e63b9de0d4b7e02005eb7c2b9a6f5",
+      "git_blob": "b000a70cd940ccd07e6fda1ce0c8699489f07387"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.evidence.html",
+      "git_bytes": 8148543,
+      "git_sha256": "2af29a90b32adf7d3ee07784a2c97cd334f1134fa421beaa7be9cfa50f9faaf5",
+      "working_sha256": "2af29a90b32adf7d3ee07784a2c97cd334f1134fa421beaa7be9cfa50f9faaf5",
+      "git_blob": "d0d159e20a8d6d8a191e5e8e26b88b8f171bdbf9"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.html",
+      "git_bytes": 134626,
+      "git_sha256": "e329d89968d8d2045f5fe33497731873198b2dd2222566b32c649a49c2fa1469",
+      "working_sha256": "e329d89968d8d2045f5fe33497731873198b2dd2222566b32c649a49c2fa1469",
+      "git_blob": "641fdf8c29939d768224a89a3d9e03cdabe86850"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.md",
+      "git_bytes": 7831970,
+      "git_sha256": "911d4ef90395be7a373ea23f79d921d03ebb5909ffde76c222ebd0bf70c6c341",
+      "working_sha256": "911d4ef90395be7a373ea23f79d921d03ebb5909ffde76c222ebd0bf70c6c341",
+      "git_blob": "50fe0ea5b30bf5b16b24b268d686e964a0590c53"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.reading-receipt.json",
+      "git_bytes": 2036,
+      "git_sha256": "e8d7411873a93789e144031cac775e626b8af06967f97007cbd3b0c2eb9ffc45",
+      "working_sha256": "e8d7411873a93789e144031cac775e626b8af06967f97007cbd3b0c2eb9ffc45",
+      "git_blob": "bc4b4690cc838283c8eca2cfef1fe0a065332558"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.reading.md",
+      "git_bytes": 39523,
+      "git_sha256": "541be3b119aa8419c9186fbcace9decd055fc5b34655d923fc9c4ca9f4ecd3f7",
+      "working_sha256": "541be3b119aa8419c9186fbcace9decd055fc5b34655d923fc9c4ca9f4ecd3f7",
+      "git_blob": "e711f770b8dec4af7ed32ca3acf5f7240a133d1c"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.sampling.html",
+      "git_bytes": 391827,
+      "git_sha256": "327eafd87b7855aad54a2b118aa07e8285e9926f32d837b22acb5d02c3aeaafb",
+      "working_sha256": "327eafd87b7855aad54a2b118aa07e8285e9926f32d837b22acb5d02c3aeaafb",
+      "git_blob": "5c4755c70209d7da322979859da00eaedccf49d1"
+    },
+    {
+      "path": "docs/prism/m63-prism-beta-timed-building-evaluation.sampling.reading.md",
+      "git_bytes": 70654,
+      "git_sha256": "8be756c23d84612e930fc9b05dfd313ec1587f31aec46790cae52d957bf2503f",
+      "working_sha256": "8be756c23d84612e930fc9b05dfd313ec1587f31aec46790cae52d957bf2503f",
+      "git_blob": "8fffa811ff56a9b5ddbeea9771af49cf80b68177"
+    },
+    {
+      "path": "docs/prism/m63-training-audit-and-evaluation-status.html",
+      "git_bytes": 184727,
+      "git_sha256": "8094776551d1391efd640fc125a82cd0166b7aed8fd0bfa59a5d559def051f56",
+      "working_sha256": "8094776551d1391efd640fc125a82cd0166b7aed8fd0bfa59a5d559def051f56",
+      "git_blob": "a16746302171c9a9f8eca94b4731db12bed96895"
+    },
+    {
+      "path": "docs/prism/m63-training-audit-and-evaluation-status.md",
+      "git_bytes": 115769,
+      "git_sha256": "af2c1dd0fb313465f97380a69a8822f253473f8648edf9e6723948785d65cc1e",
+      "working_sha256": "af2c1dd0fb313465f97380a69a8822f253473f8648edf9e6723948785d65cc1e",
+      "git_blob": "605eccf471026567ed5ef9c128ff88eae4fedd7b"
+    },
+    {
+      "path": "docs/prism/m64-dsw-arena-smoke.html",
+      "git_bytes": 35335,
+      "git_sha256": "13c312fc3d24c86fb1bf5aa9b4a34d67fb208d23fb3b45697ff6ae66ad18e119",
+      "working_sha256": "13c312fc3d24c86fb1bf5aa9b4a34d67fb208d23fb3b45697ff6ae66ad18e119",
+      "git_blob": "c55bbf8af4f4224c84566a41ca8bee18d6639783"
+    },
+    {
+      "path": "docs/prism/m64-dsw-arena-smoke.md",
+      "git_bytes": 24271,
+      "git_sha256": "325b31dd69613ddfcc80407d2d0de959a74f5cc348791f815716133b605ffdaf",
+      "working_sha256": "325b31dd69613ddfcc80407d2d0de959a74f5cc348791f815716133b605ffdaf",
+      "git_blob": "8e47e4dabf60ecf1a9c9c2122f33c6a69b86c10f"
+    },
+    {
+      "path": "docs/prism/m64-dsw-throughput-calibration.html",
+      "git_bytes": 2339,
+      "git_sha256": "5b53ed49d83cfb04a246d51641169a44cfcce54f342c4b3041e709a53cf0242d",
+      "working_sha256": "5b53ed49d83cfb04a246d51641169a44cfcce54f342c4b3041e709a53cf0242d",
+      "git_blob": "7a7a8fb95d9b60fbdf2a4bc6da1fef55802fe2e6"
+    },
+    {
+      "path": "docs/prism/m64-dsw-throughput-calibration.md",
+      "git_bytes": 1404,
+      "git_sha256": "6416229e965e1682ee2ae985d9a0d6e3377b813ebd3e7acd0536ea9bb9eb549c",
+      "working_sha256": "6416229e965e1682ee2ae985d9a0d6e3377b813ebd3e7acd0536ea9bb9eb549c",
+      "git_blob": "da9807eaebae3e1b62edc59023b578e89447cd57"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.audit.html",
+      "git_bytes": 500176,
+      "git_sha256": "95afb96ec5797bcad20b0e925e007e2677bb8ef0cc9a780a2099d97ca5a35d94",
+      "working_sha256": "95afb96ec5797bcad20b0e925e007e2677bb8ef0cc9a780a2099d97ca5a35d94",
+      "git_blob": "940bf3821e50d2942c1008c77f68444cd57e3311"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.audit.md",
+      "git_bytes": 7864149,
+      "git_sha256": "72e8ff6ef8195840966a31d9716c9cb43516ee1ce20ca4f443e072295a27a279",
+      "working_sha256": "72e8ff6ef8195840966a31d9716c9cb43516ee1ce20ca4f443e072295a27a279",
+      "git_blob": "0e8080000f0200c5c65d406d3d7be331faa7b21c"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.html",
+      "git_bytes": 110790,
+      "git_sha256": "3dc4ae79a520a13b5a938a6e02eaa428ee4a3a22581d597ba2109412bcf67f37",
+      "working_sha256": "3dc4ae79a520a13b5a938a6e02eaa428ee4a3a22581d597ba2109412bcf67f37",
+      "git_blob": "787c76a51405edc3bb47d0038bef9058e80e071e"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.reading-receipt.json",
+      "git_bytes": 912,
+      "git_sha256": "12e9431a34a2ec7d67bf3ae0918906ba84c19757cb97a32728adb903a494d028",
+      "working_sha256": "12e9431a34a2ec7d67bf3ae0918906ba84c19757cb97a32728adb903a494d028",
+      "git_blob": "bb336d51881d7962326b6454be4fb1f14b4fd6f0"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.reading.md",
+      "git_bytes": 31685,
+      "git_sha256": "79a109f1c9df6b29e26836cb26a88c3d845ff19b6ebb0f8dee1e117abdabeee7",
+      "working_sha256": "79a109f1c9df6b29e26836cb26a88c3d845ff19b6ebb0f8dee1e117abdabeee7",
+      "git_blob": "6e1ae026f192b9f2bfffb047d5d442eba7810ab7"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.sampling.html",
+      "git_bytes": 366041,
+      "git_sha256": "6a297865e91df3755b9c1494479b9958929e0a706e27c244a8df08bd9ec52502",
+      "working_sha256": "6a297865e91df3755b9c1494479b9958929e0a706e27c244a8df08bd9ec52502",
+      "git_blob": "4713ca6a8fddd3783e33e5efe753b2231f1e09d6"
+    },
+    {
+      "path": "docs/prism/m65-prism-version-release-comparison.sampling.reading.md",
+      "git_bytes": 68011,
+      "git_sha256": "a7f2a0985abc00eb427533fc4e170733e6a4bb667455841f59643b45597c28b8",
+      "working_sha256": "a7f2a0985abc00eb427533fc4e170733e6a4bb667455841f59643b45597c28b8",
+      "git_blob": "8a7a4f9d542d86050a56aca6986ff5bb83b670dd"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-comparison.audit.html",
+      "git_bytes": 96227,
+      "git_sha256": "41f6ad88e4afab088b507519be18e64381af752f83b7a7728d97835b97e62815",
+      "working_sha256": "41f6ad88e4afab088b507519be18e64381af752f83b7a7728d97835b97e62815",
+      "git_blob": "9de7e9285beb6a7ae313680f9538b25f83a7bc3e"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-comparison.audit.md",
+      "git_bytes": 69402,
+      "git_sha256": "acc20232f804295d1aab20afdef7ede8ee461314fa57fffec8d5bd231d532a1d",
+      "working_sha256": "acc20232f804295d1aab20afdef7ede8ee461314fa57fffec8d5bd231d532a1d",
+      "git_blob": "2ab5167dd666f89eec9d20bf3f901a262c558796"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-comparison.html",
+      "git_bytes": 137682,
+      "git_sha256": "8ee78bbb86faec7f76a8b996dfcba5f9e42d321073758a3f4ec22546374c8799",
+      "working_sha256": "8ee78bbb86faec7f76a8b996dfcba5f9e42d321073758a3f4ec22546374c8799",
+      "git_blob": "934705166776d7defda00043d8e2a2d53caa0247"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-comparison.reading-receipt.json",
+      "git_bytes": 1138,
+      "git_sha256": "74cf7e1b73c5a20126fe46a6ecbd1402860990998e022583faea5854ab54c628",
+      "working_sha256": "74cf7e1b73c5a20126fe46a6ecbd1402860990998e022583faea5854ab54c628",
+      "git_blob": "671940775ed17e0f39b23639bc583b66e703a346"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-comparison.reading.md",
+      "git_bytes": 40580,
+      "git_sha256": "1b20310b5b3898c214db728485f1db421705094356058cd6c4c85eeb58bd5f18",
+      "working_sha256": "1b20310b5b3898c214db728485f1db421705094356058cd6c4c85eeb58bd5f18",
+      "git_blob": "4873ef47a735de70abbd4c7f92c8c885b2972ecd"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-evidence.html",
+      "git_bytes": 91768,
+      "git_sha256": "65c2c47ca6970c9313924b5a0d0016c6978f9e5cc05b722e804dc7e5703c4a61",
+      "working_sha256": "65c2c47ca6970c9313924b5a0d0016c6978f9e5cc05b722e804dc7e5703c4a61",
+      "git_blob": "6a914ffc5448f32a87ca0a8df826b9d7d52da0a1"
+    },
+    {
+      "path": "docs/prism/m66-prism-alpha-dsw-evidence.md",
+      "git_bytes": 68044,
+      "git_sha256": "a82009c10a413227ab951fd6ad365216e7ba3812983dc1db41466644cbaa7420",
+      "working_sha256": "a82009c10a413227ab951fd6ad365216e7ba3812983dc1db41466644cbaa7420",
+      "git_blob": "5848066e5ec9d804282283ba4b8857a10ab96b7e"
+    },
+    {
+      "path": "docs/prism/m67-loop-implications-2026-10-07.html",
+      "git_bytes": 57200,
+      "git_sha256": "4ec9f2de6fe0f3081c56ac86abf3df752a96d8d2801087ff2e6019017c5deae9",
+      "working_sha256": "4ec9f2de6fe0f3081c56ac86abf3df752a96d8d2801087ff2e6019017c5deae9",
+      "git_blob": "6a05c70469ebcf4e023e022ba38fef89c906939a"
+    },
+    {
+      "path": "docs/prism/m67-loop-implications-2026-10-07.md",
+      "git_bytes": 7708,
+      "git_sha256": "3ffde0846bd8a4eb0b04345643a7e798e92c90a2fc748311479920b29df14cb4",
+      "working_sha256": "3ffde0846bd8a4eb0b04345643a7e798e92c90a2fc748311479920b29df14cb4",
+      "git_blob": "7ea4ff448f8462070fd7eba3ddb6f1b461a0e7c4"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-a-comparison.audit.html",
+      "git_bytes": 264795,
+      "git_sha256": "b3ed4cdc5b09fbcf5f13380268ac0497a901d9418238ed6a41e6b2824f681a6b",
+      "working_sha256": "b3ed4cdc5b09fbcf5f13380268ac0497a901d9418238ed6a41e6b2824f681a6b",
+      "git_blob": "1e220a3c06342603e5f13fe4ceaa2ea74930b299"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-a-comparison.audit.md",
+      "git_bytes": 229127,
+      "git_sha256": "59ae8c68238fbe8dfb0079646ede4a662dca14162c67e2d1b4ddd0480be559d4",
+      "working_sha256": "59ae8c68238fbe8dfb0079646ede4a662dca14162c67e2d1b4ddd0480be559d4",
+      "git_blob": "d03d79cad257283c51177033e83f442da9e43625"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-a-comparison.html",
+      "git_bytes": 136317,
+      "git_sha256": "b08edfcd70fb6dc176b9b79954d54b674787b1cb26ff16b08e31f88361445212",
+      "working_sha256": "b08edfcd70fb6dc176b9b79954d54b674787b1cb26ff16b08e31f88361445212",
+      "git_blob": "fe9cb7ed952909605482729558e9f67f39bfda5e"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-a-comparison.reading-receipt.json",
+      "git_bytes": 1118,
+      "git_sha256": "c0ed9241db5b1d3ad26e0402d21735767508e65c48d3afd4f23d31709cc1ed8a",
+      "working_sha256": "c0ed9241db5b1d3ad26e0402d21735767508e65c48d3afd4f23d31709cc1ed8a",
+      "git_blob": "90057c72d468b665cb5100292a104a6b904793b1"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-a-comparison.reading.md",
+      "git_bytes": 40391,
+      "git_sha256": "60a8ba4cd561fac66a51485054a90365b2313d30c26ba722b54d49f10eb7e360",
+      "working_sha256": "60a8ba4cd561fac66a51485054a90365b2313d30c26ba722b54d49f10eb7e360",
+      "git_blob": "364f57726ab54ca68d31e757935f14c23c1c23a5"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-b-comparison.audit.html",
+      "git_bytes": 264795,
+      "git_sha256": "807c2a43f50ca5e827d5395b34877e60c0949e1938a3770dda7cd677d73f1f83",
+      "working_sha256": "807c2a43f50ca5e827d5395b34877e60c0949e1938a3770dda7cd677d73f1f83",
+      "git_blob": "57723c5cc7468faa87dd164eab66bc581356ccfd"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-b-comparison.audit.md",
+      "git_bytes": 229127,
+      "git_sha256": "1e853bb235c8a9cf7ed6ae836d03abc58336d52d15b800c4e30e908acd0cb6ea",
+      "working_sha256": "1e853bb235c8a9cf7ed6ae836d03abc58336d52d15b800c4e30e908acd0cb6ea",
+      "git_blob": "3cbead572964a8958b706fd8ac4b49c2cc0ebfbb"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-b-comparison.html",
+      "git_bytes": 133764,
+      "git_sha256": "ad564135d9d5514b49ada0cb1af6ec5081bb2383a3dbe3087f0952fc389518dc",
+      "working_sha256": "ad564135d9d5514b49ada0cb1af6ec5081bb2383a3dbe3087f0952fc389518dc",
+      "git_blob": "61faaeff78b3a987a2ac308b49bacb67cbd793ef"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-b-comparison.reading-receipt.json",
+      "git_bytes": 1118,
+      "git_sha256": "10561125ca8f7d8b21a2eef40d3908a2da7e528913354536bc2b982942b1fbaa",
+      "working_sha256": "10561125ca8f7d8b21a2eef40d3908a2da7e528913354536bc2b982942b1fbaa",
+      "git_blob": "856e42140faf6b19bfd5f5708bccc23b1cfa8a87"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-b-comparison.reading.md",
+      "git_bytes": 40216,
+      "git_sha256": "eeae8c4760068c7fad81a0f81b284f2476436db96154e238c0eeab300da0104a",
+      "working_sha256": "eeae8c4760068c7fad81a0f81b284f2476436db96154e238c0eeab300da0104a",
+      "git_blob": "7179764f0574d4f204c5c2aaa2dc6b46360ac917"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-evidence.html",
+      "git_bytes": 264388,
+      "git_sha256": "c1382cf996895f6d5380a80a670f0fe48c1a5ba114fab62ac76a972a9e9c8888",
+      "working_sha256": "c1382cf996895f6d5380a80a670f0fe48c1a5ba114fab62ac76a972a9e9c8888",
+      "git_blob": "81f16897689bfef59317ec4c855d1594243874a5"
+    },
+    {
+      "path": "docs/prism/m67-prism-alpha-repeat-evidence.md",
+      "git_bytes": 229059,
+      "git_sha256": "914a4f6cb71a35a1f744023cb8ac2e22125d251df0a702b494afb5376ebb8e3e",
+      "working_sha256": "914a4f6cb71a35a1f744023cb8ac2e22125d251df0a702b494afb5376ebb8e3e",
+      "git_blob": "2029603754113f85938ad490b560c87a74dbd9ad"
+    },
+    {
+      "path": "docs/prism/m69-failure-isolation.html",
+      "git_bytes": 57785,
+      "git_sha256": "ce58a2d7b8cc2e5dbb38fdef56fbdc70d2b9b6ab710ce0138b20aca4b787a229",
+      "working_sha256": "ce58a2d7b8cc2e5dbb38fdef56fbdc70d2b9b6ab710ce0138b20aca4b787a229",
+      "git_blob": "37f7abe3f241f9f94379903e309363f9a2279538"
+    },
+    {
+      "path": "docs/prism/m69-stagnation-check-2026-10-08.html",
+      "git_bytes": 57864,
+      "git_sha256": "41bed6e9d44f30e620684b70f8d3a5848afb701a53ac11d9ac780ee89a3052d7",
+      "working_sha256": "41bed6e9d44f30e620684b70f8d3a5848afb701a53ac11d9ac780ee89a3052d7",
+      "git_blob": "641c8c2fdc5fbc9fc7fe06a828d36e0c415738a7"
+    },
+    {
+      "path": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "git_bytes": 8591,
+      "git_sha256": "ab32fd0a2fbf9daad43199d2f581dce8ab48b5c80531711ee3ec9689245e0723",
+      "working_sha256": "ab32fd0a2fbf9daad43199d2f581dce8ab48b5c80531711ee3ec9689245e0723",
+      "git_blob": "640fac02bd103dfa8dda053aaa09f0336f071d33"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-comparison.audit.html",
+      "git_bytes": 93969,
+      "git_sha256": "e4ddcbdb7df8848ac2f3424339a50fac5f2db7c9ea610f257a2de9b7c701ef28",
+      "working_sha256": "e4ddcbdb7df8848ac2f3424339a50fac5f2db7c9ea610f257a2de9b7c701ef28",
+      "git_blob": "60828be2ec70e528eb4754c45692dfba1f7a9a62"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-comparison.audit.md",
+      "git_bytes": 69906,
+      "git_sha256": "6ab485a8946148a8a967c561fc3dc36f8c80f8e181f31ea7533b948f2fafce07",
+      "working_sha256": "6ab485a8946148a8a967c561fc3dc36f8c80f8e181f31ea7533b948f2fafce07",
+      "git_blob": "8fbd19889c7864688aca10c32e32acb5fa4afa08"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-comparison.html",
+      "git_bytes": 137436,
+      "git_sha256": "989c1c2655aa01b422ffa0c92e91b764194d89ce68ac822de8256742762282ba",
+      "working_sha256": "989c1c2655aa01b422ffa0c92e91b764194d89ce68ac822de8256742762282ba",
+      "git_blob": "a7e55aa33130fa99a21405d52a5e8138c48d8390"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-comparison.reading-receipt.json",
+      "git_bytes": 1117,
+      "git_sha256": "cec37061bd342157737f6f882564e5ed4094417421a142959e9d5225e7ee21c3",
+      "working_sha256": "cec37061bd342157737f6f882564e5ed4094417421a142959e9d5225e7ee21c3",
+      "git_blob": "e1837eb34f4de2daa82faca509af1b545037e9f6"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-comparison.reading.md",
+      "git_bytes": 40383,
+      "git_sha256": "cafdf4de89d235672fdd5c2e9bfddcbe02bd7d9361c20321cf3d2837a2d53426",
+      "working_sha256": "cafdf4de89d235672fdd5c2e9bfddcbe02bd7d9361c20321cf3d2837a2d53426",
+      "git_blob": "f0da162d9410f77db2c1be597591331ad6001c37"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-evidence.html",
+      "git_bytes": 93540,
+      "git_sha256": "6a0cce9378a0157e618b4158d593cf2bba0afe17d23c3a3c3a50b9638cb09a09",
+      "working_sha256": "6a0cce9378a0157e618b4158d593cf2bba0afe17d23c3a3c3a50b9638cb09a09",
+      "git_blob": "179c6d6a6f510d885970f5511adfa36865ff9be2"
+    },
+    {
+      "path": "docs/prism/m70-prism-b-continuation-evidence.md",
+      "git_bytes": 69816,
+      "git_sha256": "f1b96161992559b0bd9320f1894290586160caca978459a4e6a9d2567fab4108",
+      "working_sha256": "f1b96161992559b0bd9320f1894290586160caca978459a4e6a9d2567fab4108",
+      "git_blob": "9442eeeed725cbcd8b292934bfd492a0a82fe522"
+    },
+    {
+      "path": "docs/prism/m71-bounded-evaluation.audit.md",
+      "git_bytes": 2757,
+      "git_sha256": "6e5ab4bf18d9f9a6b1b2f8b13d7018f8d5820f54cc0704685973fe16e896184a",
+      "working_sha256": "6e5ab4bf18d9f9a6b1b2f8b13d7018f8d5820f54cc0704685973fe16e896184a",
+      "git_blob": "fef748f2fc886e49216582a7049e12bf3dfb49fa"
+    },
+    {
+      "path": "docs/prism/m71-bounded-evaluation.html",
+      "git_bytes": 51702,
+      "git_sha256": "4e4d765e38d38def925249c53f484dd20f20b0b0d3c23c9d5dcb7b16441bdb97",
+      "working_sha256": "4e4d765e38d38def925249c53f484dd20f20b0b0d3c23c9d5dcb7b16441bdb97",
+      "git_blob": "19d80f2ae4e549e7da4745ec99bd2f85ac989585"
+    },
+    {
+      "path": "docs/prism/m71-bounded-evaluation.md",
+      "git_bytes": 1995,
+      "git_sha256": "7cf0dff54d228c139b8603bc086da69b67720914d1f45940107b206dc5e03cd8",
+      "working_sha256": "7cf0dff54d228c139b8603bc086da69b67720914d1f45940107b206dc5e03cd8",
+      "git_blob": "aa5649f50e75c065a56ea48b20eb7c5a380d6fd2"
+    },
+    {
+      "path": "docs/prism/m73-prism-v020-experiment-design.html",
+      "git_bytes": 55155,
+      "git_sha256": "bbfa38fdd11c5b9f91ef44dd4c572a9e662db134c96ac329202606848d13d770",
+      "working_sha256": "bbfa38fdd11c5b9f91ef44dd4c572a9e662db134c96ac329202606848d13d770",
+      "git_blob": "95f2d62e1d8c15f72e3c18167cc404743789271f"
+    },
+    {
+      "path": "docs/prism/model-catalog-2026-10-05.html",
+      "git_bytes": 58324,
+      "git_sha256": "59ab0d47eec42fc43e0a4421629aa93ceeaf1f366cd6079e256162e26a12f0c5",
+      "working_sha256": "59ab0d47eec42fc43e0a4421629aa93ceeaf1f366cd6079e256162e26a12f0c5",
+      "git_blob": "66a05d3640f8ea782409827b07bdc083f8cbdc7b"
+    },
+    {
+      "path": "docs/prism/model-catalog-2026-10-05.md",
+      "git_bytes": 7964,
+      "git_sha256": "eee4c545de3eb492864ac2a3a62dc48c39b1dba7c1fa33c4cadedd217b885c76",
+      "working_sha256": "eee4c545de3eb492864ac2a3a62dc48c39b1dba7c1fa33c4cadedd217b885c76",
+      "git_blob": "631168004840f8ee826d5b67a937856ba43c1cc4"
+    },
+    {
+      "path": "docs/prism/notebook-arena-operations.md",
+      "git_bytes": 7970,
+      "git_sha256": "60cad3b284dbaae33550f1b49d2875ce0f9996d80cba553f8034481e80e10ebe",
+      "working_sha256": "60cad3b284dbaae33550f1b49d2875ce0f9996d80cba553f8034481e80e10ebe",
+      "git_blob": "4996d29b5a6d110e1df0c5d6ece8e368c237341e"
+    },
+    {
+      "path": "docs/prism/prism-011-evaluation-summary.md",
+      "git_bytes": 22379,
+      "git_sha256": "e422c40b698bc11e4e033a5797a50e9bd60fcb2c650c3a7ef44e15161f6f1ec0",
+      "working_sha256": "e422c40b698bc11e4e033a5797a50e9bd60fcb2c650c3a7ef44e15161f6f1ec0",
+      "git_blob": "3e40c42d0bc4900b37814e3d628b502a1cccc483"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.0-comparison.html",
+      "git_bytes": 126942,
+      "git_sha256": "68f4bea1c54f34342bd276163b84d0312357c770aa03789991002e31151382bf",
+      "working_sha256": "68f4bea1c54f34342bd276163b84d0312357c770aa03789991002e31151382bf",
+      "git_blob": "1a0bdd8872fb8b40acb3317fe1a424093ee147ff"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.0-comparison.png",
+      "git_bytes": 140577,
+      "git_sha256": "8d03ea91a468918e292e4740de852d36e27d304a27fe680fed90e1c993577dd3",
+      "working_sha256": "8d03ea91a468918e292e4740de852d36e27d304a27fe680fed90e1c993577dd3",
+      "git_blob": "a95f13ac098322c4a18f856267db9ad72c7a1d27"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.0-evaluation-summary.md",
+      "git_bytes": 33974,
+      "git_sha256": "08223de0cf217ed6c7d6a5f66c7a3bf5b5c05a275e2bd8e9d9dd4089fddc9fc0",
+      "working_sha256": "08223de0cf217ed6c7d6a5f66c7a3bf5b5c05a275e2bd8e9d9dd4089fddc9fc0",
+      "git_blob": "65931bbb4f736a58963f69c214547bc0c073f56f"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.1-comparison.html",
+      "git_bytes": 159469,
+      "git_sha256": "32f192fa6eb25d6fb299f3cbce6e4c1cfcad64d02490971c978902f353105566",
+      "working_sha256": "32f192fa6eb25d6fb299f3cbce6e4c1cfcad64d02490971c978902f353105566",
+      "git_blob": "3fd6aef39ac806ecef85f0fb89510e03c0288aae"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.1-comparison.png",
+      "git_bytes": 99570,
+      "git_sha256": "16de096247fa42b87a286208eedb4f697a1579c72e2127223fbb101f0f4e73b9",
+      "working_sha256": "16de096247fa42b87a286208eedb4f697a1579c72e2127223fbb101f0f4e73b9",
+      "git_blob": "d3a028b67bb926fb3fe48706dc97f60e9e7f22ca"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.1-evaluation-summary.md",
+      "git_bytes": 41206,
+      "git_sha256": "f055409c400a460c5a5b9a048da738e9d1cfb932b4ff9be59413b027bdc572d7",
+      "working_sha256": "f055409c400a460c5a5b9a048da738e9d1cfb932b4ff9be59413b027bdc572d7",
+      "git_blob": "0215fdb6b0e912a2e34625ddf38979f95bb14490"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.4-evaluation-summary.md",
+      "git_bytes": 214327,
+      "git_sha256": "fcceea9bf2a03fd1853c2c365bfcd71ee344eb16a748101acd51f27c15ea1cc6",
+      "working_sha256": "fcceea9bf2a03fd1853c2c365bfcd71ee344eb16a748101acd51f27c15ea1cc6",
+      "git_blob": "09ffbada59d2be21d61f4a8e47b06e80d5ab77db"
+    },
+    {
+      "path": "docs/prism/prism-alpha-v0.1.5-evaluation-summary.md",
+      "git_bytes": 39523,
+      "git_sha256": "541be3b119aa8419c9186fbcace9decd055fc5b34655d923fc9c4ca9f4ecd3f7",
+      "working_sha256": "541be3b119aa8419c9186fbcace9decd055fc5b34655d923fc9c4ca9f4ecd3f7",
+      "git_blob": "e711f770b8dec4af7ed32ca3acf5f7240a133d1c"
+    },
+    {
+      "path": "docs/prism/prism-balance-v0.1.0-evaluation-summary.md",
+      "git_bytes": 214428,
+      "git_sha256": "bdfd7881f5131c55c8603cc580bc52c20313560dea488c54fe460e5d6dac5d3b",
+      "working_sha256": "bdfd7881f5131c55c8603cc580bc52c20313560dea488c54fe460e5d6dac5d3b",
+      "git_blob": "3658efedf9c6aa7e177a26024e9b6c71c98aa716"
+    },
+    {
+      "path": "docs/prism/prism-beta-v0.1.0-comparison.html",
+      "git_bytes": 485230,
+      "git_sha256": "9a48a020076c829183ba168d9002984d04d73a5612b207dcd7c4db3dbd8d735d",
+      "working_sha256": "9a48a020076c829183ba168d9002984d04d73a5612b207dcd7c4db3dbd8d735d",
+      "git_blob": "1d6b72c52d494553743a3a04788128a5c85a2f14"
+    },
+    {
+      "path": "docs/prism/prism-beta-v0.1.0-evaluation-summary.md",
+      "git_bytes": 31714,
+      "git_sha256": "48f63a8003bad3998e40299023fbb582cc89e541aa67172c9e09f7aca295ef86",
+      "working_sha256": "48f63a8003bad3998e40299023fbb582cc89e541aa67172c9e09f7aca295ef86",
+      "git_blob": "1c2b00e526072317af15f23d0b425ba8301e7825"
+    },
+    {
+      "path": "docs/prism/prism-model-evolution-matrix.md",
+      "git_bytes": 99230,
+      "git_sha256": "ab44195a9935193eb8137f63a8fbf9ec223d5c64b9660b2582b1bc5ec1aab04d",
+      "working_sha256": "ab44195a9935193eb8137f63a8fbf9ec223d5c64b9660b2582b1bc5ec1aab04d",
+      "git_blob": "d6b877acac193096d2fa530f11a365be68e9658d"
+    },
+    {
+      "path": "docs/prism/prism-rush-v0.1.0-comparison.html",
+      "git_bytes": 113219,
+      "git_sha256": "a5223f81081e1c455e89d7550744aef78621406579c1048aa5e675ecdb745b59",
+      "working_sha256": "a5223f81081e1c455e89d7550744aef78621406579c1048aa5e675ecdb745b59",
+      "git_blob": "eb0845772e99ea01c119bf0acfcce461a7fceb9a"
+    },
+    {
+      "path": "docs/prism/prism-rush-v0.1.0-comparison.png",
+      "git_bytes": 132036,
+      "git_sha256": "358f809862a92ae942e506c15135ba137e2ed26177529aa60c2cba28b076bbe7",
+      "working_sha256": "358f809862a92ae942e506c15135ba137e2ed26177529aa60c2cba28b076bbe7",
+      "git_blob": "3d243b77ae578c5e3621be49bda87cc7a83bdb8a"
+    },
+    {
+      "path": "docs/prism/prism-rush-v0.1.0-evaluation-summary.md",
+      "git_bytes": 28898,
+      "git_sha256": "54953ddbc3aa087e594503392e38bb8c5b844694ac91a71b9c4c915ce93cf65d",
+      "working_sha256": "54953ddbc3aa087e594503392e38bb8c5b844694ac91a71b9c4c915ce93cf65d",
+      "git_blob": "a42f480e1dd363c91c0e823893f8ba68278e344f"
+    },
+    {
+      "path": "docs/prism/prism-v0.1.1-evaluation-summary.md",
+      "git_bytes": 22264,
+      "git_sha256": "eb531128c06f934b0da2e8fa775b7ff544324ef00c6e0a9e78e2de8ce75a38d0",
+      "working_sha256": "eb531128c06f934b0da2e8fa775b7ff544324ef00c6e0a9e78e2de8ce75a38d0",
+      "git_blob": "ce79727255b990f648ba7d509f6f458e658f858a"
+    },
+    {
+      "path": "docs/prism/prism-v02-evaluation-summary.md",
+      "git_bytes": 22379,
+      "git_sha256": "e422c40b698bc11e4e033a5797a50e9bd60fcb2c650c3a7ef44e15161f6f1ec0",
+      "working_sha256": "e422c40b698bc11e4e033a5797a50e9bd60fcb2c650c3a7ef44e15161f6f1ec0",
+      "git_blob": "3e40c42d0bc4900b37814e3d628b502a1cccc483"
+    },
+    {
+      "path": "docs/prism/prism-v020-fixed-models.md",
+      "git_bytes": 3408,
+      "git_sha256": "6b58a0c0d5e95a443a9265065b93ae8a013938ce455e0e27b22dcd491784a12a",
+      "working_sha256": "6b58a0c0d5e95a443a9265065b93ae8a013938ce455e0e27b22dcd491784a12a",
+      "git_blob": "a30315ad8dca586028248e4f553927f3126393e5"
+    },
+    {
+      "path": "docs/prism/project-status-2026-10-07.html",
+      "git_bytes": 65516,
+      "git_sha256": "97bd668494af391fca866cf8efeeace1eecc7cc0534cea9068b2fc7c850a7ecd",
+      "working_sha256": "97bd668494af391fca866cf8efeeace1eecc7cc0534cea9068b2fc7c850a7ecd",
+      "git_blob": "99451a7cb1111c7f6020a60c90ec99c1b33a012f"
+    },
+    {
+      "path": "docs/prism/reports.html",
+      "git_bytes": 9834,
+      "git_sha256": "a6431fe95cf8aa295945706660b996fd8b2929cd6181058739a2802517cec589",
+      "working_sha256": "a6431fe95cf8aa295945706660b996fd8b2929cd6181058739a2802517cec589",
+      "git_blob": "b46bbbbf11d4a1998b12481221f254242232ab21"
+    },
+    {
+      "path": "docs/prism/style-atlas-2026-10-08.audit.md",
+      "git_bytes": 7133,
+      "git_sha256": "70565453ce5a87bad4d7508c52a36710dcd2bb915436a163c4c77151f250814e",
+      "working_sha256": "70565453ce5a87bad4d7508c52a36710dcd2bb915436a163c4c77151f250814e",
+      "git_blob": "c4b86a182322f0cf92399779068ad8988a0e7473"
+    },
+    {
+      "path": "docs/prism/style-atlas-2026-10-08.html",
+      "git_bytes": 933019,
+      "git_sha256": "de1e20a2a8990d9e1a748f9cbec4a6bc37fbc2f61fd5236738c9ba438188e7ef",
+      "working_sha256": "de1e20a2a8990d9e1a748f9cbec4a6bc37fbc2f61fd5236738c9ba438188e7ef",
+      "git_blob": "0ed8c0c85d3f41ea7e5b00544cab871d45499006"
+    },
+    {
+      "path": "docs/prism/style-atlas-2026-10-08.md",
+      "git_bytes": 130617,
+      "git_sha256": "eb9d0868d0e6d7aaa6c1cebdf801ae5dbe5b2c43b0d6459c2317e4d595bf65e2",
+      "working_sha256": "eb9d0868d0e6d7aaa6c1cebdf801ae5dbe5b2c43b0d6459c2317e4d595bf65e2",
+      "git_blob": "68f0c9e7b9fa265ebdb57459454a82522fd8c08f"
+    },
+    {
+      "path": "docs/prism/style-atlas-method-2026-10-08.html",
+      "git_bytes": 53079,
+      "git_sha256": "8e40b6a1321245af21128be13b6dfff5a48331c2de0fabf712956f0b82eb1399",
+      "working_sha256": "8e40b6a1321245af21128be13b6dfff5a48331c2de0fabf712956f0b82eb1399",
+      "git_blob": "8b74cd126ab83e52d0ecb47b676ebf02b1dd22ea"
+    },
+    {
+      "path": "docs/prism/style-distributions-2026-10-08.md",
+      "git_bytes": 12942,
+      "git_sha256": "b5696952e78378d357a8513ebd744612400433381420df03e87e8da9d62689fc",
+      "working_sha256": "b5696952e78378d357a8513ebd744612400433381420df03e87e8da9d62689fc",
+      "git_blob": "5dfe264a2b5d7238d942a0cfd918f87915ef4419"
+    },
+    {
+      "path": "docs/prism/style-history-2026-10-08.md",
+      "git_bytes": 14488,
+      "git_sha256": "797bb2dcb34a813b67b3d95d1f98aad482e6a85c325da831507e72731fa6dfd5",
+      "working_sha256": "797bb2dcb34a813b67b3d95d1f98aad482e6a85c325da831507e72731fa6dfd5",
+      "git_blob": "2d938ff1b1e41779845cbc6a0a014b8bc92f1f05"
+    },
+    {
+      "path": "docs/project-documentation-system.md",
+      "git_bytes": 13238,
+      "git_sha256": "8d9f0c710e24e6680cdb548cc40aa77d9d65acfc99932e6dfdd4e68d5facb120",
+      "working_sha256": "8d9f0c710e24e6680cdb548cc40aa77d9d65acfc99932e6dfdd4e68d5facb120",
+      "git_blob": "8a38ef028577dc4bd176b7f6f969951d663cd6be"
+    },
+    {
+      "path": "docs/templates/prism-research-record.md",
+      "git_bytes": 14464,
+      "git_sha256": "1122dadd9ab65e3708a660a5ac9663efb6e1ce9b4a1fd5f83feb7be5333f61fb",
+      "working_sha256": "1122dadd9ab65e3708a660a5ac9663efb6e1ce9b4a1fd5f83feb7be5333f61fb",
+      "git_blob": "30b3da26ae402aa641132ebf4f4c9b60fc33fd9e"
+    },
+    {
+      "path": "docs/unified-match-metrics-standard.md",
+      "git_bytes": 7265,
+      "git_sha256": "01d799cc114c23dca26d7b1879a4790cf788b13e917a8d93390e72bf8f1012cc",
+      "working_sha256": "01d799cc114c23dca26d7b1879a4790cf788b13e917a8d93390e72bf8f1012cc",
+      "git_blob": "07ca2022212c5b0df087dfe8abf423975d2b5c6b"
+    },
+    {
+      "path": "outputs/01a11805-prism-style/Prism-模型画像与分组柱状图.xlsx",
+      "git_bytes": 96281,
+      "git_sha256": "02146f6b74f3a8ca6f864726eccafe35cea5dd8a3117a2c7138d58c0329d1e4c",
+      "working_sha256": "02146f6b74f3a8ca6f864726eccafe35cea5dd8a3117a2c7138d58c0329d1e4c",
+      "git_blob": "d6442eebb7ebd9ce6e6eab4a1dd0fcd3dfb74c8b"
+    },
+    {
+      "path": "outputs/01a11805-prism-style/prism-distribution-observations.csv",
+      "git_bytes": 1035917,
+      "git_sha256": "58135b692b7783a2392900e3b10c91724a6f348e0c7145ba4f4b6df12971f0bb",
+      "working_sha256": "58135b692b7783a2392900e3b10c91724a6f348e0c7145ba4f4b6df12971f0bb",
+      "git_blob": "a6bb9c88668d8ec281caf0e96eaef908796eb81f"
+    },
+    {
+      "path": "outputs/01a11805-prism-style/prism-historical-profiles.csv",
+      "git_bytes": 11146,
+      "git_sha256": "6ea915f85153dfe2b452efd3848e38ae47010a4761a39a41a30428a2365021bb",
+      "working_sha256": "6ea915f85153dfe2b452efd3848e38ae47010a4761a39a41a30428a2365021bb",
+      "git_blob": "a89ad18a46f806004b1f590be8645a877cf99e33"
+    },
+    {
+      "path": "outputs/01a11805-prism-style/prism-style-atlas.csv",
+      "git_bytes": 5331,
+      "git_sha256": "a9f35cbd1629e974d629a68b2cbf1e407ef9c2ea632af4d6ed3c4c7859d49467",
+      "working_sha256": "a9f35cbd1629e974d629a68b2cbf1e407ef9c2ea632af4d6ed3c4c7859d49467",
+      "git_blob": "99d128bedfc1e392b6baf813f1b5f4b12fbab0c1"
+    },
+    {
+      "path": "outputs/01a11805-prism-style/prism-style-per-opponent-seat.csv",
+      "git_bytes": 39080,
+      "git_sha256": "a3af12b23dc23ad8ed9fd59774debdca752104f50c1602bb03cd3b5a94aa074d",
+      "working_sha256": "a3af12b23dc23ad8ed9fd59774debdca752104f50c1602bb03cd3b5a94aa074d",
+      "git_blob": "6631aaeac40ae7f0598dd86ab971f326f6908be0"
+    },
+    {
+      "path": "scripts/prism_alpha_browser_closeout.py",
+      "git_bytes": 7564,
+      "git_sha256": "69718cb24279ee54341875b8cb319c3421fcc9164d86968021eb95988f202832",
+      "working_sha256": "69718cb24279ee54341875b8cb319c3421fcc9164d86968021eb95988f202832",
+      "git_blob": "a0bba0c46dfe6f255556c4010c2df67f29a8b45d"
+    },
+    {
+      "path": "scripts/prism_alpha_closeout.py",
+      "git_bytes": 12739,
+      "git_sha256": "db112313a0b226ee3c77216f4a001df93c36ce571d4cbca84f9ab117a1ca4c21",
+      "working_sha256": "db112313a0b226ee3c77216f4a001df93c36ce571d4cbca84f9ab117a1ca4c21",
+      "git_blob": "200d743d235caa8c62f94d232c2f9a6261bb440f"
+    },
+    {
+      "path": "scripts/prism_alpha_docs_closeout.py",
+      "git_bytes": 3570,
+      "git_sha256": "297c95688639f4801177419fc61eb6ab7ceb6876c862c9db875dad9618e01f40",
+      "working_sha256": "297c95688639f4801177419fc61eb6ab7ceb6876c862c9db875dad9618e01f40",
+      "git_blob": "fee986515ec955a6f49ca2857cb0793b2cb7af1b"
+    },
+    {
+      "path": "scripts/prism_alpha_identity.py",
+      "git_bytes": 16561,
+      "git_sha256": "fb6a02d9a5065ff7ce6ede6f6d1a838140c3ee603cf812afdfc9597685cde5de",
+      "working_sha256": "fb6a02d9a5065ff7ce6ede6f6d1a838140c3ee603cf812afdfc9597685cde5de",
+      "git_blob": "04bdd3edd8300c3cad0bf6ef2d4f822c3b8fa61d"
+    },
+    {
+      "path": "scripts/prism_alpha_preflight.py",
+      "git_bytes": 7549,
+      "git_sha256": "cf409c256629a84f1fc77441134521578bbb3ec3c015f945791786257b288e79",
+      "working_sha256": "cf409c256629a84f1fc77441134521578bbb3ec3c015f945791786257b288e79",
+      "git_blob": "ed526db5bde2434aa986c63bac4d052f58e9c1ec"
+    },
+    {
+      "path": "scripts/prism_alpha_progress.py",
+      "git_bytes": 2362,
+      "git_sha256": "cfea3666aeeb0b76a704ab06aa556e0ce2d1e53970efd22e6d1513a08e132c69",
+      "working_sha256": "cfea3666aeeb0b76a704ab06aa556e0ce2d1e53970efd22e6d1513a08e132c69",
+      "git_blob": "f190135d3369e724e5d215e830ac7c9dd95b77a2"
+    },
+    {
+      "path": "scripts/prism_alpha_readability_revision.py",
+      "git_bytes": 9220,
+      "git_sha256": "a49d380e31d20a541bde4e8a8251d69d879acb51c58928e9b60500b035ae307d",
+      "working_sha256": "a49d380e31d20a541bde4e8a8251d69d879acb51c58928e9b60500b035ae307d",
+      "git_blob": "1ff60f87d2f16462f7a21f2944a22a2bcc004fab"
+    },
+    {
+      "path": "scripts/prism_alpha_readable_closeout.py",
+      "git_bytes": 6916,
+      "git_sha256": "4341d1b410697cdfe9ced6ee2c4f564e1b77c890de267dfb508cc7200e075906",
+      "working_sha256": "4341d1b410697cdfe9ced6ee2c4f564e1b77c890de267dfb508cc7200e075906",
+      "git_blob": "a242e42a8fea899c505eb87baed75be85e516361"
+    },
+    {
+      "path": "scripts/prism_alpha_report.py",
+      "git_bytes": 19701,
+      "git_sha256": "3db06fa0f2c0a2d741377f971be5d74282f473b72bbf5dbb8777f175887add2e",
+      "working_sha256": "3db06fa0f2c0a2d741377f971be5d74282f473b72bbf5dbb8777f175887add2e",
+      "git_blob": "ea7451687ea81f08d23283c9b7914f95d6ec5357"
+    },
+    {
+      "path": "scripts/prism_alpha_round.py",
+      "git_bytes": 19903,
+      "git_sha256": "5f07a8bf643839f418cd486f9313356f3358592bec8b82220bfb65d3f5ad40cb",
+      "working_sha256": "5f07a8bf643839f418cd486f9313356f3358592bec8b82220bfb65d3f5ad40cb",
+      "git_blob": "0d65bb55e32eff4c5efa0e5482c921f5466820e3"
+    },
+    {
+      "path": "scripts/prism_alpha_source_drift_closeout.py",
+      "git_bytes": 6067,
+      "git_sha256": "f0019ec8ecb22f0eff3d84b582e5b0dea4aea996581a8213227b947a8160249c",
+      "working_sha256": "f0019ec8ecb22f0eff3d84b582e5b0dea4aea996581a8213227b947a8160249c",
+      "git_blob": "e66f8a6e5e8a39b7c33a770b9a8eb23c8dd3e543"
+    },
+    {
+      "path": "scripts/prism_balance_ab_audit_m61.py",
+      "git_bytes": 23945,
+      "git_sha256": "0c9897cb412aa7c56b35f1f8ee769cc5d3ab5899f0fde38cf644f019a49735c7",
+      "working_sha256": "0c9897cb412aa7c56b35f1f8ee769cc5d3ab5899f0fde38cf644f019a49735c7",
+      "git_blob": "43835467a8d92c047e1ddae6c483e097c0929819"
+    },
+    {
+      "path": "scripts/prism_balance_ab_evaluation_m61.py",
+      "git_bytes": 32277,
+      "git_sha256": "d7ff23e9aec80352005b296caa6f79b0dfec5ab0e9867d910ea260cad65bbde9",
+      "working_sha256": "d7ff23e9aec80352005b296caa6f79b0dfec5ab0e9867d910ea260cad65bbde9",
+      "git_blob": "e9ae41922aeeb9ffe4ef55e73a24b7fe10e1c0cd"
+    },
+    {
+      "path": "scripts/prism_balance_ab_prepare_m61.py",
+      "git_bytes": 28774,
+      "git_sha256": "c352c7566a5d2bda90ea7065ab248056d613786a9ed1f9f1758adcd089869ee6",
+      "working_sha256": "c352c7566a5d2bda90ea7065ab248056d613786a9ed1f9f1758adcd089869ee6",
+      "git_blob": "3ec8f9fa8a7897552b9093217761a837b72ddc02"
+    },
+    {
+      "path": "scripts/prism_balance_ab_reaudit_m61.py",
+      "git_bytes": 44202,
+      "git_sha256": "84aa98038a4d2be9366589647247e1b1be58d4685e3b363d3df50be8251604b6",
+      "working_sha256": "84aa98038a4d2be9366589647247e1b1be58d4685e3b363d3df50be8251604b6",
+      "git_blob": "c082e8a5f8d73ab42e2e158bcd03706eac175a8c"
+    },
+    {
+      "path": "scripts/prism_balance_ab_report_m61.py",
+      "git_bytes": 30129,
+      "git_sha256": "118e4b03291906659607b6698d37d8dd7dac1ac74b1bbee27cde7c9db907ce05",
+      "working_sha256": "118e4b03291906659607b6698d37d8dd7dac1ac74b1bbee27cde7c9db907ce05",
+      "git_blob": "920c6011e9379318e08c94b387ba715fde483e6b"
+    },
+    {
+      "path": "scripts/prism_balance_ab_training_report_m61.py",
+      "git_bytes": 22641,
+      "git_sha256": "7bb460bdd236658fa4f8babd0874233d35f14033754a2a11dfd02d438bb2a434",
+      "working_sha256": "7bb460bdd236658fa4f8babd0874233d35f14033754a2a11dfd02d438bb2a434",
+      "git_blob": "0fccd1fe8753026c54d4315267b01b326a7d5473"
+    },
+    {
+      "path": "scripts/prism_bounded_eval.py",
+      "git_bytes": 22259,
+      "git_sha256": "e2b09aab57972d8d5d2ac5e9cc0e7a8afff937a5d944d43fa9ccdfca94d0004a",
+      "working_sha256": "e2b09aab57972d8d5d2ac5e9cc0e7a8afff937a5d944d43fa9ccdfca94d0004a",
+      "git_blob": "bedfb5501cebce0d495a86702b51eccddbbb6a80"
+    },
+    {
+      "path": "scripts/prism_building_audit_m62.py",
+      "git_bytes": 27337,
+      "git_sha256": "515d5a3ba93b424024b8ee575ae46d94854fb7d8ade6bcc81744bac19f31a215",
+      "working_sha256": "515d5a3ba93b424024b8ee575ae46d94854fb7d8ade6bcc81744bac19f31a215",
+      "git_blob": "41296a9a75ad7124db9dedf9c38b4f4dc5984dd6"
+    },
+    {
+      "path": "scripts/prism_building_audit_m63.py",
+      "git_bytes": 30842,
+      "git_sha256": "bca797a01b70f5c155a1ea0befcbd27559d815db132995df5924dadac2433081",
+      "working_sha256": "bca797a01b70f5c155a1ea0befcbd27559d815db132995df5924dadac2433081",
+      "git_blob": "624c33527cb832ae0f18dd02ccb344d13ef07465"
+    },
+    {
+      "path": "scripts/prism_building_evaluation_m62.py",
+      "git_bytes": 35601,
+      "git_sha256": "a863313e6eb9db629791c3c2dcca56dc046a02ecb4fdc43bc132fc3529c97b61",
+      "working_sha256": "a863313e6eb9db629791c3c2dcca56dc046a02ecb4fdc43bc132fc3529c97b61",
+      "git_blob": "4df17a1ae1a0c5b7d95f4a3faf087218fdf4bf10"
+    },
+    {
+      "path": "scripts/prism_building_evaluation_m63.py",
+      "git_bytes": 40854,
+      "git_sha256": "e9af5cd2c4d318bfe257614c1940c3f3d9e4ed6913f4cf345c00130d269a2629",
+      "working_sha256": "e9af5cd2c4d318bfe257614c1940c3f3d9e4ed6913f4cf345c00130d269a2629",
+      "git_blob": "f9e9be87e29d88abbe36fbf5d5b3db484a1a39c6"
+    },
+    {
+      "path": "scripts/prism_building_html_report_m62.py",
+      "git_bytes": 12310,
+      "git_sha256": "8138d628f9a49c7c2e5f13faf35579bc022a37ad22d4d4bfacd2aa87a6256c1c",
+      "working_sha256": "8138d628f9a49c7c2e5f13faf35579bc022a37ad22d4d4bfacd2aa87a6256c1c",
+      "git_blob": "e30677535cc36420f621de4bb06bf08554a7e185"
+    },
+    {
+      "path": "scripts/prism_building_html_report_m63.py",
+      "git_bytes": 13102,
+      "git_sha256": "5b27b1c7b3fd029971766e7b93d2e8263d485fe9bd3c12b0ab60f2fad4746cc8",
+      "working_sha256": "5b27b1c7b3fd029971766e7b93d2e8263d485fe9bd3c12b0ab60f2fad4746cc8",
+      "git_blob": "73319c57466729b81f91c41d1e9bfa86a94b890f"
+    },
+    {
+      "path": "scripts/prism_building_metrics_m62.py",
+      "git_bytes": 9843,
+      "git_sha256": "e3cb89301e6326caa6be6dd691c1e727e238bcd8e57c8cf415e2b33b441ece4a",
+      "working_sha256": "e3cb89301e6326caa6be6dd691c1e727e238bcd8e57c8cf415e2b33b441ece4a",
+      "git_blob": "a6bd107868ce560f32fdf20ad69607382df9d4ea"
+    },
+    {
+      "path": "scripts/prism_building_metrics_m63.py",
+      "git_bytes": 10495,
+      "git_sha256": "be3c9ad30a14e35ccad4f767491a666d05f25509a31f0a3d4c06ba880dc3303e",
+      "working_sha256": "be3c9ad30a14e35ccad4f767491a666d05f25509a31f0a3d4c06ba880dc3303e",
+      "git_blob": "cb18f6ea52d8c85a06a2d4e56ba804ea48d49dfc"
+    },
+    {
+      "path": "scripts/prism_building_policy_panel_m62.py",
+      "git_bytes": 6827,
+      "git_sha256": "749f59eb33eccd000652d360b5a05b3edaab2a4441b9edb1a1125fa135293c30",
+      "working_sha256": "749f59eb33eccd000652d360b5a05b3edaab2a4441b9edb1a1125fa135293c30",
+      "git_blob": "20fcd181dbb3b018eb4f193e0798c481d73373f8"
+    },
+    {
+      "path": "scripts/prism_building_prepare_m62.py",
+      "git_bytes": 38347,
+      "git_sha256": "1babd40782567cc9c8d29219191822ddbf36ce42260cce2452247bcd497066d6",
+      "working_sha256": "1babd40782567cc9c8d29219191822ddbf36ce42260cce2452247bcd497066d6",
+      "git_blob": "229421c880e92b05620b0924397609339d374ecf"
+    },
+    {
+      "path": "scripts/prism_building_prepare_m63.py",
+      "git_bytes": 41107,
+      "git_sha256": "108e41b227ad79d762f22d7393b822a87cf61056cc376a1bb77e7201cd5a4ef7",
+      "working_sha256": "108e41b227ad79d762f22d7393b822a87cf61056cc376a1bb77e7201cd5a4ef7",
+      "git_blob": "663e27ff64939a145a15d9b5f7a5a57a899ee3a2"
+    },
+    {
+      "path": "scripts/prism_building_profile_diagnostic_m62.py",
+      "git_bytes": 17845,
+      "git_sha256": "f8adfd89bc26206562399e2d82ad8f7036556d648b918903f4252f817c725de8",
+      "working_sha256": "f8adfd89bc26206562399e2d82ad8f7036556d648b918903f4252f817c725de8",
+      "git_blob": "6667a1a2166ce95552675908fdfe796e745299d5"
+    },
+    {
+      "path": "scripts/prism_building_report_m62.py",
+      "git_bytes": 23376,
+      "git_sha256": "d985875025a1ee6b0f51a97b3623054e2cd29bad693e53b6047b97f484f666ce",
+      "working_sha256": "d985875025a1ee6b0f51a97b3623054e2cd29bad693e53b6047b97f484f666ce",
+      "git_blob": "43257f49daffbf24064366d12d77cde4206a4a3d"
+    },
+    {
+      "path": "scripts/prism_building_report_m63.py",
+      "git_bytes": 24476,
+      "git_sha256": "456d41e2861637af017ce9f46491ea24e145620f93a221bf9c82221e49359b63",
+      "working_sha256": "456d41e2861637af017ce9f46491ea24e145620f93a221bf9c82221e49359b63",
+      "git_blob": "039fb205349d9f14c588090d400e5c2cd1f7c92b"
+    },
+    {
+      "path": "scripts/prism_building_training_diagnostic_m62.py",
+      "git_bytes": 14160,
+      "git_sha256": "03248d535df9074a9e6988a5b9be7ba828525b59566d8726e4f62ea5105b1186",
+      "working_sha256": "03248d535df9074a9e6988a5b9be7ba828525b59566d8726e4f62ea5105b1186",
+      "git_blob": "2fbaa6ce42e986330ec78d96a94976b425fea0e9"
+    },
+    {
+      "path": "scripts/prism_building_training_report_m62.py",
+      "git_bytes": 25721,
+      "git_sha256": "910cc13d1f805ffabae6cabb0688ba0e2a4197f9f982cf206406a42ed89d37bc",
+      "working_sha256": "910cc13d1f805ffabae6cabb0688ba0e2a4197f9f982cf206406a42ed89d37bc",
+      "git_blob": "ee54cddd7c324070c1d3e525c8e900bc0c85868c"
+    },
+    {
+      "path": "scripts/prism_building_training_report_m63.py",
+      "git_bytes": 27035,
+      "git_sha256": "23a178064d79c9afe61be992a2393705bc78a5b707faaec35e12ff815b47b1ea",
+      "working_sha256": "23a178064d79c9afe61be992a2393705bc78a5b707faaec35e12ff815b47b1ea",
+      "git_blob": "7adbb18ef21d3be46b605c234a9d6ff1ae2fb0dc"
+    },
+    {
+      "path": "scripts/prism_dsw_arena.py",
+      "git_bytes": 2193,
+      "git_sha256": "172b6f9edbb69b2d0fc139cd3ac4678d5f0392f97b59ebd09164467beda7b399",
+      "working_sha256": "172b6f9edbb69b2d0fc139cd3ac4678d5f0392f97b59ebd09164467beda7b399",
+      "git_blob": "dfd35a7e068eb582f11c26f6b5b78b286e9ee51a"
+    },
+    {
+      "path": "scripts/prism_dsw_bootstrap.sh",
+      "git_bytes": 723,
+      "git_sha256": "a0f7a88041119cd9c404b252720c02c8392ceeef59da950a61bc911334fc4a2b",
+      "working_sha256": "a0f7a88041119cd9c404b252720c02c8392ceeef59da950a61bc911334fc4a2b",
+      "git_blob": "ed8fe717d65bb91941864361222030fa0e52f088"
+    },
+    {
+      "path": "scripts/prism_dsw_manage.sh",
+      "git_bytes": 188,
+      "git_sha256": "4ef0b57924c795a140ad2d14e9f3e3a3f6253754295478a922969b6b418b9606",
+      "working_sha256": "4ef0b57924c795a140ad2d14e9f3e3a3f6253754295478a922969b6b418b9606",
+      "git_blob": "284961345a29b8cb223bd4aa753d2266611763e5"
+    },
+    {
+      "path": "scripts/prism_dsw_ppo_process.py",
+      "git_bytes": 9350,
+      "git_sha256": "0a4a6ecc0712fd6e8ec40846ecda2a7bb7e1d33beeea0d9acdc27e84169df164",
+      "working_sha256": "0a4a6ecc0712fd6e8ec40846ecda2a7bb7e1d33beeea0d9acdc27e84169df164",
+      "git_blob": "6a6f26bf3e41f1dd321936fbbdbfba086096bcf3"
+    },
+    {
+      "path": "scripts/prism_dsw_release_queue.py",
+      "git_bytes": 6592,
+      "git_sha256": "2e4fc8ca71b3cf2b72d791c73125969d802b78bc8ca3ef05bbb3e0e05fd15161",
+      "working_sha256": "2e4fc8ca71b3cf2b72d791c73125969d802b78bc8ca3ef05bbb3e0e05fd15161",
+      "git_blob": "e5a37a34d62dd5beed17780bab6d8a20f06a53d9"
+    },
+    {
+      "path": "scripts/prism_eval_failure_guard.py",
+      "git_bytes": 14076,
+      "git_sha256": "d5928c98e54cacde8b33ec5a6ee095a05cfa8bb7e25b6cdc2fd1ce0859019476",
+      "working_sha256": "d5928c98e54cacde8b33ec5a6ee095a05cfa8bb7e25b6cdc2fd1ce0859019476",
+      "git_blob": "c035ead333d3a9d1d456c4907dfd3a2804c2b493"
+    },
+    {
+      "path": "scripts/prism_generation_release.py",
+      "git_bytes": 7436,
+      "git_sha256": "6de8938809cf8ebe40e56d7cf4e15120d9f3ffa2f48c49fe812080948a19d0f2",
+      "working_sha256": "6de8938809cf8ebe40e56d7cf4e15120d9f3ffa2f48c49fe812080948a19d0f2",
+      "git_blob": "1cbb237019c17267877a43d7acdee9fe74c842a0"
+    },
+    {
+      "path": "scripts/prism_greedy_reading.py",
+      "git_bytes": 5219,
+      "git_sha256": "833cb0370ebc863d56ccf10377d4c034f72907eace90460e7fe3129ccd608cef",
+      "working_sha256": "833cb0370ebc863d56ccf10377d4c034f72907eace90460e7fe3129ccd608cef",
+      "git_blob": "c1cb1c10a20146728b9e755168b6bcec0cb2453d"
+    },
+    {
+      "path": "scripts/prism_human_report.py",
+      "git_bytes": 13460,
+      "git_sha256": "efa5e84aab9d5613641fa56fc0237a2d1258e9d792c63c2ec1180bff7bedc02c",
+      "working_sha256": "efa5e84aab9d5613641fa56fc0237a2d1258e9d792c63c2ec1180bff7bedc02c",
+      "git_blob": "3373128f7a628eb1d60f0de9f2cc5d495f4ca00e"
+    },
+    {
+      "path": "scripts/prism_m61_version_records.py",
+      "git_bytes": 31356,
+      "git_sha256": "197838cf72d6396f5f443177de43db2f3935ccb2896b116af71e7c258076e551",
+      "working_sha256": "197838cf72d6396f5f443177de43db2f3935ccb2896b116af71e7c258076e551",
+      "git_blob": "cb75d9dd26ce5d76183ab96c5291155c7ce57ea3"
+    },
+    {
+      "path": "scripts/prism_m62_pipeline_driver.py",
+      "git_bytes": 10560,
+      "git_sha256": "ccd25174dc5e033cd8d3de14601fac2df9dd2b18a05d39611bab96ae68a7bda6",
+      "working_sha256": "ccd25174dc5e033cd8d3de14601fac2df9dd2b18a05d39611bab96ae68a7bda6",
+      "git_blob": "ecaf261ac2dd70db063d79ea2c3788b6a6802b56"
+    },
+    {
+      "path": "scripts/prism_m63_dsw_execution_r2.py",
+      "git_bytes": 15418,
+      "git_sha256": "d7cfe4bdf1629462703692a630b36f38a84c82365c5392639c71d5b0e1f69044",
+      "working_sha256": "d7cfe4bdf1629462703692a630b36f38a84c82365c5392639c71d5b0e1f69044",
+      "git_blob": "2f0ca4b117caadff603f1ac6861789c98767d9bb"
+    },
+    {
+      "path": "scripts/prism_m63_dsw_metrics_runtime.py",
+      "git_bytes": 2442,
+      "git_sha256": "0911890a91a6853cc170b59de70fec8073e084a839cd73cb6142773fb6459f42",
+      "working_sha256": "0911890a91a6853cc170b59de70fec8073e084a839cd73cb6142773fb6459f42",
+      "git_blob": "bedf0c0e4d97fd21a449a130021c60e56537821d"
+    },
+    {
+      "path": "scripts/prism_m63_evaluation_compat_r1.py",
+      "git_bytes": 5312,
+      "git_sha256": "50a111b1f05da7a073b1f2815d7dca56d7ec05766948289716c83a1250b2b5c1",
+      "working_sha256": "50a111b1f05da7a073b1f2815d7dca56d7ec05766948289716c83a1250b2b5c1",
+      "git_blob": "9ec0b88de7130603b445c25d6f74129489a273b7"
+    },
+    {
+      "path": "scripts/prism_m63_pipeline_driver.py",
+      "git_bytes": 9103,
+      "git_sha256": "b166a51ba22e48be17e1b322341222eb91ccda9e27593caf8ac900673e30c7d5",
+      "working_sha256": "b166a51ba22e48be17e1b322341222eb91ccda9e27593caf8ac900673e30c7d5",
+      "git_blob": "6f8e9b25fad7a0ccf83092b60d3b41c34e7f3b56"
+    },
+    {
+      "path": "scripts/prism_m63_result_harvest.py",
+      "git_bytes": 11322,
+      "git_sha256": "d8a3c0743eb97fa6d4615aee5895a1487a3258d8c9b916180e853066756667c6",
+      "working_sha256": "d8a3c0743eb97fa6d4615aee5895a1487a3258d8c9b916180e853066756667c6",
+      "git_blob": "b74152aa5cfef5d5ff15bb35704abad741c57b97"
+    },
+    {
+      "path": "scripts/prism_m66_followup.py",
+      "git_bytes": 15783,
+      "git_sha256": "6801b19a4897859fb4ccdd4b20db5e1d5d6217955084cc21062a8f469937fb72",
+      "working_sha256": "6801b19a4897859fb4ccdd4b20db5e1d5d6217955084cc21062a8f469937fb72",
+      "git_blob": "f3ea39accabf5600101bc70e02a3b0327f4e5a48"
+    },
+    {
+      "path": "scripts/prism_m66_prepare.py",
+      "git_bytes": 9195,
+      "git_sha256": "e9f84559b3b7ad6331a4c6938356b1798da55b5cd6fa3cc044c5fd4275680aed",
+      "working_sha256": "e9f84559b3b7ad6331a4c6938356b1798da55b5cd6fa3cc044c5fd4275680aed",
+      "git_blob": "d08cc24fe4f39287e30c35803c8252a03d6be3db"
+    },
+    {
+      "path": "scripts/prism_m66_report.py",
+      "git_bytes": 12077,
+      "git_sha256": "bfd465df772cc19339f0fb0e546a0f1106d6473e87fa78168307a1d20c69f5c6",
+      "working_sha256": "bfd465df772cc19339f0fb0e546a0f1106d6473e87fa78168307a1d20c69f5c6",
+      "git_blob": "fc946007fbd2f26c01cd8bd50cea43e9b6ff51af"
+    },
+    {
+      "path": "scripts/prism_m66_train.py",
+      "git_bytes": 10762,
+      "git_sha256": "0b136105913f0ffe3a07211b1a205c0228000093555b8d203672cf6a7c188d81",
+      "working_sha256": "0b136105913f0ffe3a07211b1a205c0228000093555b8d203672cf6a7c188d81",
+      "git_blob": "b1e08d1c3d40e5556a9012bd0b0582e82b91dc4f"
+    },
+    {
+      "path": "scripts/prism_m67_audit.py",
+      "git_bytes": 9934,
+      "git_sha256": "e7c2898053109d47644d13b9d30e78eb52a62495476fe9c0fd5b7a0ad37891c6",
+      "working_sha256": "e7c2898053109d47644d13b9d30e78eb52a62495476fe9c0fd5b7a0ad37891c6",
+      "git_blob": "25ddb38184351c568fe55e7f1df873c30578ec58"
+    },
+    {
+      "path": "scripts/prism_m67_eval_recovery_r3.py",
+      "git_bytes": 17683,
+      "git_sha256": "278ad5eff6e78af9db8095b38c1e009521c169565c4bc6f361688bac80cca350",
+      "working_sha256": "278ad5eff6e78af9db8095b38c1e009521c169565c4bc6f361688bac80cca350",
+      "git_blob": "898f7ce61932f0019d032ce5b64ea6dbd0494b89"
+    },
+    {
+      "path": "scripts/prism_m67_eval_recovery_r3b.py",
+      "git_bytes": 5664,
+      "git_sha256": "0cf7a5522b709d10fddbe9c1ce95b94701cffdd6cf5332f3e08bf205518fcc5a",
+      "working_sha256": "0cf7a5522b709d10fddbe9c1ce95b94701cffdd6cf5332f3e08bf205518fcc5a",
+      "git_blob": "0346db209718e2e3b2f09c797d9b674e6e7a146c"
+    },
+    {
+      "path": "scripts/prism_m67_eval_recovery_r3b_supervisor.py",
+      "git_bytes": 1853,
+      "git_sha256": "66d490b8393f084ddcab6fccd0905d209270c35b22f9e2e3915c3a7165c80bcd",
+      "working_sha256": "66d490b8393f084ddcab6fccd0905d209270c35b22f9e2e3915c3a7165c80bcd",
+      "git_blob": "0f66c187b74b1c173ddbdcf26f02f494c8a6cf26"
+    },
+    {
+      "path": "scripts/prism_m67_eval_recovery_r4.py",
+      "git_bytes": 12059,
+      "git_sha256": "98021fbe8d4192bdb3053e4524c8532a6928ff2cd775ff40404fa513d47be825",
+      "working_sha256": "98021fbe8d4192bdb3053e4524c8532a6928ff2cd775ff40404fa513d47be825",
+      "git_blob": "1b73599d591d98cd5139b34d43be5fe177fea91a"
+    },
+    {
+      "path": "scripts/prism_m67_monitor.py",
+      "git_bytes": 10346,
+      "git_sha256": "83d2ba188ce7f3b8a48e73b152e0d3ef0bc2a3be8b596713339d7e0328ebc1be",
+      "working_sha256": "83d2ba188ce7f3b8a48e73b152e0d3ef0bc2a3be8b596713339d7e0328ebc1be",
+      "git_blob": "07ff2d0933b742dd01520cc54163be3809898891"
+    },
+    {
+      "path": "scripts/prism_m67_monitor_r2.py",
+      "git_bytes": 4218,
+      "git_sha256": "f86b42933ddf7aae434cc03f5824a1d65e52b50c9655a39e41e3513345321773",
+      "working_sha256": "f86b42933ddf7aae434cc03f5824a1d65e52b50c9655a39e41e3513345321773",
+      "git_blob": "ed5f3c33c5306d15b8c571efafc7222fdffe0a4a"
+    },
+    {
+      "path": "scripts/prism_m67_monitor_r3.py",
+      "git_bytes": 4306,
+      "git_sha256": "ca65b31d20fcbce0ea67098b37bdc591e3fcf9c5df9aa5a6abd334c7599d7919",
+      "working_sha256": "ca65b31d20fcbce0ea67098b37bdc591e3fcf9c5df9aa5a6abd334c7599d7919",
+      "git_blob": "25a14fdec0b279fedc1378f6a2e9c9cbf66cb841"
+    },
+    {
+      "path": "scripts/prism_m67_monitor_r3b.py",
+      "git_bytes": 1553,
+      "git_sha256": "9f1628f76a14f34f3b76b03b7cca7be1eb2d8b56dc7a4d8c386c22e01244825f",
+      "working_sha256": "9f1628f76a14f34f3b76b03b7cca7be1eb2d8b56dc7a4d8c386c22e01244825f",
+      "git_blob": "0ae045152cd1c3d9d3df456a350148821c5cfcb4"
+    },
+    {
+      "path": "scripts/prism_m67_prepare.py",
+      "git_bytes": 9941,
+      "git_sha256": "5a9acf0e418a6e7d899bf72f3d6c4221b703b1e9e2fcfa0701fc8a79589af4ff",
+      "working_sha256": "5a9acf0e418a6e7d899bf72f3d6c4221b703b1e9e2fcfa0701fc8a79589af4ff",
+      "git_blob": "4279a3d3ac5343c10e227cee4e7987051a354184"
+    },
+    {
+      "path": "scripts/prism_m67_report.py",
+      "git_bytes": 26434,
+      "git_sha256": "079b85387de700bbc8be1eacf481053ca361709a8b27ad39ba2ecebae0bbc5c5",
+      "working_sha256": "079b85387de700bbc8be1eacf481053ca361709a8b27ad39ba2ecebae0bbc5c5",
+      "git_blob": "36fa5f4bccebb86d523589112eb0a5e5b28e397e"
+    },
+    {
+      "path": "scripts/prism_m67_resume.py",
+      "git_bytes": 10918,
+      "git_sha256": "27315290a290ecfaae067bd6de07c83f91edf11a5c289b2f0cd894004441b07d",
+      "working_sha256": "27315290a290ecfaae067bd6de07c83f91edf11a5c289b2f0cd894004441b07d",
+      "git_blob": "65fe114418b94daac85a89bae679f64a5e6ba45e"
+    },
+    {
+      "path": "scripts/prism_m67_resume_r2.py",
+      "git_bytes": 13072,
+      "git_sha256": "1b52ce6277b51b0d2da4b0f7c7dcd9b3ae37728b8617da7a67f771397c5803ff",
+      "working_sha256": "1b52ce6277b51b0d2da4b0f7c7dcd9b3ae37728b8617da7a67f771397c5803ff",
+      "git_blob": "417f9ff57db86f89aa22f40494bf4c50125d7e87"
+    },
+    {
+      "path": "scripts/prism_m67_run.py",
+      "git_bytes": 16194,
+      "git_sha256": "270f30f77b038f0d74d8e44b11487e4ee4eb829ff181d2759d6da42af64d1375",
+      "working_sha256": "270f30f77b038f0d74d8e44b11487e4ee4eb829ff181d2759d6da42af64d1375",
+      "git_blob": "6e2a28b7e38c595642968e9979bef723aa246de6"
+    },
+    {
+      "path": "scripts/prism_m67_storage.py",
+      "git_bytes": 4033,
+      "git_sha256": "9ec35f200772805a5b29d85b14d3f486321bc18dbaae1c5c6935a6e54212cd5d",
+      "working_sha256": "9ec35f200772805a5b29d85b14d3f486321bc18dbaae1c5c6935a6e54212cd5d",
+      "git_blob": "ef393c00f08b15bf433818a54c5e4b4a31717836"
+    },
+    {
+      "path": "scripts/prism_m70_audit.py",
+      "git_bytes": 9928,
+      "git_sha256": "f8aacc92b0874908dec6b7749a5bdbdb84a3ec98a7e65e996fe7b61426e69f37",
+      "working_sha256": "f8aacc92b0874908dec6b7749a5bdbdb84a3ec98a7e65e996fe7b61426e69f37",
+      "git_blob": "e4be8049b67257c71159041c0ae1521d8dd9ddab"
+    },
+    {
+      "path": "scripts/prism_m70_prepare.py",
+      "git_bytes": 8955,
+      "git_sha256": "3e952f2a013a1411bb6a903c7834dd893d9e2e5c7bb350d6cd43a7d27b65997c",
+      "working_sha256": "3e952f2a013a1411bb6a903c7834dd893d9e2e5c7bb350d6cd43a7d27b65997c",
+      "git_blob": "67140c5c020f904440af4749bbcaa500db3d2cd7"
+    },
+    {
+      "path": "scripts/prism_m70_report.py",
+      "git_bytes": 12114,
+      "git_sha256": "87d653745e5a9daec6c3ffececa572c76dd7d6997987817e3afc2fd49d0e4cd8",
+      "working_sha256": "87d653745e5a9daec6c3ffececa572c76dd7d6997987817e3afc2fd49d0e4cd8",
+      "git_blob": "eafd4e5d45544c4927008f536c728660a68da188"
+    },
+    {
+      "path": "scripts/prism_m70_run.py",
+      "git_bytes": 16740,
+      "git_sha256": "662fe21e4d1765dc5afd9168d695dce772a3ffb3581f00e67aafa4d72b4e130a",
+      "working_sha256": "662fe21e4d1765dc5afd9168d695dce772a3ffb3581f00e67aafa4d72b4e130a",
+      "git_blob": "3a3ff2e5e8152fd615466f1d0a77d7cea5bc9838"
+    },
+    {
+      "path": "scripts/prism_match_details.py",
+      "git_bytes": 16137,
+      "git_sha256": "0f7fb79de0a65e60dfcb914716c99562fa44dd7673e6c1c0ea5ee4916ba11bc4",
+      "working_sha256": "0f7fb79de0a65e60dfcb914716c99562fa44dd7673e6c1c0ea5ee4916ba11bc4",
+      "git_blob": "e2d880c2ac654188e2b41ed958b1eb6d9a980a87"
+    },
+    {
+      "path": "scripts/prism_model_release.py",
+      "git_bytes": 6891,
+      "git_sha256": "dbace3d6aba65297785e2c6de427da955b79e4732d3d520779a1dcb42c2f9e38",
+      "working_sha256": "dbace3d6aba65297785e2c6de427da955b79e4732d3d520779a1dcb42c2f9e38",
+      "git_blob": "bc18ce0c9069ba677093790a6546ecf31d7572b4"
+    },
+    {
+      "path": "scripts/prism_notebook_arena.py",
+      "git_bytes": 32635,
+      "git_sha256": "84baf17c3e9fb31638bb5e56799ceffaec41b96a7a358b289023ab55a6f7b935",
+      "working_sha256": "84baf17c3e9fb31638bb5e56799ceffaec41b96a7a358b289023ab55a6f7b935",
+      "git_blob": "6ff53870f3c871fde76fb62984192b4d257bdaad"
+    },
+    {
+      "path": "scripts/prism_notebook_bundle.py",
+      "git_bytes": 6236,
+      "git_sha256": "6a9d4efdbd0350c872ab08b784e7fdb39383aa83b3539e68ec414d46ce0656db",
+      "working_sha256": "6a9d4efdbd0350c872ab08b784e7fdb39383aa83b3539e68ec414d46ce0656db",
+      "git_blob": "813c387cfe0542c3a299d82b52ae4bd85ecc2cf0"
+    },
+    {
+      "path": "scripts/prism_notebook_report.py",
+      "git_bytes": 13864,
+      "git_sha256": "bc7dd35146d795c28c8f8a7fb3910cfe3b832e88884de32b93a0d010ff6fd9ec",
+      "working_sha256": "bc7dd35146d795c28c8f8a7fb3910cfe3b832e88884de32b93a0d010ff6fd9ec",
+      "git_blob": "3026aa8fd07f0f10a723cbc28900e4f3c430cf6a"
+    },
+    {
+      "path": "scripts/prism_notebook_report_recovery.py",
+      "git_bytes": 11754,
+      "git_sha256": "bc0585eec7034f4a816dbd5a371c66f90d28df3cf9580f858c923755c3333f29",
+      "working_sha256": "bc0585eec7034f4a816dbd5a371c66f90d28df3cf9580f858c923755c3333f29",
+      "git_blob": "a93e50f3e35da35148f92349a6eea541b8e8de52"
+    },
+    {
+      "path": "scripts/prism_ppo_campaign_supervisor.py",
+      "git_bytes": 5830,
+      "git_sha256": "816d3982673f94de86c0a6e20b779352575d8aab98ced36e385349d4ef0bd6c5",
+      "working_sha256": "816d3982673f94de86c0a6e20b779352575d8aab98ced36e385349d4ef0bd6c5",
+      "git_blob": "568fdb4ea117e9389ab42d8357eccd03d08fc419"
+    },
+    {
+      "path": "scripts/prism_ppo_checkpoint_publisher.py",
+      "git_bytes": 7072,
+      "git_sha256": "79d5f4a0bea400f4a63cfe1693c8090f74a55af02303acc4a6306a266c662b66",
+      "working_sha256": "79d5f4a0bea400f4a63cfe1693c8090f74a55af02303acc4a6306a266c662b66",
+      "git_blob": "9e2bc2cfad6544b4a2594dcf4c218269c4f2d4ad"
+    },
+    {
+      "path": "scripts/prism_ppo_cloud2_controller.py",
+      "git_bytes": 14146,
+      "git_sha256": "3794e58f4bb26e0f82108448497f2c0e39e6493f1ddb4c7f03f5f34fe6d96980",
+      "working_sha256": "3794e58f4bb26e0f82108448497f2c0e39e6493f1ddb4c7f03f5f34fe6d96980",
+      "git_blob": "d4b838732ae283484f9a5d2aa5ea7b1518cede32"
+    },
+    {
+      "path": "scripts/prism_ppo_continue.py",
+      "git_bytes": 9310,
+      "git_sha256": "77d8ddbdfa47a59e792db5032a5b0d2be1214e58511ce2402a81e4cb6705f9ef",
+      "working_sha256": "77d8ddbdfa47a59e792db5032a5b0d2be1214e58511ce2402a81e4cb6705f9ef",
+      "git_blob": "c8a500876e291a10ecb60ddc31555bb134765f8f"
+    },
+    {
+      "path": "scripts/prism_ppo_fixed_eval.py",
+      "git_bytes": 29793,
+      "git_sha256": "fb6683d0f0d91d92efafef1d136545b3dabf376e014e066b19beb43fe78aeacb",
+      "working_sha256": "fb6683d0f0d91d92efafef1d136545b3dabf376e014e066b19beb43fe78aeacb",
+      "git_blob": "5b618f9941a284eade72b38841c2b500e5aec25b"
+    },
+    {
+      "path": "scripts/prism_ppo_fixed_watch.py",
+      "git_bytes": 5351,
+      "git_sha256": "30ec85460786bdc56887f7389d5f609adec2db9ceab8204c41307da58ce790de",
+      "working_sha256": "30ec85460786bdc56887f7389d5f609adec2db9ceab8204c41307da58ce790de",
+      "git_blob": "fdaf006b17f47143059eaf451d5c82a216ca2b01"
+    },
+    {
+      "path": "scripts/prism_ppo_resource_supervisor.py",
+      "git_bytes": 9664,
+      "git_sha256": "5b138ad9646576270242b704a79e8f66d5be407af5442b385c70d1996e1ca886",
+      "working_sha256": "5b138ad9646576270242b704a79e8f66d5be407af5442b385c70d1996e1ca886",
+      "git_blob": "1cdb459a1433b48a7b3d4dd0e6cf69981083fe4c"
+    },
+    {
+      "path": "scripts/prism_round_report.py",
+      "git_bytes": 13100,
+      "git_sha256": "bace01d02fa06eff7e80e16506310f791e46aa2bdc7d9cf213006e06c2ddbb7d",
+      "working_sha256": "bace01d02fa06eff7e80e16506310f791e46aa2bdc7d9cf213006e06c2ddbb7d",
+      "git_blob": "2a4f5a28f52b4379f1d8ed7943dbc62d142224ea"
+    },
+    {
+      "path": "scripts/prism_rush_readability.py",
+      "git_bytes": 17860,
+      "git_sha256": "388487125062055999bfdd2d22d5471cb2b4982b2240e91b98d12291cb7e47b8",
+      "working_sha256": "388487125062055999bfdd2d22d5471cb2b4982b2240e91b98d12291cb7e47b8",
+      "git_blob": "4c280084be856bef58d6b456d855233f3f472737"
+    },
+    {
+      "path": "scripts/prism_rush_report.py",
+      "git_bytes": 12718,
+      "git_sha256": "4dd5aef6d7846d157463c1944e4628f0a43c041363c1837bde8efc79268143a5",
+      "working_sha256": "4dd5aef6d7846d157463c1944e4628f0a43c041363c1837bde8efc79268143a5",
+      "git_blob": "792a02a2c9959c48e7d947fb31cf08182a0e7479"
+    },
+    {
+      "path": "scripts/prism_rush_round.py",
+      "git_bytes": 25237,
+      "git_sha256": "1613720a7e0f7f6f85e9926db7b9b1b641350247c19a0d495e2be702efab98d5",
+      "working_sha256": "1613720a7e0f7f6f85e9926db7b9b1b641350247c19a0d495e2be702efab98d5",
+      "git_blob": "8339a0a49f6c3f08ccdee278c39c61c99c49c55b"
+    },
+    {
+      "path": "scripts/prism_strength_acceptance.py",
+      "git_bytes": 10741,
+      "git_sha256": "bbfb99ba13bf637f6b358b956ab3e67c88d672db0e86bb8fcc43f2e00af94ceb",
+      "working_sha256": "bbfb99ba13bf637f6b358b956ab3e67c88d672db0e86bb8fcc43f2e00af94ceb",
+      "git_blob": "e233e51777ed75128b3418bee388522027aa4a9c"
+    },
+    {
+      "path": "scripts/prism_strength_confirmation.py",
+      "git_bytes": 15806,
+      "git_sha256": "7aaa6d1a57ba81dfa79d1dfe7c2e09dcb1ed4302b43c4a17971a2e538506253a",
+      "working_sha256": "7aaa6d1a57ba81dfa79d1dfe7c2e09dcb1ed4302b43c4a17971a2e538506253a",
+      "git_blob": "05c3c07aa153356428696eac744323d892dec2f5"
+    },
+    {
+      "path": "scripts/prism_style_atlas.py",
+      "git_bytes": 11343,
+      "git_sha256": "8a8598df5ce731b20cb044c196eec1762255049bfc4af3109816dcfad0bf654b",
+      "working_sha256": "8a8598df5ce731b20cb044c196eec1762255049bfc4af3109816dcfad0bf654b",
+      "git_blob": "97b90fcaa39a574ab6eb58adce123a44da51e6e4"
+    },
+    {
+      "path": "scripts/prism_style_delivery.py",
+      "git_bytes": 27090,
+      "git_sha256": "9f672f23daf05243790cc5d6c6ac9d93a52b60524d12eeb287609ad707eb1085",
+      "working_sha256": "9f672f23daf05243790cc5d6c6ac9d93a52b60524d12eeb287609ad707eb1085",
+      "git_blob": "34325cd4d1696ab7d91de039dfcdb9240f134df8"
+    },
+    {
+      "path": "scripts/prism_style_distributions.py",
+      "git_bytes": 12024,
+      "git_sha256": "c943469d916f01d9fe2c9ebb94d1ac32f64a8da41018e68a3af6f163d4f47f5b",
+      "working_sha256": "c943469d916f01d9fe2c9ebb94d1ac32f64a8da41018e68a3af6f163d4f47f5b",
+      "git_blob": "9429c5f81789e7f40824e5854dd604fe30ad84da"
+    },
+    {
+      "path": "scripts/prism_style_history.py",
+      "git_bytes": 15948,
+      "git_sha256": "a869551ba8f1cbebda43061fe48ac9b603804a20fa54fe8a5c337fbf610a8184",
+      "working_sha256": "a869551ba8f1cbebda43061fe48ac9b603804a20fa54fe8a5c337fbf610a8184",
+      "git_blob": "5529eb8d990e19c0922c1a9cbdbf9261cebcc3ca"
+    },
+    {
+      "path": "scripts/prism_style_page.py",
+      "git_bytes": 4499,
+      "git_sha256": "aee41b4c50e26363f4f59337cb48fbc530de02124ad49684ce0e6e267d851e1a",
+      "working_sha256": "aee41b4c50e26363f4f59337cb48fbc530de02124ad49684ce0e6e267d851e1a",
+      "git_blob": "546572b8675a87193763a6ef05cf5bc26ade0c25"
+    },
+    {
+      "path": "scripts/prism_v01_round.py",
+      "git_bytes": 7512,
+      "git_sha256": "e4eb1c32c9c2c1644649cda085e30211b80c173e95b16f6eda4f88182e9b1105",
+      "working_sha256": "e4eb1c32c9c2c1644649cda085e30211b80c173e95b16f6eda4f88182e9b1105",
+      "git_blob": "5efb1db4c5224a1a692f0717e02db392b8b9284e"
+    },
+    {
+      "path": "scripts/prism_v01_verify.py",
+      "git_bytes": 11730,
+      "git_sha256": "18404c42751fe980c1599411423c1e9f44abe6c5bcf34c1369fd035da0ca63d4",
+      "working_sha256": "18404c42751fe980c1599411423c1e9f44abe6c5bcf34c1369fd035da0ca63d4",
+      "git_blob": "94c54c62abd344d85721f2b6992726fb4d00fcdd"
+    },
+    {
+      "path": "scripts/templates/prism-alpha-model-comparison.html",
+      "git_bytes": 16090,
+      "git_sha256": "808aff8259c679ab31a34caa030854ab37bcf0fffd13e225b4c3c3f3c3fd926e",
+      "working_sha256": "9b43bcd666b8c48d45781023afeee2d9a9bbd2d98d01fc86566761f13584dc6b",
+      "git_blob": "8746314d584b2fddc98994bfbc5d45b3ab72cad1"
+    },
+    {
+      "path": "scripts/templates/prism-human.js",
+      "git_bytes": 17073,
+      "git_sha256": "0ef36ba9235a400eafd75b9b61ba272b1e1d5f7813de7dff5b1b17e3733be841",
+      "working_sha256": "0ef36ba9235a400eafd75b9b61ba272b1e1d5f7813de7dff5b1b17e3733be841",
+      "git_blob": "2f8bea83c380063fd3bccd48b66ebda57345ed5b"
+    },
+    {
+      "path": "scripts/templates/prism-model-comparison.html",
+      "git_bytes": 15146,
+      "git_sha256": "a755b585b6bd92bb4b84f6d3f3be8e7ce8a6c93ab721537f7e8eb7fdaf161d35",
+      "working_sha256": "33dc4ca3f93da31ba504a6019fa073d3b992e111847056c1bf78133162fc93f0",
+      "git_blob": "111f3fe9b86231e725085f868a2a26c279a57a46"
+    },
+    {
+      "path": "scripts/templates/prism-reading.css",
+      "git_bytes": 6345,
+      "git_sha256": "31a5d32aaa46a8072c0b530690aa840996a66a951b0b5a6995a146f50a944052",
+      "working_sha256": "31a5d32aaa46a8072c0b530690aa840996a66a951b0b5a6995a146f50a944052",
+      "git_blob": "059a387ceb68d5fc4a9192e88df89a18e9aeebe9"
+    },
+    {
+      "path": "scripts/templates/prism-reading.html",
+      "git_bytes": 434,
+      "git_sha256": "415529addd41895d56456837a9540286d1f439d2db41203c20679a700a4ad174",
+      "working_sha256": "415529addd41895d56456837a9540286d1f439d2db41203c20679a700a4ad174",
+      "git_blob": "e3a2b75e17697724b364c4cce2f5e726385cb5c0"
+    },
+    {
+      "path": "scripts/templates/prism-reading.js",
+      "git_bytes": 22120,
+      "git_sha256": "0243fb23d96157a29d70f2556d032b5b49bd823e049272dbc23fabef9bef87b1",
+      "working_sha256": "0243fb23d96157a29d70f2556d032b5b49bd823e049272dbc23fabef9bef87b1",
+      "git_blob": "bcfeae220f13cb1cebd7131473581b38ae44ab1a"
+    },
+    {
+      "path": "scripts/templates/prism-style-atlas.html",
+      "git_bytes": 24283,
+      "git_sha256": "89045188d624b83406d34f4b7eb55b0ece87d692c67f5daa353efdaa12fce067",
+      "working_sha256": "825712cce2439e2187c9fdd9df3ce851b4a03b985fd7b2ef7cfda76831bdc582",
+      "git_blob": "b047ff53ebfabef3b78b49ef795c62b0ca516e0a"
+    },
+    {
+      "path": "scripts/templates/prism-style-distributions.js",
+      "git_bytes": 7940,
+      "git_sha256": "c44dada0f1632483b2c895835b3fe7ddff34968127a466d36c963ced9ac5b396",
+      "working_sha256": "7bcb46284f0ef240508436c9713d84007663a9c9dd2f2bfb6fb07ff5c852a69e",
+      "git_blob": "21803e4f2ec6bd76baaf5110f2f8935c0d8ec078"
+    },
+    {
+      "path": "scripts/templates/prism-style-history.js",
+      "git_bytes": 2644,
+      "git_sha256": "59dbed6585ecdae705329698bcdafcbe96b0e592c1474d547da6d63631f07f3e",
+      "working_sha256": "2d1f5b149538f6b5dff54fc71643282f64653aa203262643cf89f315e52f796e",
+      "git_blob": "fd8026854a5dfbc98bbbbd3fa24ced33dfbec17e"
+    },
+    {
+      "path": "scripts/tests/prism_human_dom.test.cjs",
+      "git_bytes": 7752,
+      "git_sha256": "1806c866a3a02f11cc7c9cc180e153053e09bf5b954cb5f549c0d18c6b5de5f4",
+      "working_sha256": "1806c866a3a02f11cc7c9cc180e153053e09bf5b954cb5f549c0d18c6b5de5f4",
+      "git_blob": "3d46be7a3a4fc12a330e6b25da15b1029593ccba"
+    },
+    {
+      "path": "scripts/tests/prism_reading_dom.test.cjs",
+      "git_bytes": 5333,
+      "git_sha256": "4b07b202cea126670c01d88b999197b18dce917d4b7f847b4ace7c5527473391",
+      "working_sha256": "4b07b202cea126670c01d88b999197b18dce917d4b7f847b4ace7c5527473391",
+      "git_blob": "53c2f9a068d15e23988321de61565d9161b51790"
+    },
+    {
+      "path": "scripts/tests/prism_style_dom.test.cjs",
+      "git_bytes": 9170,
+      "git_sha256": "a67633790bd4d02c4c8801b8028389cd2cc3a03bb2642379157f204bd13342bb",
+      "working_sha256": "a67633790bd4d02c4c8801b8028389cd2cc3a03bb2642379157f204bd13342bb",
+      "git_blob": "f74462d9494099b7f181f93ce081459857fae158"
+    },
+    {
+      "path": "scripts/tests/test_prism_bounded_eval.py",
+      "git_bytes": 20711,
+      "git_sha256": "3881e4b4dea6fccee1def3613f02a3946d4c3cb9ea65e4e14328a79e1a934497",
+      "working_sha256": "3881e4b4dea6fccee1def3613f02a3946d4c3cb9ea65e4e14328a79e1a934497",
+      "git_blob": "ae7948a61ccc8a3c4af12e48df7858ec199470a4"
+    },
+    {
+      "path": "scripts/tests/test_prism_eval_failure_guard.py",
+      "git_bytes": 12356,
+      "git_sha256": "626ceb968603ddfa68dc2556f16c52653d4facaccb0e81565a3c1ec5835f6137",
+      "working_sha256": "626ceb968603ddfa68dc2556f16c52653d4facaccb0e81565a3c1ec5835f6137",
+      "git_blob": "9227b48c4286042bc05c18b49a20abf62bba57c8"
+    },
+    {
+      "path": "scripts/tests/test_prism_generation_release.py",
+      "git_bytes": 4628,
+      "git_sha256": "e4b237b0aebb812e2c39d22f62644767bea7c7d67e0a2b856a12170dd23ce697",
+      "working_sha256": "e4b237b0aebb812e2c39d22f62644767bea7c7d67e0a2b856a12170dd23ce697",
+      "git_blob": "284db87a472775fdb831e3cde80ae5b6fc6bf2ab"
+    },
+    {
+      "path": "scripts/tests/test_prism_m66.py",
+      "git_bytes": 5306,
+      "git_sha256": "a96f4eb87cd8cdd25ea25792a109a8179c0d8c51f5b1e9422c180387661e83be",
+      "working_sha256": "a96f4eb87cd8cdd25ea25792a109a8179c0d8c51f5b1e9422c180387661e83be",
+      "git_blob": "3ed8b988c95353fa1d16f823f65be1cb37572459"
+    },
+    {
+      "path": "scripts/tests/test_prism_m66_report.py",
+      "git_bytes": 5556,
+      "git_sha256": "cc7d0e1940b5561fa0fdfaa70c6063af8a26733438c137f1e9a47f273b6124e7",
+      "working_sha256": "cc7d0e1940b5561fa0fdfaa70c6063af8a26733438c137f1e9a47f273b6124e7",
+      "git_blob": "dcadcc2a1aa81e5117644f954acb06be2766d510"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67.py",
+      "git_bytes": 6086,
+      "git_sha256": "1b762144c8c39c38fc4a26187285df5424f32ad7cae425fc714b3220c86e5276",
+      "working_sha256": "1b762144c8c39c38fc4a26187285df5424f32ad7cae425fc714b3220c86e5276",
+      "git_blob": "ae3b16bebf4c21844a3f66ffdfa197607e16629e"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_eval_recovery_r3.py",
+      "git_bytes": 3381,
+      "git_sha256": "450dbe56c83af36973c96c8f3daaf55750441ae051adb585dde7206f8033cbfb",
+      "working_sha256": "450dbe56c83af36973c96c8f3daaf55750441ae051adb585dde7206f8033cbfb",
+      "git_blob": "d06302d5976884fd3cdce68f2f3fdc4a167125d2"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_eval_recovery_r3b.py",
+      "git_bytes": 2086,
+      "git_sha256": "aab0b8280b3eb101da371d457e8570b3e467b3ead2904addaadf44d1da19831c",
+      "working_sha256": "aab0b8280b3eb101da371d457e8570b3e467b3ead2904addaadf44d1da19831c",
+      "git_blob": "ac75172c56ff1288b0193c3c2b50dd7ebd4e0b32"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_eval_recovery_r4.py",
+      "git_bytes": 3151,
+      "git_sha256": "f9e5bb75d4d4e92f0e03f27a4b11ec3689a343f9248429db59cf9ddb475fb01b",
+      "working_sha256": "f9e5bb75d4d4e92f0e03f27a4b11ec3689a343f9248429db59cf9ddb475fb01b",
+      "git_blob": "8314f023c5317209d9f81c788e0ab2341f20fe6f"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_report.py",
+      "git_bytes": 16160,
+      "git_sha256": "8ad3202b46ef530dbad850403a281dbbb7efefaa9cf3495d3953fdb9e063c979",
+      "working_sha256": "8ad3202b46ef530dbad850403a281dbbb7efefaa9cf3495d3953fdb9e063c979",
+      "git_blob": "35b1a568723a9989caca7008027e45645dba793e"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_resume.py",
+      "git_bytes": 3987,
+      "git_sha256": "a6cb95de6366c3b4b7bf865cef482c0692bbfb4fe0f6cde909b4331cac960112",
+      "working_sha256": "a6cb95de6366c3b4b7bf865cef482c0692bbfb4fe0f6cde909b4331cac960112",
+      "git_blob": "eaa4a90d943341805423cbcbf68b4f6ab1f09776"
+    },
+    {
+      "path": "scripts/tests/test_prism_m67_resume_r2.py",
+      "git_bytes": 4517,
+      "git_sha256": "2d20bbc7e8609edb24ec684b1bcbb6daee36fc719a9f7abbb1c04305e5998d9d",
+      "working_sha256": "2d20bbc7e8609edb24ec684b1bcbb6daee36fc719a9f7abbb1c04305e5998d9d",
+      "git_blob": "dcf504e8cb2f18bed5de16ad618c1a6ce3d1e71c"
+    },
+    {
+      "path": "scripts/tests/test_prism_m70.py",
+      "git_bytes": 6139,
+      "git_sha256": "7a12ef9b6c5a228cae2b7cb0aa3be9722261845b78c9767dcf91983089449578",
+      "working_sha256": "7a12ef9b6c5a228cae2b7cb0aa3be9722261845b78c9767dcf91983089449578",
+      "git_blob": "cbfd9bc5de84fb0e07138fe016aa2ef535c0a379"
+    },
+    {
+      "path": "scripts/tests/test_prism_model_release.py",
+      "git_bytes": 3161,
+      "git_sha256": "dfd698d2e362a92cd459868cc35b017fd69b9606e3726c30912347088ed41cfc",
+      "working_sha256": "dfd698d2e362a92cd459868cc35b017fd69b9606e3726c30912347088ed41cfc",
+      "git_blob": "aa1b5f95f243540662aea2f9a0fc111bf7d9891c"
+    },
+    {
+      "path": "scripts/tests/test_prism_round_report.py",
+      "git_bytes": 6501,
+      "git_sha256": "76f8ecce33bdb488dcc78d0744e0e149a1f030bdfbd704956eddfc9e7c8ce2a6",
+      "working_sha256": "76f8ecce33bdb488dcc78d0744e0e149a1f030bdfbd704956eddfc9e7c8ce2a6",
+      "git_blob": "3d9cf351a9f1887e42c3230dae26977a34dac381"
+    },
+    {
+      "path": "scripts/tests/test_prism_style_atlas.py",
+      "git_bytes": 5511,
+      "git_sha256": "3a54e356eb901be2f70fb47899c3d3963031c3bd2e0c36c2662177c740406cac",
+      "working_sha256": "3a54e356eb901be2f70fb47899c3d3963031c3bd2e0c36c2662177c740406cac",
+      "git_blob": "5a4b220c5b379b4f7141849973938b0faac24c64"
+    },
+    {
+      "path": "scripts/tests/test_prism_style_distributions.py",
+      "git_bytes": 1079,
+      "git_sha256": "13725d665d8adf63ddfb48a78e1b345908d4a67321c7c781116dd435aa6291f8",
+      "working_sha256": "13725d665d8adf63ddfb48a78e1b345908d4a67321c7c781116dd435aa6291f8",
+      "git_blob": "87b25b2e110761ac1af706006192774988c6b619"
+    },
+    {
+      "path": "scripts/tests/test_prism_style_history.py",
+      "git_bytes": 1271,
+      "git_sha256": "e6b288b267907c7f446a22b7369e502c5af8f3626e87ba4068f8097e117bc6b3",
+      "working_sha256": "e6b288b267907c7f446a22b7369e502c5af8f3626e87ba4068f8097e117bc6b3",
+      "git_blob": "732ee3b0400dcd2162a4bdbbf2fbf1a19bf7f14b"
+    },
+    {
+      "path": "training/prism/README.md",
+      "git_bytes": 6203,
+      "git_sha256": "5432529933c6323a01d3a60be03c97f67ec7d5950fa765cc02e6afda80421e26",
+      "working_sha256": "5432529933c6323a01d3a60be03c97f67ec7d5950fa765cc02e6afda80421e26",
+      "git_blob": "5246a922fb4df77f3c86ab55a211d6261441b715"
+    },
+    {
+      "path": "training/prism/__init__.py",
+      "git_bytes": 545,
+      "git_sha256": "5a1b2684719f4402719ffd1ba1e77f45f1889c55bb1cef3fd56e9e7b0ddd7c75",
+      "working_sha256": "5a1b2684719f4402719ffd1ba1e77f45f1889c55bb1cef3fd56e9e7b0ddd7c75",
+      "git_blob": "8689892151e58e9cab65b387362199e9c107b559"
+    },
+    {
+      "path": "training/prism/data.py",
+      "git_bytes": 12615,
+      "git_sha256": "573a11980bc26268a3c278c9a9cb28efab4501827c316039e0bf26a15dfadc98",
+      "working_sha256": "573a11980bc26268a3c278c9a9cb28efab4501827c316039e0bf26a15dfadc98",
+      "git_blob": "148b760c0af756b838175035d7deeac0454fa922"
+    },
+    {
+      "path": "training/prism/export.py",
+      "git_bytes": 6499,
+      "git_sha256": "309afa200c6d22bf5c7802d2091e03098ba6a3dedb7885e4f361eaadffad75e1",
+      "working_sha256": "309afa200c6d22bf5c7802d2091e03098ba6a3dedb7885e4f361eaadffad75e1",
+      "git_blob": "d57d157a346dcfcf1ee55457499b6e06b4ca21cc"
+    },
+    {
+      "path": "training/prism/io.py",
+      "git_bytes": 2324,
+      "git_sha256": "2b96ab284f8c4f79ef4e81c5726c4ae51b176fa56c95b546c01f6391df199e7d",
+      "working_sha256": "2b96ab284f8c4f79ef4e81c5726c4ae51b176fa56c95b546c01f6391df199e7d",
+      "git_blob": "3086230a8bc37303ef809ccc43fff135e3011930"
+    },
+    {
+      "path": "training/prism/model.py",
+      "git_bytes": 6588,
+      "git_sha256": "1d39ada9f306f3ad642be43a6038704dcd371c8263ac1b9ad23a07fd237bf5cb",
+      "working_sha256": "1d39ada9f306f3ad642be43a6038704dcd371c8263ac1b9ad23a07fd237bf5cb",
+      "git_blob": "1c0d3c6086c8a784a6a2f9136aaf52fb6b18c3d5"
+    },
+    {
+      "path": "training/prism/parity.py",
+      "git_bytes": 1808,
+      "git_sha256": "37aabbc1f374e20886532d6f66e681b068a36ff5e499266861c385de99f9917f",
+      "working_sha256": "37aabbc1f374e20886532d6f66e681b068a36ff5e499266861c385de99f9917f",
+      "git_blob": "3c6554f20dfd72198a22a79d93f2ad2d8255bfb2"
+    },
+    {
+      "path": "training/prism/ppo/README.md",
+      "git_bytes": 16519,
+      "git_sha256": "d16b4e7d8e8a9863cb486fdf402829e13963c1fc1cc81699383a0f9f05f60253",
+      "working_sha256": "d16b4e7d8e8a9863cb486fdf402829e13963c1fc1cc81699383a0f9f05f60253",
+      "git_blob": "5849e4feaa299910da0eef91689c689b9341482a"
+    },
+    {
+      "path": "training/prism/ppo/__init__.py",
+      "git_bytes": 76,
+      "git_sha256": "987ad20304f6df104762ca1910ca53e6af5c5c82f88f1f0f1ecc42840cb2ad5a",
+      "working_sha256": "987ad20304f6df104762ca1910ca53e6af5c5c82f88f1f0f1ecc42840cb2ad5a",
+      "git_blob": "8fa3ce01f87ac384b860d351a5770c8af6a51dc0"
+    },
+    {
+      "path": "training/prism/ppo/__main__.py",
+      "git_bytes": 2951,
+      "git_sha256": "7cb07b189d3e75a0d733184344f26eee4d0193e0ab4158538c6e4538dd27ec7a",
+      "working_sha256": "7cb07b189d3e75a0d733184344f26eee4d0193e0ab4158538c6e4538dd27ec7a",
+      "git_blob": "7579b9541d35d9b3e77802455b0190fdb146b915"
+    },
+    {
+      "path": "training/prism/ppo/arena.py",
+      "git_bytes": 22011,
+      "git_sha256": "c7e2a5b3915abe58d88214d27e3a449915d40a1f145fc3f45e86e135bb3f3b01",
+      "working_sha256": "c7e2a5b3915abe58d88214d27e3a449915d40a1f145fc3f45e86e135bb3f3b01",
+      "git_blob": "9f7857af3fef68dd0367780c2b2af8ceadce0e4f"
+    },
+    {
+      "path": "training/prism/ppo/audit.py",
+      "git_bytes": 2362,
+      "git_sha256": "7c9280f23c15024f35b73ad6a86cade04fb224ea2e88550ab370a06439388267",
+      "working_sha256": "7c9280f23c15024f35b73ad6a86cade04fb224ea2e88550ab370a06439388267",
+      "git_blob": "04a6fc850ccb3cb16781c98691a3486608c40846"
+    },
+    {
+      "path": "training/prism/ppo/contract.py",
+      "git_bytes": 9778,
+      "git_sha256": "94f22a2e7f02fb2980c465020d71af3ce8352b5046d0103dddf15d46cdc460df",
+      "working_sha256": "94f22a2e7f02fb2980c465020d71af3ce8352b5046d0103dddf15d46cdc460df",
+      "git_blob": "c9256950424abf3231d684ac5df8dcf9c58e33fc"
+    },
+    {
+      "path": "training/prism/ppo/coordinator.py",
+      "git_bytes": 23401,
+      "git_sha256": "4780f021ae1c66bcdd5080c1fa5e4b4eb23c19818551efeb27eca2b337075be9",
+      "working_sha256": "4780f021ae1c66bcdd5080c1fa5e4b4eb23c19818551efeb27eca2b337075be9",
+      "git_blob": "e529059c0f0f127638bc285734c4e243c8b0114c"
+    },
+    {
+      "path": "training/prism/ppo/execution.py",
+      "git_bytes": 12761,
+      "git_sha256": "f1c60e7546755d02625985cb50d082c4b44b1aa13f6162a61c55596e0d14a71e",
+      "working_sha256": "f1c60e7546755d02625985cb50d082c4b44b1aa13f6162a61c55596e0d14a71e",
+      "git_blob": "681bbe04167d6027b1b00f9c59fc3274fa9870f8"
+    },
+    {
+      "path": "training/prism/ppo/learner.py",
+      "git_bytes": 12980,
+      "git_sha256": "1942662bb7e0bb16d1ef4b436f52eb8beee656ab4e59ace4f6728af54c53879c",
+      "working_sha256": "1942662bb7e0bb16d1ef4b436f52eb8beee656ab4e59ace4f6728af54c53879c",
+      "git_blob": "9e45b73d86b9b0245b016787bcbc34df33d1f74b"
+    },
+    {
+      "path": "training/prism/ppo/model.py",
+      "git_bytes": 3652,
+      "git_sha256": "eb48413f7e4c8b164133392bc4b532364752de5cfa337c399cdc9c802a514c55",
+      "working_sha256": "eb48413f7e4c8b164133392bc4b532364752de5cfa337c399cdc9c802a514c55",
+      "git_blob": "fe6da017998a0fae2dc6e493b40f2243c269884a"
+    },
+    {
+      "path": "training/prism/ppo/processes.py",
+      "git_bytes": 6467,
+      "git_sha256": "50f08f1a23e750e9458ed5ac8a49128401ebc80fa3b00234b31d42430a7bac33",
+      "working_sha256": "50f08f1a23e750e9458ed5ac8a49128401ebc80fa3b00234b31d42430a7bac33",
+      "git_blob": "5cd95f20e4f755998276340d4aa0cebfaf060a1d"
+    },
+    {
+      "path": "training/prism/ppo/runtime.py",
+      "git_bytes": 2334,
+      "git_sha256": "dc46fc770243e3284a74e4049caa102f9692c8d2c469c034dfcaf3d0e5b58ab8",
+      "working_sha256": "dc46fc770243e3284a74e4049caa102f9692c8d2c469c034dfcaf3d0e5b58ab8",
+      "git_blob": "009c8d86898285409559cef9c62f34c1cf842718"
+    },
+    {
+      "path": "training/prism/ppo/sampling.py",
+      "git_bytes": 4566,
+      "git_sha256": "c649d69debf0f5d5c2353b25443e438e2cd530cf9ca14e896b65cdc3f29f02e4",
+      "working_sha256": "c649d69debf0f5d5c2353b25443e438e2cd530cf9ca14e896b65cdc3f29f02e4",
+      "git_blob": "83338eee37fdcb219311d46812fa9fb300802bef"
+    },
+    {
+      "path": "training/prism/ppo/service.py",
+      "git_bytes": 3174,
+      "git_sha256": "f524a353557af2a94f41b59534a98e327e675653a78bf8b6fc4e1f67ba2416ba",
+      "working_sha256": "f524a353557af2a94f41b59534a98e327e675653a78bf8b6fc4e1f67ba2416ba",
+      "git_blob": "352d6d42f00dcb35c961798c199c260aadb76c48"
+    },
+    {
+      "path": "training/prism/ppo/store.py",
+      "git_bytes": 7336,
+      "git_sha256": "4b4b47ca45fad2e4a7126a6fe858d928db6121e05ad7e75a2eac9db49c9ec91d",
+      "working_sha256": "4b4b47ca45fad2e4a7126a6fe858d928db6121e05ad7e75a2eac9db49c9ec91d",
+      "git_blob": "90b6a86eda8701317b62f211891025dbcff3ebe8"
+    },
+    {
+      "path": "training/prism/ppo/style.py",
+      "git_bytes": 5260,
+      "git_sha256": "30713790402fda92f8d8afc01b6c3381d3b16db6bc6e4503e6653d611c356b9b",
+      "working_sha256": "b4eb3bf217ef697b2db52942bda220a4efef269986a586fbb802b4e55bf1580e",
+      "git_blob": "7274e9c6c19e9768cdf229ba12362de2e1f694a4"
+    },
+    {
+      "path": "training/prism/tests/conftest.py",
+      "git_bytes": 3264,
+      "git_sha256": "166b4ea0387c7cfd370559d4e8a630b01112c5a71aeedbcfd7a846c6950bcad5",
+      "working_sha256": "166b4ea0387c7cfd370559d4e8a630b01112c5a71aeedbcfd7a846c6950bcad5",
+      "git_blob": "6ba5804fb49385ece8f21a38d3d6b110376d1704"
+    },
+    {
+      "path": "training/prism/tests/ppo_support.py",
+      "git_bytes": 3293,
+      "git_sha256": "c4f5e3c2e96149e6f54106c3182072e721ffb0f919a27b776ba814e5a3615141",
+      "working_sha256": "c4f5e3c2e96149e6f54106c3182072e721ffb0f919a27b776ba814e5a3615141",
+      "git_blob": "7cee549040e6e7325810a5a19f9c13cad4d0f8c2"
+    },
+    {
+      "path": "training/prism/tests/test_alpha_round.py",
+      "git_bytes": 3243,
+      "git_sha256": "cf7747cfe1b358a170d573f35d7a349246d1601150c7d7c98e5d0e4955d99fdd",
+      "working_sha256": "cf7747cfe1b358a170d573f35d7a349246d1601150c7d7c98e5d0e4955d99fdd",
+      "git_blob": "23f986ecc1db7f7fb1864b513e9016d466a8b3dd"
+    },
+    {
+      "path": "training/prism/tests/test_data.py",
+      "git_bytes": 6222,
+      "git_sha256": "150ae9fd106cc4dc8dfd68ff41d81e9b46e93c07c6e7efa422a63f1e78a06d38",
+      "working_sha256": "150ae9fd106cc4dc8dfd68ff41d81e9b46e93c07c6e7efa422a63f1e78a06d38",
+      "git_blob": "fcc1444562713e7110089f19ebae41b57cb332be"
+    },
+    {
+      "path": "training/prism/tests/test_export.py",
+      "git_bytes": 4120,
+      "git_sha256": "513e722ccae15ff11222066a4998f8b9625db0d304b46b8590198c6633ed966f",
+      "working_sha256": "513e722ccae15ff11222066a4998f8b9625db0d304b46b8590198c6633ed966f",
+      "git_blob": "4f24b190bde357f2865b6b935c71dc3cdee4aca6"
+    },
+    {
+      "path": "training/prism/tests/test_model.py",
+      "git_bytes": 5994,
+      "git_sha256": "c7c8364e9d5a5162c6777fa5265234d9fb45c38412c0d4f9621cb23e9ff2b6c0",
+      "working_sha256": "c7c8364e9d5a5162c6777fa5265234d9fb45c38412c0d4f9621cb23e9ff2b6c0",
+      "git_blob": "e14c7e898271ab78501640e8fc53bcda5755495e"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_arena.py",
+      "git_bytes": 20272,
+      "git_sha256": "ceb5ff2f1424dccc97904ab583c33b6e49e0fc7769c9d74c5ccca01f810246ad",
+      "working_sha256": "ceb5ff2f1424dccc97904ab583c33b6e49e0fc7769c9d74c5ccca01f810246ad",
+      "git_blob": "fd9237c8fe7f531c5565c74e044a0d21d20e33d3"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_checkpoint_publisher.py",
+      "git_bytes": 2611,
+      "git_sha256": "8ed0ef625874a355a202e0ae22c3ef535074cc6d03c611c02f4cb623b0cf5f88",
+      "working_sha256": "8ed0ef625874a355a202e0ae22c3ef535074cc6d03c611c02f4cb623b0cf5f88",
+      "git_blob": "f3b1fbe04e7fbaf45b3a1ee438ca7ddb3daae769"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_cloud2_controller.py",
+      "git_bytes": 8248,
+      "git_sha256": "2ea86d4fbfb59a3644c33a19369bcd44b181346be440663170e9b2ece526625d",
+      "working_sha256": "2ea86d4fbfb59a3644c33a19369bcd44b181346be440663170e9b2ece526625d",
+      "git_blob": "beca5b22e55b0ad85aac5f5b35592349608b3d9a"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_continue.py",
+      "git_bytes": 7921,
+      "git_sha256": "18a572fabef80dce7c4beb3b3cd46c7888ef47f60f46881997ecdc7b540d54a2",
+      "working_sha256": "18a572fabef80dce7c4beb3b3cd46c7888ef47f60f46881997ecdc7b540d54a2",
+      "git_blob": "cd7398ec38227acaf7c28faf45481cc0cf6beb10"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_contract.py",
+      "git_bytes": 14027,
+      "git_sha256": "d87c1902a56f088e9c741ba2a629c567e7945291350ec05bcde52dfbfd13f0c7",
+      "working_sha256": "d87c1902a56f088e9c741ba2a629c567e7945291350ec05bcde52dfbfd13f0c7",
+      "git_blob": "99260310aa7bc5ebb597663112ccfad4cec698e3"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_fixed_eval.py",
+      "git_bytes": 11087,
+      "git_sha256": "3dbfe1cca3019948f1c7fb5d3631a671c36124dc3c30b73ac51a5243a12f94d5",
+      "working_sha256": "3dbfe1cca3019948f1c7fb5d3631a671c36124dc3c30b73ac51a5243a12f94d5",
+      "git_blob": "b68a44e9040a0f7f8dd94e9dd9d1170de9336091"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_fixed_watch.py",
+      "git_bytes": 2802,
+      "git_sha256": "7b67f0f2bb7c04312b4a9731741c80f33e492e168023a88c482dfe851963b548",
+      "working_sha256": "7b67f0f2bb7c04312b4a9731741c80f33e492e168023a88c482dfe851963b548",
+      "git_blob": "d2a9cc4f704d3a5c34aa27d0b646d0bce4c82595"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_interop.py",
+      "git_bytes": 6658,
+      "git_sha256": "e177c958ce022d08666cb31382fa88c4246c34323f604d257a602dd095f9ace8",
+      "working_sha256": "e177c958ce022d08666cb31382fa88c4246c34323f604d257a602dd095f9ace8",
+      "git_blob": "5d7f12164ab32ab2c2d9753c5dac53e39f7a8746"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_recovery.py",
+      "git_bytes": 11173,
+      "git_sha256": "147292aa2e2e2a400252e0b37fe3c5c864ab5aa1139d3861a1ff45f6affee583",
+      "working_sha256": "147292aa2e2e2a400252e0b37fe3c5c864ab5aa1139d3861a1ff45f6affee583",
+      "git_blob": "6af1e74229d53723bbec66533b1ac3ab33ce15dd"
+    },
+    {
+      "path": "training/prism/tests/test_ppo_resource_supervisor.py",
+      "git_bytes": 5694,
+      "git_sha256": "4d08a750ecbe00c39ef7b7b056079a218d448ac53aab02673ac33b7b7ff8d4f7",
+      "working_sha256": "4d08a750ecbe00c39ef7b7b056079a218d448ac53aab02673ac33b7b7ff8d4f7",
+      "git_blob": "52311ba8b73b5249a8ff1accf2de270d54f2f168"
+    },
+    {
+      "path": "training/prism/tests/test_rush_round.py",
+      "git_bytes": 4847,
+      "git_sha256": "ebecf680e307de510268264bb667a4dfa4cdc818be50050edf7a66a240688fd6",
+      "working_sha256": "a351802e9f4961b5b8eb67a1d3bfacf613dd2d80c2362943fe17a384d721d690",
+      "git_blob": "4d75afa440012dea6e17e4c1d9430afe8c079363"
+    },
+    {
+      "path": "training/prism/tests/test_rush_style.py",
+      "git_bytes": 7764,
+      "git_sha256": "1453273c715bbe38c89ed1449e84ad8a18031e026f153d099c0cf267fb9aa2f7",
+      "working_sha256": "3997942ffc2778bd37ebcd324f9cb29df0b683de2bd0afb9a4b488acd20411d8",
+      "git_blob": "2a2b46227a1613851c35173cd51e0d9a1f41daac"
+    },
+    {
+      "path": "training/prism/tests/test_strength_acceptance.py",
+      "git_bytes": 1970,
+      "git_sha256": "31361a5241f4be060830227d226ff3b5d440c9ec1e45f28ea13c534cf6b11bc7",
+      "working_sha256": "95d4194523376d0dabd12378498b5289808be3efcba991aad5d289a94c5ec1d0",
+      "git_blob": "63ae7fa096589fd5ba76bc1d3c88ca820da4239b"
+    },
+    {
+      "path": "training/prism/tests/test_strength_confirmation.py",
+      "git_bytes": 1899,
+      "git_sha256": "e57388b333b54f5ff35435415d05e5e91dc9001d77e6d14d2af29152e745d278",
+      "working_sha256": "e57388b333b54f5ff35435415d05e5e91dc9001d77e6d14d2af29152e745d278",
+      "git_blob": "79db2436195eedbec378f8d2a40c5404e2ca5e55"
+    },
+    {
+      "path": "training/prism/tests/test_train.py",
+      "git_bytes": 8532,
+      "git_sha256": "a5546964eb33c0394d8d628c596809ca035f677084abc0d47d9f5ca676e7017c",
+      "working_sha256": "a5546964eb33c0394d8d628c596809ca035f677084abc0d47d9f5ca676e7017c",
+      "git_blob": "a0b7396261220d493da5cfb843d1a852421aa8cd"
+    },
+    {
+      "path": "training/prism/train.py",
+      "git_bytes": 18605,
+      "git_sha256": "f45928cf2a0e52fc9b6da31c5bac2149dfa274e3f9754c7c39ec60bb4b0e5f01",
+      "working_sha256": "f45928cf2a0e52fc9b6da31c5bac2149dfa274e3f9754c7c39ec60bb4b0e5f01",
+      "git_blob": "6a719374dc4d3b602cf36d01013f709a5691a410"
+    },
+    {
+      "path": "training/prism_portable/engine/ppo/building.py",
+      "git_bytes": 17213,
+      "git_sha256": "7b57fd996ec497b8e7332e62f8a466e4a4d04f77a883b5c768c3f59b4399d8b8",
+      "working_sha256": "7b57fd996ec497b8e7332e62f8a466e4a4d04f77a883b5c768c3f59b4399d8b8",
+      "git_blob": "d8eef009654b266950afdcec7e188ee14e50f275"
+    },
+    {
+      "path": "training/prism_portable/engine/ppo/building_timed.py",
+      "git_bytes": 7335,
+      "git_sha256": "98a06225c18b2be772858edb08c794fb327502030c58fabd9a1e384bcc471882",
+      "working_sha256": "98a06225c18b2be772858edb08c794fb327502030c58fabd9a1e384bcc471882",
+      "git_blob": "c74157d5f0a796dea147934d0c3fb4f702a0987c"
+    },
+    {
+      "path": "training/prism_portable/engine/ppo/coordinator.py",
+      "git_bytes": 24370,
+      "git_sha256": "f4287fd6a150be12795ee24e90a396d08024864a504b429d9a9518a79f09d303",
+      "working_sha256": "f4287fd6a150be12795ee24e90a396d08024864a504b429d9a9518a79f09d303",
+      "git_blob": "28df4ac95f9abd09d48828b55508d949092c68a9"
+    },
+    {
+      "path": "training/prism_portable/engine/ppo/style.py",
+      "git_bytes": 6184,
+      "git_sha256": "a52aaaea6017874e7744e841d92fd026046e9531f868655e96b723a1eb050c5b",
+      "working_sha256": "a52aaaea6017874e7744e841d92fd026046e9531f868655e96b723a1eb050c5b",
+      "git_blob": "33bed6cc30cda5937f0d62f4817e6057b5ce1bf8"
+    },
+    {
+      "path": "training/prism_portable/tests/test_building_coordinator.py",
+      "git_bytes": 3230,
+      "git_sha256": "c57db91c2a828d3001a76dccf401d5f8d60c778de7c55cedd0741d34cdd52fb8",
+      "working_sha256": "c57db91c2a828d3001a76dccf401d5f8d60c778de7c55cedd0741d34cdd52fb8",
+      "git_blob": "5e606ce03c3c1cb772a2346397ee532978a330ec"
+    },
+    {
+      "path": "training/prism_portable/tests/test_building_style.py",
+      "git_bytes": 21670,
+      "git_sha256": "10dbf3e62a6753e9b59d559eee206fb0f2e5285f5e096a3e0ded0be2feeda12e",
+      "working_sha256": "10dbf3e62a6753e9b59d559eee206fb0f2e5285f5e096a3e0ded0be2feeda12e",
+      "git_blob": "b1bce66b439d1982bc7d0aa3dfbb6a3577517105"
+    },
+    {
+      "path": "training/prism_portable/tests/test_building_timed_style.py",
+      "git_bytes": 7668,
+      "git_sha256": "9f5ea1a1db72d5ae206488d44aaca8d4545cc74adf92002d06818d8f93bb4412",
+      "working_sha256": "9f5ea1a1db72d5ae206488d44aaca8d4545cc74adf92002d06818d8f93bb4412",
+      "git_blob": "a10338cd4b8e247b1b53ceefe6bc0d01d299355d"
+    },
+    {
+      "path": "training/prism_portable/tests/test_dsw_arena.py",
+      "git_bytes": 15430,
+      "git_sha256": "42930f67488c8a394d3cb0885f18ebf60cfe1ebb19f568c033ffb5d314da6411",
+      "working_sha256": "42930f67488c8a394d3cb0885f18ebf60cfe1ebb19f568c033ffb5d314da6411",
+      "git_blob": "5c481b2cd038627683caf037680adebae8130410"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_ab_report.py",
+      "git_bytes": 10207,
+      "git_sha256": "6f91e49a92033074f9af4d0c6a5b3c04c71670198329320c0316c0da388bcdd3",
+      "working_sha256": "6f91e49a92033074f9af4d0c6a5b3c04c71670198329320c0316c0da388bcdd3",
+      "git_blob": "8c803ed2dc21a4b24858ce0d007c39528814b7eb"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_balance_ab_audit.py",
+      "git_bytes": 7538,
+      "git_sha256": "664a1410d80f559a5fc7a2e8730bd026e22c45400282cb216164822d105b136e",
+      "working_sha256": "664a1410d80f559a5fc7a2e8730bd026e22c45400282cb216164822d105b136e",
+      "git_blob": "e9ba5162fe9eb07466bea6b7068f76f1ab826d21"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_balance_ab_evaluation.py",
+      "git_bytes": 14539,
+      "git_sha256": "7d983aaaf52a46762d6916dbb63e422414b98e2bef7fd4afcb35dd869132b8d5",
+      "working_sha256": "7d983aaaf52a46762d6916dbb63e422414b98e2bef7fd4afcb35dd869132b8d5",
+      "git_blob": "3a2a232aaa6f567c9c4933bc03bf4e4a4fe19fe2"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_prepare.py",
+      "git_bytes": 2867,
+      "git_sha256": "8b753de56dd68aaa48ae71777f07f20e9a8e6556f6acf75d8d6a40d7606e92cb",
+      "working_sha256": "8b753de56dd68aaa48ae71777f07f20e9a8e6556f6acf75d8d6a40d7606e92cb",
+      "git_blob": "936f2ea7b18f2a2ff5297290e518239e9c7f7473"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_reaudit.py",
+      "git_bytes": 6295,
+      "git_sha256": "984ca223741e3439b119c60e4d22371337671689de7abf2d3e97ff7b33aea95b",
+      "working_sha256": "984ca223741e3439b119c60e4d22371337671689de7abf2d3e97ff7b33aea95b",
+      "git_blob": "307f5ca6e77a4fcd4fdf98ac6518e84aa32b83c3"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m61_version_records.py",
+      "git_bytes": 17149,
+      "git_sha256": "32668fc5307db68376ff6b0ac3010a62fd5ee0043fa00b932928b25dad32e41f",
+      "working_sha256": "32668fc5307db68376ff6b0ac3010a62fd5ee0043fa00b932928b25dad32e41f",
+      "git_blob": "222fded8ec70ef399f1b687be139eed9663f91ef"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_building_audit.py",
+      "git_bytes": 20010,
+      "git_sha256": "2543c691c7b937ea799e30d690ee0c332de2a3f8d640b121cf436d59d44c03a9",
+      "working_sha256": "2543c691c7b937ea799e30d690ee0c332de2a3f8d640b121cf436d59d44c03a9",
+      "git_blob": "e529cb5e4117fa3536b6f008f8ce7a7201167cba"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_building_evaluation.py",
+      "git_bytes": 25026,
+      "git_sha256": "ab022519497ea34484f80d1f342b7b5f053de8ce50117e9a9274f0e4000b51da",
+      "working_sha256": "ab022519497ea34484f80d1f342b7b5f053de8ce50117e9a9274f0e4000b51da",
+      "git_blob": "d3e997e41cc261a25ac17ea99b69bac149314ec7"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_building_metrics.py",
+      "git_bytes": 32403,
+      "git_sha256": "a4a51057181cc49e5c5ef5027d2014b599f20eab9df7d6a66e5501bcee6e1a53",
+      "working_sha256": "a4a51057181cc49e5c5ef5027d2014b599f20eab9df7d6a66e5501bcee6e1a53",
+      "git_blob": "6ae1293b2dad669b159cd6acc0bf6b5b2053ab26"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_building_report.py",
+      "git_bytes": 18262,
+      "git_sha256": "bdd07ab80eedf1ef5f225d776479f0220d2e4c0dca26935808ced9ffc1f332cd",
+      "working_sha256": "bdd07ab80eedf1ef5f225d776479f0220d2e4c0dca26935808ced9ffc1f332cd",
+      "git_blob": "8cdbf6858e410df9084dc2aa8763ba9eb4276bd9"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_building_training_report.py",
+      "git_bytes": 17898,
+      "git_sha256": "cb6dcb5d2d1834bf35c7359e8d11ac95bfd6785244ec4e0070791451cb871bbd",
+      "working_sha256": "cb6dcb5d2d1834bf35c7359e8d11ac95bfd6785244ec4e0070791451cb871bbd",
+      "git_blob": "16a490dc8eaec1ae71012e48e905be11708bc018"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_policy_panel.py",
+      "git_bytes": 977,
+      "git_sha256": "27d73d7d658824e81d92f4edce275636d6af7747e8b6feef35435516cdf43f2b",
+      "working_sha256": "27d73d7d658824e81d92f4edce275636d6af7747e8b6feef35435516cdf43f2b",
+      "git_blob": "014845b90efed69fe206da173fc2ccc864b51457"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_prepare.py",
+      "git_bytes": 22182,
+      "git_sha256": "cf72a1a2290b80cd66e448a4362d9d15799d60f42b993f1edfdeb703a33b5980",
+      "working_sha256": "cf72a1a2290b80cd66e448a4362d9d15799d60f42b993f1edfdeb703a33b5980",
+      "git_blob": "a596453d4d3cd53d67529504e147b08770d17e27"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_profile_diagnostic.py",
+      "git_bytes": 6631,
+      "git_sha256": "1f4e45075958973e502d2d3904756fd2032d9cb07d2ed84672e4907e0115149c",
+      "working_sha256": "1f4e45075958973e502d2d3904756fd2032d9cb07d2ed84672e4907e0115149c",
+      "git_blob": "d0fdceabfba74358120a0ca2eeb3247bf97a0727"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m62_training_diagnostic.py",
+      "git_bytes": 2257,
+      "git_sha256": "f7fd3fc2277b34835386dea6c5a2dcfe136f6ff1f12f465a8c77b988e5142c64",
+      "working_sha256": "f7fd3fc2277b34835386dea6c5a2dcfe136f6ff1f12f465a8c77b988e5142c64",
+      "git_blob": "3692aca3f383bd307309be867de1f69644b5e978"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_audit.py",
+      "git_bytes": 22044,
+      "git_sha256": "cd2f08b6405b8bd15e38acf4a54e1fc5e1ce513125e17bb87de9050d37c4d040",
+      "working_sha256": "cd2f08b6405b8bd15e38acf4a54e1fc5e1ce513125e17bb87de9050d37c4d040",
+      "git_blob": "a244e47ac82c779bbd7dca1c2a13f2b03729673a"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_evaluation.py",
+      "git_bytes": 9221,
+      "git_sha256": "6d941b5398e054b2fef5772e1d963bedac629275efc94f6891b1be1056def07d",
+      "working_sha256": "6d941b5398e054b2fef5772e1d963bedac629275efc94f6891b1be1056def07d",
+      "git_blob": "7eae93122623b247b809c82ed9423e8f5d070b65"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_html_report.py",
+      "git_bytes": 1281,
+      "git_sha256": "2757a47611808614180acc5991d92e2c6c906fe8184c5f74745d1ae7206faaa1",
+      "working_sha256": "2757a47611808614180acc5991d92e2c6c906fe8184c5f74745d1ae7206faaa1",
+      "git_blob": "82b346a20b2dbf4b61a340ae526a9c7f77994521"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_metrics.py",
+      "git_bytes": 3144,
+      "git_sha256": "4eebdb80a48666a647a65781918b0630296e639694bbc30af2afadcdfa8392f4",
+      "working_sha256": "4eebdb80a48666a647a65781918b0630296e639694bbc30af2afadcdfa8392f4",
+      "git_blob": "0c2a69386a7fd01b9cebec17d1ec69d4d70c9c6e"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_report.py",
+      "git_bytes": 18768,
+      "git_sha256": "0994a01d9b41805a375cd11501d59c83a476f2918e7d08488f3b417950255e77",
+      "working_sha256": "0994a01d9b41805a375cd11501d59c83a476f2918e7d08488f3b417950255e77",
+      "git_blob": "7062f3563e8b661a92e31d5a995d938f9a381429"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_building_training_report.py",
+      "git_bytes": 19253,
+      "git_sha256": "8319bfaad906be74fac1f6618cef7046f1b81f1d81b65c00d8963d1c88af3ad8",
+      "working_sha256": "8319bfaad906be74fac1f6618cef7046f1b81f1d81b65c00d8963d1c88af3ad8",
+      "git_blob": "2fb28a843a556bac9dc7bed0b2d34fb8d08ed85d"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_dsw_execution_r2.py",
+      "git_bytes": 4890,
+      "git_sha256": "c2054058ec7e4a3c8ad995604fb8eaefd51d22181a7b273784b5d2bbbde93798",
+      "working_sha256": "c2054058ec7e4a3c8ad995604fb8eaefd51d22181a7b273784b5d2bbbde93798",
+      "git_blob": "fae5c5b9d2dbed0b43e5ac73f8133bd671bcac5c"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_evaluation_compat_r1.py",
+      "git_bytes": 1917,
+      "git_sha256": "2fc8d4980da4cd665a9ea1aea0798ac45599d910dbf95384759a05d0e30ddb82",
+      "working_sha256": "2fc8d4980da4cd665a9ea1aea0798ac45599d910dbf95384759a05d0e30ddb82",
+      "git_blob": "c45e5c3a404c3ca64a71460a45a006e162e6690c"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_pipeline.py",
+      "git_bytes": 2671,
+      "git_sha256": "6b5f440fc653dae2b1cc086841567c191f23ccc5fc743ef0841fb552e7440226",
+      "working_sha256": "6b5f440fc653dae2b1cc086841567c191f23ccc5fc743ef0841fb552e7440226",
+      "git_blob": "8c302fd2960f04673bc685cb387f7952b15773fa"
+    },
+    {
+      "path": "training/prism_portable/tests/test_m63_prepare.py",
+      "git_bytes": 23187,
+      "git_sha256": "82750ed05d16c76517e80a9ac34c8881926528a203097c7a69f896004d00ee5e",
+      "working_sha256": "82750ed05d16c76517e80a9ac34c8881926528a203097c7a69f896004d00ee5e",
+      "git_blob": "171db4d72913216f692a4328236699aa5940c41f"
+    }
+  ],
+  "self_hash_policy": "manifest excluded from its own inventory; pushed commit/tree identifies it",
+  "unpublished_reference_links": [
+    {
+      "from": "docs/m54-prism-continuous-ppo-design.md",
+      "target": "../local-artifacts/prism/ppo-trial-v2/provenance/owner-pause-clarification-20261002.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m67-prism-alpha-repeat.md",
+      "target": "../local-artifacts/prism/m67-alpha-repeat/loop-review-20261007.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m69-prism-evaluation-failure-isolation.md",
+      "target": "../local-artifacts/prism/m69-failure-isolation/verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m69-prism-evaluation-failure-isolation.md",
+      "target": "../local-artifacts/prism/m69-failure-isolation/tests.log",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m69-prism-evaluation-failure-isolation.md",
+      "target": "../local-artifacts/prism/m69-stagnation-check-20261008/validation.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m71-prism-bounded-evaluation.md",
+      "target": "../local-artifacts/prism/m71-bounded-evaluation/verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m71-prism-bounded-evaluation.md",
+      "target": "../local-artifacts/prism/m71-bounded-evaluation/tests-final.log",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m71-prism-bounded-evaluation.md",
+      "target": "../local-artifacts/prism/m71-bounded-evaluation/delivery-checks.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m71-prism-bounded-evaluation.md",
+      "target": "../local-artifacts/prism/m71-bounded-evaluation/all-sync-receipt.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/m73-prism-v020-experiment-design.md",
+      "target": "../local-artifacts/prism/m73-design/verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m62-prism-beta-building-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/common/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m62-prism-beta-building-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m62-prism-beta-building-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m63-prism-beta-timed-building-evaluation.audit.html",
+      "target": "../../local-artifacts/prism/m63-dsw-r2/greedy-r3/common/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m63-prism-beta-timed-building-evaluation.audit.html",
+      "target": "../../local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m63-prism-beta-timed-building-evaluation.audit.html",
+      "target": "../../local-artifacts/prism/m63-dsw-r2/r5-trajectory-result.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m65-prism-version-release-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/common/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m65-prism-version-release-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/direct-parent/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m65-prism-version-release-comparison.audit.html",
+      "target": "../../local-artifacts/prism/m65-release/harvest/release-evaluation/direct-new-alpha/report.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m67-loop-implications-2026-10-07.html",
+      "target": "../../local-artifacts/prism/m67-alpha-repeat/loop-review-20261007.probe.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m67-loop-implications-2026-10-07.md",
+      "target": "../../local-artifacts/prism/m67-alpha-repeat/loop-review-20261007.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m67-loop-implications-2026-10-07.md",
+      "target": "../../local-artifacts/prism/m67-alpha-repeat/loop-review-20261007.probe.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m67-loop-implications-2026-10-07.md",
+      "target": "../../local-artifacts/prism/m67-alpha-repeat/loop-review-20261007.verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-failure-isolation.html",
+      "target": "../../local-artifacts/prism/m69-failure-isolation/verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.html",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/validation.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.html",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/training-scan.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/training-scan.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/analysis.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/targeted.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/remote-metadata.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m69-stagnation-check-2026-10-08.md",
+      "target": "../../local-artifacts/prism/m69-stagnation-check-20261008/m70-identity.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/m71-bounded-evaluation.audit.md",
+      "target": "../../local-artifacts/prism/m71-bounded-evaluation/verification.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/v0.1.1/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/v01/run/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/alpha-v0.1.4/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/balance-v0.1.0/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/beta-v0.1.0/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/model-catalog-2026-10-05.md",
+      "target": "../../local-artifacts/prism/m66-alpha-dsw/harvest/campaigns/training/cycle-4-export/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/alpha-v0.2.0/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/alpha-v0.2.0/weights.manifest.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/balance-v0.2.0/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/balance-v0.2.0/weights.manifest.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/balance-v0.2.1/weights.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/prism-v020-fixed-models.md",
+      "target": "../../local-artifacts/prism/balance-v0.2.1/weights.manifest.json",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/project-status-2026-10-07.html",
+      "target": "../../local-artifacts/prism/m67-alpha-repeat/status-sync-20261007/summary.md",
+      "classification": "LOCAL_ONLY"
+    },
+    {
+      "from": "docs/prism/style-atlas-2026-10-08.md",
+      "target": "../../outputs/01a11805-prism-style/Prism-v0.2-fixed-models.zip",
+      "classification": "LOCAL_ONLY_WEIGHT_BUNDLE_NOT_PUBLISHED"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "style-history-2026-10-08.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "style-distributions-2026-10-08.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "style-atlas-2026-10-08.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "prism-v020-fixed-models.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "style-atlas-2026-10-08.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    },
+    {
+      "from": "scripts/templates/prism-style-atlas.html",
+      "target": "style-atlas-2026-10-08.audit.md",
+      "classification": "TEMPLATE_LINK_RELATIVE_TO_RENDER_DESTINATION"
+    }
+  ],
+  "whitespace_check": {
+    "exit_code": 2,
+    "historical_files_with_format_findings": 26,
+    "meaning": "existing hard-break/trailing-space/EOF formatting in historical reports and two frozen-source files preserved; no evidence bytes rewritten",
+    "new_context_exit_code": 0
+  }
+}

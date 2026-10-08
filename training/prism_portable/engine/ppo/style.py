@@ -10,6 +10,12 @@ STYLE_KEYS = {'format', 'window_main_actions', 'score_cap', 'diagnostic_horizon_
 
 
 def validate_style_config(value):
+    if isinstance(value, dict) and value.get('format') == 'prism-building-timed-style-v1':
+        from .building_timed import validate_timed_building_config
+        return validate_timed_building_config(value)
+    if isinstance(value, dict) and value.get('format') == 'prism-building-style-v1':
+        from .building import validate_building_config
+        return validate_building_config(value)
     exact(value, STYLE_KEYS, 'rush style contract')
     expected = {'format': 'prism-rush-style-v1', 'short_game_padding': 'terminal-prestige',
                 'phase_semantics': 'choose_noble-belongs-to-preceding-main', 'terminal_only': True,
@@ -85,6 +91,12 @@ def extract_rush_profile(game, config):
 
 
 def extract_style_targets(games, config):
+    if isinstance(config, dict) and config.get('format') == 'prism-building-timed-style-v1':
+        from .building_timed import extract_timed_building_targets
+        return extract_timed_building_targets(games, config)
+    if isinstance(config, dict) and config.get('format') == 'prism-building-style-v1':
+        from .building import extract_building_targets
+        return extract_building_targets(games, config)
     profiles = [extract_rush_profile(game, config) for game in games]
     targets = {(p['job_id'], p['actor']): p['rush_auc'] for p in profiles}
     if len(targets) != len(games):

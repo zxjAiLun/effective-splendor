@@ -1,0 +1,33 @@
+{
+  "format": "prism-research-candidate-identity-v1",
+  "model_id": "m66-alpha-start-final-c4",
+  "display_name": "M66 最终 c4（未发布训练检查点）",
+  "status": "VERIFIED_UNPUBLISHED_TRAINING_CHECKPOINT",
+  "published": false,
+  "milestone": "M66",
+  "cycle": 4,
+  "parent": {
+    "display_name": "Prism Alpha v0.1.5",
+    "weights_sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+  },
+  "initialization": "exact exported parent weights, fresh AdamW and RNG; outcome-only PPO; not a full-state M63 resume",
+  "training_games": 1024,
+  "optimizer_updates": 220,
+  "weights_path": "local-artifacts/prism/m66-alpha-dsw/harvest/campaigns/training/cycle-4-export/weights.json",
+  "weights_sha256": "d392a5d13e070173a3c80406acbe2f7028d52e3bbdc34a59864ab84f546588f8",
+  "companion_path": "local-artifacts/prism/m66-alpha-dsw/harvest/campaigns/training/cycle-4-export/weights.manifest.json",
+  "training_audit": "local-artifacts/prism/m66-alpha-dsw/harvest/final-audit/audit.json",
+  "result_path": "benchmarks/m66-prism-alpha-dsw.result.json",
+  "result_sha256": "53cbbca99085ffea003de17c9b3523331e19def7bcc7f228a2ed55793e4a8bb0",
+  "config_path": "benchmarks/m66-prism-alpha-dsw.config.json",
+  "config_sha256": "1770d3635149f5df7b4f06630457c329604971adb98afb4c81355c93027572aa",
+  "report_path": "docs/prism/m66-prism-alpha-dsw-comparison.html",
+  "competitive_conclusion": "Both frozen retention requirements passed; overall and direct-parent enhancement not confirmed",
+  "observed_route": "small mixed-profile changes versus the exact Alpha starting weight; no distinctive new style established",
+  "default_replaced": false,
+  "pool_deployed": false,
+  "studio_deployed": false,
+  "git_published": false,
+  "full_state_remote_path": "dsw:/mnt/workspace/splendor-m66-alpha/campaigns/training",
+  "full_state_downloaded": false
+}

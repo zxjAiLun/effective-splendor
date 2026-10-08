@@ -1,0 +1,150 @@
+{
+  "format": "prism-canonical-model-result-index-v1",
+  "status": "ACCEPTED_MODEL_ITERATION",
+  "model_version": "prism-v0.1.1",
+  "model_code": "011",
+  "display_name": "Prism v0.1.1 (011)",
+  "naming_only_correction": true,
+  "frozen_result": {
+    "path": "benchmarks/m54-prism-v02-acceptance-v2.result.json",
+    "sha256": "827c621a8e1771849088624cff385fe818c149c0f8374fe5863bb70cebfa82a5"
+  },
+  "candidate": {
+    "label": "trial-v2-c8",
+    "prospective_model_version": "prism-v0.1.1",
+    "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "weights_path": "local-artifacts/prism/ppo-trial-v2/campaign/cycle-8-export/weights.json"
+  },
+  "parent": {
+    "label": "trial-v1-c8",
+    "sha256": "cb7c4fb33ac7666706213ca4138f80104dacc5151b2385b9532bfebbe82025ac",
+    "weights_path": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-8-export/weights.json"
+  },
+  "games": 5120,
+  "seed_blocks": 512,
+  "gates": {
+    "anchor_noninferiority/heuristic-v031": true,
+    "anchor_noninferiority/prism-v01": true,
+    "direct_parent_superiority": true,
+    "pooled_anchors_superiority": true
+  },
+  "all_strength_gates_passed": true,
+  "measurements": {
+    "anchor_deltas": {
+      "heuristic-v031": {
+        "ci95": [
+          0.04686279296875001,
+          0.1240234375
+        ],
+        "mean": 0.0859375,
+        "simultaneous_one_sided_lower": 0.03564453125
+      },
+      "prism-v01": {
+        "ci95": [
+          0.05029296875,
+          0.126953125
+        ],
+        "mean": 0.08837890625,
+        "simultaneous_one_sided_lower": 0.0390625
+      }
+    },
+    "direct_duel": {
+      "ci95": [
+        0.56884765625,
+        0.62939453125
+      ],
+      "mean": 0.59912109375,
+      "simultaneous_one_sided_lower": 0.56005859375
+    },
+    "pooled_delta": {
+      "ci95": [
+        0.060546875,
+        0.11376953125
+      ],
+      "mean": 0.087158203125,
+      "simultaneous_one_sided_lower": 0.05346527099609375
+    }
+  },
+  "statistics": {
+    "bonferroni_lower_quantile": 0.00625,
+    "bootstrap_coverage_is_approximate": true,
+    "evaluation_look": 2,
+    "family_alpha": 0.05,
+    "family_scope": "nominal confidence accounting for 4 predeclared lower bounds x 2 evaluation looks of this frozen candidate",
+    "maximum_evaluation_looks": 2,
+    "method": "paired environment-seed block percentile bootstrap",
+    "no_third_evaluation_look_in_this_contract": true,
+    "one_sided_gate_count": 4,
+    "per_look_family_alpha": 0.025,
+    "previous_look_under_new_stricter_policy": "cannot pass: direct lower at quantile .0125 is .5; a .00625 quantile is no greater. Original v1 result is not rewritten.",
+    "report_two_sided_ci95": true,
+    "samples": 20000,
+    "seed": 54049999,
+    "single_final_analysis_no_optional_stopping": true
+  },
+  "anchor_results": {
+    "c8": {
+      "heuristic-v031": {
+        "draws": 4,
+        "games": 1024,
+        "losses": 387,
+        "mean_candidate_score": 14.720703125,
+        "mean_opponent_score": 13.51953125,
+        "mean_plies": 53.6318359375,
+        "score_rate": 0.6201171875,
+        "wins": 633
+      },
+      "prism-v01": {
+        "draws": 6,
+        "games": 1024,
+        "losses": 387,
+        "mean_candidate_score": 14.5634765625,
+        "mean_opponent_score": 13.314453125,
+        "mean_plies": 53.31640625,
+        "score_rate": 0.619140625,
+        "wins": 631
+      }
+    },
+    "parent": {
+      "heuristic-v031": {
+        "draws": 4,
+        "games": 1024,
+        "losses": 475,
+        "mean_candidate_score": 14.3349609375,
+        "mean_opponent_score": 13.982421875,
+        "mean_plies": 53.755859375,
+        "score_rate": 0.5341796875,
+        "wins": 545
+      },
+      "prism-v01": {
+        "draws": 3,
+        "games": 1024,
+        "losses": 479,
+        "mean_candidate_score": 14.1611328125,
+        "mean_opponent_score": 13.87890625,
+        "mean_plies": 53.7099609375,
+        "score_rate": 0.53076171875,
+        "wins": 542
+      }
+    }
+  },
+  "direct_duel_wdl": {
+    "draws": 9,
+    "games": 1024,
+    "losses": 406,
+    "mean_candidate_score": 14.5966796875,
+    "mean_opponent_score": 13.619140625,
+    "mean_plies": 53.9296875,
+    "score_rate": 0.59912109375,
+    "wins": 609
+  },
+  "detailed_match_metrics": {
+    "path": "benchmarks/m54-prism-011.match-details.json",
+    "sha256": "24c1fbed8cd254a13f6bbb40153b15106576f9436520d4a540a9efc4916510dc"
+  },
+  "default_replaced": false,
+  "shared_pool_deployed": false,
+  "independent_review_performed": false,
+  "previous_decision_retained": "NOT_ACCEPTED",
+  "original_config_result_and_hashes_unchanged": true
+}

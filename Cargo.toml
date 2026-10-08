@@ -21,6 +21,7 @@ members = [
     "crates/splendor-neural-agent",
     "crates/splendor-analysis",
     "crates/splendor-cli",
+    "crates/splendor-prism",
 ]
 default-members = [
     "crates/splendor-studio-league",
@@ -43,6 +44,7 @@ default-members = [
     "crates/splendor-neural-agent",
     "crates/splendor-analysis",
     "crates/splendor-cli",
+    "crates/splendor-prism",
 ]
 
 [workspace.package]
@@ -72,6 +74,7 @@ splendor-learning = { path = "crates/splendor-learning" }
 splendor-neural-search = { path = "crates/splendor-neural-search" }
 splendor-neural-agent = { path = "crates/splendor-neural-agent" }
 splendor-analysis = { path = "crates/splendor-analysis" }
+splendor-prism = { path = "crates/splendor-prism" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

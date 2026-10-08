@@ -1,0 +1,524 @@
+{
+  "comparisons": {
+    "acceptance": {
+      "anchors": [
+        {
+          "comparison": {
+            "card_vp_3plus": {
+              "delta": 0.37109375,
+              "prism_alpha_v0.1.0": 7.658203125,
+              "prism_v0.1.1": 7.287109375,
+              "relative_change_percent": 5.092468507102654
+            },
+            "cards_3plus": {
+              "delta": 0.060546875,
+              "prism_alpha_v0.1.0": 2.017578125,
+              "prism_v0.1.1": 1.95703125,
+              "relative_change_percent": 3.093812375249505
+            },
+            "cards_4plus": {
+              "delta": 0.111328125,
+              "prism_alpha_v0.1.0": 1.197265625,
+              "prism_v0.1.1": 1.0859375,
+              "relative_change_percent": 10.251798561151082
+            },
+            "cards_vp_0": {
+              "delta": 0.0078125,
+              "prism_alpha_v0.1.0": 6.359375,
+              "prism_v0.1.1": 6.3515625,
+              "relative_change_percent": 0.12300123001229846
+            },
+            "cards_vp_1": {
+              "delta": -0.15625,
+              "prism_alpha_v0.1.0": 1.9921875,
+              "prism_v0.1.1": 2.1484375,
+              "relative_change_percent": -7.272727272727275
+            },
+            "cards_vp_2": {
+              "delta": -0.04296875,
+              "prism_alpha_v0.1.0": 1.87890625,
+              "prism_v0.1.1": 1.921875,
+              "relative_change_percent": -2.2357723577235755
+            },
+            "cards_vp_3": {
+              "delta": -0.05078125,
+              "prism_alpha_v0.1.0": 0.8203125,
+              "prism_v0.1.1": 0.87109375,
+              "relative_change_percent": -5.829596412556048
+            },
+            "cards_vp_4": {
+              "delta": 0.033203125,
+              "prism_alpha_v0.1.0": 0.7890625,
+              "prism_v0.1.1": 0.755859375,
+              "relative_change_percent": 4.392764857881137
+            },
+            "cards_vp_5": {
+              "delta": 0.078125,
+              "prism_alpha_v0.1.0": 0.408203125,
+              "prism_v0.1.1": 0.330078125,
+              "relative_change_percent": 23.66863905325445
+            },
+            "mean_prestige": {
+              "delta": 0.123046875,
+              "prism_alpha_v0.1.0": 14.87890625,
+              "prism_v0.1.1": 14.755859375,
+              "relative_change_percent": 0.8338848444738645
+            },
+            "vp_per_main_action": {
+              "delta": 0.008045666568416876,
+              "prism_alpha_v0.1.0": 0.5583406625622984,
+              "prism_v0.1.1": 0.5502949959938815,
+              "relative_change_percent": 1.4620642795207806
+            }
+          },
+          "games_per_model": 512,
+          "opponent": "heuristic-v031"
+        },
+        {
+          "comparison": {
+            "card_vp_3plus": {
+              "delta": 0.591796875,
+              "prism_alpha_v0.1.0": 7.8984375,
+              "prism_v0.1.1": 7.306640625,
+              "relative_change_percent": 8.099438652766633
+            },
+            "cards_3plus": {
+              "delta": 0.146484375,
+              "prism_alpha_v0.1.0": 2.099609375,
+              "prism_v0.1.1": 1.953125,
+              "relative_change_percent": 7.499999999999996
+            },
+            "cards_4plus": {
+              "delta": 0.11328125,
+              "prism_alpha_v0.1.0": 1.21484375,
+              "prism_v0.1.1": 1.1015625,
+              "relative_change_percent": 10.283687943262422
+            },
+            "cards_vp_0": {
+              "delta": -0.103515625,
+              "prism_alpha_v0.1.0": 6.005859375,
+              "prism_v0.1.1": 6.109375,
+              "relative_change_percent": -1.6943734015345213
+            },
+            "cards_vp_1": {
+              "delta": -0.0546875,
+              "prism_alpha_v0.1.0": 1.96484375,
+              "prism_v0.1.1": 2.01953125,
+              "relative_change_percent": -2.7079303675048405
+            },
+            "cards_vp_2": {
+              "delta": -0.1875,
+              "prism_alpha_v0.1.0": 1.833984375,
+              "prism_v0.1.1": 2.021484375,
+              "relative_change_percent": -9.275362318840575
+            },
+            "cards_vp_3": {
+              "delta": 0.033203125,
+              "prism_alpha_v0.1.0": 0.884765625,
+              "prism_v0.1.1": 0.8515625,
+              "relative_change_percent": 3.8990825688073327
+            },
+            "cards_vp_4": {
+              "delta": 0.07421875,
+              "prism_alpha_v0.1.0": 0.830078125,
+              "prism_v0.1.1": 0.755859375,
+              "relative_change_percent": 9.819121447028433
+            },
+            "cards_vp_5": {
+              "delta": 0.0390625,
+              "prism_alpha_v0.1.0": 0.384765625,
+              "prism_v0.1.1": 0.345703125,
+              "relative_change_percent": 11.299435028248595
+            },
+            "mean_prestige": {
+              "delta": 0.103515625,
+              "prism_alpha_v0.1.0": 14.791015625,
+              "prism_v0.1.1": 14.6875,
+              "relative_change_percent": 0.7047872340425476
+            },
+            "vp_per_main_action": {
+              "delta": 0.0024653973781495475,
+              "prism_alpha_v0.1.0": 0.554189535309184,
+              "prism_v0.1.1": 0.5517241379310345,
+              "relative_change_percent": 0.4468532747896159
+            }
+          },
+          "games_per_model": 512,
+          "opponent": "prism-v01"
+        }
+      ],
+      "direct": {
+        "comparison": {
+          "card_vp_3plus": {
+            "delta": 0.880859375,
+            "prism_alpha_v0.1.0": 7.064453125,
+            "prism_v0.1.1": 6.18359375,
+            "relative_change_percent": 14.245104232469984
+          },
+          "cards_3plus": {
+            "delta": 0.212890625,
+            "prism_alpha_v0.1.0": 1.90625,
+            "prism_v0.1.1": 1.693359375,
+            "relative_change_percent": 12.572087658592856
+          },
+          "cards_4plus": {
+            "delta": 0.181640625,
+            "prism_alpha_v0.1.0": 1.03125,
+            "prism_v0.1.1": 0.849609375,
+            "relative_change_percent": 21.379310344827584
+          },
+          "cards_vp_0": {
+            "delta": -0.224609375,
+            "prism_alpha_v0.1.0": 6.25,
+            "prism_v0.1.1": 6.474609375,
+            "relative_change_percent": -3.4690799396681737
+          },
+          "cards_vp_1": {
+            "delta": -0.220703125,
+            "prism_alpha_v0.1.0": 2.015625,
+            "prism_v0.1.1": 2.236328125,
+            "relative_change_percent": -9.868995633187772
+          },
+          "cards_vp_2": {
+            "delta": 0.01953125,
+            "prism_alpha_v0.1.0": 1.86328125,
+            "prism_v0.1.1": 1.84375,
+            "relative_change_percent": 1.0593220338983134
+          },
+          "cards_vp_3": {
+            "delta": 0.03125,
+            "prism_alpha_v0.1.0": 0.875,
+            "prism_v0.1.1": 0.84375,
+            "relative_change_percent": 3.703703703703698
+          },
+          "cards_vp_4": {
+            "delta": 0.12109375,
+            "prism_alpha_v0.1.0": 0.716796875,
+            "prism_v0.1.1": 0.595703125,
+            "relative_change_percent": 20.32786885245901
+          },
+          "cards_vp_5": {
+            "delta": 0.060546875,
+            "prism_alpha_v0.1.0": 0.314453125,
+            "prism_v0.1.1": 0.25390625,
+            "relative_change_percent": 23.84615384615385
+          },
+          "mean_prestige": {
+            "delta": 0.4296875,
+            "prism_alpha_v0.1.0": 14.142578125,
+            "prism_v0.1.1": 13.712890625,
+            "relative_change_percent": 3.1334567725395335
+          },
+          "vp_per_main_action": {
+            "delta": 0.016116035455278066,
+            "prism_alpha_v0.1.0": 0.530437330598491,
+            "prism_v0.1.1": 0.5143212951432129,
+            "relative_change_percent": 3.1334567725395335
+          }
+        },
+        "games": 512,
+        "orientation": "both players in the same games; candidate is Alpha and opponent is Prism v0.1.1"
+      },
+      "pooled_comparison": {
+        "card_vp_3plus": {
+          "delta": 0.4814453125,
+          "prism_alpha_v0.1.0": 7.7783203125,
+          "prism_v0.1.1": 7.296875,
+          "relative_change_percent": 6.597965738758038
+        },
+        "cards_3plus": {
+          "delta": 0.103515625,
+          "prism_alpha_v0.1.0": 2.05859375,
+          "prism_v0.1.1": 1.955078125,
+          "relative_change_percent": 5.294705294705304
+        },
+        "cards_4plus": {
+          "delta": 0.1123046875,
+          "prism_alpha_v0.1.0": 1.2060546875,
+          "prism_v0.1.1": 1.09375,
+          "relative_change_percent": 10.267857142857139
+        },
+        "cards_vp_0": {
+          "delta": -0.0478515625,
+          "prism_alpha_v0.1.0": 6.1826171875,
+          "prism_v0.1.1": 6.23046875,
+          "relative_change_percent": -0.768025078369905
+        },
+        "cards_vp_1": {
+          "delta": -0.10546875,
+          "prism_alpha_v0.1.0": 1.978515625,
+          "prism_v0.1.1": 2.083984375,
+          "relative_change_percent": -5.060918462980323
+        },
+        "cards_vp_2": {
+          "delta": -0.115234375,
+          "prism_alpha_v0.1.0": 1.8564453125,
+          "prism_v0.1.1": 1.9716796875,
+          "relative_change_percent": -5.844477464091136
+        },
+        "cards_vp_3": {
+          "delta": -0.0087890625,
+          "prism_alpha_v0.1.0": 0.8525390625,
+          "prism_v0.1.1": 0.861328125,
+          "relative_change_percent": -1.0204081632653073
+        },
+        "cards_vp_4": {
+          "delta": 0.0537109375,
+          "prism_alpha_v0.1.0": 0.8095703125,
+          "prism_v0.1.1": 0.755859375,
+          "relative_change_percent": 7.105943152454786
+        },
+        "cards_vp_5": {
+          "delta": 0.05859375,
+          "prism_alpha_v0.1.0": 0.396484375,
+          "prism_v0.1.1": 0.337890625,
+          "relative_change_percent": 17.34104046242775
+        },
+        "mean_prestige": {
+          "delta": 0.11328125,
+          "prism_alpha_v0.1.0": 14.8349609375,
+          "prism_v0.1.1": 14.7216796875,
+          "relative_change_percent": 0.769485903814271
+        },
+        "vp_per_main_action": {
+          "delta": 0.0052565216251955205,
+          "prism_alpha_v0.1.0": 0.5562635028745102,
+          "prism_v0.1.1": 0.5510069812493147,
+          "relative_change_percent": 0.9539845780678124
+        }
+      },
+      "pooled_games_per_model": 1024
+    },
+    "development": {
+      "anchors": [
+        {
+          "comparison": {
+            "card_vp_3plus": {
+              "delta": -0.109375,
+              "prism_alpha_v0.1.0": 7.2578125,
+              "prism_v0.1.1": 7.3671875,
+              "relative_change_percent": -1.4846235418875975
+            },
+            "cards_3plus": {
+              "delta": -0.03125,
+              "prism_alpha_v0.1.0": 1.9453125,
+              "prism_v0.1.1": 1.9765625,
+              "relative_change_percent": -1.5810276679841917
+            },
+            "cards_4plus": {
+              "delta": -0.03125,
+              "prism_alpha_v0.1.0": 1.0703125,
+              "prism_v0.1.1": 1.1015625,
+              "relative_change_percent": -2.8368794326241176
+            },
+            "cards_vp_0": {
+              "delta": -0.1484375,
+              "prism_alpha_v0.1.0": 6.125,
+              "prism_v0.1.1": 6.2734375,
+              "relative_change_percent": -2.3661270236612686
+            },
+            "cards_vp_1": {
+              "delta": -0.1015625,
+              "prism_alpha_v0.1.0": 2.078125,
+              "prism_v0.1.1": 2.1796875,
+              "relative_change_percent": -4.659498207885305
+            },
+            "cards_vp_2": {
+              "delta": 0.0859375,
+              "prism_alpha_v0.1.0": 2.0234375,
+              "prism_v0.1.1": 1.9375,
+              "relative_change_percent": 4.435483870967749
+            },
+            "cards_vp_3": {
+              "delta": 0.0,
+              "prism_alpha_v0.1.0": 0.875,
+              "prism_v0.1.1": 0.875,
+              "relative_change_percent": 0.0
+            },
+            "cards_vp_4": {
+              "delta": -0.046875,
+              "prism_alpha_v0.1.0": 0.71875,
+              "prism_v0.1.1": 0.765625,
+              "relative_change_percent": -6.122448979591832
+            },
+            "cards_vp_5": {
+              "delta": 0.015625,
+              "prism_alpha_v0.1.0": 0.3515625,
+              "prism_v0.1.1": 0.3359375,
+              "relative_change_percent": 4.651162790697683
+            },
+            "mean_prestige": {
+              "delta": 0.171875,
+              "prism_alpha_v0.1.0": 14.9296875,
+              "prism_v0.1.1": 14.7578125,
+              "relative_change_percent": 1.164637374272104
+            },
+            "vp_per_main_action": {
+              "delta": 0.012095189058586198,
+              "prism_alpha_v0.1.0": 0.5609040211329616,
+              "prism_v0.1.1": 0.5488088320743754,
+              "relative_change_percent": 2.2038983980758875
+            }
+          },
+          "games_per_model": 128,
+          "opponent": "heuristic-v031"
+        },
+        {
+          "comparison": {
+            "card_vp_3plus": {
+              "delta": -0.484375,
+              "prism_alpha_v0.1.0": 7.5078125,
+              "prism_v0.1.1": 7.9921875,
+              "relative_change_percent": -6.060606060606055
+            },
+            "cards_3plus": {
+              "delta": -0.109375,
+              "prism_alpha_v0.1.0": 2.0,
+              "prism_v0.1.1": 2.109375,
+              "relative_change_percent": -5.185185185185182
+            },
+            "cards_4plus": {
+              "delta": -0.0859375,
+              "prism_alpha_v0.1.0": 1.15625,
+              "prism_v0.1.1": 1.2421875,
+              "relative_change_percent": -6.91823899371069
+            },
+            "cards_vp_0": {
+              "delta": 0.0390625,
+              "prism_alpha_v0.1.0": 6.234375,
+              "prism_v0.1.1": 6.1953125,
+              "relative_change_percent": 0.6305170239596425
+            },
+            "cards_vp_1": {
+              "delta": 0.03125,
+              "prism_alpha_v0.1.0": 2.171875,
+              "prism_v0.1.1": 2.140625,
+              "relative_change_percent": 1.4598540145985384
+            },
+            "cards_vp_2": {
+              "delta": 0.078125,
+              "prism_alpha_v0.1.0": 1.7890625,
+              "prism_v0.1.1": 1.7109375,
+              "relative_change_percent": 4.566210045662111
+            },
+            "cards_vp_3": {
+              "delta": -0.0234375,
+              "prism_alpha_v0.1.0": 0.84375,
+              "prism_v0.1.1": 0.8671875,
+              "relative_change_percent": -2.7027027027026973
+            },
+            "cards_vp_4": {
+              "delta": -0.015625,
+              "prism_alpha_v0.1.0": 0.8046875,
+              "prism_v0.1.1": 0.8203125,
+              "relative_change_percent": -1.904761904761909
+            },
+            "cards_vp_5": {
+              "delta": -0.0703125,
+              "prism_alpha_v0.1.0": 0.3515625,
+              "prism_v0.1.1": 0.421875,
+              "relative_change_percent": -16.666666666666664
+            },
+            "mean_prestige": {
+              "delta": 0.2421875,
+              "prism_alpha_v0.1.0": 14.875,
+              "prism_v0.1.1": 14.6328125,
+              "relative_change_percent": 1.6550987720235
+            },
+            "vp_per_main_action": {
+              "delta": 0.011927377777221748,
+              "prism_alpha_v0.1.0": 0.5626477541371159,
+              "prism_v0.1.1": 0.5507203763598941,
+              "relative_change_percent": 2.165777459708007
+            }
+          },
+          "games_per_model": 128,
+          "opponent": "prism-v01"
+        }
+      ],
+      "pooled_comparison": {
+        "card_vp_3plus": {
+          "delta": -0.296875,
+          "prism_alpha_v0.1.0": 7.3828125,
+          "prism_v0.1.1": 7.6796875,
+          "relative_change_percent": -3.8657171922685696
+        },
+        "cards_3plus": {
+          "delta": -0.0703125,
+          "prism_alpha_v0.1.0": 1.97265625,
+          "prism_v0.1.1": 2.04296875,
+          "relative_change_percent": -3.441682600382412
+        },
+        "cards_4plus": {
+          "delta": -0.05859375,
+          "prism_alpha_v0.1.0": 1.11328125,
+          "prism_v0.1.1": 1.171875,
+          "relative_change_percent": -5.000000000000004
+        },
+        "cards_vp_0": {
+          "delta": -0.0546875,
+          "prism_alpha_v0.1.0": 6.1796875,
+          "prism_v0.1.1": 6.234375,
+          "relative_change_percent": -0.8771929824561431
+        },
+        "cards_vp_1": {
+          "delta": -0.03515625,
+          "prism_alpha_v0.1.0": 2.125,
+          "prism_v0.1.1": 2.16015625,
+          "relative_change_percent": -1.6274864376130238
+        },
+        "cards_vp_2": {
+          "delta": 0.08203125,
+          "prism_alpha_v0.1.0": 1.90625,
+          "prism_v0.1.1": 1.82421875,
+          "relative_change_percent": 4.4967880085653
+        },
+        "cards_vp_3": {
+          "delta": -0.01171875,
+          "prism_alpha_v0.1.0": 0.859375,
+          "prism_v0.1.1": 0.87109375,
+          "relative_change_percent": -1.3452914798206317
+        },
+        "cards_vp_4": {
+          "delta": -0.03125,
+          "prism_alpha_v0.1.0": 0.76171875,
+          "prism_v0.1.1": 0.79296875,
+          "relative_change_percent": -3.9408866995073843
+        },
+        "cards_vp_5": {
+          "delta": -0.02734375,
+          "prism_alpha_v0.1.0": 0.3515625,
+          "prism_v0.1.1": 0.37890625,
+          "relative_change_percent": -7.216494845360821
+        },
+        "mean_prestige": {
+          "delta": 0.20703125,
+          "prism_alpha_v0.1.0": 14.90234375,
+          "prism_v0.1.1": 14.6953125,
+          "relative_change_percent": 1.408825093035615
+        },
+        "vp_per_main_action": {
+          "delta": 0.012014057081377039,
+          "prism_alpha_v0.1.0": 0.5617729347666028,
+          "prism_v0.1.1": 0.5497588776852258,
+          "relative_change_percent": 2.185332073574253
+        }
+      },
+      "pooled_games_per_model": 256
+    }
+  },
+  "definition": "large card means printed 3, 4 or 5 VP; count and printed VP per game, not purchase time or card cost",
+  "format": "prism-alpha-descriptive-style-profile-v1",
+  "model": "Prism Alpha v0.1.0",
+  "new_games": 0,
+  "next_direction": "PROPOSED: continue existing big-card scoring line with bounded PPO; building branch is deferred",
+  "not_a_new_style_acceptance_or_causal_claim": true,
+  "original_gates_and_verdict_unchanged": true,
+  "source_result": {
+    "path": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+    "sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57"
+  },
+  "status": "POST_HOC_DESCRIPTIVE_PROFILE",
+  "training_updates": 0,
+  "working_label": "大牌取分 / 偏大牌冲分"
+}

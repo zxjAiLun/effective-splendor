@@ -690,6 +690,7 @@ dependencies = [
  "splendor-learning",
  "splendor-neural-agent",
  "splendor-neural-search",
+ "splendor-prism",
  "splendor-protocol",
  "splendor-replay",
  "splendor-search",
@@ -835,6 +836,17 @@ dependencies = [
  "splendor-learning",
  "splendor-search",
  "thiserror",
+]
+
+[[package]]
+name = "splendor-prism"
+version = "0.1.0"
+dependencies = [
+ "rand",
+ "serde",
+ "serde_json",
+ "splendor-catalog",
+ "splendor-core",
 ]
 
 [[package]]

@@ -1,0 +1,83 @@
+{
+  "default_replaced": false,
+  "display_name": "Prism Alpha v0.1.0",
+  "evidence": {
+    "development_games": 512,
+    "formal_verdict": "NOT_ACCEPTED_RUSH_STYLE",
+    "gates": {
+      "direct_base": true,
+      "rush_auc": false,
+      "strength/heuristic-v031": true,
+      "strength/prism-v01": false,
+      "strength_pool": true,
+      "vp8_by_main20": false
+    },
+    "independent_games": 2560,
+    "path": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+    "report_path": "docs/prism/prism-alpha-v0.1.0-evaluation-summary.md",
+    "report_sha256": "08223de0cf217ed6c7d6a5f66c7a3bf5b5c05a275e2bd8e9d9dd4089fddc9fc0",
+    "sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57"
+  },
+  "format": "prism-experimental-model-identity-v1",
+  "future_direction": {
+    "actual_new_games": 0,
+    "budget_proposal_training_games": 1024,
+    "correction": "earlier building-anchor proposal was not supported by inspected card-profile data; retained in archived decision history",
+    "no_new_model_created": true,
+    "recommendation": "one bounded PPO continuation of current big-card scoring line; building and other styles deferred",
+    "status": "PROPOSED"
+  },
+  "git_published": false,
+  "historical_names": [
+    "Prism Rush v0.1.0 候选",
+    "prism-rush-v0.1.0"
+  ],
+  "identity_registration_games": 0,
+  "identity_registration_training_updates": 0,
+  "identity_status": "REGISTERED_EXPERIMENTAL_MODEL",
+  "model_id": "prism-alpha-v0.1.0",
+  "model_version": "prism-alpha-v0.1.0",
+  "origin": {
+    "cycle": 4,
+    "milestone": "M55",
+    "run_identity": "584effd11b931979a01a9df5ff0c730fec7fb2fdaad666c58c16df221b9b26cc",
+    "weights_path": "local-artifacts/prism/rush-v0.1.0/campaign/cycle-4-export/weights.json",
+    "weights_sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a"
+  },
+  "parent": {
+    "model_version": "prism-v0.1.1",
+    "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "weights_path": "local-artifacts/prism/v0.1.1/weights.json"
+  },
+  "runtime": {
+    "action_dim": 80,
+    "action_mode": "softmax-t1",
+    "action_schema": "prism-action-v1",
+    "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+    "entity_dim": 96,
+    "format": "prism-weights-v1",
+    "hidden_dim": 128,
+    "no_inference_overlay": true,
+    "num_blocks": 2,
+    "observation_schema": "prism-observation-v1",
+    "temperature": 1.0
+  },
+  "shared_pool_deployed": false,
+  "style_status": {
+    "building_style": "NOT_INDEPENDENTLY_DEFINED_OR_ACCEPTED",
+    "observed_profile": {
+      "label": "大牌取分 / 偏大牌冲分",
+      "path": "benchmarks/m55-prism-alpha-v0.1.0.style-profile.json",
+      "sha256": "db496e0b6371410403a53feb80e800f2e06b823d6547e63b463a3b48d7a166d3",
+      "status": "POST_HOC_DESCRIPTIVE_PROFILE"
+    },
+    "rush_style": "NOT_ESTABLISHED_AT_PREREGISTERED_TARGET",
+    "training_objective": "early own-score rush AUC"
+  },
+  "weights": {
+    "companion_path": "local-artifacts/prism/alpha-v0.1.0/weights.manifest.json",
+    "companion_sha256": "48cba3d9ce0100b7943778303e4b6413bf4eaba079cbaad7b9ddddd565d507bb",
+    "path": "local-artifacts/prism/alpha-v0.1.0/weights.json",
+    "sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a"
+  }
+}

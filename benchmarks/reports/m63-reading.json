@@ -1,0 +1,338 @@
+{
+  "format": "prism-reading-spec-v1",
+  "result": "local-artifacts/prism/m63-dsw-r2/harvested/evaluation/result.json",
+  "result_sha256": "a3c5c4f2c48b2b7dc36fed34326236ba5bcab687718ede6fe7bac99902b1e989",
+  "markdown": "docs/prism/m63-prism-beta-timed-building-evaluation.md",
+  "markdown_sha256": "911d4ef90395be7a373ea23f79d921d03ebb5909ffde76c222ebd0bf70c6c341",
+  "output": "docs/prism/m63-prism-beta-timed-building-evaluation.html",
+  "focus": "beta",
+  "baseline": "control",
+  "names": {
+    "heuristic-v031": "Heuristic v0.3.1（greedy）",
+    "prism-v01": "Prism v0.1.0（greedy）",
+    "prism-general-v011": "Prism v0.1.1（T=1）",
+    "alpha-t1": "Prism Alpha v0.1.4（T=1）",
+    "previous-beta-t1": "Prism Beta v0.1.0 M62冻结候选（T=1）",
+    "base": "Prism Balance v0.1.0（共同父代）",
+    "control": "M63 原目标对照 c4（未发布）",
+    "beta": "Prism Alpha v0.1.5",
+    "base-t1": "Prism Balance v0.1.0（共同父代）",
+    "control-t1": "M63 原目标对照 c4（未发布）"
+  },
+  "gates": {
+    "beta/building_utility": {
+      "label": "Beta候选 · 旧基建效用",
+      "category": "风格/效用",
+      "purpose": "历史研究合同要求：用预先固定的行为指标检验风格实质或保留要求；用于检验当时指定的风格训练假设。",
+      "threshold": -0.015,
+      "unit": "归一化单位",
+      "scale": 1,
+      "digits": 5,
+      "fail": "点估计下降0.01066，仍在0.015容忍内；但校正下界下降0.01888，未排除超出容忍。普通95%区间全为负，旧效用下降有证据。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/direct_alpha": {
+      "label": "Beta候选 · 直接对Prism Alpha v0.1.4",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/direct_control": {
+      "label": "Beta候选 · 直接对同轮对照",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/direct_parent": {
+      "label": "Beta候选 · 直接对共同父代",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/direct_previous_beta": {
+      "label": "Beta候选 · 直接对上轮Beta候选",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "点估计达到要求，但校正下界未达；证据还不足以排除超过容忍线的退步。不是证明真实水平等于下界。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/early_bonus_auc12": {
+      "label": "Beta候选 · 早期基建风格增益",
+      "category": "风格/效用",
+      "purpose": "历史研究合同要求：用预先固定的行为指标检验风格实质或保留要求；用于检验当时指定的风格训练假设。",
+      "threshold": 0.25,
+      "unit": "个折扣",
+      "scale": 1,
+      "digits": 5,
+      "fail": "本轮目标是至少增加0.25个早期折扣，实际差值为负，普通95%区间也全在0以下。风格朝相反方向变化，不只是置信下界不够。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/general_anchor": {
+      "label": "Beta候选 · 对Prism v0.1.1的保留",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：允许一定强度代价，但要排除超过声明容忍线的退步。",
+      "threshold": -0.075,
+      "unit": "个百分点",
+      "scale": 100,
+      "digits": 2,
+      "fail": "点估计达到要求，但校正下界未达；证据还不足以排除超过容忍线的退步。不是证明真实水平等于下界。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "beta/strength_pool": {
+      "label": "Beta候选 · 总体共同锚点表现",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：允许一定强度代价，但要排除超过声明容忍线的退步。",
+      "threshold": -0.05,
+      "unit": "个百分点",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "control/direct_parent": {
+      "label": "同轮对照 · 直接对共同父代",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：要求直接对战半平得分的校正下界至少达到45%，不是必须超过50%。",
+      "threshold": 0.45,
+      "unit": "%",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    },
+    "control/strength_pool": {
+      "label": "同轮对照 · 总体共同锚点表现",
+      "category": "竞争力保留",
+      "purpose": "历史研究合同要求：允许一定强度代价，但要排除超过声明容忍线的退步。",
+      "threshold": -0.05,
+      "unit": "个百分点",
+      "scale": 100,
+      "digits": 2,
+      "fail": "未通过时须保留原判定，不能事后改门。 现按实战优先评审，此项不自动否决候选归到其他路线。",
+      "pass": "满足本项预先要求；保留门通过不证明总体更强，也不自动发布。"
+    }
+  },
+  "style_metrics": [
+    {
+      "label": "共同锚点半平得分",
+      "path": "candidate_metrics.score_rate",
+      "unit": "个百分点",
+      "meaning": "固定三个对手等权平均；胜1、平0.5",
+      "interpretation": "相对对照总体变化区间跨0；对父覆盖面见上方",
+      "scale": 100,
+      "digits": 2
+    },
+    {
+      "label": "前12个Main平均折扣",
+      "path": "candidate_building.mean_early_bonus_auc12",
+      "unit": "个折扣",
+      "meaning": "实际早期基建画像",
+      "interpretation": "略少：没有更偏早期基建；不否决模型晋级",
+      "scale": 1,
+      "digits": 3
+    },
+    {
+      "label": "终局永久折扣",
+      "path": "candidate_metrics.mean_permanent_bonuses",
+      "unit": "个/局",
+      "meaning": "结算时已有的永久折扣",
+      "interpretation": "描述倾向，允许实战与经济取舍",
+      "scale": 1,
+      "digits": 3
+    },
+    {
+      "label": "终局大牌印刷分",
+      "path": "candidate_bigcard.mean_terminal_large_card_printed_vp",
+      "unit": "VP/局",
+      "meaning": "购入3+VP牌的印刷分，贵族分不计入",
+      "interpretation": "略高，仅描述，不能单独认定Alpha风格",
+      "scale": 1,
+      "digits": 3
+    },
+    {
+      "label": "本人Main得分速度",
+      "path": "candidate_metrics.vp_per_main_action",
+      "unit": "VP/Main",
+      "meaning": "每个本人Main的得分效率",
+      "interpretation": "略高，保留实际竞争表现",
+      "scale": 1,
+      "digits": 3
+    }
+  ],
+  "story": {
+    "round": "M63",
+    "title": "M63原实验与Prism Alpha v0.1.5发布",
+    "headline": "原M63研究判定保持；同一固定权重已由用户授权发布为Prism Alpha v0.1.5。",
+    "question": "训练试图强化早期基建；最终先看实战提升，再按实际画像决定适合哪条路线，而不是被训练目标限定。",
+    "identity": "Prism Alpha v0.1.5 就是 M63 原Beta目标分支最终 c4，固定权重未变；由 Prism Balance v0.1.0 继续 PPO 训练得到，不是 Prism Alpha v0.1.4 续训的后代。此次发布没有再次训练。",
+    "lineage": [
+      {
+        "role": "共同训练起点",
+        "name": "Prism Balance v0.1.0",
+        "change": "固定父代权重"
+      },
+      {
+        "role": "同轮对照",
+        "name": "M63 原目标对照 c4（未发布）",
+        "change": "旧奖励；训练1024局"
+      },
+      {
+        "role": "原Beta目标训练 → 已发布Alpha研究版本",
+        "name": "Prism Alpha v0.1.5",
+        "change": "时间加权奖励；训练1024局；原实验名见身份说明"
+      }
+    ],
+    "conclusions": [
+      {
+        "label": "产物",
+        "value": "有效迭代产物",
+        "explanation": "2048训练局、10304固定评测局；审计与结果核验通过，0比赛重试。",
+        "tone": "good"
+      },
+      {
+        "label": "实战价值",
+        "value": "对父增强，有覆盖面",
+        "explanation": "直接对父半平得分55.08%；三个共同锚点相对父也都提高，没有观察到只胜父、其余全劣。",
+        "tone": "good"
+      },
+      {
+        "label": "当前路线",
+        "value": "Prism Alpha v0.1.5已发布",
+        "explanation": "当前固定研究版本；原Beta研究合同仍完整保留。",
+        "tone": "good"
+      }
+    ],
+    "strength": "看实战覆盖面和直接对战一起判断。55.08%的对父半平得分有原校正下界证据；对其他对手也保持竞争表现。与此同时，对Alpha52.20%不能确认更强、对同轮对照49.66%、对上轮Beta46.88%仍须完整呈现。",
+    "style": "相对Balance父代，0分牌减少、4分牌增加，大牌印刷分与得分效率略升；首张4–5分牌平均提前约0.19个本人Main，20Main内达到8分率32.73%→33.83%。贵族覆盖下降。这个方向更适合Alpha路线，不能只因没达到Beta目标就默认归Balance。大牌和冲分变化不大，也不是每项领先现任Alpha。",
+    "interpretation": "原Beta训练假设未实现不否决候选价值。先前Balance路线归类已由Alpha路线候选检查点覆盖；原研究门和采样结果完整保留。",
+    "next": "保留这份固定权重作为Alpha路线候选检查点，后续可沿大牌冲分方向继续有限迭代，再以固定多对手greedy实战比较决定是否登记新版本。当前尚未证明它能替换Prism Alpha v0.1.4。",
+    "gate_intro": "下方保留原十项研究检验，回答当时指定的Beta目标是否达成。用户现已明确实战优先、按实际风格归类：旧基建合同未达不再等于整个模型不能晋级。原数值和判定保留，以免伪装成预注册门已经通过。",
+    "compute": "DSW：3路worker、3个CPU affinity核；8GiB内存预算，采样聚合RSS软限制"
+  },
+  "practical_review": "benchmarks/m63-practical-candidate.review.json",
+  "comparison_baseline": "base",
+  "greedy_results": [
+    {
+      "stage": "greedy",
+      "label": "固定补充对照 · 双方greedy",
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "plan": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/plan.json",
+      "plan_sha256": "7e4c989d16641e5c754be96d98b09eea3ce8b12e26397af477f062387d05c17b",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json",
+      "config_sha256": "bdc309afd3d2fd43b38cd5549175460e10d5f1baeebd873a8da21f5366f63490"
+    },
+    {
+      "stage": "greedy",
+      "label": "固定补充对照 · 双方greedy",
+      "result": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/result.json",
+      "sha256": "c5908481e18523431819cc7e3a1242d90871a4db855ff69a8263f790be190ca0",
+      "plan": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/plan.json",
+      "plan_sha256": "a17d1969cd9c2d64cfefc05c719e64b7db16e85b0121dfd1b2efcb500b65f321",
+      "config": "local-artifacts/prism/m63-dsw-r2/greedy-r3/direct/config.json",
+      "config_sha256": "be98563418991dea6c51120b9570b6828ff51db1796a0845e4263accb6071ff8"
+    }
+  ],
+  "greedy_weight_sha256": {
+    "base": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+    "beta": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+  },
+  "greedy_names": {
+    "parent": "Prism Balance v0.1.0",
+    "alpha": "Prism Alpha v0.1.4",
+    "previous_beta": "Prism Beta v0.1.0",
+    "prism-general-v011": "Prism v0.1.1",
+    "beta": "Prism Alpha v0.1.5"
+  },
+  "human_story": {
+    "title": "Prism Alpha v0.1.5：固定的大牌冲分检查点",
+    "headline": "已发布Prism Alpha v0.1.5：greedy对Balance父代53.91%、对Prism Alpha v0.1.4为51.95%，相对父代略偏大牌冲分。",
+    "identity": "Prism Alpha v0.1.5 就是 M63 原Beta目标分支最终 c4，固定权重未变；由 Prism Balance v0.1.0 继续 PPO 训练得到，不是 Prism Alpha v0.1.4 续训的后代。此次发布没有再次训练。",
+    "conclusions": [
+      {
+        "label": "产物",
+        "value": "Prism Alpha v0.1.5已发布",
+        "explanation": "沿用已验核的M63最终c4；版本、权重与Balance血缘已绑定。",
+        "tone": "good"
+      },
+      {
+        "label": "实战",
+        "value": "对父53.91%，对Alpha51.95%",
+        "explanation": "相对父代，对Heuristic和初代提高；对Alpha和上一Beta略低，通用版接近。",
+        "tone": "good"
+      },
+      {
+        "label": "画像",
+        "value": "Alpha路线：大牌冲分略增强",
+        "explanation": "小牌略少、得分效率与冲分时点略升；未证明全面超过现任Alpha。",
+        "tone": "good"
+      }
+    ],
+    "interpretation": "相对Balance父代，0分牌减少、4分牌增加，大牌印刷分与得分效率略升；首张4–5分牌平均提前约0.19个本人Main，20Main内达到8分率32.73%→33.83%。贵族覆盖下降。这个方向更适合Alpha路线，不能只因没达到Beta目标就默认归Balance。大牌和冲分变化不大，也不是每项领先现任Alpha。",
+    "next": "将这份固定研究版本作为Alpha路线研发起点。M65另一批独立greedy对Prism Beta v0.1.0为56.05%（256局，双方明细见Beta报告）；与本页旧种子批次分开。后续有限PPO仍需固定训练与多对手greedy比较，当前不替换默认。"
+  },
+  "history_story": {
+    "headline": "历史采样复盘：直接对父55.08%，三个共同锚点得分率高于父代。此结论只属于原T=1配置。",
+    "conclusions": [
+      {
+        "label": "产物",
+        "value": "原训练与采样评测完成",
+        "explanation": "2048训练局、10304固定采样评测局。",
+        "tone": "good"
+      },
+      {
+        "label": "历史实战",
+        "value": "采样对父55.08%",
+        "explanation": "不能把这个数写作双方greedy战绩。",
+        "tone": "good"
+      },
+      {
+        "label": "路线",
+        "value": "Prism Alpha v0.1.5已发布",
+        "explanation": "本页仍为原采样战绩；当前greedy画像见主报告。",
+        "tone": "warn"
+      }
+    ]
+  },
+  "human_timing": {
+    "workers": 3,
+    "games_per_minute": 322.80711281612173,
+    "minutes_per_1000": 3.097825172674007,
+    "clock_scope": "两段arena累计监测活动墙钟，含回放验核与报告；不含人工修复暂停"
+  },
+  "greedy_trajectory": {
+    "path": "local-artifacts/prism/m63-dsw-r2/r5-trajectory-result.json",
+    "sha256": "b09776f2f1a04496c1f72ac381f3034af56e7d4d26658a78fa9d090d1bdaf099"
+  },
+  "model_releases": {
+    "beta": {
+      "path": "benchmarks/m65-prism-alpha-v0.1.5.model.json",
+      "sha256": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb"
+    }
+  },
+  "related_reports": [
+    {
+      "label": "Prism Beta v0.1.0报告",
+      "href": "m62-prism-beta-building-comparison.html"
+    }
+  ]
+}

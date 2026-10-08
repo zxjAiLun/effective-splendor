@@ -1,0 +1,41 @@
+{
+  "format": "prism-generation-identity-proposal-v1",
+  "status": "DESIGNED_NOT_RELEASED",
+  "generation": "v0.2.0",
+  "authorization": "Owner proposed synchronized v0.2.0 route names, requested screening first; current continuation is statistics and identity work",
+  "historical_names_preserved": true,
+  "automatic_release": false,
+  "default_replaced": false,
+  "deployed": false,
+  "slots": [
+    {
+      "proposed_name": "Prism Alpha v0.2.0",
+      "candidate": "M67 A-c20",
+      "weights_sha256": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5",
+      "state": "BOUND_PROPOSAL",
+      "rationale": "More big-card printed VP and fewer low-VP purchases than matched Alpha parent; timing unmeasured; A retains five evaluation omissions"
+    },
+    {
+      "proposed_name": "Prism Beta v0.2.0",
+      "candidate": "M67 B-c20",
+      "weights_sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "state": "CONDITIONAL_PROPOSAL",
+      "rationale": "More low-VP cards and nobles than A; does not establish more building than matched Balance; Beta/Balance remains unresolved"
+    },
+    {
+      "proposed_name": "Prism Balance v0.2.0",
+      "candidate": null,
+      "weights_sha256": null,
+      "state": "UNASSIGNED",
+      "rationale": "No positive balanced-region evidence; B is an unresolved alternative, not assigned to both slots"
+    }
+  ],
+  "successor": {
+    "candidate": "M70 c4",
+    "weights_sha256": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a",
+    "parent": "M67 B-c20",
+    "state": "SEPARATE_UNPUBLISHED_CANDIDATE",
+    "rationale": "Different exact checkpoint, not an alias for B; common pool enhancement passes, direct-parent enhancement unconfirmed"
+  },
+  "next_allowed_action": "Review existing-data proposal; owner-directed research publication is separate. No automatic matches, training, deployment or Git push."
+}

@@ -358,3 +358,44 @@ STATUS_VOCABULARY = project default
 
 After adapting those values, the lifecycle, templates, evidence hierarchy, and
 status rules can remain unchanged across repositories.
+
+## Readable model evidence tables — owner contract, 2026-10-02
+
+Every subsequent model result/release/evolution document must directly include
+its detailed Markdown match tables. A result JSON, a total win rate, or a link to
+another model document alone is insufficient. For an untested design/interface,
+record `NOT_RUN`; do not manufacture a result table from training diagnostics.
+
+Use [the unified match metrics standard](unified-match-metrics-standard.md) and
+AGENTS.md section 7. Each opponent needs W/D/L, pure win rate and half-draw score
+rate, paired uncertainty and first/second-seat results, both players' VP/tempo,
+card VP 0..5 and discounts, nobles, reserve lifecycle, all seven action counts,
+and measured timing. Record missing measurements explicitly and bind tables to
+model/opponent hashes and the frozen protocol. A handoff navigation index may
+stay compact; model evidence documents themselves must contain the tables.
+
+Keep one canonical version/report per model. User naming corrections update
+current navigation and manifests while preserving the original frozen experiments
+and append-only decision history. Markdown tables explain the machine evidence;
+they do not replace it or alter acceptance thresholds after seeing results.
+
+## Readable comparisons and style acceptance — owner clarification, 2026-10-02
+
+Open a model report with three distinct conclusions: whether the artifact and
+data are valid, its measured competitive performance, and whether the intended
+style has been established. Follow with a compact same-opponent/same-seed table
+showing baseline → candidate → signed change. Include units, bold changes and
+up/down markers; color is an optional additional cue, never the only cue.
+Keep development and independent acceptance samples visibly separate. Put the
+complete per-opponent/both-player tables and provenance after this reading guide.
+
+Explain each frozen gate with its purpose, tolerance or effect target, measured
+estimate and uncertainty. Distinguish evidence insufficient to confirm a bound
+from an effect below its target. A failed non-inferiority gate does not itself
+prove inferiority. Style anchoring may accept declared competitive/economic
+tradeoffs; higher card, noble or reserve counts do not automatically mean better.
+
+Before a future experiment, justify which checks are hard acceptance gates and
+which are descriptive diagnostics. Choose a primary style measure and tolerances
+that fit the owner's intended use. Changing that policy after a completed round
+is a proposal for future work, not a retrospective PASS for frozen evidence.

@@ -1,0 +1,91 @@
+{
+  "format": "m54-prism-strength-acceptance-v1",
+  "status": "AUTHORIZED",
+  "baseline_git_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "authorized_date_local": "2026-10-02",
+  "candidate": {
+    "label": "trial-v2-c8",
+    "prospective_model_version": "prism-v0.2.0",
+    "weights_path": "local-artifacts/prism/ppo-trial-v2/campaign/cycle-8-export/weights.json",
+    "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85"
+  },
+  "parent": {
+    "label": "trial-v1-c8",
+    "weights_path": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-8-export/weights.json",
+    "sha256": "cb7c4fb33ac7666706213ca4138f80104dacc5151b2385b9532bfebbe82025ac"
+  },
+  "anchors": [
+    "heuristic-v031 greedy",
+    "prism-v01 greedy"
+  ],
+  "sampling": {
+    "candidate": "learned softmax T=1",
+    "parent": "learned softmax T=1",
+    "action_seed": 54030001,
+    "no_inference_overlay": true
+  },
+  "holdout": {
+    "seed_start": 9450000,
+    "seed_end": 9450255,
+    "seeds": 256,
+    "both_seats": true,
+    "games_per_model_vs_two_anchors": 1024,
+    "anchor_total_games": 2048,
+    "direct_duel_games": 512,
+    "total_formal_games": 2560,
+    "never_use_for_training": true
+  },
+  "speed_probe": {
+    "seed_start": 9460000,
+    "seed_end": 9460007,
+    "seeds": 8,
+    "games_per_host": 32,
+    "hosts": [
+      "local",
+      "cloud2"
+    ],
+    "same_candidate_opponents_seats": true,
+    "single_worker": true,
+    "not_acceptance_evidence": true
+  },
+  "statistics": {
+    "method": "paired environment-seed block percentile bootstrap",
+    "samples": 20000,
+    "seed": 54039999,
+    "family_alpha": 0.05,
+    "one_sided_gate_count": 4,
+    "bonferroni_lower_quantile": 0.0125,
+    "report_two_sided_ci95": true,
+    "single_final_analysis_no_optional_stopping": true
+  },
+  "gates": {
+    "complete_grid_terminal_no_failures": true,
+    "pooled_anchor_delta_lower_gt": 0.0,
+    "direct_duel_candidate_score_lower_gt": 0.5,
+    "per_anchor_delta_lower_gte": -0.05,
+    "all_four_strength_gates_required": true
+  },
+  "budget": {
+    "max_formal_games": 2560,
+    "max_speed_games": 64,
+    "max_physical_attempts": 2624,
+    "infra_retries": 0,
+    "campaign_wall_hours": 6,
+    "game_wall_seconds": 60,
+    "local_match_workers": 4,
+    "cloud_match_workers": 1,
+    "no_auto_extend_or_replace_failed_games": true
+  },
+  "version_decision": {
+    "all_gates_pass": "ACCEPTED_MODEL_ITERATION: prism-v0.2.0; immutable manifest and model-line docs",
+    "otherwise": "NOT_ACCEPTED: retain candidate checkpoint and exact failed or inconclusive gates; no automatic extra games",
+    "production_default_or_shared_pool_deployment": false,
+    "style_cohort_acceptance": false
+  },
+  "isolation": {
+    "no_training_updates": true,
+    "no_shared_pool_pause_or_db_mutation": true,
+    "no_global_engine_replacement": true,
+    "no_other_model_line_changes": true
+  }
+}

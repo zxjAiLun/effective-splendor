@@ -1,0 +1,192 @@
+{
+  "format": "m54-prism-ppo-trial-result-v1",
+  "status": "COMPLETED_DEVELOPMENT_ONLY",
+  "verdict": "DEVELOPMENT_ONLY_NOT_PROMOTED",
+  "observed_at": "2026-10-01T10:19:07.447170+00:00",
+  "baseline_git_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "run_identity": "6951e32a8819bd37e915701fb517ebf387a411c954820554e0b2cb3525f15964",
+  "source_sha256": "2b1997059bde2f083309ee08ff50f8ad54773a0e2ec9444c5069cc46a18fd9ee",
+  "config_path": "benchmarks/m54-prism-ppo-trial-v1.config.json",
+  "contract_file_sha256": "d4d29e21f6886c82af8ca787f0e339759ab48e6bd214b819e3aa6b5289436ee3",
+  "contract_canonical_sha256": "8a91c03ed3c48a58f8706d6573c5c07e176a3dd79026a76c26b76081112b5de7",
+  "resource_supplement_path": "benchmarks/m54-prism-ppo-trial-v1.resource-supplement.json",
+  "hyperparameters": {
+    "device": "cpu", "cpu_threads": 2, "lr": 0.00003, "weight_decay": 0.0,
+    "clip_epsilon": 0.2, "value_weight": 0.5, "entropy_weight": 0.01,
+    "gamma": 1.0, "gae_lambda": 0.95, "minibatch_size": 256, "passes": 2,
+    "max_grad_norm": 1.0, "target_kl": 0.02, "normalize_advantage": true,
+    "style_beta": 0.0, "style_value_weight": 0.0
+  },
+  "training": {
+    "phase": "COMMITTED", "cycle": 8, "target_games": 2048, "completed_games": 2048,
+    "committed_cycles": 8, "consumed_batches": 8, "unique_jobs": 2048, "unique_environment_seeds": 1024,
+    "learner_decisions": 55123, "completed_plies": 110266,
+    "logical_optimizer_steps": 436, "optimizer_update_attempts": 436,
+    "physical_game_attempts": 2049, "infra_retries": 1, "physical_decisions_charged": 55379,
+    "wins": 963, "draws": 14, "losses": 1071, "mean_reward": 0.4736328125,
+    "elapsed_wall_seconds_including_interruptions": 13741.930084228516,
+    "cycles": [
+      {
+        "cycle": 1, "games": 256, "decisions": 6932, "wins": 112, "draws": 5, "losses": 139,
+        "mean_reward": 0.447265625, "steps": 56, "update_attempts": 56, "stop_reason": "passes_complete",
+        "pass_batches": [28, 28], "pass_tail_samples": [20, 20], "max_minibatch_kl": 0.007279883604666637,
+        "summary_sha256": "9a5221d2f4f30b8d26b3c4722715b21f32241fa098d9c2931be69209fd04f672"
+      },
+      {
+        "cycle": 2, "games": 256, "decisions": 6869, "wins": 116, "draws": 1, "losses": 139,
+        "mean_reward": 0.455078125, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [213, 213], "max_minibatch_kl": 0.007801346767073998,
+        "summary_sha256": "93eb7bb8b6589ca4aede0ed3a9fc6eb8c62c35a678f8669edf5890cdc73d5a6f"
+      },
+      {
+        "cycle": 3, "games": 256, "decisions": 6887, "wins": 109, "draws": 1, "losses": 146,
+        "mean_reward": 0.427734375, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [231, 231], "max_minibatch_kl": 0.005835848230136634,
+        "summary_sha256": "78c8666dd26889246027d0f7e63ff971cb16b7d03a241682e14e94533be6d094"
+      },
+      {
+        "cycle": 4, "games": 256, "decisions": 6910, "wins": 120, "draws": 1, "losses": 135,
+        "mean_reward": 0.470703125, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [254, 254], "max_minibatch_kl": 0.004969000531393939,
+        "summary_sha256": "4fd1ec903697b86ef3895be8a3d28437a6582c73713f41c2218a1ea77b93acb1"
+      },
+      {
+        "cycle": 5, "games": 256, "decisions": 6855, "wins": 133, "draws": 2, "losses": 121,
+        "mean_reward": 0.5234375, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [199, 199], "max_minibatch_kl": 0.006518349175865514,
+        "summary_sha256": "ec7e3da1192556b5d9e81bcb90187eca6c889bc31835fcd797ce499a9e6ccc16"
+      },
+      {
+        "cycle": 6, "games": 256, "decisions": 6859, "wins": 132, "draws": 2, "losses": 122,
+        "mean_reward": 0.51953125, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [203, 203], "max_minibatch_kl": 0.006335917390451014,
+        "summary_sha256": "80d02c343ab3aadd6c9c770ae716665ed9cf8f3ab801a54146d36aa50bf8e523"
+      },
+      {
+        "cycle": 7, "games": 256, "decisions": 6938, "wins": 121, "draws": 1, "losses": 134,
+        "mean_reward": 0.474609375, "steps": 56, "update_attempts": 56, "stop_reason": "passes_complete",
+        "pass_batches": [28, 28], "pass_tail_samples": [26, 26], "max_minibatch_kl": 0.0062853240320748386,
+        "summary_sha256": "357be6891c3032c7f9ad549b9395a8ad42189613fc6be59870f9c0d12cd24f81"
+      },
+      {
+        "cycle": 8, "games": 256, "decisions": 6873, "wins": 120, "draws": 1, "losses": 135,
+        "mean_reward": 0.470703125, "steps": 54, "update_attempts": 54, "stop_reason": "passes_complete",
+        "pass_batches": [27, 27], "pass_tail_samples": [217, 217], "max_minibatch_kl": 0.005288082296606549,
+        "summary_sha256": "d0db46578ea6e640cf0aeb314bccd7ed45b0ce068d5eea01aa256a728d2d5205"
+      }
+    ],
+    "normal_rules_replays": 0, "normal_behavior_verify_calls": 0,
+    "sampling": "learned softmax T=1", "style_beta": 0.0, "no_teacher_action_labels": true,
+    "final_checkpoint": {
+      "weights_path": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-8-export/weights.json",
+      "weights_sha256": "cb7c4fb33ac7666706213ca4138f80104dacc5151b2385b9532bfebbe82025ac",
+      "tensor_sha256": "5685b14293040fc74cf9375902deed727ab4d3603a15858b69b6d236cc52d58d",
+      "policy_value_tensor_keys": 32,
+      "training_transaction_commit": "184f892d12f217bd6c15b8631dd7dfe575cf3269a273ae076a582d3d07cfc1bf"
+    }
+  },
+  "fixed_development": {
+    "seed_start": 9420000, "seed_end": 9420127, "action_seed": 54010001,
+    "games_per_model": 512, "total_games": 2048, "candidate_sampling": "learned softmax T=1",
+    "opponents": ["heuristic-v031 greedy", "prism-v01 greedy"],
+    "bootstrap": {"method": "paired seed-block percentile", "samples": 10000, "seed": 54019999},
+    "parent": {
+      "wins": 201, "draws": 0, "losses": 311, "score_rate": 0.392578125,
+      "result_sha256": "730a4e71e374f3e9f669c8fe45cbef7e5a745271cb26781371336bf56e116460"
+    },
+    "c1": {
+      "wins": 226, "draws": 1, "losses": 285, "score_rate": 0.4423828125,
+      "paired_delta_vs_parent": 0.0498046875, "paired_delta_ci95": [0.001953125, 0.09670410156249964],
+      "result_sha256": "f08567ce357c6bff57f974f7c62812e2b78abba49808c102929ce68b9cbd4864"
+    },
+    "c4": {
+      "wins": 241, "draws": 3, "losses": 268, "score_rate": 0.4736328125,
+      "paired_delta_vs_parent": 0.0810546875, "paired_delta_ci95": [0.03125, 0.130859375],
+      "result_sha256": "9abe4df5c2897d11c2bc42c40da1f6893aa7a3e5707501d4969a408b68823a43"
+    },
+    "c8": {
+      "wins": 280, "draws": 1, "losses": 231, "score_rate": 0.5478515625,
+      "paired_delta_vs_parent": 0.1552734375, "paired_delta_ci95": [0.09765625, 0.212890625],
+      "result_sha256": "46f688f8da6bb433b35d45a9031c76999dcf36ada60362c88352cb992ea22c12",
+      "by_opponent": {
+        "heuristic-v031": {
+          "games": 256, "wins": 138, "draws": 0, "losses": 118, "score_rate": 0.5390625,
+          "score_rate_ci95": [0.4765625, 0.59765625], "paired_delta_vs_parent": 0.140625,
+          "paired_delta_ci95": [0.06640625, 0.21484375]
+        },
+        "prism-v01": {
+          "games": 256, "wins": 142, "draws": 1, "losses": 113, "score_rate": 0.556640625,
+          "score_rate_ci95": [0.4921875, 0.62109375], "paired_delta_vs_parent": 0.169921875,
+          "paired_delta_ci95": [0.08203125, 0.255859375]
+        }
+      }
+    },
+    "independent_holdout": false, "checkpoint_selection_adjusted": false
+  },
+  "mixed_pool": {
+    "parent": {"start_exclusive": 10854, "end_inclusive": 11111, "total_pool_games": 257, "model_games": 69, "wins": 36, "draws": 0, "losses": 33, "initial_elo": 1500.0, "end_elo": 1561.9},
+    "c1": {"start_exclusive": 11111, "end_inclusive": 11368, "total_pool_games": 257, "model_games": 62, "wins": 32, "draws": 0, "losses": 30, "initial_elo": 1500.0, "end_elo": 1517.17},
+    "c4": {"start_exclusive": 11368, "end_inclusive": 11625, "total_pool_games": 257, "model_games": 62, "wins": 30, "draws": 0, "losses": 32, "initial_elo": 1500.0, "end_elo": 1554.43},
+    "c8": {"start_exclusive": 11625, "end_inclusive": 11882, "total_pool_games": 257, "model_games": 63, "wins": 38, "draws": 0, "losses": 25, "initial_elo": 1500.0, "end_elo": 1573.61},
+    "total_new_pool_games": 1028, "final_pool_completed_games": 11882,
+    "controller_complete": true, "pool_paused": true, "pending_running_error_games": 0,
+    "old_six_model_config_and_assets_preserved": true,
+    "cross_interval_elo_not_comparable": true, "not_a_fixed_strength_gate": true
+  },
+  "resources": {
+    "original_conservative_cpu_charge": 24000, "additional_cpu_limit": 24000,
+    "additional_measured_user_cpu_seconds": 3268.671875, "additional_measured_kernel_cpu_seconds": 3998.484375,
+    "original_wall_deadline": 1790863325.5010874, "campaign_storage_bytes": 24829217810,
+    "memory_limit_bytes": 8589934592, "storage_limit_bytes": 103079215104,
+    "peak_memory_not_measured": true, "complete": true, "resource_error": null,
+    "supervised_worker_returncode": 0, "stop_reason": null,
+    "resource_state_sha256": "823da0eb4a926554c3cdcf001b32c9dff178e0a437bf300acbf8b588fc8fc4ac"
+  },
+  "timing": {
+    "launch_includes_game_and_ingest": true,
+    "cycle_4_game_wall_original_seconds": 305.29500000000866,
+    "cycle_4_game_wall_all_completions_seconds": 306.90400000000864,
+    "cycle_4_missing_launch_and_ingest_attempt": 837,
+    "cycle_1_has_interruption_recovery_overhead_not_fully_timed": true,
+    "cycle_8_game_wall_seconds": 687.2580000000034,
+    "cycle_8_collection_seconds": 1842.2675484999945,
+    "cycle_8_seal_seconds": 85.34856969999964,
+    "cycle_8_update_commit_seconds": 126.05375759999879,
+    "cycle_8_collection_seal_update_seconds": 2053.669875799993,
+    "cycle_8_collection_seal_update_games_per_hour": 448.75761721001874,
+    "cloud2_c8_fixed_512_elapsed_filesystem_seconds": 423.9124653339386,
+    "cloud2_c8_fixed_game_wall_sum_seconds": 238.59617165173404,
+    "speed_evidence_path": "local-artifacts/prism/ppo-trial-v1/provenance/speed-observation.json",
+    "speed_evidence_sha256": "79f423bc434e540b0b0cda2f60d16fef0e4ff97c79e5d3bb6b70e700e7d9ef27"
+  },
+  "evidence": {
+    "local_reconciliation_path": "local-artifacts/prism/ppo-trial-v1/provenance/trial-reconciliation.final.json",
+    "local_reconciliation_sha256": "8862a68046bbf67eece6ce8ed68e50f139fd05de667355501bf0e21c51389d39",
+    "scope": "complete package hashes; sidecar/shard/batch identity and own-player GAE; unique job/seed/pass tails; finite model/AdamW and RNG restoration; export tensor identity; paired bootstrap recomputation",
+    "full_completed_package_hash_verification": true,
+    "full_report_path": "local-artifacts/prism/ppo-trial-v1/provenance/full-final-report.json",
+    "full_report_sha256": "1aaf6c1238b1ad1265894649b4aa7c6c1395d35e85af57e59c57debea9edb850",
+    "remote_reconciliation_path": "local-artifacts/prism/ppo-trial-v1/cloud2/remote-evidence.final.json",
+    "remote_reconciliation_sha256": "b48250314e2d39d28af4719cdc0466f88f3c8958df37477374ccebff54f8f6bd",
+    "controller_state_sha256": "520f10478542d49c95eb590f2b95ef7af68d942d4e61c388fc4c7a4c4c788237",
+    "c8_parity_path": "local-artifacts/prism/ppo-trial-v1/provenance/c8-parity.json",
+    "c8_parity_sha256": "7410852eb626d3dbf830b7a40e377d8e4ed7606f1596ba254e28bc93a7a1689d",
+    "c8_parity_states": 68, "parity_atol": 0.0001, "parity_rtol": 0.0001,
+    "cycle_detail_paths": "local-artifacts/prism/ppo-trial-v1/campaign/cycle-{1..8}-summary.json",
+    "fixed_and_mixed_results": "local-artifacts/prism/ppo-trial-v1/cloud2",
+    "logs": "local-artifacts/prism/ppo-trial-v1/provenance/validation",
+    "previous_progress_result_path": "local-artifacts/prism/ppo-trial-v1/provenance/trial-result.progress-20261001T083345.json",
+    "previous_progress_result_sha256": "b879754716345c9585cde1a61d91212944d7123677cc2fb203463065ccac7f72"
+  },
+  "limitations": [
+    "Development evaluation only; no independent holdout or checkpoint-selection correction, and no production promotion.",
+    "Different training seeds per cycle; mean rewards are not paired strength deltas and did not increase monotonically.",
+    "c8 improves over the same T=1 parent on development seeds; each greedy-opponent score-rate CI still spans 50%.",
+    "Singleton gradient accumulation, not one vectorized 256-row forward; local CPU training and cloud2 Rust evaluation are different workloads.",
+    "Cycle 4 attempt 837 game wall recovered as 1.609s; launch/ingest timing is missing, not zero-filled. Original cycle summaries are preserved.",
+    "Original 24000 CPU charge is conservative interruption accounting, not measured consumption; supplemental actual usage is separate.",
+    "Peak memory was not recorded; configured Job Object limit was enforced without a reported resource stop.",
+    "Style beta is zero; no trained styles, no additional campaign or extra training games."
+  ],
+  "next_gate": "Freeze this trial's evidence; define a separately bounded continuation or independent strength-acceptance contract before more games/updates. No automatic cycle 9."
+}

@@ -1,0 +1,264 @@
+{
+  "format": "prism-fixed-balance-data-baseline-v1",
+  "status": "FIXED_OWNER_DESIGNATED_REFERENCE",
+  "model_id": "prism-balance-v0.2.0",
+  "display_name": "Prism Balance v0.2.0",
+  "weights_sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+  "record_path": "benchmarks/m72-prism-balance-v0.2.0.model.json",
+  "record_sha256": "2e8e3d28336b42cf85df25bc6d9e947edd84124cf9105cd0b5fc82537ea0a266",
+  "baseline_role": "Designated Balance data reference for next-generation comparisons; no statistical balanced-style confirmation",
+  "reference_mode": "both-greedy",
+  "profiles": [
+    {
+      "group": "M67-main",
+      "round": "M67",
+      "kind": "main",
+      "model": "M67 B-c20",
+      "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "mode": "both-greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Prism Balance v0.1.0",
+        "Prism Beta v0.1.0",
+        "Prism v0.1.1",
+        "Heuristic v0.3.1",
+        "Prism v0.1.0"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "source_pairs": [
+        {
+          "candidate": "candidate-b",
+          "opponent": "alpha",
+          "games": 5000
+        },
+        {
+          "candidate": "candidate-b",
+          "opponent": "balance",
+          "games": 5000
+        },
+        {
+          "candidate": "candidate-b",
+          "opponent": "beta",
+          "games": 5000
+        },
+        {
+          "candidate": "candidate-b",
+          "opponent": "general",
+          "games": 5000
+        },
+        {
+          "candidate": "candidate-b",
+          "opponent": "heuristic",
+          "games": 5000
+        },
+        {
+          "candidate": "candidate-b",
+          "opponent": "initial",
+          "games": 5000
+        }
+      ],
+      "match_note": "M67 has five known missing games; aggregates are near-matched, not exact paired style CIs",
+      "games": 30000,
+      "cards_by_vp": [
+        5.838566666666667,
+        1.9718,
+        1.8776,
+        0.8115666666666667,
+        0.8284666666666667,
+        0.4213
+      ],
+      "low_cards": 7.810366666666667,
+      "low_share": 0.6647516589640802,
+      "big_printed_vp": 7.855066666666667,
+      "big_share": 0.17544307604140955,
+      "cards_4plus": 1.2497666666666667,
+      "noble_games": 11726,
+      "noble_coverage": 0.39086666666666664,
+      "total_vp": 449285.0,
+      "total_main": 798747,
+      "vp_main": 0.562487245648497,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "classification": {
+        "route": "undetermined",
+        "level": "INSUFFICIENT",
+        "reason": "No exact matched Balance reference"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.5,
+        "big_printed_vp": 0.5,
+        "noble_coverage": 0.8333333333333334,
+        "vp_main": 0.8333333333333334
+      },
+      "measured_missing": [
+        "first_big_main",
+        "first_big_coverage",
+        "early_low_cards",
+        "early_discount_redemptions"
+      ],
+      "identity_state": "VERIFIED_UNPUBLISHED_TRAINING_CHECKPOINT"
+    },
+    {
+      "group": "M70-main",
+      "round": "M70",
+      "kind": "main",
+      "model": "M67 B-c20",
+      "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "mode": "both-greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Prism Balance v0.1.0",
+        "Prism Beta v0.1.0",
+        "Prism v0.1.1",
+        "Heuristic v0.3.1",
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m70-prism-b-continuation.result.json",
+      "source_sha256": "9c46ebba921d372f55b59a4096e6779f9ee41d42269f898a8fa2420b7e05ee6b",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "alpha",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "balance",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "beta",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "general",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "heuristic",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "released-alpha",
+          "games": 512
+        }
+      ],
+      "match_note": "Same fixture and seed schedule within group",
+      "games": 3072,
+      "cards_by_vp": [
+        5.931315104166667,
+        2.0387369791666665,
+        1.8326822916666667,
+        0.7828776041666666,
+        0.8180338541666666,
+        0.3987630208333333
+      ],
+      "low_cards": 7.970052083333334,
+      "low_share": 0.6752902887718235,
+      "big_printed_vp": 7.614583333333333,
+      "big_share": 0.16942935157348926,
+      "cards_4plus": 1.216796875,
+      "noble_games": 1263,
+      "noble_coverage": 0.4111328125,
+      "total_vp": 45337.0,
+      "total_main": 82143,
+      "vp_main": 0.5519277357778508,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "classification": {
+        "route": "undetermined",
+        "level": "INSUFFICIENT",
+        "reason": "No exact matched Balance reference"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      },
+      "measured_missing": [
+        "first_big_main",
+        "first_big_coverage",
+        "early_low_cards",
+        "early_discount_redemptions"
+      ],
+      "identity_state": "VERIFIED_UNPUBLISHED_TRAINING_CHECKPOINT"
+    },
+    {
+      "games": 10000,
+      "cards_by_vp": [
+        5.9593,
+        2.067,
+        1.8526,
+        0.8023,
+        0.7654,
+        0.3691
+      ],
+      "low_cards": 8.026299999999999,
+      "low_share": 0.6792911126721226,
+      "big_printed_vp": 7.314,
+      "big_share": 0.16391749959799248,
+      "cards_4plus": 1.1345,
+      "noble_games": 4029,
+      "noble_coverage": 0.4029,
+      "total_vp": 145256.0,
+      "total_main": 268755,
+      "vp_main": 0.5404773864672285,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "M67 B-c20",
+      "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9840000,
+      "seed_end": 9844999,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "M67 B-c20",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "candidate",
+          "games": 10000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.35,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.65,
+        "vp_main": 0.85
+      }
+    }
+  ],
+  "source_hashes": {
+    "benchmarks/prism-style-delivery-2026-10-08.json": "ca60cc1e6db939044c5950495cf11376b7fba8544086f7b6176001f3d9009c92",
+    "benchmarks/prism-style-history-2026-10-08.json": "0e0fe3d8e05b63706f61e8bf1558e827ef3a3a514d6a47b5cce755b6d1d5b49b",
+    "benchmarks/m72-prism-balance-v0.2.0.model.json": "2e8e3d28336b42cf85df25bc6d9e947edd84124cf9105cd0b5fc82537ea0a266"
+  },
+  "cohort_policy": "Choose exact mode/opponents/seeds/seats/rules cohort. Do not flatten historical cohorts or infer universal fixed numeric population cutoffs.",
+  "missing_timing_and_redemption": "NOT_MEASURED",
+  "historical_balance_preserved": "Prism Balance v0.1.0",
+  "no_new_games": true
+}

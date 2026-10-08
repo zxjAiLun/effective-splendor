@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prism Rush v0.1.0 · 基座与候选的变化</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6f8;--card:#fff;--ink:#18212d;--muted:#586678;--line:#dfe5ed;--up:#076c77;--down:#8d500b;--up-bg:#e4f5f6;--down-bg:#fff1d8;--pass:#206637;--pass-bg:#e8f4eb;--pending:#825306;--pending-bg:#fff3d6;--soft:#edf1f6}
+@media(prefers-color-scheme:dark){:root{--bg:#131820;--card:#1c2430;--ink:#edf2f7;--muted:#b0bdce;--line:#394657;--up:#85dedb;--down:#f1cc8e;--up-bg:#173a40;--down-bg:#433321;--pass:#a0d9af;--pass-bg:#203b2c;--pending:#f3cf8d;--pending-bg:#423720;--soft:#253040}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","Segoe UI",sans-serif;line-height:1.6}main{max-width:1320px;margin:auto;padding:32px 28px}h1{font-size:29px;line-height:1.35;margin:9px 0 12px;letter-spacing:-.5px}h2{font-size:19px;margin:8px 0 14px}h3{font-size:16px;margin:12px 0}.eyebrow{color:var(--muted);font-size:13px}.subtitle{font-size:16px;margin:0 0 20px}.cards{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;margin:18px 0}.card,.section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:19px 20px}.card .title{font-size:13px;color:var(--muted)}.card .value{font-size:24px;font-weight:700;margin:5px 0}.card p{margin:4px 0;font-size:13px}.section{margin:16px 0}.status{display:inline-block;font-weight:600;padding:4px 10px;border-radius:7px;font-size:13px;white-space:nowrap}.pass{color:var(--pass);background:var(--pass-bg)}.pending{color:var(--pending);background:var(--pending-bg)}.note{color:var(--muted);font-size:13px;margin:9px 0}.tiny{font-size:12px;color:var(--muted)}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0 17px}button,select{font:inherit;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px 12px}button{cursor:pointer}button[aria-pressed=true]{background:var(--ink);color:var(--card)}label{font-size:13px}select{margin-left:6px}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 9px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:right;font-variant-numeric:tabular-nums}th{color:var(--muted);font-weight:600}th:first-child,td:first-child{text-align:left}th{background:var(--card)}td:first-child{font-weight:600;min-width:145px}.delta{display:inline-block;border-radius:5px;padding:3px 7px;font-weight:700;white-space:nowrap}.up{color:var(--up);background:var(--up-bg)}.down{color:var(--down);background:var(--down-bg)}.same{color:var(--muted);background:var(--soft)}.subhead th{font-size:12px;padding:6px 9px}.muted{color:var(--muted)}.baseline{color:var(--muted)}.candidate{font-weight:700}.stage{font-size:15px;font-weight:700;padding:7px 10px;border-radius:6px;background:var(--soft)}summary{font-weight:600;cursor:pointer;padding:7px 0}.source{overflow-wrap:anywhere;font-family:Consolas,monospace;font-size:12px}.footer{margin-top:26px;color:var(--muted);font-size:13px}@media(max-width:800px){main{padding:20px 13px}.cards{grid-template-columns:1fr}.card{padding:14px}h1{font-size:24px}th,td{padding:8px 7px}.section{padding:16px 12px}}
+</style>
+</head>
+<body><main>
+<header><div class="eyebrow">M55 · 已完成的有限风格样机 · <span id="completed"></span> 北京时间</div>
+<h1>Prism Rush v0.1.0：先看实战，再看风格</h1>
+<p class="subtitle">产物完成、竞技表现可用；预设冲分目标尚未充分建立。<strong>原门未全过，不等于训练失败。</strong></p>
+<div class="cards" id="summary-cards"></div>
+</header>
+<section class="section" id="comparison-section">
+<h2>同一对手、同一批种子：Prism v0.1.1 → Prism Rush v0.1.0 候选</h2>
+<div class="controls"><button type="button" id="acceptance-button" aria-pressed="true">独立验收 · 主结论</button><button type="button" id="development-button" aria-pressed="false">开发评测 · 只作描述</button>
+<label>指标组<select id="group"><option value="core">关键变化</option><option value="economy">经济 / 贵族 / 预留</option><option value="cards">卡牌 / 折扣</option><option value="actions">全部动作</option></select></label>
+<label>对手<select id="opponent"><option value="both">两个共同锚点</option><option value="heuristic-v031">Heuristic v0.3.1</option><option value="prism-v01">初代 Prism v0.1.0</option></select></label></div>
+<div class="stage" id="stage-label"></div>
+<p class="note">↑ 只是数值更高，↓ 只是数值更低；不自动等于更好或显著。pp = 百分点。每列比较被测玩家，非模型与对手混排。</p>
+<div class="scroll" id="comparison-table"></div>
+<p class="note">开发与独立验收使用不同种子，不合并；用户截图原表来自开发组。完整双方数据在下方展开。</p>
+</section>
+<section class="section"><h2>六个门：4 项棋力保护 + 2 项风格目标</h2>
+<p class="note">棋力保护原本允许 −5pp 代价，直接对基座允许低到45%；需要正向幅度的是两项冲分目标。以下始终是独立验收，未改原阈值与原判。</p>
+<div class="scroll" id="gate-table"></div>
+<p class="note"><strong>对初代：</strong>实测仅低0.88pp；−7.13pp是校正下界，含义是下降风险尚未被压进原设容差，不是已实测下降7.13pp。<br><strong>冲分 AUC：</strong>原目标+0.015，实测+0.00164，连普通95%区间上端+0.00389也低于目标；此项幅度确实小。<br><strong>20Main内8VP：</strong>29.69% → 32.42%，有向上信号，增益尚未被置信下界确认。</p>
+<details><summary>原设计、统计方式与后续方向</summary><p class="note">256个环境seed块、双座配对；20,000次bootstrap、六项单侧判断，原下界分位0.05/6≈0.8333%。这套门比“首轮风格样机可用”更保守。后续提议将产物有效、总体棋力底线、风格主目标分别评估，把逐对手与其他经济指标作为画像/告警；先确定可接受代价，再开始下一固定试验。此提议不把旧FAIL改成PASS。</p></details>
+</section>
+<section class="section"><h2>完整双方数据 · 当前选中的评测组</h2><div id="full-data"></div></section>
+<footer class="footer">权重、原比赛、原阈值和正式原判均未改变；本页只读取既有汇总，0新增比赛、0训练更新。未默认替换、未部署共享池。<br>Prism v0.1.1 的两批 PPO 对 Heuristic v0.3.1 / 初代 Prism v0.1.0 每批各训练1,024局。<details><summary>可核对的数据来源</summary><div id="source" class="source"></div></details></footer>
+</main>
+<script>
+'use strict';
+const DATA=__MODEL_DATA__;
+const names=DATA.names;
+let activeStage='acceptance';
+const byId=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const get=(p,key)=>key==='mean_rush_auc'||key==='vp8_by_main20_rate'?p[key]:key.split('.').reduce((v,k)=>v[k],p.candidate_metrics);
+const fmt=(v,u='number')=>u==='rate'?(v*100).toFixed(2)+'%':u==='percent'?v.toFixed(2)+'%':u==='count'?v.toLocaleString('zh-CN'):v.toFixed(4);
+const signed=(v,d=4)=>(v>0?'+':'')+v.toFixed(d);
+const deltaHTML=(a,b,u)=>{const d=b-a;const x=u==='rate'?d*100:d;const n=u==='rate'||u==='percent'?2:u==='count'?0:4;return `<span class="delta ${d>0?'up':d<0?'down':'same'}">${d>0?'↑':d<0?'↓':'＝'} ${signed(x,n)}${u==='rate'||u==='percent'?'pp':''}</span>`;};
+const core=[['得分率（计半平）','score_rate','rate'],['局均最终VP','mean_prestige'],['VP / 自身Main','vp_per_main_action'],['前16自身Main AUC','mean_rush_auc'],['20自身Main内8VP比例','vp8_by_main20_rate','rate'],['局均贵族','mean_nobles'],['获得贵族的对局比例','games_with_nobles_percent','percent'],['预留买回 / 获取','reserve_redemption_rate_percent','percent'],['终局未买回预留','mean_reserves_stranded']];
+const economy=[['局均最终VP','mean_prestige'],['VP / 自身决策','vp_per_turn'],['VP / 自身Main','vp_per_main_action'],['VP / 全局步数','vp_per_ply'],['局均购卡 / 永久折扣','mean_permanent_bonuses'],['局均贵族','mean_nobles'],['获得贵族的对局比例','games_with_nobles_percent','percent'],['局均预留获取','mean_reserves_acquired'],['局均预留买回','mean_reserves_bought'],['终局未买回预留','mean_reserves_stranded'],['预留买回 / 获取','reserve_redemption_rate_percent','percent']];
+const cards=[...Array.from({length:6},(_,i)=>[`局均购入 ${i} VP卡`,`mean_cards_by_vp.${i}`]),...['White','Blue','Green','Red','Black'].map((c,i)=>[`局均${['白','蓝','绿','红','黑'][i]}折扣`,`mean_bonuses_by_color.${c}`])];
+const actionLabels=['买市场','买预留','取宝石','预留市场','预留牌堆','选贵族','跳过'];
+const actionKeys=['buy_market','buy_reserved','take_tokens','reserve_market','reserve_deck','choose_noble','pass'];
+const actions=actionKeys.flatMap((a,i)=>[[actionLabels[i]+' 次数',`action_distribution.${a}`,'count'],[actionLabels[i]+' 占自身决策',`action_percentages.${a}`,'percent']]);
+const groups={core,economy,cards,actions};
+const pairs=stage=>DATA.result[stage].pairs;
+const match=(stage,model,op)=>pairs(stage).find(p=>p.candidate===model&&p.opponent===op);
+byId('completed').textContent=DATA.completedLocal;
+const direct=match('acceptance','rush','base-t1').candidate_metrics;
+const rHeur=match('acceptance','rush','heuristic-v031').candidate_metrics;
+const rPrism=match('acceptance','rush','prism-v01').candidate_metrics;
+byId('summary-cards').innerHTML=`<div class="card"><div class="title">训练 / 对战数据有效</div><div class="value">4,096 局完成</div><p>1,024训练 · 512开发 · 2,560独立</p><span class="status pass">产物与证据保留</span></div><div class="card"><div class="title">候选独立验收 · 纯胜率</div><div class="value">${rHeur.win_rate_percent.toFixed(2)}% / ${rPrism.win_rate_percent.toFixed(2)}% / ${direct.win_rate_percent.toFixed(2)}%</div><p>Heuristic v0.3.1 / 初代 Prism v0.1.0 / Prism v0.1.1</p><span class="status pass">实战有竞争力</span></div><div class="card"><div class="title">前16自身Main AUC增益</div><div class="value">+${DATA.result.measurements.rush_auc.mean.toFixed(5)}</div><p>原设目标 +0.015 · 不是胜率指标</p><span class="status pending">冲分幅度未达</span></div>`;
+function renderComparison(){
+ const group=groups[byId('group').value];const choice=byId('opponent').value;const ops=choice==='both'?['heuristic-v031','prism-v01']:[choice];
+ const count=match(activeStage,'rush',ops[0]).candidate_metrics.games;
+ byId('stage-label').textContent=(activeStage==='acceptance'?'独立验收 · 正式六门使用此组':'开发评测 · 只作描述，不参与六门')+` · 每模型/对手 ${count}局 / ${count/2}双座种子`;
+ byId('acceptance-button').setAttribute('aria-pressed',String(activeStage==='acceptance'));byId('development-button').setAttribute('aria-pressed',String(activeStage==='development'));
+ let html='<table><thead><tr><th rowspan="2">被测玩家指标</th>'+ops.map(op=>`<th colspan="3">对 ${esc(names[op])}（greedy）</th>`).join('')+'</tr><tr class="subhead">'+ops.map(()=>'<th>Prism v0.1.1</th><th>Prism Rush v0.1.0 候选</th><th>候选 − 基座</th>').join('')+'</tr></thead><tbody>';
+ for(const [label,key,unit] of group){html+=`<tr><td>${esc(label)}</td>`;for(const op of ops){const a=get(match(activeStage,'base',op),key);const b=get(match(activeStage,'rush',op),key);html+=`<td class="baseline">${fmt(a,unit)}</td><td class="candidate">${fmt(b,unit)}</td><td>${deltaHTML(a,b,unit)}</td>`;}html+='</tr>';}
+ byId('comparison-table').innerHTML=html+'</tbody></table>';renderFull();
+}
+const gateFormat=(v,u)=>u==='auc'?signed(v,5):u==='rate'?(v*100).toFixed(2)+'%':signed(v*100,2)+'pp';
+byId('gate-table').innerHTML='<table><thead><tr><th>原门 / 作用</th><th>实测均值</th><th>要求：校正下界</th><th>实际下界</th><th>解释（冻结原判）</th></tr></thead><tbody>'+DATA.gates.map(g=>`<tr><td>${esc(g.label)}<br><span class="tiny">${esc(g.role)}</span></td><td>${gateFormat(g.mean,g.unit)}</td><td>${g.strict?'&gt;':'≥'} ${gateFormat(g.threshold,g.unit)}</td><td>${gateFormat(g.lower,g.unit)}</td><td><span class="status ${g.original_pass?'pass':'pending'}">${esc(g.reading.replace(/^[^ ]+ /,''))} · ${g.original_pass?'PASS':'FAIL'}</span></td></tr>`).join('')+'</tbody></table>';
+function renderFull(){
+ let html='';for(const p of pairs(activeStage)){const model=p.candidate==='base'?'Prism v0.1.1':'Prism Rush v0.1.0 候选';const op=names[p.opponent];const cm=p.candidate_metrics,om=p.opponent_metrics;
+ html+=`<details><summary>${esc(model)} 对 ${esc(op)} · ${cm.games}局 · ${cm.wins}胜/${cm.ties}平/${cm.losses}负</summary><p class="note">纯胜率${cm.win_rate_percent.toFixed(4)}%；计半平得分率${fmt(cm.score_rate,'rate')}；描述性95%区间 ${p.score_uncertainty.ordinary_95_ci.map(v=>fmt(v,'rate')).join('..')}。</p><p class="note">本模型先手/后手：${p.seats.map(s=>`${s.candidate_seat===0?'P0':'P1'} ${s.candidate.games}局 ${s.candidate.wins}/${s.candidate.ties}/${s.candidate.losses}，得分率${fmt(s.candidate.score_rate,'rate')}`).join('；')}。</p>`;
+ const metrics=[...economy,...cards,...actions];html+='<div class="scroll"><table><tr><th>个人指标</th><th>'+esc(model)+'</th><th>'+esc(op)+'</th></tr>';
+ for(const [label,key,unit] of metrics){const a=key.split('.').reduce((v,k)=>v[k],cm),b=key.split('.').reduce((v,k)=>v[k],om);html+=`<tr><td>${esc(label)}</td><td>${fmt(a,unit)}</td><td>${fmt(b,unit)}</td></tr>`;}html+='</table></div>';
+ const m=p.macro;html+=`<p class="note">整场对局：局均${m.mean_plies.toFixed(3)}步，legacy轮数${m.mean_turns.toFixed(3)}（最短${m.min_turns} / 中位${m.median_turns} / 最长${m.max_turns}，标准差${m.std_turns.toFixed(3)}）；Main轮${m.mean_main_rounds.toFixed(3)}。终局绝对分差${m.mean_victory_margin.toFixed(3)}，分差≤2比例${m.close_games_margin_le_2_percent.toFixed(2)}%。<br>进程耗时累计${m.process_wall_seconds_sum.toFixed(3)}s、单局均值${m.process_wall_seconds_mean.toFixed(4)}s、P95 ${m.process_wall_seconds_p95.toFixed(4)}s；决策/推理延迟NOT_MEASURED。全部步数含贵族选择，Main排除贵族选择；累计时间含并行重叠。</p></details>`;
+ }byId('full-data').innerHTML=html;
+}
+byId('source').textContent=DATA.sourcePath+'\nSHA256 '+DATA.sourceSHA+'\n冻结原判 '+DATA.result.status+'\n独立种子 9500000..9500255；开发 9490000..9490063；动作seed 55020001。';
+byId('acceptance-button').addEventListener('click',()=>{activeStage='acceptance';renderComparison();});byId('development-button').addEventListener('click',()=>{activeStage='development';renderComparison();});byId('group').addEventListener('change',renderComparison);byId('opponent').addEventListener('change',renderComparison);renderComparison();
+</script></body></html>

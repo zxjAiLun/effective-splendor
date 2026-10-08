@@ -1,0 +1,2148 @@
+{
+  "format": "prism-style-history-v1",
+  "status": "DESCRIPTIVE_NOT_STYLE_CONFIRMATION",
+  "groups": [
+    {
+      "id": "H-Greedy-Alpha15",
+      "title": "早期到当前 · 同一Alpha v0.1.5对手",
+      "fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "reference_model": "Prism Balance v0.1.0",
+      "note": "双方greedy、同一精确对手；M67旧模型与A/B是不同seed范围，M66/M70另轮。仅描述历史位置，不是同seed配对确认。",
+      "models": 10
+    },
+    {
+      "id": "H-M55-T1",
+      "title": "M55早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 2
+    },
+    {
+      "id": "H-M55-anchors",
+      "title": "M55最初代与启发式 · 本方greedy",
+      "fixture": [
+        "Prism v0.1.1",
+        "Prism Alpha v0.1.0"
+      ],
+      "note": "本方greedy，对手是通用版/Alpha初版的T1模式；与双方greedy分开。",
+      "models": 2
+    },
+    {
+      "id": "H-M56-T1",
+      "title": "M56早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 2
+    },
+    {
+      "id": "H-M59-T1",
+      "title": "M59早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 2
+    },
+    {
+      "id": "H-M60-T1",
+      "title": "M60早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 2
+    },
+    {
+      "id": "H-M61-T1",
+      "title": "M61早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 3,
+      "reference_model": "Prism Balance v0.1.0"
+    },
+    {
+      "id": "H-M62-T1",
+      "title": "M62早期共同池 · 本方T1",
+      "fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "note": "本方T1，按该轮共同池汇总；不同轮seed/对手实现可能不同，不是greedy路线确认。",
+      "models": 2,
+      "reference_model": "Prism Balance v0.1.0"
+    },
+    {
+      "id": "H-M63-greedy",
+      "title": "M63早期Balance共同池 · 双方greedy",
+      "fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism Beta v0.1.0",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "note": "相同轮对手与seed；版本名称按精确SHA恢复，旧Beta实验标签没有当成发布名。",
+      "reference_model": "Prism Balance v0.1.0",
+      "models": 2
+    },
+    {
+      "id": "H-M65-greedy",
+      "title": "M65早期Balance共同池 · 双方greedy",
+      "fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "note": "相同轮对手与seed；版本名称按精确SHA恢复，旧Beta实验标签没有当成发布名。",
+      "reference_model": "Prism Balance v0.1.0",
+      "models": 2
+    }
+  ],
+  "records": [
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        7.4262,
+        2.6034,
+        1.7526,
+        0.7216,
+        0.3974,
+        0.117
+      ],
+      "low_cards": 10.0296,
+      "low_share": 0.770429091579481,
+      "big_printed_vp": 4.3394,
+      "big_share": 0.09494400147485828,
+      "cards_4plus": 0.5144,
+      "noble_games": 2105,
+      "noble_coverage": 0.421,
+      "total_vp": 60610.0,
+      "total_main": 131712,
+      "vp_main": 0.46017067541302237,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Prism v0.1.0",
+      "sha256": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Prism v0.1.0",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.95,
+        "big_printed_vp": 0.05,
+        "noble_coverage": 0.85,
+        "vp_main": 0.05
+      }
+    },
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        6.6264,
+        2.3316,
+        1.841,
+        0.8292,
+        0.5658,
+        0.2042
+      ],
+      "low_cards": 8.958,
+      "low_share": 0.7225242373892984,
+      "big_printed_vp": 5.7718,
+      "big_share": 0.12898646577729023,
+      "cards_4plus": 0.77,
+      "noble_games": 1993,
+      "noble_coverage": 0.3986,
+      "total_vp": 66448.0,
+      "total_main": 135795,
+      "vp_main": 0.4893258220111197,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Prism v0.1.1",
+      "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Prism v0.1.1",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.55,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        6.1492,
+        2.0142,
+        1.8404,
+        0.8402,
+        0.7122,
+        0.3156
+      ],
+      "low_cards": 8.163400000000001,
+      "low_share": 0.6876295085833657,
+      "big_printed_vp": 6.9474,
+      "big_share": 0.15734766421267204,
+      "cards_4plus": 1.0278,
+      "noble_games": 1882,
+      "noble_coverage": 0.3764,
+      "total_vp": 69986.0,
+      "total_main": 138518,
+      "vp_main": 0.5052484153683998,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Prism Alpha v0.1.4",
+      "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Prism Alpha v0.1.4",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.55,
+        "big_printed_vp": 0.45,
+        "noble_coverage": 0.35,
+        "vp_main": 0.35
+      }
+    },
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        6.088,
+        2.1236,
+        1.8744,
+        0.8506,
+        0.6942,
+        0.2956
+      ],
+      "low_cards": 8.2116,
+      "low_share": 0.6885229407029783,
+      "big_printed_vp": 6.8065999999999995,
+      "big_share": 0.15431312047222967,
+      "cards_4plus": 0.9898,
+      "noble_games": 1883,
+      "noble_coverage": 0.3766,
+      "total_vp": 70199.0,
+      "total_main": 134896,
+      "vp_main": 0.5203934883169257,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Prism Balance v0.1.0",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Prism Balance v0.1.0",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.65,
+        "big_printed_vp": 0.35,
+        "noble_coverage": 0.45,
+        "vp_main": 0.45
+      }
+    },
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        5.9506,
+        2.085,
+        1.869,
+        0.826,
+        0.7252,
+        0.3262
+      ],
+      "low_cards": 8.035599999999999,
+      "low_share": 0.6820234255644202,
+      "big_printed_vp": 7.009799999999999,
+      "big_share": 0.1593447631980988,
+      "cards_4plus": 1.0514,
+      "noble_games": 1834,
+      "noble_coverage": 0.3668,
+      "total_vp": 70713.0,
+      "total_main": 134625,
+      "vp_main": 0.5252590529247911,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Prism Beta v0.1.0",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Prism Beta v0.1.0",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.45,
+        "big_printed_vp": 0.55,
+        "noble_coverage": 0.15,
+        "vp_main": 0.55
+      }
+    },
+    {
+      "games": 5000,
+      "cards_by_vp": [
+        7.29,
+        2.59,
+        1.7244,
+        0.729,
+        0.3998,
+        0.1186
+      ],
+      "low_cards": 9.879999999999999,
+      "low_share": 0.7687639085575562,
+      "big_printed_vp": 4.3792,
+      "big_share": 0.09706033396100158,
+      "cards_4plus": 0.5184,
+      "noble_games": 2138,
+      "noble_coverage": 0.4276,
+      "total_vp": 60664.0,
+      "total_main": 131630,
+      "vp_main": 0.4608675833776495,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "Heuristic v0.3.1",
+      "sha256": "non-neural heuristic",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9830000,
+      "seed_end": 9832499,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "Heuristic v0.3.1",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "opponent",
+          "games": 5000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.85,
+        "big_printed_vp": 0.15,
+        "noble_coverage": 0.95,
+        "vp_main": 0.15
+      }
+    },
+    {
+      "games": 1024,
+      "cards_by_vp": [
+        5.865234375,
+        2.109375,
+        1.8916015625,
+        0.8369140625,
+        0.69140625,
+        0.357421875
+      ],
+      "low_cards": 7.974609375,
+      "low_share": 0.678577364134951,
+      "big_printed_vp": 7.0634765625,
+      "big_share": 0.16046202426458367,
+      "cards_4plus": 1.048828125,
+      "noble_games": 382,
+      "noble_coverage": 0.373046875,
+      "total_vp": 14599.0,
+      "total_main": 27597,
+      "vp_main": 0.5290067760988513,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "M66 c4",
+      "sha256": "d392a5d13e070173a3c80406acbe2f7028d52e3bbdc34a59864ab84f546588f8",
+      "group": "H-Greedy-Alpha15",
+      "round": "M66",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m66-prism-alpha-dsw.result.json",
+      "source_sha256": "53cbbca99085ffea003de17c9b3523331e19def7bcc7f228a2ed55793e4a8bb0",
+      "seed_start": 9711000,
+      "seed_end": 9711511,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "M66 c4",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "candidate",
+          "games": 1024
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.65,
+        "noble_coverage": 0.25,
+        "vp_main": 0.65
+      }
+    },
+    {
+      "games": 512,
+      "cards_by_vp": [
+        5.80078125,
+        2.068359375,
+        1.87890625,
+        0.900390625,
+        0.716796875,
+        0.365234375
+      ],
+      "low_cards": 7.869140625,
+      "low_share": 0.6708291708291708,
+      "big_printed_vp": 7.39453125,
+      "big_share": 0.168997668997669,
+      "cards_4plus": 1.08203125,
+      "noble_games": 209,
+      "noble_coverage": 0.408203125,
+      "total_vp": 7480.0,
+      "total_main": 13805,
+      "vp_main": 0.5418326693227091,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "M70 c4",
+      "sha256": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a",
+      "group": "H-Greedy-Alpha15",
+      "round": "M70",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m70-prism-b-continuation.result.json",
+      "source_sha256": "9c46ebba921d372f55b59a4096e6779f9ee41d42269f898a8fa2420b7e05ee6b",
+      "seed_start": 10010000,
+      "seed_end": 10010255,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "M70 c4",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.15,
+        "big_printed_vp": 0.85,
+        "noble_coverage": 0.75,
+        "vp_main": 0.95
+      }
+    },
+    {
+      "games": 10000,
+      "cards_by_vp": [
+        5.5018,
+        1.9143,
+        1.7908,
+        0.8,
+        0.841,
+        0.4348
+      ],
+      "low_cards": 7.4161,
+      "low_share": 0.6572983417089882,
+      "big_printed_vp": 7.938000000000001,
+      "big_share": 0.18398078474124102,
+      "cards_4plus": 1.2758,
+      "noble_games": 3210,
+      "noble_coverage": 0.321,
+      "total_vp": 145409.0,
+      "total_main": 274248,
+      "vp_main": 0.5302098830255827,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "M67 A-c20",
+      "sha256": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9840000,
+      "seed_end": 9844999,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "M67 A-c20",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "candidate",
+          "games": 10000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.05,
+        "big_printed_vp": 0.95,
+        "noble_coverage": 0.05,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "games": 10000,
+      "cards_by_vp": [
+        5.9593,
+        2.067,
+        1.8526,
+        0.8023,
+        0.7654,
+        0.3691
+      ],
+      "low_cards": 8.026299999999999,
+      "low_share": 0.6792911126721226,
+      "big_printed_vp": 7.314,
+      "big_share": 0.16391749959799248,
+      "cards_4plus": 1.1345,
+      "noble_games": 4029,
+      "noble_coverage": 0.4029,
+      "total_vp": 145256.0,
+      "total_main": 268755,
+      "vp_main": 0.5404773864672285,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "model": "M67 B-c20",
+      "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+      "group": "H-Greedy-Alpha15",
+      "round": "M67",
+      "kind": "historical-common-opponent",
+      "mode": "both-greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.5"
+      ],
+      "source": "benchmarks/m67-prism-alpha-repeat.result.json",
+      "source_sha256": "d394c44753cf34e7e97ea4580c696bf24e6c576af185b0bf9785eb2363c4bf0b",
+      "seed_start": 9840000,
+      "seed_end": 9844999,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE"
+      },
+      "source_pairs": [
+        {
+          "candidate": "M67 B-c20",
+          "opponent": "Prism Alpha v0.1.5",
+          "role": "candidate",
+          "games": 10000
+        }
+      ],
+      "within_group_percentiles": {
+        "low_share": 0.35,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.65,
+        "vp_main": 0.85
+      }
+    },
+    {
+      "model": "Prism v0.1.1",
+      "group": "H-M55-T1",
+      "round": "M55",
+      "kind": "historical",
+      "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy"
+      ],
+      "source": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+      "source_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        6.23046875,
+        2.083984375,
+        1.9716796875,
+        0.861328125,
+        0.755859375,
+        0.337890625
+      ],
+      "low_cards": 8.314453125,
+      "low_share": 0.6792181890706023,
+      "big_printed_vp": 7.296875,
+      "big_share": 0.1597128041483845,
+      "cards_4plus": 1.09375,
+      "noble_games": 394,
+      "noble_coverage": 0.384765625,
+      "total_vp": 15075.0,
+      "total_main": 27359,
+      "vp_main": 0.5510069812493147,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.25,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.0",
+      "group": "H-M55-T1",
+      "round": "M55",
+      "kind": "historical",
+      "sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy"
+      ],
+      "source": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+      "source_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "source_pairs": [
+        {
+          "candidate": "rush",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "rush",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        6.1826171875,
+        1.978515625,
+        1.8564453125,
+        0.8525390625,
+        0.8095703125,
+        0.396484375
+      ],
+      "low_cards": 8.1611328125,
+      "low_share": 0.675804625586285,
+      "big_printed_vp": 7.7783203125,
+      "big_share": 0.17046741064208312,
+      "cards_4plus": 1.2060546875,
+      "noble_games": 399,
+      "noble_coverage": 0.3896484375,
+      "total_vp": 15191.0,
+      "total_main": 27309,
+      "vp_main": 0.5562635028745102,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.75,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Heuristic v0.3.1",
+      "group": "H-M55-anchors",
+      "round": "M55",
+      "kind": "historical",
+      "sha256": "non-neural heuristic",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism v0.1.1",
+        "Prism Alpha v0.1.0"
+      ],
+      "source": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+      "source_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "opponent",
+          "games": 512
+        },
+        {
+          "candidate": "rush",
+          "opponent": "heuristic-v031",
+          "role": "opponent",
+          "games": 512
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        7.4501953125,
+        2.5947265625,
+        1.7412109375,
+        0.7763671875,
+        0.478515625,
+        0.2080078125
+      ],
+      "low_cards": 10.044921875,
+      "low_share": 0.7581631900936094,
+      "big_printed_vp": 5.283203125,
+      "big_share": 0.11041497751897988,
+      "cards_4plus": 0.6865234375,
+      "noble_games": 509,
+      "noble_coverage": 0.4970703125,
+      "total_vp": 13709.0,
+      "total_main": 27373,
+      "vp_main": 0.5008219778613963,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.75,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism v0.1.0",
+      "group": "H-M55-anchors",
+      "round": "M55",
+      "kind": "historical",
+      "sha256": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism v0.1.1",
+        "Prism Alpha v0.1.0"
+      ],
+      "source": "benchmarks/m55-prism-rush-v0.1.0.result.json",
+      "source_sha256": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "opponent",
+          "games": 512
+        },
+        {
+          "candidate": "rush",
+          "opponent": "prism-v01",
+          "role": "opponent",
+          "games": 512
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        7.3740234375,
+        2.6162109375,
+        1.82421875,
+        0.8095703125,
+        0.4560546875,
+        0.19140625
+      ],
+      "low_cards": 9.990234375,
+      "low_share": 0.7527593818984547,
+      "big_printed_vp": 5.2099609375,
+      "big_share": 0.10978660779985283,
+      "cards_4plus": 0.6474609375,
+      "noble_games": 474,
+      "noble_coverage": 0.462890625,
+      "total_vp": 13616.0,
+      "total_main": 27295,
+      "vp_main": 0.4988459424803077,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.25,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.0",
+      "group": "H-M56-T1",
+      "round": "M56",
+      "kind": "historical",
+      "sha256": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m56-prism-alpha-v0.1.1.result.json",
+      "source_sha256": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v0.1.1",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.250651041666667,
+        2.0110677083333335,
+        1.8854166666666667,
+        0.85546875,
+        0.8092447916666666,
+        0.3444010416666667
+      ],
+      "low_cards": 8.26171875,
+      "low_share": 0.6796272493573264,
+      "big_printed_vp": 7.525390625,
+      "big_share": 0.16527420736932305,
+      "cards_4plus": 1.1536458333333333,
+      "noble_games": 591,
+      "noble_coverage": 0.384765625,
+      "total_vp": 22594.0,
+      "total_main": 41327,
+      "vp_main": 0.5467128027681661,
+      "first_big_main": 20.70049504950495,
+      "first_big_coverage": 0.7890625,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1212,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.25,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.1",
+      "group": "H-M56-T1",
+      "round": "M56",
+      "kind": "historical",
+      "sha256": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m56-prism-alpha-v0.1.1.result.json",
+      "source_sha256": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+      "source_pairs": [
+        {
+          "candidate": "candidate",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-v0.1.1",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.243489583333333,
+        1.9388020833333333,
+        1.8411458333333333,
+        0.84765625,
+        0.8294270833333334,
+        0.3717447916666667
+      ],
+      "low_cards": 8.182291666666666,
+      "low_share": 0.677775980154236,
+      "big_printed_vp": 7.719401041666667,
+      "big_share": 0.1697136385698107,
+      "cards_4plus": 1.201171875,
+      "noble_games": 610,
+      "noble_coverage": 0.3971354166666667,
+      "total_vp": 22669.0,
+      "total_main": 41250,
+      "vp_main": 0.5495515151515151,
+      "first_big_main": 20.494014365522744,
+      "first_big_coverage": 0.8157552083333334,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1253,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.75,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.1",
+      "group": "H-M59-T1",
+      "round": "M59",
+      "kind": "historical",
+      "sha256": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m59-prism-alpha-cloud-ppo.evaluation-result.json",
+      "source_sha256": "c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-portable-v029",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.4296875,
+        2.0885416666666665,
+        1.748046875,
+        0.8365885416666666,
+        0.779296875,
+        0.3880208333333333
+      ],
+      "low_cards": 8.518229166666666,
+      "low_share": 0.6942218920783149,
+      "big_printed_vp": 7.567057291666666,
+      "big_share": 0.16331511646415875,
+      "cards_4plus": 1.1673177083333333,
+      "noble_games": 643,
+      "noble_coverage": 0.4186197916666667,
+      "total_vp": 22571.0,
+      "total_main": 41304,
+      "vp_main": 0.5464603912453999,
+      "first_big_main": 20.58804523424879,
+      "first_big_coverage": 0.8059895833333334,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1238,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.2",
+      "group": "H-M59-T1",
+      "round": "M59",
+      "kind": "historical",
+      "sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m59-prism-alpha-cloud-ppo.evaluation-result.json",
+      "source_sha256": "c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37",
+      "source_pairs": [
+        {
+          "candidate": "candidate",
+          "opponent": "heuristic-portable-v029",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.192057291666667,
+        1.9147135416666667,
+        1.8216145833333333,
+        0.8470052083333334,
+        0.83203125,
+        0.40234375
+      ],
+      "low_cards": 8.106770833333334,
+      "low_share": 0.6750149075730472,
+      "big_printed_vp": 7.880859375,
+      "big_share": 0.17330731284219658,
+      "cards_4plus": 1.234375,
+      "noble_games": 592,
+      "noble_coverage": 0.3854166666666667,
+      "total_vp": 22754.0,
+      "total_main": 41158,
+      "vp_main": 0.5528451333884057,
+      "first_big_main": 20.381180223285487,
+      "first_big_coverage": 0.81640625,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1254,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.25,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.2",
+      "group": "H-M60-T1",
+      "round": "M60",
+      "kind": "historical",
+      "sha256": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m60-prism-alpha-cloud-ppo.evaluation-result.json",
+      "source_sha256": "d475cf9f3409ccf735ea5f310879c4b223ce1696d3c4a19fed32dfa8058cd22b",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-portable-v029",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.051432291666667,
+        1.94921875,
+        1.9173177083333333,
+        0.845703125,
+        0.8196614583333334,
+        0.376953125
+      ],
+      "low_cards": 8.000651041666668,
+      "low_share": 0.6689347340917752,
+      "big_printed_vp": 7.700520833333334,
+      "big_share": 0.17075826030156224,
+      "cards_4plus": 1.1966145833333335,
+      "noble_games": 542,
+      "noble_coverage": 0.3528645833333333,
+      "total_vp": 22602.0,
+      "total_main": 41022,
+      "vp_main": 0.550972648822583,
+      "first_big_main": 20.272364217252395,
+      "first_big_coverage": 0.8151041666666666,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1252,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.3",
+      "group": "H-M60-T1",
+      "round": "M60",
+      "kind": "historical",
+      "sha256": "7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic portable v0.2.9 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "benchmarks/m60-prism-alpha-cloud-ppo.evaluation-result.json",
+      "source_sha256": "d475cf9f3409ccf735ea5f310879c4b223ce1696d3c4a19fed32dfa8058cd22b",
+      "source_pairs": [
+        {
+          "candidate": "candidate",
+          "opponent": "heuristic-portable-v029",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "candidate",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        5.85546875,
+        1.90625,
+        1.91796875,
+        0.8619791666666666,
+        0.8365885416666666,
+        0.3990885416666667
+      ],
+      "low_cards": 7.76171875,
+      "low_share": 0.6590381426202322,
+      "big_printed_vp": 7.927734375,
+      "big_share": 0.1781094527363184,
+      "cards_4plus": 1.2356770833333333,
+      "noble_games": 518,
+      "noble_coverage": 0.3372395833333333,
+      "total_vp": 22800.0,
+      "total_main": 41013,
+      "vp_main": 0.5559212932484822,
+      "first_big_main": 20.210401891252957,
+      "first_big_coverage": 0.826171875,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1269,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.25,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.3",
+      "group": "H-M61-T1",
+      "round": "M61",
+      "kind": "historical",
+      "sha256": "7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "local-artifacts/prism/balance-ab-m61/result.json",
+      "source_sha256": "37834fd4571503b269924f6ab62d9dd423a6b7d8e317f75a8930c1d96c46c6a4",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        6.029947916666667,
+        1.8444010416666667,
+        1.8209635416666667,
+        0.88671875,
+        0.82421875,
+        0.4140625
+      ],
+      "low_cards": 7.874348958333334,
+      "low_share": 0.6661709627671294,
+      "big_printed_vp": 8.02734375,
+      "big_share": 0.1797752808988764,
+      "cards_4plus": 1.23828125,
+      "noble_games": 578,
+      "noble_coverage": 0.3763020833333333,
+      "total_vp": 22794.0,
+      "total_main": 41064,
+      "vp_main": 0.5550847457627118,
+      "first_big_main": 19.971048513302033,
+      "first_big_coverage": 0.83203125,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1278,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.8333333333333334,
+        "big_printed_vp": 0.5,
+        "noble_coverage": 0.8333333333333334,
+        "vp_main": 0.16666666666666666
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.4",
+      "group": "H-M61-T1",
+      "round": "M61",
+      "kind": "historical",
+      "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "local-artifacts/prism/balance-ab-m61/result.json",
+      "source_sha256": "37834fd4571503b269924f6ab62d9dd423a6b7d8e317f75a8930c1d96c46c6a4",
+      "source_pairs": [
+        {
+          "candidate": "alpha",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "alpha",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "alpha",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        5.868489583333333,
+        1.7760416666666667,
+        1.8580729166666667,
+        0.8515625,
+        0.8639322916666666,
+        0.4296875
+      ],
+      "low_cards": 7.64453125,
+      "low_share": 0.6563076407132077,
+      "big_printed_vp": 8.158854166666666,
+      "big_share": 0.1841708121401822,
+      "cards_4plus": 1.2936197916666665,
+      "noble_games": 535,
+      "noble_coverage": 0.3483072916666667,
+      "total_vp": 22858.0,
+      "total_main": 40860,
+      "vp_main": 0.5594224180127264,
+      "first_big_main": 19.65823754789272,
+      "first_big_coverage": 0.849609375,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1305,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.16666666666666666,
+        "big_printed_vp": 0.8333333333333334,
+        "noble_coverage": 0.16666666666666666,
+        "vp_main": 0.8333333333333334
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "group": "H-M61-T1",
+      "round": "M61",
+      "kind": "historical",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "local-artifacts/prism/balance-ab-m61/result.json",
+      "source_sha256": "37834fd4571503b269924f6ab62d9dd423a6b7d8e317f75a8930c1d96c46c6a4",
+      "source_pairs": [
+        {
+          "candidate": "balance",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "balance",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "balance",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        5.897135416666667,
+        1.9069010416666667,
+        1.8658854166666667,
+        0.86328125,
+        0.8092447916666666,
+        0.4225260416666667
+      ],
+      "low_cards": 7.804036458333334,
+      "low_share": 0.6633279840628632,
+      "big_printed_vp": 7.939453125,
+      "big_share": 0.17807536937634885,
+      "cards_4plus": 1.2317708333333333,
+      "noble_games": 558,
+      "noble_coverage": 0.36328125,
+      "total_vp": 22836.0,
+      "total_main": 41052,
+      "vp_main": 0.5562700964630225,
+      "first_big_main": 19.919649960222753,
+      "first_big_coverage": 0.818359375,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": 1257,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.5,
+        "big_printed_vp": 0.16666666666666666,
+        "noble_coverage": 0.5,
+        "vp_main": 0.5
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "group": "H-M62-T1",
+      "round": "M62",
+      "kind": "historical",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "local-artifacts/prism/building-beta-m62/evaluation/result.json",
+      "source_sha256": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        5.766927083333333,
+        2.0279947916666665,
+        1.8587239583333333,
+        0.8190104166666666,
+        0.8821614583333334,
+        0.4069010416666667
+      ],
+      "low_cards": 7.794921875,
+      "low_share": 0.6627366323480571,
+      "big_printed_vp": 8.020182291666668,
+      "big_share": 0.17923170596700985,
+      "cards_4plus": 1.2890625,
+      "noble_games": 564,
+      "noble_coverage": 0.3671875,
+      "total_vp": 23115.0,
+      "total_main": 41094,
+      "vp_main": 0.5624908745802307,
+      "first_big_main": 20.116913484021826,
+      "first_big_coverage": 0.8352864583333334,
+      "early_low_cards": 3.95703125,
+      "early_discount_redemptions": null,
+      "first_big_games": 1283,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "group": "H-M62-T1",
+      "round": "M62",
+      "kind": "historical",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+      "mode": "T1",
+      "actor_mode": "T1",
+      "opponent_fixture": [
+        "Heuristic v0.3.1 · greedy",
+        "Prism v0.1.0 · greedy",
+        "Prism v0.1.1 · T1"
+      ],
+      "source": "local-artifacts/prism/building-beta-m62/evaluation/result.json",
+      "source_sha256": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+      "source_pairs": [
+        {
+          "candidate": "beta",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 512
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 512
+        }
+      ],
+      "games": 1536,
+      "cards_by_vp": [
+        5.716145833333333,
+        1.9576822916666667,
+        1.8587239583333333,
+        0.8098958333333334,
+        0.884765625,
+        0.4251302083333333
+      ],
+      "low_cards": 7.673828125,
+      "low_share": 0.6585652028159571,
+      "big_printed_vp": 8.094401041666666,
+      "big_share": 0.18191976757179573,
+      "cards_4plus": 1.3098958333333333,
+      "noble_games": 562,
+      "noble_coverage": 0.3658854166666667,
+      "total_vp": 23157.0,
+      "total_main": 41019,
+      "vp_main": 0.5645432604402838,
+      "first_big_main": 20.242911877394636,
+      "first_big_coverage": 0.849609375,
+      "early_low_cards": 3.8880208333333335,
+      "early_discount_redemptions": null,
+      "first_big_games": 1305,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.25,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "group": "H-M63-greedy",
+      "round": "M63",
+      "kind": "historical",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism Beta v0.1.0",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "source": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "source_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "alpha",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "previous_beta",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 256
+        }
+      ],
+      "games": 1280,
+      "cards_by_vp": [
+        5.86171875,
+        2.084375,
+        1.83671875,
+        0.82578125,
+        0.81328125,
+        0.37421875
+      ],
+      "low_cards": 7.946093749999999,
+      "low_share": 0.6736207695873899,
+      "big_printed_vp": 7.6015625,
+      "big_share": 0.17067355454003577,
+      "cards_4plus": 1.1875,
+      "noble_games": 478,
+      "noble_coverage": 0.3734375,
+      "total_vp": 18789.0,
+      "total_main": 34236,
+      "vp_main": 0.5488082719943919,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Alpha v0.1.5",
+      "group": "H-M63-greedy",
+      "round": "M63",
+      "kind": "historical",
+      "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism Beta v0.1.0",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "source": "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json",
+      "source_sha256": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+      "source_pairs": [
+        {
+          "candidate": "beta",
+          "opponent": "alpha",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "previous_beta",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 256
+        }
+      ],
+      "games": 1280,
+      "cards_by_vp": [
+        5.665625,
+        2.1171875,
+        1.87265625,
+        0.81796875,
+        0.840625,
+        0.3703125
+      ],
+      "low_cards": 7.7828125,
+      "low_share": 0.6660871890879914,
+      "big_printed_vp": 7.66796875,
+      "big_share": 0.17364268520994916,
+      "cards_4plus": 1.2109375,
+      "noble_games": 446,
+      "noble_coverage": 0.3484375,
+      "total_vp": 18876.0,
+      "total_main": 34221,
+      "vp_main": 0.5515911282545806,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.25,
+        "vp_main": 0.75
+      }
+    },
+    {
+      "model": "Prism Balance v0.1.0",
+      "group": "H-M65-greedy",
+      "round": "M65",
+      "kind": "historical",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "source": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "source_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "source_pairs": [
+        {
+          "candidate": "base",
+          "opponent": "alpha",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "base",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 256
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        5.892578125,
+        2.080078125,
+        1.95703125,
+        0.7978515625,
+        0.759765625,
+        0.3994140625
+      ],
+      "low_cards": 7.97265625,
+      "low_share": 0.6707196845218535,
+      "big_printed_vp": 7.4296875,
+      "big_share": 0.16464015773907328,
+      "cards_4plus": 1.1591796875,
+      "noble_games": 370,
+      "noble_coverage": 0.361328125,
+      "total_vp": 15090.0,
+      "total_main": 27336,
+      "vp_main": 0.5520193151887621,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.75,
+        "big_printed_vp": 0.25,
+        "noble_coverage": 0.75,
+        "vp_main": 0.25
+      }
+    },
+    {
+      "model": "Prism Beta v0.1.0",
+      "group": "H-M65-greedy",
+      "round": "M65",
+      "kind": "historical",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+      "mode": "greedy",
+      "actor_mode": "greedy",
+      "opponent_fixture": [
+        "Prism Alpha v0.1.4",
+        "Heuristic v0.3.1",
+        "Prism v0.1.1",
+        "Prism v0.1.0"
+      ],
+      "source": "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json",
+      "source_sha256": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+      "source_pairs": [
+        {
+          "candidate": "beta",
+          "opponent": "alpha",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "heuristic-v031",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-general-v011",
+          "role": "candidate",
+          "games": 256
+        },
+        {
+          "candidate": "beta",
+          "opponent": "prism-v01",
+          "role": "candidate",
+          "games": 256
+        }
+      ],
+      "games": 1024,
+      "cards_by_vp": [
+        5.7216796875,
+        1.99609375,
+        1.892578125,
+        0.8203125,
+        0.77734375,
+        0.453125
+      ],
+      "low_cards": 7.7177734375,
+      "low_share": 0.6618373670546855,
+      "big_printed_vp": 7.8359375,
+      "big_share": 0.1758646679507579,
+      "cards_4plus": 1.23046875,
+      "noble_games": 348,
+      "noble_coverage": 0.33984375,
+      "total_vp": 15195.0,
+      "total_main": 27311,
+      "vp_main": 0.5563692285159826,
+      "first_big_main": null,
+      "first_big_coverage": null,
+      "early_low_cards": null,
+      "early_discount_redemptions": null,
+      "first_big_games": null,
+      "classification": {
+        "route": "undetermined",
+        "evidence_level": "DESCRIPTIVE",
+        "reason": "historical reference; no new confirmatory policy"
+      },
+      "within_group_percentiles": {
+        "low_share": 0.25,
+        "big_printed_vp": 0.75,
+        "noble_coverage": 0.25,
+        "vp_main": 0.75
+      }
+    }
+  ],
+  "source_hashes": {
+    "benchmarks/prism-style-delivery-2026-10-08.json": "ca60cc1e6db939044c5950495cf11376b7fba8544086f7b6176001f3d9009c92",
+    "benchmarks/m55-prism-rush-v0.1.0.result.json": "9093d26aa1b8a31fd3874b4b79f046bf098755587a49f0eea345e03649bcac57",
+    "local-artifacts/prism/rush-v0.1.0/acceptance/configs/anchors-0.json": "6dc1ed8f00841a403cde1d6676dbe87e4bab71de3da12518930d3af88acad3ec",
+    "benchmarks/m56-prism-alpha-v0.1.1.result.json": "3e0059c627feace99eaaeb9ea5380b591ef1e5927569d33ce4e3be981ec5c37c",
+    "local-artifacts/prism/alpha-v0.1.1/acceptance/configs/anchors-0.json": "f9bef2ea7b9d55744a52091afdde3b90534e6c48616e5c06bfcb70d301552ab2",
+    "benchmarks/m59-prism-alpha-cloud-ppo.evaluation-result.json": "c4c1d4704b9bf2ad1d8a1c6502a635a8327dc9f525726eb7684143a30a2ecf37",
+    "benchmarks/m59-prism-alpha-cloud-ppo.config.json": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
+    "benchmarks/m60-prism-alpha-cloud-ppo.evaluation-result.json": "d475cf9f3409ccf735ea5f310879c4b223ce1696d3c4a19fed32dfa8058cd22b",
+    "benchmarks/m60-prism-alpha-cloud-ppo.config.json": "afa21fc1e588ecc80e8bab64ca08392448758d68d47544900f48b8eaa9f89c4b",
+    "local-artifacts/prism/balance-ab-m61/result.json": "37834fd4571503b269924f6ab62d9dd423a6b7d8e317f75a8930c1d96c46c6a4",
+    "local-artifacts/prism/balance-ab-m61/execution.json": "ba117541dce0350f83f0123b8f85b3388d17e5f9b85040cf314812595651171c",
+    "local-artifacts/prism/building-beta-m62/evaluation/result.json": "4306fcff0eb53bbeca9113f58e5b05c97a9bf22d2d6e7fe67999ac563a790ede",
+    "local-artifacts/prism/building-beta-m62/evaluation/execution.json": "b65daae1148a1467df4d64d51a0fbf3fa62bb9a9400060d07fcc3f4666f22cfd",
+    "benchmarks/m63-greedy-report-supplement.result.json": "3c75b6cc55c854b15eb93131ed4419bc20ba790475f93a21cf7981d3ce18d1df",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/result.json": "700a90fd46ff4c81a1d776ba5bd62a663a152b7cc7f1da974f848fc6ce11dafb",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/config.json": "bdc309afd3d2fd43b38cd5549175460e10d5f1baeebd873a8da21f5366f63490",
+    "local-artifacts/prism/m63-dsw-r2/greedy-r3/common/plan.json": "7e4c989d16641e5c754be96d98b09eea3ce8b12e26397af477f062387d05c17b",
+    "benchmarks/m65-prism-version-release.result.json": "5f9689946765d0c1d4995108ada0576ff9fe47413869dfa49a8bcf335c2a01ab",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/result.json": "0af5a1da45f06d0c9fe18de2b79f4657a5e3b8f3aee57668e8fca4b76299f691",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/config.json": "a697e5b0f710166b94c2903093ed95e18d55d95cfe5a8bdf10c4a5b72dd82cb9",
+    "local-artifacts/prism/m65-release/harvest/release-evaluation/common/plan.json": "cdd6277c4bf6615d8533deb0cf2d55e757d73fdd9c449396fd8110b478d0897f"
+  },
+  "weight_hashes": {
+    "Prism v0.1.1": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "Prism v0.1.0": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54",
+    "Prism Alpha v0.1.5": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+    "Prism Alpha v0.1.4": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+    "Prism Balance v0.1.0": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1",
+    "Prism Beta v0.1.0": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+    "M66 c4": "d392a5d13e070173a3c80406acbe2f7028d52e3bbdc34a59864ab84f546588f8",
+    "Prism Alpha v0.1.0": "b5e68e008d5d462aff19c67b8eed063139a5c500a020a48031e8938b44618f0a",
+    "Prism Alpha v0.1.1": "d57ebe2407b5d061ae890f3d2586924754e0d2d8e502e1f3f32d12c1fc9af4ff",
+    "Prism Alpha v0.1.2": "faada9ba7f862c14f5a8ca19b5788f044aa08f550b03e1e360a04cb1f2318618",
+    "Prism Alpha v0.1.3": "7f6cdbc2acdff129b0ef6a3417e79d4b8f27bf59f40be53ae2892bf00b5e1544",
+    "M67 A-c20": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5",
+    "M67 B-c20": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4",
+    "M70 c4": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a"
+  },
+  "comparisons": [
+    {
+      "model": "M70 c4",
+      "reference": "Prism Balance v0.1.0",
+      "scope": "双方greedy、同一精确对手；M67旧模型与A/B是不同seed范围，M66/M70另轮。仅描述历史位置，不是同seed配对确认。",
+      "deltas": {
+        "low_share": -0.01769376987380744,
+        "big_printed_vp": 0.5879312500000005,
+        "noble_coverage": 0.03160312500000001,
+        "vp_main": 0.02143918100578346
+      }
+    },
+    {
+      "model": "M67 A-c20",
+      "reference": "Prism Balance v0.1.0",
+      "scope": "双方greedy、同一精确对手；M67旧模型与A/B是不同seed范围，M66/M70另轮。仅描述历史位置，不是同seed配对确认。",
+      "deltas": {
+        "low_share": -0.031224598993990105,
+        "big_printed_vp": 1.131400000000001,
+        "noble_coverage": -0.05559999999999998,
+        "vp_main": 0.009816394708657028
+      }
+    },
+    {
+      "model": "M67 B-c20",
+      "reference": "Prism Balance v0.1.0",
+      "scope": "双方greedy、同一精确对手；M67旧模型与A/B是不同seed范围，M66/M70另轮。仅描述历史位置，不是同seed配对确认。",
+      "deltas": {
+        "low_share": -0.009231828030855649,
+        "big_printed_vp": 0.5074000000000005,
+        "noble_coverage": 0.02629999999999999,
+        "vp_main": 0.02008389815030287
+      }
+    }
+  ],
+  "new_games": 0,
+  "new_training": 0,
+  "scope": "All 14 inventoried neural identities now have numerical historical profiles; older intermediate/control checkpoints are not exhaustive.",
+  "notes": [
+    "Separate actor mode, opposite mode, fixture, seed cohort and exact identity. Do not pool all snapshots into a global percentile.",
+    "Shared-opponent history uses one selected cohort per exact model; cross-seed/round deltas are descriptive.",
+    "Old conditional first-big timings use purchased printed4–5VP coverage denominator, never all-game mean.",
+    "M62 early lowVP purchases are first12 ownMain from original building schema; current M67/M70 still unmeasured."
+  ]
+}

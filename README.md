@@ -1,5 +1,7 @@
 # Splendor AI Platform (M16 1v1 League Rating)
 
+**2026-10-08 Prism研究与云端规划入口：[CLOUD_PLANNING.md](CLOUD_PLANNING.md)**。包含当前固定Alpha/Balance身份、历史结果与缺项、画像分布、未执行的M73建议及云端可核验范围；旧平台说明继续保留。
+
 Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, checkpoint-bound neural search, and player-view-first replay analysis.
 
 > **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
