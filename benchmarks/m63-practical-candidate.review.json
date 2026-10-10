@@ -1,0 +1,166 @@
+{
+  "format": "prism-practical-candidate-review-v1",
+  "review_date": "2026-10-05",
+  "authorization": "Owner explicitly requested practical-strength-first promotion and actual-profile route assignment; revise this report first.",
+  "result_sha256": "a3c5c4f2c48b2b7dc36fed34326236ba5bcab687718ede6fe7bac99902b1e989",
+  "weight_sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12",
+  "original_experiment_name": "Prism Beta v0.1.1 candidate",
+  "candidate_alias": "Prism Alpha v0.1.5",
+  "route_label": "Alpha路线固定研究版本（已发布）",
+  "route_caveat": "相对Balance父代，大牌/冲分方向略移，幅度小且并非每项改善。路线是后续研发选择，不是已证明更强的Alpha继任版本。训练血缘仍来自Prism Balance v0.1.0，不是Prism Alpha v0.1.4续训。",
+  "review_status": "ELIGIBLE_FOR_PRACTICAL_PROMOTION_REVIEW",
+  "review_status_label": "已发布Prism Alpha v0.1.5，保留实战取舍",
+  "registration_status": "RELEASED_EXPERIMENTAL_MODEL",
+  "parent_key": "base",
+  "practical_conclusion": "双方greedy：对父53.90625%，对Prism Alpha v0.1.4为51.953125%；五个共同对手相对父有升有降，等权均值仅+0.15625个百分点。保留实战可用的Alpha路线检查点，不宣称整体棋力增强已经确认。原T=1直接对父55.0781%的增强证据另页保留。",
+  "coverage_caveat": "对Heuristic和初代提高；通用版接近；Alpha和上一Beta相对父略降。对现任Alpha的点估计略过半，不足以认定正式继任；未进行新晋级检验。",
+  "original_research_verdict": {
+    "beta_acceptance": "NOT_ACCEPTED_BUILDING_CANDIDATE",
+    "beta_accepted": false,
+    "beta_building_retention": "FAIL_BUILDING_RETENTION_TOLERANCE",
+    "beta_eight_gates": "FAIL_BETA_GATES",
+    "beta_style": "FAIL_BUILDING_STYLE_THRESHOLD",
+    "cohort_qualified": true,
+    "confirmed_enhancement": {
+      "beta/building_utility": false,
+      "beta/direct_alpha": false,
+      "beta/direct_control": false,
+      "beta/direct_parent": true,
+      "beta/direct_previous_beta": false,
+      "beta/early_bonus_auc12": false,
+      "beta/general_anchor": false,
+      "beta/strength_pool": false,
+      "control/direct_parent": false,
+      "control/strength_pool": false
+    },
+    "control_retention": "PASS_RETENTION_FLOORS"
+  },
+  "promotion_policy": "docs/prism-practical-promotion-contract.md",
+  "scope": "READ_ONLY_RECLASSIFICATION_NO_NEW_GAMES_NO_VERSION_REGISTRATION",
+  "greedy_supplement": {
+    "games": 2816,
+    "direct_parent_score": 0.5390625,
+    "formal_promotion": "NOT_RUN",
+    "report_config": "benchmarks/m63-greedy-report-supplement.config.json"
+  },
+  "route_history": [
+    {
+      "date": "2026-10-05",
+      "status": "SUPERSEDED_ROUTE_ASSIGNMENT",
+      "candidate_alias": "M63 c4 · Balance路线候选（未发布）",
+      "route_label": "下一代Balance路线候选（暂定）",
+      "route_caveat": "路线仍是暂定。得分效率、折扣利用提高不等于更倾向小牌；需结合0–1 VP购牌量/占比、贵族覆盖和冲分数据。历史T=1与双方greedy分开。",
+      "review_status_label": "有实战价值，进入Balance路线晋级评审",
+      "practical_conclusion": "不只是直接赢父代：在相同独立种子和动作模式下，三个共同锚点相对父代都提高，分别为+4.59、+2.44、+1.56个百分点；均值由67.81%到70.67%。对父直接半平得分55.08%，原校正下界51.12%，是明确的对父增强证据。",
+      "coverage_caveat": "相对父代的锚点变化是新整理的描述性点估计，本次未重新计算逐锚点或总体Beta−父的配对区间；不能宣称每项显著或已经证明没有过拟合。相对同轮对照平均+2.12个百分点的原95%区间跨0，对通用版略降、对同轮对照和上一Beta的直接比赛也保留。",
+      "correction_reason": "Owner identified an Alpha-route checkpoint; missing Beta building preference does not imply Balance. Reassess actual greedy card/rush behavior."
+    },
+    {
+      "date": "2026-10-05",
+      "status": "SUPERSEDED_BY_OWNER_VERSION_RELEASE",
+      "candidate_alias": "M63 c4 · Alpha路线候选检查点（未发布）",
+      "route_label": "Alpha路线候选检查点（研发归类，未发布）",
+      "registration_status": "NOT_REGISTERED"
+    }
+  ],
+  "training_lineage": {
+    "parent": "Prism Balance v0.1.0",
+    "checkpoint": "M63 original Beta arm final c4",
+    "continues_alpha_v0_1_4": false
+  },
+  "successor_claim": "NOT_ESTABLISHED",
+  "route_rationale": "0VP牌减少、4VP牌增加、3–5VP印刷分和VP/Main略升、贵族覆盖下降；首张4–5VP牌条件均值略提前、20Main内达到8分率略升。更适合保留为Alpha路线候选，而不是仅因没做成Beta就默认归Balance。",
+  "alpha_route_diagnostic": {
+    "path": "local-artifacts/prism/m63-dsw-r2/r5-trajectory-result.json",
+    "sha256": "b09776f2f1a04496c1f72ac381f3034af56e7d4d26658a78fa9d090d1bdaf099",
+    "new_games": 0,
+    "replayed_games": 2816,
+    "pooled_own_trajectories": {
+      "base": {
+        "games": 1280,
+        "first_large_card_main": {
+          "conditional_mean": 18.083197389885807,
+          "coverage_games": 1226,
+          "coverage_rate": 0.9578125
+        },
+        "first_4plus_card_main": {
+          "conditional_mean": 20.20497512437811,
+          "coverage_games": 1005,
+          "coverage_rate": 0.78515625
+        },
+        "vp8_by_main20_rate": 0.32734375,
+        "main8": {
+          "vp": 0.71640625,
+          "large_printed_vp": 0.04609375,
+          "observed_games": 1280
+        },
+        "main12": {
+          "vp": 1.8640625,
+          "large_printed_vp": 0.43359375,
+          "observed_games": 1280
+        },
+        "main16": {
+          "vp": 3.7109375,
+          "large_printed_vp": 1.2875,
+          "observed_games": 1280
+        },
+        "main20": {
+          "vp": 6.57890625,
+          "large_printed_vp": 2.9890625,
+          "observed_games": 1280
+        },
+        "main24": {
+          "vp": 10.63359375,
+          "large_printed_vp": 5.30078125,
+          "observed_games": 1242
+        }
+      },
+      "beta": {
+        "games": 1280,
+        "first_large_card_main": {
+          "conditional_mean": 18.04711616571893,
+          "coverage_games": 1231,
+          "coverage_rate": 0.96171875
+        },
+        "first_4plus_card_main": {
+          "conditional_mean": 20.01364522417154,
+          "coverage_games": 1026,
+          "coverage_rate": 0.8015625
+        },
+        "vp8_by_main20_rate": 0.33828125,
+        "main8": {
+          "vp": 0.78125,
+          "large_printed_vp": 0.05859375,
+          "observed_games": 1280
+        },
+        "main12": {
+          "vp": 1.9609375,
+          "large_printed_vp": 0.3890625,
+          "observed_games": 1280
+        },
+        "main16": {
+          "vp": 3.80625,
+          "large_printed_vp": 1.28203125,
+          "observed_games": 1280
+        },
+        "main20": {
+          "vp": 6.64921875,
+          "large_printed_vp": 3.0015625,
+          "observed_games": 1280
+        },
+        "main24": {
+          "vp": 10.7078125,
+          "large_printed_vp": 5.3765625,
+          "observed_games": 1239
+        }
+      }
+    },
+    "scope": "Descriptive, read-only extraction of all frozen greedy replays; not a new acceptance gate.",
+    "limitations": "First-card timing conditions on games buying that class; show coverage. Some early large-card score trajectory points decline; direct Alpha 8VP-by-20Main is 28.90625% versus Alpha 29.6875%. No uniform rush advantage."
+  },
+  "release_record": {
+    "path": "benchmarks/m65-prism-alpha-v0.1.5.model.json",
+    "sha256": "53558fd6bffb74b788f8cebdfc8b136aebd38b187dd721816ce7479c8109febb"
+  },
+  "release_caveat": "用户授权版本化产物发布；未宣称全面超过Alpha v0.1.4或默认冠军替换。原实验和旧路线历史保持。"
+}

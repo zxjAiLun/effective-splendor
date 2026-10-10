@@ -1,0 +1,6316 @@
+{
+  "cancel_fixture": false,
+  "format": "prism-portable-blueprint-v1",
+  "model_label": "M73 a final c4",
+  "purpose": "fixed-B-M70-recipe-independent-repeat",
+  "template": {
+    "arena": {
+      "engine_version": "0.4.0",
+      "program": "@engine",
+      "protocol_version": "0.5",
+      "ruleset": "splendor-base-v1",
+      "sha256": "@engine_sha256"
+    },
+    "cycles": [
+      [
+        {
+          "actor": 0,
+          "environment_seed": 11001000,
+          "job_id": "m73-a-c1-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001000,
+          "job_id": "m73-a-c1-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001001,
+          "job_id": "m73-a-c1-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001001,
+          "job_id": "m73-a-c1-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001002,
+          "job_id": "m73-a-c1-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001002,
+          "job_id": "m73-a-c1-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001003,
+          "job_id": "m73-a-c1-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001003,
+          "job_id": "m73-a-c1-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001004,
+          "job_id": "m73-a-c1-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001004,
+          "job_id": "m73-a-c1-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001005,
+          "job_id": "m73-a-c1-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001005,
+          "job_id": "m73-a-c1-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001006,
+          "job_id": "m73-a-c1-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001006,
+          "job_id": "m73-a-c1-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001007,
+          "job_id": "m73-a-c1-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001007,
+          "job_id": "m73-a-c1-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001008,
+          "job_id": "m73-a-c1-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001008,
+          "job_id": "m73-a-c1-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001009,
+          "job_id": "m73-a-c1-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001009,
+          "job_id": "m73-a-c1-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001010,
+          "job_id": "m73-a-c1-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001010,
+          "job_id": "m73-a-c1-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001011,
+          "job_id": "m73-a-c1-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001011,
+          "job_id": "m73-a-c1-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001012,
+          "job_id": "m73-a-c1-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001012,
+          "job_id": "m73-a-c1-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001013,
+          "job_id": "m73-a-c1-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001013,
+          "job_id": "m73-a-c1-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001014,
+          "job_id": "m73-a-c1-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001014,
+          "job_id": "m73-a-c1-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001015,
+          "job_id": "m73-a-c1-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001015,
+          "job_id": "m73-a-c1-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001016,
+          "job_id": "m73-a-c1-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001016,
+          "job_id": "m73-a-c1-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001017,
+          "job_id": "m73-a-c1-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001017,
+          "job_id": "m73-a-c1-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001018,
+          "job_id": "m73-a-c1-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001018,
+          "job_id": "m73-a-c1-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001019,
+          "job_id": "m73-a-c1-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001019,
+          "job_id": "m73-a-c1-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001020,
+          "job_id": "m73-a-c1-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001020,
+          "job_id": "m73-a-c1-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001021,
+          "job_id": "m73-a-c1-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001021,
+          "job_id": "m73-a-c1-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001022,
+          "job_id": "m73-a-c1-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001022,
+          "job_id": "m73-a-c1-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001023,
+          "job_id": "m73-a-c1-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001023,
+          "job_id": "m73-a-c1-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001024,
+          "job_id": "m73-a-c1-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001024,
+          "job_id": "m73-a-c1-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001025,
+          "job_id": "m73-a-c1-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001025,
+          "job_id": "m73-a-c1-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001026,
+          "job_id": "m73-a-c1-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001026,
+          "job_id": "m73-a-c1-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001027,
+          "job_id": "m73-a-c1-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001027,
+          "job_id": "m73-a-c1-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001028,
+          "job_id": "m73-a-c1-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001028,
+          "job_id": "m73-a-c1-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001029,
+          "job_id": "m73-a-c1-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001029,
+          "job_id": "m73-a-c1-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001030,
+          "job_id": "m73-a-c1-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001030,
+          "job_id": "m73-a-c1-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001031,
+          "job_id": "m73-a-c1-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001031,
+          "job_id": "m73-a-c1-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001032,
+          "job_id": "m73-a-c1-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001032,
+          "job_id": "m73-a-c1-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001033,
+          "job_id": "m73-a-c1-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001033,
+          "job_id": "m73-a-c1-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001034,
+          "job_id": "m73-a-c1-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001034,
+          "job_id": "m73-a-c1-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001035,
+          "job_id": "m73-a-c1-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001035,
+          "job_id": "m73-a-c1-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001036,
+          "job_id": "m73-a-c1-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001036,
+          "job_id": "m73-a-c1-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001037,
+          "job_id": "m73-a-c1-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001037,
+          "job_id": "m73-a-c1-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001038,
+          "job_id": "m73-a-c1-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001038,
+          "job_id": "m73-a-c1-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001039,
+          "job_id": "m73-a-c1-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001039,
+          "job_id": "m73-a-c1-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001040,
+          "job_id": "m73-a-c1-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001040,
+          "job_id": "m73-a-c1-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001041,
+          "job_id": "m73-a-c1-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001041,
+          "job_id": "m73-a-c1-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001042,
+          "job_id": "m73-a-c1-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001042,
+          "job_id": "m73-a-c1-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001043,
+          "job_id": "m73-a-c1-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001043,
+          "job_id": "m73-a-c1-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001044,
+          "job_id": "m73-a-c1-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001044,
+          "job_id": "m73-a-c1-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001045,
+          "job_id": "m73-a-c1-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001045,
+          "job_id": "m73-a-c1-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001046,
+          "job_id": "m73-a-c1-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001046,
+          "job_id": "m73-a-c1-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001047,
+          "job_id": "m73-a-c1-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001047,
+          "job_id": "m73-a-c1-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001048,
+          "job_id": "m73-a-c1-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001048,
+          "job_id": "m73-a-c1-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001049,
+          "job_id": "m73-a-c1-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001049,
+          "job_id": "m73-a-c1-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001050,
+          "job_id": "m73-a-c1-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001050,
+          "job_id": "m73-a-c1-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001051,
+          "job_id": "m73-a-c1-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001051,
+          "job_id": "m73-a-c1-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001052,
+          "job_id": "m73-a-c1-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001052,
+          "job_id": "m73-a-c1-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001053,
+          "job_id": "m73-a-c1-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001053,
+          "job_id": "m73-a-c1-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001054,
+          "job_id": "m73-a-c1-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001054,
+          "job_id": "m73-a-c1-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001055,
+          "job_id": "m73-a-c1-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001055,
+          "job_id": "m73-a-c1-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001056,
+          "job_id": "m73-a-c1-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001056,
+          "job_id": "m73-a-c1-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001057,
+          "job_id": "m73-a-c1-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001057,
+          "job_id": "m73-a-c1-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001058,
+          "job_id": "m73-a-c1-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001058,
+          "job_id": "m73-a-c1-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001059,
+          "job_id": "m73-a-c1-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001059,
+          "job_id": "m73-a-c1-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001060,
+          "job_id": "m73-a-c1-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001060,
+          "job_id": "m73-a-c1-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001061,
+          "job_id": "m73-a-c1-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001061,
+          "job_id": "m73-a-c1-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001062,
+          "job_id": "m73-a-c1-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001062,
+          "job_id": "m73-a-c1-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001063,
+          "job_id": "m73-a-c1-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001063,
+          "job_id": "m73-a-c1-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001064,
+          "job_id": "m73-a-c1-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001064,
+          "job_id": "m73-a-c1-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001065,
+          "job_id": "m73-a-c1-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001065,
+          "job_id": "m73-a-c1-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001066,
+          "job_id": "m73-a-c1-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001066,
+          "job_id": "m73-a-c1-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001067,
+          "job_id": "m73-a-c1-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001067,
+          "job_id": "m73-a-c1-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001068,
+          "job_id": "m73-a-c1-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001068,
+          "job_id": "m73-a-c1-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001069,
+          "job_id": "m73-a-c1-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001069,
+          "job_id": "m73-a-c1-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001070,
+          "job_id": "m73-a-c1-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001070,
+          "job_id": "m73-a-c1-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001071,
+          "job_id": "m73-a-c1-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001071,
+          "job_id": "m73-a-c1-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001072,
+          "job_id": "m73-a-c1-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001072,
+          "job_id": "m73-a-c1-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001073,
+          "job_id": "m73-a-c1-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001073,
+          "job_id": "m73-a-c1-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001074,
+          "job_id": "m73-a-c1-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001074,
+          "job_id": "m73-a-c1-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001075,
+          "job_id": "m73-a-c1-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001075,
+          "job_id": "m73-a-c1-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001076,
+          "job_id": "m73-a-c1-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001076,
+          "job_id": "m73-a-c1-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001077,
+          "job_id": "m73-a-c1-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001077,
+          "job_id": "m73-a-c1-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001078,
+          "job_id": "m73-a-c1-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001078,
+          "job_id": "m73-a-c1-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001079,
+          "job_id": "m73-a-c1-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001079,
+          "job_id": "m73-a-c1-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001080,
+          "job_id": "m73-a-c1-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001080,
+          "job_id": "m73-a-c1-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001081,
+          "job_id": "m73-a-c1-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001081,
+          "job_id": "m73-a-c1-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001082,
+          "job_id": "m73-a-c1-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001082,
+          "job_id": "m73-a-c1-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001083,
+          "job_id": "m73-a-c1-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001083,
+          "job_id": "m73-a-c1-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001084,
+          "job_id": "m73-a-c1-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001084,
+          "job_id": "m73-a-c1-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001085,
+          "job_id": "m73-a-c1-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001085,
+          "job_id": "m73-a-c1-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001086,
+          "job_id": "m73-a-c1-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001086,
+          "job_id": "m73-a-c1-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001087,
+          "job_id": "m73-a-c1-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001087,
+          "job_id": "m73-a-c1-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001088,
+          "job_id": "m73-a-c1-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001088,
+          "job_id": "m73-a-c1-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001089,
+          "job_id": "m73-a-c1-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001089,
+          "job_id": "m73-a-c1-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001090,
+          "job_id": "m73-a-c1-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001090,
+          "job_id": "m73-a-c1-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001091,
+          "job_id": "m73-a-c1-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001091,
+          "job_id": "m73-a-c1-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001092,
+          "job_id": "m73-a-c1-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001092,
+          "job_id": "m73-a-c1-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001093,
+          "job_id": "m73-a-c1-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001093,
+          "job_id": "m73-a-c1-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001094,
+          "job_id": "m73-a-c1-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001094,
+          "job_id": "m73-a-c1-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001095,
+          "job_id": "m73-a-c1-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001095,
+          "job_id": "m73-a-c1-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001096,
+          "job_id": "m73-a-c1-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001096,
+          "job_id": "m73-a-c1-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001097,
+          "job_id": "m73-a-c1-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001097,
+          "job_id": "m73-a-c1-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001098,
+          "job_id": "m73-a-c1-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001098,
+          "job_id": "m73-a-c1-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001099,
+          "job_id": "m73-a-c1-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001099,
+          "job_id": "m73-a-c1-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001100,
+          "job_id": "m73-a-c1-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001100,
+          "job_id": "m73-a-c1-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001101,
+          "job_id": "m73-a-c1-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001101,
+          "job_id": "m73-a-c1-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001102,
+          "job_id": "m73-a-c1-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001102,
+          "job_id": "m73-a-c1-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001103,
+          "job_id": "m73-a-c1-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001103,
+          "job_id": "m73-a-c1-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001104,
+          "job_id": "m73-a-c1-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001104,
+          "job_id": "m73-a-c1-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001105,
+          "job_id": "m73-a-c1-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001105,
+          "job_id": "m73-a-c1-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001106,
+          "job_id": "m73-a-c1-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001106,
+          "job_id": "m73-a-c1-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001107,
+          "job_id": "m73-a-c1-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001107,
+          "job_id": "m73-a-c1-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001108,
+          "job_id": "m73-a-c1-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001108,
+          "job_id": "m73-a-c1-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001109,
+          "job_id": "m73-a-c1-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001109,
+          "job_id": "m73-a-c1-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001110,
+          "job_id": "m73-a-c1-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001110,
+          "job_id": "m73-a-c1-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001111,
+          "job_id": "m73-a-c1-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001111,
+          "job_id": "m73-a-c1-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001112,
+          "job_id": "m73-a-c1-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001112,
+          "job_id": "m73-a-c1-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001113,
+          "job_id": "m73-a-c1-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001113,
+          "job_id": "m73-a-c1-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001114,
+          "job_id": "m73-a-c1-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001114,
+          "job_id": "m73-a-c1-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001115,
+          "job_id": "m73-a-c1-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001115,
+          "job_id": "m73-a-c1-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001116,
+          "job_id": "m73-a-c1-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001116,
+          "job_id": "m73-a-c1-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001117,
+          "job_id": "m73-a-c1-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001117,
+          "job_id": "m73-a-c1-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001118,
+          "job_id": "m73-a-c1-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001118,
+          "job_id": "m73-a-c1-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001119,
+          "job_id": "m73-a-c1-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001119,
+          "job_id": "m73-a-c1-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001120,
+          "job_id": "m73-a-c1-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001120,
+          "job_id": "m73-a-c1-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001121,
+          "job_id": "m73-a-c1-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001121,
+          "job_id": "m73-a-c1-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001122,
+          "job_id": "m73-a-c1-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001122,
+          "job_id": "m73-a-c1-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001123,
+          "job_id": "m73-a-c1-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001123,
+          "job_id": "m73-a-c1-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001124,
+          "job_id": "m73-a-c1-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001124,
+          "job_id": "m73-a-c1-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001125,
+          "job_id": "m73-a-c1-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001125,
+          "job_id": "m73-a-c1-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001126,
+          "job_id": "m73-a-c1-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001126,
+          "job_id": "m73-a-c1-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001127,
+          "job_id": "m73-a-c1-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001127,
+          "job_id": "m73-a-c1-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 11001128,
+          "job_id": "m73-a-c2-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001128,
+          "job_id": "m73-a-c2-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001129,
+          "job_id": "m73-a-c2-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001129,
+          "job_id": "m73-a-c2-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001130,
+          "job_id": "m73-a-c2-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001130,
+          "job_id": "m73-a-c2-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001131,
+          "job_id": "m73-a-c2-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001131,
+          "job_id": "m73-a-c2-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001132,
+          "job_id": "m73-a-c2-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001132,
+          "job_id": "m73-a-c2-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001133,
+          "job_id": "m73-a-c2-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001133,
+          "job_id": "m73-a-c2-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001134,
+          "job_id": "m73-a-c2-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001134,
+          "job_id": "m73-a-c2-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001135,
+          "job_id": "m73-a-c2-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001135,
+          "job_id": "m73-a-c2-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001136,
+          "job_id": "m73-a-c2-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001136,
+          "job_id": "m73-a-c2-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001137,
+          "job_id": "m73-a-c2-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001137,
+          "job_id": "m73-a-c2-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001138,
+          "job_id": "m73-a-c2-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001138,
+          "job_id": "m73-a-c2-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001139,
+          "job_id": "m73-a-c2-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001139,
+          "job_id": "m73-a-c2-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001140,
+          "job_id": "m73-a-c2-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001140,
+          "job_id": "m73-a-c2-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001141,
+          "job_id": "m73-a-c2-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001141,
+          "job_id": "m73-a-c2-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001142,
+          "job_id": "m73-a-c2-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001142,
+          "job_id": "m73-a-c2-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001143,
+          "job_id": "m73-a-c2-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001143,
+          "job_id": "m73-a-c2-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001144,
+          "job_id": "m73-a-c2-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001144,
+          "job_id": "m73-a-c2-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001145,
+          "job_id": "m73-a-c2-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001145,
+          "job_id": "m73-a-c2-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001146,
+          "job_id": "m73-a-c2-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001146,
+          "job_id": "m73-a-c2-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001147,
+          "job_id": "m73-a-c2-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001147,
+          "job_id": "m73-a-c2-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001148,
+          "job_id": "m73-a-c2-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001148,
+          "job_id": "m73-a-c2-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001149,
+          "job_id": "m73-a-c2-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001149,
+          "job_id": "m73-a-c2-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001150,
+          "job_id": "m73-a-c2-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001150,
+          "job_id": "m73-a-c2-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001151,
+          "job_id": "m73-a-c2-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001151,
+          "job_id": "m73-a-c2-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001152,
+          "job_id": "m73-a-c2-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001152,
+          "job_id": "m73-a-c2-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001153,
+          "job_id": "m73-a-c2-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001153,
+          "job_id": "m73-a-c2-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001154,
+          "job_id": "m73-a-c2-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001154,
+          "job_id": "m73-a-c2-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001155,
+          "job_id": "m73-a-c2-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001155,
+          "job_id": "m73-a-c2-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001156,
+          "job_id": "m73-a-c2-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001156,
+          "job_id": "m73-a-c2-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001157,
+          "job_id": "m73-a-c2-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001157,
+          "job_id": "m73-a-c2-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001158,
+          "job_id": "m73-a-c2-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001158,
+          "job_id": "m73-a-c2-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001159,
+          "job_id": "m73-a-c2-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001159,
+          "job_id": "m73-a-c2-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001160,
+          "job_id": "m73-a-c2-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001160,
+          "job_id": "m73-a-c2-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001161,
+          "job_id": "m73-a-c2-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001161,
+          "job_id": "m73-a-c2-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001162,
+          "job_id": "m73-a-c2-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001162,
+          "job_id": "m73-a-c2-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001163,
+          "job_id": "m73-a-c2-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001163,
+          "job_id": "m73-a-c2-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001164,
+          "job_id": "m73-a-c2-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001164,
+          "job_id": "m73-a-c2-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001165,
+          "job_id": "m73-a-c2-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001165,
+          "job_id": "m73-a-c2-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001166,
+          "job_id": "m73-a-c2-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001166,
+          "job_id": "m73-a-c2-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001167,
+          "job_id": "m73-a-c2-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001167,
+          "job_id": "m73-a-c2-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001168,
+          "job_id": "m73-a-c2-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001168,
+          "job_id": "m73-a-c2-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001169,
+          "job_id": "m73-a-c2-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001169,
+          "job_id": "m73-a-c2-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001170,
+          "job_id": "m73-a-c2-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001170,
+          "job_id": "m73-a-c2-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001171,
+          "job_id": "m73-a-c2-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001171,
+          "job_id": "m73-a-c2-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001172,
+          "job_id": "m73-a-c2-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001172,
+          "job_id": "m73-a-c2-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001173,
+          "job_id": "m73-a-c2-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001173,
+          "job_id": "m73-a-c2-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001174,
+          "job_id": "m73-a-c2-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001174,
+          "job_id": "m73-a-c2-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001175,
+          "job_id": "m73-a-c2-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001175,
+          "job_id": "m73-a-c2-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001176,
+          "job_id": "m73-a-c2-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001176,
+          "job_id": "m73-a-c2-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001177,
+          "job_id": "m73-a-c2-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001177,
+          "job_id": "m73-a-c2-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001178,
+          "job_id": "m73-a-c2-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001178,
+          "job_id": "m73-a-c2-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001179,
+          "job_id": "m73-a-c2-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001179,
+          "job_id": "m73-a-c2-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001180,
+          "job_id": "m73-a-c2-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001180,
+          "job_id": "m73-a-c2-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001181,
+          "job_id": "m73-a-c2-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001181,
+          "job_id": "m73-a-c2-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001182,
+          "job_id": "m73-a-c2-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001182,
+          "job_id": "m73-a-c2-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001183,
+          "job_id": "m73-a-c2-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001183,
+          "job_id": "m73-a-c2-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001184,
+          "job_id": "m73-a-c2-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001184,
+          "job_id": "m73-a-c2-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001185,
+          "job_id": "m73-a-c2-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001185,
+          "job_id": "m73-a-c2-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001186,
+          "job_id": "m73-a-c2-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001186,
+          "job_id": "m73-a-c2-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001187,
+          "job_id": "m73-a-c2-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001187,
+          "job_id": "m73-a-c2-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001188,
+          "job_id": "m73-a-c2-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001188,
+          "job_id": "m73-a-c2-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001189,
+          "job_id": "m73-a-c2-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001189,
+          "job_id": "m73-a-c2-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001190,
+          "job_id": "m73-a-c2-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001190,
+          "job_id": "m73-a-c2-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001191,
+          "job_id": "m73-a-c2-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001191,
+          "job_id": "m73-a-c2-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001192,
+          "job_id": "m73-a-c2-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001192,
+          "job_id": "m73-a-c2-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001193,
+          "job_id": "m73-a-c2-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001193,
+          "job_id": "m73-a-c2-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001194,
+          "job_id": "m73-a-c2-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001194,
+          "job_id": "m73-a-c2-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001195,
+          "job_id": "m73-a-c2-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001195,
+          "job_id": "m73-a-c2-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001196,
+          "job_id": "m73-a-c2-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001196,
+          "job_id": "m73-a-c2-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001197,
+          "job_id": "m73-a-c2-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001197,
+          "job_id": "m73-a-c2-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001198,
+          "job_id": "m73-a-c2-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001198,
+          "job_id": "m73-a-c2-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001199,
+          "job_id": "m73-a-c2-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001199,
+          "job_id": "m73-a-c2-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001200,
+          "job_id": "m73-a-c2-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001200,
+          "job_id": "m73-a-c2-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001201,
+          "job_id": "m73-a-c2-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001201,
+          "job_id": "m73-a-c2-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001202,
+          "job_id": "m73-a-c2-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001202,
+          "job_id": "m73-a-c2-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001203,
+          "job_id": "m73-a-c2-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001203,
+          "job_id": "m73-a-c2-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001204,
+          "job_id": "m73-a-c2-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001204,
+          "job_id": "m73-a-c2-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001205,
+          "job_id": "m73-a-c2-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001205,
+          "job_id": "m73-a-c2-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001206,
+          "job_id": "m73-a-c2-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001206,
+          "job_id": "m73-a-c2-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001207,
+          "job_id": "m73-a-c2-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001207,
+          "job_id": "m73-a-c2-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001208,
+          "job_id": "m73-a-c2-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001208,
+          "job_id": "m73-a-c2-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001209,
+          "job_id": "m73-a-c2-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001209,
+          "job_id": "m73-a-c2-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001210,
+          "job_id": "m73-a-c2-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001210,
+          "job_id": "m73-a-c2-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001211,
+          "job_id": "m73-a-c2-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001211,
+          "job_id": "m73-a-c2-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001212,
+          "job_id": "m73-a-c2-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001212,
+          "job_id": "m73-a-c2-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001213,
+          "job_id": "m73-a-c2-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001213,
+          "job_id": "m73-a-c2-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001214,
+          "job_id": "m73-a-c2-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001214,
+          "job_id": "m73-a-c2-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001215,
+          "job_id": "m73-a-c2-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001215,
+          "job_id": "m73-a-c2-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001216,
+          "job_id": "m73-a-c2-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001216,
+          "job_id": "m73-a-c2-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001217,
+          "job_id": "m73-a-c2-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001217,
+          "job_id": "m73-a-c2-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001218,
+          "job_id": "m73-a-c2-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001218,
+          "job_id": "m73-a-c2-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001219,
+          "job_id": "m73-a-c2-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001219,
+          "job_id": "m73-a-c2-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001220,
+          "job_id": "m73-a-c2-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001220,
+          "job_id": "m73-a-c2-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001221,
+          "job_id": "m73-a-c2-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001221,
+          "job_id": "m73-a-c2-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001222,
+          "job_id": "m73-a-c2-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001222,
+          "job_id": "m73-a-c2-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001223,
+          "job_id": "m73-a-c2-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001223,
+          "job_id": "m73-a-c2-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001224,
+          "job_id": "m73-a-c2-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001224,
+          "job_id": "m73-a-c2-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001225,
+          "job_id": "m73-a-c2-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001225,
+          "job_id": "m73-a-c2-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001226,
+          "job_id": "m73-a-c2-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001226,
+          "job_id": "m73-a-c2-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001227,
+          "job_id": "m73-a-c2-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001227,
+          "job_id": "m73-a-c2-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001228,
+          "job_id": "m73-a-c2-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001228,
+          "job_id": "m73-a-c2-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001229,
+          "job_id": "m73-a-c2-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001229,
+          "job_id": "m73-a-c2-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001230,
+          "job_id": "m73-a-c2-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001230,
+          "job_id": "m73-a-c2-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001231,
+          "job_id": "m73-a-c2-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001231,
+          "job_id": "m73-a-c2-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001232,
+          "job_id": "m73-a-c2-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001232,
+          "job_id": "m73-a-c2-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001233,
+          "job_id": "m73-a-c2-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001233,
+          "job_id": "m73-a-c2-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001234,
+          "job_id": "m73-a-c2-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001234,
+          "job_id": "m73-a-c2-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001235,
+          "job_id": "m73-a-c2-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001235,
+          "job_id": "m73-a-c2-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001236,
+          "job_id": "m73-a-c2-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001236,
+          "job_id": "m73-a-c2-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001237,
+          "job_id": "m73-a-c2-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001237,
+          "job_id": "m73-a-c2-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001238,
+          "job_id": "m73-a-c2-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001238,
+          "job_id": "m73-a-c2-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001239,
+          "job_id": "m73-a-c2-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001239,
+          "job_id": "m73-a-c2-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001240,
+          "job_id": "m73-a-c2-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001240,
+          "job_id": "m73-a-c2-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001241,
+          "job_id": "m73-a-c2-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001241,
+          "job_id": "m73-a-c2-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001242,
+          "job_id": "m73-a-c2-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001242,
+          "job_id": "m73-a-c2-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001243,
+          "job_id": "m73-a-c2-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001243,
+          "job_id": "m73-a-c2-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001244,
+          "job_id": "m73-a-c2-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001244,
+          "job_id": "m73-a-c2-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001245,
+          "job_id": "m73-a-c2-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001245,
+          "job_id": "m73-a-c2-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001246,
+          "job_id": "m73-a-c2-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001246,
+          "job_id": "m73-a-c2-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001247,
+          "job_id": "m73-a-c2-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001247,
+          "job_id": "m73-a-c2-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001248,
+          "job_id": "m73-a-c2-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001248,
+          "job_id": "m73-a-c2-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001249,
+          "job_id": "m73-a-c2-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001249,
+          "job_id": "m73-a-c2-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001250,
+          "job_id": "m73-a-c2-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001250,
+          "job_id": "m73-a-c2-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001251,
+          "job_id": "m73-a-c2-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001251,
+          "job_id": "m73-a-c2-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001252,
+          "job_id": "m73-a-c2-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001252,
+          "job_id": "m73-a-c2-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001253,
+          "job_id": "m73-a-c2-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001253,
+          "job_id": "m73-a-c2-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001254,
+          "job_id": "m73-a-c2-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001254,
+          "job_id": "m73-a-c2-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001255,
+          "job_id": "m73-a-c2-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001255,
+          "job_id": "m73-a-c2-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 11001256,
+          "job_id": "m73-a-c3-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001256,
+          "job_id": "m73-a-c3-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001257,
+          "job_id": "m73-a-c3-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001257,
+          "job_id": "m73-a-c3-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001258,
+          "job_id": "m73-a-c3-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001258,
+          "job_id": "m73-a-c3-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001259,
+          "job_id": "m73-a-c3-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001259,
+          "job_id": "m73-a-c3-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001260,
+          "job_id": "m73-a-c3-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001260,
+          "job_id": "m73-a-c3-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001261,
+          "job_id": "m73-a-c3-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001261,
+          "job_id": "m73-a-c3-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001262,
+          "job_id": "m73-a-c3-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001262,
+          "job_id": "m73-a-c3-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001263,
+          "job_id": "m73-a-c3-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001263,
+          "job_id": "m73-a-c3-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001264,
+          "job_id": "m73-a-c3-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001264,
+          "job_id": "m73-a-c3-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001265,
+          "job_id": "m73-a-c3-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001265,
+          "job_id": "m73-a-c3-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001266,
+          "job_id": "m73-a-c3-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001266,
+          "job_id": "m73-a-c3-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001267,
+          "job_id": "m73-a-c3-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001267,
+          "job_id": "m73-a-c3-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001268,
+          "job_id": "m73-a-c3-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001268,
+          "job_id": "m73-a-c3-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001269,
+          "job_id": "m73-a-c3-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001269,
+          "job_id": "m73-a-c3-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001270,
+          "job_id": "m73-a-c3-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001270,
+          "job_id": "m73-a-c3-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001271,
+          "job_id": "m73-a-c3-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001271,
+          "job_id": "m73-a-c3-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001272,
+          "job_id": "m73-a-c3-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001272,
+          "job_id": "m73-a-c3-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001273,
+          "job_id": "m73-a-c3-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001273,
+          "job_id": "m73-a-c3-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001274,
+          "job_id": "m73-a-c3-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001274,
+          "job_id": "m73-a-c3-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001275,
+          "job_id": "m73-a-c3-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001275,
+          "job_id": "m73-a-c3-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001276,
+          "job_id": "m73-a-c3-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001276,
+          "job_id": "m73-a-c3-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001277,
+          "job_id": "m73-a-c3-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001277,
+          "job_id": "m73-a-c3-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001278,
+          "job_id": "m73-a-c3-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001278,
+          "job_id": "m73-a-c3-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001279,
+          "job_id": "m73-a-c3-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001279,
+          "job_id": "m73-a-c3-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001280,
+          "job_id": "m73-a-c3-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001280,
+          "job_id": "m73-a-c3-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001281,
+          "job_id": "m73-a-c3-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001281,
+          "job_id": "m73-a-c3-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001282,
+          "job_id": "m73-a-c3-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001282,
+          "job_id": "m73-a-c3-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001283,
+          "job_id": "m73-a-c3-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001283,
+          "job_id": "m73-a-c3-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001284,
+          "job_id": "m73-a-c3-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001284,
+          "job_id": "m73-a-c3-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001285,
+          "job_id": "m73-a-c3-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001285,
+          "job_id": "m73-a-c3-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001286,
+          "job_id": "m73-a-c3-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001286,
+          "job_id": "m73-a-c3-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001287,
+          "job_id": "m73-a-c3-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001287,
+          "job_id": "m73-a-c3-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001288,
+          "job_id": "m73-a-c3-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001288,
+          "job_id": "m73-a-c3-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001289,
+          "job_id": "m73-a-c3-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001289,
+          "job_id": "m73-a-c3-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001290,
+          "job_id": "m73-a-c3-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001290,
+          "job_id": "m73-a-c3-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001291,
+          "job_id": "m73-a-c3-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001291,
+          "job_id": "m73-a-c3-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001292,
+          "job_id": "m73-a-c3-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001292,
+          "job_id": "m73-a-c3-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001293,
+          "job_id": "m73-a-c3-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001293,
+          "job_id": "m73-a-c3-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001294,
+          "job_id": "m73-a-c3-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001294,
+          "job_id": "m73-a-c3-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001295,
+          "job_id": "m73-a-c3-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001295,
+          "job_id": "m73-a-c3-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001296,
+          "job_id": "m73-a-c3-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001296,
+          "job_id": "m73-a-c3-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001297,
+          "job_id": "m73-a-c3-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001297,
+          "job_id": "m73-a-c3-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001298,
+          "job_id": "m73-a-c3-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001298,
+          "job_id": "m73-a-c3-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001299,
+          "job_id": "m73-a-c3-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001299,
+          "job_id": "m73-a-c3-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001300,
+          "job_id": "m73-a-c3-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001300,
+          "job_id": "m73-a-c3-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001301,
+          "job_id": "m73-a-c3-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001301,
+          "job_id": "m73-a-c3-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001302,
+          "job_id": "m73-a-c3-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001302,
+          "job_id": "m73-a-c3-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001303,
+          "job_id": "m73-a-c3-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001303,
+          "job_id": "m73-a-c3-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001304,
+          "job_id": "m73-a-c3-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001304,
+          "job_id": "m73-a-c3-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001305,
+          "job_id": "m73-a-c3-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001305,
+          "job_id": "m73-a-c3-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001306,
+          "job_id": "m73-a-c3-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001306,
+          "job_id": "m73-a-c3-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001307,
+          "job_id": "m73-a-c3-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001307,
+          "job_id": "m73-a-c3-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001308,
+          "job_id": "m73-a-c3-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001308,
+          "job_id": "m73-a-c3-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001309,
+          "job_id": "m73-a-c3-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001309,
+          "job_id": "m73-a-c3-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001310,
+          "job_id": "m73-a-c3-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001310,
+          "job_id": "m73-a-c3-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001311,
+          "job_id": "m73-a-c3-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001311,
+          "job_id": "m73-a-c3-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001312,
+          "job_id": "m73-a-c3-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001312,
+          "job_id": "m73-a-c3-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001313,
+          "job_id": "m73-a-c3-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001313,
+          "job_id": "m73-a-c3-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001314,
+          "job_id": "m73-a-c3-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001314,
+          "job_id": "m73-a-c3-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001315,
+          "job_id": "m73-a-c3-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001315,
+          "job_id": "m73-a-c3-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001316,
+          "job_id": "m73-a-c3-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001316,
+          "job_id": "m73-a-c3-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001317,
+          "job_id": "m73-a-c3-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001317,
+          "job_id": "m73-a-c3-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001318,
+          "job_id": "m73-a-c3-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001318,
+          "job_id": "m73-a-c3-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001319,
+          "job_id": "m73-a-c3-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001319,
+          "job_id": "m73-a-c3-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001320,
+          "job_id": "m73-a-c3-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001320,
+          "job_id": "m73-a-c3-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001321,
+          "job_id": "m73-a-c3-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001321,
+          "job_id": "m73-a-c3-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001322,
+          "job_id": "m73-a-c3-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001322,
+          "job_id": "m73-a-c3-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001323,
+          "job_id": "m73-a-c3-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001323,
+          "job_id": "m73-a-c3-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001324,
+          "job_id": "m73-a-c3-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001324,
+          "job_id": "m73-a-c3-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001325,
+          "job_id": "m73-a-c3-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001325,
+          "job_id": "m73-a-c3-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001326,
+          "job_id": "m73-a-c3-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001326,
+          "job_id": "m73-a-c3-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001327,
+          "job_id": "m73-a-c3-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001327,
+          "job_id": "m73-a-c3-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001328,
+          "job_id": "m73-a-c3-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001328,
+          "job_id": "m73-a-c3-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001329,
+          "job_id": "m73-a-c3-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001329,
+          "job_id": "m73-a-c3-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001330,
+          "job_id": "m73-a-c3-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001330,
+          "job_id": "m73-a-c3-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001331,
+          "job_id": "m73-a-c3-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001331,
+          "job_id": "m73-a-c3-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001332,
+          "job_id": "m73-a-c3-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001332,
+          "job_id": "m73-a-c3-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001333,
+          "job_id": "m73-a-c3-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001333,
+          "job_id": "m73-a-c3-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001334,
+          "job_id": "m73-a-c3-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001334,
+          "job_id": "m73-a-c3-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001335,
+          "job_id": "m73-a-c3-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001335,
+          "job_id": "m73-a-c3-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001336,
+          "job_id": "m73-a-c3-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001336,
+          "job_id": "m73-a-c3-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001337,
+          "job_id": "m73-a-c3-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001337,
+          "job_id": "m73-a-c3-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001338,
+          "job_id": "m73-a-c3-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001338,
+          "job_id": "m73-a-c3-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001339,
+          "job_id": "m73-a-c3-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001339,
+          "job_id": "m73-a-c3-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001340,
+          "job_id": "m73-a-c3-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001340,
+          "job_id": "m73-a-c3-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001341,
+          "job_id": "m73-a-c3-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001341,
+          "job_id": "m73-a-c3-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001342,
+          "job_id": "m73-a-c3-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001342,
+          "job_id": "m73-a-c3-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001343,
+          "job_id": "m73-a-c3-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001343,
+          "job_id": "m73-a-c3-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001344,
+          "job_id": "m73-a-c3-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001344,
+          "job_id": "m73-a-c3-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001345,
+          "job_id": "m73-a-c3-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001345,
+          "job_id": "m73-a-c3-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001346,
+          "job_id": "m73-a-c3-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001346,
+          "job_id": "m73-a-c3-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001347,
+          "job_id": "m73-a-c3-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001347,
+          "job_id": "m73-a-c3-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001348,
+          "job_id": "m73-a-c3-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001348,
+          "job_id": "m73-a-c3-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001349,
+          "job_id": "m73-a-c3-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001349,
+          "job_id": "m73-a-c3-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001350,
+          "job_id": "m73-a-c3-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001350,
+          "job_id": "m73-a-c3-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001351,
+          "job_id": "m73-a-c3-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001351,
+          "job_id": "m73-a-c3-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001352,
+          "job_id": "m73-a-c3-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001352,
+          "job_id": "m73-a-c3-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001353,
+          "job_id": "m73-a-c3-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001353,
+          "job_id": "m73-a-c3-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001354,
+          "job_id": "m73-a-c3-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001354,
+          "job_id": "m73-a-c3-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001355,
+          "job_id": "m73-a-c3-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001355,
+          "job_id": "m73-a-c3-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001356,
+          "job_id": "m73-a-c3-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001356,
+          "job_id": "m73-a-c3-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001357,
+          "job_id": "m73-a-c3-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001357,
+          "job_id": "m73-a-c3-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001358,
+          "job_id": "m73-a-c3-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001358,
+          "job_id": "m73-a-c3-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001359,
+          "job_id": "m73-a-c3-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001359,
+          "job_id": "m73-a-c3-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001360,
+          "job_id": "m73-a-c3-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001360,
+          "job_id": "m73-a-c3-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001361,
+          "job_id": "m73-a-c3-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001361,
+          "job_id": "m73-a-c3-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001362,
+          "job_id": "m73-a-c3-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001362,
+          "job_id": "m73-a-c3-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001363,
+          "job_id": "m73-a-c3-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001363,
+          "job_id": "m73-a-c3-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001364,
+          "job_id": "m73-a-c3-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001364,
+          "job_id": "m73-a-c3-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001365,
+          "job_id": "m73-a-c3-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001365,
+          "job_id": "m73-a-c3-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001366,
+          "job_id": "m73-a-c3-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001366,
+          "job_id": "m73-a-c3-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001367,
+          "job_id": "m73-a-c3-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001367,
+          "job_id": "m73-a-c3-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001368,
+          "job_id": "m73-a-c3-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001368,
+          "job_id": "m73-a-c3-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001369,
+          "job_id": "m73-a-c3-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001369,
+          "job_id": "m73-a-c3-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001370,
+          "job_id": "m73-a-c3-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001370,
+          "job_id": "m73-a-c3-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001371,
+          "job_id": "m73-a-c3-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001371,
+          "job_id": "m73-a-c3-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001372,
+          "job_id": "m73-a-c3-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001372,
+          "job_id": "m73-a-c3-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001373,
+          "job_id": "m73-a-c3-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001373,
+          "job_id": "m73-a-c3-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001374,
+          "job_id": "m73-a-c3-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001374,
+          "job_id": "m73-a-c3-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001375,
+          "job_id": "m73-a-c3-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001375,
+          "job_id": "m73-a-c3-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001376,
+          "job_id": "m73-a-c3-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001376,
+          "job_id": "m73-a-c3-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001377,
+          "job_id": "m73-a-c3-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001377,
+          "job_id": "m73-a-c3-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001378,
+          "job_id": "m73-a-c3-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001378,
+          "job_id": "m73-a-c3-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001379,
+          "job_id": "m73-a-c3-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001379,
+          "job_id": "m73-a-c3-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001380,
+          "job_id": "m73-a-c3-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001380,
+          "job_id": "m73-a-c3-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001381,
+          "job_id": "m73-a-c3-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001381,
+          "job_id": "m73-a-c3-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001382,
+          "job_id": "m73-a-c3-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001382,
+          "job_id": "m73-a-c3-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001383,
+          "job_id": "m73-a-c3-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001383,
+          "job_id": "m73-a-c3-b127-s1",
+          "opponent_id": "beta"
+        }
+      ],
+      [
+        {
+          "actor": 0,
+          "environment_seed": 11001384,
+          "job_id": "m73-a-c4-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001384,
+          "job_id": "m73-a-c4-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001385,
+          "job_id": "m73-a-c4-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001385,
+          "job_id": "m73-a-c4-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001386,
+          "job_id": "m73-a-c4-b2-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001386,
+          "job_id": "m73-a-c4-b2-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001387,
+          "job_id": "m73-a-c4-b3-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001387,
+          "job_id": "m73-a-c4-b3-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001388,
+          "job_id": "m73-a-c4-b4-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001388,
+          "job_id": "m73-a-c4-b4-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001389,
+          "job_id": "m73-a-c4-b5-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001389,
+          "job_id": "m73-a-c4-b5-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001390,
+          "job_id": "m73-a-c4-b6-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001390,
+          "job_id": "m73-a-c4-b6-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001391,
+          "job_id": "m73-a-c4-b7-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001391,
+          "job_id": "m73-a-c4-b7-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001392,
+          "job_id": "m73-a-c4-b8-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001392,
+          "job_id": "m73-a-c4-b8-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001393,
+          "job_id": "m73-a-c4-b9-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001393,
+          "job_id": "m73-a-c4-b9-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001394,
+          "job_id": "m73-a-c4-b10-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001394,
+          "job_id": "m73-a-c4-b10-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001395,
+          "job_id": "m73-a-c4-b11-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001395,
+          "job_id": "m73-a-c4-b11-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001396,
+          "job_id": "m73-a-c4-b12-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001396,
+          "job_id": "m73-a-c4-b12-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001397,
+          "job_id": "m73-a-c4-b13-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001397,
+          "job_id": "m73-a-c4-b13-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001398,
+          "job_id": "m73-a-c4-b14-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001398,
+          "job_id": "m73-a-c4-b14-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001399,
+          "job_id": "m73-a-c4-b15-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001399,
+          "job_id": "m73-a-c4-b15-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001400,
+          "job_id": "m73-a-c4-b16-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001400,
+          "job_id": "m73-a-c4-b16-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001401,
+          "job_id": "m73-a-c4-b17-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001401,
+          "job_id": "m73-a-c4-b17-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001402,
+          "job_id": "m73-a-c4-b18-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001402,
+          "job_id": "m73-a-c4-b18-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001403,
+          "job_id": "m73-a-c4-b19-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001403,
+          "job_id": "m73-a-c4-b19-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001404,
+          "job_id": "m73-a-c4-b20-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001404,
+          "job_id": "m73-a-c4-b20-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001405,
+          "job_id": "m73-a-c4-b21-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001405,
+          "job_id": "m73-a-c4-b21-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001406,
+          "job_id": "m73-a-c4-b22-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001406,
+          "job_id": "m73-a-c4-b22-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001407,
+          "job_id": "m73-a-c4-b23-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001407,
+          "job_id": "m73-a-c4-b23-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001408,
+          "job_id": "m73-a-c4-b24-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001408,
+          "job_id": "m73-a-c4-b24-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001409,
+          "job_id": "m73-a-c4-b25-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001409,
+          "job_id": "m73-a-c4-b25-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001410,
+          "job_id": "m73-a-c4-b26-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001410,
+          "job_id": "m73-a-c4-b26-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001411,
+          "job_id": "m73-a-c4-b27-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001411,
+          "job_id": "m73-a-c4-b27-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001412,
+          "job_id": "m73-a-c4-b28-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001412,
+          "job_id": "m73-a-c4-b28-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001413,
+          "job_id": "m73-a-c4-b29-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001413,
+          "job_id": "m73-a-c4-b29-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001414,
+          "job_id": "m73-a-c4-b30-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001414,
+          "job_id": "m73-a-c4-b30-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001415,
+          "job_id": "m73-a-c4-b31-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001415,
+          "job_id": "m73-a-c4-b31-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001416,
+          "job_id": "m73-a-c4-b32-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001416,
+          "job_id": "m73-a-c4-b32-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001417,
+          "job_id": "m73-a-c4-b33-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001417,
+          "job_id": "m73-a-c4-b33-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001418,
+          "job_id": "m73-a-c4-b34-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001418,
+          "job_id": "m73-a-c4-b34-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001419,
+          "job_id": "m73-a-c4-b35-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001419,
+          "job_id": "m73-a-c4-b35-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001420,
+          "job_id": "m73-a-c4-b36-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001420,
+          "job_id": "m73-a-c4-b36-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001421,
+          "job_id": "m73-a-c4-b37-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001421,
+          "job_id": "m73-a-c4-b37-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001422,
+          "job_id": "m73-a-c4-b38-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001422,
+          "job_id": "m73-a-c4-b38-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001423,
+          "job_id": "m73-a-c4-b39-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001423,
+          "job_id": "m73-a-c4-b39-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001424,
+          "job_id": "m73-a-c4-b40-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001424,
+          "job_id": "m73-a-c4-b40-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001425,
+          "job_id": "m73-a-c4-b41-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001425,
+          "job_id": "m73-a-c4-b41-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001426,
+          "job_id": "m73-a-c4-b42-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001426,
+          "job_id": "m73-a-c4-b42-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001427,
+          "job_id": "m73-a-c4-b43-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001427,
+          "job_id": "m73-a-c4-b43-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001428,
+          "job_id": "m73-a-c4-b44-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001428,
+          "job_id": "m73-a-c4-b44-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001429,
+          "job_id": "m73-a-c4-b45-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001429,
+          "job_id": "m73-a-c4-b45-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001430,
+          "job_id": "m73-a-c4-b46-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001430,
+          "job_id": "m73-a-c4-b46-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001431,
+          "job_id": "m73-a-c4-b47-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001431,
+          "job_id": "m73-a-c4-b47-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001432,
+          "job_id": "m73-a-c4-b48-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001432,
+          "job_id": "m73-a-c4-b48-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001433,
+          "job_id": "m73-a-c4-b49-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001433,
+          "job_id": "m73-a-c4-b49-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001434,
+          "job_id": "m73-a-c4-b50-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001434,
+          "job_id": "m73-a-c4-b50-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001435,
+          "job_id": "m73-a-c4-b51-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001435,
+          "job_id": "m73-a-c4-b51-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001436,
+          "job_id": "m73-a-c4-b52-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001436,
+          "job_id": "m73-a-c4-b52-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001437,
+          "job_id": "m73-a-c4-b53-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001437,
+          "job_id": "m73-a-c4-b53-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001438,
+          "job_id": "m73-a-c4-b54-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001438,
+          "job_id": "m73-a-c4-b54-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001439,
+          "job_id": "m73-a-c4-b55-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001439,
+          "job_id": "m73-a-c4-b55-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001440,
+          "job_id": "m73-a-c4-b56-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001440,
+          "job_id": "m73-a-c4-b56-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001441,
+          "job_id": "m73-a-c4-b57-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001441,
+          "job_id": "m73-a-c4-b57-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001442,
+          "job_id": "m73-a-c4-b58-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001442,
+          "job_id": "m73-a-c4-b58-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001443,
+          "job_id": "m73-a-c4-b59-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001443,
+          "job_id": "m73-a-c4-b59-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001444,
+          "job_id": "m73-a-c4-b60-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001444,
+          "job_id": "m73-a-c4-b60-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001445,
+          "job_id": "m73-a-c4-b61-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001445,
+          "job_id": "m73-a-c4-b61-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001446,
+          "job_id": "m73-a-c4-b62-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001446,
+          "job_id": "m73-a-c4-b62-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001447,
+          "job_id": "m73-a-c4-b63-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001447,
+          "job_id": "m73-a-c4-b63-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001448,
+          "job_id": "m73-a-c4-b64-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001448,
+          "job_id": "m73-a-c4-b64-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001449,
+          "job_id": "m73-a-c4-b65-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001449,
+          "job_id": "m73-a-c4-b65-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001450,
+          "job_id": "m73-a-c4-b66-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001450,
+          "job_id": "m73-a-c4-b66-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001451,
+          "job_id": "m73-a-c4-b67-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001451,
+          "job_id": "m73-a-c4-b67-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001452,
+          "job_id": "m73-a-c4-b68-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001452,
+          "job_id": "m73-a-c4-b68-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001453,
+          "job_id": "m73-a-c4-b69-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001453,
+          "job_id": "m73-a-c4-b69-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001454,
+          "job_id": "m73-a-c4-b70-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001454,
+          "job_id": "m73-a-c4-b70-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001455,
+          "job_id": "m73-a-c4-b71-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001455,
+          "job_id": "m73-a-c4-b71-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001456,
+          "job_id": "m73-a-c4-b72-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001456,
+          "job_id": "m73-a-c4-b72-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001457,
+          "job_id": "m73-a-c4-b73-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001457,
+          "job_id": "m73-a-c4-b73-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001458,
+          "job_id": "m73-a-c4-b74-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001458,
+          "job_id": "m73-a-c4-b74-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001459,
+          "job_id": "m73-a-c4-b75-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001459,
+          "job_id": "m73-a-c4-b75-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001460,
+          "job_id": "m73-a-c4-b76-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001460,
+          "job_id": "m73-a-c4-b76-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001461,
+          "job_id": "m73-a-c4-b77-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001461,
+          "job_id": "m73-a-c4-b77-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001462,
+          "job_id": "m73-a-c4-b78-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001462,
+          "job_id": "m73-a-c4-b78-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001463,
+          "job_id": "m73-a-c4-b79-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001463,
+          "job_id": "m73-a-c4-b79-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001464,
+          "job_id": "m73-a-c4-b80-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001464,
+          "job_id": "m73-a-c4-b80-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001465,
+          "job_id": "m73-a-c4-b81-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001465,
+          "job_id": "m73-a-c4-b81-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001466,
+          "job_id": "m73-a-c4-b82-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001466,
+          "job_id": "m73-a-c4-b82-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001467,
+          "job_id": "m73-a-c4-b83-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001467,
+          "job_id": "m73-a-c4-b83-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001468,
+          "job_id": "m73-a-c4-b84-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001468,
+          "job_id": "m73-a-c4-b84-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001469,
+          "job_id": "m73-a-c4-b85-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001469,
+          "job_id": "m73-a-c4-b85-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001470,
+          "job_id": "m73-a-c4-b86-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001470,
+          "job_id": "m73-a-c4-b86-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001471,
+          "job_id": "m73-a-c4-b87-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001471,
+          "job_id": "m73-a-c4-b87-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001472,
+          "job_id": "m73-a-c4-b88-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001472,
+          "job_id": "m73-a-c4-b88-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001473,
+          "job_id": "m73-a-c4-b89-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001473,
+          "job_id": "m73-a-c4-b89-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001474,
+          "job_id": "m73-a-c4-b90-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001474,
+          "job_id": "m73-a-c4-b90-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001475,
+          "job_id": "m73-a-c4-b91-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001475,
+          "job_id": "m73-a-c4-b91-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001476,
+          "job_id": "m73-a-c4-b92-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001476,
+          "job_id": "m73-a-c4-b92-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001477,
+          "job_id": "m73-a-c4-b93-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001477,
+          "job_id": "m73-a-c4-b93-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001478,
+          "job_id": "m73-a-c4-b94-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001478,
+          "job_id": "m73-a-c4-b94-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001479,
+          "job_id": "m73-a-c4-b95-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001479,
+          "job_id": "m73-a-c4-b95-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001480,
+          "job_id": "m73-a-c4-b96-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001480,
+          "job_id": "m73-a-c4-b96-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001481,
+          "job_id": "m73-a-c4-b97-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001481,
+          "job_id": "m73-a-c4-b97-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001482,
+          "job_id": "m73-a-c4-b98-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001482,
+          "job_id": "m73-a-c4-b98-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001483,
+          "job_id": "m73-a-c4-b99-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001483,
+          "job_id": "m73-a-c4-b99-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001484,
+          "job_id": "m73-a-c4-b100-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001484,
+          "job_id": "m73-a-c4-b100-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001485,
+          "job_id": "m73-a-c4-b101-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001485,
+          "job_id": "m73-a-c4-b101-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001486,
+          "job_id": "m73-a-c4-b102-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001486,
+          "job_id": "m73-a-c4-b102-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001487,
+          "job_id": "m73-a-c4-b103-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001487,
+          "job_id": "m73-a-c4-b103-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001488,
+          "job_id": "m73-a-c4-b104-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001488,
+          "job_id": "m73-a-c4-b104-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001489,
+          "job_id": "m73-a-c4-b105-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001489,
+          "job_id": "m73-a-c4-b105-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001490,
+          "job_id": "m73-a-c4-b106-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001490,
+          "job_id": "m73-a-c4-b106-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001491,
+          "job_id": "m73-a-c4-b107-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001491,
+          "job_id": "m73-a-c4-b107-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001492,
+          "job_id": "m73-a-c4-b108-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001492,
+          "job_id": "m73-a-c4-b108-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001493,
+          "job_id": "m73-a-c4-b109-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001493,
+          "job_id": "m73-a-c4-b109-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001494,
+          "job_id": "m73-a-c4-b110-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001494,
+          "job_id": "m73-a-c4-b110-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001495,
+          "job_id": "m73-a-c4-b111-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001495,
+          "job_id": "m73-a-c4-b111-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001496,
+          "job_id": "m73-a-c4-b112-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001496,
+          "job_id": "m73-a-c4-b112-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001497,
+          "job_id": "m73-a-c4-b113-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001497,
+          "job_id": "m73-a-c4-b113-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001498,
+          "job_id": "m73-a-c4-b114-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001498,
+          "job_id": "m73-a-c4-b114-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001499,
+          "job_id": "m73-a-c4-b115-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001499,
+          "job_id": "m73-a-c4-b115-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001500,
+          "job_id": "m73-a-c4-b116-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001500,
+          "job_id": "m73-a-c4-b116-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001501,
+          "job_id": "m73-a-c4-b117-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001501,
+          "job_id": "m73-a-c4-b117-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001502,
+          "job_id": "m73-a-c4-b118-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001502,
+          "job_id": "m73-a-c4-b118-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001503,
+          "job_id": "m73-a-c4-b119-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001503,
+          "job_id": "m73-a-c4-b119-s1",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001504,
+          "job_id": "m73-a-c4-b120-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001504,
+          "job_id": "m73-a-c4-b120-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001505,
+          "job_id": "m73-a-c4-b121-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001505,
+          "job_id": "m73-a-c4-b121-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001506,
+          "job_id": "m73-a-c4-b122-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001506,
+          "job_id": "m73-a-c4-b122-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001507,
+          "job_id": "m73-a-c4-b123-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001507,
+          "job_id": "m73-a-c4-b123-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001508,
+          "job_id": "m73-a-c4-b124-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001508,
+          "job_id": "m73-a-c4-b124-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001509,
+          "job_id": "m73-a-c4-b125-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001509,
+          "job_id": "m73-a-c4-b125-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001510,
+          "job_id": "m73-a-c4-b126-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001510,
+          "job_id": "m73-a-c4-b126-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11001511,
+          "job_id": "m73-a-c4-b127-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11001511,
+          "job_id": "m73-a-c4-b127-s1",
+          "opponent_id": "beta"
+        }
+      ]
+    ],
+    "format": "prism-ppo-arena-v1",
+    "learner": {
+      "program": "@engine",
+      "sha256": "@engine_sha256"
+    },
+    "limits": {
+      "campaign_cpu_seconds": 40000,
+      "game_cpu_seconds": 30,
+      "game_wall_seconds": 90,
+      "handshake_timeout_ms": 10000,
+      "max_infra_retries": 0,
+      "max_physical_decisions": 262144,
+      "max_plies": 256,
+      "memory_bytes": 8589934592,
+      "move_timeout_ms": 10000,
+      "shutdown_grace_ms": 1000
+    },
+    "opponents": {
+      "alpha": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@alpha",
+          "--seed",
+          "70011002"
+        ],
+        "files": {
+          "@alpha": "@alpha_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "beta": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@beta",
+          "--seed",
+          "70011003"
+        ],
+        "files": {
+          "@beta": "@beta_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "general": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@general",
+          "--seed",
+          "70011000"
+        ],
+        "files": {
+          "@general": "@general_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "parent": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@parent",
+          "--seed",
+          "70011001"
+        ],
+        "files": {
+          "@parent": "@parent_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      }
+    },
+    "parent_weights": "@parent",
+    "run": {
+      "arena_contract_sha256": "",
+      "auditor_sha256": "@engine_sha256",
+      "budget": {
+        "max_attempts": 1024,
+        "max_cycles": 4,
+        "max_decisions": 262144,
+        "max_job_decisions": 256,
+        "max_jobs": 1024,
+        "max_optimizer_steps": 2048,
+        "max_run_seconds": 10800,
+        "max_storage_bytes": 2147483648,
+        "max_update_attempts": 2048
+      },
+      "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+      "cpu_threads": 2,
+      "device": "cpu",
+      "format": "prism-ppo-run-v2",
+      "opponents": {
+        "alpha": "",
+        "beta": "",
+        "general": "",
+        "parent": ""
+      },
+      "parent_sha256": "@parent_sha256",
+      "ppo": {
+        "clip_epsilon": 0.2,
+        "entropy_weight": 0.01,
+        "gae_lambda": 0.95,
+        "logp_tolerance": 1e-06,
+        "lr": 3e-05,
+        "max_grad_norm": 1.0,
+        "minibatch_size": 256,
+        "normalize_advantage": true,
+        "passes": 2,
+        "style_beta": 0.0,
+        "style_value_weight": 0.0,
+        "target_kl": 0.02,
+        "value_tolerance": 1e-06,
+        "value_weight": 0.5,
+        "weight_decay": 0.0
+      },
+      "run_id": "m73-a",
+      "seed": 73010001
+    }
+  },
+  "weight_hashes": {
+    "alpha": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+    "beta": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+    "general": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "parent": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4"
+  }
+}

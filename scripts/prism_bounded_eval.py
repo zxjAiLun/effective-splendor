@@ -396,7 +396,12 @@ def inspect(output):
     else:
         # JSON sorts ledger keys; re-add in dispatch order to preserve floating
         # point accounting for valid non-sorted seed cohorts.
-        total = sum(measured_cpu[key] for key in expected if key in measured_cpu)
+        # Python 3.12's sum(float) uses compensated summation; dispatch uses
+        # repeated +=. Reproduce dispatch arithmetic exactly, even at one ULP.
+        total = 0.
+        for key in expected:
+            if key in measured_cpu:
+                total += measured_cpu[key]
         require(consumed == total, "ledger CPU total drift")
     if ledger["execution_state"] == "FINISHED":
         require(set(ledger["entries"]) == set(expected)

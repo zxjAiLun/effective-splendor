@@ -210,6 +210,20 @@ class BoundedEvaluationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "ledger CPU total drift"):
             bounded.inspect(self.output)
 
+    def test_linux_float_sum_matches_dispatch_accumulation_exactly(self):
+        self.prepare()
+        values=[.318724,.309263,.313309,.35859199999999997]
+        base=self.launch()
+        def launch(*args,**kwargs):
+            result=base(*args,**kwargs)
+            result['cpu_seconds']=values[len(self.calls)-1]
+            return result
+        with patch.object(bounded,'launch',side_effect=launch):
+            result=bounded.run(self.output)
+        expected=0.
+        for value in values:expected+=value
+        self.assertEqual(result['consumed_cpu_seconds'],expected)
+
     def test_cpu_sum_preserves_dispatch_order_for_unsorted_seed_cohort(self):
         self.fixture.config["seeds"] = [943002, 943001]
         self.fixture.write_config()

@@ -1,0 +1,60 @@
+{
+  "a_consumed_cpu_seconds": 2321.3838239999995,
+  "a_consumed_wall_seconds": 1734.5825650080005,
+  "adapter_sha256": "d7d9c3e157b5212420572b629c97ddb29c42295fd98d99fcf10126b101328f67",
+  "authorization": {
+    "authorized_end": "complete original three final c4 arms, frozen independent 19456 grid, audits and reports; no next round or release/deployment",
+    "request": "那你为什么不顺道开始跑之前没跑完的轮次呢？非得让dsw空着是吧",
+    "source": "human_owner"
+  },
+  "automatic_retries": 0,
+  "committed_games": 768,
+  "consumed_cpu_seconds": 2359.3119459999994,
+  "deadline": 1791517023.6036646,
+  "engineering_entry_correction": "r5 exited before sampling because execute skipped already-entered final c4; preserve original r5 and explicitly finish partial final once",
+  "engineering_games_replayed": 0,
+  "evaluation_games": 19456,
+  "evaluation_storage_reserve_bytes": 4294967296,
+  "existing_attempts_replayed": 0,
+  "failed_job": "m73-a-c4-b8-s0",
+  "failed_state": {
+    "ledger_commit": "2555364dbcc6f694572b9d68f9e319bf5ce4c7b0b82f3c99cc7dc0e8111dda44",
+    "ledger_state_sha256": "6d2ef45eda1cefc6bcc0f4c3dd34e2d5401cd9eb99292e1adbe442c17079409b",
+    "run_commit": "e4df20752645604e6998ec41f761de00794594d935053e418f721937f618e37a",
+    "state": {
+      "model": "af9eac2c9a55e9bbb7fe340063f5983a938c69cc2ac25db4dc29d7499deb0e7c",
+      "optimizer": "85c2e24c19167ff5642cd8dd708fd12e876fa1332b6aa42e3544fcde6cd79766",
+      "progress": "5a9f73348d620d2d86a63faeac4a70fcbb6bccbdeb1fed852ed6131c9bed311e",
+      "rng": "0a41b9cddb204fefebc4e2d41b5648160e8f3220e874348976b4d470fe78715b"
+    }
+  },
+  "format": "m73-owner-authorized-resource-recovery-r6",
+  "git_commit_performed": false,
+  "minimum_free_reserve_bytes": 8589934592,
+  "new_engineering_games": 0,
+  "original_budget_sha256": "96a5c79ce5d3640d37d61e73f099b3dffe035540ce172f4e0c34be6fbea2c596",
+  "original_execution_sha256": "2d5060afa9fae2a9e5342a400429710f6e010ef1e1c804c3d7170a525303a1fa",
+  "original_failure_snapshot": "pre-recovery-readback.json",
+  "original_started_at": 1791473823.6036646,
+  "partial_c4_games_retained": 16,
+  "physical_attempts_already_completed": 784,
+  "predecessor_control_recovery_files": {
+    "continuation-r5/policy.json": "1ccda990580dfbd8ce4fb435c2901c4cebed2da55b19e1686bdbe3da9b5774d4",
+    "continuation-r5/recovery.json": "229ccdcfcc2bf0b57b76b9722f90465f0fda73bf57192736a5615112d43a510c",
+    "continuation-r5/train-a/completion.json": "329e7242fd7fd6523ff05c8e37e8f659808fc8911200b89bf0a2224aa57abf21"
+  },
+  "remaining_training_games": 2288,
+  "resource_changes": [
+    "training cap 2GiB to8GiB",
+    "round cap16GiB to24GiB",
+    "retain started_at; per-arm active wall/CPU deduct prior consumption; preserve round absolute deadline"
+  ],
+  "scientific_changes": [],
+  "source_worktree_head": "e0018fd58fb973253d16000d59bf1b1aae62046a",
+  "storage_per_training_bytes": 8589934592,
+  "storage_total_bytes": 25769803776,
+  "tests_sha256": "94ae95db424d618c2bdd8745314a02c06c0e297780d625f3cc4ce9ca77825b9b",
+  "total_cpu_seconds": 172800,
+  "training_cpu_seconds": 40000,
+  "training_wall_seconds": 10800
+}

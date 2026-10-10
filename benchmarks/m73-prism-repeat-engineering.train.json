@@ -1,0 +1,214 @@
+{
+  "cancel_fixture": false,
+  "format": "prism-portable-blueprint-v1",
+  "model_label": "M73 engineering-only",
+  "purpose": "fixed-B-M70-recipe-independent-repeat",
+  "template": {
+    "arena": {
+      "engine_version": "0.4.0",
+      "program": "@engine",
+      "protocol_version": "0.5",
+      "ruleset": "splendor-base-v1",
+      "sha256": "@engine_sha256"
+    },
+    "cycles": [
+      [
+        {
+          "actor": 0,
+          "environment_seed": 11000000,
+          "job_id": "m73-engineering-c1-b0-s0",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11000000,
+          "job_id": "m73-engineering-c1-b0-s1",
+          "opponent_id": "general"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11000001,
+          "job_id": "m73-engineering-c1-b1-s0",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11000001,
+          "job_id": "m73-engineering-c1-b1-s1",
+          "opponent_id": "parent"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11000002,
+          "job_id": "m73-engineering-c1-b2-s0",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11000002,
+          "job_id": "m73-engineering-c1-b2-s1",
+          "opponent_id": "alpha"
+        },
+        {
+          "actor": 0,
+          "environment_seed": 11000003,
+          "job_id": "m73-engineering-c1-b3-s0",
+          "opponent_id": "beta"
+        },
+        {
+          "actor": 1,
+          "environment_seed": 11000003,
+          "job_id": "m73-engineering-c1-b3-s1",
+          "opponent_id": "beta"
+        }
+      ]
+    ],
+    "format": "prism-ppo-arena-v1",
+    "learner": {
+      "program": "@engine",
+      "sha256": "@engine_sha256"
+    },
+    "limits": {
+      "campaign_cpu_seconds": 2400,
+      "game_cpu_seconds": 30,
+      "game_wall_seconds": 90,
+      "handshake_timeout_ms": 10000,
+      "max_infra_retries": 0,
+      "max_physical_decisions": 2048,
+      "max_plies": 256,
+      "memory_bytes": 8589934592,
+      "move_timeout_ms": 10000,
+      "shutdown_grace_ms": 1000
+    },
+    "opponents": {
+      "alpha": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@alpha",
+          "--seed",
+          "70011002"
+        ],
+        "files": {
+          "@alpha": "@alpha_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "beta": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@beta",
+          "--seed",
+          "70011003"
+        ],
+        "files": {
+          "@beta": "@beta_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "general": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@general",
+          "--seed",
+          "70011000"
+        ],
+        "files": {
+          "@general": "@general_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      },
+      "parent": {
+        "args": [
+          "agent-prism",
+          "--weights",
+          "@parent",
+          "--seed",
+          "70011001"
+        ],
+        "files": {
+          "@parent": "@parent_sha256"
+        },
+        "hello": {
+          "agent_name": "prism-v0.1",
+          "agent_version": "0.1.0"
+        },
+        "mode": "greedy",
+        "program": "@engine",
+        "sha256": "@engine_sha256"
+      }
+    },
+    "parent_weights": "@parent",
+    "run": {
+      "arena_contract_sha256": "",
+      "auditor_sha256": "@engine_sha256",
+      "budget": {
+        "max_attempts": 8,
+        "max_cycles": 1,
+        "max_decisions": 2048,
+        "max_job_decisions": 256,
+        "max_jobs": 8,
+        "max_optimizer_steps": 2048,
+        "max_run_seconds": 1200,
+        "max_storage_bytes": 2147483648,
+        "max_update_attempts": 2048
+      },
+      "catalog_fingerprint": "1c43f598b23017fab5e9d8b0083942ad1a921d1df804f90d16cd0b4753961afb",
+      "cpu_threads": 2,
+      "device": "cpu",
+      "format": "prism-ppo-run-v2",
+      "opponents": {
+        "alpha": "",
+        "beta": "",
+        "general": "",
+        "parent": ""
+      },
+      "parent_sha256": "@parent_sha256",
+      "ppo": {
+        "clip_epsilon": 0.2,
+        "entropy_weight": 0.01,
+        "gae_lambda": 0.95,
+        "logp_tolerance": 1e-06,
+        "lr": 3e-05,
+        "max_grad_norm": 1.0,
+        "minibatch_size": 256,
+        "normalize_advantage": true,
+        "passes": 2,
+        "style_beta": 0.0,
+        "style_value_weight": 0.0,
+        "target_kl": 0.02,
+        "value_tolerance": 1e-06,
+        "value_weight": 0.5,
+        "weight_decay": 0.0
+      },
+      "run_id": "m73-engineering",
+      "seed": 73000001
+    }
+  },
+  "weight_hashes": {
+    "alpha": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9",
+    "beta": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb",
+    "general": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85",
+    "parent": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4"
+  }
+}

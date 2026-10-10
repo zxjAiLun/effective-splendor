@@ -1,0 +1,11 @@
+{
+  "adapter": "m73-bounded-v1",
+  "complete_markdown_sha256": "23d5e10a8e67b8dfd6fa28031586527660c8bdf7ecfd9aa5a1fe975b3e8b5544",
+  "format": "prism-reading-receipt-v1",
+  "games_dispatched": 0,
+  "html_sha256": "cf1056c616bbd2a092bd807f5eb9d8d5bd3a4a1997c4d860d84742afeffb8eb5",
+  "pixel_visual": "NOT_VERIFIED",
+  "reading_markdown_sha256": "3f43fcc6e70907f7f744b82051c305cd74c072d7e5c668edcb0a1c9f948a1daf",
+  "result_sha256": "32e6f524cd6aa8a8a1d60228de3fc8e1aa693cdeb8ac8bfb0e0f50dfb85aaaab",
+  "spec_sha256": "8d000f34bc61b078ab3b5bbd5ff13224346e7f3ad5336a7afaa445d641705b1d"
+}

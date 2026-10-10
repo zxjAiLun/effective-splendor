@@ -83,7 +83,16 @@ def load(spec_path):
 
 
 def build(spec_path):
+    if json.loads(spec_path.read_text(encoding='utf-8')).get('format')=='prism-registered-reading-revision-v1':
+        from scripts.prism_bounded_release import build_reading
+        return build_reading(spec_path,ROOT,TEMPLATES)
     header = json.loads(spec_path.read_text(encoding='utf-8'))
+    if header.get('format') == 'prism-m74-bounded-reading-v1':
+        from scripts.prism_m74_reading import build as build_m74
+        return build_m74(spec_path, ROOT, TEMPLATES)
+    if header.get('format') == 'prism-m73-bounded-reading-v1':
+        from scripts.prism_m73_reading import build as build_m73
+        return build_m73(spec_path, ROOT, TEMPLATES)
     if header.get('format') == 'prism-greedy-reading-spec-v1':
         from scripts.prism_greedy_reading import build as build_greedy
         return build_greedy(spec_path, ROOT, TEMPLATES)

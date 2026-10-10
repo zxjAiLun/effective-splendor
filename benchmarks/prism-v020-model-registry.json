@@ -55,6 +55,38 @@
         "source_weights": "local-artifacts/prism/m67-alpha-repeat/r2-failure-harvest-20261007/campaigns/b/cycle-20-export/weights.json"
       },
       "designated_data_baseline": false
+    },
+    {
+      "model_id": "prism-balance-v0.2.2",
+      "display_name": "Prism Balance v0.2.2",
+      "original_checkpoint": "M73 seed B final c4",
+      "weights_sha256": "15e14e118e8dd5eb45d199e643c185a382ae5d67a503d446d27eaf575de8bed5",
+      "parent": {
+        "model_id": "prism-balance-v0.2.0",
+        "display_name": "Prism Balance v0.2.0",
+        "source_weights": "local-artifacts/prism/balance-v0.2.0/weights.json",
+        "weights_path": "local-artifacts/prism/balance-v0.2.0/weights.json",
+        "sha256": "e2914425cac49f0f2272c44379e46a43525d97ced2eaac206e8600ebf73e79c4"
+      },
+      "designated_data_baseline": false,
+      "record_path": "benchmarks/m73-prism-balance-v0.2.2.model.json",
+      "record_sha256": "bc9110f627b275c4be051776db04d2a72b88c22d9700bdd1f64357f7505cad2b"
+    },
+    {
+      "model_id": "prism-balance-v0.2.3",
+      "display_name": "Prism Balance v0.2.3",
+      "original_checkpoint": "M74 final c20",
+      "weights_sha256": "e16bfe0d30168d6ef7ceb067ca4357900f1c09e09d35f5759832dd3d6a9258ad",
+      "parent": {
+        "model_id": "prism-balance-v0.2.2",
+        "display_name": "Prism Balance v0.2.2",
+        "source_weights": "local-artifacts/prism/m73-repeat/result-check-20261009/harvest/campaigns/b/cycle-4-export/weights.json",
+        "weights_path": "local-artifacts/prism/balance-v0.2.2/weights.json",
+        "sha256": "15e14e118e8dd5eb45d199e643c185a382ae5d67a503d446d27eaf575de8bed5"
+      },
+      "designated_data_baseline": false,
+      "record_path": "benchmarks/m74-prism-balance-v0.2.3.model.json",
+      "record_sha256": "d358e0a7da7d66f8a5b46425f04b66eae245587a350c7a2564951d34b0db3eee"
     }
   ],
   "baseline_model_id": "prism-balance-v0.2.0",
@@ -63,5 +95,18 @@
   "historical_names_preserved": true,
   "beta_v020": "UNASSIGNED",
   "default_replaced": false,
-  "deployed": false
+  "deployed": false,
+  "authorization_history": [
+    {
+      "source": "human_owner",
+      "date": "2026-10-10",
+      "request": "okay 相对应的更新 (unpublished) 版本的版本号吧",
+      "version_resolution": "Continue the existing Balance research family: M73 B-c4 v0.2.2; its child M74 c20 v0.2.3. Observed style remains undetermined; no promotion/deployment."
+    }
+  ],
+  "latest_registration": {
+    "spec": "benchmarks/m74-prism-generation-release.publication.json",
+    "sha256": "37123e39fe8695c04c0449e016100f2611bf4a271ee8ab3ff7552da395f49618",
+    "date": "2026-10-10"
+  }
 }

@@ -1,12 +1,14 @@
 # Prism 固定研究版本与Balance数据基线
 
-已按用户指定固定三份研究版本；B作为Balance v0.2.0数据参照，A是Alpha v0.2.0，M70是Balance v0.2.1。路线登记与风格确认分开。
+已固定五份研究版本：A为Alpha v0.2.0；M67 B为Balance v0.2.0数据参照；M70为Balance v0.2.1；M73 B为Balance v0.2.2；M74为Balance v0.2.3。后两版沿用Balance研究分支，行为路线待定。
 
 | 固定型号 | 原检查点 | 训练父代 | 用途 |
 | --- | --- | --- | --- |
 | Prism Alpha v0.2.0 | M67 A-c20 | Prism Alpha v0.1.5 | 大牌路线研究版本 |
 | Prism Balance v0.2.0 | M67 B-c20 | Prism Alpha v0.1.5 | 固定数据基线 |
 | Prism Balance v0.2.1 | M70 c4 | Prism Balance v0.2.0 | Balance后续研究版本 |
+| Prism Balance v0.2.2 | M73 B-c4 | Prism Balance v0.2.0 | 固定短程研究模型、M74直接父代 |
+| Prism Balance v0.2.3 | M74 c20 | Prism Balance v0.2.2 | 长程强池迭代，主要增强确认 |
 
 M67 A/B的真实训练父代均为Alpha v0.1.5；M70从B权重fresh AdamW/RNG初始化。给B分配Balance不会改写它的训练血缘。Beta v0.2.0本次没有分配。
 
@@ -37,3 +39,12 @@ M70伴随清单是从原不可变导出及原c4审计新派生的发布文件，
 [版本目录](../../benchmarks/prism-v020-model-registry.json) · [B数据基线](../../benchmarks/prism-balance-data-baseline-v0.2.0.json) · [基线分类政策](../../benchmarks/prism-style-bands-v020.policy.json) · [原命名提案历史](../../benchmarks/prism-v020-identity-proposal.json) · [互动统计页](style-atlas-2026-10-08.html#names)。
 
 发布输入/输出与实际验证回执在 `local-artifacts/prism/style-atlas-20261008/release-r4/`。本次没有新对局/训练/冠军升级/应用部署/提交推送。
+
+## 2026-10-10 后续固定版本
+
+版本顺序不等于每版直接续上一版：M70 v0.2.1和M73 B v0.2.2都直接来自v0.2.0；M74 v0.2.3直接来自v0.2.2。M73原增强未确认的结论保持；M74两项主要增强通过，最新Alpha仍缺1截断。Balance名称沿研究分支，实际风格没有升级为确认。
+
+- [Prism Balance v0.2.2](../../benchmarks/m73-prism-balance-v0.2.2.model.json)：M73 seed B final c4，SHA `15e14e118e8dd5eb45d199e643c185a382ae5d67a503d446d27eaf575de8bed5`；[报告](m73-prism-repeat-comparison-r4.html)。
+- [Prism Balance v0.2.3](../../benchmarks/m74-prism-balance-v0.2.3.model.json)：M74 final c20，SHA `e16bfe0d30168d6ef7ceb067ca4357900f1c09e09d35f5759832dd3d6a9258ad`；[报告](m74-prism-scaleup-comparison-r4.html)。
+
+发布授权、来源与回执见`benchmarks/m74-prism-generation-release.publication.json`及`local-artifacts/prism/m74-scaleup/release-20261010/`；0新局/训练，未默认替换或部署。

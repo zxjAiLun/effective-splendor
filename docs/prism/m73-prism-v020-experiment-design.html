@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="paper" data-mode="auto" data-style="80">
+<html lang="zh-CN" data-theme="blueprint" data-mode="auto" data-style="80">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="Answer me with HTML 0.4.11">
-<title>Prism v0.2 · 下一轮怎么做</title>
+<title>M73 云端建议落实后的实验顺序</title>
 <style>
 html[data-theme="blueprint"], html[data-theme="blueprint"][data-mode="light"] {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -533,216 +533,211 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </head>
 <body>
 <div class="am-toolbar">
-<label class="am-pick">主题<select data-am="theme"><option value="blueprint">图纸</option><option value="shadcn">卡片</option><option value="paper" selected>纸张</option></select></label>
+<label class="am-pick">主题<select data-am="theme"><option value="blueprint" selected>图纸</option><option value="shadcn">卡片</option><option value="paper">纸张</option></select></label>
 <label class="am-pick">明暗<select data-am="mode"><option value="auto" selected>跟随系统</option><option value="light">亮</option><option value="dark">暗</option></select></label>
 <button class="am-btn" type="button" data-am="copy" data-done="已复制 ✓">复制源稿</button>
 </div>
 <main class="am-sheet">
-<header class="am-head"><h1>Prism v0.2 · 下一轮怎么做</h1><p class="am-sub">先验证训练收益能否重复，再分开研究风格</p><div class="am-intro am-md"><div class="am-md"><p>建议从固定 B 重复 M70 的训练配方。三个新 seed 各跑 1,024 局，评测全部最终 c4。</p>
-</div></div></header>
+<header class="am-head"><h1>M73 云端建议落实后的实验顺序</h1><p class="am-sub">固定 B，三次短程重复，先估计收益与异质性</p></header>
 <div class="am-frame">
 <div class="am-ruler am-ruler--top" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="am-ruler am-ruler--bottom" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div><div class="am-ruler am-ruler--left" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div><div class="am-ruler am-ruler--right" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
 <div class="am-grid" style="--cols: 2">
 <section class="am-panel" id="panel-A">
-<header class="am-panel-head"><span class="am-panel-id">A</span><h2>为什么先做重复</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>M70 共同池提升 2.90 个百分点。
-直接对 B 的增强尚未确认。
-目前只有一个训练 seed。
-三个新训练重复能显示收益和差异。</p>
-<p><a href="m70-prism-b-continuation-comparison.html">M70 原证据</a> · <a href="https://arxiv.org/abs/2108.13264">小样本统计依据</a></p>
-</div></div>
+<header class="am-panel-head"><span class="am-panel-id">A</span><h2>当前结论</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--info" role="note"><div class="am-callout-title">设计已修订，执行未授权</div><div class="am-callout-body am-md"><p>继续 PPO，先固定网络、奖励和原对手池。
+训练结束后，三个最终 c4 都评测、都报告。</p>
+</div></div></div>
 </section>
 <section class="am-panel" id="panel-B">
-<header class="am-panel-head"><span class="am-panel-id">B</span><h2>三个固定身份</h2></header>
-<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>模型</th>
-<th>来源</th>
-<th>下一轮用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>Balance v0.2.0</td>
-<td>B-c20</td>
-<td>共同父代与画像基线</td>
-</tr>
-<tr>
-<td>Alpha v0.2.0</td>
-<td>A-c20</td>
-<td>固定对手与后续Alpha起点</td>
-</tr>
-<tr>
-<td>Balance v0.2.1</td>
-<td>M70 c4</td>
-<td>固定后继参照</td>
-</tr>
-</tbody></table></div>
-<p>版本固定不代表风格已统计确认。
-三个新候选都从 B 独立出发。</p>
-</div></div>
+<header class="am-panel-head"><span class="am-panel-id">B</span><h2>研究顺序</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 190 387" width="190" height="387" role="img" aria-label="流程图：最小测量与 Linux 验收、固定 B 三次短程重复、按精度解释结果、旧池与新池同预算对照、可控风格研究" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M94.8,49 L94.8,60.5 Q94.8,72 94.8,83.5 L94.8,95" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M94.8,130 L94.8,141.5 Q94.8,153 94.8,164.5 L94.8,176" marker-end="url(#am1-arrow)"/></g><g data-step="2"><path class="am-edge" d="M94.8,211 L94.8,222.5 Q94.8,234 94.8,245.5 L94.8,257" marker-end="url(#am1-arrow)"/></g><g data-step="3"><path class="am-edge" d="M94.8,292 L94.8,303.5 Q94.8,315 94.8,326.5 L94.8,338" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--rect" data-key="最小测量与 Linux 验收" data-step="0"><rect class="am-node-shape" x="14" y="14" width="161.6" height="35" rx="3"/><text x="94.8" y="31.5" text-anchor="middle" dominant-baseline="central">最小测量与 Linux 验收</text></g><g class="am-node am-node--rect" data-key="固定 B 三次短程重复" data-step="0"><rect class="am-node-shape" x="20.5" y="95" width="148.6" height="35" rx="3"/><text x="94.8" y="112.5" text-anchor="middle" dominant-baseline="central">固定 B 三次短程重复</text></g><g class="am-node am-node--rect" data-key="按精度解释结果" data-step="1"><rect class="am-node-shape" x="35.3" y="176" width="119" height="35" rx="3"/><text x="94.8" y="193.5" text-anchor="middle" dominant-baseline="central">按精度解释结果</text></g><g class="am-node am-node--rect" data-key="旧池与新池同预算对照" data-step="2"><rect class="am-node-shape" x="15.8" y="257" width="158" height="35" rx="3"/><text x="94.8" y="274.5" text-anchor="middle" dominant-baseline="central">旧池与新池同预算对照</text></g><g class="am-node am-node--rect" data-key="可控风格研究" data-step="3"><rect class="am-node-shape" x="41.8" y="338" width="106" height="35" rx="3"/><text x="94.8" y="355.5" text-anchor="middle" dominant-baseline="central">可控风格研究</text></g></g></svg></figure></div>
 </section>
 <section class="am-panel" id="panel-C">
-<header class="am-panel-head"><span class="am-panel-id">C</span><h2>先补哪些画像</h2></header>
-<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>指标组</th>
-<th>要回答的问题</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>0–5VP购牌分布</td>
-<td>买小牌还是买大牌？</td>
-</tr>
-<tr>
-<td>首张大牌时点及覆盖</td>
-<td>大牌买得早吗？多少局买到？</td>
-</tr>
-<tr>
-<td>早期小牌与真实兑现</td>
-<td>投资后来用上了吗？</td>
-</tr>
-<tr>
-<td>贵族、得分轨迹、VP/Main</td>
-<td>付出什么代价？效率怎样？</td>
-</tr>
-</tbody></table></div>
-<p>优先复用保存回放，缺项如实保留。
-逐局分布与历史模型分布分别展示。</p>
-</div></div>
-</section>
-<section class="am-panel" id="panel-D">
-<header class="am-panel-head"><span class="am-panel-id">D</span><h2>第一轮预算建议</h2></header>
+<header class="am-panel-head"><span class="am-panel-id">C</span><h2>第一轮工作量</h2></header>
 <div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
 <thead>
 <tr>
 <th>工作</th>
-<th align="right">局数</th>
+<th align="right">建议局数</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>3 seed × 4周期 × 256训练局</td>
+<td>三个训练 seed，各4×256</td>
 <td align="right">3,072</td>
 </tr>
 <tr>
-<td>六对手主池，四个模型各3,072局</td>
+<td>原六对手共同池</td>
 <td align="right">12,288</td>
 </tr>
 <tr>
-<td>A及M70覆盖，四个模型各1,024局</td>
+<td>最新 A 与 M70 覆盖</td>
 <td align="right">4,096</td>
 </tr>
 <tr>
-<td>三个候选分别直接对B</td>
+<td>三候选直接对 B</td>
 <td align="right">3,072</td>
 </tr>
 <tr>
-<td>研究局合计</td>
+<td>训练加评测</td>
 <td align="right">22,528</td>
 </tr>
 </tbody></table></div>
-<p>独立评测共19,456局，全部双方greedy。
-B的评测网格只跑一次并共享参照。
-资源与统计功效需在开跑前确定。</p>
+<p>B 的参照网格只跑一份，供三个候选配对。
+这些额度尚未批准，工程预算另列。</p>
+</div></div>
+</section>
+<section class="am-panel" id="panel-D">
+<header class="am-panel-head"><span class="am-panel-id">D</span><h2>估计与确认分开</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--warn" role="note"><div class="am-callout-title">预算不保证发现小幅增益</div><div class="am-callout-body am-md"><p>按 M70 区间反推，每候选1,024局的近似功效为27%。
+假设配对块方差相同，且采用六项单侧校正。
+这是单端点近似，不是三候选联合功效。</p>
+</div></div>
+<div class="am-md"><p>三 seed 同向但区间宽：值得另行规划确认。
+只有部分提升：报告差异，不挑最好 seed。
+三个都无明确收益：结论限该父代和短程预算。
+增强资格仍按采样前冻结的门判断。</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-E">
-<header class="am-panel-head"><span class="am-panel-id">E</span><h2>怎样判结果</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>全部评测最终 c4，不挑最好 seed。
-逐 seed 报共同池、直接B与代表对手。
-拟定实用增益：共同池点估计至少+2pp。
-直接B点估计至少52%，同时检查区间。
-多重比较和退步容忍需事前冻结。
-预算结束就停止，未确认也保留结果。</p>
+<header class="am-panel-head"><span class="am-panel-id">E</span><h2>只补优先测量</h2></header>
+<div class="am-panel-body"><div class="am-md"><p>启动前核验截断、错误、前缀、账本及资源截止。
+目标 Linux 进程监督须实际验收。
+优先补大牌时点、早期小牌、得分轨迹和折扣使用。
+完整风格分类与历史回填可以后置。
+FIFO 折扣分配是描述记账，不是因果收益。
+缺合法动作输入时，购买机会记为未测。</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-F">
-<header class="am-panel-head"><span class="am-panel-id">F</span><h2>Alpha与Beta随后分开做</h2></header>
-<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 432 134" width="432" height="134" role="img" aria-label="流程图：画像测量、Balance重复、Alpha单因素对照、Beta单因素对照" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M94,67 L105.5,67 Q117,67 128.5,67 L140,67" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M228.5,84.5 L247.5,93.5 Q266.4,102.5 277.9,102.5 L289.4,102.5" marker-end="url(#am1-arrow)"/></g><g data-step="2"><path class="am-edge" d="M228.5,49.5 L247.5,40.5 Q266.4,31.5 279.7,31.5 L293,31.5" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--rect" data-key="画像测量" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="80" height="35" rx="3"/><text x="54" y="67" text-anchor="middle" dominant-baseline="central">画像测量</text></g><g class="am-node am-node--rect" data-key="Balance重复" data-step="0"><rect class="am-node-shape" x="140" y="49.5" width="103.4" height="35" rx="3"/><text x="191.7" y="67" text-anchor="middle" dominant-baseline="central">Balance重复</text></g><g class="am-node am-node--rect" data-key="Alpha单因素对照" data-step="1"><rect class="am-node-shape" x="289.4" y="85" width="127.8" height="35" rx="3"/><text x="353.3" y="102.5" text-anchor="middle" dominant-baseline="central">Alpha单因素对照</text></g><g class="am-node am-node--rect" data-key="Beta单因素对照" data-step="2"><rect class="am-node-shape" x="293" y="14" width="120.6" height="35" rx="3"/><text x="353.3" y="31.5" text-anchor="middle" dominant-baseline="central">Beta单因素对照</text></g></g></svg></figure>
-<div class="am-md"><p>Alpha研究大牌与得分时点。
-Beta研究早期投资与真实兑现。
-两轮各配同父、同预算的普通训练对照。</p>
-<p>当前状态：<strong>DESIGNED，尚未授权执行</strong>。
-<a href="../m73-prism-v020-experiment-design.md">完整设计与待定参数</a> · <a href="../../benchmarks/m73-prism-v020-experiment-design.json">设计JSON</a></p>
+<header class="am-panel-head"><span class="am-panel-id">F</span><h2>下一轮池对照</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>对手</th>
+<th align="right">原池</th>
+<th align="right">新池提案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>General</td>
+<td align="right">50%</td>
+<td align="right">25%</td>
+</tr>
+<tr>
+<td>B</td>
+<td align="right">25%</td>
+<td align="right">25%</td>
+</tr>
+<tr>
+<td>最新 A</td>
+<td align="right">0%</td>
+<td align="right">25%</td>
+</tr>
+<tr>
+<td>M70</td>
+<td align="right">0%</td>
+<td align="right">12.5%</td>
+</tr>
+<tr>
+<td>旧 Alpha</td>
+<td align="right">12.5%</td>
+<td align="right">6.25%</td>
+</tr>
+<tr>
+<td>旧 Beta</td>
+<td align="right">12.5%</td>
+<td align="right">6.25%</td>
+</tr>
+</tbody></table></div>
+<p>两臂各三个 seed，总计6,144训练局，另立合同。
+处理组训练过 A/M70，其成绩不称为未见对手泛化。</p>
+</div></div>
+</section>
+<section class="am-panel am-span-wide" id="panel-G" style="grid-column: span 2">
+<header class="am-panel-head"><span class="am-panel-id">G</span><h2>证据与下一步</h2></header>
+<div class="am-panel-body"><div class="am-md"><p><a href="../m73-prism-v020-experiment-design.md">完整设计与原稿</a>
+<a href="../../benchmarks/m73-prism-v020-experiment-design.json">预算、身份与统计摘要</a>
+<a href="../../benchmarks/m70-prism-b-continuation.result.json">M70原结果</a></p>
+<p>执行 seed、资源、截止和统计政策仍待冻结。
+页面像素尚未验证；本次只交付设计。</p>
 </div></div>
 </section>
 </div>
 </div>
 </main>
-<footer class="am-colophon">Generated by Answer me with HTML 0.4.11 · 2026-10-08 19:58</footer>
+<footer class="am-colophon">Generated by Answer me with HTML 0.4.11 · 2026-10-08 23:16</footer>
 <textarea id="am-source" hidden readonly aria-hidden="true">---
-title: Prism v0.2 · 下一轮怎么做
-subtitle: 先验证训练收益能否重复，再分开研究风格
+title: M73 云端建议落实后的实验顺序
+subtitle: 固定 B，三次短程重复，先估计收益与异质性
 lang: zh
-template: sheet
-theme: paper
 cols: 2
 ---
-建议从固定 B 重复 M70 的训练配方。三个新 seed 各跑 1,024 局，评测全部最终 c4。
-
-## A 为什么先做重复
-M70 共同池提升 2.90 个百分点。
-直接对 B 的增强尚未确认。
-目前只有一个训练 seed。
-三个新训练重复能显示收益和差异。
-
-[M70 原证据](m70-prism-b-continuation-comparison.html) · [小样本统计依据](https://arxiv.org/abs/2108.13264)
-
-## B 三个固定身份
-|模型|来源|下一轮用途|
-|---|---|---|
-|Balance v0.2.0|B-c20|共同父代与画像基线|
-|Alpha v0.2.0|A-c20|固定对手与后续Alpha起点|
-|Balance v0.2.1|M70 c4|固定后继参照|
-
-版本固定不代表风格已统计确认。
-三个新候选都从 B 独立出发。
-
-## C 先补哪些画像
-|指标组|要回答的问题|
-|---|---|
-|0–5VP购牌分布|买小牌还是买大牌？|
-|首张大牌时点及覆盖|大牌买得早吗？多少局买到？|
-|早期小牌与真实兑现|投资后来用上了吗？|
-|贵族、得分轨迹、VP/Main|付出什么代价？效率怎样？|
-
-优先复用保存回放，缺项如实保留。
-逐局分布与历史模型分布分别展示。
-
-## D 第一轮预算建议
-|工作|局数|
-|---|---:|
-|3 seed × 4周期 × 256训练局|3,072|
-|六对手主池，四个模型各3,072局|12,288|
-|A及M70覆盖，四个模型各1,024局|4,096|
-|三个候选分别直接对B|3,072|
-|研究局合计|22,528|
-
-独立评测共19,456局，全部双方greedy。
-B的评测网格只跑一次并共享参照。
-资源与统计功效需在开跑前确定。
-
-## E 怎样判结果
-全部评测最终 c4，不挑最好 seed。
-逐 seed 报共同池、直接B与代表对手。
-拟定实用增益：共同池点估计至少+2pp。
-直接B点估计至少52%，同时检查区间。
-多重比较和退步容忍需事前冻结。
-预算结束就停止，未确认也保留结果。
-
-## F Alpha与Beta随后分开做
-```flow LR
-画像测量 -&gt; Balance重复
-Balance重复 -&gt; Alpha单因素对照
-Balance重复 -&gt; Beta单因素对照
+## A 当前结论
+```callout info 设计已修订，执行未授权
+继续 PPO，先固定网络、奖励和原对手池。
+训练结束后，三个最终 c4 都评测、都报告。
 ```
-Alpha研究大牌与得分时点。
-Beta研究早期投资与真实兑现。
-两轮各配同父、同预算的普通训练对照。
 
-当前状态：**DESIGNED，尚未授权执行**。
-[完整设计与待定参数](../m73-prism-v020-experiment-design.md) · [设计JSON](../../benchmarks/m73-prism-v020-experiment-design.json)
+## B 研究顺序
+```flow
+最小测量与 Linux 验收 -&gt; 固定 B 三次短程重复
+固定 B 三次短程重复 -&gt; 按精度解释结果
+按精度解释结果 -&gt; 旧池与新池同预算对照
+旧池与新池同预算对照 -&gt; 可控风格研究
+```
+
+## C 第一轮工作量
+| 工作 | 建议局数 |
+|---|---:|
+| 三个训练 seed，各4×256 | 3,072 |
+| 原六对手共同池 | 12,288 |
+| 最新 A 与 M70 覆盖 | 4,096 |
+| 三候选直接对 B | 3,072 |
+| 训练加评测 | 22,528 |
+
+B 的参照网格只跑一份，供三个候选配对。
+这些额度尚未批准，工程预算另列。
+
+## D 估计与确认分开
+```callout warn 预算不保证发现小幅增益
+按 M70 区间反推，每候选1,024局的近似功效为27%。
+假设配对块方差相同，且采用六项单侧校正。
+这是单端点近似，不是三候选联合功效。
+```
+
+三 seed 同向但区间宽：值得另行规划确认。
+只有部分提升：报告差异，不挑最好 seed。
+三个都无明确收益：结论限该父代和短程预算。
+增强资格仍按采样前冻结的门判断。
+
+## E 只补优先测量
+启动前核验截断、错误、前缀、账本及资源截止。
+目标 Linux 进程监督须实际验收。
+优先补大牌时点、早期小牌、得分轨迹和折扣使用。
+完整风格分类与历史回填可以后置。
+FIFO 折扣分配是描述记账，不是因果收益。
+缺合法动作输入时，购买机会记为未测。
+
+## F 下一轮池对照
+| 对手 | 原池 | 新池提案 |
+|---|---:|---:|
+| General | 50% | 25% |
+| B | 25% | 25% |
+| 最新 A | 0% | 25% |
+| M70 | 0% | 12.5% |
+| 旧 Alpha | 12.5% | 6.25% |
+| 旧 Beta | 12.5% | 6.25% |
+
+两臂各三个 seed，总计6,144训练局，另立合同。
+处理组训练过 A/M70，其成绩不称为未见对手泛化。
+
+## G 证据与下一步
+[完整设计与原稿](../m73-prism-v020-experiment-design.md)
+[预算、身份与统计摘要](../../benchmarks/m73-prism-v020-experiment-design.json)
+[M70原结果](../../benchmarks/m70-prism-b-continuation.result.json)
+
+执行 seed、资源、截止和统计政策仍待冻结。
+页面像素尚未验证；本次只交付设计。
 </textarea>
 <script>
 (() => {

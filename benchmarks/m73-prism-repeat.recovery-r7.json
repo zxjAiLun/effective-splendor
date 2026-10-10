@@ -1,0 +1,71 @@
+{
+  "a_consumed_cpu_seconds": 2412.2300379999997,
+  "a_consumed_wall_seconds": 1814.4198488969996,
+  "adapter_sha256": "7783707fc04c7ff01868f93ccbe121d02d9b5074b3e06d1aefa30ba98bf1b003",
+  "authorization": {
+    "authorized_end": "complete original three final c4 arms, frozen independent 19456 grid, audits and reports; no next round or release/deployment",
+    "request": "那你为什么不顺道开始跑之前没跑完的轮次呢？非得让dsw空着是吧",
+    "source": "human_owner"
+  },
+  "automatic_retries": 0,
+  "committed_games": 768,
+  "consumed_cpu_seconds": 2450.1581599999995,
+  "deadline": 1791517023.6036646,
+  "engineering_entry_correction": "retain r5/r6; initialization must be idempotent so actual per-game cap stays8GiB; adopt normal terminal814 with new verified resource envelope, preserving original storage failure",
+  "engineering_games_replayed": 0,
+  "evaluation_games": 19456,
+  "evaluation_storage_reserve_bytes": 4294967296,
+  "existing_attempts_replayed": 0,
+  "failed_job": "m73-a-c4-b8-s0",
+  "failed_state": {
+    "ledger_commit": "46dce3e331f06c204b7fb31d41e4c74805f42b1c8939a0399cc590decd40aa8e",
+    "ledger_state_sha256": "4c1e66e6dc6c11330d27b800e7bcec043fa48b69abc9bca575c703e54e8a15fa",
+    "run_commit": "796f8b3d4a7efc9aa24104ac4cf3c475e58952853cbfab57eec937d5a77e0b5d",
+    "state": {
+      "model": "af9eac2c9a55e9bbb7fe340063f5983a938c69cc2ac25db4dc29d7499deb0e7c",
+      "optimizer": "85c2e24c19167ff5642cd8dd708fd12e876fa1332b6aa42e3544fcde6cd79766",
+      "progress": "296492c56f92195e9ba682878a3a36baee41a851df97fa32f8b7f61f6cf92446",
+      "rng": "0a41b9cddb204fefebc4e2d41b5648160e8f3220e874348976b4d470fe78715b"
+    }
+  },
+  "format": "m73-owner-authorized-resource-recovery-r7",
+  "git_commit_performed": false,
+  "minimum_free_reserve_bytes": 8589934592,
+  "new_engineering_games": 0,
+  "original_budget_sha256": "96a5c79ce5d3640d37d61e73f099b3dffe035540ce172f4e0c34be6fbea2c596",
+  "original_execution_sha256": "2d5060afa9fae2a9e5342a400429710f6e010ef1e1c804c3d7170a525303a1fa",
+  "original_failure_snapshot": "pre-recovery-readback.json",
+  "original_started_at": 1791473823.6036646,
+  "partial_c4_games_retained": 46,
+  "pending_saved_terminal_attempt": 814,
+  "pending_saved_terminal_files": {
+    "campaigns/a/attempts/814/arena-config.json": "81082c889731ab45445491f88037a3c6ec9708ca1dd1dcc1b86891817fd56391",
+    "campaigns/a/attempts/814/process-result.json": "aaa4d7518cc41d576e3519287a681ed6602aa2bf6f646bb2a48c5ec0f6b0435b",
+    "campaigns/a/attempts/814/replay.json": "d68d9d6436be00033ac6c85f97002244c21b02e7a876b9fb6f2d5afbcdf65c14",
+    "campaigns/a/attempts/814/report.json": "eeab62f8f6315f30626a7fe164a9008f3045d50ece94660cfc3f5dbda66b7a9f",
+    "campaigns/a/attempts/814/sidecar.jsonl": "e25962d8396f459c445ef965783ea7956ef371079f2e98baf77089e215c19e2a"
+  },
+  "physical_attempts_already_completed": 814,
+  "predecessor_control_recovery_files": {
+    "continuation-r5/policy.json": "1ccda990580dfbd8ce4fb435c2901c4cebed2da55b19e1686bdbe3da9b5774d4",
+    "continuation-r5/recovery.json": "229ccdcfcc2bf0b57b76b9722f90465f0fda73bf57192736a5615112d43a510c",
+    "continuation-r5/train-a/completion.json": "329e7242fd7fd6523ff05c8e37e8f659808fc8911200b89bf0a2224aa57abf21",
+    "continuation-r6/policy.json": "e4d01c8c1c52daafad1ef1b583c852f609e841d95be8dac1531086e173cf3edf",
+    "continuation-r6/recovery.json": "25742a2a50fa2b9c53430463af4553cb72ad0b333796ea820b03b8d501c03b99",
+    "continuation-r6/train-a/completion.json": "1c830637ac4f216c350887201144af354746ca3c234d2ee9616bfa2ce7cbc8e5"
+  },
+  "remaining_training_games": 2258,
+  "resource_changes": [
+    "training cap 2GiB to8GiB",
+    "round cap16GiB to24GiB",
+    "retain started_at; per-arm active wall/CPU deduct prior consumption; preserve round absolute deadline"
+  ],
+  "scientific_changes": [],
+  "source_worktree_head": "e0018fd58fb973253d16000d59bf1b1aae62046a",
+  "storage_per_training_bytes": 8589934592,
+  "storage_total_bytes": 25769803776,
+  "tests_sha256": "ae631a78df37b7795721a4f6a1484d23f1081e47cf25e735d26c660928e6ba69",
+  "total_cpu_seconds": 172800,
+  "training_cpu_seconds": 40000,
+  "training_wall_seconds": 10800
+}

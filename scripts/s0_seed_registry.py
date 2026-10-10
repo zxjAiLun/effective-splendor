@@ -49,6 +49,8 @@ CHECK_SEGMENT = range(5_800_064, 5_800_128)  # default: the S0 segment
 #   9_256_999..9_257_127  S4 v0.2.7 — CONSUMED
 #   9_257_999..9_258_127  S4 v0.2.8 — CONSUMED
 #   9_258_999..9_259_127  S4 v0.2.9 — CONSUMED
+#   9_269_999..9_270_127  S4 v0.3.0 pilot/smoke namespace — CONSUMED
+#   9_270_999..9_271_127  S4 v0.3.1 pilot/smoke namespace — CONSUMED
 #   9_300_000..9_304_999  S4/M50 v0.2.9 5000-game self-play dataset — RESERVED
 
 # Frozen scanned ranges (start, end_inclusive, label).
@@ -87,6 +89,11 @@ REGISTRY: list[tuple[int, int, str]] = [
     (9_257_999, 9_258_127, "s4-v028-pilot-smoke-and-matches"),
     (9_258_999, 9_259_127, "s4-v029-pilot-smoke-and-matches"),
     (9_269_999, 9_270_127, "s4-v030-pilot-smoke-and-matches"),
+    (9_270_999, 9_271_127, "s4-v031-pilot-smoke-and-matches"),
+    (9_271_999, 9_272_127, "s4-twoply-pilot-smoke-and-matches"),
+    (9_272_999, 9_273_127, "s4-v032a-pilot-smoke-and-matches"),
+    (9_273_999, 9_274_127, "s4-v032b-pilot-smoke-and-matches"),
+    (9_274_999, 9_275_127, "s4-v032c-pilot-smoke-and-matches"),
     (9_300_000, 9_304_999, "m50-v029-selfplay-5k"),
     (9_305_000, 9_306_999, "m50-alphazero-gen1"),
     (9_307_000, 9_308_999, "m50-alphazero-gen2"),
@@ -101,6 +108,35 @@ REGISTRY: list[tuple[int, int, str]] = [
     (9_317_000, 9_317_999, "aran-v02-selfplay-2k"),
     (9_318_000, 9_318_999, "aran-v02-coev-v030-2k"),
     (9_320_000, 9_324_999, "aran-v02-vs-v030-10k"),
+    (9_325_999, 9_325_999, "aran-v023-shared-critic-smoke-consumed"),
+    (9_326_000, 9_326_127, "aran-v023-shared-critic-screen-256-consumed"),
+    (9_327_000, 9_327_249, "aran-v023-shared-critic-confirm-500-reserved-not-run"),
+    (9_327_999, 9_327_999, "aran-reserve-target-binding-v1-smoke-consumed"),
+    (9_328_000, 9_328_127, "aran-reserve-target-binding-v1-screen-256-consumed"),
+    (9_329_000, 9_329_249, "aran-reserve-target-binding-v1-confirm-500-consumed"),
+    (9_330_000, 9_330_499, "aran-target-binding-vs-v031-1000-consumed"),
+    (9_331_000, 9_332_999, "aran-v031-teacher-v1-selfplay-2000-consumed"),
+    (9_333_999, 9_333_999, "aran-v031-teacher-v1-smoke-consumed"),
+    (9_334_000, 9_334_127, "aran-v031-teacher-v1-screen-256-consumed"),
+    (9_335_000, 9_335_249, "aran-v031-teacher-v1-confirm-500-reserved-not-run"),
+    (9_339_990, 9_339_992, "aran-v031-goal-v1-smoke-parent-a-b-consumed"),
+    (9_339_993, 9_339_993, "aran-v031-goal-v1-smoke-c-retired-not-run"),
+    (9_340_000, 9_340_255, "aran-v031-goal-v1-shared-dev-512-consumed-parent-a-b"),
+    (9_341_000, 9_341_999, "aran-v031-goal-v1-interaction-retired-not-run"),
+    (9_400_000, 9_403_999, "prism-v01-teacher-selfplay-4000-consumed"),
+    (9_404_999, 9_404_999, "prism-v01-smoke-2-consumed"),
+    (9_405_000, 9_405_127, "prism-v01-baseline-256-consumed"),
+    (9_406_000, 9_406_003, "m54-prism-ppo-arena-v1-engineering-8-consumed"),
+    (9_410_000, 9_411_023, "m54-prism-ppo-trial-v1-train-2048-consumed"),
+    (9_420_000, 9_420_127, "m54-prism-ppo-trial-v1-shared-dev-t1-512-per-model-consumed-parent-c1-c4-c8"),
+    (9_430_000, 9_431_023, "m54-prism-ppo-trial-v2-train-2048-consumed"),
+    (9_440_000, 9_440_127, "m54-prism-ppo-trial-v2-shared-dev-t1-512-per-model-consumed-parent-c1-c4-c8"),
+    (9_450_000, 9_450_255, "m54-prism-v02-acceptance-v1-holdout-2560-consumed-never-train"),
+    (9_460_000, 9_460_007, "m54-prism-v02-acceptance-v1-host-speed-32-per-host-consumed"),
+    (9_470_000, 9_470_511, "m54-prism-v02-acceptance-v2-holdout-5120-reserved-never-train"),
+    (9_480_000, 9_480_511, "m55-prism-rush-v0.1.0-train-1024-reserved"),
+    (9_490_000, 9_490_063, "m55-prism-rush-v0.1.0-dev-512-reserved-never-train"),
+    (9_500_000, 9_500_255, "m55-prism-rush-v0.1.0-holdout-2560-reserved-never-train"),
     (20_260_825, 20_260_952, "m25-bootstrap"),
     (6_600_000, 6_602_047, "m46a-corpus-train"),
     (6_602_048, 6_602_303, "m46a-corpus-val"),

@@ -1,0 +1,54 @@
+{
+  "a_consumed_cpu_seconds": 2316.6502739999996,
+  "a_consumed_wall_seconds": 1729.237305019,
+  "adapter_sha256": "8ad308a46ed94feedc17741eca59e7d1aee262fee71518f9497b68779d7f7a7a",
+  "authorization": {
+    "authorized_end": "complete original three final c4 arms, frozen independent 19456 grid, audits and reports; no next round or release/deployment",
+    "request": "那你为什么不顺道开始跑之前没跑完的轮次呢？非得让dsw空着是吧",
+    "source": "human_owner"
+  },
+  "automatic_retries": 0,
+  "committed_games": 768,
+  "consumed_cpu_seconds": 2354.5783959999994,
+  "deadline": 1791517023.6036646,
+  "engineering_games_replayed": 0,
+  "evaluation_games": 19456,
+  "evaluation_storage_reserve_bytes": 4294967296,
+  "existing_attempts_replayed": 0,
+  "failed_job": "m73-a-c4-b8-s0",
+  "failed_state": {
+    "ledger_commit": "bbf3e0f3ed7cbb26f778cc9dd4e501e16aaa0f3922cfd9d1789f32c9f5be2113",
+    "ledger_state_sha256": "7b63e35503d7232c6ce8c71cab39030724f6eea6651654520e8391863855e883",
+    "run_commit": "60b51dcfbc9c385a60ca589dbb31c9f4417a9878c47124825c0cca3fedf06cf6",
+    "state": {
+      "model": "af9eac2c9a55e9bbb7fe340063f5983a938c69cc2ac25db4dc29d7499deb0e7c",
+      "optimizer": "85c2e24c19167ff5642cd8dd708fd12e876fa1332b6aa42e3544fcde6cd79766",
+      "progress": "5a9f73348d620d2d86a63faeac4a70fcbb6bccbdeb1fed852ed6131c9bed311e",
+      "rng": "0a41b9cddb204fefebc4e2d41b5648160e8f3220e874348976b4d470fe78715b"
+    }
+  },
+  "format": "m73-owner-authorized-resource-recovery-r5",
+  "git_commit_performed": false,
+  "minimum_free_reserve_bytes": 8589934592,
+  "new_engineering_games": 0,
+  "original_budget_sha256": "96a5c79ce5d3640d37d61e73f099b3dffe035540ce172f4e0c34be6fbea2c596",
+  "original_execution_sha256": "2d5060afa9fae2a9e5342a400429710f6e010ef1e1c804c3d7170a525303a1fa",
+  "original_failure_snapshot": "pre-recovery-readback.json",
+  "original_started_at": 1791473823.6036646,
+  "partial_c4_games_retained": 16,
+  "physical_attempts_already_completed": 784,
+  "remaining_training_games": 2288,
+  "resource_changes": [
+    "training cap 2GiB to8GiB",
+    "round cap16GiB to24GiB",
+    "retain started_at; per-arm active wall/CPU deduct prior consumption; preserve round absolute deadline"
+  ],
+  "scientific_changes": [],
+  "source_worktree_head": "e0018fd58fb973253d16000d59bf1b1aae62046a",
+  "storage_per_training_bytes": 8589934592,
+  "storage_total_bytes": 25769803776,
+  "tests_sha256": "a0d6644063726710b35f2fbcb309d9529f45ba84ed6928e998166c4325b4fe59",
+  "total_cpu_seconds": 172800,
+  "training_cpu_seconds": 40000,
+  "training_wall_seconds": 10800
+}

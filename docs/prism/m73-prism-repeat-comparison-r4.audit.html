@@ -1,0 +1,10681 @@
+<p>2026-10-10当前登记：M73 B-c4 = <b>Prism Balance v0.2.2</b>；M74 c20 = <b>Prism Balance v0.2.3</b>。以下保留登记前原审计与缺项；原“未发布”描述属于当时快照。</p><!doctype html><meta charset="utf-8"><h1>M73 固定B的三次短程PPO重复</h1>
+<p>三个最终c4全部报告；模型资格与继续研究的判断分开。</p>
+<p><strong>产物：三个最终c4审计通过，未发布。</strong> 独立训练重复全部保留。</p>
+<p><strong>竞技：逐seed估计与区间见下表。</strong> 有限精度；不以六端点全部显著作为唯一研究继续条件。</p>
+<p><strong>风格：描述画像，路线未确认。</strong> 重要时点与兑现尚未测量，不能强贴标签。</p>
+<p>同一个Balance v0.2.0父代，三个fresh AdamW/RNG，M70配方不变。</p>
+<p>模式：双方greedy。</p>
+<h2>本轮独立双方greedy；截断不计胜负</h2>
+<table>
+<thead>
+<tr>
+<th>对手</th>
+<th>Prism Balance v0.2.0 半平得分%</th>
+<th>M73 seed A final c4 (unpublished) 半平得分%</th>
+<th>变化（百分点）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prism Alpha v0.1.4</td>
+<td><strong>61.13 ✓</strong></td>
+<td>60.06</td>
+<td>-1.07</td>
+</tr>
+<tr>
+<td>Prism Balance v0.1.0</td>
+<td><strong>59.28 ✓</strong></td>
+<td>56.15</td>
+<td>-3.12</td>
+</tr>
+<tr>
+<td>Prism Beta v0.1.0</td>
+<td>58.79</td>
+<td><strong>59.28 ✓</strong></td>
+<td>+0.49</td>
+</tr>
+<tr>
+<td>Prism v0.1.1</td>
+<td>73.54</td>
+<td><strong>75.00 ✓</strong></td>
+<td>+1.46</td>
+</tr>
+<tr>
+<td>Heuristic v0.3.1</td>
+<td>84.96</td>
+<td><strong>86.43 ✓</strong></td>
+<td>+1.46</td>
+</tr>
+<tr>
+<td>Prism Alpha v0.2.0</td>
+<td>47.66</td>
+<td><strong>49.32 ✓</strong></td>
+<td>+1.66</td>
+</tr>
+<tr>
+<td>Prism Balance v0.2.1</td>
+<td>50.39</td>
+<td><strong>52.15 ✓</strong></td>
+<td>+1.76</td>
+</tr>
+<tr>
+<td>Prism Balance v0.2.0</td>
+<td>未测</td>
+<td>52.64</td>
+<td>未测</td>
+</tr>
+<tr>
+<td>Prism Alpha v0.1.5</td>
+<td>59.28</td>
+<td><strong>61.72 ✓</strong></td>
+<td>+2.44</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Alpha v0.1.4</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Alpha v0.1.4本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>306 ✓</strong></td>
+<td>203</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>203 ✓</strong></td>
+<td>306</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>59.77 ✓</strong></td>
+<td>39.65</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6006 ✓</strong></td>
+<td>0.3994</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6191 ✓</strong></td>
+<td>13.5879</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5441 ✓</strong></td>
+<td>0.5057</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5440 ✓</strong></td>
+<td>0.5057</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2720 ✓</strong></td>
+<td>0.2528</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4238</td>
+<td><strong>0.4336 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>36.72 ✓</strong></td>
+<td>35.74</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5176</td>
+<td><strong>11.6582 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4102 ↑</strong></td>
+<td>3.3750</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4375 ↑</strong></td>
+<td>1.3145</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9727 ✓</strong></td>
+<td>2.0605</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.15 ✓</strong></td>
+<td>38.95</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6543</td>
+<td><strong>6.0449 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0332 ↑</strong></td>
+<td>1.9863</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7969</td>
+<td><strong>1.8066 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8203</td>
+<td><strong>0.8652 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8047 ↑</strong></td>
+<td>0.6836</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4082 ↑</strong></td>
+<td>0.2715</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.3828 ↑</strong></td>
+<td>2.2891</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0918</td>
+<td><strong>2.3496 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1211</td>
+<td><strong>2.3711 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4609 ↑</strong></td>
+<td>2.2539</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4609 ↑</strong></td>
+<td>2.3945</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.4 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.4 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5161</td>
+<td><strong>5296 ↑</strong></td>
+<td>37.51</td>
+<td><strong>38.49 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>736 ↑</strong></td>
+<td>673</td>
+<td><strong>5.35 ↑</strong></td>
+<td>4.89</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6113 ↑</strong></td>
+<td>6060</td>
+<td><strong>44.43 ↑</strong></td>
+<td>44.05</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1746 ↑</strong></td>
+<td>1728</td>
+<td><strong>12.69 ↑</strong></td>
+<td>12.56</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>3 ↑</strong></td>
+<td>1</td>
+<td><strong>0.02 ↑</strong></td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>155/1/100</td>
+<td>60.5469</td>
+<td>0.6074</td>
+<td><strong>14.5977 ✓</strong></td>
+<td>13.6289</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>151/2/103</td>
+<td>58.9844</td>
+<td>0.5938</td>
+<td><strong>14.6406 ✓</strong></td>
+<td>13.5469</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：55.66% ～ 63.87%；半平得分配对95%区间：55.96% ～ 64.06%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.74609375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.876953125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8077783579722195</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.65625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.1796875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5884569989375592</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7516235953487922</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Balance v0.1.0</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Balance v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Balance v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>285 ✓</strong></td>
+<td>222</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>222 ✓</strong></td>
+<td>285</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>55.66 ✓</strong></td>
+<td>43.36</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5615 ✓</strong></td>
+<td>0.4385</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.4121 ✓</strong></td>
+<td>13.7773</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5388 ✓</strong></td>
+<td>0.5151</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5387 ✓</strong></td>
+<td>0.5150</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2694 ✓</strong></td>
+<td>0.2575</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4395</td>
+<td><strong>0.4824 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>36.13</td>
+<td><strong>38.48 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5039</td>
+<td><strong>11.9395 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.2773 ↑</strong></td>
+<td>3.2363</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3457 ↑</strong></td>
+<td>1.2656</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9316 ✓</strong></td>
+<td>1.9707</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.06 ✓</strong></td>
+<td>39.11</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7227</td>
+<td><strong>6.1270 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0137</td>
+<td><strong>2.2188 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.8301</td>
+<td><strong>1.8398 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7324</td>
+<td><strong>0.8555 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8027 ↑</strong></td>
+<td>0.6270</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4023 ↑</strong></td>
+<td>0.2715</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4668 ↑</strong></td>
+<td>2.3477</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0469</td>
+<td><strong>2.2949 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1680</td>
+<td><strong>2.4453 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.3652</td>
+<td>2.3652</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4570</td>
+<td><strong>2.4863 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.1.0 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5201</td>
+<td><strong>5465 ↑</strong></td>
+<td>37.97</td>
+<td><strong>39.90 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>689 ↑</strong></td>
+<td>648</td>
+<td><strong>5.03 ↑</strong></td>
+<td>4.73</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6127 ↑</strong></td>
+<td>5925</td>
+<td><strong>44.73 ↑</strong></td>
+<td>43.26</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1678 ↑</strong></td>
+<td>1657</td>
+<td><strong>12.25 ↑</strong></td>
+<td>12.10</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td>2</td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>146/4/106</td>
+<td>57.0312</td>
+<td>0.5781</td>
+<td><strong>14.3906 ✓</strong></td>
+<td>13.7617</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>139/1/116</td>
+<td>54.2969</td>
+<td>0.5449</td>
+<td><strong>14.4336 ✓</strong></td>
+<td>13.7930</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：51.37% ～ 59.96%；半平得分配对95%区间：51.86% ～ 60.35%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.50390625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.755859375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.6866215432706324</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.572265625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>36.1328125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5944922131660348</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7616505276517272</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Beta v0.1.0</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Beta v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Beta v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>301 ✓</strong></td>
+<td>206</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>206 ✓</strong></td>
+<td>301</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>58.79 ✓</strong></td>
+<td>40.23</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5928 ✓</strong></td>
+<td>0.4072</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5488 ✓</strong></td>
+<td>13.5078</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5428 ✓</strong></td>
+<td>0.5039</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5427 ✓</strong></td>
+<td>0.5039</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2714 ✓</strong></td>
+<td>0.2519</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4512</td>
+<td>0.4512</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>38.67</td>
+<td><strong>39.45 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.4629</td>
+<td><strong>11.8008 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.3613</td>
+<td><strong>3.5234 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4219 ↑</strong></td>
+<td>1.3828</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9395 ✓</strong></td>
+<td>2.1406</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.30 ✓</strong></td>
+<td>39.25</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6992</td>
+<td><strong>6.1074 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.8965</td>
+<td><strong>2.0918 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8848 ↑</strong></td>
+<td>1.8730</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7871</td>
+<td><strong>0.8398 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8086 ↑</strong></td>
+<td>0.6465</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3867 ↑</strong></td>
+<td>0.2422</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4043 ↑</strong></td>
+<td>2.3398</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.2168</td>
+<td><strong>2.2578 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1543</td>
+<td><strong>2.3340 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.3652</td>
+<td><strong>2.4141 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3223</td>
+<td><strong>2.4551 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Beta v0.1.0 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Beta v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5141</td>
+<td><strong>5334 ↑</strong></td>
+<td>37.46</td>
+<td><strong>38.86 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>728 ↑</strong></td>
+<td>708</td>
+<td><strong>5.30 ↑</strong></td>
+<td>5.16</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6134 ↑</strong></td>
+<td>5878</td>
+<td><strong>44.69 ↑</strong></td>
+<td>42.82</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1721</td>
+<td><strong>1804 ↑</strong></td>
+<td>12.54</td>
+<td><strong>13.14 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>1</td>
+<td><strong>2 ↑</strong></td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>143/3/110</td>
+<td>55.8594</td>
+<td>0.5645</td>
+<td><strong>14.3203 ✓</strong></td>
+<td>13.7070</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>158/2/96</td>
+<td>61.7188</td>
+<td>0.6211</td>
+<td><strong>14.7773 ✓</strong></td>
+<td>13.3086</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：54.49% ～ 63.09%；半平得分配对95%区间：54.98% ～ 63.48%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.615234375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.810546875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7966021786772202</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.779296875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>32.2265625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5859954427165661</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7498499259007076</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism v0.1.1</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism v0.1.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism v0.1.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>383 ✓</strong></td>
+<td>127</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>127 ✓</strong></td>
+<td>383</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>74.80 ✓</strong></td>
+<td>24.80</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.7500 ✓</strong></td>
+<td>0.2500</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.1309 ✓</strong></td>
+<td>12.6641</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5712 ✓</strong></td>
+<td>0.4781</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5711 ✓</strong></td>
+<td>0.4780</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2855 ✓</strong></td>
+<td>0.2390</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4551 ✓</strong></td>
+<td>0.4434</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.87 ✓</strong></td>
+<td>36.33</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5176</td>
+<td><strong>12.2285 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.0371 ↑</strong></td>
+<td>2.6426</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.2598 ↑</strong></td>
+<td>1.0879</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.7773</td>
+<td><strong>1.5547 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.48 ✓</strong></td>
+<td>41.17</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6133</td>
+<td><strong>6.6426 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9102</td>
+<td><strong>2.2754 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.9004 ↑</strong></td>
+<td>1.7441</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7773</td>
+<td><strong>0.8828 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8594 ↑</strong></td>
+<td>0.4961</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4570 ↑</strong></td>
+<td>0.1875</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4590 ↑</strong></td>
+<td>2.3613</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0449</td>
+<td><strong>2.5234 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1035</td>
+<td><strong>2.4512 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4844 ↑</strong></td>
+<td>2.4297</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4258</td>
+<td><strong>2.4629 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism v0.1.1 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism v0.1.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5252</td>
+<td><strong>5704 ↑</strong></td>
+<td>38.71</td>
+<td><strong>42.05 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>645 ↑</strong></td>
+<td>557</td>
+<td><strong>4.75 ↑</strong></td>
+<td>4.11</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6111 ↑</strong></td>
+<td>5949</td>
+<td><strong>45.05 ↑</strong></td>
+<td>43.86</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1555 ↑</strong></td>
+<td>1353</td>
+<td><strong>11.46 ↑</strong></td>
+<td>9.97</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>3 ↑</strong></td>
+<td>2</td>
+<td><strong>0.02 ↑</strong></td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>206/1/49</td>
+<td>80.4688</td>
+<td>0.8066</td>
+<td><strong>15.3047 ✓</strong></td>
+<td>12.5273</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>177/1/78</td>
+<td>69.1406</td>
+<td>0.6934</td>
+<td><strong>14.9570 ✓</strong></td>
+<td>12.8008</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：71.29% ～ 78.32%；半平得分配对95%区间：71.39% ～ 78.52%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.990234375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.5</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.829660146038056</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>4.166015625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>28.125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5894062573398458</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.77070131714936</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Heuristic v0.3.1</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Heuristic v0.3.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Heuristic v0.3.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>441 ✓</strong></td>
+<td>68</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>68 ✓</strong></td>
+<td>441</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>86.13 ✓</strong></td>
+<td>13.28</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.8643 ✓</strong></td>
+<td>0.1357</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.6211 ✓</strong></td>
+<td>11.4688</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.6005 ✓</strong></td>
+<td>0.4409</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.6005 ✓</strong></td>
+<td>0.4408</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.3002 ✓</strong></td>
+<td>0.2204</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4805</td>
+<td><strong>0.5156 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>39.45</td>
+<td><strong>40.04 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.4902</td>
+<td><strong>12.7637 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>2.6758 ↑</strong></td>
+<td>2.5312</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.0781</td>
+<td><strong>1.3438 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.5977</td>
+<td><strong>1.1875 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>40.29</td>
+<td><strong>53.09 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6250</td>
+<td><strong>7.3301 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.7480</td>
+<td><strong>2.6621 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8633 ↑</strong></td>
+<td>1.6191</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8203 ↑</strong></td>
+<td>0.6875</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.9238 ↑</strong></td>
+<td>0.3652</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.5098 ↑</strong></td>
+<td>0.0996</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.4414</td>
+<td><strong>2.4980 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0781</td>
+<td><strong>2.5625 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.3184</td>
+<td><strong>2.5801 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.3398</td>
+<td><strong>2.5234 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3125</td>
+<td><strong>2.5996 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Heuristic v0.3.1 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Heuristic v0.3.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5331</td>
+<td><strong>5847 ↑</strong></td>
+<td>40.03</td>
+<td><strong>43.89 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>552</td>
+<td><strong>688 ↑</strong></td>
+<td>4.14</td>
+<td><strong>5.16 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6065 ↑</strong></td>
+<td>5487</td>
+<td><strong>45.54 ↑</strong></td>
+<td>41.19</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1370 ↑</strong></td>
+<td>1292</td>
+<td><strong>10.29 ↑</strong></td>
+<td>9.70</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>4 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>0</td>
+<td><strong>3 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.02 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>219/0/37</td>
+<td>85.5469</td>
+<td>0.8555</td>
+<td><strong>15.5273 ✓</strong></td>
+<td>11.6523</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>222/3/31</td>
+<td>86.7188</td>
+<td>0.8730</td>
+<td><strong>15.7148 ✓</strong></td>
+<td>11.2852</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：82.81% ～ 89.26%；半平得分配对95%区间：83.20% ～ 89.45%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.029296875</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.017578125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>26.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>31</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.878560056139139</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>4.9765625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>21.875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.45436222758173983</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.6408921481979633</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Alpha v0.2.0</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Alpha v0.2.0本人。511局，None个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Alpha v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td>248</td>
+<td><strong>255 ✓</strong></td>
+</tr>
+<tr>
+<td>平局</td>
+<td>8</td>
+<td>8</td>
+</tr>
+<tr>
+<td>负局</td>
+<td>255</td>
+<td><strong>248 ✓</strong></td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td>48.53</td>
+<td><strong>49.90 ✓</strong></td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td>0.4932</td>
+<td><strong>0.5068 ✓</strong></td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>14.0705</td>
+<td><strong>14.1037 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5217</td>
+<td><strong>0.5230 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5216</td>
+<td><strong>0.5228 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2608</td>
+<td><strong>0.2614 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4129 ✓</strong></td>
+<td>0.3542</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>36.79 ✓</strong></td>
+<td>30.14</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.5382 ↑</strong></td>
+<td>11.5010</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.4795</td>
+<td><strong>3.7065 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.4892</td>
+<td><strong>1.5793 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9902 ✓</strong></td>
+<td>2.1272</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.80 ✓</strong></td>
+<td>42.61</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>5.7221 ↑</strong></td>
+<td>5.6595</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0763 ↑</strong></td>
+<td>2.0665</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8885 ↑</strong></td>
+<td>1.8102</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7730</td>
+<td><strong>0.8258 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7319</td>
+<td><strong>0.8180 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3464 ↑</strong></td>
+<td>0.3209</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.3699</td>
+<td><strong>2.3718 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2172 ↑</strong></td>
+<td>2.1409</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3053 ↑</strong></td>
+<td>2.2446</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.2153</td>
+<td><strong>2.3836 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4305 ↑</strong></td>
+<td>2.3601</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.2.0 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5135 ↑</strong></td>
+<td>5070</td>
+<td><strong>37.25 ↑</strong></td>
+<td>36.78</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>761</td>
+<td><strong>807 ↑</strong></td>
+<td>5.52</td>
+<td><strong>5.85 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6107 ↑</strong></td>
+<td>6010</td>
+<td><strong>44.30 ↑</strong></td>
+<td>43.59</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1778</td>
+<td><strong>1892 ↑</strong></td>
+<td>12.90</td>
+<td><strong>13.72 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>2 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.01 ↑</strong></td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>3</td>
+<td><strong>5 ↑</strong></td>
+<td>0.02</td>
+<td><strong>0.04 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>255</td>
+<td>130/2/123</td>
+<td>50.9804</td>
+<td>0.5137</td>
+<td><strong>13.9569 ✓</strong></td>
+<td>13.9490</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>118/6/132</td>
+<td>46.0938</td>
+<td>0.4727</td>
+<td>14.1836</td>
+<td><strong>14.2578 ✓</strong></td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：NOT_MEASURED ～ NOT_MEASURED；半平得分配对95%区间：NOT_MEASURED ～ NOT_MEASURED。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.95303326810176</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.984344422700588</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>35</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7870346029049513</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.551859099804305</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>38.551859099804304</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5986280931313375</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7716707405015768</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Balance v0.2.1</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Balance v0.2.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Balance v0.2.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>265 ✓</strong></td>
+<td>243</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>243 ✓</strong></td>
+<td>265</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>51.76 ✓</strong></td>
+<td>47.46</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5215 ✓</strong></td>
+<td>0.4785</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>14.0059</td>
+<td><strong>14.0684 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5230</td>
+<td><strong>0.5253 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5230</td>
+<td><strong>0.5253 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2615</td>
+<td><strong>0.2627 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4199</td>
+<td><strong>0.4434 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>37.11</td>
+<td><strong>37.30 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.6367 ↑</strong></td>
+<td>11.6152</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.4004</td>
+<td><strong>3.4277 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4824 ↑</strong></td>
+<td>1.3770</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9180 ✓</strong></td>
+<td>2.0508</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>43.60 ✓</strong></td>
+<td>40.17</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>5.9570 ↑</strong></td>
+<td>5.8926</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0410</td>
+<td><strong>2.0996 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7109</td>
+<td><strong>1.7500 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.7695 ↑</strong></td>
+<td>0.7324</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8164 ↑</strong></td>
+<td>0.7617</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.3418</td>
+<td><strong>0.3789 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4277 ↑</strong></td>
+<td>2.3457</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.1934</td>
+<td><strong>2.2109 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3047 ↑</strong></td>
+<td>2.2285</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.3398 ↑</strong></td>
+<td>2.3320</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3711</td>
+<td><strong>2.4980 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.1 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5199</td>
+<td><strong>5242 ↑</strong></td>
+<td>37.92</td>
+<td><strong>38.23 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>759 ↑</strong></td>
+<td>705</td>
+<td><strong>5.54 ↑</strong></td>
+<td>5.14</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6012 ↑</strong></td>
+<td>6009</td>
+<td><strong>43.85 ↑</strong></td>
+<td>43.82</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1741</td>
+<td><strong>1755 ↑</strong></td>
+<td>12.70</td>
+<td><strong>12.80 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>0</td>
+<td><strong>2 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.01 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>138/2/116</td>
+<td>53.9062</td>
+<td>0.5430</td>
+<td>13.8008</td>
+<td><strong>13.9961 ✓</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>127/2/127</td>
+<td>49.6094</td>
+<td>0.5000</td>
+<td><strong>14.2109 ✓</strong></td>
+<td>14.1406</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：47.85% ～ 55.66%；半平得分配对95%区间：48.34% ～ 56.05%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.5625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.783203125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.6694260959953378</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.703125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.1796875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5911756551757463</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7513863255993783</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Balance v0.2.0</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Balance v0.2.0本人。1024局，512个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Balance v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>536 ✓</strong></td>
+<td>482</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>482 ✓</strong></td>
+<td>536</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>52.34 ✓</strong></td>
+<td>47.07</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5264 ✓</strong></td>
+<td>0.4736</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.1963 ✓</strong></td>
+<td>14.0625</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5278 ✓</strong></td>
+<td>0.5228</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5276 ✓</strong></td>
+<td>0.5227</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2638 ✓</strong></td>
+<td>0.2613</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4502</td>
+<td><strong>0.4648 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>38.09</td>
+<td><strong>40.04 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6201</td>
+<td><strong>11.8682 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4746 ↑</strong></td>
+<td>3.4521</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4756 ↑</strong></td>
+<td>1.3701</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9990 ✓</strong></td>
+<td>2.0820</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.47 ✓</strong></td>
+<td>39.69</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8438</td>
+<td><strong>6.1328 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0732 ↑</strong></td>
+<td>2.0674</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.7803 ↑</strong></td>
+<td>1.7783</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8037</td>
+<td><strong>0.8281 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7949 ↑</strong></td>
+<td>0.7480</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3242 ↑</strong></td>
+<td>0.3135</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.3545</td>
+<td><strong>2.4219 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.1543</td>
+<td><strong>2.2256 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2627</td>
+<td><strong>2.3916 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4023 ↑</strong></td>
+<td>2.3877</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4463 ↑</strong></td>
+<td>2.4414</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>10388</td>
+<td><strong>10750 ↑</strong></td>
+<td>37.70</td>
+<td><strong>39.02 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>1511 ↑</strong></td>
+<td>1403</td>
+<td><strong>5.48 ↑</strong></td>
+<td>5.09</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>12088 ↑</strong></td>
+<td>11857</td>
+<td><strong>43.87 ↑</strong></td>
+<td>43.04</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>3558 ↑</strong></td>
+<td>3535</td>
+<td><strong>12.91 ↑</strong></td>
+<td>12.83</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>9 ↑</strong></td>
+<td>5</td>
+<td><strong>0.03 ↑</strong></td>
+<td>0.02</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>512</td>
+<td>280/4/228</td>
+<td>54.6875</td>
+<td>0.5508</td>
+<td><strong>14.1758 ✓</strong></td>
+<td>14.0820</td>
+</tr>
+<tr>
+<td>1</td>
+<td>512</td>
+<td>256/2/254</td>
+<td>50.0000</td>
+<td>0.5020</td>
+<td><strong>14.2168 ✓</strong></td>
+<td>14.0430</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：49.61% ～ 55.08%；半平得分配对95%区间：49.95% ～ 55.32%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.8125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.9130859375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8491089092424347</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.6494140625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>35.15625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5914265481317216</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.758918973798427</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed A final c4 (unpublished) 对阵 Prism Alpha v0.1.5</h3>
+<p>双方归属：M73 seed A final c4 (unpublished)本人 / Prism Alpha v0.1.5本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed A final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>312 ✓</strong></td>
+<td>192</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>8</td>
+<td>8</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>192 ✓</strong></td>
+<td>312</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>60.94 ✓</strong></td>
+<td>37.50</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6172 ✓</strong></td>
+<td>0.3828</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5918 ✓</strong></td>
+<td>13.6191</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5450 ✓</strong></td>
+<td>0.5087</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5450 ✓</strong></td>
+<td>0.5085</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2725 ✓</strong></td>
+<td>0.2543</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4980 ✓</strong></td>
+<td>0.4551</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>41.60 ✓</strong></td>
+<td>37.70</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6738</td>
+<td><strong>11.8457 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.3184 ↑</strong></td>
+<td>3.3066</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3633 ↑</strong></td>
+<td>1.3320</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9551 ✓</strong></td>
+<td>1.9746</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.08 ✓</strong></td>
+<td>40.28</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.9883</td>
+<td><strong>6.1230 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9004</td>
+<td><strong>2.1641 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7949</td>
+<td><strong>1.8027 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7793</td>
+<td><strong>0.8262 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7852 ↑</strong></td>
+<td>0.6426</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4258 ↑</strong></td>
+<td>0.2871</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.3633</td>
+<td><strong>2.4004 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.2188</td>
+<td><strong>2.2383 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2148</td>
+<td><strong>2.4551 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4180 ↑</strong></td>
+<td>2.3164</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4590 ↑</strong></td>
+<td>2.4355</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed A final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.5 次数</th>
+<th>M73 seed A final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.5 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5279</td>
+<td><strong>5383 ↑</strong></td>
+<td>38.51</td>
+<td><strong>39.26 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>698 ↑</strong></td>
+<td>682</td>
+<td><strong>5.09 ↑</strong></td>
+<td>4.97</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6032 ↑</strong></td>
+<td>5950</td>
+<td><strong>44.00 ↑</strong></td>
+<td>43.39</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1699 ↑</strong></td>
+<td>1693</td>
+<td><strong>12.39 ↑</strong></td>
+<td>12.35</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>1</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>167/7/82</td>
+<td>65.2344</td>
+<td>0.6660</td>
+<td><strong>14.6562 ✓</strong></td>
+<td>13.5352</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>145/1/110</td>
+<td>56.6406</td>
+<td>0.5684</td>
+<td><strong>14.5273 ✓</strong></td>
+<td>13.7031</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：56.64% ～ 65.23%；半平得分配对95%区间：57.32% ～ 65.92%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.556640625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.783203125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7924186843453274</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.484375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>37.890625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5831097857226837</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7462983182973403</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Alpha v0.1.4</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Alpha v0.1.4本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>325 ✓</strong></td>
+<td>184</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>184 ✓</strong></td>
+<td>325</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>63.48 ✓</strong></td>
+<td>35.94</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6377 ✓</strong></td>
+<td>0.3623</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6074 ✓</strong></td>
+<td>13.5020</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5448 ✓</strong></td>
+<td>0.5035</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5446 ✓</strong></td>
+<td>0.5034</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2723 ✓</strong></td>
+<td>0.2517</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4336</td>
+<td>0.4336</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.67 ✓</strong></td>
+<td>35.35</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5586</td>
+<td><strong>11.6797 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.5488 ↑</strong></td>
+<td>3.2656</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4766 ↑</strong></td>
+<td>1.3066</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.0723</td>
+<td><strong>1.9590 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.61 ✓</strong></td>
+<td>40.01</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7480</td>
+<td><strong>6.1250 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9668</td>
+<td>1.9668</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.7930 ↑</strong></td>
+<td>1.7559</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8535</td>
+<td><strong>0.8750 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7930 ↑</strong></td>
+<td>0.6875</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4043 ↑</strong></td>
+<td>0.2695</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.3457 ↑</strong></td>
+<td>2.3105</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0762</td>
+<td><strong>2.3145 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1582</td>
+<td><strong>2.3711 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5508 ↑</strong></td>
+<td>2.2539</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4277</td>
+<td><strong>2.4297 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.4 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.4 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5162</td>
+<td><strong>5311 ↑</strong></td>
+<td>37.59</td>
+<td><strong>38.67 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>756 ↑</strong></td>
+<td>669</td>
+<td><strong>5.51 ↑</strong></td>
+<td>4.87</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5994</td>
+<td><strong>6077 ↑</strong></td>
+<td>43.65</td>
+<td><strong>44.25 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1816 ↑</strong></td>
+<td>1672</td>
+<td><strong>13.22 ↑</strong></td>
+<td>12.18</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>3</td>
+<td><strong>4 ↑</strong></td>
+<td>0.02</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>172/0/84</td>
+<td>67.1875</td>
+<td>0.6719</td>
+<td><strong>14.6133 ✓</strong></td>
+<td>13.4805</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>153/3/100</td>
+<td>59.7656</td>
+<td>0.6035</td>
+<td><strong>14.6016 ✓</strong></td>
+<td>13.5234</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：59.38% ～ 67.58%；半平得分配对95%区间：59.67% ～ 67.77%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.642578125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.828125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.6822110403795951</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.61328125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>35.9375</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5974106348046604</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7660637063960166</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Balance v0.1.0</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Balance v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Balance v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>313 ✓</strong></td>
+<td>193</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>193 ✓</strong></td>
+<td>313</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>61.13 ✓</strong></td>
+<td>37.70</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6172 ✓</strong></td>
+<td>0.3828</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5176 ✓</strong></td>
+<td>13.5254</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5433 ✓</strong></td>
+<td>0.5061</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5431 ✓</strong></td>
+<td>0.5059</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2715 ✓</strong></td>
+<td>0.2530</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4805 ✓</strong></td>
+<td>0.4512</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>37.89 ✓</strong></td>
+<td>34.96</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.7246</td>
+<td><strong>11.9863 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4512 ↑</strong></td>
+<td>3.1621</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4043 ↑</strong></td>
+<td>1.2539</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.0469</td>
+<td><strong>1.9082 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>40.69 ✓</strong></td>
+<td>39.65</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8711</td>
+<td><strong>6.1367 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0469</td>
+<td><strong>2.3379 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.9160 ↑</strong></td>
+<td>1.8359</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7520</td>
+<td><strong>0.8145 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7520 ↑</strong></td>
+<td>0.5879</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3867 ↑</strong></td>
+<td>0.2734</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4531 ↑</strong></td>
+<td>2.4199</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0605</td>
+<td><strong>2.2832 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2148</td>
+<td><strong>2.4531 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5000 ↑</strong></td>
+<td>2.3398</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4961 ↑</strong></td>
+<td>2.4902</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.1.0 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5284</td>
+<td><strong>5495 ↑</strong></td>
+<td>38.61</td>
+<td><strong>40.14 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>719 ↑</strong></td>
+<td>642</td>
+<td><strong>5.25 ↑</strong></td>
+<td>4.69</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5912</td>
+<td><strong>5926 ↑</strong></td>
+<td>43.20</td>
+<td><strong>43.29 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1767 ↑</strong></td>
+<td>1619</td>
+<td><strong>12.91 ↑</strong></td>
+<td>11.83</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>4</td>
+<td><strong>6 ↑</strong></td>
+<td>0.03</td>
+<td><strong>0.04 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>169/3/84</td>
+<td>66.0156</td>
+<td>0.6660</td>
+<td><strong>14.7188 ✓</strong></td>
+<td>13.3984</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>144/3/109</td>
+<td>56.2500</td>
+<td>0.5684</td>
+<td><strong>14.3164 ✓</strong></td>
+<td>13.6523</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：57.03% ～ 65.04%；半平得分配对95%区间：57.71% ～ 65.72%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.46484375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.7421875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.632176909787585</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.65625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>35.15625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5961541769745367</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7695506566480617</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Beta v0.1.0</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Beta v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Beta v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>304 ✓</strong></td>
+<td>205</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>205 ✓</strong></td>
+<td>304</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>59.38 ✓</strong></td>
+<td>40.04</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5967 ✓</strong></td>
+<td>0.4033</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5020 ✓</strong></td>
+<td>13.6094</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5404 ✓</strong></td>
+<td>0.5072</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5404 ✓</strong></td>
+<td>0.5070</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2702 ✓</strong></td>
+<td>0.2535</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.3906</td>
+<td><strong>0.4219 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>34.38</td>
+<td><strong>36.52 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6152</td>
+<td><strong>11.7695 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.4043</td>
+<td><strong>3.4609 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3457 ↑</strong></td>
+<td>1.3047</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>2.0586 ✓</strong></td>
+<td>2.1562</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>39.53 ✓</strong></td>
+<td>37.70</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6758</td>
+<td><strong>6.0176 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9648</td>
+<td><strong>2.0898 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>2.0234 ↑</strong></td>
+<td>1.8828</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8418</td>
+<td><strong>0.8574 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7539 ↑</strong></td>
+<td>0.6934</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3555 ↑</strong></td>
+<td>0.2285</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4688 ↑</strong></td>
+<td>2.3086</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.2227</td>
+<td><strong>2.2793 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2129</td>
+<td><strong>2.3711 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.4023</td>
+<td><strong>2.4258 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3086</td>
+<td><strong>2.3848 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Beta v0.1.0 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Beta v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5258</td>
+<td><strong>5358 ↑</strong></td>
+<td>38.27</td>
+<td><strong>38.99 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>689 ↑</strong></td>
+<td>668</td>
+<td><strong>5.01 ↑</strong></td>
+<td>4.86</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6049 ↑</strong></td>
+<td>5941</td>
+<td><strong>44.02 ↑</strong></td>
+<td>43.23</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1742</td>
+<td><strong>1772 ↑</strong></td>
+<td>12.68</td>
+<td><strong>12.89 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>1</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>160/2/94</td>
+<td>62.5000</td>
+<td>0.6289</td>
+<td><strong>14.5625 ✓</strong></td>
+<td>13.6562</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>144/1/111</td>
+<td>56.2500</td>
+<td>0.5645</td>
+<td><strong>14.4414 ✓</strong></td>
+<td>13.5625</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：55.08% ～ 63.67%；半平得分配对95%区间：55.37% ～ 63.87%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.677734375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.84375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7090636142344147</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.619140625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.375</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5960898573598712</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7583970016512467</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism v0.1.1</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism v0.1.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism v0.1.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>376 ✓</strong></td>
+<td>131</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>131 ✓</strong></td>
+<td>376</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>73.44 ✓</strong></td>
+<td>25.59</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.7393 ✓</strong></td>
+<td>0.2607</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.1523 ✓</strong></td>
+<td>12.8125</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5712 ✓</strong></td>
+<td>0.4830</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5711 ✓</strong></td>
+<td>0.4827</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2855 ✓</strong></td>
+<td>0.2414</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4473</td>
+<td><strong>0.4609 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>37.50 ✓</strong></td>
+<td>35.74</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6348</td>
+<td><strong>12.2656 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.2617 ↑</strong></td>
+<td>2.5820</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3379 ↑</strong></td>
+<td>1.0859</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.9238</td>
+<td><strong>1.4961 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>41.02</td>
+<td><strong>42.06 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7012</td>
+<td><strong>6.6191 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9316</td>
+<td><strong>2.3008 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8867 ↑</strong></td>
+<td>1.7617</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7832</td>
+<td><strong>0.8887 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.9043 ↑</strong></td>
+<td>0.5371</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4277 ↑</strong></td>
+<td>0.1582</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4316 ↑</strong></td>
+<td>2.3398</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0039</td>
+<td><strong>2.5410 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1172</td>
+<td><strong>2.4824 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5879 ↑</strong></td>
+<td>2.4414</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4941 ↑</strong></td>
+<td>2.4609</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism v0.1.1 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism v0.1.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5272</td>
+<td><strong>5724 ↑</strong></td>
+<td>38.81</td>
+<td><strong>42.12 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>685 ↑</strong></td>
+<td>556</td>
+<td><strong>5.04 ↑</strong></td>
+<td>4.09</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5956</td>
+<td><strong>5981 ↑</strong></td>
+<td>43.84</td>
+<td><strong>44.01 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1669 ↑</strong></td>
+<td>1322</td>
+<td><strong>12.29 ↑</strong></td>
+<td>9.73</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>8 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.06 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>193/2/61</td>
+<td>75.3906</td>
+<td>0.7578</td>
+<td><strong>15.1445 ✓</strong></td>
+<td>12.8633</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>183/3/70</td>
+<td>71.4844</td>
+<td>0.7207</td>
+<td><strong>15.1602 ✓</strong></td>
+<td>12.7617</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：69.34% ～ 77.34%；半平得分配对95%区间：69.92% ～ 77.83%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.078125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.548828125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8150732255776858</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.91796875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>33.0078125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5944843876385164</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7645282429457438</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Heuristic v0.3.1</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Heuristic v0.3.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Heuristic v0.3.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>434 ✓</strong></td>
+<td>75</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>75 ✓</strong></td>
+<td>434</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>84.77 ✓</strong></td>
+<td>14.65</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.8506 ✓</strong></td>
+<td>0.1494</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.6250 ✓</strong></td>
+<td>11.6152</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5971 ✓</strong></td>
+<td>0.4438</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5970 ✓</strong></td>
+<td>0.4435</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2984 ✓</strong></td>
+<td>0.2218</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4277</td>
+<td><strong>0.5684 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>35.35</td>
+<td><strong>42.38 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5254</td>
+<td><strong>12.6953 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>2.9805 ↑</strong></td>
+<td>2.4902</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.2754</td>
+<td><strong>1.3301 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.7051</td>
+<td><strong>1.1602 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>42.79</td>
+<td><strong>53.41 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.5684</td>
+<td><strong>7.2832 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.7891</td>
+<td><strong>2.6465 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8887 ↑</strong></td>
+<td>1.5996</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8516 ↑</strong></td>
+<td>0.7031</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.9180 ↑</strong></td>
+<td>0.3594</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.5098 ↑</strong></td>
+<td>0.1035</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4238 ↑</strong></td>
+<td>2.3926</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0059</td>
+<td><strong>2.6816 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2656</td>
+<td><strong>2.6367 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.4297</td>
+<td><strong>2.4492 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4004</td>
+<td><strong>2.5352 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Heuristic v0.3.1 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Heuristic v0.3.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5248</td>
+<td><strong>5819 ↑</strong></td>
+<td>39.16</td>
+<td><strong>43.40 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>653</td>
+<td><strong>681 ↑</strong></td>
+<td>4.87</td>
+<td><strong>5.08 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>5972 ↑</strong></td>
+<td>5624</td>
+<td><strong>44.56 ↑</strong></td>
+<td>41.95</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1526 ↑</strong></td>
+<td>1266</td>
+<td><strong>11.39 ↑</strong></td>
+<td>9.44</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>9 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.07 ↑</strong></td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>9 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.07 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>217/1/38</td>
+<td>84.7656</td>
+<td>0.8496</td>
+<td><strong>15.6523 ✓</strong></td>
+<td>11.6250</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>217/2/37</td>
+<td>84.7656</td>
+<td>0.8516</td>
+<td><strong>15.5977 ✓</strong></td>
+<td>11.6055</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：81.45% ～ 87.70%；半平得分配对95%区间：81.84% ～ 87.99%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.361328125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.19140625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>26.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>31</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8345864377185768</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>4.822265625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>22.8515625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.4557398852890202</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.580215920798946</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Alpha v0.2.0</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Alpha v0.2.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Alpha v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td>252</td>
+<td><strong>254 ✓</strong></td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td>254</td>
+<td><strong>252 ✓</strong></td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td>49.22</td>
+<td><strong>49.61 ✓</strong></td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td>0.4980</td>
+<td><strong>0.5020 ✓</strong></td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.2227 ✓</strong></td>
+<td>14.1133</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5243 ✓</strong></td>
+<td>0.5203</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5241 ✓</strong></td>
+<td>0.5202</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2621 ✓</strong></td>
+<td>0.2601</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4355 ✓</strong></td>
+<td>0.3711</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>37.50 ✓</strong></td>
+<td>31.64</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.6895 ↑</strong></td>
+<td>11.2930</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.7461</td>
+<td><strong>3.8086 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.5977</td>
+<td><strong>1.6055 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>2.1484 ✓</strong></td>
+<td>2.2031</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.65 ✓</strong></td>
+<td>42.15</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>5.8730 ↑</strong></td>
+<td>5.6133</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0547 ↑</strong></td>
+<td>2.0020</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.9004 ↑</strong></td>
+<td>1.6465</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7383</td>
+<td><strong>0.7852 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7695</td>
+<td><strong>0.8809 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.3535</td>
+<td><strong>0.3652 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.2871</td>
+<td><strong>2.3770 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2578 ↑</strong></td>
+<td>2.0488</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3496 ↑</strong></td>
+<td>2.2773</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.3398 ↑</strong></td>
+<td>2.3008</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4551 ↑</strong></td>
+<td>2.2891</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.2.0 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5167 ↑</strong></td>
+<td>4960</td>
+<td><strong>37.19 ↑</strong></td>
+<td>35.71</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>818</td>
+<td><strong>822 ↑</strong></td>
+<td>5.89</td>
+<td><strong>5.92 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5986</td>
+<td><strong>6157 ↑</strong></td>
+<td>43.08</td>
+<td><strong>44.33 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1916</td>
+<td><strong>1949 ↑</strong></td>
+<td>13.79</td>
+<td><strong>14.03 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>2 ↑</strong></td>
+<td>1</td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>5 ↑</strong></td>
+<td>1</td>
+<td><strong>0.04 ↑</strong></td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>136/1/119</td>
+<td>53.1250</td>
+<td>0.5332</td>
+<td><strong>14.1484 ✓</strong></td>
+<td>14.0781</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>116/5/135</td>
+<td>45.3125</td>
+<td>0.4629</td>
+<td><strong>14.2969 ✓</strong></td>
+<td>14.1484</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：44.92% ～ 53.52%；半平得分配对95%区间：45.61% ～ 54.00%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>54.265625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>27.138671875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>35</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7551009902806118</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.44140625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>37.5</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.611228139232523</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7711771357968246</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Balance v0.2.1</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Balance v0.2.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Balance v0.2.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td>252</td>
+<td><strong>255 ✓</strong></td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td>255</td>
+<td><strong>252 ✓</strong></td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td>49.22</td>
+<td><strong>49.80 ✓</strong></td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td>0.4971</td>
+<td><strong>0.5029 ✓</strong></td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>13.9609</td>
+<td><strong>14.1348 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5206</td>
+<td><strong>0.5271 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5206</td>
+<td><strong>0.5271 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2603</td>
+<td><strong>0.2635 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4551 ✓</strong></td>
+<td>0.4277</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.09 ✓</strong></td>
+<td>37.50</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.7246 ↑</strong></td>
+<td>11.6895</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.6641 ↑</strong></td>
+<td>3.2852</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.5527 ↑</strong></td>
+<td>1.3203</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.1113</td>
+<td><strong>1.9648 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.38 ✓</strong></td>
+<td>40.19</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.9375</td>
+<td><strong>5.9707 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.1641 ↑</strong></td>
+<td>2.0449</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.7871 ↑</strong></td>
+<td>1.7070</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8145</td>
+<td><strong>0.8262 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.6934</td>
+<td><strong>0.7891 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.3281</td>
+<td><strong>0.3516 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.4102</td>
+<td>2.4102</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.1738 ↑</strong></td>
+<td>2.1348</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3359 ↑</strong></td>
+<td>2.2754</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.3984 ↑</strong></td>
+<td>2.3535</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4062</td>
+<td><strong>2.5156 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.1 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5208</td>
+<td><strong>5309 ↑</strong></td>
+<td>37.93</td>
+<td><strong>38.66 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>795 ↑</strong></td>
+<td>676</td>
+<td><strong>5.79 ↑</strong></td>
+<td>4.92</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5850</td>
+<td><strong>6062 ↑</strong></td>
+<td>42.60</td>
+<td><strong>44.15 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1876 ↑</strong></td>
+<td>1682</td>
+<td><strong>13.66 ↑</strong></td>
+<td>12.25</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td>2</td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>132/3/121</td>
+<td>51.5625</td>
+<td>0.5215</td>
+<td>13.9141</td>
+<td><strong>14.2539 ✓</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>120/2/134</td>
+<td>46.8750</td>
+<td>0.4727</td>
+<td>14.0078</td>
+<td><strong>14.0156 ✓</strong></td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：45.31% ～ 53.12%；半平得分配对95%区间：45.90% ～ 53.61%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.63671875</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.822265625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>31</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.6576209961699204</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.751953125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>32.421875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5975946592382542</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7638913118986238</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Balance v0.2.0</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Balance v0.2.0本人。1024局，512个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Balance v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>541 ✓</strong></td>
+<td>473</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>10</td>
+<td>10</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>473 ✓</strong></td>
+<td>541</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>52.83 ✓</strong></td>
+<td>46.19</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5332 ✓</strong></td>
+<td>0.4668</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.1611 ✓</strong></td>
+<td>13.9268</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5264 ✓</strong></td>
+<td>0.5177</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5264 ✓</strong></td>
+<td>0.5177</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2632 ✓</strong></td>
+<td>0.2588</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4590</td>
+<td><strong>0.4814 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>38.67</td>
+<td><strong>40.92 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.7842</td>
+<td><strong>11.8789 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.7002 ↑</strong></td>
+<td>3.4131</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.5869 ↑</strong></td>
+<td>1.3730</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.1133</td>
+<td><strong>2.0400 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.89 ✓</strong></td>
+<td>40.23</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.9961</td>
+<td><strong>6.1680 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.1455 ↑</strong></td>
+<td>2.0664</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7354</td>
+<td><strong>1.8232 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8037</td>
+<td><strong>0.8174 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7607 ↑</strong></td>
+<td>0.7021</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3428 ↑</strong></td>
+<td>0.3018</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.3877</td>
+<td><strong>2.4404 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2051 ↑</strong></td>
+<td>2.1641</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3389 ↑</strong></td>
+<td>2.3232</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4268 ↑</strong></td>
+<td>2.4072</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4258</td>
+<td><strong>2.5439 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>10442</td>
+<td><strong>10758 ↑</strong></td>
+<td>37.90</td>
+<td><strong>39.05 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>1625 ↑</strong></td>
+<td>1406</td>
+<td><strong>5.90 ↑</strong></td>
+<td>5.10</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>11690</td>
+<td><strong>11887 ↑</strong></td>
+<td>42.44</td>
+<td><strong>43.15 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>3788 ↑</strong></td>
+<td>3495</td>
+<td><strong>13.75 ↑</strong></td>
+<td>12.69</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>3 ↑</strong></td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>512</td>
+<td>278/4/230</td>
+<td>54.2969</td>
+<td>0.5469</td>
+<td><strong>14.1250 ✓</strong></td>
+<td>13.9414</td>
+</tr>
+<tr>
+<td>1</td>
+<td>512</td>
+<td>263/6/243</td>
+<td>51.3672</td>
+<td>0.5195</td>
+<td><strong>14.1973 ✓</strong></td>
+<td>13.9121</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：49.90% ～ 55.76%；半平得分配对95%区间：50.44% ～ 56.15%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.8056640625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.9052734375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7666096600146093</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.595703125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>35.15625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5985972294980684</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.769061516050715</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed B final c4 (unpublished) 对阵 Prism Alpha v0.1.5</h3>
+<p>双方归属：M73 seed B final c4 (unpublished)本人 / Prism Alpha v0.1.5本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed B final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>328 ✓</strong></td>
+<td>178</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>178 ✓</strong></td>
+<td>328</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>64.06 ✓</strong></td>
+<td>34.77</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6465 ✓</strong></td>
+<td>0.3535</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6953 ✓</strong></td>
+<td>13.3555</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5517 ✓</strong></td>
+<td>0.5014</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5517 ✓</strong></td>
+<td>0.5014</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2759 ✓</strong></td>
+<td>0.2507</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4863 ✓</strong></td>
+<td>0.4414</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>41.02 ✓</strong></td>
+<td>37.70</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6016</td>
+<td><strong>11.7656 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4980 ↑</strong></td>
+<td>3.0840</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.4805 ↑</strong></td>
+<td>1.1836</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.0176</td>
+<td><strong>1.9004 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>42.32 ✓</strong></td>
+<td>38.38</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8066</td>
+<td><strong>6.1445 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9609</td>
+<td><strong>2.1094 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8281 ↑</strong></td>
+<td>1.7734</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8027</td>
+<td><strong>0.8340 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8047 ↑</strong></td>
+<td>0.6484</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3984 ↑</strong></td>
+<td>0.2559</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.2559</td>
+<td><strong>2.3594 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.1934</td>
+<td><strong>2.2598 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.3184</td>
+<td><strong>2.3594 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4512 ↑</strong></td>
+<td>2.3535</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3828</td>
+<td><strong>2.4336 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed B final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.5 次数</th>
+<th>M73 seed B final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.5 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5182</td>
+<td><strong>5418 ↑</strong></td>
+<td>38.00</td>
+<td><strong>39.73 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>758 ↑</strong></td>
+<td>606</td>
+<td><strong>5.56 ↑</strong></td>
+<td>4.44</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5905</td>
+<td><strong>6034 ↑</strong></td>
+<td>43.30</td>
+<td><strong>44.25 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1791 ↑</strong></td>
+<td>1579</td>
+<td><strong>13.13 ↑</strong></td>
+<td>11.58</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>171/4/81</td>
+<td>66.7969</td>
+<td>0.6758</td>
+<td><strong>14.6992 ✓</strong></td>
+<td>13.4531</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>157/2/97</td>
+<td>61.3281</td>
+<td>0.6172</td>
+<td><strong>14.6914 ✓</strong></td>
+<td>13.2578</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：59.77% ～ 68.36%；半平得分配对95%区间：60.35% ～ 68.85%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.26953125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.634765625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7290606485367594</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.67578125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.5703125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5877080625332383</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7613887518524279</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Alpha v0.1.4</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Alpha v0.1.4本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Alpha v0.1.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>312 ✓</strong></td>
+<td>198</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>198 ✓</strong></td>
+<td>312</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>60.94 ✓</strong></td>
+<td>38.67</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6113 ✓</strong></td>
+<td>0.3887</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6426 ✓</strong></td>
+<td>13.5469</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5454 ✓</strong></td>
+<td>0.5046</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5453 ✓</strong></td>
+<td>0.5044</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2726 ✓</strong></td>
+<td>0.2522</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4336</td>
+<td><strong>0.4648 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>37.50 ✓</strong></td>
+<td>37.30</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6426</td>
+<td><strong>11.7871 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4121 ↑</strong></td>
+<td>3.3066</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3828 ↑</strong></td>
+<td>1.3008</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>2.0293</td>
+<td><strong>2.0059 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>40.53 ✓</strong></td>
+<td>39.34</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7734</td>
+<td><strong>6.1914 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9883</td>
+<td><strong>2.0000 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8672 ↑</strong></td>
+<td>1.7871</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8398</td>
+<td><strong>0.9062 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7695 ↑</strong></td>
+<td>0.6523</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4043 ↑</strong></td>
+<td>0.2500</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4102 ↑</strong></td>
+<td>2.2617</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0957</td>
+<td><strong>2.3926 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.0703</td>
+<td><strong>2.4473 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5645 ↑</strong></td>
+<td>2.2656</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5020 ↑</strong></td>
+<td>2.4199</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Alpha v0.1.4 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Alpha v0.1.4 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5253</td>
+<td><strong>5369 ↑</strong></td>
+<td>38.21</td>
+<td><strong>39.05 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>708 ↑</strong></td>
+<td>666</td>
+<td><strong>5.15 ↑</strong></td>
+<td>4.84</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6037 ↑</strong></td>
+<td>6018</td>
+<td><strong>43.91 ↑</strong></td>
+<td>43.77</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1747 ↑</strong></td>
+<td>1693</td>
+<td><strong>12.71 ↑</strong></td>
+<td>12.31</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>155/1/100</td>
+<td>60.5469</td>
+<td>0.6074</td>
+<td><strong>14.6367 ✓</strong></td>
+<td>13.6133</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>157/1/98</td>
+<td>61.3281</td>
+<td>0.6152</td>
+<td><strong>14.6484 ✓</strong></td>
+<td>13.4805</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：56.84% ～ 64.84%；半平得分配对95%区间：57.03% ～ 65.04%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.70703125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.859375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8423591152039278</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.646484375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.5703125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5912653062714668</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7558957598979759</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Balance v0.1.0</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Balance v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Balance v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>301 ✓</strong></td>
+<td>206</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>206 ✓</strong></td>
+<td>301</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>58.79 ✓</strong></td>
+<td>40.23</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5928 ✓</strong></td>
+<td>0.4072</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5371 ✓</strong></td>
+<td>13.7207</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5439 ✓</strong></td>
+<td>0.5133</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5436 ✓</strong></td>
+<td>0.5131</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2718 ✓</strong></td>
+<td>0.2566</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.5137 ✓</strong></td>
+<td>0.4160</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>40.82 ✓</strong></td>
+<td>34.57</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.8066</td>
+<td><strong>11.8926 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.2500 ↑</strong></td>
+<td>3.2129</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.2969 ↑</strong></td>
+<td>1.2480</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9531 ✓</strong></td>
+<td>1.9648</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>39.90 ✓</strong></td>
+<td>38.84</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.9375</td>
+<td><strong>6.0410 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0781</td>
+<td><strong>2.2598 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.9238 ↑</strong></td>
+<td>1.8320</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7598</td>
+<td><strong>0.8047 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7461 ↑</strong></td>
+<td>0.6406</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3613 ↑</strong></td>
+<td>0.3145</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5508 ↑</strong></td>
+<td>2.3457</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0918</td>
+<td><strong>2.2324 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2402</td>
+<td><strong>2.4297 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4551 ↑</strong></td>
+<td>2.3242</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4688</td>
+<td><strong>2.5605 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Balance v0.1.0 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Balance v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5381</td>
+<td><strong>5450 ↑</strong></td>
+<td>39.30</td>
+<td><strong>39.81 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>664 ↑</strong></td>
+<td>639</td>
+<td><strong>4.85 ↑</strong></td>
+<td>4.67</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>5976 ↑</strong></td>
+<td>5951</td>
+<td><strong>43.65 ↑</strong></td>
+<td>43.47</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1664 ↑</strong></td>
+<td>1645</td>
+<td><strong>12.15 ↑</strong></td>
+<td>12.02</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>6 ↑</strong></td>
+<td>5</td>
+<td>0.04</td>
+<td>0.04</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>163/2/91</td>
+<td>63.6719</td>
+<td>0.6406</td>
+<td><strong>14.7227 ✓</strong></td>
+<td>13.5781</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>138/3/115</td>
+<td>53.9062</td>
+<td>0.5449</td>
+<td><strong>14.3516 ✓</strong></td>
+<td>13.8633</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：54.69% ～ 62.89%；半平得分配对95%区间：55.27% ～ 63.28%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.478515625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.748046875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7300752144929232</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.5390625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>38.671875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5839145601192399</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7459570192018873</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Beta v0.1.0</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Beta v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Beta v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>299 ✓</strong></td>
+<td>209</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>209 ✓</strong></td>
+<td>299</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>58.40 ✓</strong></td>
+<td>40.82</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5879 ✓</strong></td>
+<td>0.4121</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5488 ✓</strong></td>
+<td>13.5996</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5404 ✓</strong></td>
+<td>0.5052</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5404 ✓</strong></td>
+<td>0.5052</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2702 ✓</strong></td>
+<td>0.2526</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4648 ✓</strong></td>
+<td>0.4121</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>39.45 ✓</strong></td>
+<td>36.52</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.8594 ↑</strong></td>
+<td>11.7773</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.2559</td>
+<td><strong>3.4629 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.2832</td>
+<td><strong>1.3438 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9727 ✓</strong></td>
+<td>2.1191</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>39.41 ✓</strong></td>
+<td>38.80</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8984</td>
+<td><strong>6.0332 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0449</td>
+<td><strong>2.0801 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>2.0117 ↑</strong></td>
+<td>1.8770</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8750 ↑</strong></td>
+<td>0.8574</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.6855</td>
+<td><strong>0.6914 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3438 ↑</strong></td>
+<td>0.2383</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4414 ↑</strong></td>
+<td>2.3574</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2754 ↑</strong></td>
+<td>2.2637</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2793</td>
+<td><strong>2.2969 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4883 ↑</strong></td>
+<td>2.3496</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.3750</td>
+<td><strong>2.5098 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Beta v0.1.0 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Beta v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5415 ↑</strong></td>
+<td>5342</td>
+<td><strong>39.28 ↑</strong></td>
+<td>38.76</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>657</td>
+<td><strong>688 ↑</strong></td>
+<td>4.77</td>
+<td><strong>4.99 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6044 ↑</strong></td>
+<td>5980</td>
+<td><strong>43.85 ↑</strong></td>
+<td>43.38</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1667</td>
+<td><strong>1773 ↑</strong></td>
+<td>12.09</td>
+<td><strong>12.86 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>1</td>
+<td>1</td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>159/2/95</td>
+<td>62.1094</td>
+<td>0.6250</td>
+<td><strong>14.6211 ✓</strong></td>
+<td>13.6367</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>140/2/114</td>
+<td>54.6875</td>
+<td>0.5508</td>
+<td><strong>14.4766 ✓</strong></td>
+<td>13.5625</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：54.10% ～ 62.70%；半平得分配对95%区间：54.39% ～ 63.18%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.84375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.923828125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7455463959628756</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.6640625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>35.3515625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5870637904258018</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7563114896511252</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism v0.1.1</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism v0.1.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism v0.1.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>374 ✓</strong></td>
+<td>133</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>133 ✓</strong></td>
+<td>374</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>73.05 ✓</strong></td>
+<td>25.98</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.7354 ✓</strong></td>
+<td>0.2646</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.1230 ✓</strong></td>
+<td>12.8047</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5687 ✓</strong></td>
+<td>0.4815</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5684 ✓</strong></td>
+<td>0.4814</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2842 ✓</strong></td>
+<td>0.2407</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4746 ✓</strong></td>
+<td>0.4414</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.67 ✓</strong></td>
+<td>35.74</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6797</td>
+<td><strong>12.1934 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.1230 ↑</strong></td>
+<td>2.7129</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3086 ↑</strong></td>
+<td>1.1543</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.8145</td>
+<td><strong>1.5586 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>41.90</td>
+<td><strong>42.55 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7441</td>
+<td><strong>6.5664 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.8965</td>
+<td><strong>2.3398 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.9707 ↑</strong></td>
+<td>1.6777</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8184</td>
+<td><strong>0.8457 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8438 ↑</strong></td>
+<td>0.5703</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4062 ↑</strong></td>
+<td>0.1934</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5234 ↑</strong></td>
+<td>2.3008</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>1.9746</td>
+<td><strong>2.5879 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1523</td>
+<td><strong>2.4766 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5391 ↑</strong></td>
+<td>2.3789</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4902 ↑</strong></td>
+<td>2.4492</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism v0.1.1 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism v0.1.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5310</td>
+<td><strong>5652 ↑</strong></td>
+<td>38.98</td>
+<td><strong>41.50 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>670 ↑</strong></td>
+<td>591</td>
+<td><strong>4.92 ↑</strong></td>
+<td>4.34</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6036 ↑</strong></td>
+<td>5983</td>
+<td><strong>44.31 ↑</strong></td>
+<td>43.93</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1599 ↑</strong></td>
+<td>1389</td>
+<td><strong>11.74 ↑</strong></td>
+<td>10.20</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>7 ↑</strong></td>
+<td>5</td>
+<td><strong>0.05 ↑</strong></td>
+<td>0.04</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>194/2/60</td>
+<td>75.7812</td>
+<td>0.7617</td>
+<td><strong>15.2617 ✓</strong></td>
+<td>12.6797</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>180/3/73</td>
+<td>70.3125</td>
+<td>0.7090</td>
+<td><strong>14.9844 ✓</strong></td>
+<td>12.9297</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：68.95% ～ 76.95%；半平得分配对95%区间：69.63% ～ 77.34%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.20703125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.615234375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.821744298417964</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.919921875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.375</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5730337855254675</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7492226468493755</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Heuristic v0.3.1</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Heuristic v0.3.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Heuristic v0.3.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>435 ✓</strong></td>
+<td>77</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>77 ✓</strong></td>
+<td>435</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>84.96 ✓</strong></td>
+<td>15.04</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.8496 ✓</strong></td>
+<td>0.1504</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.5840 ✓</strong></td>
+<td>11.6172</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5969 ✓</strong></td>
+<td>0.4450</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5967 ✓</strong></td>
+<td>0.4448</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2983 ✓</strong></td>
+<td>0.2224</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4238</td>
+<td><strong>0.5352 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>37.11</td>
+<td><strong>41.99 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.5625</td>
+<td><strong>12.6641 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>2.7363 ↑</strong></td>
+<td>2.5078</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.0977</td>
+<td><strong>1.3379 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.6387</td>
+<td><strong>1.1699 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>40.11</td>
+<td><strong>53.35 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.6367</td>
+<td><strong>7.2090 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.8008</td>
+<td><strong>2.6270 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8320 ↑</strong></td>
+<td>1.6426</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8398 ↑</strong></td>
+<td>0.7246</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.9375 ↑</strong></td>
+<td>0.3789</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.5156 ↑</strong></td>
+<td>0.0820</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4277 ↑</strong></td>
+<td>2.4180</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>1.9531</td>
+<td><strong>2.6973 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2246</td>
+<td><strong>2.6387 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4668 ↑</strong></td>
+<td>2.4062</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4902</td>
+<td><strong>2.5039 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Heuristic v0.3.1 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Heuristic v0.3.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5358</td>
+<td><strong>5799 ↑</strong></td>
+<td>40.07</td>
+<td><strong>43.37 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>562</td>
+<td><strong>685 ↑</strong></td>
+<td>4.20</td>
+<td><strong>5.12 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6046 ↑</strong></td>
+<td>5599</td>
+<td><strong>45.21 ↑</strong></td>
+<td>41.87</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1401 ↑</strong></td>
+<td>1280</td>
+<td><strong>10.48 ↑</strong></td>
+<td>9.57</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>4 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>5</td>
+<td>5</td>
+<td>0.04</td>
+<td>0.04</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>213/0/43</td>
+<td>83.2031</td>
+<td>0.8320</td>
+<td><strong>15.4648 ✓</strong></td>
+<td>11.7539</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>222/0/34</td>
+<td>86.7188</td>
+<td>0.8672</td>
+<td><strong>15.7031 ✓</strong></td>
+<td>11.4805</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：81.64% ～ 88.09%；半平得分配对95%区间：81.64% ～ 88.09%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.234375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>26.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8168052317185792</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>4.822265625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>23.2421875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.45154890978515994</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.5524976695985969</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Alpha v0.2.0</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Alpha v0.2.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Alpha v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td>241</td>
+<td><strong>265 ✓</strong></td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td>265</td>
+<td><strong>241 ✓</strong></td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td>47.07</td>
+<td><strong>51.76 ✓</strong></td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td>0.4766</td>
+<td><strong>0.5234 ✓</strong></td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>14.0703</td>
+<td><strong>14.2109 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5197</td>
+<td><strong>0.5249 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5197</td>
+<td><strong>0.5249 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2598</td>
+<td><strong>0.2624 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4785 ✓</strong></td>
+<td>0.3887</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>41.21 ✓</strong></td>
+<td>32.62</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.8867 ↑</strong></td>
+<td>11.3262</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.4648</td>
+<td><strong>3.7637 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.3750</td>
+<td><strong>1.6074 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>2.0898 ✓</strong></td>
+<td>2.1562</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>39.68</td>
+<td><strong>42.71 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>6.0391 ↑</strong></td>
+<td>5.6367</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.1914 ↑</strong></td>
+<td>1.9277</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8574 ↑</strong></td>
+<td>1.7500</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7617</td>
+<td><strong>0.8027 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7422</td>
+<td><strong>0.8359 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.2949</td>
+<td><strong>0.3730 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td>2.3809</td>
+<td><strong>2.3848 ↑</strong></td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.3477 ↑</strong></td>
+<td>2.0234</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.4453 ↑</strong></td>
+<td>2.2090</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.2988</td>
+<td><strong>2.3770 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4141 ↑</strong></td>
+<td>2.3320</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Alpha v0.2.0 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Alpha v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5382 ↑</strong></td>
+<td>4976</td>
+<td><strong>38.82 ↑</strong></td>
+<td>35.90</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>704</td>
+<td><strong>823 ↑</strong></td>
+<td>5.08</td>
+<td><strong>5.94 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>6001</td>
+<td><strong>6134 ↑</strong></td>
+<td>43.29</td>
+<td><strong>44.25 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1774</td>
+<td><strong>1927 ↑</strong></td>
+<td>12.80</td>
+<td><strong>13.90 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>2 ↑</strong></td>
+<td>1</td>
+<td>0.01</td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td><strong>1 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.01 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>130/2/124</td>
+<td>50.7812</td>
+<td>0.5117</td>
+<td>13.9766</td>
+<td><strong>14.1719 ✓</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>111/4/141</td>
+<td>43.3594</td>
+<td>0.4414</td>
+<td>14.1641</td>
+<td><strong>14.2500 ✓</strong></td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：42.58% ～ 51.56%；半平得分配对95%区间：43.26% ～ 52.05%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>54.150390625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>27.078125</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>35</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7704579871815653</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.49609375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>38.671875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5930583422227329</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7583489176482544</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Balance v0.2.1</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Balance v0.2.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Balance v0.2.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>255 ✓</strong></td>
+<td>251</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>251 ✓</strong></td>
+<td>255</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>49.80 ✓</strong></td>
+<td>49.02</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5039 ✓</strong></td>
+<td>0.4961</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>13.9863</td>
+<td><strong>14.1035 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5237</td>
+<td><strong>0.5281 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5236</td>
+<td><strong>0.5280 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2618</td>
+<td><strong>0.2640 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4922 ✓</strong></td>
+<td>0.3867</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>40.62 ✓</strong></td>
+<td>35.35</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.7578 ↑</strong></td>
+<td>11.5527</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.4004 ↑</strong></td>
+<td>3.3750</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3965 ↑</strong></td>
+<td>1.3594</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>2.0039 ✓</strong></td>
+<td>2.0156</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.07 ✓</strong></td>
+<td>40.28</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>6.0547 ↑</strong></td>
+<td>5.8320</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0938 ↑</strong></td>
+<td>2.0488</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.7441 ↑</strong></td>
+<td>1.7031</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8477 ↑</strong></td>
+<td>0.7812</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7031</td>
+<td><strong>0.7930 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.3145</td>
+<td><strong>0.3945 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4258 ↑</strong></td>
+<td>2.4160</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.1816 ↑</strong></td>
+<td>2.1641</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3594 ↑</strong></td>
+<td>2.2109</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.3906 ↑</strong></td>
+<td>2.3340</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4004</td>
+<td><strong>2.4277 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Balance v0.2.1 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Balance v0.2.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5305 ↑</strong></td>
+<td>5219</td>
+<td><strong>38.79 ↑</strong></td>
+<td>38.16</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>715 ↑</strong></td>
+<td>696</td>
+<td><strong>5.23 ↑</strong></td>
+<td>5.09</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5913</td>
+<td><strong>6031 ↑</strong></td>
+<td>43.23</td>
+<td><strong>44.10 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1740 ↑</strong></td>
+<td>1728</td>
+<td><strong>12.72 ↑</strong></td>
+<td>12.64</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td><strong>1 ↑</strong></td>
+<td>0</td>
+<td><strong>0.01 ↑</strong></td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>3 ↑</strong></td>
+<td>1</td>
+<td><strong>0.02 ↑</strong></td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>127/3/126</td>
+<td>49.6094</td>
+<td>0.5020</td>
+<td>13.7812</td>
+<td><strong>14.1836 ✓</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>128/3/125</td>
+<td>50.0000</td>
+<td>0.5059</td>
+<td><strong>14.1914 ✓</strong></td>
+<td>14.0234</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：46.48% ～ 53.12%；半平得分配对95%区间：47.07% ～ 53.71%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.421875</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.71484375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>31</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.645523750386465</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.61328125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.9609375</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5893179661621986</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7498158733505988</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>Prism Balance v0.2.0 对阵 Prism Alpha v0.1.5</h3>
+<p>双方归属：Prism Balance v0.2.0本人 / Prism Alpha v0.1.5本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>Prism Balance v0.2.0</th>
+<th>Prism Alpha v0.1.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>301 ✓</strong></td>
+<td>206</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>206 ✓</strong></td>
+<td>301</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>58.79 ✓</strong></td>
+<td>40.23</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5928 ✓</strong></td>
+<td>0.4072</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6094 ✓</strong></td>
+<td>13.8438</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5440 ✓</strong></td>
+<td>0.5155</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5439 ✓</strong></td>
+<td>0.5153</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2719 ✓</strong></td>
+<td>0.2577</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.5410 ✓</strong></td>
+<td>0.4629</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>45.51 ✓</strong></td>
+<td>37.89</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.9883 ↑</strong></td>
+<td>11.9512</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.2520 ↑</strong></td>
+<td>3.2051</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3359 ↑</strong></td>
+<td>1.2539</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9160 ✓</strong></td>
+<td>1.9512</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.08 ✓</strong></td>
+<td>39.12</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>6.1328</td>
+<td><strong>6.1973 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0723</td>
+<td><strong>2.1016 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8652 ↑</strong></td>
+<td>1.8633</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8477 ↑</strong></td>
+<td>0.8301</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7109 ↑</strong></td>
+<td>0.6582</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3594 ↑</strong></td>
+<td>0.3008</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4141 ↑</strong></td>
+<td>2.4062</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2734 ↑</strong></td>
+<td>2.2559</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.3145</td>
+<td><strong>2.4492 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5293 ↑</strong></td>
+<td>2.3789</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4570</td>
+<td><strong>2.4609 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>Prism Alpha v0.1.5 次数</th>
+<th>Prism Balance v0.2.0 占比%</th>
+<th>Prism Alpha v0.1.5 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5454</td>
+<td><strong>5477 ↑</strong></td>
+<td>39.66</td>
+<td><strong>39.82 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>684 ↑</strong></td>
+<td>642</td>
+<td><strong>4.97 ↑</strong></td>
+<td>4.67</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5948</td>
+<td><strong>5991 ↑</strong></td>
+<td>43.25</td>
+<td><strong>43.56 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1665 ↑</strong></td>
+<td>1641</td>
+<td><strong>12.11 ↑</strong></td>
+<td>11.93</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>1</td>
+<td><strong>3 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.02 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>158/4/94</td>
+<td>61.7188</td>
+<td>0.6250</td>
+<td><strong>14.7148 ✓</strong></td>
+<td>13.9102</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>143/1/112</td>
+<td>55.8594</td>
+<td>0.5605</td>
+<td><strong>14.5039 ✓</strong></td>
+<td>13.7773</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：54.49% ～ 62.89%；半平得分配对95%区间：55.08% ～ 63.48%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.72265625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.865234375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7631764946591022</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.37109375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>39.453125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5892637722852356</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7510772443998576</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Alpha v0.1.4</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Alpha v0.1.4本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>307 ✓</strong></td>
+<td>201</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>201 ✓</strong></td>
+<td>307</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>59.96 ✓</strong></td>
+<td>39.26</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6035 ✓</strong></td>
+<td>0.3965</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5273 ✓</strong></td>
+<td>13.5312</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5433 ✓</strong></td>
+<td>0.5061</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5433 ✓</strong></td>
+<td>0.5059</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2716 ✓</strong></td>
+<td>0.2530</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4219</td>
+<td><strong>0.4297 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>35.16 ✓</strong></td>
+<td>34.57</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.7188 ↑</strong></td>
+<td>11.6875</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.2969 ↑</strong></td>
+<td>3.2402</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.3809 ↑</strong></td>
+<td>1.3145</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9160 ✓</strong></td>
+<td>1.9258</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.88 ✓</strong></td>
+<td>40.57</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8477</td>
+<td><strong>6.0762 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0410 ↑</strong></td>
+<td>1.9961</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7891</td>
+<td><strong>1.8359 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8887 ↑</strong></td>
+<td>0.8184</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7852 ↑</strong></td>
+<td>0.6855</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3672 ↑</strong></td>
+<td>0.2754</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5078 ↑</strong></td>
+<td>2.2930</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0078</td>
+<td><strong>2.3418 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.0332</td>
+<td><strong>2.4375 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.6094 ↑</strong></td>
+<td>2.2656</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5605 ↑</strong></td>
+<td>2.3496</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.4 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.4 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5293</td>
+<td><strong>5311 ↑</strong></td>
+<td>38.66</td>
+<td><strong>38.78 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>707 ↑</strong></td>
+<td>673</td>
+<td><strong>5.16 ↑</strong></td>
+<td>4.91</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>6002</td>
+<td><strong>6047 ↑</strong></td>
+<td>43.84</td>
+<td><strong>44.15 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1688 ↑</strong></td>
+<td>1659</td>
+<td><strong>12.33 ↑</strong></td>
+<td>12.11</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>0</td>
+<td><strong>5 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.04 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>149/2/105</td>
+<td>58.2031</td>
+<td>0.5859</td>
+<td><strong>14.3789 ✓</strong></td>
+<td>13.6445</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>158/2/96</td>
+<td>61.7188</td>
+<td>0.6211</td>
+<td><strong>14.6758 ✓</strong></td>
+<td>13.4180</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：55.86% ～ 64.06%；半平得分配对95%区间：56.35% ～ 64.36%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.486328125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.748046875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8019618469331515</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.6875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>33.203125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6000757821505118</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7616470852015482</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Balance v0.1.0</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Balance v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Balance v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>301 ✓</strong></td>
+<td>206</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>206 ✓</strong></td>
+<td>301</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>58.79 ✓</strong></td>
+<td>40.23</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5928 ✓</strong></td>
+<td>0.4072</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.5469 ✓</strong></td>
+<td>13.7539</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5447 ✓</strong></td>
+<td>0.5150</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5445 ✓</strong></td>
+<td>0.5149</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2723 ✓</strong></td>
+<td>0.2574</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4863 ✓</strong></td>
+<td>0.4395</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>39.45 ✓</strong></td>
+<td>35.74</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.8418</td>
+<td><strong>11.8535 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.1562</td>
+<td><strong>3.3418 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.2910</td>
+<td><strong>1.3203 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.8652 ✓</strong></td>
+<td>2.0215</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>40.90 ✓</strong></td>
+<td>39.51</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.9590</td>
+<td><strong>6.0098 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.1094</td>
+<td><strong>2.2188 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8848 ↑</strong></td>
+<td>1.8691</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7441</td>
+<td><strong>0.8398 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7461 ↑</strong></td>
+<td>0.6211</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3984 ↑</strong></td>
+<td>0.2949</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5801 ↑</strong></td>
+<td>2.3477</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0977</td>
+<td><strong>2.2988 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1855</td>
+<td><strong>2.4297 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4395 ↑</strong></td>
+<td>2.3242</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5391 ↑</strong></td>
+<td>2.4531</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.1.0 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5402 ↑</strong></td>
+<td>5393</td>
+<td><strong>39.49 ↑</strong></td>
+<td>39.43</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>661</td>
+<td><strong>676 ↑</strong></td>
+<td>4.83</td>
+<td><strong>4.94 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>5994 ↑</strong></td>
+<td>5893</td>
+<td><strong>43.82 ↑</strong></td>
+<td>43.09</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1616</td>
+<td><strong>1711 ↑</strong></td>
+<td>11.81</td>
+<td><strong>12.51 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>5 ↑</strong></td>
+<td>3</td>
+<td><strong>0.04 ↑</strong></td>
+<td>0.02</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>159/4/93</td>
+<td>62.1094</td>
+<td>0.6289</td>
+<td><strong>14.5898 ✓</strong></td>
+<td>13.7227</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>142/1/113</td>
+<td>55.4688</td>
+<td>0.5566</td>
+<td><strong>14.5039 ✓</strong></td>
+<td>13.7852</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：54.69% ～ 62.89%；半平得分配对95%区间：55.18% ～ 63.28%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.42578125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.71875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7839891220240105</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.640625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>34.1796875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6012431846641988</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7687984513508127</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Beta v0.1.0</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Beta v0.1.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Beta v0.1.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>285 ✓</strong></td>
+<td>221</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>6</td>
+<td>6</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>221 ✓</strong></td>
+<td>285</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>55.66 ✓</strong></td>
+<td>43.16</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5625 ✓</strong></td>
+<td>0.4375</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.3867 ✓</strong></td>
+<td>13.8066</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5367 ✓</strong></td>
+<td>0.5151</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5366 ✓</strong></td>
+<td>0.5149</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2683 ✓</strong></td>
+<td>0.2575</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4277</td>
+<td><strong>0.4414 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>35.16</td>
+<td><strong>38.87 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.7188</td>
+<td><strong>11.7832 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.2168</td>
+<td><strong>3.4355 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.2832</td>
+<td><strong>1.3242 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9336 ✓</strong></td>
+<td>2.1113</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>39.89 ✓</strong></td>
+<td>38.54</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8320</td>
+<td><strong>6.0293 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.0332 ↑</strong></td>
+<td>2.0215</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.9102</td>
+<td><strong>1.9551 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8672 ↑</strong></td>
+<td>0.8145</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7324 ↑</strong></td>
+<td>0.7070</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3438 ↑</strong></td>
+<td>0.2559</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4746 ↑</strong></td>
+<td>2.2363</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.1992</td>
+<td><strong>2.3379 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1992</td>
+<td><strong>2.3594 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.3926 ↑</strong></td>
+<td>2.3750</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td>2.4531</td>
+<td><strong>2.4746 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Beta v0.1.0 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Beta v0.1.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5343</td>
+<td><strong>5355 ↑</strong></td>
+<td>38.93</td>
+<td><strong>39.01 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>657</td>
+<td><strong>678 ↑</strong></td>
+<td>4.79</td>
+<td><strong>4.94 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6077 ↑</strong></td>
+<td>5932</td>
+<td><strong>44.27 ↑</strong></td>
+<td>43.21</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1647</td>
+<td><strong>1759 ↑</strong></td>
+<td>12.00</td>
+<td><strong>12.81 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>140/4/112</td>
+<td>54.6875</td>
+<td>0.5547</td>
+<td><strong>14.1562 ✓</strong></td>
+<td>13.9414</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>145/2/109</td>
+<td>56.6406</td>
+<td>0.5703</td>
+<td><strong>14.6172 ✓</strong></td>
+<td>13.6719</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：51.56% ～ 59.77%；半平得分配对95%区间：52.25% ～ 60.35%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.62109375</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.81640625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7403428785618476</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.587890625</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>37.890625</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5988397956054854</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7597046944985777</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism v0.1.1</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism v0.1.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism v0.1.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>377 ✓</strong></td>
+<td>131</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>131 ✓</strong></td>
+<td>377</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>73.63 ✓</strong></td>
+<td>25.59</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.7402 ✓</strong></td>
+<td>0.2598</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.1504 ✓</strong></td>
+<td>12.7617</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5721 ✓</strong></td>
+<td>0.4819</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5720 ✓</strong></td>
+<td>0.4817</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2860 ✓</strong></td>
+<td>0.2409</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4688 ✓</strong></td>
+<td>0.4453</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.67 ✓</strong></td>
+<td>36.33</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.7598</td>
+<td><strong>12.1719 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>3.0156 ↑</strong></td>
+<td>2.6250</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td><strong>1.2402 ↑</strong></td>
+<td>1.0840</td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.7754</td>
+<td><strong>1.5410 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>41.13</td>
+<td><strong>41.29 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.8203</td>
+<td><strong>6.5488 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.9512</td>
+<td><strong>2.2793 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8828 ↑</strong></td>
+<td>1.7969</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.8086</td>
+<td><strong>0.8203 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.8828 ↑</strong></td>
+<td>0.5410</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.4141 ↑</strong></td>
+<td>0.1855</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5332 ↑</strong></td>
+<td>2.3047</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.0156</td>
+<td><strong>2.5488 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1191</td>
+<td><strong>2.5488 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.5176 ↑</strong></td>
+<td>2.4141</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5742 ↑</strong></td>
+<td>2.3555</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism v0.1.1 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism v0.1.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5386</td>
+<td><strong>5677 ↑</strong></td>
+<td>39.71</td>
+<td><strong>41.85 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td><strong>635 ↑</strong></td>
+<td>555</td>
+<td><strong>4.68 ↑</strong></td>
+<td>4.09</td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>5995 ↑</strong></td>
+<td>5984</td>
+<td><strong>44.20 ↑</strong></td>
+<td>44.12</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1544 ↑</strong></td>
+<td>1344</td>
+<td><strong>11.38 ↑</strong></td>
+<td>9.91</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>193/2/61</td>
+<td>75.3906</td>
+<td>0.7578</td>
+<td><strong>15.2578 ✓</strong></td>
+<td>12.7266</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>184/2/70</td>
+<td>71.8750</td>
+<td>0.7227</td>
+<td><strong>15.0430 ✓</strong></td>
+<td>12.7969</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：69.92% ～ 77.34%；半平得分配对95%区间：70.31% ～ 77.73%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.98046875</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.49609375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>32</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.7820678974749917</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.849609375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>31.25</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.5996896171914443</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7751542277499538</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Heuristic v0.3.1</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Heuristic v0.3.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Heuristic v0.3.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>438 ✓</strong></td>
+<td>74</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>74 ✓</strong></td>
+<td>438</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>85.55 ✓</strong></td>
+<td>14.45</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.8555 ✓</strong></td>
+<td>0.1445</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>15.6230 ✓</strong></td>
+<td>11.3965</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5999 ✓</strong></td>
+<td>0.4376</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5997 ✓</strong></td>
+<td>0.4375</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2999 ✓</strong></td>
+<td>0.2187</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4590</td>
+<td><strong>0.5020 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>39.84 ✓</strong></td>
+<td>38.09</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.6621</td>
+<td><strong>12.5859 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td><strong>2.5996 ↑</strong></td>
+<td>2.5332</td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.0508</td>
+<td><strong>1.3828 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td>1.5488</td>
+<td><strong>1.1504 ✓</strong></td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td>40.42</td>
+<td><strong>54.59 ✓</strong></td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>5.7461</td>
+<td><strong>7.1621 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>1.8008</td>
+<td><strong>2.6465 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8438 ↑</strong></td>
+<td>1.6328</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8359 ↑</strong></td>
+<td>0.6953</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.9277 ↑</strong></td>
+<td>0.3535</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.5078 ↑</strong></td>
+<td>0.0957</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5527 ↑</strong></td>
+<td>2.3789</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>1.9160</td>
+<td><strong>2.6953 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.1699</td>
+<td><strong>2.6309 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td><strong>2.4375 ↑</strong></td>
+<td>2.4102</td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5859 ↑</strong></td>
+<td>2.4707</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Heuristic v0.3.1 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Heuristic v0.3.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>5433</td>
+<td><strong>5736 ↑</strong></td>
+<td>40.73</td>
+<td><strong>43.00 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>538</td>
+<td><strong>708 ↑</strong></td>
+<td>4.03</td>
+<td><strong>5.31 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>6033 ↑</strong></td>
+<td>5594</td>
+<td><strong>45.23 ↑</strong></td>
+<td>41.94</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td><strong>1331 ↑</strong></td>
+<td>1294</td>
+<td><strong>9.98 ↑</strong></td>
+<td>9.70</td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>3 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.02 ↑</strong></td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>3</td>
+<td>3</td>
+<td>0.02</td>
+<td>0.02</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>221/0/35</td>
+<td>86.3281</td>
+<td>0.8633</td>
+<td><strong>15.6484 ✓</strong></td>
+<td>11.2891</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>217/0/39</td>
+<td>84.7656</td>
+<td>0.8477</td>
+<td><strong>15.5977 ✓</strong></td>
+<td>11.5039</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：82.42% ～ 88.48%；半平得分配对95%区间：82.42% ～ 88.48%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>52.1015625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.056640625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>26.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.767411939701554</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>5.01953125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>19.921875</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.45947852213082285</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.5975354320016771</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Alpha v0.2.0</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Alpha v0.2.0本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Alpha v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>259 ✓</strong></td>
+<td>249</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>4</td>
+<td>4</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>249 ✓</strong></td>
+<td>259</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>50.59 ✓</strong></td>
+<td>48.63</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5098 ✓</strong></td>
+<td>0.4902</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.2559 ✓</strong></td>
+<td>14.2246</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5275 ✓</strong></td>
+<td>0.5263</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5273 ✓</strong></td>
+<td>0.5263</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2637 ✓</strong></td>
+<td>0.2631</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.4629 ✓</strong></td>
+<td>0.3477</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>38.87 ✓</strong></td>
+<td>30.08</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.9082 ↑</strong></td>
+<td>11.2910</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.3867</td>
+<td><strong>3.7676 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.4062</td>
+<td><strong>1.5566 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9805 ✓</strong></td>
+<td>2.2109</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>41.52 ✓</strong></td>
+<td>41.32</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>5.9941 ↑</strong></td>
+<td>5.5215</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.1680 ↑</strong></td>
+<td>1.9707</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.8965 ↑</strong></td>
+<td>1.7852</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td>0.7891</td>
+<td><strong>0.7910 ↑</strong></td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7637</td>
+<td><strong>0.8457 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.2969</td>
+<td><strong>0.3770 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4375 ↑</strong></td>
+<td>2.3633</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2676 ↑</strong></td>
+<td>2.0469</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.4297 ↑</strong></td>
+<td>2.2363</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.2891</td>
+<td><strong>2.3750 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4844 ↑</strong></td>
+<td>2.2695</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.2.0 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5377 ↑</strong></td>
+<td>4984</td>
+<td><strong>38.85 ↑</strong></td>
+<td>36.02</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>720</td>
+<td><strong>797 ↑</strong></td>
+<td>5.20</td>
+<td><strong>5.76 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>6006</td>
+<td><strong>6126 ↑</strong></td>
+<td>43.39</td>
+<td><strong>44.27 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1734</td>
+<td><strong>1929 ↑</strong></td>
+<td>12.53</td>
+<td><strong>13.94 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>5 ↑</strong></td>
+<td>1</td>
+<td><strong>0.04 ↑</strong></td>
+<td>0.01</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td><strong>1 ↑</strong></td>
+<td>0.00</td>
+<td><strong>0.01 ↑</strong></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>138/2/116</td>
+<td>53.9062</td>
+<td>0.5430</td>
+<td><strong>14.2422 ✓</strong></td>
+<td>14.1719</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>121/2/133</td>
+<td>47.2656</td>
+<td>0.4766</td>
+<td>14.2695</td>
+<td><strong>14.2773 ✓</strong></td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：46.09% ～ 55.08%；半平得分配对95%区间：46.58% ～ 55.37%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>54.0625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>27.037109375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>20</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.809423532312739</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.359375</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>39.453125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6050219472871703</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7763543519518861</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Balance v0.2.1</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Balance v0.2.1本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Balance v0.2.1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td>245</td>
+<td><strong>264 ✓</strong></td>
+</tr>
+<tr>
+<td>平局</td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>负局</td>
+<td>264</td>
+<td><strong>245 ✓</strong></td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td>47.85</td>
+<td><strong>51.56 ✓</strong></td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td>0.4814</td>
+<td><strong>0.5186 ✓</strong></td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td>14.0254</td>
+<td><strong>14.1055 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td>0.5242</td>
+<td><strong>0.5272 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td>0.5240</td>
+<td><strong>0.5271 ✓</strong></td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td>0.2620</td>
+<td><strong>0.2635 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.5176 ✓</strong></td>
+<td>0.4531</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>43.55 ✓</strong></td>
+<td>38.87</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.8906 ↑</strong></td>
+<td>11.6094</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.3262</td>
+<td><strong>3.3926 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.3457</td>
+<td><strong>1.3477 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9805 ✓</strong></td>
+<td>2.0449</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>40.46 ✓</strong></td>
+<td>39.72</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td><strong>6.1699 ↑</strong></td>
+<td>5.9219</td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td><strong>2.1445 ↑</strong></td>
+<td>2.0508</td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td><strong>1.7285 ↑</strong></td>
+<td>1.7207</td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8418 ↑</strong></td>
+<td>0.7559</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.6836</td>
+<td><strong>0.8145 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td>0.3223</td>
+<td><strong>0.3457 ↑</strong></td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4805 ↑</strong></td>
+<td>2.3555</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2461 ↑</strong></td>
+<td>2.1133</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td><strong>2.3535 ↑</strong></td>
+<td>2.2500</td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.3320</td>
+<td><strong>2.4258 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.4785 ↑</strong></td>
+<td>2.4648</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.1 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.1 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5399 ↑</strong></td>
+<td>5254</td>
+<td><strong>39.39 ↑</strong></td>
+<td>38.34</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>689</td>
+<td><strong>690 ↑</strong></td>
+<td>5.03</td>
+<td><strong>5.04 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td>5908</td>
+<td><strong>6018 ↑</strong></td>
+<td>43.11</td>
+<td><strong>43.92 ↑</strong></td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1703</td>
+<td><strong>1737 ↑</strong></td>
+<td>12.43</td>
+<td><strong>12.68 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>6 ↑</strong></td>
+<td>3</td>
+<td><strong>0.04 ↑</strong></td>
+<td>0.02</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>123/2/131</td>
+<td>48.0469</td>
+<td>0.4844</td>
+<td>13.9180</td>
+<td><strong>14.2031 ✓</strong></td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>122/1/133</td>
+<td>47.6562</td>
+<td>0.4785</td>
+<td><strong>14.1328 ✓</strong></td>
+<td>14.0078</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：43.95% ～ 51.76%；半平得分配对95%区间：44.24% ～ 51.95%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.529296875</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.771484375</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>22</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>31</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.5874653489543824</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.763671875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>32.8125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6063946027616822</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7754753675009851</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Balance v0.2.0</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Balance v0.2.0本人。1024局，512个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Balance v0.2.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>519 ✓</strong></td>
+<td>494</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>11</td>
+<td>11</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>494 ✓</strong></td>
+<td>519</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>50.68 ✓</strong></td>
+<td>48.24</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.5122 ✓</strong></td>
+<td>0.4878</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.0938 ✓</strong></td>
+<td>14.0820</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5244 ✓</strong></td>
+<td>0.5240</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5243 ✓</strong></td>
+<td>0.5239</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2622 ✓</strong></td>
+<td>0.2619</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td>0.4600</td>
+<td><strong>0.4951 ✓</strong></td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td>39.26</td>
+<td><strong>41.99 ✓</strong></td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td>11.8564</td>
+<td><strong>11.9287 ↑</strong></td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.3701</td>
+<td><strong>3.4150 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.3809</td>
+<td><strong>1.3887 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9893 ✓</strong></td>
+<td>2.0264</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>40.97 ✓</strong></td>
+<td>40.66</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>6.1162</td>
+<td><strong>6.1309 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0742</td>
+<td><strong>2.1152 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.7725</td>
+<td><strong>1.8633 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8203 ↑</strong></td>
+<td>0.8027</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td>0.7324</td>
+<td><strong>0.7363 ↑</strong></td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3408 ↑</strong></td>
+<td>0.2803</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.5605 ↑</strong></td>
+<td>2.3555</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td>2.1523</td>
+<td><strong>2.1982 ↑</strong></td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2529</td>
+<td><strong>2.4512 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.3682</td>
+<td><strong>2.4619 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5225 ↑</strong></td>
+<td>2.4619</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Balance v0.2.0 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Balance v0.2.0 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td>10727</td>
+<td><strong>10793 ↑</strong></td>
+<td>38.97</td>
+<td><strong>39.21 ↑</strong></td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>1414</td>
+<td><strong>1422 ↑</strong></td>
+<td>5.14</td>
+<td><strong>5.17 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>11927 ↑</strong></td>
+<td>11807</td>
+<td><strong>43.33 ↑</strong></td>
+<td>42.90</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>3451</td>
+<td><strong>3496 ↑</strong></td>
+<td>12.54</td>
+<td><strong>12.70 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td><strong>1 ↑</strong></td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td><strong>6 ↑</strong></td>
+<td>5</td>
+<td>0.02</td>
+<td>0.02</td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>512</td>
+<td>268/6/238</td>
+<td>52.3438</td>
+<td>0.5293</td>
+<td><strong>14.0742 ✓</strong></td>
+<td>14.0469</td>
+</tr>
+<tr>
+<td>1</td>
+<td>512</td>
+<td>251/5/256</td>
+<td>49.0234</td>
+<td>0.4951</td>
+<td>14.1133</td>
+<td><strong>14.1172 ✓</strong></td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：48.05% ～ 53.32%；半平得分配对95%区间：48.58% ～ 53.81%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.7587890625</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.884765625</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>34</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.8126083867781146</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.51953125</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>38.96484375</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6076557038982742</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.8161151475484052</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<h3>M73 seed C final c4 (unpublished) 对阵 Prism Alpha v0.1.5</h3>
+<p>双方归属：M73 seed C final c4 (unpublished)本人 / Prism Alpha v0.1.5本人。512局，256个双座种子块；候选greedy，对手greedy。</p>
+<table>
+<thead>
+<tr>
+<th>个人指标</th>
+<th>M73 seed C final c4 (unpublished)</th>
+<th>Prism Alpha v0.1.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>胜局</td>
+<td><strong>309 ✓</strong></td>
+<td>201</td>
+</tr>
+<tr>
+<td>平局</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>负局</td>
+<td><strong>201 ✓</strong></td>
+<td>309</td>
+</tr>
+<tr>
+<td>纯胜率%</td>
+<td><strong>60.35 ✓</strong></td>
+<td>39.26</td>
+</tr>
+<tr>
+<td>半平得分</td>
+<td><strong>0.6055 ✓</strong></td>
+<td>0.3945</td>
+</tr>
+<tr>
+<td>最终VP/局</td>
+<td><strong>14.6504 ✓</strong></td>
+<td>13.6699</td>
+</tr>
+<tr>
+<td>VP/本人Main</td>
+<td><strong>0.5483 ✓</strong></td>
+<td>0.5116</td>
+</tr>
+<tr>
+<td>VP/本人决策</td>
+<td><strong>0.5482 ✓</strong></td>
+<td>0.5114</td>
+</tr>
+<tr>
+<td>VP/全局步</td>
+<td><strong>0.2741 ✓</strong></td>
+<td>0.2557</td>
+</tr>
+<tr>
+<td>贵族/局</td>
+<td><strong>0.5469 ✓</strong></td>
+<td>0.4766</td>
+</tr>
+<tr>
+<td>贵族覆盖率%</td>
+<td><strong>46.68 ✓</strong></td>
+<td>39.45</td>
+</tr>
+<tr>
+<td>永久折扣/局</td>
+<td><strong>11.9727 ↑</strong></td>
+<td>11.9375</td>
+</tr>
+<tr>
+<td>预留获得/局</td>
+<td>3.1719</td>
+<td><strong>3.2559 ↑</strong></td>
+</tr>
+<tr>
+<td>预留买回/局</td>
+<td>1.2227</td>
+<td><strong>1.2402 ↑</strong></td>
+</tr>
+<tr>
+<td>终局未买回预留/局</td>
+<td><strong>1.9492 ✓</strong></td>
+<td>2.0156</td>
+</tr>
+<tr>
+<td>预留买回率%</td>
+<td><strong>38.55 ✓</strong></td>
+<td>38.09</td>
+</tr>
+<tr>
+<td>0 VP牌/局</td>
+<td>6.1699</td>
+<td><strong>6.2285 ↑</strong></td>
+</tr>
+<tr>
+<td>1 VP牌/局</td>
+<td>2.0332</td>
+<td><strong>2.1309 ↑</strong></td>
+</tr>
+<tr>
+<td>2 VP牌/局</td>
+<td>1.8359</td>
+<td><strong>1.8477 ↑</strong></td>
+</tr>
+<tr>
+<td>3 VP牌/局</td>
+<td><strong>0.8047 ↑</strong></td>
+<td>0.7891</td>
+</tr>
+<tr>
+<td>4 VP牌/局</td>
+<td><strong>0.7539 ↑</strong></td>
+<td>0.6602</td>
+</tr>
+<tr>
+<td>5 VP牌/局</td>
+<td><strong>0.3750 ↑</strong></td>
+<td>0.2812</td>
+</tr>
+<tr>
+<td>白折扣/局</td>
+<td><strong>2.4746 ↑</strong></td>
+<td>2.3516</td>
+</tr>
+<tr>
+<td>蓝折扣/局</td>
+<td><strong>2.2715 ↑</strong></td>
+<td>2.2676</td>
+</tr>
+<tr>
+<td>绿折扣/局</td>
+<td>2.2910</td>
+<td><strong>2.4746 ↑</strong></td>
+</tr>
+<tr>
+<td>红折扣/局</td>
+<td>2.4219</td>
+<td><strong>2.4395 ↑</strong></td>
+</tr>
+<tr>
+<td>黑折扣/局</td>
+<td><strong>2.5137 ↑</strong></td>
+<td>2.4043</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>M73 seed C final c4 (unpublished) 次数</th>
+<th>Prism Alpha v0.1.5 次数</th>
+<th>M73 seed C final c4 (unpublished) 占比%</th>
+<th>Prism Alpha v0.1.5 占比%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>买公开牌</td>
+<td><strong>5504 ↑</strong></td>
+<td>5477</td>
+<td><strong>40.23 ↑</strong></td>
+<td>40.02</td>
+</tr>
+<tr>
+<td>买回预留牌</td>
+<td>626</td>
+<td><strong>635 ↑</strong></td>
+<td>4.58</td>
+<td><strong>4.64 ↑</strong></td>
+</tr>
+<tr>
+<td>拿宝石</td>
+<td><strong>5927 ↑</strong></td>
+<td>5902</td>
+<td><strong>43.32 ↑</strong></td>
+<td>43.13</td>
+</tr>
+<tr>
+<td>预留公开牌</td>
+<td>1624</td>
+<td><strong>1667 ↑</strong></td>
+<td>11.87</td>
+<td><strong>12.18 ↑</strong></td>
+</tr>
+<tr>
+<td>盲预留</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+<tr>
+<td>选择贵族</td>
+<td>2</td>
+<td><strong>4 ↑</strong></td>
+<td>0.01</td>
+<td><strong>0.03 ↑</strong></td>
+</tr>
+<tr>
+<td>跳过</td>
+<td>0</td>
+<td>0</td>
+<td>0.00</td>
+<td>0.00</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>模型物理座位</th>
+<th>局数</th>
+<th>模型胜/平/负</th>
+<th>模型纯胜%</th>
+<th>模型半平得分</th>
+<th>模型VP/局</th>
+<th>对手VP/局</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>256</td>
+<td>167/2/87</td>
+<td>65.2344</td>
+<td>0.6562</td>
+<td><strong>14.7109 ✓</strong></td>
+<td>13.5117</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>142/0/114</td>
+<td>55.4688</td>
+<td>0.5547</td>
+<td><strong>14.5898 ✓</strong></td>
+<td>13.8281</td>
+</tr>
+</tbody>
+</table>
+<p>纯胜率配对95%区间：56.05% ～ 64.65%；半平得分配对95%区间：56.35% ～ 64.75%。</p>
+<table>
+<thead>
+<tr>
+<th>整局指标（两人共同）</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>平均全局步数</td>
+<td>53.453125</td>
+</tr>
+<tr>
+<td>平均轮数</td>
+<td>26.732421875</td>
+</tr>
+<tr>
+<td>最少轮数</td>
+<td>21</td>
+</tr>
+<tr>
+<td>中位轮数</td>
+<td>27.0</td>
+</tr>
+<tr>
+<td>最多轮数</td>
+<td>33</td>
+</tr>
+<tr>
+<td>轮数标准差</td>
+<td>1.6911660391639505</td>
+</tr>
+<tr>
+<td>终局绝对分差VP</td>
+<td>3.4296875</td>
+</tr>
+<tr>
+<td>分差≤2的对局%</td>
+<td>38.28125</td>
+</tr>
+<tr>
+<td>单局进程墙钟平均秒</td>
+<td>0.6001659353593993</td>
+</tr>
+<tr>
+<td>单局进程墙钟P95秒</td>
+<td>0.7663169585033756</td>
+</tr>
+<tr>
+<td>决策 / 推理耗时</td>
+<td>NOT_MEASURED / NOT_MEASURED</td>
+</tr>
+</tbody>
+</table>
+<p>得分效率 = 累计终局VP ÷ 本人Main总数；贵族覆盖率 = 至少获得一个贵族的局数 ÷ 总局数；低分牌占比 = 0–1 VP购牌张数 ÷ 全部购牌张数；预留买回率 = 总买回 ÷ 总获得。</p>
+<p>完整终局、截断及错误分开。普通区间仅描述；模型增强按六项单侧校正判定。三训练seed不能证明普适稳定；最新对手代价单列。</p>
+<p>先评审重复与最新覆盖，再决定独立的旧池/新池对照；不自动追加预算或发布。</p>
+<h2>冻结统计与逐seed判定</h2>
+<pre><code class="language-json">{
+  &quot;a&quot;: {
+    &quot;common_delta&quot;: {
+      &quot;mean&quot;: 0.002766927083333334,
+      &quot;ci95&quot;: [
+        -0.01611328125,
+        0.021647135416666664
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: -0.020345052083333332,
+      &quot;seed_blocks&quot;: 256,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;direct_parent&quot;: {
+      &quot;mean&quot;: 0.5263671875,
+      &quot;ci95&quot;: [
+        0.4990234375,
+        0.55322265625
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: 0.49348551432291665,
+      &quot;seed_blocks&quot;: 512,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;coverage_delta&quot;: {
+      &quot;latest-alpha&quot;: null,
+      &quot;latest-balance&quot;: {
+        &quot;mean&quot;: 0.017578125,
+        &quot;ci95&quot;: [
+          -0.02734375,
+          0.0625
+        ],
+        &quot;simultaneous_one_sided_lower&quot;: -0.0380859375,
+        &quot;seed_blocks&quot;: 256,
+        &quot;bootstrap_seed&quot;: 73029999,
+        &quot;bootstrap_samples&quot;: 20000,
+        &quot;lower_quantile&quot;: 0.008333333333333333
+      }
+    },
+    &quot;retention_common&quot;: true,
+    &quot;retention_direct&quot;: true,
+    &quot;enhancement_common&quot;: false,
+    &quot;enhancement_direct&quot;: false,
+    &quot;coverage_retention&quot;: {
+      &quot;latest-alpha&quot;: &quot;INCOMPLETE&quot;,
+      &quot;latest-balance&quot;: false
+    }
+  },
+  &quot;b&quot;: {
+    &quot;common_delta&quot;: {
+      &quot;mean&quot;: 0.019694010416666668,
+      &quot;ci95&quot;: [
+        0.0001627604166666661,
+        0.03938802083333333
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: -0.004069010416666666,
+      &quot;seed_blocks&quot;: 256,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;direct_parent&quot;: {
+      &quot;mean&quot;: 0.533203125,
+      &quot;ci95&quot;: [
+        0.5048828125,
+        0.5615234375
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: 0.4990234375,
+      &quot;seed_blocks&quot;: 512,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;coverage_delta&quot;: {
+      &quot;latest-alpha&quot;: {
+        &quot;mean&quot;: 0.021484375,
+        &quot;ci95&quot;: [
+          -0.0283203125,
+          0.0712890625
+        ],
+        &quot;simultaneous_one_sided_lower&quot;: -0.0400390625,
+        &quot;seed_blocks&quot;: 256,
+        &quot;bootstrap_seed&quot;: 73029999,
+        &quot;bootstrap_samples&quot;: 20000,
+        &quot;lower_quantile&quot;: 0.008333333333333333
+      },
+      &quot;latest-balance&quot;: {
+        &quot;mean&quot;: -0.0068359375,
+        &quot;ci95&quot;: [
+          -0.052734375,
+          0.0400390625
+        ],
+        &quot;simultaneous_one_sided_lower&quot;: -0.0625,
+        &quot;seed_blocks&quot;: 256,
+        &quot;bootstrap_seed&quot;: 73029999,
+        &quot;bootstrap_samples&quot;: 20000,
+        &quot;lower_quantile&quot;: 0.008333333333333333
+      }
+    },
+    &quot;retention_common&quot;: true,
+    &quot;retention_direct&quot;: true,
+    &quot;enhancement_common&quot;: false,
+    &quot;enhancement_direct&quot;: false,
+    &quot;coverage_retention&quot;: {
+      &quot;latest-alpha&quot;: false,
+      &quot;latest-balance&quot;: false
+    }
+  },
+  &quot;c&quot;: {
+    &quot;common_delta&quot;: {
+      &quot;mean&quot;: -0.0016276041666666687,
+      &quot;ci95&quot;: [
+        -0.019856770833333336,
+        0.017089843749999997
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: -0.02425130208333333,
+      &quot;seed_blocks&quot;: 256,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;direct_parent&quot;: {
+      &quot;mean&quot;: 0.51220703125,
+      &quot;ci95&quot;: [
+        0.48583984375,
+        0.5380859375
+      ],
+      &quot;simultaneous_one_sided_lower&quot;: 0.48046875,
+      &quot;seed_blocks&quot;: 512,
+      &quot;bootstrap_seed&quot;: 73029999,
+      &quot;bootstrap_samples&quot;: 20000,
+      &quot;lower_quantile&quot;: 0.008333333333333333
+    },
+    &quot;coverage_delta&quot;: {
+      &quot;latest-alpha&quot;: {
+        &quot;mean&quot;: 0.033203125,
+        &quot;ci95&quot;: [
+          -0.0166015625,
+          0.0830078125
+        ],
+        &quot;simultaneous_one_sided_lower&quot;: -0.02734375,
+        &quot;seed_blocks&quot;: 256,
+        &quot;bootstrap_seed&quot;: 73029999,
+        &quot;bootstrap_samples&quot;: 20000,
+        &quot;lower_quantile&quot;: 0.008333333333333333
+      },
+      &quot;latest-balance&quot;: {
+        &quot;mean&quot;: -0.0224609375,
+        &quot;ci95&quot;: [
+          -0.0703125,
+          0.0244140625
+        ],
+        &quot;simultaneous_one_sided_lower&quot;: -0.080078125,
+        &quot;seed_blocks&quot;: 256,
+        &quot;bootstrap_seed&quot;: 73029999,
+        &quot;bootstrap_samples&quot;: 20000,
+        &quot;lower_quantile&quot;: 0.008333333333333333
+      }
+    },
+    &quot;retention_common&quot;: true,
+    &quot;retention_direct&quot;: true,
+    &quot;enhancement_common&quot;: false,
+    &quot;enhancement_direct&quot;: false,
+    &quot;coverage_retention&quot;: {
+      &quot;latest-alpha&quot;: true,
+      &quot;latest-balance&quot;: false
+    }
+  }
+}
+</code></pre>
+<p>完整性：INCOMPLETE；缺项不填平局。</p>

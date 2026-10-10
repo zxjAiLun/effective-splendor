@@ -1,0 +1,11 @@
+{
+  "format": "prism-registered-reading-receipt-v1",
+  "spec_sha256": "ba87b8d8fc4e83a392a6971bbea7b1954264da27b743fdef2111cc2d0d5a7f05",
+  "adapter_sha256": "52af6efe6484852aa4b58cf21355e22c7e4b96d345d0becc126081526edb2924",
+  "html_sha256": "02554c1bf972de5ff1719778e4d6cc82e6a2586f38540722e1bdacbe2aab8893",
+  "reading_markdown_sha256": "3f8070e0400ba54c023d9eb7094e6ffbec93cdb32ef12c059466a5aa3498b7b2",
+  "result_sha256": "aa141cf1840f4f4b594836472d3ebacd687072459be829787d799c208fd40eb6",
+  "numeric_payload_unchanged": true,
+  "new_games": 0,
+  "pixel_visual": "NOT_VERIFIED"
+}

@@ -1,0 +1,4 @@
+# CPU-only exported-model matches and offline replay reports; no PyTorch or GPU.
+numpy==2.2.4
+psutil==7.0.0
+Markdown==3.8

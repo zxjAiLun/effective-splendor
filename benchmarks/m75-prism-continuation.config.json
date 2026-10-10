@@ -1,0 +1,341 @@
+{
+  "assets": {
+    "alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.4/weights.json",
+      "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9"
+    },
+    "balance": {
+      "local_path": "local-artifacts/prism/balance-v0.1.0/weights.json",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1"
+    },
+    "beta": {
+      "local_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb"
+    },
+    "fixtures": {
+      "local_path": "local-artifacts/prism/portable-m57/inputs/boundary-fixtures.jsonl",
+      "sha256": "81c3f01dcd0d31fcb7dc54acfd125892a2692ff13e31a996889282d35ea817c1"
+    },
+    "general": {
+      "local_path": "local-artifacts/prism/v0.1.1/weights.json",
+      "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85"
+    },
+    "initial": {
+      "local_path": "local-artifacts/prism/v01/run/weights.json",
+      "sha256": "5db70b773083858b83c6e679d5641f1b78d4c5fbe34c48950cc906064f821b54"
+    },
+    "latest-alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.2.0/weights.json",
+      "sha256": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5"
+    },
+    "latest-balance": {
+      "local_path": "local-artifacts/prism/balance-v0.2.1/weights.json",
+      "sha256": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a"
+    },
+    "parent": {
+      "local_path": "local-artifacts/prism/balance-v0.2.3/weights.json",
+      "sha256": "e16bfe0d30168d6ef7ceb067ca4357900f1c09e09d35f5759832dd3d6a9258ad"
+    },
+    "released-alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+    }
+  },
+  "authorization": {
+    "authorized_end": "one finite5120-game20-cycle warm-start from Balance v0.2.3; final c20 audit;1024 development curve games at c5/10/15/20;9216 independent greedy attempts; reports. No automatic next round/retries/release/deploy.",
+    "request": "\u7ee7\u7eed\u8fed\u4ee3\uff1f",
+    "source": "human_owner"
+  },
+  "base_model": {
+    "name": "Prism Balance v0.2.3",
+    "sha256": "e16bfe0d30168d6ef7ceb067ca4357900f1c09e09d35f5759832dd3d6a9258ad"
+  },
+  "candidate_status": "NOT_RUN_UNPUBLISHED",
+  "causal_boundary": "One practical successor trajectory; duration/pool effects not isolated.",
+  "comparison_limit": "Fixed parent and representative pool; no architecture ceiling inference.",
+  "coverage": "Parent B direct; General/Balance/Alpha1.4/Beta/Alpha1.5 + non-Prism heuristic common. Initial omitted to keep six opponents; still used for parity.",
+  "default_replaced": false,
+  "development": {
+    "both_sides": "greedy",
+    "checkpoints": [
+      5,
+      10,
+      15,
+      20
+    ],
+    "max_truncated_games": 8,
+    "opponent": "parent",
+    "role": "descriptive development curve after final candidate frozen; never selects or changes final c20",
+    "seed_end": 13040127,
+    "seed_start": 13040000,
+    "total_games": 1024
+  },
+  "engineering": {
+    "games": 0,
+    "reason": "Same PPO/numerical core, binary,4-CPU environment and storage adapter. M67 completed20cycles; M73 Linux normal/truncation audit retained. New parent68-fixture parity and new schedule/cap validation required before launch.",
+    "research_use": false,
+    "status": "REUSE_EXISTING_MATCHED_ENGINEERING"
+  },
+  "evaluation": {
+    "action_seed": 75020001,
+    "bootstrap_samples": 20000,
+    "bootstrap_seed": 75029999,
+    "common_games_per_model": 3072,
+    "common_opponents": [
+      "heuristic",
+      "general",
+      "balance",
+      "alpha",
+      "beta",
+      "released-alpha"
+    ],
+    "common_seed_by_opponent": {
+      "alpha": [
+        13013000,
+        13013255
+      ],
+      "balance": [
+        13012000,
+        13012255
+      ],
+      "beta": [
+        13014000,
+        13014255
+      ],
+      "general": [
+        13011000,
+        13011255
+      ],
+      "heuristic": [
+        13010000,
+        13010255
+      ],
+      "released-alpha": [
+        13015000,
+        13015255
+      ]
+    },
+    "common_seed_end": 10010255,
+    "common_seed_start": 10010000,
+    "coverage_seed_by_opponent": {
+      "latest-alpha": [
+        13020000,
+        13020255
+      ],
+      "latest-balance": [
+        13021000,
+        13021255
+      ]
+    },
+    "cpu_seconds_per_arena": 20000,
+    "direct_games": 1024,
+    "direct_seed_end": 13030511,
+    "direct_seed_start": 13030000,
+    "enhancement_point_min": {
+      "common_delta": 0.02,
+      "direct_score": 0.52
+    },
+    "enhancement_thresholds": {
+      "candidate/direct_parent": 0.5,
+      "candidate/strength_pool": 0.0
+    },
+    "family_alpha": 0.05,
+    "gates": {
+      "candidate/direct_parent": 0.45,
+      "candidate/strength_pool": -0.05
+    },
+    "inference": "Two-endpoint one-sided family for common/direct enhancement; separate two-endpoint latest-coverage retention; ordinary95% CI descriptive.",
+    "lower_quantile": 0.025,
+    "max_truncated_games_total": 8,
+    "memory_bytes": 8589934592,
+    "mode": "both-greedy",
+    "ply_cap": 512,
+    "retention_coverage_delta": -0.03,
+    "selection": "fixed final c20; no independent-evaluation feedback into selection",
+    "shard_seed_blocks": 32,
+    "statistical_unit": "paired two-seat environment seed; equal mean over six common opponents",
+    "storage_bytes_per_arena": 2147483648,
+    "style": "descriptive; no style veto",
+    "total_games": 9216,
+    "wall_seconds_per_arena": 7200,
+    "workers": 4
+  },
+  "execution_revision": "engineering-r4",
+  "failure_policy": "No automatic research retry. Preserve failed attempts and valid truncations. Fixed budgets do not grow after outcomes.",
+  "format": "m75-prism-continuation-v1",
+  "frozen_at": "2026-10-10T07:59:37.925266+00:00",
+  "git_published": false,
+  "hypothesis": "An additional practical training segment can improve the M74 final model; fixed checkpoint screens describe the within-segment trajectory.",
+  "measurement_contract": "m73-progress-and-style-v1; terminal/truncated/error split, ply quantiles, no-buy and unchanged-token windows; first large-card Main/coverage, Main12/20/24 VP if reconstructible; legal opportunities NOT_MEASURED without full actions; FIFO redemption deferred NOT_MEASURED.",
+  "names": {
+    "alpha": "Prism Alpha v0.1.4",
+    "balance": "Prism Balance v0.1.0",
+    "beta": "Prism Beta v0.1.0",
+    "candidate": "M75 final c20 (unpublished)",
+    "candidate-a": "M75 final c20 (unpublished)",
+    "candidate-curve-c10": "M75 c10 development checkpoint",
+    "candidate-curve-c15": "M75 c15 development checkpoint",
+    "candidate-curve-c20": "M75 c20 development checkpoint",
+    "candidate-curve-c5": "M75 c5 development checkpoint",
+    "general": "Prism v0.1.1",
+    "heuristic": "Heuristic v0.3.1",
+    "initial": "Prism v0.1.0",
+    "latest-alpha": "Prism Alpha v0.2.0",
+    "latest-balance": "Prism Balance v0.2.1",
+    "parent": "Prism Balance v0.2.3",
+    "released-alpha": "Prism Alpha v0.1.5"
+  },
+  "pool_deployed": false,
+  "resources": {
+    "automatic_retries": 0,
+    "available_cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "minimum_free_bytes": 49392123904,
+    "round_wall_seconds": 93600,
+    "rss_limit_scope": "sampled process-tree soft limit; no owned cgroup",
+    "total_cpu_seconds": 240000,
+    "total_storage_bytes": 40802189312,
+    "whole_disk_reserve_bytes": 8589934592
+  },
+  "runtime": {
+    "arena_environment": {
+      "Markdown": "3.8",
+      "numpy": "2.2.4",
+      "psutil": "7.0.0"
+    },
+    "arena_python": "/mnt/workspace/envs/splendor-arena-py312/bin/python",
+    "numeric_source_identity": "ce1bb93c9ce5e13bad1ef05845ba531cb3a0366e2de331fec9917ca211ab7303",
+    "portable_package_identity": "c48d6fdb0db00176e4aaad1b39979cb711006bf4773fc649f71f6ffe7da72327",
+    "remote_root": "/mnt/workspace/splendor-m75-continuation-r1",
+    "source_pin_policy": "separate exact execution manifest before each first launch; never modify dispatched copies",
+    "training_environment": {
+      "Markdown": "3.7",
+      "cpu_threads": 2,
+      "numpy": "2.2.4",
+      "psutil": "7.0.0",
+      "torch": "2.6.0+cpu"
+    },
+    "training_python": "/mnt/workspace/envs/splendor-ppo-m67-py312/bin/python"
+  },
+  "sample_size_rationale": "Repeat the validated5120-game segment from the stronger M74 parent; 128 new paired development seeds give a coarse four-checkpoint curve. Independent256 paired seeds/common or coverage and512 direct remain separate.",
+  "seed_check": {
+    "prior_ranges": 167,
+    "status": "PASS"
+  },
+  "seed_reservations": [
+    [
+      13001000,
+      13003559,
+      "m75-training"
+    ],
+    [
+      13010000,
+      13010255,
+      "m75-common-heuristic"
+    ],
+    [
+      13011000,
+      13011255,
+      "m75-common-general"
+    ],
+    [
+      13012000,
+      13012255,
+      "m75-common-balance"
+    ],
+    [
+      13013000,
+      13013255,
+      "m75-common-alpha"
+    ],
+    [
+      13014000,
+      13014255,
+      "m75-common-beta"
+    ],
+    [
+      13015000,
+      13015255,
+      "m75-common-released-alpha"
+    ],
+    [
+      13020000,
+      13020255,
+      "m75-coverage-latest-alpha"
+    ],
+    [
+      13021000,
+      13021255,
+      "m75-coverage-latest-balance"
+    ],
+    [
+      13030000,
+      13030511,
+      "m75-direct"
+    ],
+    [
+      13040000,
+      13040127,
+      "m75-development-curve"
+    ]
+  ],
+  "status": "FROZEN_BEFORE_FIRST_GAME",
+  "studio_deployed": false,
+  "task_kind": "experiment",
+  "training": {
+    "arms": {
+      "a": {
+        "blueprint": "benchmarks/m75-prism-continuation-a.train.json",
+        "blueprint_identity": "eaf7bf6960de1e20fd1f7ab552459e7bf1fa4770483110930c8ad051dfb41f1e",
+        "cycles": 20,
+        "games": 5120,
+        "run_seed": 75010001,
+        "seed_start": 13001000
+      }
+    },
+    "cpu_seconds": 150000,
+    "cycles": 20,
+    "games": 5120,
+    "games_per_cycle": 256,
+    "initialization": "fresh AdamW/RNG warm-start from exact Balance v0.2.3 export; not full-state resume",
+    "memory_bytes": 8589934592,
+    "mix": {
+      "general": 1280,
+      "latest-alpha": 1280,
+      "latest-balance": 1280,
+      "parent": 1280
+    },
+    "mode": "categorical-T1",
+    "opponent_mix": {
+      "general": 0.25,
+      "latest-alpha": 0.25,
+      "latest-balance": 0.25,
+      "parent": 0.25
+    },
+    "ppo": {
+      "clip_epsilon": 0.2,
+      "entropy_weight": 0.01,
+      "gae_lambda": 0.95,
+      "logp_tolerance": 1e-06,
+      "lr": 3e-05,
+      "max_grad_norm": 1.0,
+      "minibatch_size": 256,
+      "normalize_advantage": true,
+      "passes": 2,
+      "style_beta": 0.0,
+      "style_value_weight": 0.0,
+      "target_kl": 0.02,
+      "value_tolerance": 1e-06,
+      "value_weight": 0.5,
+      "weight_decay": 0.0
+    },
+    "selection": "fixed final c20; all intermediate exports retained",
+    "storage_bytes": 34359738368,
+    "total_games": 5120,
+    "wall_seconds": 64800
+  }
+}

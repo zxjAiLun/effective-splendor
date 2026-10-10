@@ -1,0 +1,21 @@
+{
+  "adapter": "m74-bounded-reading-v1",
+  "adapter_sha256": "bbad198b2470d1a1187540ea76a638d57a059d2dbe17e43ce0ba7fde36797304",
+  "contract_sha256": "1de09e34acf716413294eabd7f14388c143e0fae3e359b2b19cb4d2068221084",
+  "format": "prism-reading-receipt-v1",
+  "games_dispatched": 0,
+  "html_sha256": "3aaa4d05a10de87808976361e988d8c44f3e768a253290d2b81f689de1fdd7af",
+  "payload_pairs_unchanged": true,
+  "pixel_visual": "NOT_VERIFIED",
+  "reading_markdown_sha256": "708b6fcc18cfe35c53337a033eaa75e88069793af77c92b2774f792e8aebddfa",
+  "result_sha256": "aa141cf1840f4f4b594836472d3ebacd687072459be829787d799c208fd40eb6",
+  "spec_sha256": "aab649e00f9835baade0251f3b227a37dab95909265e96712c87614950ee49a3",
+  "style_cohort": [
+    "heuristic",
+    "general",
+    "balance",
+    "alpha",
+    "beta",
+    "released-alpha"
+  ]
+}

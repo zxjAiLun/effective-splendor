@@ -95,7 +95,7 @@ def write_markdown(path,payload):
             actions={'buy_market':'买公开牌','buy_reserved':'买回预留牌','take_tokens':'拿宝石','reserve_market':'预留公开牌','reserve_deck':'盲预留','choose_noble':'选择贵族','pass':'跳过'}
             lines+=table(['动作',cn+' 次数',on+' 次数',cn+' 占比%',on+' 占比%'],[[actions[k],*compare(a['action_distribution'][k],b['action_distribution'][k],0),*compare(a['action_percentages'][k],b['action_percentages'][k],2)] for k in a['action_distribution']])
             lines+=table(['模型物理座位','局数','模型胜/平/负','模型纯胜%','模型半平得分','模型VP/局','对手VP/局'],[[str(s['candidate_seat']),str(s['candidate']['games']),'/'.join(str(s['candidate'][k]) for k in ('wins','ties','losses')),f"{s['candidate']['win_rate_percent']:.4f}",f"{s['candidate']['score_rate']:.4f}",*compare(s['candidate']['mean_prestige'],s['opponent']['mean_prestige'],direction='high')] for s in p['seats']])
-            interval=lambda key:' ～ '.join(f'{v*100:.2f}%' for v in p[key]['ordinary_95_ci'])
+            interval=lambda key:' ～ '.join('NOT_MEASURED' if v is None else f'{v*100:.2f}%' for v in p[key]['ordinary_95_ci'])
             lines += ['纯胜率配对95%区间：'+interval('win_uncertainty')+'；半平得分配对95%区间：'+interval('score_uncertainty')+'。','']
             macro={'mean_plies':'平均全局步数','mean_turns':'平均轮数','min_turns':'最少轮数','median_turns':'中位轮数','max_turns':'最多轮数','std_turns':'轮数标准差','mean_victory_margin':'终局绝对分差VP','close_games_margin_le_2_percent':'分差≤2的对局%','process_wall_seconds_mean':'单局进程墙钟平均秒','process_wall_seconds_p95':'单局进程墙钟P95秒'}
             lines+=table(['整局指标（两人共同）','值'],[[label,str(p['macro'].get(k,'NOT_MEASURED'))] for k,label in macro.items()]+[['决策 / 推理耗时','NOT_MEASURED / NOT_MEASURED']])

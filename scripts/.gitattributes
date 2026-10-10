@@ -11,3 +11,16 @@ prism_alpha_cloud_audit_m60.py -text
 prism_alpha_cloud_training_report_m60.py -text
 prism_alpha_cloud_evaluation_report_m60.py -text
 prism_alpha_cloud_acceptance_m60.py -text
+prism_balance_ab_prepare_m61.py -text
+prism_balance_ab_audit_m61.py -text
+prism_balance_ab_training_report_m61.py -text
+prism_balance_ab_evaluation_m61.py -text
+prism_balance_ab_report_m61.py -text
+prism_balance_ab_reaudit_m61.py -text
+prism_m61_version_records.py -text
+prism_building_prepare_m62.py -text
+prism_building_audit_m62.py -text
+prism_building_training_report_m62.py -text
+prism_building_evaluation_m62.py -text
+prism_building_report_m62.py -text
+prism_building_metrics_m62.py -text
