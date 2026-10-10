@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../api-base.mjs";
+import { visibleAgents, visibleParticipant } from "../agent-visibility.mjs";
 import {
   classifyBookingResponse,
   describeAgentOptions,
@@ -185,7 +186,7 @@ export default function LeaguePage() {
     try {
       const budget = FIRST_SCREEN_READ_TIMEOUT_MS;
       const body = await readJson("/agents", budget);
-      setAgents(describeAgentOptions(body.agents) as AgentOption[]);
+      setAgents(describeAgentOptions(visibleAgents(body.agents)) as AgentOption[]);
       setRosterRead(READ_OK);
       setRosterMessage("");
     } catch (reason) {
@@ -202,7 +203,7 @@ export default function LeaguePage() {
       // legitimately slower than the roster; it gets its own, larger budget.
       const budget = LEADERBOARD_READ_TIMEOUT_MS;
       const body = await readJson("/league/leaderboard", budget);
-      setRows(describeLeaderboard(body.rows) as LeaderRow[]);
+      setRows((describeLeaderboard(body.rows) as LeaderRow[]).filter(visibleParticipant));
       setLeagueRead(READ_OK);
       setLeagueMessage("");
     } catch (reason) {
@@ -313,6 +314,7 @@ export default function LeaguePage() {
   }
 
   const hostState = hostStateOf({ roster: rosterRead, league: leagueRead });
+  const visibleElo = result?.elo.filter((event) => visibleParticipant({ participantId: event.participantId })) ?? [];
   // A banner is a claim that something failed, so it may only exist once a read has
   // actually settled. `describeHostBanner` describes failures and treats anything it
   // does not recognise as a refusal, so feeding it the *pending* state produced
@@ -490,16 +492,13 @@ export default function LeaguePage() {
             <li>match row: <code>{result.matchId ?? "—"}</code></li>
             <li>eligibility: <code>{result.eligibility ?? "—"}</code></li>
           </ul>
-          {result.elo.length ? (
+          {visibleElo.length ? (
             <div className="recent-game-list">
-              {result.elo.map((event) => (
+              {visibleElo.map((event) => (
                 <article key={`${event.participantId}-${event.eloBefore}`}>
                   <div>
                     <strong>{event.participantId}</strong>
-                    <small>
-                      {event.eloBefore} → {event.eloAfter} ({event.eloAfter - event.eloBefore >= 0 ? "+" : ""}
-                      {event.eloAfter - event.eloBefore})
-                    </small>
+                    <small>{event.eloBefore} → {event.eloAfter} ({event.eloAfter - event.eloBefore >= 0 ? "+" : ""}{event.eloAfter - event.eloBefore})</small>
                   </div>
                 </article>
               ))}
@@ -553,11 +552,8 @@ export default function LeaguePage() {
         ) : null}
         <p>
           <small>
-            Standings are ordered by the ledger, not by this page. A registry agent is listed in the
-            pickers by its registry id; these rows are league participants, and the two closed read
-            routes share no join key — so no agent is labelled with a rating this page cannot
-            attribute. The Elo above is per participant, and a match&apos;s own deltas are in the
-            result panel.
+            Standings are ordered by the ledger; this page displays only the curated participant subset.
+            Elo values are unchanged, and hidden participants remain in the historical ledger.
           </small>
         </p>
       </section>

@@ -144,12 +144,15 @@ export function StructuredAction({
     const resolvedId = cardId ?? (action.card_id as number | undefined) ?? resolveActionCardId(action, asView(playerView));
     const id = resolvedId != null ? Number(resolvedId) : null;
     const card = id != null ? cards.get(id) ?? null : null;
+    const slotLabel = variant === "compact" ? `T${tier + 1} · S${slot + 1}` : `Tier ${tier + 1} · slot ${slot + 1}`;
     body = (
       <>
-        {card ? <CardFace card={card} slotLabel={`Tier ${tier + 1} · slot ${slot + 1}`} /> : <UnknownCard id={id} />}
-        <span className="action-meta">
-          Tier {tier + 1} · slot {slot + 1}
-        </span>
+        {card ? <CardFace card={card} slotLabel={slotLabel} /> : <UnknownCard id={id} />}
+        {!card || variant !== "compact" ? (
+          <span className="action-meta">
+            Tier {tier + 1} · slot {slot + 1}
+          </span>
+        ) : null}
         {back.length ? (
           <>
             <span className="action-verb">RETURN</span>
@@ -164,10 +167,11 @@ export function StructuredAction({
     const resolvedId = cardId ?? (action.card_id as number | undefined) ?? resolveActionCardId(action, playerView);
     const id = resolvedId != null ? Number(resolvedId) : null;
     const card = id != null ? cards.get(id) ?? null : null;
+    const slotLabel = variant === "compact" ? `Res ${slot + 1}` : `Reserve slot ${slot + 1}`;
     body = (
       <>
-        {card ? <CardFace card={card} slotLabel={`Reserve slot ${slot + 1}`} /> : <UnknownCard id={id} />}
-        <span className="action-meta">Reserve slot {slot + 1}</span>
+        {card ? <CardFace card={card} slotLabel={slotLabel} /> : <UnknownCard id={id} />}
+        {!card || variant !== "compact" ? <span className="action-meta">Reserve slot {slot + 1}</span> : null}
         {back.length ? (
           <>
             <span className="action-verb">RETURN</span>
@@ -181,7 +185,7 @@ export function StructuredAction({
     const tier = actionTierIndex(action.tier);
     body = (
       <>
-        <HiddenDevelopmentCard />
+        <HiddenDevelopmentCard variant={variant === "compact" ? "mini" : undefined} />
         <span className="action-meta">Tier {tier + 1} deck</span>
         {back.length ? (
           <>

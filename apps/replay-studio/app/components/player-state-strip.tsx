@@ -75,13 +75,21 @@ const GEM_CODES: Record<string, string> = {
   gold: "★",
 };
 
-/** A single gem showing its real colour, a visible count, and a text label. */
-function StateGem({ gem, count, kind }: { gem: keyof StripGems; count: number; kind: "token" | "bonus" }) {
-  if (kind === "token" && count === 0) return null;
+/**
+ * A single gem showing its real colour, a visible count, and a text label.
+ *
+ * `showZero` keeps an empty colour on screen. The board strip drops zero tokens
+ * so a summary stays compact; the play dock answers "can I pay for this card",
+ * where a visible `0` is itself the fact that stops a player reaching for a
+ * colour they do not hold.
+ */
+function StateGem({ gem, count, kind, showZero = false }: { gem: keyof StripGems; count: number; kind: "token" | "bonus"; showZero?: boolean }) {
+  if (kind === "token" && count === 0 && !showZero) return null;
   const name = GEM_LABELS[gem] ?? gem;
   const label = kind === "bonus" ? `${count} permanent ${name} discount` : `${count} ${name} token(s)`;
+  const empty = kind === "token" && count === 0 ? " state-gem-empty" : "";
   return (
-    <span className={`state-gem state-gem-${gem}`} aria-label={label} title={label}>
+    <span className={`state-gem state-gem-${gem}${empty}`} aria-label={label} title={label}>
       <i aria-hidden="true">{GEM_CODES[gem]}</i>
       <b>{count}</b>
     </span>
@@ -154,26 +162,93 @@ export function PlayerStateCard({
  * `humanSeat` is the durable seat when one exists. `actor` is the frame's actor,
  * which is what "current actor" means; it is not the same thing as "the human"
  * and the two are labelled separately.
+ *
+ * `omitSeat` drops one seat from the strip. Play uses it for the human's own
+ * seat, whose state is presented by the pinned `PlayerHandCard` dock instead.
+ * The point is to avoid two renderings of the same fact on one screen — the
+ * drift this component exists to prevent — not to hide anything: the dock shows
+ * strictly more than the strip did. Replay, Review and JEV leave it unset and
+ * still render every seat.
  */
 export function PlayerStateStrip({
   playerView,
   actor,
   humanSeat = null,
+  omitSeat = null,
 }: {
   playerView: StripPlayerView;
   actor: number;
   humanSeat?: number | null;
+  omitSeat?: number | null;
 }) {
   return (
     <section className="player-state-strip" aria-label="Player state">
-      {playerView.public.players.map((player) => (
-        <PlayerStateCard
-          player={player}
-          isActor={player.id === actor}
-          isHuman={humanSeat !== null && player.id === humanSeat}
-          key={player.id}
-        />
-      ))}
+      {playerView.public.players
+        .filter((player) => omitSeat === null || player.id !== omitSeat)
+        .map((player) => (
+          <PlayerStateCard
+            player={player}
+            isActor={player.id === actor}
+            isHuman={humanSeat !== null && player.id === humanSeat}
+            key={player.id}
+          />
+        ))}
+    </section>
+  );
+}
+
+/**
+ * The play dock's own-hand card: the same facts `PlayerStateCard` presents, in a
+ * horizontal layout that fits a bar pinned to the bottom of the viewport.
+ *
+ * This is deliberately not a second implementation of player state. It reuses
+ * `StateGem` and `TokenTotal`, so a colour, a count and the ten-token cap can
+ * only be drawn one way across Play, Replay and Review. What differs is density
+ * and one deliberate change of fact-presentation: zero token counts stay
+ * visible, because mid-turn the question is "can I pay for this card" and a
+ * visible `0` answers it.
+ */
+export function PlayerHandCard({ player, isActor, statusLabel }: { player: StripPlayer; isActor: boolean; statusLabel?: string }) {
+  const bonusTotal = player.bonuses.reduce((sum, amount) => sum + amount, 0);
+  const turn = statusLabel ?? (isActor ? "YOUR TURN" : "WAITING");
+  return (
+    <section
+      className={`hand-card${isActor ? " hand-card-actor" : ""}`}
+      aria-label={`Your hand, player ${player.id}, ${turn.toLowerCase()}`}
+    >
+      <header className="hand-head">
+        <span className="hand-title">YOUR HAND · P{player.id}</span>
+        <em className={isActor ? "hand-turn" : "hand-wait"} role="status">{turn}</em>
+        <span className="hand-counts">
+          {player.reserved_count} reserved · {player.purchased.length} developments · {player.nobles.length} nobles
+        </span>
+        <strong className="hand-vp" aria-label={`${player.prestige} prestige points`}>
+          {player.prestige}
+          <small> VP</small>
+        </strong>
+      </header>
+
+      <div className="hand-line">
+        <small>TOKENS</small>
+        <div className="state-gems">
+          {GEM_KEYS.map((gem) => (
+            <StateGem gem={gem} count={player.tokens[gem] ?? 0} kind="token" showZero key={gem} />
+          ))}
+        </div>
+        <TokenTotal tokens={player.tokens} />
+      </div>
+
+      <div className="hand-line">
+        <small>DISCOUNTS</small>
+        <div className="state-gems">
+          {BONUS_KEYS.map((gem, index) => (
+            <StateGem gem={gem} count={player.bonuses[index] ?? 0} kind="bonus" key={gem} />
+          ))}
+        </div>
+        <span className="state-bonus-total" aria-label={`${bonusTotal} total permanent discounts`}>
+          <b>{bonusTotal}</b>
+        </span>
+      </div>
     </section>
   );
 }

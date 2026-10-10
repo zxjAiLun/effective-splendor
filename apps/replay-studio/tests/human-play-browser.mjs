@@ -65,12 +65,12 @@ try {
     window.fetch=(url,opts={})=>{
       if(!String(url).startsWith('http://127.0.0.1:43120'))return nativeFetch(url,opts);
       const route=String(url).slice('http://127.0.0.1:43120'.length);window.calls.push({route,method:opts.method||'GET',body:opts.body??null});
-      if(route==='/agents')return reply({agents:[{id:'test-agent',display_name:'Test agent'}]});
+      if(route==='/agents')return reply({agents:[{id:'prism-v011',display_name:'Prism v0.1.1'}]});
       if(route==='/catalog')return reply({cards:[],nobles:[]});
       if(route==='/reviewers')return reply({reviewers:[]});
       if(route==='/state')return state?reply(state):reply({error:'no session'},400);
       if(route==='/games'){
-        const body=JSON.parse(opts.body);state={session_id:'human-browser',seed:opts.body.match(/"seed":([0-9]+)/)[1],human_seat:body.human_seat,opponent:'Test agent',ply:0,observation:{public:{player_count:2,current_player:body.human_seat,bank:gems,deck_counts:[0,0,0],market:[[null,null,null,null],[null,null,null,null],[null,null,null,null]],nobles:[],players:[player(0),player(1)]},private:{reserved:[]}},legal_actions:[{type:'pass'}],action_history:[],result:null,replay_ready:false,league_completion:null};return reply(state);
+        const body=JSON.parse(opts.body);state={session_id:'human-browser',seed:opts.body.match(/"seed":([0-9]+)/)[1],human_seat:body.human_seat,opponent:'Prism v0.1.1',ply:0,observation:{public:{player_count:2,current_player:body.human_seat,bank:gems,deck_counts:[0,0,0],market:[[null,null,null,null],[null,null,null,null],[null,null,null,null]],nobles:[],players:[player(0),player(1)]},private:{reserved:[]}},legal_actions:[{type:'pass'}],action_history:[],result:null,replay_ready:false,league_completion:null};return reply(state);
       }
       if(route==='/action'){state={...state,result:{winners:[1],scores:[2,15],reason:'prestige'},replay_ready:true,league_completion:{status:'failed',retryable:true,error:'database locked',receipt:null}};return reply(state);}
       if(route.includes('/league-completion')){
@@ -95,7 +95,7 @@ try {
   await wait(`document.body.innerText.includes('Actual seat: Second (P1)')`);
   assert.match(await evaluate("document.body.innerText"), /18446744073709551615/);
   const request = await evaluate(`window.calls.find(c=>c.route==='/games')`);
-  assert.equal(request.body, '{"agent_id":"test-agent","human_seat":1,"seed":18446744073709551615}');
+  assert.equal(request.body, '{"agent_id":"prism-v011","human_seat":1,"seed":18446744073709551615}');
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Pass turn').click()`);
   await wait(`document.body.innerText.includes('League booking pending')`);
   assert.match(await evaluate("document.body.innerText"), /VICTORY/);

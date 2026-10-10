@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../api-base.mjs";
+import { visibleGame, visibleParticipant, visibleRatingPoints } from "../../agent-visibility.mjs";
 import { describeGamesPage } from "../../games-page-runtime.mjs";
 import { READ_REFUSED } from "../../league-runtime.mjs";
 import {
@@ -115,6 +116,7 @@ type OpponentItem = {
 };
 
 type GameItem = {
+  seats: Array<{ participantId: string | null; displayName: string | null }>;
   matchId: string | null;
   leagueSeq: number | null;
   playedAt: number | null;
@@ -263,7 +265,7 @@ export default function ParticipantProfilePage() {
       }
       setRatingsState({
         phase: "ok",
-        points: decoded.points as RatingPoint[],
+        points: visibleRatingPoints(decoded.points) as RatingPoint[],
         nextBeforeLeagueSeq: decoded.nextBeforeLeagueSeq,
         atEnd: decoded.atEnd,
         error: null,
@@ -300,7 +302,7 @@ export default function ParticipantProfilePage() {
       }
       setRatingsState((prev) => {
         const existingSeqs = new Set(prev.points.map((p) => p.league_seq));
-        const newPoints = (decoded.points as RatingPoint[]).filter((p) => !existingSeqs.has(p.league_seq));
+        const newPoints = (visibleRatingPoints(decoded.points) as RatingPoint[]).filter((p) => !existingSeqs.has(p.league_seq));
         return {
           ...prev,
           points: [...prev.points, ...newPoints],
@@ -342,7 +344,7 @@ export default function ParticipantProfilePage() {
       }
       setOpponentsState({
         phase: "ok",
-        opponents: decoded.opponents as OpponentItem[],
+        opponents: (decoded.opponents as OpponentItem[]).filter((opponent) => visibleParticipant({participantId: opponent.opponent_id, displayName: opponent.display_name})),
         nextAfterOpponentId: decoded.nextAfterOpponentId,
         atEnd: decoded.atEnd,
         error: null,
@@ -379,7 +381,7 @@ export default function ParticipantProfilePage() {
       }
       setOpponentsState((prev) => {
         const existingIds = new Set(prev.opponents.map((o) => o.opponent_id));
-        const newOpponents = (decoded.opponents as OpponentItem[]).filter((o) => !existingIds.has(o.opponent_id));
+        const newOpponents = (decoded.opponents as OpponentItem[]).filter((o) => visibleParticipant({participantId: o.opponent_id, displayName: o.display_name}) && !existingIds.has(o.opponent_id));
         return {
           ...prev,
           opponents: [...prev.opponents, ...newOpponents],
@@ -421,7 +423,7 @@ export default function ParticipantProfilePage() {
       }
       setGamesState({
         phase: "ok",
-        matches: decoded.rows as GameItem[],
+        matches: (decoded.rows as GameItem[]).filter(visibleGame),
         nextBeforeLeagueSeq: decoded.nextBeforeLeagueSeq,
         atEnd: decoded.atEnd,
         error: null,
@@ -458,7 +460,7 @@ export default function ParticipantProfilePage() {
       }
       setGamesState((prev) => {
         const existingIds = new Set(prev.matches.map((m) => m.matchId));
-        const newMatches = (decoded.rows as GameItem[]).filter((m) => !existingIds.has(m.matchId));
+        const newMatches = (decoded.rows as GameItem[]).filter((m) => visibleGame(m) && !existingIds.has(m.matchId));
         return {
           ...prev,
           matches: [...prev.matches, ...newMatches],
@@ -499,6 +501,9 @@ export default function ParticipantProfilePage() {
   const seatsInfo = profile ? describeSeatsText(profile.seats) : null;
   const pliesInfo = profile ? describeCompletedPlies(profile.completed_plies) : null;
 
+  if (profile && !visibleParticipant(profile)) {
+    return <main className="studio profile-page"><h1>Not in the current Studio lineup</h1><Link href="/ratings">Back to ratings</Link></main>;
+  }
   return (
     <main className="studio profile-page">
       <header className="topbar">

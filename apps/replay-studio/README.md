@@ -4,6 +4,15 @@ Accepted M14A v1 analysis viewer for verified Splendor replays, extended by M23
 with a one-click review workflow. The browser performs no search and loads no
 model.
 
+## Human Play layout
+
+During a game in `/play`, your tokens, permanent discounts, bank and take
+confirmation stay at the bottom of the viewport. Desktop shows the card table
+beside the current move; narrow screens switch between **Table**, **Move**,
+**Reserves** and **History**. Long card or return lists scroll inside their own
+panel, keeping your resources visible. Selecting gems does not send a move;
+confirm the take or choose the displayed return first.
+
 ## M23 one-click review
 
 After a completed human match in `/play`, press **Review this game**, pick a
@@ -57,6 +66,7 @@ Validation:
 npm run lint
 npm run build
 npm test
+npm run test:play-ui
 ```
 
 `npm test` loads the Rust-generated golden V1 and V2 traces, checks Player View
@@ -65,6 +75,12 @@ malformed traces, and verifies that actions which differ only by `return` never
 receive the same label. Regenerate the goldens with
 `cargo run -p splendor-analysis --example generate_frontend_fixture`.
 
-For a local human-vs-agent game, double-click `Start Splendor Studio.cmd` at the
-repository root. It starts both services and opens `/play`; opponent selection,
-session creation, and connection happen in the page without terminal commands.
+`npm run test:play-ui` uses an installed Chromium (or `STUDIO_TEST_BROWSER`) and
+an ephemeral local UI server to check viewport layout and real pointer
+interactions. It mocks the Host and never creates a real game or League entry.
+Screenshots, geometry and source hashes go to ignored
+`local-artifacts/m76-studio-play-cockpit/`, or `STUDIO_COCKPIT_ARTIFACTS` when set.
+
+For a local human-vs-agent game, double-click `Splendor Studio.cmd` at the
+repository root, then navigate to `/play`. It starts both services; opponent
+selection and session creation happen in the page.

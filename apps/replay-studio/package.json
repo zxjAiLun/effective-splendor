@@ -10,6 +10,7 @@
     "build": "vinext build",
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/trace-runtime.test.mjs tests/jev-trace-runtime.test.mjs tests/review-runtime.test.mjs tests/rating-runtime.test.mjs tests/ratings-runtime.test.mjs tests/ratings-authority-split.test.mjs tests/participant-profile-runtime.test.mjs tests/f2-shared-presentation.test.mjs tests/experiment-runtime.test.mjs tests/games-runtime.test.mjs tests/games-page-runtime.test.mjs tests/league-runtime.test.mjs tests/human-play-runtime.test.mjs",
+    "test:play-ui": "npm run build && node tests/play-cockpit-browser.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {

@@ -101,9 +101,9 @@ export function EmptyDevelopmentCard() {
  * Face-down stand-in for a card whose identity the viewer is not entitled to:
  * an opponent's blind reserve taken from the top of a deck.
  */
-export function HiddenDevelopmentCard({ count }: { count?: number }) {
+export function HiddenDevelopmentCard({ count, variant }: { count?: number; variant?: "mini" }) {
   return (
-    <div className="development-card development-card-hidden" aria-label={count && count > 1 ? `${count} hidden reserved cards` : "Hidden reserved card"}>
+    <div className={`development-card development-card-hidden${variant === "mini" ? " development-card-mini" : ""}`} aria-label={count && count > 1 ? `${count} hidden reserved cards` : "Hidden reserved card"}>
       <span>HIDDEN</span>
       {count && count > 1 ? <b>×{count}</b> : null}
       <small>BLIND RESERVE</small>

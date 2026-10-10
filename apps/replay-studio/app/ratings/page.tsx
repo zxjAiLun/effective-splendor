@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../api-base.mjs";
+import { visibleParticipant } from "../agent-visibility.mjs";
 import {
   describeLeaderboard,
   describeReadFailure,
@@ -79,7 +80,7 @@ export default function RatingsPage() {
     setPhase("checking");
     try {
       const body = await readJson("/league/leaderboard", LEADERBOARD_READ_TIMEOUT_MS);
-      setRows(describeLeaderboard(body.rows) as LeaderRow[]);
+      setRows((describeLeaderboard(body.rows) as LeaderRow[]).filter(visibleParticipant));
       setPhase("ok");
     } catch (reason) {
       setMessage(describeReadFailure(reason, LEADERBOARD_READ_TIMEOUT_MS).message);
@@ -189,9 +190,8 @@ export default function RatingsPage() {
             })}
           </div>
           <p className="ratings-footnote">
-            Provisional rows have little rated history; the flag comes from the ledger, not from
-            this page. Elo shown is the league&apos;s current value — the authoritative history is
-            the ledger&apos;s own rating events.
+            Only the curated participants are shown; their Elo and game counts remain the ledger&apos;s
+            recorded values. Display positions are within this subset, not historical league ranks.
           </p>
         </section>
       ) : null}

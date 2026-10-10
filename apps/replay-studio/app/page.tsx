@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { API_BASE as API } from "./api-base.mjs";
+import { visibleGame, visibleParticipant } from "./agent-visibility.mjs";
 import { describeGameRow } from "./games-runtime.mjs";
 import { describeRun } from "./jev-trace-runtime.mjs";
 import {
@@ -89,7 +90,7 @@ function StudioLeagueGames() {
       invalid: boolean;
     };
     if (page.invalid) throw new Error("Studio Host returned an invalid games page.");
-    return page;
+    return { ...page, rows: page.rows.filter(visibleGame) };
   };
 
   useEffect(() => {
@@ -234,7 +235,7 @@ function LegacyGames() {
           const response = await fetch(`${API}/recent-games`);
           const value = await response.json();
           if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-          setGames((value.games ?? []) as RecentGame[]);
+          setGames(((value.games ?? []) as RecentGame[]).filter((game) => visibleParticipant({displayName:game.opponent, participantId:game.opponent})));
           setError("");
         } catch (reason) {
           setError(reason instanceof Error ? reason.message : String(reason));
@@ -411,6 +412,9 @@ export default function GamesHome() {
           <h1>Replay Studio</h1>
         </div>
         <div className="header-actions">
+          <Link className="studio-link" href="/jev" style={{ color: "#38bdf8", fontWeight: 700 }}>
+            Jev Replay
+          </Link>
           <Link className="studio-link" href="/play">
             Play vs S3
           </Link>

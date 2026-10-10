@@ -1,0 +1,294 @@
+/* M76: a table, not a long document. The opponent, panel switch and resource
+   dock are grid tracks outside the two scrollable content regions. On narrow
+   screens the same board/rail share one track; neither can push the dock away. */
+.human-cockpit {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 35% 20%, #173236 0, transparent 65%), var(--canvas);
+}
+.human-cockpit button:focus-visible, .human-cockpit a:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+.human-cockpit button:disabled { cursor: not-allowed; }
+.human-cockpit .human-topbar {
+  flex: none;
+  min-height: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 9px 18px;
+}
+.human-cockpit .human-topbar > div:first-child { line-height: 1; }
+.human-cockpit .human-topbar h1 { margin: 3px 0 0; font-size: var(--fs-xl); line-height: 1.2; }
+.human-cockpit .human-topbar .section-kicker { font-size: var(--fs-3xs); }
+.human-cockpit .human-topbar nav { gap: 12px; white-space: nowrap; }
+.human-cockpit .human-topbar button { height: auto; min-height: 36px; }
+.human-cockpit .human-status { display: flex; justify-content: center; min-width: 0; }
+.human-cockpit .human-status-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.human-cockpit .human-opponent-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-2xs); }
+.human-cockpit .human-session-parameters { margin: 0; color: #91a3b2; font: var(--fs-3xs)/1.35 var(--font-geist-mono); }
+.human-cockpit .error-banner { flex: none; padding: 8px 18px; font-size: var(--fs-xs); }
+.human-cockpit .error-banner button { flex: none; padding: 7px 10px; border: 1px solid #e6a5a0; border-radius: 6px; background: #542b30; cursor: pointer; }
+.human-cockpit .human-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "opponent tabs" "board rail" "dock dock";
+}
+.human-cockpit .human-opponent { grid-area: opponent; min-width: 0; padding: 10px 12px 0; }
+.human-cockpit .player-state-strip { grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; }
+.human-cockpit .state-card { display: grid; grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr); gap: 3px 12px; padding: 8px 12px; background: #111c23e8; }
+.human-cockpit .state-card-head { grid-row: 1 / 3; flex-direction: column; align-items: flex-start; gap: 4px; margin: 0; }
+.human-cockpit .state-vp { margin: 0; font-size: var(--fs-2xl); }
+.human-cockpit .state-line { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 6px; margin: 0; }
+.human-cockpit .state-line > small { grid-column: 1 / -1; color: #94a5b3; }
+.human-cockpit .state-gems { gap: 4px; }
+.human-cockpit .state-gem { padding: 1px 5px 1px 2px; }
+.human-cockpit .state-gem i { width: 1.4em; height: 1.4em; }
+.human-cockpit .state-gem b { font-size: var(--fs-xs); }
+.human-cockpit .state-counts { grid-column: 2 / -1; gap: 12px; margin: 0; font-size: var(--fs-3xs); }
+.human-cockpit .state-bonus-total b { font-size: var(--fs-md); }
+
+/* Controls are ordinary buttons, not ARIA tabs: on desktop the table and chosen
+   side panel are visible together. No keyboard tab semantics are simulated. */
+.human-cockpit .human-panels { grid-area: tabs; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 10px 12px 0; }
+.human-cockpit .human-panels button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 5px; min-height: 42px; padding: 8px; border: 1px solid transparent; border-radius: 7px; background: #19232b; color: #a7b7c4; cursor: pointer; font-size: var(--fs-xs); font-weight: 650; }
+.human-cockpit .human-panels button[aria-pressed="true"] { border-color: #368a8e; background: #1b383e; color: #bcffff; }
+.human-cockpit .human-panels button:hover { border-color: #53717d; }
+.human-cockpit .human-panels b { min-width: 17px; border-radius: 4px; background: #0b131a; font: 700 var(--fs-3xs)/1.6 var(--font-geist-mono); }
+.human-cockpit .human-panels i { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+.human-cockpit .human-panels .table-panel-button { display: none; }
+.human-cockpit .human-board, .human-cockpit .human-actions { min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #3c5964 transparent; }
+.human-cockpit .human-board { grid-area: board; display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border-right: 0; }
+.human-cockpit .human-actions { grid-area: rail; display: block; padding: 10px 12px 12px 0; background: transparent; outline: none; }
+
+/* Market cards keep a separate header, cost area and footer. Costs wrap in at
+   most two rows at the supported card widths, including discounted badges. */
+.human-cockpit .table-nobles { flex: none; margin: 0; padding: 7px 10px; gap: 8px; align-items: center; overflow-x: auto; scrollbar-width: thin; }
+.human-cockpit .table-nobles > div:first-child { min-width: 94px; }
+.human-cockpit .table-nobles > div:first-child small { max-width: 100px; color: #b7ad94; }
+.human-cockpit .table-noble { display: grid; grid-template-columns: auto 1fr; gap: 3px 7px; align-items: center; flex: 0 0 auto; min-width: 106px; min-height: 44px; padding: 5px 7px; }
+.human-cockpit .table-noble-top { display: contents; }
+.human-cockpit .table-noble-top strong { grid-row: 1 / 3; font-size: var(--fs-xl); line-height: 1; }
+.human-cockpit .table-noble-top span { display: none; }
+.human-cockpit .table-noble-name { grid-column: 2; margin: 0; }
+.human-cockpit .table-noble-cost { grid-column: 2; gap: 3px; margin: 0; }
+.human-cockpit .table-noble-cost .gem { width: 1.4em; height: 1.4em; font-size: var(--fs-2xs); }
+.human-cockpit .human-market { flex: 1 0 auto; display: grid; grid-template-rows: repeat(3, minmax(7rem, 1fr)); gap: 9px; margin: 0; }
+.human-cockpit .human-tier { display: grid; grid-template-columns: 76px repeat(4, minmax(0, 1fr)); gap: 9px; min-height: 7rem; overflow: visible; }
+.human-cockpit .tier-deck { min-height: 0; height: 100%; gap: 5px; padding: 6px; border-color: #39535d; }
+.human-cockpit .tier-deck b { font-size: var(--fs-3xl); }
+.human-cockpit .tier-deck small { font-size: var(--fs-3xs); }
+.human-cockpit .development-card { min-height: 8rem; }
+.human-cockpit .human-tier .development-card { min-height: 7rem; height: 100%; }
+.human-cockpit .development-card .development-prestige { top: 8px; left: 9px; font-size: var(--fs-4xl); }
+.human-cockpit .development-card .development-bonus { top: 8px; right: 8px; width: 28px; height: 28px; }
+.human-cockpit .development-card-art { inset: 32px 9px 35px 40%; opacity: .38; }
+.human-cockpit .development-card-cost { left: 8px; right: 8px; bottom: 1.6875rem; flex-direction: row; flex-wrap: wrap; gap: 5px; }
+.human-cockpit .development-card-cost .gem { display: inline-flex; align-items: center; justify-content: center; flex: none; width: auto; min-width: 1.8em; height: 1.8em; padding: 0 4px; border-width: 1px; font-size: var(--fs-2xs); border-radius: 999px; }
+.human-cockpit .development-card-cost .gem em { position: static; transform: none; margin-left: 4px; padding: 0 2px; min-width: 1em; font-size: var(--fs-3xs); line-height: 1.3; }
+.human-cockpit .development-card-cost .gem.covered { opacity: .65; }
+.human-cockpit .development-card-meta { bottom: .375rem; left: 8px; right: 8px; font-size: var(--fs-3xs); }
+.human-cockpit .development-card-meta span { font: inherit; color: inherit; }
+.human-cockpit .development-card-action { bottom: 4px; right: 50%; transform: translateX(50%); padding: 2px 4px; letter-spacing: 0; }
+.human-cockpit .development-card-action:not(.buyable) { display: none; }
+.human-cockpit .development-card:has(.buyable) { border-color: #508d7b; }
+
+/* Side panels can grow or scroll; the dock cannot. No unbounded return list is
+   placed in the footer, even when the Host offers dozens of legal returns. */
+.human-cockpit .pending-panel, .human-cockpit .reserves-panel, .human-cockpit .history-panel { padding: 14px; min-height: 100%; border: 1px solid #30434d; border-radius: 9px; background: #111b23ed; }
+.human-cockpit .human-actions h2 { margin: 5px 0 12px; font-size: var(--fs-xl); }
+.human-cockpit .human-actions p { color: #9caebb; font-size: var(--fs-xs); line-height: 1.55; }
+.human-cockpit .human-actions .section-kicker { font-size: var(--fs-3xs); }
+.human-cockpit .selected-card-preview { width: min(100%, 190px); max-width: none; margin: 0 auto 14px; }
+.human-cockpit .selected-card-preview .development-card { min-height: 10rem; }
+.human-cockpit .context-actions { gap: 7px; }
+.human-cockpit .context-actions > button { min-height: 44px; padding: 9px 10px; flex-wrap: wrap; }
+.human-cockpit .context-actions strong { font-size: var(--fs-sm); }
+.human-cockpit .context-actions > button > span { display: flex; align-items: center; gap: 5px; }
+.human-cockpit .return-gem { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px 1px 2px; border-radius: 12px; border: 1px solid #47606b; color: #e8edf3; }
+.human-cockpit .return-gem i { width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; background: var(--gem-color); font: 700 var(--fs-3xs) var(--font-geist-mono); color: #fff; }
+.human-cockpit .return-gem.table-gem-white i { color: #20242b; }
+.human-cockpit .move-guide { margin-top: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.human-cockpit .move-guide > b { font-size: var(--fs-sm); color: #c2d2dd; }
+.human-cockpit .cancel-move { min-height: 40px; }
+.human-cockpit .human-result { min-height: 100%; padding: 16px; }
+.human-cockpit .human-result > strong { font-size: var(--fs-3xl); }
+.human-cockpit .human-booking strong { font: inherit; color: inherit; }
+.human-cockpit .human-booking > .section-kicker { display: block; margin-bottom: 6px; }
+.human-cockpit .human-booking > small { display: block; color: #9caebb; line-height: 1.55; }
+.human-cockpit .reserved-tray { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; border: 0; background: transparent; }
+.human-cockpit .reserved-tray .development-card { min-height: 9rem; }
+.human-cockpit .reserved-tray .development-card-action { right: 6px; bottom: 1.5625rem; transform: none; }
+.human-cockpit .reserved-tray .development-card-cost { bottom: 3rem; gap: 4px; }
+.human-cockpit .reserved-tray .development-card .development-prestige { font-size: var(--fs-xl); }
+.human-cockpit .reserved-tray .development-bonus { width: 23px; height: 23px; }
+.human-cockpit .human-score { display: flex; flex-direction: column; margin: 16px 0 0; gap: 12px; }
+.human-cockpit .human-score > div { display: block; padding: 0; border: 0; background: transparent; }
+.human-cockpit .opponent-reserve { margin: 0; }
+.human-cockpit .reserved-heading { align-items: flex-start; flex-direction: column; gap: 3px; margin: 0; }
+.human-cockpit .reserved-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.human-cockpit .reserved-cards .development-card { width: 100%; min-height: 8.5rem; }
+.human-cockpit .reserved-cards .development-card .development-prestige { font-size: var(--fs-xl); }
+.human-cockpit .reserved-cards .development-bonus { width: 23px; height: 23px; }
+.human-cockpit .reserved-cards .development-card-hidden { font-size: var(--fs-3xs); text-align: center; }
+.human-cockpit .owned-nobles { display: flex; flex-wrap: wrap; gap: 6px; }
+.human-cockpit .owned-nobles > small { flex: 0 0 100%; }
+.human-cockpit .owned-nobles .table-noble { min-width: 92px; min-height: 0; }
+.human-cockpit .human-private { margin-top: 16px; padding: 10px; }
+.human-cockpit .human-private p { font-size: var(--fs-3xs); }
+.human-cockpit .history-panel li { grid-template-columns: 42px minmax(0, 1fr); padding: 8px; gap: 7px; }
+.human-cockpit .history-entry { min-width: 0; width: 100%; }
+.human-cockpit .history-entry > strong { font-size: var(--fs-2xs); }
+.human-cockpit .history-panel .structured-action { margin-top: 4px; width: 100%; max-width: none; }
+.human-cockpit .history-panel .action-body { flex-direction: row; }
+.human-cockpit .history-panel .development-card { min-height: 8rem; }
+
+/* Fixed resources: every colour, including zero, remains visible. */
+.human-cockpit .human-dock { grid-area: dock; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid #38525b; background: #0b151cee; box-shadow: 0 -8px 28px #0005; }
+.human-cockpit .hand-card, .human-cockpit .take-panel, .human-cockpit .human-bank { min-width: 0; padding: 8px 10px; border: 1px solid #30434f; border-radius: 9px; background: #14212a; }
+.human-cockpit .hand-card { display: flex; flex-direction: column; gap: 7px; }
+.human-cockpit .hand-card-actor { border-color: #368b87; box-shadow: inset 3px 0 var(--cyan); }
+.human-cockpit .hand-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.human-cockpit .hand-title { color: #bbced9; font: 800 var(--fs-3xs) var(--font-geist-mono); letter-spacing: .06em; }
+.human-cockpit .hand-turn, .human-cockpit .hand-wait { padding: 2px 5px; border-radius: 4px; background: #193a39; color: #9df3d9; font: 700 var(--fs-3xs) var(--font-geist-mono); font-style: normal; }
+.human-cockpit .hand-wait { background: #26313b; color: #c5d0da; }
+.human-cockpit .hand-vp { margin-left: auto; font: 800 var(--fs-xl) var(--font-geist-mono); }
+.human-cockpit .hand-vp small { color: #92a5b2; font-size: var(--fs-3xs); }
+.human-cockpit .hand-counts { display: none; }
+.human-cockpit .hand-line { display: grid; grid-template-columns: 4.125rem minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.human-cockpit .hand-line > small { color: #94a5b3; font: 700 var(--fs-3xs) var(--font-geist-mono); }
+.human-cockpit .hand-line .state-gems { flex-wrap: wrap; }
+.human-cockpit .state-gem-empty { background: #0f1b23; border-color: #263640; }
+.human-cockpit .state-gem-empty b { color: #a0aebb; }
+.human-cockpit .human-bank { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; overflow: visible; }
+.human-cockpit .human-bank > span { width: auto; margin: 0; flex-direction: row; align-items: baseline; gap: 9px; }
+.human-cockpit .human-bank > span b, .human-cockpit .human-bank > span small { color: #a6b8c5; font-size: var(--fs-3xs); }
+.human-cockpit .bank-gems { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.human-cockpit .bank-gems .table-gem { display: flex; justify-content: center; min-width: 0; width: 100%; min-height: 44px; height: auto; padding: 4px; gap: 4px; border-radius: 8px; cursor: pointer; }
+.human-cockpit .bank-gems .table-gem span, .human-cockpit .pending-gems .table-gem span { display: none; }
+.human-cockpit .table-gem i { display: grid; place-items: center; font: 700 var(--fs-3xs) var(--font-geist-mono); font-style: normal; }
+.human-cockpit .table-gem-white i { color: #20242b; }
+.human-cockpit .bank-gems .table-gem b { margin: 0; font-size: var(--fs-md); }
+.human-cockpit .bank-gems .table-gem:disabled { opacity: .72; cursor: not-allowed; }
+.human-cockpit .bank-gems .table-gem:not(:disabled):hover { border-color: var(--cyan); background: #203a44; }
+.human-cockpit .take-panel { display: flex; flex-direction: column; gap: 5px; }
+.human-cockpit .take-selection { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.human-cockpit .take-panel h2 { margin: 0; font-size: var(--fs-sm); white-space: nowrap; }
+.human-cockpit .take-panel > p { margin: 0; color: #a0b2c0; font-size: var(--fs-3xs); line-height: 1.4; }
+.human-cockpit .pending-gems { gap: 4px; }
+.human-cockpit .pending-gems .table-gem { display: flex; gap: 3px; padding: 2px 5px; min-width: 0; height: 30px; }
+.human-cockpit .pending-gems .table-gem b { font-size: var(--fs-2xs); }
+.human-cockpit .take-buttons { display: flex; gap: 6px; margin-top: auto; }
+.human-cockpit .take-buttons button { margin: 0; min-height: 40px; padding: 7px 10px; font-size: var(--fs-xs); }
+.human-cockpit .take-buttons .confirm-move { flex: 1; }
+.human-cockpit .take-buttons .cancel-move { flex: 0 0 40px; width: 40px; font-size: var(--fs-xl); }
+.human-cockpit .confirm-move:disabled { border-color: #35514e; background: #19302f; color: #93aaa9; }
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .human-cockpit .state-counts { display: none; }
+}
+@media (max-width: 1100px) {
+  .human-cockpit .human-topbar { grid-template-columns: auto 1fr auto; gap: 12px; }
+  .human-cockpit .human-topbar nav a:not(:first-child) { display: none; }
+  .human-cockpit .human-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent" "tabs" "board" "dock"; }
+  .human-cockpit .human-panels { padding-top: 7px; }
+  .human-cockpit .human-panels .table-panel-button { display: flex; }
+  .human-cockpit .human-actions { grid-area: board; padding: 10px 12px; display: none; }
+  .human-cockpit .human-board { border: 0; }
+  .human-cockpit:not([data-panel="table"]) .human-board { display: none; }
+  .human-cockpit:not([data-panel="table"]) .human-actions { display: block; }
+  .human-cockpit .human-dock { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .human-cockpit .hand-card { grid-row: span 2; justify-content: center; }
+  .human-cockpit .human-bank { padding: 6px 10px; flex-direction: row; align-items: center; gap: 10px; }
+  .human-cockpit .human-bank > span small { display: none; }
+  .human-cockpit .bank-gems { flex: 1; }
+  .human-cockpit .take-panel { padding: 6px 10px; flex-direction: row; align-items: center; }
+  .human-cockpit .take-panel > p { display: none; }
+  .human-cockpit .take-buttons { flex: 1; margin: 0; }
+  .human-cockpit .reserves-panel .reserved-tray, .human-cockpit .reserved-cards { max-width: 510px; }
+}
+@media (max-width: 700px) {
+  .human-cockpit .human-topbar { grid-template-columns: minmax(0, 1fr) auto; padding: 7px 10px; gap: 5px 10px; }
+  .human-cockpit .human-topbar h1 { margin: 0; font-size: var(--fs-lg); }
+  .human-cockpit .human-topbar .section-kicker { display: none; }
+  .human-cockpit .human-status { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; }
+  .human-cockpit .human-status-text { align-items: flex-start; gap: 2px; }
+  .human-cockpit .human-opponent-name { font-size: var(--fs-3xs); }
+  .human-cockpit .human-topbar nav { grid-row: 1; grid-column: 2; gap: 8px; }
+  .human-cockpit .human-topbar nav a:first-child { display: inline; }
+  .human-cockpit .human-topbar nav button { padding: 0 8px; font-size: var(--fs-2xs); min-height: 32px; }
+  .human-cockpit .human-opponent { padding: 7px 8px 0; }
+  .human-cockpit .state-card { display: block; padding: 6px 8px; }
+  .human-cockpit .state-card-head { flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+  .human-cockpit .state-card-head .state-vp { margin-left: auto; font-size: var(--fs-lg); }
+  .human-cockpit .state-counts { display: none; }
+  .human-cockpit .state-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; align-items: center; gap: 4px; margin: 3px 0; }
+  .human-cockpit .state-line > small { grid-column: auto; }
+  .human-cockpit .state-gems { gap: 3px; }
+  .human-cockpit .state-gem { padding: 0 4px 0 1px; gap: 2px; }
+  .human-cockpit .state-gem i { width: 1.3em; height: 1.3em; }
+  .human-cockpit .state-gem b { font-size: var(--fs-2xs); }
+  .human-cockpit .human-panels { padding: 6px 8px 0; }
+  .human-cockpit .human-panels button { min-height: 40px; padding: 6px; font-size: var(--fs-2xs); }
+  .human-cockpit .human-board, .human-cockpit .human-actions { padding: 8px; gap: 8px; }
+  .human-cockpit .table-nobles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 6px; gap: 5px; align-items: stretch; overflow: visible; }
+  .human-cockpit .table-nobles > div:first-child { grid-column: 1 / -1; min-width: 0; }
+  .human-cockpit .table-nobles > div:first-child small { display: none; }
+  .human-cockpit .table-noble { min-width: 0; padding: 4px; gap: 3px 4px; }
+  .human-cockpit .table-noble-cost { gap: 2px; }
+  .human-cockpit .table-noble-cost .gem { font-size: var(--fs-3xs); }
+  .human-cockpit .human-market { grid-template-rows: repeat(3, auto); gap: 10px; }
+  .human-cockpit .human-tier { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .human-cockpit .tier-deck { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; min-height: 32px; gap: 10px; border-radius: 6px; padding: 4px 9px; }
+  .human-cockpit .tier-deck b { font-size: var(--fs-sm); }
+  .human-cockpit .tier-deck small { margin-left: auto; }
+  .human-cockpit .human-tier .development-card { min-height: 8rem; }
+  .human-cockpit .human-dock { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 6px 8px max(6px, env(safe-area-inset-bottom)); }
+  .human-cockpit .hand-card { grid-row: auto; gap: 4px; padding: 6px 8px; }
+  .human-cockpit .hand-head { gap: 5px; }
+  .human-cockpit .hand-vp { font-size: var(--fs-lg); }
+  .human-cockpit .hand-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; gap: 4px; }
+  .human-cockpit .token-total b, .human-cockpit .state-bonus-total b { font-size: var(--fs-sm); }
+  .human-cockpit .token-total span { font-size: var(--fs-3xs); }
+  .human-cockpit .token-total i { display: none; } /* the amber number and numeric aria-label still convey the cap */
+  .human-cockpit .human-bank { border: 0; background: transparent; padding: 0; gap: 6px; }
+  .human-cockpit .human-bank > span { flex: 0 0 38px; }
+  .human-cockpit .bank-gems { gap: 4px; }
+  .human-cockpit .bank-gems .table-gem { min-height: 38px; gap: 3px; padding: 3px; }
+  .human-cockpit .bank-gems .table-gem i { width: 1.35em; height: 1.35em; border-width: 1px; }
+  .human-cockpit .bank-gems .table-gem b { font-size: var(--fs-sm); }
+  .human-cockpit .take-panel { border: 0; background: transparent; padding: 0; gap: 6px; }
+  .human-cockpit .take-selection { min-height: 36px; gap: 5px; }
+  .human-cockpit .take-panel h2 { font-size: var(--fs-2xs); }
+  .human-cockpit .take-buttons button { min-height: 36px; padding: 6px; }
+  .human-cockpit .take-buttons .cancel-move { flex-basis: 32px; width: 32px; }
+  .human-cockpit .pending-gems { gap: 3px; }
+  .human-cockpit .pending-gems .table-gem { padding: 1px 3px; height: 28px; }
+  .human-cockpit .pending-gems .table-gem i { width: 1.2em; height: 1.2em; border-width: 1px; }
+  .human-cockpit .error-banner { padding: 7px 10px; flex-direction: row; gap: 8px; max-height: 24dvh; overflow: auto; }
+}
+@media (max-width: 360px) {
+  .human-cockpit .state-line, .human-cockpit .hand-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; gap: 3px; }
+  .human-cockpit .state-gems { gap: 2px; }
+  .human-cockpit .state-gem { padding-right: 3px; gap: 1px; }
+  .human-cockpit .state-gem b { font-size: var(--fs-3xs); }
+  .human-cockpit .take-selection h2 { display: none; }
+}
+@media (max-height: 520px) and (min-width: 701px) {
+  .human-cockpit .human-topbar { padding-block: 5px; }
+  .human-cockpit .human-topbar .section-kicker, .human-cockpit .state-counts { display: none; }
+  .human-cockpit .human-opponent { padding-top: 5px; }
+  .human-cockpit .state-card { padding-block: 5px; }
+  .human-cockpit .human-dock { padding-block: 5px; gap: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .human-cockpit button { transition: none; }
+  .human-cockpit button:hover { transform: none; }
+}

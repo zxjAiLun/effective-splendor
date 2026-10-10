@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE as API } from "../api-base.mjs";
+import { visibleExperimentIndex } from "../agent-visibility.mjs";
 import {
   BoardPanel,
   ReplayTimeline,
@@ -165,7 +166,7 @@ export default function ExperimentsPage() {
         ]);
         if (!indexResponse.ok) throw new Error(`experiment index failed (${indexResponse.status})`);
         if (!catalogResponse.ok) throw new Error(`catalog failed (${catalogResponse.status})`);
-        const indexData = (await indexResponse.json()) as ExperimentIndex;
+        const indexData = visibleExperimentIndex(await indexResponse.json()) as ExperimentIndex;
         const catalogData = (await catalogResponse.json()) as { cards: CatalogCard[]; nobles: CatalogNoble[] };
         if (cancelled) return;
         setIndex(indexData);

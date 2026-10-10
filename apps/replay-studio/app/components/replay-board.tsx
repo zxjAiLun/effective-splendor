@@ -301,7 +301,7 @@ function ReservedCards({
             </div>
           ),
         )}
-        {hidden > 0 ? <HiddenDevelopmentCard count={hidden} /> : null}
+        {hidden > 0 ? <HiddenDevelopmentCard count={hidden} variant="mini" /> : null}
         {known.length === 0 && hidden === 0 ? <span className="reserved-empty">none</span> : null}
       </div>
     </>

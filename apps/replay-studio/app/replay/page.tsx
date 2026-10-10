@@ -13,6 +13,7 @@ import {
   type NobleId,
   type PlayerId,
 } from "../components/replay-board";
+import { visibleParticipant } from "../agent-visibility.mjs";
 import { PlayerStateStrip } from "../components/player-state-strip";
 import { StructuredAction, type ActionCatalog, type ActionPlayerView } from "../components/structured-action";
 import { JevInteractionPanel, type StepView } from "../components/jev-interaction-panel";
@@ -106,6 +107,9 @@ export default function ReplayPage() {
           if (!Array.isArray(next.frames) || next.frames.length === 0) {
             throw new Error("This replay produced no decision frames.");
           }
+          if (next.opponent && !visibleParticipant({ displayName: next.opponent, participantId: next.opponent })) {
+            throw new Error("This replay is not in the current Studio lineup.");
+          }
           setArchive(next);
           setFrameIndex(0);
           setReveal(false);
@@ -198,6 +202,9 @@ export default function ReplayPage() {
         <div className="header-actions">
           <Link className="studio-link" href="/">
             Games
+          </Link>
+          <Link className="studio-link" href="/jev" style={{ color: "#38bdf8", fontWeight: 700 }}>
+            Jev Replay
           </Link>
           <Link className="studio-link" href="/play">
             Play vs S3

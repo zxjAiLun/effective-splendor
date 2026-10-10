@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE as API } from "../api-base.mjs";
+import { visibleReviewers } from "../agent-visibility.mjs";
 import {
   actionKey,
   buildReviewRows,
@@ -88,6 +89,7 @@ type ReviewFrame = {
     m07_proposal?: Action | null;
     decision_path?: "heuristic_fast_path" | "proposals_agreed" | "ply_cap_fallback" | "rollout_comparison";
     recommended_differs_from_base_heuristic?: boolean;
+    action_scores?: Array<{ action: Action; q_milli: number }>;
   };
   recommended_matches_recorded: boolean;
 };
@@ -147,11 +149,15 @@ const S3_PATH_LABELS: Record<string, string> = {
 };
 
 function reviewConfigLabel(trace: ReviewTrace) {
-  const config = trace.reviewer.config;
-  if (trace.reviewer.result_kind === "policy_recommendation") {
+  const reviewer = trace.reviewer;
+  if (reviewer.id.startsWith("aran")) {
+    return "Mortal SE-ResNet Dueling Q";
+  }
+  const config = reviewer.config;
+  if (reviewer.result_kind === "policy_recommendation") {
     return `S3 · D=${config.determinizations ?? "?"} · P=${config.ply_cap ?? "?"}`;
   }
-  if (trace.reviewer.result_kind === "root_determinization") {
+  if (reviewer.result_kind === "root_determinization") {
     return `s${config.sample_count}`;
   }
   return `s${config.simulations} d${config.max_depth_turns}`;
@@ -337,7 +343,7 @@ export default function ReviewPage() {
         const raw = await response.json();
         if (!response.ok) throw new Error(raw.error ?? `Studio Host ${response.status}`);
         const { reviewers: list, playerCount: count, humanSeat: durableSeat } = decodeReviewersEnvelope(raw);
-        const reviewerList = list as Reviewer[];
+        const reviewerList = visibleReviewers(list) as Reviewer[];
         const decided = resolveHumanSeat(durableSeat, urlSeat);
         if (decided.error) { setError(decided.error); return; }
         const seat = decided.seat;
@@ -527,9 +533,9 @@ function ReviewSummaryBar({ trace, reviewer, summary, job, hasHumanSeat }: { tra
       {summary && ("matches" in summary ? (
         <div className="review-summary-stats">
           <span><b>{summary.decisions}</b> {decisionsLabel}</span>
-          <span><b>{summary.matches}</b> matches S3 recommendation</span>
-          <span><b>{summary.differs}</b> S3 recommends another action</span>
-          <span><b>{summary.differsFromBase}</b> rollout differs from base heuristic</span>
+          <span><b>{summary.matches}</b> matches {reviewer.id.startsWith("aran") ? "aran" : "S3"} recommendation</span>
+          <span><b>{summary.differs}</b> {reviewer.id.startsWith("aran") ? "aran" : "S3"} recommends another action</span>
+          {reviewer.id === "s3-rollout-review" ? <span><b>{summary.differsFromBase}</b> rollout differs from base heuristic</span> : null}
         </div>
       ) : (
         <div className="review-summary-stats">
@@ -552,44 +558,104 @@ function AnalysisPanel({ trace, frame, cards, nobles, humanSeat }: { trace: Revi
   if (trace.reviewer.result_kind === "policy_recommendation") {
     const result = frame.review_result;
     const recommendedAction = recommended as Action;
+    const isS3 = trace.reviewer.id === "s3-rollout-review";
+    const isPrism = Boolean(trace.reviewer.id.startsWith("prism"));
+    const reviewerShortName = isS3 ? "S3" : trace.reviewer.display_name.replace(/Review.*$/i, "").replace(/[★·]/g, "").trim();
     const pathLabel = S3_PATH_LABELS[result.decision_path ?? ""] ?? result.decision_path ?? "unknown";
     const proposalLabels: Record<string, string> = {
-      recommended_action: "S3 recommendation",
+      recommended_action: isS3 ? "S3 recommendation" : `${reviewerShortName} recommendation`,
       base_heuristic_action: "Base heuristic",
       n1_proposal: "n1 proposal",
       m07_proposal: "M07 proposal",
     };
-    const proposalRows = rows as Array<{ role: string; action: Action | null; evaluated: boolean; actual: boolean; recommended: boolean }>;
+    const hasScores = Boolean(result.action_scores && result.action_scores.length > 0);
+    const allProposalRows = rows as Array<{
+      role: string;
+      action: Action | null;
+      evaluated: boolean;
+      actual: boolean;
+      recommended: boolean;
+      actionRank?: number;
+      qValue?: number;
+      prob?: number;
+    }>;
+    const proposalRows = isS3 || hasScores
+      ? allProposalRows
+      : allProposalRows.filter((row) => row.role === "recommended_action");
     return (
       <div>
         <div className="analysis-header">
           <div><span className="section-kicker">POLICY RECOMMENDATION</span><h2>{trace.reviewer.display_name}</h2></div>
-          <span className="budget">D={trace.reviewer.config.determinizations} · P={trace.reviewer.config.ply_cap} · no utility</span>
+          <span className="budget">
+            {isS3
+              ? `D=${trace.reviewer.config.determinizations} · P=${trace.reviewer.config.ply_cap} · no utility`
+              : isPrism
+              ? "Prism Policy-Value · argmax π(a|s)"
+              : "Neural Q-steps · argmin Q(s, a)"}
+          </span>
         </div>
-        <div className="legend"><span><i className="actual-marker">★</i> recorded</span><span><i className="best-marker">▲</i> S3 recommendation</span></div>
-        <div className="analysis-table" role="table" aria-label="S3 policy recommendation">
-          <div className="analysis-row determinization table-head" role="row"><span>Proposal</span><span>Action</span><span>Recorded</span><span>S3</span></div>
+        <div className="legend">
+          <span><i className="actual-marker">★</i> recorded</span>
+          <span><i className="best-marker">▲</i> recommended</span>
+        </div>
+        <div className="analysis-table" role="table" aria-label={`${reviewerShortName} policy recommendation`}>
+          <div className={`analysis-row ${hasScores ? "neural-q" : "determinization"} table-head`} role="row">
+            {hasScores ? (
+              <>
+                <span className="col-action">Action</span>
+                <span className="col-q">{isPrism ? "Logit" : "Steps Q"}</span>
+                <span className="col-prob">Prob</span>
+              </>
+            ) : (
+              <>
+                <span>Proposal</span>
+                <span>Action</span>
+                <span>Recorded</span>
+                <span>{isS3 ? "S3" : "Model"}</span>
+              </>
+            )}
+          </div>
           {proposalRows.map((row) => (
-            <div className={`analysis-row determinization ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={row.role}>
-              <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{proposalLabels[row.role] ?? row.role}</span>
-              <div className="action-name">{row.action ? <StructuredAction action={row.action} playerView={frame.player_view} cards={cards} nobles={nobles} variant="compact" /> : "Not evaluated"}</div>
-              <span className="q-value">{row.actual ? "★" : "—"}</span>
-              <span className="q-value">{row.recommended ? "▲" : "—"}</span>
+            <div className={`analysis-row ${hasScores ? "neural-q" : "determinization"} ${row.actual ? "actual-row" : ""} ${row.recommended ? "best-row" : ""}`} role="row" key={row.action ? `${actionKey(row.action)}-${row.role}` : row.role}>
+              {hasScores ? null : (
+                <span className="action-name"><i>{row.actual ? "★" : row.recommended ? "▲" : ""}</i>{proposalLabels[row.role] ?? row.role}</span>
+              )}
+              <div className="action-name">
+                <span className="action-row-marker">{row.actual ? "★" : row.recommended ? "▲" : ""}</span>
+                {row.action ? <StructuredAction action={row.action} playerView={frame.player_view} cards={cards} nobles={nobles} variant="compact" /> : "Not evaluated"}
+              </div>
+              {hasScores ? (
+                <>
+                  <span className="q-value">{row.qValue !== undefined ? row.qValue.toFixed(3) : "—"}</span>
+                  <div className="metric-container">
+                    <MetricBar value={row.prob ?? 0} tone="visit" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="q-value">{row.actual ? "★" : "—"}</span>
+                  <span className="q-value">{row.recommended ? "▲" : "—"}</span>
+                </>
+              )}
             </div>
           ))}
         </div>
-        <ActionVerdict
-          frame={frame}
-          humanSeat={humanSeat}
-          recommended={recommendedAction}
-          cards={cards}
-          nobles={nobles}
-          matchLabel="MATCHES S3 RECOMMENDATION"
-          differLabel="S3 RECOMMENDS ANOTHER ACTION"
-        />
-        <div className="decision-summary">
-          <p>Decision path <strong>{pathLabel}</strong></p>
-        </div>
+        {hasScores ? null : (
+          <>
+            <ActionVerdict
+              frame={frame}
+              humanSeat={humanSeat}
+              recommended={recommendedAction}
+              cards={cards}
+              nobles={nobles}
+              matchLabel={`MATCHES ${reviewerShortName.toUpperCase()} RECOMMENDATION`}
+              differLabel={`${reviewerShortName.toUpperCase()} RECOMMENDS ANOTHER ACTION`}
+            />
+            <div className="decision-summary">
+              <p>{isS3 ? <>Decision path <strong>{pathLabel}</strong></> : <>Inference mode <strong>Direct Q-steps Greedy</strong></>}</p>
+            </div>
+          </>
+        )}
       </div>
     );
   }

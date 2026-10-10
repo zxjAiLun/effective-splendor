@@ -51,17 +51,18 @@ test("server-renders the /replay viewer route shell", async () => {
   assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
 
-test("server-renders the M16 Rating Studio route (moved verbatim to /ratings/reports)", async () => {
+test("server-renders archived research metadata but not excluded agents in /ratings/reports", async () => {
   const response = await render("/ratings/reports");
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<title>Rating Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Rating Studio/);
-  assert.match(html, /m22-scaled-self-play-v1/);
-  assert.match(html, /M22 Self-Play/);
+  assert.doesNotMatch(html, /m22-scaled-self-play-v1/);
+  assert.doesNotMatch(html, /M22 Self-Play · 32 games · GPU/);
+  assert.match(html, /No curated agents in this archived research report/);
+  assert.match(html, /Archive B/);
   assert.match(html, /48<!-- -->\/<!-- -->48/);
-  assert.match(html, /M22 multi-seed/);
-  assert.match(html, /M19 full pool/);
+  assert.match(html, /Archive A/);
   assert.match(html, /Non-transitivity matrix/);
   assert.match(html, /Load rating report/);
 });

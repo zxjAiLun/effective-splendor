@@ -547,6 +547,13 @@ function validateReviewResult(reviewResult, trace, frame, path) {
         if (!legalKeys.includes(actionKey(value[field]))) fail(`${path}.${field}`, "not in legal actions");
       }
     }
+    if (value.action_scores != null) {
+      const scores = array(value.action_scores, `${path}.action_scores`);
+      scores.forEach((entry, scoreIdx) => {
+        validateAction(entry.action, `${path}.action_scores[${scoreIdx}].action`);
+        if (!Number.isInteger(entry.q_milli)) fail(`${path}.action_scores[${scoreIdx}].q_milli`, "expected integer");
+      });
+    }
     return value;
   }
   // neural_ismcts: mirror the V1 neural_result validation.
@@ -685,6 +692,49 @@ export function buildReviewRows(trace, frame) {
   const actor = frame.actor;
   if (trace.reviewer.result_kind === "policy_recommendation") {
     const result = frame.review_result;
+    if (result.action_scores && result.action_scores.length > 0) {
+      const isPrism = Boolean(trace.reviewer?.id?.startsWith("prism"));
+      let withProbs;
+      if (isPrism) {
+        const maxQMilli = Math.max(...result.action_scores.map((s) => s.q_milli));
+        const exps = result.action_scores.map((s) => Math.exp((s.q_milli - maxQMilli) / 1000));
+        const expSum = exps.reduce((a, b) => a + b, 0);
+        withProbs = result.action_scores.map((s, idx) => ({
+          ...s,
+          prob: exps[idx] / (expSum || 1),
+        }));
+        withProbs.sort((a, b) => {
+          if (b.q_milli !== a.q_milli) return b.q_milli - a.q_milli;
+          return actionKey(a.action).localeCompare(actionKey(b.action));
+        });
+      } else {
+        const minQMilli = Math.min(...result.action_scores.map((s) => s.q_milli));
+        const T = 0.1;
+        const exps = result.action_scores.map((s) => Math.exp(-((s.q_milli - minQMilli) / 1000) / T));
+        const expSum = exps.reduce((a, b) => a + b, 0);
+        withProbs = result.action_scores.map((s, idx) => ({
+          ...s,
+          prob: exps[idx] / (expSum || 1),
+        }));
+        withProbs.sort((a, b) => a.q_milli - b.q_milli);
+      }
+      return {
+        kind: "policy_recommendation",
+        hasActionScores: true,
+        decisionPath: result.decision_path,
+        recommendedDiffersFromBase: result.recommended_differs_from_base_heuristic,
+        rows: withProbs.map((entry, index) => ({
+          role: `rank_${index + 1}`,
+          action: entry.action,
+          actionRank: index + 1,
+          qValue: entry.q_milli / 1000,
+          prob: entry.prob,
+          evaluated: true,
+          actual: actionKey(entry.action) === actionKey(frame.recorded_action),
+          recommended: actionKey(entry.action) === actionKey(result.recommended_action),
+        })),
+      };
+    }
     const proposals = [
       ["recommended_action", result.recommended_action],
       ["base_heuristic_action", result.base_heuristic_action],
