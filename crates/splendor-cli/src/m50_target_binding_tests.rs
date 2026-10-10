@@ -1,0 +1,181 @@
+use super::SemanticQWeights;
+use serde_json::{json, Value};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_FILE: AtomicU64 = AtomicU64::new(0);
+
+fn temp_path() -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "m50-reserve-target-{}-{}.json",
+        std::process::id(),
+        NEXT_FILE.fetch_add(1, Ordering::Relaxed)
+    ))
+}
+
+fn weights_json(width: usize) -> Value {
+    let mut head = vec![0.0f32; 8 + width];
+    if width == 72 {
+        head[8 + 56] = 1.0;
+    }
+    let mut value = json!({
+        "state_net.0.weight": vec![vec![0.0; 368]; 4],
+        "state_net.0.bias": vec![0.0; 4],
+        "state_net.1.weight": vec![1.0; 4],
+        "state_net.1.bias": vec![0.0; 4],
+        "state_net.3.weight": vec![vec![0.0; 4]; 4],
+        "state_net.3.bias": vec![0.0; 4],
+        "state_net.4.weight": vec![1.0; 4],
+        "state_net.4.bias": vec![0.0; 4],
+        "action_net.0.weight": vec![vec![0.0; width]; 2],
+        "action_net.0.bias": vec![0.0; 2],
+        "action_net.1.weight": vec![1.0; 2],
+        "action_net.1.bias": vec![0.0; 2],
+        "action_net.3.weight": vec![vec![0.0; 2]; 4],
+        "action_net.3.bias": vec![0.0; 4],
+        "action_net.4.weight": vec![1.0; 4],
+        "action_net.4.bias": vec![0.0; 4],
+        "v_steps_head.0.weight": vec![vec![0.0; 4]],
+        "v_steps_head.0.bias": [0.0],
+        "v_steps_head.2.weight": [[0.0]],
+        "v_steps_head.2.bias": [0.0],
+        "adv_head.0.weight": [head],
+        "adv_head.0.bias": [0.0],
+        "adv_head.2.weight": [[1.0]],
+        "adv_head.2.bias": [0.0],
+        "adv_head.4.weight": [[1.0]],
+        "adv_head.4.bias": [0.0],
+        "val_head.0.weight": vec![vec![0.0; 4]],
+        "val_head.0.bias": [0.0],
+        "val_head.2.weight": [[0.0]],
+        "val_head.2.bias": [0.0],
+        "is_argmax": true
+    });
+    if width == 72 {
+        value["action_dim"] = json!(72);
+        value["action_representation"] = json!("semantic-reserve-target-v1");
+    }
+    value
+}
+
+fn load(value: &Value) -> Result<SemanticQWeights, String> {
+    let path = temp_path();
+    std::fs::write(&path, serde_json::to_vec(value).unwrap()).unwrap();
+    let result = SemanticQWeights::load_from_json(&path);
+    std::fs::remove_file(path).unwrap();
+    result
+}
+
+#[test]
+fn m50_legacy_action_widths_remain_compatible() {
+    for width in [48, 56] {
+        let weights = load(&weights_json(width)).unwrap();
+        assert_eq!(weights.action_dim, Some(width));
+        assert_eq!(weights.score_action(&[0.0; 4], &[0.0; 56]).unwrap(), 0.0);
+        assert!(weights.score_action(&[0.0; 4], &[0.0; 72]).is_err());
+    }
+}
+
+#[test]
+fn m50_target_suffix_reaches_raw_scoring_head() {
+    let weights = load(&weights_json(72)).unwrap();
+    let a = [0.0; 72];
+    let mut b = a;
+    b[56] = 1.0;
+    assert_eq!(weights.score_action(&[0.0; 4], &a).unwrap(), 0.0);
+    assert_eq!(weights.score_action(&[0.0; 4], &b).unwrap(), 1.0);
+    assert!(weights.score_action(&[0.0; 4], &[0.0; 56]).is_err());
+    assert!(weights.score_action(&[0.0; 3], &b).is_err());
+}
+
+#[test]
+fn m50_action_schema_and_shapes_fail_closed() {
+    let valid = weights_json(72);
+    for key in ["action_representation", "action_dim"] {
+        let mut value = valid.clone();
+        value[key] = json!("unknown");
+        assert!(load(&value).is_err());
+    }
+    let mut value = valid.clone();
+    value.as_object_mut().unwrap().remove("action_representation");
+    assert!(load(&value).is_err());
+    value = valid.clone();
+    value["action_dim"] = json!(56);
+    assert!(load(&value).is_err());
+    for key in ["action_net.0.weight", "action_net.3.weight", "adv_head.0.weight"] {
+        let mut value = valid.clone();
+        value[key][0].as_array_mut().unwrap().pop();
+        assert!(load(&value).is_err(), "accepted malformed {key}");
+    }
+    let mut value = valid;
+    value.as_object_mut().unwrap().remove("adv_head.0.weight");
+    let error = load(&value).unwrap_err();
+    assert_ne!(error, "not a semantic Q weights file");
+}
+
+#[test]
+fn m50_compact_weights_validate_the_same_schema() {
+    let original = load(&weights_json(72)).unwrap();
+    let path = temp_path();
+    original.save_to_compact_json(&path).unwrap();
+    let loaded = SemanticQWeights::load_from_compact_json(&path).unwrap();
+    assert_eq!(loaded.action_dim, Some(72));
+    let mut value = serde_json::to_value(&original).unwrap();
+    value["action_dim"] = json!(56);
+    std::fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+    assert!(SemanticQWeights::load_from_compact_json(&path).is_err());
+    std::fs::remove_file(path).unwrap();
+}
+
+fn assert_close(actual: f32, expected: f32, context: &str) {
+    let tolerance = 2e-5 + 2e-4 * expected.abs();
+    assert!(actual.is_finite() && (actual - expected).abs() <= tolerance,
+        "{context}: actual={actual}, expected={expected}, tolerance={tolerance}");
+}
+
+#[test]
+#[ignore = "requires M50_TARGET_BINDING_FIXTURE generated by the Python test helper"]
+fn m50_reserve_target_python_rust_fixture() {
+    let path = PathBuf::from(std::env::var("M50_TARGET_BINDING_FIXTURE").expect("fixture path"));
+    let fixture: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let obs: Vec<Vec<f32>> = serde_json::from_value(fixture["obs"].clone()).unwrap();
+    let parents: Vec<usize> = serde_json::from_value(fixture["parent_idx"].clone()).unwrap();
+    for (name, case) in fixture["cases"].as_object().unwrap() {
+        let weights_path = path.parent().unwrap().join(case["weights"].as_str().unwrap());
+        let weights = SemanticQWeights::load_from_json(&weights_path).unwrap();
+        let action_key = format!("actions{}", case["action_dim"].as_u64().unwrap());
+        let actions: Vec<Vec<f32>> = serde_json::from_value(fixture[&action_key].clone()).unwrap();
+        let expected_states: Vec<Vec<f32>> = serde_json::from_value(case["state_h"].clone()).unwrap();
+        let expected_logits: Vec<f32> = serde_json::from_value(case["adv_logits"].clone()).unwrap();
+        let states: Vec<Vec<f32>> = obs.iter().map(|row| weights.forward_state(row)).collect();
+        assert_eq!(states.len(), expected_states.len());
+        for (row, expected) in states.iter().zip(&expected_states) {
+            assert_eq!(row.len(), expected.len());
+            for (&actual, &expected) in row.iter().zip(expected) {
+                assert_close(actual, expected, &format!("{name} state"));
+            }
+        }
+        assert_eq!(actions.len(), parents.len());
+        assert_eq!(actions.len(), expected_logits.len());
+        let mut logits = Vec::new();
+        for ((action, &parent), &expected) in actions.iter().zip(&parents).zip(&expected_logits) {
+            let actual = weights.score_action(&states[parent], action).unwrap();
+            assert_close(actual, expected, &format!("{name} logit"));
+            logits.push(actual);
+        }
+        for parent in 0..obs.len() {
+            let mut indices: Vec<_> = (0..parents.len()).filter(|&i| parents[i] == parent).collect();
+            indices.sort_by(|&a, &b| expected_logits[b].total_cmp(&expected_logits[a]));
+            if indices.len() > 1 {
+                let first = indices[0];
+                let second = indices[1];
+                let margin = expected_logits[first] - expected_logits[second];
+                let tolerance = 4e-5 + 4e-4 * expected_logits[first].abs().max(expected_logits[second].abs());
+                if margin > tolerance {
+                    assert!(indices.iter().all(|&i| i == first || logits[first] > logits[i]));
+                }
+            }
+        }
+        println!("{name}: {} states / {} raw logits agree", states.len(), actions.len());
+    }
+}

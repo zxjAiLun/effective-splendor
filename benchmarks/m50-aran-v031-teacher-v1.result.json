@@ -1,0 +1,366 @@
+{
+  "format": "m50-lean-candidate-round-result-v1",
+  "round_id": "aran-v031-teacher-v1",
+  "baseline_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "config_sha256": "8992bad45c0cc50dbcf11e0d7f2960d82ca39912830099017493ff76daa6312e",
+  "implementation_status": "VERIFIED",
+  "verdict": "NOT_PROMOTED",
+  "reason": "screen did not strictly exceed 50%",
+  "data": {
+    "teacher_games": 2000,
+    "retained_coev_games": 2000,
+    "teacher_unique_seeds": 2000,
+    "teacher_sha256": "6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db",
+    "checks": {
+      "status": "PASS",
+      "manifest_sha256": "48b8ea4c023cf46dc5933a56947f364b2b472a6db4990547e32e3f776c339f54",
+      "source_manifest_sha256": "a833fb2591330cc3cc8de122abce3b404b41f4d48363d8dd929c3494e040d284",
+      "splits": {
+        "train": {
+          "games": 3200,
+          "decisions": 172734,
+          "actions": 5423304,
+          "hashes": {
+            "obs.f32": "b5abf624331c715c32fb7a52f466db4f836ce061c12b6e321631a5d797302297",
+            "actions.f32": "5e8943055df5dd3af10f91ffeee78a4ecb399de6a9c81a508e19c6a20dcecd01",
+            "action_offsets.u64": "bfe675ca94369c119d34b5b959451f35693f109fa239d82b3f66852b97919222",
+            "chosen_action.u32": "257d3081ec57ef0e29f099d0ca3bd8ecf61c4e86c26791d8ba7f8663c9eabcd5",
+            "values.f32": "bf08b63ee97787591ff210d27ab42dc1fdb5fc791ade5b39847fea70aae439b1"
+          }
+        },
+        "val": {
+          "games": 800,
+          "decisions": 43048,
+          "actions": 1346699,
+          "hashes": {
+            "obs.f32": "ed8e70055ffc4427ad947140c0087cd859a2370e9aced5161443262ba8b2bbdf",
+            "actions.f32": "cd359229dd10169a8de79e1577d4ca37e2487fe30eb5658aa77888155d2026a1",
+            "action_offsets.u64": "515173dd190476cc4ba24096ff03c9f59ebae2f684028e65853f5ae38ba2335b",
+            "chosen_action.u32": "f6cca10dfcef88f1b93f57704ec9d9fb66bc05ceedb01dff753eb1f4b3861a48",
+            "values.f32": "a6e6b1e35704c266412a20a4d3fe81a9a49f384972aaec89c4d7ca5680f18fb7"
+          }
+        }
+      }
+    }
+  },
+  "training": {
+    "completed_runs": 1,
+    "epochs": 10,
+    "best_epoch": 4,
+    "total_seconds": 1005.8768819000015,
+    "critic_backbone_grad": false,
+    "migration": [],
+    "baseline": {
+      "pi_loss": 2.1282949322684726,
+      "val_acc": 0.5168184352240095,
+      "steps_mae": 2.89223095808435,
+      "top1_match": 0.6213296785039588
+    },
+    "selected_epoch_metrics": {
+      "epoch": 4,
+      "train_loss": 1.4860509163444426,
+      "train_top1": 0.6288628759048972,
+      "val_top1": 0.6196571269280803,
+      "val_critic_acc": 0.5224400669020628,
+      "val_steps_mae": 3.0599388056274597,
+      "epoch_seconds": 71.56940349999786
+    },
+    "identity": {
+      "config_sha256": "8992bad45c0cc50dbcf11e0d7f2960d82ca39912830099017493ff76daa6312e",
+      "checkpoint_sha256": "fc0d422931fc28adf9bb6755dcebdd2017f67c76cd5b8f94081c988855b43ba3",
+      "weights_sha256": "a6fbf9c8e772d1ab138388f0076877772cd5bc07e98f3d2df7ec347c68c62732",
+      "training_summary_sha256": "c9a626dce50705259e0655ed9e7366652fa7786d3c3a107f5af8fa23118faf76",
+      "best_epoch": 4,
+      "pt_export_exact": true
+    }
+  },
+  "stages": {
+    "smoke": {
+      "status": "VALID",
+      "total_games": 2,
+      "wins": 2,
+      "ties": 0,
+      "losses": 0,
+      "score_rate": 1.0,
+      "pure_win_rate": 1.0,
+      "ci95_paired": [
+        1.0,
+        1.0
+      ],
+      "score_rate_by_seat": [
+        1.0,
+        1.0
+      ],
+      "mean_candidate_score": 15.5,
+      "mean_opponent_score": 11.5,
+      "mean_plies": 54.0,
+      "wall_seconds": 1.1202368000012939,
+      "replay_verified_games": 2,
+      "phase": "smoke",
+      "seed_start": 9333999,
+      "seed_count": 1,
+      "candidate_weights_sha256": "a6fbf9c8e772d1ab138388f0076877772cd5bc07e98f3d2df7ec347c68c62732",
+      "candidate_exe_sha256": "7053441f98201d5688dfb3d4f2c2d8f2e2838834895db099bc83dd4b94aa425e",
+      "opponent_exe_sha256": "82910a59a432371b01462eec5cb335242b7c543f5d3afe46e1a7cdec242bd112",
+      "config_sha256": "8992bad45c0cc50dbcf11e0d7f2960d82ca39912830099017493ff76daa6312e",
+      "unified_metrics": {
+        "format": "effective-splendor-batch-metrics-v1",
+        "candidate": {
+          "wins": 2,
+          "ties": 0,
+          "losses": 0,
+          "games_with_nobles": 2,
+          "mean_prestige": 15.5,
+          "mean_nobles": 1.0,
+          "mean_permanent_bonuses": 17.0,
+          "mean_reserves_acquired": 0.5,
+          "mean_reserves_bought": 0.5,
+          "mean_reserves_stranded": 0.0,
+          "mean_cards_by_vp": {
+            "0": 11.0,
+            "1": 2.5,
+            "2": 1.0,
+            "3": 2.0,
+            "4": 0.5,
+            "5": 0.0
+          },
+          "mean_bonuses_by_color": {
+            "Black": 4.5,
+            "Blue": 3.0,
+            "Green": 3.0,
+            "Red": 3.0,
+            "White": 3.5
+          },
+          "action_distribution": {
+            "buy_market": 33,
+            "buy_reserved": 1,
+            "reserve_market": 1,
+            "take_tokens": 19
+          },
+          "action_percentages": {
+            "buy_market": 61.111111111111114,
+            "buy_reserved": 1.8518518518518516,
+            "reserve_market": 1.8518518518518516,
+            "take_tokens": 35.18518518518518
+          },
+          "total_games": 2,
+          "score_rate": 1.0,
+          "pure_win_rate": 1.0,
+          "vp_per_turn": 0.5740740740740741,
+          "vp_per_ply": 0.28703703703703703,
+          "reserve_redemption_rate": 1.0
+        },
+        "opponent": {
+          "wins": 0,
+          "ties": 0,
+          "losses": 2,
+          "games_with_nobles": 0,
+          "mean_prestige": 11.5,
+          "mean_nobles": 0.0,
+          "mean_permanent_bonuses": 13.5,
+          "mean_reserves_acquired": 2.0,
+          "mean_reserves_bought": 1.5,
+          "mean_reserves_stranded": 0.5,
+          "mean_cards_by_vp": {
+            "0": 7.0,
+            "1": 3.0,
+            "2": 2.5,
+            "3": 0.5,
+            "4": 0.5,
+            "5": 0.0
+          },
+          "mean_bonuses_by_color": {
+            "Black": 2.0,
+            "Blue": 4.5,
+            "Green": 1.5,
+            "Red": 2.5,
+            "White": 3.0
+          },
+          "action_distribution": {
+            "buy_market": 24,
+            "buy_reserved": 3,
+            "reserve_market": 4,
+            "take_tokens": 23
+          },
+          "action_percentages": {
+            "buy_market": 44.44444444444444,
+            "buy_reserved": 5.555555555555555,
+            "reserve_market": 7.4074074074074066,
+            "take_tokens": 42.592592592592595
+          },
+          "total_games": 2,
+          "score_rate": 0.0,
+          "pure_win_rate": 0.0,
+          "vp_per_turn": 0.42592592592592593,
+          "vp_per_ply": 0.21296296296296297,
+          "reserve_redemption_rate": 0.75
+        },
+        "convention": "candidate=r0/p0+r1/p1; VP/turn and VP/ply are ratios of totals; choose_noble counts as an actor action",
+        "metrics_sha256": {
+          "all": "e78253595715e16f1e2c840a25b0bcc3ee53945f05e6d935240843b143ebab15",
+          "r0": "b8db50ab59d2e79448c32577b09502df9e1c99e42f84d8f0f72dc0b4a9224be1",
+          "r1": "1957c4c6bcd238b069ee95b140880822bec9a03922f496f5a01f43acf69747e6"
+        }
+      }
+    },
+    "screen": {
+      "status": "VALID",
+      "total_games": 256,
+      "wins": 120,
+      "ties": 1,
+      "losses": 135,
+      "score_rate": 0.470703125,
+      "pure_win_rate": 0.46875,
+      "ci95_paired": [
+        0.41015625,
+        0.533203125
+      ],
+      "score_rate_by_seat": [
+        0.51171875,
+        0.4296875
+      ],
+      "mean_candidate_score": 13.609375,
+      "mean_opponent_score": 14.08203125,
+      "mean_plies": 54.34765625,
+      "wall_seconds": 22.386733999999706,
+      "replay_verified_games": 256,
+      "phase": "screen",
+      "seed_start": 9334000,
+      "seed_count": 128,
+      "candidate_weights_sha256": "a6fbf9c8e772d1ab138388f0076877772cd5bc07e98f3d2df7ec347c68c62732",
+      "candidate_exe_sha256": "7053441f98201d5688dfb3d4f2c2d8f2e2838834895db099bc83dd4b94aa425e",
+      "opponent_exe_sha256": "82910a59a432371b01462eec5cb335242b7c543f5d3afe46e1a7cdec242bd112",
+      "config_sha256": "8992bad45c0cc50dbcf11e0d7f2960d82ca39912830099017493ff76daa6312e",
+      "unified_metrics": {
+        "format": "effective-splendor-batch-metrics-v1",
+        "candidate": {
+          "wins": 120,
+          "ties": 1,
+          "losses": 135,
+          "games_with_nobles": 153,
+          "mean_prestige": 13.609375,
+          "mean_nobles": 0.85546875,
+          "mean_permanent_bonuses": 15.4921875,
+          "mean_reserves_acquired": 0.390625,
+          "mean_reserves_bought": 0.296875,
+          "mean_reserves_stranded": 0.09375,
+          "mean_cards_by_vp": {
+            "0": 9.8203125,
+            "1": 2.3125,
+            "2": 2.05859375,
+            "3": 0.76171875,
+            "4": 0.3671875,
+            "5": 0.171875
+          },
+          "mean_bonuses_by_color": {
+            "Black": 3.2109375,
+            "Blue": 2.9296875,
+            "Green": 3.109375,
+            "Red": 3.05859375,
+            "White": 3.18359375
+          },
+          "action_distribution": {
+            "buy_market": 3890,
+            "buy_reserved": 76,
+            "choose_noble": 6,
+            "reserve_market": 100,
+            "take_tokens": 2885
+          },
+          "action_percentages": {
+            "buy_market": 55.914905850222794,
+            "buy_reserved": 1.0924248957884146,
+            "choose_noble": 0.086244070720138,
+            "reserve_market": 1.4374011786689667,
+            "take_tokens": 41.46902400459969
+          },
+          "total_games": 256,
+          "score_rate": 0.470703125,
+          "pure_win_rate": 0.46875,
+          "vp_per_turn": 0.5004309106578569,
+          "vp_per_ply": 0.25041328254150796,
+          "reserve_redemption_rate": 0.76
+        },
+        "opponent": {
+          "wins": 135,
+          "ties": 1,
+          "losses": 120,
+          "games_with_nobles": 166,
+          "mean_prestige": 14.08203125,
+          "mean_nobles": 0.90234375,
+          "mean_permanent_bonuses": 15.08984375,
+          "mean_reserves_acquired": 2.171875,
+          "mean_reserves_bought": 1.33984375,
+          "mean_reserves_stranded": 0.83203125,
+          "mean_cards_by_vp": {
+            "0": 8.4609375,
+            "1": 3.51953125,
+            "2": 2.00390625,
+            "3": 0.6640625,
+            "4": 0.3515625,
+            "5": 0.08984375
+          },
+          "mean_bonuses_by_color": {
+            "Black": 3.09765625,
+            "Blue": 2.92578125,
+            "Green": 2.87109375,
+            "Red": 3.1640625,
+            "White": 3.03125
+          },
+          "action_distribution": {
+            "buy_market": 3520,
+            "buy_reserved": 343,
+            "choose_noble": 5,
+            "reserve_deck": 1,
+            "reserve_market": 555,
+            "take_tokens": 2532
+          },
+          "action_percentages": {
+            "buy_market": 50.603795284646345,
+            "buy_reserved": 4.930994824611846,
+            "choose_noble": 0.07188039102932721,
+            "reserve_deck": 0.01437607820586544,
+            "reserve_market": 7.9787234042553195,
+            "take_tokens": 36.400230017251296
+          },
+          "total_games": 256,
+          "score_rate": 0.529296875,
+          "pure_win_rate": 0.52734375,
+          "vp_per_turn": 0.5178109738580867,
+          "vp_per_ply": 0.25911018471932723,
+          "reserve_redemption_rate": 0.6169064748201439
+        },
+        "convention": "candidate=r0/p0+r1/p1; VP/turn and VP/ply are ratios of totals; choose_noble counts as an actor action",
+        "metrics_sha256": {
+          "all": "e7429096760643ee5fcdb6150b97c52de2f89404abaac5915e476b721c98eaad",
+          "r0": "345d567d726d024152772c102f750e409315342904a56ece90c8d93466232d7d",
+          "r1": "338df4567c50104ab5af82cd1676fbbb6a28b4573d26aab73da2f4f486a76605"
+        }
+      }
+    }
+  },
+  "confirmation_started": false,
+  "round_gate_pass": false,
+  "validation": {
+    "runner_tests_passed": 9,
+    "source_groups_verified": true,
+    "old_coev_hashes_unchanged": true,
+    "teacher_replays_verified": 2000,
+    "arena_replays_verified": 258,
+    "pt_export_exact": true,
+    "selected_rust_python_parity": true,
+    "paired_ci_recomputed": true,
+    "frozen_identities_unchanged": true,
+    "independent_review": false
+  },
+  "publication": {
+    "performed": false,
+    "production_defaults_changed_by_this_round": false,
+    "committed_or_pushed": false
+  },
+  "limitations": [
+    "No matched old-data continuation control; no causal attribution to teacher quality alone.",
+    "No automatic v031 arena; this round tests frozen v030 only.",
+    "No seed retry, checkpoint sweep or pooled-stage promotion."
+  ],
+  "evidence_root": "local-artifacts/aran-v031-teacher-v1"
+}

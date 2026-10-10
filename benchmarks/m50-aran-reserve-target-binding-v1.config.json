@@ -1,0 +1,120 @@
+{
+  "format": "m50-lean-candidate-round-v1",
+  "round_id": "aran-reserve-target-binding-v1",
+  "status": "FROZEN",
+  "baseline_commit": "bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57",
+  "candidate_label": "aran-reserve-target-binding-v1",
+  "change": "Append 16 public target-card features only to ReserveMarket; preserve the semantic56 prefix, other actions, state backbone, losses and detached Critic.",
+  "action_representation": "semantic-reserve-target-v1",
+  "action_dim": 72,
+  "artifact_root": "local-artifacts/aran-reserve-target-binding-v1",
+  "dataset": {
+    "source_dirs": [
+      "local-artifacts/aran-v03-corpus/selfplay",
+      "local-artifacts/aran-v03-corpus/coev"
+    ],
+    "reference_dir": "local-artifacts/aran-v03-full-dataset",
+    "reference_manifest_sha256": "ddf60e2c320a2797c51def8f4a7f80691660332af800b79ab948a35bf1232096",
+    "out_dir": "local-artifacts/aran-reserve-target-binding-v1/dataset",
+    "val_modulus": 5,
+    "val_remainder": 0,
+    "winner_only": false,
+    "top_fastest_percent": null,
+    "expected_replays": 4000,
+    "expected_train_decisions": 173297,
+    "expected_val_decisions": 43284,
+    "invariants": "identical non-action tensors, row/action order, labels and first 56 action columns"
+  },
+  "training": {
+    "script": "training/m17_gpu/m50_train_mortal_actor_critic.py",
+    "python": "C:/Python312/python.exe",
+    "pretrained": "local-artifacts/aran-v022/best_model.pt",
+    "pretrained_sha256": "09620f1e121f42c430ee048a4037740b9960b03834568e0bd7e3a28f6e44214e",
+    "parent_published_weights": "local-artifacts/aran-v022/aran_v022_weights.json",
+    "parent_published_sha256": "d583da25bfc5c0de85aed7a906357128873976d651d63568713ccf9075c2bba5",
+    "data_dir": "local-artifacts/aran-reserve-target-binding-v1/dataset",
+    "out_dir": "local-artifacts/aran-reserve-target-binding-v1/run",
+    "migration": {
+      "action_net.0.weight": "append 16 zero columns",
+      "adv_head.0.weight": "append 16 zero columns",
+      "other_tensors": "strict keys, shape, dtype and values"
+    },
+    "critic_backbone_grad": false,
+    "hidden_dim": 256,
+    "num_blocks": 2,
+    "epochs": 10,
+    "batch_size": 512,
+    "accumulation_steps": 4,
+    "lr": 0.0003,
+    "weight_decay": 0.0001,
+    "seed": 50000001,
+    "loss_weights": {
+      "winner_policy_ce": 1.0,
+      "all_outcomes_bce": 0.5,
+      "winner_steps": 0.25
+    },
+    "checkpoint_selection": "highest existing full-validation tie-aware top1_match among epochs 1..10; earliest on tie; epoch0 diagnostic only",
+    "optimizer_state": "new AdamW and cosine scheduler, not resumed",
+    "data_manifest_sha256": "adb9e580fd45a670a28fad5cf5e46d8e9e86abfe384bb77a1d33b25b9a37a1de"
+  },
+  "evaluation": {
+    "script": "scripts/m50_reserve_target_binding_round.py",
+    "candidate_exe": "local-artifacts/aran-reserve-target-binding-v1/build/release/splendor.exe",
+    "candidate_exe_sha256": "7053441f98201d5688dfb3d4f2c2d8f2e2838834895db099bc83dd4b94aa425e",
+    "weights": "local-artifacts/aran-reserve-target-binding-v1/run/mortal_actor_critic_weights.json",
+    "opponent_exe": "local-artifacts/s4-heuristic-v030-pilot/splendor-candidate.exe",
+    "opponent_exe_sha256": "82910a59a432371b01462eec5cb335242b7c543f5d3afe46e1a7cdec242bd112",
+    "opponent_args": [
+      "agent-heuristic-v02",
+      "--seed",
+      "20260926"
+    ],
+    "candidate_args": [
+      "agent-m50-policy",
+      "--mode",
+      "greedy"
+    ],
+    "candidate_default_agent_seed": 50000001,
+    "workers": 12,
+    "smoke": {
+      "seed_start": 9327999,
+      "seed_count": 1,
+      "games": 2
+    },
+    "screen": {
+      "seed_start": 9328000,
+      "seed_count": 128,
+      "games": 256
+    },
+    "confirmation": {
+      "seed_start": 9329000,
+      "seed_count": 250,
+      "games": 500
+    },
+    "gate_statistic": "(wins + 0.5 * ties) / completed_games",
+    "confirmation_condition": "all 256 screen games valid and gate_statistic > 0.5",
+    "promotion_condition": "all 500 confirmation games valid and gate_statistic > 0.5; no automatic publication",
+    "bootstrap": {
+      "unit": "paired game seed",
+      "samples": 10000,
+      "seed": 92552026,
+      "ci_is_gate": false
+    },
+    "stop_rule": "No second candidate, automatic match retries, seed changes, checkpoint sweep or pooled-stage gate.",
+    "metrics_exe": "local-artifacts/aran-reserve-target-binding-v1/provenance/s4_batch_metrics.exe",
+    "metrics_exe_sha256": "38849ae03a129ddc376f2a297cfba7be7491f21b35d45f69633e538ac0cbff2a"
+  },
+  "publication": "Preserve existing dirty work, parent weights, Studio registrations and S3 defaults; no commit, push or formal model release.",
+  "source_sha256": {
+    "crates/splendor-learning/src/representation.rs": "f8828ed5e6f1b79d6fae5270189cea91ad027efedaf5ca9d55eb088c2912a358",
+    "crates/splendor-learning/src/lib.rs": "bd945644c8939d831d7ab879c5287c341cb5ca86fe7b0d28ce08ffba02a1e941",
+    "crates/splendor-cli/src/m50_extract_command.rs": "c7740131bf4df24639cddb011aa0c9583c601f7c6627ad7776c4f02e26f5ac76",
+    "crates/splendor-cli/src/m50_agent_command.rs": "9805bd901b2d9a08ee0008546f04394b5980fdd73b114e9feca88eca8c2ec041",
+    "crates/splendor-cli/src/m50_target_binding_tests.rs": "6bd3c59a49038dc3eef4393e08016d8449cda3edd9f3ced85a0a4efff62993ca",
+    "crates/splendor-cli/src/human_play_command.rs": "84322103f899b783d6a3299ee9fe3e3f9785a7531a66e4c166e8c6b6371ae685",
+    "training/m17_gpu/m50_train_mortal_actor_critic.py": "eaedba3abfe6d719efa1afe1c8c699d23131ca61f955402f2d92ca58ffa37630",
+    "training/m17_gpu/tests/test_m50_reserve_target_binding.py": "159056827d722f567489d87b0432728c1b70dc4cfddd9ccede585dc2adbdae61",
+    "scripts/m50_reserve_target_binding_round.py": "e997cab4a847c5ed592574f8762e3b3f9d869c95756675bb19f13cc481448b15",
+    "scripts/m50_eval_parallel.py": "a0f38c0d1096d4a6c1991db6da2a316a88405c56cafcac1ba1da8c590fa58250"
+  }
+}

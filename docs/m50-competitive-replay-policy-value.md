@@ -1093,3 +1093,394 @@ Evaluated across 250 paired seeds (500 games with double seat rotation per oppon
 - `aran-v0.2.2` definitively outperforms `aran-v0.2` in direct head-to-head play (**51.40% win rate**, up from 46.10% in v0.2.1) and lifts performance vs `v0.3.0` from 42.70% to **46.50%**.
 - However, because it has not yet achieved > 50% against `v0.3.0`, it is **officially designated as `aran-v0.2.2`** (patch iteration), NOT promoted to `v0.3`.
 - Active in Studio registry as `★ aran-v0.2.2 (Mortal Actor-Critic · 51.4% vs aran-v0.2)`.
+
+### 33.5 Independent evidence review — 2026-09-28 — REVIEWED / EXPLORATORY
+
+Read-only audit at `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202`; no retraining or new competitive match was run. This review preserves the four observed match results and narrows the superiority and causal claims in §33.4.
+
+- **Release identity repaired:** `aran-v022/aran_v022_weights.json` SHA-256 `D583DA25BFC5C0DE85AED7A906357128873976D651D63568713CCF9075C2BBA5` is byte-identical to the evaluated `aran-v03-mortal-run/mortal_actor_critic_weights.json`. It carries `is_argmax=true`, a 56-input action layer and a 568-input advantage layer. Every JSON tensor is exactly equal at `float32` to the colocated `best_model.pt` (SHA-256 `09620F1E121F42C430EE048A4037740B9960B03834568E0BD7E3A28F6E44214E`). The Rust advantage path now derives its action width from the loaded weights, and the greedy policy switches to argmax when the flag is set. The Studio Host `GET /agents` lists `aran-v022` and the Studio UI `/play` returns HTTP 200; an interactive game and numerical Rust/Python parity were not independently exercised.
+- **Match arithmetic and seed layout:** Re-read `match-config.json`, `arena-report.json`, and `match-replay.json` for all 3,000 games in the four new 500-game directories and both verified v0.2.1 comparison directories. Each directory has exactly 250 seeds (`9_311_000..9_311_249`) with both seats, all reports say `completed`, the candidate weight paths agree within each series, and recomputed W/T/L and rates equal their summaries. This is an artifact audit, not an independent strict replay of all 3,000 games. The runner source calls `verify_replay` before publishing a completed match, but the summaries do not bind the executable by SHA-256.
+- **Strength interpretation:** The observed `51.40%` vs `aran-v0.2` has reported paired bootstrap 95% CI `[47.3%,55.5%]`, which includes 50%; it does not establish decisive superiority. Using the same 250 seed/seat blocks to compare v0.2.2 with the verified v0.2.1 results, an independent 20,000-resample paired bootstrap gave `+5.3 pp` vs `aran-v0.2` with 95% CI `[-0.5,+11.1] pp`, and `+3.8 pp` vs `v0.3.0` with 95% CI `[-1.5,+9.0] pp`. Both are favorable observed changes but include zero. The `57.50%` vs `v0.2.8` CI `[52.9%,62.1%]` is stronger evidence of superiority over that opponent. The `46.50%` vs `v0.3.0` point estimate misses the declared >50% gate; `45.30%` vs `v0.2.9` is another practical limit.
+- **Objective interpretation:** The full dataset supplies both outcomes to the BCE critic, but `loss_pi` normally masks to winner actions, `loss_steps` also masks to winners, and `val_head(state_h.detach())` blocks critic-label gradients into the shared state representation. The greedy action path does not read the critic. Thus this is winner-trajectory imitation with an outcome-trained auxiliary critic, not evidence that losing examples improved action ranking. Cross-entropy is convex in fixed logits, not in the neural network parameters; switching the action sign or adopting argmax alone cannot establish the stated AdamW or vanishing-gradient mechanism. A causal claim needs a controlled ablation on unchanged data and evaluation seeds.
+
+**Review verdict:** v0.2.2 is an implemented, identity-consistent exploratory patch with valid reported match counts and encouraging results against v0.2.8. The version label may remain; `51.40%` vs v0.2 is an observed edge rather than a decisive superiority claim. The v0.3 promotion gate remains closed at `46.50%` vs v0.3.0.
+
+**Lean iteration correction (supersedes this review's earlier proposed next gate):** Do not make a Rust/Python parity fixture, executable-hash expansion, or a policy/critic/steps ablation matrix prerequisites for the next candidate. Reuse the current working corpus and engine; change one plausible strength lever and train one candidate. Screen it against v0.3.0 on 256 fresh-seed games (128 seeds, both seats); only a >50% point result spends on a 500-game confirmation using a second fresh seed range. Otherwise stop that candidate and iterate. One concrete low-cost candidate is to let the outcome critic update the shared representation instead of detaching it, keeping the other losses and data fixed; this is a strength experiment, not a required causal proof. Preserve the current result and the >50% v0.3 promotion gate without expanding this round's audit.
+
+### 33.6 aran-v0.2.2 后续架构目标：胜负信号、关系表征与策略改进 — 2026-09-28 — DESIGNED / PROPOSED
+
+**范围与基线**：owner 本轮要求继续分析，不是启动训练。核对 `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202` 的实际源码及现存产物；工作树已有 owner/其他会话改动，本轮仅追加本文与本地 handoff。沿用 §33.5 的 lean correction，不恢复 parity、可执行文件哈希扩展或多头消融矩阵的前置门禁。以下是候选顺序，不是必须全部完成的项目清单。
+
+#### 观察与架构定位
+
+1. **当前是带辅助头的赢家模仿策略，不是已闭环的强化学习 Actor-Critic。** `training/m17_gpu/m50_train_mortal_actor_critic.py:199–215,388–402`：策略 CE 通常只取赢家，步数辅助损失也只取赢家；全量胜负 BCE 经 `state_h.detach()` 进入 Critic。`A(s,a)` 是策略 logit，不是已经估计出的 `Q(s,a)-V(s)`。Rust `m50_agent_command.rs:1323–1354` 使用动作打分 argmax，并保留现有终局特征优先返回规则，不读取 Critic 或步数头。因此“零搜索”不等于完全没有规则覆盖。
+2. **不是缺少全部对手信息，而是现有信息的利用和关系表达有改进空间。** `representation.rs:443–594` 已有己方贵族缺口、对手分差/距15分/最近贵族缺口、贵族阻断代理、座次与平分规则。贵族在 368 维观察里以 ID multihot 表示，玩家和贵族走 context MLP；动作特征取己方/对手各自最小贵族缺口，不保留“双方是否争同一个贵族”的逐贵族对应关系。该关系可由公开贵族需求与双方折扣构造，不能误称模型完全看不见贵族。
+3. **当前并非整个网络严格卡槽置换不变。** `CardEntityBackbone.forward:124–136` 在 mean/max pooling 之外仍拼接 `all_cards_flat`（15×64）。共享编码和池化分支确实存在，但槽位顺序仍可影响输出。本条修正 §29 的绝对不变性措辞；不据此要求立即删除 flatten，也没有对该性质做数值测试。
+4. **不足不只针对 v0.3.0。** 实读 v0.2.2 四份 summary：对 v0.2 / v0.2.8 / v0.2.9 / v0.3.0 的得分率分别为 51.40% / 57.50% / 45.30% / 46.50%；最后一组先后手为 50.20% / 42.80%。后手与强对手表现是诊断线索，不是“贵族速攻导致全部败局”的因果证明。现有指标不支持直接认定 256 维主干容量不足。
+5. **版本比较必须使用更正后的对象。** 第一份补充材料中的 v0.2.1 45.70% 属于旧 48 维评测；已修复 56 维发布对象的 summary 为 42.70%（§32.5）。本轮不重新清理历史 `aran-v03-*` 路径；路径残留不表示正式发布了 aran-v0.3。
+
+#### 首选一刀：胜负监督进入共享表征
+
+候选暂称 **`aran-v0.2.3-candidate` / shared-critic**，不是已发布版本。
+
+- 唯一有意改变的学习机制：`self.val_head(state_h.detach())` → `self.val_head(state_h)`。沿用 `L = L_pi(winners) + 0.5 L_critic(all outcomes) + 0.25 L_steps(winners)`，不同时调损失系数、不把败局全部动作当负动作标签。
+- 建议从 `local-artifacts/aran-v022/best_model.pt` 暖启动一个候选，复用 `local-artifacts/aran-v03-full-dataset`（manifest：训练 173,297 决策、验证 43,284 决策，368/56 维）。沿用现有 256 维、2 个 SE 残差块、LayerNorm/Mish、512×4 梯度累积、10 epochs 和既有优化器/导出流程；不扩语料、不换特征、不加搜索、不做多配置扫描。
+- **为什么值得先试**：已有的败局结果终于能训练 Actor 共用的局面表示，可能改善对落后、对手威胁与竞速局势的编码；不增加参数或在线推理路径，工程成本最低。
+- **收益边界**：这是辅助表征学习，不是动作级信用分配；共享梯度也可能干扰赢家 CE，故只列为假设。它不能证明哪个未选动作更好，也不能仅靠 Critic 准确率上升宣布策略更强。离线 Top-1 仍只是既有 checkpoint 选择代理，不在这轮另开选择器重构。
+- **不要做的捷径**：向所有动作 logits 同加 `V(s)` 不会改变排序；把一盘败局的每个动作都降权，可能惩罚其中的正确防守。首选实验不把这些混入。
+
+#### 后续储备：按实际结果再选一个，不与首刀捆绑
+
+| 优先级 | 架构目标 | 最小方向与边界 | 重开条件 |
+|---|---|---|---|
+| 下一候选 | 动作条件下的卡牌/贵族/双方关系表达 | 优先研究一层轻量 action-query attention 或关系池化：query 由局面与候选动作构成，读取共享卡牌实体；逐贵族保留双方缺口及本动作的变化。保留颜色/层级/归属/合法动作对应关系与空槽 mask，不上完整 Transformer/GNN，不为了对称性裸删 flatten。具体实现时只选其中一个关系模块 | 首刀结束后仍需要更强候选，结合已有对局选择；不是先证明首刀机制才能开始 |
+| 更后候选 | 让终局结果真正改进动作选择，而不只模仿赢家 | 小预算策略改进闭环：如带受控探索的 on-policy rollout + advantage/PPO，或受限对抗搜索产生动作分布再蒸馏；二选一。PPO 需要采集对应行为策略 log-prob 等记录，旧确定性 hard-action 回放不能直接冒充 on-policy 数据 | 明确愿意支付新采样/引擎接入成本，并另行授权；本轮不建设 |
+
+长期目标是“保持低延迟的动作条件策略，以实际胜负改进”，不是收集 Mortal 的模块名。增加宽度/残差块、扩大自对战量、完整多头消融、全量数值审计均不排到当前首刀之前。Mortal 的 stop-gradient 在不同目标/优化链路中可以合理；此处选择接通它是针对本项目监督路径的实验，不宣称 Mortal 设计错误。
+
+#### 短循环与不变边界
+
+1. 授权后只实现/训练上述一个候选；只做改动所需的基本检查（有限损失、Critic 梯度能到主干、既有导出可加载），不扩成通用测试平台。
+2. 对固定 Heuristic v0.3.0，用 **128 个新种子×双换座 = 256 局**短筛。沿用既有晋级统计量 **`(W + 0.5*T)/N`**，并同时报告 W/T/L；统一宏观指标中的纯胜率 `W/N` 必须区分，不回改门槛。
+3. 短筛点估计 **>50%** 才用**另一段新种子、250×双换座 = 500 局**确认；否则结束该候选，不反复换 seed/epoch 抽到过线。确认未过则不晋级，也不把两段拼起来重新判线。旧 `9_311_000..9_311_249` 不再用于选新候选。
+4. 复用现有对局报告与统一指标统计，保留座次、分差、贵族、预留和节奏信息作解释，不追加成多个晋级门槛。500 局确认 >50% 按既定规则才有 aran-v0.3 晋级依据；区间约束“稳定/确定更强”的宣传措辞，不另加 CI 下界门禁。
+5. 网络只消费玩家合法可见 Observation 与合法动作；逐贵族需求来自公开静态 catalog。不输入牌堆顺序、对手隐藏手牌或未来轨迹；终局结果只能是训练标签。保留 v0.2/v0.2.2 产物和 S3 默认，不覆盖生产权重。只在实现时分配并记录新 seed 段，本轮没有占用 seed 或启动后台任务。
+
+#### 本轮验证与结论
+
+- 已读源码：`training/m17_gpu/m50_train_mortal_actor_critic.py`、`crates/splendor-learning/src/representation.rs`、`crates/splendor-cli/src/m50_agent_command.rs`；已读 lean protocol（`docs/m40a-predictive-critic-warmstart-ab.md:480–490`）及 `docs/unified-match-metrics-standard.md`。这是架构分析，不是独立模型验收。
+- 现存证据：`local-artifacts/aran-v03-full-dataset/manifest.json`；`local-artifacts/aran-v03-ac-vs-{aran-v02,v028,v029,v030}-500/summary.json`；`local-artifacts/aran-v021-vs-v030-verified-500/summary.json`。用 PowerShell 重算五份 summary 的 W/T/L 总数及含平局半分得分率均一致；这只是 summary 算术检查，未重新逐局回放或重算 bootstrap。
+- 已确认 v0.2.2 PT/JSON 及数据集 train/val observation 文件存在；没有重新做全张量哈希或 Rust/Python 数值 parity。初次 Git 检查遇到 LF/CRLF 提示后，`git -c core.autocrlf=false diff --check -- docs/m50-competitive-replay-policy-value.md` 返回 0；未修改 Git 配置。
+- **决定：DESIGNED / PROPOSED。** 首选 shared-critic 单候选，关系建模和真正策略改进留作后续储备。架构建议已完成；模型更强与否没有新增实验结论。下一步等待 owner 授权首刀实现和短筛，不先启动训练、不提交/推送本轮文档。
+- 收口检查：对照本轮开始前的 scratch 快照，两文件均为 insert-only（原 M50 1,108 行、handoff 2,685 行全部保留）；引用路径存在。上述 scoped `diff --check` 与 `git check-ignore -v handoff.md` 均 exit 0。全仓 `git -c core.autocrlf=false -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check` 为 exit 2，仅余本轮未改动的 `docs/s4-heuristic-v02-design.md:875` EOF 空行提示；未处理无关文件，不构成本轮架构分析阻塞。
+
+## 34. aran-v0.2.3-candidate：Shared-Critic 单候选迭代 — 2026-09-28
+
+### 34.1 AUTHORIZED / 冻结范围与门槛
+
+- Owner 授权：“来吧 开始执行这一轮的迭代”。基线 `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202`；只执行 §33.6 首选，不启动后续关系模块或 PPO。原有工作树改动保留。
+- 可执行配置：`benchmarks/m50-aran-v023-shared-critic-v1.config.json`。唯一学习机制变化为显式 `--critic-backbone-grad`：默认保留 detach，候选打开 Critic 到共享表征的梯度。参数形状、损失系数、数据和 Rust 推理均不改。
+- 从 v0.2.2 `best_model.pt` 暖启动；256 维、2 SE blocks、10 epochs、batch512×4、AdamW lr3e-4/wd1e-4、训练 RNG 50000001。沿用 epochs1..10 验证 Top-1 最优导出规则，不以竞技结果挑 epoch。
+- 新种子：加载/对局 smoke 为 `9_325_999` 双换座（2局，不计门槛）；短筛 `9_326_000..9_326_127` 双换座（256局）；只有短筛 `(W+0.5T)/N >50%` 才用 `9_327_000..9_327_249` 双换座确认（500局），确认单独过半才具备晋级依据。失败止损，不更换种子或第二候选。种子与既有注册范围不相交，目标本地对局目录不存在。
+- 复用 `scripts/m50_eval_parallel.py`、现有 release 引擎和冻结 v0.3.0 binary；统一指标通过既有 `s4_batch_metrics.exe` 计算。GPU 检查：RTX4060 Laptop、torch2.6.0+cu124、CUDA可用；没有其他 Python 训练进程。Studio Host 不重启，生产权重与注册表不覆盖。
+- 实施计划：开关及针对性梯度/有限损失测试 → 一个训练 → 导出加载 smoke → 短筛 → 条件确认 → 记录实测与结论。基本检查不扩为前置审计或多头消融。
+
+### 34.2 最终实现与训练 — IMPLEMENTED / VERIFIED
+
+- 唯一学习机制变化已落地：`MortalActorCriticNet(..., critic_backbone_grad=False)` 默认仍detach；CLI `--critic-backbone-grad` 接通结果BCE到共享主干。checkpoint schema、66个tensor/963,459参数不变；增加有限loss防护及 `training-summary.json`，没有修改损失权重、优化器规则、特征或推理。
+- `training/m17_gpu/tests/test_m50_shared_critic.py` 两测试验证：开关前向完全相等/严格加载兼容；BCE默认不进主干、开启后梯度有限且非零、不直接进入动作头；混合胜/负/平的完整loss可有限更新。
+- 一次完整10-epoch暖启动，CUDA训练耗时 **748.89s**；按冻结的epochs1..10验证Top-1规则选 **epoch2**，没有用Arena挑checkpoint。baseline Top-1 **82.4092%** → selected **82.2406%**；Critic准确率 **51.9129% → 55.2929%**；steps MAE **3.3835 → 3.1178**。epoch0本来不参与选择，未事后改规则保留父模型。
+- 10轮训练指标有限；32个真实验证局面前向有限；新PT严格加载成功，JSON所有float32 tensor与PT逐项相等，`is_argmax=true`，权重不同于父模型。这是实现与导出检查，不是Rust/Python数值前向parity，也不是棋力证据。
+
+### 34.3 迭代日志与运行恢复（不隐藏失败）
+
+1. 首次后台启动留下PID508/6844、0字节 `training.log` 和running状态；续查时两进程均不存在，无checkpoint或epoch日志。原因未确认，不能称已完成训练。原记录保留在 `local-artifacts/aran-v023-shared-critic-run/startup-interrupted/`。
+2. 确认上述事实后，前台等待恢复**相同命令/种子/配置**；训练exit0并完成10轮。这是两次启动尝试、一个完成的候选训练，不是参数扫描或从结果择优重跑。
+3. 2局smoke成功；256局screen全部返回，all/r0/r1三次统一指标程序均exit0。但screen包装器在最后命令日志数量断言exit1：Windows多线程各自打开append文件，`commands.jsonl`只保留252条match记录（另3条metrics），少4条；256份报告仍完整，所有future均已通过遇非零即raise的包装器，没有失败局重试。
+4. 保留原 `execution.json` failed记录与不完整日志；只读核对既有256份config/report/replay、manifest哈希和metrics，离线恢复exit0，补写 `unified-summary.json` 与 `postprocess-recovery.json`，后者列出4条缺失命令日志的config路径。**没有重跑任何对局、改种子或改门槛。** 日志缺行是证据局限，不是把invalid对局当负结果；逐局完成与规则验证证据均在。
+5. 一次性包装器和当时trainer/runner/config已归档到 `local-artifacts/aran-v023-shared-critic-run/provenance/`。它们保留实际运行版本（含并发日志缺陷），不要将该包装器作为通用可复用runner；未来需要复用时应先序列化日志写入。
+
+### 34.4 冻结v0.3.0对战结果 — VERIFIED / NOT PROMOTED
+
+正式结果：`benchmarks/m50-aran-v023-shared-critic-v1.result.json`。两局smoke为2–0–0，仅证明加载运行，不计筛选。正式短筛128新种子×双换座=256局，竞技耗时13.72s。
+
+| 候选视角 | 局数 | 胜–平–负 | 得分率 `(W+0.5T)/N` | 纯胜率 `W/N` |
+|---|---:|---:|---:|---:|
+| 总体 | 256 | 121–2–133 | **47.65625%** | 47.265625% |
+| 先手P0 | 128 | 68–2–58 | 53.90625% | 53.125% |
+| 后手P1 | 128 | 53–0–75 | 41.40625% | 41.40625% |
+
+- paired-seed bootstrap 95% CI **[41.40625%,54.1015625%]**，10,000重采样、RNG92552026。CI约束宣传措辞，不是额外晋级门禁。旧runner名为 `win_rate_pct` 的字段实际是得分率，新result分开命名。
+- **短筛未严格超过50%，所以停止；500局确认NOT RUN，`9_327_000..9_327_249`保留reserved、消耗0，确认目录不存在。** 不合并smoke，不复用短筛种子，不选其他epoch，不发布aran-v0.2.3或aran-v0.3。
+- 原v0.2.2对v0.3.0的46.50%属于不同种子历史结果；此次47.66%不能当作配对提升或机制有效证明。Critic更准未转化为本轮过门的策略表现；不据此普遍否定共享Critic。
+
+| 统一指标（玩家视角） | shared-critic候选 | 冻结v0.3.0 |
+|---|---:|---:|
+| 均分 | 13.4648 | 14.0234 |
+| VP/actor-action | 0.5026 | 0.5232 |
+| 场均贵族 | 0.8984 | 1.0469 |
+| 获贵族局占比 | 64.06% | 69.92% |
+| 场均永久折扣/购卡数 | 15.7188 | 15.2500 |
+| 场均预留 / 买回 / 未买回 | 0.1719 / 0.0938 / 0.0781 | 2.0352 / 1.3203 / 0.7148 |
+| 预留兑现率 | 54.55% | 64.88% |
+| 场均0/1/2VP卡 | 9.9492 / 2.5195 / 2.0664 | 8.6602 / 3.5977 / 2.1133 |
+| 场均3/4/5VP卡 | 0.7383 / 0.3242 / 0.1211 | 0.5547 / 0.2266 / 0.0977 |
+
+总13,720 plies，均53.5938 plies/26.8203 turns，中位27、范围23–33、标准差1.5956；平均绝对分差4.4883，分差≤2占28.5156%。完整颜色折扣/动作分布见result，raw座位与动作百分比见local unified-summary。
+
+统计复用 `s4_batch_metrics.exe`：从严格验证的replay重建；先按rotation将r0/P0+r1/P1合成候选，反向合成对手，不能把全局P0当候选。既有程序的actor-action计数含choose_noble、game turns为ceil(plies/2)；VP/turn采用总分/总动作次数，不是旧runner的逐局比率均值。贵族、预留等是描述性指标，不自动成为败因解释。
+
+### 34.5 验证命令、证据与下一步
+
+实际执行（PowerShell，Python为 `C:\Python312\python.exe`，`PYTHONUTF8=1`）：
+
+```text
+python -m pytest training/m17_gpu/tests/test_m50_shared_critic.py -q
+  => exit0，2 passed（最近一次3.30s）
+python -u training/m17_gpu/m50_train_mortal_actor_critic.py --data-dir local-artifacts/aran-v03-full-dataset --out-dir local-artifacts/aran-v023-shared-critic-run --pretrained local-artifacts/aran-v022/best_model.pt --critic-backbone-grad --hidden-dim 256 --num-blocks 2 --epochs 10 --batch-size 512 --accumulation-steps 4 --lr 0.0003
+  => 恢复包装器前台等待，trainer exit0；完整argv在process-status.json
+python -u <session-scratch>/aran023-evaluate-stage.py smoke
+  => exit0，2/2 completed；三次metrics exit0
+python -u <session-scratch>/aran023-evaluate-stage.py screen
+  => 256/256 completed；三次metrics exit0；最后命令日志计数assert导致wrapper exit1
+python -u <session-scratch>/aran023-finalize-existing.py
+  => exit0；只读恢复既有结果，matches_run=0
+target/release/examples/s4_batch_metrics.exe <stage-out>/manifest-{all,r0,r1}.json <stage-out>/metrics-{all,r0,r1}.json
+  => smoke/screen共六次子进程均exit0（确切argv在各commands.jsonl）
+```
+
+除pytest外还实际执行了32局面前向/PT-JSON检查（PowerShell Python管道，exit0），结果在run目录 `artifact-check.json`。258局全部completed、严格规则replay验证通过、双换座/seed与报告结果/最终hash一致；两exe赛前赛后匹配冻结配置。对手handshake仍自报0.2.9，身份以冻结binary SHA为准，不归给并行S4.11新源码。
+
+| 证据 | SHA-256 |
+|---|---|
+| config JSON | `3c41237e45a37e1262be604d7727dddf086f855a4be5474c58e1a3a792cd9dd0` |
+| candidate best_model.pt | `207e5a5f1922af11d256b6a321e38563637f202efb02c5e00acad9a9357df308` |
+| candidate mortal_actor_critic_weights.json | `7d67ff6e46157b2c275b3050ee6b0d6eea504b285efc56e386491f657dab81e7` |
+| training-summary.json | `2a02d0d5ca9c58e22f165aeea1bd5cbd9b4d861085089a8914533c9cba16cc66` |
+| screen/unified-summary.json | `e06428991dbd318b92f054dcbd7dc49e9aeb60f7f53f1c90156f1fe23ec17570` |
+| screen/manifest-all.json（含逐局config/report/replay哈希） | `cf32d7bf2646acd873ad23f45fb620fd23a250492fe6d49e51f7a9593caa1ba3` |
+
+**决定：实现与本轮对战VERIFIED；候选NOT PROMOTED，按冻结门槛STOP。** v0.2.2权重、Studio注册与S3默认不变，Studio Host PID10732未重启。本轮没有数值Rust/Python parity、独立review、新语料、搜索或消融矩阵。运行恢复问题已处理，无未解决实施阻塞。
+
+下一步不是自动跑第二候选：目标绑定/动作关系方向见§33.6与并行§35，仍是PROPOSED、须另行授权。本结论仅结束§34，不改S4.11独立授权。历史分析中的“尚未训练/继续§34”描述其当时时点，当前状态以本节实测为准。
+
+### 34.6 收口一致性检查
+
+- `C:\Python312\python.exe -B <session-scratch>/aran023-check-evidence.py` **exit0**：逐项核对result与训练/统一指标、所有所列证据hash、258局种子座次与W/T/L、重新计算10,000次paired bootstrap、seed consumed/reserved状态、父PT/发布JSON与冻结exe、文档原行保留及本节完整显式路径。该脚本已归档run/provenance，SHA `309224f1c93b1377c0fb36d06861dc6199ae3d15735551c8c2d47a52d3de94f5`。
+- 最终result JSON SHA-256：`1b0ae8fce9d2b421ac343b2f62925544193da767ce358daf711ed9bf40271a67`。手工摘要初稿的训练耗时小数抄录已按原始summary更正为748.8916075000016；未更改任何实验产物、比赛数据或门槛。
+- `git -c core.autocrlf=false -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check` **exit0**；同配置scoped检查（trainer、seed registry、M50）亦exit0。`git check-ignore -v handoff.md local-artifacts/aran-v023-shared-critic-run/best_model.pt` exit0，分别匹配`.gitignore:12`/`:20`。Studio两注册表无diff；cached为空。没有提交或推送，未夹带并行§35/UI/S4改动。
+
+## 35. M0–M50 回顾：面向 Splendor 的模型架构建议（用户咨询）
+
+**Status: DESIGNED / PROPOSED（架构建议）；只读源码/产物诊断，不是新模型验收。**
+基线 `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202` 加既有并行工作树。用户要求基于全部研发历史讨论比 Mortal-like Aran 更有效的架构，不要求本会话训练、改策略或开赛。历史核读分 M0–M24、M25–M38、M39–M49 三段；parent核对 M50、S0–S4关键结果及当前模型。只追加本文和local-only handoff，不提交/推送；§34 shared-critic 与 S4.11 并行授权不受本建议改变。
+
+### 35.1 结论与证据边界
+
+首选方向是 **目标绑定的轻量动作条件关系网络**：保留 Aran 的共享编码、256维残差主干和合法动作打分；在聚合之前保留候选动作所指卡牌/贵族，以及动作对双方资源、购卡与贵族竞争的关系。可以用一层 typed relation MLP / cross-attention 实现，不必先上完整大 Transformer/GNN。若简单目标绑定已足够，不为架构名称增加复杂度。
+
+这是基于游戏结构、历史正负结果和当前表示缺口的研究判断，**没有证据宣称该候选已经比 Aran 或 heuristic v0.3 更强**。长期更高上限还需要有效的策略改进目标；更换主干并继续复制同一赢家轨迹，不自动成为强化学习。此处评估本仓库的 Mortal-like 实现，不声称复现或审计了外部 Mortal 的完整训练体系。
+
+### 35.2 当前 Aran：已有能力与具体缺口
+
+- `training/m17_gpu/m50_train_mortal_actor_critic.py` 已有共享卡牌encoder、分层mean/max、卡牌flatten、两块SE残差、Mish/LayerNorm、56维语义动作。不是完全没有实体结构或对手信息，也不是整个网络严格卡槽置换不变。
+- 默认 v0.2.2 的赢家CE/赢家steps更新主干，全量结果BCE经detach；greedy只读取动作分数及现有终局特征覆盖。当前dirty trainer已经新增显式shared-critic开关，但本会话没有执行或验收§34候选。接通critic仍只是辅助表征学习，不是给未选动作提供反事实价值。
+- **目标绑定缺口（源码推导）：** `encode_action_semantic_v1` 的 `ReserveMarket` 分支（`crates/splendor-learning/src/representation.rs:385–399`）只用目标卡的prestige；其费用、bonus、tier/slot/实体索引没有独立进入动作输入。后续卡牌组仍取原观察市场/原自留（420–441），并未将被预留目标从市场移入己方集合。因此同局面、同give-back、同卡面VP的不同市场预留可以得到完全相同56维向量。共享state_h也相同，确定性scorer不能区分这些目标。仅对相同query再加attention不能恢复已丢失的绑定；必须先gather目标实体或传递无歧义的target指针/属性。ChooseNoble同样缺少所选贵族的竞争关系，不能只看统一+3分。
+- **有限实物验证：** 从 `local-artifacts/aran-v03-full-dataset/val` 的43,284行中用 `np.random.default_rng(50).choice(...,1024,replace=False)` 抽样。1,023行含市场预留；这1,023行都存在相同的预留特征行。共12,564个预留行，按同根56维完全相等合并可减少6,963行。例val row30906：27合法动作、12个市场预留、只有6种向量。只读现存tensor，没有重跑Rust编码、重建棋局或测修复收益；这不是全局发生率/败局归因。
+- 逐贵族保留 `(requirements, my_gap, opp_gap, action_delta)` 比己方/对手各自最小缺口更明确：两个最小值可能对应不同贵族。逐卡保留五色缺口、当前银行可拿方式与动作后的变化，比将各层压成几个min/max统计更适合比较拿币、买折扣和预留；已有原始观察并不等于这些关系已经被充分学到。
+
+### 35.3 建议结构与学习目标（未实施）
+
+1. **精确可见层**：复用引擎/合法观察计算支付、拿退币、永久折扣、至多一位贵族与终局轮次。S4.11的用时估计可成为经验证的辅助特征，但缺币数不等于回合数，其估计也不是全局最优到15时间；不直接搬23项启发式总分当真值。
+2. **实体关系层**：卡牌、贵族、双方玩家、颜色资源/银行分别编码；保留tier、归属、可见性、空槽mask。关系表达费用与折扣、动作前后五色短缺、买小卡对其他目标的减免、双方争夺同一目标。状态实体每根只编码一次，多个合法动作批量query，不为每个动作重跑整条主干。
+3. **目标绑定动作层**：购买/预留/贵族选择读取实际目标embedding；拿币/退币保留颜色向量，并读取受其影响的目标集合。候选动作仍来自服务端合法集合，输出一个logit/动作；不先硬选流派或动作族，不恢复S4.6/7强制追大牌。
+4. **结果与节奏**：最终胜负（含平局）是竞技目标；速度可保留辅助头。更后的分布式竞速/多时域头可区分未来若干回合的达标概率与未达标结局，但不能把未达15的终局样本手工延长成真实达标时间，也不能将先到15等同最终获胜。3/4人不继承1v1价值定义或实证结论。
+5. **策略改进另开小轮**：优先考虑真实引擎下有限候选、同批合法信息集采样世界、双方续走的动作比较，确认有改善后蒸馏动作分布/相对收益；不是再仅保存确定性赢家hard action。也可另选带真实探索和行为log-prob的on-policy PPO；二选一，不一起建设。M39的PPO及以往反事实/搜索路线已做过，重开必须说明新表示/数据/改进算子与旧实验的差异。
+
+模型只看合法可见信息；未知补牌、对手暗预留必须mask或在信息集内采样，不能给actor真实牌堆顺序。置换卡槽时必须同步置换目标绑定与合法动作映射；不裸删flatten并称其无损。颜色通道的任意置换不自动是固定catalog的精确对称性。
+
+**优先级：** 先完成既有§34单候选，不插入本咨询产生的前置审计。其后如另获授权，先目标绑定小改，再选一层关系模块；每次仍是一候选短筛/条件确认，不同时扩量、换目标、加搜索。完整GNN/Transformer只是后备实现，MuZero/Dreamer学习规则模型、大型时序模型或CFR/NFSP不排前：项目已有精确模拟器，当前最具体证据指向动作绑定、经济关系和学习目标，而非缺一个更大的通用网络。
+
+### 35.4 本会话实际检查
+
+- `python -B "$env:PI_SCRATCH_DIR\m0_m50_architecture_check.py"` exit0：重算7份既有summary的W/T/L总数、计半平得分率，并执行上述1024状态tensor抽查。临时脚本SHA256 `b5fe0de769cee60fdb35af4bf543f63fb2be9557755fdadfc41721e9a096278f`；临时JSON `m0-m50-architecture-check.json` SHA256 `cce612c2e390bd7230f85bb31aa43979ac0baa80198e2e6435bb1e49f11df3fa`。scratch随会话删除，关键结论与抽样方法固化于本节；不作为永久formal experiment artifact。
+- 7份summary：v0.2.2对v0.2/v0.2.8/v0.2.9/v0.3.0分别51.40%/57.50%/45.30%/46.50%；修复56维v0.2.1对v0.3.0为42.70%；Semantic-Q对v0.2.9为45.3125%；SE对Dueling为57.70%。来源为 `local-artifacts/aran-v03-ac-vs-aran-v02-500/summary.json`、同前缀v028/v029/v030目录、`local-artifacts/aran-v021-vs-v030-verified-500/summary.json`、`local-artifacts/m50-semantic-q-vs-v029/summary.json`、`local-artifacts/m50-se-vs-dueling-500/summary.json`。未本轮重新计算这些CI；51.4%不能按旧宣传措辞称确定优于v0.2。
+- PowerShell `Get-FileHash -Algorithm SHA256` 确认v0.2.2发布JSON与实际评测所指 `aran-v03-mortal-run/mortal_actor_critic_weights.json` 同为 `D583DA25BFC5C0DE85AED7A906357128873976D651D63568713CCF9075C2BBA5`。本轮未重做PT全张量或Rust/Python前向parity。
+- 当前表示源码SHA256 `5280f13915cabfd98361a676e62f40a6039de8b3ce8cc0f9e6d5641e108ca88f`；当前dirty trainer SHA256 `088d289ce48d73a306b39881511e1a58c366ef5617b151056a309d7dc73fb937`。阅读时S4.11已另行AUTHORIZED/IN PROGRESS，不将v0.3.0历史冻结战绩归给新重构代码。
+- 没有新训练、新竞技对局、全量规则重放、模型晋级、种子注册、服务重启或代码修改。建议不构成实施授权；历史核读证据与结论续列下节。
+
+### 35.5 M0–M50 证据脉络与不可外推的结论
+
+历史表只引用既有结果，不是本会话重新训练/对战。M0–M24、M25–M38的只读核读包含必要的tracked结果/源码检查；M39–M49的委派因检索过长中止，parent直接补读全部16份相关文档的状态及关键最终结果窗口，以下该段数字以文档既有终审为依据，未本轮独立重算其产物。
+
+| 研发范围 | 关键结果与来源 | 对新架构选择的约束 |
+|---|---|---|
+| M0–M14、M16 | `docs/architecture.md`、`docs/learning.md`、`docs/neural-search.md`、`docs/rating.md`及ADR建立规则、信息边界、精确模拟、合法动作、配对评测。M09的M07对heuristic 15–49；M10对M07 29–35未获晋级 | 历史冠军称号不代替当前强度；已有规则模拟器，不能把学习规则本身设为当然优先项 |
+| M15A–E | `docs/m15-neural-degradation-diagnostic.md`、`docs/learning.md`：M13神经搜索12–52；Value仅略胜常数；干净教师、梯度隔离、soft target、非线性与Adam先后没有跨过各自门 | BC/Value误差、优化器改善都不是充分棋力条件；不是普遍证明MLP或共享主干无效 |
+| M17–M24.5 | `docs/m17-gpu-model.md`、`docs/m18a-self-play.md`、`docs/m18b-rainbow.md`、`docs/m22-scaled-self-play.md`、`docs/m24-scale-failure-diagnosis.md`：Entity离线优于Flat但无两者棋力对照；Rainbow仅两局来源、66训练transition；M24扩为512局后S2对S1 30–1–33、对M07 15–49。M19仅暂定小样本排名，M20/23是对局与复盘产品，M21外部对照延期 | 弱策略目标自复制和小规模Rainbow不是对整个RL家族的否定；早期EntityMixer先无序pool再读slot动作，有丢失动作—实体绑定的结构问题 |
+| M25–M28 | `docs/m25-m07-search-teacher-bootstrap.md`、`docs/m27a-search-budget-scaling.md`、`docs/m28a-entity-mixer-width.md`、`docs/m28b-contextual-entity-interaction.md`：D2-v2加入23维动作后果，验证Top-1 31.87%→38.42%；扩宽及泛用成对mixer未过门，搜索预算曲线未选出有效区域 | 最明确的离线正信号来自物理后果表达；此数字不是胜率。M26只是条件未满足的后续计划，无已执行结果 |
+| M29–M34 | `docs/m29a-action-conditioned-entity-pooling.md` 至 `docs/m34a-hierarchical-policy.md`：attention-v2仅+0.246pp教师Top-1；16世界教师稳定性、λ0.5 pair ranking、稠密belief拼接、加性factorization、单步条件分层均未过各自门 | 已试过关系/层级的具体实现，不能当全新空白；M34不是带时间option的层级RL，M29不是所有Transformer/GNN |
+| M35–M38 | `docs/m35a-retrospective-arena.md`：M29对D2 42–22、M31对D2 37–27，虽离线FAIL仍有局部竞技信号；两者对M07未完成，不能充作完整战绩。M36/37为回放库/UI，M38A由M39历史记录确认为实施前取消 | 教师拟合排名与棋力不单调；工具接受不等于模型接受；缺号不编造实验 |
+| M39A–M40A | `docs/m39a-arena-driven-policy-value-rl.md:1488–1536`：4096局、8cycle PPO；对M07诊断24.41% vs初始19.09%，但G2有基线不终止，G3联赛净−86.81bps，正式NO_IMPROVEMENT。`docs/m40a-predictive-critic-warmstart-ab.md:828–869`：head-only warm-start对照123–3–130，H1失败 | 真正PPO已做过，不应包装成从未尝试的万能解；失败限于冻结表示/目标/预算。M40只关闭头部预训练，不否定所有共享critic或预测辅助任务 |
+| M41A–M43A、M42S | `docs/m41a-counterfactual-action-value-probe.md`：穷举动作D2/D2终局监督，F/U排序59.3%/54.2%，动作身份门失败。`docs/m42a-visible-action-entity-relation-probe.md`：28维关系零初始化残差对最终输出仅约1e-5影响，双门失败。`docs/m43a-successor-state-value-decoupling.md`：BSS0.0187<0.05，未开Arena。`docs/m42s-search-gap-diagnostic.md`：n1对D2 105–0–23，n2000对n1未分出优势 | 完整动作后果、关系或afterstate并不自动解决价值学习；不能只把V(s')取最大当免费升级，也不能从这些特定失败否定所有关系网络 |
+| M44A/B/C–M45A | 四份attribution文档：DROP_ENGINE 24–0–104；总折扣数≡购牌数，是同一标量；三个正系数缩放均UNRESOLVED。M45 `SHIFT_F4`约21.09%得分率，正确的颜色—支付对应在该路径下重要 | 是正确绑定的重要性，不是盲目增加引擎权重/贵族权重的依据；删掉F4与错接F4不是同一实验 |
+| M46A | `docs/m46a-relational-successor-representation-gate.md:809–880`：SUM+MAX关系后继表示，teacher-optimal-set72.80%<98%；普通贵族可领预测100%，SHIFT1变化对0%。无Arena | 特定联合机械/进度/排序任务未通过，不是“神经网络不能理解Splendor”；新方案不重启已关闭的静态估值器完整替代路线，也不要求神经网络重算精确规则 |
+| M47S–M48A | `docs/m47s-residual-target-feasibility-diagnostic.md:375–416`：27.78%根有n1/n2000可拟合差异，98.95%稳定，但n2000不是最优真值。`docs/m48a-static-prior-residual-learnability-gate.md:400–447`：24轮无一通过99%保留门，M47S holdout修77/破245，关闭，无Arena | 有稳定教师残差不等于有棋力收益；不要将“启发式分数+网络残差”当尚未试过的必胜方案 |
+| M49S/A/B | `docs/m49s-solo15-environment.md`：单人SSP、真实Main回合/零成本选贵族。`docs/m49a-efficiency-q-feasibility.md:882–929`：CUDA FQI iter20达15为61/64、J37.6875；iter80为41/64、J61.8125，min-Q反而下降；未记录后继动作的外推是重要诊断。`docs/m49b-fqi-convergence-remediation.md`仍DESIGNED/PROPOSED、未执行 | 不重复无约束离线min-backup；Solo-15是牌效率任务，不是双人胜负。M49B不能列为已执行负结果 |
+| S0–S4、M50/Aran | S0校准heuristic强于旧M07；S1 depth2因p95成本不达门，棋力未测。`docs/s3-heuristic-policy-rollout.md`记录80–0–48对旧heuristic；S4.6/7硬/软追大牌均退步；S4.10与M50已有真实竞争原型。M50 §22纠正Gen2/Gen3同父权重；§33.5保留v0.2.2有效战绩但收紧优势措辞 | 有限完整续走确有历史正例，但不能直接继承给Aran；M50当前竞争数据与语义动作是值得保留的新起点。先补具体目标绑定再评测，不推倒重来 |
+
+**最后决定：** 不宣称存在本仓库已验证普遍更强的通用架构。最有针对性的后续候选是“显式目标绑定＋轻量动作条件关系读取”，长期用实际结果驱动的策略改进；它必须与已关闭的M42/M46/M48具体recipe区别开来。§34及S4.11授权保持原样，本咨询不新增训练/实验许可。
+
+### 35.6 文档收口验证
+
+- 对照本会话scratch中的 `m50-before-cross-milestone.md` 与 `handoff-before-cross-milestone.md`，按原行序列检查全部保留：M50原1,166行、handoff原2,718行均为insert-only；未覆盖并行内容。§35中37个完整显式仓库路径均存在（去除行号后检查，不把缩写当完整路径）。检查脚本通过PowerShell管道 `python -B -` 执行，exit0。
+- `git -c core.autocrlf=false -c core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol diff --check -- docs/m50-competitive-replay-policy-value.md` 与同配置全仓 `diff --check` 均exit0；`git check-ignore -v handoff.md` exit0，匹配 `.gitignore:12:/handoff.md`。这些是本咨询收口时的工作树检查，不改写§33.6先前时点记录。
+- 本咨询结论已完成；建议仍为DESIGNED / PROPOSED，尚无候选实现或新棋力结果。没有实施阻塞；后续候选须另获授权，不改变§34及S4.11的既有授权。
+
+## 36. 市场预留目标绑定单候选 — 2026-09-28
+
+**Status: VERIFIED / NOT PROMOTED（2026-09-29收口）。** 用户授权范围已完成；基线 `main@bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57` 加既有并行改动。技术候选 `aran-reserve-target-binding-v1`，不是正式 Aran 版本发布。
+
+### 36.1 冻结范围与门槛
+
+- 配置：`benchmarks/m50-aran-reserve-target-binding-v1.config.json`。父模型为 `local-artifacts/aran-v022/best_model.pt`（SHA `09620f1e…`），不用未晋级的 Shared-Critic 权重。
+- 唯一学习干预：保留旧56维语义前缀，只有 `ReserveMarket` 追加16维公开目标卡属性（存在位、bonus、prestige、cost、tier、from_deck=0），其他动作新增部分全零。不是所有动作正交化，也不宣称已证明碰撞导致多少败局。
+- 保留368维观察、256 hidden/2 SE blocks、赢家CE + 0.5全量BCE + 0.25赢家steps、默认detached Critic和greedy/终局处理。两处输入权重 `action_net.0.weight` 与 `adv_head.0.weight` 各补16列零，其他参数严格加载；不引入attention/搜索/PPO/额外训练语料。
+- 从原4,000局回放重提新特征，必须保持173,297/43,284训练/验证决策、非动作数据及56维前缀一致。必要验证包括目标差异、补零前向等价、新路径Rust/Python定向parity和旧模型兼容；不建设全历史机制审计。
+- 一次10-epoch训练，512×4、lr3e-4、weight decay1e-4、训练seed50000001；仅epoch1..10按现有全验证tie-aware Top-1选择最优、同分取早者，epoch0不候选。
+- 新种子登记：smoke `9_327_999`（2局），screen `9_328_000..9_328_127`（256局），仅screen得分率严格>50%才运行confirm `9_329_000..9_329_249`（500局），confirm也须严格>50%；不设CI下界门槛、不合并两阶段、不换seed/checkpoint。对手固定原v0.3.0二进制SHA `82910a59…`，不替换为并行v0.3.1/Two-Ply。
+- 新构建、数据、训练、回放和证据位于 `local-artifacts/aran-reserve-target-binding-v1/`；不覆盖主release二进制、父权重、Studio registry或S3默认，不提交/推送。初始源码/产物快照位于 `provenance/baseline.json` 及 `provenance/before/`。
+
+### 36.2 实施记录
+
+- 已核验父PT、父JSON、原manifest及冻结对手身份；GPU为RTX4060 Laptop、PyTorch2.6.0+cu124，CUDA可用。三段新seed在登记前逐段通过现有registry冲突检查，均已保留供本轮使用。
+- 当前仅实施中：尚无新模型竞技结果；编译、完整验证、正式训练和筛选结果在实际完成后追加，不继承前轮PASS。
+
+### 36.3 实施与训练验证 — 2026-09-29
+
+- 72维表示、提取manifest、Python加载/两层严格迁移、JSON元数据、Rust显式分派与宽度拒错已贯通；human-play语义评分入口仅复用同一分派。旧48/56路径保留，原36模型回退仅限确实不是语义权重的对象。
+- 主目录定向测试：Python **53 PASS**；旧semantic编码 **1 PASS**，新增目标编码 **6 PASS**；CLI **10 PASS**（默认忽略的动态parity测试另外显式运行）。合成56/补零72/非零后缀72的3组前向检查通过；训练后父56/迁移72/选定72在3个真实验证局面、每组84个合法动作上的state/logit parity通过。日志与命令位于本轮 `provenance/`，不是全仓独立review。
+- 同4,000局重新提取：训练173,297决策/5,029,598动作，验证43,284决策/1,256,124动作；全部6,285,722动作前56列精确一致，非actions四文件逐split SHA完全一致。新增特征仅2,667,246个市场预留候选行有目标。`data-check.json` 与 `source-replays.json` 保存逐项证据；新manifest SHA `adb9e580…`。
+- 一次完整10-epoch GPU训练 **857.2775550000006秒**；按原规则选中 **epoch2**。Top-1初始化82.4092%、选中81.9032%；Critic准确率51.9129%→52.6084%；赢家steps MAE 3.38348→3.13489。离线变化不作棋力门槛，epoch0未参选，未按Arena改选checkpoint。
+- PT SHA `516aaf8b…`，导出JSON SHA `00c8d673…`，PT与导出全部tensor精确一致；两层新增列各1,920个非零权重（from_deck常零列不要求学出非零值）。父模型与补零迁移前向等价通过。
+- 本轮配置已在训练前冻结，SHA `fa46922f…`；独立CLI SHA `7053441f…`。统计工具复制到本轮provenance后冻结SHA `38849ae0…`；其参数接口先用既有回放验证，未因此产生新对局。
+- 实施期间观察到M50推理文件曾恢复为初始SHA；已发起并行写入协调，保留初始快照并仅重新施加本轮补丁，随后重新检查/构建和冻结。未据此认定具体会话责任，未恢复或覆盖对方Two-Ply文件。
+
+### 36.4 短筛
+
+- `9_328_000..9_328_127` 双换座256局全部有效、逐局严格回放通过：**135–2–119**，得分率 **53.125%**，纯胜率52.734375%，95%配对CI **[47.0703125%,59.375%]**。
+- 先/后手得分率50.00%/56.25%，候选/对手均分13.828125/13.48828125；全量运行约27.31秒。
+- 短筛点估计严格>50%，按已冻结门槛启动另一段500局确认；不增加CI下界条件，不更换epoch2，不合并两阶段判定。确认结论如下。
+
+### 36.5 确认结果与收口
+
+| 指标 | 256局短筛 | 500局独立确认 |
+|---|---:|---:|
+| 胜–平–负 | 135–2–119 | 223–3–274 |
+| 得分率 `(W+0.5T)/N` | 53.125% | **44.90%** |
+| 纯胜率 | 52.734375% | 44.60% |
+| 95%配对bootstrap CI | 47.0703125%–59.375% | 40.60%–49.20% |
+| 先手 / 后手得分率 | 50.00% / 56.25% | 46.80% / 43.00% |
+| 候选 / 对手均分 | 13.828125 / 13.48828125 | 13.546 / 14.064 |
+| 对局运行秒数 | 27.30691040000238 | 53.91498739999952 |
+| 阶段结论 | 触发确认 | **NOT PROMOTED** |
+
+- 独立确认未严格超过50%，本轮止损；不换checkpoint、不补种子、不重复训练，也不将两阶段合并裁决。目标可辨识性/梯度/推理链路验证成立，但本训练配置没有取得过门的棋力结果；不能由此断言目标绑定普遍无效，也不能声称比父代变强或变弱（无匹配续训对照/同种子父代参考）。
+- 正式结果：`benchmarks/m50-aran-reserve-target-binding-v1.result.json`，SHA `e0470039c1e14f7585413a95578c1913acd277ab731517ae0cbc354e1dd421ed`。原始配置、训练、模型、758局回放/报告及统一统计保留在本轮独立产物目录。
+- `provenance/finalize_result.py` 经 `run_step.py evidence-check` 执行 **exit0**：逐局核对758局/379个互斥种子、W/T/L、完成日志唯一性、模型/引擎/对手/统计工具及回放hash；各阶段10,000次配对bootstrap复算完全一致。父PT/发布JSON及冻结源码身份未变；没有比赛执行失败或自动重试。
+- 三段种子全部标记consumed。代码/测试与负结果归档保留，生产权重、Studio registry和S3默认未由本轮变更，未提交/推送。后续候选需另行授权。
+- 格式检查边界：首次HEAD相对检查报告演化矩阵历史图示两行箭头的尾随空格；与启动前快照做 `--no-index --check` 无格式诊断（exit1仅表示文件存在差异）。保留这些既有内容，不把历史dirty变更算成本轮新增；其余本轮文件按HEAD差异检查，新文件另做逐行检查。详细收口输出存于 `provenance/final-checks*.log` 与 `final-checks.json`。
+
+## 37. 对 v0.3.1 千局压力对战的分析与后续建议 — 2026-09-29
+
+**Status: PROPOSED（分析与下一候选建议，不新增实验授权）。** 本轮只核对既有汇总、抽样配置和训练路径，维护分析记录；没有重新训练、开赛或修改模型代码。§36的NOT PROMOTED裁定不变。
+
+### 37.1 事实与证据边界
+
+- `local-artifacts/aran-target-binding-vs-v031-1000/{summary,unified-summary}.json` 记载316–2–682、得分率31.70%、纯胜率31.60%、配对CI[28.75%,34.60%]；174–2–324/142–0–358对应先/后手得分率35.00%/28.40%，算术一致。种子为9330000..9330499，registry已列为consumed。本轮没有重算该CI或全量重验1,000回放。
+- 抽查 `games/seed-9330000/r0/match-config.json` 确实指向本轮72维独立构建及TB权重路径，不是旧target/release；对手路径为冻结v0.3.1目录。该单局配置未绑定运行时SHA，不能仅凭路径追认全部历史二进制身份。
+- 当前候选在这个固定对手和样本分布上明显处于下风；没有同种子旧56维模型对照，不能把31.70%解释成目标绑定造成退步。
+- 战术摘要：0VP卡10.076 vs7.382，4/5VP卡合计0.348 vs0.950，贵族0.929 vs0.682。以约12.66/14.99终局分估算，候选贵族分领先0.741，而卡牌本身的分数落后约3.071；这是终局分来源分解，不是因果归因。对手仍约54%的购卡为0VP，不能概括为无需经济建设的纯大卡速攻。
+- 60.9%是全部1,000局中获贵族的比例，不是胜局比例；26.61是平均对局回合数，不是每局26回合内结束。VP/turn与VP/ply和终局分共享分母，并非独立测出的终局爆发速度。未买回预留0.799不能证明其主要用于阻断，也可能是拿金、未兑现计划或提前终局。
+- 文档53.35秒/12并发属于批量吞吐口径，除以局数不是单局或单步推理延迟；summary中的total_wall_seconds另记约0.211秒，计时口径本轮未核清，不据此作性能结论。
+
+### 37.2 推荐下一候选：固定72维，升级策略示范来源
+
+- 最具体的新实验问题是“当前网络能否学到已经存在的更强策略”，不是先加网络深度。§36只改变市场预留目标可辨识性，没有为买牌、拿币、投资转得分提供新的强策略示范；当前manifest仍指向原selfplay/coev两份语料，不能因为新增压力赛就认为训练数据已升级。
+- 建议研究父权重使用已冻结TB72候选，保留72维、256/2主干、当前损失与默认detached Critic；它是研究基线，不替换生产默认。
+- 建议一个固定规模配方：用**全新种子采集2,000局冻结v0.3.1自对弈**，替换原2,000局Aran-v0.2自对弈；保留原2,000局coev作为混合来源，总规模仍约4,000局。这是待测的数据来源干预，不是已证明有效；不扫描配比、不叠加新loss/attention/奖励系数。
+- 沿用Rust真实回放提取、72维schema、真实实选动作和真实结果标签；不把未执行的教师建议伪装成实走动作或胜局。新数据仍按整局seed分隔train/val；本次1,000局压力样本不并入训练，也不继续当未触碰的新确认集。
+- 一次固定预算训练；选epoch规则在启动前声明，现有全验证tie-aware Top-1仅为选模口径，不是棋力证据，不设置99%模仿精度之类前置门禁。
+- 建议先沿用冻结v0.3.0的256筛/条件500确认作为下一轮过线目标，v0.3.1作为随后独立授权的压力对手。若另选v0.3.1为主目标，应预先区分“超过当前31.7%基线”和“击败v0.3.1”，不能在看完结果后切换目标或门槛。
+
+### 37.3 非目标与后续分支
+
+- 不直接加入“少买0分卡”“多买大卡”“压低贵族偏好”“预留达到1.65次”的硬惩罚/奖励；终局均值不等于每个局面最优动作。历史S4.6/7追大牌与M39/M41等负结果仍需参考，不能把搜索/PPO包装成未尝试过的万能方案。
+- 教师蒸馏先用于接近强策略，不承诺超过教师。其后若获授权，再独立研究动作条件的双方兑现时间/竞速关系，或合法信息集内有限动作比较与蒸馏；不与下一次数据候选捆绑。
+- 下一实施轮还需单独冻结数据生成配置、父权重、教师身份、配比、预算和新seed；本分析未登记新seed、未启动任何候选、未提交或推送。
+
+## 38. v0.3.1 教师示范替换单候选 — 2026-09-29
+
+**Status: VERIFIED / NOT PROMOTED。** 用户授权的§37单候选方案已完成；短筛未过线，确认未启动。基线 `main@bcdaca7` 加并行未提交工作；候选名 `aran-v031-teacher-v1`，不发布正式版本。
+
+### 38.1 范围与冻结门槛
+
+- 仅替换示范来源：新增2,000局冻结v0.3.1自对弈，替换原2,000局Aran-v0.2自对弈，保留原2,000局coev；总量4,000局，不使用千局压力赛/历史评测训练。
+- 教师双方为同一策略，训练使用2,000个独立seed，不做同一棋局双换座重复采集。训练段 `9_331_000..9_332_999`；评测smoke `9_333_999`，screen `9_334_000..9_334_127`，confirm `9_335_000..9_335_249`。登记前四段均通过registry冲突检查。
+- 父TB72 PT SHA `516aaf8b…`，配套JSON `00c8d673…`；教师v0.3.1 SHA `6a02b2ab…`；复用已验证72维CLI SHA `7053441f…`。执行前核验完整hash，不凭名字识别版本。
+- 72维、256 hidden/2 blocks、loss、detached Critic、greedy不变；72→72严格加载所有tensor，无扩层或optimizer恢复。一次10epoch，batch512×4、lr3e-4、weight decay1e-4、训练seed50000001；只在epoch1..10按原全验证tie-aware Top-1选最佳，同分取早，epoch0不候选。
+- 对手仍冻结v0.3.0：2局smoke→256局screen，只有计半平得分率严格>50%才500局confirm；confirm也须严格>50%。不加CI下界门槛、不合并阶段，不自动追加v0.3.1压力赛，不换seed/epoch/配比再训。
+- 新配置/结果使用 `benchmarks/m50-aran-v031-teacher-v1.*.json`；新脚本 `scripts/m50_v031_teacher_round.py`，本地产物 `local-artifacts/aran-v031-teacher-v1/`。冻结旧轮脚本不修改，新wrapper显式绑定新配置；source-aware校验不再要求全数据与前轮相等。
+- 保留并行UI/S4/Two-Ply改动，不替换生产权重/Studio registry/S3默认，不提交或推送。实际验证与结果如下。
+
+### 38.2 实施与验证
+
+- 新增 `scripts/m50_v031_teacher_round.py` 及对应mock-only测试，**9 PASS**；覆盖双教师配置、2,000个唯一seed、首局只计一次、失败不重试、新配置绑定/还原、得分率≤50%不触发确认。旧trainer、表示、Rust推理和上一轮runner均未改动。
+- 2,000局教师自对弈全部完成并严格验证，采集操作耗时133.88972163200378秒；每局绑定同一教师/引擎hash、独立棋局seed及配置/报告/回放。原2,000局coev逐份对照上一轮来源清单hash，未修改。
+- 合并提取4,000局：训练3,200局/**172,734决策/5,423,304动作**，验证800局/**43,048决策/1,346,699动作**。来源、整局seed隔离、72维schema、合法实选索引、有限值和标签检查通过；新manifest SHA `48b8ea4c…`，source manifest `a833fb25…`。本轮有意替换数据，不声称新旧全部tensor相同。
+- 从TB72严格加载全部tensor，72→72迁移列表为空；参数精确相同后开始唯一一次10epoch训练，耗时 **1005.8768819000015秒**，按既定规则选中 **epoch4**。新验证集Top-1初始化62.1330%、选中61.9657%；不能直接与前轮不同验证集81.9032%比较，也不据离线指标宣称棋力增强。
+- PT SHA `fc0d4229…`、导出JSON SHA `a6fbf9c8…`，全部tensor逐项一致；父/选定72维模型在3个实际验证局面、各84个合法动作的Rust/Python state/logit检查通过。复用既有Rust测试程序，没有重建或覆盖旧release二进制。
+- 配置冻结SHA `8992bad4…`；教师/引擎/对手/统计工具复制到本轮bin目录并核验原始hash；运行前后均检查，不依赖裸程序名识别版本。
+
+### 38.3 短筛结果与止损
+
+| 指标 | 对冻结Heuristic v0.3.0的256局短筛 |
+|---|---:|
+| 胜–平–负 | **120–1–135** |
+| 得分率 `(W+0.5T)/N` | **47.0703125%** |
+| 纯胜率 | 46.875% |
+| 95%配对bootstrap CI | 41.015625%–53.3203125% |
+| 先手 / 后手得分率 | 51.171875% / 42.96875% |
+| 候选 / 对手均分 | 13.609375 / 14.08203125 |
+| 场均预留 / 买回 / 未买回（候选） | 0.390625 / 0.296875 / 0.09375 |
+| 对局运行秒数 | 22.386733999999706 |
+| 结论 | **NOT PROMOTED；500局确认未启动** |
+
+- 短筛未严格超过50%，立即结束此候选；不更换checkpoint、追加seed、扫描配比或再次训练，不自动测试v0.3.1。确认段 `9_335_000..9_335_249` 保持reserved-not-run；采集、smoke和screen段均consumed。
+- 正式结果：`benchmarks/m50-aran-v031-teacher-v1.result.json`，SHA `4e04cc64dd13463c3b6cf464a001850b113948e971b6cc71754019441f9c5ebd`。原始产物与证据位于本轮独立目录；`provenance/finalize_result.py` 通过 `run_step.py evidence-check` 执行 **exit0**，核对2,000新教师局、旧coev来源、258评测局（含smoke）、唯一日志、seed隔离、hash及配对CI复算。
+- 没有匹配旧数据续训对照，不能把当前47.07%与父候选不同种子44.90%相减称作提升；本轮只说明当前候选未达预定竞技门槛，不是对强教师训练的一般否定。
+- 数据、脚本、权重与负结果完整保留；生产默认、Studio注册和S3默认未由本轮改变，未提交或推送。后续实验需另行授权。
+
+## 39. Aran 连续对齐冻结 v0.3.1 — 2026-09-30
+
+**Status: AUTHORIZED / IN PROGRESS。** 用户要求继续迭代直到接近v0.3.1，并批准首批预算与验收方案。不是继续沿用每次未过v0.3.0就结束的单候选规则；不改变历史失败结论，不接管并行Prism。
+
+> **2026-09-30 后续停止决定优先于以上历史授权：** 用户已停止Aran后续迭代，C及最终验收取消执行；停止点与保留证据见[§39.4](#aran-iteration-stop-20260930)。
+
+### 39.1 目标与首批预算
+
+- 冻结教师/对手v0.3.1 SHA `6a02b2ab…`，纯Aran greedy参加评测，不在比赛中调用教师或启发式兜底。引擎规则使用固定二进制，候选CLI可按schema独立构建。
+- 最多A/B/C三个候选，每个最多20epoch、合计60epoch；父模型与每个候选在同一开发池各测512局，另每模型2局smoke。新训练交互计划2,000局、硬上限4,000；教师查询上限10,000根，协议验证32根计入其内。
+- 开发池 `9_340_000..9_340_255` 双换座512局，父/A/B/C smoke `9_339_990..9_339_993`；C交互训练段 `9_341_000..9_341_999` 双换座2,000局。登记前已检查与现有Aran/Prism及其他区间互斥；最终验收种子待champ冻结后才登记。
+- 开发得分率最高者保留为研究champ，同分取较早者（包括父模型）。不足50%只淘汰该候选，不立即取消后续候选。
+- 首批完成后唯一champ开发得分率≥48%才触发一次全新2,000局验收；**达标=得分率≥50%且95%配对bootstrap下界≥47%**（预设3pp非劣容差），不是要求显著强于v0.3.1，更不能仅凭CI包含50%判通过。所有得分率均计半平，CI以双换座seed块重采样10,000次。
+- 配置 `benchmarks/m50-aran-v031-goal-v1.config.json`，冻结SHA `ff520950…`；新产物 `local-artifacts/aran-v031-goal-v1/`。不换seed重跑最终验收，不改生产默认、Studio/S3或提交推送。
+
+### 39.2 候选顺序与实施记录
+
+- A：复用现有2,000局冻结v0.3.1自对弈，双方所有动作参与teacher-bc，移除旧弱策略标签；本模式仅教师CE，不叠加胜负/steps损失。按教师验证CE最小选训练epoch，旧模式默认保留。
+- B：同一教师数据，97维=旧72前缀+buy目标16+所选贵族存在/需求6+盲预留tier3；两处动作输入新增25列补零，不读取未知牌。保持轻量主干，不加Transformer。
+- C：以研究champ采集学生–教师交互，在学生合法信息集内查询冻结教师。查询标签与真实动作分开，不能捏造动作后结果；按整局seed分组。若32根协议验证不能可靠完成，则明确退回真实teacher seat动作扩充，不冒称DAgger，不新增第四候选。
+- 训练器teacher-bc/97维已合入；21项新增CPU测试与53项既有回归通过，含输局教师梯度、辅助头无梯度、教师CE选模、target/mask/group及零扩展。旧legacy补齐空winner batch的零steps损失，避免NaN，不改变有winner批次目标。
+- 97维Rust表示与上下文导出在隔离bcd构建中开发，不带入Prism。构建曾因该基底human/analysis历史接口不一致exit101，已授权仅在构建副本去掉不匹配的action_scores展示字段；主目录human/Prism不因此改写。此兼容处理不涉及规则或greedy评分。
+
+### 39.3 A/B进度与Prism v0.1对照分析（不新增Prism实验）
+
+- 同一512局开发池：父模型152–2–358 /29.8828125%；A全教师CE为151–2–359 /29.6875%；B完整97维为154–4–354 /30.46875%，配对CI[26.46240234375%,34.5703125%]。A/B各完成20epoch，均按教师验证CE选epoch7；B暂为研究champ，但差距不足以宣称明确增强。C的32根冻结教师查询协议验证通过，实际交互采集/批量重标/训练尚未启动。
+- `benchmarks/m51-prism-v01.result.json` 的正式状态是 `ENGINEERING_PASS_BASELINE_ESTABLISHED`：同一v0.3.1教师SHA `6a02b2ab…`，256局139–2–115，得分率54.6875%，配对CI[48.4375%,60.546875%]，0非法/0fallback。明显比当前Aran更有竞争力，但不是本轮要求的独立2,000局验收，也不能称已显著强于教师。
+- 源码对照：Aran有双方tokens/bonuses和公开预留信息，但 `push_card_aggregate` 将公开预留的bonus、VP、费用求和；贵族有ID/multihot及汇总特征，并非完全缺失。Prism保留逐实体与双方逐目标缺口/可买/可领关系，避免先丢掉费用属于哪张牌、双方争的是哪个目标的显式对应。
+- Aran的卡牌编码经池化+flatten再压入单一state_h，动作后来与这个向量拼接；97维补齐动作目标，却未替换这条状态读出路径。`training/prism/model.py:91–106` 保留实体表示，经两层local+global-mean残差后，由动作+target gather+global形成query，对全部实体做一次cross-attention，再输出logit；不是完整多层实体自注意力Transformer。
+- Prism从头训练、4,000局纯教师、全教师CE+0.5共享结果BCE、无steps目标；最新Aran A/B为2,000局纯教师、旧权重暖启动、纯教师CE、辅助loss关闭。故不能再用“只有Prism全教师监督”解释差异，也不能把Prism组合收益单独归给attention、数据量、随机初始化或shared critic。两边验证loss定义/数据不同，1.3688与Aran约1.35不可直接比较。
+- 判断更新：先前将局部目标绑定与示范来源置于优先的路线尚未带来战力突破；Prism结果提高了“完整实体关系表示＋动作按需读取＋一致训练体系”这一组合的优先级。没有逐项消融，机制贡献仍是假设；不声称粗粒度Critic梯度必然有害。建议优先验证Prism独立大样本强度属于后续路线建议，不接管Prism任务、不自动换名或替换Aran权重。
+
+<a id="aran-iteration-stop-20260930"></a>
+### 39.4 用户停止后续迭代；C与最终验收取消 — 2026-09-30
+
+**Status: STOPPED by user / NOT PROMOTED；C与最终验收 CANCELLED（不再执行）。** 本节追加并优先于§39.1–39.3的历史授权/下一步，不改写既有配置、结果或失败证据。
+
+- 停止点：父/A/B在相同512局开发池分别为152–2–358 /29.8828125%、151–2–359 /29.6875%、154–4–354 /30.46875%；A/B各20epoch、均选epoch7。B仅为当时研究champ，不表示目标达标或明确增强。
+- `local-artifacts/aran-v031-goal-v1/champion.json`保留B/97维权重、checkpoint和隔离可执行文件的路径及记录hash；原A/B代码、数据、训练/比赛产物和历史负结果均保留。不删除、不回退、不借停止决定改动算法。
+- C的32根教师查询协议验证已完成并保留；实际C交互采集、批量查询、训练尚未启动，现不再执行。不能把“C停止”写成“没有C准备工作”。原最终验收也取消，不再登记其新seed或安排赛事。
+- 已预留但未执行的C/smoke等种子保持原登记，不自动释放、转给Prism或复用；冻结配置保留原计划作为历史证据，不因取消而伪造完成状态。
+- 停止后续迭代不等于删除历史Agent、移除UI注册或停止既有对战池；本轮没有操作这些服务。读取champion记录不等于本轮重新哈希全部权重/二进制或重验对局。
+- 新研究主线见[M54 Prism持续PPO与可测风格方案](m54-prism-continuous-ppo-design.md)：结果驱动、训练期学得风格、棋力损失约束；仅研究设计，未授权新实现、训练或比赛。M39/M40旧PPO负结果同样保留，不重开旧轮。

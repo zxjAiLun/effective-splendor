@@ -179,6 +179,9 @@ pub fn encode_action_v1(action: &Action) -> Result<Vec<f32>, LearningError> {
 /// Frozen M25/M49A deterministic action delta feature count.
 pub const ACTION_DELTA_FEATURES_V2: usize = 23;
 pub const ACTION_SEMANTIC_FEATURES_V1: usize = 56;
+/// Semantic-v1 prefix plus a 16-feature public market reservation target.
+pub const ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1: usize = 72;
+pub const ACTION_SEMANTIC_RESERVE_TARGET_SCHEMA_V1: &str = "semantic-reserve-target-v1";
 /// Combined input dimension for M49A Q-network (368 + 36 + 23 = 427).
 pub const COMBINED_FEATURES_V1: usize =
     OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1 + ACTION_DELTA_FEATURES_V2;
@@ -593,6 +596,80 @@ pub fn encode_action_semantic_v1(
     out[54] = tie_win_status;
     out[55] = endgame_win_signal;
 
+    Ok(out)
+}
+
+/// Semantic-v1 with an explicit binding to the public pre-action reservation target.
+///
+/// The first 56 features are exactly [`encode_action_semantic_v1`]. Only
+/// [`Action::ReserveMarket`] appends a target from `observation.public.market`:
+/// exists (1), bonus one-hot (5), prestige / 5 (1), costs / 7 (5), tier one-hot
+/// (3), and from_deck (1, always zero). All other actions, including blind
+/// reservations, and empty market slots have an all-zero suffix. No successor
+/// state or hidden deck identity is used.
+pub fn encode_action_semantic_reserve_target_v1(
+    observation: &Observation,
+    action: &Action,
+) -> Result<[f32; ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1], LearningError> {
+    let semantic = encode_action_semantic_v1(observation, action)?;
+    let mut out = [0.0; ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1];
+    out[..ACTION_SEMANTIC_FEATURES_V1].copy_from_slice(&semantic);
+
+    if let Action::ReserveMarket { tier, slot, .. } = *action {
+        // The original encoder has already validated the observation and slot.
+        if let Some(card_id) = observation.public.market[tier.index()][slot as usize] {
+            let mut target = Vec::with_capacity(16);
+            target.push(1.0);
+            push_card_features(&mut target, card_id.index());
+            one_hot(&mut target, tier.index(), 3);
+            target.push(0.0);
+            out[ACTION_SEMANTIC_FEATURES_V1..].copy_from_slice(&target);
+        }
+    }
+    Ok(out)
+}
+
+/// Full target binding preserves the complete 72-feature reservation prefix.
+pub const ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1: usize = 97;
+pub const ACTION_SEMANTIC_FULL_TARGET_SCHEMA_V1: &str = "semantic-full-target-v1";
+
+/// Player-view target binding: [72..88] buy target (the existing 16-feature
+/// card layout), [88..94] noble presence and requirements / 4, [94..97]
+/// blind-reservation tier. Inapplicable or absent targets remain zero.
+/// Own blind reservations are known; no hidden deck or opponent card is read.
+pub fn encode_action_semantic_full_target_v1(
+    observation: &Observation,
+    action: &Action,
+) -> Result<[f32; ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1], LearningError> {
+    let prefix = encode_action_semantic_reserve_target_v1(observation, action)?;
+    let mut out = [0.0; ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1];
+    out[..ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1].copy_from_slice(&prefix);
+    let buy_target = match *action {
+        Action::BuyMarket { tier, slot } => observation.public.market[tier.index()][slot as usize]
+            .map(|id| (id, tier, false)),
+        Action::BuyReserved { slot } => observation.private.reserved.get(slot as usize)
+            .map(|r| (r.card, r.tier, r.from_deck)),
+        _ => None,
+    };
+    if let Some((id, tier, from_deck)) = buy_target {
+        let mut target = Vec::with_capacity(16);
+        target.push(1.0);
+        push_card_features(&mut target, id.index());
+        one_hot(&mut target, tier.index(), 3);
+        target.push(bool_feature(from_deck));
+        out[72..88].copy_from_slice(&target);
+    }
+    match *action {
+        Action::ChooseNoble { noble } if observation.public.nobles.contains(&noble) => {
+            out[88] = 1.0;
+            for (dst, requirement) in out[89..94].iter_mut()
+                .zip(splendor_catalog::all_nobles()[noble.index()].requirements) {
+                *dst = f32::from(requirement) / 4.0;
+            }
+        }
+        Action::ReserveDeck { tier, .. } => out[94 + tier.index()] = 1.0,
+        _ => {}
+    }
     Ok(out)
 }
 
@@ -1308,6 +1385,262 @@ mod tests {
             &combined[OBSERVATION_FEATURES_V1 + ACTION_FEATURES_V1..],
             &delta_buy_m,
         );
+    }
+
+    fn semantic_reserve_target_test_actions() -> [Action; 9] {
+        use splendor_catalog::Tier;
+        [
+            Action::TakeTokens {
+                take: Gems {
+                    white: 1,
+                    blue: 1,
+                    green: 1,
+                    ..Gems::ZERO
+                },
+                give_back: Gems::ZERO,
+            },
+            Action::BuyMarket {
+                tier: Tier::One,
+                slot: 0,
+            },
+            Action::BuyReserved { slot: 0 },
+            Action::ReserveMarket {
+                tier: Tier::One,
+                slot: 0,
+                give_back: Gems::ZERO,
+            },
+            Action::ReserveDeck {
+                tier: Tier::One,
+                give_back: Gems::ZERO,
+            },
+            Action::ReserveDeck {
+                tier: Tier::Two,
+                give_back: Gems::ZERO,
+            },
+            Action::ReserveDeck {
+                tier: Tier::Three,
+                give_back: Gems::ZERO,
+            },
+            Action::ChooseNoble { noble: NobleId(0) },
+            Action::Pass,
+        ]
+    }
+
+    fn reserve_target_collision_observation() -> Observation {
+        let mut obs = make_test_observation();
+        let first_id = obs.public.market[0][0].unwrap();
+        let first = card(first_id);
+        let second_id = (0..CARD_COUNT)
+            .map(|index| CardId(index as u8))
+            .find(|&id| {
+                let candidate = card(id);
+                candidate.tier == first.tier
+                    && candidate.prestige == first.prestige
+                    && (candidate.bonus != first.bonus || candidate.cost != first.cost)
+            })
+            .expect("catalog contains same-tier, same-prestige cards with different targets");
+        obs.public.market[0][1] = Some(second_id);
+        obs
+    }
+
+    #[test]
+    fn semantic_reserve_target_prefix_is_bitwise_semantic_v1() {
+        let obs = make_test_observation();
+        for action in semantic_reserve_target_test_actions() {
+            let legacy = encode_action_semantic_v1(&obs, &action).unwrap();
+            let bound = encode_action_semantic_reserve_target_v1(&obs, &action).unwrap();
+            assert_eq!(bound.len(), 72);
+            assert_eq!(legacy.len(), 56);
+            for (old, new) in legacy.iter().zip(&bound[..ACTION_SEMANTIC_FEATURES_V1]) {
+                assert_eq!(old.to_bits(), new.to_bits(), "action {action:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn semantic_reserve_target_distinguishes_same_prestige_targets() {
+        let obs = reserve_target_collision_observation();
+        let action = |slot| Action::ReserveMarket {
+            tier: splendor_catalog::Tier::One,
+            slot,
+            give_back: Gems::ZERO,
+        };
+        let left = encode_action_semantic_reserve_target_v1(&obs, &action(0)).unwrap();
+        let right = encode_action_semantic_reserve_target_v1(&obs, &action(1)).unwrap();
+        assert_eq!(
+            &left[..ACTION_SEMANTIC_FEATURES_V1],
+            &right[..ACTION_SEMANTIC_FEATURES_V1]
+        );
+        assert_ne!(
+            &left[ACTION_SEMANTIC_FEATURES_V1..],
+            &right[ACTION_SEMANTIC_FEATURES_V1..]
+        );
+    }
+
+    #[test]
+    fn semantic_reserve_target_layout_matches_public_card() {
+        let obs = make_test_observation();
+        for (tier_index, tier) in obs.public.market.iter().enumerate() {
+            for (slot, card_id) in tier.iter().enumerate() {
+                let definition = card(card_id.unwrap());
+                let action = Action::ReserveMarket {
+                    tier: definition.tier,
+                    slot: slot as u8,
+                    give_back: Gems::ZERO,
+                };
+                let features = encode_action_semantic_reserve_target_v1(&obs, &action).unwrap();
+                let target = &features[ACTION_SEMANTIC_FEATURES_V1..];
+                let mut expected = [0.0; 16];
+                expected[0] = 1.0;
+                expected[1 + definition.bonus.index()] = 1.0;
+                expected[6] = f32::from(definition.prestige) / 5.0;
+                for (i, cost) in definition.cost.iter().enumerate() {
+                    expected[7 + i] = f32::from(*cost) / 7.0;
+                }
+                expected[12 + tier_index] = 1.0;
+                // from_deck stays zero even though the actor has reserved cards.
+                assert_eq!(target, &expected);
+            }
+        }
+    }
+
+    #[test]
+    fn semantic_reserve_target_suffix_is_zero_for_other_actions() {
+        let obs = make_test_observation();
+        for action in semantic_reserve_target_test_actions() {
+            if matches!(action, Action::ReserveMarket { .. }) {
+                continue;
+            }
+            let features = encode_action_semantic_reserve_target_v1(&obs, &action).unwrap();
+            assert_eq!(&features[ACTION_SEMANTIC_FEATURES_V1..], &[0.0; 16]);
+        }
+    }
+
+    #[test]
+    fn semantic_reserve_target_follows_card_when_market_slots_swap() {
+        let obs = reserve_target_collision_observation();
+        let action = |slot| Action::ReserveMarket {
+            tier: splendor_catalog::Tier::One,
+            slot,
+            give_back: Gems::ZERO,
+        };
+        let left = encode_action_semantic_reserve_target_v1(&obs, &action(0)).unwrap();
+        let right = encode_action_semantic_reserve_target_v1(&obs, &action(1)).unwrap();
+        let mut swapped = obs.clone();
+        swapped.public.market[0].swap(0, 1);
+        let swapped_left = encode_action_semantic_reserve_target_v1(&swapped, &action(0)).unwrap();
+        let swapped_right = encode_action_semantic_reserve_target_v1(&swapped, &action(1)).unwrap();
+        assert_eq!(
+            &left[ACTION_SEMANTIC_FEATURES_V1..],
+            &swapped_right[ACTION_SEMANTIC_FEATURES_V1..]
+        );
+        assert_eq!(
+            &right[ACTION_SEMANTIC_FEATURES_V1..],
+            &swapped_left[ACTION_SEMANTIC_FEATURES_V1..]
+        );
+        assert_ne!(
+            &left[ACTION_SEMANTIC_FEATURES_V1..],
+            &swapped_left[ACTION_SEMANTIC_FEATURES_V1..]
+        );
+    }
+
+    #[test]
+    fn semantic_reserve_target_empty_slot_is_zero_and_invalid_slot_is_rejected() {
+        let mut obs = make_test_observation();
+        obs.public.market[0][0] = None;
+        let action = |slot| Action::ReserveMarket {
+            tier: splendor_catalog::Tier::One,
+            slot,
+            give_back: Gems::ZERO,
+        };
+        let features = encode_action_semantic_reserve_target_v1(&obs, &action(0)).unwrap();
+        assert_eq!(&features[ACTION_SEMANTIC_FEATURES_V1..], &[0.0; 16]);
+        assert!(encode_action_semantic_reserve_target_v1(&obs, &action(4)).is_err());
+    }
+
+    #[test]
+    fn semantic_full_target_preserves_prefix_and_masks() {
+        let obs = make_test_observation();
+        for action in semantic_reserve_target_test_actions() {
+            let old = encode_action_semantic_reserve_target_v1(&obs, &action).unwrap();
+            let full = encode_action_semantic_full_target_v1(&obs, &action).unwrap();
+            assert_eq!(full.len(), 97);
+            for (a, b) in old.iter().zip(&full[..72]) {
+                assert_eq!(a.to_bits(), b.to_bits());
+            }
+            if !matches!(action, Action::BuyMarket { .. } | Action::BuyReserved { .. }) {
+                assert_eq!(&full[72..88], &[0.0; 16]);
+            }
+            if !matches!(action, Action::ChooseNoble { .. }) {
+                assert_eq!(&full[88..94], &[0.0; 6]);
+            }
+            if let Action::ReserveDeck { tier, .. } = action {
+                let mut expected = [0.0; 3];
+                expected[tier.index()] = 1.0;
+                assert_eq!(&full[94..], &expected);
+            } else {
+                assert_eq!(&full[94..], &[0.0; 3]);
+            }
+        }
+    }
+
+    #[test]
+    fn semantic_full_target_buy_layout_and_distinct_targets() {
+        use splendor_catalog::Tier;
+        let mut obs = reserve_target_collision_observation();
+        let buy = |slot| Action::BuyMarket { tier: Tier::One, slot };
+        let a = encode_action_semantic_full_target_v1(&obs, &buy(0)).unwrap();
+        let b = encode_action_semantic_full_target_v1(&obs, &buy(1)).unwrap();
+        assert_ne!(&a[72..88], &b[72..88]);
+        let reservation = Action::ReserveMarket { tier: Tier::One, slot: 0, give_back: Gems::ZERO };
+        let reserved = encode_action_semantic_reserve_target_v1(&obs, &reservation).unwrap();
+        assert_eq!(&a[72..88], &reserved[56..72]);
+        obs.private.reserved[0].card = obs.public.market[0][0].unwrap();
+        obs.private.reserved[0].from_deck = true;
+        let own = encode_action_semantic_full_target_v1(&obs, &Action::BuyReserved { slot: 0 }).unwrap();
+        assert_eq!(&own[72..87], &a[72..87]);
+        assert_eq!(own[87], 1.0);
+        obs.private.reserved[0].card = obs.public.market[0][1].unwrap();
+        let other = encode_action_semantic_full_target_v1(&obs, &Action::BuyReserved { slot: 0 }).unwrap();
+        assert_ne!(&own[72..88], &other[72..88]);
+        obs.public.market[0][0] = None;
+        assert_eq!(&encode_action_semantic_full_target_v1(&obs, &buy(0)).unwrap()[72..88], &[0.0; 16]);
+        assert_eq!(&encode_action_semantic_full_target_v1(&obs, &Action::BuyReserved { slot: 1 }).unwrap()[72..88], &[0.0; 16]);
+        assert!(encode_action_semantic_full_target_v1(&obs, &buy(4)).is_err());
+    }
+
+    #[test]
+    fn semantic_full_target_nobles_are_bound_and_normalized() {
+        let obs = make_test_observation();
+        let encode = |id| encode_action_semantic_full_target_v1(&obs, &Action::ChooseNoble { noble: id }).unwrap();
+        for &id in &obs.public.nobles {
+            let full = encode(id);
+            assert_eq!(full[88], 1.0);
+            for (actual, cost) in full[89..94].iter().zip(splendor_catalog::all_nobles()[id.index()].requirements) {
+                assert_eq!(*actual, f32::from(cost) / 4.0);
+            }
+        }
+        assert_ne!(&encode(NobleId(0))[88..94], &encode(NobleId(1))[88..94]);
+        assert_eq!(&encode(NobleId(9))[88..94], &[0.0; 6]);
+    }
+
+    #[test]
+    fn semantic_full_target_hidden_cards_and_deck_order_do_not_leak() {
+        let (mut left, _) = FullState::new(GameConfig::default()).unwrap();
+        let reserve = left.legal_actions().into_iter()
+            .find(|a| matches!(a, Action::ReserveDeck { .. })).unwrap();
+        left.apply(reserve).unwrap();
+        let mut right = left.clone();
+        let tier = card(right.players[0].reserved[0].card).tier.index();
+        std::mem::swap(&mut right.players[0].reserved[0].card, &mut right.decks[tier][0]);
+        for deck in &mut right.decks { deck.reverse(); }
+        let a = left.observation(PlayerId(1));
+        let b = right.observation(PlayerId(1));
+        assert_eq!(a, b);
+        for action in left.legal_actions() {
+            assert_eq!(encode_action_semantic_full_target_v1(&a, &action).unwrap(),
+                encode_action_semantic_full_target_v1(&b, &action).unwrap());
+        }
     }
 
     #[test]

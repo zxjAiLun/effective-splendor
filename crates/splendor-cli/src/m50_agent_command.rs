@@ -11,8 +11,10 @@ use splendor_agent::{run_agent, AgentError, AgentIdentity, AgentPolicy, Decision
 use splendor_belief::{build_information_set_v1, sample_determinization_v1};
 use splendor_core::{Action, Observation, Phase, Ruleset};
 use splendor_learning::{
-    encode_action_semantic_v1, encode_action_v1, encode_observation_v1, PolicyActionProbabilityV1,
-    PolicyValuePredictionV1,
+    encode_action_semantic_full_target_v1, encode_action_semantic_reserve_target_v1, encode_action_semantic_v1, encode_action_v1,
+    encode_observation_v1, PolicyActionProbabilityV1, PolicyValuePredictionV1,
+    ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1, ACTION_SEMANTIC_RESERVE_TARGET_SCHEMA_V1,
+    ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1, ACTION_SEMANTIC_FULL_TARGET_SCHEMA_V1,
 };
 use splendor_neural_search::{
     search_neural_ismcts_with_evaluator_v1, NeuralIsmctsConfigV1, NeuralSearchError,
@@ -672,6 +674,11 @@ impl CardEntityBackboneWeights {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SemanticQWeights {
+    #[serde(default)]
+    action_representation: Option<String>,
+    #[serde(default)]
+    action_dim: Option<usize>,
+
     // Legacy 2-layer MLP state backbone
     state_l1_w: Option<Vec<Vec<f32>>>,
     state_l1_b: Option<Vec<f32>>,
@@ -733,6 +740,88 @@ pub struct SemanticQWeights {
 }
 
 impl SemanticQWeights {
+    fn validate_action_representation(&mut self) -> Result<(), String> {
+        let width = self.act_l1_w.first().map_or(0, Vec::len);
+        if self.action_dim.is_some_and(|declared| declared != width) {
+            return Err(format!("action_dim disagrees with action_net.0.weight width {width}"));
+        }
+        match (width, self.action_representation.as_deref()) {
+            (48 | 56, None | Some("semantic-v1")) => {}
+            (ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1, Some(ACTION_SEMANTIC_FULL_TARGET_SCHEMA_V1)) => {}
+            (ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1,
+                Some(ACTION_SEMANTIC_RESERVE_TARGET_SCHEMA_V1)) => {}
+            _ => return Err(format!(
+                "unsupported semantic action representation {:?} / width {width}",
+                self.action_representation
+            )),
+        }
+        let check_matrix = |name: &str, matrix: &[Vec<f32>], rows: usize, cols: usize| {
+            if rows == 0 || cols == 0 || matrix.len() != rows
+                || matrix.iter().any(|row| row.len() != cols) {
+                Err(format!("{name} must have shape [{rows}, {cols}]"))
+            } else {
+                Ok(())
+            }
+        };
+        let act_hidden = self.act_l1_b.len();
+        let act_out = self.act_l2_b.len();
+        check_matrix("action_net.0.weight", &self.act_l1_w, act_hidden, width)?;
+        check_matrix("action_net.3.weight", &self.act_l2_w, act_out, act_hidden)?;
+        if self.act_ln1_w.len() != act_hidden || self.act_ln1_b.len() != act_hidden
+            || self.act_ln2_w.len() != act_out || self.act_ln2_b.len() != act_out {
+            return Err("action LayerNorm widths disagree with action encoder".into());
+        }
+        let state_dim = self.state_dim();
+        for (name, weights, bias) in [
+            ("adv_head.0.weight", &self.adv_l1_w, &self.adv_l1_b),
+            ("q_head.0.weight", &self.q_l1_w, &self.q_l1_b),
+        ] {
+            if let Some(matrix) = weights {
+                let rows = bias.as_ref().map_or(0, Vec::len);
+                check_matrix(name, matrix, rows, state_dim + act_out + width)?;
+            }
+        }
+        self.action_dim = Some(width);
+        if self.action_representation.is_none() {
+            self.action_representation = Some("semantic-v1".into());
+        }
+        Ok(())
+    }
+
+    fn state_dim(&self) -> usize {
+        if let Some(backbone) = &self.entity_backbone {
+            backbone.fusion_w.len()
+        } else if let Some(entry) = &self.state_entry_w {
+            entry.len()
+        } else {
+            self.state_l2_w.as_ref().map_or(0, Vec::len)
+        }
+    }
+
+    pub fn encode_action(&self, observation: &Observation, action: &Action) -> Result<Vec<f32>, String> {
+        match self.action_dim {
+            Some(ACTION_SEMANTIC_FULL_TARGET_FEATURES_V1) =>
+                encode_action_semantic_full_target_v1(observation, action)
+                    .map(|features| features.to_vec()).map_err(|e| e.to_string()),
+            Some(ACTION_SEMANTIC_RESERVE_TARGET_FEATURES_V1) =>
+                encode_action_semantic_reserve_target_v1(observation, action)
+                    .map(|features| features.to_vec()).map_err(|e| e.to_string()),
+            // Retain the full legacy vector for the existing terminal overrides.
+            Some(48 | 56) => encode_action_semantic_v1(observation, action)
+                .map(|features| features.to_vec()).map_err(|e| e.to_string()),
+            _ => Err("semantic weights have no validated action representation".into()),
+        }
+    }
+
+    fn action_input<'a>(&self, act: &'a [f32]) -> Result<&'a [f32], String> {
+        let width = self.action_dim.ok_or("missing validated action_dim")?;
+        let valid = act.len() == width || (width == 48 && act.len() == 56);
+        if !valid {
+            return Err(format!("expected {width} action features, got {}", act.len()));
+        }
+        Ok(&act[..width])
+    }
+
     pub fn save_to_compact_json(&self, path: &Path) -> Result<(), String> {
         let file = File::create(path).map_err(|e| format!("create {}: {e}", path.display()))?;
         let writer = std::io::BufWriter::new(file);
@@ -742,7 +831,10 @@ impl SemanticQWeights {
     pub fn load_from_compact_json(path: &Path) -> Result<Self, String> {
         let file = File::open(path).map_err(|e| format!("open {}: {e}", path.display()))?;
         let reader = std::io::BufReader::new(file);
-        serde_json::from_reader(reader).map_err(|e| format!("parse compact JSON: {e}"))
+        let mut weights: Self = serde_json::from_reader(reader)
+            .map_err(|e| format!("parse compact JSON: {e}"))?;
+        weights.validate_action_representation()?;
+        Ok(weights)
     }
 
     pub fn load_from_json(path: &Path) -> Result<Self, String> {
@@ -763,8 +855,18 @@ impl SemanticQWeights {
         let is_standard_q = map.contains_key("q_head.0.weight");
 
         if !is_dueling && !is_standard_q {
+            if map.contains_key("action_representation") || map.contains_key("action_dim")
+                || map.contains_key("entity_backbone.card_encoder.0.weight") {
+                return Err("semantic weights are missing an action scoring head".into());
+            }
             return Err("not a semantic Q weights file".into());
         }
+        let action_representation = map.get("action_representation")
+            .map(|value| serde_json::from_value::<String>(value.clone()))
+            .transpose().map_err(|e| format!("action_representation: {e}"))?;
+        let action_dim = map.get("action_dim")
+            .map(|value| serde_json::from_value::<usize>(value.clone()))
+            .transpose().map_err(|e| format!("action_dim: {e}"))?;
 
         let is_entity = map.contains_key("entity_backbone.card_encoder.0.weight");
         let is_seres = map.contains_key("state_entry.0.weight");
@@ -928,7 +1030,9 @@ impl SemanticQWeights {
         let val_l2_w = val_l2_2d.into_iter().next().unwrap_or_default();
         let val_l2_b = get_vec("val_head.2.bias")?[0];
 
-        Ok(Self {
+        let mut weights = Self {
+            action_representation,
+            action_dim,
             state_l1_w,
             state_l1_b,
             state_ln1_w,
@@ -980,7 +1084,9 @@ impl SemanticQWeights {
             val_l1_b: get_vec("val_head.0.bias")?,
             val_l2_w,
             val_l2_b,
-        })
+        };
+        weights.validate_action_representation()?;
+        Ok(weights)
     }
 
     pub fn forward_state(&self, obs: &[f32]) -> Vec<f32> {
@@ -1072,7 +1178,7 @@ impl SemanticQWeights {
         h2
     }
 
-    pub fn forward_action(&self, act: &[f32]) -> Vec<f32> {
+    fn forward_action(&self, act: &[f32]) -> Vec<f32> {
         let act_fn = |v: f32| -> f32 {
             if self.is_mish {
                 mish(v)
@@ -1085,8 +1191,7 @@ impl SemanticQWeights {
 
         let h1_dim = self.act_l1_w.len();
         let mut h1 = vec![0.0f32; h1_dim];
-        let expected_act_dim = if h1_dim > 0 { self.act_l1_w[0].len() } else { 0 };
-        let in_act_dim = act.len().min(expected_act_dim);
+        let in_act_dim = act.len();
         for i in 0..h1_dim {
             let row = &self.act_l1_w[i];
             let mut sum = self.act_l1_b[i];
@@ -1125,7 +1230,7 @@ impl SemanticQWeights {
         h2
     }
 
-    pub fn predict_advantage(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+    fn predict_advantage(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
         let act_fn = |v: f32| -> f32 {
             if self.is_mish {
                 mish(v)
@@ -1136,16 +1241,7 @@ impl SemanticQWeights {
             }
         };
 
-        let expected_act_dim = if !self.act_l1_w.is_empty() {
-            self.act_l1_w[0].len()
-        } else {
-            48
-        };
-        let in_act = if act_raw.len() >= expected_act_dim {
-            &act_raw[..expected_act_dim]
-        } else {
-            act_raw
-        };
+        let in_act = act_raw;
         let act_h = self.forward_action(in_act);
         let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + in_act.len());
         joint.extend_from_slice(state_h);
@@ -1163,7 +1259,7 @@ impl SemanticQWeights {
         let mut q1 = vec![0.0f32; q1_dim];
         for i in 0..q1_dim {
             let row = &l1_w[i];
-            let in_dim = row.len().min(joint.len());
+            let in_dim = joint.len();
             let mut sum = l1_b[i];
             for j in 0..in_dim {
                 sum += row[j] * joint[j];
@@ -1189,17 +1285,8 @@ impl SemanticQWeights {
         sum
     }
 
-    pub fn predict_q_steps(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
-        let expected_act_dim = if !self.act_l1_w.is_empty() {
-            self.act_l1_w[0].len()
-        } else {
-            48
-        };
-        let in_act = if act_raw.len() >= expected_act_dim {
-            &act_raw[..expected_act_dim]
-        } else {
-            act_raw
-        };
+    fn predict_q_steps(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
+        let in_act = act_raw;
         let act_h = self.forward_action(in_act);
         let mut joint = Vec::with_capacity(state_h.len() + act_h.len() + in_act.len());
         joint.extend_from_slice(state_h);
@@ -1217,7 +1304,7 @@ impl SemanticQWeights {
         let mut q1 = vec![0.0f32; q1_dim];
         for i in 0..q1_dim {
             let row = &l1_w[i];
-            let in_dim = row.len().min(joint.len());
+            let in_dim = joint.len();
             let mut sum = l1_b[i];
             for j in 0..in_dim {
                 sum += row[j] * joint[j];
@@ -1252,14 +1339,26 @@ impl SemanticQWeights {
         sp * 20.0
     }
 
-    pub fn score_action(&self, state_h: &[f32], act_raw: &[f32]) -> f32 {
-        if self.adv_l1_w.is_some() {
+    pub fn score_action(&self, state_h: &[f32], act_raw: &[f32]) -> Result<f32, String> {
+        let act_raw = self.action_input(act_raw)?;
+        if state_h.len() != self.state_dim() {
+            return Err(format!("expected {} state features, got {}", self.state_dim(), state_h.len()));
+        }
+        let score = if self.adv_l1_w.is_some() {
             self.predict_advantage(state_h, act_raw)
         } else {
             self.predict_q_steps(state_h, act_raw)
+        };
+        if !score.is_finite() {
+            return Err("non-finite semantic action score".into());
         }
+        Ok(score)
     }
 }
+
+#[cfg(test)]
+#[path = "m50_target_binding_tests.rs"]
+mod target_binding_tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum M50Mode {
@@ -1330,8 +1429,8 @@ impl AgentPolicy for M50Policy {
                 let mut best_action = legal[0].clone();
 
                 for action in legal {
-                    let act_feat = encode_action_semantic_v1(&context.observation, action)
-                        .map_err(|e| AgentError::Policy(e.to_string()))?;
+                    let act_feat = sw.encode_action(&context.observation, action)
+                        .map_err(AgentError::Policy)?;
 
                     // Absolute Priority: If this action achieves instant victory (or winning tie-break), take it immediately!
                     if act_feat.len() >= 56 {
@@ -1340,7 +1439,8 @@ impl AgentPolicy for M50Policy {
                         }
                     }
 
-                    let q = sw.score_action(&state_h, &act_feat);
+                    let q = sw.score_action(&state_h, &act_feat)
+                        .map_err(AgentError::Policy)?;
                     let is_better = if sw.is_argmax {
                         q > best_q
                     } else {
@@ -1635,7 +1735,7 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
             mode = M50Mode::SemanticQ;
             (None, Some(sw))
         }
-        Err(_) => {
+        Err(e) if e == "not a semantic Q weights file" => {
             let pw = match M50PolicyWeights::load_from_json(&weights_path) {
                 Ok(w) => w,
                 Err(e) => {
@@ -1644,6 +1744,10 @@ pub fn run_agent_m50_policy(args: &[String]) -> i32 {
                 }
             };
             (Some(pw), None)
+        }
+        Err(e) => {
+            eprintln!("error loading semantic weights from {}: {e}", weights_path.display());
+            return 1;
         }
     };
 
