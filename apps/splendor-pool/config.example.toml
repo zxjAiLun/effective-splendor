@@ -1,0 +1,10 @@
+# Splendor Arena Pool Configuration Example
+
+data_dir = "data"
+engine_exe = "/home/ubuntu/splendor/target/release/splendor"
+initial_elo = 1500.0
+elo_k = 32.0
+poll_seconds = 2.0
+host = "127.0.0.1"
+port = 8720
+retain_replays = true

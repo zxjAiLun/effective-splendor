@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Splendor Arena Pool · Elo 对战池看板</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="title-area">
+        <h1>✦ Splendor Arena Pool ✦</h1>
+        <span class="subtitle">单桌自主对战池 · Elo 实时天梯与项目级战术数据统计</span>
+      </div>
+      <div class="status-bar" id="statusBar">
+        <span class="badge" id="poolStatus">加载中...</span>
+        <span class="stat-pill">活跃模型: <strong id="activeModels">0</strong> / <span id="totalModels">0</span></span>
+        <span class="stat-pill">完成对局: <strong id="totalMatches">0</strong></span>
+        <button id="togglePauseBtn" class="btn btn-warning" onclick="togglePause()">暂停对局</button>
+      </div>
+    </header>
+
+    <!-- 顶部概览指标卡 -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">当前 Elo 榜首</div>
+        <div class="metric-value gold" id="topModelName">-</div>
+        <div class="metric-sub" id="topModelElo">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最高胜率模型</div>
+        <div class="metric-value green" id="bestWinRateModel">-</div>
+        <div class="metric-sub" id="bestWinRateValue">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最高局均得分</div>
+        <div class="metric-value cyan" id="bestScoreModel">-</div>
+        <div class="metric-sub" id="bestScoreValue">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最高预留兑现率</div>
+        <div class="metric-value purple" id="bestRedeemModel">-</div>
+        <div class="metric-sub" id="bestRedeemValue">-</div>
+      </div>
+    </div>
+
+    <!-- 1. Elo 天梯排行榜 -->
+    <section class="section">
+      <div class="section-header">
+        <h2>🏆 Elo 天梯排行榜 (Leaderboard)</h2>
+        <span class="refresh-indicator" id="refreshTimer">3秒后自动刷新</span>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="leaderboardTable">
+          <thead>
+            <tr>
+              <th width="60">排名</th>
+              <th>模型名称</th>
+              <th>类型</th>
+              <th>Elo 积分</th>
+              <th>场次</th>
+              <th>胜 - 平 - 负</th>
+              <th>胜率</th>
+              <th>先手(S0)胜率</th>
+              <th>后手(S1)胜率</th>
+              <th>场均分</th>
+              <th>胜分差</th>
+              <th>权重</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="13" class="loading">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 2. 项目口径详细战术指标 -->
+    <section class="section">
+      <div class="section-header">
+        <h2>📊 项目规范战术数据统计 (Tactical & Engine Metrics)</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="tacticalTable">
+          <thead>
+            <tr>
+              <th>模型名称</th>
+              <th>每回合得分 (VP/Turn)</th>
+              <th>每步得分 (VP/Ply)</th>
+              <th>局均回合数</th>
+              <th>局均步数</th>
+              <th>场均购卡/折扣</th>
+              <th>场均预留 (获取 / 买回 / 烂手)</th>
+              <th>预留兑现率</th>
+              <th>场均贵族获取</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="9" class="loading">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. 两两对阵小计与最近战报 -->
+    <div class="grid-two-col">
+      <section class="section">
+        <div class="section-header">
+          <h2>⚔️ 两两对阵小计 (Head-to-Head)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="h2hTable">
+            <thead>
+              <tr>
+                <th>对阵双方 (候选 vs 对手)</th>
+                <th>场次</th>
+                <th>战绩 (胜-平-负)</th>
+                <th>胜率</th>
+                <th>净胜分</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="5" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>🕒 最新对战战报 (Recent Matches)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="recentMatchesTable">
+            <thead>
+              <tr>
+                <th width="70">编号</th>
+                <th>先手 (Seat 0)</th>
+                <th>比分</th>
+                <th>后手 (Seat 1)</th>
+                <th>胜者</th>
+                <th>Elo 变动</th>
+                <th>步数</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="7" class="loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <span>Splendor Autonomous Pool · Cloud2 Dedicated Node</span>
+      <span class="version-tag">Engine v0.4.0 · Base Ruleset v1</span>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
