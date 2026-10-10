@@ -11,6 +11,16 @@ __pycache__/
 /.workbuddy/
 /handoff.md
 
+# Large binary outputs, test evaluation runs, and inspect dumps
+/outputs/
+/evaluation/
+/continuation-r*/
+
+# Agent harness caches and worktrees
+/.claude/
+/.pi/
+
+
 # Owner decision 2026-09-17: the teach-skill learning workspace is local-only
 # teaching material. Keep every generated lesson file out of Git.
 /lessons/
