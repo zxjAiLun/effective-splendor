@@ -1,0 +1,168 @@
+{
+  "format": "effective-splendor-s4-heuristic-v031-pilot-result",
+  "version": 1,
+  "status": "EXPLORATORY_PILOT_ONLY",
+  "contract": "benchmarks/s4-heuristic-v031-pilot-v1.config.json",
+  "config_sha256": "63b0aa30a7664946d55208854b8c52ad60189b82b4c13089da626772f83e310a",
+  "candidate_binary_sha256": "6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db",
+  "reference_binary_sha256": "2e8c37fafb6cbfce0cf5d79804dcca574a0d9b6011577824e92af26f04f64528",
+  "manifest": "local-artifacts/s4-heuristic-v031-pilot/manifest.json",
+  "manifest_sha256": "6af82f5841378dc1c504bb4b3917d21279b3792ea3caf2188a34e73d3d1665e6",
+  "matched_game_seeds": 128,
+  "completed_and_verified_matches": 1280,
+  "aborts": 0,
+  "pairings": [
+    {
+      "opponent": "heuristic-v030",
+      "matches": 256,
+      "wins": 183,
+      "ties": 0,
+      "losses": 73,
+      "win_rate_percent": 71.48,
+      "center_bps": 7148.44,
+      "ci_95_bps": [
+        6601.56,
+        7656.25
+      ],
+      "seat_p0_first": {
+        "matches": 128,
+        "wins": 89,
+        "ties": 0,
+        "losses": 39,
+        "win_rate_percent": 69.53
+      },
+      "seat_p1_second": {
+        "matches": 128,
+        "wins": 94,
+        "ties": 0,
+        "losses": 34,
+        "win_rate_percent": 73.44
+      },
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 53.62,
+      "total_match_wall_seconds": 99.421
+    },
+    {
+      "opponent": "heuristic-v029",
+      "matches": 256,
+      "wins": 189,
+      "ties": 0,
+      "losses": 67,
+      "win_rate_percent": 73.83,
+      "center_bps": 7382.81,
+      "ci_95_bps": [
+        6875.0,
+        7890.62
+      ],
+      "seat_p0_first": {
+        "matches": 128,
+        "wins": 94,
+        "ties": 0,
+        "losses": 34,
+        "win_rate_percent": 73.44
+      },
+      "seat_p1_second": {
+        "matches": 128,
+        "wins": 95,
+        "ties": 0,
+        "losses": 33,
+        "win_rate_percent": 74.22
+      },
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 54.16,
+      "total_match_wall_seconds": 90.245
+    },
+    {
+      "opponent": "heuristic-v028",
+      "matches": 256,
+      "wins": 194,
+      "ties": 1,
+      "losses": 61,
+      "win_rate_percent": 75.98,
+      "center_bps": 7597.66,
+      "ci_95_bps": [
+        7031.25,
+        8125.0
+      ],
+      "seat_p0_first": {
+        "matches": 128,
+        "wins": 100,
+        "ties": 0,
+        "losses": 28,
+        "win_rate_percent": 78.12
+      },
+      "seat_p1_second": {
+        "matches": 128,
+        "wins": 94,
+        "ties": 1,
+        "losses": 33,
+        "win_rate_percent": 73.83
+      },
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 53.88,
+      "total_match_wall_seconds": 85.593
+    },
+    {
+      "opponent": "s3-rollout",
+      "matches": 256,
+      "wins": 196,
+      "ties": 0,
+      "losses": 60,
+      "win_rate_percent": 76.56,
+      "center_bps": 7656.25,
+      "ci_95_bps": [
+        7109.38,
+        8203.12
+      ],
+      "seat_p0_first": {
+        "matches": 128,
+        "wins": 104,
+        "ties": 0,
+        "losses": 24,
+        "win_rate_percent": 81.25
+      },
+      "seat_p1_second": {
+        "matches": 128,
+        "wins": 92,
+        "ties": 0,
+        "losses": 36,
+        "win_rate_percent": 71.88
+      },
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 55.98,
+      "total_match_wall_seconds": 505.912
+    },
+    {
+      "opponent": "heuristic-v01",
+      "matches": 256,
+      "wins": 214,
+      "ties": 0,
+      "losses": 42,
+      "win_rate_percent": 83.59,
+      "center_bps": 8359.38,
+      "ci_95_bps": [
+        7851.56,
+        8828.12
+      ],
+      "seat_p0_first": {
+        "matches": 128,
+        "wins": 106,
+        "ties": 0,
+        "losses": 22,
+        "win_rate_percent": 82.81
+      },
+      "seat_p1_second": {
+        "matches": 128,
+        "wins": 108,
+        "ties": 0,
+        "losses": 20,
+        "win_rate_percent": 84.38
+      },
+      "exploratory_verdict": "EXPLORATORY_STRONGER",
+      "mean_plies": 53.28,
+      "total_match_wall_seconds": 88.069
+    }
+  ],
+  "total_wall_seconds": 91.899,
+  "limitations": "128 seed blocks per opponent across 5 baselines; exploratory pilot only; no default change"
+}

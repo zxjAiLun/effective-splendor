@@ -1,0 +1,66 @@
+{
+  "format": "effective-splendor-s4-heuristic-v032c-pilot-config",
+  "version": 1,
+  "status": "prospective-exploratory-pilot",
+  "design_doc": "docs/s4-heuristic-v02-design.md#s412",
+  "seed_start": 9275000,
+  "seed_count": 128,
+  "smoke_seed": 9274999,
+  "rotations": [0, 1],
+  "candidate": {
+    "id": "heuristic-v032c",
+    "program": "local-artifacts/s4-heuristic-v032c-pilot/splendor-candidate.exe",
+    "args": ["agent-heuristic-two-ply", "--seed", "20260926"],
+    "agent_name": "splendor-agent-two-ply",
+    "agent_version": "0.3.2c"
+  },
+  "reference_program": "local-artifacts/s4-heuristic-v031-pilot/splendor-candidate.exe",
+  "reference_sha256": "6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db",
+  "opponents": [
+    {
+      "id": "heuristic-v031",
+      "program": "local-artifacts/s4-heuristic-v031-pilot/splendor-candidate.exe",
+      "args": ["agent-heuristic-v02", "--seed", "20260926"],
+      "agent_name": "splendor-cli-heuristic-v02",
+      "agent_version": "0.2.9"
+    },
+    {
+      "id": "heuristic-v030",
+      "program": "local-artifacts/s4-heuristic-v030-pilot/splendor-candidate.exe",
+      "args": ["agent-heuristic-v02", "--seed", "20260926"],
+      "agent_name": "splendor-cli-heuristic-v02",
+      "agent_version": "0.2.9"
+    },
+    {
+      "id": "heuristic-v029",
+      "program": "local-artifacts/s4-heuristic-v029-pilot/splendor-candidate.exe",
+      "args": ["agent-heuristic-v02", "--seed", "20260926"],
+      "agent_name": "splendor-cli-heuristic-v02",
+      "agent_version": "0.2.9"
+    },
+    {
+      "id": "s3-rollout",
+      "program": "local-artifacts/s4-heuristic-v029-pilot/splendor-candidate.exe",
+      "args": ["agent-s3-rollout"],
+      "agent_name": "effective-splendor-s3-rollout-v1",
+      "agent_version": "1"
+    },
+    {
+      "id": "heuristic-v01",
+      "program": "local-artifacts/s4-heuristic-v029-pilot/splendor-candidate.exe",
+      "args": ["agent-heuristic", "--seed", "20260812"],
+      "agent_name": "splendor-cli-heuristic",
+      "agent_version": "0.1.0"
+    }
+  ],
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 60000,
+  "shutdown_grace_ms": 2000,
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 92752026,
+    "ci_percent": 95
+  },
+  "inference": "128 paired-seed blocks per opponent (1280 matches across 5 baselines: v0.3.1, v0.3.0, v0.2.9, s3-rollout, v0.1); 2-ply continuation simulation v0.3.2c: final-turn fast path using v0.3.1 terminal judgment when endgame is already triggered; strict (prestige, Reverse(purchased_count)) official tie-break parity; exploratory only",
+  "artifacts": "local-artifacts/s4-heuristic-v032c-pilot"
+}

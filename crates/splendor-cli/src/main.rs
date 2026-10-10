@@ -134,6 +134,9 @@ fn main() {
         Some("agent-heuristic-v02") => {
             std::process::exit(arena_command::agent_heuristic_v02(&argv[2..]))
         }
+        Some("agent-heuristic-two-ply") => {
+            std::process::exit(arena_command::agent_heuristic_two_ply(&argv[2..]))
+        }
         Some("agent-heuristic-terms") => std::process::exit(agent_terms_command::run(&argv[2..])),
         Some("agent-determinization") => {
             std::process::exit(arena_command::agent_determinization(&argv[2..]))

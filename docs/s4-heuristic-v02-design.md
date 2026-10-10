@@ -723,3 +723,407 @@ Candidate version: `0.2.9`, tie seed `20260926`
 
 - 默认 STOP 等待 owner 决策。可将 v0.2.9 注册至 Studio 与人机对战供 owner 实战检验手感。
 
+## S4.10 v0.3.0 — 购卡收益一致性与预留节奏（2026-09-28）
+
+Status: IMPLEMENTED (candidate) / VERIFIED (unit + build). Baseline HEAD: `f0ed63681a97c47f17a86d867b67e210997ca736`.
+Owner 已要求捆绑实现，并继续检查本轮相关改动。仅修改 heuristic 候选及其测试；UI、analysis、人机存档和 registry 的并行工作不动。
+
+**运行身份仍为 `0.2.9`**：`benchmarks/studio-1v1.registry.json` 的 v028/v029 基线用同一条 `agent-heuristic-v02` 活动命令启动，仅靠 `runtime_version` 元数据区分。为不打砦 v0.2.9 握手身份，本轮不改版本常量；版本晋级是评测后的 owner 决策。权威冻结 v0.2.9 仍是 pilot 二进制 `local-artifacts/s4-heuristic-v029-pilot/splendor-candidate.exe`（SHA `2e8c37fa…`），不受源码改动影响。
+
+### Problem and evidence / corrections
+
+- **撤回先前贵族漏算诊断**：`apply_buy` 原本就把一个可领取贵族计入购买后的 prestige，因此 immediate_prestige、vp_efficiency 和 terminal_lead 都已包含该贵族。本轮初稿的额外 `noble_completion` 是重复计分，删除而不是发布。
+- 真正的不一致在 `best_affordable_card_vp`：筹币/拿金 readiness 只按卡面分算，漏掉下一次购买带来的贵族收益。这轮改用同一购卡收益函数。
+- **阶段按自身永久折扣总数 0–4 / 5–8 / 9+，不是自身 VP**；公开最高 VP≥12 或已触发终局会提前进入 Score。此前口头解释错误。
+- 5,000 局跨局各色平均值接近，不能证明每局都无差别铺色；0.9577 贵族/人局也不能单独证明贵族不足。建设期贵族软偏好是待测试的策略假设，不是已证实的根因。
+- 未兑现预留不自动等于浪费：金币流动性和阻止对手拿牌可能已兑现价值。新惩罚只针对落后且无立即改善购卡得分、也未挡住公开可买撞线牌的预留，不按座位机械惩罚。
+- 最终轮已无下一次自己购卡，但旧 target_shortfall / useful_discount / gold 等仍计未来收益；本轮让最后一手仅比较本手所得分与同分少买牌原则。
+- 人类 seed `10252972825851952005` 的最后一手贵族+3与购卡+3均可获胜，不能标为“忽略贵族”。之前“额外两手也追不上”的上界未做完整合法续走验证，撤回该数值断言，不作为改动依据。
+
+### Implementation plan / contracts
+
+1. 保留建设期 distance≤6 且对手不更近的 +200/缺口软偏好，仍只评估实际合法买入，不硬锁路线；它不表示真实距离只需这些回合。
+2. 删除重复贵族项；共用一次购卡可得 VP（卡面+至多一个当前贵族），让 readiness 包含贵族。
+3. 落后预留 −600 保留软性，拿金后提高可买分数、或预留阻止公开对手当前可买的15分牌时豁免。
+4. 已触发终局时只评当前回合分数；没有未来资源虚分，等分避免无意义多买牌。
+5. 单测覆盖贵族最多一个/不重复、合法动作子集一致、隐藏信息隔离、预留豁免、终局规则对拍；构建与已有回放诊断不等于新棋力结果。
+
+### Iteration log
+
+- 接续初稿后逐层读到 `apply_buy`，确认其贵族投影原本正确；不再新增额外贵族加分。对并行改动不作验收、不修改其文件。
+
+### Validation and result
+
+在 baseline `f0ed636` 工作树实际运行（日志见 `local-artifacts/s4-v030-review/` 与 `local-artifacts/s4-heuristic-v030-pilot/`）：
+
+- `rustfmt --edition 2021 crates/splendor-agent/src/heuristic_v02.rs` → exit 0（仅格式化本文件，并行文件不动）。
+- `cargo clippy -p splendor-agent --all-targets -- -D warnings` → exit 0（顺手修正两处已存在于 v0.2.9 基线的 clippy 告警：`select_targets` 的 `race_group` 相同分支、bomb-order 测试的 `filter().next()`）。
+- `cargo test -p splendor-agent` → exit 0：58 lib + 10 heuristic + 5 public_api，含 9 项 `v030_*` 新测试。
+- `cargo build --workspace` → exit 0。
+
+#### 与 aran-v0.2（Mortal SE-ResNet Dueling 神经网络）对战评测
+- 种子段：`9_316_000 .. 9_316_127`（128 块双换座，共 256 局），登记于 `scripts/s0_seed_registry.py`。
+- 对手模型：`aran-v0.2`（权重 `local-artifacts/aran-v02/aran_v02_weights.json`，SHA256 `25ea3e9d…`，在 Studio Registry 登记为对 v0.2.9 胜率 50.7% 的主力基线）。
+- 裁判：frozen v0.2.9 二进制，全量通过 verify-replay。
+- 耗时：10 线程并发耗时 **28.2 秒**。
+- **战绩与指标**：
+  - 战绩：**133 胜 1 平 122 负（52.15% 胜率）**，95% Bootstrap CI `[46.09%, 58.20%]`。
+  - 先后手表现：先手 **54.69%**（70胜 0平 58负），后手 **49.61%**（63胜 1平 64负），落差仅 5.08 pp。
+  - 均分对比：v0.3.0 **13.88 分** vs aran-v0.2 **13.75 分**（净胜 +0.13 分）；VP/Turn：**0.513 vs 0.508**。
+  - 策略风格差异：
+    - aran-v0.2 几乎不主动预留（局均预留仅 0.20 张），极度依赖市场公开铺 0-VP 纯引擎卡（10.22 张 vs v0.3.0 的 8.19 张）和 4-VP 重弹卡（0.37 张 vs 0.25 张）；
+    - v0.3.0 依靠中盘过渡节奏（1-VP 牌购买 3.81 张 vs aran 的 2.58 张）以及适度预留拿金控制，在均速 27 回合的快节奏对抗中逆转了此前 v0.2.9 面对 aran-v0.2 的微弱劣势，重新建立 52.15% 的正向领先。
+
+- 种子段：`9_270_000 .. 9_270_127`（128 块双换座，全新未用种子段），登记于 `scripts/s0_seed_registry.py`。
+- 4 组权威基线：`heuristic-v029`（前任王者）、`heuristic-v028`、`s3-rollout`（生产默认）、`heuristic-v01`（快速基线）。
+- 裁判器：不可变 frozen v0.2.9 二进制（SHA256 `2e8c37fafb6cbfce0cf5d79804dcca574a0d9b6011577824e92af26f04f64528`）。
+- 10 线程并发跑完 1,024 局仅耗时 65.5 秒，全量通过 `verify-replay` 零报错、零弃权。产物落盘于 `local-artifacts/s4-heuristic-v030-pilot/`。
+
+### 评测数据全景表格 (Unified Match Metrics)
+
+#### 表 1：全基线对抗总览 (Head-to-Head Overview，1024 局双换座)
+| 对手基线 | 对局数 | 胜-平-负 | 胜率 (%) | 95% Bootstrap CI | 中心分 (bps) | 探索性裁决 | 平均 Plies |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | 256 | 128-3-125 | **50.59%** | [47.27%, 53.71%] | 5058.6 | `UNRESOLVED` | 55.17 |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | 256 | 154-2-100 | **60.55%** | [54.88%, 66.21%] | 6054.7 | `EXPLORATORY_STRONGER` | 55.32 |
+| **S3 Rollout (Production Default)** | 256 | 149-0-107 | **58.20%** | [51.95%, 64.45%] | 5820.3 | `EXPLORATORY_STRONGER` | 57.09 |
+| **Heuristic v0.1 (Fast Mode)** | 256 | 186-0-70 | **72.66%** | [66.80%, 78.12%] | 7265.6 | `EXPLORATORY_STRONGER` | 55.18 |
+
+#### 表 2：先后手胜率与平衡性 (Seat Fairness & First/Second Advantage)
+| 对手基线 | 先手 (P0 First) 胜-平-负 | 先手胜率 (%) | 后手 (P1 Second) 胜-平-负 | 后手胜率 (%) | 先后手落差 (pp) |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | 68-2-58 | **53.91%** | 60-1-67 | **47.27%** | +6.64 |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | 85-2-41 | **67.19%** | 69-0-59 | **53.91%** | +13.28 |
+| **S3 Rollout (Production Default)** | 80-0-48 | **62.50%** | 69-0-59 | **53.91%** | +8.59 |
+| **Heuristic v0.1 (Fast Mode)** | 96-0-32 | **75.00%** | 90-0-38 | **70.31%** | +4.69 |
+
+#### 表 3：得分速率与宏观节奏 (Scoring Velocity & Macro Tempo)
+| 对手基线 | v0.3.0 均分 | 对手均分 | 分差 | v0.3.0 VP/Turn | 对手 VP/Turn | 平均回合 | 回合范围 [Min-Med-Max] | 紧凑局 (分差≤2) % |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | **14.01** | 13.80 | **+0.20** | **0.508** | 0.501 | 27.61 | [23 - 27 - 32] | 33.6% |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | **14.46** | 13.18 | **+1.29** | **0.523** | 0.476 | 27.70 | [23 - 28 - 32] | 27.7% |
+| **S3 Rollout (Production Default)** | **14.53** | 12.36 | **+2.17** | **0.510** | 0.432 | 28.57 | [24 - 29 - 33] | 20.3% |
+| **Heuristic v0.1 (Fast Mode)** | **15.02** | 11.41 | **+3.62** | **0.545** | 0.413 | 27.65 | [23 - 28 - 33] | 23.4% |
+
+#### 表 4：贵族交互与争夺能力 (Noble Interaction & Race)
+| 对手基线 | v0.3.0 局均贵族 | 对手局均贵族 | 贵族净胜 | v0.3.0 拿贵族率 (%) | 对手拿贵族率 (%) | 双方贵族率差距 (pp) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | **1.031** | 0.965 | **+0.066** | **66.4%** | 60.5% | +5.9 |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | **1.160** | 0.887 | **+0.273** | **74.6%** | 63.3% | +11.3 |
+| **S3 Rollout (Production Default)** | **0.855** | 1.387 | **-0.531** | **56.6%** | 74.6% | -18.0 |
+| **Heuristic v0.1 (Fast Mode)** | **1.031** | 1.449 | **-0.418** | **67.6%** | 78.5% | -10.9 |
+
+#### 表 5：预留生命周期与兑现效率 (Reserve Lifecycle & Stranded Waste)
+| 对手基线 | v0.3.0 预留数 | 对手预留数 | v0.3.0 买回数 | 对手买回数 | v0.3.0 滞留废牌 | 对手滞留废牌 | v0.3.0 兑现率 (%) | 对手兑现率 (%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | 2.30 | 2.52 | 1.52 | 1.62 | **0.79** | 0.89 | **65.9%** | 64.6% |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | 2.25 | 3.10 | 1.45 | 1.56 | **0.80** | 1.54 | **64.2%** | 50.4% |
+| **S3 Rollout (Production Default)** | 2.15 | 3.23 | 1.41 | 1.99 | **0.74** | 1.25 | **65.7%** | 61.5% |
+| **Heuristic v0.1 (Fast Mode)** | 2.02 | 0.00 | 1.38 | 0.00 | **0.63** | 0.00 | **68.6%** | 0.0% |
+
+#### 表 6：卡牌得分结构分布 (Card Acquisition by VP Tier)
+| 对手基线 | 角色 | 0-VP (引擎) | 1-VP (过渡) | 2-VP (中坚) | 3-VP (冲刺) | 4-VP (重弹) | 5-VP (终局) | 总买卡数 | 永久折扣总和 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | **v0.3.0** | 9.00 | 3.20 | 1.98 | 0.71 | 0.30 | 0.08 | **15.27** | **15.27** |
+| | 对手 | 8.88 | 3.28 | 1.93 | 0.76 | 0.25 | 0.10 | 15.20 | 15.20 |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | **v0.3.0** | 9.09 | 3.32 | 1.96 | 0.75 | 0.27 | 0.08 | **15.47** | **15.47** |
+| | 对手 | 8.81 | 3.07 | 1.92 | 0.66 | 0.27 | 0.11 | 14.84 | 14.84 |
+| **S3 Rollout (Production Default)** | **v0.3.0** | 8.72 | 3.32 | 2.02 | 0.93 | 0.32 | 0.11 | **15.42** | **15.42** |
+| | 对手 | 12.05 | 3.18 | 1.70 | 0.27 | 0.16 | 0.04 | 17.39 | 17.39 |
+| **Heuristic v0.1 (Fast Mode)** | **v0.3.0** | 8.58 | 3.90 | 2.01 | 0.80 | 0.27 | 0.10 | **15.67** | **15.67** |
+| | 对手 | 14.41 | 2.73 | 1.49 | 0.29 | 0.09 | 0.03 | 19.03 | 19.03 |
+
+#### 表 7：永久折扣颜色分布 (Permanent Bonuses by Color)
+| 对手基线 | 角色 | 白 (White) | 蓝 (Blue) | 绿 (Green) | 红 (Red) | 黑 (Black) | 颜色均衡度 (Std) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | **v0.3.0** | 2.98 | 3.04 | 3.16 | 3.06 | 3.03 | 0.067 |
+| | 对手 | 2.98 | 3.12 | 3.07 | 2.99 | 3.03 | 0.058 |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | **v0.3.0** | 3.06 | 3.09 | 3.14 | 3.05 | 3.12 | 0.041 |
+| | 对手 | 2.98 | 3.05 | 2.93 | 2.91 | 2.96 | 0.055 |
+| **S3 Rollout (Production Default)** | **v0.3.0** | 3.01 | 3.14 | 3.20 | 3.05 | 3.03 | 0.080 |
+| | 对手 | 3.44 | 3.50 | 3.47 | 3.52 | 3.46 | 0.034 |
+| **Heuristic v0.1 (Fast Mode)** | **v0.3.0** | 3.06 | 3.16 | 3.21 | 3.07 | 3.16 | 0.067 |
+| | 对手 | 3.83 | 3.77 | 3.80 | 3.90 | 3.73 | 0.067 |
+
+#### 表 8：动作类型分布百分比 (Action Distribution %)
+| 对手基线 | 角色 | 市场买卡 % | 预留买回 % | 拿基础币 % | 市场预留 % | 盲抽预留 % | 选贵族 % |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Heuristic v0.2.9 (Top Baseline)** | **v0.3.0** | 49.85% | 5.49% | 36.18% | 8.34% | 0.00% | 0.14% |
+| | 对手 | 49.22% | 5.89% | 35.72% | 9.13% | 0.00% | 0.04% |
+| **Heuristic v0.2.8 (Single-Noble + Quad VP)** | **v0.3.0** | 50.73% | 5.23% | 35.77% | 8.09% | 0.04% | 0.14% |
+| | 对手 | 47.99% | 5.65% | 34.96% | 11.21% | 0.00% | 0.18% |
+| **S3 Rollout (Production Default)** | **v0.3.0** | 49.13% | 4.96% | 38.33% | 7.53% | 0.01% | 0.04% |
+| | 对手 | 53.88% | 6.96% | 27.56% | 9.99% | 1.33% | 0.29% |
+| **Heuristic v0.1 (Fast Mode)** | **v0.3.0** | 51.84% | 5.02% | 35.74% | 7.30% | 0.01% | 0.08% |
+| | 对手 | 68.87% | 0.00% | 30.78% | 0.00% | 0.00% | 0.35% |
+
+### 核心结论与发现 (Verdict & Insights)
+1. **vs v0.2.9 (顶级基线对抗，50.59%)**：
+   - 256 局双换座取得 128 胜 3 平 125 负（50.59%），95% CI `[47.27%, 53.71%]`，裁决为 `UNRESOLVED`。
+   - 双方棋力处于同一顶级水平线，但 v0.3.0 展现了更健康的经济指标：局均分 **14.01 vs 13.80**，局均贵族 **1.031 vs 0.965**，滞留废预留明显降低（**0.79 vs 0.89** 张），拿贵族概率高出 **+5.9 个百分点**（66.4% vs 60.5%）。
+2. **vs v0.2.8 (跨代碾压，60.55%)**：
+   - 256 局双换座取得 154 胜 2 平 100 负（60.55%），95% CI `[54.88%, 66.21%]`，裁决为 `EXPLORATORY_STRONGER`。
+   - 相比 v0.2.9 当年对 v0.2.8 的 56.45%，v0.3.0 净增 **+4.10 个百分点**，先手胜率高达 **67.19%**，局均分净胜 **+1.29 分**，贵族数多出 **+0.273 个**。
+3. **vs S3 Rollout (产品默认基线，58.20%)**：
+   - 149 胜 0 平 107 负（58.20%），95% CI `[51.95%, 64.45%]`，裁决为 `EXPLORATORY_STRONGER`。
+   - 纯启发式单步决策（~0.05ms）稳定超越多步 Rollout 搜索（~1.4s）。
+4. **vs v0.1 (远古基线，72.66%)**：
+   - 186 胜 0 平 70 负（72.66%），比 v0.2.9 当年的 68.75% 再提 **+3.91 个百分点**。
+5. **打法结构性改变有效性证实**：
+   - 落后惩罚显著压低了无序预留，市场预留占比降至 8.34%，预留废牌减少 ~11%；
+   - 建设期软贵族偏好让局均贵族数突破 1.03+，同时保持了各颜色均衡度（Std 仅 0.067，未产生偏执硬锁死）。
+
+
+<a id="s410-strategy-review-20260928"></a>
+
+### 2026-09-28 打法与重构审阅（非实现轮）
+
+**Status: REVIEWED（parent 源码审阅）/ PROPOSED（后续改动）；无新候选、无晋级。**
+基线 `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202` 加既有未提交工作树；当前 `crates/splendor-agent/src/heuristic_v02.rs` SHA-256 `c5de237b1c7d183d35dcd6aff6aacf6e184e2edc561764a997d57484e07bdf59`。Owner 本轮询问改进/重构建议，未要求实施；不修改策略、权重、registry、历史产物或并行 UI/M50 工作。
+
+#### Evidence corrections / scope
+
+- 上述 256 局对 aran-v0.2 的 `133–1–122` 对应 **得分率** `(W+0.5T)/N = 52.1484%`，纯胜率为 `51.9531%`；报告 95% CI `[46.09%,58.20%]` 跨 50%。对冻结 v0.2.9 的 `128–3–125` 得分率 `50.5859%`、区间同样跨 50%。不能据此声称稳定反超、与前代等强，或把不同 seed/对手版本的百分比之差当作改动的因果收益。
+- 上文“精准控牌制胜”“落后惩罚显著压低无序预留”“软贵族导致贵族增多”只应读作机制假设和描述性统计；本轮没有单项消融或同根续走证明。终局未买回的预留可能已兑现金币或阻断价值，不等于废牌。跨局颜色均值/标准差不能证明单局是否集中铺色。此追加说明优先于历史解释，历史数字保留。
+- v0.2.6/0.2.7 的负向结果是对当时具体路由/惩罚方案的反证，不是对所有状态记忆或搜索的普遍证伪；但也没有理由直接恢复同一套强制追大牌规则。
+
+#### Source-confirmed gaps and small changes
+
+源码行号均指上述 hash 的 `heuristic_v02.rs`，这是静态控制流核对；没有测量各缺口的实战频率或修复收益。
+
+1. **首要：把“当前领先触发15”与“终局获胜”分开。** `447–448/650` 仅检查我方跨15且高于对手当前分，就给 `1_000_000` 优先级。它不使用座次、对手可买的公开预留或最后一手得分；`379–385` 的终局简化仅处理根观察已经触发终局的情况。裁判 `crates/splendor-core/src/state.rs:790–807,970–981` 明确先手触发后仍轮到后手、同分少购卡胜。建议先补公开一手战术校验：根购买/贵族结算、剩余座次、移除已买目标、对手公开可买最高分与同分规则；未知补牌/暗预留必须标为不确定，不能把“未见反杀”包装成保证胜。也不能无条件拒绝一切存在风险的冲线动作。
+2. **贵族竞速门控不一致。** `310–318` 的启用条件是存在 near noble，而非存在 winnable noble；虽然 `546–554` 的进度只计 winnable，`558–584` 的3分卡/预留购卡奖励仍由 near 条件启用。`761–820` 的目标分组同样可能在 winnable 为空时继续偏向特殊3分牌和高效预留。建议统一门控；新增“所有近贵族均被现有过滤器排除时，特殊奖励归零、目标恢复普通 Score 排序”测试。现有 `winnable_only_race_progress_and_priority` 只覆盖部分进度/排序行为，不覆盖上述全部门控。
+3. **多贵族选择没有对手视角。** `727–730` 只改变己方VP，不更新候选贵族的剩余竞争价值；当前贵族同为3VP，选择动作因此同分并走随机 tie。建议等分时优先取走对手最可能马上兑现的一位，同时保留自己后续可拿的贵族；只作 tie-break，小频率改进，不预估大幅胜率收益。
+4. **“挡终局”的豁免只是局部谓词。** `857–869` 只问被预留牌是否让某个对手当前可买至15；没有比较移走前后对手的其他市场/公开预留完成手，也没有判断对手到15是否真的领先。建议以“对手最佳公开完成手是否下降”描述阻断效果，避免把仍有等价赢法的移牌当成有效防守。
+
+#### Main strategic iteration: improve timing, not force a style
+
+**首选中改：统一目标的购卡收益与预计用时。** `873–882` 的 deficit 是缺币数，不是回合数；同样缺3，三种颜色各1在供应足够时可一手拿齐，同色缺3通常不行。`786–820` 还先按廉价T1/贵族等离散组排序，再取 top-2；组优先可能压过可达性。实际购买用含贵族的 `ΔVP²/(1+折后成本)`（`537–542`），readiness 已用含贵族的 `purchase_vp`（`828–854`），目标排序却仍主要用卡面VP的线性效率（`151–152/810–817`）。规划与兑现并非同一价值口径。
+
+- 建议先保持无跨回合硬锁定、保留所有合法根动作；只替换目标排序/部分接近度，估算 **拿币准备回合 + 一次购买**，考虑五色银行供给、单双拿、金币、10币退币和己方折扣；把卡面分与最多一位贵族放在同一购卡收益函数里。不要简单把缺币数除3叫“真实步数”。
+- 限定未来1–2次自己购买的可见方案，比较“直接拿币买分”与“买折扣再买分”，而不是强罚所有1VP卡。对未来补牌不作确定性假设；估计用时不是全局最优到15时间。
+- **第二顺位：预留机会成本。** `637–645` 的落后仅由当前分差决定，`393–401` 的豁免只认下一次可买最高分的增量；还缺金币实际减少几手、目标可能被抢、预留槽位占用和可替代立即购买等维度。改为按预计兑现用时/最佳替代动作估值，保留拿金、保护目标、阻断对手三种不同用途；不要把总体预留率压低当验收目标。
+- **随后再考虑阶段平滑。** `108–123/355–359` 在己方折扣8→9时强制进入Score，同样9折扣但颜色结构/公开得分路径不同仍同档。可以用有用折扣边际回报和双方公开冲线距离平滑过渡；不与首个目标排序候选捆绑，不重建硬流派状态机。
+- `noble_distance` / `winnable_near_nobles`（`155–186`）比较的是缺折扣数，不是双方实际完成用时。“对手少缺一张”未必代表对手更快；应随时间估计改进为软竞争项，避免在本轮评分中排除一个其实可争的贵族（当前过滤器会逐决策重算，并非永久锁定）。
+
+#### Behavior-preserving refactor
+
+当前约400行 scorer 有23个加法字段。`engine_value`、`conversion_value`、`useful_discount` 等对同一折扣有相关计价；`target_shortfall`、`new_affordable_target`、`cheap_ready`、`scoring_readiness` 也可能同时奖励一次准备动作。这是潜在校准难点，不自动等于错误或可以直接删除。
+
+- 拆成根局面缓存（phase/demand/nobles/threats）、精确可见自身投影、目标选择、经济评分、竞争/终局层；内部结构化结果替代 `(after,bought,secured,reserve_tempo)` 的含义隐式元组。
+- 删除归零 bomb 的无效计算并改正 `multi_noble_race` 等历史命名；若 trace 消费者仍需要 `bomb_reserve` 字段，保留为兼容零字段，而非直接破坏序列化。
+- 可缓存每根相同的对手/贵族数据与“按买入卡排除”的目标结果；不得因缓存改变候选集合、目标排除、整数截断、退币兄弟动作或合法子集一致性。
+- 重构验收是固定观察/合法动作上逐项terms、argmax集合、同分RNG消费一致；权重合并/删除、分期变化和新目标排序是另一个**行为变更**，需独立测试，不称为纯重构。
+- 当前源码仍声明runtime `0.2.9`（`13–17`）；后续对照应使用各自冻结二进制/哈希，不靠活动命令的标签证明版本。候选独立身份与产品晋级不是同一件事；本轮不改registry或默认。
+
+#### Larger option, not the next mandatory step
+
+建立独立的 **v0.3 候选动作 + 有限双方续走重排**：保留少量跨买/拿/预留类别的候选，用同一组信息集采样世界比较；至少覆盖“我→对手→我”的完整回合，贵族选择不算额外Main回合。优先复用现有sampler/引擎/rollout基础设施，不修改冻结S3。每个模拟玩家仍只看自己的Observation，不读取真实牌堆/对手暗牌。
+
+这能研究折扣接力、抢牌和金牌转化，而不是盲目增加启发式奖励。当前 action terms 不是状态价值函数，不能直接当叶值或沿路相加；终局用裁判真实名次，截断续走需另定评价/回退合同。S3证明过它自己的冻结方案能提升旧v0.1，不证明此新方案必胜v0.3；模型偏差、候选覆盖和耗时都需实测。学习型重写/大规模训练不属于本次建议的首刀。
+
+#### Validation / decision / next authorized gate
+
+- 已读当前源码、相关边界测试、裁判终局/观察契约、S4近期正负结果及S3 rollout合同。
+- 实际执行 `cargo test -p splendor-agent heuristic_v02`：**37 passed / 0 failed**；首条工具返回exit1但Cargo文本全通过，随后用PowerShell重定向stderr并显式捕获 `$LASTEXITCODE` 复跑，**CARGO_EXIT_CODE=0**。没有新对战/训练/策略实现，没有因本轮测试给出新强度结论。
+- 修改前 `git diff --check` exit2，仅报告本文件既有EOF空行；本轮追加审阅后重跑 **exit0**。`git check-ignore -v handoff.md` 确认 `.gitignore:12`；不暂存/提交本地handoff。不更改历史结果数字或用户其他改动。
+- 建议执行顺序：**终局战术/贵族门控小修 → 单一目标用时估计候选 → 预留机会成本 → 可选独立rollout**。重构单独保证等价，不要求先做大重构才能试首刀。
+- 若owner授权实施：冻结v0.3基线和一个候选，先用全新双换座seed做短筛，必要时另一段新seed确认，再以aran做交叉对照；沿用/事前明确本轮门槛，不将旧seed当确认集，不把提高预留兑现率或贵族均值当胜率验收。**本轮仅建议；没有占用新seed或授权后续开赛。**
+
+#### Existing-artifact check（explorer 只读核查，非新竞技评测）
+
+- 独立于parent源码审阅，explorer读取两批共 **1,280局** 的config/report/replay，核对逐文件SHA、seed/换座/命令/握手、终局赢家/分数/哈希、plies和原存process/verification记录，0错误；五组10,000次配对bootstrap均精确复现。执行三次内联 `python -B -`（文件/结果核查与bootstrap、两组500局config/report聚合、换座指标算术重组），均exit0；未调用`verify-replay`或重建全部棋局，因此不是本轮重新认证规则合法性。
+- 实物候选 `local-artifacts/s4-heuristic-v030-pilot/splendor-candidate.exe` SHA `82910a59a432371b01462eec5cb335242b7c543f5d3afe46e1a7cdec242bd112`、v029参考 `2e8c37fa…`、aran权重 `25ea3e9d…` 与记录一致。现存活动release程序为另一SHA；当前dirty源码的身份和历史冻结二进制不可仅靠名称等同。新runner赛后才记录这些hash，本次未证明首局前冻结或可复现构建。
+- 对 aran 的最强同对象结果仍是 `local-artifacts/s4-v030-vs-aran-v02/summary.json` 的256局。本地 `local-artifacts/aran-v02-vs-v030-10k` 不存在，相关定向目录未发现10k完成产物；不代表远端没运行，未检查Cloud2。另两批500局（`aran-v021-vs-v030-verified-500`、`aran-v03-ac-vs-v030-500`）重算heuristic战绩分别286–1–213、267–1–232，但对手是v0.2.1/v0.2.2权重且共用seed，不能合并成对原aran-v0.2的确认样本；其CI/逐局回放hash本次未重算。
+- 度量合同 `docs/unified-match-metrics-standard.md:28` 把 `win_rate_percent` 定义为纯胜率，两个runner/result却用计半平得分率；必须分列两者。换座指标JSON缺合同所列 `reserve_redemption_rate_percent`，表格比率可从计数重算。aran本地`tables.md:10`先后手差负号错误，应为+5.08pp；本轮只记录，不修改旧产物。
+- 附件的拿贵族率60.5%/64.5%与现存换座指标重组不符；现存结果为heuristic **61.72%**、aran **66.02%**（见同目录`tables.md`）。贵族均值0.9219/1.0000与主要买牌结构能重组核对，但未由本轮规则重演重新提取。策略建议不依赖这两个错误百分比。
+
+<a id="s411-timing-tactics-refactor"></a>
+
+## S4.11 — 战术小修、用时估值与五层重构（2026-09-28）
+
+**Status: IMPLEMENTED / VERIFIED（本地实现门通过；未作竞技评估或晋级）.** Baseline `main@d2980bf1414a6b2cc1a5e06353eeef98c8b63202` + 既有dirty v0.3源码（SHA `c5de237b1c7d183d35dcd6aff6aacf6e184e2edc561764a997d57484e07bdf59`）；owner明确要求先小改+中改，再按局面公共计算、动作投影、目标选择、经济评分、竞争/终局五层拆分，并清理零bomb、旧命名和重复计算。
+
+### Scope / invariants / implementation plan
+
+1. 小改：公开终局响应与同分少购卡、统一可争贵族门控、多贵族选择的对手侧tie-break、按移牌前后最佳公开完成手评估阻断。保留隐牌/补牌不确定性，不将公开领先冒充确定胜利。
+2. 中改：统一卡面+至多一个贵族的购卡收益，目标按当前可见供给下的准备/购买用时估计排序，比较直接买与折扣接力；预留显式考虑拿金省手、目标保护、槽位和放弃即时购买的机会成本；连续阶段权重替代8→9折扣的估值断崖，贵族竞争不再把缺折扣数当精确回合。具体数值为单个开发候选初值，不是已测最优参数。
+3. 用时模型只估计已知目标、当前银行、金币/预留槽位、10币限制；近期准备步骤有界，远期以明确桶值/供给不足标记，不开展整局搜索，不预测真实未来翻牌或对手暗牌。根动作仍严格来自引擎合法集合；合法子集打分须一致，退币颜色不可合并。
+4. 先完成行为变更及测试并保存本地快照，然后五层重构/缓存；对重构前后的相同观察逐项terms、argmax集合及tie RNG消费做等价检查。API/既有trace字段兼容，`bomb_reserve` 可保留为零字段，但无生产bomb识别计算。不会修改冻结v0.1/S3、registry、UI、M50或历史二进制；沿用现有开发命令兼容身份，未作新版本发布。
+
+### Acceptance / evidence plan
+
+- 单测覆盖公开反杀/座次/同分、被购买/预留移走的牌、至多一位贵族、贵族选择、所有竞速目标不可争时门控、同色与异色用时、银行缺色/金币/满槽/退币、预留真实阻断和替代购买、阶段平滑、信息隔离及合法子集一致性。
+- 引擎投影对拍与2–4人确定性smoke，相关agent/CLI/analysis测试及构建、定向clippy/rustfmt、`git diff --check`；重构等价检查只验证重构，不证明候选更强。
+- 本轮未授权大改rollout/训练/默认切换；不自动启动新对战或占用seed。棋力评估是完成实现后的下一gate，旧竞技结果不可继承为新候选战绩。
+
+### Iteration log
+
+- 开始前复核branch/HEAD/worktree/信息边界；scorer与上一轮审阅SHA一致，已备份至会话scratch `heuristic-v030-before.rs`。所有并行dirty文件保留；handoff仍由`.gitignore:12`忽略。
+- 行为阶段先于重构完成：原单文件实现小改+中改；首次定向回归29/37通过，8项失败来自旧硬门控/旧权重断言，已改为新合同断言并新增7项回归。测试辅助曾调用私有RNG方法导致编译失败，改用公开`index`验证消费，不改变SDK。
+- `cargo test -p splendor-agent heuristic_v02 -- --nocapture` **44 passed / 0 failed, exit0**。2–4人各3条确定性smoke，共720决策、24,197合法动作、181个同分决策，校验tokens/bonuses/VP/bank投影、终局值、argmax选择及tie RNG；FNV-1a评分/动作/argmax/选择指纹`3a7de6c6d622a2a6`。这是实现检查，不是竞技战绩。
+- 重构前快照：session scratch `heuristic-s411-functional.rs`，SHA-256 `d1fb273b8182b5c6c585fddb7d5a1a5bab7628c88fc7e3db65752c3caf2279b5`；测试日志`s411-functional-tests.log`。从此版本开始等价拆分；尚存无效bomb计算和两条unused警告，留在纯清理阶段消除。
+- 五层拆分后定向回归44/44 PASS，评分/argmax/choice指纹与功能快照一致；又将近贵族门控及五色购入折扣的贵族进度移到局面层，删除两处测试无用变量。完整agent+analysis检查exit0；原生产`multi_noble_race`、硬阶段分类、无效bomb识别/评分路径已删除，兼容trace仍有零值`bomb_reserve`。
+- 单次独立静态审查（code-reviewer `82462d92-a537-48ae-bc27-9f8dc714ebd7`）发现1项P2：已经触发终局时，同分购卡未区分是否移走后手唯一公开反杀牌；该问题也存在于功能快照，并非重构漂移。未发现其他有证据支持的API/信息隔离/cache回归；审查员未运行命令。parent随后修复并实测，不追加第二轮审查。
+- **审查修复，非纯重构**：3人seat1已有13分、seat0结束于15分、seat2有14分且只能买蓝6的CardId45；seat1可买CardId45或红6的CardId51，均得3分。旧评分均8,999；修复后移走45得9,000，留下45仍8,999。仅已触发终局、正VP购卡、仍有后手且公开响应未反驳严格领先时，`terminal_lead=1`作tie-break；零VP购卡/最后座次不加，不恢复经济项、不压过1VP差。对手另有可买公开预留57时，该奖励归零。
+- 新反例首次因误把CardId51费用当绿6而在合法性断言失败；按真实目录改为红6后，旧实现准确在优先级断言失败（Cargo exit101，`s411-review-negative-control.log`），修复后通过。纯重构版本另存scratch `s411-refactor-before-review-fix/`；本轮最终45项启发式测试通过，原720决策指纹仍不变——原smoke未覆盖该反例，不能把指纹不变当作修复没有行为变化。
+
+### Final implementation / contracts
+
+入口 [heuristic_v02.rs](../crates/splendor-agent/src/heuristic_v02.rs) 保留policy/API、权重和23项加法trace，编排 `PositionContext → ActionProjection → terminal_terms / compare_targets → economic_terms + score_competition`；测试迁入同名目录的`tests.rs`。
+
+| 层 | 文件 | 责任与复用 |
+|---|---|---|
+| 局面公共计算 | [position.rs](../crates/splendor-agent/src/heuristic_v02/position.rs) | 一次构建阶段/建设权重、可见目标和排序、五色需求、可争贵族/选择价值/五色购卡进度、对手可买公开牌与排名、公开冲线压力、当前可买最高VP与最佳即时购卡替代 |
+| 动作投影 | [projection.rs](../crates/splendor-agent/src/heuristic_v02/projection.rs) | 合法支付、退币、折扣、实际VP、至多一位贵族及移除标记、银行与预留槽；未知盲牌/市场补牌不生成 |
+| 目标选择 | [targets.rs](../crates/splendor-agent/src/heuristic_v02/targets.rs) | 统一购卡价值/准备时间排序，top2目标与最佳下一买方案；购买目标从前后两侧排除，无跨回合锁定 |
+| 经济评分 | [economy.rs](../crates/splendor-agent/src/heuristic_v02/economy.rs) | 真实VP/效率、建设与折扣、用时方案增量、拿金、预留节奏/槽位，保留整数截断顺序 |
+| 竞争与终局 | [competition.rs](../crates/splendor-agent/src/heuristic_v02/competition.rs) | 可争贵族奖励、目标保护、真实公开阻断、预留机会成本、剩余座次公开响应和少购卡同分规则 |
+
+- **时间与目标**：`purchase_turns`的1表示立即购买；2–4是最多3次贪心合法准备加购买；5是超界/无贪心进展，9表示依赖改变折扣或供给。考虑银行颜色、足额单双拿、金币/预留槽、10币退币，不是精确全局到15时间。卡面VP与最多一位贵族使用统一价值口径，折扣接力取最佳后续目标的价值/时间增量之半，不把多个未来目标VP相加。
+- **阶段与贵族**：阶段为公开分数进展、折扣进展和公开冲线压力的clamped per-mille最大值；8→9折扣由375→500平滑变化。可争贵族要求我方缺折扣数不劣于对手，或我方已有可买领取手，或对手没有公开可买领取手；缺折扣数不是精确用时。等VP贵族选择偏向阻断对手立即领取（50，否则近度至多10）。
+- **预留**：分别计金币流动性、短计划且对手不慢于我方时的目标保护、移牌后对手最佳公开获胜完成手下降、最佳立即购卡机会成本及最后槽位成本。没有直接按分差压预留，也不以降低预留率验收。
+- **终局**：新触发的最后座次严格赢排名为1,000,000；非末座未被公开一手响应反驳为100,000，并非保证赢。已触发终局只计实际VP/购卡数/贵族选择及上述1点正VP购卡战术tie-break；经济和未来准备项为零。对手响应移除本手买走/预留的市场牌与假设领取的一位贵族；实际暗预留和未来补牌不读取。
+- **缓存边界**：每次`heuristic_v02_term_scores`独立拥有缓存，无跨回合状态；value key `(CardId, bonuses, removed_noble)`，time key `(CardId, tokens, bonuses, bank, held, reservable)`，denial key `CardId`。相同目标的根排序只算一次；不同退币投影仍分别计价。替代方案来自Observation，而非caller传入的合法动作子集。子集反序对照、23字段计数及序列化加法总和已加入smoke断言。
+- **兼容/信息边界**：public exports与23项trace字段不改；`bomb_reserve`只有兼容字段/加法和零值测试，无生产识别计算。runtime仍为开发兼容`0.2.9`，不能当作冻结二进制身份；测试内可用FullState对拍，生产只读Observation与认证合法动作。
+
+### Validation and evidence
+
+以下均为本地执行且明确捕获native退出码0，不冒充CI/竞技验收：
+
+| 命令 | 结果 |
+|---|---|
+| `cargo test -p splendor-agent -- --nocapture`（审查修复后） | **66 unit +10 integration +5 public API =81 PASS**；包含45项本heuristic测试 |
+| `cargo test -p splendor-analysis --quiet`（审查修复后） | **27+1+6+6+3=43 PASS** |
+| `cargo test -p splendor-cli --bin splendor --quiet`（审查修复后） | **110 PASS** |
+| `cargo check -p splendor-cli --bin splendor`（审查修复后） | **exit0**；不覆盖冻结/活动release二进制 |
+| `cargo clippy -p splendor-agent --all-targets --no-deps -- -D warnings` | **exit0**，本crate无lint警告 |
+| `rustfmt --edition 2021 --check crates/splendor-agent/src/heuristic_v02.rs` | **exit0**，涵盖子模块；未格式化无关文件 |
+| `git diff --check`、`git check-ignore -v handoff.md` | **exit0**；handoff仍`.gitignore:12` local-only |
+
+- 最终smoke固定2–4人、每人数3条确定性轨迹，**720决策 / 24,197合法动作 / 181同分决策**；实际投影对拍、argmax选择及tie RNG消费断言通过，FNV-1a **`3a7de6c6d622a2a6`**不变。纯重构等价基准是本节功能快照，不是旧v0.3；审查新增反例单独证明刻意行为修复。
+- 全analysis套件同时执行了既有M49A collector与Solo15 canonical-64测试；源码使用旧`HeuristicAgentPolicy`，不是本S4.11候选。没有跑新候选竞技比赛/训练、没有注册或消费新竞技seed，不能把那些测试打印的诊断当本候选战绩。
+- 调用方仍有未修改S3/CLI的既有命名/unused/dead-code warnings；不将无关警告修复混入本轮。一次外层工具将Git换行warning报为exit1，但各native check均0；重新捕获输出后整体exit0。源码public字段/入口兼容及文件卫生由scratch脚本`s411-check-contract.py`另行检查。
+- Scratch根：`C:\Users\81489\.pi-desktop\scratch\2e301a64-14ca-433e-8de3-bfc10bc836ca`。保留功能快照、纯重构快照目录、`s411-functional-tests.log`、`s411-refactor-tests.log`、`s411-agent-analysis-tests.log`、反例negative-control、`s411-final-agent-tests.log`、`s411-final-consumers.log`、`s411-final-clippy.log`；这些是会话临时证据，不是发布产物。
+
+最终源码SHA-256（路径均相对`crates/splendor-agent/src/`，未提交身份）：
+
+| 文件 | SHA-256 |
+|---|---|
+| `heuristic_v02.rs` | `316c2576b029275a9c98b52162ab209b7cdc51b992d6e831f2f234a51ef9c9e4` |
+| `heuristic_v02/position.rs` | `82f815074c4bcaee72f134e07fbdfb113ce9b9cfc7ce88b4a05262a4a722290d` |
+| `heuristic_v02/projection.rs` | `58bca2e552edc2b343e2b6f58cf0dd9209e5eb852f9b2fbe94ea450105fe767f` |
+| `heuristic_v02/targets.rs` | `27a6550223438e64e03ab9b5f837727bf753f2048c667a33fc1c9e79dd9d7529` |
+| `heuristic_v02/economy.rs` | `ee9efebb87d9030a3f3e8f902a91e77035fe8f33d00f8426e079613c15d299a7` |
+| `heuristic_v02/competition.rs` | `b96614df6c93b325a1b80cc745da3ce7a12ac91f5337f32dfbbc53f59e99958e` |
+| `heuristic_v02/tests.rs` | `7961c11e7044bfaca99b3743c6e9a39d0e62f996609df3278b613743d4d21f2f` |
+
+### Result / limitations / next authorized gate
+
+**实现与本地回归门PASS；未晋级、未声称棋力提升。** 按owner要求先完成小改+中改，再等价拆层和清理；审查只追加一处有反例的终局tie修复。无实施阻塞，无新版本发布/默认或registry变更。工作树保留原有UI/analysis/M50等并行修改；本轮未stage/commit/push，handoff不得进入Git。
+
+局限：准备估计为固定公开供给下的贪心有界近似，未建双方rollout；公开响应不能覆盖暗牌或实际补牌。为保留功能阶段的估计口径，`reservable`仍在BuyReserved时也减1、ReserveDeck时不由该表达式减1；这是准备模型的粗略可用量，不是精确市场投影，仅在近耗尽场景可能影响估值。未测正式决策时延或新候选对战强度，不沿用旧0.05ms/旧胜率。
+
+下一步仅待owner审阅实现并决定是否授权独立身份冻结及新种子对战评估；不自动调参、开赛、训练、改默认或进入大搜索。评估配置/seed/门槛需届时先明确。
+
+收尾校验：`python -B (Join-Path $env:PI_SCRATCH_DIR 's411-check-contract.py')` **exit0**，确认原/新23字段及public名称/兼容身份一致、七个源码SHA一致、六个链接有效、文件卫生与scratch证据清单齐全；输出`s411-validation-manifest.json`（local scratch）。文档更新后`git diff --check` **exit0**，`git check-ignore -v handoff.md` **exit0**，暂存区为空；branch/HEAD仍`main@d2980bf`。
+
+## S4.12 — 有限两步续走推演重排序 (Limited 2-Ply Continuation Simulation: Me -> Opponent -> Me)
+
+- **Status:** DESIGNED / IN PROGRESS
+- **Baseline:** `heuristic-v0.3.1` (commit snapshot, SHA-256 `6a02b2ab1553e925162778c75763e82981c1f2a02c47fb11003becbda217d7db`)
+- **Core Problem:**
+  - 静态单步启发式（即使如 v0.3.1 极度精细）受限于单步贪心视界，存在以下经典战术盲区：
+    1. **打折连环超车 (Chained Discount Acceleration)**：无法预见当前手买下一张 1 VP 折扣卡后，下一轮即可直接 0 费/低费连环买下另一张 3+ VP 牌；
+    2. **核心筹码断供反压制 (Token Denial Defense)**：拿币动作只看自己缺口，无法精准预见此举是否从公共银行抽走对手下回合斩杀牌所需的最后关键筹码，或反而送给对手拿双币机会；
+    3. **预留终局绝杀与防反杀 (Endgame Overtake Guard)**：无法推演对手在后手的极限爆发能力与公开反杀路线，导致终局前夕无法精确选择“预留卡死对手”还是“抢分冲刺”。
+- **Design Principles & Hard Invariants:**
+  1. **严格信息集约束 (Strict Information Set, Zero Oracle Peeking)**：
+     - 推演必须基于在线 `Observation`，严禁读取未见隐藏牌堆（Deck Refill）；
+     - 模拟推演中，若市场卡牌被购买或预留，该市场槽位在后续推演深度中**严格置为空位 (`None`)**，绝不从底牌盲抽补充伪卡或真卡；
+     - 双方玩家均只能对根节点可见卡牌及自身已知预留卡进行决策；
+  2. **分层候选剪枝 (Categorized Candidate Pruning)**：
+     - 由 `heuristic-v0.3.1` 静态打分初筛候选集：至多选取 Top-3 Buy（买卡）、Top-2 TakeTokens（拿币）、Top-2 Reserve（预留），候选动作总量控制在 4~7 个；
+     - 快速路径（Fast Paths）：非 Main 阶段（如 ChooseNoble、Pass）、合法动作数 $\le 1$ 或候选集大小 $\le 1$ 时，直接由 v0.3.1 做出即时决策，跳过推演；
+  3. **双方交互前向展开 (Me -> Opponent -> Me Rollout)**：
+     - **Ply 0 (Me)**：应用候选动作 $a_0$，推进盘面；若触发终局，直接计算终局收益；
+     - **Ply 1 (Opponent)**：模拟对手在更新后的盘面下，使用轻量快速贪心启发式选择最优回应动作 $a_1$ 并推进盘面；若对手达 15 分，记录终局威胁；
+     - **Ply 2 (Me)**：模拟我方在对手回应后的盘面下，评估所有合法后继动作，选取最优跟进动作 $a_2$ 推进至叶子状态 $S_2$；
+  4. **独立叶子状态评估函数 (Full Board Leaf Evaluator $V(S_2)$)**：
+     - **严禁直接复用动作差分打分作为叶子值**（动作打分不是全局棋局价值函数）；
+     - 设计专门的全盘面叶子估值函数 $V(S_2)$：
+       $$V(S_2) = W_{\text{term}} \cdot \text{TerminalMargin} + W_{\text{vp}} \cdot (VP_{\text{me}} - VP_{\text{opp}}) + W_{\text{tempo}} \cdot (\text{TurnsTo15}_{\text{opp}} - \text{TurnsTo15}_{\text{me}}) + W_{\text{engine}} \cdot \text{BonusEngine} + W_{\text{noble}} \cdot \text{NobleProximity} + W_{\text{denial}} \cdot \text{DenialSafety}$$
+  5. **架构解耦与独立身份**：
+     - 不污染冷冻的 S3 Rollout 与历史 v0.2.x 策略；
+     - 在 `splendor-agent` 中作为独立的两步推演策略模块 `two_ply` 实现，提供对拍测试与性能度量。
+
+<a id="s411-v031-strength-analysis"></a>
+
+## v0.3.1 相对强度归因复核
+
+**Status: REVIEWED（parent 源码分析）/ VERIFIED（既有统计算术与身份哈希）/ EXPLORATORY（强度解释）.** Baseline `main@bcdaca7cb33c53cc43d5dcc9e92c07be3c1aaa57`，保留已有 dirty 工作树。用户询问为什么 v0.3.1 表现出大幅领先；范围是核对冻结身份、同批次双方购卡/得分结构、v0.3.0→v0.3.1 的策略变化及 Two-Ply 的估值差异。不是新竞技实验或独立终审，不改变晋级/默认。
+
+- 不改策略/参数、历史结果、版本名、Studio registry/默认/服务；不启动新对战、训练、消融或 seed 分配，不动并行 Aran/Prism/UI 工作。
+- 分开标注源码事实、现有对局描述统计与机制假设；不把跨批次胜率变化当作配对因果消融，不把 CI 跨 50% 解读成等强。
+- 检查计划：核对七份 v0.3.1 源码与冻结二进制 SHA；按双换座正确归属重组现存指标并核算卡牌分/贵族分；追加结论与验证边界，检查文档链接、diff 与 local-only handoff 规则。
+
+### Iteration / evidence corrections
+
+- 原计划并行只读核对统计，explorer因模型配额429失败，没有提供审阅或验证结果；parent直接完成核对，不据此声称独立review。
+- 本节优先于历史摘要中的“v0.3.2c逼平”“后手劣势完全消失”等措辞。v0.3.1对旧基线优势明确，但对v0.3.2c仍为UNRESOLVED；对S3的先/后手得分率实际为81.25%/71.875%，不是所有对手均在4pp以内。
+- S4.12原设计把v0.3.1称为“无法预见折扣接力/公开终局反杀”过于绝对：S4.11已经实现最佳下一买方案增量和公开一手响应，只是没有完整双方续走树。
+
+### Existing match evidence（每组128 seed双换座，256局）
+
+| v0.3.1的对手 | v0.3.1胜–平–负 | 得分率 | 原result的95%配对bootstrap CI | 解释 |
+|---|---:|---:|---|---|
+| v0.3.0 | 183–0–73 | 71.48% | 66.02–76.56% | EXPLORATORY_STRONGER |
+| v0.2.9 | 189–0–67 | 73.83% | 68.75–78.91% | EXPLORATORY_STRONGER |
+| v0.2.8 | 194–1–61 | 75.98% | 70.31–81.25% | EXPLORATORY_STRONGER |
+| S3 | 196–0–60 | 76.56% | 71.09–82.03% | EXPLORATORY_STRONGER |
+| v0.1 | 214–0–42 | 83.59% | 78.52–88.28% | EXPLORATORY_STRONGER |
+| v0.3.2c | 140–0–116 | 54.69% | 48.44–60.55% | UNRESOLVED；由c的对v0.3.1结果反向换算，非新比赛 |
+
+来源：[v031 result](../benchmarks/s4-heuristic-v031-pilot-v1.result.json)、[v032c result](../benchmarks/s4-heuristic-v032c-pilot-v1.result.json)。得分率为`(W+0.5T)/N`，不是一律纯胜率。CI本轮读取原result，没有重采样；不把跨50%称作等强，也不做跨对手传递排名。
+
+**同一批v0.3.1 vs v0.3.0，按r0候选=P0/r1候选=P1重组：**
+
+| 终局场均 | v0.3.1 | v0.3.0 |
+|---|---:|---:|
+| 0/1/2 VP购卡数 | 7.01 / 2.34 / 2.01 | 8.87 / 3.38 / 1.83 |
+| 3/4/5 VP购卡数 | 0.92 / 0.68 / 0.28 | 0.49 / 0.16 / 0.07 |
+| 总购卡 / 3+VP购卡 | 13.24 / 1.88 | 14.80 / 0.72 |
+| 卡牌分 | 13.2422 | 9.4961 |
+| 贵族数 / 贵族分 | 0.6211 / 1.8633 | 0.9688 / 2.9063 |
+| 总分 | 15.1055 | 12.4023 |
+| 预留 / 买回 / 终局未买回 | 1.90 / 1.02 / 0.88 | 2.41 / 1.51 / 0.89 |
+
+精确分解为`+3.74609375卡牌分 -1.04296875贵族分 = +2.703125总分`。这是得分来源分解，不是各机制的胜率因果贡献。优势不是买牌总量或贵族总量更大；终局预留未买回也几乎相同，不能说“清空废预留”解释了提升。
+
+对S3的同批次也相容：v0.3.1/S3总购卡13.9258/16.7578，3+VP卡2.0039/0.4219，贵族0.6680/1.1367，总分15.4883/11.2305。与历史v0.3.0对S3相比，候选3+VP卡1.3555→2.0039、4VP卡0.3164→0.7305、5VP卡0.1055→0.3281；两批不同seed，只是描述性佐证，不是单项消融。平均game-turn从28.5742变成28.0273，不能包装成缩短多轮的实测结论。
+
+**不能据此建议盲目少买0VP或忽略贵族。** 对v0.3.2c时，v0.3.1反而买更多0VP（7.7227 vs5.1055）、拿更多贵族（0.6992 vs0.3867）；卡牌分12.4414 vs12.8398略低，靠贵族分2.0977 vs1.1602得到总分14.5391 vs14.0000。即v0.3.1视角`-0.3984375卡牌分 +0.9375贵族分 = +0.5390625总分`；竞技强弱仍UNRESOLVED。初版v0.3.2对v0.3.1场均预留5.0234、未买回2.6367、购卡9.9102，显示的是另一侧的失衡，不是越少建引擎越好。
+
+### Source-confirmed mechanisms and interpretation
+
+1. **首要解释假设：选目标与兑现动作的价值/时间口径接通。** [targets.rs](../crates/splendor-agent/src/heuristic_v02/targets.rs) `rank_targets`按`value/turns`排序，`compare_targets`比较最佳下一次购卡方案，贡献一半的计划增量。`purchase_turns`最多三次贪心准备，区分颜色、单双拿、银行、金币/预留槽和10币退币。三色各缺1与同色缺3不再同价；它是有界估计，不是精确最短到15。旧v030快照`select_targets`先按T1/贵族等离散组排序，再按缺币数；旧实际购买早已有VP平方效率，新增核心不是“第一次奖励大分牌”，而是筹币目标终于更贴近兑现价值。
+2. **阶段转换更连续。** [position.rs](../crates/splendor-agent/src/heuristic_v02/position.rs) `phase_weight_with_pressure`综合最高公开VP、自己的折扣数量、对手公开可冲15压力；[economy.rs](../crates/splendor-agent/src/heuristic_v02/economy.rs)同步调节建设收益与得分收益。避免8→9折扣整档切换，也能在对手已逼近冲线时及时改变目标。这支持“足够引擎后转化为分”的解释，但本轮没有测量逐手切换时机或分摊增益。
+3. **预留按机会成本而非固定风格。** [competition.rs](../crates/splendor-agent/src/heuristic_v02/competition.rs)比较即时可买替代、后继计划、短期目标保护、移牌前后对手最佳公开完成手，另有槽位成本。保留拿金/保牌/阻断三种用途。较低总预留数与该机制相容；买回率、未买回数本身不是胜率目标。
+4. **终局与贵族规则减少局部误判。** `terminal_terms/response_rank`检查后续座次、卡牌移除、至多一位贵族、同分少购卡，已触发终局不再奖励未来建设。贵族奖励统一可争门控，选择时有对手侧tie-break。这是源码和既有fixture支持的机制；未知补牌/暗预留仍可能反驳公开领先，未测其实际挽回局数，不能称完美防反杀。
+5. **重构不是强度来源。** 七份当前源码SHA与S4.11记录全部一致；功能快照→五层拆分的历史720决策指纹一致。主要行为改变发生在拆分之前；另有一项带反例的终局tie修复，不把这项修复叫纯重构。
+
+Splendor是到15触发的有限回合竞速。更少无效建设、更多可兑现分值与较少冲线误判可能互相放大，使单局胜负出现明显跃迁；这是与数据吻合的机制解释，不是已验证“每项贡献多少pp”。
+
+### Why deeper search has not automatically won
+
+- S3的冻结rollout底层仍调用旧`heuristic_term_scores`，且根只比较有限提案；更多模拟不会自动获得v0.3.1的目标/用时特征。
+- Two-Ply的`mod.rs`只用v0.3.1筛候选，最终按独立叶值重排，不是对v0.3.1动作价值无损增强。[rollout.rs](../crates/splendor-agent/src/two_ply/rollout.rs)的对手按卡面VP、拿币数量等粗评分选一手，不是用v0.3.1作对手。
+- [evaluator.rs](../crates/splendor-agent/src/two_ply/evaluator.rs)没有实际TurnsTo15求解，主要用当前VP、折扣总数、币总数、贵族距离和可买VP；把多张互斥可买牌的VP相加，又据此判断冲15威胁。`board.terminal || board.end_game_triggered`还把可能有后手的触发局面当终局rank。这些是可见模型局限，不根据本轮统计给它们分配败局比例。
+- 不补未知牌是正确的信息边界，但空槽续走不等同于真实后续市场。加深一个估值/对手模型有偏的续走，不保证比更成熟的单步决策好；这不否定搜索路线。v0.3.2c相对v0.3.1的CI仍跨50%，不能声称v0.3.1对所有搜索版本均断档。
+
+### Validation / provenance / decision
+
+- 实际执行PowerShell `Get-FileHash -Algorithm SHA256`：七份v0.3.1源码与S4.11表全部吻合；冻结v030=`82910a59…`、v031=`6a02b2ab…`、v032c=`60b4c9a7…`与历史记录吻合，命令exit0。没有重构建二进制或证明可复现构建。
+- 实际执行`python -B (Join-Path $env:PI_SCRATCH_DIR 'v031-strength-evidence.py')`，**exit0**：8组/2,048条manifest记录，核对seed×rotation唯一完整、候选归属、winner/score/WTL、16份rotation metrics的样本数/WTL/总分、0–5VP张数和总折扣、卡牌分+3×贵族数、预留计数守恒；4批config/manifest/candidate binary SHA与result绑定一致。未逐个重核底层report/replay哈希，未重新运行`verify-replay`或bootstrap，无新单测/性能/竞技测量。
+- 临时诊断与完整输入SHA索引：会话scratch `v031-strength-evidence.py` / `v031-strength-evidence.json`；JSON SHA-256=`87d4bca690d03022dc57153c8944879fc4e42470a9674752d6a43ac8dde5195f`。两份主要result SHA：v031=`795bc201a7f7835ace92915096beb7ed9d1c6fa66665e9db51843606f19e2257`，v032c=`24844fa19085aa42731705b97449f07a76658b0594cb9475bcba64e939d6a57a`。
+- **结论**：已核验相对旧基线的大幅优势；最可信的归因是价值/用时一致性、建设到得分的平衡及公开终局处理共同起作用。没有单项消融，无法确定主因比例或宣称全局最优。仅建议未来经授权后用固定候选的同根分歧与新seed消融区分这些假设；本轮不新增实验门禁、不启动实验、不改现有M50/M51授权、Play条目或S3默认。

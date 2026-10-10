@@ -21,7 +21,7 @@ mod heuristic_v02;
 mod policy;
 mod runtime;
 mod stable_rng;
-
+pub mod two_ply;
 pub use error::AgentError;
 pub use heuristic::{
     heuristic_term_scores, HeuristicAgentPolicy, HeuristicTermScores, HEURISTIC_AGENT_NAME,
@@ -31,6 +31,7 @@ pub use heuristic_v02::{
     heuristic_v02_term_scores, HeuristicAgentPolicyV02, HeuristicV02Terms,
     HEURISTIC_V02_AGENT_NAME, HEURISTIC_V02_AGENT_VERSION,
 };
+pub use two_ply::{TwoPlyPolicy, TWO_PLY_AGENT_NAME, TWO_PLY_AGENT_VERSION};
 pub use policy::{AgentPolicy, DecisionContext, PublicRequestMeta, RandomAgentPolicy};
 pub use runtime::{run_agent, AgentIdentity};
 pub use stable_rng::StableRng;
@@ -127,5 +128,30 @@ where
         },
         seed,
         HeuristicAgentPolicyV02::new(),
+    )
+}
+
+/// Independent limited two-ply continuation simulation agent.
+pub fn run_two_ply_agent<R, W, E>(
+    input: R,
+    output: W,
+    diagnostics: E,
+    seed: u64,
+) -> Result<(), AgentError>
+where
+    R: std::io::BufRead,
+    W: std::io::Write,
+    E: std::io::Write,
+{
+    run_agent(
+        input,
+        output,
+        diagnostics,
+        AgentIdentity {
+            name: TWO_PLY_AGENT_NAME,
+            version: TWO_PLY_AGENT_VERSION,
+        },
+        seed,
+        TwoPlyPolicy::new(),
     )
 }
