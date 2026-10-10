@@ -267,6 +267,13 @@ pub struct NeuralIsmctsReviewResultV2 {
     pub result: NeuralIsmctsResultV1,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PolicyRecommendationActionScoreV1 {
+    pub action: Action,
+    pub q_milli: i32,
+}
+
 /// The S3 reviewer's honest output: its recommendation, the three frozen
 /// proposals that produced it, and the decision path. Deliberately minimal —
 /// `recorded_action` / `recommended_matches_recorded` live on the frame and
@@ -286,6 +293,10 @@ pub struct PolicyRecommendationReviewResultV2 {
     pub m07_proposal: Option<Action>,
     pub decision_path: S3ReviewPathV2,
     pub recommended_differs_from_base_heuristic: bool,
+    /// Optional action-level Q evaluations (in milli-steps, smaller is better).
+    /// None for standard S3 heuristic rollout reviews; Some for neural Q evaluators (e.g. aran).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_scores: Option<Vec<PolicyRecommendationActionScoreV1>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -649,6 +660,20 @@ impl AnalysisTraceV2 {
                     return Err(invalid(format!(
                         "frame {index} policy recommendation binding mismatch"
                     )));
+                }
+                if let Some(scores) = &result.action_scores {
+                    if scores.is_empty() || scores.len() != frame.legal_actions.len() {
+                        return Err(invalid(format!(
+                            "frame {index} action scores length mismatch"
+                        )));
+                    }
+                    for score in scores {
+                        if !frame.legal_actions.contains(&score.action) {
+                            return Err(invalid(format!(
+                                "frame {index} action score contains illegal action"
+                            )));
+                        }
+                    }
                 }
                 match result.decision_path {
                     S3ReviewPathV2::HeuristicFastPath => {

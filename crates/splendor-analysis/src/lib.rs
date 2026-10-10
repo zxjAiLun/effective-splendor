@@ -31,15 +31,15 @@ pub use neural_trace::{
 };
 pub use review_trace::{
     analysis_trace_hash_v2, build_catalog_v1, review_cache_key_v2, AnalysisFrameV2, AnalysisTraceV2,
-    NeuralIsmctsReviewResultV2, PolicyRecommendationReviewResultV2, ReviewResultV2,
-    ReviewerConfigV2, ReviewerIdentityV2, ReviewerProvenanceV2, ReviewerResultKindV2,
-    ReviewerStatusV2, RootDeterminizationActionStatsV2, RootDeterminizationReviewResultV2,
-    S3ReviewConfigV2, S3ReviewPathV2, M07_REVIEWER_ALGORITHM_VERSION, M07_REVIEWER_DISPLAY_NAME,
-    M07_REVIEWER_ID, M07_REVIEWER_SEED_DERIVATION, M13_REVIEWER_ALGORITHM_VERSION,
-    M13_REVIEWER_DISPLAY_NAME, M13_REVIEWER_ID, M13_REVIEWER_SEED_DERIVATION, REVIEW_TRACE_VERSION,
-    S3_REVIEWER_ALGORITHM_ID, S3_REVIEWER_ALGORITHM_VERSION, S3_REVIEWER_DISPLAY_NAME,
-    S3_REVIEWER_ID, S3_REVIEWER_METRICS, S3_REVIEWER_SEED_DERIVATION, S3_REVIEW_CONFIG_VERSION,
-    S3_REVIEW_ROLLOUT_POLICY,
+    NeuralIsmctsReviewResultV2, PolicyRecommendationActionScoreV1,
+    PolicyRecommendationReviewResultV2, ReviewResultV2, ReviewerConfigV2, ReviewerIdentityV2,
+    ReviewerProvenanceV2, ReviewerResultKindV2, ReviewerStatusV2,
+    RootDeterminizationActionStatsV2, RootDeterminizationReviewResultV2, S3ReviewConfigV2,
+    S3ReviewPathV2, M07_REVIEWER_ALGORITHM_VERSION, M07_REVIEWER_DISPLAY_NAME, M07_REVIEWER_ID,
+    M07_REVIEWER_SEED_DERIVATION, M13_REVIEWER_ALGORITHM_VERSION, M13_REVIEWER_DISPLAY_NAME,
+    M13_REVIEWER_ID, M13_REVIEWER_SEED_DERIVATION, REVIEW_TRACE_VERSION, S3_REVIEWER_ALGORITHM_ID,
+    S3_REVIEWER_ALGORITHM_VERSION, S3_REVIEWER_DISPLAY_NAME, S3_REVIEWER_ID, S3_REVIEWER_METRICS,
+    S3_REVIEWER_SEED_DERIVATION, S3_REVIEW_CONFIG_VERSION, S3_REVIEW_ROLLOUT_POLICY,
 };
 pub use reviewer_registry::{
     ReviewerEntryV1, ReviewerRegistryV1, REVIEWER_MAX_PLAYERS, REVIEWER_MIN_PLAYERS,

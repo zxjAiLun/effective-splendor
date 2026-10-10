@@ -1972,6 +1972,8 @@ fn run_review(
             ReviewerConfigV2::PolicyRecommendation(_) => {
                 if reviewer.id.starts_with("aran") {
                     analyze_replay_aran(replay, reviewer, &mut progress)?
+                } else if reviewer.id.starts_with("prism") {
+                    analyze_replay_prism(replay, reviewer, &mut progress)?
                 } else {
                     analyze_replay_s3_v2_with_progress(replay, reviewer, &mut progress)
                         .map_err(|error| error.to_string())?
@@ -2019,7 +2021,7 @@ fn analyze_replay_aran(
     };
     use splendor_belief::build_information_set_v1;
     use splendor_core::Ruleset;
-    use splendor_learning::{encode_action_semantic_v1, encode_observation_v1};
+    use splendor_learning::encode_observation_v1;
     use crate::m50_agent_command::SemanticQWeights;
 
     let weights_path = if reviewer.id.contains("v01") {
@@ -2051,8 +2053,8 @@ fn analyze_replay_aran(
         let mut action_scores = Vec::with_capacity(legal_actions.len());
 
         for action in &legal_actions {
-            if let Ok(act_feat) = encode_action_semantic_v1(&player_view, action) {
-                let score = weights.score_action(&state_h, &act_feat);
+            if let Ok(act_feat) = weights.encode_action(&player_view, action) {
+                let score = weights.score_action(&state_h, &act_feat)?;
                 let q_milli = (score * 1000.0).round() as i32;
                 action_scores.push(PolicyRecommendationActionScoreV1 {
                     action: action.clone(),
@@ -2076,6 +2078,119 @@ fn analyze_replay_aran(
         }
 
         let visible_history = visible_events(&position.state.log, Audience::Player(actor));
+        let visible_event_count = visible_history.len() as u32;
+        let information_set = build_information_set_v1(Ruleset::base_v1(), &player_view, &visible_history)
+            .map_err(|e| e.to_string())?;
+
+        let recommended_matches = recommended_action == position.recorded_action;
+        frames.push(AnalysisFrameV2 {
+            ply: position.ply,
+            state_hash_before: position.state_hash.clone(),
+            actor,
+            recorded_action: position.recorded_action.clone(),
+            observation_hash: observation_hash(&player_view).as_str().into(),
+            visible_event_count,
+            visible_history_hash: information_set.visible_history_hash().as_str().into(),
+            information_set_hash: information_set.information_set_hash().as_str().into(),
+            player_view: player_view.clone(),
+            referee_reveal: RefereeRevealV1 {
+                seed: position.state.seed,
+                decks: position.state.decks.clone(),
+                players: position.state.players.clone(),
+            },
+            legal_actions: legal_actions.clone(),
+            review_result: ReviewResultV2::PolicyRecommendation(PolicyRecommendationReviewResultV2 {
+                recommended_action: recommended_action.clone(),
+                base_heuristic_action: recommended_action.clone(),
+                n1_proposal: None,
+                m07_proposal: None,
+                decision_path: S3ReviewPathV2::HeuristicFastPath,
+                recommended_differs_from_base_heuristic: false,
+                action_scores: Some(action_scores),
+            }),
+            recommended_matches_recorded: recommended_matches,
+        });
+    }
+
+    let trace = AnalysisTraceV2 {
+        format: ANALYSIS_TRACE_FORMAT.into(),
+        version: REVIEW_TRACE_VERSION,
+        engine_version: ENGINE_VERSION.into(),
+        catalog_version: CATALOG_VERSION.into(),
+        replay_version: replay.version,
+        replay_document_hash,
+        replay_final_state_hash: replay.final_state_hash.to_string(),
+        ruleset_fingerprint: replay.ruleset_fingerprint.to_string(),
+        player_count: replay.player_count,
+        result: replay.result.clone(),
+        reviewer: reviewer.clone(),
+        catalog: build_catalog_v1(),
+        frames,
+    };
+    trace.validate().map_err(|e| e.to_string())?;
+    Ok(trace)
+}
+
+fn analyze_replay_prism(
+    replay: &ReplayV1,
+    reviewer: &ReviewerIdentityV2,
+    progress: &mut dyn FnMut(u32, u32, u32),
+) -> Result<AnalysisTraceV2, String> {
+    use splendor_analysis::{
+        build_catalog_v1, AnalysisFrameV2, PolicyRecommendationActionScoreV1,
+        PolicyRecommendationReviewResultV2, ReviewResultV2, S3ReviewPathV2,
+        ANALYSIS_TRACE_FORMAT, REVIEW_TRACE_VERSION,
+    };
+    use splendor_belief::build_information_set_v1;
+    use splendor_core::Ruleset;
+    use splendor_prism::{encode, EncodedState, PrismWeights};
+
+    let weights_path = if reviewer.id.contains("v011") || reviewer.id.contains("v0.1.1") {
+        PathBuf::from("local-artifacts/prism/v0.1.1/weights.json")
+    } else if reviewer.id.contains("alpha") {
+        PathBuf::from("local-artifacts/prism/alpha-v0.1.0/weights.json")
+    } else {
+        PathBuf::from("local-artifacts/prism/v01/run/weights.json")
+    };
+    let weights = PrismWeights::load(&weights_path)
+        .map_err(|e| format!("load prism reviewer weights from {}: {e}", weights_path.display()))?;
+
+    let verified = verify_replay_trace(replay).map_err(|e| e.to_string())?;
+    let replay_document_hash = replay_document_hash_v1(replay).map_err(|e| e.to_string())?;
+
+    let total = verified.positions.len() as u32;
+    let mut frames = Vec::with_capacity(verified.positions.len());
+
+    for position in &verified.positions {
+        progress(position.ply, total, position.ply);
+
+        let actor = position.recorded_actor;
+        let player_view = position.state.observation(actor);
+        let legal_actions = canonical_order(&position.state.legal_actions());
+        let visible_history = visible_events(&position.state.log, Audience::Player(actor));
+
+        let encoded: EncodedState = encode(&player_view, &visible_history, &legal_actions)
+            .map_err(|e| format!("prism encode failed at ply {}: {e}", position.ply))?;
+        let prediction = weights.predict(&encoded)
+            .map_err(|e| format!("prism predict failed at ply {}: {e}", position.ply))?;
+
+        let mut best_score = f32::NEG_INFINITY;
+        let mut recommended_action = legal_actions[0].clone();
+        let mut action_scores = Vec::with_capacity(legal_actions.len());
+
+        for (action, &logit) in legal_actions.iter().zip(prediction.logits.iter()) {
+            let q_milli = (logit * 1000.0).round() as i32;
+            action_scores.push(PolicyRecommendationActionScoreV1 {
+                action: action.clone(),
+                q_milli,
+            });
+            if logit > best_score {
+                best_score = logit;
+                recommended_action = action.clone();
+            }
+        }
+        action_scores.sort_by(|a, b| b.q_milli.cmp(&a.q_milli));
+
         let visible_event_count = visible_history.len() as u32;
         let information_set = build_information_set_v1(Ruleset::base_v1(), &player_view, &visible_history)
             .map_err(|e| e.to_string())?;

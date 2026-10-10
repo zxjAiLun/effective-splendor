@@ -176,6 +176,7 @@ fn analyze_s3_position(
             decision_path: map_s3_path(decision.path),
             recommended_differs_from_base_heuristic: decision.action
                 != decision.base_heuristic_action,
+            action_scores: None,
         }),
         recommended_matches_recorded: decision.action == position.recorded_action,
     })
