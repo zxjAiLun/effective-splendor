@@ -216,51 +216,86 @@ export default function HumanPlayPage() {
   const passAction = state?.legal_actions.find(action=>action.type==="pass");
   const turnLabel = state?.result ? "FINISHED" : uncertain ? "CHECK SESSION" : busy ? "THINKING…" : yourTurn ? "YOUR TURN" : "WAITING";
 
-  return <main className={state?"human-studio human-cockpit":"human-studio"} data-panel={panel}>
-    <header className="human-topbar">
-      <div><span className="section-kicker">LOCAL 1V1 · TABLE CONTROLS</span><h1>Human Play Studio</h1></div>
-      <div className="human-status">
-        <span className={`status-dot ${hostOnline?"":"offline"}`} />
-        <span className="human-status-text">
-          <span className="human-opponent-name" title={state?.opponent}>{state?`${state.opponent} · ply ${state.ply}`:hostOnline?"Studio Host ready":"Studio Host offline"}</span>
-          {state?<small className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"} · Seed: <code>{state.seed??"Unavailable from this Host version"}</code></small>:null}
-        </span>
+  return <main className={state?"human-studio human-cockpit bga-layout":"human-studio"} data-panel={panel}>
+    <header className="human-topbar bga-topbar">
+      <div className="bga-meta">
+        <span className="section-kicker">SPLENDOR · STUDIO 1V1</span>
+        <h1>Play Studio</h1>
+        {state?<small className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"} · Seed: <code>{state.seed??"—"}</code></small>:null}
       </div>
-      <nav aria-label="Studio navigation">
-        <Link href="/">Games</Link><Link href="/ratings">Ratings</Link><Link href="/ratings/reports">Research reports</Link><Link href="/league">League</Link>
-        {state?<button disabled={busy} onClick={()=>{setState(null);clearPending();setShowReviewers(false);}}>New game</button>:null}
-      </nav>
+
+      {state?<div className={`bga-action-banner ${state.result?"banner-finished":uncertain?"banner-uncertain":busy?"banner-busy":yourTurn?"banner-turn":"banner-waiting"}`}>
+        <strong className="banner-actor">{turnLabel}</strong>
+        <span className="banner-hint">{state.result?`${humanResult(state.result,state.human_seat)} (${state.result.scores.join(" – ")})`:takeHint}</span>
+      </div>:null}
+
+      <div className="bga-top-right">
+        <div className="human-status">
+          <span className={`status-dot ${hostOnline?"":"offline"}`} />
+          <span className="human-status-text">
+            <span className="human-opponent-name" title={state?.opponent}>{state?state.opponent:hostOnline?"Studio Host ready":"Studio Host offline"}</span>
+          </span>
+        </div>
+        <nav aria-label="Studio navigation">
+          <Link href="/">Games</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link>
+          {state?<button disabled={busy} onClick={()=>{setState(null);clearPending();setShowReviewers(false);}}>New game</button>:null}
+        </nav>
+      </div>
     </header>
     {error?<div className="error-banner" role="alert">{error}{uncertain?<button disabled={busy} onClick={()=>void refreshSession()}>Check current session</button>:null}</div>:null}
-    {state?<section className="human-workspace">
+    {state?<section className="human-workspace bga-workspace">
       <div className="human-opponent" aria-label="Opponent resources">
         <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} omitSeat={state.human_seat} />
       </div>
+
       <nav className="human-panels" aria-label="Game panels">
         <button className="table-panel-button" aria-pressed={panel==="table"} aria-controls="play-table" onClick={()=>setPanel("table")}>Table</button>
         <button aria-pressed={panel==="move"} aria-controls="play-side-panel" onClick={()=>setPanel("move")}>{state.result?"Result":"Move"}{selectedCard||pendingCount||selectedDeck!==null?<i aria-label="Selection pending"/>:null}</button>
         <button aria-pressed={panel==="reserves"} aria-controls="play-side-panel" onClick={()=>setPanel("reserves")}>Reserves <b>{humanPlayer?.reserved_count??0}</b></button>
         <button aria-pressed={panel==="history"} aria-controls="play-side-panel" onClick={()=>setPanel("history")}>History</button>
       </nav>
+
+      {/* Main Table Felt Area: Decks + Market Cards + Vertical Bank Gems + Vertical Nobles */}
       <article className="human-board" id="play-table" aria-label="Card table">
-        <section className="table-nobles" aria-label="Available nobles">
-          <div><b>NOBLES</b><small title="Requirements use permanent card discounts">Card discounts</small></div>
-          {state.observation.public.nobles.map(id=>{
-            const noble=nobles.get(id);
-            const action=nobleActions.find(candidate=>candidate.noble===id);
-            return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||controlsDisabled} onClick={()=>{if(action)void play(action);}} key={id}/>:null;
-          })}
-        </section>
-        <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}>
-          <button type="button" className="tier-deck" disabled={controlsDisabled||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)} aria-label={`Blind reserve from tier ${tier+1}, ${state.observation.public.deck_counts[tier]} cards left`}>
-            <span>TIER {tier+1}</span><b>{state.observation.public.deck_counts[tier]}</b><small>RESERVE</small>
-          </button>
-          {state.observation.public.market[tier].map((cardId,slot)=>{
-            const card=cardId==null?null:cards.get(cardId);
-            return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={controlsDisabled} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} discount={humanBonuses} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;
-          })}
-        </div>)}</div>
+        <div className="bga-table-felt">
+          <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}>
+            <button type="button" className={`tier-deck tier-deck-${tier+1}`} disabled={controlsDisabled||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)} aria-label={`Blind reserve from tier ${tier+1}, ${state.observation.public.deck_counts[tier]} cards left`}>
+              <div className="deck-crest">
+                <span className="deck-title">SPLENDOR</span>
+                <span className="deck-tier-label">TIER {tier+1}</span>
+              </div>
+              <b className="deck-count">{state.observation.public.deck_counts[tier]}</b>
+              <small className="deck-reserve-btn">RESERVE</small>
+            </button>
+            {state.observation.public.market[tier].map((cardId,slot)=>{
+              const card=cardId==null?null:cards.get(cardId);
+              return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={controlsDisabled} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} discount={humanBonuses} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;
+            })}
+          </div>)}</div>
+
+          {/* Vertical Gem Bank Column */}
+          <section className="human-bank" aria-label="Gem bank">
+            <div className="bank-header"><b>BANK</b><small>Take gems</small></div>
+            <div className="bank-gems">{GEM_NAMES.map(gem=>{
+              const canAdd=gem!=="gold"&&takeActions.some(action=>TAKE_GEMS.every(colour=>pendingTake[colour]+(colour===gem?1:0)<=gemsOf(action.take)[colour]));
+              return <GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={controlsDisabled||!canAdd} onClick={()=>changePendingGem(gem,1)} key={gem}/>;
+            })}</div>
+          </section>
+
+          {/* Vertical Nobles Column */}
+          <section className="table-nobles" aria-label="Available nobles">
+            <div className="nobles-header"><b>NOBLES</b><small title="Requirements use permanent card discounts">3 VP each</small></div>
+            <div className="nobles-stack">
+              {state.observation.public.nobles.map(id=>{
+                const noble=nobles.get(id);
+                const action=nobleActions.find(candidate=>candidate.noble===id);
+                return noble?<NobleTile noble={noble} selectable={Boolean(action)} disabled={!action||controlsDisabled} onClick={()=>{if(action)void play(action);}} key={id}/>:null;
+              })}
+            </div>
+          </section>
+        </div>
       </article>
+
       <aside className="human-actions" id="play-side-panel" ref={panelRef} tabIndex={-1} aria-label={panel==="reserves"?"Reserved cards":panel==="history"?"Public history":"Current move"}>
         {panel==="reserves"?<section className="reserves-panel">
           <span className="section-kicker">HELD CARDS</span><h2>Your reserve · {humanPlayer?.reserved_count??0}/3</h2>
@@ -298,16 +333,13 @@ export default function HumanPlayPage() {
           {(selectedCard||selectedDeck!==null)&&!contextActions.length?<p>No legal buy or reserve for this selection. Choose another card or take gems.</p>:null}
           {needsReturn?<><p>Choose a legal return to confirm this take. Your hand stays visible below.</p><div className="context-actions return-choices">{exactTakeActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Return</strong><GemStrip gems={actionReturns(action)}/></button>)}</div></>:pendingCount?<p>{takeHint} Use the confirmation below.</p>:null}
           {cardIdle&&nobleActions.length?<div className="context-actions">{nobleActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Choose noble #{String(action.noble)}</strong></button>)}</div>:null}
-          {cardIdle&&!nobleActions.length?<div className="move-guide"><b>Build your next move</b><p>Select a card to buy or reserve it. Click bank gems to take tokens.</p><p>Your tokens and permanent discounts stay at the bottom of the screen.</p></div>:null}
+          {cardIdle&&!nobleActions.length?<div className="move-guide"><b>Build your next move</b><p>Select a card to buy or reserve it. Click bank gems to take tokens.</p><p>Your tokens and permanent discounts stay in the sidebar.</p></div>:null}
           {(pendingCount||selectedCard||selectedDeck!==null)?<button className="cancel-move" disabled={busy} onClick={()=>clearPending()}>Cancel selection</button>:null}
         </section>}
       </aside>
+
       <footer className="human-dock" aria-label="Your resources and table controls">
         {humanPlayer?<PlayerHandCard player={humanPlayer} isActor={yourTurn&&!controlsDisabled} statusLabel={turnLabel}/>:null}
-        <div className="human-bank"><span><b>BANK</b><small>Click to take</small></span><div className="bank-gems">{GEM_NAMES.map(gem=>{
-          const canAdd=gem!=="gold"&&takeActions.some(action=>TAKE_GEMS.every(colour=>pendingTake[colour]+(colour===gem?1:0)<=gemsOf(action.take)[colour]));
-          return <GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={controlsDisabled||!canAdd} onClick={()=>changePendingGem(gem,1)} key={gem}/>;
-        })}</div></div>
         <section className="take-panel" aria-label="Take confirmation">
           <div className="take-selection"><h2>{state.result?"Game complete":pendingCount?`Take ${pendingCount}`:"Take gems"}</h2><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected disabled={busy||uncertain} onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div></div>
           <p role="status">{state.result?"Replay and booking details are in Result.":takeHint}</p>

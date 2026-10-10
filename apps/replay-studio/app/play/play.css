@@ -1,294 +1,1120 @@
-/* M76: a table, not a long document. The opponent, panel switch and resource
-   dock are grid tracks outside the two scrollable content regions. On narrow
-   screens the same board/rail share one track; neither can push the dock away. */
-.human-cockpit {
+/* BGA Splendor Classic Tabletop Layout:
+   - Left: Royal Blue Felt Baize Table (Decks + Market Cards + Vertical Bank Gems + Vertical Nobles)
+   - Right: Clean Player Sidebar (Opponent Hand + Your Hand + Active Action Controls + Reserves + History)
+   - Top: Prominent BGA Action Banner ("YOUR TURN" / "THINKING...")
+*/
+
+.bga-layout {
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: radial-gradient(ellipse at 35% 20%, #173236 0, transparent 65%), var(--canvas);
+  background: #08111a;
 }
-.human-cockpit button:focus-visible, .human-cockpit a:focus-visible {
+.bga-layout button:focus-visible, .bga-layout a:focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
-.human-cockpit button:disabled { cursor: not-allowed; }
-.human-cockpit .human-topbar {
+.bga-layout button:disabled { cursor: not-allowed; }
+
+/* ---------------- Topbar & BGA Action Banner ---------------- */
+.bga-topbar {
   flex: none;
-  min-height: 0;
+  min-height: 52px;
+  display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 18px;
-  padding: 9px 18px;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 16px;
+  background: #0c1622;
+  border-bottom: 1px solid #1c2c3d;
 }
-.human-cockpit .human-topbar > div:first-child { line-height: 1; }
-.human-cockpit .human-topbar h1 { margin: 3px 0 0; font-size: var(--fs-xl); line-height: 1.2; }
-.human-cockpit .human-topbar .section-kicker { font-size: var(--fs-3xs); }
-.human-cockpit .human-topbar nav { gap: 12px; white-space: nowrap; }
-.human-cockpit .human-topbar button { height: auto; min-height: 36px; }
-.human-cockpit .human-status { display: flex; justify-content: center; min-width: 0; }
-.human-cockpit .human-status-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; align-items: center; }
-.human-cockpit .human-opponent-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-2xs); }
-.human-cockpit .human-session-parameters { margin: 0; color: #91a3b2; font: var(--fs-3xs)/1.35 var(--font-geist-mono); }
-.human-cockpit .error-banner { flex: none; padding: 8px 18px; font-size: var(--fs-xs); }
-.human-cockpit .error-banner button { flex: none; padding: 7px 10px; border: 1px solid #e6a5a0; border-radius: 6px; background: #542b30; cursor: pointer; }
-.human-cockpit .human-workspace {
+.bga-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.1;
+}
+.bga-meta h1 { margin: 0; font-size: var(--fs-md); font-weight: 700; color: #d0e0ed; }
+.bga-meta .section-kicker { font-size: var(--fs-3xs); letter-spacing: 0.08em; color: var(--cyan); }
+.bga-meta .human-session-parameters { color: #8295a6; font: var(--fs-3xs)/1.2 var(--font-geist-mono); }
+
+/* The prominent BGA Action Banner spanning center header */
+.bga-action-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.bga-action-banner .banner-actor {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bga-action-banner .banner-hint {
+  font-size: var(--fs-xs);
+  opacity: 0.92;
+}
+
+/* BGA banner states */
+.bga-action-banner.banner-turn {
+  background: #fdfefe;
+  color: #1a2a3a;
+  border: 1px solid #7cb5ec;
+}
+.bga-action-banner.banner-turn .banner-actor {
+  color: #c92a2a; /* BGA red bold callout for active player */
+}
+.bga-action-banner.banner-waiting {
+  background: #172433;
+  color: #9cb2c5;
+  border: 1px solid #283c50;
+}
+.bga-action-banner.banner-waiting .banner-actor {
+  color: #64b5f6;
+}
+.bga-action-banner.banner-busy {
+  background: #1a2736;
+  color: #b0c6d8;
+  border: 1px solid #3273a0;
+}
+.bga-action-banner.banner-busy .banner-actor {
+  color: #ffb74d;
+}
+.bga-action-banner.banner-finished {
+  background: #103325;
+  color: #a3e9c8;
+  border: 1px solid #2e7d5a;
+}
+.bga-action-banner.banner-uncertain {
+  background: #3b171a;
+  color: #ffcdd2;
+  border: 1px solid #c62828;
+}
+
+.bga-top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.bga-top-right .human-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bga-top-right .human-opponent-name {
+  font-size: var(--fs-2xs);
+  color: #9eb2c4;
+}
+.bga-top-right nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bga-top-right nav a {
+  color: #a4b7c6;
+  font-size: var(--fs-xs);
+  text-decoration: none;
+}
+.bga-top-right nav a:hover { color: var(--cyan); }
+.bga-top-right nav button {
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  border: 1px solid #365063;
+  border-radius: 5px;
+  background: #182836;
+  color: #cbe0ef;
+  cursor: pointer;
+}
+
+.bga-layout .error-banner {
+  flex: none;
+  padding: 8px 16px;
+  font-size: var(--fs-xs);
+}
+.bga-layout .error-banner button {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid #e6a5a0;
+  border-radius: 5px;
+  background: #542b30;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* ---------------- Workspace: Table Felt (Left) + Sidebar (Right) ---------------- */
+.bga-workspace {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "opponent tabs" "board rail" "dock dock";
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "board opponent"
+    "board tabs"
+    "board actions"
+    "dock  actions";
+  overflow: hidden;
 }
-.human-cockpit .human-opponent { grid-area: opponent; min-width: 0; padding: 10px 12px 0; }
-.human-cockpit .player-state-strip { grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; }
-.human-cockpit .state-card { display: grid; grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr); gap: 3px 12px; padding: 8px 12px; background: #111c23e8; }
-.human-cockpit .state-card-head { grid-row: 1 / 3; flex-direction: column; align-items: flex-start; gap: 4px; margin: 0; }
-.human-cockpit .state-vp { margin: 0; font-size: var(--fs-2xl); }
-.human-cockpit .state-line { grid-template-columns: minmax(0, 1fr) auto; gap: 3px 6px; margin: 0; }
-.human-cockpit .state-line > small { grid-column: 1 / -1; color: #94a5b3; }
-.human-cockpit .state-gems { gap: 4px; }
-.human-cockpit .state-gem { padding: 1px 5px 1px 2px; }
-.human-cockpit .state-gem i { width: 1.4em; height: 1.4em; }
-.human-cockpit .state-gem b { font-size: var(--fs-xs); }
-.human-cockpit .state-counts { grid-column: 2 / -1; gap: 12px; margin: 0; font-size: var(--fs-3xs); }
-.human-cockpit .state-bonus-total b { font-size: var(--fs-md); }
 
-/* Controls are ordinary buttons, not ARIA tabs: on desktop the table and chosen
-   side panel are visible together. No keyboard tab semantics are simulated. */
-.human-cockpit .human-panels { grid-area: tabs; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 10px 12px 0; }
-.human-cockpit .human-panels button { display: flex; align-items: center; justify-content: center; flex: 1; gap: 5px; min-height: 42px; padding: 8px; border: 1px solid transparent; border-radius: 7px; background: #19232b; color: #a7b7c4; cursor: pointer; font-size: var(--fs-xs); font-weight: 650; }
-.human-cockpit .human-panels button[aria-pressed="true"] { border-color: #368a8e; background: #1b383e; color: #bcffff; }
-.human-cockpit .human-panels button:hover { border-color: #53717d; }
-.human-cockpit .human-panels b { min-width: 17px; border-radius: 4px; background: #0b131a; font: 700 var(--fs-3xs)/1.6 var(--font-geist-mono); }
-.human-cockpit .human-panels i { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
-.human-cockpit .human-panels .table-panel-button { display: none; }
-.human-cockpit .human-board, .human-cockpit .human-actions { min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #3c5964 transparent; }
-.human-cockpit .human-board { grid-area: board; display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border-right: 0; }
-.human-cockpit .human-actions { grid-area: rail; display: block; padding: 10px 12px 12px 0; background: transparent; outline: none; }
-
-/* Market cards keep a separate header, cost area and footer. Costs wrap in at
-   most two rows at the supported card widths, including discounted badges. */
-.human-cockpit .table-nobles { flex: none; margin: 0; padding: 7px 10px; gap: 8px; align-items: center; overflow-x: auto; scrollbar-width: thin; }
-.human-cockpit .table-nobles > div:first-child { min-width: 94px; }
-.human-cockpit .table-nobles > div:first-child small { max-width: 100px; color: #b7ad94; }
-.human-cockpit .table-noble { display: grid; grid-template-columns: auto 1fr; gap: 3px 7px; align-items: center; flex: 0 0 auto; min-width: 106px; min-height: 44px; padding: 5px 7px; }
-.human-cockpit .table-noble-top { display: contents; }
-.human-cockpit .table-noble-top strong { grid-row: 1 / 3; font-size: var(--fs-xl); line-height: 1; }
-.human-cockpit .table-noble-top span { display: none; }
-.human-cockpit .table-noble-name { grid-column: 2; margin: 0; }
-.human-cockpit .table-noble-cost { grid-column: 2; gap: 3px; margin: 0; }
-.human-cockpit .table-noble-cost .gem { width: 1.4em; height: 1.4em; font-size: var(--fs-2xs); }
-.human-cockpit .human-market { flex: 1 0 auto; display: grid; grid-template-rows: repeat(3, minmax(7rem, 1fr)); gap: 9px; margin: 0; }
-.human-cockpit .human-tier { display: grid; grid-template-columns: 76px repeat(4, minmax(0, 1fr)); gap: 9px; min-height: 7rem; overflow: visible; }
-.human-cockpit .tier-deck { min-height: 0; height: 100%; gap: 5px; padding: 6px; border-color: #39535d; }
-.human-cockpit .tier-deck b { font-size: var(--fs-3xl); }
-.human-cockpit .tier-deck small { font-size: var(--fs-3xs); }
-.human-cockpit .development-card { min-height: 8rem; }
-.human-cockpit .human-tier .development-card { min-height: 7rem; height: 100%; }
-.human-cockpit .development-card .development-prestige { top: 8px; left: 9px; font-size: var(--fs-4xl); }
-.human-cockpit .development-card .development-bonus { top: 8px; right: 8px; width: 28px; height: 28px; }
-.human-cockpit .development-card-art { inset: 32px 9px 35px 40%; opacity: .38; }
-.human-cockpit .development-card-cost { left: 8px; right: 8px; bottom: 1.6875rem; flex-direction: row; flex-wrap: wrap; gap: 5px; }
-.human-cockpit .development-card-cost .gem { display: inline-flex; align-items: center; justify-content: center; flex: none; width: auto; min-width: 1.8em; height: 1.8em; padding: 0 4px; border-width: 1px; font-size: var(--fs-2xs); border-radius: 999px; }
-.human-cockpit .development-card-cost .gem em { position: static; transform: none; margin-left: 4px; padding: 0 2px; min-width: 1em; font-size: var(--fs-3xs); line-height: 1.3; }
-.human-cockpit .development-card-cost .gem.covered { opacity: .65; }
-.human-cockpit .development-card-meta { bottom: .375rem; left: 8px; right: 8px; font-size: var(--fs-3xs); }
-.human-cockpit .development-card-meta span { font: inherit; color: inherit; }
-.human-cockpit .development-card-action { bottom: 4px; right: 50%; transform: translateX(50%); padding: 2px 4px; letter-spacing: 0; }
-.human-cockpit .development-card-action:not(.buyable) { display: none; }
-.human-cockpit .development-card:has(.buyable) { border-color: #508d7b; }
-
-/* Side panels can grow or scroll; the dock cannot. No unbounded return list is
-   placed in the footer, even when the Host offers dozens of legal returns. */
-.human-cockpit .pending-panel, .human-cockpit .reserves-panel, .human-cockpit .history-panel { padding: 14px; min-height: 100%; border: 1px solid #30434d; border-radius: 9px; background: #111b23ed; }
-.human-cockpit .human-actions h2 { margin: 5px 0 12px; font-size: var(--fs-xl); }
-.human-cockpit .human-actions p { color: #9caebb; font-size: var(--fs-xs); line-height: 1.55; }
-.human-cockpit .human-actions .section-kicker { font-size: var(--fs-3xs); }
-.human-cockpit .selected-card-preview { width: min(100%, 190px); max-width: none; margin: 0 auto 14px; }
-.human-cockpit .selected-card-preview .development-card { min-height: 10rem; }
-.human-cockpit .context-actions { gap: 7px; }
-.human-cockpit .context-actions > button { min-height: 44px; padding: 9px 10px; flex-wrap: wrap; }
-.human-cockpit .context-actions strong { font-size: var(--fs-sm); }
-.human-cockpit .context-actions > button > span { display: flex; align-items: center; gap: 5px; }
-.human-cockpit .return-gem { display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px 1px 2px; border-radius: 12px; border: 1px solid #47606b; color: #e8edf3; }
-.human-cockpit .return-gem i { width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; background: var(--gem-color); font: 700 var(--fs-3xs) var(--font-geist-mono); color: #fff; }
-.human-cockpit .return-gem.table-gem-white i { color: #20242b; }
-.human-cockpit .move-guide { margin-top: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
-.human-cockpit .move-guide > b { font-size: var(--fs-sm); color: #c2d2dd; }
-.human-cockpit .cancel-move { min-height: 40px; }
-.human-cockpit .human-result { min-height: 100%; padding: 16px; }
-.human-cockpit .human-result > strong { font-size: var(--fs-3xl); }
-.human-cockpit .human-booking strong { font: inherit; color: inherit; }
-.human-cockpit .human-booking > .section-kicker { display: block; margin-bottom: 6px; }
-.human-cockpit .human-booking > small { display: block; color: #9caebb; line-height: 1.55; }
-.human-cockpit .reserved-tray { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 0; border: 0; background: transparent; }
-.human-cockpit .reserved-tray .development-card { min-height: 9rem; }
-.human-cockpit .reserved-tray .development-card-action { right: 6px; bottom: 1.5625rem; transform: none; }
-.human-cockpit .reserved-tray .development-card-cost { bottom: 3rem; gap: 4px; }
-.human-cockpit .reserved-tray .development-card .development-prestige { font-size: var(--fs-xl); }
-.human-cockpit .reserved-tray .development-bonus { width: 23px; height: 23px; }
-.human-cockpit .human-score { display: flex; flex-direction: column; margin: 16px 0 0; gap: 12px; }
-.human-cockpit .human-score > div { display: block; padding: 0; border: 0; background: transparent; }
-.human-cockpit .opponent-reserve { margin: 0; }
-.human-cockpit .reserved-heading { align-items: flex-start; flex-direction: column; gap: 3px; margin: 0; }
-.human-cockpit .reserved-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-.human-cockpit .reserved-cards .development-card { width: 100%; min-height: 8.5rem; }
-.human-cockpit .reserved-cards .development-card .development-prestige { font-size: var(--fs-xl); }
-.human-cockpit .reserved-cards .development-bonus { width: 23px; height: 23px; }
-.human-cockpit .reserved-cards .development-card-hidden { font-size: var(--fs-3xs); text-align: center; }
-.human-cockpit .owned-nobles { display: flex; flex-wrap: wrap; gap: 6px; }
-.human-cockpit .owned-nobles > small { flex: 0 0 100%; }
-.human-cockpit .owned-nobles .table-noble { min-width: 92px; min-height: 0; }
-.human-cockpit .human-private { margin-top: 16px; padding: 10px; }
-.human-cockpit .human-private p { font-size: var(--fs-3xs); }
-.human-cockpit .history-panel li { grid-template-columns: 42px minmax(0, 1fr); padding: 8px; gap: 7px; }
-.human-cockpit .history-entry { min-width: 0; width: 100%; }
-.human-cockpit .history-entry > strong { font-size: var(--fs-2xs); }
-.human-cockpit .history-panel .structured-action { margin-top: 4px; width: 100%; max-width: none; }
-.human-cockpit .history-panel .action-body { flex-direction: row; }
-.human-cockpit .history-panel .development-card { min-height: 8rem; }
-
-/* Fixed resources: every colour, including zero, remains visible. */
-.human-cockpit .human-dock { grid-area: dock; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid #38525b; background: #0b151cee; box-shadow: 0 -8px 28px #0005; }
-.human-cockpit .hand-card, .human-cockpit .take-panel, .human-cockpit .human-bank { min-width: 0; padding: 8px 10px; border: 1px solid #30434f; border-radius: 9px; background: #14212a; }
-.human-cockpit .hand-card { display: flex; flex-direction: column; gap: 7px; }
-.human-cockpit .hand-card-actor { border-color: #368b87; box-shadow: inset 3px 0 var(--cyan); }
-.human-cockpit .hand-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.human-cockpit .hand-title { color: #bbced9; font: 800 var(--fs-3xs) var(--font-geist-mono); letter-spacing: .06em; }
-.human-cockpit .hand-turn, .human-cockpit .hand-wait { padding: 2px 5px; border-radius: 4px; background: #193a39; color: #9df3d9; font: 700 var(--fs-3xs) var(--font-geist-mono); font-style: normal; }
-.human-cockpit .hand-wait { background: #26313b; color: #c5d0da; }
-.human-cockpit .hand-vp { margin-left: auto; font: 800 var(--fs-xl) var(--font-geist-mono); }
-.human-cockpit .hand-vp small { color: #92a5b2; font-size: var(--fs-3xs); }
-.human-cockpit .hand-counts { display: none; }
-.human-cockpit .hand-line { display: grid; grid-template-columns: 4.125rem minmax(0, 1fr) auto; align-items: center; gap: 6px; }
-.human-cockpit .hand-line > small { color: #94a5b3; font: 700 var(--fs-3xs) var(--font-geist-mono); }
-.human-cockpit .hand-line .state-gems { flex-wrap: wrap; }
-.human-cockpit .state-gem-empty { background: #0f1b23; border-color: #263640; }
-.human-cockpit .state-gem-empty b { color: #a0aebb; }
-.human-cockpit .human-bank { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; overflow: visible; }
-.human-cockpit .human-bank > span { width: auto; margin: 0; flex-direction: row; align-items: baseline; gap: 9px; }
-.human-cockpit .human-bank > span b, .human-cockpit .human-bank > span small { color: #a6b8c5; font-size: var(--fs-3xs); }
-.human-cockpit .bank-gems { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
-.human-cockpit .bank-gems .table-gem { display: flex; justify-content: center; min-width: 0; width: 100%; min-height: 44px; height: auto; padding: 4px; gap: 4px; border-radius: 8px; cursor: pointer; }
-.human-cockpit .bank-gems .table-gem span, .human-cockpit .pending-gems .table-gem span { display: none; }
-.human-cockpit .table-gem i { display: grid; place-items: center; font: 700 var(--fs-3xs) var(--font-geist-mono); font-style: normal; }
-.human-cockpit .table-gem-white i { color: #20242b; }
-.human-cockpit .bank-gems .table-gem b { margin: 0; font-size: var(--fs-md); }
-.human-cockpit .bank-gems .table-gem:disabled { opacity: .72; cursor: not-allowed; }
-.human-cockpit .bank-gems .table-gem:not(:disabled):hover { border-color: var(--cyan); background: #203a44; }
-.human-cockpit .take-panel { display: flex; flex-direction: column; gap: 5px; }
-.human-cockpit .take-selection { display: flex; align-items: center; gap: 8px; min-height: 24px; }
-.human-cockpit .take-panel h2 { margin: 0; font-size: var(--fs-sm); white-space: nowrap; }
-.human-cockpit .take-panel > p { margin: 0; color: #a0b2c0; font-size: var(--fs-3xs); line-height: 1.4; }
-.human-cockpit .pending-gems { gap: 4px; }
-.human-cockpit .pending-gems .table-gem { display: flex; gap: 3px; padding: 2px 5px; min-width: 0; height: 30px; }
-.human-cockpit .pending-gems .table-gem b { font-size: var(--fs-2xs); }
-.human-cockpit .take-buttons { display: flex; gap: 6px; margin-top: auto; }
-.human-cockpit .take-buttons button { margin: 0; min-height: 40px; padding: 7px 10px; font-size: var(--fs-xs); }
-.human-cockpit .take-buttons .confirm-move { flex: 1; }
-.human-cockpit .take-buttons .cancel-move { flex: 0 0 40px; width: 40px; font-size: var(--fs-xl); }
-.human-cockpit .confirm-move:disabled { border-color: #35514e; background: #19302f; color: #93aaa9; }
-
-@media (max-height: 800px) and (min-width: 1101px) {
-  .human-cockpit .state-counts { display: none; }
+.bga-workspace .human-opponent {
+  grid-area: opponent;
+  padding: 8px 12px 0;
 }
+
+/* Navigation tabs in Sidebar */
+.bga-workspace .human-panels {
+  grid-area: tabs;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 0;
+}
+.bga-workspace .human-panels button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 4px;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #14212c;
+  color: #9cb2c4;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.bga-workspace .human-panels button[aria-pressed="true"] {
+  border-color: #368a8e;
+  background: #1a3840;
+  color: #c4ffff;
+}
+.bga-workspace .human-panels b {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #09121a;
+  font: 700 var(--fs-3xs)/1.5 var(--font-geist-mono);
+}
+.bga-workspace .human-panels i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+.bga-workspace .human-panels .table-panel-button {
+  display: none;
+}
+
+/* ---------------- Table Felt Baize Surface ---------------- */
+.bga-workspace .human-board {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #2b5175 transparent;
+  padding: 8px 10px;
+}
+
+.bga-table-felt {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px 112px;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid #1a3f64;
+  /* Authentic deep royal navy felt cloth texture */
+  background: radial-gradient(ellipse at 42% 46%, #17426b 0%, #102e4d 60%, #0a1b2d 100%);
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Market (3 Tiers x 4 Cards + Decks) */
+.bga-table-felt .human-market {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(7rem, 1fr));
+  gap: 9px;
+  min-width: 0;
+}
+.bga-table-felt .human-tier {
+  display: grid;
+  grid-template-columns: 80px repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  min-height: 7rem;
+}
+
+/* BGA Splendor Deck Card Back */
+.bga-table-felt .tier-deck {
+  height: 100%;
+  min-height: 7rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 5px;
+  border-radius: 7px;
+  border-width: 2px;
+  border-style: solid;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.bga-table-felt .tier-deck:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+.bga-table-felt .tier-deck-3 {
+  background: linear-gradient(135deg, #17324c 0%, #0c1c2c 100%);
+  border-color: #5591c2;
+}
+.bga-table-felt .tier-deck-2 {
+  background: linear-gradient(135deg, #442a15 0%, #221508 100%);
+  border-color: #d19445;
+}
+.bga-table-felt .tier-deck-1 {
+  background: linear-gradient(135deg, #153822 0%, #091c10 100%);
+  border-color: #4da36c;
+}
+.bga-table-felt .deck-crest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.bga-table-felt .deck-title {
+  font: 700 var(--fs-3xs) var(--font-geist-mono);
+  letter-spacing: 0.12em;
+  color: #e2c079;
+}
+.bga-table-felt .deck-tier-label {
+  font-size: var(--fs-3xs);
+  color: #adc4d6;
+  font-weight: 600;
+}
+.bga-table-felt .deck-count {
+  font: 800 var(--fs-3xl) var(--font-geist-mono);
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.bga-table-felt .deck-reserve-btn {
+  font: 700 var(--fs-3xs) var(--font-geist-mono);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #e0f2fe;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Development Cards inside Table Felt */
+.bga-table-felt .development-card {
+  min-height: 7rem;
+  height: 100%;
+}
+.bga-table-felt .development-card .development-prestige { top: 7px; left: 8px; font-size: var(--fs-4xl); }
+.bga-table-felt .development-card .development-bonus { top: 7px; right: 7px; width: 26px; height: 26px; }
+.bga-table-felt .development-card-art { inset: 30px 8px 32px 38%; opacity: .36; }
+/* General Card Geometry inside play cockpit */
+.bga-layout .development-card-cost {
+  left: 8px;
+  right: 8px;
+  bottom: 1.6875rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bga-layout .development-card-cost .gem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: auto;
+  min-width: 1.8em;
+  height: 1.8em;
+  padding: 0 4px;
+  border-width: 1px;
+  font-size: var(--fs-2xs);
+  border-radius: 999px;
+}
+.bga-layout .development-card-cost .gem em {
+  position: static;
+  transform: none;
+  margin-left: 3px;
+  padding: 0 2px;
+  min-width: 1em;
+  font-size: var(--fs-3xs);
+  line-height: 1.3;
+}
+.bga-layout .development-card-cost .gem.covered { opacity: .65; }
+.bga-layout .development-card-meta {
+  bottom: .375rem;
+  left: 7px;
+  right: 7px;
+  font-size: var(--fs-3xs);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bga-layout .development-card-meta span:last-child {
+  display: none; /* Hide slot label in market cards */
+}
+.bga-layout .development-card-action {
+  bottom: 3px;
+  right: 5px;
+  left: auto;
+  transform: none;
+  padding: 1px 5px;
+  letter-spacing: 0;
+  font-size: var(--fs-3xs);
+  border-radius: 3px;
+}
+.bga-layout .development-card-action:not(.buyable) { display: none; }
+.bga-layout .development-card:has(.buyable) { border-color: #508d7b; }
+
+/* ---------------- Vertical Gem Bank Column ---------------- */
+.bga-table-felt .human-bank {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid #23486a;
+  background: #0d2033;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.45);
+}
+.bga-table-felt .bank-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.bga-table-felt .bank-header b { font-size: var(--fs-3xs); letter-spacing: 0.08em; color: #b0cce3; }
+.bga-table-felt .bank-header small { display: none; }
+.bga-table-felt .bank-gems {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Round Circular Gem Chips (BGA Style) */
+.bga-table-felt .bank-gems .table-gem {
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.28);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.bga-table-felt .bank-gems .table-gem:hover:not(:disabled) {
+  transform: scale(1.08);
+  filter: brightness(1.15);
+}
+.bga-table-felt .bank-gems .table-gem:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.bga-table-felt .bank-gems .table-gem span { display: none; }
+.bga-table-felt .bank-gems .table-gem i {
+  font: 700 var(--fs-3xs) var(--font-geist-mono);
+  font-style: normal;
+  line-height: 1;
+}
+.bga-table-felt .bank-gems .table-gem b {
+  font: 800 var(--fs-sm) var(--font-geist-mono);
+  line-height: 1;
+}
+
+/* ---------------- Vertical Nobles Column ---------------- */
+.bga-table-felt .table-nobles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid #23486a;
+  background: rgba(10, 24, 38, 0.75);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.45);
+}
+.bga-table-felt .nobles-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.bga-table-felt .nobles-header b { font-size: var(--fs-3xs); letter-spacing: 0.08em; color: #e5cf92; }
+.bga-table-felt .nobles-header small { display: none; }
+.bga-table-felt .nobles-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.bga-table-felt .table-noble {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 6px;
+  align-items: center;
+  min-height: 48px;
+  min-width: 0;
+  width: 100%;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: #192736;
+  border: 1px solid #3d5873;
+}
+.bga-table-felt .table-noble-top { display: contents; }
+.bga-table-felt .table-noble-top strong { grid-row: 1 / 3; font-size: var(--fs-xl); line-height: 1; color: #ffd54f; }
+.bga-table-felt .table-noble-top span { display: none; }
+.bga-table-felt .table-noble-name { grid-column: 2; margin: 0; font-size: var(--fs-3xs); color: #8fa6ba; }
+.bga-table-felt .table-noble-cost { grid-column: 2; gap: 3px; margin: 0; }
+.bga-table-felt .table-noble-cost .gem { width: 1.3em; height: 1.3em; font-size: var(--fs-3xs); }
+
+/* ---------------- Right Sidebar: Players + Actions + History ---------------- */
+.bga-workspace .human-actions {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  background: #0d151e;
+  border-left: 1px solid #1a2938;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #365063 transparent;
+}
+
+/* Opponent Hand in Sidebar */
+.bga-workspace .human-opponent {
+  padding: 0;
+}
+.bga-workspace .player-state-strip {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+}
+.bga-workspace .state-card {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #283e52;
+  background: #131f2b;
+}
+.bga-workspace .state-card-head {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0;
+}
+.bga-workspace .state-vp { font-size: var(--fs-2xl); font-weight: 800; color: #ffd54f; }
+.bga-workspace .state-line {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  gap: 3px 6px;
+  align-items: center;
+  margin: 0;
+}
+.bga-workspace .state-line > small { color: #8fa4b5; font-size: var(--fs-3xs); font-weight: 700; }
+.bga-workspace .state-gems { gap: 3px; }
+.bga-workspace .state-gem { padding: 1px 4px 1px 2px; }
+.bga-workspace .state-gem i { width: 1.3em; height: 1.3em; }
+.bga-workspace .state-gem b { font-size: var(--fs-2xs); }
+.bga-workspace .state-counts { display: none; }
+.bga-workspace .state-bonus-total b { font-size: var(--fs-sm); }
+
+.bga-workspace .human-score { display: flex; flex-direction: column; margin: 12px 0 0; gap: 10px; }
+.bga-workspace .human-score > div { display: block; padding: 0; border: 0; background: transparent; }
+.bga-workspace .owned-nobles { display: flex; flex-wrap: wrap; gap: 6px; }
+.bga-workspace .owned-nobles > small { flex: 0 0 100%; font-size: var(--fs-3xs); color: #8fa6ba; }
+.bga-workspace .owned-nobles .table-noble { min-width: 90px; min-height: 0; padding: 4px 6px; }
+
+/* Opponent Reserves inside Sidebar */
+.bga-workspace .opponent-reserve {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #111a24;
+  border: 1px solid #233545;
+}
+.bga-workspace .reserved-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.bga-workspace .reserved-heading small { font-size: var(--fs-3xs); color: #8fa6ba; }
+.bga-workspace .reserved-heading em { font-size: var(--fs-3xs); color: #6a8296; }
+.bga-workspace .reserved-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.bga-workspace .reserved-cards .development-card {
+  width: 100%;
+  min-height: 8.5rem;
+}
+.bga-workspace .reserved-cards .development-card .development-prestige { font-size: var(--fs-xl); }
+.bga-workspace .reserved-cards .development-bonus { width: 23px; height: 23px; }
+.bga-workspace .reserved-cards .development-card-hidden { font-size: var(--fs-3xs); text-align: center; }
+.bga-workspace .reserved-cards .development-card-cost { bottom: 3rem; gap: 4px; }
+
+/* Human Hand Dock & Controls */
+.bga-workspace .human-board {
+  grid-area: board;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #2b5175 transparent;
+  padding: 10px;
+}
+.bga-workspace .human-actions {
+  grid-area: actions;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  background: #0d151e;
+  border-left: 1px solid #1a2938;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #365063 transparent;
+}
+.bga-workspace .human-dock {
+  grid-area: dock;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #0b141d;
+  border-top: 1px solid #1c2e40;
+  border-right: 1px solid #1a2938;
+}
+.bga-workspace .human-dock .hand-card {
+  flex: 1;
+}
+.bga-workspace .human-dock .take-panel {
+  flex: 0 0 320px;
+}
+
+.bga-workspace .hand-card {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #2b556b;
+  background: #132431;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bga-workspace .hand-card-actor {
+  border-color: #388e85;
+  box-shadow: inset 3px 0 var(--cyan);
+}
+.bga-workspace .hand-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bga-workspace .hand-title { color: #bbced9; font: 800 var(--fs-3xs) var(--font-geist-mono); }
+.bga-workspace .hand-turn, .bga-workspace .hand-wait {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #193a39;
+  color: #9df3d9;
+  font: 700 var(--fs-3xs) var(--font-geist-mono);
+  font-style: normal;
+}
+.bga-workspace .hand-wait { background: #24313d; color: #a4b5c4; }
+.bga-workspace .hand-vp { margin-left: auto; font: 800 var(--fs-xl) var(--font-geist-mono); color: #ffd54f; }
+.bga-workspace .hand-counts { display: none; }
+.bga-workspace .hand-line {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+.bga-workspace .hand-line > small { color: #8fa4b5; font: 700 var(--fs-3xs) var(--font-geist-mono); }
+.bga-workspace .hand-line .state-gems { flex-wrap: wrap; gap: 3px; }
+.bga-workspace .state-gem-empty { background: #0e1a23; border-color: #21323d; }
+.bga-workspace .state-gem-empty b { color: #7f919f; }
+
+/* Take gems confirmation panel in Sidebar */
+.bga-workspace .take-panel {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #233c4f;
+  background: #11202b;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+.bga-workspace .take-selection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.bga-workspace .take-selection h2 {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: #cbe0ef;
+  white-space: nowrap;
+}
+.bga-workspace .pending-gems {
+  display: flex;
+  gap: 3px;
+  flex-wrap: nowrap;
+}
+.bga-workspace .pending-gems .table-gem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  height: 24px;
+  min-width: 0;
+  border-radius: 12px;
+}
+.bga-workspace .pending-gems .table-gem span { display: none; }
+.bga-workspace .take-panel > p { margin: 0; color: #8fa6ba; font-size: var(--fs-3xs); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bga-workspace .take-buttons { display: flex; gap: 6px; }
+.bga-workspace .take-buttons button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  border-radius: 6px;
+}
+.bga-workspace .take-buttons .confirm-move {
+  flex: 1;
+  background: #1e5a52;
+  border: 1px solid #369c8e;
+  color: #e6fffa;
+  cursor: pointer;
+}
+.bga-workspace .take-buttons .confirm-move:disabled {
+  background: #162a28;
+  border-color: #264743;
+  color: #6d8a87;
+  cursor: not-allowed;
+}
+.bga-workspace .take-buttons .cancel-move {
+  flex: 0 0 38px;
+  width: 38px;
+  background: #2b1f24;
+  border: 1px solid #633b47;
+  color: #ffccd5;
+  font-size: var(--fs-lg);
+  cursor: pointer;
+}
+
+/* Active Context Selection Box (Cards / Returns / Result) */
+.bga-workspace .pending-panel, .bga-workspace .reserves-panel, .bga-workspace .history-panel {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #23384a;
+  background: #111d27;
+}
+.bga-workspace .human-actions h2 { margin: 3px 0 8px; font-size: var(--fs-sm); color: #d0e2ee; }
+.bga-workspace .human-actions .section-kicker { font-size: var(--fs-3xs); color: var(--cyan); }
+.bga-workspace .selected-card-preview {
+  width: min(100%, 160px);
+  margin: 0 auto 10px;
+}
+.bga-workspace .selected-card-preview .development-card { min-height: 9rem; }
+.bga-workspace .context-actions { display: flex; flex-direction: column; gap: 6px; }
+.bga-workspace .context-actions > button {
+  min-height: 40px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  border: 1px solid #2f546b;
+  background: #182e3d;
+  color: #e0f2fe;
+  cursor: pointer;
+}
+.bga-workspace .context-actions > button:hover:not(:disabled) {
+  border-color: var(--cyan);
+  background: #1f3d52;
+}
+.bga-workspace .context-actions strong { font-size: var(--fs-xs); }
+.bga-workspace .return-choices { display: flex; flex-direction: column; gap: 5px; }
+.bga-workspace .return-gem {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 10px;
+  border: 1px solid #4a687d;
+}
+.bga-workspace .return-gem i {
+  width: 15px; height: 15px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--gem-color); font: 700 var(--fs-3xs) var(--font-geist-mono); color: #fff;
+}
+.bga-workspace .return-gem.table-gem-white i { color: #111; }
+
+/* Reserves in Sidebar */
+.bga-workspace .reserved-tray {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.bga-workspace .reserved-tray .development-card { min-height: 9rem; }
+.bga-workspace .reserved-tray .development-card-action { right: 4px; bottom: 1.4rem; }
+.bga-workspace .reserved-tray .development-card-cost { bottom: 2.8rem; gap: 3px; }
+
+/* History in Sidebar */
+.bga-workspace .history-panel ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 5px; }
+.bga-workspace .history-panel li {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: #14212c;
+  border-left: 3px solid #365064;
+  gap: 6px;
+  font-size: var(--fs-3xs);
+}
+.bga-workspace .history-panel li.mine { border-left-color: var(--cyan); }
+.bga-workspace .history-panel li.opponent { border-left-color: #f59e0b; }
+.bga-workspace .history-entry { min-width: 0; width: 100%; }
+
+/* Game Result in Sidebar */
+.bga-workspace .human-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.bga-workspace .human-result > strong { font-size: var(--fs-2xl); color: #4ade80; }
+.bga-workspace .human-booking > .section-kicker { display: block; margin-bottom: 4px; }
+.bga-workspace .human-booking > small { display: block; color: #8fa6ba; line-height: 1.4; }
+
+/* ---------------- Responsive Fallbacks (<= 1100px) ---------------- */
 @media (max-width: 1100px) {
-  .human-cockpit .human-topbar { grid-template-columns: auto 1fr auto; gap: 12px; }
-  .human-cockpit .human-topbar nav a:not(:first-child) { display: none; }
-  .human-cockpit .human-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent" "tabs" "board" "dock"; }
-  .human-cockpit .human-panels { padding-top: 7px; }
-  .human-cockpit .human-panels .table-panel-button { display: flex; }
-  .human-cockpit .human-actions { grid-area: board; padding: 10px 12px; display: none; }
-  .human-cockpit .human-board { border: 0; }
-  .human-cockpit:not([data-panel="table"]) .human-board { display: none; }
-  .human-cockpit:not([data-panel="table"]) .human-actions { display: block; }
-  .human-cockpit .human-dock { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
-  .human-cockpit .hand-card { grid-row: span 2; justify-content: center; }
-  .human-cockpit .human-bank { padding: 6px 10px; flex-direction: row; align-items: center; gap: 10px; }
-  .human-cockpit .human-bank > span small { display: none; }
-  .human-cockpit .bank-gems { flex: 1; }
-  .human-cockpit .take-panel { padding: 6px 10px; flex-direction: row; align-items: center; }
-  .human-cockpit .take-panel > p { display: none; }
-  .human-cockpit .take-buttons { flex: 1; margin: 0; }
-  .human-cockpit .reserves-panel .reserved-tray, .human-cockpit .reserved-cards { max-width: 510px; }
+  .bga-topbar {
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    padding: 6px 10px;
+  }
+  .bga-top-right nav a:not(:first-child) { display: none; }
+  .bga-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "opponent"
+      "tabs"
+      "board"
+      "dock";
+  }
+  .bga-workspace .human-opponent {
+    grid-area: opponent;
+    padding: 6px 10px 0;
+  }
+  .bga-workspace .human-panels {
+    grid-area: tabs;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px 0;
+  }
+  .bga-workspace .human-panels button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 38px;
+    padding: 6px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: #14212c;
+    color: #9cb2c4;
+    cursor: pointer;
+    font-size: var(--fs-xs);
+    font-weight: 650;
+  }
+  .bga-workspace .human-panels button[aria-pressed="true"] {
+    border-color: #368a8e;
+    background: #1a3840;
+    color: #c4ffff;
+  }
+  .bga-workspace .human-board {
+    grid-area: board;
+  }
+  .bga-workspace .human-actions {
+    grid-area: board;
+    display: none;
+  }
+  .bga-layout:not([data-panel="table"]) .human-board { display: none; }
+  .bga-layout:not([data-panel="table"]) .human-actions { display: flex; }
+  .bga-workspace .human-dock {
+    grid-area: dock;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px;
+    gap: 6px;
+    border-right: 0;
+  }
+  .bga-workspace .human-dock .take-panel {
+    flex: none;
+  }
 }
+
 @media (max-width: 700px) {
-  .human-cockpit .human-topbar { grid-template-columns: minmax(0, 1fr) auto; padding: 7px 10px; gap: 5px 10px; }
-  .human-cockpit .human-topbar h1 { margin: 0; font-size: var(--fs-lg); }
-  .human-cockpit .human-topbar .section-kicker { display: none; }
-  .human-cockpit .human-status { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; }
-  .human-cockpit .human-status-text { align-items: flex-start; gap: 2px; }
-  .human-cockpit .human-opponent-name { font-size: var(--fs-3xs); }
-  .human-cockpit .human-topbar nav { grid-row: 1; grid-column: 2; gap: 8px; }
-  .human-cockpit .human-topbar nav a:first-child { display: inline; }
-  .human-cockpit .human-topbar nav button { padding: 0 8px; font-size: var(--fs-2xs); min-height: 32px; }
-  .human-cockpit .human-opponent { padding: 7px 8px 0; }
-  .human-cockpit .state-card { display: block; padding: 6px 8px; }
-  .human-cockpit .state-card-head { flex-direction: row; align-items: baseline; gap: 8px; margin-bottom: 3px; }
-  .human-cockpit .state-card-head .state-vp { margin-left: auto; font-size: var(--fs-lg); }
-  .human-cockpit .state-counts { display: none; }
-  .human-cockpit .state-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; align-items: center; gap: 4px; margin: 3px 0; }
-  .human-cockpit .state-line > small { grid-column: auto; }
-  .human-cockpit .state-gems { gap: 3px; }
-  .human-cockpit .state-gem { padding: 0 4px 0 1px; gap: 2px; }
-  .human-cockpit .state-gem i { width: 1.3em; height: 1.3em; }
-  .human-cockpit .state-gem b { font-size: var(--fs-2xs); }
-  .human-cockpit .human-panels { padding: 6px 8px 0; }
-  .human-cockpit .human-panels button { min-height: 40px; padding: 6px; font-size: var(--fs-2xs); }
-  .human-cockpit .human-board, .human-cockpit .human-actions { padding: 8px; gap: 8px; }
-  .human-cockpit .table-nobles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 6px; gap: 5px; align-items: stretch; overflow: visible; }
-  .human-cockpit .table-nobles > div:first-child { grid-column: 1 / -1; min-width: 0; }
-  .human-cockpit .table-nobles > div:first-child small { display: none; }
-  .human-cockpit .table-noble { min-width: 0; padding: 4px; gap: 3px 4px; }
-  .human-cockpit .table-noble-cost { gap: 2px; }
-  .human-cockpit .table-noble-cost .gem { font-size: var(--fs-3xs); }
-  .human-cockpit .human-market { grid-template-rows: repeat(3, auto); gap: 10px; }
-  .human-cockpit .human-tier { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-  .human-cockpit .tier-deck { grid-column: 1 / -1; flex-direction: row; justify-content: flex-start; min-height: 32px; gap: 10px; border-radius: 6px; padding: 4px 9px; }
-  .human-cockpit .tier-deck b { font-size: var(--fs-sm); }
-  .human-cockpit .tier-deck small { margin-left: auto; }
-  .human-cockpit .human-tier .development-card { min-height: 8rem; }
-  .human-cockpit .human-dock { grid-template-columns: minmax(0, 1fr); gap: 5px; padding: 6px 8px max(6px, env(safe-area-inset-bottom)); }
-  .human-cockpit .hand-card { grid-row: auto; gap: 4px; padding: 6px 8px; }
-  .human-cockpit .hand-head { gap: 5px; }
-  .human-cockpit .hand-vp { font-size: var(--fs-lg); }
-  .human-cockpit .hand-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; gap: 4px; }
-  .human-cockpit .token-total b, .human-cockpit .state-bonus-total b { font-size: var(--fs-sm); }
-  .human-cockpit .token-total span { font-size: var(--fs-3xs); }
-  .human-cockpit .token-total i { display: none; } /* the amber number and numeric aria-label still convey the cap */
-  .human-cockpit .human-bank { border: 0; background: transparent; padding: 0; gap: 6px; }
-  .human-cockpit .human-bank > span { flex: 0 0 38px; }
-  .human-cockpit .bank-gems { gap: 4px; }
-  .human-cockpit .bank-gems .table-gem { min-height: 38px; gap: 3px; padding: 3px; }
-  .human-cockpit .bank-gems .table-gem i { width: 1.35em; height: 1.35em; border-width: 1px; }
-  .human-cockpit .bank-gems .table-gem b { font-size: var(--fs-sm); }
-  .human-cockpit .take-panel { border: 0; background: transparent; padding: 0; gap: 6px; }
-  .human-cockpit .take-selection { min-height: 36px; gap: 5px; }
-  .human-cockpit .take-panel h2 { font-size: var(--fs-2xs); }
-  .human-cockpit .take-buttons button { min-height: 36px; padding: 6px; }
-  .human-cockpit .take-buttons .cancel-move { flex-basis: 32px; width: 32px; }
-  .human-cockpit .pending-gems { gap: 3px; }
-  .human-cockpit .pending-gems .table-gem { padding: 1px 3px; height: 28px; }
-  .human-cockpit .pending-gems .table-gem i { width: 1.2em; height: 1.2em; border-width: 1px; }
-  .human-cockpit .error-banner { padding: 7px 10px; flex-direction: row; gap: 8px; max-height: 24dvh; overflow: auto; }
+  .bga-topbar {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 8px;
+    min-height: auto;
+  }
+  .bga-meta {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .bga-meta h1 { font-size: var(--fs-xs); margin: 0; }
+  .bga-meta .section-kicker { display: none; }
+  .bga-meta .human-session-parameters { margin: 0; font-size: var(--fs-3xs); }
+  .bga-meta .human-session-parameters code { display: none; }
+  .bga-action-banner {
+    width: 100%;
+    padding: 2px 6px;
+    gap: 6px;
+    min-height: auto;
+  }
+  .bga-action-banner .banner-actor { font-size: var(--fs-3xs); }
+  .bga-action-banner .banner-hint { font-size: var(--fs-3xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bga-top-right { display: none; }
+
+  .bga-workspace .human-opponent {
+    padding: 3px 8px 0;
+  }
+  .bga-workspace .state-card {
+    padding: 4px 8px;
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 2px 6px;
+  }
+  .bga-workspace .state-vp {
+    font-size: var(--fs-md);
+  }
+  .bga-workspace .state-line {
+    grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+    gap: 2px 4px;
+  }
+  .bga-workspace .state-gem {
+    padding: 0 3px;
+  }
+  .bga-workspace .state-gem i {
+    width: 1.1em;
+    height: 1.1em;
+  }
+
+  .bga-workspace .human-panels {
+    padding: 2px 8px 0;
+  }
+  .bga-workspace .human-panels button {
+    min-height: 28px;
+    padding: 2px 4px;
+    font-size: var(--fs-3xs);
+  }
+
+  .bga-workspace .human-dock {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .bga-workspace .hand-card {
+    padding: 4px 8px;
+    gap: 2px;
+  }
+  .bga-workspace .hand-vp {
+    font-size: var(--fs-md);
+  }
+  .bga-workspace .take-panel {
+    padding: 4px 8px;
+    gap: 3px;
+  }
+  .bga-workspace .take-buttons button {
+    min-height: 30px;
+    padding: 3px 6px;
+    font-size: var(--fs-2xs);
+  }
+
+  .bga-table-felt {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 8px;
+  }
+  .bga-table-felt .human-bank {
+    order: -2;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    padding: 4px 8px;
+    background: #0d1e2e;
+  }
+  .bga-table-felt .human-bank .bank-header {
+    flex-direction: row;
+    gap: 6px;
+    align-items: center;
+  }
+  .bga-table-felt .bank-gems {
+    flex-direction: row;
+    width: auto;
+    gap: 6px;
+  }
+  .bga-table-felt .bank-gems .table-gem {
+    width: 38px;
+    height: 38px;
+    min-width: 0;
+  }
+  .bga-table-felt .table-nobles {
+    order: -1;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 8px;
+    overflow-x: auto;
+  }
+  .bga-table-felt .nobles-stack {
+    flex-direction: row;
+    width: auto;
+    gap: 6px;
+  }
+  .bga-table-felt .table-noble {
+    min-width: 90px;
+  }
+  .bga-table-felt .human-market {
+    order: 0;
+    width: 100%;
+    grid-template-rows: repeat(3, auto);
+    gap: 10px;
+  }
+  .bga-table-felt .human-tier {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .bga-table-felt .tier-deck {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: 32px;
+    height: 32px;
+    gap: 10px;
+    border-radius: 6px;
+    padding: 4px 9px;
+  }
+  .bga-table-felt .deck-count {
+    font-size: var(--fs-sm);
+  }
+  .bga-table-felt .deck-reserve-btn {
+    margin-left: auto;
+  }
+  .bga-table-felt .development-card {
+    min-height: 8rem;
+  }
 }
-@media (max-width: 360px) {
-  .human-cockpit .state-line, .human-cockpit .hand-line { grid-template-columns: 4.125rem minmax(0, 1fr) auto; gap: 3px; }
-  .human-cockpit .state-gems { gap: 2px; }
-  .human-cockpit .state-gem { padding-right: 3px; gap: 1px; }
-  .human-cockpit .state-gem b { font-size: var(--fs-3xs); }
-  .human-cockpit .take-selection h2 { display: none; }
-}
-@media (max-height: 520px) and (min-width: 701px) {
-  .human-cockpit .human-topbar { padding-block: 5px; }
-  .human-cockpit .human-topbar .section-kicker, .human-cockpit .state-counts { display: none; }
-  .human-cockpit .human-opponent { padding-top: 5px; }
-  .human-cockpit .state-card { padding-block: 5px; }
-  .human-cockpit .human-dock { padding-block: 5px; gap: 5px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .human-cockpit button { transition: none; }
-  .human-cockpit button:hover { transform: none; }
+
+@media (max-height: 520px) {
+  .bga-topbar {
+    padding-block: 4px;
+    min-height: auto;
+  }
+  .bga-workspace .human-dock {
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+  .bga-workspace .human-dock .hand-card {
+    flex: 1;
+    padding: 4px 8px;
+    gap: 3px;
+  }
+  .bga-workspace .human-dock .take-panel {
+    flex: 0 0 280px;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .bga-workspace .take-buttons button {
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+  .bga-table-felt {
+    padding: 6px;
+    gap: 6px;
+  }
+  .bga-table-felt .human-bank {
+    padding: 4px 2px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #0d1e2e;
+  }
+  .bga-table-felt .bank-gems {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .bga-table-felt .bank-gems .table-gem {
+    width: 30px;
+    height: 30px;
+    min-width: 0;
+  }
+  .bga-table-felt .table-nobles {
+    padding: 4px;
+    gap: 4px;
+  }
+  .bga-table-felt .table-noble {
+    min-height: 36px;
+    padding: 2px 4px;
+  }
 }
