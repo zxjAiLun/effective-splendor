@@ -12,7 +12,7 @@ import { mockPlayHostScript, playFixture } from "./fixtures/play-cockpit.mjs";
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactDir = path.resolve(process.env.STUDIO_COCKPIT_ARTIFACTS || path.join(appRoot, "../../local-artifacts/m76-studio-play-cockpit", `browser-${Date.now()}`));
 fs.mkdirSync(artifactDir, { recursive: true });
-const sources = ["app/play/page.tsx", "app/play/play.css", "app/globals.css", "app/components/player-state-strip.tsx", "app/components/structured-action.tsx", "app/development-card.tsx", "tests/play-cockpit-browser.mjs", "tests/fixtures/play-cockpit.mjs", "tests/fixtures/rust-analysis-trace-v2-m07-two-seat.json", "tests/helpers/studio-browser.mjs"];
+const sources = ["app/play/page.tsx", "app/play/play.css", "app/globals.css", "app/studio-shell.css", "app/layout.tsx", "app/components/studio-chrome.tsx", "app/components/player-state-strip.tsx", "app/components/structured-action.tsx", "app/development-card.tsx", "tests/play-cockpit-browser.mjs", "tests/fixtures/play-cockpit.mjs", "tests/fixtures/rust-analysis-trace-v2-m07-two-seat.json", "tests/helpers/studio-browser.mjs"];
 const sourceHashes = Object.fromEntries(sources.map(name => [name, crypto.createHash("sha256").update(fs.readFileSync(path.join(appRoot, name))).digest("hex")]));
 const cases = [];
 const screenshots = [];
@@ -31,8 +31,10 @@ function inspectLayout() {
     return [name, { ...rect(element), shown: shown(element), scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }];
   }));
   for (const name of ["human-opponent", "human-panels", "human-dock", "hand-card", "human-bank", "take-panel"]) {
+    if (!regions[name].shown) errors.push(`${name} is hidden`);
     if (!inside(regions[name], viewport)) errors.push(`${name} leaves viewport`);
   }
+  if (innerWidth <= 1100 && !shown(document.querySelector('.table-panel-button'))) errors.push('Table return button is hidden on a narrow screen');
   for (const selector of [".hand-line", ".state-line"]) {
     for (const line of document.querySelectorAll(selector)) {
       const parts = Array.from(line.querySelectorAll(":scope > small, :scope > .token-total, :scope > .state-bonus-total, :scope > .state-gems > .state-gem"));
@@ -44,6 +46,9 @@ function inspectLayout() {
   }
   for (const gem of document.querySelectorAll(".hand-line .state-gem, .bank-gems .table-gem, .take-buttons button")) {
     if (!inside(rect(gem), viewport)) errors.push(`Pinned control outside viewport: ${gem.textContent}`);
+  }
+  for (const gem of document.querySelectorAll('.bank-gems .table-gem')) {
+    for (const part of gem.querySelectorAll(':scope > i, :scope > b')) if (!inside(rect(part), rect(gem))) errors.push(`Bank count or symbol outside its chip: ${gem.textContent}`);
   }
   const cards = [];
   for (const card of document.querySelectorAll(".development-card:not(.development-card-hidden):not(.development-card-empty)")) {
@@ -159,6 +164,16 @@ try {
     const dockTop = (await layout()).regions["human-dock"].top;
     await b.evaluate("document.querySelector('.human-actions').scrollTop=99999");
     assert.equal((await checkLayout("history-scrolled")).regions["human-dock"].top, dockTop);
+    if (width <= 1100) {
+      await panel("table");
+      assert.equal((await checkLayout("back-to-table")).regions["human-board"].shown, true);
+      await panel("history");
+      await click(".bank-gems .table-gem-white");
+      assert.equal(await b.evaluate("document.querySelector('.human-cockpit').dataset.panel"), "table", "Taking from history returns to the live table");
+      assert.equal(await b.evaluate("document.querySelector('.bank-gems .table-gem-white .bank-selected-count').textContent"), "+1");
+      assert.equal((await actionCalls()).length, 1, "Only the earlier explicitly confirmed reserve purchase was sent");
+      record(`pinned-bank-and-table-return-${width}`, { geometry: await checkLayout("pinned-bank-after-history"), allFourPanelsReachable: true });
+    }
   }
 
   await navigate("initial", 390, 844, 0);
@@ -181,6 +196,7 @@ try {
   await click(".human-tier .development-card", 0);
   await b.wait("document.querySelector('.selected-card-preview')!==null");
   await snapshot("selected-market-desktop");
+  assert.equal(await b.evaluate("document.querySelector('.human-tier .development-card').getAttribute('aria-pressed')"), "true");
   record("market-buy", { geometry: await checkLayout("selected-market") });
   await click(".context-actions > button", 0);
   await assertPosted({ type: "buy_market", tier: "Three", slot: 0 });
@@ -276,6 +292,14 @@ try {
     await snapshot(`${scenario}-mobile`);
     record(scenario, { geometry: sample });
   }
+  await navigate("crowded", 390, 844, 1);
+  await click(".play-session-menu > summary");
+  assert.match(await b.evaluate("document.querySelector('.human-session-parameters').innerText"), /Actual seat: Second \(P1\)/);
+  assert.match(await b.evaluate("document.querySelector('.human-session-parameters').innerText"), /18446744073709551615/);
+  assert.equal(await b.evaluate("document.querySelector('.play-session-menu button').disabled"), false);
+  await snapshot("session-menu-mobile");
+  await click(".play-session-menu > summary");
+  record("session-menu-mobile", { exactSeedVisible: true, navigationAndNewGameReachable: true });
   assert.deepEqual(b.exceptions, []);
   fs.writeFileSync(path.join(artifactDir, "checks.json"), JSON.stringify({ status: "PASS", observedAt: new Date().toISOString(), boundary: "Real Chromium + built UI, mocked Host. Zero research games. Pixel review is separate.", sourceHashes, cases, screenshots, exceptions: b.exceptions }, null, 2));
   console.log(`PASS ${cases.length} UI cases; ${screenshots.length} screenshots. Evidence: ${artifactDir}`);

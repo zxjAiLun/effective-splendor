@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { StudioGlyph, StudioHeader, StudioIntro } from "../components/studio-chrome";
 import { API_BASE } from "../api-base.mjs";
 import { visibleParticipant } from "../agent-visibility.mjs";
 import {
@@ -93,35 +94,13 @@ export default function RatingsPage() {
   }, [load]);
 
   return (
-    <main className="studio">
-      <header className="topbar">
-        <div className="brand-block">
-          <span className="eyebrow">EFFECTIVE SPLENDOR · REPLAY STUDIO</span>
-          <h1>Ratings</h1>
-        </div>
-        <div className="header-actions">
-          <Link className="studio-link" href="/">
-            Games
-          </Link>
-          <Link className="studio-link" href="/play">
-            Play vs S3
-          </Link>
-          <Link className="studio-link" href="/league">
-            League
-          </Link>
-          <Link className="studio-link" href="/ratings/reports">
-            Research reports
-          </Link>
-        </div>
-      </header>
-
+    <main className="studio studio-page standings-page">
+      <StudioHeader active="ratings" />
+      <div className="studio-content">
       <section className="ratings-head">
-        <span className="section-kicker">STUDIO LEAGUE · CURRENT STANDINGS</span>
-        <p>
-          The Studio League&apos;s own Elo table, read from the league ledger. Every participant
-          enters at the same initial rating and moves only by matches the league recorded — human
-          and engine seats alike.
-        </p>
+        <StudioIntro eyebrow="STUDIO LEAGUE · CURRENT STANDINGS" title="Every match leaves a mark." action={<Link className="studio-button" href="/league">League Play<StudioGlyph name="arrow" /></Link>}>
+          <p>The Studio League&apos;s own Elo table, read from the league ledger. Every participant enters at the same initial rating and moves only by matches the league recorded — human and engine seats alike.</p>
+        </StudioIntro>
         <p className="ratings-note" role="note">
           This is <strong>not</strong> the research reports&apos; rating. The research corpus is a
           different rating system, kept unchanged under{" "}
@@ -181,9 +160,9 @@ export default function RatingsPage() {
                       </small>
                     </i>
                   </span>
-                  <span>{describeKind(row.kind) ?? "—"}</span>
-                  <span>{recordText(row)}</span>
-                  <span>{gamesText(row)}</span>
+                  <span data-label="Kind">{describeKind(row.kind) ?? "—"}</span>
+                  <span data-label="W-T-L">{recordText(row)}</span>
+                  <span data-label="Games">{gamesText(row)}</span>
                   <span className="ratings-elo">{eloText(row)}</span>
                 </div>
               );
@@ -195,6 +174,7 @@ export default function RatingsPage() {
           </p>
         </section>
       ) : null}
+      </div>
     </main>
   );
 }

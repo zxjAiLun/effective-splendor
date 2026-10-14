@@ -92,8 +92,11 @@ try {
   await evaluate(`(() => {const s=document.querySelectorAll('select')[1];s.value='second';s.dispatchEvent(new Event('change',{bubbles:true}));const input=document.querySelector('input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'18446744073709551615');input.dispatchEvent(new Event('input',{bubbles:true}));})();`);
   await delay(60);
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Start new game').click()`);
-  await wait(`document.body.innerText.includes('Actual seat: Second (P1)')`);
+  await wait(`document.querySelector('.hand-title')?.textContent.endsWith('P1')`);
+  await evaluate(`document.querySelector('.play-session-menu').open=true`);
+  assert.match(await evaluate("document.body.innerText"), /Actual seat: Second \(P1\)/);
   assert.match(await evaluate("document.body.innerText"), /18446744073709551615/);
+  await evaluate(`document.querySelector('.play-session-menu').open=false`);
   const request = await evaluate(`window.calls.find(c=>c.route==='/games')`);
   assert.equal(request.body, '{"agent_id":"prism-v011","human_seat":1,"seed":18446744073709551615}');
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Pass turn').click()`);

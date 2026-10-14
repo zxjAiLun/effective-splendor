@@ -7,11 +7,12 @@ model.
 ## Human Play layout
 
 During a game in `/play`, your tokens, permanent discounts, bank and take
-confirmation stay at the bottom of the viewport. Desktop shows the card table
-beside the current move; narrow screens switch between **Table**, **Move**,
-**Reserves** and **History**. Long card or return lists scroll inside their own
-panel, keeping your resources visible. Selecting gems does not send a move;
-confirm the take or choose the displayed return first.
+confirmation stay pinned at the bottom of the viewport, and the bank stays
+reachable from every panel. Desktop shows the card table beside the current
+move; narrow screens switch between **Table**, **Move**, **Reserves** and
+**History**. Long card or return lists scroll inside their own panel, keeping
+your resources visible. Selecting gems does not send a move; confirm the take
+or choose the displayed return first.
 
 ## M23 one-click review
 
@@ -80,6 +81,11 @@ an ephemeral local UI server to check viewport layout and real pointer
 interactions. It mocks the Host and never creates a real game or League entry.
 Screenshots, geometry and source hashes go to ignored
 `local-artifacts/m76-studio-play-cockpit/`, or `STUDIO_COCKPIT_ARTIFACTS` when set.
+
+`npm run test:layout-ui` is the matching gate for the Games/Play/League/Ratings
+pages: shared navigation, hero/setup/standings layouts across desktop, tablet,
+mobile and 150% font sizes, cursor paging and form behavior, all against the
+same synthetic Host boundary (artifacts under `STUDIO_LAYOUT_ARTIFACTS`).
 
 For a local human-vs-agent game, double-click `Splendor Studio.cmd` at the
 repository root, then navigate to `/play`. It starts both services; opponent

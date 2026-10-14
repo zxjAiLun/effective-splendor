@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { StudioGlyph, StudioHeader, StudioIntro, StudioTableArt } from "./components/studio-chrome";
 import { API_BASE as API } from "./api-base.mjs";
 import { visibleGame, visibleParticipant } from "./agent-visibility.mjs";
 import { describeGameRow } from "./games-runtime.mjs";
@@ -140,7 +141,7 @@ function StudioLeagueGames() {
   const retryQuery = error ? (rows.length > 0 ? nextQuery : null) : null;
 
   return (
-    <section className="recent-games">
+    <section className="recent-games games-ledger">
       <span className="section-kicker">STUDIO LEAGUE GAMES</span>
       <h2>Long-term league record</h2>
       <p>
@@ -261,7 +262,7 @@ function LegacyGames() {
       ) : null}
       {loading ? <p>Loading games…</p> : null}
       {!loading && !error && games.length === 0 ? (
-        <p>No saved games yet. Start one from Play vs S3.</p>
+        <p>No saved games yet. Start one from Play vs AI.</p>
       ) : null}
       <div className="recent-game-list">
         {games.map((game) => {
@@ -395,7 +396,7 @@ export default function GamesHome() {
           setHostError("");
         } catch (reason) {
           setHostError(
-            `Studio Host is not running. Launch the project once with Start Splendor Studio.cmd. ${
+            `Studio Host is not running. Launch the project once with Splendor Studio.cmd. ${
               reason instanceof Error ? reason.message : String(reason)
             }`,
           );
@@ -405,33 +406,8 @@ export default function GamesHome() {
   }, []);
 
   return (
-    <main className="studio">
-      <header className="topbar">
-        <div className="brand-block">
-          <span className="eyebrow">EFFECTIVE SPLENDOR · REPLAY STUDIO</span>
-          <h1>Replay Studio</h1>
-        </div>
-        <div className="header-actions">
-          <Link className="studio-link" href="/jev" style={{ color: "#38bdf8", fontWeight: 700 }}>
-            Jev Replay
-          </Link>
-          <Link className="studio-link" href="/play">
-            Play vs S3
-          </Link>
-          <Link className="studio-link" href="/league">
-            League
-          </Link>
-          <Link className="studio-link" href="/ratings">
-            Ratings
-          </Link>
-          <Link className="studio-link" href="/ratings/reports">
-            Research reports
-          </Link>
-          <Link className="studio-link" href="/advanced">
-            Legacy AnalysisTraceV1 viewer
-          </Link>
-        </div>
-      </header>
+    <main className="studio studio-page games-page">
+      <StudioHeader active="games" />
 
       {hostError ? (
         <div className="error-banner" role="alert">
@@ -439,9 +415,24 @@ export default function GamesHome() {
         </div>
       ) : null}
 
-      <StudioLeagueGames />
-      <JevRuns />
-      <LegacyGames />
+      <div className="studio-content">
+        <div className="games-welcome">
+          <div>
+            <StudioIntro eyebrow="WELCOME TO YOUR STUDIO" title="A seat at the table.">
+              <p>Make your next move, revisit a great game, or follow the league. Your table and its history, in one place.</p>
+            </StudioIntro>
+            <div className="games-welcome-actions">
+              <Link className="studio-button studio-primary" href="/play"><StudioGlyph name="play" />Play vs AI</Link>
+              <Link className="studio-button" href="/ratings">View standings<StudioGlyph name="arrow" /></Link>
+            </div>
+          </div>
+          <StudioTableArt />
+        </div>
+        <div className="games-dashboard">
+          <StudioLeagueGames />
+          <aside className="games-archives" aria-label="Separate local archives"><JevRuns /><LegacyGames /></aside>
+        </div>
+      </div>
     </main>
   );
 }

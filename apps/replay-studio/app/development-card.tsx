@@ -56,6 +56,7 @@ export function DevelopmentCard({
   card,
   interactive = false,
   affordable = false,
+  selected,
   disabled = false,
   onClick,
   slotLabel,
@@ -65,6 +66,8 @@ export function DevelopmentCard({
   card: DevelopmentCardData;
   interactive?: boolean;
   affordable?: boolean;
+  /** Optional play-table selection state; never changes affordability or actions. */
+  selected?: boolean;
   disabled?: boolean;
   onClick?: () => void;
   slotLabel?: string;
@@ -89,7 +92,7 @@ export function DevelopmentCard({
     {interactive ? <span className={`development-card-action ${affordable ? "buyable" : ""}`}>{affordable ? "BUY" : "MARKET"}</span> : null}
   </>;
   return interactive
-    ? <button type="button" className={className} disabled={disabled} onClick={onClick} aria-label={label}>{body}</button>
+    ? <button type="button" className={className} disabled={disabled} onClick={onClick} aria-label={label} aria-pressed={selected}>{body}</button>
     : <div className={className} aria-label={label}>{body}</div>;
 }
 

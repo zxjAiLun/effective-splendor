@@ -19,7 +19,7 @@ test("server-renders the Replay Studio product shell", async () => {
   assert.match(html, /Replay Studio/);
   assert.match(html, /GAMES/);
   assert.match(html, /Saved human vs engine games/);
-  assert.match(html, /Play vs S3/);
+  assert.match(html, /Play vs AI/);
   assert.match(html, /href="\/league"/);
   assert.match(html, /href="\/ratings"/);
   assert.match(html, /href="\/ratings\/reports"/);
@@ -181,6 +181,21 @@ test("server-renders the replay board opened by league content hash", async () =
   assert.match(html, /Rebuilding the replay/);
   assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
+
+// M78 — the four primary routes share navigable chrome, including small-screen
+// More destinations. Their data still belongs to each page's original authority.
+for (const route of ["/", "/play", "/league", "/ratings"]) {
+  test(`${route} renders the shared Studio navigation`, async () => {
+    const response = await render(route);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /class="studio-header"/);
+    assert.match(html, /aria-label="Studio navigation"/);
+    assert.match(html, /aria-current="page"/);
+    for (const href of ["/play", "/league", "/ratings", "/experiments", "/advanced"]) assert.ok(html.includes(`href="${href}"`));
+    assert.match(html, /<summary>More/);
+  });
+}
 
 // D3B — Participant Profile route shell.
 test("server-renders the Participant Profile route shell", async () => {

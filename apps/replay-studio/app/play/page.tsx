@@ -10,6 +10,7 @@ import { PlayerHandCard, PlayerStateStrip, type StripPlayerView } from "../compo
 import { StructuredAction, type ActionCatalog } from "../components/structured-action";
 import { humanResult, humanStartBody, randomSeed, resolveSeat, retryHumanBooking } from "../human-play-runtime.mjs";
 import { HumanBookingPanel, type HumanCompletion } from "../components/human-booking-panel";
+import { StudioBrand, StudioGlyph, StudioHeader, StudioIntro, StudioTableArt } from "../components/studio-chrome";
 import "./play.css";
 
 type Action = { type: string; [key: string]: unknown };
@@ -46,9 +47,9 @@ function sameGems(left:Gems,right:Gems) {
   return GEM_NAMES.every(gem => left[gem] === right[gem]);
 }
 
-function GemChip({gem,count,onClick,selected=false,disabled=false,source="token"}:{gem:GemName;count:number;onClick?:()=>void;selected?:boolean;disabled?:boolean;source?:"token"|"bonus"}) {
-  const content = <><i aria-hidden="true">{GEM_CODES[gem]}</i><span>{GEM_LABELS[gem]}</span><b>{count}</b></>;
-  const label=source==="bonus"?`${GEM_LABELS[gem]} permanent card bonuses ${count}`:`${GEM_LABELS[gem]} tokens ${count}`;
+function GemChip({gem,count,onClick,selected=false,selectedCount=0,disabled=false,source="token"}:{gem:GemName;count:number;onClick?:()=>void;selected?:boolean;selectedCount?:number;disabled?:boolean;source?:"token"|"bonus"}) {
+  const content = <><i aria-hidden="true">{GEM_CODES[gem]}</i><span>{GEM_LABELS[gem]}</span><b>{count}</b>{selectedCount>0?<em className="bank-selected-count" aria-hidden="true">+{selectedCount}</em>:null}</>;
+  const label=source==="bonus"?`${GEM_LABELS[gem]} permanent card bonuses ${count}`:`${GEM_LABELS[gem]} tokens ${count}${selectedCount>0?`, ${selectedCount} selected`:""}`;
   const className=`table-gem table-gem-${gem} ${source==="bonus"?"card-bonus-gem":""} ${selected?"selected":""}`;
   return onClick ? <button type="button" className={className} disabled={disabled} onClick={onClick} aria-label={label} aria-pressed={selected} title={label}>{content}</button> : <span className={className} aria-label={label} title={label}>{content}</span>;
 }
@@ -205,46 +206,43 @@ export default function HumanPlayPage() {
   const yourTurn = state ? state.observation.public.current_player===state.human_seat : false;
   const controlsDisabled = busy||uncertain||!yourTurn||Boolean(state?.result);
   const needsReturn = pendingCount>0&&(exactTakeActions.length>1||(confirmTake!==null&&GEM_NAMES.some(gem=>actionReturns(confirmTake)[gem]>0)));
-  const takeHint = busy ? "Waiting for the opponent. Your move was sent once."
-    : uncertain ? "Check the current session before making another move."
-    : pendingCount===0 ? "Select bank gems, then confirm."
-    : needsReturn ? "Choose what to return in the Move panel."
-    : confirmTake ? "Ready. Click a selected gem to remove it."
-    : "Select a legal combination. Nothing is sent until confirmed.";
-  const cardIdle = !pendingCount&&!selectedCard&&selectedDeck===null;
   const nobleActions = state?.legal_actions.filter(action=>action.type==="choose_noble")??[];
   const passAction = state?.legal_actions.find(action=>action.type==="pass");
+  const takeHint = busy ? "Waiting for the opponent. Your move was sent once."
+    : uncertain ? "Check the current session before making another move."
+    : !yourTurn ? "Waiting for the opponent’s move."
+    : nobleActions.length ? "Choose a noble to complete your turn."
+    : passAction ? "No other move is available. Confirm to pass."
+    : selectedCard ? "Review this card, then choose buy or reserve."
+    : selectedDeck!==null ? "Reserve a hidden card from this deck."
+    : pendingCount===0 ? "Choose a card or select gems from the bank."
+    : needsReturn ? "Choose what to return in the Move panel."
+    : confirmTake ? "Ready to take. Click a selected gem to remove it."
+    : "Keep selecting gems, then confirm your take.";
+  const cardIdle = !pendingCount&&!selectedCard&&selectedDeck===null;
   const turnLabel = state?.result ? "FINISHED" : uncertain ? "CHECK SESSION" : busy ? "THINKING…" : yourTurn ? "YOUR TURN" : "WAITING";
 
-  return <main className={state?"human-studio human-cockpit bga-layout":"human-studio"} data-panel={panel}>
-    <header className="human-topbar bga-topbar">
-      <div className="bga-meta">
-        <span className="section-kicker">SPLENDOR · STUDIO 1V1</span>
-        <h1>Play Studio</h1>
-        {state?<small className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"} · Seed: <code>{state.seed??"—"}</code></small>:null}
-      </div>
-
-      {state?<div className={`bga-action-banner ${state.result?"banner-finished":uncertain?"banner-uncertain":busy?"banner-busy":yourTurn?"banner-turn":"banner-waiting"}`}>
-        <strong className="banner-actor">{turnLabel}</strong>
+  return <main className={state?"human-studio human-cockpit bga-layout":"human-studio studio-page"} data-panel={panel}>
+    {state?<header className="play-session-header">
+      <div className="play-session-brand"><StudioBrand compact /><h1 className="play-session-title">Play Studio</h1><span className="session-ply">PLY <b>{state.ply}</b></span></div>
+      <div className={`bga-action-banner ${state.result?"banner-finished":uncertain?"banner-uncertain":busy?"banner-busy":yourTurn?"banner-turn":"banner-waiting"}`} role="status">
+        <strong className="banner-actor"><i aria-hidden="true" />{turnLabel}</strong>
         <span className="banner-hint">{state.result?`${humanResult(state.result,state.human_seat)} (${state.result.scores.join(" – ")})`:takeHint}</span>
-      </div>:null}
-
-      <div className="bga-top-right">
-        <div className="human-status">
-          <span className={`status-dot ${hostOnline?"":"offline"}`} />
-          <span className="human-status-text">
-            <span className="human-opponent-name" title={state?.opponent}>{state?state.opponent:hostOnline?"Studio Host ready":"Studio Host offline"}</span>
-          </span>
-        </div>
-        <nav aria-label="Studio navigation">
-          <Link href="/">Games</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link>
-          {state?<button disabled={busy} onClick={()=>{setState(null);clearPending();setShowReviewers(false);}}>New game</button>:null}
-        </nav>
       </div>
-    </header>
+      <details className="studio-more play-session-menu">
+        <summary>Table menu <span aria-hidden="true">⌄</span></summary>
+        <div className="studio-more-menu">
+          <small>THIS SESSION</small>
+          <div className="human-session-parameters">Actual seat: {state.human_seat===0?"First (P0)":"Second (P1)"}<br/>Seed: <code>{state.seed??"—"}</code></div>
+          <nav aria-label="Studio navigation"><Link href="/">Games</Link><Link href="/ratings">Ratings</Link><Link href="/league">League</Link></nav>
+          <button disabled={busy||uncertain} onClick={()=>{setState(null);clearPending();setShowReviewers(false);}}>New game</button>
+        </div>
+      </details>
+    </header>:<StudioHeader active="play" />}
     {error?<div className="error-banner" role="alert">{error}{uncertain?<button disabled={busy} onClick={()=>void refreshSession()}>Check current session</button>:null}</div>:null}
     {state?<section className="human-workspace bga-workspace">
       <div className="human-opponent" aria-label="Opponent resources">
+        <div className="opponent-caption"><span>OPPONENT</span><strong title={state.opponent}>{state.opponent}</strong></div>
         <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} omitSeat={state.human_seat} />
       </div>
 
@@ -255,11 +253,13 @@ export default function HumanPlayPage() {
         <button aria-pressed={panel==="history"} aria-controls="play-side-panel" onClick={()=>setPanel("history")}>History</button>
       </nav>
 
-      {/* Main Table Felt Area: Decks + Market Cards + Vertical Bank Gems + Vertical Nobles */}
+      {/* The bank is a sibling of the switchable board, so it stays available in every panel. */}
+      <div className="play-table-zone">
       <article className="human-board" id="play-table" aria-label="Card table">
+        <div className="table-heading"><span>DEVELOPMENT MARKET</span><small>Net costs · after your discounts</small></div>
         <div className="bga-table-felt">
           <div className="human-market">{[2,1,0].map(tier=><div className="human-tier" key={tier}>
-            <button type="button" className={`tier-deck tier-deck-${tier+1}`} disabled={controlsDisabled||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)} aria-label={`Blind reserve from tier ${tier+1}, ${state.observation.public.deck_counts[tier]} cards left`}>
+            <button type="button" className={`tier-deck tier-deck-${tier+1}`} aria-pressed={selectedDeck===tier} disabled={controlsDisabled||state.observation.public.deck_counts[tier]===0} onClick={()=>openDeck(tier)} aria-label={`Blind reserve from tier ${tier+1}, ${state.observation.public.deck_counts[tier]} cards left`}>
               <div className="deck-crest">
                 <span className="deck-title">SPLENDOR</span>
                 <span className="deck-tier-label">TIER {tier+1}</span>
@@ -269,20 +269,11 @@ export default function HumanPlayPage() {
             </button>
             {state.observation.public.market[tier].map((cardId,slot)=>{
               const card=cardId==null?null:cards.get(cardId);
-              return card?<DevelopmentCard card={card} interactive affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={controlsDisabled} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} discount={humanBonuses} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;
+              return card?<DevelopmentCard card={card} interactive selected={selectedCard?.tier===tier&&selectedCard.slot===slot} affordable={state.legal_actions.some(action=>action.type==="buy_market"&&action.tier===TIERS[tier]&&action.slot===slot)} disabled={controlsDisabled} onClick={()=>openCard(tier,slot,cardId!)} slotLabel={`slot ${slot+1}`} discount={humanBonuses} key={slot}/>:<EmptyDevelopmentCard key={slot}/>;
             })}
           </div>)}</div>
 
-          {/* Vertical Gem Bank Column */}
-          <section className="human-bank" aria-label="Gem bank">
-            <div className="bank-header"><b>BANK</b><small>Take gems</small></div>
-            <div className="bank-gems">{GEM_NAMES.map(gem=>{
-              const canAdd=gem!=="gold"&&takeActions.some(action=>TAKE_GEMS.every(colour=>pendingTake[colour]+(colour===gem?1:0)<=gemsOf(action.take)[colour]));
-              return <GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} disabled={controlsDisabled||!canAdd} onClick={()=>changePendingGem(gem,1)} key={gem}/>;
-            })}</div>
-          </section>
-
-          {/* Vertical Nobles Column */}
+          {/* Nobles require permanent discounts, not bank tokens. */}
           <section className="table-nobles" aria-label="Available nobles">
             <div className="nobles-header"><b>NOBLES</b><small title="Requirements use permanent card discounts">3 VP each</small></div>
             <div className="nobles-stack">
@@ -295,12 +286,21 @@ export default function HumanPlayPage() {
           </section>
         </div>
       </article>
+      <section className="human-bank" aria-label="Gem bank">
+        <div className="bank-header"><b>BANK</b><small>Tap to take</small></div>
+        <div className="bank-gems">{GEM_NAMES.map(gem=>{
+          const canAdd=gem!=="gold"&&takeActions.some(action=>TAKE_GEMS.every(colour=>pendingTake[colour]+(colour===gem?1:0)<=gemsOf(action.take)[colour]));
+          return <GemChip gem={gem} count={state.observation.public.bank[gem]} selected={pendingTake[gem]>0} selectedCount={pendingTake[gem]} disabled={controlsDisabled||!canAdd} onClick={()=>changePendingGem(gem,1)} key={gem}/>;
+        })}</div>
+        <small className="bank-gold-note">Gold from<br/>reserving</small>
+      </section>
+      </div>
 
       <aside className="human-actions" id="play-side-panel" ref={panelRef} tabIndex={-1} aria-label={panel==="reserves"?"Reserved cards":panel==="history"?"Public history":"Current move"}>
         {panel==="reserves"?<section className="reserves-panel">
           <span className="section-kicker">HELD CARDS</span><h2>Your reserve · {humanPlayer?.reserved_count??0}/3</h2>
           <p>Click your card to buy it. Reserve faces show printed costs.</p>
-          <p className="holdings-summary">You: {humanPlayer?.purchased.length??0} developments · {humanPlayer?.nobles.length??0} nobles. {state.observation.public.players.filter(player=>player.id!==state.human_seat).map(player=><span key={player.id}>Opponent: {player.purchased.length} developments · {player.nobles.length} nobles.</span>)}</p>
+          <p className="holdings-summary">You: {humanPlayer?.purchased.length??0} developments · {humanPlayer?.nobles.length===1?"1 noble":`${humanPlayer?.nobles.length??0} nobles`}. {state.observation.public.players.filter(player=>player.id!==state.human_seat).map(player=><span key={player.id}>Opponent: {player.purchased.length} developments · {player.nobles.length===1?"1 noble":`${player.nobles.length} nobles`}.</span>)}</p>
           {state.observation.private.reserved.length?<div className="reserved-tray">{state.observation.private.reserved.map(reserved=>cards.has(reserved.card)?<DevelopmentCard card={cards.get(reserved.card)!} variant="mini" interactive affordable={state.legal_actions.some(action=>action.type==="buy_reserved"&&action.slot===reserved.slot)} disabled={controlsDisabled} onClick={()=>openReserved(reserved.slot,reserved.card)} slotLabel={`R${reserved.slot+1}`} key={reserved.slot}/>:null)}</div>:<p className="panel-empty">No cards reserved yet.</p>}
           <div className="human-score">{state.observation.public.players.map(item=>{
             const hasOpponentReserve=item.id!==state.human_seat&&item.reserved_count>0;
@@ -333,7 +333,12 @@ export default function HumanPlayPage() {
           {(selectedCard||selectedDeck!==null)&&!contextActions.length?<p>No legal buy or reserve for this selection. Choose another card or take gems.</p>:null}
           {needsReturn?<><p>Choose a legal return to confirm this take. Your hand stays visible below.</p><div className="context-actions return-choices">{exactTakeActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Return</strong><GemStrip gems={actionReturns(action)}/></button>)}</div></>:pendingCount?<p>{takeHint} Use the confirmation below.</p>:null}
           {cardIdle&&nobleActions.length?<div className="context-actions">{nobleActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Choose noble #{String(action.noble)}</strong></button>)}</div>:null}
-          {cardIdle&&!nobleActions.length?<div className="move-guide"><b>Build your next move</b><p>Select a card to buy or reserve it. Click bank gems to take tokens.</p><p>Your tokens and permanent discounts stay in the sidebar.</p></div>:null}
+          {cardIdle&&!nobleActions.length?<div className="move-guide">
+            <div><StudioGlyph name="gem" /><p><b>Take gems</b><span>Select in the bank, then confirm below.</span></p></div>
+            <div><StudioGlyph name="layers" /><p><b>Buy or reserve</b><span>Choose a card to see your legal options.</span></p></div>
+            <button type="button" className="reserve-shortcut" onClick={()=>setPanel("reserves")}>Your reserve <b>{humanPlayer?.reserved_count??0}/3</b><StudioGlyph name="arrow" /></button>
+            <small>Your tokens and discounts stay visible below. Nothing is sent until you confirm.</small>
+          </div>:null}
           {(pendingCount||selectedCard||selectedDeck!==null)?<button className="cancel-move" disabled={busy} onClick={()=>clearPending()}>Cancel selection</button>:null}
         </section>}
       </aside>
@@ -354,6 +359,24 @@ export default function HumanPlayPage() {
         </section>
       </footer>
     </section>:null}
-    {!state?<section className="human-connect"><span>ONE CLICK · NO PORT SETUP</span><h2>Start a local game</h2><p>Choose any registered baseline, search agent or GPU checkpoint.</p><p className="rated-notice"><strong>Rated Studio League match</strong><br/>Your Elo may change. A finished game and its League booking are reported separately.</p><label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label><label>Your seat<select value={seatChoice} onChange={event=>setSeatChoice(event.target.value)} disabled={!hostOnline||busy}><option value="random">Random</option><option value="first">First · P0</option><option value="second">Second · P1</option></select></label><label>Game seed<input type="text" inputMode="numeric" value={seed} onChange={event=>setSeed(event.target.value)} disabled={!hostOnline||busy}/></label><button type="button" disabled={!hostOnline||busy} onClick={()=>setSeed(randomSeed())}>Randomize seed</button><small>Exact unsigned 64-bit decimal; no rounding. The actual seat and seed are shown after starting.</small><button onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy||uncertain}>{busy?"Starting agent…":"Start new game"}</button><small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Splendor Studio.cmd in the project folder.`}</small></section>:null}
+    {!state?<div className="studio-content play-setup">
+      <div className="play-setup-story">
+        <StudioIntro eyebrow="ONE CLICK · NO PORT SETUP" title="Your next move starts here."><p>Take a seat across from a registered agent. A classic table, a clear view of your resources, and every move saved for replay.</p></StudioIntro>
+        <StudioTableArt />
+        <div className="setup-features"><span><StudioGlyph name="gem" />Player-view only</span><span><StudioGlyph name="games" />Verified replays</span><span><StudioGlyph name="league" />Studio League</span></div>
+      </div>
+      <section className="human-connect">
+        <div className="setup-status"><span className={`status-dot ${hostOnline?"":error?"offline":"pending"}`} />{hostOnline?"Studio Host ready":error?"Studio Host offline":"Connecting to Studio Host…"}</div>
+        <span className="section-kicker">HUMAN VS AGENT</span><h2>Start a local game</h2>
+        <p>Choose your opponent and take your seat.</p>
+        <label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label>
+        <label>Your seat<select value={seatChoice} onChange={event=>setSeatChoice(event.target.value)} disabled={!hostOnline||busy}><option value="random">Random</option><option value="first">First · P0</option><option value="second">Second · P1</option></select></label>
+        <div className="setup-seed-row"><label>Game seed<input type="text" inputMode="numeric" value={seed} onChange={event=>setSeed(event.target.value)} disabled={!hostOnline||busy}/></label><button type="button" disabled={!hostOnline||busy} onClick={()=>setSeed(randomSeed())}>Randomize seed</button></div>
+        <small>Exact unsigned 64-bit decimal; no rounding. Find the actual seat and seed in Table menu after starting.</small>
+        <p className="rated-notice"><strong>Rated Studio League match</strong><br/>Your Elo may change. The finished game and its League booking are reported separately.</p>
+        <button className="studio-primary" onClick={()=>void startGame()} disabled={!hostOnline||!agentId||busy||uncertain}>{busy?"Starting agent…":"Start new game"}</button>
+        <small>{hostOnline?`${agents.length} registered agents ready`:`Double-click Splendor Studio.cmd in the project folder.`}</small>
+      </section>
+    </div>:null}
   </main>;
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { StudioGlyph, StudioHeader, StudioIntro } from "../components/studio-chrome";
 import { API_BASE } from "../api-base.mjs";
 import { visibleAgents, visibleParticipant } from "../agent-visibility.mjs";
 import {
@@ -331,23 +332,8 @@ export default function LeaguePage() {
     : hostStatusText(hostState);
 
   return (
-    <main className="human-studio">
-      <header className="human-topbar">
-        <div>
-          <span className="section-kicker">RATED MATCHES · STUDIO LEAGUE</span>
-          <h1>League Play</h1>
-        </div>
-        <div className="human-status">
-          <span className={`status-dot ${hostState === "not_responding" ? "offline" : ""}`} />
-          {hostLine}
-        </div>
-        <nav>
-          <Link href="/">Games</Link>
-          <Link href="/play">Play vs S3</Link>
-          <Link href="/ratings">Ratings</Link>
-          <Link href="/ratings/reports">Research reports</Link>
-        </nav>
-      </header>
+    <main className="human-studio studio-page league-page">
+      <StudioHeader active="league" />
 
       {rosterBanner ? (
         <div className="error-banner" role="alert">
@@ -360,14 +346,21 @@ export default function LeaguePage() {
         </div>
       ) : null}
 
-      <section className="human-connect">
+      <div className="studio-content">
+      <StudioIntro eyebrow="RATED MATCHES · STUDIO LEAGUE" title="League Play" action={<div className="league-host-status" data-state={hostState}><span className={`status-dot ${hostState === "not_responding" ? "offline" : ""}`} />{hostLine}</div>}>
+        <p>Set the seats. Watch the rivalry. Every completed match keeps its result, booking receipt and replay together.</p>
+      </StudioIntro>
+      <div className="league-layout">
+      <div className="league-main">
+      <section className="human-connect league-setup">
         <span className="section-kicker">START A RATED MATCH</span>
-        <h2>Two registered agents, one league row</h2>
+        <h2>Set the matchup</h2>
         <p>
           <strong>Rated:</strong> this match is written to the Studio League — a ledger row, Elo
           rating events and an archived replay. Elo may change. It is not an exhibition and it does
           not touch your saved human games.
         </p>
+        <div className="league-identity">
         <p>
           Occurrence id:{" "}
           {attempt ? (
@@ -388,6 +381,7 @@ export default function LeaguePage() {
           Seed: <code>{attempt ? attempt.seed : "…"}</code>{" "}
           <small>Fixed with the occurrence id; a retry replays this seed, it does not re-roll one.</small>
         </p>
+        </div>
 
         {rosterRead !== READ_OK ? (
         <p>
@@ -397,9 +391,10 @@ export default function LeaguePage() {
         </p>
       ) : null}
 
+      <div className="league-seats">
       {seats.map((seat, index) => (
           <label key={index}>
-            Seat {index + 1}
+            <span><StudioGlyph name="play" />Seat {index + 1} · P{index}</span>
             <select
               value={seat}
               disabled={running || rosterRead !== READ_OK}
@@ -418,7 +413,9 @@ export default function LeaguePage() {
             </select>
           </label>
         ))}
+      </div>
 
+        <div className="league-seat-controls">
         <button
           type="button"
           disabled={running || !attempt || seats.length >= MAX_SEATS}
@@ -431,6 +428,7 @@ export default function LeaguePage() {
             Remove the last seat
           </button>
         ) : null}
+        </div>
 
         {problem ? (
           <div className="error-banner" role="alert">
@@ -443,8 +441,8 @@ export default function LeaguePage() {
           </p>
         ))}
 
-        <div>
-          <button type="button" disabled={running || !attempt} onClick={start}>
+        <div className="league-submit">
+          <button type="button" className="studio-primary" disabled={running || !attempt} onClick={start}>
             Start rated match
           </button>
           <button type="button" disabled={running} onClick={newMatch}>
@@ -516,6 +514,8 @@ export default function LeaguePage() {
         </section>
       ) : null}
 
+      </div>
+      <aside className="league-standings" aria-label="Current league standings">
       <section className="recent-games">
         <span className="section-kicker">LEADERBOARD</span>
         <h2>Studio League standings</h2>
@@ -556,7 +556,11 @@ export default function LeaguePage() {
             Elo values are unchanged, and hidden participants remain in the historical ledger.
           </small>
         </p>
+        <Link className="standings-link" href="/ratings">Explore all standings<StudioGlyph name="arrow" /></Link>
       </section>
+      </aside>
+      </div>
+      </div>
     </main>
   );
 }

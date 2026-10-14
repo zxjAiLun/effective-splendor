@@ -74,9 +74,12 @@ try {
       const route=String(url).slice('http://127.0.0.1:43120'.length);
       window.hostCalls.push(route);
       if(route==='/league/leaderboard')return reply({format:'effective-splendor-studio-league-leaderboard',version:1,rows:[
+        // Curated identities from the M52 presentation roster: the page filters
+        // through visibleParticipant, so invented names would hide the very rows
+        // whose facts this gate asserts. Values below stay the gate's originals.
         {participant_id:'b901a2ea-645d-4c45-b4b9-407f5b6f39b7',kind:'human',display_name:'You',elo:1530,rated_games:1,recorded_games:1,rated_wins:1,rated_ties:0,rated_losses:0,provisional:true},
-        {participant_id:'eng-bbc4b64c4bc73d54525e0ba138ff5f6a',kind:'engine',display_name:'S3 Rollout',elo:1923,rated_games:168,recorded_games:168,rated_wins:100,rated_ties:4,rated_losses:64,provisional:false},
-        {participant_id:'eng-1111',kind:'engine',display_name:'Gate Heuristic',elo:1516,rated_games:2,recorded_games:2,rated_wins:1,rated_ties:0,rated_losses:1,provisional:true}
+        {participant_id:'eng-bbc4b64c4bc73d54525e0ba138ff5f6a',kind:'engine',display_name:'S3 Rollout (Default · Strong)',elo:1923,rated_games:168,recorded_games:168,rated_wins:100,rated_ties:4,rated_losses:64,provisional:false},
+        {participant_id:'prism-v011',kind:'engine',display_name:'★ Prism v0.1.1 (PPO Champion · 62.0% vs v0.3.1)',elo:1516,rated_games:2,recorded_games:2,rated_wins:1,rated_ties:0,rated_losses:1,provisional:true}
       ]});
       return reply({error:'unhandled test route '+route},404);
     };
@@ -116,38 +119,44 @@ try {
   // ---- /ratings/reports: the moved research studio ---------------------------
   // A fresh navigation gives a fresh `hostCalls`, so the zero-league-reads claim
   // below cannot be laundered by anything the Studio page read before it.
+  // The reports half of this gate predates the curated-roster filter (M52) and
+  // the Archive A/B relabel: it asserted hidden agent ids that the tracked node
+  // gate already forbids. Repaired here to the CURRENT frozen truths — same
+  // pages, same runtime zero-read claim, curated roster.
   await send("Page.navigate", { url: `http://127.0.0.1:${port}/ratings/reports` });
   await wait(`document.body && document.body.innerText.includes('Rating Studio') && document.body.innerText.includes('Non-transitivity matrix')`);
   const reportsText = await bodyText();
-  assert.match(reportsText, /m22-scaled-self-play-v1/);
-  assert.match(reportsText, /M22 Self-Play/);
+  assert.match(reportsText, /Archived research batch/);
   assert.match(reportsText, /48\/48/);
   assert.match(reportsText, /OFFICIAL/i);
+  assert.match(reportsText, /No curated agents in this archived research report/);
   assert.match(reportsText, /Load rating report/);
-  // M19 switch still works. A click issued before React hydration lands is
+  // The curated roster keeps uncurated archived ids out of this studio page.
+  assert.doesNotMatch(reportsText, /m22-scaled-self-play-v1|m19-internal-championship-v1/);
+  // Archive A (M19) still loads. A click issued before React hydration lands is
   // simply lost (the SSR shell already shows the default report), so the click
-  // is retried until the ledger of record — the page text — changes. The
-  // successful switch is also the proof hydration is live for the upload below.
+  // is retried until the page text proves the switch. The successful switch is
+  // also the proof hydration is live for the upload below.
   let switched = false;
   for (let i = 0; i < 100 && !switched; i++) {
     try {
-      await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='M19 full pool')?.click()`);
+      await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Archive A')?.click()`);
     } catch { /* document in flux; retry */ }
-    switched = await evaluate(`document.body.innerText.includes('m19-internal-championship-v1')`);
+    switched = await evaluate(`document.body.innerText.includes('Provisional · 1 seed/pair · 2 seat rotations')`);
     if (!switched) await delay(150);
   }
-  assert.ok(switched, "the M19 report switch never took effect");
-  assert.match(await bodyText(), /M19 full pool/);
+  assert.ok(switched, "the Archive A (M19) report switch never took effect");
+  assert.match(await bodyText(), /Archived research batch/);
   // Upload still works: a valid report file renders its tournament id.
   const upload = {
     format: "effective-splendor-rating-report", version: 1, tournament_id: "gate-upload-report",
     registry_hash: "0".repeat(64), round_robin_plan_hash: "1".repeat(64),
     scheduled_matches: 2, completed_matches: 2, aborted_matches: 0,
     agents: [
-      { rank: 1, agent_id: "A", display_name: "Upload A", class: "search", completed: 2, aborted: 0, wins: 2, ties: 0, losses: 0, live_elo: 1516, official_elo: 1600, provisional: true },
-      { rank: 2, agent_id: "B", display_name: "Upload B", class: "baseline", completed: 2, aborted: 0, wins: 0, ties: 0, losses: 2, live_elo: 1484, official_elo: 1400, provisional: true },
+      { rank: 1, agent_id: "prism-v011", display_name: "Upload A", class: "search", completed: 2, aborted: 0, wins: 2, ties: 0, losses: 0, live_elo: 1516, official_elo: 1600, provisional: true },
+      { rank: 2, agent_id: "prism-alpha-v01", display_name: "Upload B", class: "baseline", completed: 2, aborted: 0, wins: 0, ties: 0, losses: 2, live_elo: 1484, official_elo: 1400, provisional: true },
     ],
-    head_to_head: [{ agent_a: "A", agent_b: "B", completed: 2, aborted: 0, wins_a: 2, ties: 0, wins_b: 0 }],
+    head_to_head: [{ agent_a: "prism-v011", agent_b: "prism-alpha-v01", completed: 2, aborted: 0, wins_a: 2, ties: 0, wins_b: 0 }],
     pair_evaluation_report_hashes: ["2".repeat(64)],
   };
   const uploadPath = path.join(profile, "gate-upload-report.json");
@@ -163,7 +172,7 @@ try {
   // read — not on load, not on switch, not on upload.
   assert.deepEqual(await evaluate("window.hostCalls"), []);
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
-  console.log("ratings-page-browser: PASS (studio /ratings renders ledger rows only; /ratings/reports keeps M22 default, M19 switch, upload, matrix, and makes zero league reads)");
+  console.log("ratings-page-browser: PASS (studio /ratings renders ledger rows only; /ratings/reports keeps Archive B default, Archive A switch, curated upload, matrix, and makes zero league reads)");
 } finally {
   try { ws?.close(); } catch { /* closing */ }
   child.kill();
