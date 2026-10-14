@@ -2,6 +2,14 @@
 
 云端方向规划先读 [CLOUD_PLANNING.md](CLOUD_PLANNING.md) 的当前事实与证据边界；根 `handoff.md` 和 `local-artifacts/` 为本地文件，Git中的研究快照不代表当前机器执行状态。
 
+## 每轮实验的用户阅读交付（用户要求，2026-10-14）
+
+- 每轮开跑前交付中文实验说明：问题与已有证据、精确父模型和检查点血缘、各组设计与唯一变量、为何需要对照、保持不变的参数、种子/候选选择、训练与评测预算、机器分工、预计时间及依据、成功失败标准、结果对应的下一步。解释完整型号后才使用 A/B、c20 等简称。
+- 每轮结束后交付结果解释：实际产物、完整逐对手父代/对照/候选比较、统计与退步代价、失败/缺项、实际成本、假设是否得到支持、具体下一步。产物完成、竞技价值和方法证据分别说明。
+- 用户主入口为可直接阅读的 HTML，并保留完整 Markdown；JSON、SHA、PID 和核验回执放在证据层。状态答复直接说明当前阶段和含义，不以机器核验文件替代实验报告。
+- 方案须在启动前讲清楚；已有授权的有限流程仍自动推进，不因新增阅读交付而重复等待“继续”。已运行轮次补齐说明不改变冻结科学合同；未来方案依据上一轮实际结果制定，不预设无限实验链。
+- M81 阅读示例：[实验说明](docs/prism/m81-experiment-explained.html)。
+
 ## 历史数据保存位置（用户要求，2026-10-10）
 
 - 已结束实验的完整历史数据包保存在私有魔搭（ModelScope），按需取用；不再默认全量下载或长期保留本机副本。
@@ -9,6 +17,14 @@
 - 清理重复历史包或下载缓存前，核验云端完整性：清单、全部成员/分片大小与SHA及完整原归档SHA绑定一致，保存可复核回执；未上传完整或核验失败时保留现有有效副本。
 - 需要历史回放或状态时，只取分析所需数据；完整恢复须有对应用途。不得为备份传输更改正在运行的研究合同、停止训练或公开私有归档。
 - 首个云端历史包索引与恢复说明见 [历史归档索引](docs/prism/history-archive-index.md)。
+
+## 实例恢复与空闲提醒（用户要求，2026-10-11）
+
+- 已授权的有限 DSW/DSW2 任务须有持久化启动入口、稳定节点恢复检查和完成账本；实例启动后从未完成阶段接续，已完成对局不重赛，原失败证据与 CPU 消费不清零。
+- 自动恢复按该轮独立执行修订核验 PID/create_time、来源、权重、预算及截止；基础设施中断的未完成尝试按明确次数保留并恢复，科学失败或预算耗尽须及时通知，不静默停放。
+- 用户说明 DSW2 空闲 1 小时会自动回收。进入等待/没有工作、持续等待 30 分钟和 45 分钟，以及失联或恢复受阻时主动提醒；无法读取平台空闲计时时，明确区分研究等待计时。
+- 恢复服务与提醒随已授权有限任务启用，并在完成/截止后收口；不靠无意义负载规避回收。平台回收后的开机与实例启动后的任务接续分开报告。
+- 本轮实现与证据见 [M75 当前恢复记录](docs/m75-prism-continuation.md)。本机关闭后 server1 可继续恢复；Codex 任务通知的及时送达依赖应用运行。
 
 生效：2026-10-06；版本：`prism-research-workflow-v1`；来源：用户明确要求固化推荐研发与风格归类流程。
 适用：本仓库的研发、实验、评测、报告、模型登记和部署。**先按本规程确定任务终点，再执行；不得凭历史标题或个人习惯补充研究步骤。**
@@ -405,3 +421,17 @@ the original verdict and all detailed tables when adding a clearer interpretatio
 - Highlight/bold the side with the larger displayed value in every two-player/version comparison; use a distinct marker for a practical advantage (including lower losses/unbought reserves) versus descriptive magnitude. Display ties without a winner marker.
 - Building profiles prioritize scoring efficiency, noble coverage and 0–1 VP purchase behavior relative to Balance. Discount utility, discount totals and reward proxies alone do not establish small-card preference. Supply a literal formula for computed metrics that remain visible.
 - Keep hashes, runtime/config/replay manifests, raw research verdicts, thresholds and statistical tutorials in a separate Agent audit report. The human HTML/Markdown must contain readable detailed match tables and direct conclusions. Full technical evidence and original gates remain intact in the audit layer; do not simply collapse them within the human page.
+
+
+### 2026-10-14 后续用户更正：直接解释与运行成本优先
+
+用户不要继续为本次制作报告页面，要直接整理采样、PPO更新和资源监测数据。上述默认每轮HTML的要求由本条修正：默认在聊天中清楚说明设计/结果/成本，已有轮次文档保存证据；仅在用户需要或页面确有必要时制作页面，不拿JSON代替解释。
+
+每轮必须分报训练/开发/独立局数、周期数与每周期局数、决策样本数、passes和优化器步数、CPU/GPU与线程/实际并发、分阶段墙钟与CPU秒、配额归一化利用率、停等/故障/审计交付时间。区分计算计时和含扫描/等待的监督计时；缺监测明确缺项，不把预算收费当实测。新规模先检查周期耗时是否随历史增长。
+
+设计先考虑复用上一轮固定c20作为对照或新轮起点。重训双臂须说明相对单臂能多回答什么，以及额外时间/资源成本，不能把每轮同种子双臂当必选。已有冻结运行不因文档更正自动停止或改合同。
+
+
+### 高频执行职责（用户纠正，2026-10-14）
+
+Rust核心承担游戏状态推进与规则执行。已经绑定的固定输入/实现不在每局重新做整套资格审查；启动、来源变更或恢复时做相应检查，每局只核验新增结果与必要提交条件。外层容量与账本用增量路径，完整历史对账放在适当批次边界；禁止每局扫描整轮历史、递归复制历史账本或重复验证同一结果。以实际分段耗时检查历史增长成本。新实现仍按对应工程检查验证，不能为性能静默删除原科学合同要求；运行中通过独立执行修订接入。M81已验证实现和适用范围见轮次文档performance-r4节。

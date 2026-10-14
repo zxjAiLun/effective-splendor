@@ -1,21 +1,656 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prism 每轮报告</title><style>body{margin:0;background:#f1f4f8;color:#172e3c;font:16px/1.7 "Segoe UI","Microsoft YaHei",sans-serif}main{max-width:850px;margin:auto;padding:40px 22px}article{padding:24px;background:white;border:1px solid #dce5eb;border-radius:12px;margin:18px 0}h2{font-size:21px;margin:0 0 10px}a{color:#265dc5}small{color:#586b78}</style></head><body><main><small>PRISM / 每轮对战</small><h1>看实战，再看实际画像</h1><p>默认双方greedy。每个共同对手下，当代与上一代并列；双方数值有高亮。历史采样与Agent审计另页存放。</p>
-<article><h2><a href="m74-prism-scaleup-comparison-r4.html">M74 · Prism Balance v0.2.3 · 长程强池迭代：共同池+4.51pp，对父56.79%，主要增强确认</a></h2><p>5120训练局、20周期、1100更新，最终c20审计通过。共同池半平66.98%→71.48%，增益95%区间+2.41～+6.58pp；直接父代577胜9平438负，半平56.79%（53.91%～59.72%），两项主要增强门均通过。9216尝试有9215终局及最新Alpha一局512步截断，主要网格完整、全覆盖INCOMPLETE。购牌向大牌移动、贵族覆盖下降，路线待定；已固定为Balance v0.2.3，父代为Balance v0.2.2。独立统计复算、17组双方明细及桌面/窄屏像素检查通过。</p><a href="m74-prism-scaleup-comparison-r4.reading.md">完整双方数据表</a> · <a href="m74-prism-scaleup-comparison-r4.audit.html">Agent审计</a> · <a href="m74-prism-scaleup-training.md">训练对战</a> · <a href="../m74-prism-scaleup.md">执行记录与缺项</a></article>
-<article><h2><a href="m73-prism-repeat-comparison-r4.html">M73 · 三seed短程PPO重复：主要保留门通过，增强未确认</a></h2><p>固定Balance v0.2.0父代，三seed各1024训练局、最终c4审计通过。独立双方greedy有19455终局和1局512 ply截断，原19456网格完整性不足。A/B/C共同池变化+0.28/+1.97/−0.16pp，对父半平52.64/53.32/51.22%；主要保留门6/6通过，增强门0/6通过，最新Balance覆盖保留门均未通过。原结果与报告保留；阅读修订支持三seed切换，统计复算、DOM及桌面/窄屏像素核验通过；B现固定为Balance v0.2.2，A/C未发布。</p><a href="m73-prism-repeat-comparison-r4.reading.md">完整双方数据表</a> · <a href="m73-prism-repeat-comparison-r4.audit.html">Agent审计</a> · <a href="../m73-prism-v020-experiment-design.md">执行记录与局限</a></article>
-<article><h2><a href="m73-prism-v020-experiment-design.html">M73 · 历史设计与云端建议</a></h2><p>本页保存采样前设计及云端评审建议；正式执行与结果见上方M73报告。后续优先评审同父同预算的旧池/新池对照，风格时点与真实兑现仍缺项；没有自动开启下一轮。</p><a href="../m73-prism-v020-experiment-design.md">完整设计与边界</a></article>
-<article><h2><a href="style-atlas-2026-10-08.html">M72 · 固定Alpha/Balance版本、B数据基线与历史画像</a></h2><p>14份神经权重核实，16组54份画像含初代、通用、早期Alpha及Balance/Beta实际统计；184行原逐对手座位数据及24张原Excel柱状图保留。分布显示历史Balance参照、均值/分位点与当前模型位置，M70逐局分布复用6,144局。模式与对手池分组。已固定Alpha v0.2.0=A、Balance v0.2.0=B数据基线、Balance v0.2.1=M70；统计风格确认等级与原竞技判定保留。当前页面更新DOM通过，像素受浏览器file协议策略限制未验证。</p><a href="prism-v020-fixed-models.md">固定版本与B基线</a> · <a href="style-history-2026-10-08.md">早期统计与对照</a> · <a href="style-atlas-2026-10-08.md">完整双方表</a> · <a href="style-atlas-2026-10-08.audit.md">Agent审计</a></article>
-<article><h2><a href="m70-prism-b-continuation-comparison.html">M70 · B-c20继续训练：共同池+2.90pp，直接父代增强未确认</a></h2><p>1024训练局/218更新，7168局双方greedy完整。共同池差值95%区间+0.76～+5.09pp；直接父代半平52.44%（49.76%～55.13%）。两项保留通过，总体增强未确认。原最终c4现按用户指定固定为Prism Balance v0.2.1（父代Balance v0.2.0）；原研究门不变。本地独立统计复算与DOM通过，像素未核验。</p><a href="m70-prism-b-continuation-comparison.reading.md">完整双方数据表</a> · <a href="m70-prism-b-continuation-comparison.audit.html">Agent审计</a></article>
-<article><h2><a href="m67-prism-alpha-repeat-b-comparison.html">M67 B · 独立训练臂B完成：共同对手+6.32pp、对父57.93%，四项增强确认</a></h2><p>5120局独立PPO训练，40000局双方greedy独立评测全量完成。共同对手平均+6.32个百分点（下界+5.42pp，6个对手全胜），直接对父模型半平57.93%（下界56.86%），四项门全通过。原最终c20现按用户指定固定为Prism Balance v0.2.0数据基线，原研究判定不变。</p><a href="m67-prism-alpha-repeat-b-comparison.reading.md">完整双方数据表</a> · <a href="m67-prism-alpha-repeat-b-comparison.audit.html">Agent审计</a></article>
-<article><h2><a href="m67-prism-alpha-repeat-a-comparison.html">M67 A · 独立训练臂A完成：共同对手+7.64pp、对父60.49%（5个步数安全死锁缺项保留）</a></h2><p>5120局独立PPO训练，39995局双方greedy评测完成。直接对父半平60.49%（下界59.42%），共同对手完整种子对平均+7.64个百分点（下界+6.73pp）；因5个步数安全上限死锁/孤立缺项保留，两臂重复增强未确认。原最终c20现按用户指定固定为Prism Alpha v0.2.0，5个缺项与未确认判定保留。</p><a href="m67-prism-alpha-repeat-a-comparison.reading.md">完整双方数据表</a> · <a href="m67-prism-alpha-repeat-a-comparison.audit.html">Agent审计</a></article>
-<article><h2><a href="project-status-2026-10-07.html">2026-10-07 19:12 · Prism架构、三路线与M67 DSW状态快照</a></h2><p>一次性直接SSH核验，非最终竞技报告。登记97,235/110,000局（88.40%），A共同池仍推进且有5缺项；本机观察器已退出，截止时间存在风险。三路线权重身份核验通过，M67候选尚未发布。</p></article>
-<article><h2><a href="development-review-2026-10-06.html">2026-10-06 · Prism研发评审：扩量、实战与风格归类</a></h2><p>只读项目评审，不是新模型战绩。保留核心架构，优先改进持久化吞吐、监控与报告恢复；区分训练种子重复、对手覆盖和实际风格。当前M67尚无最终竞技结论。</p><a href="development-review-2026-10-06.md">中文Markdown</a> · <a href="development-review-2026-10-06.audit.md">Agent审计</a></article>
-<article><h2><a href="m66-prism-alpha-dsw-comparison.html">M66 · Alpha起点续训完成，竞争力保留、增强未确认</a></h2><p>1024训练局/220 PPO更新，7168局独立双方greedy。候选直接起点半平52.54%（区间49.71%–55.27%），共同对手平均+0.62个百分点；对Alpha v0.1.4较好，对Beta和通用略低。最终c4是未发布研究检查点。</p><a href="m66-prism-alpha-dsw-comparison.reading.md">完整双方数据表</a> · <a href="m66-prism-alpha-dsw-comparison.audit.html">Agent审计</a></article>
-<article><h2><a href="m65-prism-version-release-comparison.html">M65 · Prism Beta v0.1.0与Prism Alpha v0.1.5已发布</a></h2><p>两份固定研究版本，原权重和血缘保持。Beta是混合画像参考；Alpha略偏大牌冲分。新增2560局greedy，Alpha对Beta半平得分56.05%。</p><a href="m62-prism-beta-building-comparison.html">Beta完整对战</a> · <a href="m63-prism-beta-timed-building-evaluation.html">Alpha完整对战</a> · <a href="m64-dsw-throughput-calibration.html">DSW实测速度</a></article>
-<article><h2><a href="m63-prism-beta-timed-building-evaluation.html">Prism Alpha v0.1.5 · 大牌冲分检查点，greedy对父53.91%</a></h2><p>2816局补充对照完成。相对父代，对Heuristic和初代较好；对Alpha和上一Beta略低，通用版接近。相对Balance父代略偏大牌冲分；对现任Alpha51.95%。现已按同权重发布为Prism Alpha v0.1.5。</p><a href="m63-prism-beta-timed-building-evaluation.reading.md">人类数据表</a> · <a href="m63-prism-beta-timed-building-evaluation.sampling.html">历史采样</a> · <a href="m63-prism-beta-timed-building-evaluation.audit.html">Agent审计</a></article>
-<article><h2><a href="m62-prism-beta-building-comparison.html">Prism Beta v0.1.0 · greedy实战与混合画像</a></h2><p>已发布固定研究版本。greedy对通用版63.67%、对现任Alpha50.20%，直接对Balance父代46.88%。历史采样独立保留。</p><a href="m62-prism-beta-building-comparison.sampling.html">历史对战与双方画像</a> · <a href="m62-prism-beta-building-comparison.audit.html">Agent审计</a></article>
-<article><h2>M61 · 历史采样复盘</h2><p>Alpha与Balance两条分支的原采样对照。该轮双方greedy战绩未测。</p><a href="m61-prism-alpha-balance-ab-comparison.sampling.html">历史对战与双方画像</a> · <a href="m61-prism-alpha-balance-ab-comparison.audit.html">Agent审计</a></article>
-<article><h2><a href="model-catalog-2026-10-05.html">历史清单 · 截至2026-10-05晚的Prism六固定模型与M66参照</a></h2><p>2026-10-07只读核验与同步。保留General、Alpha、Balance、Beta的完整SHA、血缘与身份；不同模式和seed cohort战绩分报，M66仍未发布。此页不更新当前M67运行状态。</p><a href="model-catalog-2026-10-05.md">完整清单与战绩来源</a></article>
-<article><h2><a href="m67-loop-implications-2026-10-07.html">M67 · 长局停滞诊断与研发启示</a></h2><p>9999保存动作与77盘面原核验通过；计数输入推动局部动作排名交叉。合法性、竞技实力与推进能力分开验证。零新局分析，非新战绩；未刷新DSW状态。</p><a href="m67-loop-implications-2026-10-07.md">完整分析与证据边界</a></article>
-<article><h2><a href="m69-failure-isolation.html">M69 · 长局错误隔离与M67画像纠错</a></h2><p>独立组件通过25项本地测试，尚未部署。M67原结果保持，A共同池仍缺5项；贵族覆盖父/A/B为36.64%/31.04%/39.09%，两候选的变化方向不同。</p><a href="../m69-prism-evaluation-failure-isolation.md">工程证据与使用边界</a></article>
-<article><h2><a href="m69-stagnation-check-2026-10-08.html">M69 · 训练覆盖与停滞机会检查</a></h2><p>10,240局训练回放：总Main最大A83/B67。循环在约45步形成，合法购买始终存在。定向训练样本显示采样会绕过最高分等待；零新局，不宣称机制已修复。</p><a href="m69-stagnation-check-2026-10-08.md">完整证据与DSW观察范围</a></article>
-<article><h2><a href="m71-bounded-evaluation.html">M71 · 有界评测与停滞证据保全</a></h2><p>本地工程修复通过48项测试与9999步原事故回归。长局保存完整截断前缀、登记缺项，并在冻结预算内隔离处理；模型等待偏好尚未解决。0新局，未部署。</p><a href="m71-bounded-evaluation.md">阅读Markdown</a> · <a href="m71-bounded-evaluation.audit.md">Agent审计</a> · <a href="../m71-prism-bounded-evaluation.md">完整工程记录</a></article>
-<p><small>完整模型名称与未发布身份明确标注。高亮表示本批数值方向，路线按实际行为判断。</small></p></main></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prism 每轮报告 · 实战与画像看板</title>
+  <style>
+    :root {
+      --ink: #102434;
+      --muted: #587185;
+      --line: #d7e2ec;
+      --bg: #f3f6fa;
+      --card-bg: #ffffff;
+      --primary: #1a56b0;
+      --primary-light: #eaf1fa;
+      --teal: #0f766e;
+      --teal-light: #e6f6f4;
+      --amber: #925c0e;
+      --amber-light: #fef5e7;
+      --green: #15803d;
+      --green-light: #eaf7ee;
+      --purple: #6b21a8;
+      --purple-light: #f3e8ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    header.portal-header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+    .portal-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 700 12px/1 var(--font-mono, monospace);
+      letter-spacing: .12em;
+      color: var(--primary);
+      text-transform: uppercase;
+      background: var(--primary-light);
+      padding: 5px 10px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      font-size: clamp(26px, 4vw, 36px);
+      line-height: 1.25;
+      margin: 0 0 10px;
+      letter-spacing: -.02em;
+      color: #0b1a26;
+    }
+    .portal-subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      margin: 0 0 20px;
+      max-width: 820px;
+      line-height: 1.6;
+    }
+    .portal-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      color: #3b5266;
+      font-weight: 550;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .stat-pill b { color: var(--ink); font-weight: 750; }
+    .portal-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      padding: 12px 0;
+      margin-bottom: 28px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      overflow-x: auto;
+    }
+    .portal-nav a {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #486277;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      white-space: nowrap;
+      transition: all .15s ease;
+    }
+    .portal-nav a:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 750;
+      color: #213a4e;
+      margin: 36px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -.01em;
+    }
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--primary);
+    }
+    .report-card {
+      padding: 24px 26px;
+      background: var(--card-bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 16px rgba(15, 35, 49, 0.04);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .report-card:hover {
+      border-color: #b7cad8;
+      box-shadow: 0 8px 24px rgba(15, 35, 49, 0.08);
+      transform: translateY(-1px);
+    }
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    h2 {
+      font-size: 19px;
+      line-height: 1.35;
+      margin: 0;
+      font-weight: 700;
+      color: #102434;
+    }
+    h2 a {
+      color: inherit;
+      text-decoration: none;
+      transition: color .15s ease;
+    }
+    h2 a:hover {
+      color: var(--primary);
+    }
+    .badge-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font: 700 12px/1.3 var(--font-mono, monospace);
+      letter-spacing: .02em;
+    }
+    .badge-primary { background: var(--primary-light); color: var(--primary); border: 1px solid #c8dbf2; }
+    .badge-green { background: var(--green-light); color: var(--green); border: 1px solid #bce4c8; }
+    .badge-amber { background: var(--amber-light); color: var(--amber); border: 1px solid #f6deb6; }
+    .badge-teal { background: var(--teal-light); color: var(--teal); border: 1px solid #b9e9e3; }
+    .badge-purple { background: var(--purple-light); color: var(--purple); border: 1px solid #e1ccf7; }
+    .card-body {
+      margin: 0 0 16px;
+      color: #3b5266;
+      font-size: 14.5px;
+      line-height: 1.7;
+    }
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px solid #edf2f7;
+    }
+    .card-actions a {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--primary);
+      background: var(--primary-light);
+      border: 1px solid #d5e4f5;
+      transition: all .15s ease;
+    }
+    .card-actions a:hover {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+    .card-actions a.btn-secondary {
+      color: #4a6379;
+      background: #f8fafc;
+      border-color: #dbe4ec;
+    }
+    .card-actions a.btn-secondary:hover {
+      color: var(--ink);
+      background: #eef4fa;
+      border-color: #b8cddc;
+    }
+    footer.portal-footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 768px) {
+      main { padding: 24px 16px 60px; }
+      .card-top { flex-direction: column; gap: 8px; }
+      h2 { font-size: 17px; }
+      .card-body { font-size: 14px; }
+      .card-actions a { flex: 1 1 calc(50% - 8px); justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header class="portal-header">
+    <span class="portal-eyebrow">PRISM RESEARCH REPOSITORY · VERIFIED REPORTS</span>
+    <h1>实战对决与行为画像总览</h1>
+    <p class="portal-subtitle">默认双方 greedy 实战基准。每个共同对手下当代与上一代并列对比；双方数值显式高亮。历史原始包与复现状态保存在私有魔搭，两层阅读与审计报告严格绑定。</p>
+    <div class="portal-stats">
+      <span class="stat-pill">已纳入口径 <b>21 篇研究报告</b></span>
+      <span class="stat-pill">已发布型号 <b>Alpha v0.2.0 / Balance v0.2.0 / v0.2.1 / v0.2.3</b></span>
+      <span class="stat-pill">基准模式 <b>双方 Greedy 对决</b></span>
+      <span class="stat-pill">科学架构 <b>双层阅读 + Agent 审计</b></span>
+    </div>
+  </header>
+
+  <nav class="portal-nav" aria-label="报告分类导航">
+    <a href="#mainline">最新棋力主线 (M73–M81)</a>
+    <a href="#style-releases">风格图谱与固定版本 (M65/M72)</a>
+    <a href="#diagnostics">停滞诊断与工程保全 (M64/M67/M69/M71)</a>
+    <a href="#early">早期探索与复盘 (M61–M63)</a>
+  </nav>
+
+  <!-- 分区 1: 最新棋力主线 -->
+  <section id="mainline">
+    <div class="section-title">最新棋力主线 (M73–M81)</div>
+    <article class="report-card">
+      <div class="card-top"><h2><a href="m81-results-r1.html">M81 · 实跑提速 3.43 倍，补覆盖未解决旧锚点问题</a></h2></div>
+      <p class="card-body">A、B 各完成 5,120 局训练；14,336 次评测执行产生 14,330 个终局和 6 个截断。固定候选 B 对父代半平得分 54.45%，启发式与旧 Balance 保留门未通过，未晋级。完整呈现八对手比较与实测耗时；报告字段错误已修复，原结果保留。</p>
+      <div class="card-actions"><a href="m81-results-r1.html">结果与实际耗时</a><a href="m81-results-r1.md" class="btn-secondary">完整 Markdown</a></div>
+    </article>
+    <article class="report-card">
+      <div class="card-top"><h2><a href="m81-experiment-explained.html">M81 · 从哪个模型出发，A/B 改什么，怎样判定有效？</a></h2></div>
+      <p class="card-body">开跑前的实验设计阅读稿：两组同从 M75 c20 出发，各训练 5,120 局；B 将25%训练份额换成启发式与旧 Balance。解释血缘、对照、预算和成功标准。当前结果见上方结果报告。</p>
+    </article>
+
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m79-prism-mainline-comparison-r3.html">M79 · 对父代 54.35%，但共同池增益不足，暂不替换 M75</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">M79 c20 (未发布)</span>
+          <span class="badge badge-amber">竞技推荐门未通过</span>
+          <span class="badge badge-purple">行为路线仍待定</span>
+        </div>
+      </div>
+      <p class="card-body">M79 与父代 M75 直接交手占优；六对手共同池提高 1.61 个百分点，未达到约定标准，对启发式下降 5.18 个百分点。保留 M75 主线父候选，M79 留作比较候选，未晋级。训练与 12,288 局独立评测已完成。新版先看逐对手涨跌，再解释未过门的原因和行为变化；贵族覆盖率已按实际获得贵族的局数更正。</p>
+      <div class="card-actions">
+        <a href="m79-prism-mainline-comparison-r3.html">新版阅读报告 (r3)</a>
+        <a href="m79-prism-mainline-comparison-r3.reading.md" class="btn-secondary">完整双方 Markdown</a>
+        <a href="m79-prism-mainline-comparison-r3.audit.md" class="btn-secondary">本版核验与更正</a>
+        <a href="m79-regression-diagnostic.md" class="btn-secondary">退步回放诊断</a>
+        <a href="../m81-anchor-coverage-pilot.md" class="btn-secondary">M81 执行方案</a>
+        <a href="m79-prism-mainline-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+        <a href="m79-prism-mainline-comparison-r3.html#profile">更正后的行为画像</a>
+        <a href="../m79-prism-mainline.md" class="btn-secondary">轮次记录</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m75-prism-continuation-comparison-r4.html">M75 · 强池再训：对父代 56.10%，归档与视觉验收完成</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">M75 c20 (未发布)</span>
+          <span class="badge badge-green">对父 +6.10pp PASS</span>
+          <span class="badge badge-teal">视觉验收 PASS</span>
+        </div>
+      </div>
+      <p class="card-body">最终c20（未发布），训练5120物理尝试=5119终局+1保留截断；1024开发完整。独立9216物理尝试=9215终局+1既有基线截断，候选5120局完整。对父代569胜11平444负，半平56.10%（配对95%区间53.13%～59.03%），直接增强门通过；对Alpha v0.2.0/Balance v0.2.1相比父代+11.62/+13.18个百分点。冻结共同池配对门仍缺1基线终局，Heuristic及Alpha v0.1.5的小幅下降保留。保存回放时点、早期投资和真实兑现已补齐；五个完整共同对手双方各2560局仅作事后描述。固定风格参照缺失，路线待定。身份、竞技、画像、路线和用途统一归档；报告r4、曲线r2与候选卡桌面/窄屏像素核验通过。本次0新局，下一轮等待决定。</p>
+      <div class="card-actions">
+        <a href="m75-candidate-card.html">候选身份与用途卡</a>
+        <a href="m75-prism-continuation-comparison-r4.html">阅读报告 (r4)</a>
+        <a href="m75-prism-continuation-comparison-r4.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m75-prism-continuation-comparison-r4.audit.html" class="btn-secondary">Agent 审计</a>
+        <a href="m75-prism-continuation-curve-r2.html" class="btn-secondary">阶段棋力曲线</a>
+        <a href="m75-prism-continuation-comparison.html" class="btn-secondary">冻结原报告</a>
+        <a href="../m75-prism-continuation.md" class="btn-secondary">执行记录与缺项</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m74-prism-scaleup-comparison-r4.html">M74 · Prism Balance v0.2.3 · 长程强池迭代：共同池 +4.51pp，对父 56.79%，主要增强确认</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Balance v0.2.3</span>
+          <span class="badge badge-green">共同池 +4.51pp PASS</span>
+          <span class="badge badge-green">对父 56.79% PASS</span>
+        </div>
+      </div>
+      <p class="card-body">5120训练局、20周期、1100更新，最终c20审计通过。共同池半平66.98%→71.48%，增益95%区间+2.41～+6.58pp；直接父代577胜9平438负，半平56.79%（53.91%～59.72%），两项主要增强门均通过。9216尝试有9215终局及最新Alpha一局512步截断，主要网格完整、全覆盖INCOMPLETE。购牌向大牌移动、贵族覆盖下降，路线待定；已固定为Balance v0.2.3，父代为Balance v0.2.2。独立统计复算、17组双方明细及桌面/窄屏像素检查通过。</p>
+      <div class="card-actions">
+        <a href="m74-prism-scaleup-comparison-r4.html">阅读报告 (r4)</a>
+        <a href="m74-prism-scaleup-comparison-r4.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m74-prism-scaleup-comparison-r4.audit.html" class="btn-secondary">Agent 审计</a>
+        <a href="m74-prism-scaleup-training.md" class="btn-secondary">训练对战</a>
+        <a href="../m74-prism-scaleup.md" class="btn-secondary">执行记录与缺项</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m73-prism-repeat-comparison-r4.html">M73 · 三 seed 短程 PPO 重复：主要保留门通过，增强未确认</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Balance v0.2.2 (B)</span>
+          <span class="badge badge-teal">保留 6/6 PASS</span>
+          <span class="badge badge-amber">增强 0/6 未确认</span>
+        </div>
+      </div>
+      <p class="card-body">固定Balance v0.2.0父代，三seed各1024训练局、最终c4审计通过。独立双方greedy有19455终局和1局512 ply截断，原19456网格完整性不足。A/B/C共同池变化+0.28/+1.97/−0.16pp，对父半平52.64/53.32/51.22%；主要保留门6/6通过，增强门0/6通过，最新Balance覆盖保留门均未通过。原结果与报告保留；阅读修订支持三seed切换，统计复算、DOM及桌面/窄屏像素核验通过；B现固定为Balance v0.2.2，A/C未发布。</p>
+      <div class="card-actions">
+        <a href="m73-prism-repeat-comparison-r4.html">阅读报告 (r4)</a>
+        <a href="m73-prism-repeat-comparison-r4.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m73-prism-repeat-comparison-r4.audit.html" class="btn-secondary">Agent 审计</a>
+        <a href="../m73-prism-v020-experiment-design.md" class="btn-secondary">执行记录与局限</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m73-prism-v020-experiment-design.html">M73 · 历史设计与云端建议</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">DESIGNED</span>
+          <span class="badge badge-amber">未授权执行</span>
+        </div>
+      </div>
+      <p class="card-body">本页保存采样前设计及云端评审建议；正式执行与结果见上方M73报告。后续优先评审同父同预算的旧池/新池对照，风格时点与真实兑现仍缺项；没有自动开启下一轮。</p>
+      <div class="card-actions">
+        <a href="m73-prism-v020-experiment-design.html">一页说明设计稿</a>
+        <a href="../m73-prism-v020-experiment-design.md" class="btn-secondary">完整设计与边界</a>
+      </div>
+    </article>
+  </section>
+
+  <!-- 分区 2: 风格图谱与固定版本 -->
+  <section id="style-releases">
+    <div class="section-title">风格图谱与固定版本 (M65/M72)</div>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="style-atlas-2026-10-08.html">M72 · 固定 Alpha/Balance 版本、B 数据基线与历史画像</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Alpha / Balance v0.2.0</span>
+          <span class="badge badge-teal">54 份互动画像</span>
+        </div>
+      </div>
+      <p class="card-body">14份神经权重核实，16组54份画像含初代、通用、早期Alpha及Balance/Beta实际统计；184行原逐对手座位数据及24张原Excel柱状图保留。分布显示历史Balance参照、均值/分位点与当前模型位置，M70逐局分布复用6,144局。模式与对手池分组。已固定Alpha v0.2.0=A、Balance v0.2.0=B数据基线、Balance v0.2.1=M70；统计风格确认等级与原竞技判定保留。当前页面更新DOM通过，像素受浏览器file协议策略限制未验证。</p>
+      <div class="card-actions">
+        <a href="style-atlas-2026-10-08.html">互动统计画像</a>
+        <a href="prism-v020-fixed-models.md" class="btn-secondary">固定版本与B基线</a>
+        <a href="style-history-2026-10-08.md" class="btn-secondary">早期统计与对照</a>
+        <a href="style-atlas-2026-10-08.md" class="btn-secondary">完整双方表</a>
+        <a href="style-atlas-2026-10-08.audit.md" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m70-prism-b-continuation-comparison.html">M70 · B-c20 继续训练：共同池 +2.90pp，直接父代增强未确认</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Balance v0.2.1</span>
+          <span class="badge badge-green">共同池 +2.90pp PASS</span>
+          <span class="badge badge-amber">对父未确认</span>
+        </div>
+      </div>
+      <p class="card-body">1024训练局/218更新，7168局双方greedy完整。共同池差值95%区间+0.76～+5.09pp；直接父代半平52.44%（49.76%～55.13%）。两项保留通过，总体增强未确认。原最终c4现按用户指定固定为Prism Balance v0.2.1（父代Balance v0.2.0）；原研究门不变。本地独立统计复算与DOM通过，像素未核验。</p>
+      <div class="card-actions">
+        <a href="m70-prism-b-continuation-comparison.html">阅读报告</a>
+        <a href="m70-prism-b-continuation-comparison.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m70-prism-b-continuation-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m67-prism-alpha-repeat-b-comparison.html">M67 B · 独立训练臂 B 完成：共同对手 +6.32pp、对父 57.93%，四项增强确认</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Balance v0.2.0 基线</span>
+          <span class="badge badge-green">对父 57.93% PASS</span>
+          <span class="badge badge-green">四项增强 PASS</span>
+        </div>
+      </div>
+      <p class="card-body">5120局独立PPO训练，40000局双方greedy独立评测全量完成。共同对手平均+6.32个百分点（下界+5.42pp，6个对手全胜），直接对父模型半平57.93%（下界56.86%），四项门全通过。原最终c20现按用户指定固定为Prism Balance v0.2.0数据基线，原研究判定不变。</p>
+      <div class="card-actions">
+        <a href="m67-prism-alpha-repeat-b-comparison.html">阅读报告</a>
+        <a href="m67-prism-alpha-repeat-b-comparison.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m67-prism-alpha-repeat-b-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m67-prism-alpha-repeat-a-comparison.html">M67 A · 独立训练臂 A 完成：共同对手 +7.64pp、对父 60.49%（5 个死锁缺项保留）</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Alpha v0.2.0</span>
+          <span class="badge badge-green">对父 60.49%</span>
+          <span class="badge badge-amber">5 死锁缺项保留</span>
+        </div>
+      </div>
+      <p class="card-body">5120局独立PPO训练，39995局双方greedy评测完成。直接对父半平60.49%（下界59.42%），共同对手完整种子对平均+7.64个百分点（下界+6.73pp）；因5个步数安全上限死锁/孤立缺项保留，两臂重复增强未确认。原最终c20现按用户指定固定为Prism Alpha v0.2.0，5个缺项与未确认判定保留。</p>
+      <div class="card-actions">
+        <a href="m67-prism-alpha-repeat-a-comparison.html">阅读报告</a>
+        <a href="m67-prism-alpha-repeat-a-comparison.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m67-prism-alpha-repeat-a-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m65-prism-version-release-comparison.html">M65 · Prism Beta v0.1.0 与 Prism Alpha v0.1.5 已发布</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Beta v0.1.0 / Alpha v0.1.5</span>
+          <span class="badge badge-teal">固定研究发布</span>
+        </div>
+      </div>
+      <p class="card-body">两份固定研究版本，原权重和血缘保持。Beta是混合画像参考；Alpha略偏大牌冲分。新增2560局greedy，Alpha对Beta半平得分56.05%。</p>
+      <div class="card-actions">
+        <a href="m65-prism-version-release-comparison.html">对比报告</a>
+        <a href="m62-prism-beta-building-comparison.html" class="btn-secondary">Beta 完整对战</a>
+        <a href="m63-prism-beta-timed-building-evaluation.html" class="btn-secondary">Alpha 完整对战</a>
+        <a href="m64-dsw-throughput-calibration.html" class="btn-secondary">DSW 实测速度</a>
+      </div>
+    </article>
+  </section>
+
+  <!-- 分区 3: 停滞诊断与工程保全 -->
+  <section id="diagnostics">
+    <div class="section-title">停滞诊断与工程保全 (M64/M67/M69/M71)</div>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m71-bounded-evaluation.html">M71 · 有界评测与停滞证据保全</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-teal">工程回归 48 PASS</span>
+          <span class="badge badge-amber">模型等待偏好待解</span>
+        </div>
+      </div>
+      <p class="card-body">本地工程修复通过48项测试与9999步原事故回归。长局保存完整截断前缀、登记缺项，并在冻结预算内隔离处理；模型等待偏好尚未解决。0新局，未部署。</p>
+      <div class="card-actions">
+        <a href="m71-bounded-evaluation.html">阅读页</a>
+        <a href="m71-bounded-evaluation.md" class="btn-secondary">阅读 Markdown</a>
+        <a href="m71-bounded-evaluation.audit.md" class="btn-secondary">Agent 审计</a>
+        <a href="../m71-prism-bounded-evaluation.md" class="btn-secondary">完整工程记录</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m69-failure-isolation.html">M69 · 长局错误隔离与 M67 画像纠错</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-teal">25 单测 PASS</span>
+          <span class="badge badge-primary">隔离组件</span>
+        </div>
+      </div>
+      <p class="card-body">独立组件通过25项本地测试，尚未部署。M67原结果保持，A共同池仍缺5项；贵族覆盖父/A/B为36.64%/31.04%/39.09%，两候选的变化方向不同。</p>
+      <div class="card-actions">
+        <a href="m69-failure-isolation.html">说明页</a>
+        <a href="../m69-prism-evaluation-failure-isolation.md" class="btn-secondary">工程证据与使用边界</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m69-stagnation-check-2026-10-08.html">M69 · 训练覆盖与停滞机会检查</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-amber">10,240 训练回放</span>
+          <span class="badge badge-primary">机会诊断</span>
+        </div>
+      </div>
+      <p class="card-body">10,240局训练回放：总Main最大A83/B67。循环在约45步形成，合法购买始终存在。定向训练样本显示采样会绕过最高分等待；零新局，不宣称机制已修复。</p>
+      <div class="card-actions">
+        <a href="m69-stagnation-check-2026-10-08.html">诊断页</a>
+        <a href="m69-stagnation-check-2026-10-08.md" class="btn-secondary">完整证据与 DSW 观察范围</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m67-loop-implications-2026-10-07.html">M67 · 长局停滞诊断与研发启示</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-amber">9999 动作回归</span>
+          <span class="badge badge-primary">机理归因</span>
+        </div>
+      </div>
+      <p class="card-body">9999保存动作与77盘面原核验通过；计数输入推动局部动作排名交叉。合法性、竞技实力与推进能力分开验证。零新局分析，非新战绩；未刷新DSW状态。</p>
+      <div class="card-actions">
+        <a href="m67-loop-implications-2026-10-07.html">诊断页</a>
+        <a href="m67-loop-implications-2026-10-07.md" class="btn-secondary">完整分析与证据边界</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="project-status-2026-10-07.html">2026-10-07 19:12 · Prism 架构、三路线与 M67 DSW 状态快照</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">状态快照</span>
+          <span class="badge badge-teal">88.40% 进度核验</span>
+        </div>
+      </div>
+      <p class="card-body">一次性直接SSH核验，非最终竞技报告。登记97,235/110,000局（88.40%），A共同池仍推进且有5缺项；本机观察器已退出，截止时间存在风险。三路线权重身份核验通过，M67候选尚未发布。</p>
+      <div class="card-actions">
+        <a href="project-status-2026-10-07.html">状态页</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="development-review-2026-10-06.html">2026-10-06 · Prism 研发评审：扩量、实战与风格归类</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">项目规程</span>
+          <span class="badge badge-teal">方法论</span>
+        </div>
+      </div>
+      <p class="card-body">只读项目评审，不是新模型战绩。保留核心架构，优先改进持久化吞吐、监控与报告恢复；区分训练种子重复、对手覆盖和实际风格。当前M67尚无最终竞技结论。</p>
+      <div class="card-actions">
+        <a href="development-review-2026-10-06.html">评审页</a>
+        <a href="development-review-2026-10-06.md" class="btn-secondary">中文 Markdown</a>
+        <a href="development-review-2026-10-06.audit.md" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+  </section>
+
+  <!-- 分区 4: 早期探索与复盘 -->
+  <section id="early">
+    <div class="section-title">早期探索与复盘 (M61–M63)</div>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m66-prism-alpha-dsw-comparison.html">M66 · Alpha 起点续训完成，竞争力保留、增强未确认</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">M66 c4 (未发布)</span>
+          <span class="badge badge-teal">对父 52.54%</span>
+        </div>
+      </div>
+      <p class="card-body">1024训练局/220 PPO更新，7168局独立双方greedy。候选直接起点半平52.54%（区间49.71%–55.27%），共同对手平均+0.62个百分点；对Alpha v0.1.4较好，对Beta和通用略低。最终c4是未发布研究检查点。</p>
+      <div class="card-actions">
+        <a href="m66-prism-alpha-dsw-comparison.html">对比报告</a>
+        <a href="m66-prism-alpha-dsw-comparison.reading.md" class="btn-secondary">完整双方数据表</a>
+        <a href="m66-prism-alpha-dsw-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m63-prism-beta-timed-building-evaluation.html">Prism Alpha v0.1.5 · 大牌冲分检查点，greedy 对父 53.91%</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Alpha v0.1.5</span>
+          <span class="badge badge-teal">冲分对照 2816 局</span>
+        </div>
+      </div>
+      <p class="card-body">2816局补充对照完成。相对父代，对Heuristic和初代较好；对Alpha和上一Beta略低，通用版接近。相对Balance父代略偏大牌冲分；对现任Alpha51.95%。现已按同权重发布为Prism Alpha v0.1.5。</p>
+      <div class="card-actions">
+        <a href="m63-prism-beta-timed-building-evaluation.html">对比报告</a>
+        <a href="m63-prism-beta-timed-building-evaluation.reading.md" class="btn-secondary">人类数据表</a>
+        <a href="m63-prism-beta-timed-building-evaluation.sampling.html" class="btn-secondary">历史采样</a>
+        <a href="m63-prism-beta-timed-building-evaluation.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="m62-prism-beta-building-comparison.html">Prism Beta v0.1.0 · greedy 实战与混合画像</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-purple">Beta v0.1.0</span>
+          <span class="badge badge-teal">混合画像</span>
+        </div>
+      </div>
+      <p class="card-body">已发布固定研究版本。greedy对通用版63.67%、对现任Alpha50.20%，直接对Balance父代46.88%。历史采样独立保留。</p>
+      <div class="card-actions">
+        <a href="m62-prism-beta-building-comparison.html">对比报告</a>
+        <a href="m62-prism-beta-building-comparison.sampling.html" class="btn-secondary">历史对战与双方画像</a>
+        <a href="m62-prism-beta-building-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2>M61 · 历史采样复盘</h2>
+        <div class="badge-group">
+          <span class="badge badge-amber">历史采样对照</span>
+        </div>
+      </div>
+      <p class="card-body">Alpha与Balance两条分支的原采样对照。该轮双方greedy战绩未测。</p>
+      <div class="card-actions">
+        <a href="m61-prism-alpha-balance-ab-comparison.sampling.html">历史对战与双方画像</a>
+        <a href="m61-prism-alpha-balance-ab-comparison.audit.html" class="btn-secondary">Agent 审计</a>
+      </div>
+    </article>
+
+    <article class="report-card">
+      <div class="card-top">
+        <h2><a href="model-catalog-2026-10-05.html">历史清单 · 截至 2026-10-05 晚的 Prism 六固定模型与 M66 参照</a></h2>
+        <div class="badge-group">
+          <span class="badge badge-primary">模型档案</span>
+        </div>
+      </div>
+      <p class="card-body">2026-10-07只读核验与同步。保留General、Alpha、Balance、Beta的完整SHA、血缘与身份；不同模式和seed cohort战绩分报，M66仍未发布。此页不更新当前M67运行状态。</p>
+      <div class="card-actions">
+        <a href="model-catalog-2026-10-05.html">查看清单</a>
+        <a href="model-catalog-2026-10-05.md" class="btn-secondary">完整清单与战绩来源</a>
+      </div>
+    </article>
+  </section>
+
+  <footer class="portal-footer">
+    <p>完整模型名称与未发布身份明确标注。高亮表示本批数值方向，路线按实际行为判断。历史原始完整归档请参阅 <a href="history-archive-index.md">历史归档索引</a>。</p>
+  </footer>
+</main>
+</body>
+</html>

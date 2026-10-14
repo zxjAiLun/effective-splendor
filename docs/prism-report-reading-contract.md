@@ -120,3 +120,21 @@ Explicit owner publication is separate from the reader. Optional `model_releases
 ## M66 native both-greedy reading adapter / 2026-10-05
 
 For results that are natively both-greedy, use `prism-greedy-reading-spec-v1` through `scripts/prism_round_report.py`. The independent `prism_greedy_reading.py` adapter binds the frozen round contract, result, complete Markdown, each arena result/plan/config/completion and exact candidate weights. It rejects policy/hash/completion drift and emits the established human HTML/full Markdown separately from Agent audit; no fictional sampling acceptance page. Earlier `prism-reading-spec-v1` continues on its original branch, and old output bytes remain intact. M66's local reading spec uses hash-identical harvested evidence paths; remote original spec/output/receipt remain archived. Validation: 14 Python publication/reader/statistical checks,119 existing human DOM groups,13 delivered M66 DOM groups PASS; native M66 bootstrap recomputed locally from all7168 seed/seat score projections exactly matches the frozen result. Actual pixels remain NOT_VERIFIED; no browser workaround or replay resampling.
+
+
+## 每轮实验的用户阅读交付（用户要求，2026-10-14）
+
+- 每轮开跑前交付中文实验说明：问题与已有证据、精确父模型和检查点血缘、各组设计与唯一变量、为何需要对照、保持不变的参数、种子/候选选择、训练与评测预算、机器分工、预计时间及依据、成功失败标准、结果对应的下一步。解释完整型号后才使用 A/B、c20 等简称。
+- 每轮结束后交付结果解释：实际产物、完整逐对手父代/对照/候选比较、统计与退步代价、失败/缺项、实际成本、假设是否得到支持、具体下一步。产物完成、竞技价值和方法证据分别说明。
+- 用户主入口为可直接阅读的 HTML，并保留完整 Markdown；JSON、SHA、PID 和核验回执放在证据层。状态答复直接说明当前阶段和含义，不以机器核验文件替代实验报告。
+- 方案须在启动前讲清楚；已有授权的有限流程仍自动推进，不因新增阅读交付而重复等待“继续”。已运行轮次补齐说明不改变冻结科学合同；未来方案依据上一轮实际结果制定，不预设无限实验链。
+- M81 阅读示例：[实验说明](prism/m81-experiment-explained.html)。
+
+
+### 2026-10-14 后续用户更正：直接解释与运行成本优先
+
+用户不要继续为本次制作报告页面，要直接整理采样、PPO更新和资源监测数据。上述默认每轮HTML的要求由本条修正：默认在聊天中清楚说明设计/结果/成本，已有轮次文档保存证据；仅在用户需要或页面确有必要时制作页面，不拿JSON代替解释。
+
+每轮必须分报训练/开发/独立局数、周期数与每周期局数、决策样本数、passes和优化器步数、CPU/GPU与线程/实际并发、分阶段墙钟与CPU秒、配额归一化利用率、停等/故障/审计交付时间。区分计算计时和含扫描/等待的监督计时；缺监测明确缺项，不把预算收费当实测。新规模先检查周期耗时是否随历史增长。
+
+设计先考虑复用上一轮固定c20作为对照或新轮起点。重训双臂须说明相对单臂能多回答什么，以及额外时间/资源成本，不能把每轮同种子双臂当必选。已有冻结运行不因文档更正自动停止或改合同。

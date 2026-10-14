@@ -1,5 +1,7 @@
 # 云端规划入口 · Prism / Splendor
 
+2026-10-11执行快照：M74 c20已登记Prism Balance v0.2.3，精确SHA `e16bfe0d30168d6ef7ceb067ca4357900f1c09e09d35f5759832dd3d6a9258ad`；M75从它出发，原单条5120训练尝试/20周期、1024开发及9216独立greedy网格正在执行。用户另行授权恢复并双机分工；16:19+08实际DSW训练3909尝试（3908终局+1截断）/c16/828更新，原训练worker21761，后续handoff调度48618；DSW2基线21392/8worker/983终局。此处只是有时间绑定的快照，Git不证明后续机器状态或增强。父代4096独立尝试放DSW2，候选5120留DSW；固定finalc20、科学网格与门不变，最终审计/冻结/汇合/结论尚未完成。当前来源与实际worker覆盖入口见[M75记录](docs/m75-prism-continuation.md)、[r2恢复](benchmarks/m75-prism-continuation.recovery-r2.json)、[双节点政策](benchmarks/m75-prism-continuation.dual-node-r3.json)、[真实worker绑定](benchmarks/m75-prism-continuation.dispatch-handoff-r1.json)。历史全包留私有魔搭按需取用；本轮必要输入/基线证据也经魔搭传入/汇回，不默认全量落本机。云端规划任务仍只做方向判断，不能从这条本机启动授权推导其自行开新轮或发布部署；下方保留原规划入口和历史证据。
+
 更新：2026-10-08。用途：用户让云端仓库负责方向判断和下一轮规划。本次授权同步 Git 上下文；**不启动训练、评测、发布或部署**。规划稿可以提出新方案，不能把本地 M73 建议当成用户已经批准的研究合同。
 
 ## 先读什么
@@ -85,3 +87,33 @@ A与B的差异有描述性证据，但相对彼此的小牌/贵族差值不等�
 M72最新页面像素NOT_VERIFIED；旧history-r3页面的像素通过不能代替新版。M73页面像素未验证且非设计任务强制项。Git同步只检查发布内容，不重新升级视觉或研究验收。
 
 本同步的文件清单与Git字节SHA见[发布清单](benchmarks/prism-cloud-planning-manifest-2026-10-08.json)。根文件和local-artifacts缺失属于明确发布边界。云端规划不要依赖本地handoff才能理解当前结论。
+
+
+### 2026-10-11 18:49+08 M75调度r4快照
+
+2026-10-11 18:49+08 后续评测重新分配r4已实际RUNNING：用户明确要求评测交DSW2、保留DSW训练。DSW新协调93803/create1791715613.28，原训练relay21760/worker21761不变；旧r3协调48618仅暂停防重复后续派局。当前4668/5120物理=4667终局+1截断、c19/992更新，无stop_reason。DSW2协调102954/create1791715630.95，8实际评测worker，已读297完成开发局（逐分片原子/全局非原子快照）；先固定c5/10/15共768开发，c20在DSW审计冻结后自动接256开发和5120独立，既有4096父代基线复用。1024/9216固定网格、模式/seed/门/最终c20/总CPU/截止不变；开发前三点提前仅描述，不反馈训练。两节点独立有限私有魔搭传输/调度，不依赖本机；传输上传最多6次，研究0重试。7+7+7零局检查/347原pin/host/runtime/PID预检PASS；实际新对局证明接续开跑。预计训练20:15–20:45，完整评测/报告22:00–23:00，建议23:00查看；02:50:30为原停止上限。证据eval-handoff-r4/launch-closeout.json，scripts/prism_m75_eval_handoff.py、benchmarks/m75-prism-continuation.eval-handoff-r4.json。M75实验R4 IN_PROGRESS/最终棋力未评测；本次分配启动范围完成，ALL待同步，无下一轮/发布部署/提交推送。
+此为研究事实快照，不代表读取时仍运行；云端方向规划不扩大现有5120/1024/9216有限研究授权。
+
+
+### 2026-10-11 20:26+08 DSW2替换恢复快照
+
+2026-10-11 20:26+08 DSW2实例替换恢复r5已实际RUNNING：旧节点dsw-2246104…变为dsw-2246854…，原协调102954消失，原19:54 WAIT_FINAL-INPUT已存证；768开发早已全部完成/0截断，4096基线保留。新的wait-resume-r5 PID4335/create1791721579.66已核验实际存活/新鲜WAIT_FINAL-INPUT心跳，等待DSW c20后继续原256开发+5120候选，未重打已完成局。新节点347 pin/八核原runtime与12完整分片逐原字节/配置/网格验核PASS；本地及节点各4项针对性恢复回归PASS。原CPU385.750827秒计入，原r4来源/政策不变，r5独立SHA1ebe6f4c…c3236/policy e76e8894…d49e4。DSW原训练relay21760/worker21761及协调93803不控制不回退，当前5112/5120物理=5111正常+1保留截断，c20/1046更新，仍采集/stop_reason=null，盘25.89GiB。实例重建具体平台原因UNKNOWN；原脱离SSH进程不能跨实例替换自动复活，当前已从成功阶段守卫恢复，未声称实现平台级自启动。完整结果暂估22–23点/23点查看，截止02:50:30不变。证据wait-resume-r5/launch-closeout.json；scripts/prism_m75_wait_resume.py、benchmarks/m75-prism-continuation.wait-resume-r5.json。ALL fetch failed待同步，原实验IN_PROGRESS/最终棋力未评测，无下一轮/发布部署/提交推送。
+仅历史执行快照；运行事实须读回对应node/PID/receipt，不能将此页当在线心跳。
+
+
+### 2026-10-11 21:21+08 M75恢复与提醒执行快照
+
+2026-10-11 21:21+08 M75 自动恢复/提醒已部署：DSW持久启动钩子与DSW2持久启动钩子接endpoint-v2/r8；server1 systemd服务enabled/Linger=yes、每60秒恢复核对，凭据仅稳定进程内存缓存；Codex heartbeat m75 ACTIVE/5分钟，首次等待、30/45分钟、失联/受阻主动提醒。14+3零局回归PASS，实际自动拉起DSW协调/已完成账本保持；整实例未重启测试，当前评测保留。DSW训练5120物理=5119终局+1截断/c20/1102更新及审计PASS，权重eaa1331b…62bf5；PID137439/create1791724376.17当前WAIT_EVALUATION-OUTPUT（空闲，已通知）。DSW2 PID14475/create1791724186.68，开发1024/1024无截断，候选独立808/5120已读正常局、8 worker；4096基线保留4095正常+1截断。原科学合同/截止02:50:30不变，完成局0重赛，未完成基础设施中断局最多恢复1次，协调6次上限/节点；失败修订及费用全部留存。完整结果预计22–23点，棋力仍未完成确认。记录docs/m75-prism-continuation.md，回执reboot-resume-r8/launch-closeout.json；ALL待同步。无下一轮/发布/部署/Git提交推送。
+
+这是有时间戳的执行快照；云端规划须重新核对实际节点/PID/receipt。恢复与提醒只覆盖当前有限M75，不构成下一轮训练授权。
+
+### M75 r9 双节点分片执行快照（2026-10-11T21:56:06.691937+08:00）
+
+2026-10-11T21:56:06.691937+08:00 M75 r9分配已执行：候选4096旧局保留；DSW接5片320局/4worker，已完成0截断并魔搭SHA导入；DSW2接11片704局/8worker，PID60152/create1791726809.08，总候选4770/5120、0截断。对局约22:00，完整审计/归并报告预计22:20–22:45北京时间，原02:50:30截止/预算/c20不变。旧回放重验造成派发等待，独立ordering-v2让旧验证与新局并行；v3防止恢复时重复加DSW费用。两次零局启动目录错误及控制交接原始记录保留，完成局0重赛，5定向测试PASS。server1自动恢复启用；Codex提醒当前PAUSED，沿用开关，ALL待同步。证据local-artifacts/prism/m75-continuation/split-eval-r9/launch-closeout.json；详情docs/m75-prism-continuation.md，无下一轮/发布部署/提交push。
+本节为执行快照；必须核验实时进程，不据此启动或重复游戏。
+
+### M75 本轮执行完成快照（2026-10-11T23:30:00.351302+08:00）
+
+2026-10-11T23:30:00.351302+08:00 M75最终交付只读核验：DSW在22:41:11完成RESULTS_AND_REPORTS_READY，DSW2在22:39:46完成私有魔搭57,033成员/66,594,425字节归并包交付。17对手双方pair/9215正常终局Rust回放规则审计PASS，1个旧基线cap保留；报告阶段PASS。16件必要模型/结果/报告/回执7,459,478字节取回并逐件SHA验证，原报告及统计未改；本机17组WDL/score、JSON-HTML payload、spec/result/contract/MD/HTML SHA、链接检查PASS，与上一读取直接56.10%/CI[53.13,59.03]、覆盖+11.62/+13.18pp一致。正式型号未登记、路线未定、共同配对门INCOMPLETE。报告docs/prism/m75-prism-continuation-comparison.html；索引已更新。两机无活跃研究，交付后等待约48.8/50.3分钟，DSW2一小时回收提醒已告知；平台空闲计时UNKNOWN。页面像素NOT_VERIFIED，不冒称视觉通过；ALL fetch failed待同步，Codex提醒PAUSED保留。0新局/0控制/无下一轮/发布部署/提交push。证据local-artifacts/prism/m75-continuation/report-delivery-r9/readback.json。
+
+此快照不授权下一轮；云端规划请使用最终result/spec和docs执行记录，缺项与旧门保留。
