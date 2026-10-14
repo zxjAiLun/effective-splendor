@@ -1,0 +1,14 @@
+{
+  "status": "PASS_RENDERED_AND_VISUALLY_VERIFIED",
+  "round": "M79 completion-r37",
+  "source_report_sha256": "691c3225e2e157ab2e44c18d993032dc7d41682ae950b628cb9cc4bcb0c15ecd",
+  "reading_html": {"path": "docs/prism/m79-prism-mainline-comparison-r2.html", "sha256": "4d32588122e04c9ee625b05119e16ecc287217e467a19923e2520369b16ad333"},
+  "result_sha256": "50a76a85fbfef46e41d296efa23915b4f76c4fae0672151e9e6ecd960735f85a",
+  "candidate_archive_receipt_sha256": "dbb4dc623f189aea0f32271b50c91493474faa5fb234fb4e6f661a09b9cc4dc7",
+  "candidate_profile_receipt_sha256": "c1e0bb19760f8caad00f3e2bd1f36e5d77de0f2f989b1a7af6bc88ea71c62c8b",
+  "profile_verification_sha256": "AD31E81272FE034CD31B461336690EE1F10500100CD2D4929294F741CFD851F1",
+  "pixel_receipt": {"path": "local-artifacts/prism/m79-mainline/completion-r37/visual/pixel-visual-r3.json", "sha256": "DA4B87F101401DF3770B00A28B498EC9B932F16899E6407C7B8129214F5"},
+  "candidate_visual_receipt_sha256": "5299F04F76CD0BF4141D85F46368556AA5D2C37930ECEA8A4F38A7ED11D30577",
+  "viewports": ["1440x1000", "390x844"],
+  "observed_at": "2026-10-14"
+}

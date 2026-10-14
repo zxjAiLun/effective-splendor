@@ -1,0 +1,44 @@
+{
+  "format": "prism-m79-archive-receipt-v1",
+  "status": "PASS_OFFLINE_ARCHIVE",
+  "plan_sha256": "e16351f17ed8bbcaeb21dcdd3d0b23f39c27aefa0a112101a7b555caa79a8176",
+  "result_sha256": "50a76a85fbfef46e41d296efa23915b4f76c4fae0672151e9e6ecd960735f85a",
+  "evaluation_plan_sha256": "73c9c7644cae172287a85150712f64e5ee9cabf959b7b7a63d5832e9a9c0a40a",
+  "transfer_manifest_sha256": "35a967560828257b21d3143445480b31264fe4557d0f274c19ea88a87552939f",
+  "candidate_sha256": "ecb5d3a3e371c743f81bccdea48afbe2e4c3bf2a40d41121817895a20d60a17b",
+  "profile_receipt_sha256": "c1e0bb19760f8caad00f3e2bd1f36e5d77de0f2f989b1a7af6bc88ea71c62c8b",
+  "completed_replays_verified": 12288,
+  "new_games": 0,
+  "visual": "PENDING",
+  "result_path": "/mnt/workspace/splendor-m79-mainline-r4/benchmarks/m79-prism-mainline.result.json",
+  "raw_root": "/mnt/workspace/splendor-m79-mainline-r4",
+  "candidate_registry_sha256": "c9b264c2c7f016f5dea05d6d31d03938d9fd4d549066bfbb7f830145dd81c976",
+  "candidate_audit_sha256": "45c5dc9d791056f4935b626c1ce9d8306df869692565ad6e12824ca4752f94a6",
+  "generated_binding_cache": {
+    "path": "/mnt/workspace/splendor-m79-mainline-r4/local-artifacts/prism/m79-mainline/completion-r37/m79-candidate-profile.verified-input-cache.json",
+    "sha256": "4d221d3e00d802f695859885e96422cf4ff842b2c3cf77cdb8885d30acd1a129"
+  },
+  "outputs": {
+    "m79-candidate-profile.json": "5483619f4e285c893a8ecbba84d81a9beb3c77210c36a616789c6ce998fd1b92",
+    "m79-candidate-profile.md": "52b593d3a43dde4cb41dc4aa73a5fff7b736e5e961a2934b0dd812b733bc54cf",
+    "m79-candidate-profile.html": "c87496da6388bb07e444aebd206a1325cd3a78a2ba2ea0a272d690a2254dd657",
+    "m79-candidate-profile.statistics.json": "003139e01e0333a00ddb8bab188b90b04f31035fa92a7e39216f0e7acc51f166"
+  },
+  "independent_adapter": {
+    "path": "/mnt/workspace/splendor-m79-mainline-r4/scripts/prism_m79_archive_r37.py",
+    "runtime": {
+      "executable": "/usr/local/bin/python3.12",
+      "python": "3.12.13",
+      "torch": "2.13.0+cu130"
+    },
+    "sha256": "34ae5ddeaa7ef4e64b1422d0ac24dfa6934cf83f82a19448c91f8383b14f318d",
+    "original_archive_sha256": "3867b4c81c2b5d91dacab95baab89899aa0b3dff9fe361134bf5fd5990dd6c8e",
+    "archive_r2_adapter_sha256": "449bcb404f03b6ec3cd0ef45f4cf92331323c13d2e76410634157fd94ed6d74d",
+    "projector_path": "/mnt/workspace/splendor-m79-mainline-r4/local-artifacts/prism/m79-mainline/completion-r36/prism_building_projection",
+    "projector_sha256": "1c605d536a4e2d05be23142ba4115c60c7445ea9400a524ec474cec50995b58f",
+    "projector_build_receipt_sha256": "217b6448fc4874cc299d87c2c261bcb851625aa282c2ddb63d053c0fbb1feb34",
+    "projector_build_source_archive_sha256": "2c4e7a17832874741586fa7c70b447a135594c484d503b9fe99d38d48e0c346f",
+    "derived_inventory_sha256": "35a967560828257b21d3143445480b31264fe4557d0f274c19ea88a87552939f",
+    "scope": "external post-run SHA inventory; frozen plan, per-shard manifests, game ledgers and replay checks retained"
+  }
+}

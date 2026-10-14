@@ -1,0 +1,68 @@
+{
+  "format": "prism-m79-owner-completion-revision-v1",
+  "status": "AUTHORIZED_PENDING_REMOTE_RECONCILIATION",
+  "owner_date": "2026-10-13",
+  "authorization": "用户明确要求：为什么要设置截止时间啊？继续给我跑完",
+  "authorized_end": "保留M79已完成训练与评测，完整状态接续剩余训练到固定c20，再完成原开发/独立网格、画像、报告和收口",
+  "execution_sha256": "6dd124319e0e39586d97e3474cf7b8ae7849348b018232cf7c511612805c247a",
+  "parent_sha256": "eaa1331b29599f239299b5a9037100ae042c6021b2195df3f675c2eb5bd62bf5",
+  "supersedes_for_recovery": [
+    "expired first-launch deadline",
+    "64800 seconds from original wall start",
+    "r11 2026-10-13T01:00:00+08:00 training stop",
+    "2026-10-13T08:37:19+08:00 whole-round stop"
+  ],
+  "calendar_deadline": null,
+  "completion_boundary": "原有限局数、固定最终c20及报告交付为完成终点；不因日历时间或停机/等待耗时终止有进展任务",
+  "unchanged": {
+    "training_logical_attempts": 5120,
+    "development_logical_attempts": 1024,
+    "independent_logical_attempts": 12288,
+    "final_candidate": "cycle20",
+    "seeds_modes_weights_rules_and_scientific_gates": "original frozen M79 contract",
+    "training_cpu_seconds": 150000,
+    "evaluation_development_cpu_seconds": 120000,
+    "audit_transfer_control_cpu_seconds": 30000,
+    "total_cpu_seconds": 300000,
+    "scientific_retries": 0,
+    "infra_extra_attempts_max": 64,
+    "completed_games_replayed": 0,
+    "budgets_reset": false
+  },
+  "last_observed_training": {
+    "source": "local-artifacts/prism/m79-mainline/heartbeat-20261013-0117.json",
+    "observation_is_historical": true,
+    "completed_games": 4124,
+    "remaining_logical_attempts_if_unchanged": 996,
+    "cycle": 17,
+    "updates": 886,
+    "stop_reason": "wall_deadline",
+    "c20_exists": false
+  },
+  "required_reconciliation": [
+    "fresh actual node/process identity, absence of live writer and orphan ownership",
+    "exact original execution/source/input SHA binding",
+    "model/optimizer/RNG/data cursor/update fingerprint and both commit ledgers",
+    "published terminal awaiting consumption or in-flight attempt audit; do not replay committed result",
+    "retain original stop receipt and original round-budget bytes as historical evidence",
+    "sum prior real and conservative CPU charges including external evaluations exactly once",
+    "c5/c10/c15 imported SHA and completion-ledger readback; skip all completed work",
+    "remaining capacity based on actual disk/quota, not full initial reserve for already occupied current data",
+    "independent source-bound adapter propagates removal of expired calendar stops to controller, relay, PPO admission and unfinished evaluation dispatch without editing pinned sources"
+  ],
+  "execution_policy": {
+    "preferred_training_node": "dsw",
+    "second_node_not_required_for_start": true,
+    "recovery_mode": "full-state resume; never fresh optimizer or warm-start",
+    "repair_scope": "routine execution-adapter fixes and zero-game verification authorized; preserve scientific failures and CPU账本",
+    "safety_controls": "retain finite per-job timeout, memory/storage/CPU limits and failure stops; hung stage recovery must use owned process and durable progress evidence, not an expired global calendar",
+    "all_offline": "pending sync; no research block",
+    "monitoring": "no app schedule created/unpaused in this revision; current chat verifies after actual start; persistent task recovery bound to remaining workload",
+    "excluded": ["new research round", "release", "default replacement", "application deployment", "Git commit/push"]
+  },
+  "current_blocker": "Both current DSW SSH reverse-tunnel ports refused connection; platform running/powered-off state UNKNOWN. Need at least DSW platform startup/reconnection. Existing platform-control capability unavailable in this chat.",
+  "implemented_runtime_adapter": false,
+  "deployed": false,
+  "started": false,
+  "next_allowed_action": "When DSW becomes reachable, perform fresh readback, build and verify independent completion adapter, then resume immediately under this authorization without asking whether to start."
+}

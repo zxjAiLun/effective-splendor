@@ -1,0 +1,1342 @@
+{
+  "format": "prism-m79-statistics-v1",
+  "round": "M79",
+  "bootstrap": {
+    "samples": 20000,
+    "seed": 79029999,
+    "generator": "PCG64",
+    "endpoint_order": [
+      "common_delta",
+      "direct_parent",
+      "latest-alpha",
+      "latest-balance",
+      "heuristic",
+      "released-alpha"
+    ],
+    "quantile_method": "linear",
+    "ordinary_interval": [
+      0.025,
+      0.975
+    ],
+    "family_one_sided_lower_quantile": 0.025,
+    "common_resampling": "per replicate, each common opponent in declared order; draw paired seed blocks with replacement and average opponent means equally"
+  },
+  "endpoints": {
+    "common_delta": {
+      "name": "common_delta",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 6144,
+        "observed_rows": 6144,
+        "missing_rows": 0,
+        "planned_seed_blocks": 1536,
+        "complete_paired_seed_blocks": 1536,
+        "by_opponent": [
+          {
+            "opponent": "heuristic",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          },
+          {
+            "opponent": "general",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          },
+          {
+            "opponent": "balance",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          },
+          {
+            "opponent": "alpha",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          },
+          {
+            "opponent": "beta",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          },
+          {
+            "opponent": "released-alpha",
+            "planned_rows": 1024,
+            "observed_rows": 1024,
+            "missing_rows": 0,
+            "planned_seed_blocks": 256,
+            "complete_paired_seed_blocks": 256
+          }
+        ]
+      },
+      "estimate": 0.01611328125,
+      "interval": {
+        "ordinary_95": {
+          "lower": -0.0030924479166666665,
+          "upper": 0.035319010416666664
+        },
+        "family_one_sided_lower": -0.0030924479166666665,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": 0.01611328125,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": 0.01611328125,
+        "best": 0.01611328125,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "enhancement": "FAIL",
+        "retention": "PASS"
+      }
+    },
+    "direct_parent": {
+      "name": "direct_parent",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 1024,
+        "observed_rows": 1024,
+        "missing_rows": 0,
+        "planned_seed_blocks": 512,
+        "complete_paired_seed_blocks": 512
+      },
+      "estimate": 0.54345703125,
+      "interval": {
+        "ordinary_95": {
+          "lower": 0.5126953125,
+          "upper": 0.57373046875
+        },
+        "family_one_sided_lower": 0.5126953125,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": 0.54345703125,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": 0.54345703125,
+        "best": 0.54345703125,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "enhancement": "PASS",
+        "retention": "PASS"
+      }
+    },
+    "latest-alpha": {
+      "name": "latest-alpha",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 1024,
+        "observed_rows": 1024,
+        "missing_rows": 0,
+        "planned_seed_blocks": 256,
+        "complete_paired_seed_blocks": 256
+      },
+      "estimate": 0.0458984375,
+      "interval": {
+        "ordinary_95": {
+          "lower": -0.0087890625,
+          "upper": 0.1015625
+        },
+        "family_one_sided_lower": -0.0087890625,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": 0.0458984375,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": 0.0458984375,
+        "best": 0.0458984375,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "retention": "PASS"
+      }
+    },
+    "latest-balance": {
+      "name": "latest-balance",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 1024,
+        "observed_rows": 1024,
+        "missing_rows": 0,
+        "planned_seed_blocks": 256,
+        "complete_paired_seed_blocks": 256
+      },
+      "estimate": 0.0595703125,
+      "interval": {
+        "ordinary_95": {
+          "lower": 0.009765625,
+          "upper": 0.1083984375
+        },
+        "family_one_sided_lower": 0.009765625,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": 0.0595703125,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": 0.0595703125,
+        "best": 0.0595703125,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "retention": "PASS"
+      }
+    },
+    "heuristic": {
+      "name": "heuristic",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 1024,
+        "observed_rows": 1024,
+        "missing_rows": 0,
+        "planned_seed_blocks": 256,
+        "complete_paired_seed_blocks": 256
+      },
+      "estimate": -0.0517578125,
+      "interval": {
+        "ordinary_95": {
+          "lower": -0.08791503906249998,
+          "upper": -0.015625
+        },
+        "family_one_sided_lower": -0.08791503906249998,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": -0.0517578125,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": -0.0517578125,
+        "best": -0.0517578125,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "retention": "FAIL"
+      }
+    },
+    "released-alpha": {
+      "name": "released-alpha",
+      "status": "COMPLETE",
+      "completeness": {
+        "status": "COMPLETE",
+        "planned_rows": 1024,
+        "observed_rows": 1024,
+        "missing_rows": 0,
+        "planned_seed_blocks": 256,
+        "complete_paired_seed_blocks": 256
+      },
+      "estimate": 0.0732421875,
+      "interval": {
+        "ordinary_95": {
+          "lower": 0.025390625,
+          "upper": 0.12109375
+        },
+        "family_one_sided_lower": 0.025390625,
+        "lower_quantile": 0.025,
+        "samples": 20000
+      },
+      "diagnostic_completed_only": {
+        "estimate": 0.0732421875,
+        "basis": "complete paired seed blocks only; descriptive and never a formal gate"
+      },
+      "worst_best_point_bounds": {
+        "worst": 0.0732421875,
+        "best": 0.0732421875,
+        "basis": "missing game half-scores assigned 0/1 after averaging the two seats per seed"
+      },
+      "gates": {
+        "retention": "PASS"
+      }
+    }
+  },
+  "families": {
+    "enhancement": {
+      "status": "FAIL",
+      "endpoints": [
+        "common_delta",
+        "direct_parent"
+      ]
+    },
+    "latest_coverage_retention": {
+      "status": "PASS",
+      "endpoints": [
+        "latest-alpha",
+        "latest-balance"
+      ]
+    },
+    "old_anchor_retention": {
+      "status": "FAIL",
+      "endpoints": [
+        "heuristic",
+        "released-alpha"
+      ]
+    }
+  },
+  "retention": {
+    "status": "FAIL",
+    "endpoints": [
+      "common_delta",
+      "direct_parent",
+      "latest-alpha",
+      "latest-balance",
+      "heuristic",
+      "released-alpha"
+    ]
+  },
+  "mainline_recommendation": {
+    "status": "FAIL",
+    "eligible": false,
+    "failed_endpoints": [
+      "common_delta",
+      "heuristic"
+    ],
+    "incomplete_endpoints": [],
+    "meaning": "PASS recommends the candidate as the next mainline parent only; it does not authorize release, default replacement, or deployment"
+  },
+  "grid_completeness": [
+    {
+      "candidate": "base",
+      "opponent": "heuristic",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "heuristic",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "heuristic",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "general",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "general",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "general",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "balance",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "balance",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "balance",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "alpha",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "beta",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "beta",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "beta",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "released-alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "released-alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "released-alpha",
+      "role": "descriptive_reference_only",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "latest-alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "latest-alpha",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "base",
+      "opponent": "latest-balance",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "latest-balance",
+      "role": "competitive_or_coverage",
+      "planned_rows": 512,
+      "observed_rows": 512,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    },
+    {
+      "candidate": "a",
+      "opponent": "parent",
+      "role": "direct_parent",
+      "planned_rows": 1024,
+      "observed_rows": 1024,
+      "missing_rows": 0,
+      "status": "COMPLETE"
+    }
+  ],
+  "opponent_descriptives": [
+    {
+      "candidate": "base",
+      "opponent": "heuristic",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 468,
+        "draws": 1,
+        "losses": 43,
+        "win_rate": 0.9140625,
+        "half_score": 0.9150390625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 236,
+          "draws": 0,
+          "losses": 20,
+          "win_rate": 0.921875,
+          "half_score": 0.921875
+        },
+        "1": {
+          "games": 256,
+          "wins": 232,
+          "draws": 1,
+          "losses": 23,
+          "win_rate": 0.90625,
+          "half_score": 0.908203125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "heuristic",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 441,
+        "draws": 2,
+        "losses": 69,
+        "win_rate": 0.861328125,
+        "half_score": 0.86328125
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 226,
+          "draws": 1,
+          "losses": 29,
+          "win_rate": 0.8828125,
+          "half_score": 0.884765625
+        },
+        "1": {
+          "games": 256,
+          "wins": 215,
+          "draws": 1,
+          "losses": 40,
+          "win_rate": 0.83984375,
+          "half_score": 0.841796875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "heuristic",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 423,
+        "draws": 3,
+        "losses": 86,
+        "win_rate": 0.826171875,
+        "half_score": 0.8291015625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 216,
+          "draws": 2,
+          "losses": 38,
+          "win_rate": 0.84375,
+          "half_score": 0.84765625
+        },
+        "1": {
+          "games": 256,
+          "wins": 207,
+          "draws": 1,
+          "losses": 48,
+          "win_rate": 0.80859375,
+          "half_score": 0.810546875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "general",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 410,
+        "draws": 4,
+        "losses": 98,
+        "win_rate": 0.80078125,
+        "half_score": 0.8046875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 210,
+          "draws": 2,
+          "losses": 44,
+          "win_rate": 0.8203125,
+          "half_score": 0.82421875
+        },
+        "1": {
+          "games": 256,
+          "wins": 200,
+          "draws": 2,
+          "losses": 54,
+          "win_rate": 0.78125,
+          "half_score": 0.78515625
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "general",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 419,
+        "draws": 7,
+        "losses": 86,
+        "win_rate": 0.818359375,
+        "half_score": 0.8251953125
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 212,
+          "draws": 5,
+          "losses": 39,
+          "win_rate": 0.828125,
+          "half_score": 0.837890625
+        },
+        "1": {
+          "games": 256,
+          "wins": 207,
+          "draws": 2,
+          "losses": 47,
+          "win_rate": 0.80859375,
+          "half_score": 0.8125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "general",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 374,
+        "draws": 5,
+        "losses": 133,
+        "win_rate": 0.73046875,
+        "half_score": 0.7353515625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 187,
+          "draws": 2,
+          "losses": 67,
+          "win_rate": 0.73046875,
+          "half_score": 0.734375
+        },
+        "1": {
+          "games": 256,
+          "wins": 187,
+          "draws": 3,
+          "losses": 66,
+          "win_rate": 0.73046875,
+          "half_score": 0.736328125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "balance",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 374,
+        "draws": 2,
+        "losses": 136,
+        "win_rate": 0.73046875,
+        "half_score": 0.732421875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 186,
+          "draws": 1,
+          "losses": 69,
+          "win_rate": 0.7265625,
+          "half_score": 0.728515625
+        },
+        "1": {
+          "games": 256,
+          "wins": 188,
+          "draws": 1,
+          "losses": 67,
+          "win_rate": 0.734375,
+          "half_score": 0.736328125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "balance",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 362,
+        "draws": 3,
+        "losses": 147,
+        "win_rate": 0.70703125,
+        "half_score": 0.7099609375
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 187,
+          "draws": 2,
+          "losses": 67,
+          "win_rate": 0.73046875,
+          "half_score": 0.734375
+        },
+        "1": {
+          "games": 256,
+          "wins": 175,
+          "draws": 1,
+          "losses": 80,
+          "win_rate": 0.68359375,
+          "half_score": 0.685546875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "balance",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 328,
+        "draws": 5,
+        "losses": 179,
+        "win_rate": 0.640625,
+        "half_score": 0.6455078125
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 173,
+          "draws": 1,
+          "losses": 82,
+          "win_rate": 0.67578125,
+          "half_score": 0.677734375
+        },
+        "1": {
+          "games": 256,
+          "wins": 155,
+          "draws": 4,
+          "losses": 97,
+          "win_rate": 0.60546875,
+          "half_score": 0.61328125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 354,
+        "draws": 5,
+        "losses": 153,
+        "win_rate": 0.69140625,
+        "half_score": 0.6962890625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 191,
+          "draws": 2,
+          "losses": 63,
+          "win_rate": 0.74609375,
+          "half_score": 0.75
+        },
+        "1": {
+          "games": 256,
+          "wins": 163,
+          "draws": 3,
+          "losses": 90,
+          "win_rate": 0.63671875,
+          "half_score": 0.642578125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 383,
+        "draws": 0,
+        "losses": 129,
+        "win_rate": 0.748046875,
+        "half_score": 0.748046875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 199,
+          "draws": 0,
+          "losses": 57,
+          "win_rate": 0.77734375,
+          "half_score": 0.77734375
+        },
+        "1": {
+          "games": 256,
+          "wins": 184,
+          "draws": 0,
+          "losses": 72,
+          "win_rate": 0.71875,
+          "half_score": 0.71875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "alpha",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 328,
+        "draws": 3,
+        "losses": 181,
+        "win_rate": 0.640625,
+        "half_score": 0.6435546875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 165,
+          "draws": 3,
+          "losses": 88,
+          "win_rate": 0.64453125,
+          "half_score": 0.650390625
+        },
+        "1": {
+          "games": 256,
+          "wins": 163,
+          "draws": 0,
+          "losses": 93,
+          "win_rate": 0.63671875,
+          "half_score": 0.63671875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "beta",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 369,
+        "draws": 2,
+        "losses": 141,
+        "win_rate": 0.720703125,
+        "half_score": 0.72265625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 185,
+          "draws": 1,
+          "losses": 70,
+          "win_rate": 0.72265625,
+          "half_score": 0.724609375
+        },
+        "1": {
+          "games": 256,
+          "wins": 184,
+          "draws": 1,
+          "losses": 71,
+          "win_rate": 0.71875,
+          "half_score": 0.720703125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "beta",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 381,
+        "draws": 4,
+        "losses": 127,
+        "win_rate": 0.744140625,
+        "half_score": 0.748046875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 195,
+          "draws": 1,
+          "losses": 60,
+          "win_rate": 0.76171875,
+          "half_score": 0.763671875
+        },
+        "1": {
+          "games": 256,
+          "wins": 186,
+          "draws": 3,
+          "losses": 67,
+          "win_rate": 0.7265625,
+          "half_score": 0.732421875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "beta",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 306,
+        "draws": 3,
+        "losses": 203,
+        "win_rate": 0.59765625,
+        "half_score": 0.6005859375
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 147,
+          "draws": 2,
+          "losses": 107,
+          "win_rate": 0.57421875,
+          "half_score": 0.578125
+        },
+        "1": {
+          "games": 256,
+          "wins": 159,
+          "draws": 1,
+          "losses": 96,
+          "win_rate": 0.62109375,
+          "half_score": 0.623046875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "released-alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 340,
+        "draws": 5,
+        "losses": 167,
+        "win_rate": 0.6640625,
+        "half_score": 0.6689453125
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 172,
+          "draws": 2,
+          "losses": 82,
+          "win_rate": 0.671875,
+          "half_score": 0.67578125
+        },
+        "1": {
+          "games": 256,
+          "wins": 168,
+          "draws": 3,
+          "losses": 85,
+          "win_rate": 0.65625,
+          "half_score": 0.662109375
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "released-alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 378,
+        "draws": 4,
+        "losses": 130,
+        "win_rate": 0.73828125,
+        "half_score": 0.7421875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 192,
+          "draws": 2,
+          "losses": 62,
+          "win_rate": 0.75,
+          "half_score": 0.75390625
+        },
+        "1": {
+          "games": 256,
+          "wins": 186,
+          "draws": 2,
+          "losses": 68,
+          "win_rate": 0.7265625,
+          "half_score": 0.73046875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "style-reference",
+      "opponent": "released-alpha",
+      "role": "descriptive_reference_only",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 293,
+        "draws": 4,
+        "losses": 215,
+        "win_rate": 0.572265625,
+        "half_score": 0.576171875
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 151,
+          "draws": 3,
+          "losses": 102,
+          "win_rate": 0.58984375,
+          "half_score": 0.595703125
+        },
+        "1": {
+          "games": 256,
+          "wins": 142,
+          "draws": 1,
+          "losses": 113,
+          "win_rate": 0.5546875,
+          "half_score": 0.556640625
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "latest-alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 315,
+        "draws": 4,
+        "losses": 193,
+        "win_rate": 0.615234375,
+        "half_score": 0.619140625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 153,
+          "draws": 3,
+          "losses": 100,
+          "win_rate": 0.59765625,
+          "half_score": 0.603515625
+        },
+        "1": {
+          "games": 256,
+          "wins": 162,
+          "draws": 1,
+          "losses": 93,
+          "win_rate": 0.6328125,
+          "half_score": 0.634765625
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "latest-alpha",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 338,
+        "draws": 5,
+        "losses": 169,
+        "win_rate": 0.66015625,
+        "half_score": 0.6650390625
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 173,
+          "draws": 2,
+          "losses": 81,
+          "win_rate": 0.67578125,
+          "half_score": 0.6796875
+        },
+        "1": {
+          "games": 256,
+          "wins": 165,
+          "draws": 3,
+          "losses": 88,
+          "win_rate": 0.64453125,
+          "half_score": 0.650390625
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "base",
+      "opponent": "latest-balance",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 300,
+        "draws": 7,
+        "losses": 205,
+        "win_rate": 0.5859375,
+        "half_score": 0.5927734375
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 154,
+          "draws": 4,
+          "losses": 98,
+          "win_rate": 0.6015625,
+          "half_score": 0.609375
+        },
+        "1": {
+          "games": 256,
+          "wins": 146,
+          "draws": 3,
+          "losses": 107,
+          "win_rate": 0.5703125,
+          "half_score": 0.576171875
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "latest-balance",
+      "role": "competitive_or_coverage",
+      "planned_games": 512,
+      "observed_games": 512,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 512,
+        "wins": 332,
+        "draws": 4,
+        "losses": 176,
+        "win_rate": 0.6484375,
+        "half_score": 0.65234375
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 256,
+          "wins": 170,
+          "draws": 4,
+          "losses": 82,
+          "win_rate": 0.6640625,
+          "half_score": 0.671875
+        },
+        "1": {
+          "games": 256,
+          "wins": 162,
+          "draws": 0,
+          "losses": 94,
+          "win_rate": 0.6328125,
+          "half_score": 0.6328125
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    },
+    {
+      "candidate": "a",
+      "opponent": "parent",
+      "role": "direct_parent",
+      "planned_games": 1024,
+      "observed_games": 1024,
+      "status": "COMPLETE",
+      "overall": {
+        "games": 1024,
+        "wins": 551,
+        "draws": 11,
+        "losses": 462,
+        "win_rate": 0.5380859375,
+        "half_score": 0.54345703125
+      },
+      "by_candidate_seat": {
+        "0": {
+          "games": 512,
+          "wins": 286,
+          "draws": 7,
+          "losses": 219,
+          "win_rate": 0.55859375,
+          "half_score": 0.5654296875
+        },
+        "1": {
+          "games": 512,
+          "wins": 265,
+          "draws": 4,
+          "losses": 243,
+          "win_rate": 0.517578125,
+          "half_score": 0.521484375
+        }
+      },
+      "scope": "descriptive W/D/L; excluded from paired endpoint gates"
+    }
+  ]
+}

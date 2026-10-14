@@ -1,0 +1,16 @@
+{
+  "status": "PASS_ARCHIVE_VISUAL_BINDING",
+  "raw_archive_receipt_sha256": "dbb4dc623f189aea0f32271b50c91493474faa5fb234fb4e6f661a09b9cc4dc7",
+  "candidate_json_sha256": "5483619f4e285c893a8ecbba84d81a9beb3c77210c36a616789c6ce998fd1b92",
+  "raw_candidate_html_sha256": "c87496da6388bb07e444aebd206a1325cd3a78a2ba2ea0a272d690a2254dd657",
+  "responsive_candidate_html_sha256": "d0d129a8e235903f89339621fb3fd4f9b3717a2e4810cd21f16ba29bee1ee0c9",
+  "pixel_visual_receipt_sha256": "9d704eb5bbbea41f80da22bae099e68776564ab7f80fb8c677125e215ca78373",
+  "visual_status": "PASS_VISUAL",
+  "viewports": [
+    "1440x1000",
+    "390x844"
+  ],
+  "result_sha256": "50a76a85fbfef46e41d296efa23915b4f76c4fae0672151e9e6ecd960735f85a",
+  "profile_receipt_sha256": "c1e0bb19760f8caad00f3e2bd1f36e5d77de0f2f989b1a7af6bc88ea71c62c8b",
+  "observed_at": 1791909529.9712837
+}
