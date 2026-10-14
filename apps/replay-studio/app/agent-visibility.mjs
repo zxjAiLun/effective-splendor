@@ -1,44 +1,18 @@
-// Presentation-only roster. Do not mutate the historical league ledger or re-rate it.
-// A model without a same-object positive S3 pilot is not promoted into the Studio UI.
-export const VISIBLE_AGENT_IDS = new Set([
-  "s3-rollout",
-  "heuristic-v028",
-  "heuristic-v029",
-  "heuristic-v030",
-  "heuristic-v031",
-  "heuristic-v032c",
-  "prism-v01",
-  "prism-v011",
-  "prism-alpha-v01",
-]);
+// Presentation-only roster. The Studio model lineup was retired and emptied in
+// M80: no engine ID, engine display name, reviewer, or archived experiment model
+// is promoted merely because it existed before the cleanup. Do not mutate the
+// league ledger or re-rate it here.
+export const VISIBLE_AGENT_IDS = new Set([]);
 
-const VISIBLE_ENGINE_NAMES = new Set([
-  "S3 Rollout (Default · Strong)",
-  "splendor.exe:agent-s3-rollout",
-  "splendor.exe:agent-s3-rollout-profile",
-  "Heuristic v0.2.8 (Single-Noble + Quadratic VP)",
-  "Heuristic v0.2.9 (No Bomb Reserve · Fast Engine)",
-  "Heuristic v0.3.0 (Frozen S4 Pilot)",
-  "★ Heuristic v0.3.1 (5-Module Refactor · 76.6% vs S3)",
-  "★ Two-Ply v0.3.2c (Continuation Rollout · 67.6% vs S3)",
-  "★ Prism v0.1 (Entity Policy-Value · 54.3% vs v0.3.1)",
-  "★ Prism v0.1.1 (PPO Champion · 62.0% vs v0.3.1)",
-  "Prism v0.1.1",
-  "★ Prism Alpha v0.1.0 (Big-Card Style · 52.7% vs v0.1.1)",
-  "Prism Alpha v0.1.0",
-  "splendor.exe:agent-prism",
-  "splendor.exe:agent-prism|weights=local-artifacts/prism/v01/run/weights.json",
-  "splendor.exe:agent-prism-sample",
-  "splendor.exe:agent-prism-sample|weights=local-artifacts/prism/v0.1.1/weights.json",
-  "splendor.exe:agent-prism-sample|weights=local-artifacts/prism/alpha-v0.1.0/weights.json",
-]);
+const VISIBLE_ENGINE_NAMES = new Set([]);
 
 export function visibleAgents(agents) {
   return Array.isArray(agents) ? agents.filter((agent) => VISIBLE_AGENT_IDS.has(agent?.id)) : [];
 }
 
-// Historical participants have ledger IDs, not registry IDs. Match the recorded
-// display identity exactly; do not conflate all `agent-heuristic-v02` versions.
+// Historical participants have ledger IDs, not registry IDs. Humans remain
+// visible when they are introduced by a future match; engine identity must be
+// registered explicitly after the retirement cleanup.
 export function visibleParticipant(participant) {
   const id = participant?.participantId ?? participant?.participant_id;
   const name = participant?.displayName ?? participant?.display_name;
@@ -49,20 +23,15 @@ export function visibleParticipant(participant) {
 export function visibleGame(game) {
   return Array.isArray(game?.seats) && game.seats.length > 0 &&
     game.seats.every((seat) => visibleParticipant(seat));
-
 }
+
 export function visibleRatingPoints(points) {
   return points.filter((point) => visibleParticipant({
     participantId: point.opponent_id, displayName: point.opponent_name,
   }));
 }
 
-export const VISIBLE_REVIEWER_IDS = new Set([
-  "s3-rollout-review",
-  "prism-v01-review",
-  "prism-v011-review",
-  "prism-alpha-v01-review",
-]);
+export const VISIBLE_REVIEWER_IDS = new Set([]);
 
 export function visibleReviewers(reviewers) {
   return Array.isArray(reviewers) ? reviewers.filter((reviewer) => VISIBLE_REVIEWER_IDS.has(reviewer?.id)) : [];
@@ -80,6 +49,7 @@ export function visibleExperimentIndex(index) {
     })).filter((experiment) => experiment.pairings.length > 0),
   };
 }
+
 export function visibleReport(report) {
   const agents = report.agents.filter((agent) => VISIBLE_AGENT_IDS.has(agent.agent_id));
   const ids = new Set(agents.map((agent) => agent.agent_id));

@@ -288,13 +288,13 @@ fn trace_binding_round_trips_and_is_checked() {
         meta: RecipientMeta::new("g1", 1, PlayerId(0)),
         player_count: 2,
         seed_commitment: "0".repeat(64),
-        run_trace_id: Some("jev-20260923-abcd".to_string()),
+        run_trace_id: Some("exhibition-20260923-abcd".to_string()),
     };
     let line = serde_json::to_string(&game_start).unwrap();
     assert!(line.contains("run_trace_id"));
     match parse_server_line(&line).unwrap() {
         ServerMessage::GameStart { run_trace_id, .. } => {
-            assert_eq!(run_trace_id.as_deref(), Some("jev-20260923-abcd"));
+            assert_eq!(run_trace_id.as_deref(), Some("exhibition-20260923-abcd"));
         }
         other => panic!("unexpected message: {other:?}"),
     }

@@ -13,7 +13,7 @@
  * - a missing fact renders as an em dash, never as an invented value: no
  *   unrated participant is shown as "1500", and no absent count as zero.
  *
- * The research reports (M19/M22, Batch BT, head-to-head matrix) are a different
+ * The upload-only archived research reports are a different
  * corpus under `/ratings/reports` and are deliberately not reachable from this
  * module.
  */

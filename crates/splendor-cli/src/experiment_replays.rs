@@ -121,7 +121,9 @@ impl ReplaySourceRegistry {
             ));
         }
         if self.experiments.is_empty() {
-            return Err("replay source registry has no experiments".into());
+            // M80 retired the local pre-Prism replay-source library. An empty
+            // registry is a valid product state, not a broken tournament.
+            return Ok(());
         }
         for experiment in &self.experiments {
             validate_identifier("experiment id", &experiment.id)?;

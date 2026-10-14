@@ -39,7 +39,6 @@ export function StudioNavigation({ active }: { active: StudioSection }) {
       <div className="studio-more-menu">
         <small>REPLAYS & RESEARCH</small>
         <Link href="/experiments">Experiment replay library</Link>
-        <Link href="/jev">Jev Replay</Link>
         <Link href="/ratings/reports">Research reports</Link>
         <Link href="/advanced">Legacy AnalysisTraceV1 viewer</Link>
       </div>

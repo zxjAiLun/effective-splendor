@@ -88,9 +88,9 @@ struct RunCtx {
     fingerprint: splendor_core::RulesetFingerprint,
     seed_commitment: SeedCommitment,
     player_count: u8,
-    /// Optional local exhibition trace binding. Independent unrated Jev runs want
-    /// the interaction trace addressable by run id, so the runner is told one;
-    /// ranked/league runs leave it `None` and their wire bytes are unchanged.
+    /// Optional local exhibition trace binding. Local unrated experiments can
+    /// address an interaction trace by run id; ranked/league runs leave it
+    /// `None` and their wire bytes are unchanged.
     run_trace_id: Option<String>,
 }
 

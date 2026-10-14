@@ -79,6 +79,7 @@ export function DevelopmentCard({
   const bonus = card.bonus.toLowerCase();
   const label = `${card.prestige} prestige, ${COLOR_NAMES[bonus] ?? card.bonus} bonus, card ${card.id}`;
   const className = `development-card card-${bonus}${variant === "mini" ? " development-card-mini" : ""}`;
+  const tierDots = card.tier === "One" ? "•" : card.tier === "Two" ? "••" : card.tier === "Three" ? "•••" : "";
   const body = <>
     <div className="development-card-top">
       <strong className="development-prestige">{card.prestige > 0 ? card.prestige : ""}</strong>
@@ -88,7 +89,7 @@ export function DevelopmentCard({
     <div className="development-card-cost" aria-label={discount ? "Purchase cost after card bonuses" : "Purchase cost"}>
       <CostGems cost={card.cost} discount={discount} />
     </div>
-    <div className="development-card-meta"><span>#{card.id}</span><span>{slotLabel ?? card.tier}</span></div>
+    <div className="development-card-meta"><span>#{card.id}{tierDots ? <em className="card-tier-dots" aria-hidden="true">{tierDots}</em> : null}</span><span>{slotLabel ?? card.tier}</span></div>
     {interactive ? <span className={`development-card-action ${affordable ? "buyable" : ""}`}>{affordable ? "BUY" : "MARKET"}</span> : null}
   </>;
   return interactive

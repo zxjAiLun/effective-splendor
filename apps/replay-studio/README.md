@@ -6,6 +6,12 @@ model.
 
 ## Human Play layout
 
+**2026-10-12 M80 retirement:** the local Studio model roster is empty. `/play`
+shows the setup surface and reports `0 registered agents ready`; no opponent
+can be started until a model is explicitly registered again. The table layout
+description below is retained for the frozen M76/M77/M78 evidence, not as a
+claim that a playable model is currently installed.
+
 During a game in `/play`, your tokens, permanent discounts, bank and take
 confirmation stay pinned at the bottom of the viewport, and the bank stays
 reachable from every panel. Desktop shows the card table beside the current
@@ -77,10 +83,13 @@ receive the same label. Regenerate the goldens with
 `cargo run -p splendor-analysis --example generate_frontend_fixture`.
 
 `npm run test:play-ui` uses an installed Chromium (or `STUDIO_TEST_BROWSER`) and
-an ephemeral local UI server to check viewport layout and real pointer
-interactions. It mocks the Host and never creates a real game or League entry.
-Screenshots, geometry and source hashes go to ignored
-`local-artifacts/m76-studio-play-cockpit/`, or `STUDIO_COCKPIT_ARTIFACTS` when set.
+an ephemeral local UI server to check the retired-roster setup surface across
+desktop, tablet, mobile and 150% font sizes. It mocks the Host and never creates
+a real game or League entry. Screenshots, geometry and source hashes go to
+ignored `local-artifacts/m80-local-history-cleanup/play-browser/`, or
+`STUDIO_COCKPIT_ARTIFACTS` when set. The frozen M76/M77 table-geometry gate is
+represented by the retained `local-artifacts/m78-studio-ui/` evidence; this
+command no longer exercises it while the roster is empty.
 
 `npm run test:layout-ui` is the matching gate for the Games/Play/League/Ratings
 pages: shared navigation, hero/setup/standings layouts across desktop, tablet,

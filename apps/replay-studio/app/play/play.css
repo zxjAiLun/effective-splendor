@@ -1,6 +1,6 @@
-/* M78 — classic tabletop, one pinned bank and one player-view resource dock.
-   The table can scroll on small/zoomed screens; primary controls never live in
-   that scroll pane. All selectors stay scoped to the live /play cockpit. */
+/* M78 r2 — a bounded public table and a pinned desktop player/action rail.
+   Narrow screens retain a bottom resource bar. Only the board/action pane
+   scrolls; no second resource instance or game state is introduced. */
 .bga-layout {
   height: 100vh;
   height: 100dvh;
@@ -46,14 +46,14 @@
 .bga-layout .error-banner button { flex: none; min-height: 36px; padding: 6px 10px; border: 1px solid #d39698; border-radius: 6px; background: #542b30; color: #fff; cursor: pointer; }
 .bga-workspace {
   flex: 1; min-height: 0; min-width: 0;
-  display: grid; grid-template-columns: minmax(0, 1fr) clamp(310px, 25vw, 350px);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: "table opponent" "table tabs" "table actions" "dock actions";
-  column-gap: 12px; padding: 12px; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 400px);
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "table opponent" "table hand" "table tabs" "table actions" "table dock";
+  gap: 8px 16px; padding: 12px; overflow: hidden;
 }
 .play-table-zone {
-  grid-area: table; min-height: 0; min-width: 0; margin-bottom: 10px;
-  display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: 14px; padding: 14px;
+  grid-area: table; min-height: 0; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 16px; padding: 14px;
   border: 1px solid #5a758b; border-radius: 14px;
   background: repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, #00000007 0 1px, transparent 1px 3px), radial-gradient(ellipse at 40% 30%, #235074, #173750 65%, #112c42);
   box-shadow: inset 0 0 0 3px #101e2b66, inset 0 0 40px #06122177, 0 8px 18px #0003;
@@ -61,9 +61,9 @@
 .bga-workspace .human-board { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #587d99 transparent; }
 .table-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex: none; color: #becdd5; font: 600 var(--fs-3xs)/1.4 var(--font-geist-sans); letter-spacing: .1em; }
 .table-heading small { color: #a9c4d9; font-size: var(--fs-3xs); letter-spacing: 0; }
-.bga-table-felt { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 108px; gap: 14px; min-width: 0; min-height: calc(22.5rem + 20px); }
-.bga-layout .human-market { margin: 0; display: grid; grid-template-rows: repeat(3, minmax(7.5rem, 1fr)); gap: 10px; min-width: 0; }
-.bga-layout .human-tier { display: grid; grid-template-columns: 64px repeat(4, minmax(0, 1fr)); gap: 8px; min-height: 7.5rem; overflow: visible; }
+.bga-table-felt { flex: 1; display: grid; grid-template-columns: minmax(0, 1080px) 96px; justify-content: center; gap: 20px; width: 100%; min-width: 0; min-height: calc(25.5rem + 32px); max-height: calc(42rem + 32px); margin-block: auto; }
+.bga-layout .human-market { margin: 0; display: grid; grid-template-rows: repeat(3, minmax(8.5rem, 1fr)); gap: 16px; min-width: 0; }
+.bga-layout .human-tier { display: grid; grid-template-columns: 56px repeat(4, minmax(0, 1fr)); gap: 16px; min-height: 8.5rem; overflow: visible; }
 .bga-layout .tier-deck { --deck-ink: #5684ae; position: relative; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 8px; min-height: 7.5rem; height: 100%; padding: 12px 5px; border: 1px solid var(--deck-ink); border-radius: 9px; background: repeating-linear-gradient(45deg, #ffffff04 0 1px, transparent 1px 5px), linear-gradient(160deg, color-mix(in srgb, var(--deck-ink) 28%, #101e2b), #0c1a25); box-shadow: inset 0 0 0 3px #071622aa, inset 0 0 0 4px #ffffff12, 0 4px 0 #061321aa, 0 6px 12px #0004; cursor: pointer; }
 .bga-layout .tier-deck-1 { --deck-ink: #60947b; }
 .bga-layout .tier-deck-2 { --deck-ink: #c7a163; }
@@ -75,12 +75,12 @@
 .bga-layout .deck-count { font: 700 var(--fs-3xl)/1 var(--font-geist-mono); color: #f5ecda; }
 .bga-layout .deck-reserve-btn { font: 650 var(--fs-3xs)/1.2 var(--font-geist-sans); color: #d3dfeb; letter-spacing: 0; }
 /* One shared card component; only the tabletop's material/density changes. */
-.bga-layout .development-card { min-height: 7.5rem; height: 100%; padding: 0; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--card-tone) 70%, #b2c7d5); background: linear-gradient(180deg, transparent 35%, #0e1c2c 100%), radial-gradient(ellipse at 15% 5%, color-mix(in srgb, var(--card-tone) 65%, #315269), #152b3e 90%); box-shadow: inset 0 1px #ffffff35, 0 4px 8px #0005; transition: transform .15s, border-color .15s, box-shadow .15s; }
-.bga-layout .development-card.card-white { background: linear-gradient(180deg, #e2dbc6, #a2a79c 58%, #526167); }
-.bga-layout .development-card .development-prestige { top: 9px; left: 10px; font-size: var(--fs-5xl); }
-.bga-layout .development-card .development-bonus { top: 9px; right: 8px; width: 29px; height: 29px; border-color: #e7e6d1b0; }
-.bga-layout .development-bonus i { width: 11px; height: 11px; }
-.bga-layout .development-card-art { inset: 22% 16% 32% 24%; opacity: .65; }
+.bga-layout .development-card { min-height: 7.5rem; height: 100%; padding: 0; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--card-tone) 70%, #b2c7d5); border-top: 2px solid rgba(255, 255, 255, 0.45); background: linear-gradient(180deg, transparent 35%, #0e1c2c 100%), radial-gradient(ellipse at 15% 5%, color-mix(in srgb, var(--card-tone) 65%, #315269), #152b3e 90%); box-shadow: inset 0 1px #ffffff45, 0 5px 10px rgba(0, 0, 0, 0.35); transition: transform .15s, border-color .15s, box-shadow .15s; }
+.bga-layout .development-card.card-white { background: linear-gradient(180deg, #e5dfcb, #a8ad9f 58%, #54646a); }
+.bga-layout .development-card .development-prestige { top: 9px; left: 10px; font-size: var(--fs-5xl); text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8); }
+.bga-layout .development-card .development-bonus { top: 9px; right: 8px; width: 30px; height: 30px; border-color: #f0eed8; box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.25); }
+.bga-layout .development-bonus i { width: 12px; height: 12px; box-shadow: 0 0 6px rgba(255,255,255,0.5); }
+.bga-layout .development-card-art { inset: 22% 16% 32% 24%; opacity: .68; }
 .bga-layout .development-card-art i { width: 66px; height: 72px; border-radius: 0; clip-path: polygon(28% 0, 72% 0, 100% 32%, 50% 100%, 0 32%); background: conic-gradient(from 130deg at 50% 33%, #ffffff08, #ffffff66, #ffffff0a, #00000044, #ffffff44, #ffffff08); transform: rotate(14deg); }
 .bga-layout .development-card-art i:nth-child(2) { width: 42px; height: 48px; transform: translate(-26px, 18px) rotate(-15deg); opacity: .45; }
 .bga-layout .development-card-art i:nth-child(3) { width: 32px; height: 36px; transform: translate(30px, 16px) rotate(35deg); opacity: .35; }
@@ -88,11 +88,13 @@
 .bga-layout .development-card-cost .gem { display: inline-flex; align-items: center; justify-content: center; flex: none; width: auto; min-width: 1.7em; height: 1.7em; padding: 0 4px; border-width: 1px; font-size: var(--fs-xs); border-radius: 999px; }
 .bga-layout .development-card-cost .gem em { position: static; transform: none; margin-left: 3px; min-width: 1em; padding: 0 2px; font-size: var(--fs-3xs); line-height: 1.3; }
 .bga-layout .development-card-cost .gem.covered { opacity: .72; }
-.bga-layout .development-card-meta { left: 9px; right: 8px; bottom: .4rem; font-size: var(--fs-3xs); line-height: 1.2; }
+.bga-layout .development-card-meta { left: 9px; right: 8px; bottom: .4rem; font-size: var(--fs-3xs); line-height: 1.2; display: flex; align-items: center; justify-content: space-between; }
 .bga-layout .development-card-meta span:last-child { display: none; }
-.bga-layout .development-card-action { left: auto; right: 6px; bottom: .275rem; padding: 2px 5px; font-size: var(--fs-3xs); letter-spacing: .02em; line-height: 1.2; }
+.card-tier-dots { font-style: normal; margin-left: 5px; color: #f0d296; font-size: 1.2em; font-weight: 900; letter-spacing: 1px; vertical-align: middle; }
+.bga-layout .development-card-action { left: auto; right: 6px; bottom: .275rem; padding: 2px 6px; font-size: var(--fs-3xs); letter-spacing: .04em; line-height: 1.2; border-radius: 4px; }
 .bga-layout .development-card-action:not(.buyable) { display: none; }
-.bga-layout .development-card:has(.buyable) { border-color: #75ad9e; }
+.bga-layout .development-card-action.buyable { background: linear-gradient(135deg, #184e3f, #0f362b); color: #8affcf; border: 1px solid #48ca9a; box-shadow: 0 0 8px rgba(72, 202, 154, 0.45); font-weight: 800; }
+.bga-layout .development-card:has(.buyable) { border-color: #48ca9a; box-shadow: 0 0 0 1px rgba(72, 202, 154, 0.35), inset 0 1px rgba(255, 255, 255, 0.45), 0 6px 14px rgba(0, 0, 0, 0.35); }
 .bga-layout .development-card[aria-pressed="true"] { border-color: #f1d395; box-shadow: inset 0 0 0 2px #e4c58b, 0 0 0 1px #e4c58b55, 0 6px 16px #0006; }
 .bga-layout .development-card[aria-pressed="true"] .development-card-action { background: #e4c58b; color: #1c2b34; }
 .bga-layout .development-card-empty { border-style: dashed; border-color: #5c7a8d; background: #102b4088; color: #94adbf; }
@@ -103,14 +105,14 @@
 .bga-layout .nobles-header b { color: #e9d3a6; font: 650 var(--fs-3xs)/1.3 var(--font-geist-sans); letter-spacing: .1em; }
 .bga-layout .nobles-header small { color: #aac0cf; font-size: var(--fs-3xs); }
 .bga-layout .nobles-stack { display: flex; flex: 1; flex-direction: column; gap: 10px; justify-content: space-evenly; min-width: 0; }
-.bga-layout .table-noble { flex: none; width: 100%; min-width: 0; min-height: 6rem; padding: 9px; border: 1px solid #9d906c; border-radius: 8px; background: linear-gradient(145deg, #425053, #203745); color: #fae5b8; box-shadow: inset 0 0 0 3px #152a3577, 0 3px 8px #0003; }
+.bga-layout .table-noble { flex: none; width: 100%; min-width: 0; min-height: 6rem; padding: 9px; border: 1.5px solid #d4b574; border-radius: 9px; background: linear-gradient(150deg, #3d3b32 0%, #222d30 60%, #162225 100%); color: #fae5b8; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(228, 197, 139, 0.15); transition: border-color .15s, box-shadow .15s; }
 .bga-layout .table-noble-top { display: flex; align-items: center; justify-content: space-between; }
-.bga-layout .table-noble-top strong { font: 750 var(--fs-3xl)/1 var(--font-geist-mono); }
-.bga-layout .table-noble-top span { font: 600 var(--fs-3xs)/1.2 var(--font-geist-sans); color: #c4c5b3; }
-.bga-layout .table-noble-name { margin-top: 7px; color: #bac7ca; font-size: var(--fs-3xs); letter-spacing: 0; }
+.bga-layout .table-noble-top strong { font: 800 var(--fs-3xl)/1 var(--font-geist-mono); color: #fae5b8; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+.bga-layout .table-noble-top span { font: 700 var(--fs-3xs)/1.2 var(--font-geist-sans); color: #c8b98b; }
+.bga-layout .table-noble-name { margin-top: 6px; color: #e5d7af; font-size: var(--fs-3xs); font-weight: 750; letter-spacing: .04em; }
 .bga-layout .table-noble-cost { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 .bga-layout .table-noble-cost .gem { width: 1.6em; height: 1.6em; font-size: var(--fs-2xs); }
-.bga-layout .table-noble.selectable { border-color: #a0e3c8; box-shadow: 0 0 0 2px #a0e3c844; }
+.bga-layout .table-noble.selectable { border-color: #8fe3b6; box-shadow: 0 0 0 2px rgba(143, 227, 182, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35); }
 /* Real bank counts stay centered even when a take is unavailable. +n is only
    the pending selection; the bank itself is never locally decremented. */
 .bga-layout .human-bank { --chip-size: 48px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; margin: 0; min-height: 0; padding: 10px 7px; border: 1px solid #5c7b9155; border-radius: 10px; background: #0b2134aa; overflow: visible; }
@@ -128,8 +130,10 @@
 .bga-layout .bank-gems .table-gem.selected { border-color: #f8dfa4; box-shadow: 0 0 0 2px #e4c58b, 0 5px 9px #0006; opacity: 1; filter: none; transform: none; }
 .bga-layout .bank-gems .table-gem:hover:not(:disabled) { transform: translateY(-2px); }
 .bank-selected-count { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 3px; background: #f0d296; color: #1c2b37; border: 1px solid #ffe7b8; border-radius: 10px; font: 800 var(--fs-3xs)/1 var(--font-geist-mono); box-shadow: 0 2px 5px #0005; }
-/* Sidebar: opponent summary, tabs, then a bounded content pane. */
-.bga-workspace .human-opponent { grid-area: opponent; min-width: 0; padding: 10px; border: 1px solid #30475b; border-radius: 11px; background: #122536; }
+/* Sidebar: both player summaries, tabs, bounded content and a fixed confirm. */
+.bga-workspace .human-resources { grid-area: hand; min-width: 0; }
+.bga-workspace .human-resources .hand-card { height: 100%; }
+.bga-workspace .human-opponent { grid-area: opponent; min-width: 0; padding: 10px; border: 1px solid #283e52; border-radius: 11px; background: #0f1f2e; }
 .opponent-caption { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-width: 0; }
 .opponent-caption > span { color: #b4a583; font: 600 var(--fs-3xs)/1.2 var(--font-geist-sans); letter-spacing: .06em; }
 .opponent-caption strong { min-width: 0; color: #acbfd0; font-size: var(--fs-2xs); font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -150,21 +154,22 @@
 .bga-workspace .state-counts { display: none; }
 .bga-workspace .token-total b { font-size: var(--fs-md); }
 .bga-workspace .token-total span { font-size: var(--fs-2xs); }
-.bga-workspace .human-panels { grid-area: tabs; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 9px 0; }
+.bga-workspace .human-panels { grid-area: tabs; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0; }
 .bga-workspace .human-panels button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 38px; padding: 7px 6px; border: 1px solid transparent; border-radius: 7px; background: #182c3c; color: #adbfce; font: 650 var(--fs-xs)/1.25 var(--font-geist-sans); cursor: pointer; }
 .bga-workspace .human-panels button[aria-pressed="true"] { background: #394138; color: #f4dca8; border-color: #a78e5655; }
 .bga-workspace .human-panels b { min-width: 16px; padding: 1px 4px; border-radius: 4px; background: #0f202d; color: #bacbda; font-size: var(--fs-3xs); }
 .bga-workspace .human-panels i { width: 5px; height: 5px; border-radius: 50%; background: #e4c58b; }
 .bga-workspace .human-panels .table-panel-button { display: none; }
 .bga-workspace .human-actions { grid-area: actions; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; background: transparent; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #526d84 transparent; }
-.bga-workspace .pending-panel, .bga-workspace .reserves-panel, .bga-workspace .history-panel { margin: 0; min-height: 0; padding: 16px; border: 1px solid #30475b; border-radius: 11px; background: #122536; }
+.bga-workspace .pending-panel, .bga-workspace .reserves-panel, .bga-workspace .history-panel { margin: 0; min-height: 0; padding: 12px 14px; border: 1px solid #30475b; border-radius: 11px; background: #122536; }
 .bga-workspace .human-actions .section-kicker { color: #bda77f; font-size: var(--fs-3xs); }
-.bga-workspace .human-actions h2 { margin: 6px 0 14px; color: #edf0e9; font-size: var(--fs-xl); }
+.bga-workspace .human-actions h2 { margin: 5px 0 10px; color: #edf0e9; font-size: var(--fs-xl); }
 .bga-workspace .human-actions p { margin: 10px 0; color: #a4bacd; font-size: var(--fs-xs); line-height: 1.65; }
-.bga-workspace .selected-card-preview { width: min(100%, 176px); margin: 0 auto 14px; }
-.bga-workspace .selected-card-preview .development-card { min-height: 11rem; }
+.bga-workspace .selected-card-preview { width: min(100%, 150px); margin: 0 auto 10px; }
+.bga-workspace .selected-card-preview .development-card { min-height: 9rem; }
+.bga-workspace .selected-card-preview .development-card-art { display: none; }
 .bga-workspace .context-actions { display: flex; flex-direction: column; gap: 8px; }
-.bga-workspace .context-actions > button { min-height: 48px; padding: 10px 12px; border: 1px solid #46637c; border-radius: 8px; background: #203c50; color: #e5f1f8; cursor: pointer; }
+.bga-workspace .context-actions > button { min-height: 44px; padding: 8px 12px; border: 1px solid #46637c; border-radius: 8px; background: #203c50; color: #e5f1f8; cursor: pointer; }
 .bga-workspace .context-actions > button:hover:not(:disabled) { border-color: #e4c58b; background: #2b4b5d; }
 .bga-workspace .context-actions > button:disabled { opacity: .6; }
 .bga-workspace .context-actions strong { font-size: var(--fs-sm); }
@@ -174,7 +179,7 @@
 .bga-workspace .return-gem { display: inline-flex; align-items: center; gap: 3px; padding: 2px 5px 2px 2px; border: 1px solid #426079; border-radius: 11px; font-size: var(--fs-2xs); }
 .bga-workspace .return-gem i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--gem-color); color: #fff; font: 700 var(--fs-3xs)/1 var(--font-geist-mono); }
 .bga-workspace .return-gem.table-gem-white i, .bga-workspace .return-gem.table-gem-gold i { color: #172732; }
-.move-guide { display: flex; flex-direction: column; gap: 14px; padding-top: 6px; }
+.move-guide { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
 .move-guide > div { display: flex; align-items: flex-start; gap: 12px; }
 .move-guide > div > .studio-glyph { width: 34px; height: 34px; padding: 7px; border: 1px solid #436079; border-radius: 9px; color: #e4c58b; background: #20384a; }
 .bga-workspace .move-guide p { display: flex; flex-direction: column; gap: 5px; margin: 0; }
@@ -217,10 +222,10 @@
 .bga-workspace .human-result code { overflow-wrap: anywhere; }
 .bga-workspace .human-booking > .section-kicker { display: block; margin-bottom: 5px; }
 .bga-workspace .human-booking > small { display: block; color: #a7bfc6; line-height: 1.5; }
-/* Bottom dock: own resources and an explicit confirmation, never an action list. */
-.bga-workspace .human-dock { grid-area: dock; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 264px; align-items: stretch; gap: 10px; padding: 0; border: 0; background: transparent; }
-.bga-workspace .hand-card { display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 10px 12px; border: 1px solid #446274; border-radius: 10px; background: #142b3b; }
-.bga-workspace .hand-card-actor { border-color: #719f95; box-shadow: inset 3px 0 #8bc5af; }
+/* Explicit confirmation stays fixed, apart from the scrollable action list. */
+.bga-workspace .human-dock { grid-area: dock; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; border: 0; background: transparent; }
+.bga-workspace .hand-card { display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 10px 12px; border: 1.5px solid #4f738f; border-top: 3px solid #e4c58b; border-radius: 11px; background: linear-gradient(150deg, #183348, #112535); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); }
+.bga-workspace .hand-card-actor { border-color: #64b59f; border-top-color: #8fe3b6; box-shadow: 0 0 16px rgba(110, 218, 178, 0.25), inset 3px 0 #8fe3b6; }
 .bga-workspace .hand-head { display: flex; align-items: center; gap: 8px; }
 .bga-workspace .hand-title { color: #b9d0df; font: 750 var(--fs-3xs)/1.2 var(--font-geist-sans); letter-spacing: .03em; }
 .bga-workspace .hand-turn, .bga-workspace .hand-wait { padding: 2px 5px; border-radius: 4px; background: #27483f; color: #b3ebce; font: 700 var(--fs-3xs)/1.3 var(--font-geist-sans); }
@@ -252,24 +257,54 @@
 .bga-workspace .take-buttons .cancel-move { flex: 0 0 36px; width: 36px; padding: 4px; background: #233543; border-color: #566779; color: #d4dfeb; font-size: var(--fs-xl); }
 @media (min-width: 1101px) {
   .bga-layout[data-panel="table"] .human-panels button:nth-child(2) { background: #394138; color: #f4dca8; border-color: #a78e5655; }
+  /* Identical columns for both players. Stacked chip labels keep double-digit
+     values readable without shrinking type, including at 150% font size. */
+  .bga-workspace .hand-card { padding: 10px; }
+  .bga-workspace .state-card { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .bga-workspace .state-card-head { grid-row: auto; flex-direction: row; align-items: center; justify-content: space-between; }
+  .bga-workspace .state-vp { margin-left: auto; }
+  .bga-workspace .hand-head { flex-wrap: wrap; }
+  .bga-workspace .hand-line, .bga-workspace .state-line { grid-template-columns: 4rem minmax(0, 1fr) 3.4rem; gap: 6px; }
+  .bga-workspace .state-gems { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+  .bga-workspace .state-gem, .bga-workspace .hand-line .state-gem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 3px 0; min-width: 0; }
+  .bga-workspace .state-gem i, .bga-workspace .hand-line .state-gem i { width: 1.4em; height: 1.4em; }
+  .bga-workspace .state-gem b, .bga-workspace .hand-line .state-gem b { font-size: var(--fs-sm); }
+  .bga-workspace .token-total { flex-wrap: wrap; justify-content: flex-end; }
+  .bga-workspace .token-total i { margin-left: 0; }
+  .bga-workspace .state-bonus-total { text-align: right; }
 }
 @media (max-width: 1250px) and (min-width: 1101px) {
-  .bga-workspace { grid-template-columns: minmax(0, 1fr) 310px; padding: 10px; gap: 0 10px; }
-  .play-table-zone { padding: 10px; gap: 10px; grid-template-columns: minmax(0, 1fr) 64px; }
-  .bga-table-felt { grid-template-columns: minmax(0, 1fr) 90px; gap: 8px; }
-  .bga-layout .human-tier { grid-template-columns: 56px repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .bga-layout .table-noble { padding: 6px; }
+  .bga-workspace { grid-template-columns: minmax(0, 1fr) 360px; padding: 10px; gap: 8px 12px; }
+  .play-table-zone { padding: 10px; gap: 10px; grid-template-columns: minmax(0, 1fr) 58px; }
+  .bga-table-felt { grid-template-columns: minmax(0, 1fr) 84px; gap: 14px; min-height: calc(27rem + 30px); }
+  .bga-layout .human-market { grid-template-rows: repeat(3, minmax(9rem, 1fr)); gap: 12px; }
+  .bga-layout .human-tier { grid-template-columns: 48px repeat(4, minmax(0, 1fr)); gap: 12px; min-height: 9rem; }
+  .bga-layout .nobles-header small { display: none; }
+  .bga-layout .nobles-stack { gap: 8px; }
+  .bga-layout .table-noble { min-height: 0; padding: 6px; }
   .bga-layout .table-noble-top span { display: none; }
-  .bga-workspace .human-dock { grid-template-columns: minmax(0, 1fr) 234px; }
   .table-heading small { max-width: 170px; text-align: right; }
 }
-@media (max-height: 780px) { .bga-layout .bank-gold-note { display: none; } }
+@media (max-height: 780px) {
+  .bga-layout .bank-gold-note { display: none; }
+  /* Short desktops and large font scale: shrink chrome, never information type. */
+  .play-session-header { min-height: 48px; padding: 5px 14px; }
+  .bga-action-banner { min-height: 34px; padding-block: 5px; }
+  .bga-workspace { padding: 8px; gap: 6px 12px; }
+  .bga-workspace .human-opponent, .bga-workspace .human-resources .hand-card { padding: 8px 10px; }
+  .bga-workspace .human-panels button { min-height: 34px; padding-block: 5px; }
+  .bga-workspace .take-panel { padding: 8px 10px; }
+  .bga-workspace .take-panel > p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .move-guide { gap: 7px; }
+  .move-guide > div > .studio-glyph { width: 28px; height: 28px; padding: 5px; }
+}
 @media (max-width: 1100px) {
   .play-session-header { gap: 12px; padding: 8px 12px; min-height: 62px; }
   .session-ply { display: none; }
   .bga-action-banner { gap: 10px; padding: 8px 12px; }
-  .bga-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent" "bank" "tabs" "board" "dock"; gap: 7px; padding: 8px; }
+  .bga-workspace { grid-template-columns: minmax(0, 1fr) 280px; grid-template-rows: auto auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent opponent" "bank bank" "tabs tabs" "board board" "hand dock"; gap: 7px; padding: 8px; }
   .play-table-zone { display: contents; }
+  .bga-table-felt { grid-template-columns: minmax(0, 1fr) 96px; gap: 14px; max-height: none; margin: 0; }
   .bga-workspace .human-opponent { padding: 7px 10px; }
   .opponent-caption { margin-bottom: 5px; }
   .bga-workspace .state-card { grid-template-columns: 50px minmax(0, 1fr); }
@@ -282,7 +317,7 @@
   .bga-layout .human-bank { --chip-size: 42px; grid-area: bank; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 7px 14px; border: 1px solid #426580; border-radius: 9px; background: #153248; }
   .bga-layout .bank-gems { flex-direction: row; justify-content: space-around; gap: 8px; width: auto; }
   .bga-layout .bank-header small, .bga-layout .bank-gold-note { display: none; }
-  .bga-workspace .human-dock { grid-template-columns: minmax(0, 1fr) 280px; gap: 8px; }
+  .bga-layout .human-tier { gap: 8px; }
   .bga-workspace .hand-card { padding: 8px 10px; gap: 5px; }
 }
 @media (max-width: 700px) {
@@ -299,7 +334,7 @@
   .banner-actor { gap: 5px; letter-spacing: .025em; }
   .banner-actor i { width: 5px; height: 5px; }
   .banner-hint { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .bga-workspace { padding: 6px; gap: 6px; }
+  .bga-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto auto; grid-template-areas: "opponent" "bank" "tabs" "board" "hand" "dock"; padding: 6px; gap: 6px; }
   .bga-workspace .human-opponent { padding: 6px 8px; }
   .opponent-caption { gap: 6px; margin-bottom: 4px; }
   .opponent-caption > span, .opponent-caption strong { font-size: var(--fs-3xs); }
@@ -336,7 +371,6 @@
   .bga-layout .table-noble-name { margin-top: 1px; font-size: var(--fs-3xs); }
   .bga-layout .table-noble-cost { clear: both; gap: 3px; margin-top: 6px; }
   .bga-layout .table-noble-cost .gem { width: 1.5em; height: 1.5em; font-size: var(--fs-3xs); }
-  .bga-workspace .human-dock { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .bga-workspace .hand-card { padding: 7px 9px; gap: 5px; }
   .bga-workspace .hand-head { gap: 5px; }
   .bga-workspace .hand-vp { font-size: var(--fs-md); }
@@ -357,7 +391,7 @@
 }
 @media (max-width: 1100px) and (max-height: 520px) {
   .play-session-header { min-height: 48px; padding-block: 5px; }
-  .bga-workspace { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent bank" "tabs tabs" "board board" "dock dock"; padding: 5px; gap: 5px; }
+  .bga-workspace { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "opponent bank" "tabs tabs" "board board" "hand dock"; padding: 5px; gap: 5px; }
   .bga-layout .human-bank { --chip-size: 36px; padding: 5px 9px; gap: 8px; }
   .bga-layout .bank-gems { gap: 5px; }
   .bga-layout .bank-header { display: none; }
@@ -366,7 +400,6 @@
   .bga-layout .human-market { grid-template-rows: repeat(3, minmax(9rem, 1fr)); }
   .bga-layout .human-tier, .bga-layout .tier-deck { min-height: 9rem; }
   .bga-workspace .human-panels button { min-height: 32px; padding: 5px; }
-  .bga-workspace .human-dock { grid-template-columns: minmax(0, 1fr) 270px; gap: 6px; }
   .bga-workspace .hand-card, .bga-workspace .take-panel { padding: 5px 9px; }
   .bga-workspace .hand-line .state-gem { padding-block: 0; }
   .bga-workspace .take-buttons button { min-height: 32px; padding: 5px 8px; }

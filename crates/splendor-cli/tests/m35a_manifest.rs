@@ -220,6 +220,16 @@ fn test_m35a_manifest_and_all_17_realized_plans() {
     }
 
     // ---- 6+7. plan-level command and pairing binding. ----
+    // M80 retired the local pre-Prism realized plans; the checkout-only branch
+    // still verifies the manifest bindings above and skips absent run payloads.
+    if !manifest
+        .realized_plans
+        .iter()
+        .any(|plan| root().join(&plan.plan_file).exists())
+    {
+        eprintln!("M80: M35A local realized plans retired; plan-body verification skipped");
+        return;
+    }
     let mut total_scheduled: u64 = 0;
     let mut seen_pairings = std::collections::BTreeSet::new();
     for plan_info in &manifest.realized_plans {

@@ -104,10 +104,12 @@ export function PlayerStateCard({
   player,
   isActor,
   isHuman,
+  showZeroTokens = false,
 }: {
   player: StripPlayer;
   isActor: boolean;
   isHuman: boolean;
+  showZeroTokens?: boolean;
 }) {
   const bonusTotal = player.bonuses.reduce((sum, amount) => sum + amount, 0);
   const identity = isHuman ? "YOU" : isActor ? "ACTOR" : null;
@@ -129,7 +131,7 @@ export function PlayerStateCard({
         <small>TOKENS</small>
         <div className="state-gems">
           {GEM_KEYS.map((gem) => (
-            <StateGem gem={gem} count={player.tokens[gem] ?? 0} kind="token" key={gem} />
+            <StateGem gem={gem} count={player.tokens[gem] ?? 0} kind="token" showZero={showZeroTokens} key={gem} />
           ))}
         </div>
         <TokenTotal tokens={player.tokens} />
@@ -167,19 +169,22 @@ export function PlayerStateCard({
  * seat, whose state is presented by the pinned `PlayerHandCard` dock instead.
  * The point is to avoid two renderings of the same fact on one screen — the
  * drift this component exists to prevent — not to hide anything: the dock shows
- * strictly more than the strip did. Replay, Review and JEV leave it unset and
- * still render every seat.
+ * strictly more than the strip did. Replay and Review leave it unset and
+ * still render every seat. `showZeroTokens` keeps the six colour columns aligned
+ * between both players on Play; other pages retain the compact default.
  */
 export function PlayerStateStrip({
   playerView,
   actor,
   humanSeat = null,
   omitSeat = null,
+  showZeroTokens = false,
 }: {
   playerView: StripPlayerView;
   actor: number;
   humanSeat?: number | null;
   omitSeat?: number | null;
+  showZeroTokens?: boolean;
 }) {
   return (
     <section className="player-state-strip" aria-label="Player state">
@@ -190,6 +195,7 @@ export function PlayerStateStrip({
             player={player}
             isActor={player.id === actor}
             isHuman={humanSeat !== null && player.id === humanSeat}
+            showZeroTokens={showZeroTokens}
             key={player.id}
           />
         ))}
@@ -198,8 +204,8 @@ export function PlayerStateStrip({
 }
 
 /**
- * The play dock's own-hand card: the same facts `PlayerStateCard` presents, in a
- * horizontal layout that fits a bar pinned to the bottom of the viewport.
+ * The play view's own-hand card: the same facts `PlayerStateCard` presents,
+ * pinned in the desktop player rail or the narrow-screen bottom resource bar.
  *
  * This is deliberately not a second implementation of player state. It reuses
  * `StateGem` and `TokenTotal`, so a colour, a count and the ten-token cap can

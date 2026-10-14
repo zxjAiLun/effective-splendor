@@ -62,20 +62,20 @@ try {
   //   page2 (before=150): rows 149/76, next 75
   //   page3 (before=75):  row 1, next null
   // window.flaw: 'ok' | 'fail500' | 'malformed' applies to page3 only.
-  // Seats use curated identities from the M52 presentation roster
-  // (agent-visibility.mjs): the home filters every league row through it, so a
-  // fixture with invented names would render zero rows and prove nothing about
-  // pagination. The names below are the roster's own, and the seat/score facts
-  // stay the gate's original truth-values.
+  // Seats use human participant IDs after M80 retired the engine roster. The
+  // visibility filter keeps these rows while pre-cleanup model identities would
+  // render zero rows.
   const seat = (seatNumber, id, name, score, rank, won) => ({ seat: seatNumber, participant_id: id, display_name: name, score, rank, won });
   const row = (seq, a, b) => ({ match_id: `m${seq}`.padEnd(64, "0").slice(0, 64), league_seq: seq, played_at: 1789740000 + seq, source_kind: "arena_report", status: "completed", rating_eligible: true, rating_ineligible_reason: null, replay_document_sha256: null, replay_archived: false, seats: [a, b] });
-  const A = "★ Prism v0.1.1 (PPO Champion · 62.0% vs v0.3.1)";
-  const B = "Prism Alpha v0.1.0";
-  const r1 = row(200, seat(0, "prism-v011", A, 15, 1, true), seat(1, "prism-alpha-v01", B, 6, 2, false));
-  const r2 = row(151, seat(0, "prism-v011", A, 12, 1, true), seat(1, "prism-alpha-v01", B, 9, 2, false));
-  const r3 = row(149, seat(0, "prism-v011", A, 11, 1, true), seat(1, "prism-alpha-v01", B, 10, 2, false));
-  const r4 = row(76, seat(0, "prism-v011", A, 14, 1, true), seat(1, "prism-alpha-v01", B, 5, 2, false));
-  const r5 = row(1, seat(0, "prism-v011", A, 9, 1, true), seat(1, "prism-alpha-v01", B, 8, 2, false));
+  const HA = "12345678-1234-1234-1234-123456789012";
+  const HB = "b901a2ea-645d-4c45-b4b9-407f5b6f39b7";
+  const A = "You";
+  const B = "Local player";
+  const r1 = row(200, seat(0, HA, A, 15, 1, true), seat(1, HB, B, 6, 2, false));
+  const r2 = row(151, seat(0, HA, A, 12, 1, true), seat(1, HB, B, 9, 2, false));
+  const r3 = row(149, seat(0, HA, A, 11, 1, true), seat(1, HB, B, 10, 2, false));
+  const r4 = row(76, seat(0, HA, A, 14, 1, true), seat(1, HB, B, 5, 2, false));
+  const r5 = row(1, seat(0, HA, A, 9, 1, true), seat(1, HB, B, 8, 2, false));
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `(() => {
     const nativeFetch=window.fetch.bind(window);window.gamesCalls=[];window.flaw='ok';
     const reply=(body,status=200)=>Promise.resolve(new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}}));
@@ -102,30 +102,28 @@ try {
   })();` });
   await send("Page.navigate", { url: `http://127.0.0.1:${port}/` });
   // Page 1 renders both sections separately.
-  await wait(`document.body.innerText.includes('PPO Champion')`);
+  await wait(`document.body.innerText.includes('Local player')`);
   assert.match(await evaluate("document.body.innerText"), /Long-term league record/);
-  assert.match(await evaluate("document.body.innerText"), /LOCAL \/ LEGACY GAMES/);
-  assert.match(await evaluate("document.body.innerText"), /Saved human vs engine games/);
-  assert.match(await evaluate("document.body.innerText"), /No saved games yet/);
-  assert.equal(await evaluate(`document.querySelectorAll('section.recent-games:not(.legacy-games) article').length`), 2);
+  assert.doesNotMatch(await evaluate("document.body.innerText"), /Saved human vs engine games|No saved games yet/);
+  assert.equal(await evaluate(`document.querySelectorAll('section.games-ledger article').length`), 2);
   // Load more follows the Host-issued cursor, never an offset.
   await evaluate(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Load more').click()`);
-  await wait(`document.body.innerText.includes('Prism Alpha') && document.body.innerText.includes('league position 149')`);
+  await wait(`document.body.innerText.includes('Local player') && document.body.innerText.includes('league position 149')`);
   assert.deepEqual(await evaluate("window.gamesCalls"), ["", "limit=50&before=150"]);
-  assert.equal(await evaluate(`document.querySelectorAll('section.recent-games:not(.legacy-games) article').length`), 4);
+  assert.equal(await evaluate(`document.querySelectorAll('section.games-ledger article').length`), 4);
   // A failed page keeps the rows already shown and offers page-level retry.
   await evaluate(`window.flaw='fail500';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Load more').click()`);
   await wait(`document.body.innerText.includes('database locked')`);
-  assert.equal(await evaluate(`document.querySelectorAll('section.recent-games:not(.legacy-games) article').length`), 4);
+  assert.equal(await evaluate(`document.querySelectorAll('section.games-ledger article').length`), 4);
   assert.equal(await evaluate(`Array.from(document.querySelectorAll('button')).some(b=>b.textContent==='Retry page')`), true);
   // A malformed 200 is an error, not an empty page, and the cursor is unchanged.
   await evaluate(`window.flaw='malformed';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Retry page').click()`);
   await wait(`document.body.innerText.includes('invalid games page')`);
-  assert.equal(await evaluate(`document.querySelectorAll('section.recent-games:not(.legacy-games) article').length`), 4);
+  assert.equal(await evaluate(`document.querySelectorAll('section.games-ledger article').length`), 4);
   // Retry re-issues the same cursor and completes the recording.
   await evaluate(`window.flaw='ok';Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='Retry page').click()`);
   await wait(`document.body.innerText.includes('End of the recorded league.')`);
-  assert.equal(await evaluate(`document.querySelectorAll('section.recent-games:not(.legacy-games) article').length`), 5);
+  assert.equal(await evaluate(`document.querySelectorAll('section.games-ledger article').length`), 5);
   assert.deepEqual(await evaluate("window.gamesCalls"), ["", "limit=50&before=150", "limit=50&before=75", "limit=50&before=75", "limit=50&before=75"]);
   assert.equal(exceptions.length, 0, JSON.stringify(exceptions));
   console.log("games-page-browser: PASS (2 sections, cursor pagination, failure retry preserves rows and cursor, malformed 200 rejected, end marker)");

@@ -139,10 +139,12 @@ export default function RatingsPage() {
               const hasValidId =
                 typeof row.participantId === "string" && row.participantId.length > 0;
               const nameText = row.displayName ?? row.participantId ?? "Unknown participant";
+              const totalGames = row.ratedGames ?? 0;
+              const winRate = totalGames > 0 ? Math.round(((row.ratedWins ?? 0) / totalGames) * 100) : null;
               return (
                 <div className="ratings-row" key={row.participantId ?? `row-${index}`}>
                   <span>
-                    <b>{index + 1}</b>
+                    <b data-rank={index + 1}>{index + 1}</b>
                     <i>
                       {hasValidId ? (
                         <Link
@@ -160,8 +162,19 @@ export default function RatingsPage() {
                       </small>
                     </i>
                   </span>
-                  <span data-label="Kind">{describeKind(row.kind) ?? "—"}</span>
-                  <span data-label="W-T-L">{recordText(row)}</span>
+                  <span data-label="Kind">
+                    <span className={`kind-pill kind-${row.kind ?? "unknown"}`}>
+                      {describeKind(row.kind) ?? "—"}
+                    </span>
+                  </span>
+                  <span data-label="W-T-L">
+                    <span className="record-line">{recordText(row)}</span>
+                    {winRate !== null ? (
+                      <i className="win-rate-track" title={`${winRate}% win rate`}>
+                        <b style={{ width: `${winRate}%` }} />
+                      </i>
+                    ) : null}
+                  </span>
                   <span data-label="Games">{gamesText(row)}</span>
                   <span className="ratings-elo">{eloText(row)}</span>
                 </div>

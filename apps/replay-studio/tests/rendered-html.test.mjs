@@ -18,7 +18,7 @@ test("server-renders the Replay Studio product shell", async () => {
   assert.match(html, /<title>Replay Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Replay Studio/);
   assert.match(html, /GAMES/);
-  assert.match(html, /Saved human vs engine games/);
+  assert.doesNotMatch(html, /Saved human vs engine games/);
   assert.match(html, /Play vs AI/);
   assert.match(html, /href="\/league"/);
   assert.match(html, /href="\/ratings"/);
@@ -51,20 +51,19 @@ test("server-renders the /replay viewer route shell", async () => {
   assert.doesNotMatch(html, /ACTION ANALYSIS/);
 });
 
-test("server-renders archived research metadata but not excluded agents in /ratings/reports", async () => {
+test("server-renders the retired upload-only research report route", async () => {
   const response = await render("/ratings/reports");
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<title>Rating Studio · Effective Splendor<\/title>/i);
   assert.match(html, /Rating Studio/);
-  assert.doesNotMatch(html, /m22-scaled-self-play-v1/);
-  assert.doesNotMatch(html, /M22 Self-Play · 32 games · GPU/);
-  assert.match(html, /No curated agents in this archived research report/);
-  assert.match(html, /Archive B/);
-  assert.match(html, /48<!-- -->\/<!-- -->48/);
-  assert.match(html, /Archive A/);
-  assert.match(html, /Non-transitivity matrix/);
+  assert.match(html, /UPLOAD ONLY · ARCHIVED RESEARCH/);
+  assert.match(html, /No current Studio models/);
+  assert.match(html, /0<!-- -->\/<!-- -->0/);
   assert.match(html, /Load rating report/);
+  assert.doesNotMatch(html, /m22-scaled-self-play-v1/);
+  assert.doesNotMatch(html, /Archive A|Archive B/);
+  assert.doesNotMatch(html, /M19 Self-Play|M22 Self-Play|48<!-- -->\//);
 });
 
 // D2 — the Studio League ratings product page. The server can only render the

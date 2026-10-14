@@ -389,6 +389,11 @@ export default function LeaguePage() {
             ? "Loading the agent roster from the Studio Host…"
             : "No agent can be picked: the roster could not be read from the Studio Host."}
         </p>
+      ) : agents.length === 0 ? (
+        <div className="roster-retired-badge">
+          <strong>Lineup retired</strong>
+          <span>Current Studio model roster is retired. Register a new engine model to start a rated match.</span>
+        </div>
       ) : null}
 
       <div className="league-seats">
@@ -483,12 +488,12 @@ export default function LeaguePage() {
               Retry the booking (same occurrence, same seed)
             </button>
           ) : null}
-          <ul>
-            <li>match_status: <code>{result.matchStatus ?? "—"}</code></li>
-            <li>completion_status: <code>{result.completionStatus ?? "—"}</code></li>
-            <li>occurrence: <code>{result.sourceIdentity ?? "—"}</code></li>
-            <li>match row: <code>{result.matchId ?? "—"}</code></li>
-            <li>eligibility: <code>{result.eligibility ?? "—"}</code></li>
+          <ul className="league-receipt-grid">
+            <li><span>match_status:</span> <code>{result.matchStatus ?? "—"}</code></li>
+            <li><span>completion_status:</span> <code>{result.completionStatus ?? "—"}</code></li>
+            <li><span>occurrence:</span> <code>{result.sourceIdentity ?? "—"}</code></li>
+            <li><span>match row:</span> <code>{result.matchId ?? "—"}</code></li>
+            <li><span>eligibility:</span> <code>{result.eligibility ?? "—"}</code></li>
           </ul>
           {visibleElo.length ? (
             <div className="recent-game-list">

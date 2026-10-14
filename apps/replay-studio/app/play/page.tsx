@@ -243,7 +243,11 @@ export default function HumanPlayPage() {
     {state?<section className="human-workspace bga-workspace">
       <div className="human-opponent" aria-label="Opponent resources">
         <div className="opponent-caption"><span>OPPONENT</span><strong title={state.opponent}>{state.opponent}</strong></div>
-        <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} omitSeat={state.human_seat} />
+        <PlayerStateStrip playerView={state.observation as unknown as StripPlayerView} actor={state.observation.public.current_player} humanSeat={state.human_seat} omitSeat={state.human_seat} showZeroTokens />
+      </div>
+
+      <div className="human-resources" aria-label="Your resources">
+        {humanPlayer?<PlayerHandCard player={humanPlayer} isActor={yourTurn&&!controlsDisabled} statusLabel={turnLabel}/>:null}
       </div>
 
       <nav className="human-panels" aria-label="Game panels">
@@ -331,20 +335,19 @@ export default function HumanPlayPage() {
           {selectedDeck!==null?<p>The top card stays hidden until you reserve it. Gain gold if available.</p>:null}
           {contextActions.length?<div className="context-actions">{contextActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>{action.type==="buy_market"||action.type==="buy_reserved"?"Buy card":action.type==="reserve_market"?"Reserve card":"Blind reserve"}</strong>{GEM_NAMES.some(gem=>actionReturns(action)[gem]>0)?<span>Return <GemStrip gems={actionReturns(action)}/></span>:<small>{action.type.startsWith("reserve")?"Gain gold if available":"Pay with tokens and bonuses"}</small>}</button>)}</div>:null}
           {(selectedCard||selectedDeck!==null)&&!contextActions.length?<p>No legal buy or reserve for this selection. Choose another card or take gems.</p>:null}
-          {needsReturn?<><p>Choose a legal return to confirm this take. Your hand stays visible below.</p><div className="context-actions return-choices">{exactTakeActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Return</strong><GemStrip gems={actionReturns(action)}/></button>)}</div></>:pendingCount?<p>{takeHint} Use the confirmation below.</p>:null}
+          {needsReturn?<><p>Choose a legal return to confirm this take. Your resources stay visible.</p><div className="context-actions return-choices">{exactTakeActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Return</strong><GemStrip gems={actionReturns(action)}/></button>)}</div></>:pendingCount?<p>{takeHint} Use the confirmation below.</p>:null}
           {cardIdle&&nobleActions.length?<div className="context-actions">{nobleActions.map((action,index)=><button disabled={controlsDisabled} onClick={()=>void play(action)} key={index}><strong>Choose noble #{String(action.noble)}</strong></button>)}</div>:null}
           {cardIdle&&!nobleActions.length?<div className="move-guide">
             <div><StudioGlyph name="gem" /><p><b>Take gems</b><span>Select in the bank, then confirm below.</span></p></div>
             <div><StudioGlyph name="layers" /><p><b>Buy or reserve</b><span>Choose a card to see your legal options.</span></p></div>
             <button type="button" className="reserve-shortcut" onClick={()=>setPanel("reserves")}>Your reserve <b>{humanPlayer?.reserved_count??0}/3</b><StudioGlyph name="arrow" /></button>
-            <small>Your tokens and discounts stay visible below. Nothing is sent until you confirm.</small>
+            <small>Nothing is sent until you confirm.</small>
           </div>:null}
           {(pendingCount||selectedCard||selectedDeck!==null)?<button className="cancel-move" disabled={busy} onClick={()=>clearPending()}>Cancel selection</button>:null}
         </section>}
       </aside>
 
-      <footer className="human-dock" aria-label="Your resources and table controls">
-        {humanPlayer?<PlayerHandCard player={humanPlayer} isActor={yourTurn&&!controlsDisabled} statusLabel={turnLabel}/>:null}
+      <footer className="human-dock" aria-label="Table controls">
         <section className="take-panel" aria-label="Take confirmation">
           <div className="take-selection"><h2>{state.result?"Game complete":pendingCount?`Take ${pendingCount}`:"Take gems"}</h2><div className="pending-gems">{TAKE_GEMS.filter(gem=>pendingTake[gem]>0).map(gem=><GemChip gem={gem} count={pendingTake[gem]} selected disabled={busy||uncertain} onClick={()=>changePendingGem(gem,-1)} key={gem}/>)}</div></div>
           <p role="status">{state.result?"Replay and booking details are in Result.":takeHint}</p>
@@ -369,6 +372,12 @@ export default function HumanPlayPage() {
         <div className="setup-status"><span className={`status-dot ${hostOnline?"":error?"offline":"pending"}`} />{hostOnline?"Studio Host ready":error?"Studio Host offline":"Connecting to Studio Host…"}</div>
         <span className="section-kicker">HUMAN VS AGENT</span><h2>Start a local game</h2>
         <p>Choose your opponent and take your seat.</p>
+        {hostOnline && agents.length === 0 ? (
+          <div className="roster-retired-badge">
+            <strong>Lineup retired</strong>
+            <span>Current Studio model roster is retired. Register a new engine model to start a game.</span>
+          </div>
+        ) : null}
         <label>Opponent<select value={agentId} onChange={event=>setAgentId(event.target.value)} disabled={!hostOnline||busy}>{agents.map(agent=><option value={agent.id} key={agent.id}>{agent.display_name}{agent.class==="checkpoint"?" · checkpoint":""}</option>)}</select></label>
         <label>Your seat<select value={seatChoice} onChange={event=>setSeatChoice(event.target.value)} disabled={!hostOnline||busy}><option value="random">Random</option><option value="first">First · P0</option><option value="second">Second · P1</option></select></label>
         <div className="setup-seed-row"><label>Game seed<input type="text" inputMode="numeric" value={seed} onChange={event=>setSeed(event.target.value)} disabled={!hostOnline||busy}/></label><button type="button" disabled={!hostOnline||busy} onClick={()=>setSeed(randomSeed())}>Randomize seed</button></div>

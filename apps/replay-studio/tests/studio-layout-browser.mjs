@@ -11,7 +11,7 @@ import { catalog } from "./fixtures/play-cockpit.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifactDir = path.resolve(process.env.STUDIO_LAYOUT_ARTIFACTS || path.join(root, "../../local-artifacts/m78-studio-ui", `pages-${Date.now()}`));
 fs.mkdirSync(artifactDir, { recursive: true });
-const sources = ["app/page.tsx", "app/league/page.tsx", "app/ratings/page.tsx", "app/play/page.tsx", "app/play/play.css", "app/globals.css", "app/studio-shell.css", "app/components/studio-chrome.tsx", "app/layout.tsx", "tests/studio-layout-browser.mjs", "tests/helpers/studio-browser.mjs", "tests/fixtures/play-cockpit.mjs"];
+const sources = ["app/page.tsx", "app/league/page.tsx", "app/ratings/page.tsx", "app/play/page.tsx", "app/play/play.css", "app/globals.css", "app/studio-shell.css", "app/components/studio-chrome.tsx", "app/agent-visibility.mjs", "app/layout.tsx", "tests/studio-layout-browser.mjs", "tests/helpers/studio-browser.mjs", "tests/fixtures/play-cockpit.mjs"];
 const sourceHashes = Object.fromEntries(sources.map(name => [name, crypto.createHash("sha256").update(fs.readFileSync(path.join(root, name))).digest("hex")]));
 const b = await launchStudioBrowser({ artifactDir });
 const cases = [];
@@ -68,8 +68,8 @@ const clickText = async (text, scroll = true) => {
 const routes = [
   { path: "/", id: "games", ready: "document.querySelector('.games-ledger article')" },
   { path: "/play", id: "setup", ready: "document.querySelector('.setup-status')?.textContent.includes('ready')" },
-  { path: "/league", id: "league", ready: "document.querySelectorAll('.league-standings article').length===4" },
-  { path: "/ratings", id: "ratings", ready: "document.querySelectorAll('.ratings-row:not(.ratings-head-row)').length===4" },
+  { path: "/league", id: "league", ready: "document.querySelectorAll('.league-standings article').length===1" },
+  { path: "/ratings", id: "ratings", ready: "document.querySelectorAll('.ratings-row:not(.ratings-head-row)').length===1" },
 ];
 const navigate = async (route, width, height, mode = "loaded", scale = 1) => {
   await b.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
@@ -91,11 +91,12 @@ try {
       {participant_id:'12345678-1234-1234-1234-123456789012',kind:'human',display_name:'You',elo:1530,rated_games:1,recorded_games:1,rated_wins:1,rated_ties:0,rated_losses:0,provisional:true},
       {participant_id:'heuristic-v031',kind:'engine',display_name:'★ Heuristic v0.3.1 (5-Module Refactor · 76.6% vs S3)',elo:null,rated_games:0,recorded_games:0,rated_wins:0,rated_ties:0,rated_losses:0,provisional:true}
     ];
-    const agent = (id,name) => ({id,display_name:name,class:'checkpoint',policy_version:'fixture',model_version:'fixture',checkpoint_hash:null});
-    const agents = [agent('prism-v011','Prism v0.1.1'),agent('prism-alpha-v01','Prism Alpha v0.1.0')];
+    const agents = [];
+    const humanA = '12345678-1234-1234-1234-123456789012';
+    const humanB = 'b901a2ea-645d-4c45-b4b9-407f5b6f39b7';
     const match = seq => ({match_id:'fixture-'+seq,league_seq:seq,played_at:1791716400-seq*60,source_kind:'human_play',status:'completed',rating_eligible:true,rating_ineligible_reason:null,replay_document_sha256:'ab'.repeat(32),replay_archived:true,seats:[
-      {seat:0,participant_id:'prism-v011',display_name:'Prism v0.1.1',score:12,rank:2,won:false},
-      {seat:1,participant_id:'12345678-1234-1234-1234-123456789012',display_name:'You',score:15,rank:1,won:true}
+      {seat:0,participant_id:humanA,display_name:'You',score:12,rank:2,won:false},
+      {seat:1,participant_id:humanB,display_name:'Local player',score:15,rank:1,won:true}
     ]});
     const reply = (data,status=200) => new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
     // Navigation-by-pointer is verified without executing the client router:
@@ -126,8 +127,7 @@ try {
         if(more&&window.uiMode==='page-fail')return reply({error:'Fixture page unavailable'},500);
         return reply({format:'effective-splendor-studio-league-games',version:1,matches:more?[match(1)]:[match(90),match(75),match(51)],next_before_league_seq:more?null:50});
       }
-      if(route==='/recent-games')return reply({games:[{session_id:'fixture-legacy-1',opponent:'Prism v0.1.1',human_seat:1,scores:[9,15],winners:[1],player_count:2,timestamp:1791628800,verification:'verified',available_reviews:[]}]});
-      if(route==='/jev/runs')return reply({runs:[{run_id:'fixture-jev-run',game_document:'unavailable',status:'failed',agent_version:'fixture'}]});
+      if(route==='/recent-games')return reply({games:[{session_id:'12345678-1234-1234-1234-123456789012',opponent:'Local player',human_seat:1,scores:[9,15],winners:[1],player_count:2,timestamp:1791628800,verification:'verified',available_reviews:[]}]});
       if(route==='/league/matches'&&opts.method==='POST') {
         if(window.uiBooking==='lost')throw new Error('Fixture response lost');
         if(window.uiBooking==='pending')return reply({match_status:'completed',completion_status:'failed',error:'Fixture booking pending'},503);
@@ -149,13 +149,13 @@ try {
       assert.equal(await b.evaluate("document.querySelector('.studio-more').open"), true);
       const menu = await b.evaluate("document.querySelector('.studio-more-menu').getBoundingClientRect().toJSON()");
       assert.ok(menu.left >= 0 && menu.right <= width && menu.bottom <= height, "More menu stays inside the viewport");
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         assert.equal(await b.evaluate(`(() => {const e=document.querySelectorAll('.studio-more-menu a')[${i}], r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})()`), true);
       }
       if (width === 320) await shot(`${route.id}-more-menu-320`);
       await click(".studio-more > summary");
       assert.equal((await calls()).filter(c => c.method === "POST").length, 0, "Browsing must not start any game or reviewer");
-      record(name, { geometry: sample, primaryNavigationVisible: true, moreLinksHitTested: 4, zeroWrites: true });
+      record(name, { geometry: sample, primaryNavigationVisible: true, moreLinksHitTested: 3, zeroWrites: true });
     }
   }
 
@@ -173,7 +173,7 @@ try {
   }
   record("navigation-pointer-targets", { pressed: navTargets, zeroWrites: true });
 
-  // Paging does not mix legacy/Jev corpora or lose rows after a failed next page.
+  // Paging preserves the single remaining human archive and does not launch writes.
   await navigate(routes[0], 390, 844);
   await b.evaluate("window.uiMode='page-fail'");
   await clickText("Load more");
@@ -183,34 +183,21 @@ try {
   await clickText("Retry page");
   await b.wait("document.querySelectorAll('.games-ledger article').length===4");
   assert.deepEqual((await calls()).filter(c => c.route === "/league/games").map(c => c.search), ["", "?limit=50&before=50", "?limit=50&before=50"]);
-  assert.equal(await b.evaluate("document.querySelectorAll('.legacy-games article').length"), 1);
-  assert.equal(await b.evaluate("document.querySelectorAll('.jev-runs article').length"), 1);
+  assert.equal(await b.evaluate("document.querySelectorAll('.legacy-games, .games-archives').length"), 0);
   assert.match(await body(), /End of the recorded league/);
-  record("games-cursor-retry", { rowsPreserved: true, corporaSeparate: true });
+  record("games-cursor-retry", { rowsPreserved: true, retiredCorpusRemoved: true });
 
-  // Four-seat form at mobile width; changing the form does not launch a match.
+  // The retired roster has no selectable model. The form can change shape, but
+  // an empty lineup cannot launch a real match or send a booking.
   await navigate(routes[2], 390, 844);
   await clickText("Add a seat"); await clickText("Add a seat");
   assert.equal(await b.evaluate("document.querySelectorAll('.league-seats select').length"), 4);
-  await shot("league-four-seats-mobile");
+  await shot("league-four-seats-retired-roster-mobile");
   await clickText("Remove the last seat"); await clickText("Remove the last seat");
   await clickText("Start rated match");
   assert.equal((await calls()).filter(c => c.method === "POST").length, 0, "Invalid empty seats do not send");
-  await b.evaluate("document.querySelectorAll('.league-seats select').forEach((e,i)=>{e.value=i?'prism-alpha-v01':'prism-v011';e.dispatchEvent(new Event('change',{bubbles:true}));})");
-  await settle();
-  await clickText("Start rated match");
-  await b.wait("document.body.innerText.includes('Fixture booking pending')");
-  const first = (await calls()).find(c => c.method === "POST");
-  assert.deepEqual(Object.keys(JSON.parse(first.body)).sort(), ["game_id", "occurrence_id", "seats", "seed"]);
-  assert.deepEqual(JSON.parse(first.body).seats, ["prism-v011", "prism-alpha-v01"]);
-  assert.match(await body(), /completed/);
-  await shot("league-booking-pending-mobile");
-  await b.evaluate("window.uiBooking='inserted'");
-  await clickText("Retry the booking (same occurrence, same seed)");
-  await b.wait("document.body.innerText.includes('completion_status: inserted')");
-  assert.deepEqual((await calls()).filter(c => c.method === "POST").map(c => c.body), [first.body, first.body]);
-  await shot("league-booked-mobile");
-  record("league-form-and-booking", { fourSeatLayout: true, invalidStartRefused: true, sameBodyOnRetry: true, realGames: 0 });
+  assert.match(await body(), /Choose an agent|No agent/);
+  record("league-retired-roster", { fourSeatLayout: true, invalidStartRefused: true, registeredAgents: 0, realGames: 0 });
 
   for (const route of [routes[0], routes[1], routes[2], routes[3]]) {
     await navigate(route, 320, 720, "offline");

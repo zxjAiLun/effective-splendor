@@ -126,6 +126,10 @@ export async function launchStudioBrowser({ artifactDir } = {}) {
     });
     await send("Runtime.enable");
     await send("Page.enable");
+    // The disposable Chromium network service can still be restarting right
+    // after the first launch; a navigation issued into that window renders the
+    // browser's own "page couldn't load" error. Give it one bounded settle.
+    await delay(750);
     return { origin, send, evaluate, wait, screenshot, exceptions, close };
   } catch (error) {
     await close();

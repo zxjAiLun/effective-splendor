@@ -62,8 +62,6 @@ const DEFAULT_HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 const DEFAULT_SHUTDOWN_GRACE_MS: u64 = 2_000;
 const HANDSHAKE_TIMEOUT_MS: u64 = 30_000;
 const HUMAN_PLAY_DIR: &str = "local-artifacts/m20-human-play";
-/// Local unrated Jev exhibition runs written by `jev/match.py`.
-const JEV_RUNS_DIR: &str = "local-artifacts/jev";
 const REVIEWS_DIR: &str = "reviews";
 
 enum InProcessOpponent {
@@ -834,17 +832,6 @@ struct HostArgs {
     project_root: Option<PathBuf>,
 }
 
-/// Where local Jev exhibition runs live, resolved once from the same project
-/// root as the League. Defaults to the cwd exactly as before when the Host was
-/// started without `--project-root`, so existing local invocations are
-/// unaffected.
-fn resolved_jev_runs_dir(project_root: Option<&Path>) -> PathBuf {
-    match project_root {
-        Some(root) => root.join(JEV_RUNS_DIR),
-        None => PathBuf::from(JEV_RUNS_DIR),
-    }
-}
-
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct NewGameRequest {
@@ -979,196 +966,9 @@ struct StudioHost {
     session: Option<Session>,
     jobs: ReviewJobManager,
     experiment_library: Option<crate::experiment_replays::ExperimentReplayLibrary>,
-    /// Where local Jev exhibition runs are read from. Resolved once at startup
-    /// from the same project root as the League, for the same reason: a read
-    /// route must not re-derive a location from the process cwd.
-    jev_runs_dir: PathBuf,
 }
 
 impl StudioHost {
-    fn find_jev_run_dir(&self, run_id: &str) -> Option<PathBuf> {
-        let direct = self.jev_runs_dir.join(run_id);
-        if direct.is_dir() {
-            return Some(direct);
-        }
-        if let Ok(entries) = fs::read_dir(&self.jev_runs_dir) {
-            let mut sub_dirs: Vec<PathBuf> = entries
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| p.is_dir())
-                .collect();
-            sub_dirs.sort_by(|a, b| b.cmp(a));
-            for path in sub_dirs {
-                let sub = path.join(run_id);
-                if sub.is_dir() {
-                    return Some(sub);
-                }
-            }
-        }
-        None
-    }
-
-    /// Read-only index of local Jev arena runs.
-    ///
-    /// These are unrated exhibition games written by `jev/match.py`; they are
-    /// deliberately not merged into the human or league lists, because doing so
-    /// would present an exhibition as a recorded match. A run without a verified
-    /// replay or prefix is still listed, flagged, so a failed run stays visible
-    /// instead of disappearing.
-    fn jev_runs_index(&self) -> Result<String, String> {
-        let root = self.jev_runs_dir.as_path();
-        let mut runs: Vec<serde_json::Value> = Vec::new();
-        let mut check_dir = |path: &Path| {
-            let Some(run_id) = path.file_name().and_then(|n| n.to_str()) else {
-                return;
-            };
-            if !is_safe_component(run_id) {
-                return;
-            }
-            let summary = path.join("trace-summary.json");
-            let read = |name: &str| -> Option<serde_json::Value> {
-                fs::read_to_string(path.join(name))
-                    .ok()
-                    .and_then(|body| serde_json::from_str(&body).ok())
-            };
-            let trace = read("trace-summary.json");
-            let report = read("report.json");
-            let journal_recorded = path.join("metrics.jsonl").is_file();
-            let game_document = path
-                .join("replay.json")
-                .is_file()
-                .then_some("completed_replay")
-                .or_else(|| {
-                    path.join("prefix.json")
-                        .is_file()
-                        .then_some("truncated_prefix")
-                })
-                .unwrap_or("unavailable");
-            let metrics = read("metrics.json");
-            let game_summary = read("game-summary.json");
-            let anchor = game_summary
-                .as_ref()
-                .and_then(|v| v.get("anchor"))
-                .and_then(|v| v.as_str());
-            let jev_seat = game_summary
-                .as_ref()
-                .and_then(|v| v.get("jev_seat"))
-                .and_then(|v| v.as_u64());
-            let jev_won = game_summary
-                .as_ref()
-                .and_then(|v| v.get("jev_won"))
-                .and_then(|v| v.as_bool());
-            let scores = game_summary
-                .as_ref()
-                .and_then(|v| v.get("scores"))
-                .cloned();
-            runs.push(serde_json::json!({
-                "run_id": run_id,
-                "has_trace_summary": summary.is_file(),
-                "journal_recorded": journal_recorded,
-                "game_document": game_document,
-                "anchor": anchor,
-                "jev_seat": jev_seat,
-                "jev_won": jev_won,
-                "scores": scores,
-                "decisions": trace.as_ref()
-                    .and_then(|value| value.get("journal_decisions"))
-                    .and_then(|value| value.as_u64()),
-                "status": metrics.as_ref()
-                    .and_then(|value| value.get("status"))
-                    .and_then(|value| value.as_str()),
-                "agent_version": metrics.as_ref()
-                    .and_then(|value| value.get("agent_version"))
-                    .and_then(|value| value.as_str()),
-                "model_versions": metrics.as_ref()
-                    .and_then(|value| value.get("model_versions"))
-                    .cloned(),
-                "outcome": report.as_ref()
-                    .and_then(|value| value.get("outcome"))
-                    .and_then(|value| value.get("status"))
-                    .and_then(|value| value.as_str()),
-            }));
-        };
-
-        if root.is_dir() {
-            if let Ok(entries) = fs::read_dir(root) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if !path.is_dir() {
-                        continue;
-                    }
-                    let is_run = path.join("metrics.json").is_file()
-                        || path.join("metrics.jsonl").is_file()
-                        || path.join("replay.json").is_file()
-                        || path.join("trace-summary.json").is_file();
-                    if is_run {
-                        check_dir(&path);
-                    } else if let Ok(sub_entries) = fs::read_dir(&path) {
-                        for sub_entry in sub_entries.flatten() {
-                            let sub_path = sub_entry.path();
-                            if sub_path.is_dir()
-                                && (sub_path.join("metrics.json").is_file()
-                                    || sub_path.join("metrics.jsonl").is_file()
-                                    || sub_path.join("replay.json").is_file()
-                                    || sub_path.join("trace-summary.json").is_file())
-                            {
-                                check_dir(&sub_path);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        runs.sort_by(|a, b| {
-            b.get("run_id")
-                .and_then(|v| v.as_str())
-                .cmp(&a.get("run_id").and_then(|v| v.as_str()))
-        });
-        serde_json::to_string(&serde_json::json!({
-            "format": "effective-splendor-jev-runs",
-            "version": 1,
-            "runs": runs,
-            "note": "Local unrated Jev exhibition runs; not league or human matches.",
-        }))
-        .map_err(|error| error.to_string())
-    }
-
-    /// One run's read-only interaction archive: the verified game document and
-    /// the journal-derived per-ply trace projection.
-    fn jev_run_trace(&self, run_id: &str) -> Result<String, String> {
-        let run_id = sanitize_session_id(run_id)?;
-        let directory = self
-            .find_jev_run_dir(&run_id)
-            .ok_or_else(|| format!("unknown Jev run `{run_id}`"))?;
-        let read = |name: &str| -> Result<serde_json::Value, String> {
-            let body = fs::read_to_string(directory.join(name))
-                .map_err(|error| format!("{name} is unavailable: {error}"))?;
-            serde_json::from_str(&body).map_err(|error| format!("invalid {name}: {error}"))
-        };
-        let trace = read("trace-summary.json")?;
-        let config = fs::read_to_string(directory.join("config.json"))
-            .ok()
-            .and_then(|body| serde_json::from_str::<serde_json::Value>(&body).ok());
-        // The verified replay is the game authority. It is served verbatim, so
-        // the board a reader steps through is the same one `verify-replay`
-        // accepted, not a reconstruction from the journal.
-        let replay = fs::read_to_string(directory.join("replay.json"))
-            .ok()
-            .and_then(|body| serde_json::from_str::<serde_json::Value>(&body).ok());
-        let prefix = fs::read_to_string(directory.join("prefix.json"))
-            .ok()
-            .and_then(|body| serde_json::from_str::<serde_json::Value>(&body).ok());
-        serde_json::to_string(&serde_json::json!({
-            "format": "effective-splendor-jev-run-trace",
-            "version": 1,
-            "run_id": run_id,
-            "trace": trace,
-            "config": config,
-            "replay": replay,
-            "prefix": prefix,
-        }))
-        .map_err(|error| error.to_string())
-    }
     fn agents_json(&self) -> Result<String, String> {
         let agents = self
             .registry
@@ -1627,25 +1427,6 @@ impl StudioHost {
                 .and_then(|value| value.as_u64())
                 .and_then(|value| u8::try_from(value).ok());
             (replay_path, opponent, human_seat)
-        } else if let Some(jev_dir) = self.find_jev_run_dir(&session_id) {
-            let jev_replay = jev_dir.join("replay.json");
-            if !jev_replay.is_file() {
-                return Err(format!("unknown session `{session_id}`"));
-            }
-            let summary_val: Option<serde_json::Value> = fs::read_to_string(jev_dir.join("game-summary.json"))
-                .ok()
-                .and_then(|s| serde_json::from_str(&s).ok());
-            let opponent = summary_val
-                .as_ref()
-                .and_then(|v| v.get("anchor"))
-                .and_then(|v| v.as_str())
-                .map(str::to_string);
-            let human_seat = summary_val
-                .as_ref()
-                .and_then(|v| v.get("jev_seat"))
-                .and_then(|v| v.as_u64())
-                .and_then(|v| u8::try_from(v).ok());
-            (jev_replay, opponent, human_seat)
         } else {
             return Err(format!("unknown session `{session_id}`"));
         };
@@ -2549,7 +2330,6 @@ fn serve_studio_host(args: &[String]) -> Result<(), String> {
         session: None,
         jobs: ReviewJobManager::default(),
         experiment_library,
-        jev_runs_dir: resolved_jev_runs_dir(args.project_root.as_deref()),
     };
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port)).map_err(|error| {
         format!(
@@ -3406,16 +3186,6 @@ fn handle_host(mut stream: TcpStream, host: &mut StudioHost) -> Result<(), Strin
             let session_id = &request.path["/replays/".len()..];
             return respond_result(&mut stream, host.historical_replay(session_id));
         }
-        // ---- Local Jev exhibition traces, read-only. --------------------------
-        // Matched before the bare `/jev/` prefix below. These runs are unrated
-        // exhibitions: the index and one run's trace, nothing writes here.
-        "GET" if request.path == "/jev/runs" => {
-            return respond_result(&mut stream, host.jev_runs_index());
-        }
-        "GET" if request.path.starts_with("/jev/runs/") => {
-            let run_id = &request.path["/jev/runs/".len()..];
-            return respond_result(&mut stream, host.jev_run_trace(run_id));
-        }
         "GET" if request.path == "/experiment-replays" => {
             return respond_result(&mut stream, host.experiment_replays_index());
         }
@@ -4022,7 +3792,6 @@ mod tests {
             session: None,
             jobs: ReviewJobManager::default(),
             experiment_library: None,
-            jev_runs_dir: PathBuf::from(JEV_RUNS_DIR),
         };
         let value: serde_json::Value = serde_json::from_str(&host.agents_json().unwrap()).unwrap();
         assert_eq!(value["agents"][0]["id"], "gpu-agent");

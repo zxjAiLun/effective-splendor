@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { StudioHeader } from "../../components/studio-chrome";
 import { API_BASE } from "../../api-base.mjs";
 import { visibleGame, visibleParticipant, visibleRatingPoints } from "../../agent-visibility.mjs";
 import { describeGamesPage } from "../../games-page-runtime.mjs";
@@ -505,31 +506,9 @@ export default function ParticipantProfilePage() {
     return <main className="studio profile-page"><h1>Not in the current Studio lineup</h1><Link href="/ratings">Back to ratings</Link></main>;
   }
   return (
-    <main className="studio profile-page">
-      <header className="topbar">
-        <div className="brand-block">
-          <span className="eyebrow">EFFECTIVE SPLENDOR · STUDIO LEAGUE</span>
-          <h1>Participant Profile</h1>
-        </div>
-        <div className="header-actions">
-          <Link className="studio-link" href="/">
-            Games
-          </Link>
-          <Link className="studio-link" href="/play">
-            Play vs S3
-          </Link>
-          <Link className="studio-link" href="/league">
-            League
-          </Link>
-          <Link className="studio-link" href="/ratings">
-            Ratings
-          </Link>
-          <Link className="studio-link" href="/ratings/reports">
-            Research reports
-          </Link>
-        </div>
-      </header>
-
+    <main className="studio studio-page profile-page">
+      <StudioHeader active="ratings" />
+      <div className="studio-content profile-content">
       <section className="profile-header-area">
         <div className="profile-breadcrumbs">
           <Link href="/ratings" className="profile-back-link">
@@ -767,6 +746,12 @@ export default function ParticipantProfilePage() {
               </div>
               <div className="profile-svg-container">
                 <svg viewBox="0 0 640 180" className="profile-chart-svg" role="img" aria-label="Elo chart">
+                  <defs>
+                    <linearGradient id="eloAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#39d4d8" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#39d4d8" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
                   {/* Grid / Reference lines */}
                   <line x1="60" y1="20" x2="600" y2="20" stroke="#252f3d" strokeDasharray="3 3" />
                   <line x1="60" y1="90" x2="600" y2="90" stroke="#252f3d" strokeDasharray="3 3" />
@@ -798,6 +783,16 @@ export default function ParticipantProfilePage() {
                   ) : (
                     // Multiple points connected via polyline
                     <g>
+                      <polygon
+                        fill="url(#eloAreaGrad)"
+                        points={`60,150 ${chartData.series
+                          .map((s) => {
+                            const x = 60 + ((s.x - chartData.minX) / (chartData.maxX - chartData.minX || 1)) * 540;
+                            const y = 150 - ((s.y - chartData.minY) / (chartData.maxY - chartData.minY || 1)) * 130;
+                            return `${x.toFixed(1)},${y.toFixed(1)}`;
+                          })
+                          .join(" ")} 600,150`}
+                      />
                       <polyline
                         fill="none"
                         stroke="var(--cyan)"
@@ -971,6 +966,7 @@ export default function ParticipantProfilePage() {
           )}
         </section>
       )}
+      </div>
     </main>
   );
 }

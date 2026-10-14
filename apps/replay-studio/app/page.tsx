@@ -4,9 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StudioGlyph, StudioHeader, StudioIntro, StudioTableArt } from "./components/studio-chrome";
 import { API_BASE as API } from "./api-base.mjs";
-import { visibleGame, visibleParticipant } from "./agent-visibility.mjs";
-import { describeGameRow } from "./games-runtime.mjs";
-import { describeRun } from "./jev-trace-runtime.mjs";
+import { visibleGame } from "./agent-visibility.mjs";
 import {
   GAMES_PAGE_DEFAULT_LIMIT,
   GAMES_PAGE_MAX_LIMIT,
@@ -40,19 +38,6 @@ type LeagueGameRow = {
   replayHref: string | null;
   replaySha: string | null;
   replayUnavailableReason: string | null;
-};
-
-type RecentGame = {
-  session_id: string;
-  opponent?: string | null;
-  human_seat?: number | null;
-  scores?: number[];
-  winners?: number[];
-  player_count?: number;
-  timestamp?: number | null;
-  verification?: "verified" | "invalid";
-  available_reviews?: string[];
-  error?: string;
 };
 
 function when(timestamp?: number | null): string {
@@ -163,18 +148,26 @@ function StudioLeagueGames() {
       ) : null}
       {loading ? <p>Loading league games…</p> : null}
       {!loading && !error && rows.length === 0 ? (
-        <p>No matches are recorded in the league yet.</p>
+        <div className="studio-empty-card">
+          <p>No matches are recorded in the league yet.</p>
+          <small>Start a rated match in Play or League to record the first official game and replay.</small>
+        </div>
       ) : null}
       <div className="recent-game-list">
         {rows.map((row) => (
-          <article key={row.matchId ?? `seq-${row.leagueSeq}`}>
-            <div>
-              <strong>{when(row.playedAt)}</strong>
-              <small>
+          <article key={row.matchId ?? `seq-${row.leagueSeq}`} className="league-game-card">
+            <div className="game-card-main">
+              <div className="game-card-header">
+                <strong>{when(row.playedAt)}</strong>
+                <span className={`game-badge ${row.ratingEligible ? "rated" : "unrated"}`}>
+                  {row.ratingEligible ? "Rated · Elo moved for both seats." : `Not rated${row.ineligibleReason ? ` · ${row.ineligibleReason}` : ""}`}
+                </span>
+              </div>
+              <small className="game-card-meta">
                 {row.leagueSeq === null ? "position unknown" : `league position ${row.leagueSeq}`} ·{" "}
                 {row.sourceKind ?? "unknown source"} · {row.status ?? "unknown status"}
               </small>
-              <small>
+              <small className="game-card-seats">
                 {row.seats.length === 0
                   ? "no seats recorded"
                   : row.seats
@@ -183,21 +176,14 @@ function StudioLeagueGames() {
                       )
                       .join(" · ")}
               </small>
-              {row.ratingEligible ? (
-                <small>Rated · Elo moved for both seats.</small>
-              ) : (
-                <small>
-                  Not rated{row.ineligibleReason ? ` · ${row.ineligibleReason}` : ""}
-                </small>
-              )}
             </div>
-            <div>
-              <span>{row.outcome}</span>
-              <small>{row.scoreLine}</small>
+            <div className="game-card-outcome">
+              <span className="outcome-label">{row.outcome}</span>
+              <span className="game-score-pill">{row.scoreLine}</span>
               {row.replayHref ? (
-                <Link href={row.replayHref}>Open replay</Link>
+                <Link href={row.replayHref} className="studio-link game-replay-link">Open replay</Link>
               ) : (
-                <small>{row.replayUnavailableReason}</small>
+                <small className="text-muted">{row.replayUnavailableReason}</small>
               )}
             </div>
           </article>
@@ -211,172 +197,6 @@ function StudioLeagueGames() {
       {!loading && !error && !nextQuery && rows.length > 0 ? (
         <p>End of the recorded league.</p>
       ) : null}
-    </section>
-  );
-}
-
-/**
- * The legacy standalone history.
- *
- * This is a *different* corpus from the league ledger: human-vs-engine games the
- * old console/`/play` path wrote to `local-artifacts/m20-human-play`, which the
- * Host serves from disk. It is kept visible rather than merged, because folding it
- * into the league list would claim games for the league that the league never
- * recorded — and would present an unrecorded exhibition as a rated match.
- */
-function LegacyGames() {
-  const [games, setGames] = useState<RecentGame[]>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    queueMicrotask(() =>
-      void (async () => {
-        try {
-          const response = await fetch(`${API}/recent-games`);
-          const value = await response.json();
-          if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-          setGames(((value.games ?? []) as RecentGame[]).filter((game) => visibleParticipant({displayName:game.opponent, participantId:game.opponent})));
-          setError("");
-        } catch (reason) {
-          setError(reason instanceof Error ? reason.message : String(reason));
-        } finally {
-          setLoading(false);
-        }
-      })(),
-    );
-  }, []);
-
-  return (
-    <section className="recent-games legacy-games">
-      <span className="section-kicker">LOCAL / LEGACY GAMES</span>
-      <h2>Saved human vs engine games</h2>
-      <p>
-        Games saved on this machine before the Studio League record. These are not league matches
-        unless they also appear above.
-      </p>
-      {error ? (
-        <p role="alert" className="games-error">
-          {error}
-        </p>
-      ) : null}
-      {loading ? <p>Loading games…</p> : null}
-      {!loading && !error && games.length === 0 ? (
-        <p>No saved games yet. Start one from Play vs AI.</p>
-      ) : null}
-      <div className="recent-game-list">
-        {games.map((game) => {
-          const row = describeGameRow(game);
-          const cached = game.available_reviews?.length ?? 0;
-          return (
-            <article key={game.session_id}>
-              <div>
-                <strong>{when(game.timestamp)}</strong>
-                <small>{game.session_id}</small>
-                <small>
-                  vs {game.opponent ?? "unknown opponent"} · {row.seatLabel} ·{" "}
-                  {game.player_count ?? "?"}-player ·{" "}
-                  {row.verified ? "verified" : game.error ?? "invalid"} · {cached} cached review
-                  {cached === 1 ? "" : "s"}
-                </small>
-              </div>
-              <div>
-                <span>{row.outcome}</span>
-                <small>{row.scoreLine}</small>
-                {row.verified ? (
-                  <>
-                    <Link href={row.replayHref}>View replay</Link>
-                    <Link href={row.reviewHref}>Review</Link>
-                  </>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Local unrated Jev exhibition runs.
- *
- * A third corpus, alongside league matches and legacy human games. These are
- * experiments written by `jev/match.py`, so the section states that plainly and
- * never implies a rating; a run with no verified document is still listed, so a
- * failed run stays visible, but it offers no replay link.
- */
-function JevRuns() {
-  const [runs, setRuns] = useState<Array<Record<string, unknown>>>([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    queueMicrotask(() =>
-      void (async () => {
-        try {
-          const response = await fetch(`${API}/jev/runs`);
-          const value = await response.json();
-          if (!response.ok) throw new Error(value.error ?? `Studio Host ${response.status}`);
-          setRuns((value.runs ?? []) as Array<Record<string, unknown>>);
-          setError("");
-        } catch (reason) {
-          setError(reason instanceof Error ? reason.message : String(reason));
-        } finally {
-          setLoading(false);
-        }
-      })(),
-    );
-  }, []);
-
-  return (
-    <section className="recent-games jev-runs">
-      <span className="section-kicker">LOCAL / JEV EXHIBITIONS</span>
-      <h2>Jev arena runs</h2>
-      <p>
-        Unrated experiments run locally by the Jev agent. Not league matches and not human games. A
-        replay link carries the run&apos;s interaction trace, which is a record of the actual calls
-        made — never a reconstruction.
-      </p>
-      {error ? (
-        <p role="alert" className="games-error">
-          {error}
-        </p>
-      ) : null}
-      {loading ? <p>Loading runs…</p> : null}
-      {!loading && !error && runs.length === 0 ? (
-        <p>No Jev runs yet. Run `python jev/match.py` to produce one.</p>
-      ) : null}
-      <div className="recent-game-list">
-        {runs.map((run) => {
-          const row = describeRun(run);
-          return (
-            <article key={row.runId}>
-              <div>
-                <strong>{row.runId}</strong>
-                <small>{row.documentLabel}</small>
-                <small>
-                  {row.journalRecorded ? "interaction journal recorded" : "no interaction journal"}
-                  {row.agentVersion ? ` · agent ${row.agentVersion}` : ""}
-                  {row.modelVersions.length > 0 ? ` · ${row.modelVersions.join(", ")}` : ""}
-                  {row.status ? ` · ${row.status}` : ""}
-                </small>
-              </div>
-              <div>
-                <span>{row.decisions === null ? "—" : `${row.decisions} decisions`}</span>
-                <small>{row.traceSummary ? "trace summary present" : "no trace summary"}</small>
-                {row.playable ? (
-                  <Link href={`/replay?session=${encodeURIComponent(row.runId)}&jev=${encodeURIComponent(row.runId)}`}>
-                    View replay + Jev trace
-                  </Link>
-                ) : (
-                  <small>No verified replay or prefix to show</small>
-                )}
-              </div>
-            </article>
-          );
-        })}
-      </div>
     </section>
   );
 }
@@ -430,7 +250,6 @@ export default function GamesHome() {
         </div>
         <div className="games-dashboard">
           <StudioLeagueGames />
-          <aside className="games-archives" aria-label="Separate local archives"><JevRuns /><LegacyGames /></aside>
         </div>
       </div>
     </main>

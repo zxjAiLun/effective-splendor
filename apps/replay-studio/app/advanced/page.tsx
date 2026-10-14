@@ -195,7 +195,7 @@ export default function LegacyTraceViewer() {
             Games
           </Link>
           <Link className="studio-link" href="/play">
-            Play vs S3
+            Play vs AI
           </Link>
           <label className="load-button">
             Load legacy sidecar

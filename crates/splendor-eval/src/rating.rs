@@ -25,6 +25,7 @@ pub const RATING_CONFIG_FORMAT: &str = "effective-splendor-rating-config";
 pub const ROUND_ROBIN_PLAN_FORMAT: &str = "effective-splendor-round-robin-plan";
 pub const RATING_REPORT_FORMAT: &str = "effective-splendor-rating-report";
 pub const RATING_VERSION: u32 = 1;
+pub const RETIRED_STUDIO_REGISTRY_ID: &str = "studio-1v1-retired-2026-10-12";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -183,6 +184,11 @@ impl RatingRegistryV1 {
             return Err("unsupported rating registry format/version".to_string());
         }
         check_text("registry_id", &self.registry_id)?;
+        if self.agents.is_empty() && self.registry_id == RETIRED_STUDIO_REGISTRY_ID {
+            // The local Studio lineup can be retired without weakening the
+            // tournament rating contract used by production evaluations.
+            return Ok(());
+        }
         if self.agents.len() < 2 {
             return Err("rating registry requires at least two agents".to_string());
         }

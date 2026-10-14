@@ -14,7 +14,7 @@ export function playFixture(scenario = "initial", seat = 0) {
   const state = {
     format: "effective-splendor-human-play-state", version: 1,
     session_id: "cockpit-ui-fixture", seed: "18446744073709551615", human_seat: seat,
-    opponent: "★ Prism v0.1.1 (PPO Champion · 62.0% vs v0.3.1)", ply: 0,
+    opponent: "prism-v011", ply: 0,
     observation: structuredClone(opening.player_view),
     legal_actions: structuredClone(opening.legal_actions), action_history: [],
     result: null, replay_ready: false, replay_document_hash: null, league_completion: null,
@@ -76,6 +76,13 @@ export function playFixture(scenario = "initial", seat = 0) {
   if (scenario === "pass") state.legal_actions = [{ type: "pass" }];
   if (scenario === "waiting") pub.current_player = 1 - seat;
   if (scenario === "overcap") own.tokens.gold += 2; // malformed-input visibility, never clamp to 10
+  if (scenario === "double-digits") {
+    // Display stress only, deliberately not a legal match state.
+    own.tokens = { white: 10, blue: 0, green: 0, red: 0, black: 0, gold: 0 };
+    own.bonuses = [10, 11, 12, 13, 14]; own.prestige = 35;
+    opponent.tokens = { white: 0, blue: 10, green: 0, red: 0, black: 0, gold: 0 };
+    opponent.bonuses = [14, 13, 12, 11, 10]; opponent.prestige = 38;
+  }
   if (scenario === "finished") {
     state.result = { scores: seat === 0 ? [15, 12] : [12, 15], ranks: seat === 0 ? [1, 2] : [2, 1], winners: [seat], reason: "prestige" };
     state.legal_actions = []; state.replay_ready = true; state.replay_document_hash = "ab".repeat(32);
@@ -84,7 +91,7 @@ export function playFixture(scenario = "initial", seat = 0) {
 }
 
 export function mockPlayHostScript() {
-  const scenarios = Object.fromEntries(["initial", "crowded", "returns", "noble", "pass", "waiting", "overcap", "finished"].flatMap(name => [0, 1].map(seat => [`${name}-${seat}`, playFixture(name, seat)])));
+  const scenarios = Object.fromEntries(["initial", "crowded", "returns", "noble", "pass", "waiting", "overcap", "double-digits", "finished"].flatMap(name => [0, 1].map(seat => [`${name}-${seat}`, playFixture(name, seat)])));
   return `(() => {
     const catalogue = ${JSON.stringify(catalog)};
     const scenarios = ${JSON.stringify(scenarios)};
@@ -102,7 +109,7 @@ export function mockPlayHostScript() {
       if (address.origin !== 'http://127.0.0.1:43120') return nativeFetch(url, options);
       const route = address.pathname;
       window.fixtureCalls.push({route, method: options.method || 'GET', body: options.body || null});
-      if (route === '/agents') return reply({agents:[{id:'prism-v011', display_name:state.opponent, class:'checkpoint'}]});
+      if (route === '/agents') return reply({agents:[]});
       if (route === '/catalog') return reply(catalogue);
       if (route === '/reviewers') return reply({reviewers:[]});
       if (route === '/state') return reply(state);

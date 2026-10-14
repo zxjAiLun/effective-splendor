@@ -31,14 +31,11 @@ fn load_library() -> ExperimentReplayLibrary {
 }
 
 #[test]
-fn registry_loads_and_declares_m35a() {
+fn registry_loads_as_retired_empty_for_m80() {
     let registry = ReplaySourceRegistry::load(&registry_path()).unwrap();
     assert_eq!(registry.format, REGISTRY_FORMAT);
     assert_eq!(registry.version, REGISTRY_VERSION);
-    assert_eq!(registry.experiments.len(), 1);
-    let experiment = &registry.experiments[0];
-    assert_eq!(experiment.id, "m35a");
-    assert_eq!(experiment.pairings.len(), 17);
+    assert!(registry.experiments.is_empty(), "M80 retired the pre-Prism replay sources");
 }
 
 #[test]

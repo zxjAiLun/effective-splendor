@@ -98,12 +98,12 @@ fn run_trace_id_is_optional_and_strictly_validated() {
 
     // A well-formed binding survives the round trip verbatim.
     let mut good = valid_config();
-    good.run_trace_id = Some("jev-20260923-abcd".to_string());
+    good.run_trace_id = Some("exhibition-20260923-abcd".to_string());
     good.validate().expect("valid trace id");
     let json = serde_json::to_string(&good).unwrap();
-    assert!(json.contains("jev-20260923-abcd"));
+    assert!(json.contains("exhibition-20260923-abcd"));
     let parsed: ArenaConfig = serde_json::from_str(&json).unwrap();
-    assert_eq!(parsed.run_trace_id.as_deref(), Some("jev-20260923-abcd"));
+    assert_eq!(parsed.run_trace_id.as_deref(), Some("exhibition-20260923-abcd"));
 
     // Anything that could corrupt framing, logs, or a path is rejected instead
     // of being forwarded to an agent.

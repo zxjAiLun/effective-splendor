@@ -4,28 +4,15 @@ use splendor_analysis::{ReviewerRegistryV1, ReviewerStatusV2};
 use splendor_eval::RatingRegistryV1;
 
 #[test]
-fn studio_registry_contains_only_s3_and_s3_positive_pilots() {
+fn studio_registry_is_an_explicitly_retired_empty_lineup() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let registry: RatingRegistryV1 = serde_json::from_slice(
         &fs::read(root.join("benchmarks/studio-1v1.registry.json")).unwrap(),
     )
     .unwrap();
     registry.validate().unwrap();
-    let ids: Vec<_> = registry.agents.iter().map(|agent| agent.id.as_str()).collect();
-    assert_eq!(
-        ids,
-        [
-            "s3-rollout",
-            "heuristic-v028",
-            "heuristic-v029",
-            "heuristic-v030",
-            "heuristic-v031",
-            "heuristic-v032c",
-            "prism-v01",
-            "prism-v011",
-            "prism-alpha-v01",
-        ]
-    );
+    assert_eq!(registry.registry_id, "studio-1v1-retired-2026-10-12");
+    assert!(registry.agents.is_empty());
 }
 
 #[test]

@@ -90,27 +90,39 @@
 .studio-page button:disabled { cursor: not-allowed; opacity: .5; }
 .studio-page .error-banner { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
 .studio-page .error-banner button { flex: none; margin: 8px; padding: 8px 12px; border: 1px solid #d58e93; border-radius: 6px; background: #542b30; color: #fff; cursor: pointer; }
-.studio-page .recent-games { max-width: none; margin: 0; padding: 24px; border-color: #2b3e50; border-radius: 14px; background: #111f2c; min-width: 0; }
-.studio-page .recent-games h2 { font-size: var(--fs-xl); margin: 8px 0 12px; color: #e2eaf2; }
+.studio-page .recent-games { max-width: none; margin: 0; padding: 24px; border: 1px solid #2b3e50; border-radius: 14px; background: linear-gradient(160deg, #132333, #0e1a27); min-width: 0; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28); }
+.studio-page .recent-games h2 { font-size: var(--fs-xl); margin: 8px 0 12px; color: #f2ede3; font-weight: 700; }
 .studio-page .recent-games > p { color: #9dafc0; font-size: var(--fs-sm); line-height: 1.65; }
-.studio-page .recent-game-list { gap: 10px; }
-.studio-page .recent-game-list article { padding: 15px; gap: 14px; border-color: #2a3c4d; border-radius: 10px; background: #162838; }
+.studio-page .recent-game-list { gap: 12px; }
+@media (min-width: 1121px) {
+  .games-ledger .recent-game-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+.studio-page .recent-game-list article { padding: 16px 18px; gap: 16px; border: 1px solid #2c4156; border-radius: 12px; background: linear-gradient(145deg, #172a3c, #122130); transition: border-color .15s, transform .15s, box-shadow .15s; }
+.studio-page .recent-game-list article:hover { border-color: #6b5f49; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
 .studio-page .recent-game-list article > div { min-width: 0; gap: 6px; overflow-wrap: anywhere; }
 .studio-page .recent-game-list article > div:first-child { flex: 1; }
-.studio-page .recent-game-list article > div:last-child { max-width: 40%; text-align: right; }
-.studio-page .recent-game-list strong { font: 650 var(--fs-sm)/1.4 var(--font-geist-sans); }
+.studio-page .recent-game-list article > div:last-child { max-width: 42%; text-align: right; }
+.studio-page .recent-game-list strong { font: 700 var(--fs-sm)/1.4 var(--font-geist-sans); color: #eef4fa; }
 .studio-page .recent-game-list small { color: #9eafc0; font: var(--fs-2xs)/1.5 var(--font-geist-sans); }
-.studio-page .recent-game-list span { color: #f0d6a7; font: 650 var(--fs-sm)/1.4 var(--font-geist-sans); }
-.studio-page .recent-game-list a { display: inline-flex; min-height: 32px; align-items: center; color: #9adad9; text-underline-offset: 4px; }
-.games-welcome { position: relative; min-height: 256px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(240px, .8fr); align-items: center; gap: 24px; margin-bottom: 24px; padding: 32px; border: 1px solid #385267; border-radius: 18px; overflow: hidden; background: radial-gradient(ellipse at 85% 70%, #26496c88, transparent 60%), #12273a; }
+.studio-page .recent-game-list span { color: #f0d6a7; font: 700 var(--fs-sm)/1.4 var(--font-geist-sans); }
+.studio-page .recent-game-list a { display: inline-flex; min-height: 32px; align-items: center; padding: 4px 10px; border-radius: 6px; border: 1px solid #35576c; background: #183042; color: #a7e4e2; text-decoration: none; font-weight: 650; transition: all .15s; }
+.studio-page .recent-game-list a:hover { border-color: #e4c58b; color: #f0d6a7; background: #203b4f; }
+.game-card-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.game-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font: 700 var(--fs-3xs)/1.3 var(--font-geist-mono); letter-spacing: .04em; }
+.game-badge.rated { background: #14362d; border: 1px solid #2b6f5b; color: #8fe3b6 !important; }
+.game-badge.unrated { background: #2b241d; border: 1px solid #5e4b36; color: #e2be8f !important; }
+.game-score-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; background: #0c1824; border: 1px solid #2e455b; color: #e4c58b !important; font: 700 var(--fs-xs)/1.3 var(--font-geist-mono) !important; }
+.studio-empty-card { padding: 22px 20px; border: 1px dashed #385167; border-radius: 12px; background: #0e1c29; text-align: center; margin: 12px 0; }
+.studio-empty-card p { margin: 0 0 6px; color: #d5e2ee; font-weight: 600; }
+.studio-empty-card small { color: #8da2b6; font-size: var(--fs-xs); }
+.roster-retired-badge { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; margin: 12px 0; border: 1px solid #756343; border-left: 3px solid #e4c58b; border-radius: 9px; background: linear-gradient(135deg, #242622, #142230); }
+.roster-retired-badge strong { color: #f0d6a7; font: 750 var(--fs-xs)/1.3 var(--font-geist-mono); letter-spacing: .06em; text-transform: uppercase; }
+.roster-retired-badge span { color: #b7c8d8; font-size: var(--fs-xs); line-height: 1.5; }
+.games-welcome { position: relative; min-height: 256px; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(240px, .8fr); align-items: center; gap: 24px; margin-bottom: 24px; padding: 32px; border: 1px solid #3c5870; border-radius: 18px; overflow: hidden; background: radial-gradient(ellipse at 85% 70%, #26496c99, transparent 60%), linear-gradient(145deg, #162f46, #102233); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32); }
 .games-welcome .studio-intro { margin: 0; position: relative; z-index: 1; }
 .games-welcome .studio-intro-copy { max-width: 520px; }
 .games-welcome-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
-.games-dashboard { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
-.games-archives { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-.games-archives .recent-games { background: #101d29; }
-.games-archives .recent-game-list article { flex-wrap: wrap; }
-.games-archives .recent-game-list article > div:last-child { max-width: 100%; }
+.games-dashboard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
 .studio-table-art { position: relative; height: 228px; width: 100%; max-width: 430px; justify-self: center; pointer-events: none; }
 .studio-art-orbit { position: absolute; width: 290px; height: 290px; border: 1px solid #cdb17422; border-radius: 50%; left: 50%; top: 52%; transform: translate(-50%, -50%); box-shadow: 0 0 0 30px #d9bd8110, 0 0 0 60px #d9bd8108; }
 .studio-art-card { position: absolute; left: 50%; top: 9%; width: 128px; height: 184px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 17px 10px; border: 1px solid #a9926588; border-radius: 10px; color: #edd4a6; background: repeating-linear-gradient(45deg, #ffffff03 0 1px, transparent 1px 6px), #214a4c; box-shadow: 0 15px 25px #0006, inset 0 0 0 5px #0b151655, inset 0 0 0 6px #d6bb771f; transform: translateX(-105%) rotate(-18deg); }
@@ -159,7 +171,10 @@
 .league-seat-controls, .league-submit { display: flex; flex-wrap: wrap; gap: 10px; }
 .league-submit { margin-top: 20px; }
 .studio-page .league-submit .studio-primary { flex: 1; width: auto; min-width: 170px; margin: 0; }
-.league-main .recent-games :is(ul, pre) { color: #a1b5c7; font-size: var(--fs-xs); line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; padding-left: 18px; }
+.league-receipt-grid { list-style: none; padding: 0; margin: 14px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.league-receipt-grid li { padding: 10px 12px; border: 1px solid #2b4054; border-radius: 8px; background: #0e1c29; display: flex; flex-direction: column; gap: 4px; color: #8da2b5; font: 600 var(--fs-2xs) var(--font-geist-mono); }
+.league-receipt-grid li code { color: #e2ecf5; font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.league-main .recent-games :is(ul:not(.league-receipt-grid), pre) { color: #a1b5c7; font-size: var(--fs-xs); line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; padding-left: 18px; }
 .league-main .recent-games a { color: #9adad9; }
 .league-main .recent-games > button { margin-block: 10px; padding: 10px 14px; border-radius: 8px; border: 1px solid #44738a; background: #203c4d; cursor: pointer; }
 .league-standings { min-width: 0; }
@@ -167,25 +182,33 @@
 .league-standings .recent-game-list article > div:last-child span { color: #e4c58b; font: 700 var(--fs-xl) var(--font-geist-mono); }
 .league-standings .standings-link { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; color: #9adad9; font-size: var(--fs-sm); text-decoration: none; }
 .studio-page .ratings-head { padding: 0; gap: 0; }
-.studio-page .ratings-note { margin: 0 0 24px; max-width: none; padding: 16px 18px; border: 1px solid #3c5063; border-left: 3px solid #a98e5b; border-radius: 10px; color: #aebfd0 !important; background: #172737; font-size: var(--fs-sm); line-height: 1.65; }
+.studio-page .ratings-note { margin: 0 0 24px; max-width: none; padding: 16px 18px; border: 1px solid #3c5063; border-left: 3px solid #e4c58b; border-radius: 10px; color: #aebfd0 !important; background: linear-gradient(145deg, #18293a, #12202e); font-size: var(--fs-sm); line-height: 1.65; }
 .studio-page .ratings-note strong { color: #f0d6a7; }
 .studio-page .ratings-note a { color: #a4dbdb; }
-.studio-page .ratings-state { margin: 0; padding: 24px; border: 1px dashed #3a4c5e; border-radius: 12px; color: #abbed0; font-size: var(--fs-sm); }
-.studio-page .ratings-panel { margin: 0; border-color: #34495d; border-radius: 14px; background: #111f2c; }
+.studio-page .ratings-state { margin: 0; padding: 26px; border: 1px dashed #3a4c5e; border-radius: 12px; background: #0f1d2a; color: #abbed0; font-size: var(--fs-sm); text-align: center; }
+.studio-page .ratings-panel { margin: 0; border: 1px solid #34495d; border-radius: 14px; background: linear-gradient(160deg, #132333, #0e1a27); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28); overflow: hidden; }
 .studio-page .ratings-table { min-width: 0; }
-.studio-page .ratings-row { grid-template-columns: minmax(210px, 1.6fr) minmax(70px, .5fr) minmax(86px, .6fr) minmax(120px, .7fr) 76px; min-height: 88px; gap: 18px; padding: 18px 24px; border-color: #2a3b4d; }
-.studio-page .ratings-row:not(.ratings-head-row):hover { background: #1b304166; }
-.studio-page .ratings-head-row { min-height: 44px; background: #182b3b; color: #afc1d2; font-size: var(--fs-3xs); }
+.studio-page .ratings-row { grid-template-columns: minmax(210px, 1.6fr) minmax(70px, .5fr) minmax(86px, .6fr) minmax(120px, .7fr) 76px; min-height: 88px; gap: 18px; padding: 18px 24px; border-color: #2a3b4d; transition: background .15s; }
+.studio-page .ratings-row:not(.ratings-head-row):hover { background: #1b304188; }
+.studio-page .ratings-head-row { min-height: 46px; background: #182b3b; color: #b8cadb; font-size: var(--fs-3xs); }
 .studio-page .ratings-row > span:first-child { min-width: 0; gap: 16px; }
-.studio-page .ratings-row i { min-width: 0; gap: 8px; }
+.studio-page .ratings-row i:not(.win-rate-track) { min-width: 0; gap: 8px; }
 .studio-page .ratings-row small { color: #91a6b9; font-size: var(--fs-3xs); overflow-wrap: anywhere; }
-.studio-page .ratings-row b { display: grid; place-items: center; flex: none; min-width: 30px; height: 34px; color: #d9c193; border: 1px solid #5e554377; border-radius: 6px; background: #d8b3750c; }
-.studio-page .ratings-elo { color: #f0d6a7; font-size: var(--fs-xl); text-align: right; }
+.studio-page .ratings-row > span:first-child > b { display: grid; place-items: center; flex: none; min-width: 32px; height: 34px; color: #d9c193; border: 1px solid #5e554377; border-radius: 7px; background: #d8b3750c; font-weight: 800; }
+.studio-page .ratings-row > span:first-child > b[data-rank="1"] { color: #1a2430; background: linear-gradient(135deg, #f3dca8, #c79c52); border-color: #fbe8be; box-shadow: 0 2px 10px rgba(228, 197, 139, 0.35); }
+.studio-page .ratings-row > span:first-child > b[data-rank="2"] { color: #18222d; background: linear-gradient(135deg, #e2e8f0, #94a3b8); border-color: #f1f5f9; }
+.studio-page .ratings-row > span:first-child > b[data-rank="3"] { color: #1d1916; background: linear-gradient(135deg, #e7b589, #a86c3d); border-color: #f4cca8; }
+.kind-pill { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font: 700 var(--fs-3xs)/1.3 var(--font-geist-mono); letter-spacing: .04em; text-transform: capitalize; background: #182a3b; border: 1px solid #314b63; color: #bfd2e3; }
+.kind-pill.kind-human { background: #14333a; border-color: #2f6c78; color: #8fe8e0; }
+.kind-pill.kind-engine { background: #1a2942; border-color: #3a5683; color: #a7c5f9; }
+.win-rate-track { display: block; width: 100%; max-width: 84px; height: 4px; margin-top: 5px; border-radius: 999px; background: #233546; overflow: hidden; }
+.win-rate-track b { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #39d4d8, #6ad39b); border: 0; min-width: 0; }
+.studio-page .ratings-elo { color: #f0d6a7; font-size: var(--fs-xl); text-align: right; font-weight: 750; }
 .studio-page .ratings-footnote { color: #94aabd; padding: 16px 24px; line-height: 1.6; }
 @media (max-width: 1120px) {
   .studio-header-note { display: none; }
   .studio-header { gap: 16px; }
-  .games-dashboard { grid-template-columns: minmax(0, 1.4fr) minmax(270px, 1fr); gap: 18px; }
+  .games-dashboard { gap: 18px; }
   .studio-page .recent-games { padding: 18px; }
   .league-layout { grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 18px; }
   .league-seats { grid-template-columns: 1fr; }
@@ -202,7 +225,6 @@
   .games-welcome { grid-template-columns: 1fr; padding: 24px; min-height: 0; }
   .games-welcome > .studio-table-art { display: none; }
   .games-dashboard, .league-layout, .play-setup { grid-template-columns: 1fr; gap: 24px; }
-  .games-archives { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
   .play-setup-story .studio-table-art { display: none; }
   .play-setup-story .studio-intro { margin-bottom: 18px; }
   .studio-page .human-connect { max-width: none; padding: 24px; }
@@ -224,7 +246,6 @@
   .games-welcome { padding: 22px 18px; border-radius: 12px; }
   .games-welcome-actions { gap: 8px; }
   .games-welcome-actions .studio-button { flex: 1; padding-inline: 12px; }
-  .games-archives { grid-template-columns: 1fr; }
   .studio-page .recent-games { padding: 18px 14px; border-radius: 12px; }
   .studio-page .recent-game-list article { flex-direction: column; align-items: stretch; padding: 14px; gap: 12px; }
   .studio-page .recent-game-list article > div:last-child { max-width: none; align-items: flex-start; text-align: left; }
