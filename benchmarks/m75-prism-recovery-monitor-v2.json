@@ -1,0 +1,14 @@
+{
+  "format": "m75-recovery-monitor-v2",
+  "source_sha256": "15c3f8e22522fd464cef7e05073556ec0b9711655bbad6dfdb3e21f708bd94f8",
+  "deadline": 1791744630.7118258,
+  "watch_seconds": 60,
+  "notify_minutes": 5,
+  "idle_minutes": [
+    0,
+    30,
+    45
+  ],
+  "credential_cache": "process memory only; refresh from existing DSW SDK; send through restricted SSH stdin",
+  "authorized_scope": "M75 remaining finite execution only; automatic instance restart recovery and owner idle warnings"
+}

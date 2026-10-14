@@ -1,0 +1,22 @@
+{
+  "format": "m75-reboot-resume-r6",
+  "adapter_sha256": "3d8aa0bf292f7ea93711cad690e4caf6d4c79ca63d9149bf78c8d36af99cf8e2",
+  "r4_policy_sha256": "adbe7c0ce0cce3d3e857d951a321a8b9749cca6537d4f3974b4753726e2cba42",
+  "deadline": 1791744630.7118258,
+  "max_coordinator_restarts": 6,
+  "interrupted_game_retries": 1,
+  "completed_game_retries": 0,
+  "scientific_changes": [],
+  "resource_changes": "Only conservative accounting of interrupted stages within original node/round reservations",
+  "authorization": "Owner requests automatic recovery after instance restart, completed progress retained, idle1h warnings",
+  "idle_warning_minutes": [
+    0,
+    30,
+    45
+  ],
+  "watchdog_interval_seconds": 60,
+  "notification_interval_minutes": 5,
+  "credential_policy": "Existing DSW SDK credential through restricted SSH stdin/process memory only",
+  "tests_sha256": "f5ea2e797ff87f4a22360cc0345938db6ed6bed76eb1e9a2d94f47d4ab031302",
+  "watchdog_sha256": "fd31f5dc3b6081c0c31d7227490a31b67310f9af9767919222a144378b43fba6"
+}

@@ -1,0 +1,39 @@
+{
+  "adapter_sha256": "a256fc3f4cfac76ce18b0465bab11b8dac1b4c32704b6498b0bd2386919aebee",
+  "arena_python": "/mnt/workspace/envs/splendor-arena-py312/bin/python",
+  "authorization": {
+    "authorized_end": "same M75 finite training and evaluation/report; two nodes, no duplicated jobs, no next round/release/deploy/push",
+    "request": "\u5206\u914d\u4e00\u4e0b\u5de5\u4f5c \u5728dsw\u548cdsw2\u4e0a\u540c\u65f6\u542f\u52a8 \u8282\u7ea6\u65f6\u95f4",
+    "source": "human_owner"
+  },
+  "automatic_game_retries": 0,
+  "baseline_cpu_reservation": 60000,
+  "deadline": 1791744630.7118258,
+  "dsw2_storage_bytes": 4294967296,
+  "dsw2_workers": 8,
+  "dsw_storage_bytes": 40802189312,
+  "format": "m75-dual-node-dispatch-r3",
+  "handoff": "hold only outer r2 dispatcher; original bounded training relay/worker continue unchanged; supersede held dispatcher only after final c20 and successful relay completion",
+  "independent_truncation_limit": 8,
+  "original_execution_sha256": "dcd984cb40eed2bfc68ede654d1a83b2387233de090a2c2d267167909b23a44a",
+  "original_failed_evidence_preserved": true,
+  "placement": {
+    "dsw": "unchanged serial training; audit; candidate freeze;1024 development;5120 candidate independent;merged report",
+    "dsw2": "4096 blind parent baseline independent attempts, eight workers"
+  },
+  "previous_cpu_seconds": 29638.524859,
+  "r2_parent_created": 1791701574.52,
+  "r2_parent_pid": 21751,
+  "r2_policy_sha256": "251e4cfb1684ecad6cc0cbdb927b71a30ace23279eeb62632908b0ce8ac550c5",
+  "schedule_revision": "baseline only may execute before final c20 freeze; it cannot influence training or fixed candidate selection",
+  "scientific_changes": [],
+  "tests_sha256": "3fc80219ad4de30f01192bb178a6b20f4a45af4d38d4838fd11a1f997918f525",
+  "total_cpu_seconds": 240000,
+  "train_relay_created": 1791701575.15,
+  "train_relay_pid": 21760,
+  "train_relay_record": "/mnt/workspace/splendor-m75-continuation-r1/continuation-r2/train/relay/62c67aaa4efa449fb4fd6d7ed3dd7bbb.json",
+  "train_worker_created": 1791701575.15,
+  "train_worker_pid": 21760,
+  "training_python": "/mnt/workspace/envs/splendor-ppo-m67-py312/bin/python",
+  "training_storage_bytes": 34359738368
+}

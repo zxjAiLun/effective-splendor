@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><title>M75 阶段棋力曲线</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:16px system-ui;max-width:1000px;margin:32px auto;padding:16px}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:10px}progress{width:35%;margin:12px}pre{overflow:auto}.curve-scroll{overflow:auto;max-width:100%}.curve-scroll table{min-width:620px}body{box-sizing:border-box}progress{max-width:35%}</style><h1>M75 阶段棋力曲线</h1>
+<p>四个检查点均与同一父代 Balance v0.2.3 双方 greedy 对战；同一组128个双座种子。仅描述趋势，最终候选固定 c20。</p>
+<div class="curve-scroll"><table>
+<thead>
+<tr>
+<th>检查点</th>
+<th>训练局</th>
+<th>终局数</th>
+<th>W/D/L</th>
+<th>半平得分</th>
+<th>配对95%区间</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>c5</td>
+<td>1280</td>
+<td>256/256</td>
+<td>124/1/131</td>
+<td>48.63%</td>
+<td>43.16% / 54.10%</td>
+</tr>
+<tr>
+<td>c10</td>
+<td>2560</td>
+<td>256/256</td>
+<td>141/2/113</td>
+<td>55.47%</td>
+<td>49.41% / 61.52%</td>
+</tr>
+<tr>
+<td>c15</td>
+<td>3840</td>
+<td>256/256</td>
+<td>150/2/104</td>
+<td>58.98%</td>
+<td>53.12% / 64.84%</td>
+</tr>
+<tr>
+<td>c20</td>
+<td>5120</td>
+<td>256/256</td>
+<td>148/2/106</td>
+<td>58.20%</td>
+<td>52.15% / 64.06%</td>
+</tr>
+</tbody>
+</table></div>
+<p>半平得分=(W+0.5D)/终局数。截断不计平局；缺双座配对时不显示完整配对区间。该开发集独立于最终9216局确认，不选择检查点。</p>
+<p>网格：COMPLETE；缺项：0。</p><div>c5 · 1280训练局 <progress max='1' value='0.486328125'></progress> 48.63%</div><div>c10 · 2560训练局 <progress max='1' value='0.5546875'></progress> 55.47%</div><div>c15 · 3840训练局 <progress max='1' value='0.58984375'></progress> 58.98%</div><div>c20 · 5120训练局 <progress max='1' value='0.58203125'></progress> 58.20%</div>

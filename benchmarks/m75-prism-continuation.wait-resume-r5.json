@@ -1,0 +1,22 @@
+{
+  "adapter_sha256": "1ebe6f4c6b53dee60755a8a22c9e67760b5017eeb196051f18934b3db62c3236",
+  "authorization": "Existing user authorized preserve DSW training and resume remaining DSW2 evaluations; user reported node disconnection",
+  "automatic_game_retries": 0,
+  "deadline": 1791744630.7118258,
+  "files": {
+    "dual-node-r3/baseline-completion.json": "35165f7fafd13b70b0f3608b2d6561e0f0a720ee9d05f84554f10b3939262d5e",
+    "eval-handoff-r4/controller.py": "110fb9b663a3c21a9df1c55abd274044cac62eaff65847b17f45e0626ff6ba1a",
+    "eval-handoff-r4/early-development-completion.json": "1c751175621921012153c772fcb4c0e02cb1c47f71fab1ee20d943b05d320a1f",
+    "eval-handoff-r4/early-development/completion.json": "bb361b4c5e569532db0169c04a96b2dc195024e0eca952437c01a75d65ad1e28",
+    "eval-handoff-r4/early-input-receipt.json": "9ce1d22491667a00241262ff4ef0ef64db57cf2ff5e501ddc762816ecd2e19c0",
+    "eval-handoff-r4/policy.json": "adbe7c0ce0cce3d3e857d951a321a8b9749cca6537d4f3974b4753726e2cba42",
+    "execution.json": "dcd984cb40eed2bfc68ede654d1a83b2387233de090a2c2d267167909b23a44a"
+  },
+  "format": "m75-wait-resume-r5",
+  "old_hostname": "dsw-2246104-877fb6f94-kxctz",
+  "replacement_hostname": "dsw-2246854-85499cf68f-l7wkg",
+  "resume": "reuse completed768 development and4096 baseline; restart wait for audited fixed c20 only",
+  "retained_cpu_seconds": 385.75082699999996,
+  "scientific_changes": [],
+  "tests_sha256": "5fc3ca1e67fd281034634bfb44d3c81864a2f0aa4ff55ecc785c0bf4062f0b5d"
+}
