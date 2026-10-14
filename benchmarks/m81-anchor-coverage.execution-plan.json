@@ -1,0 +1,504 @@
+{
+  "format": "prism-m81-anchor-coverage-pilot-plan-v1",
+  "round": "M81",
+  "status": "DESIGNED_EXECUTOR_READY",
+  "task_kind_now": "existing-replay-diagnosis-and-design",
+  "new_games_by_planner": 0,
+  "authorization": "User requested existing-replay diagnosis and a plan directly executable by Sol. This turn delivers the design. When user forwards the accompanying execute instruction, Sol proceeds through finite R0-R9 without another start confirmation.",
+  "question": "Does replacing 25% of the M79 training mixture with two neglected opponents recover anchor performance without sacrificing broad strength?",
+  "hypothesis": "A distribution shift in early/middle resource planning is repairable by opponent coverage. Reserve penalty is not justified by existing replay evidence.",
+  "scope": "One paired training seed, two arms: a finite method-screening pilot. No robust multi-seed algorithm claim. Same budget A/B makes the mixture intervention testable within this seed.",
+  "inputs": {
+    "m79_plan": {
+      "path": "benchmarks/m79-prism-mainline.execution-plan.json",
+      "sha256": "e16351f17ed8bbcaeb21dcdd3d0b23f39c27aefa0a112101a7b555caa79a8176"
+    },
+    "m79_numeric_blueprint": {
+      "path": "benchmarks/m79-prism-mainline.a-train.json",
+      "sha256": "5d389c14c5d145ee715997d792ea692450490ac3d181c6278a67799bc1b9a572"
+    },
+    "diagnostic": {
+      "path": "local-artifacts/prism/m79-mainline/regression-diagnostic/diagnostic.json",
+      "sha256": "73be1af222e4be398b1d40c4014c8e503f5ad29b634b68be6ed6a02605cd6730"
+    },
+    "diagnostic_summary": {
+      "path": "local-artifacts/prism/m79-mainline/regression-diagnostic/summary.json",
+      "sha256": "e6652e15003acd90c4af66bb01ac0c2387bdf45d07fdabb3dec35bc50fe4434e"
+    }
+  },
+  "assets": {
+    "alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.4/weights.json",
+      "sha256": "d3a313090bb2ccae678d3b9cf1216f0a60527ec330432c5c2dcdddd85b53b2d9"
+    },
+    "balance": {
+      "local_path": "local-artifacts/prism/balance-v0.1.0/weights.json",
+      "sha256": "225daf49e8746576b1edc3508ca0454715e5454529fea53dc7dfeb9043cf01f1"
+    },
+    "beta": {
+      "local_path": "local-artifacts/prism/beta-v0.1.0/weights.json",
+      "sha256": "69a885b20527dda2e43fad9c00d7cc36537b45a0f5ccbaef4320001bef8836fb"
+    },
+    "general": {
+      "local_path": "local-artifacts/prism/v0.1.1/weights.json",
+      "sha256": "a2301f0878f9c342a61b83fd45412f72ba95acfca895dafbe7ceca0360f34a85"
+    },
+    "latest-alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.2.0/weights.json",
+      "sha256": "db3e2da279d777485c4dbb3d8d2ff78ddb106d231d5c75b58bc783e4fb66acb5"
+    },
+    "latest-balance": {
+      "local_path": "local-artifacts/prism/balance-v0.2.1/weights.json",
+      "sha256": "f4a9a628a9a0a376a84b2bc0f3b002e652bde42d4e1e4b3170a1830e3b14238a"
+    },
+    "parent": {
+      "local_path": "local-artifacts/prism/m75-continuation/report-delivery-r9/evidence/campaigns/a/cycle-20-export/weights.json",
+      "sha256": "eaa1331b29599f239299b5a9037100ae042c6021b2195df3f675c2eb5bd62bf5"
+    },
+    "released-alpha": {
+      "local_path": "local-artifacts/prism/alpha-v0.1.5/weights.json",
+      "sha256": "3d81da745b7863b148cc3013386274f7aa7ac3f2ebdbe8a7701cc99c771edc12"
+    },
+    "heuristic": {
+      "label": "Heuristic v0.3.1",
+      "command": [
+        "agent-heuristic-v02",
+        "--seed",
+        "81090002"
+      ],
+      "identity_policy": "Bind exact engine SHA and heuristic descriptor from M79 frozen evaluation, plus golden player-observation action parity before launch. A newer same-named heuristic is not interchangeable.",
+      "engine_sha256": "6ecf85de6e83bf2fa38e259b11167a6c6f685fa4ddb4cd875acfb089cb56ea8f",
+      "verified_source_path": "/mnt/workspace/splendor-m79-mainline-r4/bin/splendor"
+    }
+  },
+  "training": {
+    "parent": "parent",
+    "parent_label": "M75 c20",
+    "initialization": "fresh AdamW optimizer and fresh RNG, exact same parent weights for both arms; not M79 full-state resume",
+    "paired_training_seeds": 1,
+    "run_seed": 81090001,
+    "environment_seed_range": [
+      81001000,
+      81003559
+    ],
+    "cycles": 20,
+    "seed_blocks_per_cycle": 128,
+    "seats": [
+      0,
+      1
+    ],
+    "games_per_arm": 5120,
+    "total_games": 10240,
+    "arms": {
+      "A": {
+        "role": "same-budget control",
+        "opponent_period": [
+          "general",
+          "parent",
+          "latest-alpha",
+          "latest-balance",
+          "general",
+          "parent",
+          "latest-alpha",
+          "latest-balance",
+          "general",
+          "parent",
+          "latest-alpha",
+          "latest-balance",
+          "general",
+          "parent",
+          "latest-alpha",
+          "latest-balance"
+        ]
+      },
+      "B": {
+        "role": "fixed treatment candidate",
+        "opponent_period": [
+          "general",
+          "parent",
+          "latest-alpha",
+          "heuristic",
+          "general",
+          "parent",
+          "balance",
+          "latest-balance",
+          "general",
+          "heuristic",
+          "latest-alpha",
+          "latest-balance",
+          "balance",
+          "parent",
+          "latest-alpha",
+          "latest-balance"
+        ]
+      }
+    },
+    "schedule": "seed=81001000+128*cycle_index+block; opponent=period[block%16]; dispatch each physical seat once. 75% of A/B slots have identical opponent+seed+seat; replacement slots retain seed/seat with declared changed opponent.",
+    "ppo": {
+      "clip_epsilon": 0.2,
+      "entropy_weight": 0.01,
+      "gae_lambda": 0.95,
+      "logp_tolerance": 1e-06,
+      "lr": 3e-05,
+      "max_grad_norm": 1.0,
+      "minibatch_size": 256,
+      "normalize_advantage": true,
+      "passes": 2,
+      "style_beta": 0.0,
+      "style_value_weight": 0.0,
+      "target_kl": 0.02,
+      "value_tolerance": 1e-06,
+      "value_weight": 0.5,
+      "weight_decay": 0.0
+    },
+    "mode": "categorical-T1",
+    "opponent_mode": "greedy",
+    "ply_cap": 256,
+    "exports": [
+      5,
+      10,
+      15,
+      20
+    ],
+    "final_candidate": "B c20 fixed before all independent outcomes; A c20 always reported as control. No best-checkpoint, best-arm or best-seed selection.",
+    "max_scientific_truncations_per_arm": 8,
+    "truncation_policy": "retain prefix/cost, no refill; ninth scientific truncation ends that arm as failed. Other completed valid arms and report proceed.",
+    "development_matches": 0,
+    "development_policy": "No intermediate match sweep: candidate is fixed c20. Track numerical diagnostics and audit exports; all formal comparison uses the frozen new final grid.",
+    "unchanged": [
+      "architecture",
+      "encoder",
+      "outcome reward",
+      "value target",
+      "PPO hyperparameters",
+      "precision",
+      "CPU thread policy",
+      "sampling temperature",
+      "update ordering",
+      "minibatch/pass semantics"
+    ]
+  },
+  "evaluation": {
+    "actors": [
+      "base",
+      "A",
+      "B"
+    ],
+    "base": "exact M75 c20",
+    "opponents": [
+      "heuristic",
+      "general",
+      "balance",
+      "alpha",
+      "beta",
+      "released-alpha",
+      "latest-alpha",
+      "latest-balance"
+    ],
+    "common_opponents": [
+      "heuristic",
+      "general",
+      "balance",
+      "alpha",
+      "beta",
+      "released-alpha"
+    ],
+    "coverage_opponents": [
+      "latest-alpha",
+      "latest-balance"
+    ],
+    "mode": "both-greedy",
+    "seed_by_opponent": {
+      "heuristic": [
+        81010000,
+        81010255
+      ],
+      "general": [
+        81011000,
+        81011255
+      ],
+      "balance": [
+        81012000,
+        81012255
+      ],
+      "alpha": [
+        81013000,
+        81013255
+      ],
+      "beta": [
+        81014000,
+        81014255
+      ],
+      "released-alpha": [
+        81015000,
+        81015255
+      ],
+      "latest-alpha": [
+        81016000,
+        81016255
+      ],
+      "latest-balance": [
+        81017000,
+        81017255
+      ]
+    },
+    "games_per_actor_per_opponent": 512,
+    "per_actor_common_and_coverage": 4096,
+    "direct_parent": {
+      "actors": [
+        "A",
+        "B"
+      ],
+      "opponent": "parent",
+      "seed_range": [
+        81030000,
+        81030511
+      ],
+      "games_per_actor": 1024
+    },
+    "total_games": 14336,
+    "action_seed": 81090002,
+    "seats": [
+      0,
+      1
+    ],
+    "shard_seed_blocks": 32,
+    "ply_cap": 512,
+    "old_m79_data_role": "used for diagnosis/hypothesis only; never counted as independent M81 confirmation",
+    "shared_baseline": "Evaluate M75 once on new cohort; shared exact rows for both A/base and B/base comparisons.",
+    "max_scientific_truncations": 8,
+    "missing_policy": "No seed substitution or outcome imputation. Missing terminal/seat blocks the affected endpoint; report complete endpoints. Ninth scientific truncation stops new eval dispatch, preserving all evidence.",
+    "held_out_opponents_for_B": [
+      "alpha",
+      "beta",
+      "released-alpha"
+    ],
+    "coverage_note": "Heuristic and old Balance become training opponents in B. Their new-seed tests measure in-opponent retention, not unseen-opponent generalization."
+  },
+  "statistics": {
+    "metric": "half score=(W+0.5D)/N; pure win rate separate",
+    "unit": "first average both seats within each environment seed; same seed blocks resampled jointly across base/A/B",
+    "bootstrap_samples": 20000,
+    "bootstrap_seed": 81099999,
+    "rng": "PCG64",
+    "quantile_method": "linear",
+    "ordinary_ci": [
+      0.025,
+      0.975
+    ],
+    "endpoint_order": [
+      "B-A-targets",
+      "B-A-eight-pool",
+      "B-A-latest-alpha",
+      "B-A-latest-balance",
+      "B-base-common",
+      "B-parent",
+      "B-base-heuristic",
+      "B-base-balance",
+      "B-base-released-alpha",
+      "B-base-latest-alpha",
+      "B-base-latest-balance"
+    ],
+    "pool_rule": "Target pair equal weight; original six-opponent pool equal weight; separate eight-opponent diagnostic pool equal weight. Independently resample each opponent seed block within a replicate.",
+    "method_screen": {
+      "primary": {
+        "endpoint": "B-A-targets",
+        "targets": [
+          "heuristic",
+          "balance"
+        ],
+        "point_min": 0.02,
+        "lower_quantile": 0.05,
+        "lower_strictly_greater_than": 0
+      },
+      "retention_family": {
+        "endpoints": [
+          "B-A-eight-pool",
+          "B-A-latest-alpha",
+          "B-A-latest-balance"
+        ],
+        "one_sided_lower_quantile": 0.016666666666666666,
+        "lower_min": [
+          -0.02,
+          -0.03,
+          -0.03
+        ]
+      },
+      "pass_rule": "All four endpoints complete and pass. A single-seed pilot finding only; report each target separately even if mean passes."
+    },
+    "mainline_candidate": {
+      "fixed_candidate": "B c20",
+      "enhancement_family": {
+        "lower_quantile": 0.025,
+        "common_delta_point_min": 0.02,
+        "common_delta_lower_gt": 0,
+        "direct_parent_point_min": 0.52,
+        "direct_parent_lower_gt": 0.5
+      },
+      "coverage_family": {
+        "lower_quantile": 0.025,
+        "latest_each_delta_lower_min": -0.03
+      },
+      "anchor_family": {
+        "lower_quantile": 0.016666666666666666,
+        "opponents": [
+          "heuristic",
+          "balance",
+          "released-alpha"
+        ],
+        "each_delta_lower_min": -0.03
+      },
+      "additional_retention": {
+        "lower_quantile": 0.025,
+        "common_delta_lower_min": -0.05,
+        "direct_parent_lower_min": 0.45
+      },
+      "pass_rule": "Every declared B gate complete and pass. Method-screen status is reported separately. Recommendation only, no release/default/deployment."
+    },
+    "power": "Fixed practical screening grid, no claim of 80% power for +2pp or 3pp noninferiority. A wide CI means inconclusive; no automatic extra samples.",
+    "training_seed_uncertainty": "one paired seed; game-level CI does not estimate recipe robustness across training seeds"
+  },
+  "style": {
+    "role": "descriptive",
+    "comparison": "A and B versus M75 on exact shared six-opponent cohort; also A versus B",
+    "metrics": [
+      "early token choices and first divergence",
+      "reserve/buy counts and timing",
+      "opportunity-conditioned buying",
+      "0-5VP purchases",
+      "first big timing+coverage",
+      "Main12/24 score+coverage",
+      "early real discount redemption",
+      "nobles from actual ownership, not choose_noble action count",
+      "VP/Main"
+    ],
+    "fixed_style_reference_new_games": 0,
+    "route": "undetermined/mixed/provisional permitted; no confirmed style or new version identity"
+  },
+  "resources": {
+    "deadline_mode": "resource_bounded_no_calendar_stop",
+    "absolute_stop": null,
+    "round_elapsed_wall_stop": null,
+    "eta_is_stop_condition": false,
+    "total_cpu_seconds": 480000,
+    "training_cpu_seconds_per_arm": 150000,
+    "evaluation_cpu_seconds": 150000,
+    "audit_control_cpu_seconds": 30000,
+    "per_arm_storage_bytes": 34359738368,
+    "per_node_free_reserve_bytes": 8589934592,
+    "training_worker_slots_max": 4,
+    "training_torch_threads": 2,
+    "eval_worker_slots_max": 8,
+    "eval_threads_per_worker": 1,
+    "training_rss_bytes": 8589934592,
+    "eval_rss_bytes_per_worker": 2147483648,
+    "max_jobs_per_arm": 5120,
+    "max_decisions_per_arm": 1310720,
+    "max_update_attempts_per_arm": 8192,
+    "engineering_new_games": 0,
+    "research_logical_attempts": 24576,
+    "extra_infrastructure_attempts": 128,
+    "physical_attempt_ceiling": 24704,
+    "game_wall_seconds": 90,
+    "game_cpu_seconds": 30,
+    "move_timeout_ms": 10000,
+    "handshake_timeout_ms": 10000,
+    "wall_policy": "No date/time or elapsed-wall round kill. Preserve per-game hang detection and measured cumulative CPU/storage/attempt bounds. Old M79 absolute_stop, deadline fields and coordinator max_run_seconds must not silently survive in the new runtime.",
+    "placement": "Prefer DSW=A, DSW2=B in isolated roots; after train+audit either node claims remaining evaluation shards through one commit/lease authority.",
+    "single_node_fallback": "If only DSW reachable, run A then B automatically. Audit and archive completed A raw history with remote full-member SHA verification before reclaiming only M81-owned duplicate raw files as needed. Retain weights, full final optimizer/RNG state, manifests, reports, source and restore instructions. Never delete M79 history or wait for DSW2 as prerequisite.",
+    "capacity": "Derive concurrency from actual cpuset+CPU quota+memory+free disk; combined reservations fit all active writers. Reuse M79 measured storage/CPU as estimates, verify actual growth every cycle.",
+    "cost_estimate": "Historical M79 training used 54654 CPU seconds including retained history; two comparable arms roughly 109308 CPU seconds before new repairs/evaluation. Hardware and scheduling overhead determine elapsed time.",
+    "eta": "Planning range: two qualified 4-core nodes 6-10h, one such node serial 12-20h including engineering/audit/eval/report; not a guarantee or deadline. Replace after first 256 committed games with segment clocks and remaining workload."
+  },
+  "recovery": {
+    "scientific_retries": 0,
+    "infrastructure_retries_per_unfinished_job": 1,
+    "whole_round_extra_attempts": 128,
+    "coordinator_restarts_per_node": 6,
+    "transfer_retries_per_object": 6,
+    "rules": "Verify node/PID/create_time/execution/source/weights/full optimizer+RNG+cursor; reconcile orphans; committed games and logical updates consumed once; cumulative CPU and failure history retained. Infrastructure repairs within this policy proceed without owner start confirmation.",
+    "stop": "Completed finite workload, scientific invalidity, resource/attempt bound exhaustion, or user stop. Engineering/report failures get isolated source revision and bounded recovery; never rerun matches just to repair reports.",
+    "persistent": "Install and verify process-independent stage/resume controller before first research game; session ending does not stop authorized progress. It terminates after R9."
+  },
+  "observation": {
+    "owner": "Luna subagent, not a second Sol",
+    "poll_seconds": 3600,
+    "event_checks": [
+      "child exit",
+      "failed commit",
+      "audit failure",
+      "stage transition"
+    ],
+    "normal_progress_notifications": false,
+    "idle_notifications": false,
+    "notify_only": [
+      "concrete action only the owner can perform",
+      "whole-round final delivery"
+    ],
+    "handling": "Local controller detects exits/hangs promptly; Luna is low-frequency independent review and recovery, not the only scheduler. Routine repairs proceed within bounds. Required owner intervention must state exact action; no hourly status spam.",
+    "automatic_repair_scope": "Recover unchanged scientific work, transfer/report adapters and identity-preserving evidence repairs; never change mixture/seeds/checkpoint/gates/CPU caps.",
+    "final": "Cancel or pause only this round monitor when delivered. Do not resurrect paused M79 reminders."
+  },
+  "implementation": {
+    "status": "NOT_IMPLEMENTED; plan generation and static validation only",
+    "design_cli": "python scripts/prism_m81_plan.py --validate",
+    "required_independent_adapters": [
+      "two-arm preparation/runtime and shared ledger",
+      "resource-bound execution without calendar deadline",
+      "strict full-state resume and source-revision handling",
+      "training heuristic descriptor support",
+      "two-arm final audit and freeze",
+      "new final grid and statistics",
+      "profile correction and readable report"
+    ],
+    "code_references": [
+      "scripts/prism_m79_prepare.py",
+      "scripts/prism_m79_run.py",
+      "scripts/prism_m79_evaluate.py",
+      "scripts/prism_m79_audit.py",
+      "scripts/prism_m79_statistics.py",
+      "scripts/prism_m79_archive.py",
+      "training/prism_portable/engine/ppo/coordinator.py",
+      "training/prism_portable/engine/ppo/arena.py"
+    ],
+    "preflight_required": [
+      "parent/all opponent byte SHA",
+      "frozen heuristic descriptor and golden action parity",
+      "rule/catalog/encoder/numeric parity",
+      "complete source snapshot and runtime hash",
+      "exact generated training/eval grids and global seed registry",
+      "no inherited calendar deadline at any layer",
+      "crash/resume preserves full state/counters/commits",
+      "training/audit full tensor inventory including style_head",
+      "report failure does not rerun games",
+      "actual node capacity and owned process identity",
+      "persistent controller stage handoff and observer ownership"
+    ],
+    "source_policy": "Do not run M79 entrypoints unchanged or edit frozen deployed source. New isolated M81 source revision bound before first job. Resolve machine paths/hashes autonomously.",
+    "runtime_parity": "Both arms use identical qualified numerical environment. Architecture/hyperparameters copied exactly from frozen M79 numeric blueprint; zero-new-game saved-fixture/optimizer/export/resume checks.",
+    "required_owner_decisions": 0
+  },
+  "delivery": [
+    "A/B fixed c20 + full final state + all checkpoint SHA",
+    "full logical/physical/CPU ledger",
+    "independent per-opponent both-seat results and all gates",
+    "diagnostic behaviors with actual denominators",
+    "candidate identities and intended uses",
+    "conclusion-first offline HTML + complete Markdown + technical audit",
+    "1440/390 actual pixel and interaction verification",
+    "private history archive/restore receipt",
+    "milestone/handoff/reports index and ALL or pending-sync"
+  ],
+  "prohibited": [
+    "next unbounded round",
+    "retune from independent results",
+    "extra samples until significant",
+    "reward penalty for reserves",
+    "style reward",
+    "best-arm/checkpoint selection after test",
+    "automatic model release/default deployment",
+    "Git commit/push",
+    "machine shutdown"
+  ],
+  "execution_contract": "Forwarded Sol instruction authorizes engineering→zero-game preflight→two-arm training→audit→frozen independent eval→profiles→report→R9. Do not stop at plan acknowledgement, preflight, c20 export, ALL failure, a missing second node, or an unresolved style label."
+}

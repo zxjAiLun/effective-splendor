@@ -1,0 +1,18 @@
+{
+  "format": "prism-m81-reading-recovery-receipt-v1",
+  "result_sha256": "67da67278c9fcc6862bbb4e1276f209139802773286ab83c568040db46425ef4",
+  "spec_sha256": "31e426f4948694b0a9cbca5eec8d6727f447b119840c442fd3da4621a524ccbe",
+  "html_sha256": "357c7595d70a446638eafb48c4dfecc33af36ef26cc6150c8394bbbf869be293",
+  "markdown_sha256": "981fcb2c810cc0ec4a16d7162b462aba56fcdb09c518751651d9e04a7f739636",
+  "source_sha256": "6b4224a9fef06b3d634a0ecb0f02204c1d68a7b0573abb490548eaa987a01ff5",
+  "reporter_sha256": "197ace5aaa4877996466229da20e1c8f21200fb3578517ff39c5b5f1ae3804d8",
+  "original_reporter_sha256": "35997ed09100f69d3959917b611b3f312f528ec0c268839bbeda1ddcfbeea576",
+  "matchups": 26,
+  "terminal_games": 14330,
+  "games_dispatched": 0,
+  "gate_values_changed": false,
+  "visual": "PASS_DESKTOP_1440_MOBILE_390",
+  "visual_evidence": "local-artifacts/prism/m81-anchor-coverage/report-recovery-r1/",
+  "targeted_tests": "7 PASS: scripts.tests.test_prism_m81_stages",
+  "verified_at": "2026-10-14T21:26:11+08:00"
+}
