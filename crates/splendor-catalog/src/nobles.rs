@@ -1,7 +1,7 @@
 use crate::{GemColor, NobleId};
 
 /// A noble tile: prestige points + bonus requirements.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct NobleDef {
     pub id: NobleId,
     pub prestige: u8,

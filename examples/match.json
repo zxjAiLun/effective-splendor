@@ -1,0 +1,26 @@
+{
+  "game_id": "example-match",
+  "seed": 42,
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 2000,
+  "shutdown_grace_ms": 2000,
+  "agents": [
+    {
+      "program": "splendor",
+      "args": [
+        "agent-random",
+        "--seed",
+        "1"
+      ]
+    },
+    {
+      "program": "python",
+      "args": [
+        "-m",
+        "splendor_env.random_agent",
+        "--seed",
+        "2"
+      ]
+    }
+  ]
+}

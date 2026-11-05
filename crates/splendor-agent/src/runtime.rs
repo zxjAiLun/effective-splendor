@@ -190,6 +190,7 @@ where
             legal_actions,
             ..
         } => {
+            policy.decision_started(std::time::Instant::now());
             expect_game_id(state, &meta.recipient.server.game_id)?;
             expect_seat(state, meta.recipient.player_id())?;
 
@@ -266,6 +267,9 @@ where
                 action,
             };
             send(output, &reply)?;
+            policy
+                .action_sent()
+                .map_err(|e| AgentError::Policy(e.to_string()))?;
             Ok(false)
         }
         ServerMessage::Ping { meta } => {

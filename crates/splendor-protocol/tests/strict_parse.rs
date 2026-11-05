@@ -265,7 +265,7 @@ fn trace_binding_fields_are_absent_unless_set() {
     let line = serde_json::to_string(&game_start).unwrap();
     assert!(!line.contains("run_trace_id"), "{line}");
 
-    let mut state = FullState::new(GameConfig {
+    let state = FullState::new(GameConfig {
         seed: 11,
         ..Default::default()
     })

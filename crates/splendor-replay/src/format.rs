@@ -76,6 +76,8 @@ pub struct ReplayRulesetV1 {
     pub gold_tokens: u8,
     pub color_tokens_by_players: [u8; 3],
     pub noble_extra: u8,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_nobles: Vec<splendor_catalog::NobleDef>,
 }
 
 impl ReplayRulesetV1 {
@@ -92,6 +94,7 @@ impl ReplayRulesetV1 {
             gold_tokens: ruleset.gold_tokens,
             color_tokens_by_players: ruleset.color_tokens_by_players,
             noble_extra: ruleset.noble_extra,
+            extra_nobles: Vec::new(),
         }
     }
 }

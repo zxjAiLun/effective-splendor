@@ -1,36 +1,23 @@
-/target
-**/*.rs.bk
-.idea/
-.vscode/
+/target/
+/local-artifacts/
+/artifacts/
+/outputs/
+/evaluation/
+/checkpoints/
+/data/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
 *.pdb
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
+*.egg-info/
+/build/
+/dist/
+.idea/
+.vscode/
 .DS_Store
-/fixtures/tmp/
-/.workbuddy/
-/handoff.md
-
-# Large binary outputs, test evaluation runs, and inspect dumps
-/outputs/
-/evaluation/
-/continuation-r*/
-
-# Agent harness caches and worktrees
-/.claude/
-/.pi/
-
-
-# Owner decision 2026-09-17: the teach-skill learning workspace is local-only
-# teaching material. Keep every generated lesson file out of Git.
-/lessons/
-
-# Generated learning data and model artifacts stay local. The already tracked
-# formal-2026-08-11 evidence is a historical exception.
-/local-artifacts/
-/artifacts/**/*.dataset.json
-/artifacts/**/*.checkpoint.json
-/artifacts/**/*.model.json
-/artifacts/**/*.training-report.json
-/artifacts/**/*.offline-eval.json
-TYPESAFE_API_KEY

@@ -60,6 +60,15 @@ pub trait AgentPolicy {
     type Error: std::fmt::Display;
 
     fn choose_action(&mut self, context: DecisionContext<'_>) -> Result<Action, Self::Error>;
+
+    /// Optional timing boundary before RequestAction validation. No referee data.
+    fn decision_started(&mut self, _started: std::time::Instant) {}
+
+    /// Called only after the legal Action response has been serialized/flushed.
+    /// Diagnostics can record COMPLETE decision cost without timing guesses.
+    fn action_sent(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 /// Reference policy: choose uniformly at random from the legal actions using

@@ -211,18 +211,15 @@ impl ArenaRunner {
         })
     }
 
-    /// Run one **counterfactual branch continuation** (M41A `run-branch`).
+    /// Continue a verified replay after a forced action.
     ///
-    /// Semantics (frozen by the M41A design, `docs/
-    /// m41a-counterfactual-action-value-probe.md` §6):
     /// - `start.state` is the already-verified full state at the branch
     ///   point (the caller rebuilt + hash-checked it via
     ///   `verify_replay_position` on the source replay);
     /// - the **forced action** is applied by the referee FIRST, without
     ///   any agent involvement, and validated against the rebuilt legal
     ///   set before application;
-    /// - both seats then play the continuation (normally the frozen
-    ///   D2-v2 agent on both sides) under the ordinary per-turn state
+    /// - both seats then play the continuation under the ordinary per-turn state
     ///   machine;
     /// - before the first observation, every seat receives the complete
     ///   projected visible-event history (setup + source-game prefix +

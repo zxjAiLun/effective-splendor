@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use splendor_catalog::{CardId, NobleId, Tier};
+use splendor_catalog::{all_nobles, CardId, NobleDef, NobleId, Tier};
 
 use crate::gems::Gems;
 use crate::hash::{ruleset_fingerprint, RulesetFingerprint};
@@ -15,6 +15,8 @@ pub struct PublicState {
     pub market: [[Option<CardId>; 4]; 3],
     pub deck_counts: [u8; 3],
     pub nobles: Vec<NobleId>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_nobles: Vec<NobleDef>,
     pub players: Vec<PublicPlayerView>,
     pub end_game_triggered: bool,
     pub turns_remaining_in_final_round: Option<u8>,
@@ -60,6 +62,15 @@ pub struct Observation {
     pub private: PrivatePlayerView,
 }
 
+impl PublicState {
+    pub fn noble_definition(&self, id: NobleId) -> Option<NobleDef> {
+        all_nobles()
+            .get(id.index())
+            .copied()
+            .or_else(|| self.extra_nobles.iter().find(|def| def.id == id).copied())
+    }
+}
+
 impl FullState {
     /// Build an observation for `viewer`. Must not leak other players' blind reserves.
     pub fn observation(&self, viewer: PlayerId) -> Observation {
@@ -75,6 +86,7 @@ impl FullState {
                 self.decks[2].len() as u8,
             ],
             nobles: self.nobles.clone(),
+            extra_nobles: self.extra_nobles.clone(),
             players: self
                 .players
                 .iter()

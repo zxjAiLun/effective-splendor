@@ -1,0 +1,44 @@
+{
+  "format": "effective-splendor-rating-registry",
+  "version": 1,
+  "registry_id": "example-agents",
+  "agents": [
+    {
+      "id": "rust-random",
+      "display_name": "Rust 随机代理",
+      "class": "baseline",
+      "policy_version": "1",
+      "model_version": null,
+      "checkpoint_hash": null,
+      "runtime_name": "splendor-cli-random",
+      "runtime_version": "0.4.0",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-random",
+          "--seed",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "python-random",
+      "display_name": "Python 随机代理",
+      "class": "baseline",
+      "policy_version": "1",
+      "model_version": null,
+      "checkpoint_hash": null,
+      "runtime_name": "python-random",
+      "runtime_version": "0.1.0",
+      "command": {
+        "program": "python",
+        "args": [
+          "-m",
+          "splendor_env.random_agent",
+          "--seed",
+          "2"
+        ]
+      }
+    }
+  ]
+}

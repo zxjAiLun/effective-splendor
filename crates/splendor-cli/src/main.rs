@@ -1,638 +1,191 @@
-use std::fs;
-use std::time::Instant;
+mod atomic_output;
+mod environment;
+mod eval_command;
+mod rating_command;
+
+use std::fs::{self, File};
+use std::io::{self, BufReader, Read, Write};
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
-
-mod agent_terms_command;
-mod analysis_command;
-mod arena_command;
-mod atomic_output;
-mod branch_command;
-mod completion_wiring_command;
-mod determinization_analysis_command;
-mod eval_command;
-mod evaluation_analysis_command;
-pub mod experiment_replays;
-mod human_play_command;
-mod human_runtime_orchestration;
-mod imperfect_search_command;
-mod league_command;
-mod learning_command;
-mod m18a_command;
-mod m39a_command;
-mod m43a_command;
-mod m44c_audit_command;
-mod m45a_audit_command;
-mod m46a_corpus_command;
-mod m47s_residual_command;
-mod m49a_eval_command;
-mod m49a_export_command;
-mod m49a_round1_command;
-mod m49a_round2_command;
-mod m49a_select_command;
-pub mod m49a_target_builder;
-mod m49a_trace_command;
-mod m50_agent_command;
-mod m50_extract_command;
-mod prism_command;
-mod prism_sample_command;
-mod prism_ppo_command;
-mod profile_agent;
-mod promotion_command;
-mod rating_command;
-mod runtime_orchestration;
-mod s1_probe_command;
-mod s2_census_command;
-mod s2b_scope_command;
-mod s3_decide_command;
-mod search_command;
-mod self_play_v2_command;
-mod studio_league_command;
-mod teacher_target_command;
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
-use splendor_core::{
-    full_state_hash, observation_hash, play_random_game_with_stats, ruleset_fingerprint,
-    visible_events, Action, Audience, FullState, GameConfig, PlayerId, ENGINE_VERSION,
-};
-use splendor_protocol::{
-    to_ndjson, ClientMessage, ClientRequestMeta, ObservationMeta, RecipientMeta, RequestMeta,
-    ServerMessage, PROTOCOL_VERSION,
-};
-use splendor_replay::{record_random_game, verify_replay, ReplayV1};
+use splendor_arena::{ArenaConfig, ArenaRunner};
+use splendor_replay::{verify_replay, ReplayV1};
 
 #[derive(Parser)]
-#[command(name = "splendor", about = "Splendor rules engine CLI")]
+#[command(name = "splendor", about = "璀璨宝石规则环境与外部 Agent 评测")]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Command,
 }
 
 #[derive(Subcommand)]
-enum Commands {
-    /// Print engine / protocol / catalog versions
+enum Command {
+    /// 输出引擎、协议与牌库版本
     Version,
-    /// Run random self-play games and report stats
-    Bench {
-        #[arg(long, default_value_t = 1000)]
-        games: u32,
-        #[arg(long, default_value_t = 2)]
-        players: u8,
-        #[arg(long, default_value_t = 0)]
-        seed: u64,
-    },
-    /// Play one random game and print the result JSON
-    Play {
-        #[arg(long, default_value_t = 2)]
-        players: u8,
-        #[arg(long, default_value_t = 42)]
-        seed: u64,
-        #[arg(long, default_value_t = false)]
-        verbose: bool,
-    },
-    /// Record a deterministic random game to a replay v1 file
-    RecordReplay {
-        #[arg(long, default_value_t = 2)]
-        players: u8,
-        #[arg(long, default_value_t = 42)]
-        seed: u64,
-        #[arg(long, default_value_t = 1001)]
-        action_seed: u64,
+    /// 输出牌库与基础规则 JSON
+    Catalog,
+    /// 启动持久 NDJSON 训练环境
+    Env,
+    /// 启动参考随机 Agent
+    AgentRandom {
         #[arg(long)]
-        out: String,
+        seed: u64,
     },
-    /// Load and strictly verify a replay v1 file
+    /// 运行一场外部程序对战
+    RunMatch {
+        #[arg(long)]
+        config: PathBuf,
+        #[arg(long)]
+        report_out: PathBuf,
+        #[arg(long)]
+        replay_out: PathBuf,
+    },
+    /// 校验裁判回放
     VerifyReplay {
         #[arg(long)]
-        input: String,
+        input: PathBuf,
     },
-    /// Smoke-test NDJSON protocol message encoding against a live state
-    ProtocolDemo {
-        #[arg(long, default_value_t = 42)]
-        seed: u64,
-    },
-    /// Generate golden protocol transcripts under fixtures/protocol/v0.5/
-    GenFixtures {
-        #[arg(long, default_value = "fixtures/protocol/v0.5")]
-        out_dir: String,
-    },
+    /// 按种子与座位轮换执行评测；eval --help 查看参数
+    Eval,
+    /// 创建 1v1 循环赛计划；rating-plan --help 查看参数
+    RatingPlan,
+    /// 执行 1v1 循环赛；rating-run --help 查看参数
+    RatingRun,
+    /// 从比赛记录计算评级；rating-report --help 查看参数
+    RatingReport,
 }
 
 fn main() {
-    // The arena entry commands are parsed by a dedicated strict parser (not
-    // clap) so their contract — every flag required, no unknown/extra tokens,
-    // stable exit codes — is exact. Route them before clap ever sees the args.
-    let argv: Vec<String> = std::env::args().collect();
-    match argv.get(1).map(String::as_str) {
-        Some("run-match") => std::process::exit(arena_command::run_match(&argv[2..])),
-        Some("run-rollout") => std::process::exit(arena_command::run_rollout(&argv[2..])),
-        Some("run-branch") => std::process::exit(branch_command::run_branch(&argv[2..])),
-        Some("probe-legal") => std::process::exit(branch_command::probe_legal(&argv[2..])),
-        Some("run-branches") => std::process::exit(branch_command::run_branches(&argv[2..])),
-        Some("agent-random") => std::process::exit(arena_command::agent_random(&argv[2..])),
-        Some("agent-heuristic") => std::process::exit(arena_command::agent_heuristic(&argv[2..])),
-        Some("agent-heuristic-v02") => {
-            std::process::exit(arena_command::agent_heuristic_v02(&argv[2..]))
-        }
-        Some("agent-heuristic-two-ply") => {
-            std::process::exit(arena_command::agent_heuristic_two_ply(&argv[2..]))
-        }
-        Some("agent-heuristic-terms") => std::process::exit(agent_terms_command::run(&argv[2..])),
-        Some("agent-determinization") => {
-            std::process::exit(arena_command::agent_determinization(&argv[2..]))
-        }
-        Some("agent-ismcts") => std::process::exit(arena_command::agent_ismcts(&argv[2..])),
-        Some("agent-neural-ismcts") => {
-            std::process::exit(arena_command::agent_neural_ismcts(&argv[2..]))
-        }
-        Some("agent-neural-ismcts-ablation") => {
-            std::process::exit(arena_command::agent_neural_ismcts_ablation(&argv[2..]))
-        }
-        Some("agent-gpu-neural-ismcts") => {
-            std::process::exit(arena_command::agent_gpu_neural_ismcts(&argv[2..]))
-        }
-        Some("collect-gpu-self-play") => {
-            std::process::exit(m18a_command::run_collect_gpu_self_play(&argv[2..]))
-        }
-        Some("collect-gpu-self-play-v2") => std::process::exit(
-            self_play_v2_command::run_collect_gpu_self_play_v2(&argv[2..]),
-        ),
-        Some("m39a-materialize") => std::process::exit(m39a_command::run_materialize(&argv[2..])),
-        Some("m40a-materialize") => {
-            std::process::exit(m39a_command::run_m40a_materialize(&argv[2..]))
-        }
-        Some("m40a-materialize-online") => {
-            std::process::exit(m39a_command::run_m40a_online_materialize(&argv[2..]))
-        }
-        Some("m43a-export-successors") => {
-            std::process::exit(m43a_command::run_export_successors(&argv[2..]))
-        }
-        Some("m43a-sample-successors") => {
-            std::process::exit(m43a_command::run_sample_successors(&argv[2..]))
-        }
-        Some("diagnose-gpu-self-play-v2") => std::process::exit(
-            self_play_v2_command::run_diagnose_gpu_self_play_v2(&argv[2..]),
-        ),
-        Some("human-play-server") => {
-            std::process::exit(human_play_command::run_human_play_server(&argv[2..]))
-        }
-        Some("studio-host") => std::process::exit(human_play_command::run_studio_host(&argv[2..])),
-        Some("eval") => std::process::exit(eval_command::run_eval(&argv[2..])),
-        Some("promotion-gate") => {
-            std::process::exit(promotion_command::run_promotion_gate(&argv[2..]))
-        }
-        Some("rating-plan") => std::process::exit(rating_command::run_rating_plan(&argv[2..])),
-        Some("rating-run") => std::process::exit(rating_command::run_rating_run(&argv[2..])),
-        Some("rating-report") => std::process::exit(rating_command::run_rating_report(&argv[2..])),
-        Some("league-plan") => std::process::exit(league_command::run_league_plan(&argv[2..])),
-        Some("studio-league-inventory") => std::process::exit(
-            studio_league_command::run_studio_league_inventory(&argv[2..]),
-        ),
-        Some("studio-league-dry-run") => {
-            std::process::exit(studio_league_command::run_studio_league_dry_run(&argv[2..]))
-        }
-        Some("studio-league-migrate") => {
-            std::process::exit(studio_league_command::run_studio_league_migrate(&argv[2..]))
-        }
-        Some("studio-league-ingest") => {
-            std::process::exit(studio_league_command::run_studio_league_ingest(&argv[2..]))
-        }
-        Some("studio-league-complete-match") => std::process::exit(
-            completion_wiring_command::run_studio_league_complete_match(&argv[2..]),
-        ),
-        Some("studio-league-complete") => std::process::exit(
-            completion_wiring_command::run_studio_league_complete(&argv[2..]),
-        ),
-        Some("build-dataset") => std::process::exit(league_command::run_build_dataset(&argv[2..])),
-        Some("train-policy-value") => {
-            std::process::exit(learning_command::run_train_policy_value(&argv[2..]))
-        }
-        Some("evaluate-policy-value") => {
-            std::process::exit(learning_command::run_evaluate_policy_value(&argv[2..]))
-        }
-        Some("evaluate-policy-value-source-aware") => std::process::exit(
-            learning_command::run_evaluate_policy_value_source_aware(&argv[2..]),
-        ),
-        Some("train-policy-value-search-teacher") => std::process::exit(
-            learning_command::run_train_policy_value_search_teacher(&argv[2..]),
-        ),
-        Some("evaluate-policy-value-search-teacher") => std::process::exit(
-            learning_command::run_evaluate_policy_value_search_teacher(&argv[2..]),
-        ),
-        Some("analyze-replay") => {
-            std::process::exit(search_command::run_analyze_replay(&argv[2..]))
-        }
-        Some("analyze-replay-player-view") => std::process::exit(
-            imperfect_search_command::run_analyze_replay_player_view(&argv[2..]),
-        ),
-        Some("analyze-replay-neural") => {
-            std::process::exit(analysis_command::run_analyze_replay_neural(&argv[2..]))
-        }
-        Some("s1-probe") => std::process::exit(s1_probe_command::run_s1_probe(&argv[2..])),
-        Some("s2-census") => std::process::exit(s2_census_command::run_s2_census(&argv[2..])),
-        Some("s2b-scope") => std::process::exit(s2b_scope_command::run_s2b_scope(&argv[2..])),
-        Some("s3-decide") => std::process::exit(s3_decide_command::run_s3_decide(&argv[2..])),
-        Some("agent-s3-rollout") => std::process::exit(arena_command::agent_s3_rollout(&argv[2..])),
-        Some("agent-s3-rollout-profile") => {
-            std::process::exit(profile_agent::agent_s3_rollout_profile(&argv[2..]))
-        }
-        Some("agent-heuristic-profile") => {
-            std::process::exit(profile_agent::agent_heuristic_profile(&argv[2..]))
-        }
-        Some("analyze-replay-determinization") => std::process::exit(
-            determinization_analysis_command::run_analyze_replay_determinization(&argv[2..]),
-        ),
-        Some("diagnose-neural-evaluation") => std::process::exit(
-            evaluation_analysis_command::run_diagnose_neural_evaluation(&argv[2..]),
-        ),
-        Some("build-search-teacher-targets") => std::process::exit(
-            teacher_target_command::run_build_search_teacher_targets(&argv[2..]),
-        ),
-        Some("m44c-audit") => std::process::exit(m44c_audit_command::run_m44c_audit(&argv[2..])),
-        Some("m45a-audit") => std::process::exit(m45a_audit_command::run_m45a_audit(&argv[2..])),
-        Some("m46a-generate-corpus") => {
-            std::process::exit(m46a_corpus_command::run_m46a_generate_corpus(&argv[2..]))
-        }
-        Some("m47s-residual") => {
-            std::process::exit(m47s_residual_command::run_m47s_residual(&argv[2..]))
-        }
-        Some("m49a-export-round0") => {
-            std::process::exit(m49a_export_command::run_m49a_export_round0(&argv[2..]))
-        }
-        Some("m49a-eval-validation") => {
-            std::process::exit(m49a_eval_command::run_m49a_eval_validation(&argv[2..]))
-        }
-        Some("m49a-collect-round1") => {
-            std::process::exit(m49a_round1_command::run_m49a_collect_round1(&argv[2..]))
-        }
-        Some("m49a-collect-round2") => {
-            std::process::exit(m49a_round2_command::run_m49a_collect_round2(&argv[2..]))
-        }
-        Some("m49a-build-targets") => {
-            std::process::exit(m49a_target_builder::run_m49a_build_targets(&argv[2..]))
-        }
-        Some("m49a-export-compact") => {
-            std::process::exit(m49a_target_builder::run_m49a_export_compact(&argv[2..]))
-        }
-        Some("m49a-export-successor-cache") => std::process::exit(
-            m49a_target_builder::run_m49a_export_successor_cache(&argv[2..]),
-        ),
-        Some("m49a-select-checkpoint") => {
-            std::process::exit(m49a_select_command::run_m49a_select_checkpoint(&argv[2..]))
-        }
-        Some("m49a-trace-validation") => {
-            std::process::exit(m49a_trace_command::run_m49a_trace_validation(&argv[2..]))
-        }
-        Some("m50-extract-replays") => {
-            std::process::exit(m50_extract_command::run_m50_extract_replays(&argv[2..]))
-        }
-        Some("agent-m50-policy") => {
-            std::process::exit(m50_agent_command::run_agent_m50_policy(&argv[2..]))
-        }
-        Some(command @ ("agent-prism-ppo" | "prism-ppo-audit")) => {
-            std::process::exit(prism_ppo_command::run(command, &argv[2..]))
-        }
-        Some("agent-prism-sample") => {
-            std::process::exit(prism_sample_command::run(&argv[2..]))
-        }
-        Some(command @ ("agent-prism" | "prism-extract" | "prism-predict" | "prism-fixtures" | "prism-audit")) => {
-            std::process::exit(prism_command::run(command, &argv[2..]))
-        }
-        _ => {}
+    let args: Vec<String> = std::env::args().collect();
+    let driver: Option<fn(&[String]) -> i32> = match args.get(1).map(String::as_str) {
+        Some("eval") => Some(eval_command::run_eval),
+        Some("rating-plan") => Some(rating_command::run_rating_plan),
+        Some("rating-run") => Some(rating_command::run_rating_run),
+        Some("rating-report") => Some(rating_command::run_rating_report),
+        _ => None,
+    };
+    if let Some(driver) = driver {
+        std::process::exit(driver(&args[2..]));
     }
-
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::Version => {
-            println!("engine={}", ENGINE_VERSION);
-            println!("protocol={}", PROTOCOL_VERSION);
-            println!("catalog={}", splendor_core::CATALOG_VERSION);
-            println!("ruleset={}", splendor_core::RULESET_BASE_V1.0);
+    match execute(Cli::parse().command) {
+        Ok(code) => std::process::exit(code),
+        Err(error) => {
+            eprintln!("error: {error}");
+            std::process::exit(1);
         }
-        Commands::Bench {
-            games,
-            players,
-            seed,
-        } => cmd_bench(games, players, seed),
-        Commands::Play {
-            players,
-            seed,
-            verbose,
-        } => cmd_play(players, seed, verbose),
-        Commands::RecordReplay {
-            players,
-            seed,
-            action_seed,
-            out,
-        } => cmd_record_replay(players, seed, action_seed, &out),
-        Commands::VerifyReplay { input } => cmd_verify_replay(&input),
-        Commands::ProtocolDemo { seed } => cmd_protocol_demo(seed),
-        Commands::GenFixtures { out_dir } => cmd_gen_fixtures(&out_dir),
     }
 }
 
-fn cmd_bench(games: u32, players: u8, seed: u64) {
-    let mut rng = SmallRng::seed_from_u64(seed);
-    let start = Instant::now();
-    let mut total_plies = 0u64;
-    let mut total_legal_actions = 0u64;
-    let mut total_decisions = 0u64;
-    let mut max_legal_actions = 0usize;
-    let mut wins = vec![0u64; players as usize];
-
-    for _ in 0..games {
-        let s = rng.gen::<u64>();
-        let (state, stats) = play_random_game_with_stats(GameConfig {
-            player_count: players,
-            seed: s,
-            ..Default::default()
-        })
-        .unwrap_or_else(|e| panic!("game failed seed={s}: {e}"));
-        total_plies += state
-            .log
-            .iter()
-            .filter(|e| matches!(e, splendor_core::GameEvent::ActionApplied { .. }))
-            .count() as u64;
-        total_legal_actions += stats.total_legal_actions;
-        total_decisions += stats.decisions;
-        max_legal_actions = max_legal_actions.max(stats.max_legal_actions);
-        if let Some(res) = &state.result {
-            for w in &res.winners {
-                wins[w.index()] += 1;
-            }
+fn execute(command: Command) -> Result<i32, String> {
+    match command {
+        Command::Version => {
+            println!("engine={}", splendor_core::ENGINE_VERSION);
+            println!("protocol={}", splendor_protocol::PROTOCOL_VERSION);
+            println!("catalog={}", splendor_catalog::CATALOG_VERSION);
+            println!("environment={}", environment::ENV_VERSION);
         }
-    }
-
-    let elapsed = start.elapsed().as_secs_f64().max(1e-9);
-    println!("games={}", games);
-    println!("players={}", players);
-    println!("elapsed_s={:.3}", elapsed);
-    println!("games_per_s={:.1}", games as f64 / elapsed);
-    println!(
-        "avg_actions_per_game={:.1}",
-        total_plies as f64 / games as f64
-    );
-    println!("actions_per_s={:.1}", total_plies as f64 / elapsed);
-    println!(
-        "avg_legal_actions_per_decision={:.2}",
-        total_legal_actions as f64 / total_decisions.max(1) as f64
-    );
-    println!("max_legal_actions_seen={max_legal_actions}");
-    println!("wins_by_seat={:?}", wins);
-}
-
-fn cmd_play(players: u8, seed: u64, verbose: bool) {
-    let (mut state, setup) = FullState::new(GameConfig {
-        player_count: players,
-        seed,
-        ..Default::default()
-    })
-    .expect("setup");
-    if verbose {
-        eprintln!("setup_hash={}", setup.state_hash_after.as_str());
-    }
-
-    let mut rng = SmallRng::seed_from_u64(seed ^ 0xA5A5_A5A5_A5A5_A5A5);
-    while !state.is_terminal() {
-        let acts = state.legal_actions();
-        let action = acts[rng.gen_range(0..acts.len())];
-        let step = state.apply(action).expect("apply");
-        if verbose {
-            eprintln!(
-                "p{} {:?} hash={}",
-                state.current_player.0, action, step.state_hash_after
+        Command::Catalog => println!("{}", environment::catalog()),
+        Command::Env => {
+            environment::serve(io::stdin().lock(), io::stdout().lock())
+                .map_err(|e| e.to_string())?;
+        }
+        Command::AgentRandom { seed } => {
+            return Ok(
+                if splendor_agent::run_random_agent(
+                    BufReader::new(io::stdin().lock()),
+                    io::stdout().lock(),
+                    io::stderr().lock(),
+                    seed,
+                )
+                .is_ok()
+                {
+                    0
+                } else {
+                    1
+                },
             );
         }
-    }
-
-    let result = state.result.as_ref().expect("result");
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&serde_json::json!({
-            "seed": seed,
-            "players": players,
-            "scores": result.scores,
-            "ranks": result.ranks,
-            "winners": result.winners.iter().map(|p| p.0).collect::<Vec<_>>(),
-            "full_hash": full_state_hash(&state).as_str(),
-            "actions": state.log.iter().filter(|e| {
-                matches!(e, splendor_core::GameEvent::ActionApplied { .. })
-            }).count(),
-        }))
-        .unwrap()
-    );
-}
-
-fn cmd_record_replay(players: u8, seed: u64, action_seed: u64, out: &str) {
-    let (_state, replay) = record_random_game(players, seed, action_seed).unwrap_or_else(|e| {
-        eprintln!("record failed: {e}");
-        std::process::exit(1);
-    });
-    let json = serde_json::to_string_pretty(&replay).expect("serialize replay");
-    let mut json = json;
-    json.push('\n');
-    fs::write(out, json).unwrap_or_else(|e| {
-        eprintln!("write failed: {e}");
-        std::process::exit(1);
-    });
-    println!("ok");
-    println!("out={out}");
-    println!("steps={}", replay.steps.len());
-    println!("final_hash={}", replay.final_state_hash.as_str());
-}
-
-fn cmd_verify_replay(input: &str) {
-    let raw = match fs::read_to_string(input) {
-        Ok(raw) => raw,
-        Err(e) => {
-            eprintln!("read failed: {e}");
-            std::process::exit(1);
+        Command::RunMatch {
+            config,
+            report_out,
+            replay_out,
+        } => return run_match(&config, &report_out, &replay_out),
+        Command::VerifyReplay { input } => {
+            let replay: ReplayV1 = serde_json::from_reader(BufReader::new(
+                File::open(input).map_err(|e| e.to_string())?,
+            ))
+            .map_err(|e| e.to_string())?;
+            verify_replay(&replay).map_err(|e| e.to_string())?;
+            println!("{}", serde_json::json!({"valid": true}));
         }
-    };
-    let replay: ReplayV1 = match serde_json::from_str(&raw) {
-        Ok(replay) => replay,
-        Err(e) => {
-            eprintln!("parse error: {e}");
-            std::process::exit(1);
-        }
-    };
-    match verify_replay(&replay) {
-        Ok(verified) => {
-            println!("ok");
-            println!("format_version={}", replay.version);
-            println!("steps={}", verified.steps);
-            println!("final_hash={}", verified.final_state_hash);
-            println!("reason={}", result_reason_str(&verified.result));
-            println!("winners={}", format_winners(&verified.result));
-        }
-        Err(e) => {
-            eprintln!("verify error: {e}");
-            std::process::exit(1);
+        Command::Eval | Command::RatingPlan | Command::RatingRun | Command::RatingReport => {
+            unreachable!("evaluation commands are dispatched before argument parsing")
         }
     }
+    Ok(0)
 }
 
-fn result_reason_str(result: &splendor_replay::ReplayGameResultV1) -> &'static str {
-    match result.reason {
-        splendor_replay::ReplayTerminalReason::PrestigeThreshold => "prestige_threshold",
-        splendor_replay::ReplayTerminalReason::Stalemate => "stalemate",
+fn pretty_line(value: &impl serde::Serialize) -> Result<String, String> {
+    serde_json::to_string_pretty(value)
+        .map(|s| s + "\n")
+        .map_err(|e| e.to_string())
+}
+
+fn run_match(config: &Path, report_out: &Path, replay_out: &Path) -> Result<i32, String> {
+    if report_out == replay_out {
+        return Err("--report-out and --replay-out must differ".into());
     }
-}
-
-fn format_winners(result: &splendor_replay::ReplayGameResultV1) -> String {
-    result
-        .winners
-        .iter()
-        .map(|w| w.to_string())
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
-fn cmd_protocol_demo(seed: u64) {
-    let (state, _) = FullState::new(GameConfig {
-        seed,
-        ..Default::default()
-    })
-    .unwrap();
-    let game_id = format!("demo-{seed}");
-    let hello = ServerMessage::hello(
-        &game_id,
-        splendor_core::RULESET_BASE_V1.0,
-        splendor_core::CATALOG_VERSION,
-        ruleset_fingerprint(&state.ruleset),
-    );
-    println!("{}", hello.to_json_line().unwrap());
-
-    let obs = state.observation(PlayerId(0));
-    let obs_msg = ServerMessage::Observation {
-        meta: ObservationMeta::new(&game_id, 1, PlayerId(0), observation_hash(&obs)),
-        observation: obs,
-    };
-    println!("{}", obs_msg.to_json_line().unwrap());
-
-    let req = ServerMessage::RequestAction {
-        meta: RequestMeta::new(
-            &game_id,
-            2,
-            PlayerId(0),
-            1,
-            observation_hash(&state.observation(PlayerId(0))),
-        ),
-        deadline_ms: 1000,
-        legal_actions: state.legal_actions(),
-        ply: None,
-    };
-    println!("{}", req.to_json_line().unwrap());
-
-    let action = state.legal_actions()[0];
-    let client = ClientMessage::Action {
-        meta: ClientRequestMeta::new(&game_id, 1),
-        action,
-    };
-    println!("{}", serde_json::to_string(&client).unwrap());
-}
-
-/// Build a complete player-scoped server transcript. State construction and
-/// referee-event projection stay in the host/fixture layer; only the final
-/// `ServerMessage` values cross into the protocol serializer.
-fn server_transcript(
-    game_id: &str,
-    state: &FullState,
-    events: &[splendor_core::RefereeEvent],
-    recipient: PlayerId,
-    audience: Audience,
-    request_id: u64,
-) -> String {
-    let observation = state.observation(recipient);
-    let observation_hash = observation_hash(&observation);
-    let mut messages = vec![
-        ServerMessage::hello(
-            game_id,
-            state.ruleset.id.0,
-            state.ruleset.catalog_version,
-            ruleset_fingerprint(&state.ruleset),
-        ),
-        ServerMessage::GameStart {
-            meta: RecipientMeta::new(game_id, 1, recipient),
-            player_count: state.player_count(),
-            seed_commitment: format!("fixture-commitment-{game_id}"),
-            run_trace_id: None,
-        },
-        ServerMessage::Observation {
-            meta: ObservationMeta::new(game_id, 2, recipient, observation_hash.clone()),
-            observation,
-        },
-    ];
-
-    for event in visible_events(events, audience) {
-        let server_seq = messages.len() as u64;
-        messages.push(ServerMessage::event(
-            RecipientMeta::new(game_id, server_seq, recipient),
-            event,
-        ));
+    for path in [report_out, replay_out] {
+        if path.exists() {
+            return Err(format!("output already exists: {}", path.display()));
+        }
+        let parent = path.parent().filter(|p| !p.as_os_str().is_empty());
+        if parent.is_some_and(|p| !p.is_dir()) {
+            return Err(format!("output parent does not exist: {}", path.display()));
+        }
     }
-
-    let server_seq = messages.len() as u64;
-    messages.push(ServerMessage::RequestAction {
-        meta: RequestMeta::new(game_id, server_seq, recipient, request_id, observation_hash),
-        deadline_ms: 1000,
-        legal_actions: state.legal_actions(),
-        ply: None,
-    });
-
-    to_ndjson(&messages)
-}
-
-/// Pure deterministic normal-game fixture generator.
-fn normal_golden_transcript() -> String {
-    let (state, setup) = FullState::new(GameConfig::default()).expect("fixture setup");
-    server_transcript(
-        "golden-normal",
-        &state,
-        &setup.events,
-        PlayerId(0),
-        Audience::Player(PlayerId(0)),
-        1,
-    )
-}
-
-/// Pure deterministic blind-reserve fixture generator for a selected player.
-fn blind_reserve_transcript(audience: Audience) -> String {
-    let recipient = match audience {
-        Audience::Player(player) => player,
-        _ => panic!("blind fixture requires a player audience"),
+    let mut raw = Vec::new();
+    File::open(config)
+        .map_err(|e| e.to_string())?
+        .take(1024 * 1024 + 1)
+        .read_to_end(&mut raw)
+        .map_err(|e| e.to_string())?;
+    if raw.len() > 1024 * 1024 {
+        return Err("arena config exceeds 1 MiB".into());
+    }
+    let config: ArenaConfig = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+    let run = ArenaRunner::run(config).map_err(|e| e.to_string())?;
+    let report_json = pretty_line(&run.report)?;
+    let outcome_json = serde_json::to_string(&run.report.outcome).map_err(|e| e.to_string())?;
+    let code = if let Some(replay) = &run.replay {
+        verify_replay(replay).map_err(|e| e.to_string())?;
+        match &run.report.outcome {
+            splendor_arena::ArenaOutcomeV1::Completed {
+                replay_final_hash, ..
+            } if replay_final_hash == replay.final_state_hash.as_str() => {}
+            _ => return Err("report and replay disagree".into()),
+        }
+        atomic_output::commit_completed_with(
+            replay_out,
+            &pretty_line(replay)?,
+            report_out,
+            &report_json,
+            atomic_output::publish_new,
+        )
+        .map_err(|e| e.to_string())?;
+        0
+    } else {
+        atomic_output::commit_aborted_with(report_out, &report_json, atomic_output::publish_new)
+            .map_err(|e| e.to_string())?;
+        2
     };
-    let (mut state, setup) = FullState::new(GameConfig {
-        seed: 7,
-        ..Default::default()
-    })
-    .expect("fixture setup");
-    let reserve = state
-        .legal_actions()
-        .into_iter()
-        .find(|action| matches!(action, Action::ReserveDeck { .. }))
-        .expect("reserve deck is legal at start");
-    let step = state.apply(reserve).expect("apply reserve");
-    let mut events = setup.events;
-    events.extend(step.events);
-
-    server_transcript("golden-blind", &state, &events, recipient, audience, 2)
-}
-
-/// Write a deterministic protocol transcript to `<out_dir>/<name>.ndjson`.
-fn write_transcript(name: &str, out_dir: &str, transcript: String) {
-    fs::create_dir_all(out_dir).expect("mkdir fixtures dir");
-    let path = format!("{out_dir}/{name}.ndjson");
-    let line_count = transcript.lines().count();
-    fs::write(&path, transcript).expect("write fixture");
-    println!("wrote {path} ({line_count} lines)");
-}
-
-fn cmd_gen_fixtures(out_dir: &str) {
-    write_transcript("normal-game", out_dir, normal_golden_transcript());
-    write_transcript(
-        "blind-reserve",
-        out_dir,
-        blind_reserve_transcript(splendor_core::Audience::Player(PlayerId(1))),
-    );
+    let mut stdout = io::stdout().lock();
+    if let Err(error) = writeln!(stdout, "{outcome_json}").and_then(|_| stdout.flush()) {
+        let _ = fs::remove_file(report_out);
+        if run.replay.is_some() {
+            let _ = fs::remove_file(replay_out);
+        }
+        return Err(error.to_string());
+    }
+    Ok(code)
 }

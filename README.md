@@ -1,256 +1,134 @@
-# Splendor AI Platform (M16 1v1 League Rating)
+# Splendor 规则与模型接入平台
 
-**2026-10-08 Prism研究与云端规划入口：[CLOUD_PLANNING.md](CLOUD_PLANNING.md)**。包含当前固定Alpha/Balance身份、历史结果与缺项、画像分布、未执行的M73建议及云端可核验范围；旧平台说明继续保留。
+使用同一套璀璨宝石规则，自行设计和训练模型，再通过标准 Agent 协议参加对战评测。模型可以使用任意框架、输入编码和权重格式。
 
-Deterministic Splendor rules engine with strict **FullState / Observation** isolation, explicit chance events, semantic actions, reproducible competitive evaluation, observation-history ISMCTS, traceable player-view datasets, checkpoint-bound neural search, and player-view-first replay analysis.
+本分支提供 2–4 人基础版规则、Python 训练环境、Rust/Python Agent SDK、外部程序裁判、回放和 1v1 评级工具。
 
-> **M02 baseline:** same seed + same action sequence → identical terminal `full_hash`; all rules and terminal semantics live in `splendor-core`; observations never leak opponents' blind reserved cards.
+## 安装
 
-## Workspace
+需要 Rust 稳定版与 Python 3.10 或更新版本。Windows 原生构建需要 MSVC C++ 构建工具。
 
-| Crate | Role |
-|-------|------|
-| `splendor-catalog` | Cards, nobles, ruleset constants |
-| `splendor-core` | Rules engine (`FullState`, legal/apply, replay log, hashes) |
-| `splendor-protocol` | NDJSON message schema |
-| `splendor-replay` | Referee replay v1: record + strict step-by-step verify |
-| `splendor-arena` | Stdio match runner: spawns agent processes, referees one match, writes report + replay |
-| `splendor-search` | Deterministic perfect-information MaxN continuation search |
-| `splendor-belief` | Validated player information sets and deterministic hidden-state sampling |
-| `splendor-imperfect-search` | Replay-neutral root determinization over player-view information sets |
-| `splendor-determinization-agent` | Live player-view policy that binds Arena observations/history to M07 search |
-| `splendor-eval` | Canonical evaluation plans/reports and deterministic promotion gates |
-| `splendor-ismcts` | M10 deterministic observation-history information-set tree search |
-| `splendor-ismcts-agent` | Live player-view Arena policy for M10 search |
-| `splendor-league` | M11 league manifests and report/replay-bound player-view datasets |
-| `splendor-learning` | M12 deterministic player-view Policy + 2–4 player vector-Value training, checkpoints, inference, and offline evaluation |
-| `splendor-neural-search` | M13 checkpoint-bound Policy-prior + vector-Value neural ISMCTS candidate |
-| `splendor-neural-agent` | Live player-view Arena policy for M13 neural search |
-| `splendor-analysis` | M14 replay-bound traces, formal-evaluation binding, M15 neural ablation metrics, and M23 unified `AnalysisTraceV2` reviewers |
-| `splendor-cli` | Bench / play / record-replay / verify-replay / analyze-replay / player-view analysis / determinization review / arena tools |
-| `apps/replay-studio` | Local Replay + Rating Studio for board analysis, Elo leaderboard, one-click review, and head-to-head matrix |
-
-Agent-assisted project documentation follows the two-layer contract in
-[`AGENTS.md`](AGENTS.md): the local-only `handoff.md` records current project
-truth, while tracked `docs/mNN-*.md` files preserve each major round from
-initial design through iteration, evidence, and final decision. Reusable
-templates and status vocabulary live in
-[`docs/project-documentation-system.md`](docs/project-documentation-system.md).
-
-## Quick start
-
-```bash
-cargo test
-cargo run -p splendor-cli -- version
-cargo run -p splendor-cli -- play --seed 42
-cargo run -p splendor-cli -- bench --games 1000
-cargo run -p splendor-cli -- record-replay --players 2 --seed 42 --action-seed 1001 --out game.replay.json
-cargo run -p splendor-cli -- verify-replay --input game.replay.json
-cargo run -p splendor-cli -- analyze-replay --input game.replay.json --ply 0 --max-depth-turns 1 --max-nodes 2000 --out full-state-analysis.json
-cargo run -p splendor-cli -- analyze-replay-player-view --input game.replay.json --ply 0 --sample-seed 20260703 --sample-count 4 --max-depth-turns 1 --max-nodes 2000 --out player-view-analysis.json
-cargo run -p splendor-cli -- agent-determinization --sample-seed 17 --sample-count 1 --max-depth-turns 1 --max-nodes 100
-cargo run -p splendor-cli -- agent-ismcts --sample-seed 17 --simulations 64 --max-depth-turns 2 --exploration-bias 100000000
-cargo run -p splendor-cli -- promotion-gate --plan plan.json --eval-report eval-report.json --gate gate.json --out promotion-report.json
-cargo run -p splendor-cli -- rating-plan --registry benchmarks/m16-internal-1v1.registry.json --config benchmarks/m16-foundation-smoke.rating.json --out local-artifacts/m16-plan.json
-cargo run -p splendor-cli -- rating-run --plan local-artifacts/m16-plan.json --out-dir local-artifacts/m16-run
-cargo run -p splendor-cli -- league-plan --manifest league.json --out plan.json
-cargo run -p splendor-cli -- build-dataset --manifest league.json --evaluation-dir eval-output --replays replay-list.json --out dataset.json
-cargo run -p splendor-cli -- train-policy-value --dataset dataset.json --config benchmarks/m12-policy-value-v1.config.json --checkpoint local-artifacts/m12/checkpoint.json --report local-artifacts/m12/training-report.json
-cargo run -p splendor-cli -- evaluate-policy-value --dataset dataset.json --checkpoint local-artifacts/m12/checkpoint.json --out local-artifacts/m12/offline-eval.json
-cargo run -p splendor-cli -- evaluate-policy-value-source-aware --dataset dataset.json --checkpoint checkpoint.json --config benchmarks/m15b-source-aware-policy-value-v1.config.json --out offline-eval.json
-cargo run -p splendor-cli -- agent-neural-ismcts --checkpoint local-artifacts/m12-policy-value-v1-final/checkpoint.json --checkpoint-hash 108d32fa2d0d2499ead38e99b23e42cd905644358a76d5adb7392ad43401b462 --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500
-cargo run -p splendor-cli -- analyze-replay-neural --input match.replay.json --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --out match.analysis.json
-cargo run -p splendor-cli -- diagnose-neural-evaluation --evaluation-dir eval-output --checkpoint checkpoint.json --checkpoint-hash <sha256> --sample-seed 20260811 --simulations 64 --max-depth-turns 2 --puct-exploration-milli 1500 --candidate-agent-id candidate --champion-agent-id champion --out-dir local-artifacts/diagnostic
-cargo run -p splendor-cli -- build-search-teacher-targets --dataset dataset.json --evaluation-dir eval-output --config benchmarks/m15c-search-teacher-targets-v1.config.json --out local-artifacts/m15c/search-teacher-targets.json
-cargo run -p splendor-cli -- train-policy-value-search-teacher --dataset dataset.json --targets search-teacher-targets.json --config benchmarks/m15c-search-policy-value-v1.config.json --checkpoint local-artifacts/m15c/checkpoint.json --report local-artifacts/m15c/training-report.json
-cargo run -p splendor-cli -- evaluate-policy-value-search-teacher --dataset dataset.json --targets search-teacher-targets.json --checkpoint local-artifacts/m15c/checkpoint.json --config benchmarks/m15c-search-policy-value-v1.config.json --out local-artifacts/m15c/offline-eval.json
-cargo run -p splendor-cli -- protocol-demo
+```sh
+cargo build --locked --release -p splendor-cli
+python -m pip install -e .
 ```
 
-### Run an arena match
+将构建目录加入当前终端的 PATH。Linux/macOS：
 
-The same binary is both the match runner and the reference agent, so a
-self-play match needs no other program:
-
-```bash
-cargo build -p splendor-cli   # ensure `splendor` exists on PATH / target dir
-splendor run-match \
-  --config     arena-config.json \
-  --report-out arena-report.json \
-  --replay-out replay.json
+```sh
+export PATH="$PWD/target/release:$PATH"
 ```
 
-Exit `0` = completed (writes report + verified replay), `2` = aborted (report
-only), `1` = CLI/config/I/O/internal error (no artifacts). See `docs/arena.md`
-for the config schema, artifact contract, and the reference random agent.
+Windows PowerShell：
 
-See `docs/replay.md` for the replay v1 format and verification chain.
-
-## Architecture (M16 rating foundation)
-
-```text
-splendor-core
-├── splendor-search
-├── splendor-belief
-│   └── splendor-imperfect-search
-│       └── splendor-determinization-agent
-│           └── splendor-agent
-├── splendor-ismcts
-│   └── splendor-ismcts-agent
-│       └── splendor-agent
-├── splendor-learning
-│   └── splendor-neural-search
-│       └── splendor-neural-agent
-│           └── splendor-agent
-│       └── splendor-analysis
-│           └── apps/replay-studio (JSON sidecar consumer)
-├── splendor-arena
-│   └── splendor-eval
-│       └── splendor-league
-│           └── splendor-learning
-├── splendor-replay
-│   └── splendor-league
-└── splendor-cli
+```powershell
+$env:PATH = "$PWD\target\release;$env:PATH"
 ```
 
-The replay-bound `analyze-replay` command is a referee full-state MaxN
-analysis. `analyze-replay-player-view` reconstructs only the recorded actor's
-visible prefix, builds a C1 information set, samples C2 hidden states, and
-aggregates the C3 continuation results. Root determinization is a reproducible
-baseline with a documented strategy-fusion limitation; it is not MCTS.
-`agent-determinization` applies that same replay-neutral API to the live
-`Observation + cumulative VisibleEvent history` stream. The M07 algorithm is
-unchanged; M08 only adds the Arena/Agent binding.
+```sh
+splendor version
+splendor catalog
+```
 
-### Non-negotiable invariants
+也可以直接传入二进制路径，例如 `SplendorEnv("target/release/splendor")`；Windows 文件名为 `splendor.exe`。
 
-1. **FullState** is referee-only (deck order and blind reserves).
-2. **Observation(player)** never includes other players' blind reserved card IDs.
-3. Chance outcomes are **explicit events** (`CardRevealed`, …), not seed-only.
-4. Actions are **semantic** (`take_tokens`, `buy_market`, …), not policy indices.
-5. `TakeTokens { take, give_back }` and reserve-with-return are **atomic**.
-6. Purchased card identities are retained and all 90 development cards are
-   conserved exactly once.
-7. Forced Pass/Stalemate and final-round accounting are defined by core, not a
-   host loop.
+## 使用自己的训练算法
 
-## M10–M23 status and roadmap
+```python
+import random
+from splendor_env import SplendorEnv
 
-1. M08: live player-view search agent (complete)
-2. M09: paired competitive evaluation and promotion gate v1 (complete)
-3. M10: observation-history ISMCTS v1 + live agent (implemented; formal promotion rejected)
-4. M11: league manifest + traceable player-view dataset v1 (accepted)
-5. M12: supervised player-view Policy + multiplayer vector Value baseline (accepted)
-6. M13: checkpoint-bound neural-guided ISMCTS + live agent (formal promotion rejected 12–52; remains candidate)
-7. M14A: replay-wide AnalysisTraceV1 + local Replay Studio (accepted at `e5dfb95`)
-8. M14B: formal-evaluation batch sidecars and provenance-bound aggregate diagnostics (implemented)
-9. M15A: controlled Policy/Value/neutral search ablations (diagnosis complete)
-10. M15B: source-aware/isolated training plus two prospective Policy-only screens (complete; rejected 4–28 and 5–27, no candidate)
-11. M15C: provenance-bound search-distribution Policy targets and search-shaped Value supervision (complete; both frozen offline gates failed, no candidate)
-12. M15D: nonlinear action interaction + independent Value encoder, h64 (complete; both unchanged offline gates failed, no candidate)
-13. M15E: deterministic Adam optimization control (complete; train fit improved, source-level validation gates still failed, no candidate)
-14. M16: 1v1 round-robin registry, Live/Official Elo, head-to-head matrix, and Rating Studio (implemented)
-15. M17: own GPU Policy-Value model v1 (complete; Entity Mixer candidate rejected 1–7 vs heuristic, retained for RL initialization)
-16. M18A: neural-ISMCTS / AlphaZero-like self-play RL v1 (complete route; first smoke candidate rejected 2–6 vs heuristic)
-17. M18B: distributional Double-DQN / Rainbow-style RL (complete route; first smoke candidate rejected 1–7 vs heuristic)
-18. M19: internal championship complete (42/42, zero abort; provisional ranking, M07 champion unchanged)
-19. M20: Human Play Studio (implemented local player-view 1v1 vs built-ins or any M16-registered agent/checkpoint, verified Replay v1 handoff)
-20. M21: external benchmark decision complete; deferred until a new internal checkpoint clears the frozen multi-seed league/promotion gate
-21. M22: 32-game CUDA self-play + 48-match multi-seed league complete; no measured improvement over M18A, not promoted
-22. M23: Review Studio productization (implemented: unified `AnalysisTraceV2`, one-shot M07/M13 replay-wide reviewers, reviewer registry, local review job API, one-click human game review; M07 champion is the default reviewer, M13 stays `rejected/experimental`)
+rng = random.Random(1)
+with SplendorEnv() as env:
+    catalog = env.catalog()
+    state = env.reset(seed=42, player_count=2)
+    for _ in range(600):
+        if state["terminated"]:
+            break
+        observation = state["observation"]
+        history = state["visible_history"]
+        legal_actions = state["legal_actions"]
+        action = rng.choice(legal_actions)
+        state = env.step(action)
+    if state["terminated"]:
+        print(state["result"])
+    else:
+        print("达到采样上限，本局截断")
+```
 
-Training `validation` means held-out offline fit only; teacher top-1, NLL,
-search-visit cross-entropy, Value MSE, and TD error never establish playing
-strength. Only completed Arena screens, leagues, and frozen promotion gates do.
-See [`docs/model-evaluation-contract.md`](docs/model-evaluation-contract.md).
+把随机选择替换为自己的策略，并自行收集轨迹、定义奖励和更新参数。`step` 推进一步语义动作；选择贵族时仍可能是同一玩家行动。返回值为字典，字段见 [训练环境](docs/environment.md)。
 
-M09 consumes immutable M05 plan/report artifacts and compares a candidate with
-a champion over complete seed blocks, after all cyclic seat rotations. A
-deterministic one-sided 95% confidence lower bound, reliability limits, and the
-configured Arena move deadline must all pass before promotion. See
-`docs/evaluation.md`; a result is evidence for the exact hashed plan, not a
-general strength claim.
+## 将模型交给裁判评测
 
-M10 shares future policies across sampled worlds using only acting-player
-observations and visible simulated history; its v1 pre-root opponent-history
-abstraction is documented in `docs/ismcts.md`. M11 binds every dataset source
-through the executed evaluation plan/report and canonical match index to a
-completed Arena report, strictly verified replay, and exact scheduled league
-agent identity. M12 consumes only those player-view examples, uses a frozen
-source-level split, and emits a provenance-bound checkpoint plus independently
-recomputable offline metrics. Its Git-tracked formal result manifest pins the
-content hashes of the otherwise local model artifacts. It does not guide search
-or change the champion. M13 binds that exact semantic checkpoint hash into a
-new player-view agent, using legal-action Policy priors and multiplayer Value
-bootstraps in deterministic integer PUCT-like selection. Its frozen formal
-64-match gate completed with zero aborts/faults but rejected promotion, so the
-current determinization champion remains unchanged. See
-`docs/learning.md` and `docs/neural-search.md`.
+Agent 是一个独立程序。输入为玩家观察、可见历史和合法动作，输出为其中一个动作。Python 入口示例：
 
-M14A is accepted at repair commit `e5dfb95` (base `e83d79e`) with independent
-re-review findings P0/P1/P2 all zero. It keeps `ReplayV1` objective and writes
-analysis into a separate sidecar bound to the verified replay, exact
-checkpoint, and search config. Replay
-Studio defaults to the recorded actor's Observation; hidden reserves and deck
-future appear only after an explicit Referee Reveal switch. See
-`docs/replay-studio.md`.
+```python
+# my_agent.py
+from splendor_env import run_agent
 
-M14B bound all 64 formal M13 replays into a 3,905-frame diagnostic bundle.
-M15A exactly reproduced every candidate decision and found that `policy_only`
-was the strongest retrospective neural control, while `value_only` was worse
-than neutral. M15B then filtered Policy labels to the champion and enforced
-material offline gates: Policy passed, Value failed, but a new-seed Policy-only
-screen still lost 4–28. The current evidence therefore implicates both Policy
-generalization and Value quality, amplified by 64-simulation search. The next
-round isolates Policy representation from Value gradients and collects new
-champion-teacher trajectories. That second Policy-only screen still lost 5–27,
-so M15B closes without a candidate: one-hot imitation NLL is not a sufficient
-strength gate and Value failed both material gates. No rejected or diagnostic
-seed is reused. See
-`docs/m15-neural-degradation-diagnostic.md`.
 
-M15C regenerated the accepted M07 root analysis for all 3,920 champion-owned
-decisions. Recorded and regenerated actions agreed 3,920/3,920 and the soft
-targets were non-degenerate, but the frozen h32 model improved held-out Policy
-cross-entropy only 4.87% over uniform and made search-shaped Value MSE worse
-than its constant prior. Both unchanged gates failed; no prospective screen or
-candidate is authorized. The next useful round is representation/capacity
-work, not target or gate tuning.
+def choose_action(decision):
+    # 在这里调用自己的模型，返回 decision.legal_actions 中的一个对象。
+    return decision.legal_actions[0]
 
-M15D tested that boundary without changing the M15C data, target projection,
-split, optimizer schedule, or gates. Architecture v2 adds a nonlinear
-action-conditioned Policy head and a separately trainable Value encoder, and
-doubles width to h64. Policy top-1 rose slightly, but soft cross-entropy was
-slightly worse than M15C; train and validation improved only 4.75% and 4.69%
-over uniform. Value also remained worse than its constant prior. This is an
-optimization/underfitting result for the frozen run, not evidence authorizing
-gate or target tuning; no candidate or prospective screen exists.
 
-M15E changed only the optimizer to deterministic per-example Adam while
-retaining the M15D architecture, inputs, source split, epochs, learning rate,
-loss, initialization and gates. Training fit improved materially: Policy
-top-1 reached 43.37% and Value MSE fell to 0.00735. The source-held-out split
-did not follow: Policy top-1 was 32.00%, cross-entropy improved only 5.33% over
-uniform, and Value MSE 0.01925 remained worse than its constant prior. This
-localizes the next investigation to source generalization, data coverage and
-target factorization; M15E produces no candidate or prospective screen.
+run_agent(choose_action, name="my-model", version="1.0.0")
+```
 
-M16 now provides the common 1v1 measurement layer before any GPU/RL expansion.
-It schedules every unordered pair with identical seeds and both seat rotations,
-keeps sequential Live Elo separate from order-independent Official Elo, and
-retains the full head-to-head matrix so cyclic matchups are visible. The formal
-rating report is content-bound to the agent registry, round-robin plan, and
-canonical pair evaluation reports. See `docs/rating.md`. Dataset, checkpoint,
-replay, and evaluation payloads remain local artifacts rather than GitHub
-content; only schemas, frozen configs, code, documentation, and compact result
-manifests are candidates for source control.
+将其注册为 `{"program":"python","args":["my_agent.py"]}`，即可与任意实现相同协议的程序对战。模型作者同时提供推理入口、权重和运行依赖；权重留在评测机器上。
 
-M17's GPU route is a compact non-Transformer architecture: Flat ResMLP is the
-control and Entity Mixer is the object-structured candidate. Both are strictly
-1v1/player-view and score the Arena-certified legal action set. See
-`docs/m17-gpu-model.md`; generated `.pt` checkpoints and reports remain under
-ignored `local-artifacts/`.
+运行 Rust 随机代理与 Python 随机代理的示例对局：
 
-## License
+```sh
+mkdir -p outputs
+splendor run-match --config examples/match.json --report-out outputs/match.report.json --replay-out outputs/match.replay.json
+splendor verify-replay --input outputs/match.replay.json
+```
 
-MIT
+PowerShell 可用 `New-Item -ItemType Directory -Force outputs` 创建输出目录。每次运行使用新的输出文件名。配置中的 `python` 应指向安装了本包的解释器；如果使用虚拟环境，可写绝对路径。
+
+批量交换座位评测：
+
+```sh
+splendor eval --plan examples/evaluation.json --out-dir outputs/evaluation
+```
+
+1v1 循环赛与 Elo：
+
+```sh
+splendor rating-plan --registry examples/registry.json --config examples/rating.json --out outputs/rating-plan.json
+splendor rating-run --plan outputs/rating-plan.json --out-dir outputs/rating
+```
+
+## 代码结构
+
+| 目录 | 职责 |
+|---|---|
+| `crates/splendor-catalog` | 90 张发展卡、10 个基础贵族与规则参数 |
+| `crates/splendor-core` | 合法动作、状态推进、玩家视角、终局与名次 |
+| `crates/splendor-protocol` | NDJSON v0.5 消息 |
+| `crates/splendor-agent` | Rust Agent 运行时与随机基线 |
+| `crates/splendor-arena` | 独立程序对战、超时与故障记录 |
+| `crates/splendor-replay` | 裁判回放与逐步校验 |
+| `crates/splendor-eval` | 座位轮换、评测汇总与 1v1 评级 |
+| `crates/splendor-cli` | 规则环境与命令行入口 |
+| `python/splendor_env` | Python 规则环境与 Agent SDK |
+| `fixtures/` | 固定规则与协议测试样例 |
+
+进一步阅读：[规则与数据](docs/rules.md)、[训练环境](docs/environment.md)、[Agent 协议](docs/protocol.md)、[评测与交付](docs/evaluation.md)。
+
+## 开发验证
+
+```sh
+cargo test --locked --workspace --all-targets
+cargo build --locked -p splendor-cli
+python -m unittest discover -s python/tests -v
+```
+
+Python 测试默认使用 `target/debug/splendor`，Windows 使用同目录下的 `.exe`。可通过 `SPLENDOR_EXECUTABLE` 指定其他构建。CI 在 Linux、Windows 和声明的最低 Rust 版本上运行验证。
+
+## 使用边界
+
+Python 环境通过持久子进程传输语义 JSON，适合作为通用训练入口；大规模训练可在同一规则 API 上实现原生批量绑定。它不是 Gymnasium 接口，奖励与采样截断由训练程序定义。
+
+Arena 提供进程隔离与协议校验，不是操作系统沙箱。仅运行你信任的参赛程序，或在独立受限环境中执行。程序只能从玩家协议获取对手信息；裁判完整回放应在比赛结束后用于分析。

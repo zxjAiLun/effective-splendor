@@ -1,88 +1,85 @@
-# Protocol (NDJSON, v0.5)
+# Agent 协议 v0.5
 
-One JSON object per line. Transport (stdio / TCP / WS) is independent of schema.
+参赛 Agent 是裁判启动的独立进程。stdin 接收服务端消息，stdout 输出客户端消息；每行一个 UTF-8 JSON，发送后立即 flush。日志写 stderr。
 
-> v0.5 added **strict, arena-ready parsing**: `parse_server_line` and
-> `parse_client_line` reject unknown fields, trailing data, wrong-typed fields,
-> and non-object lines, so a foreign agent process cannot smuggle a malformed or
-> over-broad message past the referee. The message shapes are otherwise
-> unchanged from v0.4. Golden transcripts live under `fixtures/protocol/v0.5/`;
-> the v0.2 / v0.3 / v0.4 fixtures are kept as historical records.
->
-> v0.4 canonicalized purchased-card ownership (sorted by `CardId`), which
-> changed the observation hash. Replay files are a separate referee artifact
-> (see `docs/replay.md`), and the arena runner that drives this protocol over
-> subprocess stdio is described in `docs/arena.md`.
+运行时与权重格式独立。Python、Rust 或其他语言实现相同协议，即可参加同一场比赛。
 
-## Identity model
+## 消息顺序
 
-The Rust DTOs deliberately use separate metadata types:
+```text
+裁判 → hello
+Agent → hello
+裁判 → game_start
+裁判 → event（开局及后续玩家可见事件）
+裁判 → observation
+裁判 → request_action
+Agent → action
+裁判 → action_applied / event
+……
+裁判 → game_end
+```
 
-| type | scope | required fields |
-|------|-------|-----------------|
-| `ServerMeta` | broadcast (`Hello`) | protocol, game, server sequence |
-| `RecipientMeta` | one player | `ServerMeta` + `recipient_player_id` |
-| `ObservationMeta` | one player observation | `RecipientMeta` + `observation_hash` |
-| `RequestMeta` | one action request | `RecipientMeta` + `request_id` + `observation_hash` |
-| `ClientMeta` | client hello/pong | protocol, game |
-| `ClientRequestMeta` | client action | `ClientMeta` + `request_id` |
+`ping` 应回复 `pong`。异常用 `error` 表示。受限采样可用 `game_truncated` 结束；它没有终局胜负。
 
-Only `Hello` is broadcast. `GameStart`, `Observation`, `RequestAction`,
-`Event`, `ActionApplied`, `GameEnd`, `Error`, and `Ping` require a recipient at
-the type and wire level. `RequestAction` and client `Action` cannot be
-constructed or parsed without a `request_id`.
+## 服务端消息
 
-**A client `Action` carries NO authorizing identity.** Its seat is bound by the
-runner-side connection, while the mandatory `request_id` is only a correlation
-echo. There is no client-side seat, `server_seq`, or state-hash field.
+所有消息都有 `protocol_version`、`game_id` 和 `server_seq`。除 `hello` 外，还包含 `recipient_player_id`。
 
-## Messages
+| 类型 | 主要字段 |
+|---|---|
+| `hello` | `engine_version`、`ruleset`、`catalog_version`、`ruleset_fingerprint` |
+| `game_start` | `player_count`、`seed_commitment`；可选 `run_trace_id` |
+| `observation` | `observation_hash`、`observation` |
+| `request_action` | `request_id`、`observation_hash`、`deadline_ms`、`legal_actions`；可选 `ply` |
+| `action_applied` | `actor_player_id`、`action` |
+| `event` | 一个已投影的 `VisibleEvent` |
+| `game_end` | `result` |
+| `game_truncated` | `completed_plies`、`cap_state_hash`、`cap_scores` |
+| `error` | `message` |
+| `ping` | 公共元数据 |
 
-### Server → Client
+`observation_hash` 标识本次玩家观察；动作请求必须匹配最近观察。SDK 会检查请求关联、座位和合法动作。
 
-- `hello` — `engine_version`, `ruleset`, `catalog_version`, and the typed
-  `RulesetFingerprint`.
-- `game_start` — recipient metadata, `player_count`, `seed_commitment`.
-- `observation` — recipient metadata, `Observation` (including its
-  `ruleset_fingerprint`) + `observation_hash` (`ObservationHash`).
-- `request_action` — `deadline_ms`, `legal_actions`, `observation_hash`.
-- `action_applied` — `actor_player_id` (single, unambiguous) + `action`.
-- `event` — one already-projected `VisibleEvent`; raw `RefereeEvent` is not a
-  protocol type.
+完整字段与类型由 `crates/splendor-protocol/src/lib.rs` 定义。固定消息样例见 `fixtures/protocol/v0.5/`。
 
-For live player-view search, the Arena sends the projected setup event stream
-to every seat after `game_start` and before the first `request_action`. The
-stream starts with `GameStarted`; clients accumulate subsequent `event` and
-`action_applied` messages in delivery order. This changes no v0.5 wire shape.
-- `game_end` — `GameResult`.
-- `error`, `ping`.
+## 客户端消息
 
-### Client → Server
+```json
+{"type":"hello","protocol_version":"0.5","game_id":"demo","agent_name":"my-model","agent_version":"1.0.0"}
+{"type":"action","protocol_version":"0.5","game_id":"demo","request_id":1,"action":{"type":"reserve_deck","tier":"One"}}
+{"type":"pong","protocol_version":"0.5","game_id":"demo"}
+```
 
-- `hello` — `agent_name`, `agent_version`.
-- `action` — `action` plus `ClientRequestMeta` and its required `request_id`.
-  Seat is implied by the bound connection.
-- `pong`.
+示例只展示消息形状；动作必须取自该请求的 `legal_actions`。客户端消息不能添加座位、server_seq、观察哈希或自定义诊断字段。裁判严格拒绝多余字段、错误类型、错误请求编号和非法动作。
 
-## Observation scoping
+## Python SDK
 
-Every non-broadcast server message is generated **per recipient**. The
-`Observation` and each `VisibleEvent` are projected with
-`Audience::Player(recipient)` so a player sees only their own blind reserves. A
-spectator (`Audience::Spectator`) sees no blind identities. The referee log
-(`RefereeEvent`) is never serialized; even the setup seed is omitted from the
-visible event projection.
+```python
+from splendor_env import run_agent
 
-The v0.4 observation also includes public purchased-card identities (sorted by
-`CardId`, purchase order not exposed) and the public forced-pass counter.
-Reserve actions are atomic: their `return` field
-records the exact `Gems` returned when the reserve grants gold and the player
-would otherwise exceed the token limit.
 
-## Hash fields
+def choose_action(decision):
+    observation = decision.observation
+    history = decision.visible_history
+    legal_actions = decision.legal_actions
+    return legal_actions[0]
 
-Agent-facing state messages carry `ObservationHash`, whose encoding includes
-the `RulesetFingerprint` embedded in the observation. The hello message carries
-the separate, safe `RulesetFingerprint` for compatibility negotiation. They
-MUST NOT carry `FullStateHash` — that would leak deck order and opponents'
-blind cards as a comparable fingerprint.
+
+result_message = run_agent(choose_action, name="my-model", version="1.0.0")
+```
+
+`Decision` 还提供 `player_id`、`game_id`、`request_id` 和 `deadline_ms`。这些字段用于运行控制，不是游戏特征。`run_agent` 返回结束消息；回调异常、非法输出和提前 EOF 使进程失败。
+
+模型可在 `run_agent` 前加载。评测方应给握手设置足够的模型加载时间。推理时只使用当前玩家的观察、可见历史与合法动作。
+
+## Rust SDK
+
+实现 `splendor_agent::AgentPolicy::choose_action`，再通过 `run_agent` 启动。`DecisionContext` 包含 Observation、玩家可见历史、合法动作、请求信息和独立 RNG。随机参考入口为 `run_random_agent`。
+
+## 信息边界
+
+裁判拥有 `FullState`，策略拥有 `Observation`。对手暗预留身份、牌堆顺序和原始对局种子不会作为决策输入发送。事件按接收玩家投影，不能把原始 `RefereeEvent` 送给策略。
+
+裁判回放属于赛后材料。`game_truncated` 的截断记录也只在该次运行结束时发送。结束消息中的数据不得反向用于本局先前决策。
+
+训练环境与 Agent 输入复用同一 Observation 和 Action 结构。无需把模型导出成指定网络或某种权重格式；只需保持可运行入口遵循本协议。

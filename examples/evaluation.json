@@ -1,0 +1,38 @@
+{
+  "format": "effective-splendor-evaluation-plan",
+  "version": 1,
+  "evaluation_id": "example-evaluation",
+  "agents": [
+    {
+      "id": "rust-random",
+      "command": {
+        "program": "splendor",
+        "args": [
+          "agent-random",
+          "--seed",
+          "1"
+        ]
+      }
+    },
+    {
+      "id": "python-random",
+      "command": {
+        "program": "python",
+        "args": [
+          "-m",
+          "splendor_env.random_agent",
+          "--seed",
+          "2"
+        ]
+      }
+    }
+  ],
+  "game_seeds": [
+    42,
+    43,
+    44
+  ],
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 2000,
+  "shutdown_grace_ms": 2000
+}

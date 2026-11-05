@@ -67,6 +67,36 @@ fn hashes_include_ruleset_parameters_and_terminal_result() {
 }
 
 #[test]
+fn extra_noble_definitions_are_public_and_bound_into_all_state_hashes() {
+    let (mut state, _) = FullState::new(GameConfig::default()).unwrap();
+    let base = state.clone();
+    let observation = serde_json::to_value(state.observation(PlayerId(0))).unwrap();
+    assert!(observation["public"].get("extra_nobles").is_none());
+    let definition = splendor_core::NobleDef {
+        id: NobleId(10),
+        prestige: 3,
+        requirements: [4, 0, 0, 4, 0],
+    };
+    state.extra_nobles.push(definition);
+    state.nobles[0] = definition.id;
+    state.assert_invariants().unwrap();
+    assert_eq!(
+        state.observation(PlayerId(1)).public.extra_nobles,
+        [definition]
+    );
+    assert_ne!(full_state_hash(&base), full_state_hash(&state));
+    assert_ne!(public_state_hash(&base), public_state_hash(&state));
+    let mut changed = state.clone();
+    changed.extra_nobles[0].requirements[3] = 3;
+    assert_ne!(full_state_hash(&state), full_state_hash(&changed));
+    assert_ne!(public_state_hash(&state), public_state_hash(&changed));
+    assert_ne!(
+        observation_hash(&state.observation(PlayerId(0))),
+        observation_hash(&changed.observation(PlayerId(0)))
+    );
+}
+
+#[test]
 fn token_conservation_holds_after_setup() {
     for n in 2..=4 {
         let (state, _) = FullState::new(GameConfig {

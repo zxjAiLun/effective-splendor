@@ -1,14 +1,8 @@
-fixtures/**/*.json text eol=lf
-fixtures/**/*.ndjson text eol=lf
-benchmarks/*.json text eol=lf
-benchmarks/**/*.json text eol=lf
-
-# Research context publication preserves hash-bound evidence/source bytes.
-benchmarks/*prism*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-benchmarks/reports/m6*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-benchmarks/reports/m70*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-docs/prism/* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-docs/m??-prism*.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-scripts/prism* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-scripts/tests/*prism* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
-outputs/01a11805-prism-style/* -text
+* text=auto
+*.rs text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.ndjson text eol=lf

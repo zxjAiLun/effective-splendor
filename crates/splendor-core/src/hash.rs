@@ -167,6 +167,21 @@ fn write_nobles(h: &mut Sha256, nobles: &[splendor_catalog::NobleId]) {
     }
 }
 
+fn write_extra_nobles(h: &mut Sha256, nobles: &[splendor_catalog::NobleDef]) {
+    // Leave frozen base-game hashes unchanged; bind imported definitions when present.
+    if nobles.is_empty() {
+        return;
+    }
+    h.update(b"splendor-extra-nobles-v1\0");
+    let mut ordered = nobles.to_vec();
+    ordered.sort_by_key(|def| def.id);
+    write_len(h, ordered.len());
+    for def in ordered {
+        h.update([def.id.0, def.prestige]);
+        h.update(def.requirements);
+    }
+}
+
 /// Purchased ownership is a set, not a sequence: canonicalize by `CardId` before
 /// hashing so purchase order can never change the semantic state identity, even
 /// if a caller hands us an out-of-order `Vec`.
@@ -242,6 +257,7 @@ fn write_public_state(h: &mut Sha256, public: &PublicState) {
     }
 
     write_nobles(h, &public.pending_nobles);
+    write_extra_nobles(h, &public.extra_nobles);
 }
 
 fn write_observation_private(h: &mut Sha256, observation: &Observation) {
@@ -301,6 +317,7 @@ pub fn full_state_hash(state: &FullState) -> FullStateHash {
 
     write_nobles(&mut h, &state.pending_nobles);
     write_result(&mut h, state.result.as_ref());
+    write_extra_nobles(&mut h, &state.extra_nobles);
 
     FullStateHash(finish(h))
 }

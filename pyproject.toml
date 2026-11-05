@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "splendor-env"
+version = "0.1.0"
+description = "Model-independent Splendor environment and NDJSON agent SDK"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+readme = "README.md"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["splendor_env*"]

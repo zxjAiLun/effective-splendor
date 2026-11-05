@@ -2,7 +2,7 @@ use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
-use splendor_catalog::{all_cards, all_nobles, card, CardId, GemColor, NobleId, Ruleset, Tier};
+use splendor_catalog::{all_cards, all_nobles, card, CardId, GemColor, NobleDef, NobleId, Ruleset, Tier};
 
 use crate::action::Action;
 use crate::error::{EngineError, EngineResult};
@@ -148,6 +148,8 @@ pub struct FullState {
     pub decks: [Vec<CardId>; 3],
     pub market: [[Option<CardId>; 4]; 3],
     pub nobles: Vec<NobleId>,
+    /// Public, per-game definitions for imported nobles outside the base catalog.
+    pub extra_nobles: Vec<NobleDef>,
     pub bank: Gems,
     pub players: Vec<FullPlayerState>,
     pub current_player: PlayerId,
@@ -209,6 +211,7 @@ impl FullState {
             decks,
             market: [[None; 4]; 3],
             nobles,
+            extra_nobles: Vec::new(),
             bank: Gems {
                 white: color_tokens,
                 blue: color_tokens,
@@ -273,6 +276,13 @@ impl FullState {
 
     pub fn is_terminal(&self) -> bool {
         self.phase == Phase::GameOver
+    }
+
+    pub fn noble_definition(&self, id: NobleId) -> Option<NobleDef> {
+        all_nobles()
+            .get(id.index())
+            .copied()
+            .or_else(|| self.extra_nobles.iter().find(|def| def.id == id).copied())
     }
 
     pub fn legal_actions(&self) -> Vec<Action> {
@@ -732,7 +742,10 @@ impl FullState {
             .nobles
             .iter()
             .copied()
-            .filter(|&nid| player_qualifies(&self.players[pid.index()], nid))
+            .filter(|&nid| {
+                self.noble_definition(nid)
+                    .is_some_and(|def| player_qualifies(&self.players[pid.index()], &def))
+            })
             .collect();
 
         match qualified.len() {
@@ -742,7 +755,7 @@ impl FullState {
             }
             1 => {
                 let noble = qualified[0];
-                self.take_noble(pid, noble, events);
+                self.take_noble(pid, noble, events)?;
                 self.maybe_trigger_end(pid, events);
                 self.advance_turn(events);
             }
@@ -768,7 +781,7 @@ impl FullState {
             player: pid,
             action: Action::ChooseNoble { noble },
         });
-        self.take_noble(pid, noble, events);
+        self.take_noble(pid, noble, events)?;
         self.pending_nobles.clear();
         self.phase = Phase::Main;
         self.maybe_trigger_end(pid, events);
@@ -776,15 +789,24 @@ impl FullState {
         Ok(())
     }
 
-    fn take_noble(&mut self, pid: PlayerId, noble: NobleId, events: &mut Vec<GameEvent>) {
+    fn take_noble(
+        &mut self,
+        pid: PlayerId,
+        noble: NobleId,
+        events: &mut Vec<GameEvent>,
+    ) -> EngineResult<()> {
+        let prestige = self
+            .noble_definition(noble)
+            .ok_or_else(|| EngineError::Invariant(format!("unknown noble {}", noble.0)))?
+            .prestige;
         if let Some(pos) = self.nobles.iter().position(|&n| n == noble) {
             self.nobles.remove(pos);
         }
         let p = &mut self.players[pid.index()];
         p.nobles.push(noble);
-        let prestige = splendor_catalog::all_nobles()[noble.index()].prestige;
         p.prestige = p.prestige.saturating_add(prestige);
         events.push(GameEvent::NobleTaken { player: pid, noble });
+        Ok(())
     }
 
     fn maybe_trigger_end(&mut self, pid: PlayerId, events: &mut Vec<GameEvent>) {
@@ -851,6 +873,30 @@ impl FullState {
 
     /// Invariant checks for tests.
     pub fn assert_invariants(&self) -> EngineResult<()> {
+        let mut extra_ids = std::collections::HashSet::new();
+        for def in &self.extra_nobles {
+            if def.id.index() < all_nobles().len()
+                || !extra_ids.insert(def.id)
+                || def.prestige != 3
+                || def.requirements.iter().all(|&n| n == 0)
+            {
+                return Err(EngineError::Invariant(
+                    "invalid extra noble definition".into(),
+                ));
+            }
+        }
+        let mut noble_owners = std::collections::HashSet::new();
+        for &id in self
+            .nobles
+            .iter()
+            .chain(self.players.iter().flat_map(|p| &p.nobles))
+        {
+            if self.noble_definition(id).is_none() || !noble_owners.insert(id) {
+                return Err(EngineError::Invariant(
+                    "unknown or duplicate noble ownership".into(),
+                ));
+            }
+        }
         // Token conservation
         let color_supply = self.ruleset.color_token_count(self.player_count());
         for c in GemColor::ALL {
@@ -939,8 +985,11 @@ impl FullState {
                 expected_prestige = expected_prestige.saturating_add(def.prestige);
             }
             for &noble in &p.nobles {
-                expected_prestige = expected_prestige
-                    .saturating_add(splendor_catalog::all_nobles()[noble.index()].prestige);
+                expected_prestige = expected_prestige.saturating_add(
+                    self.noble_definition(noble)
+                        .ok_or_else(|| EngineError::Invariant("unknown owned noble".into()))?
+                        .prestige,
+                );
             }
             if p.bonuses != expected_bonuses {
                 return Err(EngineError::Invariant(format!(
@@ -959,8 +1008,7 @@ impl FullState {
     }
 }
 
-fn player_qualifies(player: &FullPlayerState, noble: NobleId) -> bool {
-    let def = &all_nobles()[noble.index()];
+fn player_qualifies(player: &FullPlayerState, def: &NobleDef) -> bool {
     GemColor::ALL
         .iter()
         .all(|&c| player.bonuses[c.index()] >= def.requirements[c.index()])

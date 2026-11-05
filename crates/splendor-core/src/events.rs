@@ -124,6 +124,14 @@ pub enum Audience {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VisibleEvent {
+    /// Explicit current-position context, NOT a transcript from game start.
+    /// Used by snapshot adapters. Entries preserve reserve-slot order: None is
+    /// a public market reserve; Some(tier) is a blind reserve (no identity).
+    /// All fields are public; player-private cards remain in Observation only.
+    DecisionSnapshot {
+        main_turn_counts: Vec<u32>,
+        reserved_origins: Vec<Vec<Option<Tier>>>,
+    },
     GameStarted {
         player_count: u8,
         ruleset: String,

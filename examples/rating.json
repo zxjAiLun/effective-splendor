@@ -1,0 +1,19 @@
+{
+  "format": "effective-splendor-rating-config",
+  "version": 1,
+  "tournament_id": "example-rating",
+  "participant_ids": [
+    "rust-random",
+    "python-random"
+  ],
+  "game_seeds": [
+    42,
+    43,
+    44
+  ],
+  "handshake_timeout_ms": 10000,
+  "move_timeout_ms": 2000,
+  "shutdown_grace_ms": 2000,
+  "initial_elo": 1500,
+  "live_k_factor": 24
+}

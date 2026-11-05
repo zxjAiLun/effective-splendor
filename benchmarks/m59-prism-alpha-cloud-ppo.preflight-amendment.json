@@ -1,8 +1,0 @@
-{
-  "config_sha256": "cab7dde789ffc96c20f6b22b8acb58ae3c1d48477f9b388bf19867d0ddb2f3ac",
-  "new_games": 0,
-  "old_config_local_path": "local-artifacts/prism/alpha-cloud-m59/preflight-config-v1.json",
-  "old_config_sha256": "4f5139db0386a6760e8883e4de1bb7e0f2b7f0b004b0b7f37edb401064afa65d",
-  "reason": "development anchor IDs copied from M56 were not updated to the already declared M59 runtime IDs; correct labels before sampling; budgets/seeds/gates/blueprint unchanged",
-  "status": "CORRECTED_BEFORE_FIRST_GAME"
-}

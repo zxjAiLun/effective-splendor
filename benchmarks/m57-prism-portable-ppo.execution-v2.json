@@ -1,8 +1,0 @@
-{
-  "code_identity": "7ba39ab242ac1e9a6aa8ac499f01ccc4ebfe0c974499be40940717ce1fe6e1d4",
-  "config_sha256": "8463b231464cf2b46e71c37e4b93542355c1c6faaa9df18e74b544de617ce641",
-  "new_games": 0,
-  "numerical_identity": "a6e502b5d54358b8a8c4122ddabfb11e949dc976a957335b15ad91c2c3f62c24",
-  "reason": "Separate immutable learner/auditor identity from host execution pins; no schedule/budget/model changes",
-  "status": "FROZEN_BEFORE_FIRST_TRAINING_MATCH"
-}

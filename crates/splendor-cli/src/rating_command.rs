@@ -167,8 +167,7 @@ fn commit_json<T: serde::Serialize>(target: &Path, value: &T) -> Result<(), Stri
 fn commit_text(target: &Path, text: &str) -> Result<(), String> {
     ensure_output_parent(target)?;
     ensure_absent(target)?;
-    atomic_output::commit_single_with(target, text, atomic_output::publish_new)
-        .map_err(|e| e.to_string())
+    atomic_output::commit_single(target, text).map_err(|e| e.to_string())
 }
 
 fn ensure_absent(path: &Path) -> Result<(), String> {

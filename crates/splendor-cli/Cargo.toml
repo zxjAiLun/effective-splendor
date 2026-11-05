@@ -3,12 +3,9 @@ name = "splendor-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 rust-version.workspace = true
-description = "CLI for Splendor self-play, replay record/verify, and benchmarks"
-
-[lib]
-name = "splendor_cli"
-path = "src/lib.rs"
+description = "Splendor rules environment, external-agent arena and evaluation CLI"
 
 [[bin]]
 name = "splendor"
@@ -22,31 +19,6 @@ splendor-replay = { workspace = true }
 splendor-arena = { workspace = true }
 splendor-agent = { workspace = true }
 splendor-eval = { workspace = true }
-splendor-search = { workspace = true }
-splendor-belief = { workspace = true }
-splendor-imperfect-search = { workspace = true }
-splendor-determinization-agent = { workspace = true }
-splendor-ismcts = { workspace = true }
-splendor-ismcts-agent = { workspace = true }
-splendor-league = { workspace = true }
-splendor-learning = { workspace = true }
-splendor-neural-search = { workspace = true }
-splendor-neural-agent = { workspace = true }
-splendor-analysis = { workspace = true }
-splendor-studio-league = { workspace = true }
-splendor-prism = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-rand = { workspace = true }
-sha2 = { workspace = true }
-hex = { workspace = true }
-
-[dev-dependencies]
-# Test-only: hashes the frozen M06 benchmark corpus and the published search
-# analysis artifacts. Deliberately not a production dependency.
-#
-# `rusqlite` is test-only as well: the Commit C Slice 3 equivalence gate reads
-# the ledger the CLI wrote and compares it against a direct library call, so the
-# test needs to open the database even though no CLI code path does.
-rusqlite = { workspace = true }

@@ -17,8 +17,8 @@ mod state;
 pub use action::Action;
 pub use error::{EngineError, EngineResult};
 pub use events::{
-    visible_events, Audience, ChanceEvent, GameEvent, RefereeEvent, StepResult, Visibility,
-    VisibleEvent,
+    visible_events, Audience, ChanceEvent, GameEvent, PurchaseSource, RefereeEvent, ReserveSource,
+    StepResult, Visibility, VisibleEvent,
 };
 pub use gems::Gems;
 pub use hash::{
